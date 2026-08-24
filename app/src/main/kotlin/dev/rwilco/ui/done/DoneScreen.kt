@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -45,6 +46,7 @@ import dev.rwilco.ui.components.TagLabel
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.format.dayWord
+import dev.rwilco.ui.format.rememberIs24h
 import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
 import java.time.Clock
@@ -55,6 +57,8 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
     var confirmingPurge by rememberSaveable { mutableStateOf(false) }
     val spacing = Tokens.spacing
     val today = clock.instant().atZone(clock.zone).toLocalDate()
+    val locale = currentLocale()
+    val is24h = rememberIs24h()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -104,6 +108,7 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
                     EmptyState(
                         title = stringResource(R.string.done_empty_title),
                         body = stringResource(R.string.done_empty_body),
+                        icon = Icons.Outlined.TaskAlt,
                     )
                 }
             }
@@ -111,8 +116,8 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
                 DoneCard(
                     reminder = reminder,
                     doneLabel = reminder.doneAt?.let { doneAt ->
-                        val date = doneAt.atZone(clock.zone).toLocalDate()
-                        dayWord(date, today, currentLocale()) + " · " + TimeText.time(doneAt.atZone(clock.zone).toLocalTime(), true, currentLocale())
+                        val at = doneAt.atZone(clock.zone)
+                        dayWord(at.toLocalDate(), today, locale) + " · " + TimeText.time(at.toLocalTime(), is24h, locale)
                     },
                     onOpen = { onOpen(reminder.id) },
                     onRestore = { viewModel.restore(reminder.id) },

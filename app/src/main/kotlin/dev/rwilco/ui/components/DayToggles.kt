@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -53,7 +54,11 @@ fun DayToggles(selected: Set<DayOfWeek>, onToggle: (DayOfWeek) -> Unit, modifier
                     .weight(1f)
                     .sizeIn(minWidth = 44.dp, minHeight = 44.dp)
                     .aspectRatio(1f)
-                    .semantics { contentDescription = fullName },
+                    // The tint is the only visible state; a screen reader needs it said.
+                    .semantics {
+                        contentDescription = fullName
+                        this.selected = on
+                    },
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(

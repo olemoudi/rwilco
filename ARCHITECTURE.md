@@ -105,7 +105,9 @@ strict is asking somebody to remember how they spelled it.
   "cualquiera" and "todos". Text and tags are
   offered before they are asked for — `suggestedTexts`/`suggestedTags` rank what has been written before
   by how often and how recently (a 30-day half-life), and nothing is auto-focused, because a
-  keyboard that opens by itself hides the list that would have saved the typing. `TriggerKindSheet` puts the kind
+  keyboard that opens by itself hides the list that would have saved the typing. While a draft
+  has no trigger, "when" offers the three answers people give most (in half an hour, tonight,
+  tomorrow morning) as one-tap chips that append a rule without a sheet. `TriggerKindSheet` puts the kind
   chosen in Settings (`AppSettings.defaultTriggerKind`) first and marks it; the other five keep
   their order behind it. One configurator sheet per trigger kind under `editor/sheets/`, plus `ConditionSheet` for the
   "y sólo si" fences; the countdown sheet produces an `AtDateTime`; the place

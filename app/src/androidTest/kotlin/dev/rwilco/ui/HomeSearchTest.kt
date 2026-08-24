@@ -12,6 +12,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import dev.rwilco.BuildConfig
 import dev.rwilco.MainActivity
 import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
@@ -51,6 +52,8 @@ class HomeSearchTest {
         val app = context.applicationContext as RwilcoApplication
         runBlocking {
             DemoData.seed(app.repository, app.clock)
+            // Keep "What's new" from opening over the screen being captured.
+            app.settingsStore.update { it.copy(lastSeenVersionCode = BuildConfig.VERSION_CODE) }
             // One reminder whose words and whose tag both answer the same query, so the two
             // kinds of row are guaranteed to appear side by side.
             val now = app.clock.instant()

@@ -315,4 +315,11 @@
         <item>With more than one trigger you choose between "any of them" and "all of them" — all of them rings with the last to happen, and the card ticks off the ones already behind you.</item>
         <item>The editor reads as four parts, each in its own card with its own icon, and every edge you can press is finally visible.</item>
     </string-array>
+    <string-array name="whats_new_0_3_1">
+        <item>While a reminder has no "when" yet, the three answers people give most — in half an hour, tonight, tomorrow morning — are one tap away, before "Add a trigger".</item>
+        <item>Swiping a card answers the moment it takes: the glyph springs and the colour deepens, on the same tick as the vibration.</item>
+        <item>For a screen reader: sections are headings, day and action toggles say whether they are on, every trigger says its kind, and Done and Delete are actions on the card itself — a swipe is not something TalkBack can do.</item>
+        <item>Empty screens have a face: an icon before the sentence.</item>
+        <item>Done times follow the phone\'s 12/24-hour setting, the time wheels grow with a large font size, and the small grey notes in the editor are readable on the light theme too.</item>
+    </string-array>
 </resources>

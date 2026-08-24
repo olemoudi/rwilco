@@ -43,6 +43,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -60,6 +61,10 @@ import java.util.Locale
 
 private val ITEM_HEIGHT = 56.dp
 private const val VISIBLE_ITEMS = 5
+
+/** A row of the wheel: grows with the person's font size, so 32sp digits never clip at "huge". */
+@Composable
+private fun wheelItemHeight(): Dp = ITEM_HEIGHT * LocalDensity.current.fontScale.coerceAtLeast(1f)
 
 /**
  * Picking a time by rolling it past a line, not by aiming at it.
@@ -152,13 +157,14 @@ private fun Wheels(
     val hours = remember(is24h) { if (is24h) (0..23).toList() else (1..12).toList() }
     val displayedHour = if (is24h) hour else ((hour + 11) % 12) + 1
     val afternoon = hour >= 12
+    val itemHeight = wheelItemHeight()
 
     Box(contentAlignment = Alignment.Center) {
         // One band across both columns: the line the numbers roll past.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(ITEM_HEIGHT)
+                .height(itemHeight)
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.shapes.medium),
         )
         Row(
@@ -223,6 +229,7 @@ private fun PeriodButton(label: String, selected: Boolean, onClick: () -> Unit) 
             1.dp,
             if (selected) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outlineVariant,
         ),
+        modifier = Modifier.semantics { this.selected = selected },
     ) {
         Text(
             text = label,
@@ -249,7 +256,8 @@ private fun NumberWheel(
     modifier: Modifier = Modifier,
 ) {
     val haptics = Tokens.haptics
-    val itemHeightPx = with(LocalDensity.current) { ITEM_HEIGHT.toPx() }
+    val itemHeight = wheelItemHeight()
+    val itemHeightPx = with(LocalDensity.current) { itemHeight.toPx() }
     val loops = 400
     val middleStart = remember(values) { values.size * (loops / 2) }
     val state = rememberLazyListState(
@@ -295,10 +303,10 @@ private fun NumberWheel(
     LazyColumn(
         state = state,
         flingBehavior = flingBehavior,
-        contentPadding = PaddingValues(vertical = ITEM_HEIGHT * (VISIBLE_ITEMS / 2)),
+        contentPadding = PaddingValues(vertical = itemHeight * (VISIBLE_ITEMS / 2)),
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
-            .height(ITEM_HEIGHT * VISIBLE_ITEMS)
+            .height(itemHeight * VISIBLE_ITEMS)
             .semantics { contentDescription = label },
     ) {
         items(count = values.size * loops) { index ->
@@ -306,7 +314,7 @@ private fun NumberWheel(
             val onLine = distance == 0
             Box(
                 modifier = Modifier
-                    .height(ITEM_HEIGHT)
+                    .height(itemHeight)
                     .fillMaxWidth(),
                 contentAlignment = Alignment.Center,
             ) {

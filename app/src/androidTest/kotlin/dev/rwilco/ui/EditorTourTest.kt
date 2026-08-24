@@ -18,6 +18,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import dev.rwilco.BuildConfig
 import dev.rwilco.MainActivity
 import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
@@ -67,7 +68,12 @@ class EditorTourTest {
     @Before
     fun seedDemoData() {
         val app = context.applicationContext as RwilcoApplication
-        runBlocking { DemoData.seed(app.repository, app.clock) }
+        runBlocking {
+            DemoData.seed(app.repository, app.clock)
+            // A build the phone has not seen opens "What's new" over the first screen — and
+            // over every capture after it, since the tour never taps it away. Seen already.
+            app.settingsStore.update { it.copy(lastSeenVersionCode = BuildConfig.VERSION_CODE) }
+        }
         // Yesterday's captures would otherwise be pulled along with today's and quietly go stale.
         File(context.filesDir, "screenshots").listFiles()?.forEach { it.delete() }
     }

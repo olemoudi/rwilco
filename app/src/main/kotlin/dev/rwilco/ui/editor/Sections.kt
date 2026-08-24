@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -54,6 +56,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -68,14 +72,21 @@ import dev.rwilco.ui.components.PresetChip
 import dev.rwilco.ui.components.SegmentedChoice
 import dev.rwilco.ui.components.TagChip
 import dev.rwilco.ui.components.TriggerKeycap
+import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.conditionLabel
+import dev.rwilco.ui.format.currentLocale
+import dev.rwilco.ui.format.dayWord
+import dev.rwilco.ui.format.rememberIs24h
 import dev.rwilco.ui.format.triggerLine
 import dev.rwilco.ui.home.labelRes
 import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.icon
+import java.time.Clock
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.temporal.ChronoUnit
 
 /** Lets the instrumented tour find the text field; a BasicTextField has no other handle. */
 const val EDITOR_TEXT_TAG = "editorText"
@@ -273,10 +284,12 @@ internal fun TriggersSection(
     rules: List<TriggerRule>,
     ruleMatch: RuleMatch,
     onRuleMatch: (RuleMatch) -> Unit,
+    clock: Clock,
     today: LocalDate,
     defaultTime: LocalTime,
     inPast: Set<Int>,
     onAdd: () -> Unit,
+    onQuickAdd: (Trigger) -> Unit,
     onEdit: (Int) -> Unit,
     onRemove: (Int) -> Unit,
     onAddCondition: (Int) -> Unit,
@@ -308,6 +321,8 @@ internal fun TriggersSection(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = Tokens.spacing.sm),
             )
+            QuickWhenRow(clock = clock, onPick = onQuickAdd)
+            Spacer(Modifier.height(Tokens.spacing.sm))
         }
         Column(verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm)) {
             rules.forEachIndexed { index, rule ->
@@ -343,6 +358,52 @@ internal fun TriggersSection(
         }
     }
 }
+
+/**
+ * The "when" people ask for most, one tap each and no sheet: in half an hour, tonight, tomorrow
+ * morning. Offered only while nothing is set — once there is a trigger the section is about
+ * that one — and always followed by the button that opens the whole choice. The half hour is
+ * counted from the tap, not from when the chip was drawn.
+ */
+@Composable
+private fun QuickWhenRow(clock: Clock, onPick: (Trigger) -> Unit) {
+    val locale = currentLocale()
+    val is24h = rememberIs24h()
+    val now = clock.instant().atZone(clock.zone)
+    val today = now.toLocalDate()
+    val tonight = LocalTime.of(20, 0)
+    val morning = LocalTime.of(9, 0)
+    val soonLabel = stringResource(R.string.countdown_in, stringResource(R.string.countdown_minutes, QUICK_MINUTES))
+    val tonightLabel = dayWord(today, today, locale) + " " + TimeText.time(tonight, is24h, locale)
+    val tomorrowLabel = dayWord(today.plusDays(1), today, locale) + " " + TimeText.time(morning, is24h, locale)
+
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+    ) {
+        PresetChip(
+            label = soonLabel.replaceFirstChar { it.titlecase(locale) },
+            onClick = {
+                val at = clock.instant().atZone(clock.zone).plusMinutes(QUICK_MINUTES.toLong()).truncatedTo(ChronoUnit.MINUTES)
+                onPick(Trigger.AtDateTime(at.toLocalDateTime()))
+            },
+        )
+        if (now.toLocalTime().isBefore(tonight)) {
+            PresetChip(
+                label = tonightLabel.replaceFirstChar { it.titlecase(locale) },
+                onClick = { onPick(Trigger.AtDateTime(LocalDateTime.of(today, tonight))) },
+            )
+        }
+        PresetChip(
+            label = tomorrowLabel.replaceFirstChar { it.titlecase(locale) },
+            onClick = { onPick(Trigger.AtDateTime(LocalDateTime.of(today.plusDays(1), morning))) },
+        )
+    }
+}
+
+private const val QUICK_MINUTES = 30
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -481,7 +542,9 @@ private fun ActionTile(action: Action, selected: Boolean, onToggle: () -> Unit, 
             if (selected) Tokens.strokes.strong else Tokens.strokes.control,
             if (selected) scheme.onSurfaceVariant else scheme.outline,
         ),
-        modifier = modifier.heightIn(min = 72.dp),
+        modifier = modifier
+            .heightIn(min = 72.dp)
+            .semantics { this.selected = selected },
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,

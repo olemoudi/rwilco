@@ -19,8 +19,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -34,6 +36,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -64,6 +69,8 @@ fun HomeScreen(
     val deletedMessage = stringResource(R.string.home_deleted)
     val refreshedMessage = stringResource(R.string.home_refreshed)
     val undoLabel = stringResource(R.string.common_undo)
+    val swipeDoneLabel = stringResource(R.string.card_swipe_done)
+    val swipeDeleteLabel = stringResource(R.string.card_swipe_delete)
 
     LaunchedEffect(viewModel) {
         viewModel.eventFlow.collect { event ->
@@ -147,6 +154,7 @@ fun HomeScreen(
                         EmptyState(
                             title = stringResource(R.string.home_search_none_title),
                             body = stringResource(R.string.home_search_none_body),
+                            icon = Icons.Outlined.SearchOff,
                         )
                     }
                 }
@@ -186,6 +194,13 @@ fun HomeScreen(
                                 defaultTime = defaultTime,
                                 onClick = { onOpen(card.id) },
                                 onTogglePause = { viewModel.togglePause(card.id, card.paused) },
+                                // What the swipes do, for whoever cannot swipe.
+                                modifier = Modifier.semantics {
+                                    customActions = listOf(
+                                        CustomAccessibilityAction(swipeDoneLabel) { viewModel.markDone(card.id); true },
+                                        CustomAccessibilityAction(swipeDeleteLabel) { viewModel.delete(card.id); true },
+                                    )
+                                },
                             )
                         }
                     }
@@ -195,6 +210,7 @@ fun HomeScreen(
                         EmptyState(
                             title = stringResource(R.string.home_empty_title),
                             body = stringResource(R.string.home_empty_body),
+                            icon = Icons.Outlined.Lightbulb,
                         )
                     }
                 }

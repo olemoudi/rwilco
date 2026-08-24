@@ -49,6 +49,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
@@ -176,12 +178,17 @@ fun EditorScreen(
                         rules = state.draft.rules,
                         ruleMatch = state.draft.ruleMatch,
                         onRuleMatch = viewModel::setRuleMatch,
+                        clock = viewModel.clock,
                         today = today,
                         defaultTime = state.defaultTime,
                         inPast = pastWarnings,
                         onAdd = {
                             focusManager.clearFocus()
                             viewModel.openKindPicker()
+                        },
+                        onQuickAdd = { trigger ->
+                            focusManager.clearFocus()
+                            viewModel.commitTrigger(null, trigger)
                         },
                         onEdit = viewModel::editTrigger,
                         onRemove = viewModel::removeTrigger,
@@ -381,13 +388,16 @@ private fun EditorSection(
                     text = title.uppercase(currentLocale()),
                     style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.5.sp, fontWeight = FontWeight.SemiBold),
                     color = scheme.onSurfaceVariant,
+                    modifier = Modifier.semantics { heading() },
                 )
                 if (note != null) {
                     Spacer(Modifier.width(spacing.sm))
+                    // Quieter by weight and case, not by fading: at 12sp a faded grey on the
+                    // light scheme falls under the contrast anyone can read.
                     Text(
                         text = note,
                         style = MaterialTheme.typography.labelMedium,
-                        color = scheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        color = scheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )

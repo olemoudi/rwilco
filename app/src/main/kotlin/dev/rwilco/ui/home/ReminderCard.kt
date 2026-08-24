@@ -27,6 +27,7 @@ import dev.rwilco.R
 import dev.rwilco.model.kind
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.TriggerKeycap
+import dev.rwilco.ui.editor.titleRes
 import dev.rwilco.ui.format.conditionLabel
 import dev.rwilco.ui.format.triggerLine
 import dev.rwilco.ui.theme.MonoStyles
@@ -35,6 +36,11 @@ import dev.rwilco.ui.theme.icon
 import java.time.LocalDate
 import java.time.LocalTime
 
+/**
+ * One reminder at a glance. [modifier] is where Home hangs the accessibility actions for the
+ * swipes: a gesture is not a thing a screen reader can do, so Done and Delete are offered as
+ * actions on the card itself.
+ */
 @Composable
 fun ReminderCard(
     card: ReminderCardUi,
@@ -42,10 +48,11 @@ fun ReminderCard(
     defaultTime: LocalTime,
     onClick: () -> Unit,
     onTogglePause: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val spacing = Tokens.spacing
     val textColor = if (card.paused) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
-    RwilcoCard(onClick = onClick) {
+    RwilcoCard(onClick = onClick, modifier = modifier) {
         // Tight on purpose: a card is a glance, not a page. Two lines of text, the triggers
         // under it, and the footer riding on the pause button's own touch target.
         Column(modifier = Modifier.padding(start = spacing.md, top = spacing.md, end = spacing.xs)) {
@@ -61,7 +68,7 @@ fun ReminderCard(
             if (card.matchAll) {
                 Text(
                     text = stringResource(R.string.card_match_all),
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = spacing.xs),
                 )
@@ -91,7 +98,13 @@ fun ReminderCard(
 fun TriggerRow(row: TriggerRowUi, today: LocalDate, defaultTime: LocalTime, muted: Boolean = false) {
     val line = triggerLine(row.trigger, today, defaultTime)
     Row(verticalAlignment = Alignment.CenterVertically) {
-        TriggerKeycap(family = row.family, icon = row.trigger.kind.icon, contentDescription = null, size = 28.dp)
+        // The keycap says which kind of "when" this is; sighted by colour and glyph, spoken by name.
+        TriggerKeycap(
+            family = row.family,
+            icon = row.trigger.kind.icon,
+            contentDescription = stringResource(row.trigger.kind.titleRes),
+            size = Tokens.sizes.badge,
+        )
         Spacer(Modifier.width(Tokens.spacing.sm))
         Column(modifier = Modifier.weight(1f, fill = false)) {
             Text(

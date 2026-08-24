@@ -26,6 +26,7 @@ import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.TriggerKeycap
 import dev.rwilco.ui.components.lampGlow
 import dev.rwilco.ui.components.rememberNow
+import dev.rwilco.ui.editor.titleRes
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.countdownText
 import dev.rwilco.ui.format.currentLocale
@@ -79,7 +80,11 @@ fun HeroCard(
                     modifier = Modifier.weight(1f),
                 )
                 if (nextTrigger != null) {
-                    TriggerKeycap(family = nextTrigger.family, icon = nextTrigger.trigger.kind.icon, contentDescription = null)
+                    TriggerKeycap(
+                        family = nextTrigger.family,
+                        icon = nextTrigger.trigger.kind.icon,
+                        contentDescription = stringResource(nextTrigger.trigger.kind.titleRes),
+                    )
                 }
             }
             Spacer(Modifier.height(spacing.sm))
