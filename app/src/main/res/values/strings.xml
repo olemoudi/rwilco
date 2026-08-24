@@ -241,4 +241,47 @@
         <item>Times are picked on wheels now: flick and it snaps, no aiming at a dial with one hand.</item>
         <item>Tags you have used before are offered under the "New tag" button, and narrow as you type.</item>
     </string-array>
+
+    <!-- Search -->
+    <string name="home_search">Search</string>
+    <string name="home_search_hint">Search reminders and tags</string>
+    <string name="home_search_clear">Clear</string>
+    <string name="home_search_kind_reminder">Reminder</string>
+    <string name="home_search_kind_tag">Tag</string>
+    <plurals name="home_search_tag_count">
+        <item quantity="one">%1$d reminder</item>
+        <item quantity="other">%1$d reminders</item>
+    </plurals>
+    <string name="home_search_none_title">Nothing matches</string>
+    <string name="home_search_none_body">Try fewer letters: the search is forgiving about accents, capitals and missing bits.</string>
+
+    <!-- Editor sections -->
+    <string name="editor_text_title">Reminder</string>
+    <string name="editor_optional">optional</string>
+
+    <!-- Default trigger -->
+    <string name="settings_default_trigger">Trigger offered first</string>
+    <string name="settings_default_trigger_hint">The kind that leads the list when you add a trigger. The other five stay one tap away.</string>
+    <string name="settings_default_trigger_ask">No favourite</string>
+    <string name="kind_default_badge">Your usual one</string>
+
+    <!-- Location -->
+    <string name="settings_location">Location</string>
+    <string name="perm_location_none">Rwilco cannot see where you are.</string>
+    <string name="perm_location_while_in_use">Only while Rwilco is open.</string>
+    <string name="perm_location_always">All the time: place reminders work with the app closed.</string>
+    <string name="perm_location_why">Places are watched by the phone\'s own location service. Rwilco never follows you around: it is told when you arrive, and asks nothing in between.</string>
+    <string name="perm_location_why_needed">You have place reminders. They only ring with location allowed "all the time" — the phone watches for you and wakes Rwilco when you arrive.</string>
+    <string name="perm_location_missing">Location is not allowed, so places cannot be picked or watched.</string>
+    <string name="perm_location_fix">Allow</string>
+    <string name="perm_location_off">Location is switched off on the phone.</string>
+    <string name="perm_location_off_fix">Turn on</string>
+    <string name="place_no_permission">Rwilco is not allowed to read your location. Allow it, or long-press the map.</string>
+    <string-array name="whats_new_0_2_3">
+        <item>A magnifier on the main screen: one search over reminders and tags at once, and every result says which it is. Accents, capitals and missing letters are forgiven.</item>
+        <item>Cards take less room, so more of the day fits on one screen.</item>
+        <item>The editor reads as four steps — the reminder, tags, when, what happens — each under its own heading, and the Write and New tag buttons no longer shout.</item>
+        <item>Settings chooses which kind of trigger is offered first when you add one.</item>
+        <item>Settings has a Location section that says whether places can be watched at all, and "Use my location" no longer gives up when the permission is approximate or GPS has nothing to say indoors.</item>
+    </string-array>
 </resources>

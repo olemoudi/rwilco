@@ -29,6 +29,18 @@ suggestions. Now the button is on top, the chips are under an "O reutilizar una"
 they narrow as a new tag is typed. If it still looks empty on the phone, the honest answer is
 that there are no tagged reminders yet.
 
+## "Use my location" failed with the permission granted (2026-08-24)
+Two bugs, both in the asking rather than the reading. The picker requested only
+`ACCESS_FINE_LOCATION`, so somebody answering the dialog with **Approximate** got `granted =
+false` back and was told "could not get a location" while COARSE sat granted — and every read
+checked FINE alone, so it would have refused anyway. Then `currentLocation` picked the *first*
+enabled provider, which is GPS: indoors it never answers, and the 15-second wait ended in
+failure with the network provider — which answers instantly — sitting untouched behind it.
+Now both permissions are asked for and either is enough, every enabled provider is asked at
+once and the first answer wins, and the freshest last-known fix answers immediately or serves
+as the fallback. "Could not get a fix" and "not allowed" are two different sentences now,
+because they need two different things from the person.
+
 ## Still to prove on the real phone (Pixel 8 Pro)
 - A place reminder actually firing in the street, and how long the geofence takes to notice.
 - The full-screen alert over the lock screen, and whether Android 14's full-screen-intent
@@ -41,4 +53,6 @@ that there are no tagged reminders yet.
   it; it needs a location read at fire time and a decision about what to do when it is unknown
   (fail open, presumably).
 - Snooze from the alert screen is wired; snooze from the notification only offers ten minutes.
-
+- Background location is a permission, not a service: geofencing does the watching. If a place
+  reminder is ever seen to miss in the street, the thing to add is a diagnostic (last geofence
+  event, last known fix), not a foreground service that polls.

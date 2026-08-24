@@ -82,7 +82,8 @@ fun LocationSheet(
     var lat by rememberSaveable { mutableStateOf(initial?.lat) }
     var lng by rememberSaveable { mutableStateOf(initial?.lng) }
     var locating by rememberSaveable { mutableStateOf(false) }
-    var failed by rememberSaveable { mutableStateOf(false) }
+    /** Null while nothing has gone wrong; otherwise which of the two things went wrong. */
+    var failure by rememberSaveable { mutableStateOf<String?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
     var results by remember { mutableStateOf<List<FoundPlace>>(emptyList()) }
     var searching by rememberSaveable { mutableStateOf(false) }
@@ -107,21 +108,24 @@ fun LocationSheet(
 
     fun locate() {
         locating = true
-        failed = false
+        failure = null
         scope.launch {
-            val fix = currentLocation(context)
-            locating = false
-            if (fix == null) {
-                failed = true
-            } else {
-                lat = fix.latitude
-                lng = fix.longitude
-                haptics.perform(HapticFeedbackType.Confirm)
+            when (val fix = currentLocation(context)) {
+                is LocationFix.Found -> {
+                    lat = fix.location.latitude
+                    lng = fix.location.longitude
+                    haptics.perform(HapticFeedbackType.Confirm)
+                }
+                LocationFix.NoPermission -> failure = FAILURE_PERMISSION
+                LocationFix.NoFix -> failure = FAILURE_NO_FIX
             }
+            locating = false
         }
     }
-    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) locate() else failed = true
+    // Both, not just the precise one: a person who answers "approximate" has said yes, and the
+    // old code read that as a refusal and gave up with the phone perfectly able to answer.
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
+        if (granted.values.any { it }) locate() else failure = FAILURE_PERMISSION
     }
 
     val known = lat != null && lng != null
@@ -187,7 +191,7 @@ fun LocationSheet(
                     ResultRow(place) {
                         lat = place.lat
                         lng = place.lng
-                        failed = false
+                        failure = null
                         if (label.isBlank()) label = place.label.take(MAX_LABEL_LENGTH)
                         results = emptyList()
                         haptics.perform(HapticFeedbackType.Confirm)
@@ -209,7 +213,7 @@ fun LocationSheet(
                     onLongPress = { point ->
                         lat = point.latitude
                         lng = point.longitude
-                        failed = false
+                        failure = null
                         haptics.perform(HapticFeedbackType.Confirm)
                     },
                     modifier = Modifier
@@ -217,7 +221,15 @@ fun LocationSheet(
                         .height(260.dp),
                 )
                 FilledIconButton(
-                    onClick = { permission.launch(Manifest.permission.ACCESS_FINE_LOCATION) },
+                    onClick = {
+                        if (hasAnyLocationPermission(context)) {
+                            locate()
+                        } else {
+                            permission.launch(
+                                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+                            )
+                        }
+                    },
                     enabled = !locating,
                     shape = CircleShape,
                     colors = IconButtonDefaults.filledIconButtonColors(
@@ -239,11 +251,12 @@ fun LocationSheet(
             Text(
                 text = when {
                     known -> String.format(Locale.ROOT, "%.5f, %.5f", lat, lng) + " · " + stringResource(R.string.place_map_hint)
-                    failed -> stringResource(R.string.place_no_fix)
+                    failure == FAILURE_PERMISSION -> stringResource(R.string.place_no_permission)
+                    failure == FAILURE_NO_FIX -> stringResource(R.string.place_no_fix)
                     else -> stringResource(R.string.place_map_hint)
                 },
                 style = MaterialTheme.typography.bodySmall,
-                color = if (failed && !known) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (failure != null && !known) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Column {
@@ -284,3 +297,7 @@ private fun ResultRow(place: FoundPlace, onPick: () -> Unit) {
         }
     }
 }
+
+/** Saveable across a rotation, which an enum entry is not without a custom saver. */
+private const val FAILURE_PERMISSION = "permission"
+private const val FAILURE_NO_FIX = "no_fix"

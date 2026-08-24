@@ -1,5 +1,6 @@
 package dev.rwilco.ui.home
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -56,6 +58,7 @@ fun HomeScreen(
     onSettings: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val search by viewModel.search.collectAsStateWithLifecycle()
     val snackbar = LocalSnackbar.current
     val doneMessage = stringResource(R.string.home_marked_done)
     val deletedMessage = stringResource(R.string.home_deleted)
@@ -75,20 +78,26 @@ fun HomeScreen(
         }
     }
 
+    BackHandler(enabled = search.open) { viewModel.setSearching(false) }
+
     val spacing = Tokens.spacing
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing,
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onNew,
-                icon = { Icon(Icons.Outlined.Add, contentDescription = null) },
-                text = { Text(stringResource(R.string.home_new), style = MaterialTheme.typography.titleMedium) },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                shape = MaterialTheme.shapes.large,
-                modifier = Modifier.heightIn(min = Tokens.sizes.primary),
-            )
+            // While searching the thumb is on the keyboard, not on "New": the button would only
+            // be covering a result.
+            if (!search.open) {
+                ExtendedFloatingActionButton(
+                    onClick = onNew,
+                    icon = { Icon(Icons.Outlined.Add, contentDescription = null) },
+                    text = { Text(stringResource(R.string.home_new), style = MaterialTheme.typography.titleMedium) },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    shape = MaterialTheme.shapes.large,
+                    modifier = Modifier.heightIn(min = Tokens.sizes.primary),
+                )
+            }
         },
     ) { padding ->
         // The minute pulse for everything on this screen that is not the hero's live countdown.
@@ -108,53 +117,86 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(spacing.md),
         ) {
             item(key = "header") {
-                Header(today = today, onRefresh = viewModel::refresh, onDoneList = onDoneList, onSettings = onSettings)
-            }
-            if (state.tags.isNotEmpty()) {
-                item(key = "tags") {
-                    TagFilterRow(tags = state.tags, selected = state.selectedTag, onSelect = viewModel::selectTag)
-                }
-            }
-            state.hero?.let { hero ->
-                item(key = "hero") {
-                    HeroCard(
-                        hero = hero,
-                        clock = viewModel.clock,
+                if (search.open) {
+                    SearchField(
+                        query = search.query,
+                        onQueryChange = viewModel::setQuery,
+                        onClose = { viewModel.setSearching(false) },
+                    )
+                } else {
+                    Header(
                         today = today,
-                        onClick = { onOpen(hero.card.id) },
+                        onSearch = { viewModel.setSearching(true) },
+                        onRefresh = viewModel::refresh,
+                        onDoneList = onDoneList,
+                        onSettings = onSettings,
                     )
                 }
             }
-            for (section in state.sections) {
-                item(key = "section-${section.section}") {
-                    SectionHeader(
-                        title = stringResource(section.section.titleRes),
-                        accent = if (section.section == Section.OVERDUE) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                        trailing = section.cards.size.toString(),
+            if (search.open) {
+                items(search.hits, key = { it.key }) { hit ->
+                    SearchResultRow(
+                        hit = hit,
+                        onOpen = onOpen,
+                        onFilterByTag = viewModel::filterByTag,
+                        modifier = Modifier.animateItem(),
                     )
                 }
-                items(section.cards, key = { it.id }) { card ->
-                    SwipeableCard(
-                        onDone = { viewModel.markDone(card.id) },
-                        onDelete = { viewModel.delete(card.id) },
-                        modifier = Modifier.animateItem(),
-                    ) {
-                        ReminderCard(
-                            card = card,
-                            today = today,
-                            defaultTime = defaultTime,
-                            onClick = { onOpen(card.id) },
-                            onTogglePause = { viewModel.togglePause(card.id, card.paused) },
+                if (search.nothingFound) {
+                    item(key = "search-empty") {
+                        EmptyState(
+                            title = stringResource(R.string.home_search_none_title),
+                            body = stringResource(R.string.home_search_none_body),
                         )
                     }
                 }
-            }
-            if (state.empty) {
-                item(key = "empty") {
-                    EmptyState(
-                        title = stringResource(R.string.home_empty_title),
-                        body = stringResource(R.string.home_empty_body),
-                    )
+            } else {
+                if (state.tags.isNotEmpty()) {
+                    item(key = "tags") {
+                        TagFilterRow(tags = state.tags, selected = state.selectedTag, onSelect = viewModel::selectTag)
+                    }
+                }
+                state.hero?.let { hero ->
+                    item(key = "hero") {
+                        HeroCard(
+                            hero = hero,
+                            clock = viewModel.clock,
+                            today = today,
+                            onClick = { onOpen(hero.card.id) },
+                        )
+                    }
+                }
+                for (section in state.sections) {
+                    item(key = "section-${section.section}") {
+                        SectionHeader(
+                            title = stringResource(section.section.titleRes),
+                            accent = if (section.section == Section.OVERDUE) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                            trailing = section.cards.size.toString(),
+                        )
+                    }
+                    items(section.cards, key = { it.id }) { card ->
+                        SwipeableCard(
+                            onDone = { viewModel.markDone(card.id) },
+                            onDelete = { viewModel.delete(card.id) },
+                            modifier = Modifier.animateItem(),
+                        ) {
+                            ReminderCard(
+                                card = card,
+                                today = today,
+                                defaultTime = defaultTime,
+                                onClick = { onOpen(card.id) },
+                                onTogglePause = { viewModel.togglePause(card.id, card.paused) },
+                            )
+                        }
+                    }
+                }
+                if (state.empty) {
+                    item(key = "empty") {
+                        EmptyState(
+                            title = stringResource(R.string.home_empty_title),
+                            body = stringResource(R.string.home_empty_body),
+                        )
+                    }
                 }
             }
         }
@@ -175,6 +217,7 @@ private val Section.titleRes: Int
 @Composable
 private fun Header(
     today: java.time.LocalDate,
+    onSearch: () -> Unit,
     onRefresh: () -> Unit,
     onDoneList: () -> Unit,
     onSettings: () -> Unit,
@@ -197,6 +240,9 @@ private fun Header(
             )
         }
         Row {
+            IconButton(onClick = onSearch) {
+                Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.home_search))
+            }
             IconButton(onClick = onRefresh) {
                 Icon(Icons.Outlined.Refresh, contentDescription = stringResource(R.string.home_refresh))
             }

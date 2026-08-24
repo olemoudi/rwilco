@@ -119,9 +119,15 @@ class ReminderCodecTest {
         assertEquals(defaults, ReminderCodec.decodeSettings("{}"))
         assertEquals(defaults, ReminderCodec.decodeSettings(""))
         assertEquals(defaults, ReminderCodec.decodeSettings("not json"))
-        val newer = """{"theme":"DARK","defaultTime":"08:15","haptics":false,"lastSeenVersionCode":7,"futureKnob":true}"""
+        val newer = """{"theme":"DARK","defaultTime":"08:15","haptics":false,"defaultTriggerKind":"COUNTDOWN","lastSeenVersionCode":7,"futureKnob":true}"""
         assertEquals(
-            AppSettings(theme = ThemeMode.DARK, defaultTime = LocalTime.of(8, 15), haptics = false, lastSeenVersionCode = 7),
+            AppSettings(
+                theme = ThemeMode.DARK,
+                defaultTime = LocalTime.of(8, 15),
+                haptics = false,
+                defaultTriggerKind = TriggerKind.COUNTDOWN,
+                lastSeenVersionCode = 7,
+            ),
             ReminderCodec.decodeSettings(newer),
         )
     }
@@ -129,6 +135,6 @@ class ReminderCodecTest {
     @Test
     fun `settings encode every field so a reader can rely on presence`() {
         val encoded = ReminderCodec.encodeSettings(AppSettings())
-        assertEquals("""{"theme":"SYSTEM","defaultTime":"09:00","haptics":true,"lastSeenVersionCode":0}""", encoded)
+        assertEquals("""{"theme":"SYSTEM","defaultTime":"09:00","haptics":true,"defaultTriggerKind":null,"lastSeenVersionCode":0}""", encoded)
     }
 }

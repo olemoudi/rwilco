@@ -45,20 +45,21 @@ fun ReminderCard(
     val spacing = Tokens.spacing
     val textColor = if (card.paused) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
     RwilcoCard(onClick = onClick) {
-        Column(modifier = Modifier.padding(start = spacing.lg, top = spacing.lg, end = spacing.sm, bottom = spacing.sm)) {
+        // Tight on purpose: a card is a glance, not a page. Two lines of text, the triggers
+        // under it, and the footer riding on the pause button's own touch target.
+        Column(modifier = Modifier.padding(start = spacing.md, top = spacing.md, end = spacing.xs)) {
             Text(
                 text = card.text,
                 style = MaterialTheme.typography.titleMedium,
                 color = textColor,
-                maxLines = 4,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(end = spacing.sm),
+                modifier = Modifier.padding(end = spacing.md),
             )
-            Spacer(Modifier.height(spacing.md))
-            Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+            Spacer(Modifier.height(spacing.sm))
+            Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
                 for (row in card.triggers) TriggerRow(row, today, defaultTime, muted = card.paused)
             }
-            Spacer(Modifier.height(spacing.xs))
             CardFooter(
                 tags = card.tags,
                 actions = card.actions,
@@ -81,8 +82,8 @@ fun ReminderCard(
 fun TriggerRow(row: TriggerRowUi, today: LocalDate, defaultTime: LocalTime, muted: Boolean = false) {
     val line = triggerLine(row.trigger, today, defaultTime)
     Row(verticalAlignment = Alignment.CenterVertically) {
-        TriggerKeycap(family = row.family, icon = row.trigger.kind.icon, contentDescription = null, size = 32.dp)
-        Spacer(Modifier.width(Tokens.spacing.md))
+        TriggerKeycap(family = row.family, icon = row.trigger.kind.icon, contentDescription = null, size = 28.dp)
+        Spacer(Modifier.width(Tokens.spacing.sm))
         Column {
             Text(
                 text = line.primary,
@@ -91,13 +92,16 @@ fun TriggerRow(row: TriggerRowUi, today: LocalDate, defaultTime: LocalTime, mute
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                text = line.secondary,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            // An empty second line would still cost its line height on every card.
+            if (line.secondary.isNotEmpty()) {
+                Text(
+                    text = line.secondary,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             if (row.conditions.isNotEmpty()) {
                 Text(
                     text = stringResource(R.string.editor_only_if_prefix, row.conditions.map { conditionLabel(it) }.joinToString(" · ")),

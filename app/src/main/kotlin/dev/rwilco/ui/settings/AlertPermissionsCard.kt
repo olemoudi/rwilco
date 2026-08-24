@@ -48,16 +48,15 @@ import dev.rwilco.ui.theme.familyColor
 
 /**
  * Whether the phone will actually let a reminder through, and the way to fix it when it will
- * not. Three things can stand in the way and each fails silently, which is the worst way for a
- * reminders app to fail: the person only finds out by not being reminded.
+ * not. Each of these fails silently, which is the worst way for a reminders app to fail: the
+ * person only finds out by not being reminded. Location has a card of its own next door.
  */
 @Composable
-fun AlertPermissionsCard(needsPlaces: Boolean) {
+fun AlertPermissionsCard() {
     val context = LocalContext.current
     var notifications by remember { mutableStateOf(true) }
     var fullScreen by remember { mutableStateOf(true) }
     var exactAlarms by remember { mutableStateOf(true) }
-    var backgroundLocation by remember { mutableStateOf(true) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -66,7 +65,6 @@ fun AlertPermissionsCard(needsPlaces: Boolean) {
                 notifications = NotificationManagerCompat.from(context).areNotificationsEnabled()
                 fullScreen = context.canUseFullScreenIntent()
                 exactAlarms = context.canScheduleExactAlarms()
-                backgroundLocation = context.hasBackgroundLocation()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -78,17 +76,9 @@ fun AlertPermissionsCard(needsPlaces: Boolean) {
         if (!granted) context.startActivity(appNotificationSettings(context))
     }
 
-    val placesOk = !needsPlaces || backgroundLocation
-    val askBackgroundLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        backgroundLocation = granted || context.hasBackgroundLocation()
-        // Since Android 11 "allow all the time" is only reachable from the app's own settings
-        // page; the request above is refused without a dialog, so this is the way through.
-        if (!backgroundLocation) context.startActivity(appDetailsSettings(context))
-    }
-
     RwilcoCard {
         Column(Modifier.padding(Tokens.spacing.lg)) {
-            if (notifications && fullScreen && exactAlarms && placesOk) {
+            if (notifications && fullScreen && exactAlarms) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Outlined.CheckCircle,
@@ -128,19 +118,6 @@ fun AlertPermissionsCard(needsPlaces: Boolean) {
                     },
                 )
             }
-            if (needsPlaces && !backgroundLocation) {
-                PermissionFixRow(
-                    text = stringResource(R.string.perm_background_location_missing),
-                    action = stringResource(R.string.perm_background_location_fix),
-                    onFix = {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            askBackgroundLocation.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                        } else {
-                            context.startActivity(appDetailsSettings(context))
-                        }
-                    },
-                )
-            }
             if (!exactAlarms) {
                 PermissionFixRow(
                     text = stringResource(R.string.perm_alarms_missing),
@@ -156,16 +133,6 @@ fun AlertPermissionsCard(needsPlaces: Boolean) {
             }
         }
     }
-}
-
-private fun appDetailsSettings(context: Context): Intent =
-    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
-
-private fun Context.hasBackgroundLocation(): Boolean {
-    val fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-    if (!fine) return false
-    return Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
-        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
 }
 
 private fun appNotificationSettings(context: Context): Intent =

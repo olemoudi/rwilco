@@ -2,6 +2,8 @@ package dev.rwilco.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -34,12 +36,16 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.rwilco.R
 import dev.rwilco.model.ThemeMode
+import dev.rwilco.model.TriggerKind
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.SectionHeader
 import dev.rwilco.ui.components.SegmentedChoice
+import dev.rwilco.ui.components.TagChip
 import dev.rwilco.ui.components.TimeField
+import dev.rwilco.ui.editor.titleRes
 import dev.rwilco.ui.theme.Tokens
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
@@ -103,6 +109,33 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                         Spacer(Modifier.height(spacing.sm))
                         TimeField(time = current.defaultTime, onChange = viewModel::setDefaultTime, modifier = Modifier.fillMaxWidth())
                     }
+                    Column {
+                        Text(stringResource(R.string.settings_default_trigger), style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            stringResource(R.string.settings_default_trigger_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(spacing.sm))
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                            verticalArrangement = Arrangement.spacedBy(spacing.sm),
+                        ) {
+                            TagChip(
+                                label = stringResource(R.string.settings_default_trigger_ask),
+                                selected = current.defaultTriggerKind == null,
+                                onClick = { viewModel.setDefaultTriggerKind(null) },
+                            )
+                            for (kind in TriggerKind.entries) {
+                                TagChip(
+                                    label = stringResource(kind.titleRes),
+                                    selected = current.defaultTriggerKind == kind,
+                                    // Tapping the chosen one again is how you go back to no favourite.
+                                    onClick = { viewModel.setDefaultTriggerKind(if (current.defaultTriggerKind == kind) null else kind) },
+                                )
+                            }
+                        }
+                    }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(stringResource(R.string.settings_haptics), style = MaterialTheme.typography.bodyLarge)
@@ -129,8 +162,11 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
             }
 
             SectionHeader(stringResource(R.string.settings_alerts))
+            AlertPermissionsCard()
+
+            SectionHeader(stringResource(R.string.settings_location))
             val hasPlaces by viewModel.hasPlaceReminders.collectAsStateWithLifecycle()
-            AlertPermissionsCard(needsPlaces = hasPlaces)
+            LocationPermissionCard(needsPlaces = hasPlaces)
 
             SectionHeader(stringResource(R.string.settings_updates))
             AppUpdateCard()

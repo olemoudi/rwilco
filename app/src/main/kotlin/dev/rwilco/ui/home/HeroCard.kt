@@ -69,7 +69,7 @@ fun HeroCard(
         Column(
             modifier = Modifier
                 .lampGlow(amber, intensity)
-                .padding(spacing.xl),
+                .padding(spacing.lg),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -82,22 +82,22 @@ fun HeroCard(
                     TriggerKeycap(family = nextTrigger.family, icon = nextTrigger.trigger.kind.icon, contentDescription = null)
                 }
             }
-            Spacer(Modifier.height(spacing.md))
+            Spacer(Modifier.height(spacing.sm))
             LiveCountdown(at = hero.at, clock = clock, style = MonoStyles.countdown, color = amber)
             Text(
                 text = dayWord(at.toLocalDate(), today, locale) + " · " + TimeText.time(at.toLocalTime(), is24h, locale),
                 style = MonoStyles.date,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.height(spacing.lg))
+            Spacer(Modifier.height(spacing.md))
             Text(
                 text = hero.card.text,
                 style = MaterialTheme.typography.titleLarge,
-                maxLines = 3,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             if (hero.card.tags.isNotEmpty() || hero.card.actions.isNotEmpty()) {
-                Spacer(Modifier.height(spacing.md))
+                Spacer(Modifier.height(spacing.sm))
                 CardFooter(tags = hero.card.tags, actions = hero.card.actions, modifier = Modifier.fillMaxWidth())
             }
         }

@@ -3,6 +3,7 @@ package dev.rwilco.ui.editor
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -37,7 +40,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.rwilco.R
 import dev.rwilco.model.Reminder
@@ -55,6 +60,7 @@ import dev.rwilco.ui.editor.sheets.DateTimeSheet
 import dev.rwilco.ui.editor.sheets.LocationSheet
 import dev.rwilco.ui.editor.sheets.RandomSheet
 import dev.rwilco.ui.editor.sheets.RepeatTimeSheet
+import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.theme.Tokens
 
 @Composable
@@ -132,49 +138,61 @@ fun EditorScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = spacing.screen),
             ) {
-                TextSection(
-                    text = state.draft.text,
-                    suggestions = state.suggestedTexts,
-                    onTextChange = viewModel::setText,
-                    error = state.showErrors && ValidationError.TextBlank in state.errors,
-                )
-                Spacer(Modifier.height(spacing.xl))
-                TagsSection(
-                    existingTags = state.existingTags,
-                    selected = state.draft.tags,
-                    onToggle = viewModel::toggleTag,
-                    onAdd = viewModel::addTag,
-                )
-                Spacer(Modifier.height(spacing.xl))
-                TriggersSection(
-                    rules = state.draft.rules,
-                    today = today,
-                    defaultTime = state.defaultTime,
-                    inPast = pastWarnings,
-                    onAdd = {
-                        focusManager.clearFocus()
-                        viewModel.openKindPicker()
-                    },
-                    onEdit = viewModel::editTrigger,
-                    onRemove = viewModel::removeTrigger,
-                    onAddCondition = viewModel::addCondition,
-                    onEditCondition = viewModel::editCondition,
-                    onRemoveCondition = viewModel::removeCondition,
-                    error = state.showErrors && ValidationError.NoTrigger in state.errors,
-                )
-                Spacer(Modifier.height(spacing.xl))
-                ActionsSection(
-                    selected = state.draft.actions,
-                    onToggle = viewModel::toggleAction,
-                    error = state.showErrors && ValidationError.NoAction in state.errors,
-                )
+                EditorSection(title = stringResource(R.string.editor_text_title), first = true) {
+                    TextSection(
+                        text = state.draft.text,
+                        suggestions = state.suggestedTexts,
+                        onTextChange = viewModel::setText,
+                        error = state.showErrors && ValidationError.TextBlank in state.errors,
+                    )
+                }
+                EditorSection(
+                    title = stringResource(R.string.editor_tags_title),
+                    note = stringResource(R.string.editor_optional),
+                ) {
+                    TagsSection(
+                        existingTags = state.existingTags,
+                        selected = state.draft.tags,
+                        onToggle = viewModel::toggleTag,
+                        onAdd = viewModel::addTag,
+                    )
+                }
+                EditorSection(title = stringResource(R.string.editor_when_title)) {
+                    TriggersSection(
+                        rules = state.draft.rules,
+                        today = today,
+                        defaultTime = state.defaultTime,
+                        inPast = pastWarnings,
+                        onAdd = {
+                            focusManager.clearFocus()
+                            viewModel.openKindPicker()
+                        },
+                        onEdit = viewModel::editTrigger,
+                        onRemove = viewModel::removeTrigger,
+                        onAddCondition = viewModel::addCondition,
+                        onEditCondition = viewModel::editCondition,
+                        onRemoveCondition = viewModel::removeCondition,
+                        error = state.showErrors && ValidationError.NoTrigger in state.errors,
+                    )
+                }
+                EditorSection(title = stringResource(R.string.editor_what_title)) {
+                    ActionsSection(
+                        selected = state.draft.actions,
+                        onToggle = viewModel::toggleAction,
+                        error = state.showErrors && ValidationError.NoAction in state.errors,
+                    )
+                }
                 Spacer(Modifier.height(spacing.xxl))
             }
         }
 
         when (val sheet = state.sheet) {
             EditorSheet.None -> Unit
-            EditorSheet.PickKind -> TriggerKindSheet(onPick = viewModel::pickKind, onDismiss = viewModel::closeSheet)
+            EditorSheet.PickKind -> TriggerKindSheet(
+                preferred = state.defaultKind,
+                onPick = viewModel::pickKind,
+                onDismiss = viewModel::closeSheet,
+            )
             is EditorSheet.ConfigureCondition -> ConditionSheet(
                 initial = sheet.initial as? dev.rwilco.model.Condition.TimeWindow,
                 onConfirm = { condition -> viewModel.commitCondition(sheet.ruleIndex, sheet.conditionIndex, condition) },
@@ -297,6 +315,46 @@ private fun SaveBar(enabled: Boolean, onSave: () -> Unit) {
                 Text(stringResource(R.string.common_save), style = MaterialTheme.typography.titleMedium)
             }
         }
+    }
+}
+
+/**
+ * One step of the form: a hairline, its name, and what belongs to it. Four labelled bands read
+ * as four decisions — the words, the tags, when, what happens — where one unbroken column of
+ * controls reads as a form to be got through.
+ */
+@Composable
+private fun EditorSection(
+    title: String,
+    modifier: Modifier = Modifier,
+    note: String? = null,
+    first: Boolean = false,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val spacing = Tokens.spacing
+    Column(modifier = modifier.fillMaxWidth()) {
+        if (!first) {
+            Spacer(Modifier.height(spacing.xl))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Spacer(Modifier.height(spacing.lg))
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = title.uppercase(currentLocale()),
+                style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.5.sp, fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (note != null) {
+                Spacer(Modifier.width(spacing.sm))
+                Text(
+                    text = note,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                )
+            }
+        }
+        Spacer(Modifier.height(spacing.md))
+        content()
     }
 }
 

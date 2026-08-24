@@ -69,6 +69,7 @@ class EditorViewModel(
                 existingTags = suggestedTags(past, now),
                 suggestedTexts = suggestedTexts(past, now, limit = 8, exclude = draft.text),
                 defaultTime = current.defaultTime,
+                defaultKind = current.defaultTriggerKind,
             )
         }
     }

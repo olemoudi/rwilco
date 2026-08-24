@@ -98,16 +98,17 @@ internal fun TextSection(
     val writing = focused || text.isNotEmpty()
     Column {
         if (!writing) {
+            // A way in, not the main event: the suggestions under it are the fast path, and a
+            // full-width 56dp slab claims otherwise.
             OutlinedButton(
                 onClick = { focusRequester.requestFocus() },
-                shape = MaterialTheme.shapes.medium,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = Tokens.sizes.control),
+                shape = MaterialTheme.shapes.small,
+                contentPadding = PaddingValues(horizontal = Tokens.spacing.lg),
+                modifier = Modifier.heightIn(min = Tokens.sizes.touch),
             ) {
-                Icon(Icons.Outlined.Edit, contentDescription = null)
+                Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(Tokens.spacing.sm))
-                Text(stringResource(R.string.editor_write), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.editor_write), style = MaterialTheme.typography.labelLarge)
             }
         }
         BasicTextField(
@@ -118,7 +119,10 @@ internal fun TextSection(
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
             modifier = Modifier
                 .fillMaxWidth()
-                .then(if (writing) Modifier.heightIn(min = 96.dp).padding(top = Tokens.spacing.md) else Modifier)
+                // Not writing, the field is only here to be focused by the button above: it
+                // takes no room, so the suggestions sit right under it instead of behind a gap
+                // the size of a line of text nobody can see.
+                .then(if (writing) Modifier.heightIn(min = 96.dp).padding(top = Tokens.spacing.md) else Modifier.height(0.dp))
                 .onFocusChanged { focused = it.isFocused }
                 .focusRequester(focusRequester)
                 .testTag(EDITOR_TEXT_TAG),
@@ -190,7 +194,6 @@ internal fun TagsSection(
     }
 
     Column {
-        SectionTitle(stringResource(R.string.editor_tags_title))
         // The way to a new tag sits on top, like the way to a new reminder text; what is under
         // it is the answer most of the time.
         if (adding) {
@@ -220,14 +223,13 @@ internal fun TagsSection(
         } else {
             OutlinedButton(
                 onClick = { adding = true },
-                shape = MaterialTheme.shapes.medium,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = Tokens.sizes.control),
+                shape = MaterialTheme.shapes.small,
+                contentPadding = PaddingValues(horizontal = Tokens.spacing.lg),
+                modifier = Modifier.heightIn(min = Tokens.sizes.touch),
             ) {
                 Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(Tokens.spacing.sm))
-                Text(stringResource(R.string.editor_new_tag), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.editor_new_tag), style = MaterialTheme.typography.labelLarge)
             }
         }
         if (offered.isNotEmpty()) {
@@ -268,7 +270,6 @@ internal fun TriggersSection(
     error: Boolean,
 ) {
     Column {
-        SectionTitle(stringResource(R.string.editor_when_title))
         if (rules.size > 1) {
             Text(
                 text = stringResource(R.string.editor_any_of_these),
@@ -403,7 +404,6 @@ private fun TriggerEditRow(
 @Composable
 internal fun ActionsSection(selected: Set<Action>, onToggle: (Action) -> Unit, error: Boolean) {
     Column {
-        SectionTitle(stringResource(R.string.editor_what_title))
         FlowRow(
             maxItemsInEachRow = 2,
             horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),

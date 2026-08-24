@@ -19,6 +19,12 @@ data class AppSettings(
     val defaultTime: LocalTime = LocalTime.of(9, 0),
     /** Touch feedback in the UI; unrelated to a reminder's own VIBRATE action. */
     val haptics: Boolean = true,
+    /**
+     * The kind of trigger offered first when adding one. Null means "no favourite": the six
+     * tiles come up in their usual order. Only the order and the mark change — every kind is
+     * still one tap away, because the answer to "when?" is not the same twice running.
+     */
+    val defaultTriggerKind: TriggerKind? = null,
     /** What's-new sheet bookkeeping: the last versionCode whose notes were shown. */
     val lastSeenVersionCode: Int = 0,
 )

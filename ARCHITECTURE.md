@@ -7,7 +7,7 @@ file changes in the same commit.
 
 - `:core-model` — pure Kotlin (`java.time`, kotlinx-serialization), no Android. The domain
   model (`Reminder`, `Trigger`, `Action`, `Status`, `AppSettings`), tag normalisation, and — as
-  milestones land — the trigger JSON codec, next-fire computation, Home grouping and
+  milestones land — the trigger JSON codec, next-fire computation, Home grouping, search and
   validation. Fully unit-tested with JUnit 5.
 - `:app` — the Android app: Room + DataStore persistence, the Compose UI, the self-updater.
 
@@ -49,6 +49,12 @@ files the rest under Overdue / Today / Tomorrow / This week (rolling 7 days) / L
 Paused. Random moments come from `RandomDraw.kt`: SplitMix64 seeded by (reminder id, period
 index), pinned by golden values in its test. `Validation.kt` decides what blocks a save.
 
+`Search.kt` answers the magnifier: one query over the open reminders and the tags they use,
+returning `SearchHit.OfReminder`/`OfTag` so the screen can say which is which. Matching is
+folded (case and accents dropped) and banded — whole, prefix, word start, anywhere, then letters
+in order — because the cost of being forgiving is nil on a list this size, and the cost of being
+strict is asking somebody to remember how they spelled it.
+
 ## Persistence
 
 - Room (`app/.../data/`): one table, `reminder(id, text, tags, triggers, actions, status,
@@ -58,8 +64,8 @@ index), pinned by golden values in its test. `Validation.kt` decides what blocks
   `DatabaseMigrationTest` (device). Schemas are exported to `app/schemas`.
 - `ReminderRepository`: reactive `open`/`done` flows for the screens, suspend writes.
 - `SettingsStore`: Preferences DataStore with one JSON blob (`AppSettings`: theme, default time
-  for date-only reminders, haptics, last-seen version for What's New). Additive changes need
-  no migration.
+  for date-only reminders, the trigger kind offered first, haptics, last-seen version for
+  What's New). Additive changes need no migration.
 - `RwilcoApplication` is the dependency container (manual DI); ViewModels get it through a
   `Factory`.
 
@@ -75,14 +81,22 @@ index), pinned by golden values in its test. `Validation.kt` decides what blocks
   internal.
 - Home: `HomeViewModel` combines the open reminders, settings, the tag filter and a minute pulse
   into `HomeUiState` (`buildHomeState`, pure and tested). The hero card's countdown ticks in its
-  own composable (`rememberNow`) so nothing else recomposes.
-- Editor: `EditorUiState` + pure reducers (`EditorState.kt`, tested); text and tags are offered
-  before they are asked for — `suggestedTexts`/`suggestedTags` rank what has been written before
+  own composable (`rememberNow`) so nothing else recomposes. The magnifier has a flow of its own
+  (`buildSearchState`, also pure): a keystroke must not put Home through grouping and next-fire
+  again. Results replace the list while it is open; a reminder opens, a tag becomes the filter.
+- Editor: `EditorUiState` + pure reducers (`EditorState.kt`, tested). The form is four labelled
+  bands separated by hairlines (`EditorSection`) — the words, the tags (optional), when, what
+  happens — so it reads as four decisions rather than one column of controls. Text and tags are
+  offered before they are asked for — `suggestedTexts`/`suggestedTags` rank what has been written before
   by how often and how recently (a 30-day half-life), and nothing is auto-focused, because a
-  keyboard that opens by itself hides the list that would have saved the typing. One
-  configurator sheet per trigger kind under `editor/sheets/`, plus `ConditionSheet` for the
+  keyboard that opens by itself hides the list that would have saved the typing. `TriggerKindSheet` puts the kind
+  chosen in Settings (`AppSettings.defaultTriggerKind`) first and marks it; the other five keep
+  their order behind it. One configurator sheet per trigger kind under `editor/sheets/`, plus `ConditionSheet` for the
   "y sólo si" fences; the countdown sheet produces an `AtDateTime`; the place
-  sheet searches addresses through the platform `Geocoder` (`PlaceSearch.kt`) and shows an
+  sheet searches addresses through the platform `Geocoder` (`PlaceSearch.kt`), and asks every
+  enabled provider at once for a fix (`CurrentLocation.kt`: fine *or* coarse is enough, the
+  freshest last-known answers instantly, and nothing is refused because GPS alone had nothing
+  to say indoors) and shows an
   osmdroid map (`OsmMap.kt`: pin by long-press, by search result or from one `LocationManager`
   fix, a crosshair button to centre on where you are, radius circle, inverted tiles on the dark
   scheme, tile cache in `cacheDir`). The alert preview is `AlertScreen`,
@@ -103,7 +117,11 @@ index), pinned by golden values in its test. `Validation.kt` decides what blocks
 - `AlertActivity` shows over the lock screen and turns it on; it is its own task so dismissing
   an alarm at three in the morning does not drop anybody into the app's back stack.
 - `GeofenceManager` registers the place rules with Play Services, wholesale, and re-registers on
-  boot and from `RearmWorker` (a reboot or a Play Services update drops them all). A place is
+  boot and from `RearmWorker` (a reboot or a Play Services update drops them all). Nothing polls
+  a position: the phone's own location stack does the watching, which is why "all the time" is
+  the whole cost of a place reminder. Settings says where that grant stands, whether or not a
+  place reminder exists yet (`LocationPermissionCard`), because a refusal discovered later is a
+  reminder that never arrives. A place is
   judged against its conditions when it happens, not when it is armed.
 - `SystemEventsReceiver` re-arms after a reboot, an install over ourselves, or the clock moving:
   a wall-clock promise is not an instant until a zone says so.

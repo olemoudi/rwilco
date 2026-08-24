@@ -71,6 +71,8 @@ data class EditorUiState(
     /** The "discard changes?" dialog; state so a rotation does not lose it. */
     val confirmingDiscard: Boolean = false,
     val defaultTime: LocalTime = LocalTime.of(9, 0),
+    /** The kind the picker offers first, from the settings; null when there is no favourite. */
+    val defaultKind: TriggerKind? = null,
 ) {
     val dirty: Boolean get() = draft != initial
     val errors: List<ValidationError> get() = validate(draft.text, draft.rules, draft.actions)

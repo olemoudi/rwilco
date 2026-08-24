@@ -13,6 +13,7 @@ Dark-first, built for one hand, no account, no server, nothing leaves the device
 <table>
   <tr>
     <td><img src="docs/screenshots/home.png" width="170" alt="Today: the next reminder glows amber with a live countdown, then the day's sections"></td>
+    <td><img src="docs/screenshots/home-search.png" width="170" alt="Search: one query over reminders and tags, each result saying which it is"></td>
     <td><img src="docs/screenshots/editor-filled.png" width="170" alt="Editor: the reminder text, tags, a countdown trigger row and the four actions"></td>
     <td><img src="docs/screenshots/editor-kinds.png" width="170" alt="Adding a trigger: six tiles — date and time, date only, repeating time, countdown, place, random"></td>
     <td><img src="docs/screenshots/sheet-datetime.png" width="170" alt="Date and time: shortcuts, a month calendar and the time"></td>

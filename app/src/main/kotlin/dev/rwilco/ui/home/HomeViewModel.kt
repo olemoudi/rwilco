@@ -42,6 +42,8 @@ class HomeViewModel(
 ) : ViewModel() {
 
     private val selectedTag = MutableStateFlow<String?>(null)
+    private val searching = MutableStateFlow(false)
+    private val query = MutableStateFlow("")
     private val refreshTick = MutableStateFlow(clock.instant())
     private val events = Channel<HomeEvent>(Channel.BUFFERED)
     val eventFlow: Flow<HomeEvent> = events.receiveAsFlow()
@@ -66,6 +68,26 @@ class HomeViewModel(
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
+    /**
+     * The magnifier's own state, kept apart from [state]: a keystroke must not send Home
+     * through grouping and next-fire again, and what search shows does not depend on the clock.
+     */
+    val search: StateFlow<SearchUiState> = combine(repository.open, searching, query) { reminders, open, text ->
+        buildSearchState(reminders, text, open)
+    }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchUiState())
+
+    /** Opening clears whatever was typed last time: a magnifier always opens empty. */
+    fun setSearching(open: Boolean) {
+        query.value = ""
+        searching.value = open
+    }
+
+    fun setQuery(text: String) {
+        query.value = text
+    }
+
     fun refresh() {
         refreshTick.value = clock.instant()
         events.trySend(HomeEvent.Refreshed)
@@ -74,6 +96,12 @@ class HomeViewModel(
     /** Tapping the selected tag again clears the filter. */
     fun selectTag(tag: String?) {
         selectedTag.value = if (tag == null || selectedTag.value.equals(tag, ignoreCase = true)) null else tag
+    }
+
+    /** From a search result: the tag is being asked for, not toggled, and the search is done. */
+    fun filterByTag(tag: String) {
+        selectedTag.value = tag
+        setSearching(false)
     }
 
     fun markDone(id: String) = removeAs(id, HomeEvent.Removed.Kind.DONE)

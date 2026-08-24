@@ -9,6 +9,7 @@ import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.ThemeMode
 import dev.rwilco.model.Trigger
+import dev.rwilco.model.TriggerKind
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -31,6 +32,9 @@ class SettingsViewModel(
     fun setTheme(theme: ThemeMode) = update { it.copy(theme = theme) }
     fun setDefaultTime(time: LocalTime) = update { it.copy(defaultTime = time) }
     fun setHaptics(enabled: Boolean) = update { it.copy(haptics = enabled) }
+
+    /** Null puts the six tiles back in their usual order: no favourite. */
+    fun setDefaultTriggerKind(kind: TriggerKind?) = update { it.copy(defaultTriggerKind = kind) }
 
     private fun update(transform: (AppSettings) -> AppSettings) {
         viewModelScope.launch { store.update(transform) }

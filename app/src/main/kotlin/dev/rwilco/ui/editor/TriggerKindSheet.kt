@@ -17,6 +17,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
@@ -27,10 +28,14 @@ import dev.rwilco.ui.components.TriggerKeycap
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.icon
 
-/** Six big tiles, two by three: what kind of "when" to add. */
+/**
+ * Six big tiles, two by three: what kind of "when" to add. [preferred] — the kind chosen in
+ * Settings — leads and says so; the other five keep their order behind it, because a favourite
+ * is a shortcut, not a filter.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TriggerKindSheet(onPick: (TriggerKind) -> Unit, onDismiss: () -> Unit) {
+fun TriggerKindSheet(preferred: TriggerKind?, onPick: (TriggerKind) -> Unit, onDismiss: () -> Unit) {
     val spacing = Tokens.spacing
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -47,12 +52,20 @@ fun TriggerKindSheet(onPick: (TriggerKind) -> Unit, onDismiss: () -> Unit) {
         ) {
             Text(stringResource(R.string.editor_add_trigger), style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(spacing.lg))
-            val kinds = TriggerKind.entries
+            val kinds = remember(preferred) {
+                if (preferred == null) TriggerKind.entries.toList()
+                else listOf(preferred) + TriggerKind.entries.filter { it != preferred }
+            }
             Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
                 for (row in kinds.chunked(2)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
                         for (kind in row) {
-                            KindTile(kind = kind, onClick = { onPick(kind) }, modifier = Modifier.weight(1f))
+                            KindTile(
+                                kind = kind,
+                                isDefault = kind == preferred,
+                                onClick = { onPick(kind) },
+                                modifier = Modifier.weight(1f),
+                            )
                         }
                     }
                 }
@@ -62,7 +75,7 @@ fun TriggerKindSheet(onPick: (TriggerKind) -> Unit, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun KindTile(kind: TriggerKind, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun KindTile(kind: TriggerKind, isDefault: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val haptics = Tokens.haptics
     Surface(
         onClick = {
@@ -70,8 +83,9 @@ private fun KindTile(kind: TriggerKind, onClick: () -> Unit, modifier: Modifier 
             onClick()
         },
         shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        color = if (isDefault) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.surfaceContainerHigh,
+        // A firmer line, not amber: amber says "this is what fires next" and nothing else.
+        border = BorderStroke(1.dp, if (isDefault) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outlineVariant),
         modifier = modifier.heightIn(min = 104.dp),
     ) {
         Column(modifier = Modifier.padding(Tokens.spacing.lg)) {
@@ -79,7 +93,7 @@ private fun KindTile(kind: TriggerKind, onClick: () -> Unit, modifier: Modifier 
             Spacer(Modifier.height(Tokens.spacing.md))
             Text(stringResource(kind.titleRes), style = MaterialTheme.typography.titleSmall)
             Text(
-                text = stringResource(kind.hintRes),
+                text = stringResource(if (isDefault) R.string.kind_default_badge else kind.hintRes),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

@@ -4,6 +4,7 @@ import dev.rwilco.model.Action
 import dev.rwilco.model.Condition
 import dev.rwilco.model.NextFire
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.SearchHit
 import dev.rwilco.model.Section
 import dev.rwilco.model.Status
 import dev.rwilco.model.Trigger
@@ -11,6 +12,7 @@ import dev.rwilco.model.TriggerFamily
 import dev.rwilco.model.family
 import dev.rwilco.model.groupForHome
 import dev.rwilco.model.nextFireOfRule
+import dev.rwilco.model.search
 import dev.rwilco.model.tagsInUse
 import java.time.Instant
 import java.time.LocalTime
@@ -92,3 +94,40 @@ fun buildHomeState(
         defaultTime = defaultTime,
     )
 }
+
+/** What the magnifier shows: the query as typed, and what it found. */
+data class SearchUiState(
+    val open: Boolean = false,
+    val query: String = "",
+    val hits: List<SearchHitUi> = emptyList(),
+) {
+    /** Typed something, found nothing — as opposed to an empty field, which found nothing yet. */
+    val nothingFound: Boolean get() = open && query.isNotBlank() && hits.isEmpty()
+}
+
+/** One result. The two kinds are separate types because tapping them does different things. */
+sealed interface SearchHitUi {
+    /** Stable across queries so the list animates rows instead of rebuilding them. */
+    val key: String
+
+    data class OfReminder(val id: String, val text: String, val tags: List<String>) : SearchHitUi {
+        override val key: String get() = "reminder-$id"
+    }
+
+    /** [count] open reminders carry it; tapping filters Home by it. */
+    data class OfTag(val tag: String, val count: Int) : SearchHitUi {
+        override val key: String get() = "tag-$tag"
+    }
+}
+
+/** The search results for [query] over the open reminders. Pure and JVM-tested. */
+fun buildSearchState(reminders: List<Reminder>, query: String, open: Boolean): SearchUiState = SearchUiState(
+    open = open,
+    query = query,
+    hits = if (!open) emptyList() else search(reminders, query).map { hit ->
+        when (hit) {
+            is SearchHit.OfReminder -> SearchHitUi.OfReminder(hit.reminder.id, hit.reminder.text, hit.reminder.tags)
+            is SearchHit.OfTag -> SearchHitUi.OfTag(hit.tag, hit.count)
+        }
+    },
+)

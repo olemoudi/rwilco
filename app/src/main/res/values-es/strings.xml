@@ -239,4 +239,47 @@
         <item>Las horas se eligen con ruedas: un gesto y encaja, sin apuntar a un reloj con una mano.</item>
         <item>Las etiquetas que ya has usado se ofrecen bajo el botón "Nueva etiqueta", y se filtran según escribes.</item>
     </string-array>
+
+    <!-- Search -->
+    <string name="home_search">Buscar</string>
+    <string name="home_search_hint">Buscar recordatorios y etiquetas</string>
+    <string name="home_search_clear">Borrar</string>
+    <string name="home_search_kind_reminder">Recordatorio</string>
+    <string name="home_search_kind_tag">Etiqueta</string>
+    <plurals name="home_search_tag_count">
+        <item quantity="one">%1$d recordatorio</item>
+        <item quantity="other">%1$d recordatorios</item>
+    </plurals>
+    <string name="home_search_none_title">Nada coincide</string>
+    <string name="home_search_none_body">Prueba con menos letras: la búsqueda perdona acentos, mayúsculas y trozos que falten.</string>
+
+    <!-- Editor sections -->
+    <string name="editor_text_title">Recordatorio</string>
+    <string name="editor_optional">opcional</string>
+
+    <!-- Default trigger -->
+    <string name="settings_default_trigger">Disparador que se ofrece primero</string>
+    <string name="settings_default_trigger_hint">El tipo que encabeza la lista al añadir un disparador. Los otros cinco siguen a un toque.</string>
+    <string name="settings_default_trigger_ask">Sin preferencia</string>
+    <string name="kind_default_badge">El que sueles usar</string>
+
+    <!-- Location -->
+    <string name="settings_location">Ubicación</string>
+    <string name="perm_location_none">Rwilco no puede ver dónde estás.</string>
+    <string name="perm_location_while_in_use">Sólo mientras Rwilco está abierto.</string>
+    <string name="perm_location_always">Siempre: los recordatorios de lugar funcionan con la app cerrada.</string>
+    <string name="perm_location_why">De los lugares se encarga el servicio de ubicación del propio teléfono. Rwilco no te sigue: le avisan cuando llegas, y entre medias no pregunta nada.</string>
+    <string name="perm_location_why_needed">Tienes recordatorios de lugar. Sólo suenan con la ubicación permitida "siempre": el teléfono vigila por ti y despierta a Rwilco cuando llegas.</string>
+    <string name="perm_location_missing">La ubicación no está permitida, así que no se pueden elegir ni vigilar lugares.</string>
+    <string name="perm_location_fix">Permitir</string>
+    <string name="perm_location_off">La ubicación está apagada en el teléfono.</string>
+    <string name="perm_location_off_fix">Encender</string>
+    <string name="place_no_permission">Rwilco no tiene permiso para leer tu ubicación. Concédelo, o mantén pulsado el mapa.</string>
+    <string-array name="whats_new_0_2_3">
+        <item>Una lupa en la pantalla principal: busca a la vez entre recordatorios y etiquetas, y cada resultado dice cuál de las dos cosas es. Perdona acentos, mayúsculas y letras que falten.</item>
+        <item>Las tarjetas ocupan menos, así que cabe más día en una pantalla.</item>
+        <item>El editor se lee en cuatro pasos — el recordatorio, las etiquetas, cuándo y qué pasa — cada uno con su rótulo, y los botones de escribir y de nueva etiqueta ya no gritan.</item>
+        <item>En Ajustes eliges qué tipo de disparador se ofrece primero al añadir uno.</item>
+        <item>Ajustes tiene una sección de Ubicación que dice si los lugares pueden vigilarse siquiera, y «Usar mi ubicación» ya no se rinde cuando el permiso es aproximado o el GPS no tiene nada que decir bajo techo.</item>
+    </string-array>
 </resources>
