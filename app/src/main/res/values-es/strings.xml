@@ -225,4 +225,11 @@
     <string name="place_search">Buscar una dirección</string>
     <string name="place_search_none">No se encontró esa dirección. Prueba con menos palabras o mantén pulsado el mapa.</string>
     <string name="place_my_location">Centrar en mi ubicación</string>
+    <string-array name="whats_new_0_2_0">
+        <item>Los recordatorios ya suenan: alarmas exactas, aviso a pantalla completa sobre la pantalla de bloqueo, y Hecho y Posponer en la notificación.</item>
+        <item>Los recordatorios por lugar funcionan en segundo plano, y el selector de lugar busca direcciones.</item>
+        <item>Un disparador puede acotarse: "al llegar a casa, y sólo si es entre las seis y las diez".</item>
+        <item>El editor te ofrece lo que ya has escrito antes en vez de un teclado en blanco.</item>
+        <item>Ajustes te dice qué permiso impediría que un recordatorio te llegue.</item>
+    </string-array>
 </resources>

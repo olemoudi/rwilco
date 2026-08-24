@@ -227,4 +227,11 @@
     <string name="place_search">Search an address</string>
     <string name="place_search_none">No address found. Try fewer words, or long-press the map.</string>
     <string name="place_my_location">Centre on my location</string>
+    <string-array name="whats_new_0_2_0">
+        <item>Reminders ring: exact alarms, a full-screen alert over the lock screen, and Done and Snooze on the notification.</item>
+        <item>Place reminders work in the background, and the place picker searches addresses.</item>
+        <item>A trigger can be fenced in: "arriving home, and only between six and ten".</item>
+        <item>The editor offers what you have written before instead of a blank keyboard.</item>
+        <item>Settings names any permission that would stop a reminder reaching you.</item>
+    </string-array>
 </resources>
