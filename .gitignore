@@ -1,0 +1,12 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.kotlin/
+captures/
+.DS_Store
+
+# Locally signed debug builds pulled out of build/ for sideloading.
+rwilco-debug.apk
+rwilco-debug.apk.idsig

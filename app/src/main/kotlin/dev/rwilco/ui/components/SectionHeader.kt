@@ -1,0 +1,35 @@
+package dev.rwilco.ui.components
+
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import dev.rwilco.ui.theme.Tokens
+
+/** A quiet label above a group of cards; [accent] when the group is a state (overdue). */
+@Composable
+fun SectionHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+    accent: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    trailing: String? = null,
+) {
+    Row(
+        modifier = modifier.padding(top = Tokens.spacing.xl, bottom = Tokens.spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            color = accent,
+            modifier = Modifier.weight(1f),
+        )
+        if (trailing != null) {
+            Text(text = trailing, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}

@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Common -->
+    <string name="common_save">Guardar</string>
+    <string name="common_back">Atrás</string>
+    <string name="common_undo">Deshacer</string>
+
+    <!-- Home -->
+    <string name="home_title">Hoy</string>
+    <string name="home_new">Nuevo</string>
+    <string name="home_next_up">Lo siguiente</string>
+    <string name="home_refresh">Actualizar</string>
+    <string name="home_refreshed">Actualizado</string>
+    <string name="home_done_list">Recordatorios hechos</string>
+    <string name="home_settings">Ajustes</string>
+    <string name="home_all_tags">Todo</string>
+    <string name="home_empty_title">Nada que recordar todavía</string>
+    <string name="home_empty_body">Escribe qué quieres recordar y luego di cuándo y cómo.</string>
+    <string name="home_marked_done">Hecho</string>
+    <string name="home_deleted">Eliminado</string>
+    <string name="home_section_overdue">Vencidos</string>
+    <string name="home_section_today">Hoy</string>
+    <string name="home_section_tomorrow">Mañana</string>
+    <string name="home_section_this_week">Esta semana</string>
+    <string name="home_section_later">Más adelante</string>
+    <string name="home_section_whenever">Cuando ocurra</string>
+    <string name="home_section_paused">En pausa</string>
+
+    <!-- Reminder cards -->
+    <string name="card_pause">Pausar</string>
+    <string name="card_resume">Reanudar</string>
+    <string name="card_swipe_done">Marcar como hecho</string>
+    <string name="card_swipe_delete">Eliminar</string>
+
+    <!-- Relative time -->
+    <string name="relative_today">hoy</string>
+    <string name="relative_tomorrow">mañana</string>
+    <string name="relative_yesterday">ayer</string>
+    <string name="countdown_in">en %1$s</string>
+    <string name="countdown_ago">hace %1$s</string>
+    <string name="countdown_days">%1$d d</string>
+    <string name="countdown_hours">%1$d h</string>
+    <string name="countdown_minutes">%1$d min</string>
+    <string name="countdown_seconds">%1$d s</string>
+    <string name="countdown_seconds_padded">%1$02d s</string>
+
+    <!-- Triggers -->
+    <string name="trigger_rings_at">suena a las %1$s</string>
+    <string name="trigger_every_day">cada día</string>
+    <string name="trigger_weekdays">laborables</string>
+    <string name="trigger_weekends">fines de semana</string>
+    <string name="trigger_arriving">al llegar</string>
+    <string name="trigger_leaving">al salir</string>
+    <string name="trigger_arrive_at">al llegar a %1$s</string>
+    <string name="trigger_leave_from">al salir de %1$s</string>
+    <plurals name="trigger_times_a_day">
+        <item quantity="one">%1$d vez al día</item>
+        <item quantity="other">%1$d veces al día</item>
+    </plurals>
+    <plurals name="trigger_times_a_week">
+        <item quantity="one">%1$d vez a la semana</item>
+        <item quantity="other">%1$d veces a la semana</item>
+    </plurals>
+
+    <!-- Actions -->
+    <string name="action_full_screen">Pantalla completa</string>
+    <string name="action_notification">Notificación</string>
+    <string name="action_sound">Sonido</string>
+    <string name="action_vibrate">Vibración</string>
+
+    <string name="editor_text_placeholder">¿Qué quieres recordar?</string>
+    <!-- Editor -->
+    <string name="editor_title_new">Nuevo recordatorio</string>
+    <string name="editor_title_edit">Editar recordatorio</string>
+    <string name="editor_preview">Previsualizar el aviso</string>
+    <string name="editor_delete">Eliminar recordatorio</string>
+    <string name="editor_tags_title">Etiquetas</string>
+    <string name="editor_new_tag">Nueva etiqueta</string>
+    <string name="editor_new_tag_hint">Nombre de la etiqueta</string>
+    <string name="editor_new_tag_add">Añadir etiqueta</string>
+    <string name="editor_when_title">Cuándo</string>
+    <string name="editor_add_trigger">Añadir disparador</string>
+    <string name="editor_edit_trigger">Editar disparador</string>
+    <string name="editor_remove_trigger">Quitar disparador</string>
+    <string name="editor_what_title">Qué pasa</string>
+    <string name="editor_error_text">Escribe qué quieres recordar.</string>
+    <string name="editor_error_trigger">Añade al menos un disparador.</string>
+    <string name="editor_error_action">Elige al menos una cosa que pase.</string>
+    <string name="editor_warning_past">Ese momento ya ha pasado.</string>
+    <string name="editor_discard_title">¿Descartar los cambios?</string>
+    <string name="editor_discard_body">Lo que has cambiado aquí se perderá.</string>
+    <string name="editor_discard_confirm">Descartar</string>
+    <string name="editor_discard_keep">Seguir editando</string>
+
+    <!-- Trigger kinds -->
+    <string name="kind_date_time">Fecha y hora</string>
+    <string name="kind_date_time_hint">Un momento del calendario</string>
+    <string name="kind_date">Solo fecha</string>
+    <string name="kind_date_hint">Un día, a tu hora habitual</string>
+    <string name="kind_repeat_time">Hora que se repite</string>
+    <string name="kind_repeat_time_hint">La misma hora los días que elijas</string>
+    <string name="kind_countdown">Cuenta atrás</string>
+    <string name="kind_countdown_hint">Dentro de un rato</string>
+    <string name="kind_place">Lugar</string>
+    <string name="kind_place_hint">Al llegar a un sitio o al salir</string>
+    <string name="kind_random">Al azar</string>
+    <string name="kind_random_hint">Momentos sorpresa en una franja</string>
+
+    <!-- Sheets -->
+    <string name="sheet_done">Listo</string>
+    <string name="sheet_cancel">Cancelar</string>
+    <string name="sheet_add">Añadir</string>
+    <string name="sheet_time">Hora</string>
+    <string name="sheet_rings_at_default">Sonará a las %1$s</string>
+    <string name="countdown_hours_label">Horas</string>
+    <string name="countdown_minutes_label">Minutos</string>
+    <string name="random_times_label">Cuántas veces</string>
+    <string name="random_per_day">Al día</string>
+    <string name="random_per_week">A la semana</string>
+    <string name="random_window_label">Entre</string>
+    <string name="random_from">Desde</string>
+    <string name="random_to">Hasta</string>
+    <string name="random_window_error">La franja necesita un minuto por sorteo.</string>
+    <string name="random_days_label">Días</string>
+    <string name="random_days_hint">Todos los días si no marcas ninguno.</string>
+    <string name="place_label">Nombre del lugar</string>
+    <string name="place_label_hint">Casa, trabajo, el gimnasio…</string>
+    <string name="place_use_location">Usar mi ubicación</string>
+    <string name="place_locating">Localizando…</string>
+    <string name="place_no_location">Sin ubicación todavía</string>
+    <string name="place_no_fix">No se pudo obtener la ubicación. Comprueba que está activada y permitida.</string>
+    <string name="place_radius">Radio</string>
+    <string name="place_metres">%1$d m</string>
+    <string name="calendar_previous_month">Mes anterior</string>
+    <string name="calendar_next_month">Mes siguiente</string>
+    <string name="stepper_less">Menos</string>
+    <string name="stepper_more">Más</string>
+
+    <!-- Alert -->
+    <string name="alert_preview_label">Vista previa</string>
+    <string name="alert_fired_by">Disparado por %1$s</string>
+    <string name="alert_empty_text">(Todavía sin texto)</string>
+    <string name="alert_snooze">Posponer</string>
+    <string name="alert_snooze_tomorrow">Mañana</string>
+    <string name="alert_done">Hecho</string>
+    <string name="alert_view">Ver</string>
+    <string name="alert_close_preview">Cerrar la vista previa</string>
+    <!-- Done list -->
+    <string name="done_title">Hechos</string>
+    <string name="done_purge">Vaciar</string>
+    <string name="done_purge_title">¿Vaciar los recordatorios hechos?</string>
+    <string name="done_purge_body">Se eliminan para siempre. Los que recuperes antes se conservan.</string>
+    <string name="done_empty_title">Nada hecho todavía</string>
+    <string name="done_empty_body">Desliza un recordatorio hacia la derecha en la pantalla principal cuando esté hecho; aparecerá aquí.</string>
+    <string name="done_restore">Recuperar</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Ajustes</string>
+    <string name="settings_appearance">Apariencia</string>
+    <string name="settings_theme_system">Sistema</string>
+    <string name="settings_theme_light">Claro</string>
+    <string name="settings_theme_dark">Oscuro</string>
+    <string name="settings_reminders">Recordatorios</string>
+    <string name="settings_default_time">Hora de los recordatorios de solo fecha</string>
+    <string name="settings_haptics">Vibración al tocar</string>
+    <string name="settings_haptics_hint">Un pequeño tic en chips, días y botones. No tiene que ver con la vibración de los avisos.</string>
+    <string name="settings_updates">Actualizaciones</string>
+    <string name="settings_about">Acerca de</string>
+    <string name="settings_about_body">Rwilco es tuya: sin cuenta, sin servidor, nada sale del teléfono.</string>
+    <string name="settings_licenses">Tipografías: Bricolage Grotesque, Manrope y JetBrains Mono (SIL Open Font License). Mapas: osmdroid y colaboradores de OpenStreetMap.</string>
+    <string name="app_version">Versión %1$s (%2$d)</string>
+
+    <!-- Self-update -->
+    <string name="update_channel_name">Actualizaciones de la app</string>
+    <string name="update_ready_title">Actualización lista</string>
+    <string name="update_ready_text">Toca para instalar la nueva versión de Rwilco</string>
+    <string name="update_declined_title">Actualización sin instalar</string>
+    <string name="update_declined_text">Toca para terminar de actualizar Rwilco: no hay que descargar nada</string>
+    <string name="update_check_now">Buscar ahora</string>
+    <string name="update_install_staged">Instalar %1$s ahora</string>
+    <string name="update_state_idle">Las actualizaciones se comprueban solas</string>
+    <string name="update_state_checking">Comprobando…</string>
+    <string name="update_state_up_to_date">Al día</string>
+    <string name="update_state_downloading">Descargando %1$s…</string>
+    <string name="update_state_installing">Instalando %1$s…</string>
+    <string name="update_state_pending">Esperando a que confirmes la instalación</string>
+    <string name="update_state_staged">%1$s está descargada y lista para instalar</string>
+    <string name="update_state_failed">La última comprobación falló (%1$s)</string>
+    <string name="perm_install_missing">Para instalar actualizaciones hace falta permiso para instalar apps desconocidas.</string>
+    <string name="perm_install_fix">Permitir</string>
+    <string name="perm_notifications_missing">Las notificaciones están desactivadas: no verás el aviso de instalación.</string>
+    <string name="perm_notifications_fix">Activar</string>
+    <string name="whats_new_title">Novedades</string>
+    <string name="whats_new_ok">Entendido</string>
+</resources>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Must match RwilcoLightColors.background (ui/theme/Color.kt). -->
+    <color name="rwilco_window_bg">#F3F5F8</color>
+    <!-- Launcher icon backdrop: the dark-theme ground. -->
+    <color name="ic_launcher_background">#0C1117</color>
+</resources>
