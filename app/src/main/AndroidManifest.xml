@@ -5,6 +5,9 @@
     <!-- The place picker reads one fix from the phone; nothing runs in the background yet. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- "Allow all the time": a place reminder that only works while the app is open is not a
+         place reminder. Asked for separately, and only once a reminder actually needs it. -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <!-- Self-update from GitHub Releases: fetch version.json + the APK, prompt through a
          notification, install through PackageInstaller, re-check after boot and after the
          update itself. ACCESS_NETWORK_STATE is what WorkManager's "connected" constraint reads. -->
@@ -13,6 +16,17 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Firing. USE_EXACT_ALARM rather than asking for SCHEDULE_EXACT_ALARM: telling somebody
+         at the minute they chose IS this app, which is exactly what that permission is for, and
+         it spares a permission dance on every install. SCHEDULE_EXACT_ALARM is kept for the
+         versions that predate it (it was granted on sight there). -->
+    <uses-permission
+        android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <!-- allowBackup off: reminders are personal, and the sync/backup story is deliberately the
          app's own (a later phase), not a transfer to whoever controls the Google account. -->
@@ -39,12 +53,40 @@
             </intent-filter>
         </activity>
 
+        <!-- The alert taking over the screen: over the lock screen, turning it on, and out of
+             recents so a dismissed alarm leaves nothing behind to swipe. -->
+        <activity
+            android:name=".ui.alert.AlertActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:excludeFromRecents="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:taskAffinity=".alert"
+            android:theme="@style/Theme.Rwilco" />
+
         <receiver
-            android:name=".update.BootReceiver"
+            android:name=".alarm.AlarmReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".alarm.AlertActionReceiver"
+            android:exported="false" />
+
+        <!-- A reboot, an install over ourselves, or the clock moving: all mean "work out when
+             everything rings again". -->
+        <receiver
+            android:name=".geo.GeofenceReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".system.SystemEventsReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
             </intent-filter>
         </receiver>
 

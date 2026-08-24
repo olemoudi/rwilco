@@ -128,6 +128,10 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                 }
             }
 
+            SectionHeader(stringResource(R.string.settings_alerts))
+            val hasPlaces by viewModel.hasPlaceReminders.collectAsStateWithLifecycle()
+            AlertPermissionsCard(needsPlaces = hasPlaces)
+
             SectionHeader(stringResource(R.string.settings_updates))
             AppUpdateCard()
 

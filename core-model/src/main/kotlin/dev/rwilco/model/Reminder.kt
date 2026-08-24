@@ -12,6 +12,17 @@ data class Reminder(
     val createdAt: Instant,
     val updatedAt: Instant,
     val doneAt: Instant? = null,
+    /** While this is in the future the reminder rings then, instead of at its trigger's moment. */
+    val snoozedUntil: Instant? = null,
+    /** When it last actually rang. Paired with [armedFor] it is how a missed firing is spotted. */
+    val lastFiredAt: Instant? = null,
+    /**
+     * The moment the scheduler last set an alarm for. Persisted because it is the only way to
+     * tell "the phone was off when this should have rung" from "it rang and I ignored it":
+     * an [armedFor] in the past with no [lastFiredAt] to match is a firing the device slept
+     * through.
+     */
+    val armedFor: Instant? = null,
 )
 
 /** What happens when a reminder fires. Stored by name; unknown names are dropped on read. */

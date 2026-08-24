@@ -24,6 +24,9 @@ data class ReminderEntity(
     val createdAt: Long,
     val updatedAt: Long,
     val doneAt: Long?,
+    val snoozedUntil: Long? = null,
+    val lastFiredAt: Long? = null,
+    val armedFor: Long? = null,
 )
 
 fun ReminderEntity.toDomain(): Reminder = Reminder(
@@ -38,6 +41,9 @@ fun ReminderEntity.toDomain(): Reminder = Reminder(
     createdAt = Instant.ofEpochMilli(createdAt),
     updatedAt = Instant.ofEpochMilli(updatedAt),
     doneAt = doneAt?.let(Instant::ofEpochMilli),
+    snoozedUntil = snoozedUntil?.let(Instant::ofEpochMilli),
+    lastFiredAt = lastFiredAt?.let(Instant::ofEpochMilli),
+    armedFor = armedFor?.let(Instant::ofEpochMilli),
 )
 
 fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
@@ -50,4 +56,7 @@ fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
     createdAt = createdAt.toEpochMilli(),
     updatedAt = updatedAt.toEpochMilli(),
     doneAt = doneAt?.toEpochMilli(),
+    snoozedUntil = snoozedUntil?.toEpochMilli(),
+    lastFiredAt = lastFiredAt?.toEpochMilli(),
+    armedFor = armedFor?.toEpochMilli(),
 )

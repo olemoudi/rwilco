@@ -5,6 +5,7 @@ import dev.rwilco.model.Status
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.Clock
+import java.time.Instant
 
 /**
  * The domain's view of persistence. Reactive for the screens, suspend for one-shot writes; Room
@@ -19,6 +20,15 @@ class ReminderRepository(private val dao: ReminderDao, private val clock: Clock)
     fun observe(id: String): Flow<Reminder?> = dao.observe(id).map { it?.toDomain() }
 
     suspend fun get(id: String): Reminder? = dao.get(id)?.toDomain()
+
+    /** Everything that is not done, right now — what the scheduler arms alarms from. */
+    suspend fun openNow(): List<Reminder> = dao.getOpen().map(ReminderEntity::toDomain)
+
+    suspend fun snooze(id: String, until: Instant?) = dao.setSnooze(id, until?.toEpochMilli())
+
+    suspend fun markFired(id: String, at: Instant) = dao.markFired(id, at.toEpochMilli())
+
+    suspend fun setArmedFor(id: String, at: Instant?) = dao.setArmedFor(id, at?.toEpochMilli())
 
     /** Upsert as given; the caller decides `updatedAt`. */
     suspend fun save(reminder: Reminder) = dao.upsert(reminder.toEntity())

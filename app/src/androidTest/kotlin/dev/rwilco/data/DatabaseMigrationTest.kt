@@ -42,10 +42,13 @@ class DatabaseMigrationTest {
 
         val db = helper.runMigrationsAndValidate(DB, RwilcoDatabase.VERSION, true, *RwilcoDatabase.MIGRATIONS)
 
-        db.query("SELECT text, triggers FROM reminder WHERE id = 'r1'").use { cursor ->
+        db.query("SELECT text, triggers, snoozedUntil, lastFiredAt, armedFor FROM reminder WHERE id = 'r1'").use { cursor ->
             assertTrue("the reminder did not survive the upgrade", cursor.moveToFirst())
             assertEquals("Water the plants", cursor.getString(0))
             assertEquals("[{\"type\":\"on_date\",\"date\":\"2026-09-01\"}]", cursor.getString(1))
+            assertTrue("a reminder from v1 has never been snoozed", cursor.isNull(2))
+            assertTrue("nor rung", cursor.isNull(3))
+            assertTrue("nor armed", cursor.isNull(4))
         }
     }
 

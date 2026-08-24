@@ -26,6 +26,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import dev.rwilco.R
+import dev.rwilco.MainActivity
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.ui.components.rememberSnackbarController
@@ -39,7 +40,6 @@ import dev.rwilco.ui.settings.SettingsScreen
 import dev.rwilco.ui.settings.SettingsViewModel
 import dev.rwilco.ui.settings.WhatsNewSheet
 import dev.rwilco.ui.theme.Tokens
-import dev.rwilco.update.UpdateNotifications
 import kotlinx.coroutines.launch
 
 @Composable
@@ -54,9 +54,16 @@ fun RwilcoApp(
     val motion = Tokens.motion
 
     LaunchedEffect(requestedDestination) {
-        if (requestedDestination == UpdateNotifications.DEST_SETTINGS) {
-            navController.navigate(Routes.Settings) { launchSingleTop = true }
-            onDestinationConsumed()
+        val reminderId = MainActivity.reminderIdIn(requestedDestination)
+        when {
+            requestedDestination == MainActivity.DESTINATION_SETTINGS -> {
+                navController.navigate(Routes.Settings) { launchSingleTop = true }
+                onDestinationConsumed()
+            }
+            reminderId != null -> {
+                navController.navigate(Routes.Editor(reminderId)) { launchSingleTop = true }
+                onDestinationConsumed()
+            }
         }
     }
 

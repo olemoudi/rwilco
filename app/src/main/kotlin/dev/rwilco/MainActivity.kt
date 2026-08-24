@@ -18,7 +18,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.rwilco.ui.RwilcoApp
 import dev.rwilco.ui.theme.RwilcoTheme
 import dev.rwilco.ui.theme.resolvesToDark
-import dev.rwilco.update.UpdateNotifications
 import dev.rwilco.update.UpdateWorker
 
 class MainActivity : ComponentActivity() {
@@ -29,7 +28,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        requestedDestination.value = intent?.getStringExtra(UpdateNotifications.EXTRA_DEST)
+        requestedDestination.value = intent?.getStringExtra(EXTRA_DESTINATION)
         val app = application as RwilcoApplication
         setContent {
             val settings by app.settings.collectAsStateWithLifecycle()
@@ -60,11 +59,22 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        requestedDestination.value = intent.getStringExtra(UpdateNotifications.EXTRA_DEST)
+        requestedDestination.value = intent.getStringExtra(EXTRA_DESTINATION)
     }
 
     override fun onResume() {
         super.onResume()
         UpdateWorker.runIfStale(this)
+    }
+
+    companion object {
+        /** Where a notification wants the app to land: [DESTINATION_SETTINGS] or a reminder. */
+        const val EXTRA_DESTINATION = "dest"
+        const val DESTINATION_SETTINGS = "settings"
+        private const val REMINDER_PREFIX = "reminder:"
+
+        fun reminderDestination(id: String): String = REMINDER_PREFIX + id
+
+        fun reminderIdIn(destination: String?): String? = destination?.removePrefix(REMINDER_PREFIX)?.takeIf { destination.startsWith(REMINDER_PREFIX) }
     }
 }

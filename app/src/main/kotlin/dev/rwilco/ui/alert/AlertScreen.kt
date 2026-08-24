@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import dev.rwilco.R
+import dev.rwilco.model.Snooze
 import dev.rwilco.model.kind
 import dev.rwilco.ui.components.PresetChip
 import dev.rwilco.ui.components.TagLabel
@@ -41,7 +42,6 @@ import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.format.triggerLine
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.icon
-import java.time.Duration
 
 /**
  * The lamp at full brightness. The reminder's words as big as they fit, and one button the
@@ -53,7 +53,7 @@ fun AlertScreen(
     content: AlertContent,
     preview: Boolean,
     onDone: () -> Unit,
-    onSnooze: (Duration) -> Unit,
+    onSnooze: (Snooze) -> Unit,
     onView: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -111,9 +111,9 @@ fun AlertScreen(
             )
             Spacer(Modifier.height(spacing.sm))
             Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                PresetChip(stringResource(R.string.countdown_minutes, 10), onClick = { onSnooze(Duration.ofMinutes(10)) })
-                PresetChip(stringResource(R.string.countdown_hours, 1), onClick = { onSnooze(Duration.ofHours(1)) })
-                PresetChip(stringResource(R.string.alert_snooze_tomorrow), onClick = { onSnooze(Duration.ofDays(1)) })
+                PresetChip(stringResource(R.string.countdown_minutes, Snooze.TEN_MINUTES.minutes.toInt()), onClick = { onSnooze(Snooze.TEN_MINUTES) })
+                PresetChip(stringResource(R.string.countdown_hours, 1), onClick = { onSnooze(Snooze.ONE_HOUR) })
+                PresetChip(stringResource(R.string.alert_snooze_tomorrow), onClick = { onSnooze(Snooze.TOMORROW) })
             }
             Spacer(Modifier.height(spacing.lg))
             Button(

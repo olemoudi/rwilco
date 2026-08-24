@@ -1,14 +1,8 @@
 package dev.rwilco.ui.settings
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -38,7 +32,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -69,25 +62,12 @@ fun AppUpdateCard() {
 
     // Re-check permissions when the person comes back from the settings screens we open.
     var canInstall by remember { mutableStateOf(true) }
-    var notificationsEnabled by remember { mutableStateOf(true) }
     var resumeTick by remember { mutableIntStateOf(0) }
-    // Android 13+ gates notifications behind a runtime permission: ask first, and only send
-    // people into the settings maze if they already said no.
-    val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        notificationsEnabled = granted && NotificationManagerCompat.from(context).areNotificationsEnabled()
-        if (!granted) {
-            context.startActivity(
-                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                    .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
-            )
-        }
-    }
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 canInstall = context.packageManager.canRequestPackageInstalls()
-                notificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
                 resumeTick++
             }
         }
@@ -133,24 +113,6 @@ fun AppUpdateCard() {
                         context.startActivity(
                             Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}")),
                         )
-                    },
-                )
-            }
-            if (!notificationsEnabled) {
-                PermissionFixRow(
-                    text = stringResource(R.string.perm_notifications_missing),
-                    action = stringResource(R.string.perm_notifications_fix),
-                    onFix = {
-                        val needsRuntimePermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-                        if (needsRuntimePermission) {
-                            askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        } else {
-                            context.startActivity(
-                                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                                    .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
-                            )
-                        }
                     },
                 )
             }

@@ -8,8 +8,11 @@ import java.time.ZoneId
 sealed interface NextFire {
     val trigger: Trigger
 
-    /** A definite moment. */
-    data class Scheduled(val at: Instant, override val trigger: Trigger) : NextFire
+    /**
+     * A definite moment. [snoozed] means the moment comes from a "remind me later", not from
+     * [trigger] — the trigger is carried anyway so the row keeps the icon it is recognised by.
+     */
+    data class Scheduled(val at: Instant, override val trigger: Trigger, val snoozed: Boolean = false) : NextFire
 
     /**
      * A random moment: [at] is the deterministic draw the scheduler will use; the UI shows the
@@ -33,6 +36,12 @@ sealed interface NextFire {
  */
 fun nextFire(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalTime): NextFire? {
     if (reminder.status != Status.ACTIVE) return null
+    // A snooze outranks every trigger: it is the person saying "not now, then".
+    val snoozedUntil = reminder.snoozedUntil
+    if (snoozedUntil != null && snoozedUntil > now) {
+        val trigger = reminder.triggers.firstOrNull() ?: return null
+        return NextFire.Scheduled(snoozedUntil, trigger, snoozed = true)
+    }
     val candidates = reminder.triggers.mapNotNull { nextFireOf(it, reminder.id, now, zone, defaultTime) }
     return candidates.filterIsInstance<NextFire.Scheduled>().minByOrNull { it.at }
         ?: candidates.filterIsInstance<NextFire.Sometime>().minByOrNull { it.at }

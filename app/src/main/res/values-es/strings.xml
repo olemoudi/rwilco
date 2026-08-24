@@ -193,4 +193,23 @@
     <string name="perm_notifications_fix">Activar</string>
     <string name="whats_new_title">Novedades</string>
     <string name="whats_new_ok">Entendido</string>
+    <!-- Avisos -->
+    <string name="notif_group_alerts">Recordatorios</string>
+    <string name="notif_channel_quiet">Recordatorios silenciosos</string>
+    <string name="notif_channel_sound">Recordatorios con sonido</string>
+    <string name="notif_channel_vibrate">Recordatorios con vibración</string>
+    <string name="notif_channel_sound_vibrate">Recordatorios con sonido y vibración</string>
+    <string name="notif_channel_missed">Recordatorios perdidos</string>
+    <string name="notif_channel_missed_description">Recordatorios cuyo momento pasó con el móvil apagado.</string>
+    <string name="alert_missed_subtext">No sonó a su hora</string>
+
+    <!-- Permisos de los avisos -->
+    <string name="settings_alerts">Avisos</string>
+    <string name="perm_all_good">Todo listo: Rwilco puede avisarte.</string>
+    <string name="perm_fullscreen_missing">Los avisos a pantalla completa no están permitidos: llegarán como notificación.</string>
+    <string name="perm_fullscreen_fix">Permitir</string>
+    <string name="perm_alarms_missing">Las alarmas exactas no están permitidas: los recordatorios pueden llegar tarde.</string>
+    <string name="perm_alarms_fix">Permitir</string>
+    <string name="perm_background_location_missing">Los recordatorios por lugar necesitan la ubicación "todo el tiempo"; si no, solo funcionan con Rwilco abierta.</string>
+    <string name="perm_background_location_fix">Permitir</string>
 </resources>

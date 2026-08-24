@@ -17,6 +17,19 @@ data class AlertContent(
     val defaultTime: LocalTime,
 ) {
     companion object {
+        /** A reminder that is actually ringing. */
+        fun fromReminder(reminder: dev.rwilco.model.Reminder, today: LocalDate, defaultTime: LocalTime): AlertContent {
+            val trigger = reminder.triggers.firstOrNull()
+            return AlertContent(
+                text = reminder.text,
+                tags = reminder.tags,
+                trigger = trigger,
+                family = trigger?.family ?: TriggerFamily.TIME,
+                today = today,
+                defaultTime = defaultTime,
+            )
+        }
+
         fun fromDraft(draft: Draft, today: LocalDate, defaultTime: LocalTime): AlertContent {
             val trigger = draft.triggers.firstOrNull()
             return AlertContent(

@@ -46,6 +46,29 @@ class ReminderEntityMappingTest {
     }
 
     @Test
+    fun `the firing state survives the trip too`() {
+        val firing = reminder.copy(
+            snoozedUntil = Instant.ofEpochMilli(1_700_001_000_000),
+            lastFiredAt = Instant.ofEpochMilli(1_700_000_700_000),
+            armedFor = Instant.ofEpochMilli(1_700_000_800_000),
+        )
+        assertEquals(firing, firing.toEntity().toDomain())
+        val row = firing.toEntity()
+        assertEquals(1_700_001_000_000, row.snoozedUntil)
+        assertEquals(1_700_000_700_000, row.lastFiredAt)
+        assertEquals(1_700_000_800_000, row.armedFor)
+    }
+
+    @Test
+    fun `a row written before the firing columns existed reads as never fired`() {
+        val old = reminder.toEntity().copy(snoozedUntil = null, lastFiredAt = null, armedFor = null)
+        val domain = old.toDomain()
+        assertEquals(null, domain.snoozedUntil)
+        assertEquals(null, domain.lastFiredAt)
+        assertEquals(null, domain.armedFor)
+    }
+
+    @Test
     fun `a status from the future reads as active`() {
         val row = reminder.toEntity().copy(status = "SNOOZED")
         assertEquals(Status.ACTIVE, row.toDomain().status)

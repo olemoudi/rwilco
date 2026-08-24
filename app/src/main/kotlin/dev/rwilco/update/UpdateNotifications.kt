@@ -20,10 +20,6 @@ object UpdateNotifications {
     // They are the same subject, so the second must replace the first rather than pile on it.
     private const val NOTIF_ID = 43
 
-    /** MainActivity opens Settings when launched with this extra set to [DEST_SETTINGS]. */
-    const val EXTRA_DEST = "dest"
-    const val DEST_SETTINGS = "settings"
-
     fun notifyConfirmationNeeded(context: Context, confirmIntent: Intent) {
         val tap = PendingIntent.getActivity(
             context, 0, confirmIntent,
@@ -46,7 +42,7 @@ object UpdateNotifications {
     fun notifyInstallDeclined(context: Context) {
         val open = Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            .putExtra(EXTRA_DEST, DEST_SETTINGS)
+            .putExtra(MainActivity.EXTRA_DESTINATION, MainActivity.DESTINATION_SETTINGS)
         val tap = PendingIntent.getActivity(
             context, NOTIF_ID, open,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,

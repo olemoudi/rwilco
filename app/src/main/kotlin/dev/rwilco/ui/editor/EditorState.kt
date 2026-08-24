@@ -24,6 +24,11 @@ data class Draft(
 
 fun Reminder.toDraft() = Draft(text = text, tags = tags, triggers = triggers, actions = actions)
 
+/**
+ * Note what is NOT carried over: a snooze, the last ring, the armed moment. Editing a reminder
+ * re-decides when it rings, so a "remind me in ten minutes" from the old shape has no meaning,
+ * and the scheduler writes the armed moment again the instant this is saved.
+ */
 fun Draft.toReminder(id: String, createdAt: Instant, now: Instant, status: Status): Reminder = Reminder(
     id = id,
     text = text.trim(),

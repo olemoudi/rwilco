@@ -220,7 +220,7 @@ fun EditorScreen(
                 content = AlertContent.fromDraft(state.draft, today, state.defaultTime),
                 preview = true,
                 onDone = { viewModel.setPreviewing(false) },
-                onSnooze = { viewModel.setPreviewing(false) },
+                onSnooze = { _ -> viewModel.setPreviewing(false) },
                 onView = { viewModel.setPreviewing(false) },
             )
         }

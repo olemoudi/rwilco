@@ -101,6 +101,10 @@ dependencies {
     implementation(libs.work.runtime)
     implementation(libs.okhttp)
     implementation(libs.osmdroid.android)
+    // Geofencing. The platform's own addProximityAlert is unreliable and battery-hungry; this is
+    // the API the phone's location stack actually optimises for. The app degrades to "place
+    // reminders do not fire" where Play Services is missing, and says so.
+    implementation(libs.play.services.location)
 
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
