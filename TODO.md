@@ -20,6 +20,15 @@ needs digits, which the comment did not have), so the only symptom was an update
 `head -1`, and the workflow now parses its own version.json before publishing it. Found by
 curling the published file rather than by trusting the build. 2026-08-24.
 
+## "Tags do not suggest the previous ones" (2026-08-24)
+Reported from the phone; could not be reproduced. `TagReuseTest` drives it on a device — one
+saved reminder with a tag, open a new one, the tag is offered — and passes. What was wrong was
+the presentation: the "Nueva etiqueta" button sat *among* the chips with nothing saying they
+were previous tags, and on a new reminder the whole section was below a long list of text
+suggestions. Now the button is on top, the chips are under an "O reutilizar una" heading, and
+they narrow as a new tag is typed. If it still looks empty on the phone, the honest answer is
+that there are no tagged reminders yet.
+
 ## Still to prove on the real phone (Pixel 8 Pro)
 - A place reminder actually firing in the street, and how long the geofence takes to notice.
 - The full-screen alert over the lock screen, and whether Android 14's full-screen-intent

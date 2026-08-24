@@ -165,10 +165,20 @@ internal fun TagsSection(
     var newTag by rememberSaveable { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
     val haptics = Tokens.haptics
-    // Everything on the draft plus everything in use elsewhere, one spelling each.
-    val tags = remember(existingTags, selected) {
-        (selected + existingTags).distinctBy { it.lowercase() }
+
+    // Everything on this reminder plus every tag used before, one spelling each, the ones
+    // already picked first. While a new one is being typed the list narrows to what matches,
+    // so "co" surfaces "compra" instead of asking for it to be spelled out again.
+    val offered = remember(existingTags, selected, newTag) {
+        val all = (selected + existingTags).distinctBy { it.lowercase() }
+        val query = newTag.trim().lowercase()
+        if (query.isEmpty()) {
+            all
+        } else {
+            all.filter { tag -> tag.lowercase().contains(query) || selected.any { it.equals(tag, ignoreCase = true) } }
+        }
     }
+
     fun commit() {
         val raw = newTag
         newTag = ""
@@ -178,27 +188,11 @@ internal fun TagsSection(
             onAdd(raw)
         }
     }
+
     Column {
         SectionTitle(stringResource(R.string.editor_tags_title))
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
-            verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
-        ) {
-            for (tag in tags) {
-                TagChip(label = tag, selected = selected.any { it.equals(tag, ignoreCase = true) }, onClick = { onToggle(tag) })
-            }
-            if (!adding) {
-                OutlinedButton(
-                    onClick = { adding = true },
-                    shape = MaterialTheme.shapes.small,
-                    modifier = Modifier.heightIn(min = 40.dp),
-                ) {
-                    Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(Tokens.spacing.xs))
-                    Text(stringResource(R.string.editor_new_tag), style = MaterialTheme.typography.labelLarge)
-                }
-            }
-        }
+        // The way to a new tag sits on top, like the way to a new reminder text; what is under
+        // it is the answer most of the time.
         if (adding) {
             LaunchedEffect(Unit) { focusRequester.requestFocus() }
             OutlinedTextField(
@@ -221,12 +215,43 @@ internal fun TagsSection(
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = Tokens.spacing.sm)
                     .focusRequester(focusRequester),
             )
+        } else {
+            OutlinedButton(
+                onClick = { adding = true },
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = Tokens.sizes.control),
+            ) {
+                Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(Tokens.spacing.sm))
+                Text(stringResource(R.string.editor_new_tag), style = MaterialTheme.typography.titleMedium)
+            }
+        }
+        if (offered.isNotEmpty()) {
+            Spacer(Modifier.height(Tokens.spacing.md))
+            SectionTitle(stringResource(R.string.editor_reuse_tag))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
+                verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
+                modifier = Modifier.testTag(EDITOR_TAGS_TAG),
+            ) {
+                for (tag in offered) {
+                    TagChip(
+                        label = tag,
+                        selected = selected.any { it.equals(tag, ignoreCase = true) },
+                        onClick = { onToggle(tag) },
+                    )
+                }
+            }
         }
     }
 }
+
+/** Lets the tour ask whether tags used before are actually being offered back. */
+const val EDITOR_TAGS_TAG = "editorTags"
 
 @Composable
 internal fun TriggersSection(

@@ -29,6 +29,6 @@ fun PresetChip(label: String, onClick: () -> Unit, modifier: Modifier = Modifier
             labelColor = MaterialTheme.colorScheme.onSurface,
         ),
         border = BorderStroke(1.dp, if (selected) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outlineVariant),
-        modifier = modifier.heightIn(min = 40.dp),
+        modifier = modifier.heightIn(min = 44.dp),
     )
 }

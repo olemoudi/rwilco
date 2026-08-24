@@ -232,4 +232,11 @@
         <item>El editor te ofrece lo que ya has escrito antes en vez de un teclado en blanco.</item>
         <item>Ajustes te dice qué permiso impediría que un recordatorio te llegue.</item>
     </string-array>
+    <string name="time_hours">Horas</string>
+    <string name="time_minutes">Minutos</string>
+    <string name="editor_reuse_tag">O reutilizar una</string>
+    <string-array name="whats_new_0_2_2">
+        <item>Las horas se eligen con ruedas: un gesto y encaja, sin apuntar a un reloj con una mano.</item>
+        <item>Las etiquetas que ya has usado se ofrecen bajo el botón "Nueva etiqueta", y se filtran según escribes.</item>
+    </string-array>
 </resources>

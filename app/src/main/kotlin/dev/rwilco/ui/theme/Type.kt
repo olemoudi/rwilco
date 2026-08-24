@@ -80,8 +80,8 @@ private fun monoStyle(size: Int, lineHeight: Int) = TextStyle(
 )
 
 val RwilcoTypography = Typography(
-    // displayLarge is what the Material time picker sets its digits in: mono, so the dial
-    // matches every other time in the app for free.
+    // Mono, like every other number in this app: it is the size a time is read at when it is
+    // the only thing on the screen.
     displayLarge = monoStyle(size = 57, lineHeight = 64),
     displayMedium = display(FontWeight.Bold, size = 44, lineHeight = 50, tracking = -0.5f),
     displaySmall = display(FontWeight.Bold, size = 36, lineHeight = 42, tracking = -0.25f),

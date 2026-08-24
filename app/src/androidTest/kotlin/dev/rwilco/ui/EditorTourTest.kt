@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -21,6 +22,7 @@ import dev.rwilco.MainActivity
 import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.debug.DemoData
+import dev.rwilco.ui.components.TIME_FIELD_TAG
 import dev.rwilco.ui.editor.EDITOR_TEXT_TAG
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
@@ -102,7 +104,17 @@ class EditorTourTest {
         )) {
             text(s(kind)).performClick()
             rule.waitUntilShown(s(R.string.sheet_cancel))
+            // The place sheet is fetching map tiles over the emulator's slow network.
+            if (kind == R.string.kind_place) Thread.sleep(6_000)
             shot(name)
+            if (kind == R.string.kind_date_time) {
+                // The wheels, which replaced a dial nobody could hit one-handed.
+                rule.onAllNodesWithTag(TIME_FIELD_TAG, useUnmergedTree = true)[0].performClick()
+                rule.waitUntilShown(s(R.string.sheet_done))
+                shot("time-wheels")
+                text(s(R.string.sheet_done)).performClick()
+                rule.waitUntilGone(s(R.string.sheet_done))
+            }
             text(s(R.string.sheet_cancel)).performClick()
             rule.waitUntilGone(s(R.string.sheet_cancel))
             text(s(R.string.editor_add_trigger)).performScrollTo().performClick()

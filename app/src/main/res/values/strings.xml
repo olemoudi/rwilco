@@ -234,4 +234,11 @@
         <item>The editor offers what you have written before instead of a blank keyboard.</item>
         <item>Settings names any permission that would stop a reminder reaching you.</item>
     </string-array>
+    <string name="time_hours">Hours</string>
+    <string name="time_minutes">Minutes</string>
+    <string name="editor_reuse_tag">Or reuse one</string>
+    <string-array name="whats_new_0_2_2">
+        <item>Times are picked on wheels now: flick and it snaps, no aiming at a dial with one hand.</item>
+        <item>Tags you have used before are offered under the "New tag" button, and narrow as you type.</item>
+    </string-array>
 </resources>
