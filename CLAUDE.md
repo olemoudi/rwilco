@@ -266,7 +266,12 @@ These are standing rules for this repository. Follow them without being re-asked
   migrations, the editor flow through real Compose, the installer reading a real APK.
 - Run `./gradlew test` and `:app:assembleDebug` before cutting a release.
 
-### Emulator (WSL, headless)
+### Emulator (WSL, headless) — use it sparingly
+- **The emulator is expensive; economise it (owner's standing rule).** Visual checks in dark
+  mode only (light follows the same tokens; trust it). Never run the full instrumented suite on
+  the device: run only the test class(es) covering the flow the change touched, e.g.
+  `./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.rwilco.ui.EditorTourTest`.
+  Prefer JVM tests and reasoning; batch device checks into one run per change set.
 - `scripts/emu.sh` wraps everything: `create` once, then `up`, `install`, `launch`, `seed`,
   `shot NAME`, `dark`/`light`, `es`/`en`, `tz`. The AVD dozes off within a minute — `up` keeps it
   awake, `wake` nudges it. Per-app locale needs API 33+ (the image is 35). Do not `adb root`

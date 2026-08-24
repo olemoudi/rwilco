@@ -64,7 +64,8 @@ index), pinned by golden values in its test. `Validation.kt` decides what blocks
   own composable (`rememberNow`) so nothing else recomposes.
 - Editor: `EditorUiState` + pure reducers (`EditorState.kt`, tested); one configurator sheet per
   trigger kind under `editor/sheets/`; the countdown sheet produces an `AtDateTime`; the place
-  sheet takes one fix from `LocationManager` (map to come). The alert preview is `AlertScreen`,
+  sheet shows an osmdroid map (`OsmMap.kt`: pin by long-press or from one `LocationManager`
+  fix, radius circle, inverted tiles on the dark scheme, tile cache in `cacheDir`). The alert preview is `AlertScreen`,
   the same composable phase 2 will host in a full-screen-intent activity.
 
 ## Self-update

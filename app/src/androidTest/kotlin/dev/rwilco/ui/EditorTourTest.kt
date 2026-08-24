@@ -126,15 +126,8 @@ class EditorTourTest {
         rule.onNodeWithContentDescription(s(R.string.home_settings)).performClick()
         rule.waitUntilShown(s(R.string.settings_title))
         shot("settings")
-        text(s(R.string.settings_theme_light)).performClick()
-        rule.waitForIdle()
-        shot("settings-light")
-        rule.onNodeWithContentDescription(s(R.string.common_back)).performClick()
-        rule.waitUntilShown(s(R.string.home_next_up))
-        shot("home-light")
-        rule.onNodeWithContentDescription(s(R.string.home_settings)).performClick()
-        rule.waitUntilShown(s(R.string.settings_title))
-        text(s(R.string.settings_theme_system)).performClick()
+        // Dark mode only, by the owner's rule: the light scheme shares every token and layout,
+        // and each extra pass through the emulator costs minutes.
         rule.onNodeWithContentDescription(s(R.string.common_back)).performClick()
         rule.waitUntilShown(s(R.string.home_next_up))
 

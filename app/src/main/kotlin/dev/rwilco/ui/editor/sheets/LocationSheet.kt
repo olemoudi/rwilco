@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
@@ -32,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import dev.rwilco.R
 import dev.rwilco.model.MAX_LABEL_LENGTH
 import dev.rwilco.model.MAX_RADIUS_M
@@ -43,12 +45,12 @@ import dev.rwilco.ui.components.SheetScaffold
 import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
 import kotlinx.coroutines.launch
+import org.osmdroid.util.GeoPoint
 import java.util.Locale
 
 /**
- * A place, a radius, and whether arriving or leaving matters. The fix comes from the phone's
- * own location; the map view arrives in a later milestone and will drop its pin into the same
- * coordinates.
+ * A place, a radius, and whether arriving or leaving matters. The pin comes from the phone's
+ * own location or a long-press on the map; the radius is drawn around it as it changes.
  */
 @Composable
 fun LocationSheet(
@@ -114,6 +116,24 @@ fun LocationSheet(
             onSelect = { transition = if (it == 0) Transition.ENTER.name else Transition.EXIT.name },
         )
         Column(verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm)) {
+            OsmMap(
+                center = if (known) GeoPoint(lat!!, lng!!) else null,
+                radiusM = radius,
+                onLongPress = { point ->
+                    lat = point.latitude
+                    lng = point.longitude
+                    failed = false
+                    haptics.perform(HapticFeedbackType.Confirm)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(240.dp),
+            )
+            Text(
+                text = stringResource(R.string.place_map_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             OutlinedButton(
                 onClick = { permission.launch(Manifest.permission.ACCESS_FINE_LOCATION) },
                 enabled = !locating,

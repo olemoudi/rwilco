@@ -131,6 +131,7 @@
     <string name="place_no_fix">No se pudo obtener la ubicación. Comprueba que está activada y permitida.</string>
     <string name="place_radius">Radio</string>
     <string name="place_metres">%1$d m</string>
+    <string name="place_map_hint">Mantén pulsado el mapa para mover el pin. Mapa © colaboradores de OpenStreetMap.</string>
     <string name="calendar_previous_month">Mes anterior</string>
     <string name="calendar_next_month">Mes siguiente</string>
     <string name="stepper_less">Menos</string>

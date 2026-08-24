@@ -41,8 +41,8 @@ full-screen alerts, place triggers, sounds).
 ## Honest limitations
 
 - Nothing fires yet (see above).
-- Place triggers need the map tiles online the first time you pick a place; the rest of the
-  app never needs a connection.
+- The place picker's map tiles need a connection; without one the pin still works, over a
+  blank map. The rest of the app never needs a connection (except to check for updates).
 - No sync or backup: what is on the phone is the only copy.
 
 ## Building

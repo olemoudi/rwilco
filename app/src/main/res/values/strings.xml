@@ -133,6 +133,7 @@
     <string name="place_no_fix">Could not get a location. Check location is on and allowed.</string>
     <string name="place_radius">Radius</string>
     <string name="place_metres">%1$d m</string>
+    <string name="place_map_hint">Long-press the map to move the pin. Map © OpenStreetMap contributors.</string>
     <string name="calendar_previous_month">Previous month</string>
     <string name="calendar_next_month">Next month</string>
     <string name="stepper_less">Less</string>

@@ -3,8 +3,6 @@
 Running notes: what is next, what cost time, what must not be re-derived.
 
 ## Next
-- Place picker map (osmdroid): drop a pin, draggable radius circle. The sheet already takes one
-  fix from `LocationManager` and stores lat/lng/radius, so the map only replaces the readout.
 - First release: bump `versionCode`/`versionName` in `app/build.gradle.kts`, push a `v*` tag —
   only with the owner's explicit OK (public repo, starts the signing chain).
 - Phase 2: firing (see "Decisions parked" below).
