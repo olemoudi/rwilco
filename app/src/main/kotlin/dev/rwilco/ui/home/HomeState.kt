@@ -1,6 +1,7 @@
 package dev.rwilco.ui.home
 
 import dev.rwilco.model.Action
+import dev.rwilco.model.Condition
 import dev.rwilco.model.NextFire
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Section
@@ -9,7 +10,7 @@ import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerFamily
 import dev.rwilco.model.family
 import dev.rwilco.model.groupForHome
-import dev.rwilco.model.nextFireOf
+import dev.rwilco.model.nextFireOfRule
 import dev.rwilco.model.tagsInUse
 import java.time.Instant
 import java.time.LocalTime
@@ -44,6 +45,8 @@ data class ReminderCardUi(
 /** One trigger row: the strings are formatted in the composable, which has the locale. */
 data class TriggerRowUi(
     val trigger: Trigger,
+    /** What has to hold for the moment to count; empty for most rules. */
+    val conditions: List<Condition>,
     val family: TriggerFamily,
     /** The definite moment, when there is one. */
     val nextAt: Instant?,
@@ -67,11 +70,12 @@ fun buildHomeState(
         id = reminder.id,
         text = reminder.text,
         tags = reminder.tags,
-        triggers = reminder.triggers.map { trigger ->
-            val next = nextFireOf(trigger, reminder.id, now, zone, defaultTime)
+        triggers = reminder.rules.map { rule ->
+            val next = nextFireOfRule(rule, reminder.id, now, zone, defaultTime)
             TriggerRowUi(
-                trigger = trigger,
-                family = trigger.family,
+                trigger = rule.trigger,
+                conditions = rule.conditions,
+                family = rule.trigger.family,
                 nextAt = (next as? NextFire.Scheduled)?.at,
                 window = (next as? NextFire.Sometime)?.let { it.windowStart to it.windowEnd },
             )

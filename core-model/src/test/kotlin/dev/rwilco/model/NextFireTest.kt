@@ -100,3 +100,54 @@ class NextFireTest {
         assertEquals(Instant.parse("2026-10-25T00:30:00Z"), scheduledAt(overlap, at = Instant.parse("2026-10-24T23:00:00Z")))
     }
 }
+
+/** What conditions do to the moment a rule picks. */
+class RuleNextFireTest {
+
+    private val zone = Fixtures.zone
+    private val defaultTime = Fixtures.defaultTime
+    private val now = Fixtures.now
+    private val everyDayAtNine = Trigger.AtTime(LocalTime.of(9, 0), DayOfWeek.entries.toSet())
+
+    private fun at(rule: TriggerRule): Instant? =
+        (nextFireOfRule(rule, "r1", now, zone, defaultTime) as? NextFire.Scheduled)?.at
+
+    @Test
+    fun `a rule with no conditions is just its trigger`() {
+        assertEquals(Fixtures.local(2026, 8, 28, 9, 0), at(TriggerRule(everyDayAtNine)))
+    }
+
+    @Test
+    fun `a condition skips the moments it does not hold at`() {
+        // Thursday 15:00; nine o'clock on weekdays, but only on Mondays.
+        val mondaysOnly = TriggerRule(everyDayAtNine, listOf(Condition.TimeWindow(LocalTime.of(8, 0), LocalTime.of(10, 0), setOf(DayOfWeek.MONDAY))))
+        assertEquals(Fixtures.local(2026, 8, 31, 9, 0), at(mondaysOnly))
+    }
+
+    @Test
+    fun `a rule that can never hold answers never instead of looping`() {
+        val impossible = TriggerRule(everyDayAtNine, listOf(Condition.TimeWindow(LocalTime.of(18, 0), LocalTime.of(22, 0))))
+        assertNull(at(impossible))
+    }
+
+    @Test
+    fun `a place is judged when it happens, so conditions leave it alone`() {
+        val place = Trigger.Location(40.4, -3.7, 200, Transition.ENTER, "Casa")
+        val rule = TriggerRule(place, listOf(Condition.TimeWindow(LocalTime.of(18, 0), LocalTime.of(22, 0))))
+        assertEquals(NextFire.WhenAt(place), nextFireOfRule(rule, "r1", now, zone, defaultTime))
+    }
+
+    @Test
+    fun `the earliest rule wins across a reminder`() {
+        val reminder = Fixtures.reminder(everyDayAtNine).copy(
+            rules = listOf(
+                TriggerRule(everyDayAtNine, listOf(Condition.TimeWindow(LocalTime.of(8, 0), LocalTime.of(10, 0), setOf(DayOfWeek.MONDAY)))),
+                TriggerRule(Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 21, 30))),
+            ),
+        )
+        assertEquals(
+            Fixtures.local(2026, 8, 27, 21, 30),
+            (nextFire(reminder, now, zone, defaultTime) as NextFire.Scheduled).at,
+        )
+    }
+}

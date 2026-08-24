@@ -26,6 +26,7 @@ import dev.rwilco.R
 import dev.rwilco.model.kind
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.TriggerKeycap
+import dev.rwilco.ui.format.conditionLabel
 import dev.rwilco.ui.format.triggerLine
 import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
@@ -97,6 +98,15 @@ fun TriggerRow(row: TriggerRowUi, today: LocalDate, defaultTime: LocalTime, mute
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            if (row.conditions.isNotEmpty()) {
+                Text(
+                    text = stringResource(R.string.editor_only_if_prefix, row.conditions.map { conditionLabel(it) }.joinToString(" · ")),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }

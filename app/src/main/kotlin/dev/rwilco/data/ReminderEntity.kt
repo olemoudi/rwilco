@@ -18,6 +18,7 @@ data class ReminderEntity(
     @PrimaryKey val id: String,
     val text: String,
     val tags: String,
+    /** The rules, as JSON. Named for what it held in v1 — a bare trigger list — which it still reads. */
     val triggers: String,
     val actions: String,
     val status: String,
@@ -33,7 +34,7 @@ fun ReminderEntity.toDomain(): Reminder = Reminder(
     id = id,
     text = text,
     tags = ReminderCodec.decodeTags(tags),
-    triggers = ReminderCodec.decodeTriggers(triggers),
+    rules = ReminderCodec.decodeRules(triggers),
     actions = ReminderCodec.decodeActions(actions),
     // A status this build does not know is treated as active: showing a reminder that a newer
     // build filed somewhere else beats hiding it.
@@ -50,7 +51,7 @@ fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
     id = id,
     text = text,
     tags = ReminderCodec.encodeTags(tags),
-    triggers = ReminderCodec.encodeTriggers(triggers),
+    triggers = ReminderCodec.encodeRules(rules),
     actions = ReminderCodec.encodeActions(actions),
     status = status.name,
     createdAt = createdAt.toEpochMilli(),

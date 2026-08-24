@@ -17,13 +17,15 @@ class GeofenceReceiver : BroadcastReceiver() {
             Log.w(TAG, "geofence event error: ${GeofenceStatusCodes.getStatusCodeString(event.errorCode)}")
             return
         }
-        val ids = event.triggeringGeofences.orEmpty().map { GeofenceIds.reminderIdOf(it.requestId) }.distinct()
-        if (ids.isEmpty()) return
+        val fenced = event.triggeringGeofences.orEmpty()
+            .map { GeofenceIds.reminderIdOf(it.requestId) to GeofenceIds.triggerIndexOf(it.requestId) }
+            .distinct()
+        if (fenced.isEmpty()) return
         val app = context.applicationContext as RwilcoApplication
         val pending = goAsync()
         app.appScope.launch {
             try {
-                for (id in ids) app.firing.fire(id)
+                for ((id, ruleIndex) in fenced) app.firing.fire(id, ruleIndex = ruleIndex)
             } catch (t: Throwable) {
                 Log.e(TAG, "firing a place reminder failed", t)
             } finally {

@@ -18,6 +18,7 @@ object Fixtures {
 
     fun reminder(
         vararg triggers: Trigger,
+        conditions: List<Condition> = emptyList(),
         id: String = "r1",
         text: String = "Water the plants",
         tags: List<String> = emptyList(),
@@ -27,7 +28,7 @@ object Fixtures {
         id = id,
         text = text,
         tags = tags,
-        triggers = triggers.toList(),
+        rules = triggers.map { TriggerRule(it, conditions) },
         status = status,
         createdAt = updatedAt,
         updatedAt = updatedAt,

@@ -66,6 +66,8 @@ class EditorTourTest {
     fun seedDemoData() {
         val app = context.applicationContext as RwilcoApplication
         runBlocking { DemoData.seed(app.repository, app.clock) }
+        // Yesterday's captures would otherwise be pulled along with today's and quietly go stale.
+        File(context.filesDir, "screenshots").listFiles()?.forEach { it.delete() }
     }
 
     @Test
@@ -80,8 +82,12 @@ class EditorTourTest {
         // Saving an empty form names what is missing instead of doing nothing.
         text(s(R.string.common_save)).performClick()
         text(s(R.string.editor_error_text)).assertIsDisplayed()
-        text(s(R.string.editor_error_trigger)).assertIsDisplayed()
+        // Below the fold now that the reuse list sits between them.
+        text(s(R.string.editor_error_trigger)).performScrollTo().assertIsDisplayed()
 
+        // Nothing is auto-focused any more: the button is the way to the keyboard, and what has
+        // been written before is offered under it.
+        text(s(R.string.editor_write)).performClick()
         rule.onNodeWithTag(EDITOR_TEXT_TAG).performTextInput(reminderText)
         text(s(R.string.editor_add_trigger)).performScrollTo().performClick()
         rule.waitUntilShown(s(R.string.kind_date_time))
@@ -111,6 +117,13 @@ class EditorTourTest {
         rule.waitUntilGone(s(R.string.sheet_add))
         text(s(R.string.editor_error_trigger)).assertDoesNotExist()
         rule.onNodeWithContentDescription(s(R.string.editor_edit_trigger)).assertIsDisplayed()
+
+        // A rule can be fenced in: the trigger only counts inside these hours.
+        text(s(R.string.editor_add_condition)).performScrollTo().performClick()
+        rule.waitUntilShown(s(R.string.condition_title))
+        shot("sheet-condition")
+        text(s(R.string.sheet_add)).performClick()
+        rule.waitUntilGone(s(R.string.condition_title))
         shot("editor-filled")
 
         rule.onNodeWithContentDescription(s(R.string.editor_preview)).performClick()

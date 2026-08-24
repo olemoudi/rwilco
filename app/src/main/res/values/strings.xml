@@ -214,4 +214,17 @@
     <string name="perm_alarms_fix">Allow</string>
     <string name="perm_background_location_missing">Place reminders need location "all the time", or they only work while Rwilco is open.</string>
     <string name="perm_background_location_fix">Allow</string>
+    <string name="editor_any_of_these">Any of these is enough.</string>
+    <string name="editor_add_condition">Only if…</string>
+    <string name="editor_add_another_condition">And only if…</string>
+    <string name="editor_remove_condition">Remove condition</string>
+    <string name="editor_only_if_prefix">only if %1$s</string>
+    <string name="condition_title">Only if</string>
+    <string name="condition_window_hint">The trigger only counts inside these hours.</string>
+    <string name="condition_window_error">Pick two different times.</string>
+    <string name="editor_write">Write the reminder</string>
+    <string name="editor_reuse">Or reuse one</string>
+    <string name="place_search">Search an address</string>
+    <string name="place_search_none">No address found. Try fewer words, or long-press the map.</string>
+    <string name="place_my_location">Centre on my location</string>
 </resources>

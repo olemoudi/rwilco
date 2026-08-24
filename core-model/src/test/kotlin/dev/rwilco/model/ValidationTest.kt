@@ -17,7 +17,7 @@ class ValidationTest {
 
     @Test
     fun `a complete reminder has no errors`() {
-        assertTrue(validate("Water the plants", listOf(tonight), DEFAULT_ACTIONS).isEmpty())
+        assertTrue(validate("Water the plants", listOf(TriggerRule(tonight)), DEFAULT_ACTIONS).isEmpty())
     }
 
     @Test
@@ -26,7 +26,7 @@ class ValidationTest {
             listOf(ValidationError.TextBlank, ValidationError.NoTrigger, ValidationError.NoAction),
             validate("  ", emptyList(), emptySet()),
         )
-        assertEquals(listOf(ValidationError.TextTooLong), validate("x".repeat(MAX_TEXT_LENGTH + 1), listOf(tonight), DEFAULT_ACTIONS))
+        assertEquals(listOf(ValidationError.TextTooLong), validate("x".repeat(MAX_TEXT_LENGTH + 1), listOf(TriggerRule(tonight)), DEFAULT_ACTIONS))
     }
 
     @Test
@@ -51,7 +51,20 @@ class ValidationTest {
                 ValidationError.BadTrigger(6, TriggerProblem.WINDOW_EMPTY),
                 ValidationError.BadTrigger(7, TriggerProblem.WINDOW_EMPTY),
             ),
-            validate("ok", triggers, DEFAULT_ACTIONS),
+            validate("ok", triggers.asRules(), DEFAULT_ACTIONS),
+        )
+    }
+
+    @Test
+    fun `a window that starts where it ends is not a window`() {
+        val rules = listOf(
+            TriggerRule(tonight, listOf(Condition.TimeWindow(LocalTime.of(9, 0), LocalTime.of(9, 0)))),
+            TriggerRule(tonight, listOf(Condition.TimeWindow(LocalTime.of(22, 0), LocalTime.of(6, 0)))),
+        )
+        assertEquals(
+            listOf(ValidationError.BadTrigger(0, TriggerProblem.WINDOW_EMPTY)),
+            validate("ok", rules, DEFAULT_ACTIONS),
+            "crossing midnight is a window; starting where it ends is not",
         )
     }
 
@@ -65,7 +78,7 @@ class ValidationTest {
         )
         assertEquals(
             listOf(ValidationWarning.InPast(0), ValidationWarning.InPast(1)),
-            warnings(triggers, now, zone, defaultTime),
+            warnings(triggers.asRules(), now, zone, defaultTime),
         )
     }
 }

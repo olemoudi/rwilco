@@ -48,8 +48,8 @@ class GeofenceManager(
         val places = repository.openNow()
             .filter { it.status == Status.ACTIVE }
             .flatMap { reminder ->
-                reminder.triggers.mapIndexedNotNull { index, trigger ->
-                    (trigger as? Trigger.Location)?.let { GeofenceIds.encode(reminder.id, index) to it }
+                reminder.rules.mapIndexedNotNull { index, rule ->
+                    (rule.trigger as? Trigger.Location)?.let { GeofenceIds.encode(reminder.id, index) to it }
                 }
             }
             // A hard limit of 100 per app: past that Play Services refuses the whole batch, so

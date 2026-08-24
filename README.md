@@ -34,16 +34,21 @@ Once installed, Rwilco keeps itself up to date from this same page.
 
 ## Status
 
-Phase 1: the app itself — every screen, the pickers, local storage, self-update. Reminders are
-designed, saved and previewed, but **do not fire yet**; that is phase 2 (exact alarms,
-full-screen alerts, place triggers, sounds).
+Reminders fire: exact alarms, a full-screen alert over the lock screen, notifications with
+"Done" and "Snooze", and place triggers through geofencing. A reminder can be fenced in —
+*arriving home, and only between six and ten* — and what you have written before is offered
+back instead of a blank keyboard.
+
+Verified on an emulator; the place triggers are the part that only a real phone in a real street
+can really prove.
 
 ## Honest limitations
 
-- Nothing fires yet (see above).
 - The place picker's map tiles need a connection; without one the pin still works, over a
   blank map. The rest of the app never needs a connection (except to check for updates).
 - No sync or backup: what is on the phone is the only copy.
+- Place reminders need location "all the time" and Play Services; without them the rest of the
+  app is unaffected and Settings says so.
 
 ## Building
 

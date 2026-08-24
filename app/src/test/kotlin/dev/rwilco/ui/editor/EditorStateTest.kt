@@ -6,6 +6,7 @@ import dev.rwilco.model.MAX_TEXT_LENGTH
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
 import dev.rwilco.model.Trigger
+import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.TriggerKind
 import dev.rwilco.model.ValidationError
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -38,7 +39,7 @@ class EditorStateTest {
         assertTrue(state.dirty)
         assertTrue(state.canSave)
         assertEquals(EditorSheet.None, state.sheet)
-        assertEquals(listOf(tonight), state.draft.triggers)
+        assertEquals(listOf(tonight), state.draft.rules.map { it.trigger })
     }
 
     @Test
@@ -75,9 +76,9 @@ class EditorStateTest {
         assertEquals(EditorSheet.Configure(TriggerKind.REPEAT_TIME, 1, weekly), state.sheet)
         val changed = weekly.copy(time = LocalTime.of(8, 0))
         state = state.commitTrigger(1, changed)
-        assertEquals(listOf(tonight, changed), state.draft.triggers)
+        assertEquals(listOf(tonight, changed), state.draft.rules.map { it.trigger })
         state = state.removeTrigger(0)
-        assertEquals(listOf(changed), state.draft.triggers)
+        assertEquals(listOf(changed), state.draft.rules.map { it.trigger })
         assertEquals(state, state.editTrigger(5), "editing a row that is not there is a no-op")
     }
 
@@ -92,7 +93,7 @@ class EditorStateTest {
     @Test
     fun `a reminder round-trips through the draft, and a saved draft is clean again`() {
         val reminder = Reminder(
-            id = "r1", text = "Water the plants", tags = listOf("casa"), triggers = listOf(weekly),
+            id = "r1", text = "Water the plants", tags = listOf("casa"), rules = listOf(TriggerRule(weekly)),
             actions = setOf(Action.FULL_SCREEN), status = Status.PAUSED,
             createdAt = Instant.ofEpochSecond(1), updatedAt = Instant.ofEpochSecond(2),
         )

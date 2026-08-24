@@ -8,6 +8,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import dev.rwilco.R
+import dev.rwilco.model.Condition
 import dev.rwilco.model.CountdownParts
 import dev.rwilco.model.Period
 import dev.rwilco.model.Transition
@@ -52,6 +53,19 @@ fun countdownText(parts: CountdownParts): String {
         else -> seconds
     }
     return if (parts.overdue) stringResource(R.string.countdown_ago, body) else stringResource(R.string.countdown_in, body)
+}
+
+/** A condition in a few words: "18:00–22:00 · L M X J V". */
+@Composable
+fun conditionLabel(condition: Condition): String {
+    val locale = currentLocale()
+    val is24h = rememberIs24h()
+    return when (condition) {
+        is Condition.TimeWindow -> {
+            val window = TimeText.window(condition.from, condition.to, is24h, locale)
+            if (condition.days.isEmpty() || condition.days.size == 7) window else "$window · " + daysSummary(condition.days, locale)
+        }
+    }
 }
 
 /** A trigger as two lines: the reading (mono when it is a time or date) and the words under it. */

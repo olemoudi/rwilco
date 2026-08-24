@@ -24,7 +24,7 @@ class SettingsViewModel(
 
     /** Only ask for "allow all the time" when something actually waits on a place. */
     val hasPlaceReminders: StateFlow<Boolean> = repository.open
-        .map { reminders -> reminders.any { it.triggers.any { trigger -> trigger is Trigger.Location } } }
+        .map { reminders -> reminders.any { reminder -> reminder.rules.any { it.trigger is Trigger.Location } } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
 

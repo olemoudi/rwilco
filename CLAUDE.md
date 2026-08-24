@@ -253,8 +253,11 @@ These are standing rules for this repository. Follow them without being re-asked
 - **Config (DataStore/JSON)** is forward-compatible by construction: new fields get defaults and
   decoders use `ignoreUnknownKeys`, so additive changes need no migration. For a non-additive
   change, migrate old JSON in the store's read path — never break existing installs.
-- **Trigger JSON**: the `@SerialName` discriminators in `core-model` are frozen; unknown
-  trigger types and actions are skipped on read, never fatal.
+- **Trigger JSON**: the `@SerialName` discriminators in `core-model` are frozen; unknown trigger
+  types and actions are skipped on read, never fatal. The `reminder.triggers` column holds
+  `TriggerRule`s, and still reads the bare trigger list v0.1.0 wrote — do not drop that path.
+  An unknown *condition* is dropped without its rule: erring towards ringing too often is the
+  right way round, because the failure somebody notices is the one that never arrives.
 - **Room** uses `exportSchema = true` (schemas in `app/schemas`). For every `version` bump add a
   `Migration` to `RwilcoDatabase.MIGRATIONS`; **do not** enable destructive migration.
 

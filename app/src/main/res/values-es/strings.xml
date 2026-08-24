@@ -212,4 +212,17 @@
     <string name="perm_alarms_fix">Permitir</string>
     <string name="perm_background_location_missing">Los recordatorios por lugar necesitan la ubicación "todo el tiempo"; si no, solo funcionan con Rwilco abierta.</string>
     <string name="perm_background_location_fix">Permitir</string>
+    <string name="editor_any_of_these">Con que ocurra cualquiera de estos, basta.</string>
+    <string name="editor_add_condition">Sólo si…</string>
+    <string name="editor_add_another_condition">Y sólo si…</string>
+    <string name="editor_remove_condition">Quitar condición</string>
+    <string name="editor_only_if_prefix">sólo si %1$s</string>
+    <string name="condition_title">Sólo si</string>
+    <string name="condition_window_hint">El disparador sólo cuenta dentro de estas horas.</string>
+    <string name="condition_window_error">Elige dos horas distintas.</string>
+    <string name="editor_write">Escribir el recordatorio</string>
+    <string name="editor_reuse">O reutilizar uno</string>
+    <string name="place_search">Buscar una dirección</string>
+    <string name="place_search_none">No se encontró esa dirección. Prueba con menos palabras o mantén pulsado el mapa.</string>
+    <string name="place_my_location">Centrar en mi ubicación</string>
 </resources>

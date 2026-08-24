@@ -4,7 +4,9 @@ import dev.rwilco.model.Action
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
 import dev.rwilco.model.Transition
+import dev.rwilco.model.Condition
 import dev.rwilco.model.Trigger
+import dev.rwilco.model.TriggerRule
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.time.DayOfWeek
@@ -18,9 +20,12 @@ class ReminderEntityMappingTest {
         id = "abc",
         text = "Water the plants",
         tags = listOf("casa", "balcón"),
-        triggers = listOf(
-            Trigger.AtTime(LocalTime.of(10, 0), setOf(DayOfWeek.SATURDAY)),
-            Trigger.Location(40.4, -3.7, 200, Transition.ENTER, "Casa"),
+        rules = listOf(
+            TriggerRule(Trigger.AtTime(LocalTime.of(10, 0), setOf(DayOfWeek.SATURDAY))),
+            TriggerRule(
+                Trigger.Location(40.4, -3.7, 200, Transition.ENTER, "Casa"),
+                listOf(Condition.TimeWindow(LocalTime.of(18, 0), LocalTime.of(22, 0))),
+            ),
         ),
         actions = setOf(Action.FULL_SCREEN, Action.VIBRATE),
         status = Status.PAUSED,
@@ -77,6 +82,13 @@ class ReminderEntityMappingTest {
     @Test
     fun `a trigger from the future is dropped without losing the row`() {
         val row = reminder.toEntity().copy(triggers = """[{"type":"at_date_time","at":"2026-08-27T21:30"},{"type":"mood","value":3}]""")
-        assertEquals(listOf(Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 21, 30))), row.toDomain().triggers)
+        assertEquals(listOf(TriggerRule(Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 21, 30)))), row.toDomain().rules)
+    }
+
+    @Test
+    fun `a row from before conditions existed still reads`() {
+        // Exactly what v0.1.0 wrote into this column.
+        val row = reminder.toEntity().copy(triggers = """[{"type":"on_date","date":"2026-09-01"}]""")
+        assertEquals(listOf(TriggerRule(Trigger.OnDate(java.time.LocalDate.of(2026, 9, 1)))), row.toDomain().rules)
     }
 }

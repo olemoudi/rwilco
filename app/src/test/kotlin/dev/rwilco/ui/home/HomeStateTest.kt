@@ -6,6 +6,7 @@ import dev.rwilco.model.Section
 import dev.rwilco.model.Status
 import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
+import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.TriggerFamily
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -25,7 +26,7 @@ class HomeStateTest {
     private val defaultTime = LocalTime.of(9, 0)
 
     private fun reminder(id: String, vararg triggers: Trigger, tags: List<String> = emptyList(), status: Status = Status.ACTIVE) =
-        Reminder(id = id, text = "text $id", tags = tags, triggers = triggers.toList(), status = status, createdAt = now, updatedAt = now)
+        Reminder(id = id, text = "text $id", tags = tags, rules = triggers.map(::TriggerRule), status = status, createdAt = now, updatedAt = now)
 
     private val soon = reminder("soon", Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 16, 0)), tags = listOf("casa"))
     private val place = reminder("place", Trigger.Location(40.4, -3.7, 200, Transition.ENTER, "Casa"), tags = listOf("casa"))

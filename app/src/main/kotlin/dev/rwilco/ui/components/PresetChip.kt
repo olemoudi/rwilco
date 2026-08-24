@@ -9,6 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.rwilco.ui.theme.Tokens
 
@@ -21,7 +22,7 @@ fun PresetChip(label: String, onClick: () -> Unit, modifier: Modifier = Modifier
             haptics.perform(HapticFeedbackType.Confirm)
             onClick()
         },
-        label = { Text(label, style = MaterialTheme.typography.labelLarge) },
+        label = { Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         shape = MaterialTheme.shapes.small,
         colors = AssistChipDefaults.assistChipColors(
             containerColor = if (selected) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.surfaceContainerLow,

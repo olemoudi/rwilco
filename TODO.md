@@ -2,10 +2,6 @@
 
 Running notes: what is next, what cost time, what must not be re-derived.
 
-## Next
-- First release: bump `versionCode`/`versionName` in `app/build.gradle.kts`, push a `v*` tag —
-  only with the owner's explicit OK (public repo, starts the signing chain).
-- Phase 2: firing (see "Decisions parked" below).
 
 ## Emulator notes that cost time
 - `adb shell uiautomator dump` must write to `/data/local/tmp/ui.xml` (the `/sdcard` path
@@ -15,11 +11,16 @@ Running notes: what is next, what cost time, what must not be re-derived.
 - Cold start on the emulator shows an empty Home for ~2–3 s before the first DB emission
   (debug build, swiftshader). Not seen as a product problem yet; watch it on a real phone.
 
-## Decisions parked for phase 2 (firing)
-- **Place triggers: use Play Services `GeofencingClient`** (`play-services-location`) unless the owner's
-  phone has no GMS. Sideloading is not a reason to avoid it — GMS libraries work in any app on a
-  GMS device — and the platform alternatives (`LocationManager.addProximityAlert`, periodic
-  polling) are worse on reliability and battery. Needs `ACCESS_BACKGROUND_LOCATION` and the
-  "allow all the time" prompt. The phase-1 place picker only takes one fix via `LocationManager`,
-  so nothing here is decided by the current code. Owner asked on 2026-08-24; answer pending.
+## Still to prove on the real phone (Pixel 8 Pro)
+- A place reminder actually firing in the street, and how long the geofence takes to notice.
+- The full-screen alert over the lock screen, and whether Android 14's full-screen-intent
+  permission is granted or has to be asked for (Settings has the row either way).
+- Whether the alarm sound at alarm volume is right, or too much for "comprar filtros".
+- Haptics: the emulator has no vibrator, so every buzz in the app is unverified.
+
+## Next
+- A place condition ("y sólo si estás en el trabajo") — the `Condition` interface is ready for
+  it; it needs a location read at fire time and a decision about what to do when it is unknown
+  (fail open, presumably).
+- Snooze from the alert screen is wired; snooze from the notification only offers ten minutes.
 

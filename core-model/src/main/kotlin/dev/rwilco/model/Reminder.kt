@@ -6,7 +6,8 @@ data class Reminder(
     val id: String,
     val text: String,
     val tags: List<String> = emptyList(),
-    val triggers: List<Trigger> = emptyList(),
+    /** Any one of them is enough (ORed); a rule's own conditions all have to hold (ANDed). */
+    val rules: List<TriggerRule> = emptyList(),
     val actions: Set<Action> = DEFAULT_ACTIONS,
     val status: Status = Status.ACTIVE,
     val createdAt: Instant,
@@ -31,3 +32,6 @@ enum class Action { FULL_SCREEN, NOTIFICATION, SOUND, VIBRATE }
 enum class Status { ACTIVE, PAUSED, DONE }
 
 val DEFAULT_ACTIONS: Set<Action> = setOf(Action.NOTIFICATION, Action.VIBRATE)
+
+/** The events, without their conditions — for anything that only cares what kind they are. */
+val Reminder.triggers: List<Trigger> get() = rules.map { it.trigger }

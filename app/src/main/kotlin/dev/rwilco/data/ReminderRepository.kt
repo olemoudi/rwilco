@@ -24,6 +24,9 @@ class ReminderRepository(private val dao: ReminderDao, private val clock: Clock)
     /** Everything that is not done, right now — what the scheduler arms alarms from. */
     suspend fun openNow(): List<Reminder> = dao.getOpen().map(ReminderEntity::toDomain)
 
+    /** Everything, done included — the raw material for suggesting text somebody has used before. */
+    suspend fun allNow(): List<Reminder> = dao.getAll().map(ReminderEntity::toDomain)
+
     suspend fun snooze(id: String, until: Instant?) = dao.setSnooze(id, until?.toEpochMilli())
 
     suspend fun markFired(id: String, at: Instant) = dao.markFired(id, at.toEpochMilli())

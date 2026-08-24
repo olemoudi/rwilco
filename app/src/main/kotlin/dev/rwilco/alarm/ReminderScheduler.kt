@@ -13,7 +13,7 @@ import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.NextFire
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
-import dev.rwilco.model.Trigger
+import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.missedFire
 import dev.rwilco.model.nextFire
 import kotlinx.coroutines.flow.first
@@ -139,13 +139,13 @@ class ReminderScheduler(
 
         /** What the scheduling of a list depends on; anything else changing must not re-arm it. */
         fun schedulingKey(reminder: Reminder): SchedulingKey =
-            SchedulingKey(reminder.id, reminder.status, reminder.triggers, reminder.snoozedUntil)
+            SchedulingKey(reminder.id, reminder.status, reminder.rules, reminder.snoozedUntil)
     }
 
     data class SchedulingKey(
         val id: String,
         val status: Status,
-        val triggers: List<Trigger>,
+        val rules: List<TriggerRule>,
         val snoozedUntil: Instant?,
     )
 }

@@ -3,6 +3,8 @@ package dev.rwilco.model
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 
 /**
@@ -19,24 +21,45 @@ object ReminderCodec {
     }
 
     private val strings = ListSerializer(String.serializer())
-    private val triggers = ListSerializer(Trigger.serializer())
+    private val rules = ListSerializer(TriggerRule.serializer())
+    private val conditions = ListSerializer(Condition.serializer())
 
     fun encodeTags(tags: List<String>): String = json.encodeToString(strings, tags)
 
     fun decodeTags(raw: String): List<String> =
         runCatching { json.decodeFromString(strings, raw) }.getOrDefault(emptyList())
 
-    fun encodeTriggers(value: List<Trigger>): String = json.encodeToString(triggers, value)
+    fun encodeRules(value: List<TriggerRule>): String = json.encodeToString(rules, value)
 
     /**
-     * Element by element: a trigger of a kind this build does not know (or a corrupt one) is
-     * skipped, and the reminder survives with the triggers it can still honour.
+     * Element by element, so a rule of a kind this build does not know (or a corrupt one) is
+     * skipped and the reminder survives with the rules it can still honour.
+     *
+     * Two shapes live in this column: a rule, and — from the builds before conditions existed —
+     * a bare trigger. The `trigger` key is what tells them apart.
      */
-    fun decodeTriggers(raw: String): List<Trigger> {
+    fun decodeRules(raw: String): List<TriggerRule> {
         val array = runCatching { json.parseToJsonElement(raw).jsonArray }.getOrElse { return emptyList() }
         return array.mapNotNull { element ->
-            runCatching { json.decodeFromJsonElement(Trigger.serializer(), element) }.getOrNull()
+            runCatching {
+                val obj = element as? JsonObject
+                if (obj != null && obj.containsKey("trigger")) decodeRule(obj)
+                else TriggerRule(json.decodeFromJsonElement(Trigger.serializer(), element))
+            }.getOrNull()
         }
+    }
+
+    /**
+     * A condition this build does not understand is dropped rather than taking the rule with it.
+     * That errs towards ringing too often, which is the right way round for a reminder: the
+     * failure somebody notices is the one that never arrives.
+     */
+    private fun decodeRule(obj: JsonObject): TriggerRule {
+        val trigger = json.decodeFromJsonElement(Trigger.serializer(), obj.getValue("trigger"))
+        val kept = (obj["conditions"] as? JsonArray).orEmpty().mapNotNull { element ->
+            runCatching { json.decodeFromJsonElement(Condition.serializer(), element) }.getOrNull()
+        }
+        return TriggerRule(trigger, kept)
     }
 
     fun encodeActions(actions: Set<Action>): String = json.encodeToString(strings, actions.map { it.name })

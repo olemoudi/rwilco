@@ -21,50 +21,78 @@ class ReminderCodecTest {
 
     @Test
     fun `every trigger kind survives a round trip`() {
-        assertEquals(everyKind, ReminderCodec.decodeTriggers(ReminderCodec.encodeTriggers(everyKind)))
+        val rules = everyKind.asRules()
+        assertEquals(rules, ReminderCodec.decodeRules(ReminderCodec.encodeRules(rules)))
     }
 
     @Test
     fun `the on-disk shape is frozen`() {
         // Golden JSON: renaming a discriminator or a field silently drops every stored trigger of
         // that kind, so the exact text is asserted, not just the round trip.
+        val rules = listOf(
+            TriggerRule(everyKind[0]),
+            TriggerRule(everyKind[2], listOf(Condition.TimeWindow(LocalTime.of(18, 0), LocalTime.of(22, 0), setOf(DayOfWeek.FRIDAY)))),
+        )
         val expected = """[""" +
-            """{"type":"at_date_time","at":"2026-08-27T21:30"},""" +
-            """{"type":"on_date","date":"2026-09-01"},""" +
-            """{"type":"at_time","time":"07:30","days":["MONDAY","FRIDAY"]},""" +
-            """{"type":"location","lat":40.4168,"lng":-3.7038,"radiusM":200,"transition":"ENTER","label":"Casa"},""" +
-            """{"type":"random","timesPer":2,"period":"DAY","from":"10:00","to":"20:00","days":[]},""" +
-            """{"type":"random","timesPer":1,"period":"WEEK","from":"18:00","to":"21:00","days":["SATURDAY"]}""" +
+            """{"trigger":{"type":"at_date_time","at":"2026-08-27T21:30"},"conditions":[]},""" +
+            """{"trigger":{"type":"at_time","time":"07:30","days":["MONDAY","FRIDAY"]},""" +
+            """"conditions":[{"type":"time_window","from":"18:00","to":"22:00","days":["FRIDAY"]}]}""" +
             """]"""
-        assertEquals(expected, ReminderCodec.encodeTriggers(everyKind))
+        assertEquals(expected, ReminderCodec.encodeRules(rules))
+    }
+
+    @Test
+    fun `bare triggers written before conditions existed still read`() {
+        // What v0.1.0 wrote. Dropping these would empty every reminder on the phone at update.
+        val legacy = """[{"type":"on_date","date":"2026-09-01"},{"type":"at_date_time","at":"2026-08-27T21:30"}]"""
+        assertEquals(
+            listOf(
+                TriggerRule(Trigger.OnDate(LocalDate.of(2026, 9, 1))),
+                TriggerRule(Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 21, 30))),
+            ),
+            ReminderCodec.decodeRules(legacy),
+        )
     }
 
     @Test
     fun `a trigger kind from the future is skipped and the rest kept`() {
-        val raw = """[{"type":"on_date","date":"2026-09-01"},{"type":"telepathy","strength":3},{"type":"at_date_time","at":"2026-08-27T21:30"}]"""
+        val raw = """[{"type":"on_date","date":"2026-09-01"},{"type":"telepathy","strength":3},{"trigger":{"type":"at_date_time","at":"2026-08-27T21:30"}}]"""
         assertEquals(
-            listOf(Trigger.OnDate(LocalDate.of(2026, 9, 1)), Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 21, 30))),
-            ReminderCodec.decodeTriggers(raw),
+            listOf(
+                TriggerRule(Trigger.OnDate(LocalDate.of(2026, 9, 1))),
+                TriggerRule(Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 21, 30))),
+            ),
+            ReminderCodec.decodeRules(raw),
+        )
+    }
+
+    @Test
+    fun `a condition from the future is dropped but its rule still rings`() {
+        val raw = """[{"trigger":{"type":"on_date","date":"2026-09-01"},"conditions":[{"type":"weather","is":"rain"}]}]"""
+        assertEquals(
+            listOf(TriggerRule(Trigger.OnDate(LocalDate.of(2026, 9, 1)))),
+            ReminderCodec.decodeRules(raw),
+            "a restriction we cannot judge must not turn into a reminder that never arrives",
         )
     }
 
     @Test
     fun `a corrupt element is skipped and unknown fields ignored`() {
         val raw = """[{"type":"on_date","date":"not a date"},{"type":"on_date","date":"2026-09-01","colour":"red"}]"""
-        assertEquals(listOf(Trigger.OnDate(LocalDate.of(2026, 9, 1))), ReminderCodec.decodeTriggers(raw))
+        assertEquals(listOf(TriggerRule(Trigger.OnDate(LocalDate.of(2026, 9, 1)))), ReminderCodec.decodeRules(raw))
     }
 
     @Test
-    fun `garbage decodes to no triggers rather than a crash`() {
-        assertTrue(ReminderCodec.decodeTriggers("").isEmpty())
-        assertTrue(ReminderCodec.decodeTriggers("{}").isEmpty())
-        assertTrue(ReminderCodec.decodeTriggers("nope").isEmpty())
+    fun `garbage decodes to no rules rather than a crash`() {
+        assertTrue(ReminderCodec.decodeRules("").isEmpty())
+        assertTrue(ReminderCodec.decodeRules("{}").isEmpty())
+        assertTrue(ReminderCodec.decodeRules("nope").isEmpty())
     }
 
     @Test
     fun `random period defaults to DAY when the field is missing`() {
         val raw = """[{"type":"random","timesPer":2,"from":"10:00","to":"20:00"}]"""
-        val decoded = ReminderCodec.decodeTriggers(raw).single() as Trigger.Random
+        val decoded = ReminderCodec.decodeRules(raw).single().trigger as Trigger.Random
         assertEquals(Period.DAY, decoded.period)
         assertTrue(decoded.days.isEmpty())
     }

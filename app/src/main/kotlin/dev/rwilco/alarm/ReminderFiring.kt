@@ -6,6 +6,7 @@ import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.Snooze
 import dev.rwilco.model.Status
+import dev.rwilco.model.allHoldAt
 import dev.rwilco.model.firingPlan
 import dev.rwilco.model.missedFire
 import dev.rwilco.model.statusAfterDismissal
@@ -26,11 +27,21 @@ class ReminderFiring(
     private val clock: Clock,
 ) {
 
-    /** The alarm went off. [late] is the moment it should have gone off at, if it slept through. */
-    suspend fun fire(id: String, late: Instant? = null) {
+    /**
+     * The moment arrived. [late] is when it should have arrived, if the phone slept through it;
+     * [ruleIndex] says which rule rang, which is what lets a place be judged against the
+     * conditions on it ("al llegar a casa, y sólo si es por la tarde"). An alarm needs no such
+     * check: the moment it was armed for already satisfied them.
+     */
+    suspend fun fire(id: String, late: Instant? = null, ruleIndex: Int? = null) {
         val reminder = repository.get(id) ?: return
         if (reminder.status != Status.ACTIVE) return
         val now = clock.instant()
+        val rule = ruleIndex?.let { reminder.rules.getOrNull(it) }
+        if (rule != null && !rule.conditions.allHoldAt(now, clock.zone)) {
+            Log.i(TAG, "$id reached its place outside the hours it asked for")
+            return
+        }
         // A snooze set after the alarm was armed (from the notification, a moment ago) wins.
         val snoozed = reminder.snoozedUntil
         if (snoozed != null && snoozed > now) {

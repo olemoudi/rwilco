@@ -2,12 +2,14 @@ package dev.rwilco.debug
 
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.model.Action
+import dev.rwilco.model.Condition
 import dev.rwilco.model.DEFAULT_ACTIONS
 import dev.rwilco.model.Period
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
 import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
+import dev.rwilco.model.TriggerRule
 import java.time.Clock
 import java.time.DayOfWeek
 import java.time.Duration
@@ -32,7 +34,7 @@ object DemoData {
                 id = "demo-$id",
                 text = text,
                 tags = tags,
-                triggers = triggers.toList(),
+                rules = triggers.map { TriggerRule(it) },
                 actions = actions,
                 status = status,
                 createdAt = now.minus(Duration.ofMinutes(ageMinutes + 60)),
@@ -82,7 +84,15 @@ object DemoData {
                 "umbrella", "Coger el paraguas del paragüero", listOf("casa"),
                 Trigger.Location(40.4168, -3.7038, 150, Transition.EXIT, "Casa"),
                 ageMinutes = 400,
-            ),
+            ).let { umbrella ->
+                // The one that shows a rule with a condition on it: only on the way out in the
+                // morning, not every time the door closes.
+                umbrella.copy(
+                    rules = umbrella.rules.map { rule ->
+                        rule.copy(conditions = listOf(Condition.TimeWindow(LocalTime.of(7, 0), LocalTime.of(10, 0))))
+                    },
+                )
+            },
             reminder(
                 "water", "Beber un vaso de agua", listOf("salud"),
                 Trigger.Random(2, Period.DAY, LocalTime.of(10, 0), LocalTime.of(20, 0), emptySet()),

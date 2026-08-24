@@ -1,12 +1,14 @@
 package dev.rwilco.ui.editor
 
 import dev.rwilco.model.Action
+import dev.rwilco.model.Condition
 import dev.rwilco.model.DEFAULT_ACTIONS
 import dev.rwilco.model.MAX_TEXT_LENGTH
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerKind
+import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.ValidationError
 import dev.rwilco.model.kind
 import dev.rwilco.model.normalizeTag
@@ -18,11 +20,11 @@ import java.time.LocalTime
 data class Draft(
     val text: String = "",
     val tags: List<String> = emptyList(),
-    val triggers: List<Trigger> = emptyList(),
+    val rules: List<TriggerRule> = emptyList(),
     val actions: Set<Action> = DEFAULT_ACTIONS,
 )
 
-fun Reminder.toDraft() = Draft(text = text, tags = tags, triggers = triggers, actions = actions)
+fun Reminder.toDraft() = Draft(text = text, tags = tags, rules = rules, actions = actions)
 
 /**
  * Note what is NOT carried over: a snooze, the last ring, the armed moment. Editing a reminder
@@ -33,7 +35,7 @@ fun Draft.toReminder(id: String, createdAt: Instant, now: Instant, status: Statu
     id = id,
     text = text.trim(),
     tags = tags,
-    triggers = triggers,
+    rules = rules,
     actions = actions,
     status = status,
     createdAt = createdAt,
@@ -47,6 +49,9 @@ sealed interface EditorSheet {
 
     /** Configuring a trigger; [index] is null when adding, otherwise the row being edited. */
     data class Configure(val kind: TriggerKind, val index: Int?, val initial: Trigger?) : EditorSheet
+
+    /** A restriction on the rule at [ruleIndex]; [conditionIndex] is null when adding one. */
+    data class ConfigureCondition(val ruleIndex: Int, val conditionIndex: Int?, val initial: Condition?) : EditorSheet
 }
 
 data class EditorUiState(
@@ -55,7 +60,10 @@ data class EditorUiState(
     val draft: Draft = Draft(),
     /** What was loaded (or the blank draft): the yardstick for "unsaved changes". */
     val initial: Draft = Draft(),
+    /** Tags already in use, most-used-recently first. */
     val existingTags: List<String> = emptyList(),
+    /** Reminder texts written before, most-used-recently first: the offer instead of a keyboard. */
+    val suggestedTexts: List<String> = emptyList(),
     val sheet: EditorSheet = EditorSheet.None,
     val previewing: Boolean = false,
     /** Errors are only shown once a save was attempted; before that the form stays quiet. */
@@ -65,7 +73,7 @@ data class EditorUiState(
     val defaultTime: LocalTime = LocalTime.of(9, 0),
 ) {
     val dirty: Boolean get() = draft != initial
-    val errors: List<ValidationError> get() = validate(draft.text, draft.triggers, draft.actions)
+    val errors: List<ValidationError> get() = validate(draft.text, draft.rules, draft.actions)
     val canSave: Boolean get() = errors.isEmpty()
 }
 
@@ -97,21 +105,51 @@ fun EditorUiState.pickKind(kind: TriggerKind): EditorUiState =
     copy(sheet = EditorSheet.Configure(kind, index = null, initial = null))
 
 fun EditorUiState.editTrigger(index: Int): EditorUiState {
-    val trigger = draft.triggers.getOrNull(index) ?: return this
+    val trigger = draft.rules.getOrNull(index)?.trigger ?: return this
     return copy(sheet = EditorSheet.Configure(trigger.kind, index, trigger))
 }
 
 fun EditorUiState.removeTrigger(index: Int): EditorUiState =
-    copy(draft = draft.copy(triggers = draft.triggers.filterIndexed { i, _ -> i != index }))
+    copy(draft = draft.copy(rules = draft.rules.filterIndexed { i, _ -> i != index }))
 
-/** The configurator's result: replaces the row being edited, or appends. Closes the sheet. */
+/**
+ * The configurator's result: replaces the trigger of the rule being edited — keeping whatever
+ * conditions were put on it — or appends a rule with no conditions. Closes the sheet.
+ */
 fun EditorUiState.commitTrigger(index: Int?, trigger: Trigger): EditorUiState {
-    val triggers = if (index != null && index in draft.triggers.indices) {
-        draft.triggers.mapIndexed { i, existing -> if (i == index) trigger else existing }
+    val rules = if (index != null && index in draft.rules.indices) {
+        draft.rules.mapIndexed { i, rule -> if (i == index) rule.copy(trigger = trigger) else rule }
     } else {
-        draft.triggers + trigger
+        draft.rules + TriggerRule(trigger)
     }
-    return copy(draft = draft.copy(triggers = triggers), sheet = EditorSheet.None)
+    return copy(draft = draft.copy(rules = rules), sheet = EditorSheet.None)
+}
+
+fun EditorUiState.addCondition(ruleIndex: Int): EditorUiState =
+    if (ruleIndex !in draft.rules.indices) this
+    else copy(sheet = EditorSheet.ConfigureCondition(ruleIndex, null, null))
+
+fun EditorUiState.editCondition(ruleIndex: Int, conditionIndex: Int): EditorUiState {
+    val condition = draft.rules.getOrNull(ruleIndex)?.conditions?.getOrNull(conditionIndex) ?: return this
+    return copy(sheet = EditorSheet.ConfigureCondition(ruleIndex, conditionIndex, condition))
+}
+
+fun EditorUiState.removeCondition(ruleIndex: Int, conditionIndex: Int): EditorUiState =
+    mapRule(ruleIndex) { rule -> rule.copy(conditions = rule.conditions.filterIndexed { i, _ -> i != conditionIndex }) }
+
+fun EditorUiState.commitCondition(ruleIndex: Int, conditionIndex: Int?, condition: Condition): EditorUiState =
+    mapRule(ruleIndex) { rule ->
+        val conditions = if (conditionIndex != null && conditionIndex in rule.conditions.indices) {
+            rule.conditions.mapIndexed { i, existing -> if (i == conditionIndex) condition else existing }
+        } else {
+            rule.conditions + condition
+        }
+        rule.copy(conditions = conditions)
+    }.copy(sheet = EditorSheet.None)
+
+private fun EditorUiState.mapRule(index: Int, transform: (TriggerRule) -> TriggerRule): EditorUiState {
+    if (index !in draft.rules.indices) return this
+    return copy(draft = draft.copy(rules = draft.rules.mapIndexed { i, rule -> if (i == index) transform(rule) else rule }))
 }
 
 fun EditorUiState.closeSheet(): EditorUiState = copy(sheet = EditorSheet.None)

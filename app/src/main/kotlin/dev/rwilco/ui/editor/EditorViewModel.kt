@@ -9,9 +9,11 @@ import dev.rwilco.model.Action
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
+import dev.rwilco.model.Condition
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerKind
-import dev.rwilco.model.tagsInUse
+import dev.rwilco.model.suggestedTags
+import dev.rwilco.model.suggestedTexts
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,16 +54,20 @@ class EditorViewModel(
     init {
         viewModelScope.launch {
             val current = settings.filterNotNull().first()
-            val tags = tagsInUse(repository.open.first())
             val loaded = reminderId?.let { repository.get(it) }
             existing = loaded
             val draft = loaded?.toDraft() ?: Draft()
+            // Everything ever written, done included: the point is to hand back what has been
+            // said before rather than ask for it again.
+            val past = repository.allNow()
+            val now = clock.instant()
             _state.value = EditorUiState(
                 loaded = true,
                 isNew = loaded == null,
                 draft = draft,
                 initial = draft,
-                existingTags = tags,
+                existingTags = suggestedTags(past, now),
+                suggestedTexts = suggestedTexts(past, now, limit = 8, exclude = draft.text),
                 defaultTime = current.defaultTime,
             )
         }
@@ -76,6 +82,11 @@ class EditorViewModel(
     fun editTrigger(index: Int) = _state.update { it.editTrigger(index) }
     fun removeTrigger(index: Int) = _state.update { it.removeTrigger(index) }
     fun commitTrigger(index: Int?, trigger: Trigger) = _state.update { it.commitTrigger(index, trigger) }
+    fun addCondition(ruleIndex: Int) = _state.update { it.addCondition(ruleIndex) }
+    fun editCondition(ruleIndex: Int, conditionIndex: Int) = _state.update { it.editCondition(ruleIndex, conditionIndex) }
+    fun removeCondition(ruleIndex: Int, conditionIndex: Int) = _state.update { it.removeCondition(ruleIndex, conditionIndex) }
+    fun commitCondition(ruleIndex: Int, conditionIndex: Int?, condition: Condition) =
+        _state.update { it.commitCondition(ruleIndex, conditionIndex, condition) }
     fun closeSheet() = _state.update { it.closeSheet() }
     fun setPreviewing(previewing: Boolean) = _state.update { it.copy(previewing = previewing) }
 

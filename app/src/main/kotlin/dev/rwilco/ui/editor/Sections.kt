@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -20,15 +22,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.FilterAlt
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.testTag
@@ -50,10 +59,13 @@ import androidx.compose.ui.unit.dp
 import dev.rwilco.R
 import dev.rwilco.model.Action
 import dev.rwilco.model.Trigger
+import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.family
 import dev.rwilco.model.kind
+import dev.rwilco.ui.components.PresetChip
 import dev.rwilco.ui.components.TagChip
 import dev.rwilco.ui.components.TriggerKeycap
+import dev.rwilco.ui.format.conditionLabel
 import dev.rwilco.ui.format.triggerLine
 import dev.rwilco.ui.home.labelRes
 import dev.rwilco.ui.theme.MonoStyles
@@ -65,12 +77,39 @@ import java.time.LocalTime
 /** Lets the instrumented tour find the text field; a BasicTextField has no other handle. */
 const val EDITOR_TEXT_TAG = "editorText"
 
-/** The reminder's own words, big, with nothing around them but a placeholder. */
+/**
+ * The reminder's own words — offered before they are asked for.
+ *
+ * Everyday reminders repeat, so the keyboard is usually the slow way in: what comes up first is
+ * a button for people who do want to type, and under it what they have written before, best
+ * first. Nothing is auto-focused; a keyboard that opens by itself hides exactly the list that
+ * would have saved the typing.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun TextSection(text: String, onTextChange: (String) -> Unit, autoFocus: Boolean, error: Boolean) {
+internal fun TextSection(
+    text: String,
+    suggestions: List<String>,
+    onTextChange: (String) -> Unit,
+    error: Boolean,
+) {
     val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(autoFocus) { if (autoFocus) focusRequester.requestFocus() }
+    var focused by remember { mutableStateOf(false) }
+    val writing = focused || text.isNotEmpty()
     Column {
+        if (!writing) {
+            OutlinedButton(
+                onClick = { focusRequester.requestFocus() },
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = Tokens.sizes.control),
+            ) {
+                Icon(Icons.Outlined.Edit, contentDescription = null)
+                Spacer(Modifier.width(Tokens.spacing.sm))
+                Text(stringResource(R.string.editor_write), style = MaterialTheme.typography.titleMedium)
+            }
+        }
         BasicTextField(
             value = text,
             onValueChange = onTextChange,
@@ -79,13 +118,15 @@ internal fun TextSection(text: String, onTextChange: (String) -> Unit, autoFocus
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 96.dp)
-                .padding(top = Tokens.spacing.md)
+                .then(if (writing) Modifier.heightIn(min = 96.dp).padding(top = Tokens.spacing.md) else Modifier)
+                .onFocusChanged { focused = it.isFocused }
                 .focusRequester(focusRequester)
                 .testTag(EDITOR_TEXT_TAG),
             decorationBox = { inner ->
                 Box {
-                    if (text.isEmpty()) {
+                    // Only while writing: with the button up there, a second "what do you want to
+                    // remember?" is one prompt too many.
+                    if (writing && text.isEmpty()) {
                         Text(
                             text = stringResource(R.string.editor_text_placeholder),
                             style = MaterialTheme.typography.headlineSmall,
@@ -97,6 +138,18 @@ internal fun TextSection(text: String, onTextChange: (String) -> Unit, autoFocus
             },
         )
         if (error) FieldError(stringResource(R.string.editor_error_text))
+        if (text.isEmpty() && suggestions.isNotEmpty()) {
+            Spacer(Modifier.height(Tokens.spacing.lg))
+            SectionTitle(stringResource(R.string.editor_reuse))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
+                verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
+            ) {
+                for (suggestion in suggestions) {
+                    PresetChip(label = suggestion, onClick = { onTextChange(suggestion) })
+                }
+            }
+        }
     }
 }
 
@@ -177,30 +230,44 @@ internal fun TagsSection(
 
 @Composable
 internal fun TriggersSection(
-    triggers: List<Trigger>,
+    rules: List<TriggerRule>,
     today: LocalDate,
     defaultTime: LocalTime,
     inPast: Set<Int>,
     onAdd: () -> Unit,
     onEdit: (Int) -> Unit,
     onRemove: (Int) -> Unit,
+    onAddCondition: (Int) -> Unit,
+    onEditCondition: (Int, Int) -> Unit,
+    onRemoveCondition: (Int, Int) -> Unit,
     error: Boolean,
 ) {
     Column {
         SectionTitle(stringResource(R.string.editor_when_title))
+        if (rules.size > 1) {
+            Text(
+                text = stringResource(R.string.editor_any_of_these),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = Tokens.spacing.sm),
+            )
+        }
         Column(verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm)) {
-            triggers.forEachIndexed { index, trigger ->
+            rules.forEachIndexed { index, rule ->
                 TriggerEditRow(
-                    trigger = trigger,
+                    rule = rule,
                     today = today,
                     defaultTime = defaultTime,
                     inPast = index in inPast,
                     onEdit = { onEdit(index) },
                     onRemove = { onRemove(index) },
+                    onAddCondition = { onAddCondition(index) },
+                    onEditCondition = { conditionIndex -> onEditCondition(index, conditionIndex) },
+                    onRemoveCondition = { conditionIndex -> onRemoveCondition(index, conditionIndex) },
                 )
             }
         }
-        if (triggers.isNotEmpty()) Spacer(Modifier.height(Tokens.spacing.sm))
+        if (rules.isNotEmpty()) Spacer(Modifier.height(Tokens.spacing.sm))
         OutlinedButton(
             onClick = onAdd,
             shape = MaterialTheme.shapes.medium,
@@ -216,15 +283,20 @@ internal fun TriggersSection(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TriggerEditRow(
-    trigger: Trigger,
+    rule: TriggerRule,
     today: LocalDate,
     defaultTime: LocalTime,
     inPast: Boolean,
     onEdit: () -> Unit,
     onRemove: () -> Unit,
+    onAddCondition: () -> Unit,
+    onEditCondition: (Int) -> Unit,
+    onRemoveCondition: (Int) -> Unit,
 ) {
+    val trigger = rule.trigger
     val line = triggerLine(trigger, today, defaultTime)
     Surface(
         shape = MaterialTheme.shapes.medium,
@@ -256,6 +328,48 @@ private fun TriggerEditRow(
                 }
             }
             if (inPast) FieldWarning(stringResource(R.string.editor_warning_past))
+            // The conditions sit under the trigger they restrict, because that is what they are:
+            // not another way to ring, but a fence around this one.
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
+                verticalArrangement = Arrangement.spacedBy(Tokens.spacing.xs),
+                modifier = Modifier.padding(top = Tokens.spacing.xs, end = Tokens.spacing.md),
+            ) {
+                rule.conditions.forEachIndexed { index, condition ->
+                    InputChip(
+                        selected = false,
+                        onClick = { onEditCondition(index) },
+                        colors = InputChipDefaults.inputChipColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            trailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
+                        label = { Text(conditionLabel(condition), style = MaterialTheme.typography.labelMedium) },
+                        leadingIcon = { Icon(Icons.Outlined.FilterAlt, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                        trailingIcon = {
+                            Icon(
+                                imageVector = Icons.Outlined.Close,
+                                contentDescription = stringResource(R.string.editor_remove_condition),
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .clickable { onRemoveCondition(index) },
+                            )
+                        },
+                        shape = MaterialTheme.shapes.small,
+                    )
+                }
+                TextButton(
+                    onClick = onAddCondition,
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant),
+                    contentPadding = PaddingValues(horizontal = Tokens.spacing.sm),
+                ) {
+                    Text(
+                        text = stringResource(if (rule.conditions.isEmpty()) R.string.editor_add_condition else R.string.editor_add_another_condition),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+            }
         }
     }
 }

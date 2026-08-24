@@ -71,7 +71,11 @@ fun SheetScaffold(
                     .padding(bottom = spacing.md),
                 horizontalArrangement = Arrangement.spacedBy(spacing.sm),
             ) {
-                TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = Tokens.sizes.control)) {
+                TextButton(
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant),
+                    modifier = Modifier.heightIn(min = Tokens.sizes.control),
+                ) {
                     Text(stringResource(R.string.sheet_cancel))
                 }
                 Button(

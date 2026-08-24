@@ -36,17 +36,43 @@ sealed interface NextFire {
  */
 fun nextFire(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalTime): NextFire? {
     if (reminder.status != Status.ACTIVE) return null
-    // A snooze outranks every trigger: it is the person saying "not now, then".
+    // A snooze outranks every rule: it is the person saying "not now, then".
     val snoozedUntil = reminder.snoozedUntil
     if (snoozedUntil != null && snoozedUntil > now) {
-        val trigger = reminder.triggers.firstOrNull() ?: return null
+        val trigger = reminder.rules.firstOrNull()?.trigger ?: return null
         return NextFire.Scheduled(snoozedUntil, trigger, snoozed = true)
     }
-    val candidates = reminder.triggers.mapNotNull { nextFireOf(it, reminder.id, now, zone, defaultTime) }
+    val candidates = reminder.rules.mapNotNull { nextFireOfRule(it, reminder.id, now, zone, defaultTime) }
     return candidates.filterIsInstance<NextFire.Scheduled>().minByOrNull { it.at }
         ?: candidates.filterIsInstance<NextFire.Sometime>().minByOrNull { it.at }
         ?: candidates.filterIsInstance<NextFire.WhenAt>().firstOrNull()
 }
+
+/**
+ * A rule's next fire: the first moment its trigger produces that all of its conditions hold at.
+ *
+ * Walks candidate moments rather than solving for them, because "every day at nine, and only in
+ * June" is a search either way — and it stops after [MAX_CANDIDATES] so a rule that can never
+ * be satisfied ("at 09:00, and only between 18:00 and 22:00") answers "never" instead of
+ * looping. A place is judged when it happens, not now, so it comes back untouched.
+ */
+fun nextFireOfRule(rule: TriggerRule, reminderId: String, now: Instant, zone: ZoneId, defaultTime: LocalTime): NextFire? {
+    var after = now
+    repeat(MAX_CANDIDATES) {
+        val candidate = nextFireOf(rule.trigger, reminderId, after, zone, defaultTime) ?: return null
+        val at = when (candidate) {
+            is NextFire.Scheduled -> candidate.at
+            is NextFire.Sometime -> candidate.at
+            is NextFire.WhenAt -> return candidate
+        }
+        if (rule.conditions.allHoldAt(at, zone)) return candidate
+        after = at
+    }
+    return null
+}
+
+/** Enough to walk two months of daily moments, or a fortnight of a five-a-day random window. */
+private const val MAX_CANDIDATES = 64
 
 /** One trigger's next fire, or null when it has nothing left to do. */
 fun nextFireOf(trigger: Trigger, reminderId: String, now: Instant, zone: ZoneId, defaultTime: LocalTime): NextFire? =

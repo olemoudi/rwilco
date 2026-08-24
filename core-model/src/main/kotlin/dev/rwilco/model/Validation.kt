@@ -34,16 +34,24 @@ sealed interface ValidationWarning {
     data class InPast(val index: Int) : ValidationWarning
 }
 
-fun validate(text: String, triggers: List<Trigger>, actions: Set<Action>): List<ValidationError> {
+fun validate(text: String, rules: List<TriggerRule>, actions: Set<Action>): List<ValidationError> {
     val errors = ArrayList<ValidationError>()
     if (text.isBlank()) errors += ValidationError.TextBlank
     if (text.length > MAX_TEXT_LENGTH) errors += ValidationError.TextTooLong
-    if (triggers.isEmpty()) errors += ValidationError.NoTrigger
+    if (rules.isEmpty()) errors += ValidationError.NoTrigger
     if (actions.isEmpty()) errors += ValidationError.NoAction
-    triggers.forEachIndexed { index, trigger ->
-        problemOf(trigger)?.let { errors += ValidationError.BadTrigger(index, it) }
+    rules.forEachIndexed { index, rule ->
+        problemOf(rule.trigger)?.let { errors += ValidationError.BadTrigger(index, it) }
+        rule.conditions.forEach { condition ->
+            problemOf(condition)?.let { errors += ValidationError.BadTrigger(index, it) }
+        }
     }
     return errors
+}
+
+fun problemOf(condition: Condition): TriggerProblem? = when (condition) {
+    // A window that starts where it ends is not a window; one that crosses midnight is.
+    is Condition.TimeWindow -> TriggerProblem.WINDOW_EMPTY.takeIf { condition.from == condition.to }
 }
 
 fun problemOf(trigger: Trigger): TriggerProblem? = when (trigger) {
@@ -64,8 +72,8 @@ fun problemOf(trigger: Trigger): TriggerProblem? = when (trigger) {
 }
 
 /** One-shot moments already behind us. Needs a clock, unlike [validate]. */
-fun warnings(triggers: List<Trigger>, now: Instant, zone: ZoneId, defaultTime: LocalTime): List<ValidationWarning> =
-    triggers.mapIndexedNotNull { index, trigger ->
-        val oneShot = trigger is Trigger.AtDateTime || trigger is Trigger.OnDate
-        if (oneShot && nextFireOf(trigger, "", now, zone, defaultTime) == null) ValidationWarning.InPast(index) else null
+fun warnings(rules: List<TriggerRule>, now: Instant, zone: ZoneId, defaultTime: LocalTime): List<ValidationWarning> =
+    rules.mapIndexedNotNull { index, rule ->
+        val oneShot = rule.trigger is Trigger.AtDateTime || rule.trigger is Trigger.OnDate
+        if (oneShot && nextFireOf(rule.trigger, "", now, zone, defaultTime) == null) ValidationWarning.InPast(index) else null
     }

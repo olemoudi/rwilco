@@ -15,6 +15,16 @@ file changes in the same commit.
 
 A `Reminder` is text + tags + a list of `Trigger`s + a set of `Action`s + a `Status`.
 
+A reminder rings by **rules**: a list of `TriggerRule`, each an event plus the conditions that
+have to hold when it happens. Any rule is enough (they are ORed); a rule's own conditions all
+have to hold (ANDed). That shape — an OR of ANDs — expresses any combination somebody can
+reasonably mean and, unlike a free-form tree, can be read off a phone screen: *"al llegar a
+casa, y sólo si es entre las 18:00 y las 22:00"*.
+
+Conditions (`Condition.kt`) are states, asked "were you true at that moment?", which is what
+makes them safe to AND with anything. Today there is one, `time_window` (hours + days, crossing
+midnight allowed); a place condition is the obvious next one.
+
 Triggers (`core-model/.../Trigger.kt`), with their frozen JSON discriminators:
 
 | Kind (UI tile)        | Stored as                          | `type`         |
@@ -27,6 +37,10 @@ Triggers (`core-model/.../Trigger.kt`), with their frozen JSON discriminators:
 | Random                | `Random(timesPer, DAY/WEEK, from, to, days)` | `random` |
 
 Wall-clock values are stored without a zone; the zone is applied when the next fire is computed.
+
+`nextFireOfRule` walks a rule's candidate moments until its conditions hold, stopping after 64
+so a rule that can never be satisfied ("a las 09:00, y sólo si es entre las 18:00 y las 22:00")
+answers *never* instead of looping.
 
 `nextFire(reminder, now, zone, defaultTime)` (`NextFire.kt`) picks the earliest definite
 moment (`Scheduled`), else the earliest random draw (`Sometime`, shown as a window), else a place
@@ -62,11 +76,37 @@ index), pinned by golden values in its test. `Validation.kt` decides what blocks
 - Home: `HomeViewModel` combines the open reminders, settings, the tag filter and a minute pulse
   into `HomeUiState` (`buildHomeState`, pure and tested). The hero card's countdown ticks in its
   own composable (`rememberNow`) so nothing else recomposes.
-- Editor: `EditorUiState` + pure reducers (`EditorState.kt`, tested); one configurator sheet per
-  trigger kind under `editor/sheets/`; the countdown sheet produces an `AtDateTime`; the place
-  sheet shows an osmdroid map (`OsmMap.kt`: pin by long-press or from one `LocationManager`
-  fix, radius circle, inverted tiles on the dark scheme, tile cache in `cacheDir`). The alert preview is `AlertScreen`,
+- Editor: `EditorUiState` + pure reducers (`EditorState.kt`, tested); text and tags are offered
+  before they are asked for — `suggestedTexts`/`suggestedTags` rank what has been written before
+  by how often and how recently (a 30-day half-life), and nothing is auto-focused, because a
+  keyboard that opens by itself hides the list that would have saved the typing. One
+  configurator sheet per trigger kind under `editor/sheets/`, plus `ConditionSheet` for the
+  "y sólo si" fences; the countdown sheet produces an `AtDateTime`; the place
+  sheet searches addresses through the platform `Geocoder` (`PlaceSearch.kt`) and shows an
+  osmdroid map (`OsmMap.kt`: pin by long-press, by search result or from one `LocationManager`
+  fix, a crosshair button to centre on where you are, radius circle, inverted tiles on the dark
+  scheme, tile cache in `cacheDir`). The alert preview is `AlertScreen`,
   the same composable phase 2 will host in a full-screen-intent activity.
+
+## Firing
+
+- `ReminderScheduler` keeps one `setAlarmClock` armed per reminder — the only kind of alarm Doze
+  never defers and the rate limiter never holds back — and writes the armed moment back to the
+  row. That, next to `lastFiredAt`, is what makes a firing the phone slept through detectable:
+  an armed moment in the past with no ring to match it.
+- `ReminderFiring` is the single place that decides what a firing, a "Hecho" and a snooze do, so
+  the alarm, the notification buttons and the alert screen cannot drift apart. "Hecho" finishes
+  a one-shot and leaves anything that can come round again.
+- `AlertNotifications` has one channel per sound/vibration combination, because a channel's
+  sound is fixed the moment it is created. A full-screen alert's notification stays silent: the
+  screen does its own looping ring (`AlertRinger`) and gives up after two minutes.
+- `AlertActivity` shows over the lock screen and turns it on; it is its own task so dismissing
+  an alarm at three in the morning does not drop anybody into the app's back stack.
+- `GeofenceManager` registers the place rules with Play Services, wholesale, and re-registers on
+  boot and from `RearmWorker` (a reboot or a Play Services update drops them all). A place is
+  judged against its conditions when it happens, not when it is armed.
+- `SystemEventsReceiver` re-arms after a reboot, an install over ourselves, or the clock moving:
+  a wall-clock promise is not an instant until a zone says so.
 
 ## Self-update
 

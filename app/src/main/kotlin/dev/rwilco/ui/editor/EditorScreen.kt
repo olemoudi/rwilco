@@ -48,6 +48,7 @@ import dev.rwilco.model.warnings
 import dev.rwilco.ui.alert.AlertContent
 import dev.rwilco.ui.alert.AlertScreen
 import dev.rwilco.ui.components.DiscardDialog
+import dev.rwilco.ui.editor.sheets.ConditionSheet
 import dev.rwilco.ui.editor.sheets.CountdownSheet
 import dev.rwilco.ui.editor.sheets.DateOnlySheet
 import dev.rwilco.ui.editor.sheets.DateTimeSheet
@@ -93,7 +94,7 @@ fun EditorScreen(
     val zone = viewModel.clock.zone
     val today = now.atZone(zone).toLocalDate()
     val spacing = Tokens.spacing
-    val pastWarnings = warnings(state.draft.triggers, now, zone, state.defaultTime)
+    val pastWarnings = warnings(state.draft.rules, now, zone, state.defaultTime)
         .filterIsInstance<ValidationWarning.InPast>()
         .map { it.index }
         .toSet()
@@ -133,8 +134,8 @@ fun EditorScreen(
             ) {
                 TextSection(
                     text = state.draft.text,
+                    suggestions = state.suggestedTexts,
                     onTextChange = viewModel::setText,
-                    autoFocus = state.loaded && state.isNew,
                     error = state.showErrors && ValidationError.TextBlank in state.errors,
                 )
                 Spacer(Modifier.height(spacing.xl))
@@ -146,7 +147,7 @@ fun EditorScreen(
                 )
                 Spacer(Modifier.height(spacing.xl))
                 TriggersSection(
-                    triggers = state.draft.triggers,
+                    rules = state.draft.rules,
                     today = today,
                     defaultTime = state.defaultTime,
                     inPast = pastWarnings,
@@ -156,6 +157,9 @@ fun EditorScreen(
                     },
                     onEdit = viewModel::editTrigger,
                     onRemove = viewModel::removeTrigger,
+                    onAddCondition = viewModel::addCondition,
+                    onEditCondition = viewModel::editCondition,
+                    onRemoveCondition = viewModel::removeCondition,
                     error = state.showErrors && ValidationError.NoTrigger in state.errors,
                 )
                 Spacer(Modifier.height(spacing.xl))
@@ -171,6 +175,11 @@ fun EditorScreen(
         when (val sheet = state.sheet) {
             EditorSheet.None -> Unit
             EditorSheet.PickKind -> TriggerKindSheet(onPick = viewModel::pickKind, onDismiss = viewModel::closeSheet)
+            is EditorSheet.ConfigureCondition -> ConditionSheet(
+                initial = sheet.initial as? dev.rwilco.model.Condition.TimeWindow,
+                onConfirm = { condition -> viewModel.commitCondition(sheet.ruleIndex, sheet.conditionIndex, condition) },
+                onDismiss = viewModel::closeSheet,
+            )
             is EditorSheet.Configure -> {
                 val commit = { trigger: dev.rwilco.model.Trigger -> viewModel.commitTrigger(sheet.index, trigger) }
                 when (sheet.kind) {

@@ -16,6 +16,10 @@ interface ReminderDao {
     @Query("SELECT * FROM reminder WHERE status = 'DONE' ORDER BY doneAt DESC")
     fun observeDone(): Flow<List<ReminderEntity>>
 
+    /** Everything ever written, done included: what the "you have said this before" list is made of. */
+    @Query("SELECT * FROM reminder")
+    suspend fun getAll(): List<ReminderEntity>
+
     @Query("SELECT * FROM reminder WHERE id = :id")
     fun observe(id: String): Flow<ReminderEntity?>
 

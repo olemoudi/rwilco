@@ -131,8 +131,12 @@ fun AlertScreen(
                 Spacer(Modifier.width(spacing.sm))
                 Text(stringResource(R.string.alert_done), style = MaterialTheme.typography.titleLarge)
             }
-            TextButton(onClick = onView, modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.sizes.touch)) {
-                Text(stringResource(if (preview) R.string.alert_close_preview else R.string.alert_view), color = scheme.onSurfaceVariant)
+            TextButton(
+                onClick = onView,
+                colors = ButtonDefaults.textButtonColors(contentColor = scheme.onSurfaceVariant),
+                modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.sizes.touch),
+            ) {
+                Text(stringResource(if (preview) R.string.alert_close_preview else R.string.alert_view))
             }
         }
     }
