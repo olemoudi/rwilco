@@ -6,6 +6,7 @@ import dev.rwilco.model.Condition
 import dev.rwilco.model.DEFAULT_ACTIONS
 import dev.rwilco.model.Period
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
 import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
@@ -108,6 +109,17 @@ object DemoData {
                 "overdue", "Poner una lavadora de blanco", listOf("casa"),
                 Trigger.AtDateTime(local.minusHours(3).toLocalDateTime().withSecond(0).withNano(0)),
                 ageMinutes = 600,
+            ),
+            // The two shapes 0.3 added: rules that all have to happen, and a note nothing rings.
+            reminder(
+                "all", "Llamar a Marta por lo del presupuesto", listOf("trabajo"),
+                Trigger.Location(40.4168, -3.7038, 200, Transition.ENTER, "Casa"),
+                Trigger.AtDateTime(local.plusHours(4).toLocalDateTime().withSecond(0).withNano(0)),
+                ageMinutes = 20,
+            ).copy(ruleMatch = RuleMatch.ALL, firedRules = setOf(0)),
+            reminder(
+                "note", "Ideas para el regalo de Ana: cerámica, un buen cuchillo, entradas", listOf("regalos"),
+                ageMinutes = 45,
             ),
             reminder(
                 "done1", "Devolver el libro a la biblioteca", listOf("papeleo"),

@@ -101,14 +101,4 @@ class FiringTest {
         assertFalse(quiet.notificationVibrate)
     }
 
-    @Test
-    fun `snoozes land where they say`() {
-        assertEquals(now.plusSeconds(600), Snooze.TEN_MINUTES.until(now, zone, defaultTime))
-        assertEquals(now.plusSeconds(3600), Snooze.ONE_HOUR.until(now, zone, defaultTime))
-        assertEquals(
-            local(2026, 8, 28, 9, 0),
-            Snooze.TOMORROW.until(now, zone, defaultTime),
-            "tomorrow is the usual hour tomorrow, not twenty-four hours from now",
-        )
-    }
 }

@@ -8,6 +8,7 @@ import dev.rwilco.data.ReminderRepository
 import dev.rwilco.model.Action
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
 import dev.rwilco.model.Condition
 import dev.rwilco.model.Trigger
@@ -78,6 +79,7 @@ class EditorViewModel(
     fun toggleTag(tag: String) = _state.update { it.toggleTag(tag) }
     fun addTag(raw: String) = _state.update { it.addTag(raw) }
     fun toggleAction(action: Action) = _state.update { it.toggleAction(action) }
+    fun setRuleMatch(match: RuleMatch) = _state.update { it.setRuleMatch(match) }
     fun openKindPicker() = _state.update { it.openKindPicker() }
     fun pickKind(kind: TriggerKind) = _state.update { it.pickKind(kind) }
     fun editTrigger(index: Int) = _state.update { it.editTrigger(index) }

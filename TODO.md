@@ -42,6 +42,11 @@ as the fallback. "Could not get a fix" and "not allowed" are two different sente
 because they need two different things from the person.
 
 ## Still to prove on the real phone (Pixel 8 Pro)
+- The overlay rule end to end: an alert while another app is open (banner), on the home screen
+  (full screen), and with either special permission missing (banner, and Settings says which).
+  The emulator can be made to show it but not to be convincing about it.
+- A reminder with rules combined by "todos" completing across a reboot: the place is recorded,
+  the phone restarts, and the time still rings it.
 - A place reminder actually firing in the street, and how long the geofence takes to notice.
 - The full-screen alert over the lock screen, and whether Android 14's full-screen-intent
   permission is granted or has to be asked for (Settings has the row either way).

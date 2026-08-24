@@ -4,6 +4,7 @@ import dev.rwilco.model.Action
 import dev.rwilco.model.DEFAULT_ACTIONS
 import dev.rwilco.model.MAX_TEXT_LENGTH
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
@@ -29,8 +30,27 @@ class EditorStateTest {
     fun `a blank editor is clean, invalid and quiet about it`() {
         assertFalse(blank.dirty)
         assertFalse(blank.canSave)
-        assertEquals(listOf(ValidationError.TextBlank, ValidationError.NoTrigger), blank.errors)
+        assertEquals(listOf(ValidationError.TextBlank), blank.errors)
         assertFalse(blank.showErrors)
+    }
+
+    @Test
+    fun `how the rules combine travels to the reminder and back`() {
+        val state = blank.withText("Llamar a Marta")
+            .commitTrigger(null, tonight)
+            .commitTrigger(null, weekly)
+            .setRuleMatch(RuleMatch.ALL)
+        assertEquals(RuleMatch.ALL, state.draft.ruleMatch)
+        val stamp = Instant.parse("2026-08-27T13:00:00Z")
+        val saved = state.draft.toReminder("id", stamp, stamp, Status.ACTIVE)
+        assertEquals(RuleMatch.ALL, saved.ruleMatch)
+        assertEquals(RuleMatch.ALL, saved.toDraft().ruleMatch)
+    }
+
+    @Test
+    fun `words alone are enough to save`() {
+        val note = blank.withText("Pilas AA, papel de horno y café").addTag("lista de la compra")
+        assertTrue(note.canSave, "a reminder kept under a tag needs neither a trigger nor an action")
     }
 
     @Test
@@ -62,10 +82,10 @@ class EditorStateTest {
     }
 
     @Test
-    fun `actions toggle and losing the last one is an error`() {
-        val none = blank.toggleAction(Action.NOTIFICATION).toggleAction(Action.VIBRATE)
+    fun `actions toggle, and none of them is a moment that passes quietly`() {
+        val none = blank.withText("Regar").toggleAction(Action.NOTIFICATION).toggleAction(Action.VIBRATE)
         assertTrue(none.draft.actions.isEmpty())
-        assertTrue(ValidationError.NoAction in none.errors)
+        assertTrue(none.canSave)
         assertEquals(DEFAULT_ACTIONS + Action.SOUND, blank.toggleAction(Action.SOUND).draft.actions)
     }
 

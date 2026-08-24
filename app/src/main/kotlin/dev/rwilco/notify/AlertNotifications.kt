@@ -54,7 +54,7 @@ object AlertNotifications {
         )
     }
 
-    fun post(context: Context, reminder: Reminder, plan: FiringPlan, late: Instant?) {
+    fun post(context: Context, reminder: Reminder, plan: FiringPlan, late: Instant?, fullScreen: Boolean = plan.fullScreen) {
         ensureChannels(context)
         val channel = if (late != null) CHANNEL_MISSED else channelId(plan.notificationSound, plan.notificationVibrate)
         val open = activityIntent(context, reminder.id)
@@ -71,14 +71,24 @@ object AlertNotifications {
             .addAction(0, context.getString(R.string.alert_done), actionIntent(context, reminder.id, AlertActionReceiver.ACTION_DONE, null))
             .addAction(
                 0,
-                context.getString(R.string.countdown_minutes, Snooze.TEN_MINUTES.minutes.toInt()),
+                context.getString(R.string.snooze_ten_minutes),
                 actionIntent(context, reminder.id, AlertActionReceiver.ACTION_SNOOZE, Snooze.TEN_MINUTES),
+            )
+            // Three is what a notification shows; the rest of the offers are on the alert screen,
+            // which the banner opens.
+            .addAction(
+                0,
+                context.getString(R.string.snooze_two_hours),
+                actionIntent(context, reminder.id, AlertActionReceiver.ACTION_SNOOZE, Snooze.TWO_HOURS),
             )
         if (reminder.tags.isNotEmpty()) builder.setContentText(reminder.tags.joinToString(" · "))
         if (late != null) builder.setSubText(context.getString(R.string.alert_missed_subtext))
-        // A full-screen alert is a request, not a promise: since Android 14 the system may
-        // refuse it, and then this is simply a heads-up notification with the same two buttons.
-        if (plan.fullScreen && late == null) builder.setFullScreenIntent(open, true)
+        // A full-screen alert is a request, not a promise: the system may refuse it (since
+        // Android 14 it is for calls and alarms unless the person says otherwise), and then this
+        // is simply a heads-up notification with the same buttons. [fullScreen] is the caller's
+        // own decision on top of that — see AlertPresenter: an app open in front of somebody
+        // gets the banner and nothing else.
+        if (fullScreen && late == null) builder.setFullScreenIntent(open, true)
         runCatching { NotificationManagerCompat.from(context).notify(notificationId(reminder.id), builder.build()) }
     }
 
@@ -136,7 +146,11 @@ object AlertNotifications {
         if (snooze != null) intent.putExtra(AlertActionReceiver.EXTRA_SNOOZE, snooze.name)
         return PendingIntent.getBroadcast(
             context,
-            0,
+            // Which snooze it is lives in an extra, and extras are NOT part of what makes two
+            // PendingIntents the same — two snooze buttons on one notification would be one
+            // PendingIntent, and FLAG_UPDATE_CURRENT would quietly make both of them the last
+            // one built. The request code is part of the identity, so it carries the difference.
+            snooze?.let { it.ordinal + 1 } ?: 0,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )

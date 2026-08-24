@@ -47,9 +47,11 @@ val RwilcoDarkColors = darkColorScheme(
     onError = Color(0xFF3A0907),
     errorContainer = Color(0xFF5C1A17),
     onErrorContainer = Color(0xFFFFDAD6),
-    outline = Color(0xFF3A4556),
+    // Bright enough to be an edge at arm's length: at the old value the app read as one flat
+    // sheet, every control the same whisper as the ground it sat on.
+    outline = Color(0xFF55637A),
     // Lighter than the surface it edges by a clear step: cards carry no shadow, only this line.
-    outlineVariant = Color(0xFF2A3441),
+    outlineVariant = Color(0xFF36414F),
     scrim = Color(0xFF000000),
     surfaceBright = Color(0xFF2B3542),
     surfaceDim = Color(0xFF0C1117),
@@ -87,8 +89,8 @@ val RwilcoLightColors = lightColorScheme(
     onError = Color.White,
     errorContainer = Color(0xFFFFDAD6),
     onErrorContainer = Color(0xFF410002),
-    outline = Color(0xFFC3CAD4),
-    outlineVariant = Color(0xFFDDE3EB),
+    outline = Color(0xFFA3AEBD),
+    outlineVariant = Color(0xFFCBD3DE),
     scrim = Color(0xFF000000),
     surfaceBright = Color(0xFFFFFFFF),
     surfaceDim = Color(0xFFDCE1E8),

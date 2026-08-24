@@ -17,16 +17,19 @@ class ValidationTest {
 
     @Test
     fun `a complete reminder has no errors`() {
-        assertTrue(validate("Water the plants", listOf(TriggerRule(tonight)), DEFAULT_ACTIONS).isEmpty())
+        assertTrue(validate("Water the plants", listOf(TriggerRule(tonight))).isEmpty())
     }
 
     @Test
-    fun `text, trigger and action are each required`() {
-        assertEquals(
-            listOf(ValidationError.TextBlank, ValidationError.NoTrigger, ValidationError.NoAction),
-            validate("  ", emptyList(), emptySet()),
-        )
-        assertEquals(listOf(ValidationError.TextTooLong), validate("x".repeat(MAX_TEXT_LENGTH + 1), listOf(TriggerRule(tonight)), DEFAULT_ACTIONS))
+    fun `only the words are required`() {
+        assertEquals(listOf(ValidationError.TextBlank), validate("  ", emptyList()))
+        assertEquals(listOf(ValidationError.TextTooLong), validate("x".repeat(MAX_TEXT_LENGTH + 1), listOf(TriggerRule(tonight))))
+    }
+
+    @Test
+    fun `a reminder with nothing to fire is a note, not an error`() {
+        // Kept under a tag and never rung: "lista de la compra" is a list, not an alarm.
+        assertTrue(validate("Pilas AA", emptyList()).isEmpty())
     }
 
     @Test
@@ -51,7 +54,7 @@ class ValidationTest {
                 ValidationError.BadTrigger(6, TriggerProblem.WINDOW_EMPTY),
                 ValidationError.BadTrigger(7, TriggerProblem.WINDOW_EMPTY),
             ),
-            validate("ok", triggers.asRules(), DEFAULT_ACTIONS),
+            validate("ok", triggers.asRules()),
         )
     }
 
@@ -63,7 +66,7 @@ class ValidationTest {
         )
         assertEquals(
             listOf(ValidationError.BadTrigger(0, TriggerProblem.WINDOW_EMPTY)),
-            validate("ok", rules, DEFAULT_ACTIONS),
+            validate("ok", rules),
             "crossing midnight is a window; starting where it ends is not",
         )
     }

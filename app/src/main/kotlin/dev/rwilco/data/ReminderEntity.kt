@@ -5,6 +5,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.ReminderCodec
+import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
 import java.time.Instant
 
@@ -28,6 +29,12 @@ data class ReminderEntity(
     val snoozedUntil: Long? = null,
     val lastFiredAt: Long? = null,
     val armedFor: Long? = null,
+    /** ANY or ALL; an unknown value reads as ANY, which is the safe way round (it rings sooner). */
+    val ruleMatch: String = "ANY",
+    /** Which rule [armedFor] was for, so a slept-through firing is recorded against the right one. */
+    val armedRule: Int? = null,
+    /** ALL only: the rule indices already ticked off this round, comma-separated. */
+    val firedRules: String = "",
 )
 
 fun ReminderEntity.toDomain(): Reminder = Reminder(
@@ -45,6 +52,9 @@ fun ReminderEntity.toDomain(): Reminder = Reminder(
     snoozedUntil = snoozedUntil?.let(Instant::ofEpochMilli),
     lastFiredAt = lastFiredAt?.let(Instant::ofEpochMilli),
     armedFor = armedFor?.let(Instant::ofEpochMilli),
+    ruleMatch = RuleMatch.entries.firstOrNull { it.name == ruleMatch } ?: RuleMatch.ANY,
+    armedRule = armedRule,
+    firedRules = decodeIndices(firedRules),
 )
 
 fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
@@ -60,4 +70,16 @@ fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
     snoozedUntil = snoozedUntil?.toEpochMilli(),
     lastFiredAt = lastFiredAt?.toEpochMilli(),
     armedFor = armedFor?.toEpochMilli(),
+    ruleMatch = ruleMatch.name,
+    armedRule = armedRule,
+    firedRules = encodeIndices(firedRules),
 )
+
+/**
+ * A handful of small non-negative integers: "0,2". Plain text rather than JSON because that is
+ * all it will ever be, and a column somebody reads in a SQLite browser should be readable.
+ */
+fun encodeIndices(indices: Set<Int>): String = indices.sorted().joinToString(",")
+
+fun decodeIndices(raw: String): Set<Int> =
+    raw.split(',').mapNotNullTo(LinkedHashSet()) { it.trim().toIntOrNull()?.takeIf { index -> index >= 0 } }

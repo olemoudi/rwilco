@@ -31,7 +31,11 @@ class ReminderRepository(private val dao: ReminderDao, private val clock: Clock)
 
     suspend fun markFired(id: String, at: Instant) = dao.markFired(id, at.toEpochMilli())
 
-    suspend fun setArmedFor(id: String, at: Instant?) = dao.setArmedFor(id, at?.toEpochMilli())
+    suspend fun setArmedFor(id: String, at: Instant?, ruleIndex: Int?) =
+        dao.setArmedFor(id, at?.toEpochMilli(), ruleIndex)
+
+    /** Which rules of an ALL reminder have happened so far; empty starts the round again. */
+    suspend fun setFiredRules(id: String, indices: Set<Int>) = dao.setFiredRules(id, encodeIndices(indices))
 
     /** Upsert as given; the caller decides `updatedAt`. */
     suspend fun save(reminder: Reminder) = dao.upsert(reminder.toEntity())

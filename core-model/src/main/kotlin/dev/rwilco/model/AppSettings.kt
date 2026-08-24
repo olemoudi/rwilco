@@ -1,9 +1,10 @@
-@file:UseSerializers(LocalTimeSerializer::class)
+@file:UseSerializers(LocalTimeSerializer::class, DayOfWeekSerializer::class)
 
 package dev.rwilco.model
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
+import java.time.DayOfWeek
 import java.time.LocalTime
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
@@ -25,6 +26,12 @@ data class AppSettings(
      * still one tap away, because the answer to "when?" is not the same twice running.
      */
     val defaultTriggerKind: TriggerKind? = null,
+    /**
+     * What "el finde" means to this person when they postpone something to it. Friday evening
+     * by default: the weekend starts when the week stops asking, not on Saturday morning.
+     */
+    val weekendDay: DayOfWeek = DayOfWeek.FRIDAY,
+    val weekendTime: LocalTime = LocalTime.of(20, 30),
     /** What's-new sheet bookkeeping: the last versionCode whose notes were shown. */
     val lastSeenVersionCode: Int = 0,
 )

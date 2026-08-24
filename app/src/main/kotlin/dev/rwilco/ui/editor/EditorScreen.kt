@@ -1,7 +1,9 @@
 package dev.rwilco.ui.editor
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -14,14 +16,20 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Notes
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.LocalOffer
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -37,6 +45,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
@@ -138,7 +147,7 @@ fun EditorScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = spacing.screen),
             ) {
-                EditorSection(title = stringResource(R.string.editor_text_title), first = true) {
+                EditorSection(title = stringResource(R.string.editor_text_title), icon = Icons.AutoMirrored.Outlined.Notes) {
                     TextSection(
                         text = state.draft.text,
                         suggestions = state.suggestedTexts,
@@ -148,6 +157,7 @@ fun EditorScreen(
                 }
                 EditorSection(
                     title = stringResource(R.string.editor_tags_title),
+                    icon = Icons.Outlined.LocalOffer,
                     note = stringResource(R.string.editor_optional),
                 ) {
                     TagsSection(
@@ -157,9 +167,15 @@ fun EditorScreen(
                         onAdd = viewModel::addTag,
                     )
                 }
-                EditorSection(title = stringResource(R.string.editor_when_title)) {
+                EditorSection(
+                    title = stringResource(R.string.editor_when_title),
+                    icon = Icons.Outlined.Schedule,
+                    note = stringResource(R.string.editor_when_optional),
+                ) {
                     TriggersSection(
                         rules = state.draft.rules,
+                        ruleMatch = state.draft.ruleMatch,
+                        onRuleMatch = viewModel::setRuleMatch,
                         today = today,
                         defaultTime = state.defaultTime,
                         inPast = pastWarnings,
@@ -172,14 +188,16 @@ fun EditorScreen(
                         onAddCondition = viewModel::addCondition,
                         onEditCondition = viewModel::editCondition,
                         onRemoveCondition = viewModel::removeCondition,
-                        error = state.showErrors && ValidationError.NoTrigger in state.errors,
                     )
                 }
-                EditorSection(title = stringResource(R.string.editor_what_title)) {
+                EditorSection(
+                    title = stringResource(R.string.editor_what_title),
+                    icon = Icons.Outlined.NotificationsActive,
+                    note = stringResource(R.string.editor_what_optional),
+                ) {
                     ActionsSection(
                         selected = state.draft.actions,
                         onToggle = viewModel::toggleAction,
-                        error = state.showErrors && ValidationError.NoAction in state.errors,
                     )
                 }
                 Spacer(Modifier.height(spacing.xxl))
@@ -319,42 +337,65 @@ private fun SaveBar(enabled: Boolean, onSave: () -> Unit) {
 }
 
 /**
- * One step of the form: a hairline, its name, and what belongs to it. Four labelled bands read
- * as four decisions — the words, the tags, when, what happens — where one unbroken column of
- * controls reads as a form to be got through.
+ * One step of the form: its own raised card, an icon to recognise it by, and its name.
+ *
+ * Four labelled bands under hairlines were not enough — the eye slid down one flat column and
+ * the headings read as more text. A card that stands off the ground, with a badge in front of
+ * its name, says "this is a part" before anything is read at all.
  */
 @Composable
 private fun EditorSection(
     title: String,
+    icon: ImageVector,
     modifier: Modifier = Modifier,
     note: String? = null,
-    first: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val spacing = Tokens.spacing
-    Column(modifier = modifier.fillMaxWidth()) {
-        if (!first) {
-            Spacer(Modifier.height(spacing.xl))
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Spacer(Modifier.height(spacing.lg))
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = title.uppercase(currentLocale()),
-                style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.5.sp, fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            if (note != null) {
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = scheme.surfaceContainerLow,
+        border = BorderStroke(Tokens.strokes.edge, scheme.outlineVariant),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = spacing.md),
+    ) {
+        Column(modifier = Modifier.padding(spacing.lg)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(Tokens.sizes.badge)
+                        .background(scheme.surfaceContainerHighest, RoundedCornerShape(Tokens.sizes.badge / 3)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = scheme.onSurfaceVariant,
+                        modifier = Modifier.size(Tokens.sizes.badge / 2),
+                    )
+                }
                 Spacer(Modifier.width(spacing.sm))
                 Text(
-                    text = note,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    text = title.uppercase(currentLocale()),
+                    style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.5.sp, fontWeight = FontWeight.SemiBold),
+                    color = scheme.onSurfaceVariant,
                 )
+                if (note != null) {
+                    Spacer(Modifier.width(spacing.sm))
+                    Text(
+                        text = note,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = scheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
+            Spacer(Modifier.height(spacing.md))
+            content()
         }
-        Spacer(Modifier.height(spacing.md))
-        content()
     }
 }
 

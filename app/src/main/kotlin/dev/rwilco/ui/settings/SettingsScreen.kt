@@ -39,6 +39,7 @@ import dev.rwilco.model.ThemeMode
 import dev.rwilco.model.TriggerKind
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.SectionHeader
+import dev.rwilco.ui.components.DayToggles
 import dev.rwilco.ui.components.SegmentedChoice
 import dev.rwilco.ui.components.TagChip
 import dev.rwilco.ui.components.TimeField
@@ -135,6 +136,26 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                                 )
                             }
                         }
+                    }
+                    Column {
+                        Text(stringResource(R.string.settings_weekend), style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            stringResource(R.string.settings_weekend_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(spacing.sm))
+                        // One day, not a set: "el finde" is a moment to push something to.
+                        DayToggles(
+                            selected = setOf(current.weekendDay),
+                            onToggle = { day -> viewModel.setWeekend(day, current.weekendTime) },
+                        )
+                        Spacer(Modifier.height(spacing.sm))
+                        TimeField(
+                            time = current.weekendTime,
+                            onChange = { time -> viewModel.setWeekend(current.weekendDay, time) },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {

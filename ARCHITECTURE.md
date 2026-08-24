@@ -16,10 +16,16 @@ file changes in the same commit.
 A `Reminder` is text + tags + a list of `Trigger`s + a set of `Action`s + a `Status`.
 
 A reminder rings by **rules**: a list of `TriggerRule`, each an event plus the conditions that
-have to hold when it happens. Any rule is enough (they are ORed); a rule's own conditions all
-have to hold (ANDed). That shape — an OR of ANDs — expresses any combination somebody can
+have to hold when it happens. `RuleMatch` says how the rules combine — ANY (either of them
+rings it, the default) or ALL — and a rule's own conditions always all have to hold (ANDed). That shape — an OR of ANDs — expresses any combination somebody can
 reasonably mean and, unlike a free-form tree, can be read off a phone screen: *"al llegar a
 casa, y sólo si es entre las 18:00 y las 22:00"*.
+
+**ALL** is the other honest reading of a list of events: not "true at the same instant" (that is
+what conditions are for) but *the last of them to happen*. So the ones that already have are
+remembered — `Reminder.firedRules`, by index — the scheduler wakes at each pending moment in
+turn to write it down (`nextWake`), and only the moment that completes the set rings
+(`outcomeOfFiring`). Dealing with the firing clears the set and starts the round again.
 
 Conditions (`Condition.kt`) are states, asked "were you true at that moment?", which is what
 makes them safe to AND with anything. Today there is one, `time_window` (hours + days, crossing
@@ -42,12 +48,19 @@ Wall-clock values are stored without a zone; the zone is applied when the next f
 so a rule that can never be satisfied ("a las 09:00, y sólo si es entre las 18:00 y las 22:00")
 answers *never* instead of looping.
 
-`nextFire(reminder, now, zone, defaultTime)` (`NextFire.kt`) picks the earliest definite
-moment (`Scheduled`), else the earliest random draw (`Sometime`, shown as a window), else a place
-(`WhenAt`). `groupForHome` (`HomeSections.kt`) lifts the earliest `Scheduled` out as the hero and
+`nextFire(reminder, now, zone, defaultTime)` (`NextFire.kt`) picks, under ANY, the earliest
+definite moment (`Scheduled`), else the earliest random draw (`Sometime`, shown as a window),
+else a place (`WhenAt`); under ALL it answers with the *last* of the pending ones, or with the
+place when one is among them, because then there is no date to give. `nextWake` is the other
+question — what the alarm is set for — and is always the earliest pending moment. `groupForHome` (`HomeSections.kt`) lifts the earliest `Scheduled` out as the hero and
 files the rest under Overdue / Today / Tomorrow / This week (rolling 7 days) / Later / Whenever /
 Paused. Random moments come from `RandomDraw.kt`: SplitMix64 seeded by (reminder id, period
-index), pinned by golden values in its test. `Validation.kt` decides what blocks a save.
+index), pinned by golden values in its test. `Validation.kt` decides what blocks a save, which is only the words and a trigger that is
+nonsense in itself: a reminder needs **neither a trigger nor an action**. One with neither is a
+note kept under its tags, and Home files it under "kept, not timed" rather than calling it
+overdue. `Snooze` offers ten minutes, two hours, tomorrow at the same time, the weekend (a
+setting: Friday at 20:30 by default) and next week — all but the first two keeping the
+wall-clock time rather than adding hours.
 
 `Search.kt` answers the magnifier: one query over the open reminders and the tags they use,
 returning `SearchHit.OfReminder`/`OfTag` so the screen can say which is which. Matching is
@@ -57,15 +70,15 @@ strict is asking somebody to remember how they spelled it.
 
 ## Persistence
 
-- Room (`app/.../data/`): one table, `reminder(id, text, tags, triggers, actions, status,
-  createdAt, updatedAt, doneAt)`; tags/triggers/actions are JSON text columns written by
+- Room (`app/.../data/`): one table, `reminder(id, text, tags, triggers, ruleMatch, actions,
+  status, createdAt, updatedAt, doneAt, …, armedFor, armedRule, firedRules)`; tags/triggers/actions are JSON text columns written by
   `ReminderCodec`, read leniently (unknown trigger kinds and actions are dropped, never fatal).
   `RwilcoDatabase.VERSION` + `MIGRATIONS` are guarded by `MigrationChainTest` (JVM) and
   `DatabaseMigrationTest` (device). Schemas are exported to `app/schemas`.
 - `ReminderRepository`: reactive `open`/`done` flows for the screens, suspend writes.
 - `SettingsStore`: Preferences DataStore with one JSON blob (`AppSettings`: theme, default time
-  for date-only reminders, the trigger kind offered first, haptics, last-seen version for
-  What's New). Additive changes need no migration.
+  for date-only reminders, the trigger kind offered first, when "the weekend" starts, haptics,
+  last-seen version for What's New). Additive changes need no migration.
 - `RwilcoApplication` is the dependency container (manual DI); ViewModels get it through a
   `Factory`.
 
@@ -84,9 +97,12 @@ strict is asking somebody to remember how they spelled it.
   own composable (`rememberNow`) so nothing else recomposes. The magnifier has a flow of its own
   (`buildSearchState`, also pure): a keystroke must not put Home through grouping and next-fire
   again. Results replace the list while it is open; a reminder opens, a tag becomes the filter.
-- Editor: `EditorUiState` + pure reducers (`EditorState.kt`, tested). The form is four labelled
-  bands separated by hairlines (`EditorSection`) — the words, the tags (optional), when, what
-  happens — so it reads as four decisions rather than one column of controls. Text and tags are
+- Editor: `EditorUiState` + pure reducers (`EditorState.kt`, tested). The form is four cards
+  (`EditorSection`), each with an icon badge and its name — the words, the tags, when, what
+  happens — because four headings down one flat column read as more text. Interactive edges use
+  the `Strokes` tokens (a control's line is thicker and brighter than a card's) so the screen
+  says what can be pressed. With more than one trigger a segmented control chooses between
+  "cualquiera" and "todos". Text and tags are
   offered before they are asked for — `suggestedTexts`/`suggestedTags` rank what has been written before
   by how often and how recently (a 30-day half-life), and nothing is auto-focused, because a
   keyboard that opens by itself hides the list that would have saved the typing. `TriggerKindSheet` puts the kind
@@ -109,7 +125,14 @@ strict is asking somebody to remember how they spelled it.
   row. That, next to `lastFiredAt`, is what makes a firing the phone slept through detectable:
   an armed moment in the past with no ring to match it.
 - `ReminderFiring` is the single place that decides what a firing, a "Hecho" and a snooze do, so
-  the alarm, the notification buttons and the alert screen cannot drift apart. "Hecho" finishes
+  the alarm, the notification buttons and the alert screen cannot drift apart. Under ALL it
+  writes the moment down and returns; only the last one goes on to ring.
+- `AlertPresenter` decides *where* a firing shows itself: an app open in front of somebody gets
+  the banner, and the home screen, a dark screen or the lock screen get the whole screen. That
+  needs two permissions granted by hand — usage access (to tell an app from the launcher) and
+  "display over other apps" (Android forbids a background activity start without it). Missing
+  either falls back to the banner, which is what the system does on its own, and Settings says
+  so. The decision itself is a pure function with JVM tests. "Hecho" finishes
   a one-shot and leaves anything that can come round again.
 - `AlertNotifications` has one channel per sound/vibration combination, because a channel's
   sound is fixed the moment it is created. A full-screen alert's notification stays silent: the

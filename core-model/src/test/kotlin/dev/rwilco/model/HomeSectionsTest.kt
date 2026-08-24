@@ -24,7 +24,7 @@ class HomeSectionsTest {
 
     @Test
     fun `sections follow the local calendar with a rolling week`() {
-        val section = { t: Trigger.AtDateTime -> sectionOf(scheduled(t), Status.ACTIVE, now, zone) }
+        val section = { t: Trigger.AtDateTime -> sectionOf(scheduled(t), Status.ACTIVE, hasRules = true, now, zone) }
         assertEquals(Section.TODAY, section(at(2026, 8, 27, 23, 59)))
         assertEquals(Section.TOMORROW, section(at(2026, 8, 28, 0, 0)))
         assertEquals(Section.TOMORROW, section(at(2026, 8, 28, 23, 59)))
@@ -36,11 +36,13 @@ class HomeSectionsTest {
     @Test
     fun `whenever, paused and overdue are their own sections`() {
         val place = Trigger.Location(40.4, -3.7, 200, Transition.ENTER, "Casa")
-        assertEquals(Section.WHENEVER, sectionOf(NextFire.WhenAt(place), Status.ACTIVE, now, zone))
+        assertEquals(Section.WHENEVER, sectionOf(NextFire.WhenAt(place), Status.ACTIVE, hasRules = true, now, zone))
         val random = Trigger.Random(1, Period.DAY, LocalTime.of(10, 0), LocalTime.of(20, 0), emptySet())
-        assertEquals(Section.WHENEVER, sectionOf(NextFire.Sometime(now, now, now, random), Status.ACTIVE, now, zone))
-        assertEquals(Section.PAUSED, sectionOf(scheduled(at(2026, 8, 27, 23, 0)), Status.PAUSED, now, zone))
-        assertEquals(Section.OVERDUE, sectionOf(null, Status.ACTIVE, now, zone))
+        assertEquals(Section.WHENEVER, sectionOf(NextFire.Sometime(now, now, now, random), Status.ACTIVE, hasRules = true, now, zone))
+        assertEquals(Section.PAUSED, sectionOf(scheduled(at(2026, 8, 27, 23, 0)), Status.PAUSED, hasRules = true, now, zone))
+        assertEquals(Section.OVERDUE, sectionOf(null, Status.ACTIVE, hasRules = true, now, zone))
+        // Nothing to fire and nothing that ever was: kept, not missed.
+        assertEquals(Section.NO_TRIGGER, sectionOf(null, Status.ACTIVE, hasRules = false, now, zone))
     }
 
     @Test

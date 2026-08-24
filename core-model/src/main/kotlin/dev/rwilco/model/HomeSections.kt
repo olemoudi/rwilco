@@ -6,7 +6,7 @@ import java.time.ZoneId
 import java.util.Locale
 
 /** Declaration order is display order. */
-enum class Section { OVERDUE, TODAY, TOMORROW, THIS_WEEK, LATER, WHENEVER, PAUSED }
+enum class Section { OVERDUE, TODAY, TOMORROW, THIS_WEEK, LATER, WHENEVER, NO_TRIGGER, PAUSED }
 
 data class HomeEntry(val reminder: Reminder, val next: NextFire?)
 
@@ -17,8 +17,10 @@ data class HomeGroups(
     val sections: Map<Section, List<HomeEntry>>,
 )
 
-fun sectionOf(next: NextFire?, status: Status, now: Instant, zone: ZoneId): Section {
+fun sectionOf(next: NextFire?, status: Status, hasRules: Boolean, now: Instant, zone: ZoneId): Section {
     if (status == Status.PAUSED) return Section.PAUSED
+    // Nothing to fire and nothing that ever was: a list item, not a missed alarm.
+    if (!hasRules) return Section.NO_TRIGGER
     return when (next) {
         null -> Section.OVERDUE
         is NextFire.WhenAt, is NextFire.Sometime -> Section.WHENEVER
@@ -58,7 +60,7 @@ fun groupForHome(
         .minByOrNull { (it.next as NextFire.Scheduled).at }
     val grouped = entries
         .filter { it !== hero }
-        .groupBy { sectionOf(it.next, it.reminder.status, now, zone) }
+        .groupBy { sectionOf(it.next, it.reminder.status, it.reminder.rules.isNotEmpty(), now, zone) }
         .mapValues { (_, list) -> list.sortedWith(compareBy({ it.sortInstant() }, { -it.reminder.updatedAt.toEpochMilli() })) }
     val ordered = LinkedHashMap<Section, List<HomeEntry>>()
     for (section in Section.entries) grouped[section]?.let { ordered[section] = it }

@@ -1,9 +1,12 @@
 package dev.rwilco.ui.alert
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +24,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -34,7 +38,6 @@ import androidx.compose.ui.unit.sp
 import dev.rwilco.R
 import dev.rwilco.model.Snooze
 import dev.rwilco.model.kind
-import dev.rwilco.ui.components.PresetChip
 import dev.rwilco.ui.components.TagLabel
 import dev.rwilco.ui.components.TriggerKeycap
 import dev.rwilco.ui.components.lampGlow
@@ -48,6 +51,7 @@ import dev.rwilco.ui.theme.icon
  * thumb cannot miss. In phase 1 it is reached only as a preview; phase 2 hosts the same
  * composable in the activity a full-screen intent launches.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AlertScreen(
     content: AlertContent,
@@ -110,12 +114,19 @@ fun AlertScreen(
                 color = scheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(spacing.sm))
-            Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                PresetChip(stringResource(R.string.countdown_minutes, Snooze.TEN_MINUTES.minutes.toInt()), onClick = { onSnooze(Snooze.TEN_MINUTES) })
-                PresetChip(stringResource(R.string.countdown_hours, 1), onClick = { onSnooze(Snooze.ONE_HOUR) })
-                PresetChip(stringResource(R.string.alert_snooze_tomorrow), onClick = { onSnooze(Snooze.TOMORROW) })
+            // Five answers, each its own tap target and none of them a chip a thumb has to aim
+            // at. They sit clear of the Done button, because the two mean opposite things and a
+            // half-awake hand should not be able to confuse them.
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                verticalArrangement = Arrangement.spacedBy(spacing.sm),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                for (snooze in Snooze.entries) {
+                    SnoozeButton(label = stringResource(snooze.labelRes), onClick = { onSnooze(snooze) })
+                }
             }
-            Spacer(Modifier.height(spacing.lg))
+            Spacer(Modifier.height(spacing.xl))
             Button(
                 onClick = {
                     haptics.perform(HapticFeedbackType.Confirm)
@@ -138,6 +149,42 @@ fun AlertScreen(
             ) {
                 Text(stringResource(if (preview) R.string.alert_close_preview else R.string.alert_view))
             }
+            Spacer(Modifier.height(spacing.sm))
         }
     }
 }
+
+/** A snooze offer: a real button, thumb-sized, quiet enough not to compete with Done. */
+@Composable
+private fun SnoozeButton(label: String, onClick: () -> Unit) {
+    val haptics = Tokens.haptics
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        onClick = {
+            haptics.perform(HapticFeedbackType.ContextClick)
+            onClick()
+        },
+        shape = MaterialTheme.shapes.medium,
+        color = scheme.surfaceContainerHigh,
+        border = BorderStroke(Tokens.strokes.control, scheme.outline),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleSmall,
+            color = scheme.onSurface,
+            modifier = Modifier
+                .heightIn(min = Tokens.sizes.touch)
+                .padding(horizontal = Tokens.spacing.lg, vertical = Tokens.spacing.md),
+        )
+    }
+}
+
+/** What each offer is called. The words are the person's, not the duration's. */
+val Snooze.labelRes: Int
+    get() = when (this) {
+        Snooze.TEN_MINUTES -> R.string.snooze_ten_minutes
+        Snooze.TWO_HOURS -> R.string.snooze_two_hours
+        Snooze.TOMORROW -> R.string.snooze_tomorrow
+        Snooze.WEEKEND -> R.string.snooze_weekend
+        Snooze.NEXT_WEEK -> R.string.snooze_next_week
+    }

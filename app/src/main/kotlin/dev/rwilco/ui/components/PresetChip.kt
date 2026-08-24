@@ -25,10 +25,13 @@ fun PresetChip(label: String, onClick: () -> Unit, modifier: Modifier = Modifier
         label = { Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         shape = MaterialTheme.shapes.small,
         colors = AssistChipDefaults.assistChipColors(
-            containerColor = if (selected) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.surfaceContainerLow,
+            containerColor = if (selected) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.surfaceContainerHigh,
             labelColor = MaterialTheme.colorScheme.onSurface,
         ),
-        border = BorderStroke(1.dp, if (selected) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outlineVariant),
+        border = BorderStroke(
+            if (selected) Tokens.strokes.strong else Tokens.strokes.control,
+            if (selected) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline,
+        ),
         modifier = modifier.heightIn(min = 44.dp),
     )
 }

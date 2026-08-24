@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Icon
@@ -57,6 +58,14 @@ fun ReminderCard(
                 modifier = Modifier.padding(end = spacing.md),
             )
             Spacer(Modifier.height(spacing.sm))
+            if (card.matchAll) {
+                Text(
+                    text = stringResource(R.string.card_match_all),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = spacing.xs),
+                )
+            }
             Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
                 for (row in card.triggers) TriggerRow(row, today, defaultTime, muted = card.paused)
             }
@@ -84,7 +93,7 @@ fun TriggerRow(row: TriggerRowUi, today: LocalDate, defaultTime: LocalTime, mute
     Row(verticalAlignment = Alignment.CenterVertically) {
         TriggerKeycap(family = row.family, icon = row.trigger.kind.icon, contentDescription = null, size = 28.dp)
         Spacer(Modifier.width(Tokens.spacing.sm))
-        Column {
+        Column(modifier = Modifier.weight(1f, fill = false)) {
             Text(
                 text = line.primary,
                 style = if (line.primaryMono) MonoStyles.label else MaterialTheme.typography.titleSmall,
@@ -111,6 +120,16 @@ fun TriggerRow(row: TriggerRowUi, today: LocalDate, defaultTime: LocalTime, mute
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+        }
+        // Under "all of them", the ones already behind us: what is left is what it is waiting for.
+        if (row.fired) {
+            Spacer(Modifier.width(Tokens.spacing.sm))
+            Icon(
+                imageVector = Icons.Outlined.Check,
+                contentDescription = stringResource(R.string.card_rule_happened),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp),
+            )
         }
     }
 }

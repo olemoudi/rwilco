@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.DayOfWeek
 import java.time.LocalTime
 
 class SettingsViewModel(
@@ -35,6 +36,9 @@ class SettingsViewModel(
 
     /** Null puts the six tiles back in their usual order: no favourite. */
     fun setDefaultTriggerKind(kind: TriggerKind?) = update { it.copy(defaultTriggerKind = kind) }
+
+    /** What "the weekend" means when a reminder is put off to it. */
+    fun setWeekend(day: DayOfWeek, time: LocalTime) = update { it.copy(weekendDay = day, weekendTime = time) }
 
     private fun update(transform: (AppSettings) -> AppSettings) {
         viewModelScope.launch { store.update(transform) }

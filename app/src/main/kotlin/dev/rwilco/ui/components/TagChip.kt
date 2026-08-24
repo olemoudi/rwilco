@@ -43,8 +43,8 @@ fun TagChip(
             selectedLabelColor = MaterialTheme.colorScheme.onSurface,
         ),
         border = BorderStroke(
-            1.dp,
-            if (selected) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outlineVariant,
+            if (selected) Tokens.strokes.strong else Tokens.strokes.control,
+            if (selected) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline,
         ),
         modifier = modifier.heightIn(min = 40.dp),
     )

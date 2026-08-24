@@ -4,13 +4,19 @@ import android.content.Context
 import android.util.Log
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
+import dev.rwilco.model.FiringOutcome
+import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Snooze
 import dev.rwilco.model.Status
+import dev.rwilco.model.Trigger
 import dev.rwilco.model.allHoldAt
 import dev.rwilco.model.firingPlan
 import dev.rwilco.model.missedFire
+import dev.rwilco.model.outcomeOfFiring
+import dev.rwilco.model.rulesCombine
 import dev.rwilco.model.statusAfterDismissal
 import dev.rwilco.notify.AlertNotifications
+import dev.rwilco.notify.AlertPresenter
 import kotlinx.coroutines.flow.first
 import java.time.Clock
 import java.time.Instant
@@ -37,8 +43,11 @@ class ReminderFiring(
         val reminder = repository.get(id) ?: return
         if (reminder.status != Status.ACTIVE) return
         val now = clock.instant()
+        // A place is judged when it happens; a moment was judged when it was armed. Judging an
+        // alarm again here would silence a firing the phone slept through — the catch-up runs
+        // long after the window it was armed inside.
         val rule = ruleIndex?.let { reminder.rules.getOrNull(it) }
-        if (rule != null && !rule.conditions.allHoldAt(now, clock.zone)) {
+        if (rule?.trigger is Trigger.Location && !rule.conditions.allHoldAt(now, clock.zone)) {
             Log.i(TAG, "$id reached its place outside the hours it asked for")
             return
         }
@@ -48,9 +57,23 @@ class ReminderFiring(
             scheduler.rearmAll()
             return
         }
+        // Under ALL a moment is first of all something that happened: only the one that
+        // completes the set rings, and the rest are written down and waited on.
+        when (val outcome = outcomeOfFiring(reminder, ruleIndex)) {
+            is FiringOutcome.Wait -> {
+                Log.i(TAG, "$id noted rule $ruleIndex; still waiting for the rest")
+                repository.setFiredRules(id, outcome.fired)
+                scheduler.rearmAll()
+                return
+            }
+            FiringOutcome.Ring -> Unit
+        }
         Log.i(TAG, "firing $id${if (late != null) " (late)" else ""}")
         repository.markFired(id, now)
-        AlertNotifications.post(context, reminder, firingPlan(reminder.actions), late)
+        if (reminder.ruleMatch == RuleMatch.ALL && reminder.rulesCombine) {
+            repository.setFiredRules(id, reminder.rules.indices.toSet())
+        }
+        AlertPresenter.show(context, reminder, firingPlan(reminder.actions), late)
         scheduler.rearmAll()
     }
 
@@ -61,6 +84,8 @@ class ReminderFiring(
         val defaultTime = settingsStore.settings.first().defaultTime
         val status = statusAfterDismissal(reminder, now, clock.zone, defaultTime)
         repository.snooze(id, null)
+        // A round dealt with is a round over: what had already happened stops counting.
+        repository.setFiredRules(id, emptySet())
         repository.setStatus(id, status)
         AlertNotifications.cancel(context, id)
         scheduler.rearmAll()
@@ -68,8 +93,8 @@ class ReminderFiring(
 
     suspend fun snooze(id: String, snooze: Snooze) {
         val now = clock.instant()
-        val defaultTime = settingsStore.settings.first().defaultTime
-        repository.snooze(id, snooze.until(now, clock.zone, defaultTime))
+        val settings = settingsStore.settings.first()
+        repository.snooze(id, snooze.until(now, clock.zone, settings.weekendDay, settings.weekendTime))
         AlertNotifications.cancel(context, id)
         scheduler.rearmAll()
     }
@@ -83,7 +108,8 @@ class ReminderFiring(
         val missed = scheduler.rearmAll()
         for (reminder in missed) {
             val at = missedFire(reminder, clock.instant()) ?: continue
-            fire(reminder.id, late = at)
+            // The rule the moment belonged to, or the whole thing is recorded against the wrong one.
+            fire(reminder.id, late = at, ruleIndex = reminder.armedRule)
         }
     }
 

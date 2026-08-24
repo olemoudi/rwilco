@@ -40,6 +40,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import dev.rwilco.R
 import dev.rwilco.model.TriggerFamily
+import dev.rwilco.notify.canDrawOverlays
+import dev.rwilco.notify.hasUsageAccess
 import dev.rwilco.ui.components.PermissionFixRow
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.theme.LocalDarkTheme
@@ -57,6 +59,8 @@ fun AlertPermissionsCard() {
     var notifications by remember { mutableStateOf(true) }
     var fullScreen by remember { mutableStateOf(true) }
     var exactAlarms by remember { mutableStateOf(true) }
+    var overlay by remember { mutableStateOf(true) }
+    var usageAccess by remember { mutableStateOf(true) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -65,6 +69,8 @@ fun AlertPermissionsCard() {
                 notifications = NotificationManagerCompat.from(context).areNotificationsEnabled()
                 fullScreen = context.canUseFullScreenIntent()
                 exactAlarms = context.canScheduleExactAlarms()
+                overlay = context.canDrawOverlays()
+                usageAccess = context.hasUsageAccess()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -78,7 +84,7 @@ fun AlertPermissionsCard() {
 
     RwilcoCard {
         Column(Modifier.padding(Tokens.spacing.lg)) {
-            if (notifications && fullScreen && exactAlarms) {
+            if (notifications && fullScreen && exactAlarms && overlay && usageAccess) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Outlined.CheckCircle,
@@ -129,6 +135,26 @@ fun AlertPermissionsCard() {
                             )
                         }
                     },
+                )
+            }
+            // The two that decide whether a firing takes the screen or knocks: without them the
+            // alert is always a banner, which is what the system does on its own.
+            if (!overlay) {
+                PermissionFixRow(
+                    text = stringResource(R.string.perm_overlay_missing),
+                    action = stringResource(R.string.perm_overlay_fix),
+                    onFix = {
+                        context.startActivity(
+                            Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")),
+                        )
+                    },
+                )
+            }
+            if (!usageAccess) {
+                PermissionFixRow(
+                    text = stringResource(R.string.perm_usage_missing),
+                    action = stringResource(R.string.perm_usage_fix),
+                    onFix = { context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) },
                 )
             }
         }

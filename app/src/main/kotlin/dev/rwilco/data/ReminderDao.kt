@@ -40,8 +40,11 @@ interface ReminderDao {
     @Query("UPDATE reminder SET lastFiredAt = :at, snoozedUntil = NULL WHERE id = :id")
     suspend fun markFired(id: String, at: Long)
 
-    @Query("UPDATE reminder SET armedFor = :at WHERE id = :id")
-    suspend fun setArmedFor(id: String, at: Long?)
+    @Query("UPDATE reminder SET armedFor = :at, armedRule = :ruleIndex WHERE id = :id")
+    suspend fun setArmedFor(id: String, at: Long?, ruleIndex: Int?)
+
+    @Query("UPDATE reminder SET firedRules = :indices WHERE id = :id")
+    suspend fun setFiredRules(id: String, indices: String)
 
     @Query("DELETE FROM reminder WHERE id = :id")
     suspend fun delete(id: String)

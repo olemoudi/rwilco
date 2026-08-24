@@ -10,12 +10,13 @@ import androidx.core.net.toUri
 import dev.rwilco.MainActivity
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
-import dev.rwilco.model.NextFire
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
 import dev.rwilco.model.TriggerRule
+import dev.rwilco.model.Wake
 import dev.rwilco.model.missedFire
-import dev.rwilco.model.nextFire
+import dev.rwilco.model.nextWake
 import kotlinx.coroutines.flow.first
 import java.time.Clock
 import java.time.Instant
@@ -61,13 +62,15 @@ class ReminderScheduler(
         for (reminder in open) {
             seen += reminder.id
             if (missedFire(reminder, now) != null) missed += reminder
-            val at = nextMoment(reminder, now, zone, defaultTime)
-            if (at == null) {
+            val wake = nextWake(reminder, now, zone, defaultTime)
+            if (wake == null) {
                 cancel(reminder.id)
-                if (reminder.armedFor != null) repository.setArmedFor(reminder.id, null)
+                if (reminder.armedFor != null) repository.setArmedFor(reminder.id, null, null)
             } else {
-                arm(reminder.id, at)
-                if (reminder.armedFor != at) repository.setArmedFor(reminder.id, at)
+                arm(reminder.id, wake)
+                if (reminder.armedFor != wake.at || reminder.armedRule != wake.ruleIndex) {
+                    repository.setArmedFor(reminder.id, wake.at, wake.ruleIndex)
+                }
             }
         }
         // Whatever was armed and is no longer open (done, deleted) loses its alarm. A process
@@ -83,16 +86,9 @@ class ReminderScheduler(
         armed -= id
     }
 
-    /** The moment the alarm clock is for; a place is the geofence's business, not this one's. */
-    private fun nextMoment(reminder: Reminder, now: Instant, zone: java.time.ZoneId, defaultTime: java.time.LocalTime): Instant? =
-        when (val next = nextFire(reminder, now, zone, defaultTime)) {
-            is NextFire.Scheduled -> next.at
-            is NextFire.Sometime -> next.at
-            is NextFire.WhenAt, null -> null
-        }
-
-    private fun arm(id: String, at: Instant) {
-        val operation = alarmIntent(id)
+    private fun arm(id: String, wake: Wake) {
+        val at = wake.at
+        val operation = alarmIntent(id, wake.ruleIndex)
         runCatching {
             if (canScheduleExact()) {
                 // setAlarmClock, not setExactAndAllowWhileIdle: it is the only kind of alarm Doze
@@ -122,30 +118,46 @@ class ReminderScheduler(
      * One PendingIntent per reminder, told apart by the data URI — extras are not part of what
      * makes two intents the same, so without it every reminder would share (and overwrite) one
      * alarm.
+     *
+     * Which rule the moment belongs to therefore travels as an extra, not in the URI: that keeps
+     * the identity stable (so [cancel] still matches what [arm] set) while FLAG_UPDATE_CURRENT
+     * refreshes the extra on every re-arm.
      */
-    private fun alarmIntent(id: String): PendingIntent = PendingIntent.getBroadcast(
-        context,
-        0,
-        Intent(context, AlarmReceiver::class.java).setData(reminderUri(id)),
-        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-    )
+    private fun alarmIntent(id: String, ruleIndex: Int? = null): PendingIntent {
+        val intent = Intent(context, AlarmReceiver::class.java).setData(reminderUri(id))
+        if (ruleIndex != null) intent.putExtra(EXTRA_RULE, ruleIndex)
+        return PendingIntent.getBroadcast(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
 
     companion object {
         private const val TAG = "RwilcoAlarms"
+
+        /** Which rule the alarm was armed for; absent means "the moment is the ring itself". */
+        const val EXTRA_RULE = "rule"
 
         fun reminderUri(id: String) = "rwilco://reminder/$id".toUri()
 
         fun reminderIdOf(intent: Intent): String? = intent.data?.lastPathSegment
 
+        fun ruleIndexOf(intent: Intent): Int? = intent.getIntExtra(EXTRA_RULE, -1).takeIf { it >= 0 }
+
         /** What the scheduling of a list depends on; anything else changing must not re-arm it. */
         fun schedulingKey(reminder: Reminder): SchedulingKey =
-            SchedulingKey(reminder.id, reminder.status, reminder.rules, reminder.snoozedUntil)
+            SchedulingKey(reminder.id, reminder.status, reminder.rules, reminder.ruleMatch, reminder.firedRules, reminder.snoozedUntil)
     }
 
     data class SchedulingKey(
         val id: String,
         val status: Status,
         val rules: List<TriggerRule>,
+        val ruleMatch: RuleMatch,
+        /** Ticking a rule off moves the armed moment on to the next one, so it belongs here. */
+        val firedRules: Set<Int>,
         val snoozedUntil: Instant?,
     )
 }

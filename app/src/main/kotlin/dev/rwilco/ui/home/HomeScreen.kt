@@ -211,6 +211,7 @@ private val Section.titleRes: Int
         Section.THIS_WEEK -> R.string.home_section_this_week
         Section.LATER -> R.string.home_section_later
         Section.WHENEVER -> R.string.home_section_whenever
+        Section.NO_TRIGGER -> R.string.home_section_no_trigger
         Section.PAUSED -> R.string.home_section_paused
     }
 

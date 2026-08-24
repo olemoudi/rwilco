@@ -81,11 +81,10 @@ class EditorTourTest {
         rule.waitUntilShown(s(R.string.editor_title_new))
         shot("editor-empty")
 
-        // Saving an empty form names what is missing instead of doing nothing.
+        // Saving an empty form names what is missing instead of doing nothing — which is only
+        // the words now: a reminder with neither trigger nor action is a note, and saves.
         text(s(R.string.common_save)).performClick()
         text(s(R.string.editor_error_text)).assertIsDisplayed()
-        // Below the fold now that the reuse list sits between them.
-        text(s(R.string.editor_error_trigger)).performScrollTo().assertIsDisplayed()
 
         // Nothing is auto-focused any more: the button is the way to the keyboard, and what has
         // been written before is offered under it.
@@ -127,7 +126,6 @@ class EditorTourTest {
         shot("sheet-countdown")
         text(s(R.string.sheet_add)).performClick()
         rule.waitUntilGone(s(R.string.sheet_add))
-        text(s(R.string.editor_error_trigger)).assertDoesNotExist()
         rule.onNodeWithContentDescription(s(R.string.editor_edit_trigger)).assertIsDisplayed()
 
         // A rule can be fenced in: the trigger only counts inside these hours.

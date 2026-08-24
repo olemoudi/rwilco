@@ -35,6 +35,7 @@ fun RwilcoTheme(
         LocalSpacing provides Spacing(),
         LocalMotion provides Motion(),
         LocalSizes provides Sizes(),
+        LocalStrokes provides Strokes(),
         LocalDarkTheme provides darkTheme,
         LocalHaptics provides hapticsController,
     ) {

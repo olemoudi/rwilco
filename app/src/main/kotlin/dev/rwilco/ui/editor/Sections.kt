@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.text.BasicTextField
@@ -58,11 +59,13 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import dev.rwilco.R
 import dev.rwilco.model.Action
+import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.family
 import dev.rwilco.model.kind
 import dev.rwilco.ui.components.PresetChip
+import dev.rwilco.ui.components.SegmentedChoice
 import dev.rwilco.ui.components.TagChip
 import dev.rwilco.ui.components.TriggerKeycap
 import dev.rwilco.ui.format.conditionLabel
@@ -103,6 +106,11 @@ internal fun TextSection(
             OutlinedButton(
                 onClick = { focusRequester.requestFocus() },
                 shape = MaterialTheme.shapes.small,
+                border = BorderStroke(Tokens.strokes.control, MaterialTheme.colorScheme.outline),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                ),
                 contentPadding = PaddingValues(horizontal = Tokens.spacing.lg),
                 modifier = Modifier.heightIn(min = Tokens.sizes.touch),
             ) {
@@ -224,6 +232,11 @@ internal fun TagsSection(
             OutlinedButton(
                 onClick = { adding = true },
                 shape = MaterialTheme.shapes.small,
+                border = BorderStroke(Tokens.strokes.control, MaterialTheme.colorScheme.outline),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                ),
                 contentPadding = PaddingValues(horizontal = Tokens.spacing.lg),
                 modifier = Modifier.heightIn(min = Tokens.sizes.touch),
             ) {
@@ -258,6 +271,8 @@ const val EDITOR_TAGS_TAG = "editorTags"
 @Composable
 internal fun TriggersSection(
     rules: List<TriggerRule>,
+    ruleMatch: RuleMatch,
+    onRuleMatch: (RuleMatch) -> Unit,
     today: LocalDate,
     defaultTime: LocalTime,
     inPast: Set<Int>,
@@ -267,12 +282,28 @@ internal fun TriggersSection(
     onAddCondition: (Int) -> Unit,
     onEditCondition: (Int, Int) -> Unit,
     onRemoveCondition: (Int, Int) -> Unit,
-    error: Boolean,
 ) {
     Column {
+        // The choice only exists once there is something to combine, and it comes before the
+        // list because it changes what the list means.
         if (rules.size > 1) {
+            SegmentedChoice(
+                options = listOf(stringResource(R.string.editor_match_any), stringResource(R.string.editor_match_all)),
+                selectedIndex = if (ruleMatch == RuleMatch.ANY) 0 else 1,
+                onSelect = { onRuleMatch(if (it == 0) RuleMatch.ANY else RuleMatch.ALL) },
+            )
             Text(
-                text = stringResource(R.string.editor_any_of_these),
+                text = stringResource(
+                    if (ruleMatch == RuleMatch.ANY) R.string.editor_match_any_hint else R.string.editor_match_all_hint,
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = Tokens.spacing.xs, bottom = Tokens.spacing.sm),
+            )
+        }
+        if (rules.isEmpty()) {
+            Text(
+                text = stringResource(R.string.editor_when_empty),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = Tokens.spacing.sm),
@@ -297,6 +328,11 @@ internal fun TriggersSection(
         OutlinedButton(
             onClick = onAdd,
             shape = MaterialTheme.shapes.medium,
+            border = BorderStroke(Tokens.strokes.control, MaterialTheme.colorScheme.outline),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ),
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = Tokens.sizes.control),
@@ -305,7 +341,6 @@ internal fun TriggersSection(
             Spacer(Modifier.width(Tokens.spacing.sm))
             Text(stringResource(R.string.editor_add_trigger), style = MaterialTheme.typography.titleMedium)
         }
-        if (error) FieldError(stringResource(R.string.editor_error_trigger))
     }
 }
 
@@ -326,8 +361,8 @@ private fun TriggerEditRow(
     val line = triggerLine(trigger, today, defaultTime)
     Surface(
         shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = BorderStroke(Tokens.strokes.control, MaterialTheme.colorScheme.outline),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(start = Tokens.spacing.md, top = Tokens.spacing.sm, bottom = Tokens.spacing.sm)) {
@@ -402,8 +437,16 @@ private fun TriggerEditRow(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun ActionsSection(selected: Set<Action>, onToggle: (Action) -> Unit, error: Boolean) {
+internal fun ActionsSection(selected: Set<Action>, onToggle: (Action) -> Unit) {
     Column {
+        if (selected.isEmpty()) {
+            Text(
+                text = stringResource(R.string.editor_what_empty),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = Tokens.spacing.sm),
+            )
+        }
         FlowRow(
             maxItemsInEachRow = 2,
             horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
@@ -419,7 +462,6 @@ internal fun ActionsSection(selected: Set<Action>, onToggle: (Action) -> Unit, e
                 )
             }
         }
-        if (error) FieldError(stringResource(R.string.editor_error_action))
     }
 }
 
@@ -434,8 +476,11 @@ private fun ActionTile(action: Action, selected: Boolean, onToggle: () -> Unit, 
             onToggle()
         },
         shape = MaterialTheme.shapes.medium,
-        color = if (selected) scheme.surfaceContainerHighest else scheme.surfaceContainerLow,
-        border = androidx.compose.foundation.BorderStroke(1.dp, if (selected) scheme.outline else scheme.outlineVariant),
+        color = if (selected) scheme.surfaceContainerHighest else scheme.surfaceContainerHigh,
+        border = BorderStroke(
+            if (selected) Tokens.strokes.strong else Tokens.strokes.control,
+            if (selected) scheme.onSurfaceVariant else scheme.outline,
+        ),
         modifier = modifier.heightIn(min = 72.dp),
     ) {
         Row(

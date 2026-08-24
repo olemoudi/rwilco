@@ -18,7 +18,7 @@ abstract class RwilcoDatabase : RoomDatabase() {
 
     companion object {
         /** A named constant so MigrationChainTest can assert the chain reaches it. */
-        const val VERSION = 2
+        const val VERSION = 3
         private const val NAME = "rwilco.db"
 
         /** One entry per version step; `// vN: what it added` on each. */
@@ -30,6 +30,15 @@ abstract class RwilcoDatabase : RoomDatabase() {
                     db.execSQL("ALTER TABLE reminder ADD COLUMN snoozedUntil INTEGER")
                     db.execSQL("ALTER TABLE reminder ADD COLUMN lastFiredAt INTEGER")
                     db.execSQL("ALTER TABLE reminder ADD COLUMN armedFor INTEGER")
+                }
+            },
+            // v3: rules that combine. Everything written before this is an ANY reminder with
+            // nothing ticked off and no rule behind its armed moment — which is what it was.
+            object : Migration(2, 3) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE reminder ADD COLUMN ruleMatch TEXT NOT NULL DEFAULT 'ANY'")
+                    db.execSQL("ALTER TABLE reminder ADD COLUMN armedRule INTEGER")
+                    db.execSQL("ALTER TABLE reminder ADD COLUMN firedRules TEXT NOT NULL DEFAULT ''")
                 }
             },
         )

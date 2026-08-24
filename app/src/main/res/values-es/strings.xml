@@ -84,8 +84,6 @@
     <string name="editor_remove_trigger">Quitar disparador</string>
     <string name="editor_what_title">Qué pasa</string>
     <string name="editor_error_text">Escribe qué quieres recordar.</string>
-    <string name="editor_error_trigger">Añade al menos un disparador.</string>
-    <string name="editor_error_action">Elige al menos una cosa que pase.</string>
     <string name="editor_warning_past">Ese momento ya ha pasado.</string>
     <string name="editor_discard_title">¿Descartar los cambios?</string>
     <string name="editor_discard_body">Lo que has cambiado aquí se perderá.</string>
@@ -212,7 +210,6 @@
     <string name="perm_alarms_fix">Permitir</string>
     <string name="perm_background_location_missing">Los recordatorios por lugar necesitan la ubicación "todo el tiempo"; si no, solo funcionan con Rwilco abierta.</string>
     <string name="perm_background_location_fix">Permitir</string>
-    <string name="editor_any_of_these">Con que ocurra cualquiera de estos, basta.</string>
     <string name="editor_add_condition">Sólo si…</string>
     <string name="editor_add_another_condition">Y sólo si…</string>
     <string name="editor_remove_condition">Quitar condición</string>
@@ -281,5 +278,39 @@
         <item>El editor se lee en cuatro pasos — el recordatorio, las etiquetas, cuándo y qué pasa — cada uno con su rótulo, y los botones de escribir y de nueva etiqueta ya no gritan.</item>
         <item>En Ajustes eliges qué tipo de disparador se ofrece primero al añadir uno.</item>
         <item>Ajustes tiene una sección de Ubicación que dice si los lugares pueden vigilarse siquiera, y «Usar mi ubicación» ya no se rinde cuando el permiso es aproximado o el GPS no tiene nada que decir bajo techo.</item>
+    </string-array>
+    <!-- Snoozes -->
+    <string name="snooze_ten_minutes">10 min</string>
+    <string name="snooze_two_hours">2 h</string>
+    <string name="snooze_tomorrow">Mañana a la misma hora</string>
+    <string name="snooze_weekend">El finde</string>
+    <string name="snooze_next_week">La semana que viene</string>
+    <string name="settings_weekend">Cuándo empieza «el finde»</string>
+    <string name="settings_weekend_hint">Dónde cae un recordatorio cuando lo pospones al finde.</string>
+
+    <!-- Rules that combine -->
+    <string name="editor_match_any">Cualquiera</string>
+    <string name="editor_match_all">Todos</string>
+    <string name="editor_match_any_hint">Suena con el primero que ocurra.</string>
+    <string name="editor_match_all_hint">Tienen que ocurrir todos; suena con el último.</string>
+    <string name="card_match_all">todos</string>
+    <string name="card_rule_happened">Ya ha ocurrido</string>
+
+    <!-- Alert permissions -->
+    <string name="perm_overlay_missing">Sin «mostrar sobre otras apps» un recordatorio no puede tomar la pantalla con el móvil desbloqueado.</string>
+    <string name="perm_overlay_fix">Permitir</string>
+    <string name="perm_usage_missing">Sin «acceso al uso» Rwilco no distingue una app abierta del escritorio, así que siempre llega como banner.</string>
+    <string name="perm_usage_fix">Permitir</string>
+    <string name="home_section_no_trigger">Guardados, sin aviso</string>
+    <string name="editor_when_optional">opcional</string>
+    <string name="editor_what_optional">opcional</string>
+    <string name="editor_when_empty">No suena: se queda guardado, bajo sus etiquetas.</string>
+    <string name="editor_what_empty">El momento pasa en silencio.</string>
+    <string-array name="whats_new_0_3_0">
+        <item>El aviso toma la pantalla sólo cuando no hay nada abierto: con una app delante llega como banner, y el banner lo abre.</item>
+        <item>Posponer: diez minutos, dos horas, mañana a la misma hora, el finde (el viernes a las 20:30, o cuando tú digas en Ajustes) y la semana que viene, en botones que el pulgar no falla.</item>
+        <item>Un recordatorio ya no necesita disparador ni acción. Con texto y una etiqueta basta: se queda guardado, bajo «Guardados, sin aviso».</item>
+        <item>Con más de un disparador eliges entre «cualquiera» y «todos» — todos suena con el último que ocurra, y la tarjeta marca los que ya han pasado.</item>
+        <item>El editor se lee en cuatro partes, cada una en su tarjeta con su icono, y por fin se ve el borde de todo lo que se puede pulsar.</item>
     </string-array>
 </resources>

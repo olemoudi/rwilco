@@ -135,6 +135,10 @@ class ReminderCodecTest {
     @Test
     fun `settings encode every field so a reader can rely on presence`() {
         val encoded = ReminderCodec.encodeSettings(AppSettings())
-        assertEquals("""{"theme":"SYSTEM","defaultTime":"09:00","haptics":true,"defaultTriggerKind":null,"lastSeenVersionCode":0}""", encoded)
+        assertEquals(
+            """{"theme":"SYSTEM","defaultTime":"09:00","haptics":true,"defaultTriggerKind":null,""" +
+                """"weekendDay":"FRIDAY","weekendTime":"20:30","lastSeenVersionCode":0}""",
+            encoded,
+        )
     }
 }

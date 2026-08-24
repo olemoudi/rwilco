@@ -4,6 +4,7 @@ import dev.rwilco.model.Action
 import dev.rwilco.model.Condition
 import dev.rwilco.model.NextFire
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.SearchHit
 import dev.rwilco.model.Section
 import dev.rwilco.model.Status
@@ -42,6 +43,8 @@ data class ReminderCardUi(
     val triggers: List<TriggerRowUi>,
     val actions: Set<Action>,
     val paused: Boolean,
+    /** Every trigger has to happen, and the card says so: otherwise the rows read as an OR. */
+    val matchAll: Boolean = false,
 )
 
 /** One trigger row: the strings are formatted in the composable, which has the locale. */
@@ -54,6 +57,8 @@ data class TriggerRowUi(
     val nextAt: Instant?,
     /** A random trigger's window for the day of its next draw. */
     val window: Pair<Instant, Instant>?,
+    /** Under "all of them": this one has already happened and is being waited on no longer. */
+    val fired: Boolean = false,
 )
 
 /** Everything Home shows, from the open reminders. Pure and JVM-tested. */
@@ -72,7 +77,7 @@ fun buildHomeState(
         id = reminder.id,
         text = reminder.text,
         tags = reminder.tags,
-        triggers = reminder.rules.map { rule ->
+        triggers = reminder.rules.mapIndexed { index, rule ->
             val next = nextFireOfRule(rule, reminder.id, now, zone, defaultTime)
             TriggerRowUi(
                 trigger = rule.trigger,
@@ -80,10 +85,12 @@ fun buildHomeState(
                 family = rule.trigger.family,
                 nextAt = (next as? NextFire.Scheduled)?.at,
                 window = (next as? NextFire.Sometime)?.let { it.windowStart to it.windowEnd },
+                fired = reminder.ruleMatch == RuleMatch.ALL && index in reminder.firedRules,
             )
         },
         actions = reminder.actions,
         paused = reminder.status == Status.PAUSED,
+        matchAll = reminder.ruleMatch == RuleMatch.ALL && reminder.rules.size > 1,
     )
     return HomeUiState(
         loaded = true,

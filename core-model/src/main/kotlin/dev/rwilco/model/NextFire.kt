@@ -30,9 +30,12 @@ sealed interface NextFire {
 }
 
 /**
- * The next thing this reminder does: the earliest definite moment if there is one, else the
- * earliest random draw, else the place it is waiting for. Null for a paused or done reminder,
- * and for an active one whose every moment has passed (Home lists those as overdue).
+ * The next thing this reminder does: for ANY the earliest definite moment if there is one, else
+ * the earliest random draw, else the place it is waiting for. Null for a paused or done
+ * reminder, and for an active one whose every moment has passed (Home lists those as overdue).
+ *
+ * For ALL it is the *last* of the ones still pending, because that is the one that rings — and
+ * if a place is among them there is no date to give at all, so it answers with the place.
  */
 fun nextFire(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalTime): NextFire? {
     if (reminder.status != Status.ACTIVE) return null
@@ -42,10 +45,48 @@ fun nextFire(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalT
         val trigger = reminder.rules.firstOrNull()?.trigger ?: return null
         return NextFire.Scheduled(snoozedUntil, trigger, snoozed = true)
     }
-    val candidates = reminder.rules.mapNotNull { nextFireOfRule(it, reminder.id, now, zone, defaultTime) }
-    return candidates.filterIsInstance<NextFire.Scheduled>().minByOrNull { it.at }
-        ?: candidates.filterIsInstance<NextFire.Sometime>().minByOrNull { it.at }
-        ?: candidates.filterIsInstance<NextFire.WhenAt>().firstOrNull()
+    val pending = reminder.pendingRules()
+    val candidates = pending.mapNotNull { index ->
+        nextFireOfRule(reminder.rules[index], reminder.id, now, zone, defaultTime)
+    }
+    if (reminder.ruleMatch == RuleMatch.ANY || !reminder.rulesCombine) {
+        return candidates.filterIsInstance<NextFire.Scheduled>().minByOrNull { it.at }
+            ?: candidates.filterIsInstance<NextFire.Sometime>().minByOrNull { it.at }
+            ?: candidates.filterIsInstance<NextFire.WhenAt>().firstOrNull()
+    }
+    // ALL: one rule that can never happen again is one the set can never complete.
+    if (candidates.size < pending.size) return null
+    candidates.filterIsInstance<NextFire.WhenAt>().firstOrNull()?.let { return it }
+    return candidates.maxByOrNull { it.momentOrNull() ?: Instant.MIN }
+}
+
+/** The moment a candidate carries, where it has one; a place has none by nature. */
+private fun NextFire.momentOrNull(): Instant? = when (this) {
+    is NextFire.Scheduled -> at
+    is NextFire.Sometime -> at
+    is NextFire.WhenAt -> null
+}
+
+/**
+ * What the scheduler should set an alarm for, and which rule that moment belongs to.
+ *
+ * The earliest pending moment either way — under ALL too, where the alarm is not a ring but a
+ * note to take: the phone has to be awake at each of them to know it happened, and the ring
+ * falls out of the last one. A null [Wake.ruleIndex] means the moment is the ring itself,
+ * which is what a snooze is.
+ */
+data class Wake(val at: Instant, val ruleIndex: Int?)
+
+fun nextWake(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalTime): Wake? {
+    if (reminder.status != Status.ACTIVE) return null
+    val snoozedUntil = reminder.snoozedUntil
+    if (snoozedUntil != null && snoozedUntil > now) return Wake(snoozedUntil, null)
+    return reminder.pendingRules()
+        .mapNotNull { index ->
+            val at = nextFireOfRule(reminder.rules[index], reminder.id, now, zone, defaultTime)?.momentOrNull()
+            at?.let { Wake(it, index) }
+        }
+        .minByOrNull { it.at }
 }
 
 /**

@@ -26,6 +26,15 @@
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!-- Taking the screen while the phone is unlocked and in somebody's hand: Android forbids a
+         background app from starting an activity unless it may draw over other apps, and there
+         is no way to tell an open app from the home screen without usage access. Both are
+         granted by hand in system settings (Settings names them when they are missing), and
+         without them the alert simply arrives as a banner — the system's own behaviour. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <!-- allowBackup off: reminders are personal, and the sync/backup story is deliberately the

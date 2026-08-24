@@ -5,6 +5,7 @@ import dev.rwilco.model.Condition
 import dev.rwilco.model.DEFAULT_ACTIONS
 import dev.rwilco.model.MAX_TEXT_LENGTH
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerKind
@@ -21,10 +22,12 @@ data class Draft(
     val text: String = "",
     val tags: List<String> = emptyList(),
     val rules: List<TriggerRule> = emptyList(),
+    /** Only means anything with more than one rule; the editor hides the choice until then. */
+    val ruleMatch: RuleMatch = RuleMatch.ANY,
     val actions: Set<Action> = DEFAULT_ACTIONS,
 )
 
-fun Reminder.toDraft() = Draft(text = text, tags = tags, rules = rules, actions = actions)
+fun Reminder.toDraft() = Draft(text = text, tags = tags, rules = rules, ruleMatch = ruleMatch, actions = actions)
 
 /**
  * Note what is NOT carried over: a snooze, the last ring, the armed moment. Editing a reminder
@@ -36,6 +39,7 @@ fun Draft.toReminder(id: String, createdAt: Instant, now: Instant, status: Statu
     text = text.trim(),
     tags = tags,
     rules = rules,
+    ruleMatch = ruleMatch,
     actions = actions,
     status = status,
     createdAt = createdAt,
@@ -75,7 +79,7 @@ data class EditorUiState(
     val defaultKind: TriggerKind? = null,
 ) {
     val dirty: Boolean get() = draft != initial
-    val errors: List<ValidationError> get() = validate(draft.text, draft.rules, draft.actions)
+    val errors: List<ValidationError> get() = validate(draft.text, draft.rules)
     val canSave: Boolean get() = errors.isEmpty()
 }
 
@@ -97,6 +101,14 @@ fun EditorUiState.addTag(raw: String): EditorUiState {
     val spelling = existingTags.firstOrNull { it.equals(tag, ignoreCase = true) } ?: tag
     return copy(draft = draft.copy(tags = draft.tags + spelling))
 }
+
+/**
+ * Changing how the rules combine starts the round over: what had already happened under ALL was
+ * an answer to a different question, and carrying it into the new shape would ring something
+ * half-satisfied by history.
+ */
+fun EditorUiState.setRuleMatch(match: RuleMatch): EditorUiState =
+    copy(draft = draft.copy(ruleMatch = match))
 
 fun EditorUiState.toggleAction(action: Action): EditorUiState =
     copy(draft = draft.copy(actions = if (action in draft.actions) draft.actions - action else draft.actions + action))

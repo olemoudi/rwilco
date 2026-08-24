@@ -11,12 +11,16 @@ const val MAX_RADIUS_M = 1000
 const val MIN_RANDOM_TIMES = 1
 const val MAX_RANDOM_TIMES = 5
 
-/** What blocks saving. */
+/**
+ * What blocks saving — which is only the words, and a trigger that is nonsense in itself.
+ *
+ * Not having a trigger is not an error: a reminder with nothing but text and a tag is a note on
+ * a shelf, and keeping a list under "compra" that nothing ever rings is a thing people do.
+ * Nor is having no action: a moment that passes quietly is still the person's choice.
+ */
 sealed interface ValidationError {
     data object TextBlank : ValidationError
     data object TextTooLong : ValidationError
-    data object NoTrigger : ValidationError
-    data object NoAction : ValidationError
     data class BadTrigger(val index: Int, val problem: TriggerProblem) : ValidationError
 }
 
@@ -34,12 +38,10 @@ sealed interface ValidationWarning {
     data class InPast(val index: Int) : ValidationWarning
 }
 
-fun validate(text: String, rules: List<TriggerRule>, actions: Set<Action>): List<ValidationError> {
+fun validate(text: String, rules: List<TriggerRule>): List<ValidationError> {
     val errors = ArrayList<ValidationError>()
     if (text.isBlank()) errors += ValidationError.TextBlank
     if (text.length > MAX_TEXT_LENGTH) errors += ValidationError.TextTooLong
-    if (rules.isEmpty()) errors += ValidationError.NoTrigger
-    if (actions.isEmpty()) errors += ValidationError.NoAction
     rules.forEachIndexed { index, rule ->
         problemOf(rule.trigger)?.let { errors += ValidationError.BadTrigger(index, it) }
         rule.conditions.forEach { condition ->

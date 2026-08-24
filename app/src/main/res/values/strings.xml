@@ -86,8 +86,6 @@
     <string name="editor_remove_trigger">Remove trigger</string>
     <string name="editor_what_title">What happens</string>
     <string name="editor_error_text">Write what you want to remember.</string>
-    <string name="editor_error_trigger">Add at least one trigger.</string>
-    <string name="editor_error_action">Pick at least one thing to happen.</string>
     <string name="editor_warning_past">This moment has already passed.</string>
     <string name="editor_discard_title">Discard changes?</string>
     <string name="editor_discard_body">What you changed here will be lost.</string>
@@ -214,7 +212,6 @@
     <string name="perm_alarms_fix">Allow</string>
     <string name="perm_background_location_missing">Place reminders need location "all the time", or they only work while Rwilco is open.</string>
     <string name="perm_background_location_fix">Allow</string>
-    <string name="editor_any_of_these">Any of these is enough.</string>
     <string name="editor_add_condition">Only if…</string>
     <string name="editor_add_another_condition">And only if…</string>
     <string name="editor_remove_condition">Remove condition</string>
@@ -283,5 +280,39 @@
         <item>The editor reads as four steps — the reminder, tags, when, what happens — each under its own heading, and the Write and New tag buttons no longer shout.</item>
         <item>Settings chooses which kind of trigger is offered first when you add one.</item>
         <item>Settings has a Location section that says whether places can be watched at all, and "Use my location" no longer gives up when the permission is approximate or GPS has nothing to say indoors.</item>
+    </string-array>
+    <!-- Snoozes -->
+    <string name="snooze_ten_minutes">10 min</string>
+    <string name="snooze_two_hours">2 h</string>
+    <string name="snooze_tomorrow">Tomorrow, same time</string>
+    <string name="snooze_weekend">The weekend</string>
+    <string name="snooze_next_week">Next week</string>
+    <string name="settings_weekend">When "the weekend" starts</string>
+    <string name="settings_weekend_hint">Where a reminder lands when you put it off to the weekend.</string>
+
+    <!-- Rules that combine -->
+    <string name="editor_match_any">Any of them</string>
+    <string name="editor_match_all">All of them</string>
+    <string name="editor_match_any_hint">Whichever happens first rings it.</string>
+    <string name="editor_match_all_hint">All of them have to happen; the last one rings it.</string>
+    <string name="card_match_all">all of them</string>
+    <string name="card_rule_happened">Already happened</string>
+
+    <!-- Alert permissions -->
+    <string name="perm_overlay_missing">Without "display over other apps" a reminder cannot take the screen while the phone is unlocked.</string>
+    <string name="perm_overlay_fix">Allow</string>
+    <string name="perm_usage_missing">Without "usage access" Rwilco cannot tell an open app from the home screen, so it always arrives as a banner.</string>
+    <string name="perm_usage_fix">Allow</string>
+    <string name="home_section_no_trigger">Kept, not timed</string>
+    <string name="editor_when_optional">optional</string>
+    <string name="editor_what_optional">optional</string>
+    <string name="editor_when_empty">Nothing rings it: it is simply kept, under its tags.</string>
+    <string name="editor_what_empty">The moment passes in silence.</string>
+    <string-array name="whats_new_0_3_0">
+        <item>A reminder takes the whole screen only when nothing else is open: with an app in front of you it arrives as a banner instead, and the banner opens it.</item>
+        <item>Putting one off: ten minutes, two hours, tomorrow at the same time, the weekend (Friday at 20:30, or whenever you say in Settings) and next week — as buttons a thumb cannot miss.</item>
+        <item>A reminder no longer needs a trigger or an action. Text and a tag is enough: it is simply kept, under "kept, not timed".</item>
+        <item>With more than one trigger you choose between "any of them" and "all of them" — all of them rings with the last to happen, and the card ticks off the ones already behind you.</item>
+        <item>The editor reads as four parts, each in its own card with its own icon, and every edge you can press is finally visible.</item>
     </string-array>
 </resources>

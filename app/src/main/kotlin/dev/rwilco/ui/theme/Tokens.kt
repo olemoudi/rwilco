@@ -31,6 +31,18 @@ data class Motion(
 )
 
 /**
+ * Line weights. Two, because they say different things: [edge] is what makes a card a card, and
+ * [control] is what says "this responds to a thumb". A single hairline for both is what makes a
+ * screen read as flat — every surface equally quiet, nothing asking to be pressed.
+ */
+data class Strokes(
+    val edge: Dp = 1.dp,
+    val control: Dp = 1.5.dp,
+    /** A control that is on, or otherwise wants to be the loudest line on the screen. */
+    val strong: Dp = 2.dp,
+)
+
+/**
  * Touch sizes. [touch] is the Material floor; [control] is what a control a thumb reaches for
  * gets; [primary] is the one button a screen is about (Save, Done).
  */
@@ -39,6 +51,8 @@ data class Sizes(
     val control: Dp = 56.dp,
     val primary: Dp = 64.dp,
     val keycap: Dp = 36.dp,
+    /** The small square that carries a section's icon. */
+    val badge: Dp = 28.dp,
 )
 
 /**
@@ -54,6 +68,7 @@ class Haptics(private val delegate: HapticFeedback, val enabled: Boolean) {
 val LocalSpacing = staticCompositionLocalOf { Spacing() }
 val LocalMotion = staticCompositionLocalOf { Motion() }
 val LocalSizes = staticCompositionLocalOf { Sizes() }
+val LocalStrokes = staticCompositionLocalOf { Strokes() }
 
 /**
  * Whether the app is rendering dark right now. The colour scheme cannot answer this: the trigger
@@ -74,6 +89,8 @@ object Tokens {
         @Composable get() = LocalMotion.current
     val sizes: Sizes
         @Composable get() = LocalSizes.current
+    val strokes: Strokes
+        @Composable get() = LocalStrokes.current
     val haptics: Haptics
         @Composable get() = LocalHaptics.current
 }
