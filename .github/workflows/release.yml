@@ -37,11 +37,17 @@ jobs:
 
       - name: Build version.json (drives in-app auto-update)
         run: |
-          VC=$(grep -oP 'versionCode\s*=\s*\K[0-9]+' app/build.gradle.kts)
-          VN=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
+          set -euo pipefail
+          # head -1 on both: a second match anywhere in the file (a comment naming the pattern,
+          # a flavour) would otherwise be pasted into the JSON and ship an unparseable one.
+          VC=$(grep -oP 'versionCode\s*=\s*\K[0-9]+' app/build.gradle.kts | head -1)
+          VN=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts | head -1)
           printf '{"versionCode": %s, "versionName": "%s", "apk": "%s"}\n' \
             "$VC" "$VN" "https://github.com/olemoudi/rwilco/releases/latest/download/rwilco.apk" > version.json
           cat version.json
+          # The file every installed phone parses to decide whether to update itself: a broken
+          # one is silent, and stays silent until somebody notices they stopped getting updates.
+          python3 -c "import json;d=json.load(open('version.json'));assert isinstance(d['versionCode'],int) and d['versionName'] and d['apk'].startswith('https://github.com/olemoudi/rwilco/')"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v3

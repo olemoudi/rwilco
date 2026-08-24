@@ -18,10 +18,14 @@ android {
         applicationId = "dev.rwilco"
         minSdk = 29
         targetSdk = 36
-        // release.yml greps the FIRST `versionCode = N` / `versionName = "X"` in this file to
-        // build version.json, so keep exactly one of each here and nowhere else.
-        versionCode = 2
-        versionName = "0.2.0-alpha"
+        // release.yml reads these two lines out of this file to build version.json. Keep one of
+        // each, and do not write either name followed by an equals sign anywhere else in here —
+        // a comment that spells the pattern out is enough to be picked up instead. It was, in
+        // v0.1.0 and v0.2.0: the published versionName came out as the comment's placeholder
+        // with the real one stuck on the end. Updates kept working (the version CODE never
+        // matched the comment), so nothing complained — it just offered a nonsense version.
+        versionCode = 3
+        versionName = "0.2.1-alpha"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

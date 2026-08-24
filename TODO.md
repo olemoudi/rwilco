@@ -11,6 +11,15 @@ Running notes: what is next, what cost time, what must not be re-derived.
 - Cold start on the emulator shows an empty Home for ~2–3 s before the first DB emission
   (debug build, swiftshader). Not seen as a product problem yet; watch it on a real phone.
 
+## Shipped a wrong version.json in v0.1.0 and v0.2.0
+`release.yml` greps `versionName = "..."` out of `app/build.gradle.kts`, and the comment right
+above the real line spelled the pattern out — so the grep matched the comment's placeholder
+first and both matches ended up in the JSON. Updates never broke (the version *code* regex
+needs digits, which the comment did not have), so the only symptom was an update card offering
+"X\n0.2.0-alpha". Fixed in 0.2.1: the comment no longer spells the pattern, both greps take
+`head -1`, and the workflow now parses its own version.json before publishing it. Found by
+curling the published file rather than by trusting the build. 2026-08-24.
+
 ## Still to prove on the real phone (Pixel 8 Pro)
 - A place reminder actually firing in the street, and how long the geofence takes to notice.
 - The full-screen alert over the lock screen, and whether Android 14's full-screen-intent
