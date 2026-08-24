@@ -360,9 +360,10 @@ private fun EditorSection(
 ) {
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
+    // The same step off the ground as a card on Home: at "low" the card was only its outline.
     Surface(
         shape = MaterialTheme.shapes.large,
-        color = scheme.surfaceContainerLow,
+        color = scheme.surfaceContainer,
         border = BorderStroke(Tokens.strokes.edge, scheme.outlineVariant),
         modifier = modifier
             .fillMaxWidth()

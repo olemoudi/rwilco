@@ -224,17 +224,14 @@ private fun PeriodButton(label: String, selected: Boolean, onClick: () -> Unit) 
             onClick()
         },
         shape = MaterialTheme.shapes.small,
-        color = if (selected) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.surfaceContainerLow,
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            if (selected) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outlineVariant,
-        ),
+        color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surfaceContainerLow,
+        border = if (selected) null else androidx.compose.foundation.BorderStroke(Tokens.strokes.control, MaterialTheme.colorScheme.outline),
         modifier = Modifier.semantics { this.selected = selected },
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge,
-            color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (selected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = Tokens.spacing.md, vertical = Tokens.spacing.sm),
         )
     }

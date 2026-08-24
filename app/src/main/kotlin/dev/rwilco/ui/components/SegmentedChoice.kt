@@ -31,13 +31,14 @@ fun SegmentedChoice(
                     onSelect(index)
                 },
                 shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                // The chosen segment is inverted, like every other "on" in the app.
                 colors = SegmentedButtonDefaults.colors(
-                    activeContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    activeContentColor = MaterialTheme.colorScheme.onSurface,
-                    activeBorderColor = MaterialTheme.colorScheme.outline,
+                    activeContainerColor = MaterialTheme.colorScheme.onSurface,
+                    activeContentColor = MaterialTheme.colorScheme.surface,
+                    activeBorderColor = MaterialTheme.colorScheme.onSurface,
                     inactiveContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                     inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    inactiveBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                    inactiveBorderColor = MaterialTheme.colorScheme.outline,
                 ),
                 label = { Text(label, style = MaterialTheme.typography.labelLarge) },
             )

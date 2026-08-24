@@ -322,4 +322,10 @@
         <item>Empty screens have a face: an icon before the sentence.</item>
         <item>Done times follow the phone\'s 12/24-hour setting, the time wheels grow with a large font size, and the small grey notes in the editor are readable on the light theme too.</item>
     </string-array>
+    <string-array name="whats_new_0_3_2">
+        <item>"On" finally looks on. A chosen tag, action, preset or segment swaps ink and paper — the same inversion as the Save button — instead of turning a slightly lighter grey.</item>
+        <item>A chosen day is a solid disc in the time colour, so a week reads as a pattern of lit and unlit.</item>
+        <item>In the editor, each trigger row wears its family\'s colour: a date is blue, a place green, a chance violet, before a word is read.</item>
+        <item>The editor\'s cards stand off the ground the way Home\'s do, and toggles turn over with a short fade rather than popping.</item>
+    </string-array>
 </resources>

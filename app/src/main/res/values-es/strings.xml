@@ -320,4 +320,10 @@
         <item>Las pantallas vacías tienen cara: un icono antes de la frase.</item>
         <item>Las horas de Hechos siguen el ajuste de 12/24 horas del teléfono, las ruedas de la hora crecen con la letra grande, y las notas pequeñas en gris del editor se leen también en el tema claro.</item>
     </string-array>
+    <string-array name="whats_new_0_3_2">
+        <item>Lo que está activo por fin lo parece. Una etiqueta, acción, atajo o segmento elegido invierte tinta y papel —la misma inversión que el botón Guardar— en vez de volverse un gris un poco más claro.</item>
+        <item>Un día elegido es un disco sólido del color del tiempo, así que la semana se lee como un patrón de encendidos y apagados.</item>
+        <item>En el editor, cada fila de disparador lleva el color de su familia: una fecha es azul, un lugar verde, el azar violeta, antes de leer una palabra.</item>
+        <item>Las tarjetas del editor se despegan del fondo como las de la pantalla principal, y los interruptores se dan la vuelta con un fundido corto en vez de saltar.</item>
+    </string-array>
 </resources>

@@ -90,8 +90,12 @@ strict is asking somebody to remember how they spelled it.
   `RwilcoTypography` on three bundled variable fonts (Bricolage Grotesque display, Manrope body,
   JetBrains Mono for times/dates), `RwilcoShapes`, tokens (`Spacing`, `Motion`, `Sizes`) and
   `Haptics` behind one setting. Trigger families (time / place / chance) have their own colours
-  in `FamilyVisuals.kt`. Plain `MaterialTheme`: material3 1.4.0 keeps the expressive theme
-  internal.
+  in `FamilyVisuals.kt` — a `color`, a `tint` for keycaps, a `wash`/`edge` for a trigger's own
+  row in the editor, and `onColor` for text on a solid fill. **A selected neutral control is
+  inverted** (`onSurface` fill, `surface` ink: tags, presets, action tiles, segments, AM/PM),
+  the same swap as the primary button, because three greys never read as "on"; a selected day
+  is a solid disc of the time family. Plain `MaterialTheme`: material3 1.4.0 keeps the
+  expressive theme internal.
 - Home: `HomeViewModel` combines the open reminders, settings, the tag filter and a minute pulse
   into `HomeUiState` (`buildHomeState`, pure and tested). The hero card's countdown ticks in its
   own composable (`rememberNow`) so nothing else recomposes. The magnifier has a flow of its own

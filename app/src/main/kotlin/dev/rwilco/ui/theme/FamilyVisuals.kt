@@ -11,6 +11,7 @@ import androidx.compose.material.icons.outlined.OpenInFull
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Vibration
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -38,6 +39,24 @@ fun TriggerFamily.color(): Color = familyColor(this, LocalDarkTheme.current)
  */
 @Composable
 fun TriggerFamily.tint(): Color = color().copy(alpha = if (LocalDarkTheme.current) 0.22f else 0.14f)
+
+/**
+ * Text or a glyph on a solid family fill (a day toggle that is on). The family colours are
+ * light on the dark scheme and dark on the light one, so the lowest surface — near-black
+ * there, white here — is the one that reads on both.
+ */
+@Composable
+fun TriggerFamily.onColor(): Color = MaterialTheme.colorScheme.surfaceContainerLowest
+
+/**
+ * The wash behind a trigger's own row in the editor, and the line around it: enough colour to
+ * say which family the row belongs to from across the room, not enough to fight the words.
+ */
+@Composable
+fun TriggerFamily.wash(): Color = color().copy(alpha = if (LocalDarkTheme.current) 0.10f else 0.07f)
+
+@Composable
+fun TriggerFamily.edge(): Color = color().copy(alpha = if (LocalDarkTheme.current) 0.55f else 0.45f)
 
 val TriggerKind.icon: ImageVector
     get() = when (this) {

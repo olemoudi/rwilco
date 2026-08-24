@@ -16,7 +16,9 @@ import dev.rwilco.ui.theme.Tokens
 
 /**
  * A tag: neutral by design (family colours keep their meaning, amber keeps its own), outlined
- * when off and a raised neutral when on. Tall enough for a thumb.
+ * when off and inverted when on — the ink and the paper swap, the way the Save button already
+ * does. Three shades of the same grey never said "on" from arm's length; this does.
+ * Tall enough for a thumb.
  */
 @Composable
 fun TagChip(
@@ -27,6 +29,7 @@ fun TagChip(
     enabled: Boolean = true,
 ) {
     val haptics = Tokens.haptics
+    val scheme = MaterialTheme.colorScheme
     FilterChip(
         selected = selected,
         onClick = {
@@ -37,15 +40,12 @@ fun TagChip(
         enabled = enabled,
         shape = MaterialTheme.shapes.small,
         colors = FilterChipDefaults.filterChipColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            selectedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-            selectedLabelColor = MaterialTheme.colorScheme.onSurface,
+            containerColor = scheme.surfaceContainerLow,
+            labelColor = scheme.onSurfaceVariant,
+            selectedContainerColor = scheme.onSurface,
+            selectedLabelColor = scheme.surface,
         ),
-        border = BorderStroke(
-            if (selected) Tokens.strokes.strong else Tokens.strokes.control,
-            if (selected) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline,
-        ),
+        border = if (selected) null else BorderStroke(Tokens.strokes.control, scheme.outline),
         modifier = modifier.heightIn(min = 40.dp),
     )
 }

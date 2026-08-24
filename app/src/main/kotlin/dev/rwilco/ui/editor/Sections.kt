@@ -1,5 +1,7 @@
 package dev.rwilco.ui.editor
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.testTag
@@ -81,7 +84,9 @@ import dev.rwilco.ui.format.triggerLine
 import dev.rwilco.ui.home.labelRes
 import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
+import dev.rwilco.ui.theme.edge
 import dev.rwilco.ui.theme.icon
+import dev.rwilco.ui.theme.wash
 import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -420,10 +425,13 @@ private fun TriggerEditRow(
 ) {
     val trigger = rule.trigger
     val line = triggerLine(trigger, today, defaultTime)
+    val family = trigger.family
+    // The row wears its family's colour, wash and edge, so a date, a place and a chance are
+    // told apart before a word is read — the keycap alone was a stamp on a grey form.
     Surface(
         shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        border = BorderStroke(Tokens.strokes.control, MaterialTheme.colorScheme.outline),
+        color = family.wash(),
+        border = BorderStroke(Tokens.strokes.control, family.edge()),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(start = Tokens.spacing.md, top = Tokens.spacing.sm, bottom = Tokens.spacing.sm)) {
@@ -462,11 +470,12 @@ private fun TriggerEditRow(
                         selected = false,
                         onClick = { onEditCondition(index) },
                         colors = InputChipDefaults.inputChipColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            containerColor = Color.Transparent,
+                            labelColor = MaterialTheme.colorScheme.onSurface,
                             leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             trailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         ),
+                        border = BorderStroke(Tokens.strokes.edge, family.edge()),
                         label = { Text(conditionLabel(condition), style = MaterialTheme.typography.labelMedium) },
                         leadingIcon = { Icon(Icons.Outlined.FilterAlt, contentDescription = null, modifier = Modifier.size(16.dp)) },
                         trailingIcon = {
@@ -526,22 +535,34 @@ internal fun ActionsSection(selected: Set<Action>, onToggle: (Action) -> Unit) {
     }
 }
 
-/** A big toggle: icon, name, and a tick when on. Neutral colours; the tick is the state. */
+/**
+ * A big toggle: icon and name. On is inverted — ink and paper swapped — and the swap is
+ * animated, so a tap is answered by the tile turning over rather than a tick appearing in a
+ * corner. Neutral on purpose: actions have no family, and amber is spoken for.
+ */
 @Composable
 private fun ActionTile(action: Action, selected: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier) {
     val haptics = Tokens.haptics
     val scheme = MaterialTheme.colorScheme
+    val motion = Tokens.motion
+    val fill by animateColorAsState(
+        targetValue = if (selected) scheme.onSurface else scheme.surfaceContainerHigh,
+        animationSpec = tween(motion.fast),
+        label = "actionFill",
+    )
+    val ink by animateColorAsState(
+        targetValue = if (selected) scheme.surface else scheme.onSurfaceVariant,
+        animationSpec = tween(motion.fast),
+        label = "actionInk",
+    )
     Surface(
         onClick = {
             haptics.perform(if (selected) HapticFeedbackType.ToggleOff else HapticFeedbackType.ToggleOn)
             onToggle()
         },
         shape = MaterialTheme.shapes.medium,
-        color = if (selected) scheme.surfaceContainerHighest else scheme.surfaceContainerHigh,
-        border = BorderStroke(
-            if (selected) Tokens.strokes.strong else Tokens.strokes.control,
-            if (selected) scheme.onSurfaceVariant else scheme.outline,
-        ),
+        color = fill,
+        border = if (selected) null else BorderStroke(Tokens.strokes.control, scheme.outline),
         modifier = modifier
             .heightIn(min = 72.dp)
             .semantics { this.selected = selected },
@@ -550,21 +571,14 @@ private fun ActionTile(action: Action, selected: Boolean, onToggle: () -> Unit, 
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = Tokens.spacing.lg, vertical = Tokens.spacing.md),
         ) {
-            Icon(
-                imageVector = action.icon,
-                contentDescription = null,
-                tint = if (selected) scheme.onSurface else scheme.onSurfaceVariant,
-            )
+            Icon(imageVector = action.icon, contentDescription = null, tint = ink)
             Spacer(Modifier.width(Tokens.spacing.md))
             Text(
                 text = stringResource(action.labelRes),
                 style = MaterialTheme.typography.labelLarge,
-                color = if (selected) scheme.onSurface else scheme.onSurfaceVariant,
+                color = ink,
                 modifier = Modifier.weight(1f),
             )
-            if (selected) {
-                Icon(Icons.Outlined.Check, contentDescription = null, tint = scheme.onSurface, modifier = Modifier.size(18.dp))
-            }
         }
     }
 }

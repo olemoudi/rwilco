@@ -13,10 +13,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.rwilco.ui.theme.Tokens
 
-/** A shortcut that fills the form in one tap ("Mañana 09:00", "30 min", "Laborables"). */
+/**
+ * A shortcut that fills the form in one tap ("Mañana 09:00", "30 min", "Laborables"). When the
+ * form already says what the chip would set, the chip is inverted — ink on paper swapped —
+ * so the current answer is the loudest thing in the row.
+ */
 @Composable
 fun PresetChip(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, selected: Boolean = false) {
     val haptics = Tokens.haptics
+    val scheme = MaterialTheme.colorScheme
     AssistChip(
         onClick = {
             haptics.perform(HapticFeedbackType.Confirm)
@@ -25,13 +30,10 @@ fun PresetChip(label: String, onClick: () -> Unit, modifier: Modifier = Modifier
         label = { Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         shape = MaterialTheme.shapes.small,
         colors = AssistChipDefaults.assistChipColors(
-            containerColor = if (selected) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.surfaceContainerHigh,
-            labelColor = MaterialTheme.colorScheme.onSurface,
+            containerColor = if (selected) scheme.onSurface else scheme.surfaceContainerHigh,
+            labelColor = if (selected) scheme.surface else scheme.onSurface,
         ),
-        border = BorderStroke(
-            if (selected) Tokens.strokes.strong else Tokens.strokes.control,
-            if (selected) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline,
-        ),
+        border = if (selected) null else BorderStroke(Tokens.strokes.control, scheme.outline),
         modifier = modifier.heightIn(min = 44.dp),
     )
 }

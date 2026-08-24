@@ -6,6 +6,7 @@ import android.os.LocaleList
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -108,7 +109,7 @@ class EditorTourTest {
             R.string.kind_place to "sheet-place",
         )) {
             text(s(kind)).performClick()
-            rule.waitUntilShown(s(R.string.sheet_cancel))
+            rule.waitUntilDisplayed(s(R.string.sheet_cancel))
             // The place sheet is fetching map tiles over the emulator's slow network.
             if (kind == R.string.kind_place) Thread.sleep(6_000)
             shot(name)
@@ -128,7 +129,7 @@ class EditorTourTest {
 
         // A countdown becomes a trigger row and the error goes away.
         text(s(R.string.kind_countdown)).performClick()
-        rule.waitUntilShown(s(R.string.sheet_add))
+        rule.waitUntilDisplayed(s(R.string.sheet_add))
         shot("sheet-countdown")
         text(s(R.string.sheet_add)).performClick()
         rule.waitUntilGone(s(R.string.sheet_add))
@@ -136,11 +137,17 @@ class EditorTourTest {
 
         // A rule can be fenced in: the trigger only counts inside these hours.
         text(s(R.string.editor_add_condition)).performScrollTo().performClick()
-        rule.waitUntilShown(s(R.string.condition_title))
+        rule.waitUntilDisplayed(s(R.string.condition_title))
         shot("sheet-condition")
         text(s(R.string.sheet_add)).performClick()
         rule.waitUntilGone(s(R.string.condition_title))
+        // A tag on, so the capture shows what "on" looks like next to "off".
+        text("casa").performScrollTo().performClick()
         shot("editor-filled")
+
+        // The bottom of the form: the four action tiles, some on and some off.
+        text(s(R.string.action_full_screen)).performScrollTo()
+        shot("editor-what")
 
         rule.onNodeWithContentDescription(s(R.string.editor_preview)).performClick()
         rule.waitUntilShown(s(R.string.alert_done))
@@ -178,6 +185,17 @@ class EditorTourTest {
         waitUntil(timeoutMillis = 10_000) { onAllNodesWithText(text, ignoreCase = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
     }
 
+    /**
+     * In the tree AND on screen. A bottom sheet composes its content before it has slid up,
+     * so [waitUntilShown] returns while it is still below the fold — and the capture that
+     * follows is of the screen behind it.
+     */
+    private fun androidx.compose.ui.test.junit4.ComposeTestRule.waitUntilDisplayed(text: String) {
+        waitUntil(timeoutMillis = 10_000) {
+            runCatching { onAllNodesWithText(text, ignoreCase = true, useUnmergedTree = true)[0].isDisplayed() }.getOrDefault(false)
+        }
+    }
+
     private fun androidx.compose.ui.test.junit4.ComposeTestRule.waitUntilGone(text: String) {
         waitUntil(timeoutMillis = 10_000) { onAllNodesWithText(text, ignoreCase = true, useUnmergedTree = true).fetchSemanticsNodes().isEmpty() }
     }
@@ -188,7 +206,10 @@ class EditorTourTest {
      */
     private fun shot(name: String) {
         rule.waitForIdle()
-        Thread.sleep(500)
+        // Idle is about composition; a sheet's own window can still be a frame or two from
+        // painted on the software-rendered emulator, and the random sheet was reliably captured
+        // as the editor behind it at half this.
+        Thread.sleep(1_500)
         val dir = File(context.filesDir, "screenshots").apply { mkdirs() }
         val bitmap: Bitmap = instrumentation.uiAutomation.takeScreenshot()
             ?: rule.onRoot().captureToImage().asAndroidBitmap()
