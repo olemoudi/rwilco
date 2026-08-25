@@ -439,6 +439,10 @@
         <item>Pausing a reminder now says what it will do — the word "Pause" or "Resume" next to the button, because a pause glyph on its own reads as "this is paused" just as easily.</item>
         <item>It is bigger, it sits up with the reminder\'s own words instead of among the small grey glyphs that cannot be pressed, and it takes a finger that stays. Let go early and nothing happens.</item>
     </string-array>
+    <string-array name="whats_new_0_7_3">
+        <item>Nothing rings twice on its own. A moment that has rung is spent: a timer you have not got round to waits on Home as overdue, as it should, but it no longer goes off again by itself — not from a stray alarm, not after a reboot, not from the six-hourly safety net.</item>
+        <item>Arriving where you already are is not arriving. "When I get home", written on the sofa, now waits until it has seen you leave, and waits cheaply: half an hour between looks and no GPS, because the only thing that can happen indoors is going out.</item>
+    </string-array>
     <string-array name="whats_new_0_7_2">
         <item>Swiping a card no longer acts on the swipe alone. Open it and hold it there: the glyph fills like a glass of water, and at half a second it takes. Let go, or slide back, and nothing has happened — so a card can no longer be dealt with on the way past while you scroll.</item>
     </string-array>

@@ -437,6 +437,10 @@
         <item>Pausar un recordatorio ahora dice lo que va a hacer — la palabra «Pausar» o «Reanudar» junto al botón, porque un icono de pausa a secas se lee igual de bien como «esto está pausado».</item>
         <item>Es más grande, está arriba con las palabras del recordatorio en vez de entre los iconos grises que no se pueden pulsar, y pide un dedo que se quede. Si sueltas antes, no pasa nada.</item>
     </string-array>
+    <string-array name="whats_new_0_7_3">
+        <item>Ya nada suena dos veces por su cuenta. Un momento que ya ha sonado queda gastado: un temporizador que no has despachado espera en el inicio como vencido, que es lo suyo, pero no vuelve a saltar solo — ni por una alarma suelta, ni tras reiniciar, ni por la red de seguridad de cada seis horas.</item>
+        <item>Llegar donde ya estás no es llegar. "Cuando llegue a casa", escrito en el sofá, ahora espera a haberte visto salir, y espera barato: media hora entre miradas y sin GPS, porque estando dentro lo único que puede pasar es que salgas.</item>
+    </string-array>
     <string-array name="whats_new_0_7_2">
         <item>Deslizar una tarjeta ya no actúa con el desliz a secas. Ábrela y aguántala ahí: el icono se llena como un vaso de agua y a los medio segundo cuaja. Si sueltas, o la devuelves, no ha pasado nada — así una tarjeta ya no se despacha de pasada mientras haces scroll.</item>
     </string-array>

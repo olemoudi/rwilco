@@ -48,7 +48,7 @@ fun nextFire(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalT
     reminder.recurrenceMoment(zone, dayStart)?.let { return NextFire.Scheduled(it, reminder.rules.firstOrNull()?.trigger) }
     val pending = reminder.pendingRules()
     val candidates = pending.mapNotNull { index ->
-        nextFireOfRule(reminder.rules[index], reminder.id, now, zone, defaultTime)
+        nextFireOfRule(reminder.rules[index], reminder.id, reminder.searchFrom(now), zone, defaultTime)
     }
     if (reminder.ruleMatch == RuleMatch.ANY || !reminder.rulesCombine) {
         return candidates.filterIsInstance<NextFire.Scheduled>().minByOrNull { it.at }
@@ -86,7 +86,7 @@ fun nextWake(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalT
     reminder.recurrenceMoment(zone, dayStart)?.let { return Wake(it, null) }
     return reminder.pendingRules()
         .mapNotNull { index ->
-            val at = nextFireOfRule(reminder.rules[index], reminder.id, now, zone, defaultTime)?.momentOrNull()
+            val at = nextFireOfRule(reminder.rules[index], reminder.id, reminder.searchFrom(now), zone, defaultTime)?.momentOrNull()
             at?.let { Wake(it, index) }
         }
         .minByOrNull { it.at }
@@ -180,4 +180,20 @@ fun Reminder.recurrenceMoment(zone: ZoneId, dayStart: LocalTime): Instant? {
     if (!recurrence.isAnchored) return null
     if (lastDealtAt == null && rules.isNotEmpty()) return null
     return nextRecurrence(recurrence, lastDealtAt ?: createdAt, zone, dayStart)
+}
+
+/**
+ * Where to start looking for the next moment: after now, and after the last one that rang.
+ *
+ * A firing is recorded against the moment it was FOR, not the millisecond the alarm happened to
+ * arrive, so this is what makes a moment spent. Without it a reminder that rings a breath early
+ * — an alarm is allowed to be — has its own moment still in the future when the scheduler looks
+ * again, arms it a second time, and rings twice for one appointment.
+ *
+ * The millisecond is inclusive because that is the grain everything is stored at: a moment
+ * inside the millisecond that rang is the moment that rang.
+ */
+private fun Reminder.searchFrom(now: Instant): Instant {
+    val fired = lastFiredAt?.plusMillis(1) ?: return now
+    return if (fired > now) fired else now
 }

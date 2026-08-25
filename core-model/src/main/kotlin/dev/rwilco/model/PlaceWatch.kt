@@ -81,6 +81,14 @@ object PlaceWatchPolicy {
     /** Standing still near a line — at home with a "when leaving" rule — backs off to this. */
     val STILL_NEAR_MAX: Duration = Duration.ofMinutes(15)
 
+    /**
+     * Already inside a place that is waiting for an arrival: the only thing that can happen is
+     * leaving, and how soon that is noticed does not matter. Somebody who steps out for the bin
+     * and back inside half an hour has not arrived anywhere. So this is the cheapest watch in
+     * the app, and the one a phone sitting at home all evening spends the night in.
+     */
+    val INSIDE_MIN_WAIT: Duration = Duration.ofMinutes(30)
+
     /** Inside this of a line the check goes to GPS and the cadence to its ceiling. */
     const val NEAR_M = 400.0
 
@@ -128,14 +136,30 @@ fun gapToLine(place: WatchedPlace, fix: Fix): Double {
 }
 
 /**
- * How long the phone can look away. The wait is the time it would take to reach the nearest
- * line at a speed with headroom, clamped to the policy's floor and ceiling; standing still
- * doubles it with every quiet check, up to a cap that is lower near a line. Null when there is
- * nothing to watch.
+ * How long the phone can look away: the soonest of what each place asks for. A place's own wait
+ * is the time it would take to reach its line at a speed with headroom, clamped to the policy's
+ * floor and ceiling; standing still doubles it with every quiet check, up to a cap that is
+ * lower near a line. A place already inside, waiting for an arrival, asks for the cheapest
+ * watch there is. Null when there is nothing to watch.
  */
-fun planNextCheck(fix: Fix, speedMps: Double?, places: List<WatchedPlace>, stillStreak: Int): WatchPlan? {
-    val nearest = places.minByOrNull { gapToLine(it, fix) } ?: return null
-    val gap = gapToLine(nearest, fix)
+fun planNextCheck(
+    fix: Fix,
+    speedMps: Double?,
+    places: List<WatchedPlace>,
+    stillStreak: Int,
+    inside: Map<String, Boolean> = emptyMap(),
+): WatchPlan? = places
+    .map { place ->
+        // Inside a place that waits for an arrival, there is nothing to catch but the leaving.
+        val dormant = place.transition == Transition.ENTER && inside[place.id] == true
+        planFor(place, fix, speedMps, stillStreak, dormant)
+    }
+    // The soonest look any one place asks for; on a tie, the one that is closest. A phone
+    // sitting at home with an errand across town is planned by the errand, not by the sofa.
+    .minWithOrNull(compareBy({ it.wait }, { it.gapM }))
+
+private fun planFor(place: WatchedPlace, fix: Fix, speedMps: Double?, stillStreak: Int, dormant: Boolean): WatchPlan {
+    val gap = gapToLine(place, fix)
     val near = gap < PlaceWatchPolicy.NEAR_M
     val still = speedMps != null && speedMps <= PlaceWatchPolicy.STILL_MPS
     val planningSpeed = when (speedMps) {
@@ -150,10 +174,13 @@ fun planNextCheck(fix: Fix, speedMps: Double?, places: List<WatchedPlace>, still
         val cap = if (near) PlaceWatchPolicy.STILL_NEAR_MAX else PlaceWatchPolicy.MAX_WAIT
         wait = maxOf(wait, backoff).clamp(PlaceWatchPolicy.MIN_WAIT, cap)
     }
+    // Waiting for the phone to leave: never GPS, never sooner than half an hour, however close
+    // the line is — being close to it is what being inside means.
+    if (dormant) return WatchPlan(maxOf(wait, PlaceWatchPolicy.INSIDE_MIN_WAIT), precise = false, gapM = gap, nearest = place)
     // GPS is for a line that is close and a phone KNOWN to be moving. Not "may be": the first
     // look of a session at home would wake it for a phone on a bedside table.
     val moving = speedMps != null && speedMps > PlaceWatchPolicy.STILL_MPS
-    return WatchPlan(wait = wait, precise = near && moving, gapM = gap, nearest = nearest)
+    return WatchPlan(wait = wait, precise = near && moving, gapM = gap, nearest = place)
 }
 
 private fun Duration.clamp(floor: Duration, ceiling: Duration): Duration = when {
@@ -220,7 +247,7 @@ fun stepPlaceWatch(state: PlaceWatchState, fix: Fix, places: List<WatchedPlace>,
     }
     val still = speed != null && speed <= PlaceWatchPolicy.STILL_MPS
     val streak = if (still) state.stillStreak + 1 else 0
-    val plan = planNextCheck(fix, speed, places, streak)
+    val plan = planNextCheck(fix, speed, places, streak, inside)
     val next = PlaceWatchState(
         lastFix = fix,
         inside = inside,
@@ -232,3 +259,32 @@ fun stepPlaceWatch(state: PlaceWatchState, fix: Fix, places: List<WatchedPlace>,
     )
     return WatchStep(next, events, plan)
 }
+
+/**
+ * Whether a crossing the phone's geofences report is news to the app.
+ *
+ * Two eyes on every place, and only one of them knows where the phone was a moment ago. An
+ * arrival reported while the app's own last fix still has the phone inside is not an arrival —
+ * it is Play Services re-reading a line the phone never left, which is how a place reminder
+ * rings at somebody sitting at home. Symmetrically for a leaving.
+ *
+ * Anything the app cannot vouch for is news: no fix, a fix too old to speak for now, or a place
+ * never judged. A crossing that reaches here was seen by the system, and ringing once too often
+ * beats the reminder that never arrives.
+ */
+fun crossingIsNews(
+    state: PlaceWatchState,
+    placeId: String,
+    transition: Transition,
+    now: Instant,
+    staleAfter: Duration = PlaceWatchPolicy.SPEED_MEMORY,
+): Boolean {
+    val fix = state.lastFix ?: return true
+    if (Duration.between(fix.at, now) > staleAfter) return true
+    val inside = state.inside[placeId] ?: return true
+    return inside != (transition == Transition.ENTER)
+}
+
+/** The same crossing written down, so the eye that saw it second knows it is old news. */
+fun PlaceWatchState.remembering(placeId: String, transition: Transition): PlaceWatchState =
+    copy(inside = inside + (placeId to (transition == Transition.ENTER)))

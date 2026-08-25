@@ -76,8 +76,8 @@ class ReminderScheduler(
             }
         }
         // Whatever was armed and is no longer open (done, deleted) loses its alarm. A process
-        // restart empties this set, so a stale alarm can still fire once — the receiver finds
-        // nothing to ring about and lets it go.
+        // restart empties this set, so a stale alarm can still be delivered once; what stops it
+        // ringing is the armed-moment check in ReminderFiring.fire, not this list.
         for (id in armed.toList() - seen) cancel(id)
         Log.i(TAG, "armed ${seen.size} reminders, ${missed.size} missed")
         return missed

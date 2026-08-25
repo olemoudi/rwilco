@@ -52,6 +52,19 @@ class ReminderFiring(
             Log.i(TAG, "$id reached its place outside the hours it asked for")
             return
         }
+        // Nothing rings for a moment that is not armed.
+        //
+        // A place happens when it happens and has no armed moment to check; everything else has
+        // one, and once it has rung the scheduler clears it. Without this, any stray delivery
+        // rings again — a stale alarm from a process that has since restarted, the same
+        // broadcast twice — and a timer somebody has not got round to dealing with sits there
+        // going off. A catch-up says [late] and is the app itself asking on purpose.
+        val armed = reminder.armedFor
+        val eventDriven = rule?.trigger is Trigger.Location
+        if (!eventDriven && late == null && (armed == null || armed > now.plusSeconds(EARLY_GRACE_SECONDS))) {
+            Log.i(TAG, "$id has nothing armed for now (armed=$armed); ignoring a stray firing")
+            return
+        }
         // Two eyes on every place — the phone's geofence and the app's own watch — and one
         // arrival. Whichever sees it second is telling us what we already rang about.
         val lastFired = reminder.lastFiredAt
@@ -77,7 +90,11 @@ class ReminderFiring(
             FiringOutcome.Ring -> Unit
         }
         Log.i(TAG, "firing $id${if (late != null) " (late)" else ""}")
-        repository.markFired(id, now)
+        // Recorded against the moment it rang FOR, not the millisecond the alarm arrived: an
+        // alarm may be a breath early, and a moment whose own instant is still a second away
+        // would otherwise be armed again the moment the scheduler next looks.
+        val rangFor = listOfNotNull(now, reminder.armedFor, late).max()
+        repository.markFired(id, rangFor)
         if (reminder.ruleMatch == RuleMatch.ALL && reminder.rulesCombine) {
             repository.setFiredRules(id, reminder.rules.indices.toSet())
         }
@@ -129,5 +146,8 @@ class ReminderFiring(
 
         /** Inside this of the last ring, a second sighting of the same place is the same arrival. */
         val PLACE_ECHO: Duration = Duration.ofMinutes(5)
+
+        /** Alarms arrive late, never early — but a few seconds of slack costs nothing. */
+        const val EARLY_GRACE_SECONDS = 5L
     }
 }

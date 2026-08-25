@@ -17,8 +17,11 @@ import dev.rwilco.data.ReminderRepository
 import dev.rwilco.model.Fix
 import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.Status
+import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.WatchedPlace
+import dev.rwilco.model.crossingIsNews
+import dev.rwilco.model.remembering
 import dev.rwilco.model.stepPlaceWatch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
@@ -86,6 +89,22 @@ class PlaceWatcher(
         val at = clock.instant() + SOON
         store.write(current.copy(inside = current.inside.filterKeys { it in ids }, nextCheckAt = at))
         scheduleAt(at)
+    }
+
+    /**
+     * A crossing the phone's geofences report, judged against what this watch knows and written
+     * down if it stands. False means the app's own last fix already had the phone on that side
+     * of the line: Play Services re-reading a line nobody crossed, which is what makes a place
+     * reminder ring at somebody who never left home.
+     */
+    suspend fun accept(placeId: String, transition: Transition): Boolean {
+        val state = store.read()
+        if (!crossingIsNews(state, placeId, transition, clock.instant())) {
+            Log.i(TAG, "geofence says $transition at $placeId, but we were already there")
+            return false
+        }
+        store.write(state.remembering(placeId, transition))
+        return true
     }
 
     /** One look: where is the phone, what did it cross, when to look again. Run by the alarm. */

@@ -199,7 +199,14 @@ strict is asking somebody to remember how they spelled it.
   an armed moment in the past with no ring to match it.
 - `ReminderFiring` is the single place that decides what a firing, a "Hecho" and a snooze do, so
   the alarm, the notification buttons and the alert screen cannot drift apart. Under ALL it
-  writes the moment down and returns; only the last one goes on to ring.
+  writes the moment down and returns; only the last one goes on to ring. Nothing rings for a
+  moment that is not armed: a place happens when it happens, but everything else is checked
+  against the row's armed moment, so a stray delivery — a stale alarm, the same broadcast twice
+  — is dropped instead of ringing a timer nobody has got round to. A ring is recorded against
+  the moment it rang *for*, not the millisecond the alarm arrived, and `nextFire`/`nextWake`
+  only look for moments after it (to the millisecond, which is the grain everything is stored
+  at). That is what makes a moment spent: an alarm may arrive a breath early, and without it the
+  same moment would still be in the future when the scheduler next looks, and ring twice.
 - `AlertPresenter` decides *where* a firing shows itself: an app open in front of somebody gets
   the banner, and the home screen, a dark screen or the lock screen get the whole screen. That
   needs two permissions granted by hand — usage access (to tell an app from the launcher) and
@@ -233,7 +240,18 @@ strict is asking somebody to remember how they spelled it.
   a line and with the phone *known* to be moving; a drive straight through a place between
   two looks is not arriving, and is the geofence's to call. A place with no history
   — a new rule, first launch — is baselined by the next fix without an event, which is how a
-  reminder written while standing at home does not ring for "arriving home". State lives in
+  reminder written while standing at home does not ring for "arriving home"; it waits until the
+  watch has seen the phone leave, and while it waits it costs the least of anything in the app:
+  a place already inside that waits for an arrival is planned at half an hour a look and never
+  with GPS, because the only thing that can happen indoors is going out, and stepping out and
+  back inside that half hour is not arriving either. Each place plans its own look and the
+  soonest one wins, so an errand across town still sets the pace for a phone sitting at home.
+  A crossing Play Services reports is judged the same way (`crossingIsNews`): an arrival
+  announced while the app's own recent fix still has the phone inside is a line nobody crossed
+  and is dropped, and one that stands is written into the same `inside` map so the other eye
+  knows it is old news. Anything the watch cannot vouch for — no fix, one older than the speed
+  memory, a place never judged — is news, because ringing once too often beats never arriving.
+  State lives in
   `PlaceWatchStore` (its own DataStore; written every check). Doze holds allow-while-idle
   alarms to one per nine minutes, and a phone in Doze is a phone not moving, so nothing is
   lost. Both eyes seeing the same arrival ring once: `ReminderFiring` drops a place firing
