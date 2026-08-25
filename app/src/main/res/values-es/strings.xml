@@ -608,4 +608,10 @@
     <string name="settings_vibration_continuous">Continua</string>
     <string name="settings_vibration_try">Probar</string>
     <string name="settings_vibration_limit">Un recordatorio nunca vibra más de un minuto: el motor de vibración es una bobina moviendo un peso, y las dos cosas se calientan. Una alarma que lleva un minuto vibrando ya ha dicho lo que tenía que decir.</string>
+    <string-array name="whats_new_0_10_0">
+        <item>Las etiquetas tienen color, sacado de la propia palabra — nada que elegir y nada que guardar, así que la misma etiqueta es el mismo color en cada pantalla y tras reinstalar. La paleta se mantiene lejos del ámbar que significa «lo siguiente» y de los tres colores de los disparadores, para que una etiqueta no pueda leerse como un lugar ni como lo que está a punto de sonar.</item>
+        <item>Dos chips al final de la fila: «sin etiqueta» para los recordatorios que nadie ha archivado, y «en pausa» para los que están apagados en silencio. Los dos aparecen sólo cuando tienen algo dentro, así la fila no acaba en dos chips sobre los que no puedes hacer nada.</item>
+        <item>La vibración la eliges tú: fuerte o suave, intermitente o continua — con un botón que la reproduce, porque una vibración es lo único de aquí que no se puede mirar.</item>
+        <item>Y ya no puede desbocarse. El zumbido de un recordatorio se repetía hasta que la app lo paraba, o sea que una app que se moría a media alarma dejaba el motor en marcha hasta que alguien reiniciaba. Ahora el minuto entero se le entrega al sistema de golpe, así que termina pase lo que pase — y hasta la cadencia continua suelta el motor un instante entre tramos.</item>
+    </string-array>
 </resources>

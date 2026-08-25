@@ -610,4 +610,10 @@
     <string name="settings_vibration_continuous">Unbroken</string>
     <string name="settings_vibration_try">Feel it</string>
     <string name="settings_vibration_limit">A reminder never buzzes for more than a minute: a vibration motor is a coil driving a weight, and both get hot. An alarm that has buzzed for a minute has made its point anyway.</string>
+    <string-array name="whats_new_0_10_0">
+        <item>Tags carry a colour now, worked out from the word itself — nothing to choose and nothing stored, so the same tag is the same colour on every screen and after a reinstall. The palette stays well clear of the amber that means «next» and of the three trigger colours, so a tag can never read as a place or as the thing about to ring.</item>
+        <item>Two chips at the end of the row: «sin etiqueta» for the reminders nobody has filed, and «en pausa» for the ones quietly switched off. Both appear only while they have something in them, so the row does not end in two chips you can never act on.</item>
+        <item>The vibration is yours to choose: strong or gentle, in pulses or unbroken — with a button that plays it, because a vibration is the one thing here nobody can look at.</item>
+        <item>And it can no longer run away. A reminder\'s buzz used to repeat until the app stopped it, which meant that an app that died mid-alarm left the motor running until somebody rebooted. The whole minute is now handed to the system up front, so it ends whatever happens — and even the unbroken rhythm lets the motor go for a moment between stretches.</item>
+    </string-array>
 </resources>
