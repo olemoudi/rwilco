@@ -91,12 +91,13 @@ fun WatchLog.noting(note: WatchNote): WatchLog = copy(notes = (listOf(note) + no
 fun List<WatchNote>.pollsSince(since: Instant): Int = count { it.isPoll && it.at >= since }
 
 /**
- * Whether the watch has been looking too often, and nobody has been told yet.
+ * Whether the watch has been looking often enough to be worth a word, and nobody has been told.
  *
- * Twenty polls an hour is more than any of the cadences in `PlaceWatch.kt` should produce:
- * [PlaceWatchPolicy.MIN_WAIT] is two minutes, so thirty an hour is the arithmetic ceiling, and
- * getting near it means either a genuinely long approach on foot or something the app is doing
- * wrong. Either way it is the one thing worth interrupting somebody about, once.
+ * [PlaceWatchPolicy.BUSY_POLLS] an hour is a third of what the watch can physically do
+ * ([PlaceWatchPolicy.MIN_WAIT] is two minutes, so thirty an hour is the ceiling), which means
+ * this catches an hour that was merely busy and not only one that was broken: a long walk up
+ * to a place polls every two minutes and reaches it honestly. That is the setting's own
+ * bargain — it is off unless asked for, and what it is for is getting somebody to open the log.
  *
  * Once, and quietly: the window is an hour and so is the silence after a notice, because a
  * second notice inside the same hour is about the same hour.

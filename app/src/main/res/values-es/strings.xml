@@ -548,12 +548,12 @@
     <string name="watch_field_charge">batería %1$d%%</string>
     <!-- The optional notice about the watch looking too often. -->
     <string name="watch_notice_title">Avisarme si mira demasiado</string>
-    <string name="watch_notice_body">Una notificación discreta cuando el vigilante de lugares lea tu ubicación más de 20 veces en una hora. Desactivado por defecto: en su cadencia más rápida puede llegar a 30, así que esto es para cazar algo que va mal, no el uso normal.</string>
+    <string name="watch_notice_body">Una notificación discreta cuando el vigilante de lugares lea tu ubicación más de 10 veces en una hora. Desactivado por defecto. Su cadencia más rápida es una mirada cada dos minutos, así que acercarte andando a un lugar puede llegar a 10 de forma legítima: esto es un empujón para ir a leer el registro, no una prueba de que algo vaya mal.</string>
     <string name="watch_channel_name">Vigilante de ubicación</string>
     <string name="watch_channel_description">Avisa cuando el vigilante de lugares está leyendo tu ubicación más a menudo de lo que debería.</string>
     <string name="watch_busy_title">Rwilco está mirando demasiado</string>
     <string name="watch_busy_text">%1$d lecturas de ubicación en la última hora</string>
-    <string name="watch_busy_body">%1$d lecturas de ubicación en la última hora, más de lo que debería producir ninguna de las cadencias de la app. Toca para ver el registro.</string>
+    <string name="watch_busy_body">%1$d lecturas de ubicación en la última hora. Acercarte andando a un lugar puede hacerlo por sí solo; cualquier otra cosa merece una mirada. Toca para ver con qué estaba decidiendo.</string>
     <string-array name="whats_new_0_8_0">
         <item>El vigilante de lugares gasta mucha menos batería. Ahora sabe a qué distancia está un lugar —a 300 km no se puede llegar en menos de dos horas y media, así que deja de preguntar— y le pregunta al sensor de movimiento del propio teléfono si algo se ha movido, que es gratis, y se salta la lectura entera cuando no.</item>
         <item>Estar dentro de un lugar con una regla de «al irme de aquí» era lo más caro que hacía la app. Ahora parte de media hora y sólo acelera según cruzas el lugar de verdad — y en el momento en que sales, el sensor de movimiento adelanta la siguiente mirada.</item>

@@ -341,8 +341,10 @@ strict is asking somebody to remember how they spelled it.
   radio counts as a *poll* and a rest does not, which is the whole point of the distinction: with
   `AppSettings.busyWatchNotice` on — off by default — more than `BUSY_POLLS` polls in an hour
   posts one quiet notification (`WatchNotices`), at most one an hour because the window it is
-  about is an hour. MIN_WAIT is two minutes, so thirty an hour is the arithmetic ceiling and
-  twenty is the line between a long approach on foot and something going wrong.
+  about is an hour. MIN_WAIT is two minutes, so thirty an hour is all the watch can physically
+  do and `BUSY_POLLS` sits at a third of it — low enough that a long walk up to a place reaches
+  it honestly, which is the owner's call and the setting's bargain: it is off unless asked for,
+  and what it is for is getting somebody to open the log.
   A check that gets nothing — location switched off, a cold provider — retries at ten minutes,
   doubling to the hour (`blindRetry`): the answer to "where are you" cannot change until somebody
   opens Settings, and asking every ten minutes all day is the one drain nobody would ever see

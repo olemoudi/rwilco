@@ -149,11 +149,14 @@ object PlaceWatchPolicy {
     const val SPARING_FLOOR = 0.25
 
     /**
-     * More polls than this inside [BUSY_WINDOW] and something is wrong: MIN_WAIT is two minutes,
-     * so thirty an hour is the arithmetic ceiling and nothing here should approach it for long.
-     * See [WatchLog.busyNotice].
+     * More polls than this inside [BUSY_WINDOW] and the hour is worth a look. A third of the
+     * arithmetic ceiling — MIN_WAIT is two minutes, so thirty an hour is all the watch can
+     * physically do — which is deliberately low enough to catch a busy hour and not only a
+     * broken one: twenty minutes of walking up to a place reaches it honestly. The owner set
+     * it there knowing that; the notice is off unless asked for, and its whole job is to be
+     * the thing that makes somebody open the log. See [WatchLog.busyNotice].
      */
-    const val BUSY_POLLS = 20
+    const val BUSY_POLLS = 10
 
     val BUSY_WINDOW: Duration = Duration.ofHours(1)
 }

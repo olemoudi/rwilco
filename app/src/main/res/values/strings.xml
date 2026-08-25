@@ -550,12 +550,12 @@
     <string name="watch_field_charge">battery %1$d%%</string>
     <!-- The optional notice about the watch looking too often. -->
     <string name="watch_notice_title">Warn me if it looks too often</string>
-    <string name="watch_notice_body">A quiet notification when the place watch reads your location more than 20 times in an hour. Off by default: at its fastest cadence it can reach 30, so this is for catching something going wrong, not ordinary use.</string>
+    <string name="watch_notice_body">A quiet notification when the place watch reads your location more than 10 times in an hour. Off by default. Its fastest cadence is one look every two minutes, so a long walk up to a place can reach 10 honestly: this is a nudge to go and read the log, not proof that anything is wrong.</string>
     <string name="watch_channel_name">Location watch</string>
     <string name="watch_channel_description">Says so when the place watch is reading your location more often than it should.</string>
     <string name="watch_busy_title">Rwilco is looking too often</string>
     <string name="watch_busy_text">%1$d location reads in the last hour</string>
-    <string name="watch_busy_body">%1$d location reads in the last hour, which is more than any of the app\'s own cadences should produce. Tap to see the log.</string>
+    <string name="watch_busy_body">%1$d location reads in the last hour. A long walk up to a place can do that on its own; anything else is worth a look. Tap to see what it was deciding from.</string>
     <string-array name="whats_new_0_8_0">
         <item>The place watch now spends a great deal less battery. It knows how far away a place is — nothing 300 km off can be arrived at for two and a half hours, so it stops asking — and it asks the phone\'s own motion sensor whether anything moved at all, which is free, and skips the reading entirely when nothing did.</item>
         <item>Sitting inside a place you have a «when I leave» rule for used to be the most expensive thing the app did. It now starts at half an hour and speeds up only as you actually cross the place — and the moment you really do walk out, the motion sensor pulls the next look forward.</item>
