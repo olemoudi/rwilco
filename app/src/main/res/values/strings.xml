@@ -607,7 +607,7 @@
     <string name="settings_vibration_gentle">Gentle</string>
     <string name="settings_vibration_rhythm">Rhythm</string>
     <string name="settings_vibration_pulsed">Buzz and pause</string>
-    <string name="settings_vibration_continuous">One long buzz</string>
+    <string name="settings_vibration_continuous">Unbroken</string>
     <string name="settings_vibration_try">Feel it</string>
     <string name="settings_vibration_limit">A reminder never buzzes for more than a minute: a vibration motor is a coil driving a weight, and both get hot. An alarm that has buzzed for a minute has made its point anyway.</string>
 </resources>

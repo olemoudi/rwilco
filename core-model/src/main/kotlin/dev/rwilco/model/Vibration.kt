@@ -27,7 +27,8 @@ data class VibrationPattern(
  *
  * Whole and finite, with no repeat count: the pattern is built long enough to last as long as
  * it is allowed to and not a millisecond longer, so the system stops it on its own. See
- * [waveformFor] for why that matters more than it looks.
+ * [waveformFor] for why that matters more than it looks. Even the continuous rhythm is a train
+ * of buzzes rather than one long one — see [VibrationLimits.CONTINUOUS_BREATH_MS].
  */
 data class Waveform(val timings: List<Long>, val amplitudes: List<Int>) {
     val totalMillis: Long get() = timings.sum()
@@ -37,16 +38,29 @@ object VibrationLimits {
     /**
      * The longest a reminder may hold the motor, and it is a hardware limit rather than a taste.
      *
-     * A vibration motor is a coil driving a mass, and both get hot; a minute at full amplitude
-     * is already the far end of what one is built to do in a stretch, and phones have burnt
-     * theirs out on less. An alarm that has buzzed for a minute has also long since made its
-     * point — an alarm clock stops eventually too — so nothing is lost by stopping there.
+     * A vibration motor is a coil driving a mass, and both get warm; the longer it is driven the
+     * warmer, and the app has no way to ask how warm. So it stops asking after a minute — which
+     * costs nothing, because an alarm that has buzzed for a minute has long since made its
+     * point. An alarm clock stops eventually too.
      */
     val LONGEST: Duration = Duration.ofMinutes(1)
 
     /** A buzz, and the quiet after it, for [VibrationRhythm.PULSED]. */
     const val PULSE_ON_MS = 500L
     const val PULSE_OFF_MS = 800L
+
+    /**
+     * [VibrationRhythm.CONTINUOUS] is not one unbroken minute; it is these, back to back.
+     *
+     * Unbroken is the highest-power state the motor has, and a minute of it at full amplitude is
+     * the hardest thing this app can ask of one. A gap this short is not a pause — an LRA takes
+     * tens of milliseconds to spin down and back up, so most of it is swallowed by the actuator
+     * itself and what is left reads as texture rather than as a stop — and it hands back a
+     * sixteenth of the minute with the coil unpowered. Cheap insurance rather than a measured
+     * fix: the honest protection is still the minute itself.
+     */
+    const val CONTINUOUS_ON_MS = 2_000L
+    const val CONTINUOUS_BREATH_MS = 150L
 
     /** 1..255. Gentle is a phone in a pocket; strong is one on a table across the room. */
     const val STRONG_AMPLITUDE = 255
@@ -78,21 +92,26 @@ val VibrationStrength.amplitude: Int
 fun waveformFor(pattern: VibrationPattern, limit: Duration = VibrationLimits.LONGEST): Waveform {
     val cap = limit.toMillis().coerceAtLeast(0L)
     val amplitude = pattern.strength.amplitude
-    if (pattern.rhythm == VibrationRhythm.CONTINUOUS) {
-        return Waveform(listOf(0L, cap), listOf(0, amplitude))
+    val (on, off) = when (pattern.rhythm) {
+        VibrationRhythm.CONTINUOUS -> VibrationLimits.CONTINUOUS_ON_MS to VibrationLimits.CONTINUOUS_BREATH_MS
+        VibrationRhythm.PULSED -> VibrationLimits.PULSE_ON_MS to VibrationLimits.PULSE_OFF_MS
     }
+    // One builder for both rhythms: they are the same shape and differ only in how long the
+    // buzz is and how much of a gap follows it. Continuous is a very long buzz and a gap short
+    // enough to disappear into the motor's own spin-down.
     val timings = ArrayList<Long>()
     val amplitudes = ArrayList<Int>()
     timings += 0L
     amplitudes += 0
     var spent = 0L
-    while (spent + VibrationLimits.PULSE_ON_MS <= cap) {
-        timings += VibrationLimits.PULSE_ON_MS
+    while (spent < cap) {
+        // The last buzz is cut to whatever is left rather than dropped, so a pattern uses the
+        // whole of the time it is given and not a second more.
+        val buzz = minOf(on, cap - spent)
+        timings += buzz
         amplitudes += amplitude
-        spent += VibrationLimits.PULSE_ON_MS
-        // The last pause is dropped: a silence at the end of a pattern that is about to stop
-        // anyway is a millisecond of nothing, and it is what would push the total over the cap.
-        val pause = minOf(VibrationLimits.PULSE_OFF_MS, cap - spent)
+        spent += buzz
+        val pause = minOf(off, cap - spent)
         if (pause <= 0L) break
         timings += pause
         amplitudes += 0

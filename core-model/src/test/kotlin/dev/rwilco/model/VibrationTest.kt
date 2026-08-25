@@ -20,15 +20,12 @@ class VibrationTest {
     fun `nothing this app can build outlasts a minute`() {
         for (pattern in everyPattern) {
             val waveform = waveformFor(pattern)
-            assertTrue(
-                waveform.totalMillis <= VibrationLimits.LONGEST.toMillis(),
+            // Exactly the minute, both ways: a cap that stopped it after five seconds would
+            // pass "no longer than" and be a different bug.
+            assertEquals(
+                VibrationLimits.LONGEST.toMillis(),
+                waveform.totalMillis,
                 "$pattern runs for ${waveform.totalMillis} ms",
-            )
-            // And it uses the minute it is given: a cap that stops it after five seconds would
-            // pass the test above and be a different bug.
-            assertTrue(
-                waveform.totalMillis > VibrationLimits.LONGEST.toMillis() - 1_500,
-                "$pattern gives up after ${waveform.totalMillis} ms",
             )
         }
     }
@@ -49,14 +46,33 @@ class VibrationTest {
     }
 
     @Test
-    fun `continuous is one buzz and pulsed is many`() {
+    fun `continuous buzzes in long stretches and pulsed in short ones`() {
         val continuous = waveformFor(VibrationPattern(rhythm = VibrationRhythm.CONTINUOUS))
-        assertEquals(listOf(0L, 60_000L), continuous.timings)
+        assertEquals(VibrationLimits.CONTINUOUS_ON_MS, continuous.timings[1])
+        assertEquals(VibrationLimits.CONTINUOUS_BREATH_MS, continuous.timings[2])
 
         val pulsed = waveformFor(VibrationPattern(rhythm = VibrationRhythm.PULSED))
-        assertTrue(pulsed.timings.size > 20, "a minute of buzz and pause is ${pulsed.timings.size} slots")
         assertEquals(VibrationLimits.PULSE_ON_MS, pulsed.timings[1])
         assertEquals(VibrationLimits.PULSE_OFF_MS, pulsed.timings[2])
+        assertTrue(
+            pulsed.timings.size > continuous.timings.size,
+            "a minute of buzz and pause should be more slots than a minute of long stretches",
+        )
+    }
+
+    @Test
+    fun `even continuous never drives the motor without letting go`() {
+        // The hardest thing this app can ask of a motor is a minute at full amplitude with no
+        // let-up, so it does not ask for that: the stretches are long enough to feel unbroken
+        // and the gaps between them are about the length of the motor's own spin-down.
+        val continuous = waveformFor(VibrationPattern(VibrationStrength.STRONG, VibrationRhythm.CONTINUOUS))
+        assertTrue(continuous.timings.size > 2, "continuous came out as one unbroken minute of drive")
+        val driven = continuous.timings.filterIndexed { index, _ -> continuous.amplitudes[index] > 0 }.sum()
+        assertTrue(driven < continuous.totalMillis, "the motor is never unpowered")
+        // Unbroken enough to be worth calling continuous, all the same.
+        val duty = driven.toDouble() / continuous.totalMillis
+        assertTrue(duty > 0.90, "a duty of $duty is not a continuous vibration any more")
+        assertTrue(duty < 0.96, "a duty of $duty gives the motor nothing back")
     }
 
     @Test

@@ -280,8 +280,13 @@ strict is asking somebody to remember how they spelled it.
   ran, and what is on the other side of a broken promise is a motor buzzing until the battery is
   flat. Handing the whole minute to the system removes the promise. A minute is also as long as
   a coil driving a weight should be asked to work in a stretch, and an alarm that has buzzed for
-  one has made its point. Amplitude needs a motor that can do it (`hasAmplitudeControl`); where
-  it cannot, gentle and strong are the same vibration and Settings says so.
+  one has made its point. Even the unbroken rhythm is a train of two-second stretches with a
+  150 ms gap between them rather than one continuous minute: unbroken full-amplitude drive is
+  the highest-power state the motor has, the gap is about the length of an LRA's own spin-down
+  so it reads as texture rather than as a pause, and it hands back a sixteenth of the minute
+  with the coil unpowered. Cheap insurance; the honest protection is still the minute itself.
+  Amplitude needs a motor that can do it (`hasAmplitudeControl`); where it cannot, gentle and
+  strong are the same vibration and Settings says so.
 - `AlertActivity` shows over the lock screen and turns it on; it is its own task so dismissing
   an alarm at three in the morning does not drop anybody into the app's back stack. "Hecho" is
   the bottom-most control on it, because the bottom of the screen is where a half-awake thumb
