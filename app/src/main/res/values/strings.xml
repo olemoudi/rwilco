@@ -588,4 +588,11 @@
     <string name="editor_match_together_hint">All of them true at the same moment; rings the instant the last one becomes true.</string>
     <string name="card_match_together">at once</string>
     <string name="editor_warning_moments_apart">Two moments cannot be the same moment, so «at once» never rings here. Leave one moment and make the rest places or time ranges.</string>
+    <string-array name="whats_new_0_9_0">
+        <item>A new kind of trigger: a time range. «From 17:00 to 19:00» — on its own it rings when the range opens, and it is what the two below are worth writing for.</item>
+        <item>«And only if» can now be a place as well as an hour: «at nine, and only if I am at home», or only if you are not. Pick from the places you keep in Settings.</item>
+        <item>And a third way to read several triggers: «at once». All of them true at the same moment — «at the office, between five and seven» rings when you arrive if it is already five, and at five if you are already there.</item>
+        <item>The editor now says when a set of triggers can never ring, instead of letting you find out in a week: hours that never meet the moments they restrict, two places that cannot both be true, two moments asked to be the same moment. Under «all», it says which one is stopping the whole reminder.</item>
+        <item>Fewer location reads again. Where you are is now the last thing checked and the first thing skipped: the hours are settled before a position is read at all, and a place is left completely alone while the hours its reminder needs cannot hold — nothing is spent watching the office at three in the morning for something that can only ring at five.</item>
+    </string-array>
 </resources>

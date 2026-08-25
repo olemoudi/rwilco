@@ -586,4 +586,11 @@
     <string name="editor_match_together_hint">Todos ciertos en el mismo momento; suena en el instante en que el último se vuelve cierto.</string>
     <string name="card_match_together">a la vez</string>
     <string name="editor_warning_moments_apart">Dos momentos no pueden ser el mismo momento, así que «a la vez» no suena nunca aquí. Deja un momento y que los demás sean lugares o franjas horarias.</string>
+    <string-array name="whats_new_0_9_0">
+        <item>Un tipo de disparador nuevo: la franja horaria. «De 17:00 a 19:00» — sola suena cuando se abre la franja, y es lo que hace que valga la pena escribir las dos de abajo.</item>
+        <item>El «y sólo si» ahora puede ser un lugar además de una hora: «a las nueve, y sólo si estoy en casa», o sólo si no estás. Se elige entre los lugares que guardas en Ajustes.</item>
+        <item>Y una tercera forma de leer varios disparadores: «a la vez». Todos ciertos en el mismo momento — «en la oficina, entre las cinco y las siete» suena al llegar si ya son las cinco, y a las cinco si ya estás allí.</item>
+        <item>El editor avisa cuando un conjunto de disparadores no puede sonar nunca, en vez de dejar que lo descubras en una semana: horas que no coinciden jamás con los momentos que restringen, dos lugares que no pueden ser ciertos a la vez, dos momentos pedidos como si fueran el mismo. Con «todos», dice cuál está bloqueando el recordatorio entero.</item>
+        <item>Otra vez menos lecturas de ubicación. Dónde estás es ahora lo último que se comprueba y lo primero que se salta: las horas se resuelven antes de leer una posición, y un lugar se deja completamente en paz mientras las horas que su recordatorio necesita no puedan cumplirse — no se gasta nada vigilando la oficina a las tres de la mañana para algo que sólo puede sonar a las cinco.</item>
+    </string-array>
 </resources>
