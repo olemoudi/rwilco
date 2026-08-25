@@ -5,6 +5,7 @@ import android.os.LocaleList
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -56,15 +57,18 @@ class HomeSwipeTest {
     }
 
     /**
-     * A slow drag from one edge of the card to the other: settled by position rather than by
-     * fling, so the threshold is crossed for certain and the test is not timing the emulator.
+     * Open the card and hold it there until it acts — which is the whole gesture now. The
+     * release goes through the root: by then the card has gone from the list, and asking for it
+     * by name would find nothing. Letting go too early is [SwipeableCardTest]'s job, where a
+     * hand-driven clock can stop time before the fill finishes.
      */
-    private fun swipeCardRight() {
+    private fun swipeCardRightAndHold() {
         rule.onNodeWithText(words).performTouchInput {
             down(centerLeft)
             moveTo(centerRight)
-            up()
         }
+        Thread.sleep(900)
+        rule.onRoot().performTouchInput { up() }
     }
 
     @Before
@@ -82,7 +86,7 @@ class HomeSwipeTest {
     fun aCardTakenBackCanBeSwipedAgain() {
         waitFor(words)
 
-        swipeCardRight()
+        swipeCardRightAndHold()
         rule.waitUntil(10_000) { runBlocking { app.repository.get(id)?.status } == Status.DONE }
 
         // The snackbar hands it back.
@@ -91,7 +95,7 @@ class HomeSwipeTest {
         waitFor(words)
 
         // And it answers a second swipe, which a card stuck at its dismissed end would not.
-        swipeCardRight()
+        swipeCardRightAndHold()
         rule.waitUntil(10_000) { runBlocking { app.repository.get(id)?.status } == Status.DONE }
         assertEquals(Status.DONE, runBlocking { app.repository.get(id)?.status })
     }

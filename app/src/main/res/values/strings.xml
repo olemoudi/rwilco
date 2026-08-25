@@ -439,6 +439,9 @@
         <item>Pausing a reminder now says what it will do — the word "Pause" or "Resume" next to the button, because a pause glyph on its own reads as "this is paused" just as easily.</item>
         <item>It is bigger, it sits up with the reminder\'s own words instead of among the small grey glyphs that cannot be pressed, and it takes a finger that stays. Let go early and nothing happens.</item>
     </string-array>
+    <string-array name="whats_new_0_7_2">
+        <item>Swiping a card no longer acts on the swipe alone. Open it and hold it there: the glyph fills like a glass of water, and at half a second it takes. Let go, or slide back, and nothing has happened — so a card can no longer be dealt with on the way past while you scroll.</item>
+    </string-array>
     <string-array name="whats_new_0_7_1">
         <item>Fixed a reminder that could pause itself with nobody touching the phone: a finger still on the pause button when the app lost the screen left the hold armed, and it finished itself off the moment you came back. A press that survives the app leaving the screen is no longer a press.</item>
     </string-array>

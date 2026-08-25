@@ -437,6 +437,9 @@
         <item>Pausar un recordatorio ahora dice lo que va a hacer — la palabra «Pausar» o «Reanudar» junto al botón, porque un icono de pausa a secas se lee igual de bien como «esto está pausado».</item>
         <item>Es más grande, está arriba con las palabras del recordatorio en vez de entre los iconos grises que no se pueden pulsar, y pide un dedo que se quede. Si sueltas antes, no pasa nada.</item>
     </string-array>
+    <string-array name="whats_new_0_7_2">
+        <item>Deslizar una tarjeta ya no actúa con el desliz a secas. Ábrela y aguántala ahí: el icono se llena como un vaso de agua y a los medio segundo cuaja. Si sueltas, o la devuelves, no ha pasado nada — así una tarjeta ya no se despacha de pasada mientras haces scroll.</item>
+    </string-array>
     <string-array name="whats_new_0_7_1">
         <item>Arreglado un recordatorio que podía pausarse solo sin que nadie tocara el móvil: un dedo aún sobre el botón de pausa cuando la app perdía la pantalla dejaba la pulsación armada, y se completaba sola al volver. Una pulsación que sobrevive a que la app pierda la pantalla ya no cuenta como pulsación.</item>
     </string-array>
