@@ -49,6 +49,7 @@ class EditorViewModel(
     private val reminderId: String?,
     private val fromPresetId: String?,
     private val editPresetId: String?,
+    private val newPreset: Boolean,
     private val repository: ReminderRepository,
     private val store: SettingsStore,
     private val settings: Flow<AppSettings?>,
@@ -95,8 +96,8 @@ class EditorViewModel(
                 defaultTime = current.defaultTime,
                 defaultKind = current.defaultTriggerKind,
                 savedPlaces = current.savedPlaces,
-                asPreset = editedPreset != null,
-                initialAsPreset = editedPreset != null,
+                asPreset = editedPreset != null || newPreset,
+                initialAsPreset = editedPreset != null || newPreset,
                 editingPreset = editedPreset,
                 // Which shape this started from, so the screen says so, and the cue to open
                 // the keyboard: everything but the words is already answered.
@@ -261,9 +262,10 @@ class EditorViewModel(
         private val reminderId: String?,
         private val fromPresetId: String? = null,
         private val editPresetId: String? = null,
+        private val newPreset: Boolean = false,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            EditorViewModel(reminderId, fromPresetId, editPresetId, app.repository, app.settingsStore, app.settings, app.clock) as T
+            EditorViewModel(reminderId, fromPresetId, editPresetId, newPreset, app.repository, app.settingsStore, app.settings, app.clock) as T
     }
 }

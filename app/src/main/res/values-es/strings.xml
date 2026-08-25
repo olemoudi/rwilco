@@ -35,6 +35,13 @@
     <string name="home_new_preset">Preset</string>
     <string name="home_new_from_preset">Desde un preset</string>
     <string name="home_preset_edit">Editar este preset</string>
+    <string name="home_pin_manage">Añadir un botón de preset</string>
+    <string name="home_pin_title">Botones en la pantalla principal</string>
+    <string name="home_pin_hint">Un toque escribe el recordatorio. Si el preset no trae texto propio, te lo pide y nada más.</string>
+    <string name="home_pin_none">Todavía no hay presets.</string>
+    <string name="home_pin_create">Nuevo preset</string>
+    <string name="home_pin_create_now">Crear</string>
+    <string name="home_created">Creado</string>
     <plurals name="home_preset_triggers">
         <item quantity="one">%1$d disparador</item>
         <item quantity="other">%1$d disparadores</item>
@@ -46,6 +53,7 @@
     <string name="home_title">Hoy</string>
     <string name="home_new">Nuevo</string>
     <string name="home_next_up">Lo siguiente</string>
+    <string name="home_next_up_snoozed">Pospuesto hasta</string>
     <string name="home_refresh">Actualizar</string>
     <string name="home_refreshed">Actualizado</string>
     <string name="home_done_list">Recordatorios hechos</string>
@@ -390,6 +398,12 @@
     <string-array name="whats_new_0_4_2">
         <item>Pausar un recordatorio ahora dice lo que va a hacer — la palabra «Pausar» o «Reanudar» junto al botón, porque un icono de pausa a secas se lee igual de bien como «esto está pausado».</item>
         <item>Es más grande, está arriba con las palabras del recordatorio en vez de entre los iconos grises que no se pueden pulsar, y pide un dedo que se quede. Si sueltas antes, no pasa nada.</item>
+    </string-array>
+    <string-array name="whats_new_0_6_0">
+        <item>Botones de preset bajo la fecha, donde antes estaba el nombre de la app. Un toque escribe el recordatorio — sin formulario. Si el preset no trae texto propio te lo pide y nada más, con el teclado ya abierto. Los más usados primero, con scroll cuando hay muchos, y el «+» del final elige qué presets tienen botón.</item>
+        <item>La tarjeta que brilla ya se puede deslizar, como todas las demás.</item>
+        <item>Y dice cuándo está enseñando un aplazamiento —«Pospuesto hasta» en vez de «Lo siguiente»— para que un recordatorio que apartaste no sea una cuenta atrás inexplicable.</item>
+        <item>Arreglado: deshacer un deslizamiento podía devolver la tarjeta congelada a medio camino. Además el deslizamiento actuaba más de una vez, que es por lo que a veces deshacer te devolvía algo ya hecho.</item>
     </string-array>
     <string-array name="whats_new_0_5_2">
         <item>El nombre de un preset es sólo su etiqueta. Lo que DICE el recordatorio que sale de él es una línea aparte y opcional: «texto con el que empieza».</item>

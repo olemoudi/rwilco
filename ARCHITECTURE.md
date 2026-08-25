@@ -119,6 +119,9 @@ strict is asking somebody to remember how they spelled it.
   rest of the screen from there; it only draws, so the touch it reports on still reaches the
   button underneath. A screen reader gets a plain click action instead: a double tap is already
   deliberate. `HoldButtonTest` (device) drives the gesture against a hand-driven clock.
+- Home's swipes act once per gesture and never let the dismiss box settle at its dismissed end:
+  the row is leaving the list anyway, and a box left resting there outlives the row (the list
+  reuses it by key), which handed a reminder back from "undo" frozen halfway across the screen.
 - Home: `HomeViewModel` combines the open reminders, settings, the tag filter and a minute pulse
   into `HomeUiState` (`buildHomeState`, pure and tested). The hero card's countdown ticks in its
   own composable (`rememberNow`) so nothing else recomposes. The magnifier has a flow of its own

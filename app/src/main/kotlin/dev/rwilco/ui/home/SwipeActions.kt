@@ -20,6 +20,8 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -47,20 +49,33 @@ fun SwipeableCard(
     content: @Composable () -> Unit,
 ) {
     val haptics = Tokens.haptics
+    // One act per gesture. Refusing to settle (below) means the box asks more than once, and a
+    // second "done" on an already-done reminder is what made undo hand back a DONE one.
+    val handled = remember { mutableStateOf(false) }
     val state = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            when (value) {
-                SwipeToDismissBoxValue.StartToEnd -> onDone()
-                SwipeToDismissBoxValue.EndToStart -> onDelete()
-                SwipeToDismissBoxValue.Settled -> Unit
+            if (value != SwipeToDismissBoxValue.Settled && !handled.value) {
+                handled.value = true
+                when (value) {
+                    SwipeToDismissBoxValue.StartToEnd -> onDone()
+                    SwipeToDismissBoxValue.EndToStart -> onDelete()
+                    SwipeToDismissBoxValue.Settled -> Unit
+                }
             }
-            true
+            // Never settle at the dismissed end. The row is about to leave the list anyway, so
+            // the snap back is not seen — and the state stays clean, which is what "undo" needs:
+            // a box left resting at its dismissed end handed the reminder back frozen halfway
+            // across the screen, because the state outlives the row it belonged to.
+            false
         },
         positionalThreshold = { distance -> distance * 0.4f },
     )
     val armed = state.targetValue != SwipeToDismissBoxValue.Settled
     LaunchedEffect(armed) {
         if (armed) haptics.perform(HapticFeedbackType.GestureThresholdActivate)
+        // Back at rest: the gesture is over, and the next one may act. This is also what makes
+        // a reminder handed back by "undo" swipeable again — the row is reused, state and all.
+        if (!armed) handled.value = false
     }
     val doneColor = familyColor(TriggerFamily.PLACE, LocalDarkTheme.current)
     val motion = Tokens.motion

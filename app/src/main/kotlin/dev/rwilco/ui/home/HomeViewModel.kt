@@ -10,8 +10,12 @@ import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Preset
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
+import dev.rwilco.model.ValidationWarning
 import dev.rwilco.model.presetsByPopularity
+import dev.rwilco.model.toReminder
 import dev.rwilco.model.used
+import dev.rwilco.model.warnings
+import java.util.UUID
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -38,6 +42,15 @@ sealed interface HomeEvent {
     }
 
     data object Refreshed : HomeEvent
+
+    /** A preset was turned into a reminder in one tap; the snackbar offers to undo it. */
+    data class Created(val reminder: Reminder) : HomeEvent
+
+    /**
+     * A preset could not be written blind — a moment it carries has already passed — so the
+     * form is opened on it instead of quietly making something overdue.
+     */
+    data class NeedsEditor(val presetId: String) : HomeEvent
 }
 
 class HomeViewModel(
@@ -52,6 +65,45 @@ class HomeViewModel(
         .filterNotNull()
         .map { presetsByPopularity(it.presets) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** The ones with a button on Home, in the same order: most reached for, first. */
+    val pinnedPresets: StateFlow<List<Preset>> = presets
+        .map { list -> list.filter { it.pinned } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun togglePin(preset: Preset) {
+        viewModelScope.launch {
+            store.update { settings ->
+                settings.copy(presets = settings.presets.map { if (it.id == preset.id) it.copy(pinned = !it.pinned) else it })
+            }
+        }
+    }
+
+    /**
+     * One tap on a preset button. [words] is what the person typed when the preset had none of
+     * its own; everything else the preset already answered, so the reminder is written there
+     * and then — unless one of its moments has already passed, which needs a person.
+     */
+    fun createFromPreset(preset: Preset, words: String? = null, defaultTime: java.time.LocalTime) {
+        viewModelScope.launch {
+            val now = clock.instant()
+            if (warnings(preset.rules, now, clock.zone, defaultTime).any { it is ValidationWarning.InPast }) {
+                events.send(HomeEvent.NeedsEditor(preset.id))
+                return@launch
+            }
+            val reminder = preset.toReminder(id = UUID.randomUUID().toString(), now = now, words = words ?: preset.text)
+            repository.save(reminder)
+            store.update { settings ->
+                settings.copy(presets = settings.presets.map { if (it.id == preset.id) it.used(now) else it })
+            }
+            events.send(HomeEvent.Created(reminder))
+        }
+    }
+
+    /** Undoing a one-tap creation: the reminder goes, and so does the use it counted. */
+    fun undoCreated(reminder: Reminder) {
+        viewModelScope.launch { repository.delete(reminder.id) }
+    }
 
     /**
      * Reaching for a preset counts as using it, whether or not the reminder is saved in the

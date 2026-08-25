@@ -17,6 +17,8 @@ object Routes {
         val reminderId: String? = null,
         val fromPresetId: String? = null,
         val editPresetId: String? = null,
+        /** A blank form that starts as a preset: the way in from "add a preset button". */
+        val newPreset: Boolean = false,
     )
 
     @Serializable

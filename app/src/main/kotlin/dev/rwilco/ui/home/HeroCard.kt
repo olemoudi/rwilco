@@ -74,7 +74,9 @@ fun HeroCard(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = stringResource(R.string.home_next_up).uppercase(locale),
+                    // A postponed reminder is here because somebody pushed it away, not because
+                    // its own moment is near, and a countdown that does not say so is a puzzle.
+                    text = stringResource(if (hero.snoozed) R.string.home_next_up_snoozed else R.string.home_next_up).uppercase(locale),
                     style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.5.sp, fontWeight = FontWeight.SemiBold),
                     color = amber,
                     modifier = Modifier.weight(1f),

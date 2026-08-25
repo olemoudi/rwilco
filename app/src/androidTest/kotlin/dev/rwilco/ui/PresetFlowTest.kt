@@ -146,6 +146,65 @@ class PresetFlowTest {
         rule.waitUntil(10_000) { runBlocking { app.repository.openNow().any { it.text == reminderWords } } }
     }
 
+    /** The row under the date: one tap and the reminder exists. */
+    @Test
+    fun aPinnedPresetWithWordsIsWrittenInOneTap() {
+        waitFor(s(R.string.home_new))
+        runBlocking {
+            app.settingsStore.update { settings ->
+                settings.copy(
+                    presets = listOf(
+                        dev.rwilco.model.Preset(
+                            id = "p1",
+                            name = presetName,
+                            text = reminderWords,
+                            pinned = true,
+                            createdAt = app.clock.instant(),
+                        ),
+                    ),
+                )
+            }
+        }
+        waitFor(presetName)
+        text(presetName).performClick()
+
+        // No form, no dialog: the reminder is simply there, and it counted as a use.
+        rule.waitUntil(10_000) { runBlocking { app.repository.openNow().any { it.text == reminderWords } } }
+        rule.waitUntil(10_000) { runBlocking { app.settingsStore.settings.first().presets.single().uses } == 1 }
+    }
+
+    /** The same tap, on a shape whose words change every time. */
+    @Test
+    fun aPinnedPresetWithoutWordsAsksForThemAndNothingElse() {
+        waitFor(s(R.string.home_new))
+        runBlocking {
+            app.settingsStore.update { settings ->
+                settings.copy(
+                    presets = listOf(
+                        dev.rwilco.model.Preset(
+                            id = "p1",
+                            name = presetName,
+                            tags = listOf("compra"),
+                            pinned = true,
+                            createdAt = app.clock.instant(),
+                        ),
+                    ),
+                )
+            }
+        }
+        waitFor(presetName)
+        text(presetName).performClick()
+
+        // A field, already focused, and one button.
+        waitFor(s(R.string.home_pin_create_now))
+        rule.onNodeWithText(s(R.string.editor_text_placeholder)).performTextInput(reminderWords)
+        text(s(R.string.home_pin_create_now)).performClick()
+
+        rule.waitUntil(10_000) { runBlocking { app.repository.openNow().any { it.text == reminderWords } } }
+        val made = runBlocking { app.repository.openNow().first { it.text == reminderWords } }
+        assertEquals("the shape came with it", listOf("compra"), made.tags)
+    }
+
     @Test
     fun aPresetCanBeEditedAndDeletedFromTheChooser() {
         waitFor(s(R.string.home_new))

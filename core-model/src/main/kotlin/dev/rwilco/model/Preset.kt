@@ -46,6 +46,8 @@ data class Preset(
     val repeats: Boolean = false,
     /** Which of the [PRESET_COLORS] this one wears. */
     val colorIndex: Int = 0,
+    /** Whether it has a button of its own on Home, for making one in a single tap. */
+    val pinned: Boolean = false,
     val uses: Int = 0,
     val lastUsedAt: Instant? = null,
     val createdAt: Instant,

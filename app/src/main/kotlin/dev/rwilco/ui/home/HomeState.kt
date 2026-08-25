@@ -32,7 +32,12 @@ data class HomeUiState(
     val empty: Boolean get() = loaded && hero == null && sections.isEmpty() && selectedTag == null
 }
 
-data class HeroUi(val card: ReminderCardUi, val at: Instant)
+/**
+ * The one card that glows. [snoozed] when the moment shown is a "remind me later" rather than
+ * the reminder's own: without it a postponed reminder comes back as "next up" with a countdown
+ * and no hint that it is there because somebody pushed it away.
+ */
+data class HeroUi(val card: ReminderCardUi, val at: Instant, val snoozed: Boolean = false)
 
 data class SectionUi(val section: Section, val cards: List<ReminderCardUi>)
 
@@ -94,7 +99,10 @@ fun buildHomeState(
     )
     return HomeUiState(
         loaded = true,
-        hero = groups.hero?.let { HeroUi(card(it.reminder), (it.next as NextFire.Scheduled).at) },
+        hero = groups.hero?.let {
+            val next = it.next as NextFire.Scheduled
+            HeroUi(card(it.reminder), next.at, next.snoozed)
+        },
         sections = groups.sections.map { (section, entries) -> SectionUi(section, entries.map { card(it.reminder) }) },
         tags = tags,
         selectedTag = filter,

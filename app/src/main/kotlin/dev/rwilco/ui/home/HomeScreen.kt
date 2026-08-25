@@ -63,6 +63,7 @@ fun HomeScreen(
     onNew: () -> Unit,
     onNewFromPreset: (String) -> Unit,
     onEditPreset: (String) -> Unit,
+    onNewPreset: () -> Unit,
     onOpen: (String) -> Unit,
     onDoneList: () -> Unit,
     onSettings: () -> Unit,
@@ -70,7 +71,11 @@ fun HomeScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val search by viewModel.search.collectAsStateWithLifecycle()
     val presets by viewModel.presets.collectAsStateWithLifecycle()
+    val pinned by viewModel.pinnedPresets.collectAsStateWithLifecycle()
     var choosing by rememberSaveable { mutableStateOf(false) }
+    var managingPins by rememberSaveable { mutableStateOf(false) }
+    // The preset whose words are being asked for before it can be written.
+    var askingWordsFor by rememberSaveable { mutableStateOf<String?>(null) }
     val snackbar = LocalSnackbar.current
     val doneMessage = stringResource(R.string.home_marked_done)
     val deletedMessage = stringResource(R.string.home_deleted)
@@ -78,6 +83,7 @@ fun HomeScreen(
     val undoLabel = stringResource(R.string.common_undo)
     val swipeDoneLabel = stringResource(R.string.card_swipe_done)
     val swipeDeleteLabel = stringResource(R.string.card_swipe_delete)
+    val createdMessage = stringResource(R.string.home_created)
 
     LaunchedEffect(viewModel) {
         viewModel.eventFlow.collect { event ->
@@ -88,6 +94,13 @@ fun HomeScreen(
                     onUndo = { viewModel.undo(event) },
                 )
                 HomeEvent.Refreshed -> snackbar.show(refreshedMessage)
+                is HomeEvent.Created -> snackbar.show(
+                    message = createdMessage,
+                    undoLabel = undoLabel,
+                    onUndo = { viewModel.undoCreated(event.reminder) },
+                )
+                // Something it carries has already passed: the form, not a silent overdue.
+                is HomeEvent.NeedsEditor -> onNewFromPreset(event.presetId)
             }
         }
     }
@@ -112,6 +125,30 @@ fun HomeScreen(
             },
             onDismiss = { choosing = false },
         )
+    }
+
+    if (managingPins) {
+        PinPresetsPanel(
+            presets = presets,
+            onTogglePin = viewModel::togglePin,
+            onCreate = {
+                managingPins = false
+                onNewPreset()
+            },
+            onDismiss = { managingPins = false },
+        )
+    }
+    askingWordsFor?.let { id ->
+        presets.firstOrNull { it.id == id }?.let { preset ->
+            PresetWordsDialog(
+                preset = preset,
+                onConfirm = { words ->
+                    askingWordsFor = null
+                    viewModel.createFromPreset(preset, words, state.defaultTime)
+                },
+                onDismiss = { askingWordsFor = null },
+            )
+        }
     }
 
     val spacing = Tokens.spacing
@@ -168,6 +205,21 @@ fun HomeScreen(
                     )
                 }
             }
+            // Shown as soon as there is a shape worth a button — otherwise the "+" that adds
+            // one would be hiding inside the row it is meant to fill.
+            if (!search.open && presets.isNotEmpty()) {
+                item(key = "pinned") {
+                    PinnedPresetsRow(
+                        presets = pinned,
+                        onPick = { preset ->
+                            // Words of its own: written on the spot. None: ask for them first.
+                            if (preset.text.isBlank()) askingWordsFor = preset.id
+                            else viewModel.createFromPreset(preset, null, state.defaultTime)
+                        },
+                        onManage = { managingPins = true },
+                    )
+                }
+            }
             if (search.open) {
                 items(search.hits, key = { it.key }) { hit ->
                     SearchResultRow(
@@ -194,12 +246,20 @@ fun HomeScreen(
                 }
                 state.hero?.let { hero ->
                     item(key = "hero") {
-                        HeroCard(
-                            hero = hero,
-                            clock = viewModel.clock,
-                            today = today,
-                            onClick = { onOpen(hero.card.id) },
-                        )
+                        // Swipeable like every other card: it is a reminder, and the one that
+                        // matters most is the last one that should be impossible to deal with.
+                        SwipeableCard(
+                            onDone = { viewModel.markDone(hero.card.id) },
+                            onDelete = { viewModel.delete(hero.card.id) },
+                            modifier = Modifier.animateItem(),
+                        ) {
+                            HeroCard(
+                                hero = hero,
+                                clock = viewModel.clock,
+                                today = today,
+                                onClick = { onOpen(hero.card.id) },
+                            )
+                        }
                     }
                 }
                 for (section in state.sections) {
@@ -270,12 +330,8 @@ private fun Header(
     val locale = currentLocale()
     Row(verticalAlignment = Alignment.Top) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.app_name).uppercase(locale),
-                style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.5.sp, fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(Tokens.spacing.xs))
+            // The app's own name was a line of decoration on the app's own screen; the row it
+            // took is worth more as somewhere to put the shapes you reach for.
             Text(stringResource(R.string.home_title), style = MaterialTheme.typography.headlineLarge)
             Spacer(Modifier.height(Tokens.spacing.xs))
             Text(

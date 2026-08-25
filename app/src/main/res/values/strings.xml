@@ -37,6 +37,13 @@
     <string name="home_new_preset">Preset</string>
     <string name="home_new_from_preset">From a preset</string>
     <string name="home_preset_edit">Edit this preset</string>
+    <string name="home_pin_manage">Add a preset button</string>
+    <string name="home_pin_title">Buttons on the main screen</string>
+    <string name="home_pin_hint">One tap writes the reminder. If the preset has no words of its own, it asks for them and nothing else.</string>
+    <string name="home_pin_none">No presets yet.</string>
+    <string name="home_pin_create">New preset</string>
+    <string name="home_pin_create_now">Create</string>
+    <string name="home_created">Created</string>
     <plurals name="home_preset_triggers">
         <item quantity="one">%1$d trigger</item>
         <item quantity="other">%1$d triggers</item>
@@ -48,6 +55,7 @@
     <string name="home_title">Today</string>
     <string name="home_new">New</string>
     <string name="home_next_up">Next up</string>
+    <string name="home_next_up_snoozed">Put off until</string>
     <string name="home_refresh">Refresh</string>
     <string name="home_refreshed">Up to date</string>
     <string name="home_done_list">Done reminders</string>
@@ -392,6 +400,12 @@
     <string-array name="whats_new_0_4_2">
         <item>Pausing a reminder now says what it will do — the word "Pause" or "Resume" next to the button, because a pause glyph on its own reads as "this is paused" just as easily.</item>
         <item>It is bigger, it sits up with the reminder\'s own words instead of among the small grey glyphs that cannot be pressed, and it takes a finger that stays. Let go early and nothing happens.</item>
+    </string-array>
+    <string-array name="whats_new_0_6_0">
+        <item>Preset buttons under the date, where the app\'s own name used to be. One tap writes the reminder — no form. If the preset has no words of its own it asks for them and nothing else, with the keyboard already up. Most used first, scrollable when there are many, and the "+" at the end says which presets get a button.</item>
+        <item>The glowing card can be swiped now, like every other one.</item>
+        <item>It also says when it is showing a postponement — "Pospuesto hasta" rather than "Lo siguiente" — so a reminder you pushed away is not a countdown you cannot explain.</item>
+        <item>Fixed: undoing a swipe could hand the card back frozen halfway across the screen. It was also acting on the swipe more than once, which is why undo sometimes gave you back something already done.</item>
     </string-array>
     <string-array name="whats_new_0_5_2">
         <item>A preset\'s name is now just its label. What a reminder made from it SAYS is a separate, optional line — "words it starts with".</item>
