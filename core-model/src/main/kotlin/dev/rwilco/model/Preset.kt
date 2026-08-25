@@ -91,7 +91,9 @@ fun Preset.toReminder(id: String, now: Instant, words: String = text): Reminder 
     id = id,
     text = words,
     tags = tags,
-    rules = rules,
+    // Any countdown it carries starts ticking now: that is the whole reason a preset stores a
+    // length rather than a moment.
+    rules = startCountdowns(rules, now),
     ruleMatch = ruleMatch,
     actions = actions,
     repeats = repeats,

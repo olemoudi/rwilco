@@ -36,13 +36,19 @@ Triggers (`core-model/.../Trigger.kt`), with their frozen JSON discriminators:
 | Kind (UI tile)        | Stored as                          | `type`         |
 |-----------------------|------------------------------------|----------------|
 | Date and time         | `AtDateTime(at: LocalDateTime)`    | `at_date_time` |
-| Countdown             | `AtDateTime(now + duration)`       | `at_date_time` |
+| Countdown             | `Countdown(minutes, startedAt?)`   | `countdown`    |
 | Date only             | `OnDate(date)` — rings at the default time (a setting) | `on_date` |
 | Time that repeats     | `AtTime(time, days)`               | `at_time`      |
 | Place                 | `Location(lat, lng, radiusM, ENTER/EXIT, label)` | `location` |
 | Random                | `Random(timesPer, DAY/WEEK, from, to, days)` | `random` |
 
 Wall-clock values are stored without a zone; the zone is applied when the next fire is computed.
+A countdown stores the **length**, not the moment: `startedAt` is stamped by `startCountdowns`
+where a reminder is written (the editor's save, or straight from a preset) and stripped by
+`clearCountdowns` where a preset is, so a shape holds "half an hour" rather than one particular
+half hour. Null reads as "from now", which is what the editor shows while one is being written.
+Reminders written before this hold their countdown as the `AtDateTime` it once produced, which
+is what it always was.
 
 `nextFireOfRule` walks a rule's candidate moments until its conditions hold, stopping after 64
 so a rule that can never be satisfied ("a las 09:00, y sólo si es entre las 18:00 y las 22:00")

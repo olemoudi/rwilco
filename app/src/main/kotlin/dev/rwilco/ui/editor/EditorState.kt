@@ -15,7 +15,9 @@ import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerKind
 import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.ValidationError
+import dev.rwilco.model.clearCountdowns
 import dev.rwilco.model.kind
+import dev.rwilco.model.startCountdowns
 import dev.rwilco.model.normalizeTag
 import dev.rwilco.model.validate
 import java.time.Instant
@@ -44,7 +46,9 @@ fun Draft.toReminder(id: String, createdAt: Instant, now: Instant, status: Statu
     id = id,
     text = text.trim(),
     tags = tags,
-    rules = rules,
+    // A countdown that has not started begins now; one already ticking keeps its own start, so
+    // fixing a typo does not put half an hour back on the clock.
+    rules = startCountdowns(rules, now),
     ruleMatch = ruleMatch,
     actions = actions,
     repeats = repeats,
@@ -136,7 +140,8 @@ fun EditorUiState.toPreset(id: String, now: Instant, existing: Preset?, others: 
     name = draft.text.trim().take(MAX_PRESET_NAME),
     text = presetText.trim(),
     tags = draft.tags,
-    rules = draft.rules,
+    // A shape holds the length of a countdown, never the moment it once landed on.
+    rules = clearCountdowns(draft.rules),
     ruleMatch = draft.ruleMatch,
     actions = draft.actions,
     repeats = draft.repeats,

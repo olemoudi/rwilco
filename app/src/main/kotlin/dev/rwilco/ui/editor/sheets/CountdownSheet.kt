@@ -35,12 +35,17 @@ import java.time.temporal.ChronoUnit
 private val PRESET_MINUTES = listOf(5, 15, 30, 60, 120, 240)
 
 /**
- * "In half an hour." Produces a plain date-time trigger: the countdown is how it was picked,
- * not what is stored. The clock is read at confirm time so a slow thumb does not lose seconds.
+ * "In half an hour." What is stored is the half hour; the clock starts when the reminder is
+ * written. The line at the bottom is a preview of where that lands if it were saved now.
  */
 @Composable
-fun CountdownSheet(clock: Clock, onConfirm: (Trigger.AtDateTime) -> Unit, onDismiss: () -> Unit) {
-    var minutes by rememberSaveable { mutableIntStateOf(30) }
+fun CountdownSheet(
+    clock: Clock,
+    initial: Trigger.Countdown?,
+    onConfirm: (Trigger.Countdown) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var minutes by rememberSaveable { mutableIntStateOf(initial?.minutes ?: 30) }
     val now by rememberNow(60_000, clock)
     val ringsAt = now.atZone(clock.zone).plusMinutes(minutes.toLong()).truncatedTo(ChronoUnit.MINUTES)
     val locale = currentLocale()
@@ -51,11 +56,10 @@ fun CountdownSheet(clock: Clock, onConfirm: (Trigger.AtDateTime) -> Unit, onDism
     SheetScaffold(
         title = stringResource(R.string.kind_countdown),
         onDismiss = onDismiss,
-        onConfirm = {
-            val at = clock.instant().atZone(clock.zone).plusMinutes(minutes.toLong()).truncatedTo(ChronoUnit.MINUTES)
-            onConfirm(Trigger.AtDateTime(at.toLocalDateTime()))
-        },
-        confirmLabel = stringResource(R.string.sheet_add),
+        // A length, not a moment: the clock starts when the reminder is saved, which is what
+        // lets a preset hold "in half an hour" and mean it every time.
+        onConfirm = { onConfirm(Trigger.Countdown(minutes)) },
+        confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
         confirmEnabled = minutes > 0,
     ) {
         Row(

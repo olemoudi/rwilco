@@ -3,6 +3,7 @@
     LocalTimeSerializer::class,
     LocalDateTimeSerializer::class,
     DayOfWeekSerializer::class,
+    InstantSerializer::class,
 )
 
 package dev.rwilco.model
@@ -11,6 +12,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -37,6 +39,19 @@ sealed interface Trigger {
     @Serializable
     @SerialName("at_time")
     data class AtTime(val time: LocalTime, val days: Set<DayOfWeek>) : Trigger
+
+    /**
+     * A stretch of time from the moment it starts, not a moment on the calendar.
+     *
+     * This is what "dentro de media hora" is, and storing it as the date-time it worked out to
+     * was wrong in two ways: a preset could only ever hold the half hour after the day it was
+     * written, and re-setting one on an old reminder counted from the wrong place. [startedAt]
+     * is stamped when the reminder is saved (`startCountdowns`); null means it has not begun —
+     * a preset's copy, or a draft on its way to being saved — and reads as "from now".
+     */
+    @Serializable
+    @SerialName("countdown")
+    data class Countdown(val minutes: Int, val startedAt: Instant? = null) : Trigger
 
     /** Arriving at or leaving a circle around a place. */
     @Serializable
@@ -90,6 +105,7 @@ val Trigger.family: TriggerFamily
     get() = when (this) {
         is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.AtTime -> TriggerFamily.TIME
         is Trigger.Location -> TriggerFamily.PLACE
+        is Trigger.Countdown -> TriggerFamily.TIME
         is Trigger.Random -> TriggerFamily.CHANCE
     }
 
@@ -100,5 +116,22 @@ val Trigger.kind: TriggerKind
         is Trigger.OnDate -> TriggerKind.DATE
         is Trigger.AtTime -> TriggerKind.REPEAT_TIME
         is Trigger.Location -> TriggerKind.PLACE
+        is Trigger.Countdown -> TriggerKind.COUNTDOWN
         is Trigger.Random -> TriggerKind.RANDOM
     }
+
+/**
+ * Start the clock on any countdown that has not begun. Called where a reminder is written —
+ * from the editor or straight from a preset — so "dentro de media hora" counts from the moment
+ * it was asked for, not from whenever the shape was invented.
+ */
+fun startCountdowns(rules: List<TriggerRule>, now: Instant): List<TriggerRule> = rules.map { rule ->
+    val trigger = rule.trigger
+    if (trigger is Trigger.Countdown && trigger.startedAt == null) rule.copy(trigger = trigger.copy(startedAt = now)) else rule
+}
+
+/** The other way: a preset keeps the length and never the moment, or it could only be used once. */
+fun clearCountdowns(rules: List<TriggerRule>): List<TriggerRule> = rules.map { rule ->
+    val trigger = rule.trigger
+    if (trigger is Trigger.Countdown && trigger.startedAt != null) rule.copy(trigger = trigger.copy(startedAt = null)) else rule
+}

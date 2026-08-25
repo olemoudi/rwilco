@@ -91,6 +91,7 @@
 
     <!-- Triggers -->
     <string name="trigger_rings_at">suena a las %1$s</string>
+    <string name="trigger_countdown_from_start">desde que se cree el recordatorio</string>
     <string name="trigger_every_day">cada día</string>
     <string name="trigger_weekdays">laborables</string>
     <string name="trigger_weekends">fines de semana</string>
@@ -398,6 +399,10 @@
     <string-array name="whats_new_0_4_2">
         <item>Pausar un recordatorio ahora dice lo que va a hacer — la palabra «Pausar» o «Reanudar» junto al botón, porque un icono de pausa a secas se lee igual de bien como «esto está pausado».</item>
         <item>Es más grande, está arriba con las palabras del recordatorio en vez de entre los iconos grises que no se pueden pulsar, y pide un dedo que se quede. Si sueltas antes, no pasa nada.</item>
+    </string-array>
+    <string-array name="whats_new_0_6_1">
+        <item>Una cuenta atrás ya es una duración, no una fecha. Antes se guardaba el momento al que salía, y por eso un preset no podía llevar una de verdad: se habría quedado con la media hora siguiente al día en que lo escribiste.</item>
+        <item>Así que «dentro de media hora» en un preset son media hora desde que lo usas — un temporizador de verdad, cada vez, en un toque.</item>
     </string-array>
     <string-array name="whats_new_0_6_0">
         <item>Botones de preset bajo la fecha, donde antes estaba el nombre de la app. Un toque escribe el recordatorio — sin formulario. Si el preset no trae texto propio te lo pide y nada más, con el teclado ya abierto. Los más usados primero, con scroll cuando hay muchos, y el «+» del final elige qué presets tienen botón.</item>

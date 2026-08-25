@@ -8,6 +8,9 @@ const val MAX_TEXT_LENGTH = 500
 const val MAX_LABEL_LENGTH = 40
 const val MIN_RADIUS_M = 100
 const val MAX_RADIUS_M = 1000
+/** A countdown of nothing is not a countdown; a week is as far as the sheet lets anybody go. */
+const val MIN_COUNTDOWN_MINUTES = 1
+const val MAX_COUNTDOWN_MINUTES = 7 * 24 * 60
 const val MIN_RANDOM_TIMES = 1
 const val MAX_RANDOM_TIMES = 5
 
@@ -26,6 +29,7 @@ sealed interface ValidationError {
 
 enum class TriggerProblem {
     DAYS_EMPTY,
+    COUNTDOWN_OUT_OF_RANGE,
     RADIUS_OUT_OF_RANGE,
     COORDINATES_INVALID,
     LABEL_TOO_LONG,
@@ -59,6 +63,7 @@ fun problemOf(condition: Condition): TriggerProblem? = when (condition) {
 fun problemOf(trigger: Trigger): TriggerProblem? = when (trigger) {
     is Trigger.AtDateTime, is Trigger.OnDate -> null
     is Trigger.AtTime -> TriggerProblem.DAYS_EMPTY.takeIf { trigger.days.isEmpty() }
+    is Trigger.Countdown -> TriggerProblem.COUNTDOWN_OUT_OF_RANGE.takeIf { trigger.minutes !in MIN_COUNTDOWN_MINUTES..MAX_COUNTDOWN_MINUTES }
     is Trigger.Location -> when {
         trigger.lat !in -90.0..90.0 || trigger.lng !in -180.0..180.0 -> TriggerProblem.COORDINATES_INVALID
         trigger.radiusM !in MIN_RADIUS_M..MAX_RADIUS_M -> TriggerProblem.RADIUS_OUT_OF_RANGE

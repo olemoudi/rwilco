@@ -91,6 +91,24 @@ fun triggerLine(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): Tri
             secondary = daysSummary(trigger.days, locale),
             primaryMono = true,
         )
+        is Trigger.Countdown -> {
+            val startedAt = trigger.startedAt
+            if (startedAt == null) {
+                // A shape, not yet a reminder: it says how long, and when that will start.
+                TriggerLine(
+                    primary = durationText(trigger.minutes),
+                    secondary = stringResource(R.string.trigger_countdown_from_start),
+                    primaryMono = false,
+                )
+            } else {
+                val at = startedAt.plusSeconds(trigger.minutes * 60L).atZone(java.time.ZoneId.systemDefault())
+                TriggerLine(
+                    primary = TimeText.time(at.toLocalTime(), is24h, locale),
+                    secondary = dayWord(at.toLocalDate(), today, locale) + " · " + durationText(trigger.minutes),
+                    primaryMono = true,
+                )
+            }
+        }
         is Trigger.Location -> TriggerLine(
             primary = trigger.label,
             secondary = stringResource(if (trigger.transition == Transition.ENTER) R.string.trigger_arriving else R.string.trigger_leaving),
@@ -128,5 +146,20 @@ fun daysSummary(days: Set<DayOfWeek>, locale: Locale): String = when (days) {
         List(7) { first.plus(it.toLong()) }
             .filter { it in days }
             .joinToString(" · ") { TimeText.dayInitial(it, locale) }
+    }
+}
+
+/** "45 min" · "2 h" · "2 h 30 min" · "3 d": the coarsest way to say a length that stays true. */
+@Composable
+fun durationText(minutes: Int): String {
+    val days = minutes / (24 * 60)
+    val hours = (minutes % (24 * 60)) / 60
+    val rest = minutes % 60
+    return when {
+        days > 0 && hours > 0 -> stringResource(R.string.countdown_days, days) + " " + stringResource(R.string.countdown_hours, hours)
+        days > 0 -> stringResource(R.string.countdown_days, days)
+        hours > 0 && rest > 0 -> stringResource(R.string.countdown_hours, hours) + " " + stringResource(R.string.countdown_minutes, rest)
+        hours > 0 -> stringResource(R.string.countdown_hours, hours)
+        else -> stringResource(R.string.countdown_minutes, rest)
     }
 }

@@ -93,6 +93,7 @@
 
     <!-- Triggers -->
     <string name="trigger_rings_at">rings at %1$s</string>
+    <string name="trigger_countdown_from_start">from when the reminder is made</string>
     <string name="trigger_every_day">every day</string>
     <string name="trigger_weekdays">weekdays</string>
     <string name="trigger_weekends">weekends</string>
@@ -400,6 +401,10 @@
     <string-array name="whats_new_0_4_2">
         <item>Pausing a reminder now says what it will do — the word "Pause" or "Resume" next to the button, because a pause glyph on its own reads as "this is paused" just as easily.</item>
         <item>It is bigger, it sits up with the reminder\'s own words instead of among the small grey glyphs that cannot be pressed, and it takes a finger that stays. Let go early and nothing happens.</item>
+    </string-array>
+    <string-array name="whats_new_0_6_1">
+        <item>A countdown is a length of time now, not a date. It used to be stored as the moment it worked out to, which is why a preset could not really hold one: it would have kept the half hour after the day you wrote it.</item>
+        <item>So "in half an hour" in a preset now means half an hour from whenever you use it — a real timer, every time, in one tap.</item>
     </string-array>
     <string-array name="whats_new_0_6_0">
         <item>Preset buttons under the date, where the app\'s own name used to be. One tap writes the reminder — no form. If the preset has no words of its own it asks for them and nothing else, with the keyboard already up. Most used first, scrollable when there are many, and the "+" at the end says which presets get a button.</item>

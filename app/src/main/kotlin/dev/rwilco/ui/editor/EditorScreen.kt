@@ -284,6 +284,7 @@ fun EditorScreen(
                     )
                     TriggerKind.COUNTDOWN -> CountdownSheet(
                         clock = viewModel.clock,
+                        initial = sheet.initial as? dev.rwilco.model.Trigger.Countdown,
                         onConfirm = commit,
                         onDismiss = viewModel::closeSheet,
                     )

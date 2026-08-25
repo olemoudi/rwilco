@@ -124,6 +124,11 @@ fun nextFireOf(trigger: Trigger, reminderId: String, now: Instant, zone: ZoneId,
         is Trigger.OnDate ->
             trigger.date.atTime(defaultTime).atZone(zone).toInstant().future(now)?.let { NextFire.Scheduled(it, trigger) }
         is Trigger.AtTime -> nextAtTime(trigger, now, zone)?.let { NextFire.Scheduled(it, trigger) }
+        // Not yet stamped (a preset's copy, a draft): it would start now, so that is what it
+        // answers — which is also what the editor should show while it is being written.
+        is Trigger.Countdown -> (trigger.startedAt ?: now).plusSeconds(trigger.minutes * 60L)
+            .future(now)
+            ?.let { NextFire.Scheduled(it, trigger) }
         is Trigger.Location -> NextFire.WhenAt(trigger)
         is Trigger.Random -> nextRandom(trigger, reminderId, now, zone)
     }
