@@ -437,6 +437,9 @@
         <item>Pausar un recordatorio ahora dice lo que va a hacer — la palabra «Pausar» o «Reanudar» junto al botón, porque un icono de pausa a secas se lee igual de bien como «esto está pausado».</item>
         <item>Es más grande, está arriba con las palabras del recordatorio en vez de entre los iconos grises que no se pueden pulsar, y pide un dedo que se quede. Si sueltas antes, no pasa nada.</item>
     </string-array>
+    <string-array name="whats_new_0_7_1">
+        <item>Arreglado un recordatorio que podía pausarse solo sin que nadie tocara el móvil: un dedo aún sobre el botón de pausa cuando la app perdía la pantalla dejaba la pulsación armada, y se completaba sola al volver. Una pulsación que sobrevive a que la app pierda la pantalla ya no cuenta como pulsación.</item>
+    </string-array>
     <string-array name="whats_new_0_7_0">
         <item>La recurrencia ha crecido. «Vuelve» es una tarjeta propia, con las respuestas más habituales como botones —al día siguiente, cada 6 h, cada semana—, la lista entera tras los puntos suspensivos, y «Personalizado» para construir una a medida.</item>
         <item>Casi todas cuentan desde TI, no desde el reloj: «cada 6 h» son seis horas desde que lo marcas hecho, que es como funciona una medicina de verdad. También está «el enésimo día de la semana de cada mes» para lo que es una fecha y no una costumbre.</item>

@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +30,9 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import dev.rwilco.ui.theme.Tokens
 
 private val DISC = 44.dp
@@ -57,6 +61,19 @@ fun HoldButton(
     val scheme = MaterialTheme.colorScheme
     val overlay = LocalHoldOverlay.current
     var pressed by remember { mutableStateOf(false) }
+
+    // A press that survives the app leaving the screen is not a press any more. Without this a
+    // finger still down when an alert takes over — or when anything else pulls the app away —
+    // leaves the hold armed, starved of frames, to finish itself off the moment the person comes
+    // back: a reminder pausing itself with nobody touching the phone.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE) pressed = false
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     LaunchedEffect(pressed) {
         if (!pressed) {
