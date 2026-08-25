@@ -646,4 +646,12 @@
         <item>This, at the bottom of Settings: the last five releases, whenever you want them rather than only once after an update.</item>
         <item>The time range trigger has an icon that means a range — a clock with a slice of it filled. It was an hourglass, which says «time passing» and said it in nearly the same glyph as the countdown two tiles away.</item>
     </string-array>
+    <string-array name="whats_new_0_11_2">
+        <item>A reminder the phone slept through no longer costs you the next one. Catching up on a missed moment was recording the ring against the moment the re-arm had already moved on to, so a daily reminder skipped a day after every night the phone was off, and a set of rules lost whichever moment came next. Fixed, with a test that would have caught it.</item>
+        <item>The place watch keeps its chain of looks whatever happens to one of them: a look that runs out of time or fails leaves the next one armed, and the next look is armed before anything rings rather than after. Its three doors — the alarm, a geofence, the app starting up — now take turns instead of writing over each other, which is what was costing an extra fix five seconds after the one just taken whenever its own alarm woke the app.</item>
+        <item>Granting «all the time» in Settings arms your place reminders the moment you come back, not up to six hours later. Allowing exact alarms does the same for the rest.</item>
+        <item>The app stopped checking GitHub for updates every time the place watch woke it up — a few dozen times a day, for a file that had not changed. Opening the app checks, as before, and so does the twelve-hourly check.</item>
+        <item>A reminder that comes back «every 6 h» and has rung once without an answer stays overdue until you deal with it: it no longer rings again at the hour of the trigger that only ever meant the first time.</item>
+        <item>«Done» on the notification of a reminder you had already deleted takes the notification down.</item>
+    </string-array>
 </resources>

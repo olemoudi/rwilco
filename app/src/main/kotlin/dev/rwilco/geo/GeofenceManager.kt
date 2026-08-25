@@ -14,6 +14,7 @@ import dev.rwilco.model.pendingRules
 import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 
 /** What came of trying to register the places; the Settings card turns this into a sentence. */
@@ -92,22 +93,27 @@ class GeofenceManager(
             .setInitialTrigger(0)
             .addGeofences(geofences)
             .build()
-        return suspendCancellableCoroutine { continuation ->
-            runCatching {
-                client.addGeofences(request, pendingIntent())
-                    .addOnSuccessListener {
-                        Log.i(TAG, "watching ${geofences.size} places")
-                        continuation.resume(GeofenceState.ARMED)
-                    }
-                    .addOnFailureListener { error ->
-                        Log.w(TAG, "could not watch places", error)
-                        continuation.resume(GeofenceState.UNAVAILABLE)
-                    }
-            }.onFailure {
-                Log.w(TAG, "geofencing unavailable", it)
-                if (continuation.isActive) continuation.resume(GeofenceState.UNAVAILABLE)
+        // Bounded: this sits in the chain every process start runs (re-arm, geofences, place
+        // watch), and a Play Services that never answers would otherwise hold the place watch's
+        // own sync behind it for ever.
+        return withTimeoutOrNull(REGISTER_TIMEOUT_MS) {
+            suspendCancellableCoroutine { continuation ->
+                runCatching {
+                    client.addGeofences(request, pendingIntent())
+                        .addOnSuccessListener {
+                            Log.i(TAG, "watching ${geofences.size} places")
+                            if (continuation.isActive) continuation.resume(GeofenceState.ARMED)
+                        }
+                        .addOnFailureListener { error ->
+                            Log.w(TAG, "could not watch places", error)
+                            if (continuation.isActive) continuation.resume(GeofenceState.UNAVAILABLE)
+                        }
+                }.onFailure {
+                    Log.w(TAG, "geofencing unavailable", it)
+                    if (continuation.isActive) continuation.resume(GeofenceState.UNAVAILABLE)
+                }
             }
-        }
+        } ?: GeofenceState.UNAVAILABLE.also { Log.w(TAG, "Play Services did not answer in time") }
     }
 
     private fun removeAll() {
@@ -130,5 +136,6 @@ class GeofenceManager(
         const val MAX_GEOFENCES = 100
         const val LOITERING_MS = 30_000
         const val RESPONSIVENESS_MS = 60_000
+        const val REGISTER_TIMEOUT_MS = 15_000L
     }
 }

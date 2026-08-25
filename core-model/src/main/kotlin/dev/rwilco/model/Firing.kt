@@ -112,14 +112,21 @@ fun outcomeOfFiring(reminder: Reminder, ruleIndex: Int?): FiringOutcome {
  * catch-up ([late]) counts as rung *now* — otherwise a daily reminder the phone slept through
  * for three days would ring three times on the way back up.
  *
- * [eventDriven] is the exception, and the reason this is a function rather than a `max`. A place
- * happens when it happens; the armed moment belongs to whichever OTHER rule is still waiting,
- * and under ANY that can be days off — "al llegar a casa, o mañana a las nueve". Reaching for it
- * would mark tomorrow's nine o'clock spent the moment somebody walked through their own front
- * door, and it would never ring.
+ * A catch-up must not reach for the armed moment either. By the time it runs, the re-arm that
+ * found the missed moment has already written the NEXT one into the row — tomorrow's nine
+ * o'clock — and taking the later of the two would record the ring against a moment that has not
+ * happened. Tomorrow would then pass in silence, and so would the next moment of every rule the
+ * reminder has. What the catch-up knows is [late] and now, and now is the later of those.
+ *
+ * [eventDriven] is the other exception, and the reason this is a function rather than a `max`.
+ * A place happens when it happens; the armed moment belongs to whichever OTHER rule is still
+ * waiting, and under ANY that can be days off — "al llegar a casa, o mañana a las nueve".
+ * Reaching for it would mark tomorrow's nine o'clock spent the moment somebody walked through
+ * their own front door, and it would never ring.
  */
 fun momentRungFor(now: Instant, armedFor: Instant?, late: Instant?, eventDriven: Boolean): Instant =
-    listOfNotNull(now, armedFor.takeUnless { eventDriven }, late).max()
+    if (late != null) maxOf(now, late)
+    else listOfNotNull(now, armedFor.takeUnless { eventDriven }).max()
 
 /**
  * The snooze offers on the alert screen and in the notification.

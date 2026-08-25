@@ -71,6 +71,26 @@ class RingingTwiceTest {
     }
 
     @Test
+    fun `once the recurrence is in charge, a spent moment does not fall back to the triggers`() {
+        // "A las ocho todos los días, y luego cada seis horas." Dealt with at 08:05, so the
+        // recurrence took over and rang at 14:05; nobody answered. The daily trigger's job was
+        // the first ring only: handing the reminder back to it here would ring at eight
+        // tomorrow, which nobody asked for — what was asked for is six hours after the next
+        // "hecho", and until then the honest word is overdue.
+        val daily = Trigger.AtTime(LocalTime.of(8, 0), java.time.DayOfWeek.entries.toSet())
+        val dealt = local(2026, 8, 28, 8, 5)
+        val rang = dealt.plus(Duration.ofHours(6))
+        val ignored = everySixHours(daily, lastDealtAt = dealt, lastFiredAt = rang)
+        val now = rang.plusSeconds(30)
+
+        assertNull(nextWake(ignored, now, zone, defaultTime, dayStart), "the trigger has had its turn")
+        assertNull(nextFire(ignored, now, zone, defaultTime, dayStart))
+        // Before it was ever dealt with, the trigger is the one that speaks.
+        val fresh = everySixHours(daily)
+        assertEquals(local(2026, 8, 28, 8, 0), nextWake(fresh, written, zone, defaultTime, dayStart)?.at)
+    }
+
+    @Test
     fun `a recurrence the phone slept through is still armed`() {
         // Never rang: the moment is in the past because the device was off, not because it was
         // answered. That one has to be armed, and arrives at once — which is the catch-up.

@@ -42,6 +42,8 @@ import dev.rwilco.model.stirredWait
 import dev.rwilco.notify.WatchNotices
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Clock
 import java.time.Duration
@@ -85,6 +87,17 @@ class PlaceWatcher(
     private val alarms = context.getSystemService(AlarmManager::class.java)
     private val fused: FusedLocationProviderClient by lazy { LocationServices.getFusedLocationProviderClient(context) }
     private val battery = BatteryGauge(context)
+
+    /**
+     * One watch, one turn at a time. [sync], [check] and [accept] each read the store, decide,
+     * and write it back, and they arrive through different doors at the same moment: the alarm
+     * that starts a dead process runs [check] while the process's own start-up runs [sync], and
+     * a geofence can report a crossing in the middle of either. Interleaved, the later write
+     * hands the store the earlier one's stale reading — a check's judgement lost, a place
+     * marked outside again after it rang, and a "look soon" planned five seconds after the
+     * look that had just been taken.
+     */
+    private val lock = Mutex()
 
     /**
      * The look this process last set an alarm for, and how far the nearest line was when it did.
@@ -196,7 +209,7 @@ class PlaceWatcher(
      * pending look is left standing unless a place has never been judged (nothing in `inside`
      * knows it) or nothing is pending at all, which is also what a reboot looks like.
      */
-    suspend fun sync() {
+    suspend fun sync() = lock.withLock {
         val watch = watching()
         val places = watch.places
         val current = store.read()
@@ -206,7 +219,7 @@ class PlaceWatcher(
             val gate = watch.opensAt.takeIf { context.hasBackgroundLocation() }
             store.write(current.copy(inside = emptyMap(), nextCheckAt = gate))
             if (gate == null) cancel() else scheduleAt(gate)
-            return
+            return@withLock
         }
         val ids = places.mapTo(HashSet()) { it.id }
         val judged = current.inside.filterKeys { it in ids }
@@ -225,22 +238,54 @@ class PlaceWatcher(
      * of the line: Play Services re-reading a line nobody crossed, which is what makes a place
      * reminder ring at somebody who never left home.
      */
-    suspend fun accept(placeId: String, transition: Transition): Boolean {
+    suspend fun accept(placeId: String, transition: Transition): Boolean = lock.withLock {
         val state = store.read()
         val now = clock.instant()
         val label = runCatching { places().firstOrNull { it.id == placeId }?.label }.getOrNull()
         if (!crossingIsNews(state, placeId, transition, now)) {
             Log.i(TAG, "geofence says $transition at $placeId, but we were already there")
             log.note(WatchNote(at = now, kind = NoteKind.ECHO, place = label ?: placeId, inside = state.inside[placeId]))
-            return false
+            return@withLock false
         }
         store.write(state.remembering(placeId, transition))
         log.note(WatchNote(at = now, kind = NoteKind.FENCE, place = label ?: placeId, inside = transition == Transition.ENTER))
-        return true
+        true
     }
 
-    /** One look: where is the phone, what did it cross, when to look again. Run by the alarm. */
+    /**
+     * One look: where is the phone, what did it cross, when to look again. Run by the alarm.
+     *
+     * Whatever goes wrong inside — a store that will not open, a provider that throws — the one
+     * thing this must not do is come back without a next look armed: the alarm chain is the
+     * watch, and a link dropped here is a watch that stops until something else happens to
+     * start it (a process start, the six-hourly worker). A failed look is retried the way a
+     * blind one is. The receiver that runs this does the same for a look it had to cut short.
+     */
     suspend fun check() {
+        try {
+            lock.withLock { look() }
+        } catch (t: Throwable) {
+            if (t is kotlinx.coroutines.CancellationException) throw t
+            Log.e(TAG, "the look failed; trying again later", t)
+            recover()
+        }
+    }
+
+    /**
+     * The next look is missing, or is behind us: arm one a blind retry away. What the receiver
+     * calls when [check] ran out of its time, and what [check] calls when it blew up — the two
+     * ways a look can end without having set the alarm that keeps the watch alive. Harmless
+     * when the watch has nothing to do: that look finds nothing to watch and cancels itself.
+     */
+    fun recover() {
+        val planned = plannedAt
+        if (planned != null && planned > clock.instant()) return
+        val at = clock.instant() + NO_FIX_RETRY
+        Log.w(TAG, "no next look was left armed; one at $at")
+        scheduleAt(at)
+    }
+
+    private suspend fun look() {
         val watch = watching()
         val places = watch.places
         if (places.isEmpty() || !context.hasBackgroundLocation()) {
@@ -262,10 +307,12 @@ class PlaceWatcher(
         val rest = stepWithoutLooking(before, places, now, sensed, charge)
         val rested = rest?.plan
         if (rest != null && rested != null) {
-            store.write(rest.state)
-            Log.i(TAG, "nothing has moved; no fix taken, next look in ${rested.wait.toMinutes()} min")
+            // Never past the moment another circle's hours open, for the same reason as below.
+            val at = watch.opensAt?.coerceAtMost(now + rested.wait) ?: (now + rested.wait)
+            store.write(rest.state.copy(nextCheckAt = at))
+            scheduleAt(at, rested.gapM)
+            Log.i(TAG, "nothing has moved; no fix taken, next look in ${Duration.between(now, at).toMinutes()} min")
             write(NoteKind.REST, now, rest.state, rested, rest.movement, charge)
-            scheduleAt(now + rested.wait, rested.gapM)
             return
         }
         val fix = readFix(precise = before.precise)
@@ -285,29 +332,33 @@ class PlaceWatcher(
             Log.w(TAG, "no fix worth having${if (stale) " (stale)" else ""}; trying again in ${wait.toMinutes()} min")
             val at = now + wait
             store.write(before.copy(nextCheckAt = at, blindStreak = before.blindStreak + 1))
-            write(NoteKind.BLIND, now, before, plan = null, movement = Movement(sensed = sensed), charge = charge)
             scheduleAt(at)
+            write(NoteKind.BLIND, now, before, plan = null, movement = Movement(sensed = sensed), charge = charge)
             return
         }
         // A fix resets the blind streak: PlaceWatchState is rebuilt from scratch by the step.
         val step = stepPlaceWatch(before, fix, places, now, sensed, charge)
-        store.write(step.state)
+        val plan = step.plan
+        if (plan == null) {
+            store.write(step.state)
+            cancel()
+            return
+        }
+        // Never past the moment another circle's hours open: that fix is the one that answers
+        // "was I there when the window started", and it has to be taken before anything asks.
+        val at = watch.opensAt?.coerceAtMost(now + plan.wait) ?: (now + plan.wait)
+        // The next look is armed BEFORE anything rings. Ringing is the slow part of a look —
+        // a notification, maybe a screen — and the receiver's budget is short; a look cut off
+        // in the middle of it must already have left the watch its next link.
+        store.write(step.state.copy(nextCheckAt = at))
+        scheduleAt(at, plan.gapM)
+        Log.i(TAG, "${plan.gapM.toInt()} m from ${plan.nearest.label}; next look in ${Duration.between(now, at).toMinutes()} min${if (plan.precise) " (gps)" else ""}")
+        write(NoteKind.FIX, now, step.state, plan, step.movement, charge)
         for (event in step.events) {
             val reminderId = GeofenceIds.reminderIdOf(event.placeId)
             Log.i(TAG, "watch saw ${event.transition} at ${event.placeId}")
             firing.fire(reminderId, ruleIndex = GeofenceIds.triggerIndexOf(event.placeId))
         }
-        val plan = step.plan
-        if (plan == null) {
-            cancel()
-            return
-        }
-        Log.i(TAG, "${plan.gapM.toInt()} m from ${plan.nearest.label}; next look in ${plan.wait.toMinutes()} min${if (plan.precise) " (gps)" else ""}")
-        write(NoteKind.FIX, now, step.state, plan, step.movement, charge)
-        // Never past the moment another circle's hours open: that fix is the one that answers
-        // "was I there when the window started", and it has to be taken before anything asks.
-        val at = watch.opensAt?.coerceAtMost(now + plan.wait) ?: (now + plan.wait)
-        scheduleAt(at, plan.gapM)
     }
 
     /**
@@ -360,13 +411,13 @@ class PlaceWatcher(
      * Runs off the sensor's delivery thread ([MotionSensor] hands it to a coroutine), so the
      * two binder calls and the log line it writes are nowhere near the main looper.
      */
-    private suspend fun stirred() {
-        val planned = plannedAt ?: return
-        val gap = plannedGapM ?: return
-        if (gap >= PlaceWatchPolicy.NEAR_M) return
+    private suspend fun stirred() = lock.withLock {
+        val planned = plannedAt ?: return@withLock
+        val gap = plannedGapM ?: return@withLock
+        if (gap >= PlaceWatchPolicy.NEAR_M) return@withLock
         val now = clock.instant()
         val at = now + stirredWait(battery.remaining())
-        if (planned <= at) return
+        if (planned <= at) return@withLock
         Log.i(TAG, "the phone stirred ${gap.toInt()} m from a line; looking sooner")
         scheduleAt(at, gap)
         // Its own line in the log, but not through `write`: moving an alarm is not a poll, and

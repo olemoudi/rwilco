@@ -253,7 +253,18 @@ strict is asking somebody to remember how they spelled it.
   same moment would still be in the future when the scheduler next looks, and ring twice. A
   place is the exception and must not reach for the armed moment at all: it has none of its own,
   and under ANY the armed one belongs to whatever else the reminder is waiting for — recording
-  an arrival against it would mark tomorrow's appointment spent before it ever came.
+  an arrival against it would mark tomorrow's appointment spent before it ever came. A catch-up
+  (`late`) must not either: by the time it rings, the re-arm that found the missed moment has
+  already written the *next* one into the row, and taking it would spend tomorrow before it came
+  — which is how a daily reminder once skipped a day after every night the phone was off. A
+  catch-up is recorded as rung now, and stands down if the row already shows a ring at or after
+  the moment it is about (the alarm for a past moment arrives at once, racing it). Every entry
+  into `ReminderFiring` — a firing, a repeat, "hecho", a snooze — takes one mutex, so two doors
+  opening on the same second read each other's writes instead of both ringing.
+  Once an anchored recurrence is in charge (`recurrenceInCharge`: dealt with once, or no rules
+  at all) the rules are not consulted again, not even when its moment is spent: a "cada 6 h"
+  that rang and was ignored is overdue, and does not come back at the hour of a trigger whose
+  job was the first ring only.
 - `AlertPresenter` decides *where* a firing shows itself: an app open in front of somebody gets
   the banner, and the home screen, a dark screen or the lock screen get the whole screen. That
   needs two permissions granted by hand — usage access (to tell an app from the launcher) and
@@ -458,12 +469,28 @@ strict is asking somebody to remember how they spelled it.
   alarms to one per nine minutes, and a phone in Doze is a phone not moving, so nothing is
   lost. Both eyes seeing the same arrival ring once: `ReminderFiring` drops a place firing
   that repeats within five minutes of the last ring.
+  **The chain of looks is the watch**, so nothing may drop a link. `sync()`, `check()` and
+  `accept()` take one mutex — they arrive through different doors at once (the alarm that
+  starts a dead process runs the check while the process's own start-up runs the sync) and,
+  interleaved, the later write handed the store the earlier one's stale reading and planned a
+  "look soon" five seconds after the look just taken. Within a check the next look is armed
+  *before* anything rings (ringing is the slow part, and the receiver's budget is ten seconds),
+  a check that blows up retries like a blind one, and `PlaceCheckReceiver` calls `recover()` on
+  a check it had to cut short, which arms a retry unless a future look is already planned.
+  `GeofenceManager.sync()` is bounded too: it sits in the start-up chain ahead of the watch's
+  sync, and a Play Services that never answered would have held that behind it for ever.
+  Both grants the firing depends on are given by hand in system settings while the app keeps
+  running, so `RwilcoApplication.resyncIfGrantsChanged()` (from `MainActivity.onResume`) arms
+  what a new grant unlocks — background location: geofences and the watch; exact alarms: the
+  alarms — rather than waiting for the six-hourly worker.
 - `SystemEventsReceiver` re-arms after a reboot, an install over ourselves, or the clock moving:
   a wall-clock promise is not an instant until a zone says so.
 
 ## Self-update
 
-`update/`: `UpdateWorker` (periodic + launch/boot/focus) runs `Updater`, which reads
+`update/`: `UpdateWorker` (periodic + boot/focus; the launch check is `MainActivity`'s, not the
+`Application`'s, because the place watch starts the process every few minutes and each start
+was a trip to GitHub) runs `Updater`, which reads
 `version.json`, decides with the pure `nextUpdateStep` table, downloads over OkHttp (no plaintext
 redirects), validates the APK through the platform parser and commits a `PackageInstaller`
 session; `InstallReceiver` turns "needs confirmation" into a notification and keeps a declined

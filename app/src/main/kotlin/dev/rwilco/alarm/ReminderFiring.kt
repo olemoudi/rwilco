@@ -26,6 +26,8 @@ import dev.rwilco.model.statusAfterDismissal
 import dev.rwilco.notify.AlertNotifications
 import dev.rwilco.notify.AlertPresenter
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -47,15 +49,33 @@ class ReminderFiring(
     private val repeater = SoundRepeater(context)
 
     /**
+     * One decision at a time. A firing is a read, a decision and a write, and two of them for
+     * the same reminder can arrive within the same second through different doors: the alarm
+     * a re-arm set for a moment already in the past arrives at once, while the catch-up that
+     * found that same moment is on its way to ring it; the geofence and the place watch both
+     * see one arrival. Run side by side, both read a row that says "not rung yet" and both
+     * ring. Run one after the other, the second reads what the first wrote and stands down.
+     */
+    private val lock = Mutex()
+
+    /**
      * The moment arrived. [late] is when it should have arrived, if the phone slept through it;
      * [ruleIndex] says which rule rang, which is what lets a place be judged against the
      * conditions on it ("al llegar a casa, y sólo si es por la tarde"). An alarm needs no such
      * check: the moment it was armed for already satisfied them.
      */
-    suspend fun fire(id: String, late: Instant? = null, ruleIndex: Int? = null) {
-        val reminder = repository.get(id) ?: return
-        if (reminder.status != Status.ACTIVE) return
+    suspend fun fire(id: String, late: Instant? = null, ruleIndex: Int? = null) = lock.withLock {
+        val reminder = repository.get(id) ?: return@withLock
+        if (reminder.status != Status.ACTIVE) return@withLock
         val now = clock.instant()
+        // A catch-up is decided from a row read before the re-arm; by the time it gets here the
+        // moment it is about may have rung on its own — the alarm for a past moment arrives at
+        // once — and ringing it again is exactly the double the lock above exists to stop.
+        val fired = reminder.lastFiredAt
+        if (late != null && fired != null && !fired.isBefore(late)) {
+            Log.i(TAG, "$id already rang for the moment the catch-up is about")
+            return@withLock
+        }
         // A place is judged when it happens; a moment was judged when it was armed. Judging an
         // alarm again here would silence a firing the phone slept through — the catch-up runs
         // long after the window it was armed inside.
@@ -66,11 +86,11 @@ class ReminderFiring(
         val judged = ruleIndex?.let { reminder.togetherRule(it) }
         if (ruleIndex != null && judged == null) {
             Log.i(TAG, "$id asks for two moments at once, which never happens")
-            return
+            return@withLock
         }
         if (judged != null && !conditionsHold(judged, now)) {
             Log.i(TAG, "$id came round outside what its rule asks for")
-            return
+            return@withLock
         }
         // Nothing rings for a moment that is not armed.
         //
@@ -83,20 +103,20 @@ class ReminderFiring(
         val eventDriven = rule?.trigger is Trigger.Location
         if (!eventDriven && late == null && (armed == null || armed > now.plusSeconds(EARLY_GRACE_SECONDS))) {
             Log.i(TAG, "$id has nothing armed for now (armed=$armed); ignoring a stray firing")
-            return
+            return@withLock
         }
         // Two eyes on every place — the phone's geofence and the app's own watch — and one
         // arrival. Whichever sees it second is telling us what we already rang about.
         val lastFired = reminder.lastFiredAt
         if (rule?.trigger is Trigger.Location && lastFired != null && Duration.between(lastFired, now) < PLACE_ECHO) {
             Log.i(TAG, "$id already rang for this place ${Duration.between(lastFired, now).seconds}s ago")
-            return
+            return@withLock
         }
         // A snooze set after the alarm was armed (from the notification, a moment ago) wins.
         val snoozed = reminder.snoozedUntil
         if (snoozed != null && snoozed > now) {
             scheduler.rearmAll()
-            return
+            return@withLock
         }
         // Under ALL a moment is first of all something that happened: only the one that
         // completes the set rings, and the rest are written down and waited on.
@@ -105,7 +125,7 @@ class ReminderFiring(
                 Log.i(TAG, "$id noted rule $ruleIndex; still waiting for the rest")
                 repository.setFiredRules(id, outcome.fired)
                 scheduler.rearmAll()
-                return
+                return@withLock
             }
             FiringOutcome.Ring -> Unit
         }
@@ -138,17 +158,17 @@ class ReminderFiring(
      * and it puts the card back in front of somebody who has scrolled past it. Never the
      * full-screen takeover: once was the alarm, this is the reminder of the alarm.
      */
-    suspend fun playAgain(id: String, played: Int, rangAt: Instant) {
-        val reminder = repository.get(id) ?: return
+    suspend fun playAgain(id: String, played: Int, rangAt: Instant) = lock.withLock {
+        val reminder = repository.get(id) ?: return@withLock
         val now = clock.instant()
-        if (reminder.status != Status.ACTIVE) return
+        if (reminder.status != Status.ACTIVE) return@withLock
         val dealt = reminder.lastDealtAt
-        if (dealt != null && !dealt.isBefore(rangAt)) return
+        if (dealt != null && !dealt.isBefore(rangAt)) return@withLock
         val snoozed = reminder.snoozedUntil
-        if (snoozed != null && snoozed > now) return
+        if (snoozed != null && snoozed > now) return@withLock
         val settings = settingsStore.settings.first()
         val plan = firingPlan(reminder.actions)
-        if (!plan.insistent) return
+        if (!plan.insistent) return@withLock
         Log.i(TAG, "$id has not been dealt with; play ${played + 1} of ${settings.soundPlays}")
         AlertPresenter.show(context, reminder, plan, late = null, vibration = settings.vibration, sound = settings.alertSound, takeScreen = false)
         nextSoundIn(played + 1, settings.soundPlays, settings.soundGapMinutes)
@@ -184,10 +204,18 @@ class ReminderFiring(
         return places.allHoldAt(now, clock.zone, where)
     }
 
-    /** "Hecho": finished if nothing can ring again, otherwise just this occurrence dealt with. */
-    suspend fun dismiss(id: String) {
+    /**
+     * "Hecho": finished if nothing can ring again, otherwise just this occurrence dealt with.
+     *
+     * The noise and the notification go first, and go whether or not the reminder still exists:
+     * the buttons on a notification outlive the row they were posted for (the reminder was
+     * deleted from Home with the card still in the shade), and "Hecho" on one of those has to
+     * take it down rather than leave a button that does nothing.
+     */
+    suspend fun dismiss(id: String) = lock.withLock {
         repeater.cancel(id)
-        val reminder = repository.get(id) ?: return
+        AlertNotifications.cancel(context, id)
+        val reminder = repository.get(id) ?: return@withLock
         val now = clock.instant()
         val defaultTime = settingsStore.settings.first().defaultTime
         val status = statusAfterDismissal(reminder, now, clock.zone, defaultTime)
@@ -198,16 +226,16 @@ class ReminderFiring(
         // after this, not after whenever the alarm happened to go off.
         repository.setLastDealtAt(id, now)
         repository.setStatus(id, status)
-        AlertNotifications.cancel(context, id)
         scheduler.rearmAll()
     }
 
-    suspend fun snooze(id: String, snooze: Snooze) {
+    suspend fun snooze(id: String, snooze: Snooze) = lock.withLock {
         repeater.cancel(id)
+        AlertNotifications.cancel(context, id)
+        if (repository.get(id) == null) return@withLock
         val now = clock.instant()
         val settings = settingsStore.settings.first()
         repository.snooze(id, snooze.until(now, clock.zone, settings.weekendDay, settings.weekendTime))
-        AlertNotifications.cancel(context, id)
         scheduler.rearmAll()
     }
 

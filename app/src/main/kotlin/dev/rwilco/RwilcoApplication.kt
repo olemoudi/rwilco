@@ -7,10 +7,13 @@ import dev.rwilco.data.SettingsStore
 import dev.rwilco.alarm.RearmWorker
 import dev.rwilco.alarm.ReminderFiring
 import dev.rwilco.alarm.ReminderScheduler
+import android.app.AlarmManager
+import android.os.Build
 import dev.rwilco.geo.GeofenceManager
 import dev.rwilco.geo.PlaceLogStore
 import dev.rwilco.geo.PlaceWatchStore
 import dev.rwilco.geo.PlaceWatcher
+import dev.rwilco.geo.hasBackgroundLocation
 import dev.rwilco.model.AppSettings
 import dev.rwilco.notify.AlertNotifications
 import dev.rwilco.update.UpdateWorker
@@ -68,9 +71,13 @@ class RwilcoApplication : Application() {
         placeWatcher = PlaceWatcher(this, repository, firing, placeWatch, placeLog, settingsStore, clock)
         AlertNotifications.ensureChannels(this)
 
+        // The periodic checks only. The one-off check at launch is MainActivity's, because "the
+        // app was started" is not "somebody opened the app": the place watch's own alarm starts
+        // this process every few minutes to an hour, and each of those used to enqueue a trip
+        // to GitHub for a version.json that had not changed since the last one.
         UpdateWorker.schedule(this)
-        UpdateWorker.runNow(this)
         RearmWorker.schedule(this)
+        grants = Grants.read(this)
 
         // One pass at launch that also speaks up about anything the phone slept through, then a
         // re-arm whenever what to fire changes.
@@ -102,6 +109,43 @@ class RwilcoApplication : Application() {
                 .distinctUntilChanged()
                 .drop(1)
                 .collect { scheduler.rearmAll() }
+        }
+    }
+
+    /**
+     * The two grants the firing depends on, as they stood the last time anybody looked. Both
+     * are given by hand in system settings, and the app is still running when the person comes
+     * back from there — so nothing restarts, nothing re-arms, and until the six-hourly worker
+     * came round a place reminder written before the grant was one the phone was not watching.
+     */
+    @Volatile
+    private var grants: Grants = Grants(background = false, exact = false)
+
+    /**
+     * Somebody is back in front of the app: if a grant changed while they were away, arm what
+     * it unlocks. Cheap when nothing changed, which is every other time.
+     */
+    fun resyncIfGrantsChanged() {
+        val now = Grants.read(this)
+        val before = grants
+        if (now == before) return
+        grants = now
+        appScope.launch {
+            if (now.exact != before.exact) scheduler.rearmAll()
+            if (now.background != before.background) {
+                geofences.sync()
+                placeWatcher.sync()
+            }
+        }
+    }
+
+    private data class Grants(val background: Boolean, val exact: Boolean) {
+        companion object {
+            fun read(context: android.content.Context): Grants {
+                val alarms = context.getSystemService(AlarmManager::class.java)
+                val exact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms?.canScheduleExactAlarms() == true
+                return Grants(background = context.hasBackgroundLocation(), exact = exact)
+            }
         }
     }
 }

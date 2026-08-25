@@ -39,15 +39,18 @@ class SoundRepeater(private val context: Context) {
     /**
      * One PendingIntent per reminder, so cancelling needs only the id.
      *
-     * The extras are deliberately outside the intent's identity (no data, no action difference),
-     * which is what lets FLAG_UPDATE_CURRENT replace round three with round four rather than
-     * leaving both armed — and what lets [cancel] match without knowing which round is pending.
+     * The reminder is in the data URI, which IS part of the intent's identity — a request code
+     * alone is a hash, and two reminders whose ids happen to hash alike would share one chain
+     * and cancel each other's. The extras are deliberately outside it, which is what lets
+     * FLAG_UPDATE_CURRENT replace round three with round four rather than leaving both armed —
+     * and what lets [cancel] match without knowing which round is pending.
      */
     private fun intent(reminderId: String, played: Int, rangAt: Instant): PendingIntent = PendingIntent.getBroadcast(
         context,
-        reminderId.hashCode(),
+        0,
         Intent(context, SoundRepeatReceiver::class.java)
             .setAction(SoundRepeatReceiver.ACTION)
+            .setData(ReminderScheduler.reminderUri(reminderId))
             .putExtra(SoundRepeatReceiver.EXTRA_ID, reminderId)
             .putExtra(SoundRepeatReceiver.EXTRA_PLAYED, played)
             .putExtra(SoundRepeatReceiver.EXTRA_RANG_AT, rangAt.toEpochMilli()),

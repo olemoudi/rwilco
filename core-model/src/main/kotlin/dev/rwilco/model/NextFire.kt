@@ -46,7 +46,13 @@ fun nextFire(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalT
     if (snoozedUntil != null && snoozedUntil > now) {
         return NextFire.Scheduled(snoozedUntil, reminder.rules.firstOrNull()?.trigger, snoozed = true)
     }
-    reminder.recurrenceMoment(zone, dayStart)?.let { return NextFire.Scheduled(it, reminder.rules.firstOrNull()?.trigger) }
+    // Once the recurrence is in charge the rules have nothing more to say — not even when its
+    // moment is spent, which is the case that matters: a "cada 6 h" that rang at two and was
+    // ignored is overdue, and must not come back at the hour of a trigger whose job was the
+    // first ring only.
+    if (reminder.recurrenceInCharge) {
+        return reminder.recurrenceMoment(zone, dayStart)?.let { NextFire.Scheduled(it, reminder.rules.firstOrNull()?.trigger) }
+    }
     val pending = reminder.pendingRules()
     val candidates = pending.mapNotNull { index ->
         nextFireOfRule(reminder.rules[index], reminder.id, reminder.searchFrom(now), zone, defaultTime)
@@ -83,8 +89,9 @@ fun nextWake(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalT
     if (reminder.status != Status.ACTIVE) return null
     val snoozedUntil = reminder.snoozedUntil
     if (snoozedUntil != null && snoozedUntil > now) return Wake(snoozedUntil, null)
-    // A recurrence's moment is the ring itself: there is no rule behind it to tick off.
-    reminder.recurrenceMoment(zone, dayStart)?.let { return Wake(it, null) }
+    // A recurrence's moment is the ring itself: there is no rule behind it to tick off — and
+    // once it is in charge, a spent moment arms nothing (see nextFire).
+    if (reminder.recurrenceInCharge) return reminder.recurrenceMoment(zone, dayStart)?.let { Wake(it, null) }
     return reminder.pendingRules()
         .mapNotNull { index ->
             val at = nextFireOfRule(reminder.rules[index], reminder.id, reminder.searchFrom(now), zone, defaultTime)?.momentOrNull()
@@ -184,6 +191,14 @@ private fun nextRandom(trigger: Trigger.Random, reminderId: String, now: Instant
 }
 
 /**
+ * Whether it is the recurrence, and not the rules, that says when this reminder rings: an
+ * anchored one, once the reminder has been dealt with at least once — or from the start when
+ * there are no rules at all.
+ */
+val Reminder.recurrenceInCharge: Boolean
+    get() = recurrence.isAnchored && (lastDealtAt != null || rules.isEmpty())
+
+/**
  * The moment this reminder's recurrence asks for, when it is the recurrence's turn to say.
  *
  * The triggers say when it rings the FIRST time; the recurrence says when it comes back. So the
@@ -191,8 +206,7 @@ private fun nextRandom(trigger: Trigger.Random, reminderId: String, now: Instant
  * when there are no triggers at all, which is what makes "cada 6 h" a whole reminder on its own.
  */
 fun Reminder.recurrenceMoment(zone: ZoneId, dayStart: LocalTime): Instant? {
-    if (!recurrence.isAnchored) return null
-    if (lastDealtAt == null && rules.isNotEmpty()) return null
+    if (!recurrenceInCharge) return null
     val at = nextRecurrence(recurrence, lastDealtAt ?: createdAt, zone, dayStart) ?: return null
     // Spent, the same way a rule's moment is (see [searchFrom]) — and here it matters more.
     //

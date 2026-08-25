@@ -124,6 +124,24 @@ class FiringTest {
     }
 
     @Test
+    fun `a catch-up does not spend the moment the re-arm has already moved on to`() {
+        // The re-arm that noticed the missed nine o'clock has already written tomorrow's into
+        // the row by the time the catch-up rings. Recording the ring against THAT would leave
+        // tomorrow spent before it came, and a daily reminder would skip a day after every
+        // night the phone was off.
+        val missed = local(2026, 8, 27, 9, 0)
+        val backOn = local(2026, 8, 27, 15, 0)
+        val rearmedFor = local(2026, 8, 28, 9, 0)
+
+        assertEquals(backOn, momentRungFor(backOn, armedFor = rearmedFor, late = missed, eventDriven = false))
+        assertEquals(
+            rearmedFor,
+            momentRungFor(rearmedFor.minusMillis(400), armedFor = rearmedFor, late = null, eventDriven = false),
+            "the ordinary alarm, arriving a breath early, still rings for its own moment",
+        )
+    }
+
+    @Test
     fun `a full-screen alert keeps its notification but hands the noise to the screen`() {
         val plan = firingPlan(setOf(Action.FULL_SCREEN, Action.SOUND, Action.VIBRATE))
         assertTrue(plan.fullScreen)

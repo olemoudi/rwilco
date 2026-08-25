@@ -644,4 +644,12 @@
         <item>Esto mismo, al final de Ajustes: las cinco últimas versiones, cuando te apetezca y no sólo una vez tras actualizar.</item>
         <item>El disparador de franja horaria tiene un icono que significa una franja — un reloj con una porción rellena. Era un reloj de arena, que dice «tiempo transcurriendo» y lo decía con casi el mismo glifo que la cuenta atrás, dos fichas más allá.</item>
     </string-array>
+    <string-array name="whats_new_0_11_2">
+        <item>Un aviso que el móvil se perdió durmiendo ya no te cuesta el siguiente. Al recuperar un momento perdido se anotaba el toque contra el momento al que el rearmado ya había pasado, así que un recordatorio diario se saltaba un día después de cada noche con el móvil apagado, y un conjunto de reglas perdía el momento que viniera después. Arreglado, con un test que lo habría cazado.</item>
+        <item>El vigilante de lugares conserva su cadena de miradas pase lo que pase con una de ellas: una mirada que se queda sin tiempo o falla deja la siguiente armada, y la siguiente se arma antes de que nada suene, no después. Sus tres puertas — la alarma, una geovalla, el arranque de la app — ahora se turnan en vez de pisarse, que es lo que costaba una posición de más cinco segundos después de la recién tomada cada vez que su propia alarma despertaba la app.</item>
+        <item>Conceder «todo el tiempo» en Ajustes arma tus recordatorios de lugar en cuanto vuelves, no hasta seis horas después. Permitir alarmas exactas hace lo mismo con el resto.</item>
+        <item>La app ha dejado de consultar GitHub por actualizaciones cada vez que el vigilante de lugares la despertaba — unas docenas de veces al día, por un archivo que no había cambiado. Abrir la app comprueba, como antes, y también la comprobación de cada doce horas.</item>
+        <item>Un recordatorio que vuelve «cada 6 h» y ha sonado una vez sin respuesta se queda como vencido hasta que lo atiendes: ya no vuelve a sonar a la hora del disparador que sólo significaba la primera vez.</item>
+        <item>«Hecho» en la notificación de un recordatorio que ya habías borrado retira la notificación.</item>
+    </string-array>
 </resources>

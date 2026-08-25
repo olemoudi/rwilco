@@ -65,6 +65,9 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         UpdateWorker.runIfStale(this)
+        // Back from system settings with "all the time" granted, or exact alarms allowed: what
+        // that unlocks is armed now rather than at the next reboot.
+        (application as RwilcoApplication).resyncIfGrantsChanged()
     }
 
     companion object {
