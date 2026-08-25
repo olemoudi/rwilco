@@ -633,4 +633,9 @@
     <string name="sound_chime_two_tone">Two tone</string>
     <string name="sound_chime_low">Low</string>
     <string name="sound_chime_soft">Soft</string>
+    <string-array name="whats_new_0_11_0">
+        <item>Four sounds of our own, and they are the point of this one: two or three short tones in the band the ear notices most, and then silence — the way a car tells you something rather than the way an alarm clock does. They are in Settings, and they play when you tap them. Your alarms keep the phone\'s own tone until you pick one, on purpose: these are quieter, and an alarm nobody recognises is an alarm somebody sleeps through.</item>
+        <item>Any file works too — mp3, wav, whatever the phone can open.</item>
+        <item>«Sound» is now two tiles: once, or until answered. The insistent one comes back every few minutes until you deal with the reminder — five times, five minutes apart, both yours to change — and stops the moment you answer it, snooze it or pause it.</item>
+    </string-array>
 </resources>

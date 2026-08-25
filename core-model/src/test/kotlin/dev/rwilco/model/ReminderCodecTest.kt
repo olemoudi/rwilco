@@ -146,7 +146,7 @@ class ReminderCodecTest {
                 """{"id":"builtin-week","recurrence":{"type":"after","amount":1,"unit":"WEEKS"},"name":"","uses":0,"lastUsedAt":null},""" +
                 """{"id":"builtin-month","recurrence":{"type":"after","amount":1,"unit":"MONTHS"},"name":"","uses":0,"lastUsedAt":null}],""" +
                 """"busyWatchNotice":false,"vibration":{"strength":"STRONG","rhythm":"PULSED"},""" +
-                """"alertSound":{"type":"chime","chime":"ALERT"},"soundPlays":5,"soundGapMinutes":5}""",
+                """"alertSound":{"type":"system"},"soundPlays":5,"soundGapMinutes":5}""",
             encoded,
         )
     }

@@ -71,8 +71,13 @@ data class AppSettings(
      * character by updating. See [waveformFor] for the minute it is capped at.
      */
     val vibration: VibrationPattern = VibrationPattern(),
-    /** What a reminder sounds like: one of the app's own chimes, the phone's, or a file. */
-    val alertSound: AlertSound = AlertSound.Bundled(Chime.ALERT),
+    /**
+     * What a reminder sounds like: the phone's own alarm tone, one of the app's chimes, or a
+     * file. The phone's by default, and deliberately — the chimes are *subtler* than an alarm
+     * tone, and changing what somebody's alarm sounds like without asking is how an alarm gets
+     * slept through. They are one tap away in Settings.
+     */
+    val alertSound: AlertSound = AlertSound.System,
     /** For [Action.SOUND_UNTIL_ANSWERED]: how many plays in a round, and how far apart. */
     val soundPlays: Int = SoundLimits.DEFAULT_PLAYS,
     val soundGapMinutes: Int = SoundLimits.DEFAULT_GAP_MINUTES,

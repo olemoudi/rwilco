@@ -631,4 +631,9 @@
     <string name="sound_chime_two_tone">Dos tonos</string>
     <string name="sound_chime_low">Grave</string>
     <string name="sound_chime_soft">Suave</string>
+    <string-array name="whats_new_0_11_0">
+        <item>Cuatro sonidos nuestros, y son lo importante de esta versión: dos o tres tonos cortos en la banda que el oído más nota, y silencio — como te avisa un coche, no como te despierta un despertador. Están en Ajustes y suenan al tocarlos. Tus alarmas siguen con el tono del móvil hasta que elijas uno, a propósito: éstos son más discretos, y una alarma que no reconoces es una alarma que te puedes dormir.</item>
+        <item>También vale cualquier archivo — mp3, wav, lo que el móvil sepa abrir.</item>
+        <item>«Sonido» son ahora dos fichas: una vez, o hasta que lo atiendas. El insistente vuelve cada pocos minutos hasta que te ocupas del recordatorio — cinco veces, cada cinco minutos, y ambas cosas las cambias tú — y para en cuanto lo atiendes, lo pospones o lo pausas.</item>
+    </string-array>
 </resources>

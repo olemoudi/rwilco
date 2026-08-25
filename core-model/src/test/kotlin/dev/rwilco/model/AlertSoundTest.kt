@@ -62,7 +62,9 @@ class AlertSoundTest {
         val settings = AppSettings()
         assertEquals(5, settings.soundPlays)
         assertEquals(5, settings.soundGapMinutes)
-        assertEquals(AlertSound.Bundled(Chime.ALERT), settings.alertSound)
+        // The phone's own tone until somebody chooses otherwise: the chimes are subtler than an
+        // alarm tone, and an alarm nobody recognises is an alarm somebody sleeps through.
+        assertEquals(AlertSound.System, settings.alertSound)
     }
 
     @Test
