@@ -52,6 +52,38 @@ class DatabaseMigrationTest {
         }
     }
 
+    /**
+     * v4 asked a question the app had been answering for people: does this keep going after you
+     * deal with it? Everything written before it behaved as "yes, whenever the trigger can",
+     * which for a place meant ringing again the next time you walked through your own door. The
+     * migration keeps that behaviour only where the trigger IS a recurrence.
+     */
+    @Test
+    fun the_upgrade_keeps_repeating_triggers_repeating_and_stops_the_rest() {
+        helper.createDatabase(DB, 1).use { db ->
+            fun insert(id: String, trigger: String) = db.execSQL(
+                "INSERT INTO reminder (id, text, tags, triggers, actions, status, createdAt, updatedAt, doneAt) " +
+                    "VALUES ('$id', '$id', '[]', '$trigger', '[\"NOTIFICATION\"]', 'ACTIVE', 1, 2, NULL)",
+            )
+            insert("place", "[{\"type\":\"location\",\"lat\":40.4,\"lng\":-3.7,\"radiusM\":200,\"transition\":\"ENTER\",\"label\":\"Casa\"}]")
+            insert("date", "[{\"type\":\"on_date\",\"date\":\"2026-09-01\"}]")
+            insert("weekly", "[{\"type\":\"at_time\",\"time\":\"09:00\",\"days\":[\"MONDAY\"]}]")
+            insert("random", "[{\"type\":\"random\",\"timesPer\":1,\"period\":\"DAY\",\"from\":\"10:00\",\"to\":\"20:00\",\"days\":[]}]")
+        }
+
+        val db = helper.runMigrationsAndValidate(DB, RwilcoDatabase.VERSION, true, *RwilcoDatabase.MIGRATIONS)
+
+        db.query("SELECT id, repeats FROM reminder ORDER BY id").use { cursor ->
+            val repeats = buildMap {
+                while (cursor.moveToNext()) put(cursor.getString(0), cursor.getInt(1))
+            }
+            assertEquals("a place was one-shot in intent all along", 0, repeats["place"])
+            assertEquals(0, repeats["date"])
+            assertEquals("a repeating time is a recurrence by definition", 1, repeats["weekly"])
+            assertEquals(1, repeats["random"])
+        }
+    }
+
     @Test
     fun every_step_of_the_chain_lands_on_a_schema_Room_recognises() {
         // Walking one version at a time proves each migration individually — a chain that only

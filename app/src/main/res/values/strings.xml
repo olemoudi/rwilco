@@ -118,6 +118,9 @@
     <string name="editor_edit_trigger">Edit trigger</string>
     <string name="editor_remove_trigger">Remove trigger</string>
     <string name="editor_what_title">What happens</string>
+    <string name="editor_repeats">Keep reminding me</string>
+    <string name="editor_repeats_on">Marking it done waits for the next moment.</string>
+    <string name="editor_repeats_off">Marking it done finishes it.</string>
     <string name="editor_error_text">Write what you want to remember.</string>
     <string name="editor_warning_past">This moment has already passed.</string>
     <string name="editor_discard_title">Discard changes?</string>
@@ -385,6 +388,11 @@
     <string-array name="whats_new_0_4_2">
         <item>Pausing a reminder now says what it will do — the word "Pause" or "Resume" next to the button, because a pause glyph on its own reads as "this is paused" just as easily.</item>
         <item>It is bigger, it sits up with the reminder\'s own words instead of among the small grey glyphs that cannot be pressed, and it takes a finger that stays. Let go early and nothing happens.</item>
+    </string-array>
+    <string-array name="whats_new_0_5_1">
+        <item>Fixed: a reminder you had dealt with could ring again. "Done" now finishes a reminder, full stop — a place reminder marked done in the morning no longer goes off on the way back through the same door.</item>
+        <item>Repeating is something you ask for: a "Keep reminding me" switch under the triggers, off unless you turn it on. Choosing "a time that repeats" or "at random" turns it on for you, in plain sight, and you can turn it back off.</item>
+        <item>Your existing reminders keep the behaviour that matched their trigger: repeating times and random ones carry on repeating, places and dates now finish when you deal with them.</item>
     </string-array>
     <string-array name="whats_new_0_5_0">
         <item>Presets: a reminder you make often, kept by name. Write one as usual and turn on "Keep as a preset" — the words become its name, and the tags, the when and the what happens are kept with it.</item>

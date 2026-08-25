@@ -14,11 +14,15 @@ import java.time.temporal.TemporalAdjusters
 /**
  * What a reminder becomes once the person has dealt with a firing.
  *
- * Done means done only when there is nothing left to ring: a one-shot moment that has passed.
- * Anything that can come round again — a repeating time, a place, a random window — stays
- * active, because "I have watered the plants" is not "stop reminding me to water the plants".
+ * Done means done, unless the reminder was asked to keep going ([Reminder.repeats]). This used
+ * to read "anything that CAN come round again stays active", which sounds reasonable and is
+ * wrong: a place can always come round again, so "al llegar a casa, saca la basura" rang again
+ * the next time somebody walked through their own front door, hours after they had dealt with
+ * it. Whether something should repeat is not something a trigger's shape can answer — only the
+ * person can, and until they do the answer is no.
  */
 fun statusAfterDismissal(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalTime): Status {
+    if (!reminder.repeats) return Status.DONE
     // Dealt with means the round is over: what had already happened under ALL stops counting,
     // and the question is whether the reminder can come round again from scratch.
     val cleared = reminder.copy(status = Status.ACTIVE, snoozedUntil = null, firedRules = emptySet())

@@ -206,6 +206,8 @@ fun EditorScreen(
                         rules = state.draft.rules,
                         ruleMatch = state.draft.ruleMatch,
                         onRuleMatch = viewModel::setRuleMatch,
+                        repeats = state.draft.repeats,
+                        onRepeats = viewModel::setRepeats,
                         clock = viewModel.clock,
                         today = today,
                         defaultTime = state.defaultTime,

@@ -28,10 +28,12 @@ data class Draft(
     val rules: List<TriggerRule> = emptyList(),
     /** Only means anything with more than one rule; the editor hides the choice until then. */
     val ruleMatch: RuleMatch = RuleMatch.ANY,
+    /** Whether dealing with a firing leaves it waiting for the next one. Asked for, never assumed. */
+    val repeats: Boolean = false,
     val actions: Set<Action> = DEFAULT_ACTIONS,
 )
 
-fun Reminder.toDraft() = Draft(text = text, tags = tags, rules = rules, ruleMatch = ruleMatch, actions = actions)
+fun Reminder.toDraft() = Draft(text = text, tags = tags, rules = rules, ruleMatch = ruleMatch, actions = actions, repeats = repeats)
 
 /**
  * Note what is NOT carried over: a snooze, the last ring, the armed moment. Editing a reminder
@@ -45,6 +47,7 @@ fun Draft.toReminder(id: String, createdAt: Instant, now: Instant, status: Statu
     rules = rules,
     ruleMatch = ruleMatch,
     actions = actions,
+    repeats = repeats,
     status = status,
     createdAt = createdAt,
     updatedAt = now,
@@ -116,6 +119,7 @@ fun EditorUiState.toPreset(id: String, now: Instant, existing: Preset?, others: 
     rules = draft.rules,
     ruleMatch = draft.ruleMatch,
     actions = draft.actions,
+    repeats = draft.repeats,
     // A preset keeps the colour it was given: it is how it is recognised, and a colour that
     // moves is worse than no colour at all.
     colorIndex = existing?.colorIndex ?: nextPresetColor(others),
@@ -142,6 +146,9 @@ fun EditorUiState.addTag(raw: String): EditorUiState {
     val spelling = existingTags.firstOrNull { it.equals(tag, ignoreCase = true) } ?: tag
     return copy(draft = draft.copy(tags = draft.tags + spelling))
 }
+
+/** The recurrence toggle: what "hecho" means for this one. */
+fun EditorUiState.setRepeats(repeats: Boolean): EditorUiState = copy(draft = draft.copy(repeats = repeats))
 
 /**
  * Changing how the rules combine starts the round over: what had already happened under ALL was
@@ -177,7 +184,11 @@ fun EditorUiState.commitTrigger(index: Int?, trigger: Trigger): EditorUiState {
     } else {
         draft.rules + TriggerRule(trigger)
     }
-    return copy(draft = draft.copy(rules = rules), sheet = EditorSheet.None)
+    // Choosing "a time that repeats" or "at random" IS choosing a recurrence, so the toggle
+    // turns itself on — in plain sight, right under the row, and switchable back off. Every
+    // other kind leaves it alone: a place or a date is one-shot until somebody says otherwise.
+    val recurring = draft.repeats || trigger is Trigger.AtTime || trigger is Trigger.Random
+    return copy(draft = draft.copy(rules = rules, repeats = recurring), sheet = EditorSheet.None)
 }
 
 fun EditorUiState.addCondition(ruleIndex: Int): EditorUiState =

@@ -35,6 +35,8 @@ data class ReminderEntity(
     val armedRule: Int? = null,
     /** ALL only: the rule indices already ticked off this round, comma-separated. */
     val firedRules: String = "",
+    /** Whether "hecho" leaves it waiting for the next moment. Off unless it was asked for. */
+    val repeats: Boolean = false,
 )
 
 fun ReminderEntity.toDomain(): Reminder = Reminder(
@@ -55,6 +57,7 @@ fun ReminderEntity.toDomain(): Reminder = Reminder(
     ruleMatch = RuleMatch.entries.firstOrNull { it.name == ruleMatch } ?: RuleMatch.ANY,
     armedRule = armedRule,
     firedRules = decodeIndices(firedRules),
+    repeats = repeats,
 )
 
 fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
@@ -73,6 +76,7 @@ fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
     ruleMatch = ruleMatch.name,
     armedRule = armedRule,
     firedRules = encodeIndices(firedRules),
+    repeats = repeats,
 )
 
 /**

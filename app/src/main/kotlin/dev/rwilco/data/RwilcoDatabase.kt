@@ -18,7 +18,7 @@ abstract class RwilcoDatabase : RoomDatabase() {
 
     companion object {
         /** A named constant so MigrationChainTest can assert the chain reaches it. */
-        const val VERSION = 3
+        const val VERSION = 4
         private const val NAME = "rwilco.db"
 
         /** One entry per version step; `// vN: what it added` on each. */
@@ -39,6 +39,19 @@ abstract class RwilcoDatabase : RoomDatabase() {
                     db.execSQL("ALTER TABLE reminder ADD COLUMN ruleMatch TEXT NOT NULL DEFAULT 'ANY'")
                     db.execSQL("ALTER TABLE reminder ADD COLUMN armedRule INTEGER")
                     db.execSQL("ALTER TABLE reminder ADD COLUMN firedRules TEXT NOT NULL DEFAULT ''")
+                }
+            },
+            // v4: recurrence asked for rather than assumed. Everything written before this
+            // rang again whenever its trigger could, so the reminders that keep going are the
+            // ones whose trigger IS a recurrence — a repeating time or a random window. A place
+            // or a date was one-shot in intent all along, and only behaved otherwise because
+            // the app never asked. The discriminators are frozen, so matching the JSON is safe.
+            object : Migration(3, 4) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE reminder ADD COLUMN repeats INTEGER NOT NULL DEFAULT 0")
+                    db.execSQL(
+                        "UPDATE reminder SET repeats = 1 WHERE triggers LIKE '%\"at_time\"%' OR triggers LIKE '%\"random\"%'",
+                    )
                 }
             },
         )

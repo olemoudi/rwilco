@@ -74,7 +74,7 @@ class EditorViewModel(
             val source = editedPreset ?: fromPresetId?.let { id -> current.presets.firstOrNull { it.id == id } }
             val draft = when {
                 loaded != null -> loaded.toDraft()
-                source != null -> Draft(text = source.name, tags = source.tags, rules = source.rules, ruleMatch = source.ruleMatch, actions = source.actions)
+                source != null -> Draft(text = source.name, tags = source.tags, rules = source.rules, ruleMatch = source.ruleMatch, actions = source.actions, repeats = source.repeats)
                 else -> Draft(actions = current.defaultActions)
             }
             // Everything ever written, done included: the point is to hand back what has been
@@ -104,6 +104,7 @@ class EditorViewModel(
     fun addTag(raw: String) = _state.update { it.addTag(raw) }
     fun toggleAction(action: Action) = _state.update { it.toggleAction(action) }
     fun setRuleMatch(match: RuleMatch) = _state.update { it.setRuleMatch(match) }
+    fun setRepeats(repeats: Boolean) = _state.update { it.setRepeats(repeats) }
     fun openKindPicker() = _state.update { it.openKindPicker() }
     fun pickKind(kind: TriggerKind) = _state.update { it.pickKind(kind) }
     fun editTrigger(index: Int) = _state.update { it.editTrigger(index) }

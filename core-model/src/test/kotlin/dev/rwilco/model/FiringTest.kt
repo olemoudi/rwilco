@@ -39,22 +39,34 @@ class FiringTest {
     }
 
     @Test
-    fun `dismissing finishes a one-shot and leaves anything that comes round again`() {
+    fun `dismissing finishes it, whatever the trigger could still do`() {
         val at = local(2026, 8, 27, 21, 31)
         assertEquals(Status.DONE, statusAfterDismissal(reminder(tonight), at, zone, defaultTime))
         assertEquals(Status.DONE, statusAfterDismissal(reminder(past), now, zone, defaultTime))
-        assertEquals(Status.ACTIVE, statusAfterDismissal(reminder(weekly), at, zone, defaultTime))
-        assertEquals(Status.ACTIVE, statusAfterDismissal(reminder(place), at, zone, defaultTime))
+        // The ones that CAN come round again, and are not asked to: a place is the reason this
+        // rule exists. "Al llegar a casa, saca la basura", dealt with, rang again that evening
+        // on the way back through the same door.
+        assertEquals(Status.DONE, statusAfterDismissal(reminder(weekly), at, zone, defaultTime))
+        assertEquals(Status.DONE, statusAfterDismissal(reminder(place), at, zone, defaultTime))
+    }
+
+    @Test
+    fun `asked to keep going, it stays for as long as something can ring`() {
+        val at = local(2026, 8, 27, 21, 31)
+        assertEquals(Status.ACTIVE, statusAfterDismissal(reminder(weekly).copy(repeats = true), at, zone, defaultTime))
+        assertEquals(Status.ACTIVE, statusAfterDismissal(reminder(place).copy(repeats = true), at, zone, defaultTime))
         assertEquals(
             Status.ACTIVE,
-            statusAfterDismissal(reminder(past, weekly), now, zone, defaultTime),
+            statusAfterDismissal(reminder(past, weekly).copy(repeats = true), now, zone, defaultTime),
             "one dead trigger does not end a reminder that still repeats",
         )
+        // Repeating with nothing left to repeat is still finished.
+        assertEquals(Status.DONE, statusAfterDismissal(reminder(past).copy(repeats = true), now, zone, defaultTime))
     }
 
     @Test
     fun `dismissing ignores a snooze that is still running`() {
-        val snoozed = reminder(past).copy(snoozedUntil = now.plusSeconds(600))
+        val snoozed = reminder(past).copy(repeats = true, snoozedUntil = now.plusSeconds(600))
         assertEquals(Status.DONE, statusAfterDismissal(snoozed, now, zone, defaultTime))
     }
 

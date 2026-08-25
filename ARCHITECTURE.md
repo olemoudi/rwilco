@@ -55,7 +55,17 @@ place when one is among them, because then there is no date to give. `nextWake` 
 question — what the alarm is set for — and is always the earliest pending moment. `groupForHome` (`HomeSections.kt`) lifts the earliest `Scheduled` out as the hero and
 files the rest under Overdue / Today / Tomorrow / This week (rolling 7 days) / Later / Whenever /
 Paused. Random moments come from `RandomDraw.kt`: SplitMix64 seeded by (reminder id, period
-index), pinned by golden values in its test. `Validation.kt` decides what blocks a save, which is only the words and a trigger that is
+index), pinned by golden values in its test.
+
+Dealing with a firing (`statusAfterDismissal`) finishes a reminder unless it was asked to keep
+going (`Reminder.repeats`, off by default, a switch under the triggers). That default is a bug
+fix: the rule used to be "anything that CAN come round again stays active", and a place can
+always come round again, so a reminder dealt with in the morning rang on the way back through
+the same door. Whether something should repeat is not a question a trigger's shape can answer.
+Choosing a repeating time or a random window switches it on visibly, since those kinds ARE a
+recurrence; Room v4 migrates old rows the same way.
+
+`Validation.kt` decides what blocks a save, which is only the words and a trigger that is
 nonsense in itself: a reminder needs **neither a trigger nor an action**. One with neither is a
 note kept under its tags, and Home files it under "kept, not timed" rather than calling it
 overdue. `Snooze` offers ten minutes, two hours, tomorrow at the same time, the weekend (a
@@ -71,7 +81,7 @@ strict is asking somebody to remember how they spelled it.
 ## Persistence
 
 - Room (`app/.../data/`): one table, `reminder(id, text, tags, triggers, ruleMatch, actions,
-  status, createdAt, updatedAt, doneAt, …, armedFor, armedRule, firedRules)`; tags/triggers/actions are JSON text columns written by
+  status, createdAt, updatedAt, doneAt, …, armedFor, armedRule, firedRules, repeats)`; tags/triggers/actions are JSON text columns written by
   `ReminderCodec`, read leniently (unknown trigger kinds and actions are dropped, never fatal).
   `RwilcoDatabase.VERSION` + `MIGRATIONS` are guarded by `MigrationChainTest` (JVM) and
   `DatabaseMigrationTest` (device). Schemas are exported to `app/schemas`.

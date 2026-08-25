@@ -8,6 +8,15 @@ data class Reminder(
     val tags: List<String> = emptyList(),
     /** How [ruleMatch] combines them; a rule's own conditions always all have to hold (ANDed). */
     val rules: List<TriggerRule> = emptyList(),
+    /**
+     * Whether dealing with a firing leaves it waiting for the next one.
+     *
+     * Off by default, and the default is the whole point: "hecho" means finished. A place, a
+     * repeating time and a random window can all technically come round again, and treating
+     * "can" as "should" is how a reminder somebody has dealt with rings at them again the same
+     * afternoon. Recurrence is a thing you ask for.
+     */
+    val repeats: Boolean = false,
     /** Whether any one rule is enough, or every one of them has to have happened. */
     val ruleMatch: RuleMatch = RuleMatch.ANY,
     val actions: Set<Action> = DEFAULT_ACTIONS,

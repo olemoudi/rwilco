@@ -32,6 +32,8 @@ data class Preset(
     val rules: List<TriggerRule> = emptyList(),
     val ruleMatch: RuleMatch = RuleMatch.ANY,
     val actions: Set<Action> = DEFAULT_ACTIONS,
+    /** Whether the reminders made from it keep going after they are dealt with. */
+    val repeats: Boolean = false,
     /** Which of the [PRESET_COLORS] this one wears. */
     val colorIndex: Int = 0,
     val uses: Int = 0,
@@ -74,6 +76,7 @@ fun Preset.toReminder(id: String, now: Instant): Reminder = Reminder(
     rules = rules,
     ruleMatch = ruleMatch,
     actions = actions,
+    repeats = repeats,
     status = Status.ACTIVE,
     createdAt = now,
     updatedAt = now,

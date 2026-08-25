@@ -116,6 +116,9 @@
     <string name="editor_edit_trigger">Editar disparador</string>
     <string name="editor_remove_trigger">Quitar disparador</string>
     <string name="editor_what_title">Qué pasa</string>
+    <string name="editor_repeats">Seguir avisando</string>
+    <string name="editor_repeats_on">Marcarlo hecho lo deja esperando al siguiente momento.</string>
+    <string name="editor_repeats_off">Marcarlo hecho lo da por terminado.</string>
     <string name="editor_error_text">Escribe qué quieres recordar.</string>
     <string name="editor_warning_past">Ese momento ya ha pasado.</string>
     <string name="editor_discard_title">¿Descartar los cambios?</string>
@@ -383,6 +386,11 @@
     <string-array name="whats_new_0_4_2">
         <item>Pausar un recordatorio ahora dice lo que va a hacer — la palabra «Pausar» o «Reanudar» junto al botón, porque un icono de pausa a secas se lee igual de bien como «esto está pausado».</item>
         <item>Es más grande, está arriba con las palabras del recordatorio en vez de entre los iconos grises que no se pueden pulsar, y pide un dedo que se quede. Si sueltas antes, no pasa nada.</item>
+    </string-array>
+    <string-array name="whats_new_0_5_1">
+        <item>Arreglado: un recordatorio del que ya te habías ocupado podía volver a sonar. «Hecho» ahora lo da por terminado, y punto — un recordatorio de lugar marcado hecho por la mañana ya no salta al volver a cruzar la misma puerta.</item>
+        <item>Repetir es algo que se pide: un interruptor «Seguir avisando» debajo de los disparadores, apagado salvo que lo enciendas. Elegir «hora que se repite» o «al azar» lo enciende por ti, a la vista, y puedes apagarlo.</item>
+        <item>Tus recordatorios de antes conservan el comportamiento que encajaba con su disparador: las horas que se repiten y los de azar siguen repitiendo; los de lugar y los de fecha ahora terminan cuando te ocupas de ellos.</item>
     </string-array>
     <string-array name="whats_new_0_5_0">
         <item>Presets: un recordatorio que haces a menudo, guardado con nombre. Escríbelo como siempre y activa «Guardar como preset» — las palabras pasan a ser su nombre, y las etiquetas, el cuándo y el qué pasa se guardan con él.</item>
