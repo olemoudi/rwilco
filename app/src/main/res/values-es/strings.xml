@@ -349,7 +349,11 @@
     </string-array>
     <string-array name="whats_new_0_4_2">
         <item>Pausar un recordatorio ahora dice lo que va a hacer — la palabra «Pausar» o «Reanudar» junto al botón, porque un icono de pausa a secas se lee igual de bien como «esto está pausado».</item>
-        <item>Es más grande, está arriba con las palabras del recordatorio en vez de entre los iconos grises que no se pueden pulsar, y pide un dedo que se quede: mantén pulsado dos segundos y un anillo se va llenando alrededor. Si sueltas antes, no pasa nada.</item>
+        <item>Es más grande, está arriba con las palabras del recordatorio en vez de entre los iconos grises que no se pueden pulsar, y pide un dedo que se quede. Si sueltas antes, no pasa nada.</item>
+    </string-array>
+    <string-array name="whats_new_0_4_3">
+        <item>Mantener ese botón ahora atenúa toda la pantalla y llena un anillo en mitad de ella —donde nunca hay un pulgar— con el icono y la palabra dentro. Y son 700 ms en vez de dos segundos: bastante para quererlo, poco para que no parezca un castigo.</item>
+        <item>La palabra bajo el botón es pequeña, así que las palabras del recordatorio recuperan el ancho.</item>
     </string-array>
     <string-array name="whats_new_0_4_1">
         <item>La vigilancia de lugares, pasada por viajes simulados y una noche en la mesilla: ahora vuelve a mirar antes de un cuarto de hora cuando aún no sabe a qué velocidad vas (una hora a ciegas son noventa kilómetros de autopista), recuerda tu velocidad a través de sus esperas más largas, y sólo despierta el GPS para un móvil que sabe que se mueve.</item>

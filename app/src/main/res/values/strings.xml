@@ -351,7 +351,11 @@
     </string-array>
     <string-array name="whats_new_0_4_2">
         <item>Pausing a reminder now says what it will do — the word "Pause" or "Resume" next to the button, because a pause glyph on its own reads as "this is paused" just as easily.</item>
-        <item>It is bigger, it sits up with the reminder\'s own words instead of among the small grey glyphs that cannot be pressed, and it takes a finger that stays: hold for two seconds and a ring fills around it. Let go early and nothing happens.</item>
+        <item>It is bigger, it sits up with the reminder\'s own words instead of among the small grey glyphs that cannot be pressed, and it takes a finger that stays. Let go early and nothing happens.</item>
+    </string-array>
+    <string-array name="whats_new_0_4_3">
+        <item>Holding that button now dims the whole screen and fills one ring in the middle of it — where no thumb ever is — with the icon and the word inside. And it takes 700ms rather than two seconds: long enough to mean it, short enough not to feel like a punishment.</item>
+        <item>The word under the button is small now, so a reminder\'s own words get the width back.</item>
     </string-array>
     <string-array name="whats_new_0_4_1">
         <item>The place watch, put through simulated journeys and a night on the bedside table: it now looks again within a quarter of an hour when it cannot yet tell how fast you are going (an hour blind is ninety motorway kilometres), remembers your speed across its longest waits, and only wakes the GPS for a phone it knows is moving.</item>

@@ -1,19 +1,26 @@
 package dev.rwilco.ui.components
 
 import android.graphics.Bitmap
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.captureToImage
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
@@ -30,8 +37,8 @@ import java.io.File
 
 /**
  * The guard on the one action that must never happen by accident. Only a device can run a real
- * gesture against a real animation, and only a hand-driven clock can say "let go after one
- * second" and mean it.
+ * gesture against a real animation, and only a hand-driven clock can say "let go after a third
+ * of a second" and mean it.
  */
 @RunWith(AndroidJUnit4::class)
 class HoldButtonTest {
@@ -41,15 +48,25 @@ class HoldButtonTest {
 
     private var fired = 0
 
+    /** A card's worth of screen, so the overlay has something to dim. */
     private fun setUp() {
         rule.setContent {
             RwilcoTheme(haptics = false) {
-                // Room around it: the ring reaches past the button on purpose, and a capture
-                // cropped to the button's own bounds would cut off the thing being tested.
-                Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
-                    Box(Modifier.padding(24.dp)) {
-                        HoldButton(icon = Icons.Outlined.Pause, label = LABEL, onHoldComplete = { fired++ })
+                val overlay = remember { HoldOverlayState() }
+                CompositionLocalProvider(LocalHoldOverlay provides overlay) {
+                    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                        Box(contentAlignment = Alignment.TopCenter) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.padding(24.dp),
+                            ) {
+                                Text("Sacar la lavadora y tender", style = MaterialTheme.typography.titleMedium)
+                                HoldButton(icon = Icons.Outlined.Pause, label = LABEL, onHoldComplete = { fired++ })
+                            }
+                        }
                     }
+                    HoldOverlay(overlay)
                 }
             }
         }
@@ -59,20 +76,20 @@ class HoldButtonTest {
     private fun button() = rule.onNodeWithContentDescription(LABEL)
 
     @Test
-    fun aPressLetGoBeforeTwoSecondsDoesNothing() {
+    fun aPressLetGoBeforeTheEndDoesNothing() {
         setUp()
         button().performTouchInput { down(center) }
-        rule.mainClock.advanceTimeBy(1_500)
+        rule.mainClock.advanceTimeBy(400)
         button().performTouchInput { up() }
-        rule.mainClock.advanceTimeBy(1_000)
-        assertEquals("a press let go at 1.5s fired", 0, fired)
+        rule.mainClock.advanceTimeBy(500)
+        assertEquals("a press let go at 0.4s fired", 0, fired)
     }
 
     @Test
     fun aPressHeldThroughFiresOnceAndOnlyOnce() {
         setUp()
         button().performTouchInput { down(center) }
-        rule.mainClock.advanceTimeBy(2_100)
+        rule.mainClock.advanceTimeBy(800)
         assertEquals(1, fired)
         // Still down a second later: holding on does not fire it again.
         rule.mainClock.advanceTimeBy(1_000)
@@ -83,11 +100,11 @@ class HoldButtonTest {
     }
 
     @Test
-    fun twoBriefPressesInARowDoNotAddUp() {
+    fun brushesOfTheThumbDoNotAddUp() {
         setUp()
         repeat(3) {
             button().performTouchInput { down(center) }
-            rule.mainClock.advanceTimeBy(1_200)
+            rule.mainClock.advanceTimeBy(250)
             button().performTouchInput { up() }
             rule.mainClock.advanceTimeBy(300)
         }
@@ -110,15 +127,15 @@ class HoldButtonTest {
         assertEquals(1, fired)
     }
 
-    /** A picture of the ring half filled, for the README and for a human to judge the radius. */
+    /** A picture of the screen mid-hold: dimmed, with the ring half filled in the middle. */
     @Test
-    fun theRingIsOnScreenWhileTheFingerIsDown() {
+    fun theScreenDimsAroundTheRingWhileTheFingerIsDown() {
         setUp()
         button().performTouchInput { down(center) }
-        rule.mainClock.advanceTimeBy(1_000)
+        rule.mainClock.advanceTimeBy(350)
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val dir = File(context.filesDir, "screenshots").apply { mkdirs() }
-        File(dir, "hold-ring.png").outputStream().use { out ->
+        File(dir, "hold-overlay.png").outputStream().use { out ->
             rule.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, out)
         }
         button().performTouchInput { up() }

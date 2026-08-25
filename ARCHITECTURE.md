@@ -99,12 +99,15 @@ strict is asking somebody to remember how they spelled it.
   the same swap as the primary button, because three greys never read as "on"; a selected day
   is a solid disc of the time family. Plain `MaterialTheme`: material3 1.4.0 keeps the
   expressive theme internal.
-- A card's one control is `HoldButton` (`ui/components/`): the verb ("Pausar"/"Reanudar", never
-  a bare glyph, which reads as the state rather than the action) beside a 44dp disc with a
-  control's own line, in the card's top row rather than among the read-only action glyphs. It
-  fires only after a two-second hold, drawing a ring at 34dp — outside the ~20dp a fingertip
-  covers, and outside the button's own box, which nothing between there and the card's rounded
-  edge clips. A screen reader gets a plain click action instead: a double tap is already
+- A card's one control is `HoldButton` (`ui/components/`): a 44dp disc with a control's own
+  line and the verb small underneath ("Pausar"/"Reanudar", never a bare glyph, which reads as
+  the state rather than the action), in the card's top row rather than among the read-only
+  action glyphs. It fires only after a 700ms hold, and what reports on the hold is
+  `HoldOverlay` — the whole screen dimmed behind one ring filling in the middle of it, which
+  is the one place no thumb is ever over. The overlay lives at the root of `RwilcoApp` and is
+  reached through `LocalHoldOverlay`, because a control in the corner of a card cannot dim the
+  rest of the screen from there; it only draws, so the touch it reports on still reaches the
+  button underneath. A screen reader gets a plain click action instead: a double tap is already
   deliberate. `HoldButtonTest` (device) drives the gesture against a hand-driven clock.
 - Home: `HomeViewModel` combines the open reminders, settings, the tag filter and a minute pulse
   into `HomeUiState` (`buildHomeState`, pure and tested). The hero card's countdown ticks in its

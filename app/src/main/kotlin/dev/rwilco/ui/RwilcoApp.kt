@@ -28,6 +28,9 @@ import androidx.navigation.toRoute
 import dev.rwilco.R
 import dev.rwilco.MainActivity
 import dev.rwilco.RwilcoApplication
+import dev.rwilco.ui.components.HoldOverlay
+import dev.rwilco.ui.components.HoldOverlayState
+import dev.rwilco.ui.components.LocalHoldOverlay
 import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.ui.components.rememberSnackbarController
 import dev.rwilco.ui.done.DoneScreen
@@ -52,6 +55,8 @@ fun RwilcoApp(
     val snackbarHost = remember { SnackbarHostState() }
     val snackbar = rememberSnackbarController(snackbarHost)
     val motion = Tokens.motion
+    // What a held button dims the screen with. At the root because that is what it covers.
+    val holdOverlay = remember { HoldOverlayState() }
 
     LaunchedEffect(requestedDestination) {
         val reminderId = MainActivity.reminderIdIn(requestedDestination)
@@ -67,7 +72,7 @@ fun RwilcoApp(
         }
     }
 
-    CompositionLocalProvider(LocalSnackbar provides snackbar) {
+    CompositionLocalProvider(LocalSnackbar provides snackbar, LocalHoldOverlay provides holdOverlay) {
         Box(Modifier.fillMaxSize()) {
             NavHost(
                 navController = navController,
@@ -127,6 +132,8 @@ fun RwilcoApp(
                     .navigationBarsPadding()
                     .imePadding(),
             )
+            // Last, so it dims everything: the screens, the snackbar and the sheets alike.
+            HoldOverlay(holdOverlay)
             val settings by app.settings.collectAsStateWithLifecycle()
             settings?.let { current ->
                 WhatsNewSheet(
