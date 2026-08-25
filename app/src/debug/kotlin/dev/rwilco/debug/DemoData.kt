@@ -108,6 +108,12 @@ object DemoData {
                 Trigger.OnDate(nextSaturday.plusWeeks(3)),
                 ageMinutes = 5000,
             ),
+            // Written in a hurry and never filed, which is what the "sin etiqueta" chip is for.
+            reminder(
+                "unfiled", "Preguntar en la ferretería por la bombilla del pasillo", emptyList(),
+                Trigger.OnDate(nextSaturday),
+                ageMinutes = 90,
+            ),
             reminder(
                 "umbrella", "Coger el paraguas del paragüero", listOf("casa"),
                 Trigger.Location(40.4168, -3.7038, 150, Transition.EXIT, "Casa"),

@@ -154,6 +154,19 @@ strict is asking somebody to remember how they spelled it.
   own composable (`rememberNow`) so nothing else recomposes. The magnifier has a flow of its own
   (`buildSearchState`, also pure): a keystroke must not put Home through grouping and next-fire
   again. Results replace the list while it is open; a reminder opens, a tag becomes the filter.
+- The chip row is a `TagFilter` (`core-model/TagFilter.kt`), not a string: `Named` for a tag
+  somebody typed, and two the app keeps for itself — `Untagged` and `Paused`. Those two are not
+  tags (never stored on a reminder, never suggested, never edited) and they appear **only while
+  they have something in them**, at the end of the row, because "sin etiqueta" is a job to do
+  rather than a filing category and a row that always ends in two chips nobody can act on is a
+  row people stop reading at the third one.
+  Every real tag carries a colour worked out from its own name (`ui/theme/TagColors.kt`):
+  nothing stored, so the same word is the same colour on every screen and after a reinstall.
+  It is a **palette of sixteen hues in two shades**, not a continuum — two tags either get the
+  same colour or a plainly different one, never one that is *almost* the same, which is the
+  reading that helps nobody. The hue circle has four holes cut in it, the amber and the three
+  family hues, so a tag can never read as a place or as the next thing due. The app's own three
+  chips stay neutral: they are not somebody's word for something.
 - Presets (`core-model/Preset.kt`, kept in `AppSettings.presets`): a reminder somebody makes
   often, by name — the words become the name, and the tags, rules and actions come with it.
   Nothing about a preset waits to ring, which is why it lives in the settings rather than the

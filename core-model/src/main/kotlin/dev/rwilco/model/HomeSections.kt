@@ -40,8 +40,8 @@ fun sectionOf(next: NextFire?, status: Status, hasRules: Boolean, now: Instant, 
 }
 
 /**
- * What Home shows. Done reminders are not here (they have their own screen); a tag filter keeps
- * only reminders carrying that tag. The hero is the earliest definite moment among active
+ * What Home shows. Done reminders are not here (they have their own screen); a [TagFilter] keeps
+ * only the reminders that belong under it. The hero is the earliest definite moment among active
  * reminders and is lifted out of its section; a random draw never becomes the hero.
  */
 fun groupForHome(
@@ -49,12 +49,12 @@ fun groupForHome(
     now: Instant,
     zone: ZoneId,
     defaultTime: LocalTime,
-    tagFilter: String? = null,
+    tagFilter: TagFilter? = null,
     dayStart: LocalTime = DEFAULT_DAY_START,
 ): HomeGroups {
     val entries = reminders
         .filter { it.status != Status.DONE }
-        .filter { tagFilter == null || it.tags.any { tag -> tag.equals(tagFilter, ignoreCase = true) } }
+        .filter { tagFilter == null || tagFilter.matches(it) }
         .map { HomeEntry(it, nextFire(it, now, zone, defaultTime, dayStart)) }
     val hero = entries
         .filter { it.next is NextFire.Scheduled }

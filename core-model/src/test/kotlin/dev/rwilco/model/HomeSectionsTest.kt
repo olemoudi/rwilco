@@ -72,7 +72,7 @@ class HomeSectionsTest {
         val a = reminder(at(2026, 8, 27, 18, 0), id = "a", tags = listOf("Compra"))
         val b = reminder(at(2026, 8, 27, 19, 0), id = "b", tags = listOf("casa"))
         val done = reminder(at(2026, 8, 27, 20, 0), id = "done", tags = listOf("compra"), status = Status.DONE)
-        val groups = groupForHome(listOf(a, b, done), now, zone, defaultTime, tagFilter = "compra")
+        val groups = groupForHome(listOf(a, b, done), now, zone, defaultTime, tagFilter = TagFilter.Named("compra"))
         assertEquals("a", groups.hero!!.reminder.id)
         assertTrue(groups.sections.isEmpty())
         val unfiltered = groupForHome(listOf(a, b, done), now, zone, defaultTime)

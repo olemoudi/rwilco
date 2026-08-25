@@ -595,4 +595,8 @@
         <item>The editor now says when a set of triggers can never ring, instead of letting you find out in a week: hours that never meet the moments they restrict, two places that cannot both be true, two moments asked to be the same moment. Under «all», it says which one is stopping the whole reminder.</item>
         <item>Fewer location reads again. Where you are is now the last thing checked and the first thing skipped: the hours are settled before a position is read at all, and a place is left completely alone while the hours its reminder needs cannot hold — nothing is spent watching the office at three in the morning for something that can only ring at five.</item>
     </string-array>
+
+    <!-- The two chips the app keeps for itself, at the end of the tag row. -->
+    <string name="home_tag_untagged">No tag</string>
+    <string name="home_tag_paused">Paused</string>
 </resources>

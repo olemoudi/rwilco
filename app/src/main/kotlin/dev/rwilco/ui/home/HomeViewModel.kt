@@ -11,6 +11,7 @@ import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Preset
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
+import dev.rwilco.model.TagFilter
 import dev.rwilco.model.ValidationWarning
 import dev.rwilco.model.presetsByPopularity
 import dev.rwilco.model.toReminder
@@ -122,7 +123,7 @@ class HomeViewModel(
         }
     }
 
-    private val selectedTag = MutableStateFlow<String?>(null)
+    private val selectedTag = MutableStateFlow<TagFilter?>(null)
     private val searching = MutableStateFlow(false)
     private val query = MutableStateFlow("")
     private val refreshTick = MutableStateFlow(clock.instant())
@@ -174,14 +175,14 @@ class HomeViewModel(
         events.trySend(HomeEvent.Refreshed)
     }
 
-    /** Tapping the selected tag again clears the filter. */
-    fun selectTag(tag: String?) {
-        selectedTag.value = if (tag == null || selectedTag.value.equals(tag, ignoreCase = true)) null else tag
+    /** Tapping the selected chip again clears the filter. */
+    fun selectTag(tag: TagFilter?) {
+        selectedTag.value = if (tag == null || tag == selectedTag.value) null else tag
     }
 
     /** From a search result: the tag is being asked for, not toggled, and the search is done. */
     fun filterByTag(tag: String) {
-        selectedTag.value = tag
+        selectedTag.value = TagFilter.Named(tag)
         setSearching(false)
     }
 

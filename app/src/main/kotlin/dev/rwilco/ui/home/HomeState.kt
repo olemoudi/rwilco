@@ -18,7 +18,8 @@ import dev.rwilco.model.groupForHome
 import dev.rwilco.model.isAnchored
 import dev.rwilco.model.nextFireOfRule
 import dev.rwilco.model.search
-import dev.rwilco.model.tagsInUse
+import dev.rwilco.model.TagFilter
+import dev.rwilco.model.tagFilters
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
@@ -27,8 +28,8 @@ data class HomeUiState(
     val loaded: Boolean = false,
     val hero: HeroUi? = null,
     val sections: List<SectionUi> = emptyList(),
-    val tags: List<String> = emptyList(),
-    val selectedTag: String? = null,
+    val tags: List<TagFilter> = emptyList(),
+    val selectedTag: TagFilter? = null,
     /** When date-only reminders ring; the cards say so under the date. */
     val defaultTime: LocalTime = LocalTime.of(9, 0),
 ) {
@@ -87,12 +88,13 @@ fun buildHomeState(
     defaultTime: LocalTime,
     now: Instant,
     zone: ZoneId,
-    selectedTag: String?,
+    selectedTag: TagFilter?,
     dayStart: LocalTime = DEFAULT_DAY_START,
 ): HomeUiState {
-    val tags = tagsInUse(reminders)
-    // A filter on a tag that no longer exists (its last reminder was deleted) is no filter.
-    val filter = selectedTag?.takeIf { tag -> tags.any { it.equals(tag, ignoreCase = true) } }
+    val tags = tagFilters(reminders)
+    // A filter on something that is no longer offered is no filter: the last reminder carrying
+    // that tag was deleted, the last untagged one was named, the last paused one resumed.
+    val filter = selectedTag?.takeIf { it in tags }
     val groups = groupForHome(reminders, now, zone, defaultTime, filter, dayStart)
     fun card(reminder: Reminder) = ReminderCardUi(
         id = reminder.id,

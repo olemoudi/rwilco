@@ -218,7 +218,11 @@ These are standing rules for this repository. Follow them without being re-asked
   Screens consume tokens; never hardcode dp, sp or hex values in a screen.
 - **Amber (`primary`) means one thing: what fires next.** It is not a decoration colour and not a
   trigger colour. Trigger families have their own colours (`FamilyVisuals.kt`), assigned by
-  meaning and reused everywhere; tags stay neutral.
+  meaning and reused everywhere. Tags carry a colour worked out from their own name
+  (`TagColors.kt`) — nothing is stored, and the hue circle has the amber and the three family
+  hues cut out of it, so a tag can never read as a place or as the next thing due. The app's own
+  chips ("todas", "sin etiqueta", "en pausa") stay neutral: they are not somebody's word for
+  something and must not look like one.
 - Reminder text, titles and the alert are set in Bricolage Grotesque; times, dates and countdowns
   in JetBrains Mono (`MonoStyles`); everything else in Manrope. Do not add typefaces.
 - Touch targets ≥ 48dp, ≥ 8dp apart; the one primary action of a screen sits at the bottom, in

@@ -50,12 +50,14 @@ import dev.rwilco.model.Section
 import dev.rwilco.ui.components.EmptyState
 import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.ui.components.SectionHeader
+import dev.rwilco.model.TagFilter
 import dev.rwilco.ui.components.TagChip
 import dev.rwilco.ui.components.rememberNow
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
+import dev.rwilco.ui.theme.tagColor
 
 @Composable
 fun HomeScreen(
@@ -357,8 +359,13 @@ private fun Header(
     }
 }
 
+/**
+ * The row of chips: "todas", then the tags in their own colours, then the app's own two —
+ * "sin etiqueta" and "en pausa" — neutral, at the end, and only while they have anything in
+ * them. Housekeeping belongs after the filing, not in the middle of it.
+ */
 @Composable
-private fun TagFilterRow(tags: List<String>, selected: String?, onSelect: (String?) -> Unit) {
+private fun TagFilterRow(tags: List<TagFilter>, selected: TagFilter?, onSelect: (TagFilter?) -> Unit) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
         modifier = Modifier.fillMaxWidth(),
@@ -366,8 +373,28 @@ private fun TagFilterRow(tags: List<String>, selected: String?, onSelect: (Strin
         item(key = "all") {
             TagChip(label = stringResource(R.string.home_all_tags), selected = selected == null, onClick = { onSelect(null) })
         }
-        items(tags, key = { it }) { tag ->
-            TagChip(label = tag, selected = tag.equals(selected, ignoreCase = true), onClick = { onSelect(tag) })
+        items(tags, key = { it.key }) { tag ->
+            TagChip(
+                label = tag.label(),
+                selected = tag == selected,
+                onClick = { onSelect(tag) },
+                tint = (tag as? TagFilter.Named)?.let { tagColor(it.tag) },
+            )
         }
     }
+}
+
+/** Stable across a rename of nothing: a tag is its own key, and the app's two are constants. */
+private val TagFilter.key: String
+    get() = when (this) {
+        is TagFilter.Named -> "tag-$tag"
+        TagFilter.Untagged -> "rwilco-untagged"
+        TagFilter.Paused -> "rwilco-paused"
+    }
+
+@Composable
+private fun TagFilter.label(): String = when (this) {
+    is TagFilter.Named -> tag
+    TagFilter.Untagged -> stringResource(R.string.home_tag_untagged)
+    TagFilter.Paused -> stringResource(R.string.home_tag_paused)
 }

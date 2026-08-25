@@ -6,6 +6,7 @@ import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Section
 import dev.rwilco.model.Status
+import dev.rwilco.model.TagFilter
 import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
@@ -55,17 +56,22 @@ class HomeStateTest {
         assertNull(placeRow.nextAt)
         assertNull(placeRow.window)
         assertTrue(state.sections[1].cards.single().paused)
-        assertEquals(listOf("casa", "salud"), state.tags)
+        // The tags in use, and then the app's own two — one reminder here carries no tag and
+        // one is paused, so both have something to show.
+        assertEquals(
+            listOf(TagFilter.Named("casa"), TagFilter.Named("salud"), TagFilter.Untagged, TagFilter.Paused),
+            state.tags,
+        )
     }
 
     @Test
     fun `a tag filter narrows the cards and a stale filter is dropped`() {
-        val filtered = buildHomeState(listOf(soon, place, random), defaultTime, now, zone, selectedTag = "casa")
-        assertEquals("casa", filtered.selectedTag)
+        val filtered = buildHomeState(listOf(soon, place, random), defaultTime, now, zone, selectedTag = TagFilter.Named("casa"))
+        assertEquals(TagFilter.Named("casa"), filtered.selectedTag)
         assertEquals("soon", filtered.hero!!.card.id)
         assertEquals(listOf("place"), filtered.sections.single().cards.map { it.id })
 
-        val stale = buildHomeState(listOf(soon), defaultTime, now, zone, selectedTag = "trabajo")
+        val stale = buildHomeState(listOf(soon), defaultTime, now, zone, selectedTag = TagFilter.Named("trabajo"))
         assertNull(stale.selectedTag, "a filter on a tag nobody has anymore is silently cleared")
         assertEquals("soon", stale.hero!!.card.id)
     }
@@ -75,7 +81,7 @@ class HomeStateTest {
         val done = reminder("done", Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 16, 0)), status = Status.DONE)
         assertTrue(buildHomeState(listOf(done), defaultTime, now, zone, selectedTag = null).empty)
         assertTrue(buildHomeState(emptyList(), defaultTime, now, zone, selectedTag = null).empty)
-        val filtered = buildHomeState(listOf(soon, random), defaultTime, now, zone, selectedTag = "salud")
+        val filtered = buildHomeState(listOf(soon, random), defaultTime, now, zone, selectedTag = TagFilter.Named("salud"))
         assertFalse(filtered.empty)
     }
 
