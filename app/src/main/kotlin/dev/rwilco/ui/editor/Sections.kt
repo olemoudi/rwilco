@@ -26,7 +26,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Edit
@@ -76,10 +75,13 @@ import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.family
 import dev.rwilco.model.kind
+import dev.rwilco.ui.components.MoreChip
+import dev.rwilco.ui.components.PickSheet
 import dev.rwilco.ui.components.PresetChip
 import dev.rwilco.ui.components.SegmentedChoice
 import dev.rwilco.ui.components.TagChip
 import dev.rwilco.ui.components.TriggerKeycap
+import dev.rwilco.ui.components.VISIBLE_SUGGESTIONS
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.conditionLabel
 import dev.rwilco.ui.format.currentLocale
@@ -97,6 +99,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.temporal.ChronoUnit
+import java.util.Locale
 
 /** Lets the instrumented tour find the text field; a BasicTextField has no other handle. */
 const val EDITOR_TEXT_TAG = "editorText"
@@ -192,6 +195,8 @@ internal fun PresetTextField(text: String, onChange: (String) -> Unit) {
 internal fun TextSection(
     text: String,
     suggestions: List<String>,
+    /** Everything ever written, for the list behind the dots; the row shows the best few. */
+    allSuggestions: List<String> = suggestions,
     onTextChange: (String) -> Unit,
     error: Boolean,
     placeholderRes: Int = R.string.editor_text_placeholder,
@@ -202,6 +207,7 @@ internal fun TextSection(
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     var focused by remember { mutableStateOf(false) }
+    var listing by rememberSaveable { mutableStateOf(false) }
     val writing = focused || text.isNotEmpty() || autoFocus
 
     // The one place in this app where the keyboard opens by itself. Everywhere else it would
@@ -271,7 +277,7 @@ internal fun TextSection(
                 horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
                 verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
             ) {
-                for (suggestion in suggestions) {
+                for (suggestion in suggestions.take(VISIBLE_SUGGESTIONS)) {
                     // Tap to use it; hold to mend the list it came from.
                     PresetChip(
                         label = suggestion,
@@ -280,8 +286,21 @@ internal fun TextSection(
                         holdLabel = stringResource(R.string.curate_hold),
                     )
                 }
+                if (allSuggestions.size > VISIBLE_SUGGESTIONS) MoreChip(onClick = { listing = true })
             }
         }
+    }
+
+    if (listing) {
+        PickSheet(
+            title = stringResource(R.string.editor_reuse),
+            items = allSuggestions,
+            onPick = { picked ->
+                listing = false
+                onTextChange(picked)
+            },
+            onDismiss = { listing = false },
+        )
     }
 }
 
@@ -293,9 +312,12 @@ internal fun TagsSection(
     onToggle: (String) -> Unit,
     onAdd: (String) -> Unit,
     onCurate: () -> Unit = {},
+    /** Hoisted: while a tag is being typed the screen puts its own Save button away. */
+    adding: Boolean = false,
+    onAdding: (Boolean) -> Unit = {},
 ) {
-    var adding by rememberSaveable { mutableStateOf(false) }
     var newTag by rememberSaveable { mutableStateOf("") }
+    var listing by rememberSaveable { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val haptics = Tokens.haptics
 
@@ -315,7 +337,7 @@ internal fun TagsSection(
     fun commit() {
         val raw = newTag
         newTag = ""
-        adding = false
+        onAdding(false)
         if (raw.isNotBlank()) {
             haptics.perform(HapticFeedbackType.Confirm)
             onAdd(raw)
@@ -334,9 +356,10 @@ internal fun TagsSection(
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { commit() }),
+                // A plus, not a tick: this adds a tag to the list, it does not save anything.
                 trailingIcon = {
                     IconButton(onClick = { commit() }) {
-                        Icon(Icons.Outlined.Check, contentDescription = stringResource(R.string.editor_new_tag_add))
+                        Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.editor_new_tag_add))
                     }
                 },
                 shape = MaterialTheme.shapes.small,
@@ -351,7 +374,7 @@ internal fun TagsSection(
             )
         } else {
             OutlinedButton(
-                onClick = { adding = true },
+                onClick = { onAdding(true) },
                 shape = MaterialTheme.shapes.small,
                 border = BorderStroke(Tokens.strokes.control, MaterialTheme.colorScheme.outline),
                 colors = ButtonDefaults.outlinedButtonColors(
@@ -374,7 +397,10 @@ internal fun TagsSection(
                 verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
                 modifier = Modifier.testTag(EDITOR_TAGS_TAG),
             ) {
-                for (tag in offered) {
+                // The ones already on are never hidden behind the dots — a tag you cannot see
+                // is a tag you cannot take off.
+                val shown = offered.take(maxOf(VISIBLE_SUGGESTIONS, selected.size))
+                for (tag in shown) {
                     TagChip(
                         label = tag,
                         selected = selected.any { it.equals(tag, ignoreCase = true) },
@@ -383,8 +409,20 @@ internal fun TagsSection(
                         holdLabel = stringResource(R.string.curate_hold),
                     )
                 }
+                if (offered.size > shown.size) MoreChip(onClick = { listing = true })
             }
         }
+    }
+
+    // Tags stay open: turning three on from the list is one visit, not three.
+    if (listing) {
+        PickSheet(
+            title = stringResource(R.string.editor_reuse_tag),
+            items = offered,
+            selected = selected.toSet(),
+            onPick = onToggle,
+            onDismiss = { listing = false },
+        )
     }
 }
 
@@ -402,6 +440,8 @@ internal fun TriggersSection(
     inPast: Set<Int>,
     onAdd: () -> Unit,
     onQuickAdd: (Trigger) -> Unit,
+    /** The "when"s used before, best first; empty on a phone with no history yet. */
+    suggestions: List<Trigger> = emptyList(),
     onEdit: (Int) -> Unit,
     onRemove: (Int) -> Unit,
     onAddCondition: (Int) -> Unit,
@@ -433,7 +473,7 @@ internal fun TriggersSection(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = Tokens.spacing.sm),
             )
-            QuickWhenRow(clock = clock, onPick = onQuickAdd)
+            QuickWhenRow(clock = clock, suggestions = suggestions, defaultTime = defaultTime, onPick = onQuickAdd)
             Spacer(Modifier.height(Tokens.spacing.sm))
         }
         Column(verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm)) {
@@ -472,22 +512,33 @@ internal fun TriggersSection(
 }
 
 /**
- * The "when" people ask for most, one tap each and no sheet: in half an hour, tonight, tomorrow
- * morning. Offered only while nothing is set — once there is a trigger the section is about
- * that one — and always followed by the button that opens the whole choice. The half hour is
- * counted from the tap, not from when the chip was drawn.
+ * The "when"s to hand, one tap each and no sheet.
+ *
+ * What somebody sets is what somebody sets again — the same half hour, the same nine o'clock,
+ * the same "al llegar a casa" — so these are [suggestions]: the shapes used before, most used
+ * first, re-hung on today. Until there is a history to draw on they are the three answers
+ * everybody starts with: in half an hour, tonight, tomorrow morning. Offered only while nothing
+ * is set — once there is a trigger the section is about that one — and always followed by the
+ * button that opens the whole choice.
  */
 @Composable
-private fun QuickWhenRow(clock: Clock, onPick: (Trigger) -> Unit) {
+private fun QuickWhenRow(clock: Clock, suggestions: List<Trigger>, defaultTime: LocalTime, onPick: (Trigger) -> Unit) {
     val locale = currentLocale()
     val is24h = rememberIs24h()
     val now = clock.instant().atZone(clock.zone)
     val today = now.toLocalDate()
     val tonight = LocalTime.of(20, 0)
     val morning = LocalTime.of(9, 0)
-    val soonLabel = stringResource(R.string.countdown_in, stringResource(R.string.countdown_minutes, QUICK_MINUTES))
-    val tonightLabel = dayWord(today, today, locale) + " " + TimeText.time(tonight, is24h, locale)
-    val tomorrowLabel = dayWord(today.plusDays(1), today, locale) + " " + TimeText.time(morning, is24h, locale)
+    val offered = remember(suggestions, today) {
+        suggestions.ifEmpty {
+            listOfNotNull(
+                // A length, so it starts when the reminder does rather than at some fixed minute.
+                Trigger.Countdown(QUICK_MINUTES),
+                Trigger.AtDateTime(LocalDateTime.of(today, tonight)).takeIf { now.toLocalTime().isBefore(tonight) },
+                Trigger.AtDateTime(LocalDateTime.of(today.plusDays(1), morning)),
+            )
+        }
+    }
 
     Row(
         horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
@@ -495,22 +546,29 @@ private fun QuickWhenRow(clock: Clock, onPick: (Trigger) -> Unit) {
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState()),
     ) {
-        PresetChip(
-            label = soonLabel.replaceFirstChar { it.titlecase(locale) },
-            // A length, so it starts when the reminder does rather than at some fixed minute.
-            onClick = { onPick(Trigger.Countdown(QUICK_MINUTES)) },
-        )
-        if (now.toLocalTime().isBefore(tonight)) {
+        for (trigger in offered) {
             PresetChip(
-                label = tonightLabel.replaceFirstChar { it.titlecase(locale) },
-                onClick = { onPick(Trigger.AtDateTime(LocalDateTime.of(today, tonight))) },
+                label = quickLabel(trigger, today, defaultTime, locale, is24h),
+                onClick = { onPick(trigger) },
             )
         }
-        PresetChip(
-            label = tomorrowLabel.replaceFirstChar { it.titlecase(locale) },
-            onClick = { onPick(Trigger.AtDateTime(LocalDateTime.of(today.plusDays(1), morning))) },
-        )
     }
+}
+
+/**
+ * A whole "when" on one chip. The two-line reading each trigger already has, folded into a line
+ * that reads like something you would say: "Mañana 09:00", "Al llegar Casa", "En 30 min".
+ */
+@Composable
+private fun quickLabel(trigger: Trigger, today: LocalDate, defaultTime: LocalTime, locale: Locale, is24h: Boolean): String {
+    val line = triggerLine(trigger, today, defaultTime)
+    val text = when (trigger) {
+        is Trigger.Countdown ->
+            if (trigger.startedAt == null) stringResource(R.string.countdown_in, line.primary) else line.primary
+        is Trigger.AtDateTime, is Trigger.Location -> line.secondary + " " + line.primary
+        else -> line.primary + " · " + line.secondary
+    }
+    return text.replaceFirstChar { it.titlecase(locale) }
 }
 
 private const val QUICK_MINUTES = 30

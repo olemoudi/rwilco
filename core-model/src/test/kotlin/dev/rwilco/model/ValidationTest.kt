@@ -38,7 +38,7 @@ class ValidationTest {
             tonight,
             Trigger.AtTime(LocalTime.of(7, 0), emptySet()),
             Trigger.Location(95.0, 0.0, 200, Transition.ENTER, "x"),
-            Trigger.Location(40.0, -3.0, 50, Transition.EXIT, "x"),
+            Trigger.Location(40.0, -3.0, 20, Transition.EXIT, "x"),
             Trigger.Location(40.0, -3.0, 200, Transition.EXIT, "y".repeat(MAX_LABEL_LENGTH + 1)),
             Trigger.Random(0, Period.DAY, LocalTime.of(10, 0), LocalTime.of(20, 0), emptySet()),
             Trigger.Random(3, Period.DAY, LocalTime.of(10, 0), LocalTime.of(10, 2), emptySet()),

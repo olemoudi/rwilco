@@ -2,6 +2,8 @@ package dev.rwilco.model
 
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
 import java.util.Locale
 import kotlin.math.pow
 
@@ -51,23 +53,92 @@ fun suggestedTags(reminders: List<Reminder>, now: Instant, limit: Int = 24): Lis
  * used most recently — the person's latest word on it.
  */
 private fun rank(uses: List<Pair<String, Instant>>, now: Instant, limit: Int, exclude: String?): List<String> {
-    if (uses.isEmpty()) return emptyList()
     val excluded = exclude?.lowercase(Locale.ROOT)
+    val kept = uses.filter { (value, _) ->
+        val key = value.lowercase(Locale.ROOT)
+        key.isNotEmpty() && key != excluded
+    }
+    return rankByUse(kept, now, limit) { it.lowercase(Locale.ROOT) }
+}
+
+/**
+ * The same ranking for anything that has a shape worth counting: uses add up with a half-life,
+ * ties break on recency, and the winner of a shape is the way it was written last.
+ */
+private fun <T> rankByUse(uses: List<Pair<T, Instant>>, now: Instant, limit: Int, key: (T) -> String): List<T> {
+    if (uses.isEmpty()) return emptyList()
     val scores = HashMap<String, Double>()
     val latest = HashMap<String, Instant>()
-    val spelling = HashMap<String, String>()
+    val newest = HashMap<String, T>()
     for ((value, at) in uses) {
-        val key = value.lowercase(Locale.ROOT)
-        if (key.isEmpty() || key == excluded) continue
-        scores[key] = (scores[key] ?: 0.0) + weightOf(at, now)
-        val seen = latest[key]
+        val shape = key(value)
+        scores[shape] = (scores[shape] ?: 0.0) + weightOf(at, now)
+        val seen = latest[shape]
         if (seen == null || at >= seen) {
-            latest[key] = at
-            spelling[key] = value
+            latest[shape] = at
+            newest[shape] = value
         }
     }
     return scores.entries
         .sortedWith(compareByDescending<Map.Entry<String, Double>> { it.value }.thenByDescending { latest.getValue(it.key) })
         .take(limit)
-        .map { spelling.getValue(it.key) }
+        .map { newest.getValue(it.key) }
+}
+
+/**
+ * The "when"s used before, best first, ready to be used again.
+ *
+ * A trigger is offered by its *shape*, not its instant: "media hora" is a length and comes back
+ * as one, "a las nueve los laborables" is already a standing arrangement, and a place is a
+ * place. A date-time keeps only its time of day, re-hung on today if that hour is still ahead
+ * and on tomorrow if it is not — "las 20:00 del martes pasado" is not something anybody wants
+ * offered back. A bare date has nothing reusable in it at all and is left out.
+ */
+fun suggestedTriggers(reminders: List<Reminder>, now: Instant, zone: ZoneId, limit: Int = 6): List<Trigger> {
+    val uses = reminders.flatMap { reminder -> reminder.rules.map { it.trigger to reminder.updatedAt } }
+        .filter { (trigger, _) -> shapeOf(trigger) != null }
+    return rankByUse(uses, now, limit) { shapeOf(it)!! }.map { reanchor(it, now, zone) }
+}
+
+/**
+ * The kinds of "when" this person actually uses, best first, with the ones never used keeping
+ * their usual order at the end. What the tiles are sorted by when Settings says "the popular
+ * ones first" — a favourite you never have to choose.
+ */
+fun triggerKindsByUse(reminders: List<Reminder>, now: Instant): List<TriggerKind> {
+    val uses = reminders.flatMap { reminder -> reminder.rules.map { it.trigger.kind to reminder.updatedAt } }
+    val used = rankByUse(uses, now, TriggerKind.entries.size) { it.name }
+    return used + TriggerKind.entries.filter { it !in used }
+}
+
+/** What makes two uses the same "when". Null for a trigger with nothing to reuse. */
+private fun shapeOf(trigger: Trigger): String? = when (trigger) {
+    is Trigger.Countdown -> "countdown:${trigger.minutes}"
+    is Trigger.AtTime -> "at_time:${trigger.time}:" + trigger.days.map { it.value }.sorted().joinToString(",")
+    // Only the hour survives; the day it fell on was that reminder's business.
+    is Trigger.AtDateTime -> "at_date_time:${trigger.at.toLocalTime()}"
+    // Four decimals is about eleven metres: the same door, however the pin was dropped.
+    is Trigger.Location -> String.format(
+        Locale.ROOT,
+        "location:%.4f,%.4f:%d:%s",
+        trigger.lat,
+        trigger.lng,
+        trigger.radiusM,
+        trigger.transition.name,
+    )
+    is Trigger.Random -> "random:${trigger.timesPer}:${trigger.period}:${trigger.from}:${trigger.to}:" +
+        trigger.days.map { it.value }.sorted().joinToString(",")
+    is Trigger.OnDate -> null
+}
+
+/** The same shape, hung on now: a length starts fresh, an hour looks for its next day. */
+private fun reanchor(trigger: Trigger, now: Instant, zone: ZoneId): Trigger = when (trigger) {
+    is Trigger.Countdown -> trigger.copy(startedAt = null)
+    is Trigger.AtDateTime -> {
+        val here = now.atZone(zone)
+        val time = trigger.at.toLocalTime()
+        val date = if (time > here.toLocalTime()) here.toLocalDate() else here.toLocalDate().plusDays(1)
+        Trigger.AtDateTime(LocalDateTime.of(date, time))
+    }
+    else -> trigger
 }

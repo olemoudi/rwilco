@@ -31,11 +31,17 @@ import dev.rwilco.ui.theme.icon
 /**
  * Six big tiles, two by three: what kind of "when" to add. [preferred] — the kind chosen in
  * Settings — leads and says so; the other five keep their order behind it, because a favourite
- * is a shortcut, not a filter.
+ * is a shortcut, not a filter. [kinds] is that order, which Settings can also hand over sorted
+ * by what actually gets used.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TriggerKindSheet(preferred: TriggerKind?, onPick: (TriggerKind) -> Unit, onDismiss: () -> Unit) {
+fun TriggerKindSheet(
+    preferred: TriggerKind?,
+    onPick: (TriggerKind) -> Unit,
+    onDismiss: () -> Unit,
+    kinds: List<TriggerKind> = TriggerKind.entries.toList(),
+) {
     val spacing = Tokens.spacing
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -52,12 +58,11 @@ fun TriggerKindSheet(preferred: TriggerKind?, onPick: (TriggerKind) -> Unit, onD
         ) {
             Text(stringResource(R.string.editor_add_trigger), style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(spacing.lg))
-            val kinds = remember(preferred) {
-                if (preferred == null) TriggerKind.entries.toList()
-                else listOf(preferred) + TriggerKind.entries.filter { it != preferred }
+            val ordered = remember(preferred, kinds) {
+                if (preferred == null) kinds else listOf(preferred) + kinds.filter { it != preferred }
             }
             Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                for (row in kinds.chunked(2)) {
+                for (row in ordered.chunked(2)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
                         for (kind in row) {
                             KindTile(

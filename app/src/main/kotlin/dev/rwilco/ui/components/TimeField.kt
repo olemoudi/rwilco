@@ -1,6 +1,7 @@
 package dev.rwilco.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -44,10 +45,16 @@ fun TimeField(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = modifier
-            .heightIn(min = Tokens.sizes.control)
+            // The frame is the reading plus its padding, no taller: a control-height box around
+            // a single line leaves the number sitting up against the top edge, which is what a
+            // time in Settings looked like. Still a thumb's worth of target.
+            .heightIn(min = Tokens.sizes.touch)
             .testTag(TIME_FIELD_TAG),
     ) {
-        Column(modifier = Modifier.padding(horizontal = Tokens.spacing.lg, vertical = Tokens.spacing.sm)) {
+        Column(
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(horizontal = Tokens.spacing.lg, vertical = Tokens.spacing.sm),
+        ) {
             if (label != null) {
                 Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

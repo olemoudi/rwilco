@@ -137,6 +137,7 @@ class ReminderCodecTest {
         val encoded = ReminderCodec.encodeSettings(AppSettings())
         assertEquals(
             """{"theme":"SYSTEM","defaultTime":"09:00","haptics":true,"defaultTriggerKind":null,""" +
+                """"popularTriggersFirst":false,""" +
                 """"weekendDay":"FRIDAY","weekendTime":"20:30","lastSeenVersionCode":0,"savedPlaces":[],""" +
                 """"defaultActions":["NOTIFICATION","VIBRATE"],"presets":[],"hiddenTexts":[],""" +
                 """"dayStart":"09:00","recurrencePresets":[""" +

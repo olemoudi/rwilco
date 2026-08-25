@@ -24,6 +24,8 @@ import dev.rwilco.model.removeTagIn
 import dev.rwilco.model.renameTagIn
 import dev.rwilco.model.renameTextIn
 import dev.rwilco.model.suggestedTags
+import dev.rwilco.model.suggestedTriggers
+import dev.rwilco.model.triggerKindsByUse
 import dev.rwilco.model.suggestedTexts
 import dev.rwilco.model.visibleTexts
 import dev.rwilco.model.withHiddenText
@@ -98,7 +100,11 @@ class EditorViewModel(
                 suggestedTexts = visibleTexts(suggestedTexts(past, now, limit = 8, exclude = draft.text), current.hiddenTexts),
                 allTexts = visibleTexts(suggestedTexts(past, now, limit = 100), current.hiddenTexts),
                 defaultTime = current.defaultTime,
-                defaultKind = current.defaultTriggerKind,
+                defaultKind = if (current.popularTriggersFirst) null else current.defaultTriggerKind,
+                // The "when"s used before, ready to be used again, and the order the tiles
+                // come up in when Settings asks for the popular ones first.
+                suggestedTriggers = suggestedTriggers(past, now, clock.zone),
+                kindOrder = if (current.popularTriggersFirst) triggerKindsByUse(past, now) else TriggerKind.entries.toList(),
                 savedPlaces = current.savedPlaces,
                 recurrencePresets = recurrencePresetsByPopularity(current.recurrencePresets),
                 asPreset = editedPreset != null || newPreset,

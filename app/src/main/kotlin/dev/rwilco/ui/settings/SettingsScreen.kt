@@ -136,15 +136,22 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                         ) {
                             TagChip(
                                 label = stringResource(R.string.settings_default_trigger_ask),
-                                selected = current.defaultTriggerKind == null,
+                                selected = current.defaultTriggerKind == null && !current.popularTriggersFirst,
                                 onClick = { viewModel.setDefaultTriggerKind(null) },
+                            )
+                            // A favourite nobody has to keep choosing: the tiles sort themselves
+                            // by what this person actually uses.
+                            TagChip(
+                                label = stringResource(R.string.settings_default_trigger_popular),
+                                selected = current.popularTriggersFirst,
+                                onClick = { viewModel.setPopularTriggersFirst(!current.popularTriggersFirst) },
                             )
                             for (kind in TriggerKind.entries) {
                                 TagChip(
                                     label = stringResource(kind.titleRes),
-                                    selected = current.defaultTriggerKind == kind,
+                                    selected = !current.popularTriggersFirst && current.defaultTriggerKind == kind,
                                     // Tapping the chosen one again is how you go back to no favourite.
-                                    onClick = { viewModel.setDefaultTriggerKind(if (current.defaultTriggerKind == kind) null else kind) },
+                                    onClick = { viewModel.setDefaultTriggerKind(if (current.defaultTriggerKind == kind && !current.popularTriggersFirst) null else kind) },
                                 )
                             }
                         }

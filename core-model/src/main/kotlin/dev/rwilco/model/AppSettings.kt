@@ -27,6 +27,12 @@ data class AppSettings(
      */
     val defaultTriggerKind: TriggerKind? = null,
     /**
+     * Or let the tiles sort themselves by what actually gets used, which is a favourite nobody
+     * has to keep choosing. Wins over [defaultTriggerKind] when both are set, and the two are
+     * offered as one row of answers, so that only happens to a settings file edited by hand.
+     */
+    val popularTriggersFirst: Boolean = false,
+    /**
      * What "el finde" means to this person when they postpone something to it. Friday evening
      * by default: the weekend starts when the week stops asking, not on Saturday morning.
      */

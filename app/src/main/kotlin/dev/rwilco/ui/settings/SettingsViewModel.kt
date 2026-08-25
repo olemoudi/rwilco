@@ -65,7 +65,10 @@ class SettingsViewModel(
     fun setHaptics(enabled: Boolean) = update { it.copy(haptics = enabled) }
 
     /** Null puts the six tiles back in their usual order: no favourite. */
-    fun setDefaultTriggerKind(kind: TriggerKind?) = update { it.copy(defaultTriggerKind = kind) }
+    // The two are one row of answers on screen: choosing a kind puts the popular order away.
+    fun setDefaultTriggerKind(kind: TriggerKind?) = update { it.copy(defaultTriggerKind = kind, popularTriggersFirst = false) }
+
+    fun setPopularTriggersFirst(on: Boolean) = update { it.copy(popularTriggersFirst = on, defaultTriggerKind = null) }
 
     /** What "the weekend" means when a reminder is put off to it. */
     fun setWeekend(day: DayOfWeek, time: LocalTime) = update { it.copy(weekendDay = day, weekendTime = time) }

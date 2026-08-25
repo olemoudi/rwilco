@@ -165,12 +165,19 @@ strict is asking somebody to remember how they spelled it.
   happens — because four headings down one flat column read as more text. Interactive edges use
   the `Strokes` tokens (a control's line is thicker and brighter than a card's) so the screen
   says what can be pressed. With more than one trigger a segmented control chooses between
-  "cualquiera" and "todos". Text and tags are
-  offered before they are asked for — `suggestedTexts`/`suggestedTags` rank what has been written before
-  by how often and how recently (a 30-day half-life), and nothing is auto-focused, because a
-  keyboard that opens by itself hides the list that would have saved the typing. Holding one of
-  those chips (the shared `Modifier.holdable`, the same 700ms and the same overlay as
-  `HoldButton`) opens `CuratePanel` to mend the list: the pure functions in
+  "cualquiera" and "todos". Text, tags and
+  the "when" itself are offered before they are asked for — `suggestedTexts`/`suggestedTags`/
+  `suggestedTriggers` rank what has been used before by how often and how recently (a 30-day
+  half-life), and nothing is auto-focused, because a keyboard that opens by itself hides the list
+  that would have saved the typing. A trigger is offered by its *shape*, never its instant: a
+  length comes back as a length, an hour comes back re-hung on today or tomorrow, a place comes
+  back whole, and a bare date has nothing to reuse. Settings can also let `triggerKindsByUse`
+  sort the six tiles, which is a favourite nobody has to keep choosing. Each row shows
+  `VISIBLE_SUGGESTIONS` of them and puts the rest behind `MoreChip` → `PickSheet` (a searchable
+  list), because a row that grows with every reminder ever written stops being a shortcut.
+  Holding one of those chips (the shared `Modifier.holdable`, the same 700ms and the same overlay
+  as `HoldButton` — a watcher that consumes nothing, so the chip keeps its own click and only
+  stands it down when a hold has just completed) opens `CuratePanel` to mend the list: the pure functions in
   `core-model/Curation.kt` rename a tag or a phrase across the reminders that carry it —
   returning only the rows that changed, and leaving `updatedAt` alone so a rename is not read as
   a use — while dropping a phrase only adds it to `AppSettings.hiddenTexts`, because the

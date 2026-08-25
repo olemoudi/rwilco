@@ -93,6 +93,10 @@ data class EditorUiState(
     val defaultTime: LocalTime = LocalTime.of(9, 0),
     /** The kind the picker offers first, from the settings; null when there is no favourite. */
     val defaultKind: TriggerKind? = null,
+    /** The order the six tiles come up in: their usual one, or what gets used most. */
+    val kindOrder: List<TriggerKind> = TriggerKind.entries.toList(),
+    /** The "when"s used before, best first, already re-hung on now. */
+    val suggestedTriggers: List<Trigger> = emptyList(),
     /** The places kept by name in Settings, offered whole in the place sheet. */
     val savedPlaces: List<SavedPlace> = emptyList(),
     /**

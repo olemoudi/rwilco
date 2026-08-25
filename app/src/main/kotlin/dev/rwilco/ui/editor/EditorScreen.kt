@@ -45,6 +45,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -85,6 +88,8 @@ fun EditorScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
     val haptics = Tokens.haptics
+    /** Whether the tags section has its "new tag" field open; the Save bar steps aside for it. */
+    var addingTag by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(viewModel) {
         viewModel.eventFlow.collect { event ->
@@ -147,7 +152,10 @@ fun EditorScreen(
                 )
             },
             bottomBar = {
-                SaveBar(
+                // While a tag is being typed, its own + is the answer to that field. A Save
+                // button under it at the same time asks the same question twice, and the two
+                // mean different things.
+                if (!addingTag) SaveBar(
                     enabled = state.loaded,
                     onSave = {
                         haptics.perform(HapticFeedbackType.Confirm)
@@ -180,6 +188,7 @@ fun EditorScreen(
                     TextSection(
                         text = state.draft.text,
                         suggestions = if (state.asPreset) emptyList() else state.suggestedTexts,
+                        allSuggestions = if (state.asPreset) emptyList() else state.allTexts,
                         onTextChange = viewModel::setText,
                         error = state.showErrors && ValidationError.TextBlank in state.errors,
                         placeholderRes = if (state.asPreset) R.string.editor_preset_name_placeholder else R.string.editor_text_placeholder,
@@ -204,6 +213,8 @@ fun EditorScreen(
                         onToggle = viewModel::toggleTag,
                         onAdd = viewModel::addTag,
                         onCurate = { viewModel.curate(CurateKind.TAGS) },
+                        adding = addingTag,
+                        onAdding = { addingTag = it },
                     )
                 }
                 EditorSection(
@@ -227,6 +238,7 @@ fun EditorScreen(
                             focusManager.clearFocus()
                             viewModel.commitTrigger(null, trigger)
                         },
+                        suggestions = state.suggestedTriggers,
                         onEdit = viewModel::editTrigger,
                         onRemove = viewModel::removeTrigger,
                         onAddCondition = viewModel::addCondition,
@@ -264,6 +276,7 @@ fun EditorScreen(
         when (val sheet = state.sheet) {
             EditorSheet.None -> Unit
             EditorSheet.PickKind -> TriggerKindSheet(
+                kinds = state.kindOrder,
                 preferred = state.defaultKind,
                 onPick = viewModel::pickKind,
                 onDismiss = viewModel::closeSheet,

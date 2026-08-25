@@ -34,13 +34,14 @@ fun PresetChip(
 ) {
     val haptics = Tokens.haptics
     val scheme = MaterialTheme.colorScheme
+    val hold = rememberHoldState()
     val tap = {
         haptics.perform(HapticFeedbackType.Confirm)
         onClick()
     }
     AssistChip(
-        // With a hold on it the gesture is handled outside, or the two would fight over the tap.
-        onClick = if (onHold == null) tap else ({}),
+        // The chip keeps its own click; a hold that has just completed stands it down.
+        onClick = { if (!hold.held) tap() },
         label = { Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         shape = MaterialTheme.shapes.small,
         colors = AssistChipDefaults.assistChipColors(
@@ -50,6 +51,6 @@ fun PresetChip(
         border = if (selected) null else BorderStroke(Tokens.strokes.control, scheme.outline),
         modifier = modifier
             .heightIn(min = 44.dp)
-            .then(if (onHold == null) Modifier else Modifier.holdable(holdIcon, holdLabel, onHold, tap)),
+            .then(if (onHold == null) Modifier else Modifier.holdable(holdIcon, holdLabel, onHold, hold)),
     )
 }

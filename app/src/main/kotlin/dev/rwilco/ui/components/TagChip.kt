@@ -37,14 +37,15 @@ fun TagChip(
 ) {
     val haptics = Tokens.haptics
     val scheme = MaterialTheme.colorScheme
+    val hold = rememberHoldState()
     val tap = {
         haptics.perform(if (selected) HapticFeedbackType.ToggleOff else HapticFeedbackType.ToggleOn)
         onClick()
     }
     FilterChip(
         selected = selected,
-        // With a hold on it the gesture is handled outside, or the two would fight over the tap.
-        onClick = if (onHold == null) tap else ({}),
+        // The chip keeps its own click; a hold that has just completed stands it down.
+        onClick = { if (!hold.held) tap() },
         label = { Text(label, style = MaterialTheme.typography.labelLarge) },
         enabled = enabled,
         shape = MaterialTheme.shapes.small,
@@ -57,7 +58,7 @@ fun TagChip(
         border = if (selected) null else BorderStroke(Tokens.strokes.control, scheme.outline),
         modifier = modifier
             .heightIn(min = 40.dp)
-            .then(if (onHold == null) Modifier else Modifier.holdable(holdIcon, holdLabel, onHold, tap)),
+            .then(if (onHold == null) Modifier else Modifier.holdable(holdIcon, holdLabel, onHold, hold)),
     )
 }
 

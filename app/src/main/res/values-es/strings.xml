@@ -304,6 +304,9 @@
     <string name="condition_window_hint">El disparador sólo cuenta dentro de estas horas.</string>
     <string name="condition_window_error">Elige dos horas distintas.</string>
     <string name="editor_write">Escribir el recordatorio</string>
+    <string name="reuse_more">Todos</string>
+    <string name="reuse_search">Buscar</string>
+    <string name="reuse_none">Nada coincide</string>
     <string name="editor_reuse">O reutilizar uno</string>
     <string name="place_search">Buscar una dirección</string>
     <string name="place_search_none">No se encontró esa dirección. Prueba con menos palabras o mantén pulsado el mapa.</string>
@@ -342,7 +345,8 @@
 
     <!-- Default trigger -->
     <string name="settings_default_trigger">Disparador que se ofrece primero</string>
-    <string name="settings_default_trigger_hint">El tipo que encabeza la lista al añadir un disparador. Los otros cinco siguen a un toque.</string>
+    <string name="settings_default_trigger_hint">El tipo que encabeza la lista al añadir un disparador. «Más usados» los ordena por lo que de verdad pones; los otros cinco siguen a un toque.</string>
+    <string name="settings_default_trigger_popular">Más usados</string>
     <string name="settings_default_trigger_ask">Sin preferencia</string>
     <string name="kind_default_badge">El que sueles usar</string>
 
@@ -436,6 +440,13 @@
     <string-array name="whats_new_0_4_2">
         <item>Pausar un recordatorio ahora dice lo que va a hacer — la palabra «Pausar» o «Reanudar» junto al botón, porque un icono de pausa a secas se lee igual de bien como «esto está pausado».</item>
         <item>Es más grande, está arriba con las palabras del recordatorio en vez de entre los iconos grises que no se pueden pulsar, y pide un dedo que se quede. Si sueltas antes, no pasa nada.</item>
+    </string-array>
+    <string-array name="whats_new_0_7_4">
+        <item>Vuelven a funcionar los chips de reutilizar un texto o una etiqueta. Darles una segunda cosa que hacer al mantener el dedo les había quitado la primera sin avisar: dos gestos sobre un mismo chip y el toque no llegaba a ninguno. Tocar lo usa, mantener sigue abriendo la lista para arreglarla.</item>
+        <item>Esas filas se paran en cinco y guardan el resto tras un «…» con buscador, en vez de crecer hasta ser un muro que leer de camino al teclado.</item>
+        <item>Los atajos de «cuándo» ahora son los tuyos: las duraciones, horas y lugares que de verdad pones, los más usados primero y recolocados en hoy. Hasta que haya historial, los tres de siempre. En Ajustes puedes además ordenar los seis tipos por uso, con «Más usados».</item>
+        <item>Añadir una etiqueta ya no pregunta dos veces lo mismo: el + del campo es la respuesta a ese campo, y Guardar se aparta hasta que termines.</item>
+        <item>Las horas en Ajustes van centradas en su marco, no pegadas al borde de arriba.</item>
     </string-array>
     <string-array name="whats_new_0_7_3">
         <item>Ya nada suena dos veces por su cuenta. Un momento que ya ha sonado queda gastado: un temporizador que no has despachado espera en el inicio como vencido, que es lo suyo, pero no vuelve a saltar solo — ni por una alarma suelta, ni tras reiniciar, ni por la red de seguridad de cada seis horas.</item>

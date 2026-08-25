@@ -6,7 +6,14 @@ import java.time.ZoneId
 
 const val MAX_TEXT_LENGTH = 500
 const val MAX_LABEL_LENGTH = 40
-const val MIN_RADIUS_M = 100
+/**
+ * Fifty metres is a doorway rather than a neighbourhood, and it is the floor because below it
+ * nothing can tell you are there: a place only counts as entered by a fix at least as accurate
+ * as the place is wide, so a tight one waits for GPS — which is what the watch turns on when a
+ * line is close and the phone moving — and the phone's own geofences get vaguer the smaller the
+ * circle. Tight works; it just leans on the satellites.
+ */
+const val MIN_RADIUS_M = 50
 const val MAX_RADIUS_M = 1000
 /** A countdown of nothing is not a countdown; a week is as far as the sheet lets anybody go. */
 const val MIN_COUNTDOWN_MINUTES = 1

@@ -306,6 +306,9 @@
     <string name="condition_window_hint">The trigger only counts inside these hours.</string>
     <string name="condition_window_error">Pick two different times.</string>
     <string name="editor_write">Write the reminder</string>
+    <string name="reuse_more">All of them</string>
+    <string name="reuse_search">Search</string>
+    <string name="reuse_none">Nothing matches</string>
     <string name="editor_reuse">Or reuse one</string>
     <string name="place_search">Search an address</string>
     <string name="place_search_none">No address found. Try fewer words, or long-press the map.</string>
@@ -344,7 +347,8 @@
 
     <!-- Default trigger -->
     <string name="settings_default_trigger">Trigger offered first</string>
-    <string name="settings_default_trigger_hint">The kind that leads the list when you add a trigger. The other five stay one tap away.</string>
+    <string name="settings_default_trigger_hint">The kind that heads the list when adding a trigger. “Most used” sorts them by what you actually set; the other five are always a tap away.</string>
+    <string name="settings_default_trigger_popular">Most used</string>
     <string name="settings_default_trigger_ask">No favourite</string>
     <string name="kind_default_badge">Your usual one</string>
 
@@ -438,6 +442,13 @@
     <string-array name="whats_new_0_4_2">
         <item>Pausing a reminder now says what it will do — the word "Pause" or "Resume" next to the button, because a pause glyph on its own reads as "this is paused" just as easily.</item>
         <item>It is bigger, it sits up with the reminder\'s own words instead of among the small grey glyphs that cannot be pressed, and it takes a finger that stays. Let go early and nothing happens.</item>
+    </string-array>
+    <string-array name="whats_new_0_7_4">
+        <item>The chips that reuse a text or a tag work again. Giving them a second thing to do on a held finger had quietly taken the first one away: two gesture handlers on one chip, and the tap went to neither. Tap uses it, hold still mends the list.</item>
+        <item>Those rows now stop at five and put the rest behind a “…” with a search box, instead of growing into a wall to read past on the way to the keyboard.</item>
+        <item>The “when” shortcuts are yours now: the lengths, hours and places you actually set, most used first, re-hung on today. Until there is a history they are the three everybody starts with. Settings can also sort the six kinds by what you use, under “Most used”.</item>
+        <item>Adding a tag no longer asks the same question twice — its own + is the answer to that field, and Save steps aside until you are done with it.</item>
+        <item>Times in Settings sit in the middle of their frame instead of up against the top of it.</item>
     </string-array>
     <string-array name="whats_new_0_7_3">
         <item>Nothing rings twice on its own. A moment that has rung is spent: a timer you have not got round to waits on Home as overdue, as it should, but it no longer goes off again by itself — not from a stray alarm, not after a reboot, not from the six-hourly safety net.</item>

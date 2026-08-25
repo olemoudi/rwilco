@@ -186,6 +186,8 @@ private class MapHolder(
     private fun inverted(argb: Int): Int = (argb and 0xFF000000.toInt()) or (argb.inv() and 0x00FFFFFF)
 
     private fun zoomFor(radiusM: Int): Double = when {
+        // A 50 m circle at 17 is a dot; close enough in and it is a doorway you can aim at.
+        radiusM <= 75 -> 18.0
         radiusM <= 150 -> 17.0
         radiusM <= 400 -> 16.0
         else -> 15.0
