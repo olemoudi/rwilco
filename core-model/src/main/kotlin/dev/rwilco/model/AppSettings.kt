@@ -65,6 +65,12 @@ data class AppSettings(
      * the app's own behaviour, which is a thing to go looking for and not a thing to be handed.
      */
     val busyWatchNotice: Boolean = false,
+    /**
+     * What a reminder feels like: how hard it buzzes and whether it buzzes in one stretch. The
+     * default is what the app did before there was a choice, so nobody's phone changes
+     * character by updating. See [waveformFor] for the minute it is capped at.
+     */
+    val vibration: VibrationPattern = VibrationPattern(),
 )
 
 /** Nine in the morning, until somebody says otherwise. */

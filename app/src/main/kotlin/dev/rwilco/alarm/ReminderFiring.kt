@@ -115,7 +115,7 @@ class ReminderFiring(
         if (reminder.ruleMatch == RuleMatch.ALL && reminder.rulesCombine) {
             repository.setFiredRules(id, reminder.rules.indices.toSet())
         }
-        AlertPresenter.show(context, reminder, firingPlan(reminder.actions), late)
+        AlertPresenter.show(context, reminder, firingPlan(reminder.actions), late, settingsStore.settings.first().vibration)
         scheduler.rearmAll()
     }
 

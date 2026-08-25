@@ -262,12 +262,26 @@ strict is asking somebody to remember how they spelled it.
   so. The decision itself is a pure function with JVM tests. "Hecho" finishes
   a one-shot and leaves anything that can come round again.
 - `AlertNotifications` has one channel per sound/vibration combination, because a channel's
-  sound is fixed the moment it is created. A full-screen alert's notification stays silent: the
-  screen does its own looping ring (`AlertRinger`) and gives up after two minutes — and so does
+  sound is fixed the moment it is created — which is also how the vibration setting reaches a
+  notification: the chosen rhythm is part of the channel id, so changing it means a different
+  channel rather than an edit Android would ignore. Only the rhythm; a channel's pattern is
+  durations and nothing else, with no way to say how hard, so a gentle notification and a strong
+  one are the same notification. A full-screen alert's notification stays silent: the
+  screen does its own ring (`AlertRinger`) and gives up after two minutes — and so does
   its hold on the screen (`FLAG_KEEP_SCREEN_ON` is cleared with the noise). Nobody answered in
   two minutes because nobody is there, and a display lit at full brightness until somebody comes
   home costs more battery than everything else in this app together. The alert is still on the
   screen when they do, and the notification is still in the shade either way.
+- **The vibration is built whole and finite** (`core-model/Vibration.kt`): strength and rhythm
+  from `AppSettings.vibration`, and a waveform long enough to last exactly its minute
+  (`VibrationLimits.LONGEST`) with **no repeat count**. The obvious way to buzz until somebody
+  answers is a repeating waveform stopped by hand, and it is what this app did — but "later" is
+  then a promise the app has to keep through a killed process, a crash, a `stop()` that never
+  ran, and what is on the other side of a broken promise is a motor buzzing until the battery is
+  flat. Handing the whole minute to the system removes the promise. A minute is also as long as
+  a coil driving a weight should be asked to work in a stretch, and an alarm that has buzzed for
+  one has made its point. Amplitude needs a motor that can do it (`hasAmplitudeControl`); where
+  it cannot, gentle and strong are the same vibration and Settings says so.
 - `AlertActivity` shows over the lock screen and turns it on; it is its own task so dismissing
   an alarm at three in the morning does not drop anybody into the app's back stack. "Hecho" is
   the bottom-most control on it, because the bottom of the screen is where a half-awake thumb

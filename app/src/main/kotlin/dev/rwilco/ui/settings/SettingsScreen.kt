@@ -218,6 +218,8 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
 
             SectionHeader(stringResource(R.string.settings_alerts))
             AlertPermissionsCard()
+            Spacer(Modifier.height(spacing.sm))
+            VibrationCard(pattern = current.vibration, onChange = viewModel::setVibration)
 
             SectionHeader(
                 title = stringResource(R.string.settings_location),
@@ -310,7 +312,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
 
 /** A setting's name, with its explanation folded behind an (i) when it has one. */
 @Composable
-private fun SettingTitle(title: String, modifier: Modifier = Modifier, info: String? = null) {
+internal fun SettingTitle(title: String, modifier: Modifier = Modifier, info: String? = null) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
         Text(title, style = MaterialTheme.typography.bodyLarge)
         if (info != null) InfoBadge(info)

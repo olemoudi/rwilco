@@ -18,6 +18,8 @@ import dev.rwilco.ui.alert.AlertActivity
 import dev.rwilco.model.FiringPlan
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Snooze
+import dev.rwilco.model.VibrationPattern
+import dev.rwilco.model.notificationPattern
 import java.time.Instant
 
 /**
@@ -27,6 +29,12 @@ import java.time.Instant
  * afterwards, so there is one channel per combination the app can ask for rather than one
  * channel edited in place. The `_v1` in the ids is the way out if the sound ever has to change:
  * bump it and the new channels are created alongside.
+ *
+ * Which is also how the vibration setting reaches a notification: the chosen rhythm is part of
+ * the id, so changing it means a different channel rather than an edit Android would ignore.
+ * Only the rhythm — a channel's pattern is durations and nothing else, with no way to say how
+ * hard, so gentle and strong are the same notification. The strength is honoured on the
+ * full-screen alert, which drives the motor itself.
  */
 object AlertNotifications {
 
@@ -34,14 +42,14 @@ object AlertNotifications {
     private const val VERSION = "v1"
     const val CHANNEL_MISSED = "missed_$VERSION"
 
-    fun ensureChannels(context: Context) {
+    fun ensureChannels(context: Context, vibration: VibrationPattern = VibrationPattern()) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         manager.createNotificationChannelGroup(
             NotificationChannelGroup(GROUP, context.getString(R.string.notif_group_alerts)),
         )
         for (sound in listOf(false, true)) {
             for (vibrate in listOf(false, true)) {
-                manager.createNotificationChannel(alertChannel(context, sound, vibrate))
+                manager.createNotificationChannel(alertChannel(context, sound, vibrate, vibration))
             }
         }
         manager.createNotificationChannel(
@@ -54,9 +62,16 @@ object AlertNotifications {
         )
     }
 
-    fun post(context: Context, reminder: Reminder, plan: FiringPlan, late: Instant?, fullScreen: Boolean = plan.fullScreen) {
-        ensureChannels(context)
-        val channel = if (late != null) CHANNEL_MISSED else channelId(plan.notificationSound, plan.notificationVibrate)
+    fun post(
+        context: Context,
+        reminder: Reminder,
+        plan: FiringPlan,
+        late: Instant?,
+        fullScreen: Boolean = plan.fullScreen,
+        vibration: VibrationPattern = VibrationPattern(),
+    ) {
+        ensureChannels(context, vibration)
+        val channel = if (late != null) CHANNEL_MISSED else channelId(plan.notificationSound, plan.notificationVibrate, vibration)
         val open = activityIntent(context, reminder.id)
         val builder = NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_notification)
@@ -98,17 +113,21 @@ object AlertNotifications {
 
     fun notificationId(reminderId: String): Int = reminderId.hashCode()
 
-    private fun channelId(sound: Boolean, vibrate: Boolean): String =
-        "alert_${VERSION}_s${if (sound) 1 else 0}_v${if (vibrate) 1 else 0}"
+    private fun channelId(sound: Boolean, vibrate: Boolean, vibration: VibrationPattern): String {
+        // The rhythm only belongs in the id of a channel that actually vibrates; a silent one
+        // would otherwise get two ids for one behaviour.
+        val rhythm = if (vibrate) "_${vibration.rhythm.name.first().lowercase()}" else ""
+        return "alert_${VERSION}_s${if (sound) 1 else 0}_v${if (vibrate) 1 else 0}$rhythm"
+    }
 
-    private fun alertChannel(context: Context, sound: Boolean, vibrate: Boolean): NotificationChannel {
+    private fun alertChannel(context: Context, sound: Boolean, vibrate: Boolean, vibration: VibrationPattern): NotificationChannel {
         val nameRes = when {
             sound && vibrate -> R.string.notif_channel_sound_vibrate
             sound -> R.string.notif_channel_sound
             vibrate -> R.string.notif_channel_vibrate
             else -> R.string.notif_channel_quiet
         }
-        return NotificationChannel(channelId(sound, vibrate), context.getString(nameRes), NotificationManager.IMPORTANCE_HIGH).apply {
+        return NotificationChannel(channelId(sound, vibrate, vibration), context.getString(nameRes), NotificationManager.IMPORTANCE_HIGH).apply {
             group = GROUP
             if (sound) {
                 // Alarm usage on purpose: somebody who ticked "Sonido" on a reminder means to
@@ -119,7 +138,7 @@ object AlertNotifications {
                 setSound(null, null)
             }
             enableVibration(vibrate)
-            if (vibrate) vibrationPattern = longArrayOf(0, 400, 250, 400)
+            if (vibrate) vibrationPattern = notificationPattern(vibration).toLongArray()
         }
     }
 

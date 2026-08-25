@@ -206,6 +206,8 @@ class EditorTourTest {
         rule.onNodeWithContentDescription(s(R.string.home_settings)).performClick()
         rule.waitUntilShown(s(R.string.settings_title))
         shot("settings")
+        text(s(R.string.settings_vibration_try)).performScrollTo()
+        shot("settings-vibration")
         // Dark mode only, by the owner's rule: the light scheme shares every token and layout,
         // and each extra pass through the emulator costs minutes.
         text(s(R.string.watch_log_open)).performScrollTo()

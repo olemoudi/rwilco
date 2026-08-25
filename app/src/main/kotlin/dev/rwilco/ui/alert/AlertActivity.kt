@@ -62,8 +62,8 @@ class AlertActivity : ComponentActivity() {
             val zone = app.clock.zone
             val today = remember { app.clock.instant().atZone(zone).toLocalDate() }
 
-            DisposableEffect(plan) {
-                ringer.start(sound = plan.sound, vibrate = plan.vibrate)
+            DisposableEffect(plan, current.vibration) {
+                ringer.start(sound = plan.sound, vibrate = plan.vibrate, pattern = current.vibration)
                 onDispose { ringer.stop() }
             }
             // An alarm that rings for ever is one nobody leaves the house with. The alert stays

@@ -13,6 +13,7 @@ import android.util.Log
 import dev.rwilco.alarm.ReminderScheduler
 import dev.rwilco.model.FiringPlan
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.VibrationPattern
 import dev.rwilco.ui.alert.AlertActivity
 import java.time.Instant
 
@@ -69,7 +70,7 @@ fun alertPresentation(
  */
 object AlertPresenter {
 
-    fun show(context: Context, reminder: Reminder, plan: FiringPlan, late: Instant?) {
+    fun show(context: Context, reminder: Reminder, plan: FiringPlan, late: Instant?, vibration: VibrationPattern = VibrationPattern()) {
         // Every action turned off is an answer too: the moment passes without a word, and the
         // reminder is simply overdue on Home afterwards.
         if (!plan.notification && !plan.fullScreen) {
@@ -83,7 +84,14 @@ object AlertPresenter {
             foreground = context.foregroundApp(),
             canOverlay = context.canDrawOverlays(),
         )
-        AlertNotifications.post(context, reminder, plan, late, fullScreen = presentation == AlertPresentation.FULL_SCREEN)
+        AlertNotifications.post(
+            context,
+            reminder,
+            plan,
+            late,
+            fullScreen = presentation == AlertPresentation.FULL_SCREEN,
+            vibration = vibration,
+        )
         // With the screen off or locked, the notification's full-screen intent is what launches
         // the alert — the system does it for us, and doing it here as well would race with it.
         if (presentation == AlertPresentation.FULL_SCREEN && inUse) {

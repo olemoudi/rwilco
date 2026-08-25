@@ -597,4 +597,15 @@
     <!-- The two chips the app keeps for itself, at the end of the tag row. -->
     <string name="home_tag_untagged">Sin etiqueta</string>
     <string name="home_tag_paused">En pausa</string>
+
+    <!-- What a reminder feels like. -->
+    <string name="settings_vibration_strength">Vibración</string>
+    <string name="settings_vibration_hint">Cómo vibra un recordatorio al sonar. Nada que ver con la vibración al tocar de arriba: esto es la alarma, no la interfaz. Algunos móviles sólo tienen una intensidad, y en ésos «suave» se siente igual que «fuerte».</string>
+    <string name="settings_vibration_strong">Fuerte</string>
+    <string name="settings_vibration_gentle">Suave</string>
+    <string name="settings_vibration_rhythm">Ritmo</string>
+    <string name="settings_vibration_pulsed">Intermitente</string>
+    <string name="settings_vibration_continuous">Continua</string>
+    <string name="settings_vibration_try">Probar</string>
+    <string name="settings_vibration_limit">Un recordatorio nunca vibra más de un minuto: el motor de vibración es una bobina moviendo un peso, y las dos cosas se calientan. Una alarma que lleva un minuto vibrando ya ha dicho lo que tenía que decir.</string>
 </resources>

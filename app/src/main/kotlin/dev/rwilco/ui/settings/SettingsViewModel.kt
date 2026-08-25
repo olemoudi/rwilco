@@ -14,6 +14,7 @@ import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.PlaceWatchPolicy
 import dev.rwilco.model.ThemeMode
 import dev.rwilco.model.Trigger
+import dev.rwilco.model.VibrationPattern
 import dev.rwilco.model.WatchLog
 import dev.rwilco.model.pollsSince
 import dev.rwilco.model.TriggerKind
@@ -89,6 +90,9 @@ class SettingsViewModel(
     /** What "the next day" means to this person: where a recurrence in days or months lands. */
     fun setDayStart(time: LocalTime) = update { it.copy(dayStart = time) }
     fun setHaptics(enabled: Boolean) = update { it.copy(haptics = enabled) }
+
+    /** What a reminder feels like. Unrelated to [setHaptics], which is the UI's own touch feedback. */
+    fun setVibration(pattern: VibrationPattern) = update { it.copy(vibration = pattern) }
 
     /** Null puts the six tiles back in their usual order: no favourite. */
     // The two are one row of answers on screen: choosing a kind puts the popular order away.

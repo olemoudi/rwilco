@@ -599,4 +599,15 @@
     <!-- The two chips the app keeps for itself, at the end of the tag row. -->
     <string name="home_tag_untagged">No tag</string>
     <string name="home_tag_paused">Paused</string>
+
+    <!-- What a reminder feels like. -->
+    <string name="settings_vibration_strength">Vibration</string>
+    <string name="settings_vibration_hint">How a reminder buzzes when it rings. Separate from the touch feedback above: this is the alarm, not the interface. Some phones have one strength and nothing else, and on those «gentle» feels the same as «strong».</string>
+    <string name="settings_vibration_strong">Strong</string>
+    <string name="settings_vibration_gentle">Gentle</string>
+    <string name="settings_vibration_rhythm">Rhythm</string>
+    <string name="settings_vibration_pulsed">Buzz and pause</string>
+    <string name="settings_vibration_continuous">One long buzz</string>
+    <string name="settings_vibration_try">Feel it</string>
+    <string name="settings_vibration_limit">A reminder never buzzes for more than a minute: a vibration motor is a coil driving a weight, and both get hot. An alarm that has buzzed for a minute has made its point anyway.</string>
 </resources>
