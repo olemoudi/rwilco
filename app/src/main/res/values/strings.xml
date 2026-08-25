@@ -638,4 +638,12 @@
         <item>Any file works too — mp3, wav, whatever the phone can open.</item>
         <item>«Sound» is now two tiles: once, or until answered. The insistent one comes back every few minutes until you deal with the reminder — five times, five minutes apart, both yours to change — and stops the moment you answer it, snooze it or pause it.</item>
     </string-array>
+
+    <!-- The change log, at the bottom of Settings. -->
+    <string name="settings_release_notes">What has changed</string>
+    <string name="settings_release_notes_hint">The last five releases. You are on %1$s.</string>
+    <string-array name="whats_new_0_11_1">
+        <item>This, at the bottom of Settings: the last five releases, whenever you want them rather than only once after an update.</item>
+        <item>The time range trigger has an icon that means a range — a clock with a slice of it filled. It was an hourglass, which says «time passing» and said it in nearly the same glyph as the countdown two tiles away.</item>
+    </string-array>
 </resources>

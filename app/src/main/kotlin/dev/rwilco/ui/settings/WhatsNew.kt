@@ -32,6 +32,7 @@ data class Release(val versionCode: Int, val name: String, @ArrayRes val bullets
 
 /** Newest first. Empty until there is a release worth a word; the sheet then never appears. */
 val RELEASES: List<Release> = listOf(
+    Release(versionCode = 30, name = "0.11.1", bulletsRes = R.array.whats_new_0_11_1),
     Release(versionCode = 29, name = "0.11.0", bulletsRes = R.array.whats_new_0_11_0),
     Release(versionCode = 28, name = "0.10.0", bulletsRes = R.array.whats_new_0_10_0),
     Release(versionCode = 27, name = "0.9.0", bulletsRes = R.array.whats_new_0_9_0),
@@ -73,7 +74,9 @@ fun entriesFor(lastSeenVersionCode: Int, currentVersionCode: Int, releases: List
         .sortedByDescending { it.versionCode }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** How many releases Settings offers to look back over. Past five is a history, not a change log. */
+const val RECENT_RELEASES = 5
+
 @Composable
 fun WhatsNewSheet(lastSeenVersionCode: Int, onSeen: (Int) -> Unit) {
     val current = BuildConfig.VERSION_CODE
@@ -83,15 +86,34 @@ fun WhatsNewSheet(lastSeenVersionCode: Int, onSeen: (Int) -> Unit) {
         LaunchedEffect(lastSeenVersionCode) { if (lastSeenVersionCode < current) onSeen(current) }
         return
     }
+    ReleaseNotesSheet(
+        entries = entries,
+        title = stringResource(R.string.whats_new_title),
+        // Dismissing IS having seen it: there is no other way out, and a sheet that comes back
+        // because somebody swiped instead of tapping is a sheet nobody reads the second time.
+        onDismiss = { onSeen(current) },
+    )
+}
+
+/**
+ * The release notes, whoever asked for them.
+ *
+ * Two callers with different bookkeeping and one appearance: the sheet that arrives after an
+ * update and marks itself seen, and the one somebody opens from Settings to look back, which
+ * marks nothing because looking is not the same as being told.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ReleaseNotesSheet(entries: List<Release>, title: String, onDismiss: () -> Unit) {
     val spacing = Tokens.spacing
     ModalBottomSheet(
-        onDismissRequest = { onSeen(current) },
+        onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         shape = MaterialTheme.shapes.extraLarge,
     ) {
         Column(modifier = Modifier.padding(horizontal = spacing.screen)) {
-            Text(stringResource(R.string.whats_new_title), style = MaterialTheme.typography.headlineSmall)
+            Text(title, style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(spacing.lg))
             // The button sits OUTSIDE the scrolling part, so a long release can never push the
             // only way out below the fold.
@@ -104,7 +126,7 @@ fun WhatsNewSheet(lastSeenVersionCode: Int, onSeen: (Int) -> Unit) {
                     Text(release.name, style = MaterialTheme.typography.titleMedium)
                     for (bullet in stringArrayResource(release.bulletsRes)) {
                         Text(
-                            text = "· $bullet",
+                            text = "\u00b7 $bullet",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = spacing.xs),
@@ -114,7 +136,7 @@ fun WhatsNewSheet(lastSeenVersionCode: Int, onSeen: (Int) -> Unit) {
                 }
             }
             Button(
-                onClick = { onSeen(current) },
+                onClick = onDismiss,
                 shape = MaterialTheme.shapes.medium,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.onSurface,

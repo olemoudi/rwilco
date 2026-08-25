@@ -636,4 +636,12 @@
         <item>También vale cualquier archivo — mp3, wav, lo que el móvil sepa abrir.</item>
         <item>«Sonido» son ahora dos fichas: una vez, o hasta que lo atiendas. El insistente vuelve cada pocos minutos hasta que te ocupas del recordatorio — cinco veces, cada cinco minutos, y ambas cosas las cambias tú — y para en cuanto lo atiendes, lo pospones o lo pausas.</item>
     </string-array>
+
+    <!-- The change log, at the bottom of Settings. -->
+    <string name="settings_release_notes">Qué ha cambiado</string>
+    <string name="settings_release_notes_hint">Las cinco últimas versiones. Estás en la %1$s.</string>
+    <string-array name="whats_new_0_11_1">
+        <item>Esto mismo, al final de Ajustes: las cinco últimas versiones, cuando te apetezca y no sólo una vez tras actualizar.</item>
+        <item>El disparador de franja horaria tiene un icono que significa una franja — un reloj con una porción rellena. Era un reloj de arena, que dice «tiempo transcurriendo» y lo decía con casi el mismo glifo que la cuenta atrás, dos fichas más allá.</item>
+    </string-array>
 </resources>

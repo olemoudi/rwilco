@@ -216,6 +216,12 @@ class EditorTourTest {
         // and each extra pass through the emulator costs minutes.
         text(s(R.string.watch_log_open)).performScrollTo()
         shot("settings-location")
+        // The change log lives at the very bottom, which is the last thing the tour scrolls to.
+        text(s(R.string.settings_release_notes)).performScrollTo().performClick()
+        rule.waitUntilDisplayed(s(R.string.whats_new_ok))
+        shot("settings-release-notes")
+        text(s(R.string.whats_new_ok)).performClick()
+        rule.waitUntilGone(s(R.string.whats_new_ok))
         text(s(R.string.watch_log_open)).performClick()
         rule.waitUntilShown(s(R.string.watch_log_title))
         shot("watch-log")

@@ -48,6 +48,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.rwilco.BuildConfig
 import dev.rwilco.R
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.ThemeMode
@@ -317,6 +318,43 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
                 title = stringResource(R.string.settings_about),
                 info = stringResource(R.string.settings_about_body) + "\n\n" + stringResource(R.string.settings_licenses),
             )
+            // The last thing on the last screen, which is where "what changed" belongs: nobody
+            // comes looking for it, and everybody knows to look at the bottom of Settings.
+            var showNotes by rememberSaveable { mutableStateOf(false) }
+            RwilcoCard {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = Tokens.sizes.touch)
+                        .clickable { showNotes = true }
+                        .padding(horizontal = spacing.lg, vertical = spacing.md),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_release_notes),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_release_notes_hint, BuildConfig.VERSION_NAME),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            if (showNotes) {
+                ReleaseNotesSheet(
+                    entries = RELEASES.take(RECENT_RELEASES),
+                    title = stringResource(R.string.settings_release_notes),
+                    onDismiss = { showNotes = false },
+                )
+            }
         }
     }
 }
