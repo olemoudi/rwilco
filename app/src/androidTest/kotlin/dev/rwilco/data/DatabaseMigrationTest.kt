@@ -28,6 +28,7 @@ class DatabaseMigrationTest {
 
     private companion object {
         const val DB = "migration-test.db"
+        const val BY_TRIGGER = """{"type":"by_trigger"}"""
     }
 
     @Test
@@ -56,7 +57,8 @@ class DatabaseMigrationTest {
      * v4 asked a question the app had been answering for people: does this keep going after you
      * deal with it? Everything written before it behaved as "yes, whenever the trigger can",
      * which for a place meant ringing again the next time you walked through your own door. The
-     * migration keeps that behaviour only where the trigger IS a recurrence.
+     * migration keeps that behaviour only where the trigger IS a recurrence — and v5 turned that
+     * answer from a boolean into a shape, so what is asserted here is the shape it ends up with.
      */
     @Test
     fun the_upgrade_keeps_repeating_triggers_repeating_and_stops_the_rest() {
@@ -73,14 +75,17 @@ class DatabaseMigrationTest {
 
         val db = helper.runMigrationsAndValidate(DB, RwilcoDatabase.VERSION, true, *RwilcoDatabase.MIGRATIONS)
 
-        db.query("SELECT id, repeats FROM reminder ORDER BY id").use { cursor ->
-            val repeats = buildMap {
-                while (cursor.moveToNext()) put(cursor.getString(0), cursor.getInt(1))
+        db.query("SELECT id, recurrence, lastDealtAt FROM reminder ORDER BY id").use { cursor ->
+            val recurrences = buildMap {
+                while (cursor.moveToNext()) {
+                    put(cursor.getString(0), cursor.getString(1))
+                    assertTrue("nothing has been dealt with yet", cursor.isNull(2))
+                }
             }
-            assertEquals("a place was one-shot in intent all along", 0, repeats["place"])
-            assertEquals(0, repeats["date"])
-            assertEquals("a repeating time is a recurrence by definition", 1, repeats["weekly"])
-            assertEquals(1, repeats["random"])
+            assertEquals("a place was one-shot in intent all along", NO_RECURRENCE, recurrences["place"])
+            assertEquals(NO_RECURRENCE, recurrences["date"])
+            assertEquals("a repeating time is a recurrence by definition", BY_TRIGGER, recurrences["weekly"])
+            assertEquals(BY_TRIGGER, recurrences["random"])
         }
     }
 

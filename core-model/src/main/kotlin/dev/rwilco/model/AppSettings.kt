@@ -45,4 +45,15 @@ data class AppSettings(
     val presets: List<Preset> = emptyList(),
     /** Phrases dismissed from the "or reuse one" offers; the reminders that used them stay. */
     val hiddenTexts: List<String> = emptyList(),
+    /**
+     * What "the next day" means: the hour a recurrence measured in days, weeks or months lands
+     * on. Never earlier — a reminder dealt with at midnight comes back in the morning, not at
+     * one minute past.
+     */
+    val dayStart: LocalTime = DEFAULT_DAY_START,
+    /** Recurrences kept under a name, plus the four everybody needs before they need any others. */
+    val recurrencePresets: List<RecurrencePreset> = defaultRecurrencePresets(),
 )
+
+/** Nine in the morning, until somebody says otherwise. */
+val DEFAULT_DAY_START: LocalTime = LocalTime.of(9, 0)

@@ -63,13 +63,19 @@ files the rest under Overdue / Today / Tomorrow / This week (rolling 7 days) / L
 Paused. Random moments come from `RandomDraw.kt`: SplitMix64 seeded by (reminder id, period
 index), pinned by golden values in its test.
 
-Dealing with a firing (`statusAfterDismissal`) finishes a reminder unless it was asked to keep
-going (`Reminder.repeats`, off by default, a switch under the triggers). That default is a bug
-fix: the rule used to be "anything that CAN come round again stays active", and a place can
-always come round again, so a reminder dealt with in the morning rang on the way back through
-the same door. Whether something should repeat is not a question a trigger's shape can answer.
-Choosing a repeating time or a random window switches it on visibly, since those kinds ARE a
-recurrence; Room v4 migrates old rows the same way.
+Dealing with a firing (`statusAfterDismissal`) finishes a reminder unless its `Recurrence` says
+otherwise — `None` by default, because "hecho" means finished and a place can always come round
+again. `Recurrence.kt` is the whole vocabulary: `ByTrigger` hands the question back to the
+triggers (a repeating time, a random window), while `After(amount, unit)` and
+`MonthlyWeekday(ordinal, day)` work out their own moments from `Reminder.lastDealtAt` — the
+instant the person dealt with the last firing, which is the only one that knows anything. Hours
+are exact; days, weeks and months land on `AppSettings.dayStart` and never before the span is
+up. The triggers say when it rings the FIRST time and the recurrence when it comes back, so
+`recurrenceMoment` takes over once it has been dealt with once — or straight away when there
+are no triggers at all, which is what makes "cada 6 h" a whole reminder on its own.
+`RecurrencePreset`s (in the settings, four built in unnamed) put the usual answers on buttons.
+Room v4 added the boolean this replaced; v5 turns it into a shape (`by_trigger` for whatever
+repeated) and rebuilds the table to drop it.
 
 `Validation.kt` decides what blocks a save, which is only the words and a trigger that is
 nonsense in itself: a reminder needs **neither a trigger nor an action**. One with neither is a

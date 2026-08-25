@@ -94,6 +94,9 @@ class ReminderFiring(
         repository.snooze(id, null)
         // A round dealt with is a round over: what had already happened stops counting.
         repository.setFiredRules(id, emptySet())
+        // The moment every recurrence counts from — "six hours after the last one" is six hours
+        // after this, not after whenever the alarm happened to go off.
+        repository.setLastDealtAt(id, now)
         repository.setStatus(id, status)
         AlertNotifications.cancel(context, id)
         scheduler.rearmAll()

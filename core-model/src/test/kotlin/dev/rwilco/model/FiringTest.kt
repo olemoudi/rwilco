@@ -53,20 +53,20 @@ class FiringTest {
     @Test
     fun `asked to keep going, it stays for as long as something can ring`() {
         val at = local(2026, 8, 27, 21, 31)
-        assertEquals(Status.ACTIVE, statusAfterDismissal(reminder(weekly).copy(repeats = true), at, zone, defaultTime))
-        assertEquals(Status.ACTIVE, statusAfterDismissal(reminder(place).copy(repeats = true), at, zone, defaultTime))
+        assertEquals(Status.ACTIVE, statusAfterDismissal(reminder(weekly).copy(recurrence = Recurrence.ByTrigger), at, zone, defaultTime))
+        assertEquals(Status.ACTIVE, statusAfterDismissal(reminder(place).copy(recurrence = Recurrence.ByTrigger), at, zone, defaultTime))
         assertEquals(
             Status.ACTIVE,
-            statusAfterDismissal(reminder(past, weekly).copy(repeats = true), now, zone, defaultTime),
+            statusAfterDismissal(reminder(past, weekly).copy(recurrence = Recurrence.ByTrigger), now, zone, defaultTime),
             "one dead trigger does not end a reminder that still repeats",
         )
         // Repeating with nothing left to repeat is still finished.
-        assertEquals(Status.DONE, statusAfterDismissal(reminder(past).copy(repeats = true), now, zone, defaultTime))
+        assertEquals(Status.DONE, statusAfterDismissal(reminder(past).copy(recurrence = Recurrence.ByTrigger), now, zone, defaultTime))
     }
 
     @Test
     fun `dismissing ignores a snooze that is still running`() {
-        val snoozed = reminder(past).copy(repeats = true, snoozedUntil = now.plusSeconds(600))
+        val snoozed = reminder(past).copy(recurrence = Recurrence.ByTrigger, snoozedUntil = now.plusSeconds(600))
         assertEquals(Status.DONE, statusAfterDismissal(snoozed, now, zone, defaultTime))
     }
 

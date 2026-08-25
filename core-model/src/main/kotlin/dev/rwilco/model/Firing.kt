@@ -22,7 +22,10 @@ import java.time.temporal.TemporalAdjusters
  * person can, and until they do the answer is no.
  */
 fun statusAfterDismissal(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalTime): Status {
-    if (!reminder.repeats) return Status.DONE
+    if (!reminder.recurrence.repeats) return Status.DONE
+    // A recurrence that works out its own moments always has a next one, so there is nothing to
+    // check: it stays. Anything else hands the question back to the triggers.
+    if (reminder.recurrence.isAnchored) return Status.ACTIVE
     // Dealt with means the round is over: what had already happened under ALL stops counting,
     // and the question is whether the reminder can come round again from scratch.
     val cleared = reminder.copy(status = Status.ACTIVE, snoozedUntil = null, firedRules = emptySet())

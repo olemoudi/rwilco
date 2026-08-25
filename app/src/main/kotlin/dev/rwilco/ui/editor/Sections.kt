@@ -396,8 +396,6 @@ internal fun TriggersSection(
     rules: List<TriggerRule>,
     ruleMatch: RuleMatch,
     onRuleMatch: (RuleMatch) -> Unit,
-    repeats: Boolean,
-    onRepeats: (Boolean) -> Unit,
     clock: Clock,
     today: LocalDate,
     defaultTime: LocalTime,
@@ -470,56 +468,6 @@ internal fun TriggersSection(
             Spacer(Modifier.width(Tokens.spacing.sm))
             Text(stringResource(R.string.editor_add_trigger), style = MaterialTheme.typography.titleMedium)
         }
-        // What "hecho" means for this one. Only where there is something to repeat.
-        if (rules.isNotEmpty()) {
-            Spacer(Modifier.height(Tokens.spacing.md))
-            RepeatsToggle(repeats = repeats, onChange = onRepeats)
-        }
-    }
-}
-
-/**
- * Whether dealing with a firing ends the reminder or leaves it waiting for the next moment.
- *
- * Off by default, and that default is the fix for a real complaint: a place reminder dealt with
- * in the morning rang again on the way back through the same door, because the app read "this
- * can happen again" as "you want this again". Only the person can answer that.
- */
-@Composable
-private fun RepeatsToggle(repeats: Boolean, onChange: (Boolean) -> Unit) {
-    val haptics = Tokens.haptics
-    val scheme = MaterialTheme.colorScheme
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .toggleable(
-                value = repeats,
-                role = Role.Switch,
-                onValueChange = { on ->
-                    haptics.perform(if (on) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff)
-                    onChange(on)
-                },
-            )
-            .heightIn(min = Tokens.sizes.touch),
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.editor_repeats), style = MaterialTheme.typography.bodyLarge)
-            Text(
-                text = stringResource(if (repeats) R.string.editor_repeats_on else R.string.editor_repeats_off),
-                style = MaterialTheme.typography.bodySmall,
-                color = scheme.onSurfaceVariant,
-            )
-        }
-        Spacer(Modifier.width(Tokens.spacing.md))
-        Switch(
-            checked = repeats,
-            onCheckedChange = null,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = scheme.surface,
-                checkedTrackColor = scheme.onSurface,
-            ),
-        )
     }
 }
 
@@ -549,10 +497,8 @@ private fun QuickWhenRow(clock: Clock, onPick: (Trigger) -> Unit) {
     ) {
         PresetChip(
             label = soonLabel.replaceFirstChar { it.titlecase(locale) },
-            onClick = {
-                val at = clock.instant().atZone(clock.zone).plusMinutes(QUICK_MINUTES.toLong()).truncatedTo(ChronoUnit.MINUTES)
-                onPick(Trigger.AtDateTime(at.toLocalDateTime()))
-            },
+            // A length, so it starts when the reminder does rather than at some fixed minute.
+            onClick = { onPick(Trigger.Countdown(QUICK_MINUTES)) },
         )
         if (now.toLocalTime().isBefore(tonight)) {
             PresetChip(

@@ -161,6 +161,14 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                     }
                     Column {
                         SettingTitle(
+                            title = stringResource(R.string.settings_day_start),
+                            info = stringResource(R.string.settings_day_start_hint),
+                        )
+                        Spacer(Modifier.height(spacing.sm))
+                        TimeField(time = current.dayStart, onChange = viewModel::setDayStart, modifier = Modifier.fillMaxWidth())
+                    }
+                    Column {
+                        SettingTitle(
                             title = stringResource(R.string.settings_weekend),
                             info = stringResource(R.string.settings_weekend_hint),
                         )

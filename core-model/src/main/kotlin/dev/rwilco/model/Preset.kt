@@ -42,8 +42,8 @@ data class Preset(
     val rules: List<TriggerRule> = emptyList(),
     val ruleMatch: RuleMatch = RuleMatch.ANY,
     val actions: Set<Action> = DEFAULT_ACTIONS,
-    /** Whether the reminders made from it keep going after they are dealt with. */
-    val repeats: Boolean = false,
+    /** How the reminders made from it come back after they are dealt with. */
+    val recurrence: Recurrence = Recurrence.None,
     /** Which of the [PRESET_COLORS] this one wears. */
     val colorIndex: Int = 0,
     /** Whether it has a button of its own on Home, for making one in a single tap. */
@@ -96,7 +96,7 @@ fun Preset.toReminder(id: String, now: Instant, words: String = text): Reminder 
     rules = startCountdowns(rules, now),
     ruleMatch = ruleMatch,
     actions = actions,
-    repeats = repeats,
+    recurrence = recurrence,
     status = Status.ACTIVE,
     createdAt = now,
     updatedAt = now,

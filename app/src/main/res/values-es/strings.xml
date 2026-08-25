@@ -129,6 +129,43 @@
     <string name="editor_edit_trigger">Editar disparador</string>
     <string name="editor_remove_trigger">Quitar disparador</string>
     <string name="editor_what_title">Qué pasa</string>
+    <string name="editor_recurrence_title">Vuelve</string>
+    <string name="recur_none">No repetir</string>
+    <string name="recur_by_trigger">Cuando toque</string>
+    <string name="recur_hours">Cada %1$d h</string>
+    <string name="recur_next_day">Al día siguiente</string>
+    <string name="recur_days">Cada %1$d días</string>
+    <string name="recur_week">Cada semana</string>
+    <string name="recur_weeks">Cada %1$d semanas</string>
+    <string name="recur_month">Cada mes</string>
+    <string name="recur_months">Cada %1$d meses</string>
+    <string name="recur_monthly_weekday">%1$s %2$s del mes</string>
+    <string name="recur_more">Más</string>
+    <string name="recur_custom">Personalizado</string>
+    <string name="recur_custom_title">Recurrencia personalizada</string>
+    <string name="recur_list_title">Recurrencias</string>
+    <string name="recur_edit">Editar</string>
+    <string name="recur_delete">Borrar</string>
+    <string name="recur_save_as">Guardar con un nombre</string>
+    <string name="recur_save_as_hint">Déjalo vacío para no guardarla</string>
+    <string name="recur_kind_after">Tras hacerlo</string>
+    <string name="recur_kind_monthly">Un día del mes</string>
+    <string name="recur_every">Cada</string>
+    <string name="recur_which_one">Cuál</string>
+    <string name="recur_after_done">Se cuenta desde que lo marcas hecho, no desde el reloj.</string>
+    <string name="recur_unit_hours">horas</string>
+    <string name="recur_unit_days">días</string>
+    <string name="recur_unit_weeks">semanas</string>
+    <string name="recur_unit_months">meses</string>
+    <string-array name="recur_ordinals">
+        <item>1er</item>
+        <item>2º</item>
+        <item>3º</item>
+        <item>4º</item>
+        <item>último</item>
+    </string-array>
+    <string name="settings_day_start">Qué significa «al día siguiente»</string>
+    <string name="settings_day_start_hint">La hora en la que cae una recurrencia medida en días, semanas o meses. Nunca antes: algo hecho a medianoche vuelve por la mañana.</string>
     <string name="editor_repeats">Seguir avisando</string>
     <string name="editor_repeats_on">Marcarlo hecho lo deja esperando al siguiente momento.</string>
     <string name="editor_repeats_off">Marcarlo hecho lo da por terminado.</string>
@@ -399,6 +436,12 @@
     <string-array name="whats_new_0_4_2">
         <item>Pausar un recordatorio ahora dice lo que va a hacer — la palabra «Pausar» o «Reanudar» junto al botón, porque un icono de pausa a secas se lee igual de bien como «esto está pausado».</item>
         <item>Es más grande, está arriba con las palabras del recordatorio en vez de entre los iconos grises que no se pueden pulsar, y pide un dedo que se quede. Si sueltas antes, no pasa nada.</item>
+    </string-array>
+    <string-array name="whats_new_0_7_0">
+        <item>La recurrencia ha crecido. «Vuelve» es una tarjeta propia, con las respuestas más habituales como botones —al día siguiente, cada 6 h, cada semana—, la lista entera tras los puntos suspensivos, y «Personalizado» para construir una a medida.</item>
+        <item>Casi todas cuentan desde TI, no desde el reloj: «cada 6 h» son seis horas desde que lo marcas hecho, que es como funciona una medicina de verdad. También está «el enésimo día de la semana de cada mes» para lo que es una fecha y no una costumbre.</item>
+        <item>Cualquier recurrencia que construyas se puede guardar con un nombre desde ese mismo panel, y entonces es un botón más — las más usadas primero, editables y borrables desde la lista.</item>
+        <item>Ajustes dice qué significa «al día siguiente»: la hora en la que cae una recurrencia medida en días, semanas o meses. Nunca antes, así que algo hecho a medianoche vuelve por la mañana.</item>
     </string-array>
     <string-array name="whats_new_0_6_1">
         <item>Una cuenta atrás ya es una duración, no una fecha. Antes se guardaba el momento al que salía, y por eso un preset no podía llevar una de verdad: se habría quedado con la media hora siguiente al día en que lo escribiste.</item>

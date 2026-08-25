@@ -9,14 +9,14 @@ data class Reminder(
     /** How [ruleMatch] combines them; a rule's own conditions always all have to hold (ANDed). */
     val rules: List<TriggerRule> = emptyList(),
     /**
-     * Whether dealing with a firing leaves it waiting for the next one.
+     * Whether dealing with a firing leaves it waiting for the next one, and when that is.
      *
-     * Off by default, and the default is the whole point: "hecho" means finished. A place, a
-     * repeating time and a random window can all technically come round again, and treating
-     * "can" as "should" is how a reminder somebody has dealt with rings at them again the same
+     * [Recurrence.None] by default, and the default is the whole point: "hecho" means finished.
+     * A place, a repeating time and a random window can all technically come round again, and
+     * treating "can" as "should" is how a reminder somebody has dealt with rings again the same
      * afternoon. Recurrence is a thing you ask for.
      */
-    val repeats: Boolean = false,
+    val recurrence: Recurrence = Recurrence.None,
     /** Whether any one rule is enough, or every one of them has to have happened. */
     val ruleMatch: RuleMatch = RuleMatch.ANY,
     val actions: Set<Action> = DEFAULT_ACTIONS,
@@ -28,6 +28,12 @@ data class Reminder(
     val snoozedUntil: Instant? = null,
     /** When it last actually rang. Paired with [armedFor] it is how a missed firing is spotted. */
     val lastFiredAt: Instant? = null,
+    /**
+     * When a firing was last dealt with. The anchor every recurrence counts from — "six hours
+     * after the last one" is six hours after this — and null until it has happened once, when
+     * the reminder's own beginning stands in for it.
+     */
+    val lastDealtAt: Instant? = null,
     /**
      * The moment the scheduler last set an alarm for. Persisted because it is the only way to
      * tell "the phone was off when this should have rung" from "it rang and I ignored it":

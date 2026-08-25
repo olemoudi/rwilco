@@ -70,6 +70,12 @@ object ReminderCodec {
         return names.mapNotNullTo(LinkedHashSet()) { name -> Action.entries.firstOrNull { it.name == name } }
     }
 
+    fun encodeRecurrence(recurrence: Recurrence): String = json.encodeToString(Recurrence.serializer(), recurrence)
+
+    /** A recurrence this build does not understand is no recurrence: it stops rather than guesses. */
+    fun decodeRecurrence(raw: String): Recurrence =
+        runCatching { json.decodeFromString(Recurrence.serializer(), raw) }.getOrDefault(Recurrence.None)
+
     fun encodeSettings(settings: AppSettings): String = json.encodeToString(AppSettings.serializer(), settings)
 
     /** A blob that does not parse yields the defaults rather than a crash on launch. */

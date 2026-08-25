@@ -99,10 +99,10 @@ class RuleMatchTest {
     @Test
     fun `dealing with a firing starts the round again`() {
         val everyDay = Trigger.AtTime(java.time.LocalTime.of(9, 0), java.time.DayOfWeek.entries.toSet())
-        val all = reminder(everyDay, home, match = RuleMatch.ALL, fired = setOf(0, 1)).copy(repeats = true)
+        val all = reminder(everyDay, home, match = RuleMatch.ALL, fired = setOf(0, 1)).copy(recurrence = Recurrence.ByTrigger)
         assertEquals(Status.ACTIVE, statusAfterDismissal(all, now, zone, defaultTime))
         // And without being asked to keep going, dealing with it is the end of it.
-        assertEquals(Status.DONE, statusAfterDismissal(all.copy(repeats = false), now, zone, defaultTime))
+        assertEquals(Status.DONE, statusAfterDismissal(all.copy(recurrence = Recurrence.None), now, zone, defaultTime))
     }
 
     @Test

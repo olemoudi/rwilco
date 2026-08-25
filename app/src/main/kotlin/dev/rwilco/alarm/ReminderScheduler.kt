@@ -50,7 +50,9 @@ class ReminderScheduler(
      * caller to deal with (only boot and the safety-net worker do; a plain edit does not).
      */
     suspend fun rearmAll(): List<Reminder> {
-        val defaultTime = settingsStore.settings.first().defaultTime
+        val settings = settingsStore.settings.first()
+        val defaultTime = settings.defaultTime
+        val dayStart = settings.dayStart
         val now = clock.instant()
         val zone = clock.zone
         val open = runCatching { repository.openNow() }.getOrElse {
@@ -62,7 +64,7 @@ class ReminderScheduler(
         for (reminder in open) {
             seen += reminder.id
             if (missedFire(reminder, now) != null) missed += reminder
-            val wake = nextWake(reminder, now, zone, defaultTime)
+            val wake = nextWake(reminder, now, zone, defaultTime, dayStart)
             if (wake == null) {
                 cancel(reminder.id)
                 if (reminder.armedFor != null) repository.setArmedFor(reminder.id, null, null)

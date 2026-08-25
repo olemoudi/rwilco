@@ -141,7 +141,7 @@ class HomeViewModel(
         // refreshTick is a StateFlow, so the merge has a value from the first collection on.
         merge(refreshTick, minutePulse),
     ) { reminders, current, tag, now ->
-        buildHomeState(reminders, current.defaultTime, now, clock.zone, tag)
+        buildHomeState(reminders, current.defaultTime, now, clock.zone, tag, current.dayStart)
     }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())

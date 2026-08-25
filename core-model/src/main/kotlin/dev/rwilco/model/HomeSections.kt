@@ -50,17 +50,19 @@ fun groupForHome(
     zone: ZoneId,
     defaultTime: LocalTime,
     tagFilter: String? = null,
+    dayStart: LocalTime = DEFAULT_DAY_START,
 ): HomeGroups {
     val entries = reminders
         .filter { it.status != Status.DONE }
         .filter { tagFilter == null || it.tags.any { tag -> tag.equals(tagFilter, ignoreCase = true) } }
-        .map { HomeEntry(it, nextFire(it, now, zone, defaultTime)) }
+        .map { HomeEntry(it, nextFire(it, now, zone, defaultTime, dayStart)) }
     val hero = entries
         .filter { it.next is NextFire.Scheduled }
         .minByOrNull { (it.next as NextFire.Scheduled).at }
     val grouped = entries
         .filter { it !== hero }
-        .groupBy { sectionOf(it.next, it.reminder.status, it.reminder.rules.isNotEmpty(), now, zone) }
+        // A reminder with no trigger but a recurrence is not "kept, not timed": it has a moment.
+        .groupBy { sectionOf(it.next, it.reminder.status, it.reminder.rules.isNotEmpty() || it.reminder.recurrence.isAnchored, now, zone) }
         .mapValues { (_, list) -> list.sortedWith(compareBy({ it.sortInstant() }, { -it.reminder.updatedAt.toEpochMilli() })) }
     val ordered = LinkedHashMap<Section, List<HomeEntry>>()
     for (section in Section.entries) grouped[section]?.let { ordered[section] = it }

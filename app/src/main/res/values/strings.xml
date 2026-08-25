@@ -131,6 +131,43 @@
     <string name="editor_edit_trigger">Edit trigger</string>
     <string name="editor_remove_trigger">Remove trigger</string>
     <string name="editor_what_title">What happens</string>
+    <string name="editor_recurrence_title">Comes back</string>
+    <string name="recur_none">Don\'t repeat</string>
+    <string name="recur_by_trigger">When it\'s due</string>
+    <string name="recur_hours">Every %1$d h</string>
+    <string name="recur_next_day">The next day</string>
+    <string name="recur_days">Every %1$d days</string>
+    <string name="recur_week">Every week</string>
+    <string name="recur_weeks">Every %1$d weeks</string>
+    <string name="recur_month">Every month</string>
+    <string name="recur_months">Every %1$d months</string>
+    <string name="recur_monthly_weekday">%1$s %2$s of the month</string>
+    <string name="recur_more">More</string>
+    <string name="recur_custom">Custom</string>
+    <string name="recur_custom_title">Custom recurrence</string>
+    <string name="recur_list_title">Recurrences</string>
+    <string name="recur_edit">Edit</string>
+    <string name="recur_delete">Delete</string>
+    <string name="recur_save_as">Keep it under a name</string>
+    <string name="recur_save_as_hint">Leave empty not to keep it</string>
+    <string name="recur_kind_after">After doing it</string>
+    <string name="recur_kind_monthly">A day of the month</string>
+    <string name="recur_every">Every</string>
+    <string name="recur_which_one">Which one</string>
+    <string name="recur_after_done">Counted from the moment you mark it done, not from the clock.</string>
+    <string name="recur_unit_hours">hours</string>
+    <string name="recur_unit_days">days</string>
+    <string name="recur_unit_weeks">weeks</string>
+    <string name="recur_unit_months">months</string>
+    <string-array name="recur_ordinals">
+        <item>1st</item>
+        <item>2nd</item>
+        <item>3rd</item>
+        <item>4th</item>
+        <item>last</item>
+    </string-array>
+    <string name="settings_day_start">What "the next day" means</string>
+    <string name="settings_day_start_hint">The hour a recurrence measured in days, weeks or months lands on. Never earlier: something dealt with at midnight comes back in the morning.</string>
     <string name="editor_repeats">Keep reminding me</string>
     <string name="editor_repeats_on">Marking it done waits for the next moment.</string>
     <string name="editor_repeats_off">Marking it done finishes it.</string>
@@ -401,6 +438,12 @@
     <string-array name="whats_new_0_4_2">
         <item>Pausing a reminder now says what it will do — the word "Pause" or "Resume" next to the button, because a pause glyph on its own reads as "this is paused" just as easily.</item>
         <item>It is bigger, it sits up with the reminder\'s own words instead of among the small grey glyphs that cannot be pressed, and it takes a finger that stays. Let go early and nothing happens.</item>
+    </string-array>
+    <string-array name="whats_new_0_7_0">
+        <item>Recurrence grew up. "Comes back" is a card of its own, with the answers people give most as buttons — the next day, every 6 h, every week — the whole list behind the dots, and "Custom" to build one from parts.</item>
+        <item>Most of them count from YOU, not from the clock: "every 6 h" means six hours after you mark it done, which is how medicine actually works. There is also "the nth weekday of each month" for the ones that are a date rather than a habit.</item>
+        <item>Any recurrence you build can be kept under a name from the same pane, and then it is a button too — most used first, editable and deletable from the list.</item>
+        <item>Settings says what "the next day" means: the hour a recurrence in days, weeks or months lands on. Never earlier, so something dealt with at midnight comes back in the morning.</item>
     </string-array>
     <string-array name="whats_new_0_6_1">
         <item>A countdown is a length of time now, not a date. It used to be stored as the moment it worked out to, which is why a preset could not really hold one: it would have kept the half hour after the day you wrote it.</item>

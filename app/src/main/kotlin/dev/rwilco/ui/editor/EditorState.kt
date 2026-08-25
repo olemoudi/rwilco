@@ -6,6 +6,8 @@ import dev.rwilco.model.DEFAULT_ACTIONS
 import dev.rwilco.model.MAX_PRESET_NAME
 import dev.rwilco.model.MAX_TEXT_LENGTH
 import dev.rwilco.model.Preset
+import dev.rwilco.model.Recurrence
+import dev.rwilco.model.RecurrencePreset
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.nextPresetColor
 import dev.rwilco.model.RuleMatch
@@ -30,12 +32,12 @@ data class Draft(
     val rules: List<TriggerRule> = emptyList(),
     /** Only means anything with more than one rule; the editor hides the choice until then. */
     val ruleMatch: RuleMatch = RuleMatch.ANY,
-    /** Whether dealing with a firing leaves it waiting for the next one. Asked for, never assumed. */
-    val repeats: Boolean = false,
+    /** How it comes back after being dealt with. Asked for, never assumed. */
+    val recurrence: Recurrence = Recurrence.None,
     val actions: Set<Action> = DEFAULT_ACTIONS,
 )
 
-fun Reminder.toDraft() = Draft(text = text, tags = tags, rules = rules, ruleMatch = ruleMatch, actions = actions, repeats = repeats)
+fun Reminder.toDraft() = Draft(text = text, tags = tags, rules = rules, ruleMatch = ruleMatch, actions = actions, recurrence = recurrence)
 
 /**
  * Note what is NOT carried over: a snooze, the last ring, the armed moment. Editing a reminder
@@ -51,7 +53,7 @@ fun Draft.toReminder(id: String, createdAt: Instant, now: Instant, status: Statu
     rules = startCountdowns(rules, now),
     ruleMatch = ruleMatch,
     actions = actions,
-    repeats = repeats,
+    recurrence = recurrence,
     status = status,
     createdAt = createdAt,
     updatedAt = now,
@@ -106,6 +108,8 @@ data class EditorUiState(
     val allTexts: List<String> = emptyList(),
     /** Which list of offers is being mended, if any. */
     val curating: CurateKind? = null,
+    /** The recurrences kept under a name, most used first. */
+    val recurrencePresets: List<RecurrencePreset> = emptyList(),
     /** The preset this reminder was started from, when it was: named on the screen. */
     val fromPresetName: String? = null,
     /**
@@ -144,7 +148,7 @@ fun EditorUiState.toPreset(id: String, now: Instant, existing: Preset?, others: 
     rules = clearCountdowns(draft.rules),
     ruleMatch = draft.ruleMatch,
     actions = draft.actions,
-    repeats = draft.repeats,
+    recurrence = draft.recurrence,
     // A preset keeps the colour it was given: it is how it is recognised, and a colour that
     // moves is worse than no colour at all.
     colorIndex = existing?.colorIndex ?: nextPresetColor(others),
@@ -172,8 +176,8 @@ fun EditorUiState.addTag(raw: String): EditorUiState {
     return copy(draft = draft.copy(tags = draft.tags + spelling))
 }
 
-/** The recurrence toggle: what "hecho" means for this one. */
-fun EditorUiState.setRepeats(repeats: Boolean): EditorUiState = copy(draft = draft.copy(repeats = repeats))
+/** What "hecho" means for this one. */
+fun EditorUiState.setRecurrence(recurrence: Recurrence): EditorUiState = copy(draft = draft.copy(recurrence = recurrence))
 
 /**
  * Changing how the rules combine starts the round over: what had already happened under ALL was
@@ -209,11 +213,15 @@ fun EditorUiState.commitTrigger(index: Int?, trigger: Trigger): EditorUiState {
     } else {
         draft.rules + TriggerRule(trigger)
     }
-    // Choosing "a time that repeats" or "at random" IS choosing a recurrence, so the toggle
-    // turns itself on — in plain sight, right under the row, and switchable back off. Every
-    // other kind leaves it alone: a place or a date is one-shot until somebody says otherwise.
-    val recurring = draft.repeats || trigger is Trigger.AtTime || trigger is Trigger.Random
-    return copy(draft = draft.copy(rules = rules, repeats = recurring), sheet = EditorSheet.None)
+    // Choosing "a time that repeats" or "at random" IS choosing a recurrence, so it says so —
+    // in plain sight, right under the row, and changeable. Every other kind leaves the answer
+    // alone: a place or a date is one-shot until somebody says otherwise.
+    val recurrence = when {
+        draft.recurrence != Recurrence.None -> draft.recurrence
+        trigger is Trigger.AtTime || trigger is Trigger.Random -> Recurrence.ByTrigger
+        else -> draft.recurrence
+    }
+    return copy(draft = draft.copy(rules = rules, recurrence = recurrence), sheet = EditorSheet.None)
 }
 
 fun EditorUiState.addCondition(ruleIndex: Int): EditorUiState =

@@ -2,6 +2,7 @@ package dev.rwilco.ui.home
 
 import dev.rwilco.model.Action
 import dev.rwilco.model.Condition
+import dev.rwilco.model.DEFAULT_DAY_START
 import dev.rwilco.model.NextFire
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
@@ -73,11 +74,12 @@ fun buildHomeState(
     now: Instant,
     zone: ZoneId,
     selectedTag: String?,
+    dayStart: LocalTime = DEFAULT_DAY_START,
 ): HomeUiState {
     val tags = tagsInUse(reminders)
     // A filter on a tag that no longer exists (its last reminder was deleted) is no filter.
     val filter = selectedTag?.takeIf { tag -> tags.any { it.equals(tag, ignoreCase = true) } }
-    val groups = groupForHome(reminders, now, zone, defaultTime, filter)
+    val groups = groupForHome(reminders, now, zone, defaultTime, filter, dayStart)
     fun card(reminder: Reminder) = ReminderCardUi(
         id = reminder.id,
         text = reminder.text,

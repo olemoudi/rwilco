@@ -6,13 +6,14 @@ import java.time.ZoneId
 
 /** What a reminder will do next, as far as the model can know without the scheduler. */
 sealed interface NextFire {
-    val trigger: Trigger
+    /** Null when the moment comes from a recurrence rather than from a rule of its own. */
+    val trigger: Trigger?
 
     /**
      * A definite moment. [snoozed] means the moment comes from a "remind me later", not from
      * [trigger] — the trigger is carried anyway so the row keeps the icon it is recognised by.
      */
-    data class Scheduled(val at: Instant, override val trigger: Trigger, val snoozed: Boolean = false) : NextFire
+    data class Scheduled(val at: Instant, override val trigger: Trigger?, val snoozed: Boolean = false) : NextFire
 
     /**
      * A random moment: [at] is the deterministic draw the scheduler will use; the UI shows the
@@ -37,14 +38,14 @@ sealed interface NextFire {
  * For ALL it is the *last* of the ones still pending, because that is the one that rings — and
  * if a place is among them there is no date to give at all, so it answers with the place.
  */
-fun nextFire(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalTime): NextFire? {
+fun nextFire(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalTime, dayStart: LocalTime = DEFAULT_DAY_START): NextFire? {
     if (reminder.status != Status.ACTIVE) return null
     // A snooze outranks every rule: it is the person saying "not now, then".
     val snoozedUntil = reminder.snoozedUntil
     if (snoozedUntil != null && snoozedUntil > now) {
-        val trigger = reminder.rules.firstOrNull()?.trigger ?: return null
-        return NextFire.Scheduled(snoozedUntil, trigger, snoozed = true)
+        return NextFire.Scheduled(snoozedUntil, reminder.rules.firstOrNull()?.trigger, snoozed = true)
     }
+    reminder.recurrenceMoment(zone, dayStart)?.let { return NextFire.Scheduled(it, reminder.rules.firstOrNull()?.trigger) }
     val pending = reminder.pendingRules()
     val candidates = pending.mapNotNull { index ->
         nextFireOfRule(reminder.rules[index], reminder.id, now, zone, defaultTime)
@@ -77,10 +78,12 @@ private fun NextFire.momentOrNull(): Instant? = when (this) {
  */
 data class Wake(val at: Instant, val ruleIndex: Int?)
 
-fun nextWake(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalTime): Wake? {
+fun nextWake(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalTime, dayStart: LocalTime = DEFAULT_DAY_START): Wake? {
     if (reminder.status != Status.ACTIVE) return null
     val snoozedUntil = reminder.snoozedUntil
     if (snoozedUntil != null && snoozedUntil > now) return Wake(snoozedUntil, null)
+    // A recurrence's moment is the ring itself: there is no rule behind it to tick off.
+    reminder.recurrenceMoment(zone, dayStart)?.let { return Wake(it, null) }
     return reminder.pendingRules()
         .mapNotNull { index ->
             val at = nextFireOfRule(reminder.rules[index], reminder.id, now, zone, defaultTime)?.momentOrNull()
@@ -164,4 +167,17 @@ private fun nextRandom(trigger: Trigger.Random, reminderId: String, now: Instant
         )
     }
     return null
+}
+
+/**
+ * The moment this reminder's recurrence asks for, when it is the recurrence's turn to say.
+ *
+ * The triggers say when it rings the FIRST time; the recurrence says when it comes back. So the
+ * recurrence takes over once the reminder has been dealt with at least once — and straight away
+ * when there are no triggers at all, which is what makes "cada 6 h" a whole reminder on its own.
+ */
+fun Reminder.recurrenceMoment(zone: ZoneId, dayStart: LocalTime): Instant? {
+    if (!recurrence.isAnchored) return null
+    if (lastDealtAt == null && rules.isNotEmpty()) return null
+    return nextRecurrence(recurrence, lastDealtAt ?: createdAt, zone, dayStart)
 }

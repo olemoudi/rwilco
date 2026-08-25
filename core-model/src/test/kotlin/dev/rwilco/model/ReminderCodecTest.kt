@@ -138,7 +138,12 @@ class ReminderCodecTest {
         assertEquals(
             """{"theme":"SYSTEM","defaultTime":"09:00","haptics":true,"defaultTriggerKind":null,""" +
                 """"weekendDay":"FRIDAY","weekendTime":"20:30","lastSeenVersionCode":0,"savedPlaces":[],""" +
-                """"defaultActions":["NOTIFICATION","VIBRATE"],"presets":[],"hiddenTexts":[]}""",
+                """"defaultActions":["NOTIFICATION","VIBRATE"],"presets":[],"hiddenTexts":[],""" +
+                """"dayStart":"09:00","recurrencePresets":[""" +
+                """{"id":"builtin-day","recurrence":{"type":"after","amount":1,"unit":"DAYS"},"name":"","uses":0,"lastUsedAt":null},""" +
+                """{"id":"builtin-6h","recurrence":{"type":"after","amount":6,"unit":"HOURS"},"name":"","uses":0,"lastUsedAt":null},""" +
+                """{"id":"builtin-week","recurrence":{"type":"after","amount":1,"unit":"WEEKS"},"name":"","uses":0,"lastUsedAt":null},""" +
+                """{"id":"builtin-month","recurrence":{"type":"after","amount":1,"unit":"MONTHS"},"name":"","uses":0,"lastUsedAt":null}]}""",
             encoded,
         )
     }

@@ -30,6 +30,7 @@ import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.Button
@@ -214,8 +215,6 @@ fun EditorScreen(
                         rules = state.draft.rules,
                         ruleMatch = state.draft.ruleMatch,
                         onRuleMatch = viewModel::setRuleMatch,
-                        repeats = state.draft.repeats,
-                        onRepeats = viewModel::setRepeats,
                         clock = viewModel.clock,
                         today = today,
                         defaultTime = state.defaultTime,
@@ -233,6 +232,19 @@ fun EditorScreen(
                         onAddCondition = viewModel::addCondition,
                         onEditCondition = viewModel::editCondition,
                         onRemoveCondition = viewModel::removeCondition,
+                    )
+                }
+                EditorSection(
+                    title = stringResource(R.string.editor_recurrence_title),
+                    icon = Icons.Outlined.Repeat,
+                ) {
+                    RecurrenceSection(
+                        recurrence = state.draft.recurrence,
+                        presets = state.recurrencePresets,
+                        onPick = viewModel::pickRecurrencePreset,
+                        onCustom = viewModel::setRecurrence,
+                        onSavePreset = viewModel::saveRecurrencePreset,
+                        onDeletePreset = viewModel::deleteRecurrencePreset,
                     )
                 }
                 EditorSection(

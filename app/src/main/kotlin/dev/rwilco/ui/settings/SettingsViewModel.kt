@@ -59,6 +59,9 @@ class SettingsViewModel(
         settings.copy(defaultActions = if (action in actions) actions - action else actions + action)
     }
     fun setDefaultTime(time: LocalTime) = update { it.copy(defaultTime = time) }
+
+    /** What "the next day" means to this person: where a recurrence in days or months lands. */
+    fun setDayStart(time: LocalTime) = update { it.copy(dayStart = time) }
     fun setHaptics(enabled: Boolean) = update { it.copy(haptics = enabled) }
 
     /** Null puts the six tiles back in their usual order: no favourite. */

@@ -8,6 +8,10 @@ import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.Action
 import dev.rwilco.model.AppSettings
+import dev.rwilco.model.Recurrence
+import dev.rwilco.model.RecurrencePreset
+import dev.rwilco.model.recurrencePresetsByPopularity
+import dev.rwilco.model.used
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
@@ -77,8 +81,8 @@ class EditorViewModel(
                 loaded != null -> loaded.toDraft()
                 // Editing the preset itself starts from its name; STARTING one from it does
                 // not — the name labels the shape, and the words are what is still missing.
-                editedPreset != null -> Draft(text = editedPreset.name, tags = editedPreset.tags, rules = editedPreset.rules, ruleMatch = editedPreset.ruleMatch, actions = editedPreset.actions, repeats = editedPreset.repeats)
-                source != null -> Draft(text = source.text, tags = source.tags, rules = source.rules, ruleMatch = source.ruleMatch, actions = source.actions, repeats = source.repeats)
+                editedPreset != null -> Draft(text = editedPreset.name, tags = editedPreset.tags, rules = editedPreset.rules, ruleMatch = editedPreset.ruleMatch, actions = editedPreset.actions, recurrence = editedPreset.recurrence)
+                source != null -> Draft(text = source.text, tags = source.tags, rules = source.rules, ruleMatch = source.ruleMatch, actions = source.actions, recurrence = source.recurrence)
                 else -> Draft(actions = current.defaultActions)
             }
             // Everything ever written, done included: the point is to hand back what has been
@@ -96,6 +100,7 @@ class EditorViewModel(
                 defaultTime = current.defaultTime,
                 defaultKind = current.defaultTriggerKind,
                 savedPlaces = current.savedPlaces,
+                recurrencePresets = recurrencePresetsByPopularity(current.recurrencePresets),
                 asPreset = editedPreset != null || newPreset,
                 initialAsPreset = editedPreset != null || newPreset,
                 editingPreset = editedPreset,
@@ -116,7 +121,50 @@ class EditorViewModel(
     fun addTag(raw: String) = _state.update { it.addTag(raw) }
     fun toggleAction(action: Action) = _state.update { it.toggleAction(action) }
     fun setRuleMatch(match: RuleMatch) = _state.update { it.setRuleMatch(match) }
-    fun setRepeats(repeats: Boolean) = _state.update { it.setRepeats(repeats) }
+    fun setRecurrence(recurrence: Recurrence) = _state.update { it.setRecurrence(recurrence) }
+
+    /** Picking one off the row counts as a use, which is what keeps the row in a useful order. */
+    fun pickRecurrencePreset(preset: RecurrencePreset) {
+        _state.update { it.setRecurrence(preset.recurrence) }
+        viewModelScope.launch {
+            val now = clock.instant()
+            store.update { settings ->
+                settings.copy(recurrencePresets = settings.recurrencePresets.map { if (it.id == preset.id) it.used(now) else it })
+            }
+        }
+    }
+
+    /** Keeping one under a name: a new one when [id] is null, otherwise that one rewritten. */
+    fun saveRecurrencePreset(id: String?, name: String, recurrence: Recurrence) {
+        viewModelScope.launch {
+            val presetId = id ?: UUID.randomUUID().toString()
+            store.update { settings ->
+                val others = settings.recurrencePresets.filterNot { it.id == presetId }
+                val existing = settings.recurrencePresets.firstOrNull { it.id == presetId }
+                val preset = RecurrencePreset(
+                    id = presetId,
+                    recurrence = recurrence,
+                    name = name,
+                    uses = existing?.uses ?: 0,
+                    lastUsedAt = existing?.lastUsedAt,
+                )
+                settings.copy(recurrencePresets = others + preset)
+            }
+            refreshRecurrencePresets()
+        }
+    }
+
+    fun deleteRecurrencePreset(id: String) {
+        viewModelScope.launch {
+            store.update { settings -> settings.copy(recurrencePresets = settings.recurrencePresets.filterNot { it.id == id }) }
+            refreshRecurrencePresets()
+        }
+    }
+
+    private suspend fun refreshRecurrencePresets() {
+        val current = settings.filterNotNull().first()
+        _state.update { it.copy(recurrencePresets = recurrencePresetsByPopularity(current.recurrencePresets)) }
+    }
     fun openKindPicker() = _state.update { it.openKindPicker() }
     fun pickKind(kind: TriggerKind) = _state.update { it.pickKind(kind) }
     fun editTrigger(index: Int) = _state.update { it.editTrigger(index) }

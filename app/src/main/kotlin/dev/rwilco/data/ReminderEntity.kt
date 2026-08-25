@@ -35,9 +35,14 @@ data class ReminderEntity(
     val armedRule: Int? = null,
     /** ALL only: the rule indices already ticked off this round, comma-separated. */
     val firedRules: String = "",
-    /** Whether "hecho" leaves it waiting for the next moment. Off unless it was asked for. */
-    val repeats: Boolean = false,
+    /** How it comes back after being dealt with, as JSON; unknown shapes read as "not at all". */
+    val recurrence: String = NO_RECURRENCE,
+    /** When a firing was last dealt with: what every recurrence counts from. */
+    val lastDealtAt: Long? = null,
 )
+
+/** The stored form of no recurrence, and what every row written before v5 gets. */
+const val NO_RECURRENCE = "{\"type\":\"none\"}"
 
 fun ReminderEntity.toDomain(): Reminder = Reminder(
     id = id,
@@ -57,7 +62,8 @@ fun ReminderEntity.toDomain(): Reminder = Reminder(
     ruleMatch = RuleMatch.entries.firstOrNull { it.name == ruleMatch } ?: RuleMatch.ANY,
     armedRule = armedRule,
     firedRules = decodeIndices(firedRules),
-    repeats = repeats,
+    recurrence = ReminderCodec.decodeRecurrence(recurrence),
+    lastDealtAt = lastDealtAt?.let(Instant::ofEpochMilli),
 )
 
 fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
@@ -76,7 +82,8 @@ fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
     ruleMatch = ruleMatch.name,
     armedRule = armedRule,
     firedRules = encodeIndices(firedRules),
-    repeats = repeats,
+    recurrence = ReminderCodec.encodeRecurrence(recurrence),
+    lastDealtAt = lastDealtAt?.toEpochMilli(),
 )
 
 /**

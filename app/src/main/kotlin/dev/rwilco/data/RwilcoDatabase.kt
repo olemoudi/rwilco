@@ -18,7 +18,7 @@ abstract class RwilcoDatabase : RoomDatabase() {
 
     companion object {
         /** A named constant so MigrationChainTest can assert the chain reaches it. */
-        const val VERSION = 4
+        const val VERSION = 5
         private const val NAME = "rwilco.db"
 
         /** One entry per version step; `// vN: what it added` on each. */
@@ -54,7 +54,38 @@ abstract class RwilcoDatabase : RoomDatabase() {
                     )
                 }
             },
+            // v5: recurrence became a shape rather than a yes/no. Everything that repeated did so
+            // by its triggers, which is exactly what "by_trigger" means, so that is what those
+            // rows become; the rest keep the "done is done" they already had. The old boolean
+            // goes with them — SQLite cannot drop a column here, so the table is rebuilt.
+            object : Migration(4, 5) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        "CREATE TABLE reminder_v5 (" +
+                            "id TEXT NOT NULL PRIMARY KEY, text TEXT NOT NULL, tags TEXT NOT NULL, " +
+                            "triggers TEXT NOT NULL, actions TEXT NOT NULL, status TEXT NOT NULL, " +
+                            "createdAt INTEGER NOT NULL, updatedAt INTEGER NOT NULL, doneAt INTEGER, " +
+                            "snoozedUntil INTEGER, lastFiredAt INTEGER, armedFor INTEGER, " +
+                            "ruleMatch TEXT NOT NULL DEFAULT 'ANY', armedRule INTEGER, " +
+                            "firedRules TEXT NOT NULL DEFAULT '', " +
+                            "recurrence TEXT NOT NULL DEFAULT '" + NO_RECURRENCE + "', lastDealtAt INTEGER)",
+                    )
+                    db.execSQL(
+                        "INSERT INTO reminder_v5 SELECT id, text, tags, triggers, actions, status, " +
+                            "createdAt, updatedAt, doneAt, snoozedUntil, lastFiredAt, armedFor, " +
+                            "ruleMatch, armedRule, firedRules, " +
+                            "CASE repeats WHEN 1 THEN '" + BY_TRIGGER_RECURRENCE + "' ELSE '" + NO_RECURRENCE + "' END, " +
+                            "NULL FROM reminder",
+                    )
+                    db.execSQL("DROP TABLE reminder")
+                    db.execSQL("ALTER TABLE reminder_v5 RENAME TO reminder")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS index_reminder_status ON reminder (status)")
+                }
+            },
         )
+
+        /** What "it repeated" meant before v5 had words for anything else. */
+        private const val BY_TRIGGER_RECURRENCE = "{\"type\":\"by_trigger\"}"
 
         @Volatile
         private var instance: RwilcoDatabase? = null
