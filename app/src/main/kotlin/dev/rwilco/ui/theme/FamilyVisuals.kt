@@ -5,11 +5,11 @@ import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Casino
 import androidx.compose.material.icons.outlined.Event
-import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.HourglassTop
 import androidx.compose.material.icons.outlined.OpenInFull
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Repeat
+import androidx.compose.material.icons.outlined.Timelapse
 import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material.icons.outlined.ViewAgenda
@@ -65,7 +65,10 @@ val TriggerKind.icon: ImageVector
         TriggerKind.DATE_TIME -> Icons.Outlined.Event
         TriggerKind.DATE -> Icons.Outlined.CalendarToday
         TriggerKind.REPEAT_TIME -> Icons.Outlined.Repeat
-        TriggerKind.INTERVAL -> Icons.Outlined.HourglassEmpty
+        // A clock with a slice of it filled: a stretch OF the day, which is what a range is.
+        // The hourglass this used to be said "time passing", and said it in almost the same
+        // glyph as the countdown two tiles away.
+        TriggerKind.INTERVAL -> Icons.Outlined.Timelapse
         TriggerKind.COUNTDOWN -> Icons.Outlined.HourglassTop
         TriggerKind.PLACE -> Icons.Outlined.Place
         TriggerKind.RANDOM -> Icons.Outlined.Casino
