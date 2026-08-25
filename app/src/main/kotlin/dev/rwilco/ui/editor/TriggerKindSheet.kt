@@ -23,6 +23,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.rwilco.R
+import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.TriggerKind
 import dev.rwilco.ui.components.TriggerKeycap
 import dev.rwilco.ui.theme.Tokens
@@ -106,11 +107,26 @@ private fun KindTile(kind: TriggerKind, isDefault: Boolean, onClick: () -> Unit,
     }
 }
 
+val RuleMatch.labelRes: Int
+    get() = when (this) {
+        RuleMatch.ANY -> R.string.editor_match_any
+        RuleMatch.ALL -> R.string.editor_match_all
+        RuleMatch.TOGETHER -> R.string.editor_match_together
+    }
+
+val RuleMatch.hintRes: Int
+    get() = when (this) {
+        RuleMatch.ANY -> R.string.editor_match_any_hint
+        RuleMatch.ALL -> R.string.editor_match_all_hint
+        RuleMatch.TOGETHER -> R.string.editor_match_together_hint
+    }
+
 val TriggerKind.titleRes: Int
     get() = when (this) {
         TriggerKind.DATE_TIME -> R.string.kind_date_time
         TriggerKind.DATE -> R.string.kind_date
         TriggerKind.REPEAT_TIME -> R.string.kind_repeat_time
+        TriggerKind.INTERVAL -> R.string.kind_interval
         TriggerKind.COUNTDOWN -> R.string.kind_countdown
         TriggerKind.PLACE -> R.string.kind_place
         TriggerKind.RANDOM -> R.string.kind_random
@@ -121,6 +137,7 @@ private val TriggerKind.hintRes: Int
         TriggerKind.DATE_TIME -> R.string.kind_date_time_hint
         TriggerKind.DATE -> R.string.kind_date_hint
         TriggerKind.REPEAT_TIME -> R.string.kind_repeat_time_hint
+        TriggerKind.INTERVAL -> R.string.kind_interval_hint
         TriggerKind.COUNTDOWN -> R.string.kind_countdown_hint
         TriggerKind.PLACE -> R.string.kind_place_hint
         TriggerKind.RANDOM -> R.string.kind_random_hint

@@ -577,4 +577,15 @@
     <string name="editor_warning_places_conflict">This can never ring: it asks to be in two places that cannot both be true at once.</string>
     <string name="editor_warning_never_completes">Under «all» this one stops the whole reminder: it can never happen, so the set never completes and nothing ever rings.</string>
     <string name="editor_warning_better_as_condition">«All» rings with the last of them to happen, in any order and however far apart. If you meant «when I get here, and only in the evening», put the hours on this one with «and only if».</string>
+
+    <!-- The interval trigger: a stretch of the day rather than a point in it. -->
+    <string name="kind_interval">Time range</string>
+    <string name="kind_interval_hint">From 17:00 to 19:00</string>
+    <string name="interval_hint_alone">On its own it rings when the range opens — at 17:00, for «from 17:00 to 19:00».</string>
+    <string name="interval_hint_together">With «at once» this is the stretch the others have to fall inside: «at the office, between five and seven».</string>
+    <!-- The third reading of a list of triggers. -->
+    <string name="editor_match_together">At once</string>
+    <string name="editor_match_together_hint">All of them true at the same moment; rings the instant the last one becomes true.</string>
+    <string name="card_match_together">at once</string>
+    <string name="editor_warning_moments_apart">Two moments cannot be the same moment, so «at once» never rings here. Leave one moment and make the rest places or time ranges.</string>
 </resources>

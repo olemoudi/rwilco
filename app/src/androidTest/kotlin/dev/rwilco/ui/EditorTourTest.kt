@@ -130,6 +130,7 @@ class EditorTourTest {
         for ((kind, name) in listOf(
             R.string.kind_date_time to "sheet-datetime",
             R.string.kind_repeat_time to "sheet-repeat",
+            R.string.kind_interval to "sheet-interval",
             R.string.kind_random to "sheet-random",
             R.string.kind_place to "sheet-place",
         )) {

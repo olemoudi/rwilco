@@ -1,5 +1,6 @@
 package dev.rwilco.model
 
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
@@ -132,6 +133,14 @@ fun nextFireOf(trigger: Trigger, reminderId: String, now: Instant, zone: ZoneId,
         is Trigger.OnDate ->
             trigger.date.atTime(defaultTime).atZone(zone).toInstant().future(now)?.let { NextFire.Scheduled(it, trigger) }
         is Trigger.AtTime -> nextAtTime(trigger, now, zone)?.let { NextFire.Scheduled(it, trigger) }
+        // The window opening is the moment it becomes true, and the only moment it produces.
+        is Trigger.Interval -> nextAtTime(
+            // No days on a window means every day; nextAtTime reads an empty set as "never",
+            // which is right for a weekly appointment and wrong for a shape of the day.
+            Trigger.AtTime(trigger.from, trigger.days.ifEmpty { DayOfWeek.entries.toSet() }),
+            now,
+            zone,
+        )?.let { NextFire.Scheduled(it, trigger) }
         // Not yet stamped (a preset's copy, a draft): it would start now, so that is what it
         // answers — which is also what the editor should show while it is being written.
         is Trigger.Countdown -> (trigger.startedAt ?: now).plusSeconds(trigger.minutes * 60L)

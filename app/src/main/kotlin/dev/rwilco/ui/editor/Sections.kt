@@ -453,15 +453,16 @@ internal fun TriggersSection(
         // The choice only exists once there is something to combine, and it comes before the
         // list because it changes what the list means.
         if (rules.size > 1) {
+            // Three readings of the same list, in the order they get used: either one, all of
+            // them in any order, all of them at once.
+            val matches = listOf(RuleMatch.ANY, RuleMatch.ALL, RuleMatch.TOGETHER)
             SegmentedChoice(
-                options = listOf(stringResource(R.string.editor_match_any), stringResource(R.string.editor_match_all)),
-                selectedIndex = if (ruleMatch == RuleMatch.ANY) 0 else 1,
-                onSelect = { onRuleMatch(if (it == 0) RuleMatch.ANY else RuleMatch.ALL) },
+                options = matches.map { stringResource(it.labelRes) },
+                selectedIndex = matches.indexOf(ruleMatch).coerceAtLeast(0),
+                onSelect = { onRuleMatch(matches[it]) },
             )
             Text(
-                text = stringResource(
-                    if (ruleMatch == RuleMatch.ANY) R.string.editor_match_any_hint else R.string.editor_match_all_hint,
-                ),
+                text = stringResource(ruleMatch.hintRes),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = Tokens.spacing.xs, bottom = Tokens.spacing.sm),

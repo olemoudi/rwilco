@@ -89,7 +89,12 @@ sealed interface FiringOutcome {
 
 fun outcomeOfFiring(reminder: Reminder, ruleIndex: Int?): FiringOutcome {
     // A snooze's moment (no rule behind it) is the ring itself, as is anything under ANY.
-    if (ruleIndex == null || reminder.ruleMatch == RuleMatch.ANY || !reminder.rulesCombine) return FiringOutcome.Ring
+    //
+    // And under TOGETHER: nothing accumulates there. By the time a firing reaches here its
+    // rule has already been judged against every other one folded in as a state
+    // ([Reminder.togetherRule]), so all of them being true is what got it this far, and there
+    // is nothing left to wait for.
+    if (ruleIndex == null || reminder.ruleMatch != RuleMatch.ALL || !reminder.rulesCombine) return FiringOutcome.Ring
     if (ruleIndex !in reminder.rules.indices) return FiringOutcome.Ring
     val fired = reminder.firedRules.filter { it in reminder.rules.indices }.toSet() + ruleIndex
     return if (fired.size == reminder.rules.size) FiringOutcome.Ring else FiringOutcome.Wait(fired)

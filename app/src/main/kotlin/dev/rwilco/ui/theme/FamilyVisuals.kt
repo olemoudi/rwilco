@@ -5,6 +5,7 @@ import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Casino
 import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.HourglassTop
 import androidx.compose.material.icons.outlined.OpenInFull
 import androidx.compose.material.icons.outlined.Place
@@ -63,6 +64,7 @@ val TriggerKind.icon: ImageVector
         TriggerKind.DATE_TIME -> Icons.Outlined.Event
         TriggerKind.DATE -> Icons.Outlined.CalendarToday
         TriggerKind.REPEAT_TIME -> Icons.Outlined.Repeat
+        TriggerKind.INTERVAL -> Icons.Outlined.HourglassEmpty
         TriggerKind.COUNTDOWN -> Icons.Outlined.HourglassTop
         TriggerKind.PLACE -> Icons.Outlined.Place
         TriggerKind.RANDOM -> Icons.Outlined.Casino

@@ -575,4 +575,15 @@
     <string name="editor_warning_places_conflict">Esto no puede sonar nunca: pide estar en dos sitios que no pueden ser ciertos a la vez.</string>
     <string name="editor_warning_never_completes">Con «todos» éste bloquea el recordatorio entero: no puede ocurrir, así que el juego no se completa y no suena nada.</string>
     <string name="editor_warning_better_as_condition">«Todos» suena con el último que ocurra, en cualquier orden y por lejos que queden. Si querías «al llegar aquí, y sólo si es por la tarde», pon las horas en éste con «y sólo si».</string>
+
+    <!-- The interval trigger: a stretch of the day rather than a point in it. -->
+    <string name="kind_interval">Franja horaria</string>
+    <string name="kind_interval_hint">De 17:00 a 19:00</string>
+    <string name="interval_hint_alone">Sola, suena cuando se abre la franja — a las 17:00, para «de 17:00 a 19:00».</string>
+    <string name="interval_hint_together">Con «a la vez» ésta es la franja dentro de la que tienen que caer los demás: «en la oficina, entre las cinco y las siete».</string>
+    <!-- The third reading of a list of triggers. -->
+    <string name="editor_match_together">A la vez</string>
+    <string name="editor_match_together_hint">Todos ciertos en el mismo momento; suena en el instante en que el último se vuelve cierto.</string>
+    <string name="card_match_together">a la vez</string>
+    <string name="editor_warning_moments_apart">Dos momentos no pueden ser el mismo momento, así que «a la vez» no suena nunca aquí. Deja un momento y que los demás sean lugares o franjas horarias.</string>
 </resources>

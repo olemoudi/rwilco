@@ -65,6 +65,7 @@ import dev.rwilco.R
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.TriggerKind
 import dev.rwilco.model.ValidationError
+import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.ValidationWarning
 import dev.rwilco.model.warnings
 import dev.rwilco.ui.alert.AlertContent
@@ -74,6 +75,7 @@ import dev.rwilco.ui.editor.sheets.ConditionSheet
 import dev.rwilco.ui.editor.sheets.CountdownSheet
 import dev.rwilco.ui.editor.sheets.DateOnlySheet
 import dev.rwilco.ui.editor.sheets.DateTimeSheet
+import dev.rwilco.ui.editor.sheets.IntervalSheet
 import dev.rwilco.ui.editor.sheets.LocationSheet
 import dev.rwilco.ui.editor.sheets.RandomSheet
 import dev.rwilco.ui.editor.sheets.RepeatTimeSheet
@@ -134,6 +136,7 @@ fun EditorScreen(
                 is ValidationWarning.InPast -> warning.index to R.string.editor_warning_past
                 // Advice, not a fault, and it goes on the place: that is the half somebody
                 // would put the condition on.
+                is ValidationWarning.MomentsCannotCoincide -> warning.index to R.string.editor_warning_moments_apart
                 is ValidationWarning.BetterAsCondition -> warning.placeIndex to R.string.editor_warning_better_as_condition
             }
             worst.putIfAbsent(index, message)
@@ -318,6 +321,12 @@ fun EditorScreen(
                         initial = sheet.initial as? dev.rwilco.model.Trigger.OnDate,
                         today = today,
                         defaultTime = state.defaultTime,
+                        onConfirm = commit,
+                        onDismiss = viewModel::closeSheet,
+                    )
+                    TriggerKind.INTERVAL -> IntervalSheet(
+                        initial = sheet.initial as? dev.rwilco.model.Trigger.Interval,
+                        combining = state.draft.ruleMatch == RuleMatch.TOGETHER && state.draft.rules.size > 1,
                         onConfirm = commit,
                         onDismiss = viewModel::closeSheet,
                     )
@@ -545,6 +554,7 @@ internal fun FieldError(text: String, modifier: Modifier = Modifier) {
 /** Worst first, so the line a rule gets is the one that matters most. */
 private fun severityOf(warning: ValidationWarning): Int = when (warning) {
     is ValidationWarning.NeverCompletes -> 0
+    is ValidationWarning.MomentsCannotCoincide -> 1
     is ValidationWarning.PlacesConflict -> 1
     is ValidationWarning.NeverFires -> 2
     is ValidationWarning.InPast -> 3

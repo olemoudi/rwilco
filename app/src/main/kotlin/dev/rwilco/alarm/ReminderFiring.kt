@@ -14,6 +14,7 @@ import dev.rwilco.model.Condition
 import dev.rwilco.model.PlaceWatchPolicy
 import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.allHoldAt
+import dev.rwilco.model.togetherRule
 import dev.rwilco.model.knownInAdvance
 import dev.rwilco.model.firingPlan
 import dev.rwilco.model.missedFire
@@ -56,7 +57,15 @@ class ReminderFiring(
         // alarm again here would silence a firing the phone slept through — the catch-up runs
         // long after the window it was armed inside.
         val rule = ruleIndex?.let { reminder.rules.getOrNull(it) }
-        if (rule != null && !conditionsHold(rule, now)) {
+        // Under "a la vez" the rule is judged with every other one folded into it as a state:
+        // the moment this one happened is only a firing if all of them are true then. A null
+        // is a set that cannot hold at all — two instants asked to coincide.
+        val judged = ruleIndex?.let { reminder.togetherRule(it) }
+        if (ruleIndex != null && judged == null) {
+            Log.i(TAG, "$id asks for two moments at once, which never happens")
+            return
+        }
+        if (judged != null && !conditionsHold(judged, now)) {
             Log.i(TAG, "$id came round outside what its rule asks for")
             return
         }
@@ -128,12 +137,15 @@ class ReminderFiring(
     private suspend fun conditionsHold(rule: TriggerRule, now: Instant): Boolean {
         val asked = if (rule.trigger is Trigger.Location) rule.conditions else rule.conditions.filterNot { it.knownInAdvance }
         if (asked.isEmpty()) return true
-        val where = if (asked.any { it is Condition.AtPlace }) {
-            placeWatch.read().lastFix?.takeIf { Duration.between(it.at, now) <= PlaceWatchPolicy.SPEED_MEMORY }
-        } else {
-            null
-        }
-        return asked.allHoldAt(now, clock.zone, where)
+        // Where the phone is comes LAST, and only if everything a clock can settle has already
+        // said yes. An hour that has passed costs nothing to check; a position costs a store
+        // read of a fix somebody paid a radio for, and there is no sense paying it to find out
+        // something that was already decided.
+        val (places, hours) = asked.partition { it is Condition.AtPlace }
+        if (!hours.allHoldAt(now, clock.zone)) return false
+        if (places.isEmpty()) return true
+        val where = placeWatch.read().lastFix?.takeIf { Duration.between(it.at, now) <= PlaceWatchPolicy.SPEED_MEMORY }
+        return places.allHoldAt(now, clock.zone, where)
     }
 
     /** "Hecho": finished if nothing can ring again, otherwise just this occurrence dealt with. */

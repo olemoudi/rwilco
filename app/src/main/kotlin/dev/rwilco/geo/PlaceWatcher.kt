@@ -22,6 +22,9 @@ import dev.rwilco.model.PlaceWatchPolicy
 import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.Status
 import dev.rwilco.model.pendingRules
+import dev.rwilco.model.openFrom
+import dev.rwilco.model.windows
+import dev.rwilco.model.togetherRule
 import dev.rwilco.model.place
 import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
@@ -106,6 +109,9 @@ class PlaceWatcher(
     /**
      * Every circle the open reminders need watched, keyed the way the geofences are.
      *
+     * A position is the most expensive answer this app buys, so it is the last one it asks for
+     * and the first one it declines to. See [watching] for what takes a circle off the list.
+     *
      * Two kinds, and the difference is whether they may ring. A rule's *trigger* is an event to
      * be caught, and only while the rule is still pending: under "todos" a rule whose moment
      * has already happened is ticked off in `firedRules` and watching its place again all week
@@ -114,15 +120,45 @@ class PlaceWatcher(
      * `fires = false`, so `stepPlaceWatch` never turns one into a firing — because the answer
      * has to be in hand at the moment some other trigger goes off.
      */
-    suspend fun places(): List<WatchedPlace> = repository.openNow()
+    suspend fun places(): List<WatchedPlace> = watching().places
+
+    /**
+     * What is worth watching now, and when the next circle that is not worth watching becomes
+     * so. See [places] for the two kinds; the gate below is what saves the polls.
+     */
+    private suspend fun watching(): Watching {
+        val now = clock.instant()
+        // A little before the hour it opens, so the first fix of a window is taken before
+        // anything is judged by it rather than after.
+        val soon = now + PlaceWatchPolicy.MIN_WAIT
+        val opens = java.util.concurrent.atomic.AtomicReference<Instant?>(null)
+        val places = repository.openNow()
         .filter { it.status == Status.ACTIVE }
         .flatMap { reminder ->
             val pending = reminder.pendingRules().toSet()
             reminder.rules.flatMapIndexed { index, rule ->
+                // Under "a la vez" every other rule is folded in, and its windows decide
+                // whether this circle can ring at all right now. A fold that comes back null
+                // is a crossing that can never ring — but the circle is still watched, quietly,
+                // because some other rule's moment is going to ask where the phone is.
+                val folded = reminder.togetherRule(index)
+                val gate = (folded ?: rule).windows().openFrom(now, clock.zone)
+                val live = gate != null && gate <= soon
+                if (gate != null && gate > soon) opens.updateAndGet { seen -> if (seen == null || gate < seen) gate else seen }
                 val trigger = (rule.trigger as? Trigger.Location)
-                    ?.takeIf { index in pending }
+                    ?.takeIf { index in pending && live }
                     ?.let { place ->
-                        WatchedPlace(GeofenceIds.encode(reminder.id, index), place.lat, place.lng, place.radiusM, place.transition, place.label)
+                        WatchedPlace(
+                            id = GeofenceIds.encode(reminder.id, index),
+                            lat = place.lat,
+                            lng = place.lng,
+                            radiusM = place.radiusM,
+                            transition = place.transition,
+                            label = place.label,
+                            // A crossing that cannot complete the set is worth knowing about
+                            // and not worth ringing about.
+                            fires = folded != null,
+                        )
                     }
                 val asked = rule.conditions.mapIndexedNotNull { at, condition ->
                     condition.place?.let { place ->
@@ -139,9 +175,14 @@ class PlaceWatcher(
                         )
                     }
                 }
-                listOfNotNull(trigger) + asked
+                if (!live) emptyList() else listOfNotNull(trigger) + asked
             }
         }
+        return Watching(places, opens.get())
+    }
+
+    /** The circles worth a fix now, and when the next one that is not becomes worth one. */
+    private data class Watching(val places: List<WatchedPlace>, val opensAt: Instant?)
 
     /**
      * The list of places changed, or the app started: forget places that are gone, and look soon
@@ -156,11 +197,15 @@ class PlaceWatcher(
      * knows it) or nothing is pending at all, which is also what a reboot looks like.
      */
     suspend fun sync() {
-        val places = places()
+        val watch = watching()
+        val places = watch.places
         val current = store.read()
         if (places.isEmpty() || !context.hasBackgroundLocation()) {
-            cancel()
-            store.write(current.copy(inside = emptyMap(), nextCheckAt = null))
+            // Nothing worth a fix now is not the same as nothing to watch: a set whose hours
+            // open at five is worth waking for at five and worth nothing until then.
+            val gate = watch.opensAt.takeIf { context.hasBackgroundLocation() }
+            store.write(current.copy(inside = emptyMap(), nextCheckAt = gate))
+            if (gate == null) cancel() else scheduleAt(gate)
             return
         }
         val ids = places.mapTo(HashSet()) { it.id }
@@ -196,9 +241,17 @@ class PlaceWatcher(
 
     /** One look: where is the phone, what did it cross, when to look again. Run by the alarm. */
     suspend fun check() {
-        val places = places()
+        val watch = watching()
+        val places = watch.places
         if (places.isEmpty() || !context.hasBackgroundLocation()) {
-            cancel()
+            val gate = watch.opensAt.takeIf { context.hasBackgroundLocation() }
+            if (gate == null) {
+                cancel()
+            } else {
+                Log.i(TAG, "nothing worth a fix until the hours open")
+                store.write(store.read().copy(nextCheckAt = gate, precise = false))
+                scheduleAt(gate)
+            }
             return
         }
         val before = store.read()
@@ -251,7 +304,10 @@ class PlaceWatcher(
         }
         Log.i(TAG, "${plan.gapM.toInt()} m from ${plan.nearest.label}; next look in ${plan.wait.toMinutes()} min${if (plan.precise) " (gps)" else ""}")
         write(NoteKind.FIX, now, step.state, plan, step.movement, charge)
-        scheduleAt(now + plan.wait, plan.gapM)
+        // Never past the moment another circle's hours open: that fix is the one that answers
+        // "was I there when the window started", and it has to be taken before anything asks.
+        val at = watch.opensAt?.coerceAtMost(now + plan.wait) ?: (now + plan.wait)
+        scheduleAt(at, plan.gapM)
     }
 
     /**

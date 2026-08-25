@@ -81,6 +81,13 @@ sealed interface ValidationWarning {
      * "al llegar a casa, y sólo si es por la tarde" — which is what a condition is for.
      */
     data class BetterAsCondition(val placeIndex: Int, val clockIndex: Int) : ValidationWarning
+
+    /**
+     * Under [RuleMatch.TOGETHER], two rules that are each true at one instant. Instants do not
+     * coincide, so nothing ever rings. "A las nueve Y a las diez" is the shape of it, and so is
+     * "al llegar a casa Y a las nueve" — arriving is a moment too.
+     */
+    data class MomentsCannotCoincide(val index: Int) : ValidationWarning
 }
 
 fun validate(text: String, rules: List<TriggerRule>): List<ValidationError> {
@@ -110,6 +117,9 @@ fun problemOf(condition: Condition): TriggerProblem? = when (condition) {
 fun problemOf(trigger: Trigger): TriggerProblem? = when (trigger) {
     is Trigger.AtDateTime, is Trigger.OnDate -> null
     is Trigger.AtTime -> TriggerProblem.DAYS_EMPTY.takeIf { trigger.days.isEmpty() }
+    // No days is every day here, unlike AtTime: a window is a shape of the day, not a weekly
+    // appointment. A window that starts where it ends is not a window; one that wraps is.
+    is Trigger.Interval -> TriggerProblem.WINDOW_EMPTY.takeIf { trigger.from == trigger.to }
     is Trigger.Countdown -> TriggerProblem.COUNTDOWN_OUT_OF_RANGE.takeIf { trigger.minutes !in MIN_COUNTDOWN_MINUTES..MAX_COUNTDOWN_MINUTES }
     is Trigger.Location -> when {
         trigger.lat !in -90.0..90.0 || trigger.lng !in -180.0..180.0 -> TriggerProblem.COORDINATES_INVALID
@@ -143,7 +153,19 @@ fun warnings(
 ): List<ValidationWarning> {
     val found = ArrayList<ValidationWarning>()
     val doomed = ArrayList<Int>()
-    rules.forEachIndexed { index, rule ->
+    // Under "a la vez" every rule is judged with the others folded into it as conditions, which
+    // is exactly what it will be judged by when the alarm goes off (Reminder.togetherRule).
+    val folded = if (match == RuleMatch.TOGETHER && rules.size > 1) {
+        rules.indices.map { index ->
+            val others = rules.filterIndexed { at, _ -> at != index }
+            rules[index].let { it.copy(conditions = it.conditions + others.flatMap { o -> o.conditions } + others.mapNotNull { o -> o.trigger.asState() }) }
+        }
+    } else {
+        rules
+    }
+    val moments = if (match == RuleMatch.TOGETHER && rules.size > 1) rules.count { it.trigger.isMoment } else 0
+    rules.forEachIndexed { index, bare ->
+        val rule = folded[index]
         val onItsOwn = nextFireOf(rule.trigger, "", now, zone, defaultTime)
         val oneShot = rule.trigger is Trigger.AtDateTime || rule.trigger is Trigger.OnDate
         when {
@@ -164,6 +186,9 @@ fun warnings(
             found += ValidationWarning.PlacesConflict(index)
             doomed += index
         }
+        // Two instants asked to be the same instant. Said on every moment in the set, because
+        // there is no one of them to blame: it is the pair that is the problem.
+        if (moments > 1 && bare.trigger.isMoment) found += ValidationWarning.MomentsCannotCoincide(index)
     }
     if (match == RuleMatch.ALL && rules.size > 1) {
         for (index in doomed.distinct()) found += ValidationWarning.NeverCompletes(index)
@@ -180,6 +205,8 @@ fun warnings(
  * is advice and five is nagging.
  */
 private fun betterAsCondition(rules: List<TriggerRule>, match: RuleMatch): ValidationWarning.BetterAsCondition? {
+    // Only under ALL. Under TOGETHER the person has already said "at once", which is the thing
+    // this advice was going to suggest.
     if (match != RuleMatch.ALL || rules.size < 2) return null
     val place = rules.indexOfFirst { it.conditions.isEmpty() && it.trigger is Trigger.Location }
     val clock = rules.indexOfFirst {

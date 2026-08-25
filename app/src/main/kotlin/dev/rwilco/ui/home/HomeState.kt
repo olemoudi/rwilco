@@ -6,6 +6,7 @@ import dev.rwilco.model.DEFAULT_DAY_START
 import dev.rwilco.model.NextFire
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.Reminder
+import dev.rwilco.R
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.SearchHit
 import dev.rwilco.model.Section
@@ -52,7 +53,8 @@ data class ReminderCardUi(
     val actions: Set<Action>,
     val paused: Boolean,
     /** Every trigger has to happen, and the card says so: otherwise the rows read as an OR. */
-    val matchAll: Boolean = false,
+    /** The word the card wears when its rules combine, or null when any one of them is enough. */
+    val matchLabel: Int? = null,
     /**
      * The recurrence, when it works out its own moments — and only then.
      *
@@ -109,7 +111,15 @@ fun buildHomeState(
         },
         actions = reminder.actions,
         paused = reminder.status == Status.PAUSED,
-        matchAll = reminder.ruleMatch == RuleMatch.ALL && reminder.rules.size > 1,
+        matchLabel = if (reminder.rules.size > 1) {
+            when (reminder.ruleMatch) {
+                RuleMatch.ALL -> R.string.card_match_all
+                RuleMatch.TOGETHER -> R.string.card_match_together
+                RuleMatch.ANY -> null
+            }
+        } else {
+            null
+        },
         recurrence = reminder.recurrence.takeIf { it.isAnchored },
     )
     return HomeUiState(

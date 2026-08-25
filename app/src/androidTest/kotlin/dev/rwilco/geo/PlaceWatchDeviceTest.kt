@@ -199,7 +199,7 @@ class PlaceWatchDeviceTest {
     }
 
     @Test
-    fun aConditionOutsideItsHoursKeepsThePlaceQuiet() = runBlocking {
+    fun aPlaceOutsideItsHoursIsNotEvenLookedAt() = runBlocking {
         val now = app.clock.instant().atZone(app.clock.zone).toLocalTime()
         // A two-hour window that starts two hours from now: never open during the test.
         val window = Condition.TimeWindow(now.plusHours(2).withSecond(0), now.plusHours(4).withSecond(0))
@@ -208,8 +208,14 @@ class PlaceWatchDeviceTest {
         watcher.check()
         moveTo(south = 50.0, at = t0 + 120_000)
         watcher.check()
-        assertEquals("the watch saw the arrival", true, store.read().inside["$fenced#0"])
-        assertNull("but the rule's hours said no", app.repository.get(fenced)!!.lastFiredAt)
+        // Arriving cannot ring for two more hours, so the watch does not spend a fix finding
+        // out that somebody arrived: the circle was never judged at all.
+        assertNull("the watch read a position it could do nothing with", store.read().inside["$fenced#0"])
+        assertNull("and nothing rang", app.repository.get(fenced)!!.lastFiredAt)
+        // Left alone is not given up on: the next look is the hour the window opens.
+        val next = store.read().nextCheckAt
+        assertNotNull("the watch stopped instead of sleeping", next)
+        assertTrue("woke for a window that has not opened: $next", next!! > Instant.now().plusSeconds(3_600))
     }
 
     @Test

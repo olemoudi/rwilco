@@ -41,6 +41,26 @@ sealed interface Trigger {
     data class AtTime(val time: LocalTime, val days: Set<DayOfWeek>) : Trigger
 
     /**
+     * A stretch of the day rather than a point in it: "de 17 a 19".
+     *
+     * The only trigger that is a *state* — it is true for two hours, not at one instant — and
+     * that is the whole reason it exists. Under [RuleMatch.TOGETHER] it is what makes "en la
+     * oficina, entre las cinco y las siete" a thing somebody can write, and as a rule's own
+     * condition it is the same window a [Condition.TimeWindow] is.
+     *
+     * On its own it rings at [from], because a trigger that never rings is not a trigger and
+     * the start is the moment the window becomes true. A window that ends before it starts
+     * crosses midnight, exactly as the condition's does.
+     */
+    @Serializable
+    @SerialName("interval")
+    data class Interval(
+        val from: LocalTime,
+        val to: LocalTime,
+        val days: Set<DayOfWeek> = emptySet(),
+    ) : Trigger
+
+    /**
      * A stretch of time from the moment it starts, not a moment on the calendar.
      *
      * This is what "dentro de media hora" is, and storing it as the date-time it worked out to
@@ -96,6 +116,7 @@ enum class TriggerKind(val family: TriggerFamily) {
     DATE_TIME(TriggerFamily.TIME),
     DATE(TriggerFamily.TIME),
     REPEAT_TIME(TriggerFamily.TIME),
+    INTERVAL(TriggerFamily.TIME),
     COUNTDOWN(TriggerFamily.TIME),
     PLACE(TriggerFamily.PLACE),
     RANDOM(TriggerFamily.CHANCE),
@@ -103,11 +124,30 @@ enum class TriggerKind(val family: TriggerFamily) {
 
 val Trigger.family: TriggerFamily
     get() = when (this) {
-        is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.AtTime -> TriggerFamily.TIME
+        is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.AtTime, is Trigger.Interval -> TriggerFamily.TIME
         is Trigger.Location -> TriggerFamily.PLACE
         is Trigger.Countdown -> TriggerFamily.TIME
         is Trigger.Random -> TriggerFamily.CHANCE
     }
+
+/**
+ * The same trigger read as a *state* — "is this true right now?" — or null when it has none.
+ *
+ * This is what [RuleMatch.TOGETHER] is built on. A place is a state as much as an event: the
+ * crossing is what wakes the app, but being inside the circle is true for as long as you are
+ * there, and which of the two a rule means is decided by what it is asked. An interval is a
+ * state and nothing else. Everything else is a *moment*: true at one instant and false either
+ * side of it, which is exactly why two of them together can never both be true, and why a set
+ * with none of them has nothing to start it.
+ */
+fun Trigger.asState(): Condition? = when (this) {
+    is Trigger.Location -> Condition.AtPlace(lat, lng, radiusM, label, inside = transition == Transition.ENTER)
+    is Trigger.Interval -> Condition.TimeWindow(from, to, days)
+    is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.AtTime, is Trigger.Countdown, is Trigger.Random -> null
+}
+
+/** Whether this trigger is true only at an instant. See [asState]. */
+val Trigger.isMoment: Boolean get() = asState() == null
 
 /** The tile that edits an existing trigger (a countdown re-opens as a date-time: it is one). */
 val Trigger.kind: TriggerKind
@@ -115,6 +155,7 @@ val Trigger.kind: TriggerKind
         is Trigger.AtDateTime -> TriggerKind.DATE_TIME
         is Trigger.OnDate -> TriggerKind.DATE
         is Trigger.AtTime -> TriggerKind.REPEAT_TIME
+        is Trigger.Interval -> TriggerKind.INTERVAL
         is Trigger.Location -> TriggerKind.PLACE
         is Trigger.Countdown -> TriggerKind.COUNTDOWN
         is Trigger.Random -> TriggerKind.RANDOM

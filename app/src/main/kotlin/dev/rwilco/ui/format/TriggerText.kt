@@ -90,6 +90,15 @@ fun triggerLine(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): Tri
             secondary = stringResource(R.string.trigger_rings_at, TimeText.time(defaultTime, is24h, locale)),
             primaryMono = true,
         )
+        is Trigger.Interval -> TriggerLine(
+            primary = TimeText.window(trigger.from, trigger.to, is24h, locale),
+            secondary = if (trigger.days.isEmpty() || trigger.days.size == 7) {
+                stringResource(R.string.trigger_every_day)
+            } else {
+                daysSummary(trigger.days, locale)
+            },
+            primaryMono = true,
+        )
         is Trigger.AtTime -> TriggerLine(
             primary = TimeText.time(trigger.time, is24h, locale),
             secondary = daysSummary(trigger.days, locale),

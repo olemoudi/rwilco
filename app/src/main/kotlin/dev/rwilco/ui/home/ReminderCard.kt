@@ -86,9 +86,9 @@ fun ReminderCard(
                 )
             }
             Spacer(Modifier.height(spacing.sm))
-            if (card.matchAll) {
+            if (card.matchLabel != null) {
                 Text(
-                    text = stringResource(R.string.card_match_all),
+                    text = stringResource(card.matchLabel),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = spacing.xs),

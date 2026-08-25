@@ -266,10 +266,20 @@ strict is asking somebody to remember how they spelled it.
   grant stands, whether or not a place reminder exists yet (`LocationPermissionCard`), because
   a refusal discovered later is a reminder that never arrives. A place is judged against its
   conditions when it happens, not when it is armed.
-- **Conditions are the app's only simultaneity.** A reminder's rules are ORed (`RuleMatch.ANY`)
-  or accumulated (`ALL`: every one has to have happened, and the *last* of them rings — see
-  `Reminder.firedRules`), and neither of those is "both true at the same instant". That reading
-  is what a rule's own conditions are for, and there are two kinds: `Condition.TimeWindow` and
+- **Three readings of a list of rules.** `RuleMatch.ANY` ORs them; `ALL` accumulates (every one
+  has to have happened, in any order, and the *last* of them rings — see `Reminder.firedRules`);
+  `TOGETHER` is the conjunction, every rule true at the same moment, ringing the instant the
+  last one becomes true. That last one needs each trigger read as a *state* (`Trigger.asState`):
+  a place is being inside its circle, a `Trigger.Interval` ("de 17 a 19") is being in its
+  window, and everything else is a **moment**, true at an instant and false either side. So it
+  is implemented by folding: `Reminder.togetherRule(i)` hands back rule *i* with every other
+  rule's state as one of its conditions, and firing, scheduling and `warnings` all then run the
+  ordinary conditioned-rule machinery. Two moments asked to coincide never do, which the fold
+  reports as null and `momentsCannotCoincide` says out loud — and "en casa Y a las nueve" is
+  *not* that trap, because a place is a state: it means being at home at nine, and it is the
+  clock's rule that rings it.
+- **Conditions are the other way into the same conjunction.** They always were, and there are
+  two kinds: `Condition.TimeWindow` and
   `Condition.AtPlace` ("y sólo si estoy en casa"). A place condition is the one thing nothing
   can answer in advance, so `nextFireOfRule` leaves it out and arms the alarm anyway
   (`knownInAdvance`), and `ReminderFiring` asks it for real when the alarm goes off — from the
@@ -282,12 +292,21 @@ strict is asking somebody to remember how they spelled it.
   and usually meant as one conditioned rule (`BetterAsCondition`). None of it blocks saving.
 - `PlaceWatcher` is the second opinion, and the one that decides its own cost. However many
   places are being waited on there is **one** alarm, **one** fix and **one** decision: no rule
-  polls on its own account. What it watches is every circle still worth watching: a rule's
-  trigger only while that rule is still pending (`pendingRules` — under ALL a place already
-  ticked off has nothing left to report, and both the watch and the hundred-geofence allowance
-  stop spending on it), plus the circles named by `Condition.AtPlace`, which are watched for
-  their state alone (`WatchedPlace.fires = false`, so `stepPlaceWatch` never turns one into a
-  firing) and never geofenced, because a geofence reports a crossing and a condition has none.
+  polls on its own account. What it watches is every circle still worth watching, and three
+  things take circles off that list. A rule's trigger counts only while the rule is still
+  pending (`pendingRules` — under ALL a place already ticked off has nothing left to report, and
+  both the watch and the hundred-geofence allowance stop spending on it). The circles named by
+  `Condition.AtPlace` are watched for their state alone (`WatchedPlace.fires = false`, so
+  `stepPlaceWatch` never turns one into a firing) and never geofenced, because a geofence
+  reports a crossing and a condition has none. And **a circle is left alone entirely while the
+  hours the rest of its set needs cannot hold** (`List<Condition.TimeWindow>.openFrom`): "en la
+  oficina, entre las cinco y las siete" cannot ring at three in the morning however far anybody
+  walks, so the watch spends nothing on it and sleeps until five instead of cancelling — a
+  couple of minutes early, so the first fix of a window is taken before anything is judged by
+  it. Only windows gate; a sibling place cannot gate another place, because answering it would
+  need the very fix this exists to avoid spending. The geofences are *not* gated: they are the
+  free eye and the net under all of this, and one firing outside its hours costs a condition
+  check that says no.
   On each check (an allow-while-idle alarm to `PlaceCheckReceiver`,
   exact when the phone allows it) it reads one fix from the fused provider — GPS only when the
   nearest line is close and the phone moving, the wifi/cell blend otherwise — and hands it to

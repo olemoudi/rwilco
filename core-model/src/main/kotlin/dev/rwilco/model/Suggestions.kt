@@ -115,6 +115,7 @@ fun triggerKindsByUse(reminders: List<Reminder>, now: Instant): List<TriggerKind
 private fun shapeOf(trigger: Trigger): String? = when (trigger) {
     is Trigger.Countdown -> "countdown:${trigger.minutes}"
     is Trigger.AtTime -> "at_time:${trigger.time}:" + trigger.days.map { it.value }.sorted().joinToString(",")
+    is Trigger.Interval -> "interval:${trigger.from}-${trigger.to}:" + trigger.days.map { it.value }.sorted().joinToString(",")
     // Only the hour survives; the day it fell on was that reminder's business.
     is Trigger.AtDateTime -> "at_date_time:${trigger.at.toLocalTime()}"
     // Four decimals is about eleven metres: the same door, however the pin was dropped.
