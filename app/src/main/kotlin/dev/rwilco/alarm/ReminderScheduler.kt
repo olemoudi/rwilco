@@ -158,6 +158,7 @@ class ReminderScheduler(
             reminder.firedRules,
             reminder.snoozedUntil,
             reminder.recurrence,
+            reminder.lastDealtAt,
         )
     }
 
@@ -172,9 +173,14 @@ class ReminderScheduler(
         /**
          * A reminder with no trigger at all rings by its recurrence and by nothing else, so
          * asking for one has to re-arm — and it is the only edit that changes nothing else.
-         * The moment it counts from ([Reminder.lastDealtAt]) is not here: only dealing with a
-         * firing moves it, and that re-arms on its own way through [ReminderFiring].
          */
         val recurrence: Recurrence,
+        /**
+         * And the moment that recurrence counts from. Dealing with a firing re-arms on its own
+         * way out, but undoing one does not: it puts the whole row back as it was, and on a
+         * reminder that stayed ACTIVE either side of the "hecho" nothing else in this key
+         * moves — so the alarm would still be set for the round that was just taken back.
+         */
+        val lastDealtAt: Instant?,
     )
 }

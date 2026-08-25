@@ -60,6 +60,19 @@ class SchedulingKeyTest {
     }
 
     @Test
+    fun `the moment a recurrence counts from is in the key, so taking a hecho back re-arms`() {
+        // Undo of a "hecho" puts the whole row back as it was. On a reminder that stayed ACTIVE
+        // either side of it — which is every one asked to repeat — nothing else here moves, so
+        // without the anchor the alarm would still be set for the round that was just taken back.
+        val every6h = note.copy(recurrence = Recurrence.After(6, RecurrenceUnit.HOURS))
+        val dealt = every6h.copy(lastDealtAt = written)
+
+        assertNotEquals(key(every6h), key(dealt))
+        assertNotEquals(key(dealt), key(dealt.copy(lastDealtAt = written.plusSeconds(3600))))
+        assertEquals(key(every6h), key(every6h.copy(lastDealtAt = null)))
+    }
+
+    @Test
     fun `what the scheduler writes back is not in it, or nothing would ever settle`() {
         val timed = note.copy(rules = listOf(TriggerRule(Trigger.AtDateTime(LocalDateTime.of(2026, 8, 28, 9, 0)))))
 

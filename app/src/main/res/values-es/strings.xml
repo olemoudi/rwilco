@@ -399,6 +399,8 @@
     <string name="editor_match_any_hint">Suena con el primero que ocurra.</string>
     <string name="editor_match_all_hint">Tienen que ocurrir todos; suena con el último.</string>
     <string name="card_match_all">todos</string>
+    <string name="card_recurrence">Repetición</string>
+    <string name="card_recurrence_from_done">desde que lo marcas hecho</string>
     <string name="card_rule_happened">Ya ha ocurrido</string>
 
     <!-- Alert permissions -->
@@ -440,6 +442,10 @@
     <string-array name="whats_new_0_4_2">
         <item>Pausar un recordatorio ahora dice lo que va a hacer — la palabra «Pausar» o «Reanudar» junto al botón, porque un icono de pausa a secas se lee igual de bien como «esto está pausado».</item>
         <item>Es más grande, está arriba con las palabras del recordatorio en vez de entre los iconos grises que no se pueden pulsar, y pide un dedo que se quede. Si sueltas antes, no pasa nada.</item>
+    </string-array>
+    <string-array name="whats_new_0_7_7">
+        <item>Un recordatorio que se repite ya lo dice en su tarjeta. Uno cuyo único «cuándo» es «cada 6 h» no lleva ningún disparador, así que su tarjeta no decía absolutamente nada de cuándo suena — ahora muestra la forma y, debajo, lo que es fácil entender mal: la cuenta empieza cuando lo marcas hecho, no cuando sonó.</item>
+        <item>Y deshacer un «hecho» deja de verdad las cosas como estaban. El recordatorio volvía bien, pero la alarma se quedaba puesta para la vuelta que acababas de deshacer — y luego se negaba a sonar, porque la ficha ya no coincidía con ella.</item>
     </string-array>
     <string-array name="whats_new_0_7_6">
         <item>«Hecho» significa ya lo mismo lo digas donde lo digas. Deslizar una tarjeta en el inicio la mandaba a la lista de hechos aunque hubieras pedido que se repitiera, así que una rutina de «cada 1 h» quedaba terminada por el gesto en vez de empezar su siguiente vuelta. Ahora se reactiva sola y cuenta la siguiente desde tu «hecho», igual que hacía la notificación.</item>

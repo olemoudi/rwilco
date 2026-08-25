@@ -111,6 +111,23 @@ The expected shape, confirmed and now covered end to end: write it → it fires 
 from the notification, the alert screen **or** the Home swipe → it reactivates itself → it fires
 again X after the *hecho*, not after the previous firing.
 
+## The routine, finished off (0.7.7)
+Two follow-ups to the report above, both asked for directly.
+
+- **Undo of a "hecho" left the alarm where the "hecho" put it.** Restoring the row put every
+  column back, which is right, but `schedulingKey` did not carry `lastDealtAt` — and on a
+  reminder that stayed ACTIVE either side of the swipe *nothing else in the key moves*, so the
+  re-arm never fired. The alarm stayed set for the round that had just been taken back, and
+  since `armedFor` had been restored to its old value the firing would then be dropped as
+  unarmed: silence until the next launch. The anchor is in the key now.
+- **A recurrence has a row on the card.** A reminder whose only arrangement is "cada 6 h"
+  carries no trigger, so its card said nothing whatsoever about when it rings — a shape that was
+  real, armed and invisible. It gets a keycap and two lines: the shape ("Cada 8 h") and the part
+  people get wrong ("desde que lo marcas hecho"). `ByTrigger` deliberately gets none — the
+  repeating trigger above it is already that answer. The hero's badge falls back to it too.
+  `DemoData` never had one of these either, which is why nobody saw the hole; it does now, and
+  the tour captures it (`home-recurrence.png`).
+
 ## Still to prove on the real phone (Pixel 8 Pro)
 - The overlay rule end to end: an alert while another app is open (banner), on the home screen
   (full screen), and with either special permission missing (banner, and Settings says which).

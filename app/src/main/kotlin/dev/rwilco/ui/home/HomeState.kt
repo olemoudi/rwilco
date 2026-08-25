@@ -4,6 +4,7 @@ import dev.rwilco.model.Action
 import dev.rwilco.model.Condition
 import dev.rwilco.model.DEFAULT_DAY_START
 import dev.rwilco.model.NextFire
+import dev.rwilco.model.Recurrence
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.SearchHit
@@ -13,6 +14,7 @@ import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerFamily
 import dev.rwilco.model.family
 import dev.rwilco.model.groupForHome
+import dev.rwilco.model.isAnchored
 import dev.rwilco.model.nextFireOfRule
 import dev.rwilco.model.search
 import dev.rwilco.model.tagsInUse
@@ -51,6 +53,16 @@ data class ReminderCardUi(
     val paused: Boolean,
     /** Every trigger has to happen, and the card says so: otherwise the rows read as an OR. */
     val matchAll: Boolean = false,
+    /**
+     * The recurrence, when it works out its own moments — and only then.
+     *
+     * It gets a row of its own because it is a "when" like any other and the triggers cannot
+     * speak for it: a reminder whose only arrangement is "cada 6 h" has no trigger at all, and
+     * without this its card said nothing whatsoever about when it rings. `ByTrigger` is left
+     * out on purpose: the repeating trigger already on the card IS that answer, and saying it
+     * twice is noise.
+     */
+    val recurrence: Recurrence? = null,
 )
 
 /** One trigger row: the strings are formatted in the composable, which has the locale. */
@@ -98,6 +110,7 @@ fun buildHomeState(
         actions = reminder.actions,
         paused = reminder.status == Status.PAUSED,
         matchAll = reminder.ruleMatch == RuleMatch.ALL && reminder.rules.size > 1,
+        recurrence = reminder.recurrence.takeIf { it.isAnchored },
     )
     return HomeUiState(
         loaded = true,

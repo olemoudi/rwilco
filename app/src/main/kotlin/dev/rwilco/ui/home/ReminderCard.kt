@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
@@ -23,10 +24,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.rwilco.R
+import dev.rwilco.model.Recurrence
+import dev.rwilco.model.TriggerFamily
 import dev.rwilco.model.kind
 import dev.rwilco.ui.components.HoldButton
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.TriggerKeycap
+import dev.rwilco.ui.editor.recurrenceLabel
 import dev.rwilco.ui.editor.titleRes
 import dev.rwilco.ui.format.conditionLabel
 import dev.rwilco.ui.format.triggerLine
@@ -92,12 +96,51 @@ fun ReminderCard(
             }
             Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
                 for (row in card.triggers) TriggerRow(row, today, defaultTime, muted = card.paused)
+                // Last, because that is the order the two answer in: the triggers say when it
+                // rings the first time and the recurrence says when it comes back.
+                card.recurrence?.let { RecurrenceRow(it, muted = card.paused) }
             }
             Spacer(Modifier.height(spacing.sm))
             CardFooter(
                 tags = card.tags,
                 actions = card.actions,
                 modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+/**
+ * The recurrence as a row of its own, in the same language as the triggers above it.
+ *
+ * A reminder whose only arrangement is "cada 6 h" carries no trigger at all, so without this its
+ * card said nothing about when it rings — the shape was real, armed and invisible. The second
+ * line is the part people get wrong about it: the clock starts at the "hecho", not at the ring.
+ */
+@Composable
+fun RecurrenceRow(recurrence: Recurrence, muted: Boolean = false) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        TriggerKeycap(
+            family = TriggerFamily.TIME,
+            icon = Icons.Outlined.Autorenew,
+            contentDescription = stringResource(R.string.card_recurrence),
+            size = Tokens.sizes.badge,
+        )
+        Spacer(Modifier.width(Tokens.spacing.sm))
+        Column(modifier = Modifier.weight(1f, fill = false)) {
+            Text(
+                text = recurrenceLabel(recurrence),
+                style = MaterialTheme.typography.titleSmall,
+                color = if (muted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = stringResource(R.string.card_recurrence_from_done),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

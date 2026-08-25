@@ -1,6 +1,8 @@
 package dev.rwilco.ui.home
 
 import dev.rwilco.model.Period
+import dev.rwilco.model.Recurrence
+import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Section
 import dev.rwilco.model.Status
@@ -14,6 +16,7 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -74,5 +77,44 @@ class HomeStateTest {
         assertTrue(buildHomeState(emptyList(), defaultTime, now, zone, selectedTag = null).empty)
         val filtered = buildHomeState(listOf(soon, random), defaultTime, now, zone, selectedTag = "salud")
         assertFalse(filtered.empty)
+    }
+
+    @Test
+    fun `a recurrence that works out its own moments gets a row of its own`() {
+        // "Cada 6 h" carries no trigger at all, so the card had nothing to show and said nothing
+        // whatsoever about when it rings — a shape that was real, armed and invisible.
+        val pills = Reminder(
+            id = "pills",
+            text = "Tomar la pastilla",
+            recurrence = Recurrence.After(6, RecurrenceUnit.HOURS),
+            createdAt = now.minusSeconds(3600),
+            updatedAt = now.minusSeconds(3600),
+        )
+
+        val card = cardFor(pills)
+        assertTrue(card.triggers.isEmpty(), "there is no trigger to show")
+        assertEquals(Recurrence.After(6, RecurrenceUnit.HOURS), card.recurrence)
+    }
+
+    @Test
+    fun `a recurrence the triggers already answer for is not said twice`() {
+        // ByTrigger IS the repeating trigger on the card above it; a second row saying so is
+        // noise. And a reminder that does not repeat has nothing to say either.
+        val weekly = Trigger.AtTime(LocalTime.of(9, 0), setOf(DayOfWeek.MONDAY))
+        val base = Reminder(id = "r", text = "Regar", rules = listOf(TriggerRule(weekly)), createdAt = now, updatedAt = now)
+
+        assertNull(cardFor(base.copy(recurrence = Recurrence.ByTrigger)).recurrence)
+        assertNull(cardFor(base).recurrence)
+        // One that works out its own moments shows up even next to a trigger: it is the answer
+        // to a different question, and the trigger cannot speak for it.
+        assertEquals(
+            Recurrence.After(1, RecurrenceUnit.DAYS),
+            cardFor(base.copy(recurrence = Recurrence.After(1, RecurrenceUnit.DAYS))).recurrence,
+        )
+    }
+
+    private fun cardFor(reminder: Reminder): ReminderCardUi {
+        val state = buildHomeState(listOf(reminder), LocalTime.of(9, 0), now, zone, selectedTag = null)
+        return state.hero?.card ?: state.sections.first().cards.first()
     }
 }

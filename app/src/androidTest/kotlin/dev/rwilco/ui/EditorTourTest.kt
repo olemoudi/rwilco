@@ -6,6 +6,10 @@ import android.os.LocaleList
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -60,6 +64,9 @@ class EditorTourTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val reminderText = "Comprar filtros para la cafetera"
+
+    /** The demo reminder that rings by a recurrence and nothing else; see DemoData. */
+    private val routineText = "Tomar el antibiótico"
 
     /** The activity's resources, not the instrumentation's: the app runs under its own per-app locale. */
     private fun s(id: Int): String = rule.activity.getString(id)
@@ -160,6 +167,19 @@ class EditorTourTest {
         text(s(R.string.common_save)).performClick()
         rule.waitUntilShown(reminderText)
         shot("home-after-save")
+
+        // The shape with no trigger at all: a routine counted from the moment it was last dealt
+        // with. Its card had nothing to say about when it rings until the recurrence got a row.
+        //
+        // Scrolled by the list rather than by the node: a lazy list has not composed a card
+        // this far down, so performScrollTo has nothing to scroll to. Home has two lazy
+        // containers and the list is the outer one — the tag row is an item inside it.
+        rule.onAllNodes(hasScrollToIndexAction())[0].performScrollToNode(hasText(routineText))
+        rule.waitUntilDisplayed(routineText)
+        shot("home-recurrence")
+        // Back to the top, or the header the next step reaches for is off the screen.
+        rule.onAllNodes(hasScrollToIndexAction())[0].performScrollToIndex(0)
+        rule.waitUntilDisplayed(s(R.string.home_next_up))
 
         rule.onNodeWithContentDescription(s(R.string.home_settings)).performClick()
         rule.waitUntilShown(s(R.string.settings_title))

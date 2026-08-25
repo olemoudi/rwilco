@@ -143,6 +143,12 @@ strict is asking somebody to remember how they spelled it.
   left resting there outlives the row (the list reuses it by key), which once handed a reminder
   back from "undo" frozen halfway across the screen. `SwipeableCardTest` drives the gesture
   against a hand-driven clock; `HomeSwipeTest` walks swipe → undo → swipe on the real screen.
+- A card shows one row per rule, and — when the recurrence works out its own moments
+  (`After`, `MonthlyWeekday`) — a row for that too, last, because that is the order the two
+  answer in. It is the only way a reminder whose whole arrangement is "cada 6 h" says anything
+  about when it rings: it carries no trigger at all, so without it the card was blank. Its
+  second line says the part people get wrong, that the clock starts at the "hecho" and not at
+  the ring. `ByTrigger` gets no row: the repeating trigger above it already IS that answer.
 - Home: `HomeViewModel` combines the open reminders, settings, the tag filter and a minute pulse
   into `HomeUiState` (`buildHomeState`, pure and tested). The hero card's countdown ticks in its
   own composable (`rememberNow`) so nothing else recomposes. The magnifier has a flow of its own
@@ -214,8 +220,10 @@ strict is asking somebody to remember how they spelled it.
   row. That, next to `lastFiredAt`, is what makes a firing the phone slept through detectable:
   an armed moment in the past with no ring to match it. What a change has to touch before the
   whole list is worked out again is `schedulingKey` — the rules, the match, what is ticked off,
-  the snooze and the recurrence — and deliberately not what the scheduler itself writes back,
-  or every re-arm would come round as a change and arm everything again.
+  the snooze, the recurrence and the moment it counts from — and deliberately not what the
+  scheduler itself writes back, or every re-arm would come round as a change and arm everything
+  again. `lastDealtAt` is in it for the undo: taking a "hecho" back puts the whole row as it
+  was, and on a reminder that stayed ACTIVE either side of it nothing else in the key moves.
 - `ReminderFiring` is the single place that decides what a firing, a "Hecho" and a snooze do, so
   the alarm, the notification buttons, the alert screen **and Home's swipe** cannot drift apart.
   Home's used to file the reminder as DONE itself, which is right for most of them and wrong for

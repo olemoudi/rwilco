@@ -401,6 +401,8 @@
     <string name="editor_match_any_hint">Whichever happens first rings it.</string>
     <string name="editor_match_all_hint">All of them have to happen; the last one rings it.</string>
     <string name="card_match_all">all of them</string>
+    <string name="card_recurrence">Repeats</string>
+    <string name="card_recurrence_from_done">from when you mark it done</string>
     <string name="card_rule_happened">Already happened</string>
 
     <!-- Alert permissions -->
@@ -442,6 +444,10 @@
     <string-array name="whats_new_0_4_2">
         <item>Pausing a reminder now says what it will do — the word "Pause" or "Resume" next to the button, because a pause glyph on its own reads as "this is paused" just as easily.</item>
         <item>It is bigger, it sits up with the reminder\'s own words instead of among the small grey glyphs that cannot be pressed, and it takes a finger that stays. Let go early and nothing happens.</item>
+    </string-array>
+    <string-array name="whats_new_0_7_7">
+        <item>A repeating reminder now says so on its card. One whose whole arrangement is “cada 6 h” carries no trigger at all, so its card said nothing whatsoever about when it rings — it now shows the shape and, under it, the part that is easy to get wrong: the clock starts when you mark it done, not when it rang.</item>
+        <item>And taking a “hecho” back really does put things where they were. The reminder came back correctly, but the alarm stayed set for the round you had just undone — and then refused to ring, because the row no longer agreed with it.</item>
     </string-array>
     <string-array name="whats_new_0_7_6">
         <item>“Hecho” now means the same thing wherever you say it. Swiping a card done on Home went straight to the done list, even for a reminder you had asked to repeat — so a routine like “cada 1 h” was finished by the swipe instead of starting its next round. It now reactivates itself and counts the next one from your “hecho”, exactly as the notification always did.</item>

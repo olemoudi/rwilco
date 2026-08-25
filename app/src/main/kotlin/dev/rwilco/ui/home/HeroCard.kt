@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import dev.rwilco.R
+import dev.rwilco.model.TriggerFamily
 import dev.rwilco.model.kind
 import dev.rwilco.model.partsBetween
 import dev.rwilco.ui.components.RwilcoCard
@@ -86,6 +89,14 @@ fun HeroCard(
                         family = nextTrigger.family,
                         icon = nextTrigger.trigger.kind.icon,
                         contentDescription = stringResource(nextTrigger.trigger.kind.titleRes),
+                    )
+                } else if (hero.card.recurrence != null) {
+                    // Nothing but a recurrence: the moment being counted down to is its doing,
+                    // so the badge is its own rather than absent.
+                    TriggerKeycap(
+                        family = TriggerFamily.TIME,
+                        icon = Icons.Outlined.Autorenew,
+                        contentDescription = stringResource(R.string.card_recurrence),
                     )
                 }
             }

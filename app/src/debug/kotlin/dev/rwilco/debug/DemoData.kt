@@ -5,6 +5,8 @@ import dev.rwilco.model.Action
 import dev.rwilco.model.Condition
 import dev.rwilco.model.DEFAULT_ACTIONS
 import dev.rwilco.model.Period
+import dev.rwilco.model.Recurrence
+import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
@@ -18,8 +20,9 @@ import java.time.LocalTime
 import java.time.temporal.TemporalAdjusters
 
 /**
- * A believable set of reminders, relative to now so it always looks live: one in every family and
- * every Home section, a paused one, two done ones, and one long enough to stress the alert.
+ * A believable set of reminders, relative to now so it always looks live: one in every family
+ * and every Home section, one that rings by a recurrence and nothing else, a paused one, two
+ * done ones, and one long enough to stress the alert.
  */
 object DemoData {
 
@@ -120,6 +123,15 @@ object DemoData {
             reminder(
                 "note", "Ideas para el regalo de Ana: cerámica, un buen cuchillo, entradas", listOf("regalos"),
                 ageMinutes = 45,
+            ),
+            // The shape 0.7 added and this list was missing: no trigger at all, only a
+            // recurrence — a routine counted from the moment you last dealt with it.
+            reminder(
+                "antibiotic", "Tomar el antibiótico", listOf("salud"),
+                ageMinutes = 120,
+            ).copy(
+                recurrence = Recurrence.After(8, RecurrenceUnit.HOURS),
+                lastDealtAt = now.minus(Duration.ofHours(2)),
             ),
             reminder(
                 "done1", "Devolver el libro a la biblioteca", listOf("papeleo"),
