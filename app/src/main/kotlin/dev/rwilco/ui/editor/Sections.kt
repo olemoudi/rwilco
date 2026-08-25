@@ -437,7 +437,8 @@ internal fun TriggersSection(
     clock: Clock,
     today: LocalDate,
     defaultTime: LocalTime,
-    inPast: Set<Int>,
+    /** What is worth saying about each rule, by index: one string resource, the worst one. */
+    ruleWarnings: Map<Int, Int>,
     onAdd: () -> Unit,
     onQuickAdd: (Trigger) -> Unit,
     /** The "when"s used before, best first; empty on a phone with no history yet. */
@@ -482,7 +483,7 @@ internal fun TriggersSection(
                     rule = rule,
                     today = today,
                     defaultTime = defaultTime,
-                    inPast = index in inPast,
+                    warning = ruleWarnings[index],
                     onEdit = { onEdit(index) },
                     onRemove = { onRemove(index) },
                     onAddCondition = { onAddCondition(index) },
@@ -579,7 +580,7 @@ private fun TriggerEditRow(
     rule: TriggerRule,
     today: LocalDate,
     defaultTime: LocalTime,
-    inPast: Boolean,
+    warning: Int?,
     onEdit: () -> Unit,
     onRemove: () -> Unit,
     onAddCondition: () -> Unit,
@@ -620,7 +621,7 @@ private fun TriggerEditRow(
                     Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.editor_remove_trigger), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            if (inPast) FieldWarning(stringResource(R.string.editor_warning_past))
+            if (warning != null) FieldWarning(stringResource(warning))
             // The conditions sit under the trigger they restrict, because that is what they are:
             // not another way to ring, but a fence around this one.
             FlowRow(

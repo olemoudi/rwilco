@@ -46,6 +46,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -118,10 +119,27 @@ fun EditorScreen(
     val zone = viewModel.clock.zone
     val today = now.atZone(zone).toLocalDate()
     val spacing = Tokens.spacing
-    val pastWarnings = warnings(state.draft.rules, now, zone, state.defaultTime)
-        .filterIsInstance<ValidationWarning.InPast>()
-        .map { it.index }
-        .toSet()
+    // One line per rule, the worst thing there is to say about it. Remembered rather than
+    // recomputed: working out that a rule can never fire means walking its next sixty-four
+    // moments (nextFireOfRule), and that is not work for a recomposition.
+    val ruleWarnings = remember(state.draft.rules, state.draft.ruleMatch, state.defaultTime) {
+        val worst = HashMap<Int, Int>()
+        for (warning in warnings(state.draft.rules, now, zone, state.defaultTime, state.draft.ruleMatch).sortedBy(::severityOf)) {
+            val (index, message) = when (warning) {
+                // The strongest thing that can be said: under "todos" one dud rule is the
+                // whole reminder, so it is said on the rule that causes it.
+                is ValidationWarning.NeverCompletes -> warning.index to R.string.editor_warning_never_completes
+                is ValidationWarning.PlacesConflict -> warning.index to R.string.editor_warning_places_conflict
+                is ValidationWarning.NeverFires -> warning.index to R.string.editor_warning_never_fires
+                is ValidationWarning.InPast -> warning.index to R.string.editor_warning_past
+                // Advice, not a fault, and it goes on the place: that is the half somebody
+                // would put the condition on.
+                is ValidationWarning.BetterAsCondition -> warning.placeIndex to R.string.editor_warning_better_as_condition
+            }
+            worst.putIfAbsent(index, message)
+        }
+        worst
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -229,7 +247,7 @@ fun EditorScreen(
                         clock = viewModel.clock,
                         today = today,
                         defaultTime = state.defaultTime,
-                        inPast = pastWarnings,
+                        ruleWarnings = ruleWarnings,
                         onAdd = {
                             focusManager.clearFocus()
                             viewModel.openKindPicker()
@@ -282,7 +300,8 @@ fun EditorScreen(
                 onDismiss = viewModel::closeSheet,
             )
             is EditorSheet.ConfigureCondition -> ConditionSheet(
-                initial = sheet.initial as? dev.rwilco.model.Condition.TimeWindow,
+                initial = sheet.initial,
+                savedPlaces = state.savedPlaces,
                 onConfirm = { condition -> viewModel.commitCondition(sheet.ruleIndex, sheet.conditionIndex, condition) },
                 onDismiss = viewModel::closeSheet,
             )
@@ -521,6 +540,15 @@ internal fun FieldError(text: String, modifier: Modifier = Modifier) {
         color = MaterialTheme.colorScheme.error,
         modifier = modifier.padding(top = Tokens.spacing.xs),
     )
+}
+
+/** Worst first, so the line a rule gets is the one that matters most. */
+private fun severityOf(warning: ValidationWarning): Int = when (warning) {
+    is ValidationWarning.NeverCompletes -> 0
+    is ValidationWarning.PlacesConflict -> 1
+    is ValidationWarning.NeverFires -> 2
+    is ValidationWarning.InPast -> 3
+    is ValidationWarning.BetterAsCondition -> 4
 }
 
 @Composable

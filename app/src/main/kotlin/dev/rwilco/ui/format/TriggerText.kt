@@ -65,6 +65,10 @@ fun conditionLabel(condition: Condition): String {
             val window = TimeText.window(condition.from, condition.to, is24h, locale)
             if (condition.days.isEmpty() || condition.days.size == 7) window else "$window · " + daysSummary(condition.days, locale)
         }
+        is Condition.AtPlace -> stringResource(
+            if (condition.inside) R.string.condition_at_place else R.string.condition_away_from_place,
+            condition.label,
+        )
     }
 }
 

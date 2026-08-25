@@ -266,9 +266,29 @@ strict is asking somebody to remember how they spelled it.
   grant stands, whether or not a place reminder exists yet (`LocationPermissionCard`), because
   a refusal discovered later is a reminder that never arrives. A place is judged against its
   conditions when it happens, not when it is armed.
+- **Conditions are the app's only simultaneity.** A reminder's rules are ORed (`RuleMatch.ANY`)
+  or accumulated (`ALL`: every one has to have happened, and the *last* of them rings — see
+  `Reminder.firedRules`), and neither of those is "both true at the same instant". That reading
+  is what a rule's own conditions are for, and there are two kinds: `Condition.TimeWindow` and
+  `Condition.AtPlace` ("y sólo si estoy en casa"). A place condition is the one thing nothing
+  can answer in advance, so `nextFireOfRule` leaves it out and arms the alarm anyway
+  (`knownInAdvance`), and `ReminderFiring` asks it for real when the alarm goes off — from the
+  place watch's last fix, and only while that fix still speaks for now; past the speed memory it
+  is no fix at all, and no fix means the condition holds. `warnings()` says what can be said
+  before somebody waits a week to find out: a rule whose moments never meet its own hours
+  (`NeverFires`, which is just `nextFireOfRule` giving up), circles that cannot both be true
+  (`PlacesConflict`), either of those under ALL taking the whole reminder down with it
+  (`NeverCompletes`), and a bare place rule beside a bare clock rule under ALL, which is legal
+  and usually meant as one conditioned rule (`BetterAsCondition`). None of it blocks saving.
 - `PlaceWatcher` is the second opinion, and the one that decides its own cost. However many
   places are being waited on there is **one** alarm, **one** fix and **one** decision: no rule
-  polls on its own account. On each check (an allow-while-idle alarm to `PlaceCheckReceiver`,
+  polls on its own account. What it watches is every circle still worth watching: a rule's
+  trigger only while that rule is still pending (`pendingRules` — under ALL a place already
+  ticked off has nothing left to report, and both the watch and the hundred-geofence allowance
+  stop spending on it), plus the circles named by `Condition.AtPlace`, which are watched for
+  their state alone (`WatchedPlace.fires = false`, so `stepPlaceWatch` never turns one into a
+  firing) and never geofenced, because a geofence reports a crossing and a condition has none.
+  On each check (an allow-while-idle alarm to `PlaceCheckReceiver`,
   exact when the phone allows it) it reads one fix from the fused provider — GPS only when the
   nearest line is close and the phone moving, the wifi/cell blend otherwise — and hands it to
   `stepPlaceWatch` (`core-model`, `PlaceWatch.kt`), which judges every place with hysteresis

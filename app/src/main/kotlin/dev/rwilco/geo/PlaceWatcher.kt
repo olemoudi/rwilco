@@ -21,6 +21,8 @@ import dev.rwilco.model.NoteKind
 import dev.rwilco.model.PlaceWatchPolicy
 import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.Status
+import dev.rwilco.model.pendingRules
+import dev.rwilco.model.place
 import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.WatchPlan
@@ -101,14 +103,43 @@ class PlaceWatcher(
     /** What the Settings card shows: last fix, nearest line, next look. */
     val state = store.state
 
-    /** The places the open reminders wait on, keyed the way the geofences are. */
+    /**
+     * Every circle the open reminders need watched, keyed the way the geofences are.
+     *
+     * Two kinds, and the difference is whether they may ring. A rule's *trigger* is an event to
+     * be caught, and only while the rule is still pending: under "todos" a rule whose moment
+     * has already happened is ticked off in `firedRules` and watching its place again all week
+     * is a fix an hour for an answer nobody is waiting for. A rule's *conditions* can name
+     * circles too ("y sólo si estoy en casa"), and those are watched for their state alone —
+     * `fires = false`, so `stepPlaceWatch` never turns one into a firing — because the answer
+     * has to be in hand at the moment some other trigger goes off.
+     */
     suspend fun places(): List<WatchedPlace> = repository.openNow()
         .filter { it.status == Status.ACTIVE }
         .flatMap { reminder ->
-            reminder.rules.mapIndexedNotNull { index, rule ->
-                (rule.trigger as? Trigger.Location)?.let { place ->
-                    WatchedPlace(GeofenceIds.encode(reminder.id, index), place.lat, place.lng, place.radiusM, place.transition, place.label)
+            val pending = reminder.pendingRules().toSet()
+            reminder.rules.flatMapIndexed { index, rule ->
+                val trigger = (rule.trigger as? Trigger.Location)
+                    ?.takeIf { index in pending }
+                    ?.let { place ->
+                        WatchedPlace(GeofenceIds.encode(reminder.id, index), place.lat, place.lng, place.radiusM, place.transition, place.label)
+                    }
+                val asked = rule.conditions.mapIndexedNotNull { at, condition ->
+                    condition.place?.let { place ->
+                        WatchedPlace(
+                            id = GeofenceIds.encodeCondition(reminder.id, index, at),
+                            lat = place.lat,
+                            lng = place.lng,
+                            radiusM = place.radiusM,
+                            // Waiting to be there reads as an arrival, waiting not to be as a
+                            // leaving; it is the cadence that reads it, never a firing.
+                            transition = if (place.inside) Transition.ENTER else Transition.EXIT,
+                            label = place.label,
+                            fires = false,
+                        )
+                    }
                 }
+                listOfNotNull(trigger) + asked
             }
         }
 

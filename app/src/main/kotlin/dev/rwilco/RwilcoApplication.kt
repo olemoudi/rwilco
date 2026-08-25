@@ -61,10 +61,11 @@ class RwilcoApplication : Application() {
             .map<AppSettings, AppSettings?> { it }
             .stateIn(appScope, SharingStarted.Eagerly, null)
         scheduler = ReminderScheduler(this, repository, settingsStore, clock)
-        firing = ReminderFiring(this, repository, settingsStore, scheduler, clock)
+        val placeWatch = PlaceWatchStore(this)
+        firing = ReminderFiring(this, repository, settingsStore, scheduler, placeWatch, clock)
         geofences = GeofenceManager(this, repository)
         placeLog = PlaceLogStore(this)
-        placeWatcher = PlaceWatcher(this, repository, firing, PlaceWatchStore(this), placeLog, settingsStore, clock)
+        placeWatcher = PlaceWatcher(this, repository, firing, placeWatch, placeLog, settingsStore, clock)
         AlertNotifications.ensureChannels(this)
 
         UpdateWorker.schedule(this)

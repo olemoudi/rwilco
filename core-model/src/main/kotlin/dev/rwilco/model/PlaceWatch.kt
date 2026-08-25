@@ -31,7 +31,15 @@ import kotlin.math.sqrt
 @Serializable
 data class Fix(val lat: Double, val lng: Double, val accuracyM: Double, val at: Instant)
 
-/** A place some rule is waiting on. [id] is whatever the caller needs to find the rule again. */
+/**
+ * A place some rule is waiting on. [id] is whatever the caller needs to find the rule again.
+ *
+ * [fires] is false for a place that is only ever *asked about* — the circle behind a
+ * [Condition.AtPlace], which has to be tracked so the answer is ready when a reminder rings,
+ * but which is a state and not an event and so must never ring anything itself. It costs the
+ * same to watch as any other place, which is the honest price of asking "and only if I am
+ * home": the app has to know whether you are.
+ */
 data class WatchedPlace(
     val id: String,
     val lat: Double,
@@ -39,6 +47,7 @@ data class WatchedPlace(
     val radiusM: Int,
     val transition: Transition,
     val label: String,
+    val fires: Boolean = true,
 )
 
 /** A place kept in Settings, offered whole — name, pin and radius — when a rule needs one. */
@@ -433,6 +442,7 @@ fun stepPlaceWatch(
     val movement = movementSince(state.lastFix, fix, sensed, state.stillStreak)
     val inside = places.associate { place -> place.id to insideAfter(state.inside[place.id], place, fix) }
     val events = places.mapNotNull { place ->
+        if (!place.fires) return@mapNotNull null
         val before = state.inside[place.id] ?: return@mapNotNull null
         val after = inside.getValue(place.id)
         when {

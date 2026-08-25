@@ -44,9 +44,43 @@ enum class TriggerProblem {
     WINDOW_EMPTY,
 }
 
-/** What is worth a word but not a wall: the reminder still saves. */
+/**
+ * What is worth a word but not a wall: the reminder still saves.
+ *
+ * Nothing here blocks anything. A person is allowed to write a reminder that cannot ring — it
+ * may be half-written, or on its way somewhere — and the app's job is to say so, not to argue.
+ */
 sealed interface ValidationWarning {
+    /** A one-shot moment already behind us. */
     data class InPast(val index: Int) : ValidationWarning
+
+    /**
+     * The rule can never ring: its trigger's moments and its own conditions never coincide.
+     * "Todos los lunes a las 9:00, y sólo si es entre las 18:00 y las 22:00."
+     */
+    data class NeverFires(val index: Int) : ValidationWarning
+
+    /**
+     * Two places on one rule that cannot both be true of the same phone: circles that do not
+     * touch, or the same circle asked for and ruled out. "Al llegar a casa, y sólo si estoy en
+     * la oficina."
+     */
+    data class PlacesConflict(val index: Int) : ValidationWarning
+
+    /**
+     * Under [RuleMatch.ALL] one rule that can never happen takes every other rule down with it:
+     * the set never completes, so the reminder never rings at all.
+     */
+    data class NeverCompletes(val index: Int) : ValidationWarning
+
+    /**
+     * A place rule and a clock rule, both bare, under [RuleMatch.ALL]. Legal and probably not
+     * what was meant: "todos" rings with the *last* of them to happen, so this asks for a
+     * reminder that waits for both in any order and at any distance apart. Somebody writing
+     * "al llegar a casa" and "a las 21:00" together usually means one conditioned rule —
+     * "al llegar a casa, y sólo si es por la tarde" — which is what a condition is for.
+     */
+    data class BetterAsCondition(val placeIndex: Int, val clockIndex: Int) : ValidationWarning
 }
 
 fun validate(text: String, rules: List<TriggerRule>): List<ValidationError> {
@@ -65,6 +99,12 @@ fun validate(text: String, rules: List<TriggerRule>): List<ValidationError> {
 fun problemOf(condition: Condition): TriggerProblem? = when (condition) {
     // A window that starts where it ends is not a window; one that crosses midnight is.
     is Condition.TimeWindow -> TriggerProblem.WINDOW_EMPTY.takeIf { condition.from == condition.to }
+    is Condition.AtPlace -> when {
+        condition.lat !in -90.0..90.0 || condition.lng !in -180.0..180.0 -> TriggerProblem.COORDINATES_INVALID
+        condition.radiusM !in MIN_RADIUS_M..MAX_RADIUS_M -> TriggerProblem.RADIUS_OUT_OF_RANGE
+        condition.label.length > MAX_LABEL_LENGTH -> TriggerProblem.LABEL_TOO_LONG
+        else -> null
+    }
 }
 
 fun problemOf(trigger: Trigger): TriggerProblem? = when (trigger) {
@@ -85,9 +125,101 @@ fun problemOf(trigger: Trigger): TriggerProblem? = when (trigger) {
     }
 }
 
-/** One-shot moments already behind us. Needs a clock, unlike [validate]. */
-fun warnings(rules: List<TriggerRule>, now: Instant, zone: ZoneId, defaultTime: LocalTime): List<ValidationWarning> =
-    rules.mapIndexedNotNull { index, rule ->
+/**
+ * Everything worth saying about a set of rules that saving will not stop. Needs a clock,
+ * unlike [validate].
+ *
+ * [match] is what the rules mean together, and it changes the stakes rather than the findings:
+ * under [RuleMatch.ANY] a rule that can never ring is one dud among several and the reminder
+ * still works, while under [RuleMatch.ALL] it is the whole reminder, because a set that never
+ * completes never rings.
+ */
+fun warnings(
+    rules: List<TriggerRule>,
+    now: Instant,
+    zone: ZoneId,
+    defaultTime: LocalTime,
+    match: RuleMatch = RuleMatch.ANY,
+): List<ValidationWarning> {
+    val found = ArrayList<ValidationWarning>()
+    val doomed = ArrayList<Int>()
+    rules.forEachIndexed { index, rule ->
+        val onItsOwn = nextFireOf(rule.trigger, "", now, zone, defaultTime)
         val oneShot = rule.trigger is Trigger.AtDateTime || rule.trigger is Trigger.OnDate
-        if (oneShot && nextFireOf(rule.trigger, "", now, zone, defaultTime) == null) ValidationWarning.InPast(index) else null
+        when {
+            // Nothing left of the trigger itself: a date that has been and gone.
+            onItsOwn == null && oneShot -> {
+                found += ValidationWarning.InPast(index)
+                doomed += index
+            }
+            // The trigger still has moments, but never one its own conditions allow. This is
+            // nextFireOfRule giving up after MAX_CANDIDATES, which is the same search the
+            // scheduler does — so what it cannot find, nothing will.
+            onItsOwn != null && nextFireOfRule(rule, "", now, zone, defaultTime) == null -> {
+                found += ValidationWarning.NeverFires(index)
+                doomed += index
+            }
+        }
+        if (rule.placesConflict()) {
+            found += ValidationWarning.PlacesConflict(index)
+            doomed += index
+        }
     }
+    if (match == RuleMatch.ALL && rules.size > 1) {
+        for (index in doomed.distinct()) found += ValidationWarning.NeverCompletes(index)
+    }
+    betterAsCondition(rules, match)?.let { found += it }
+    return found
+}
+
+/**
+ * A place rule and a clock rule sitting side by side under "todos", both of them bare.
+ *
+ * Only when both are bare: somebody who has already put a condition on one of them has met
+ * conditions and does not need telling about them. The first pair is enough — one suggestion
+ * is advice and five is nagging.
+ */
+private fun betterAsCondition(rules: List<TriggerRule>, match: RuleMatch): ValidationWarning.BetterAsCondition? {
+    if (match != RuleMatch.ALL || rules.size < 2) return null
+    val place = rules.indexOfFirst { it.conditions.isEmpty() && it.trigger is Trigger.Location }
+    val clock = rules.indexOfFirst {
+        it.conditions.isEmpty() && (it.trigger is Trigger.AtDateTime || it.trigger is Trigger.AtTime)
+    }
+    return if (place >= 0 && clock >= 0) ValidationWarning.BetterAsCondition(place, clock) else null
+}
+
+/**
+ * Whether the circles this rule talks about can all be true of one phone at one moment.
+ *
+ * The rule's own trigger counts as one of them when it is a place: firing on arrival means
+ * being inside it, and firing on departure means being outside. Then, pair by pair: two places
+ * that both have to hold must overlap, and a place that has to hold cannot sit entirely inside
+ * one that must not. Two places that both have to be *avoided* never conflict — there is always
+ * somewhere else to stand.
+ */
+fun TriggerRule.placesConflict(): Boolean {
+    val circles = ArrayList<Condition.AtPlace>()
+    (trigger as? Trigger.Location)?.let {
+        circles += Condition.AtPlace(it.lat, it.lng, it.radiusM, it.label, inside = it.transition == Transition.ENTER)
+    }
+    conditions.mapNotNullTo(circles) { it.place }
+    for (i in circles.indices) {
+        for (j in i + 1 until circles.size) {
+            if (circles[i].conflictsWith(circles[j])) return true
+        }
+    }
+    return false
+}
+
+private fun Condition.AtPlace.conflictsWith(other: Condition.AtPlace): Boolean {
+    val apart = distanceMeters(lat, lng, other.lat, other.lng)
+    return when {
+        // Both have to hold: the circles have to touch somewhere.
+        inside && other.inside -> apart > radiusM + other.radiusM
+        // One has to hold and the other must not: impossible when the first is swallowed whole.
+        inside -> apart + radiusM <= other.radiusM
+        other.inside -> apart + other.radiusM <= radiusM
+        // Neither has to hold: the rest of the world is available.
+        else -> false
+    }
+}

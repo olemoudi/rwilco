@@ -27,6 +27,7 @@ import dev.rwilco.BuildConfig
 import dev.rwilco.MainActivity
 import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
+import dev.rwilco.model.SavedPlace
 import dev.rwilco.debug.DemoData
 import dev.rwilco.ui.components.TIME_FIELD_TAG
 import dev.rwilco.ui.editor.EDITOR_TEXT_TAG
@@ -82,7 +83,18 @@ class EditorTourTest {
             // over every capture after it, since the tour never taps it away. Seen already.
             // No presets either: with one kept, "New" asks a question first, and the tour is
             // walking the path somebody with none walks.
-            app.settingsStore.update { it.copy(lastSeenVersionCode = BuildConfig.VERSION_CODE, presets = emptyList()) }
+            // Two saved places, because a place condition ("y sólo si estoy en casa") picks from
+            // them: with none saved the condition sheet has only its hours to offer.
+            app.settingsStore.update {
+                it.copy(
+                    lastSeenVersionCode = BuildConfig.VERSION_CODE,
+                    presets = emptyList(),
+                    savedPlaces = listOf(
+                        SavedPlace("Casa", 40.4169, -3.7035, 200),
+                        SavedPlace("Oficina", 40.4500, -3.6900, 150),
+                    ),
+                )
+            }
             // A watch that has been running: the location log has nothing to show on a phone
             // that has never looked, and an empty state is not what that screen is for.
             app.placeLog.clear()
@@ -148,10 +160,15 @@ class EditorTourTest {
         rule.waitUntilGone(s(R.string.sheet_add))
         rule.onNodeWithContentDescription(s(R.string.editor_edit_trigger)).assertIsDisplayed()
 
-        // A rule can be fenced in: the trigger only counts inside these hours.
+        // A rule can be fenced in, by hours or by a place: the trigger only counts inside them.
         text(s(R.string.editor_add_condition)).performScrollTo().performClick()
         rule.waitUntilDisplayed(s(R.string.condition_title))
         shot("sheet-condition")
+        text(s(R.string.condition_kind_place)).performClick()
+        rule.waitUntilDisplayed(s(R.string.condition_place_inside))
+        shot("sheet-condition-place")
+        text(s(R.string.condition_kind_hours)).performClick()
+        rule.waitUntilDisplayed(s(R.string.condition_window_hint))
         text(s(R.string.sheet_add)).performClick()
         rule.waitUntilGone(s(R.string.condition_title))
         // A tag on, so the capture shows what "on" looks like next to "off".

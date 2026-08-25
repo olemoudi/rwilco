@@ -9,7 +9,12 @@ import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Snooze
 import dev.rwilco.model.Status
 import dev.rwilco.model.Trigger
+import dev.rwilco.geo.PlaceWatchStore
+import dev.rwilco.model.Condition
+import dev.rwilco.model.PlaceWatchPolicy
+import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.allHoldAt
+import dev.rwilco.model.knownInAdvance
 import dev.rwilco.model.firingPlan
 import dev.rwilco.model.missedFire
 import dev.rwilco.model.momentRungFor
@@ -32,6 +37,8 @@ class ReminderFiring(
     private val repository: ReminderRepository,
     private val settingsStore: SettingsStore,
     private val scheduler: ReminderScheduler,
+    /** Where the phone was last seen, for the "y sólo si estoy en X" conditions. */
+    private val placeWatch: PlaceWatchStore,
     private val clock: Clock,
 ) {
 
@@ -49,8 +56,8 @@ class ReminderFiring(
         // alarm again here would silence a firing the phone slept through — the catch-up runs
         // long after the window it was armed inside.
         val rule = ruleIndex?.let { reminder.rules.getOrNull(it) }
-        if (rule?.trigger is Trigger.Location && !rule.conditions.allHoldAt(now, clock.zone)) {
-            Log.i(TAG, "$id reached its place outside the hours it asked for")
+        if (rule != null && !conditionsHold(rule, now)) {
+            Log.i(TAG, "$id came round outside what its rule asks for")
             return
         }
         // Nothing rings for a moment that is not armed.
@@ -101,6 +108,32 @@ class ReminderFiring(
         }
         AlertPresenter.show(context, reminder, firingPlan(reminder.actions), late)
         scheduler.rearmAll()
+    }
+
+    /**
+     * Whether a rule's conditions allow it to ring now — two questions, asked of different sets.
+     *
+     * A place trigger has no armed moment behind it: nothing has ever checked its time windows,
+     * so all of them are checked here. Everything else was armed for a moment the scheduler
+     * already found a window for, and asking again would silence a firing the phone slept
+     * through — a catch-up runs long after the window it was armed inside.
+     *
+     * What is asked of every trigger is the *place* conditions, because they are the ones
+     * nothing could ask in advance ([knownInAdvance]): the scheduler leaves them out and arms
+     * the alarm, and this is where "y sólo si estoy en casa" actually gets answered. It is
+     * answered from the place watch's last fix, and only while that fix still speaks for now —
+     * past [PlaceWatchPolicy.SPEED_MEMORY] it is no fix at all, and no fix means the condition
+     * holds. Ringing once too often beats the reminder that never arrives.
+     */
+    private suspend fun conditionsHold(rule: TriggerRule, now: Instant): Boolean {
+        val asked = if (rule.trigger is Trigger.Location) rule.conditions else rule.conditions.filterNot { it.knownInAdvance }
+        if (asked.isEmpty()) return true
+        val where = if (asked.any { it is Condition.AtPlace }) {
+            placeWatch.read().lastFix?.takeIf { Duration.between(it.at, now) <= PlaceWatchPolicy.SPEED_MEMORY }
+        } else {
+            null
+        }
+        return asked.allHoldAt(now, clock.zone, where)
     }
 
     /** "Hecho": finished if nothing can ring again, otherwise just this occurrence dealt with. */

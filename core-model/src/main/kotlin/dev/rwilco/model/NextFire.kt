@@ -98,7 +98,12 @@ fun nextWake(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalT
  * Walks candidate moments rather than solving for them, because "every day at nine, and only in
  * June" is a search either way — and it stops after [MAX_CANDIDATES] so a rule that can never
  * be satisfied ("at 09:00, and only between 18:00 and 22:00") answers "never" instead of
- * looping. A place is judged when it happens, not now, so it comes back untouched.
+ * looping — which is also how [warnings] knows to say so. A place is judged when it happens,
+ * not now, so it comes back untouched.
+ *
+ * Only the conditions that can be asked about a future moment are asked ([knownInAdvance]).
+ * Nothing knows where somebody will be next Tuesday, so a place condition is left out here and
+ * the alarm is armed regardless; `ReminderFiring` asks it for real when the alarm goes off.
  */
 fun nextFireOfRule(rule: TriggerRule, reminderId: String, now: Instant, zone: ZoneId, defaultTime: LocalTime): NextFire? {
     var after = now
@@ -109,7 +114,7 @@ fun nextFireOfRule(rule: TriggerRule, reminderId: String, now: Instant, zone: Zo
             is NextFire.Sometime -> candidate.at
             is NextFire.WhenAt -> return candidate
         }
-        if (rule.conditions.allHoldAt(at, zone)) return candidate
+        if (rule.conditions.filter { it.knownInAdvance }.allHoldAt(at, zone)) return candidate
         after = at
     }
     return null

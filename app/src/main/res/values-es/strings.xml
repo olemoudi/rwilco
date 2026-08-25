@@ -561,4 +561,18 @@
         <item>Una alarma a pantalla completa que nadie contestaba dejaba la pantalla encendida hasta que alguien volvía a casa. Ahora la suelta cuando deja de sonar.</item>
         <item>Ajustes tiene la cuenta entera: cada mirada del vigilante y los números con los que decidió la siguiente, y un aviso discreto opcional si alguna vez lee tu ubicación más de veinte veces en una hora.</item>
     </string-array>
+
+    <!-- Conditions on a trigger: the second kind is a place. -->
+    <string name="condition_kind_hours">Horas</string>
+    <string name="condition_kind_place">Lugar</string>
+    <string name="condition_place_hint">Sólo cuenta cuando el teléfono está allí — o cuando no lo está. Elige entre los lugares que guardas en Ajustes.</string>
+    <string name="condition_place_inside">Estoy allí</string>
+    <string name="condition_place_outside">No estoy allí</string>
+    <string name="condition_at_place">en %1$s</string>
+    <string name="condition_away_from_place">fuera de %1$s</string>
+    <!-- What the editor says about rules that cannot ring, or probably do not mean what they say. -->
+    <string name="editor_warning_never_fires">Esto no puede sonar nunca: los momentos que pide y las horas que permite no coinciden jamás.</string>
+    <string name="editor_warning_places_conflict">Esto no puede sonar nunca: pide estar en dos sitios que no pueden ser ciertos a la vez.</string>
+    <string name="editor_warning_never_completes">Con «todos» éste bloquea el recordatorio entero: no puede ocurrir, así que el juego no se completa y no suena nada.</string>
+    <string name="editor_warning_better_as_condition">«Todos» suena con el último que ocurra, en cualquier orden y por lejos que queden. Si querías «al llegar aquí, y sólo si es por la tarde», pon las horas en éste con «y sólo si».</string>
 </resources>

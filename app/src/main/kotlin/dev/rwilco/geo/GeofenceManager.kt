@@ -10,6 +10,7 @@ import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.model.Status
+import dev.rwilco.model.pendingRules
 import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -44,7 +45,15 @@ class GeofenceManager(
         val places = repository.openNow()
             .filter { it.status == Status.ACTIVE }
             .flatMap { reminder ->
+                // Only the rules still waiting to happen. Under "todos" a place that has
+                // already been ticked off has nothing left to report, and a geofence is not
+                // free: a hundred is the app's whole allowance and Play Services watches every
+                // one of them. The circles named by *conditions* are not here at all — a
+                // geofence reports a crossing and a condition has none; PlaceWatcher tracks
+                // their state instead.
+                val pending = reminder.pendingRules().toSet()
                 reminder.rules.mapIndexedNotNull { index, rule ->
+                    if (index !in pending) return@mapIndexedNotNull null
                     (rule.trigger as? Trigger.Location)?.let { GeofenceIds.encode(reminder.id, index) to it }
                 }
             }

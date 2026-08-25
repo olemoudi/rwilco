@@ -563,4 +563,18 @@
         <item>A full-screen alarm nobody answered used to hold the screen on until somebody came home. It now lets go when the ringing does.</item>
         <item>Settings has the whole account of it: every look the watch took and the numbers it decided the next one from, and an optional quiet notice if it ever reads your location more than twenty times in an hour.</item>
     </string-array>
+
+    <!-- Conditions on a trigger: the second kind is a place. -->
+    <string name="condition_kind_hours">Hours</string>
+    <string name="condition_kind_place">Place</string>
+    <string name="condition_place_hint">Only counts when the phone is there — or when it is not. Pick from the places you keep in Settings.</string>
+    <string name="condition_place_inside">I am there</string>
+    <string name="condition_place_outside">I am not there</string>
+    <string name="condition_at_place">at %1$s</string>
+    <string name="condition_away_from_place">away from %1$s</string>
+    <!-- What the editor says about rules that cannot ring, or probably do not mean what they say. -->
+    <string name="editor_warning_never_fires">This can never ring: the moments it asks for and the hours it allows never meet.</string>
+    <string name="editor_warning_places_conflict">This can never ring: it asks to be in two places that cannot both be true at once.</string>
+    <string name="editor_warning_never_completes">Under «all» this one stops the whole reminder: it can never happen, so the set never completes and nothing ever rings.</string>
+    <string name="editor_warning_better_as_condition">«All» rings with the last of them to happen, in any order and however far apart. If you meant «when I get here, and only in the evening», put the hours on this one with «and only if».</string>
 </resources>
