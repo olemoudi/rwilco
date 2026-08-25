@@ -443,6 +443,11 @@
         <item>Pausing a reminder now says what it will do — the word "Pause" or "Resume" next to the button, because a pause glyph on its own reads as "this is paused" just as easily.</item>
         <item>It is bigger, it sits up with the reminder\'s own words instead of among the small grey glyphs that cannot be pressed, and it takes a finger that stays. Let go early and nothing happens.</item>
     </string-array>
+    <string-array name="whats_new_0_7_6">
+        <item>“Hecho” now means the same thing wherever you say it. Swiping a card done on Home went straight to the done list, even for a reminder you had asked to repeat — so a routine like “cada 1 h” was finished by the swipe instead of starting its next round. It now reactivates itself and counts the next one from your “hecho”, exactly as the notification always did.</item>
+        <item>On the alert screen, “Hecho” is the button at the bottom. “Ver” used to sit below it, which is where a half-awake thumb lands — so answering an alarm could hand you the edit form instead.</item>
+        <item>And saving that form no longer brings a moment back from the dead. A repeating reminder that had rung and was waiting for you came back from the editor as “lo siguiente”, three quarters of an hour in the past, with an alarm set for a moment already gone.</item>
+    </string-array>
     <string-array name="whats_new_0_7_5">
         <item>A reminder that repeats no longer rings on and on. “Cada 6 h” counts from the moment you deal with it, so one you had not answered kept handing back the same moment, and an alarm already in the past arrives at once — over and over until you tapped Hecho. It rang once, waits on Home as overdue, and comes back six hours after you say so.</item>
         <item>Editing one no longer resets it. Fixing a typo used to throw away the moment its recurrence counts from, which either stopped the reminder dead or hurled its next one back to the day it was written.</item>

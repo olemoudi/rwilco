@@ -14,15 +14,19 @@ import dev.rwilco.BuildConfig
 import dev.rwilco.MainActivity
 import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
+import dev.rwilco.model.Recurrence
+import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.Duration
 
 /**
  * Swiping a card, taking it back, and swiping it again.
@@ -62,8 +66,8 @@ class HomeSwipeTest {
      * by name would find nothing. Letting go too early is [SwipeableCardTest]'s job, where a
      * hand-driven clock can stop time before the fill finishes.
      */
-    private fun swipeCardRightAndHold() {
-        rule.onNodeWithText(words).performTouchInput {
+    private fun swipeCardRightAndHold(target: String = words) {
+        rule.onNodeWithText(target).performTouchInput {
             down(centerLeft)
             moveTo(centerRight)
         }
@@ -98,5 +102,48 @@ class HomeSwipeTest {
         swipeCardRightAndHold()
         rule.waitUntil(10_000) { runBlocking { app.repository.get(id)?.status } == Status.DONE }
         assertEquals(Status.DONE, runBlocking { app.repository.get(id)?.status })
+    }
+
+    /**
+     * "Hecho" means one thing, wherever it is given.
+     *
+     * The swipe used to file the reminder as DONE outright — right for most of them, wrong for
+     * every one asked to come back. A medicine routine ("cada 1 h") was finished by the swipe
+     * instead of starting its next round, and the moment the recurrence counts from was never
+     * written down, so it could not have come back even if it had stayed.
+     */
+    @Test
+    fun aRecurringReminderSwipedDoneComesBackCountedFromTheSwipe() {
+        val pills = "Tomar la pastilla"
+        runBlocking {
+            app.repository.deleteAll()
+            val written = app.clock.instant().minus(Duration.ofHours(2))
+            // Rang an hour after it was written and nobody answered: overdue, waiting on Home.
+            app.repository.save(
+                Reminder(
+                    id = id,
+                    text = pills,
+                    recurrence = Recurrence.After(1, RecurrenceUnit.HOURS),
+                    createdAt = written,
+                    updatedAt = written,
+                    lastFiredAt = written.plus(Duration.ofHours(1)),
+                ),
+            )
+        }
+        waitFor(pills)
+
+        val swipedAt = app.clock.instant()
+        swipeCardRightAndHold(pills)
+        rule.waitUntil(10_000) { runBlocking { app.repository.get(id)?.lastDealtAt } != null }
+
+        val after = runBlocking { app.repository.get(id)!! }
+        assertEquals("a reminder asked to come back was finished instead", Status.ACTIVE, after.status)
+        assertTrue("the anchor has to be the swipe, not the firing", after.lastDealtAt!! >= swipedAt)
+        val armed = after.armedFor
+        assertTrue("nothing was armed for the next round", armed != null)
+        assertTrue(
+            "an hour after the swipe, not after the ring: $armed",
+            Duration.between(swipedAt, armed).toMinutes() in 55..65,
+        )
     }
 }

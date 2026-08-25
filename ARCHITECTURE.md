@@ -163,9 +163,11 @@ strict is asking somebody to remember how they spelled it.
   (`Routes.Editor(fromPresetId=…)`) rather than writing the reminder outright, because a preset
   can hold a date that has since passed and the form is where that gets seen.
 - Editor: `EditorUiState` + pure reducers (`EditorState.kt`, tested). A save replaces the whole
-  row and deliberately drops the snooze, the last ring and the armed moment — editing re-decides
-  when a reminder rings — but carries `lastDealtAt`, which is the anchor a recurrence counts
-  from rather than a firing's leftovers. A toggle turns the form
+  row and deliberately drops the snooze and the armed moment — editing re-decides when a
+  reminder rings — but carries `lastDealtAt` and `lastFiredAt`. The first is the anchor a
+  recurrence counts from; the second is what makes a moment spent, and for an anchored
+  recurrence it is the only thing that does, so without it a save hands back a moment already
+  gone — on Home as "lo siguiente" in the past, and armed for an alarm that arrives at once. A toggle turns the form
   into a preset editor (`asPreset`); the same four cards, saved to the settings instead of the
   database. The form is four cards
   (`EditorSection`), each with an icon badge and its name — the words, the tags, when, what
@@ -215,7 +217,10 @@ strict is asking somebody to remember how they spelled it.
   the snooze and the recurrence — and deliberately not what the scheduler itself writes back,
   or every re-arm would come round as a change and arm everything again.
 - `ReminderFiring` is the single place that decides what a firing, a "Hecho" and a snooze do, so
-  the alarm, the notification buttons and the alert screen cannot drift apart. Under ALL it
+  the alarm, the notification buttons, the alert screen **and Home's swipe** cannot drift apart.
+  Home's used to file the reminder as DONE itself, which is right for most of them and wrong for
+  every one asked to come back: a "cada 6 h" was finished by the swipe instead of starting its
+  next round, and the anchor its recurrence counts from was never written down. Under ALL it
   writes the moment down and returns; only the last one goes on to ring. Nothing rings for a
   moment that is not armed: a place happens when it happens, but everything else is checked
   against the row's armed moment, so a stray delivery — a stale alarm, the same broadcast twice
@@ -239,7 +244,10 @@ strict is asking somebody to remember how they spelled it.
   sound is fixed the moment it is created. A full-screen alert's notification stays silent: the
   screen does its own looping ring (`AlertRinger`) and gives up after two minutes.
 - `AlertActivity` shows over the lock screen and turns it on; it is its own task so dismissing
-  an alarm at three in the morning does not drop anybody into the app's back stack.
+  an alarm at three in the morning does not drop anybody into the app's back stack. "Hecho" is
+  the bottom-most control on it, because the bottom of the screen is where a half-awake thumb
+  lands and it belongs to the one answer the screen is asking for; "Ver" (which opens the form)
+  sits above it, having once sat below.
 - `GeofenceManager` registers the place rules with Play Services, wholesale, and re-registers on
   boot and from `RearmWorker` (a reboot or a Play Services update drops them all). That is the
   net: free, always on, the system's own word on where the phone is. Settings says where that

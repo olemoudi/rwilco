@@ -126,7 +126,19 @@ fun AlertScreen(
                     SnoozeButton(label = stringResource(snooze.labelRes), onClick = { onSnooze(snooze) })
                 }
             }
-            Spacer(Modifier.height(spacing.xl))
+            Spacer(Modifier.height(spacing.lg))
+            // "Ver" goes ABOVE "Hecho", not under it. The bottom of the screen is where the
+            // thumb lands, and it belongs to the one answer this screen is asking for — an
+            // alarm answered half awake must not be able to hand somebody the edit form
+            // instead. Which is exactly what it did.
+            TextButton(
+                onClick = onView,
+                colors = ButtonDefaults.textButtonColors(contentColor = scheme.onSurfaceVariant),
+                modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.sizes.touch),
+            ) {
+                Text(stringResource(if (preview) R.string.alert_close_preview else R.string.alert_view))
+            }
+            Spacer(Modifier.height(spacing.sm))
             Button(
                 onClick = {
                     haptics.perform(HapticFeedbackType.Confirm)
@@ -141,13 +153,6 @@ fun AlertScreen(
                 Icon(Icons.Filled.Check, contentDescription = null)
                 Spacer(Modifier.width(spacing.sm))
                 Text(stringResource(R.string.alert_done), style = MaterialTheme.typography.titleLarge)
-            }
-            TextButton(
-                onClick = onView,
-                colors = ButtonDefaults.textButtonColors(contentColor = scheme.onSurfaceVariant),
-                modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.sizes.touch),
-            ) {
-                Text(stringResource(if (preview) R.string.alert_close_preview else R.string.alert_view))
             }
             Spacer(Modifier.height(spacing.sm))
         }

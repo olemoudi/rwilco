@@ -40,15 +40,18 @@ data class Draft(
 fun Reminder.toDraft() = Draft(text = text, tags = tags, rules = rules, ruleMatch = ruleMatch, actions = actions, recurrence = recurrence)
 
 /**
- * Note what is NOT carried over: a snooze, the last ring, the armed moment. Editing a reminder
- * re-decides when it rings, so a "remind me in ten minutes" from the old shape has no meaning,
- * and the scheduler writes the armed moment again the instant this is saved.
+ * Note what is NOT carried over: a snooze and the armed moment. Editing a reminder re-decides
+ * when it rings, so a "remind me in ten minutes" from the old shape has no meaning, and the
+ * scheduler writes the armed moment again the instant this is saved.
  *
- * [lastDealtAt] is the exception, and it has to be passed in because a save replaces the whole
- * row. It is not a firing's leftovers but the anchor every recurrence is measured from, and
- * dropping it to fix a typo either stops the reminder dead — with triggers there is nothing left
- * to count from until it is dealt with again — or throws its next moment back to the day it was
- * written.
+ * Two things are carried, and both have to be passed in because a save replaces the whole row.
+ * [lastDealtAt] is not a firing's leftovers but the anchor every recurrence is measured from,
+ * and dropping it to fix a typo either stops the reminder dead — with triggers there is nothing
+ * left to count from until it is dealt with again — or throws its next moment back to the day it
+ * was written. [lastFiredAt] is what makes a moment SPENT, and for an anchored recurrence it is
+ * the only thing that does: its moment comes from an anchor that does not move until somebody
+ * deals with the firing, so without the last ring an edit hands back a moment already gone —
+ * on Home as "lo siguiente" in the past, and armed for an alarm that arrives at once.
  */
 fun Draft.toReminder(
     id: String,
@@ -56,6 +59,7 @@ fun Draft.toReminder(
     now: Instant,
     status: Status,
     lastDealtAt: Instant? = null,
+    lastFiredAt: Instant? = null,
 ): Reminder = Reminder(
     id = id,
     text = text.trim(),
@@ -70,6 +74,7 @@ fun Draft.toReminder(
     createdAt = createdAt,
     updatedAt = now,
     lastDealtAt = lastDealtAt,
+    lastFiredAt = lastFiredAt,
 )
 
 /** Which of the two lists the editor offers back is being mended. */

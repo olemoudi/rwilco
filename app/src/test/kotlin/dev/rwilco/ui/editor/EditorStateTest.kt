@@ -4,6 +4,7 @@ import dev.rwilco.model.Action
 import dev.rwilco.model.DEFAULT_ACTIONS
 import dev.rwilco.model.MAX_TEXT_LENGTH
 import dev.rwilco.model.Recurrence
+import dev.rwilco.model.nextFire
 import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
@@ -14,13 +15,16 @@ import dev.rwilco.model.TriggerKind
 import dev.rwilco.model.ValidationError
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
 
 class EditorStateTest {
 
@@ -120,6 +124,40 @@ class EditorStateTest {
         assertEquals(null, saved.snoozedUntil, "a remind-me-later belonged to the old shape")
         assertEquals(null, saved.armedFor, "the scheduler writes this again the instant it is saved")
         assertEquals(null, draft.toReminder("r1", dealt, dealt, Status.ACTIVE).lastDealtAt, "and a new reminder has no anchor yet")
+    }
+
+    @Test
+    fun `saving does not put a recurrence that has already rung back on the clock`() {
+        // "Cada 1 h", written at 14:14, rang at 15:14, and nobody has dealt with it — so it is
+        // overdue and waiting for a person. Opening it, changing nothing and saving must leave
+        // it exactly that. Dropping the last ring un-spends 15:14, which puts it back on Home as
+        // "lo siguiente" three quarters of an hour in the PAST — and arms an alarm for a moment
+        // already gone, which arrives at once.
+        val written = Instant.parse("2026-08-25T12:14:00Z")
+        val rang = written.plus(Duration.ofHours(1))
+        val before = Reminder(
+            id = "pills",
+            text = "Tomar la pastilla",
+            recurrence = Recurrence.After(1, RecurrenceUnit.HOURS),
+            createdAt = written,
+            updatedAt = written,
+            lastFiredAt = rang,
+        )
+
+        val saved = before.toDraft().toReminder(
+            id = before.id,
+            createdAt = before.createdAt,
+            now = rang.plus(Duration.ofMinutes(47)),
+            status = Status.ACTIVE,
+            lastDealtAt = before.lastDealtAt,
+            lastFiredAt = before.lastFiredAt,
+        )
+
+        assertEquals(rang, saved.lastFiredAt)
+        assertNull(
+            nextFire(saved, rang.plus(Duration.ofMinutes(47)), ZoneId.of("Europe/Madrid"), LocalTime.of(9, 0)),
+            "a moment that has rung stays spent across an edit",
+        )
     }
 
     @Test

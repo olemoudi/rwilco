@@ -259,9 +259,10 @@ class EditorViewModel(
                 // Editing something already done brings it back; otherwise the status is not
                 // the editor's business.
                 status = if (before == null || before.status == Status.DONE) Status.ACTIVE else before.status,
-                // The recurrence's anchor survives an edit; everything else about the old
-                // firing does not. See Draft.toReminder.
+                // The recurrence's anchor and the last ring survive an edit; the snooze and
+                // the armed moment do not. See Draft.toReminder.
                 lastDealtAt = before?.lastDealtAt,
+                lastFiredAt = before?.lastFiredAt,
             )
             repository.save(reminder)
             events.send(EditorEvent.Saved)

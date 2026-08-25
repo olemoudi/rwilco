@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.rwilco.RwilcoApplication
+import dev.rwilco.alarm.ReminderFiring
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.AppSettings
@@ -56,6 +57,8 @@ sealed interface HomeEvent {
 class HomeViewModel(
     private val repository: ReminderRepository,
     private val store: SettingsStore,
+    /** "Hecho" is one answer with one meaning, wherever it is given: see [markDone]. */
+    private val firing: ReminderFiring,
     settings: Flow<AppSettings?>,
     val clock: Clock,
 ) : ViewModel() {
@@ -182,6 +185,17 @@ class HomeViewModel(
         setSearching(false)
     }
 
+    /**
+     * The swipe that says "hecho", which is the same answer as the one on the notification and
+     * on the alert screen — so it goes through the same door.
+     *
+     * It used to file the reminder as DONE outright, which is right for most of them and wrong
+     * for every one that was asked to come back: a reminder repeating "cada 6 h" was finished by
+     * the swipe instead of starting its next round, and the moment its recurrence counts from
+     * was never written down. [ReminderFiring.dismiss] is where that decision lives
+     * (`statusAfterDismissal`), and it also stamps `lastDealtAt`, clears a half-finished ALL
+     * round, takes down the notification and re-arms.
+     */
     fun markDone(id: String) = removeAs(id, HomeEvent.Removed.Kind.DONE)
 
     fun delete(id: String) = removeAs(id, HomeEvent.Removed.Kind.DELETED)
@@ -190,20 +204,20 @@ class HomeViewModel(
         viewModelScope.launch {
             val reminder = repository.get(id) ?: return@launch
             when (kind) {
-                HomeEvent.Removed.Kind.DONE -> repository.setStatus(id, Status.DONE)
+                HomeEvent.Removed.Kind.DONE -> firing.dismiss(id)
                 HomeEvent.Removed.Kind.DELETED -> repository.delete(id)
             }
             events.send(HomeEvent.Removed(kind, reminder))
         }
     }
 
+    /**
+     * The reminder exactly as it was: dealing with one now moves more than its status — the
+     * anchor its recurrence counts from, a half-finished round, a snooze — and putting only the
+     * status back would leave the clock wound forward.
+     */
     fun undo(removed: HomeEvent.Removed) {
-        viewModelScope.launch {
-            when (removed.kind) {
-                HomeEvent.Removed.Kind.DONE -> repository.setStatus(removed.reminder.id, removed.reminder.status)
-                HomeEvent.Removed.Kind.DELETED -> repository.restore(removed.reminder)
-            }
-        }
+        viewModelScope.launch { repository.restore(removed.reminder) }
     }
 
     fun togglePause(id: String, paused: Boolean) {
@@ -215,6 +229,6 @@ class HomeViewModel(
     class Factory(private val app: RwilcoApplication) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            HomeViewModel(app.repository, app.settingsStore, app.settings, app.clock) as T
+            HomeViewModel(app.repository, app.settingsStore, app.firing, app.settings, app.clock) as T
     }
 }

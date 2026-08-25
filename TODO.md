@@ -88,6 +88,29 @@ which these fences do not ask for — the comment now says what actually damps a
 (`setNotificationResponsiveness`). Adding DWELL would change when a place fires and wants a
 real phone to judge it.
 
+## The medicine routine, reported from the phone (2026-08-25, 0.7.6)
+"Cada 1 h" fired, "hecho" opened the edit form, saving it put a card on Home reading *"Lo
+siguiente · hace 47 minutos"*. Three separate faults in one minute of use:
+
+- **Home's "hecho" swipe never went through `ReminderFiring.dismiss`.** It called
+  `setStatus(DONE)` straight out, so a reminder asked to repeat was finished by the swipe and
+  `lastDealtAt` — the moment the next round is counted from — was never stamped. The notification
+  and the alert screen had always done it properly; Home was the one door that had drifted.
+  `HomeSwipeTest` now swipes a "cada 1 h" card and checks it comes back, armed an hour from the
+  swipe.
+- **On the alert screen, "Ver" sat below "Hecho".** The bottom of the screen is where the thumb
+  lands, and it was handing people the edit form when they meant to answer the alarm. That is how
+  the form opened. "Hecho" is the bottom control now.
+- **A save resurrected a spent moment.** 0.7.5 taught the editor to carry `lastDealtAt` but not
+  `lastFiredAt`, and for an anchored recurrence the last ring is the *only* thing marking its
+  moment spent (the anchor does not move until it is dealt with). So saving un-spent 15:14 and
+  Home showed it as "lo siguiente", three quarters of an hour in the past — with an alarm armed
+  for it, which arrives at once. Both are carried now.
+
+The expected shape, confirmed and now covered end to end: write it → it fires after X → "hecho"
+from the notification, the alert screen **or** the Home swipe → it reactivates itself → it fires
+again X after the *hecho*, not after the previous firing.
+
 ## Still to prove on the real phone (Pixel 8 Pro)
 - The overlay rule end to end: an alert while another app is open (banner), on the home screen
   (full screen), and with either special permission missing (banner, and Settings says which).
