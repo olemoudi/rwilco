@@ -14,37 +14,53 @@ import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.android.gms.tasks.Task
 import dev.rwilco.alarm.ReminderFiring
 import dev.rwilco.data.ReminderRepository
+import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.Fix
+import dev.rwilco.model.Movement
+import dev.rwilco.model.NoteKind
 import dev.rwilco.model.PlaceWatchPolicy
 import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.Status
 import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
+import dev.rwilco.model.WatchPlan
+import dev.rwilco.model.WatchNote
 import dev.rwilco.model.WatchedPlace
+import dev.rwilco.model.blindRetry
+import dev.rwilco.model.busyNotice
 import dev.rwilco.model.crossingIsNews
+import dev.rwilco.model.pollsSince
 import dev.rwilco.model.remembering
 import dev.rwilco.model.stepPlaceWatch
+import dev.rwilco.model.stepWithoutLooking
+import dev.rwilco.model.stirredWait
+import dev.rwilco.notify.WatchNotices
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import kotlin.coroutines.resume
+import kotlin.math.roundToInt
 
 /**
  * The app's own eye on its places, alongside the phone's geofences.
  *
  * The geofences are the net: free, always on, and the system's own word on where the phone
- * is. This is the second opinion, and the one that decides its own cost. Each check reads one
- * fix, judges every place with hysteresis (`stepPlaceWatch`), fires the crossings that match a
- * rule, and sets ONE alarm for the next look — as far off as the nearest line and the phone's
- * speed allow, from two minutes moving up to a door to an hour standing still across town.
+ * is. This is the second opinion, and the one that decides its own cost. However many places
+ * are being waited on, there is ONE alarm, ONE fix and ONE decision: each check reads a single
+ * fix, judges every place against it with hysteresis (`stepPlaceWatch`), fires the crossings
+ * that match a rule, and sets the next alarm to the soonest look any one place asks for — from
+ * two minutes walking up to a door to an afternoon for a place three provinces away, which no
+ * road gets anybody to sooner.
  *
  * What it costs: a fix is wifi/cell unless the line is close and the phone moving, when it is
  * GPS for a few seconds; the alarm is allow-while-idle, which Doze holds to one per nine
  * minutes — and a phone in Doze is a phone that is not moving, so nothing is lost. At the
  * ceiling that is a GPS fix every two minutes for the minutes it takes to arrive, well under a
- * percent of a day's battery; at the floor, a wifi fix an hour.
+ * percent of a day's battery; at the floor, no fix at all — see `stepWithoutLooking`, which
+ * spends the phone's own motion sensor ([MotionSensor], free) instead of its radios.
  *
  * A firing both the geofence and this watch see is fired once: [ReminderFiring] drops a place
  * firing that repeats within minutes.
@@ -54,11 +70,33 @@ class PlaceWatcher(
     private val repository: ReminderRepository,
     private val firing: ReminderFiring,
     private val store: PlaceWatchStore,
+    private val log: PlaceLogStore,
+    private val settings: SettingsStore,
     private val clock: Clock,
+    /** The phone's own answer to "have you moved?", which costs nothing to ask. */
+    private val motion: MotionSensor = MotionSensor(context),
 ) {
 
     private val alarms = context.getSystemService(AlarmManager::class.java)
     private val fused: FusedLocationProviderClient by lazy { LocationServices.getFusedLocationProviderClient(context) }
+    private val battery = BatteryGauge(context)
+
+    /**
+     * The look this process last set an alarm for, and how far the nearest line was when it did.
+     * In memory rather than in the store because that is exactly where they are worth having:
+     * the sensor only speaks for the process that armed it, so [stirred] and these two are valid
+     * together or not at all, and reading them costs nothing on a sensor callback that must not
+     * block.
+     */
+    @Volatile
+    private var plannedAt: Instant? = null
+
+    @Volatile
+    private var plannedGapM: Double? = null
+
+    init {
+        motion.onMotion = ::stirred
+    }
 
     /** What the Settings card shows: last fix, nearest line, next look. */
     val state = store.state
@@ -75,8 +113,16 @@ class PlaceWatcher(
         }
 
     /**
-     * The list of places changed, or the app started: forget places that are gone and look
-     * soon. A place added while standing inside it is baselined by that look, not rung.
+     * The list of places changed, or the app started: forget places that are gone, and look soon
+     * if there is anything new to look at. A place added while standing inside it is baselined
+     * by that look, not rung.
+     *
+     * "If" is the whole point. This runs on every process start, and the process starts every
+     * time an alarm reaches an app the system had cleaned up — including the place watch's own
+     * alarm. Looking soon unconditionally would mean a second fix five seconds after every
+     * check, all day, for a list of places that had not changed since the last one. So the
+     * pending look is left standing unless a place has never been judged (nothing in `inside`
+     * knows it) or nothing is pending at all, which is also what a reboot looks like.
      */
     suspend fun sync() {
         val places = places()
@@ -87,8 +133,13 @@ class PlaceWatcher(
             return
         }
         val ids = places.mapTo(HashSet()) { it.id }
-        val at = clock.instant() + SOON
-        store.write(current.copy(inside = current.inside.filterKeys { it in ids }, nextCheckAt = at))
+        val judged = current.inside.filterKeys { it in ids }
+        val now = clock.instant()
+        // Whichever comes first: what the store remembers, and what a stir already pulled
+        // forward in this process (which the store will not have caught up with yet).
+        val pending = listOfNotNull(current.nextCheckAt, plannedAt).filter { it > now }.minOrNull()
+        val at = if (pending != null && ids.all { it in judged }) pending else now + SOON
+        store.write(current.copy(inside = judged, nextCheckAt = at))
         scheduleAt(at)
     }
 
@@ -100,11 +151,15 @@ class PlaceWatcher(
      */
     suspend fun accept(placeId: String, transition: Transition): Boolean {
         val state = store.read()
-        if (!crossingIsNews(state, placeId, transition, clock.instant())) {
+        val now = clock.instant()
+        val label = runCatching { places().firstOrNull { it.id == placeId }?.label }.getOrNull()
+        if (!crossingIsNews(state, placeId, transition, now)) {
             Log.i(TAG, "geofence says $transition at $placeId, but we were already there")
+            log.note(WatchNote(at = now, kind = NoteKind.ECHO, place = label ?: placeId, inside = state.inside[placeId]))
             return false
         }
         store.write(state.remembering(placeId, transition))
+        log.note(WatchNote(at = now, kind = NoteKind.FENCE, place = label ?: placeId, inside = transition == Transition.ENTER))
         return true
     }
 
@@ -117,6 +172,18 @@ class PlaceWatcher(
         }
         val before = store.read()
         val now = clock.instant()
+        val charge = battery.remaining()
+        // What the phone felt while nobody was looking; the next listening window starts here.
+        val sensed = motion.consume()
+        val rest = stepWithoutLooking(before, places, now, sensed, charge)
+        val rested = rest?.plan
+        if (rest != null && rested != null) {
+            store.write(rest.state)
+            Log.i(TAG, "nothing has moved; no fix taken, next look in ${rested.wait.toMinutes()} min")
+            write(NoteKind.REST, now, rest.state, rested, rest.movement, charge)
+            scheduleAt(now + rested.wait, rested.gapM)
+            return
+        }
         val fix = readFix(precise = before.precise)
         // A fix the watch would not vouch for is a fix it must not judge by.
         //
@@ -127,14 +194,19 @@ class PlaceWatcher(
         // bound is the same one crossingIsNews uses, because it is the same question.
         val stale = fix != null && Duration.between(fix.at, now) > PlaceWatchPolicy.SPEED_MEMORY
         if (fix == null || stale) {
-            // Nothing to go on — location off, or nothing answered. Not a reason to give up.
-            Log.w(TAG, "no fix worth having${if (stale) " (stale)" else ""}; trying again in ${NO_FIX_RETRY.toMinutes()} min")
-            val at = now + NO_FIX_RETRY
-            store.write(before.copy(nextCheckAt = at))
+            // Nothing to go on — location off, or nothing answered. Not a reason to give up,
+            // but a reason to ask less often: a phone with location switched off will still
+            // have it switched off in ten minutes, and in ten minutes after that.
+            val wait = blindRetry(before.blindStreak, NO_FIX_RETRY)
+            Log.w(TAG, "no fix worth having${if (stale) " (stale)" else ""}; trying again in ${wait.toMinutes()} min")
+            val at = now + wait
+            store.write(before.copy(nextCheckAt = at, blindStreak = before.blindStreak + 1))
+            write(NoteKind.BLIND, now, before, plan = null, movement = Movement(sensed = sensed), charge = charge)
             scheduleAt(at)
             return
         }
-        val step = stepPlaceWatch(before, fix, places, now)
+        // A fix resets the blind streak: PlaceWatchState is rebuilt from scratch by the step.
+        val step = stepPlaceWatch(before, fix, places, now, sensed, charge)
         store.write(step.state)
         for (event in step.events) {
             val reminderId = GeofenceIds.reminderIdOf(event.placeId)
@@ -147,7 +219,72 @@ class PlaceWatcher(
             return
         }
         Log.i(TAG, "${plan.gapM.toInt()} m from ${plan.nearest.label}; next look in ${plan.wait.toMinutes()} min${if (plan.precise) " (gps)" else ""}")
-        scheduleAt(now + plan.wait)
+        write(NoteKind.FIX, now, step.state, plan, step.movement, charge)
+        scheduleAt(now + plan.wait, plan.gapM)
+    }
+
+    /**
+     * One line of the account, and the one thing the watch ever says about itself unprompted.
+     *
+     * The notice is off unless it has been asked for, and even then it is the log's own rule
+     * that decides ([WatchLog.busyNotice]): more polls in the last hour than any cadence in the
+     * policy should be able to produce, and nothing said about that hour already.
+     */
+    private suspend fun write(
+        kind: NoteKind,
+        now: Instant,
+        state: PlaceWatchState,
+        plan: WatchPlan?,
+        movement: Movement,
+        charge: Double?,
+    ) {
+        val written = log.note(
+            WatchNote(
+                at = now,
+                kind = kind,
+                waitS = plan?.wait?.seconds ?: state.nextCheckAt?.let { Duration.between(now, it).seconds },
+                gapM = plan?.gapM,
+                place = plan?.nearest?.label,
+                inside = plan?.nearest?.let { state.inside[it.id] },
+                speedMps = movement.speedMps,
+                movedM = movement.movedM,
+                sensed = movement.sensed,
+                stillStreak = state.stillStreak,
+                charge = charge?.let { (it * 100).roundToInt() },
+                precise = plan?.precise ?: false,
+            ),
+        )
+        if (!written.busyNotice(now)) return
+        if (!settings.settings.first().busyWatchNotice) return
+        WatchNotices.notifyBusy(context, written.notes.pollsSince(now - PlaceWatchPolicy.BUSY_WINDOW))
+        log.noticed(now)
+    }
+
+    /**
+     * The phone has gone somewhere, and the watch had settled on a long wait because it had not.
+     *
+     * This is what the half-hour rest inside a place with a "when I leave" rule costs, bought
+     * back: the sensor fires as somebody actually walks out, and the look that was twenty-five
+     * minutes away moves to [stirredWait] from now. It only ever moves a look *earlier*, only
+     * when the nearest line is close enough for going somewhere to mean anything (deep inland of
+     * everywhere, or three provinces from the only place being watched, a stir means nothing and
+     * the plan stands), and the sensor's one-shot re-arming caps it at one early look per check.
+     *
+     * Runs off the sensor's delivery thread ([MotionSensor] hands it to a coroutine), so the
+     * two binder calls and the log line it writes are nowhere near the main looper.
+     */
+    private suspend fun stirred() {
+        val planned = plannedAt ?: return
+        val gap = plannedGapM ?: return
+        if (gap >= PlaceWatchPolicy.NEAR_M) return
+        val now = clock.instant()
+        val at = now + stirredWait(battery.remaining())
+        if (planned <= at) return
+        Log.i(TAG, "the phone stirred ${gap.toInt()} m from a line; looking sooner")
+        scheduleAt(at, gap)
+        // Its own line in the log, but not through `write`: moving an alarm is not a poll, and
+        // counting it as one would have the watch complain about the thing that saves it work.
+        log.note(WatchNote(at = now, kind = NoteKind.STIR, waitS = Duration.between(now, at).seconds, gapM = gap, sensed = true))
     }
 
     /**
@@ -179,7 +316,11 @@ class PlaceWatcher(
         at = Instant.ofEpochMilli(time),
     )
 
-    private fun scheduleAt(at: Instant) {
+    private fun scheduleAt(at: Instant, gapM: Double? = null) {
+        plannedAt = at
+        // A schedule with no plan behind it (a sync, a blind retry) knows of no line to be near,
+        // and a stir has nothing to judge itself against until the next real look.
+        plannedGapM = gapM
         val intent = pendingIntent()
         val exact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms.canScheduleExactAlarms()
         runCatching {
@@ -193,6 +334,9 @@ class PlaceWatcher(
 
     private fun cancel() {
         runCatching { alarms.cancel(pendingIntent()) }
+        motion.stop()
+        plannedAt = null
+        plannedGapM = null
     }
 
     private fun pendingIntent(): PendingIntent = PendingIntent.getBroadcast(

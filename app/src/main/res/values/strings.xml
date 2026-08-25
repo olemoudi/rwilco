@@ -520,4 +520,47 @@
     <string-array name="whats_new_0_4_1">
         <item>The place watch, put through simulated journeys and a night on the bedside table: it now looks again within a quarter of an hour when it cannot yet tell how fast you are going (an hour blind is ninety motorway kilometres), remembers your speed across its longest waits, and only wakes the GPS for a phone it knows is moving.</item>
     </string-array>
+
+    <!-- The place watch's own log, behind a button in Settings. -->
+    <string name="watch_log_open">See the location log</string>
+    <string name="watch_log_title">Location log</string>
+    <string name="watch_log_hint">Every look the place watch took, and the numbers it decided the next one from. Kept for the last 200 looks; nothing leaves the phone.</string>
+    <string name="watch_log_empty">Nothing yet. The watch writes a line every time it looks.</string>
+    <plurals name="watch_log_summary">
+        <item quantity="one">%1$d location read in the last hour</item>
+        <item quantity="other">%1$d location reads in the last hour</item>
+    </plurals>
+    <string name="watch_log_clear">Clear the log</string>
+    <string name="watch_kind_fix">read</string>
+    <string name="watch_kind_rest">skipped</string>
+    <string name="watch_kind_blind">no fix</string>
+    <string name="watch_kind_stir">stirred</string>
+    <string name="watch_kind_fence">crossing</string>
+    <string name="watch_kind_echo">echo</string>
+    <string name="watch_field_gps">GPS</string>
+    <string name="watch_field_network">wifi/cell</string>
+    <string name="watch_field_next">next %1$s</string>
+    <string name="watch_field_from">%1$s from %2$s</string>
+    <string name="watch_field_inside">inside</string>
+    <string name="watch_field_speed">%1$s m/s</string>
+    <string name="watch_field_moved">moved %1$s</string>
+    <string name="watch_field_sensed_yes">sensor: moved</string>
+    <string name="watch_field_sensed_no">sensor: still</string>
+    <string name="watch_field_still">still \u00d7%1$d</string>
+    <string name="watch_field_charge">battery %1$d%%</string>
+    <!-- The optional notice about the watch looking too often. -->
+    <string name="watch_notice_title">Warn me if it looks too often</string>
+    <string name="watch_notice_body">A quiet notification when the place watch reads your location more than 20 times in an hour. Off by default: at its fastest cadence it can reach 30, so this is for catching something going wrong, not ordinary use.</string>
+    <string name="watch_channel_name">Location watch</string>
+    <string name="watch_channel_description">Says so when the place watch is reading your location more often than it should.</string>
+    <string name="watch_busy_title">Rwilco is looking too often</string>
+    <string name="watch_busy_text">%1$d location reads in the last hour</string>
+    <string name="watch_busy_body">%1$d location reads in the last hour, which is more than any of the app\'s own cadences should produce. Tap to see the log.</string>
+    <string-array name="whats_new_0_8_0">
+        <item>The place watch now spends a great deal less battery. It knows how far away a place is — nothing 300 km off can be arrived at for two and a half hours, so it stops asking — and it asks the phone\'s own motion sensor whether anything moved at all, which is free, and skips the reading entirely when nothing did.</item>
+        <item>Sitting inside a place you have a «when I leave» rule for used to be the most expensive thing the app did. It now starts at half an hour and speeds up only as you actually cross the place — and the moment you really do walk out, the motion sensor pulls the next look forward.</item>
+        <item>Below half a battery every wait stretches, gently at first and then quickly, until at a quarter left it is one look an hour and no GPS at all.</item>
+        <item>A full-screen alarm nobody answered used to hold the screen on until somebody came home. It now lets go when the ringing does.</item>
+        <item>Settings has the whole account of it: every look the watch took and the numbers it decided the next one from, and an optional quiet notice if it ever reads your location more than twenty times in an hour.</item>
+    </string-array>
 </resources>

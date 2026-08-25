@@ -53,6 +53,8 @@ data class Sizes(
     val keycap: Dp = 36.dp,
     /** The small square that carries a section's icon. */
     val badge: Dp = 28.dp,
+    /** The clock column down the left of the location log, so every row's numbers line up. */
+    val logTime: Dp = 52.dp,
 )
 
 /**

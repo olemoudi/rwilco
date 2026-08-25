@@ -66,11 +66,16 @@ class AlertActivity : ComponentActivity() {
                 ringer.start(sound = plan.sound, vibrate = plan.vibrate)
                 onDispose { ringer.stop() }
             }
-            // An alarm that rings for ever is one nobody leaves the house with. The screen stays;
-            // the noise gives up, exactly as an alarm clock does.
+            // An alarm that rings for ever is one nobody leaves the house with. The alert stays
+            // up; the noise gives up, exactly as an alarm clock does — and so does the hold on
+            // the screen. Nobody answered in two minutes because nobody is here, and a screen
+            // lit at full brightness until somebody comes home costs more battery than
+            // everything else in this app put together. The alert is still on it when they do,
+            // and the notification is still in the shade either way.
             LaunchedEffect(plan) {
                 delay(RING_TIMEOUT_MS)
                 ringer.stop()
+                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
 
             RwilcoTheme(darkTheme = current.theme.resolvesToDark(), haptics = current.haptics) {

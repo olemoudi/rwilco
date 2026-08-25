@@ -10,6 +10,7 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -19,9 +20,11 @@ import kotlin.math.sqrt
  * The phone's geofences are cheap and always on, but they answer in their own time and with
  * their own idea of where the line is. This is the second opinion: every so often the app reads
  * where the phone is, decides for itself which places it is inside, and — the part that keeps
- * the battery whole — works out how long it can safely look away. Far from every place, and
- * standing still, that is an hour; walking up to a door, two minutes. Nothing here touches the
- * phone: the reading and the alarm are the caller's job, and everything that decides is pure.
+ * the battery whole — works out how long it can safely look away. Walking up to a door, that is
+ * two minutes; standing still near one, a quarter of an hour; at home with a place across town,
+ * an hour; at home with a place three provinces away, most of the afternoon, because no road
+ * gets anybody there sooner. Nothing here touches the phone: the reading, the sensor and the
+ * alarm are the caller's job, and everything that decides is pure.
  */
 
 /** One reading of where the phone is; [accuracyM] is the radius, in metres, it may be off by. */
@@ -75,7 +78,7 @@ object PlaceWatchPolicy {
     /** The most often the app will ever look, and only while moving near a line. */
     val MIN_WAIT: Duration = Duration.ofMinutes(2)
 
-    /** The least often: far from everything, or standing still far away. */
+    /** The least often a place within reach is watched: far from everything, or standing still. */
     val MAX_WAIT: Duration = Duration.ofMinutes(60)
 
     /** Standing still near a line — at home with a "when leaving" rule — backs off to this. */
@@ -88,6 +91,13 @@ object PlaceWatchPolicy {
      * the app, and the one a phone sitting at home all evening spends the night in.
      */
     val INSIDE_MIN_WAIT: Duration = Duration.ofMinutes(30)
+
+    /**
+     * Inside a place that is waiting for a *leaving*: where that watch starts, and the fastest
+     * it is ever allowed to go. See [leavingWait] for why it is its own pair of numbers.
+     */
+    val LEAVING_MAX_WAIT: Duration = Duration.ofMinutes(30)
+    val LEAVING_MIN_WAIT: Duration = Duration.ofMinutes(5)
 
     /** Inside this of a line the check goes to GPS and the cadence to its ceiling. */
     const val NEAR_M = 400.0
@@ -104,11 +114,22 @@ object PlaceWatchPolicy {
     /**
      * And do not look away for long either: the first look of a journey cannot know it is a
      * journey, and an hour is ninety motorway kilometres. One extra look buys the speed.
+     * Distance overrules it — ninety kilometres is no argument about a place three hundred
+     * away — which is what [reachCeiling] is for.
      */
     val UNKNOWN_MAX_WAIT: Duration = Duration.ofMinutes(15)
 
     /** Planning speed over measured: people speed up. */
     const val HEADROOM = 1.5
+
+    /**
+     * The fastest anybody covers ground, averaged over a whole trip: 120 km/h. Not a top speed —
+     * a speedometer says more — but the bound that holds over the hours [reachCeiling] plans in.
+     */
+    const val HIGHWAY_MPS = 33.4
+
+    /** Past this a flight is on the table, and no road speed bounds anything. */
+    const val FAR_M = 500_000.0
 
     /**
      * An earlier fix older than this says nothing about how fast the phone is going now.
@@ -120,7 +141,98 @@ object PlaceWatchPolicy {
 
     /** Longest the still back-off doubles for: 2 · 2⁶ min is already past MAX_WAIT. */
     const val MAX_STILL_DOUBLINGS = 6
+
+    /** Above this much battery left, none of the below applies. See [batteryFloor]. */
+    const val SPARING_FROM = 0.50
+
+    /** At this much left and under, the hourly look and nothing faster, whatever else says. */
+    const val SPARING_FLOOR = 0.25
+
+    /**
+     * More polls than this inside [BUSY_WINDOW] and something is wrong: MIN_WAIT is two minutes,
+     * so thirty an hour is the arithmetic ceiling and nothing here should approach it for long.
+     * See [WatchLog.busyNotice].
+     */
+    const val BUSY_POLLS = 20
+
+    val BUSY_WINDOW: Duration = Duration.ofHours(1)
 }
+
+/**
+ * The soonest a battery this low will allow a look — a floor under every other answer, never a
+ * cap on one.
+ *
+ * Above [PlaceWatchPolicy.SPARING_FROM] there is nothing to discuss and this is the ordinary
+ * [PlaceWatchPolicy.MIN_WAIT]. Below it the floor climbs, and climbs *geometrically*, so that
+ * the half of the fall nobody worries about costs almost nothing and the last quarter costs
+ * everything: at 37% left the two-minute floor is already eleven minutes, and by
+ * [PlaceWatchPolicy.SPARING_FLOOR] it is the hour. That endpoint is not a number picked to
+ * match; the span it climbs is exactly MAX_WAIT / MIN_WAIT, which is to say the fastest cadence
+ * this app has becomes the slowest one it has, and there is nothing below that to fall to.
+ *
+ * A floor and not a cap, because the alternative eats itself: a place three hundred kilometres
+ * off has already bought two and a half hours of sleep on the arithmetic of how fast anybody
+ * drives, and a low battery is no reason to go and look sooner than that.
+ *
+ * [charge] is 0..1, or null when there is no reason to hold back at all — the phone is on a
+ * charger, or it will not say.
+ */
+fun batteryFloor(charge: Double?): Duration {
+    if (charge == null || charge >= PlaceWatchPolicy.SPARING_FROM) return PlaceWatchPolicy.MIN_WAIT
+    if (charge <= PlaceWatchPolicy.SPARING_FLOOR) return PlaceWatchPolicy.MAX_WAIT
+    val fallen = (PlaceWatchPolicy.SPARING_FROM - charge) / (PlaceWatchPolicy.SPARING_FROM - PlaceWatchPolicy.SPARING_FLOOR)
+    val span = PlaceWatchPolicy.MAX_WAIT.toMillis().toDouble() / PlaceWatchPolicy.MIN_WAIT.toMillis()
+    return Duration.ofMillis((PlaceWatchPolicy.MIN_WAIT.toMillis() * span.pow(fallen)).toLong())
+}
+
+/**
+ * What the app knows about how the phone is moving, at the moment it plans the next look.
+ *
+ * Two witnesses, and neither is enough alone. [speedMps] and [movedM] come from comparing two
+ * fixes, which is the accurate one and the expensive one — and which says nothing at all on the
+ * first look of a session. [sensed] is the phone's own significant-motion sensor, which costs
+ * nothing and runs while the app is asleep, but which only ever answers one question, and only
+ * usefully in one direction: it firing means the phone went somewhere, and it *not* firing is
+ * a hint and no more — a phone lying flat on a train table is not moving, as far as it knows.
+ * So the rule everywhere below is the same: [sensed] true can shorten the watch, [sensed] false
+ * can only lengthen it when a pair of fixes says the same thing.
+ */
+data class Movement(
+    /** Metres per second between the last two fixes; null when nothing can be said. */
+    val speedMps: Double? = null,
+    /** Metres between the last two fixes, less their own doubt; null with no earlier fix. */
+    val movedM: Double? = null,
+    /** The significant-motion sensor since the last look; null when it was not listening. */
+    val sensed: Boolean? = null,
+    /** Consecutive checks that found the phone still. */
+    val stillStreak: Int = 0,
+) {
+    /** Not moving, as far as anything can tell: the fixes agree and the sensor did not object. */
+    val still: Boolean get() = sensed != true && speedMps != null && speedMps <= PlaceWatchPolicy.STILL_MPS
+
+    /** Both witnesses agree the phone has not moved. Worth more than either on its own. */
+    val settled: Boolean get() = sensed == false && speedMps != null && speedMps <= PlaceWatchPolicy.STILL_MPS
+
+    /** Moving, on the evidence of two fixes. The sensor's word is not enough to wake the GPS. */
+    val movingByFix: Boolean get() = speedMps != null && speedMps > PlaceWatchPolicy.STILL_MPS
+}
+
+/**
+ * How soon a phone that has just *stirred* may be looked at.
+ *
+ * The one thing the motion sensor is unambiguously good for is the case the rest of this file
+ * is worst at: resting inside a place with a "when I leave" rule, where the watch has settled
+ * on half an hour precisely because nothing was happening — and then something does. The sensor
+ * fires the moment somebody actually walks out, and the look is pulled forward to here rather
+ * than waiting out the half hour it had planned.
+ *
+ * The number is [PlaceWatchPolicy.LEAVING_MIN_WAIT], and deliberately the same one: the floor
+ * on being stirred is the floor that case already had, so a phone paced past all evening can
+ * never cost more than that case was already allowed to cost. A low battery raises it like it
+ * raises everything else, and at the bottom this stops buying anything at all, which is the
+ * right answer there.
+ */
+fun stirredWait(charge: Double?): Duration = maxOf(PlaceWatchPolicy.LEAVING_MIN_WAIT, batteryFloor(charge))
 
 /** What the next check should be: how long to wait, and whether it is worth waking the GPS. */
 data class WatchPlan(val wait: Duration, val precise: Boolean, val gapM: Double, val nearest: WatchedPlace)
@@ -136,51 +248,101 @@ fun gapToLine(place: WatchedPlace, fix: Fix): Double {
 }
 
 /**
+ * The longest a distance on its own lets the phone look away: the time to cover the gap at
+ * [PlaceWatchPolicy.HIGHWAY_MPS]. A place two hours down the motorway cannot be arrived at in
+ * twenty minutes, so watching it every twenty is twenty minutes wasted, and this is what lets a
+ * phone at home with an errand in the next province sleep for hours rather than for the hour
+ * [PlaceWatchPolicy.MAX_WAIT] would allow. Past [PlaceWatchPolicy.FAR_M] a flight is on the
+ * table and no road speed bounds anything, so it falls back to that plain hour — which next to
+ * any flight, door to door, is still short.
+ *
+ * It only ever grants sleep. Nothing here shortens a wait: a nearby place returning a few
+ * seconds is not an instruction to look every few seconds, it is silence on the question.
+ */
+fun reachCeiling(gapM: Double): Duration =
+    if (gapM > PlaceWatchPolicy.FAR_M) PlaceWatchPolicy.MAX_WAIT
+    else Duration.ofSeconds((gapM / PlaceWatchPolicy.HIGHWAY_MPS).toLong())
+
+/**
  * How long the phone can look away: the soonest of what each place asks for. A place's own wait
  * is the time it would take to reach its line at a speed with headroom, clamped to the policy's
- * floor and ceiling; standing still doubles it with every quiet check, up to a cap that is
- * lower near a line. A place already inside, waiting for an arrival, asks for the cheapest
- * watch there is. Null when there is nothing to watch.
+ * floor and a ceiling that distance can raise; standing still doubles it with every quiet check,
+ * up to a cap that is lower near a line unless the motion sensor agrees nothing has moved. A
+ * place already inside asks for one of the two cheap watches — [PlaceWatchPolicy.INSIDE_MIN_WAIT]
+ * waiting for an arrival, [leavingWait] waiting for a leaving. Null when there is nothing to
+ * watch.
+ *
+ * Then [charge] has the last word, because a watch that runs the battery down to nothing stops
+ * being a watch: a low one raises the floor under whatever came out of all of the above
+ * ([batteryFloor]), and at the bottom of it takes the GPS away as well — an hourly look is not
+ * the last few hundred metres of an approach, which is the only thing the GPS was ever for.
  */
 fun planNextCheck(
     fix: Fix,
-    speedMps: Double?,
+    movement: Movement,
     places: List<WatchedPlace>,
-    stillStreak: Int,
     inside: Map<String, Boolean> = emptyMap(),
+    charge: Double? = null,
 ): WatchPlan? = places
-    .map { place ->
-        // Inside a place that waits for an arrival, there is nothing to catch but the leaving.
-        val dormant = place.transition == Transition.ENTER && inside[place.id] == true
-        planFor(place, fix, speedMps, stillStreak, dormant)
-    }
+    .map { place -> planFor(place, fix, movement, inside[place.id]) }
     // The soonest look any one place asks for; on a tie, the one that is closest. A phone
     // sitting at home with an errand across town is planned by the errand, not by the sofa.
     .minWithOrNull(compareBy({ it.wait }, { it.gapM }))
+    ?.let { plan ->
+        val floor = batteryFloor(charge)
+        plan.copy(wait = maxOf(plan.wait, floor), precise = plan.precise && floor < PlaceWatchPolicy.MAX_WAIT)
+    }
 
-private fun planFor(place: WatchedPlace, fix: Fix, speedMps: Double?, stillStreak: Int, dormant: Boolean): WatchPlan {
+private fun planFor(place: WatchedPlace, fix: Fix, movement: Movement, inside: Boolean?): WatchPlan {
     val gap = gapToLine(place, fix)
     val near = gap < PlaceWatchPolicy.NEAR_M
-    val still = speedMps != null && speedMps <= PlaceWatchPolicy.STILL_MPS
-    val planningSpeed = when (speedMps) {
+    val planningSpeed = when (val speed = movement.speedMps) {
         null -> PlaceWatchPolicy.UNKNOWN_MPS
-        else -> max(speedMps * PlaceWatchPolicy.HEADROOM, PlaceWatchPolicy.WALK_MPS)
+        else -> max(speed * PlaceWatchPolicy.HEADROOM, PlaceWatchPolicy.WALK_MPS)
     }
-    val ceiling = if (speedMps == null) PlaceWatchPolicy.UNKNOWN_MAX_WAIT else PlaceWatchPolicy.MAX_WAIT
+    val blind = if (movement.speedMps == null) PlaceWatchPolicy.UNKNOWN_MAX_WAIT else PlaceWatchPolicy.MAX_WAIT
+    val ceiling = maxOf(blind, reachCeiling(gap))
     var wait = Duration.ofSeconds((gap / planningSpeed).toLong()).clamp(PlaceWatchPolicy.MIN_WAIT, ceiling)
-    if (still) {
-        val doublings = min(stillStreak, PlaceWatchPolicy.MAX_STILL_DOUBLINGS)
+    if (movement.still) {
+        val doublings = min(movement.stillStreak, PlaceWatchPolicy.MAX_STILL_DOUBLINGS)
         val backoff = PlaceWatchPolicy.MIN_WAIT.multipliedBy(1L shl doublings)
-        val cap = if (near) PlaceWatchPolicy.STILL_NEAR_MAX else PlaceWatchPolicy.MAX_WAIT
+        // Still and near a line is a phone about to go through it, so the back-off is held
+        // short — unless the sensor felt nothing either, which is a phone on a table.
+        val cap = if (near && !movement.settled) PlaceWatchPolicy.STILL_NEAR_MAX else ceiling
         wait = maxOf(wait, backoff).clamp(PlaceWatchPolicy.MIN_WAIT, cap)
     }
-    // Waiting for the phone to leave: never GPS, never sooner than half an hour, however close
-    // the line is — being close to it is what being inside means.
-    if (dormant) return WatchPlan(maxOf(wait, PlaceWatchPolicy.INSIDE_MIN_WAIT), precise = false, gapM = gap, nearest = place)
+    if (inside == true) {
+        // Inside, only one of the two crossings is still ahead, and neither is urgent. Never
+        // GPS: being close to the line is what being inside means, and that is not a reason.
+        val floor = if (place.transition == Transition.ENTER) PlaceWatchPolicy.INSIDE_MIN_WAIT else leavingWait(place, movement)
+        return WatchPlan(maxOf(wait, floor), precise = false, gapM = gap, nearest = place)
+    }
     // GPS is for a line that is close and a phone KNOWN to be moving. Not "may be": the first
     // look of a session at home would wake it for a phone on a bedside table.
-    val moving = speedMps != null && speedMps > PlaceWatchPolicy.STILL_MPS
-    return WatchPlan(wait = wait, precise = near && moving, gapM = gap, nearest = place)
+    return WatchPlan(wait = wait, precise = near && movement.movingByFix, gapM = gap, nearest = place)
+}
+
+/**
+ * Inside a place with a "when I leave" rule: the least often that watch may look.
+ *
+ * This is the case the plain answer gets worst. Standing inside a place is standing next to its
+ * line, and "time to the line at your speed" therefore asks for the fastest cadence in the app,
+ * all evening, for a door nobody is walking through — with the GPS on, if pacing the kitchen
+ * reads as movement. So the watch starts at half an hour instead, and buys its way down only
+ * with evidence: how much of the place the phone actually crossed since the last look, as a
+ * fraction of its radius — the tolerance the rule was written with — takes that fraction off
+ * the half hour, and sixty per cent of the way across takes sixty per cent off it. The floor is
+ * five minutes, which is the point: a phone circling inside its own front garden all night
+ * never costs more than twelve looks an hour's worth of the cheapest fix there is.
+ *
+ * The wait this returns is a floor under the ordinary plan, never a cap on it: deep inside a
+ * place kilometres wide, "time to the line" is the better answer and it wins.
+ */
+private fun leavingWait(place: WatchedPlace, movement: Movement): Duration {
+    val crossed = movement.movedM?.let { (it / place.radiusM).coerceIn(0.0, 1.0) } ?: 0.0
+    val scaled = PlaceWatchPolicy.LEAVING_MAX_WAIT.toMillis() * (1.0 - crossed)
+    return Duration.ofMillis(scaled.toLong())
+        .clamp(PlaceWatchPolicy.LEAVING_MIN_WAIT, PlaceWatchPolicy.LEAVING_MAX_WAIT)
 }
 
 private fun Duration.clamp(floor: Duration, ceiling: Duration): Duration = when {
@@ -221,20 +383,51 @@ data class PlaceWatchState(
     val nearestLabel: String? = null,
     /** Whether the next check should use GPS; decided by the last plan. */
     val precise: Boolean = false,
+    /** Consecutive checks that got no fix worth having. See [blindRetry]. */
+    val blindStreak: Int = 0,
 )
+
+/**
+ * How long to wait after a check that got nothing: no fix at all, or one too old to speak for
+ * now. Ten minutes, doubling, up to the ordinary ceiling.
+ *
+ * A phone with location switched off answers nothing, and will still be answering nothing in
+ * ten minutes and in ten after that — so a flat retry is a wake-up every ten minutes, all day,
+ * for a question whose answer cannot change until somebody opens Settings. What can change is
+ * a provider that was merely cold, and that is what the first few short retries are for.
+ */
+fun blindRetry(streak: Int, first: Duration): Duration {
+    val doublings = min(max(streak, 0), PlaceWatchPolicy.MAX_STILL_DOUBLINGS)
+    val backoff = first.multipliedBy(1L shl doublings)
+    return if (backoff > PlaceWatchPolicy.MAX_WAIT) PlaceWatchPolicy.MAX_WAIT else backoff
+}
 
 /** The phone crossed a line some rule was waiting on. */
 data class PlaceEvent(val placeId: String, val transition: Transition)
 
-data class WatchStep(val state: PlaceWatchState, val events: List<PlaceEvent>, val plan: WatchPlan?)
+/** [movement] is what the plan was decided from, kept so the log can say so (`WatchLog.kt`). */
+data class WatchStep(
+    val state: PlaceWatchState,
+    val events: List<PlaceEvent>,
+    val plan: WatchPlan?,
+    val movement: Movement = Movement(),
+)
 
 /**
  * One check: judge every place against the fix, report the crossings that match what their
  * rules wait for, and plan the next look from [now] (not from the fix, which may be an old
- * one the phone had lying around).
+ * one the phone had lying around). [sensed] is the motion sensor's word since the last check,
+ * null when it had none; [charge] is how much battery is left to spend on the next one.
  */
-fun stepPlaceWatch(state: PlaceWatchState, fix: Fix, places: List<WatchedPlace>, now: Instant): WatchStep {
-    val speed = speedBetween(state.lastFix, fix)
+fun stepPlaceWatch(
+    state: PlaceWatchState,
+    fix: Fix,
+    places: List<WatchedPlace>,
+    now: Instant,
+    sensed: Boolean? = null,
+    charge: Double? = null,
+): WatchStep {
+    val movement = movementSince(state.lastFix, fix, sensed, state.stillStreak)
     val inside = places.associate { place -> place.id to insideAfter(state.inside[place.id], place, fix) }
     val events = places.mapNotNull { place ->
         val before = state.inside[place.id] ?: return@mapNotNull null
@@ -245,19 +438,60 @@ fun stepPlaceWatch(state: PlaceWatchState, fix: Fix, places: List<WatchedPlace>,
             else -> null
         }
     }
-    val still = speed != null && speed <= PlaceWatchPolicy.STILL_MPS
-    val streak = if (still) state.stillStreak + 1 else 0
-    val plan = planNextCheck(fix, speed, places, streak, inside)
+    val plan = planNextCheck(fix, movement, places, inside, charge)
     val next = PlaceWatchState(
         lastFix = fix,
         inside = inside,
-        stillStreak = streak,
+        stillStreak = if (movement.still) state.stillStreak + 1 else 0,
         nextCheckAt = plan?.let { now + it.wait },
         lastGapM = plan?.gapM,
         nearestLabel = plan?.nearest?.label,
         precise = plan?.precise ?: false,
     )
-    return WatchStep(next, events, plan)
+    return WatchStep(next, events, plan, movement)
+}
+
+/**
+ * The look that need not be taken, and the cheapest thing the watch does — or null when the
+ * look must be taken after all.
+ *
+ * A fix costs radios. The motion sensor costs nothing and has been listening the whole time the
+ * phone was asleep. When it says the phone has not moved AND the last check's pair of fixes said
+ * the same — the corroboration matters, because a phone flat on a train table feels nothing —
+ * then the fix about to be taken is one already in hand, and the step is run against the stored
+ * one instead. That is exactly what a repeated reading would have produced: [insideAfter] is
+ * idempotent, so a rested step has no crossings to miss and cannot invent one.
+ *
+ * The bound is that fix's own age. Everything downstream is measured from it — the speed the
+ * next plan is drawn at, whether a geofence's crossing is news ([crossingIsNews]) — so a rest
+ * allowed to outlive [PlaceWatchPolicy.SPEED_MEMORY] would have bought quiet with blindness.
+ */
+fun stepWithoutLooking(
+    state: PlaceWatchState,
+    places: List<WatchedPlace>,
+    now: Instant,
+    sensed: Boolean?,
+    charge: Double? = null,
+): WatchStep? {
+    if (sensed != false || state.stillStreak == 0) return null
+    val fix = state.lastFix ?: return null
+    val step = stepPlaceWatch(state, fix, places, now, sensed = false, charge = charge)
+    val wait = step.plan?.wait ?: return null
+    if (Duration.between(fix.at, now + wait) > PlaceWatchPolicy.SPEED_MEMORY) return null
+    return step
+}
+
+/**
+ * What two fixes and the sensor say about the phone's motion. The metres are the step between
+ * the fixes less their own doubt, for the same reason [speedBetween] uses that bound: a step
+ * smaller than the noise is not a step, and reading it as one is how a phone on a table talks
+ * the watch into looking more often.
+ */
+fun movementSince(previous: Fix?, fix: Fix, sensed: Boolean?, stillStreak: Int): Movement {
+    val moved = previous?.let {
+        max(0.0, distanceMeters(it.lat, it.lng, fix.lat, fix.lng) - it.accuracyM - fix.accuracyM)
+    }
+    return Movement(speedBetween(previous, fix), moved, sensed, stillStreak)
 }
 
 /**

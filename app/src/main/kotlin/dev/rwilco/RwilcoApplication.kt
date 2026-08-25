@@ -8,6 +8,7 @@ import dev.rwilco.alarm.RearmWorker
 import dev.rwilco.alarm.ReminderFiring
 import dev.rwilco.alarm.ReminderScheduler
 import dev.rwilco.geo.GeofenceManager
+import dev.rwilco.geo.PlaceLogStore
 import dev.rwilco.geo.PlaceWatchStore
 import dev.rwilco.geo.PlaceWatcher
 import dev.rwilco.model.AppSettings
@@ -44,6 +45,10 @@ class RwilcoApplication : Application() {
     lateinit var placeWatcher: PlaceWatcher
         private set
 
+    /** What the place watch did and why, for the log behind the button in Settings. */
+    lateinit var placeLog: PlaceLogStore
+        private set
+
     /** Null until the first read lands; the activity paints the window ground until then. */
     lateinit var settings: StateFlow<AppSettings?>
         private set
@@ -58,7 +63,8 @@ class RwilcoApplication : Application() {
         scheduler = ReminderScheduler(this, repository, settingsStore, clock)
         firing = ReminderFiring(this, repository, settingsStore, scheduler, clock)
         geofences = GeofenceManager(this, repository)
-        placeWatcher = PlaceWatcher(this, repository, firing, PlaceWatchStore(this), clock)
+        placeLog = PlaceLogStore(this)
+        placeWatcher = PlaceWatcher(this, repository, firing, PlaceWatchStore(this), placeLog, settingsStore, clock)
         AlertNotifications.ensureChannels(this)
 
         UpdateWorker.schedule(this)

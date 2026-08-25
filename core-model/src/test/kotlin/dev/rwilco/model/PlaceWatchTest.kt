@@ -52,44 +52,75 @@ class PlaceWatchTest {
     }
 
     @Test
-    fun `far away and no idea of speed, the wait is bounded by the unknown-speed ceiling`() {
-        // Sixty kilometres south: home is the nearer of the two (work is north of it).
-        val plan = planNextCheck(north(-60_000.0), speedMps = null, places = listOf(home, work), stillStreak = 0)!!
-        assertEquals(PlaceWatchPolicy.UNKNOWN_MAX_WAIT, plan.wait, "an hour blind is ninety motorway kilometres")
+    fun `blind near home the wait is a quarter of an hour, blind far from it the drive is`() {
+        // Ten kilometres out with nothing known: a slow car would take twenty minutes, but an
+        // hour blind is ninety motorway kilometres, so the unknown-speed ceiling holds it to a
+        // quarter of one.
+        val near = planNextCheck(north(-10_000.0), Movement(), listOf(home))!!
+        assertEquals(PlaceWatchPolicy.UNKNOWN_MAX_WAIT, near.wait)
+        // Sixty kilometres out, the same argument says the opposite: nobody covers sixty in
+        // fifteen minutes. (Home is the nearer of the two; work is north of it.)
+        val plan = planNextCheck(north(-60_000.0), Movement(), listOf(home, work))!!
+        assertEquals(Duration.ofSeconds(1790), plan.wait, "59.79 km at 120 km/h")
         assertFalse(plan.precise)
         assertEquals(home, plan.nearest)
     }
 
     @Test
     fun `far away and known to be slow, the wait goes all the way to the ceiling`() {
-        val plan = planNextCheck(north(-60_000.0), speedMps = 1.4, places = listOf(home, work), stillStreak = 0)!!
-        assertEquals(PlaceWatchPolicy.MAX_WAIT, plan.wait)
+        val plan = planNextCheck(north(-60_000.0), Movement(speedMps = 1.4, stillStreak = 0), listOf(home, work))!!
+        assertEquals(PlaceWatchPolicy.MAX_WAIT, plan.wait, "the hour, which sixty kilometres cannot lift")
+    }
+
+    @Test
+    fun `distance buys sleep by the hour, until a flight could be covering it`() {
+        // A gap the plain hour already covers buys nothing: this only ever raises a ceiling.
+        assertTrue(reachCeiling(60_000.0) < PlaceWatchPolicy.MAX_WAIT)
+        // Four hundred kilometres is three and a third hours of motorway, and nothing on a road
+        // gets there sooner, so nothing needs looking at sooner.
+        assertEquals(Duration.ofSeconds(11_976), reachCeiling(400_000.0))
+        // Past 500 km a flight is on the table and no road speed bounds anything, so it is back
+        // to the plain hour — which, next to any flight door to door, is still short. Madrid to
+        // Barcelona is over that line by five kilometres.
+        assertEquals(PlaceWatchPolicy.MAX_WAIT, reachCeiling(distanceMeters(homeLat, homeLng, 41.3874, 2.1686)))
+        assertEquals(PlaceWatchPolicy.MAX_WAIT, reachCeiling(9_000_000.0))
+    }
+
+    @Test
+    fun `a phone at home with a place three provinces away sleeps the afternoon`() {
+        // 300 km out and standing still: nobody drives that in under two and a half hours, so
+        // the hourly look is two hours of radio spent on a question with a known answer.
+        val far = WatchedPlace("far", homeLat + 2.7, homeLng, radiusM = 200, transition = Transition.ENTER, label = "Lejos")
+        val plan = planNextCheck(north(0.0), Movement(speedMps = 0.0, movedM = 0.0, stillStreak = 10), listOf(far))!!
+        assertTrue(plan.wait > Duration.ofHours(2), "${plan.wait}")
+        assertEquals(reachCeiling(plan.gapM), plan.wait)
+        assertFalse(plan.precise)
     }
 
     @Test
     fun `unknown speed a kilometre out plans for a slow car`() {
         // 790 m to the line at 8 m/s is 99 s, which the floor lifts to two minutes.
-        val near = planNextCheck(north(1000.0), speedMps = null, places = listOf(home), stillStreak = 0)!!
+        val near = planNextCheck(north(1000.0), Movement(speedMps = null, stillStreak = 0), listOf(home))!!
         assertEquals(PlaceWatchPolicy.MIN_WAIT, near.wait)
         // 4.79 km to the line at 8 m/s: just under ten minutes.
-        val farther = planNextCheck(north(5000.0), speedMps = null, places = listOf(home), stillStreak = 0)!!
+        val farther = planNextCheck(north(5000.0), Movement(speedMps = null, stillStreak = 0), listOf(home))!!
         assertEquals(Duration.ofSeconds(598), farther.wait)
     }
 
     @Test
     fun `a walker gets headroom, and the floor never drops under two minutes`() {
         // 1.79 km to the line, walking at 1.4 m/s: planned at 2.1 m/s, ~14 minutes.
-        val walking = planNextCheck(north(2000.0), speedMps = 1.4, places = listOf(home), stillStreak = 0)!!
+        val walking = planNextCheck(north(2000.0), Movement(speedMps = 1.4, stillStreak = 0), listOf(home))!!
         assertEquals(Duration.ofSeconds(852), walking.wait)
         assertFalse(walking.precise)
         // Driving at 20 m/s, 1.8 km out: a minute at 30 m/s, so the floor.
-        val driving = planNextCheck(north(2000.0), speedMps = 20.0, places = listOf(home), stillStreak = 0)!!
+        val driving = planNextCheck(north(2000.0), Movement(speedMps = 20.0, stillStreak = 0), listOf(home))!!
         assertEquals(PlaceWatchPolicy.MIN_WAIT, driving.wait)
     }
 
     @Test
     fun `moving near a line means GPS and the fastest cadence`() {
-        val plan = planNextCheck(north(400.0), speedMps = 1.4, places = listOf(home), stillStreak = 0)!!
+        val plan = planNextCheck(north(400.0), Movement(speedMps = 1.4, stillStreak = 0), listOf(home))!!
         assertEquals(PlaceWatchPolicy.MIN_WAIT, plan.wait)
         assertTrue(plan.precise)
     }
@@ -97,27 +128,140 @@ class PlaceWatchTest {
     @Test
     fun `near a line but with no speed to go on, the cadence is the fastest and the GPS stays off`() {
         // The first look of a session at home: a phone on a bedside table, most nights.
-        val plan = planNextCheck(north(400.0), speedMps = null, places = listOf(home), stillStreak = 0)!!
+        val plan = planNextCheck(north(400.0), Movement(speedMps = null, stillStreak = 0), listOf(home))!!
         assertEquals(PlaceWatchPolicy.MIN_WAIT, plan.wait)
         assertFalse(plan.precise)
     }
 
     @Test
     fun `standing still near a line backs off, doubling to a quarter of an hour`() {
-        val waits = (0..5).map { streak -> planNextCheck(north(50.0), speedMps = 0.0, places = listOf(home), stillStreak = streak)!! }
+        val outside = home.copy(radiusM = 20)
+        val waits = (0..5).map { streak -> planNextCheck(north(50.0), Movement(speedMps = 0.0, stillStreak = streak), listOf(outside))!! }
         assertEquals(listOf(2L, 4L, 8L, 15L, 15L, 15L), waits.map { it.wait.toMinutes() })
         assertTrue(waits.none { it.precise }, "a phone that is not moving does not need the GPS")
     }
 
     @Test
+    fun `the motion sensor's word is taken one way only`() {
+        val outside = home.copy(radiusM = 20)
+        val fix = north(50.0)
+        // It felt something: whatever the two fixes made of it, this is not a still phone, and
+        // the back-off it had been earning is gone.
+        val stirred = planNextCheck(fix, Movement(speedMps = 0.0, sensed = true, stillStreak = 5), listOf(outside))!!
+        assertEquals(PlaceWatchPolicy.MIN_WAIT, stirred.wait)
+        assertFalse(stirred.precise, "and still not a reason to wake the GPS")
+        // It felt nothing, and the fixes agree: now the near-a-line cap comes off, because a
+        // phone that has neither moved nor been jostled is a phone on a table.
+        val settled = planNextCheck(fix, Movement(speedMps = 0.0, sensed = false, stillStreak = 5), listOf(outside))!!
+        assertEquals(PlaceWatchPolicy.MAX_WAIT, settled.wait)
+        // On its own it decides nothing: a train glides, and its passengers' phones feel nothing.
+        val gliding = planNextCheck(fix, Movement(speedMps = 30.0, sensed = false, stillStreak = 0), listOf(outside))!!
+        assertEquals(PlaceWatchPolicy.MIN_WAIT, gliding.wait)
+    }
+
+    @Test
+    fun `a look nothing could have changed is not taken`() {
+        val at = north(50.0, at = now)
+        val resting = PlaceWatchState(lastFix = at, inside = mapOf(home.id to true), stillStreak = 3)
+        val later = now.plusSeconds(1800)
+        val rest = stepWithoutLooking(resting, listOf(home), later, sensed = false)!!
+        assertEquals(at, rest.state.lastFix, "the stored fix stands; nothing newer was bought")
+        assertEquals(4, rest.state.stillStreak)
+        assertTrue(rest.events.isEmpty(), "a rested step invented a crossing")
+        assertEquals(later + rest.plan!!.wait, rest.state.nextCheckAt)
+        assertFalse(rest.plan!!.precise)
+    }
+
+    @Test
+    fun `every other answer takes the look`() {
+        val at = north(50.0, at = now)
+        val resting = PlaceWatchState(lastFix = at, inside = mapOf(home.id to true), stillStreak = 3)
+        val soon = now.plusSeconds(600)
+        assertNull(stepWithoutLooking(resting, listOf(home), soon, sensed = true), "it felt something")
+        assertNull(stepWithoutLooking(resting, listOf(home), soon, sensed = null), "nobody was listening")
+        assertNull(
+            stepWithoutLooking(resting.copy(stillStreak = 0), listOf(home), soon, sensed = false),
+            "the fixes had not agreed it was still; the sensor does not decide alone",
+        )
+        assertNull(stepWithoutLooking(resting.copy(lastFix = null), listOf(home), soon, sensed = false), "nothing in hand")
+        assertNull(stepWithoutLooking(resting, emptyList(), soon, sensed = false), "nothing to watch")
+        // And a rest is never allowed to leave the fix too old to speak for the present: an hour
+        // and a half is the bound everything downstream reads it by.
+        val stale = now.plus(PlaceWatchPolicy.SPEED_MEMORY).minusSeconds(60)
+        assertNull(stepWithoutLooking(resting, listOf(home), stale, sensed = false), "a rest outliving the speed memory")
+    }
+
+    @Test
+    fun `a battery half gone raises the floor under everything, geometrically`() {
+        val full = listOf(null, 1.0, 0.75, PlaceWatchPolicy.SPARING_FROM)
+        assertTrue(full.all { batteryFloor(it) == PlaceWatchPolicy.MIN_WAIT }, "nothing to spare before there is")
+        // From half to a quarter the floor climbs from two minutes to the hour, and it climbs
+        // slowly at first and then all at once: the first half of the fall buys a quarter of it.
+        val minutes = listOf(0.45, 0.40, 0.375, 0.35, 0.30, 0.26).map { batteryFloor(it).toMinutes() }
+        assertEquals(listOf(3L, 7L, 10L, 15L, 30L, 52L), minutes)
+        // Geometric, not linear: halfway down (37.5% left) a straight line would be 31 minutes,
+        // and this is ten. The whole shape of it is that the cheap half of the fall is cheap.
+        assertTrue(batteryFloor(0.375) < Duration.ofMinutes(31), "${batteryFloor(0.375)} is a straight line")
+        // And at a quarter left, the hour, with nothing below it to fall to.
+        for (low in listOf(PlaceWatchPolicy.SPARING_FLOOR, 0.10, 0.0)) {
+            assertEquals(PlaceWatchPolicy.MAX_WAIT, batteryFloor(low))
+        }
+    }
+
+    @Test
+    fun `a low battery holds every plan back, and takes the GPS at the bottom`() {
+        val walkingUp = Movement(speedMps = 1.4, stillStreak = 0)
+        val atTheDoor = north(400.0)
+        val healthy = planNextCheck(atTheDoor, walkingUp, listOf(home))!!
+        assertEquals(PlaceWatchPolicy.MIN_WAIT, healthy.wait)
+        assertTrue(healthy.precise, "the last few hundred metres are what the GPS is for")
+        // A third of a battery left: the same approach, watched five times less often.
+        val sparing = planNextCheck(atTheDoor, walkingUp, listOf(home), charge = 0.35)!!
+        assertEquals(batteryFloor(0.35), sparing.wait)
+        assertTrue(sparing.precise, "still an approach, still the last few hundred metres")
+        // A quarter left: the hour, and no GPS — an hourly look is not an approach.
+        val bottom = planNextCheck(atTheDoor, walkingUp, listOf(home), charge = 0.20)!!
+        assertEquals(PlaceWatchPolicy.MAX_WAIT, bottom.wait)
+        assertFalse(bottom.precise)
+    }
+
+    @Test
+    fun `what distance already bought, a low battery does not take back`() {
+        // A floor, never a cap: three hundred kilometres has bought two and a half hours on the
+        // arithmetic of how fast anybody drives, and an empty battery is no reason to look sooner.
+        val far = WatchedPlace("far", homeLat + 2.7, homeLng, radiusM = 200, transition = Transition.ENTER, label = "Lejos")
+        val resting = Movement(speedMps = 0.0, movedM = 0.0, stillStreak = 10)
+        val plan = planNextCheck(north(0.0), resting, listOf(far), charge = 0.05)!!
+        assertEquals(reachCeiling(plan.gapM), plan.wait)
+        assertTrue(plan.wait > PlaceWatchPolicy.MAX_WAIT)
+    }
+
+    @Test
+    fun `a phone that stirs is looked at no sooner than a leaving already allowed`() {
+        assertEquals(PlaceWatchPolicy.LEAVING_MIN_WAIT, stirredWait(null))
+        assertEquals(PlaceWatchPolicy.LEAVING_MIN_WAIT, stirredWait(0.80))
+        // Once the battery floor passes it, the floor wins; at the bottom a stir buys nothing,
+        // which is the right answer there.
+        assertEquals(batteryFloor(0.30), stirredWait(0.30))
+        assertEquals(PlaceWatchPolicy.MAX_WAIT, stirredWait(0.20))
+    }
+
+    @Test
+    fun `a check that got nothing asks less and less often`() {
+        val first = Duration.ofMinutes(10)
+        assertEquals(listOf(10L, 20L, 40L, 60L, 60L), (0..4).map { blindRetry(it, first).toMinutes() })
+        assertEquals(first, blindRetry(-1, first), "a streak that cannot be")
+    }
+
+    @Test
     fun `standing still far away backs off all the way to the ceiling`() {
-        val plan = planNextCheck(north(3000.0), speedMps = 0.0, places = listOf(home), stillStreak = 10)!!
+        val plan = planNextCheck(north(3000.0), Movement(speedMps = 0.0, stillStreak = 10), listOf(home))!!
         assertEquals(PlaceWatchPolicy.MAX_WAIT, plan.wait)
     }
 
     @Test
     fun `nothing to watch is no plan`() {
-        assertNull(planNextCheck(north(0.0), speedMps = null, places = emptyList(), stillStreak = 0))
+        assertNull(planNextCheck(north(0.0), Movement(), places = emptyList()))
     }
 
     @Test

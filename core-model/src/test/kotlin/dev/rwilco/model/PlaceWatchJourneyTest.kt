@@ -81,7 +81,7 @@ class PlaceWatchJourneyTest {
     }
 
     @Test
-    fun `a night standing still at home with a leaving rule costs four looks an hour at most, none of them GPS`() {
+    fun `a night standing still at home with a leaving rule costs two looks an hour, none of them GPS`() {
         var state = PlaceWatchState()
         var clock = now
         var checks = 0
@@ -98,13 +98,13 @@ class PlaceWatchJourneyTest {
             lastWait = step.plan!!.wait
             clock += lastWait
         }
-        assertTrue(checks <= 8 * 4 + 4, "$checks checks in eight still hours")
+        assertTrue(checks <= 8 * 2 + 2, "$checks checks in eight still hours")
         assertEquals(0, gps, "the GPS woke for a phone on a bedside table")
-        assertEquals(PlaceWatchPolicy.STILL_NEAR_MAX, lastWait, "backed off to the near cap and held there")
+        assertEquals(PlaceWatchPolicy.LEAVING_MAX_WAIT, lastWait, "a phone that has not moved is not about to leave")
     }
 
     @Test
-    fun `leaving home in the morning is seen within the near cap, and only once`() {
+    fun `leaving home in the morning is seen within one rested look, and only once`() {
         // A still night first, so the back-off is at its cap when the phone starts moving.
         var state = PlaceWatchState()
         var clock = now
@@ -115,7 +115,7 @@ class PlaceWatchJourneyTest {
             lastWait = step.plan!!.wait
             clock += lastWait
         }
-        assertEquals(PlaceWatchPolicy.STILL_NEAR_MAX, lastWait)
+        assertEquals(PlaceWatchPolicy.LEAVING_MAX_WAIT, lastWait)
         // Then a walk out: 1.4 m/s from 30 m inside to well past the line by the next look.
         val walkStart = clock
         var distance = 30.0
@@ -131,9 +131,11 @@ class PlaceWatchJourneyTest {
             clock += wait
         }
         assertEquals(listOf(PlaceEvent(leavingHome.id, Transition.EXIT)), events)
-        // Crossing 170 m out takes two minutes on foot; the watch, backed off to fifteen, sees
-        // it at its next look — that is the price of a still night, and the geofence's job.
-        assertTrue(Duration.between(walkStart, seenAt!!) <= PlaceWatchPolicy.STILL_NEAR_MAX, "seen ${Duration.between(walkStart, seenAt)} after setting off")
+        // Crossing 170 m out takes two minutes on foot; the watch, rested at half an hour, sees
+        // it at its next look. That is the price of the rest, and it is the price knowingly paid:
+        // the leaving that matters is the geofence's to report, within a minute of the line, and
+        // this is the second opinion under it — cheap first, prompt second.
+        assertTrue(Duration.between(walkStart, seenAt!!) <= PlaceWatchPolicy.LEAVING_MAX_WAIT, "seen ${Duration.between(walkStart, seenAt)} after setting off")
     }
 
     @Test
@@ -158,9 +160,9 @@ class PlaceWatchJourneyTest {
     @Test
     fun `two places apart are watched by whichever is nearer`() {
         val work = WatchedPlace("work", homeLat + 0.05, homeLng, radiusM = 150, transition = Transition.ENTER, label = "Trabajo")
-        val nearHome = planNextCheck(south(1000.0, now), speedMps = 5.0, places = listOf(home, work), stillStreak = 0)!!
+        val nearHome = planNextCheck(south(1000.0, now), Movement(speedMps = 5.0, stillStreak = 0), listOf(home, work))!!
         assertEquals(home, nearHome.nearest)
-        val nearWork = planNextCheck(south(-5_000.0, now), speedMps = 5.0, places = listOf(home, work), stillStreak = 0)!!
+        val nearWork = planNextCheck(south(-5_000.0, now), Movement(speedMps = 5.0, stillStreak = 0), listOf(home, work))!!
         assertEquals(work, nearWork.nearest)
     }
 
@@ -169,16 +171,22 @@ class PlaceWatchJourneyTest {
         val random = Random(20260825)
         repeat(2_000) {
             val fix = Fix(
-                lat = homeLat + random.nextDouble(-0.5, 0.5),
-                lng = homeLng + random.nextDouble(-0.5, 0.5),
+                lat = (homeLat + random.nextDouble(-40.0, 40.0)).coerceIn(-85.0, 85.0),
+                lng = homeLng + random.nextDouble(-40.0, 40.0),
                 accuracyM = random.nextDouble(3.0, 2_000.0),
                 at = now,
             )
             val speed = if (random.nextInt(4) == 0) null else random.nextDouble(0.0, 40.0)
             val streak = random.nextInt(0, 30)
-            val plan = planNextCheck(fix, speed, listOf(home, leavingHome), streak)!!
+            val moved = if (random.nextInt(3) == 0) null else random.nextDouble(0.0, 5_000.0)
+            val plan = planNextCheck(fix, Movement(speed, moved, stillStreak = streak), listOf(home, leavingHome))!!
             assertTrue(plan.wait >= PlaceWatchPolicy.MIN_WAIT, "${plan.wait} under the floor")
-            assertTrue(plan.wait <= PlaceWatchPolicy.MAX_WAIT, "${plan.wait} over the ceiling")
+            // Distance is the only thing that may lift the hour, and never past what 120 km/h
+            // would need to cover the gap.
+            assertTrue(
+                plan.wait <= maxOf(PlaceWatchPolicy.MAX_WAIT, reachCeiling(plan.gapM)),
+                "${plan.wait} over the ceiling ${plan.gapM} m out",
+            )
             if (plan.precise) assertTrue(plan.gapM < PlaceWatchPolicy.NEAR_M, "GPS ${plan.gapM} m from the line")
             if (speed != null && speed <= PlaceWatchPolicy.STILL_MPS) assertFalse(plan.precise, "GPS for a still phone")
         }

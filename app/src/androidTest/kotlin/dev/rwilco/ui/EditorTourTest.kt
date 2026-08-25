@@ -83,6 +83,10 @@ class EditorTourTest {
             // No presets either: with one kept, "New" asks a question first, and the tour is
             // walking the path somebody with none walks.
             app.settingsStore.update { it.copy(lastSeenVersionCode = BuildConfig.VERSION_CODE, presets = emptyList()) }
+            // A watch that has been running: the location log has nothing to show on a phone
+            // that has never looked, and an empty state is not what that screen is for.
+            app.placeLog.clear()
+            for (note in DemoData.watchNotes(app.clock)) app.placeLog.note(note)
         }
         // Yesterday's captures would otherwise be pulled along with today's and quietly go stale.
         File(context.filesDir, "screenshots").listFiles()?.forEach { it.delete() }
@@ -186,6 +190,13 @@ class EditorTourTest {
         shot("settings")
         // Dark mode only, by the owner's rule: the light scheme shares every token and layout,
         // and each extra pass through the emulator costs minutes.
+        text(s(R.string.watch_log_open)).performScrollTo()
+        shot("settings-location")
+        text(s(R.string.watch_log_open)).performClick()
+        rule.waitUntilShown(s(R.string.watch_log_title))
+        shot("watch-log")
+        rule.onNodeWithContentDescription(s(R.string.common_back)).performClick()
+        rule.waitUntilShown(s(R.string.settings_title))
         rule.onNodeWithContentDescription(s(R.string.common_back)).performClick()
         rule.waitUntilShown(s(R.string.home_next_up))
 

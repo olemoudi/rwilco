@@ -518,4 +518,47 @@
     <string-array name="whats_new_0_4_1">
         <item>La vigilancia de lugares, pasada por viajes simulados y una noche en la mesilla: ahora vuelve a mirar antes de un cuarto de hora cuando aún no sabe a qué velocidad vas (una hora a ciegas son noventa kilómetros de autopista), recuerda tu velocidad a través de sus esperas más largas, y sólo despierta el GPS para un móvil que sabe que se mueve.</item>
     </string-array>
+
+    <!-- The place watch's own log, behind a button in Settings. -->
+    <string name="watch_log_open">Ver el registro de ubicación</string>
+    <string name="watch_log_title">Registro de ubicación</string>
+    <string name="watch_log_hint">Cada mirada del vigilante de lugares y los números con los que decidió la siguiente. Se guardan las últimas 200; nada sale del teléfono.</string>
+    <string name="watch_log_empty">Nada todavía. El vigilante escribe una línea cada vez que mira.</string>
+    <plurals name="watch_log_summary">
+        <item quantity="one">%1$d lectura de ubicación en la última hora</item>
+        <item quantity="other">%1$d lecturas de ubicación en la última hora</item>
+    </plurals>
+    <string name="watch_log_clear">Vaciar el registro</string>
+    <string name="watch_kind_fix">lectura</string>
+    <string name="watch_kind_rest">ahorrada</string>
+    <string name="watch_kind_blind">sin señal</string>
+    <string name="watch_kind_stir">movimiento</string>
+    <string name="watch_kind_fence">cruce</string>
+    <string name="watch_kind_echo">eco</string>
+    <string name="watch_field_gps">GPS</string>
+    <string name="watch_field_network">wifi/red</string>
+    <string name="watch_field_next">siguiente %1$s</string>
+    <string name="watch_field_from">%1$s de %2$s</string>
+    <string name="watch_field_inside">dentro</string>
+    <string name="watch_field_speed">%1$s m/s</string>
+    <string name="watch_field_moved">%1$s recorridos</string>
+    <string name="watch_field_sensed_yes">sensor: movido</string>
+    <string name="watch_field_sensed_no">sensor: quieto</string>
+    <string name="watch_field_still">quieto \u00d7%1$d</string>
+    <string name="watch_field_charge">batería %1$d%%</string>
+    <!-- The optional notice about the watch looking too often. -->
+    <string name="watch_notice_title">Avisarme si mira demasiado</string>
+    <string name="watch_notice_body">Una notificación discreta cuando el vigilante de lugares lea tu ubicación más de 20 veces en una hora. Desactivado por defecto: en su cadencia más rápida puede llegar a 30, así que esto es para cazar algo que va mal, no el uso normal.</string>
+    <string name="watch_channel_name">Vigilante de ubicación</string>
+    <string name="watch_channel_description">Avisa cuando el vigilante de lugares está leyendo tu ubicación más a menudo de lo que debería.</string>
+    <string name="watch_busy_title">Rwilco está mirando demasiado</string>
+    <string name="watch_busy_text">%1$d lecturas de ubicación en la última hora</string>
+    <string name="watch_busy_body">%1$d lecturas de ubicación en la última hora, más de lo que debería producir ninguna de las cadencias de la app. Toca para ver el registro.</string>
+    <string-array name="whats_new_0_8_0">
+        <item>El vigilante de lugares gasta mucha menos batería. Ahora sabe a qué distancia está un lugar —a 300 km no se puede llegar en menos de dos horas y media, así que deja de preguntar— y le pregunta al sensor de movimiento del propio teléfono si algo se ha movido, que es gratis, y se salta la lectura entera cuando no.</item>
+        <item>Estar dentro de un lugar con una regla de «al irme de aquí» era lo más caro que hacía la app. Ahora parte de media hora y sólo acelera según cruzas el lugar de verdad — y en el momento en que sales, el sensor de movimiento adelanta la siguiente mirada.</item>
+        <item>Por debajo de media batería cada espera se alarga, poco a poco y luego deprisa, hasta que a un cuarto de batería es una mirada por hora y nada de GPS.</item>
+        <item>Una alarma a pantalla completa que nadie contestaba dejaba la pantalla encendida hasta que alguien volvía a casa. Ahora la suelta cuando deja de sonar.</item>
+        <item>Ajustes tiene la cuenta entera: cada mirada del vigilante y los números con los que decidió la siguiente, y un aviso discreto opcional si alguna vez lee tu ubicación más de veinte veces en una hora.</item>
+    </string-array>
 </resources>

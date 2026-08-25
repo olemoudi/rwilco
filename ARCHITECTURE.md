@@ -250,7 +250,11 @@ strict is asking somebody to remember how they spelled it.
   a one-shot and leaves anything that can come round again.
 - `AlertNotifications` has one channel per sound/vibration combination, because a channel's
   sound is fixed the moment it is created. A full-screen alert's notification stays silent: the
-  screen does its own looping ring (`AlertRinger`) and gives up after two minutes.
+  screen does its own looping ring (`AlertRinger`) and gives up after two minutes — and so does
+  its hold on the screen (`FLAG_KEEP_SCREEN_ON` is cleared with the noise). Nobody answered in
+  two minutes because nobody is there, and a display lit at full brightness until somebody comes
+  home costs more battery than everything else in this app together. The alert is still on the
+  screen when they do, and the notification is still in the shade either way.
 - `AlertActivity` shows over the lock screen and turns it on; it is its own task so dismissing
   an alarm at three in the morning does not drop anybody into the app's back stack. "Hecho" is
   the bottom-most control on it, because the bottom of the screen is where a half-awake thumb
@@ -262,27 +266,90 @@ strict is asking somebody to remember how they spelled it.
   grant stands, whether or not a place reminder exists yet (`LocationPermissionCard`), because
   a refusal discovered later is a reminder that never arrives. A place is judged against its
   conditions when it happens, not when it is armed.
-- `PlaceWatcher` is the second opinion, and the one that decides its own cost. On each check
-  (an allow-while-idle alarm to `PlaceCheckReceiver`, exact when the phone allows it) it reads
-  one fix from the fused provider — GPS only when the nearest line is close and the phone
-  moving, the wifi/cell blend otherwise — and hands it to `stepPlaceWatch` (`core-model`,
-  `PlaceWatch.kt`), which judges every place with hysteresis (in takes a fix inside and no
-  sloppier than the place; out takes a fix clearly beyond the line), reports the crossings
-  that match a rule, and plans the next look: the time to reach the nearest line at the
-  measured speed with headroom, clamped to 2–60 minutes, doubling while the phone stands
-  still up to 15 minutes near a line. With no speed to go on (the first look of a session)
-  it plans for a slow car and looks again within 15 minutes regardless — an hour blind is
-  ninety motorway kilometres — and the speed memory (90 min) outlasts the longest wait, so
-  the average over a look-away is the next plan's speed. The GPS is only ever asked for near
-  a line and with the phone *known* to be moving; a drive straight through a place between
-  two looks is not arriving, and is the geofence's to call. A place with no history
+- `PlaceWatcher` is the second opinion, and the one that decides its own cost. However many
+  places are being waited on there is **one** alarm, **one** fix and **one** decision: no rule
+  polls on its own account. On each check (an allow-while-idle alarm to `PlaceCheckReceiver`,
+  exact when the phone allows it) it reads one fix from the fused provider — GPS only when the
+  nearest line is close and the phone moving, the wifi/cell blend otherwise — and hands it to
+  `stepPlaceWatch` (`core-model`, `PlaceWatch.kt`), which judges every place with hysteresis
+  (in takes a fix inside and no sloppier than the place; out takes a fix clearly beyond the
+  line), reports the crossings that match a rule, and plans the next look: the time to reach the
+  nearest line at the measured speed with headroom, floored at 2 minutes, doubling while the
+  phone stands still up to 15 minutes near a line. With no speed to go on (the first look of a
+  session) it plans for a slow car and looks again within 15 minutes regardless — an hour blind
+  is ninety motorway kilometres — and the speed memory (90 min) outlasts the longest wait, so
+  the average over a look-away is the next plan's speed.
+  The ceiling is an hour, which **distance alone can lift** (`reachCeiling`): a gap takes
+  120 km/h to close, the fastest anybody averages by road, so a place 300 km off cannot be
+  arrived at for two and a half hours and is not worth looking at until then. Past 500 km a
+  flight is on the table, no road speed bounds anything, and it falls back to the plain hour —
+  which next to any flight, door to door, is still short.
+  The GPS is only ever asked for near a line and with the phone *known* to be moving, on the
+  evidence of two fixes; a drive straight through a place between two looks is not arriving, and
+  is the geofence's to call. A place with no history
   — a new rule, first launch — is baselined by the next fix without an event, which is how a
   reminder written while standing at home does not ring for "arriving home"; it waits until the
-  watch has seen the phone leave, and while it waits it costs the least of anything in the app:
-  a place already inside that waits for an arrival is planned at half an hour a look and never
-  with GPS, because the only thing that can happen indoors is going out, and stepping out and
-  back inside that half hour is not arriving either. Each place plans its own look and the
-  soonest one wins, so an errand across town still sets the pace for a phone sitting at home.
+  watch has seen the phone leave, and while it waits it costs the least of anything in the app.
+  Both ways of being inside a place are cheap, for different reasons. Waiting for an *arrival*
+  from inside is half an hour a look and never GPS: the only thing that can happen indoors is
+  going out, and stepping out and back inside that half hour is not arriving either. Waiting for
+  a *leaving* from inside is the case the plain answer gets worst — standing inside a place is
+  standing next to its line, so "time to the line" would ask for the fastest cadence in the app,
+  all evening, for a door nobody walks through — so it starts at half an hour too and buys its
+  way down only with evidence (`leavingWait`): the fraction of the place's radius the phone
+  actually crossed since the last look takes that fraction off the half hour, down to a floor of
+  five minutes. Never GPS either way. What would otherwise be the price of that rest — a leaving
+  noticed up to half an hour late — is bought back by the sensor below: it fires as somebody
+  actually walks out, and the look moves to five minutes from now (`stirredWait`). Only ever
+  earlier, only within `NEAR_M` of a line (a stir three provinces from the only place being
+  watched means nothing), and the sensor's one-shot re-arming caps it at one early look per
+  check — so the cadence can never beat the five minutes that case was already allowed.
+  Each place plans its own look and the soonest one wins, so an errand across town still sets
+  the pace for a phone sitting at home.
+  `MotionSensor` is the third witness and the free one: `TYPE_SIGNIFICANT_MOTION`, a one-shot
+  hardware trigger evaluated by the sensor hub, no permission, no Play Services, and it keeps
+  answering while the app is asleep (Activity Recognition classifies better and costs a runtime
+  permission dialog; this app does not spend one on it). Its word is taken **one way only**,
+  because a phone flat on a train table feels nothing: firing means the phone moved and ends
+  whatever back-off it had earned, while not firing is believed only alongside a pair of fixes
+  that say the same — and then it lifts the near-a-line still cap from a quarter of an hour to
+  the full one, and lets the watch skip the fix entirely (`stepWithoutLooking`), because a fix taken
+  of a phone that has not moved is one already in hand. That skip is bounded by the fix's own
+  age: everything downstream is measured from it, so a rest is never allowed to outlive the
+  speed memory. If the process died between two checks the registration died with it, and the
+  honest answer becomes *I was not listening* — null, and the watch plans as it did before there
+  was a sensor. (The same process-local truth is why `plannedAt`/`plannedGapM` live in memory
+  rather than the store: the sensor only speaks for the process that armed it, so they are valid
+  together or not at all.)
+  **The battery has the last word** (`batteryFloor`, read once a check from `BatteryGauge` —
+  one property, no broadcast to keep alive; charging reads as nothing to hold back for). Above
+  half there is nothing to discuss. Below it the floor under every plan climbs *geometrically*,
+  so the half of the fall nobody worries about costs almost nothing (37% left: a two-minute floor
+  becomes ten, where a straight line would say thirty-one) and the last quarter costs everything:
+  at 25% it is the hour, and the GPS goes with it — an hourly look is not the last few hundred
+  metres of an approach, which is the only thing the GPS was ever for. The span it climbs is
+  exactly MAX_WAIT / MIN_WAIT, so the fastest cadence the app has becomes the slowest one it has
+  and there is nothing under that to fall to. A floor and never a cap, because the alternative
+  eats itself: a place 300 km off has already bought two and a half hours, and an empty battery
+  is no reason to go and look sooner than that.
+  All of that argues in the dark, so the watch keeps its own account of it: `PlaceLogStore` (a
+  third DataStore, the one thing in the app that is fine to lose) holds two hundred lines,
+  one per look — what it came to (a fix and whether it woke the GPS, a rest, no fix at all, a
+  stir, a crossing, an echo) and every number it decided from. `WatchLogScreen`, behind a button
+  in the Location section of Settings, is that list; it is a diagnostic screen and reads as one,
+  every figure in the mono face so the rows can be compared down the column. A look that spent
+  radio counts as a *poll* and a rest does not, which is the whole point of the distinction: with
+  `AppSettings.busyWatchNotice` on — off by default — more than `BUSY_POLLS` polls in an hour
+  posts one quiet notification (`WatchNotices`), at most one an hour because the window it is
+  about is an hour. MIN_WAIT is two minutes, so thirty an hour is the arithmetic ceiling and
+  twenty is the line between a long approach on foot and something going wrong.
+  A check that gets nothing — location switched off, a cold provider — retries at ten minutes,
+  doubling to the hour (`blindRetry`): the answer to "where are you" cannot change until somebody
+  opens Settings, and asking every ten minutes all day is the one drain nobody would ever see
+  coming. `sync()` (which runs on every process start, and the process starts every time an
+  alarm reaches an app the system had cleaned up) leaves a pending look standing unless a place
+  has never been judged or nothing is pending at all; looking soon unconditionally would mean a
+  second fix five seconds after every check, all day, for a list of places that had not changed.
   A crossing Play Services reports is judged the same way (`crossingIsNews`): an arrival
   announced while the app's own recent fix still has the phone inside is a line nobody crossed
   and is dropped, and one that stands is written into the same `inside` map so the other eye

@@ -87,4 +87,10 @@ object ReminderCodec {
     /** Losing the watch's memory costs one baseline check, never a crash. */
     fun decodePlaceWatch(raw: String): PlaceWatchState =
         runCatching { json.decodeFromString(PlaceWatchState.serializer(), raw) }.getOrDefault(PlaceWatchState())
+
+    fun encodeWatchLog(log: WatchLog): String = json.encodeToString(WatchLog.serializer(), log)
+
+    /** A log that will not parse is a log worth losing; nothing depends on it but the reading. */
+    fun decodeWatchLog(raw: String): WatchLog =
+        runCatching { json.decodeFromString(WatchLog.serializer(), raw) }.getOrDefault(WatchLog())
 }

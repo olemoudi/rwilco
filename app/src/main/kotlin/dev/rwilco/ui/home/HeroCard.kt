@@ -45,8 +45,8 @@ import java.time.LocalDate
 
 /**
  * The one card that glows: the next definite moment. The lamp brightens as it nears, and the
- * countdown ticks every second — inside [LiveCountdown] only, so the rest of the card (and the
- * list) is untouched by the ticking.
+ * countdown ticks — inside [LiveCountdown] only, so the rest of the card (and the list) is
+ * untouched by the ticking.
  */
 @Composable
 fun HeroCard(
@@ -122,10 +122,18 @@ fun HeroCard(
     }
 }
 
-/** The ticking text and nothing else. */
+/**
+ * The ticking text and nothing else — and it only ticks as fast as it reads.
+ *
+ * [countdownText] shows seconds under the hour and not a moment before, so a moment three days
+ * out spends 3,599 recompositions an hour rewriting the same six characters. A minute ticker
+ * decides when the second one is worth starting, and hands over an hour before it is needed.
+ */
 @Composable
 fun LiveCountdown(at: Instant, clock: Clock, style: TextStyle, color: Color, modifier: Modifier = Modifier) {
-    val now by rememberNow(1_000, clock)
+    val coarse by rememberNow(60_000, clock)
+    val ticking = Duration.between(coarse, at).abs() <= Duration.ofHours(1)
+    val now by rememberNow(if (ticking) 1_000 else 60_000, clock)
     Text(text = countdownText(partsBetween(now, at)), style = style, color = color, modifier = modifier)
 }
 

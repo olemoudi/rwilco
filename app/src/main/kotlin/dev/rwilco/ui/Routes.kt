@@ -26,4 +26,8 @@ object Routes {
 
     @Serializable
     data object Settings
+
+    /** The place watch's own account of itself, behind a button in Settings. */
+    @Serializable
+    data object WatchLog
 }

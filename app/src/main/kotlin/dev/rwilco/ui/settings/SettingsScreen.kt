@@ -1,6 +1,7 @@
 package dev.rwilco.ui.settings
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.SettingsBrightness
@@ -65,7 +67,7 @@ import dev.rwilco.ui.theme.Tokens
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
+fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog: () -> Unit) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val spacing = Tokens.spacing
     val haptics = Tokens.haptics
@@ -224,6 +226,50 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
             val hasPlaces by viewModel.hasPlaceReminders.collectAsStateWithLifecycle()
             val watch by viewModel.placeWatch.collectAsStateWithLifecycle()
             LocationPermissionCard(needsPlaces = hasPlaces, watch = watch)
+            Spacer(Modifier.height(spacing.sm))
+            RwilcoCard {
+                Column(Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.lg)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        SettingTitle(
+                            title = stringResource(R.string.watch_notice_title),
+                            info = stringResource(R.string.watch_notice_body),
+                            modifier = Modifier.weight(1f),
+                        )
+                        Spacer(Modifier.width(spacing.md))
+                        Switch(
+                            checked = current.busyWatchNotice,
+                            onCheckedChange = { on ->
+                                if (on) haptics.perform(HapticFeedbackType.ToggleOn)
+                                viewModel.setBusyWatchNotice(on)
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.surface,
+                                checkedTrackColor = MaterialTheme.colorScheme.onSurface,
+                            ),
+                        )
+                    }
+                    // The whole account of what the watch has been doing, which is a place to go
+                    // and look rather than anything to put on this screen.
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = Tokens.sizes.touch)
+                            .clickable(onClick = onWatchLog),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.watch_log_open),
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
 
             SectionHeader(
                 title = stringResource(R.string.settings_places),

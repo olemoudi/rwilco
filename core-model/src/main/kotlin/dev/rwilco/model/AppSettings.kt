@@ -59,6 +59,12 @@ data class AppSettings(
     val dayStart: LocalTime = DEFAULT_DAY_START,
     /** Recurrences kept under a name, plus the four everybody needs before they need any others. */
     val recurrencePresets: List<RecurrencePreset> = defaultRecurrencePresets(),
+    /**
+     * Say so when the place watch reads the phone's location more than
+     * [PlaceWatchPolicy.BUSY_POLLS] times in an hour. Off by default: it is a notification about
+     * the app's own behaviour, which is a thing to go looking for and not a thing to be handed.
+     */
+    val busyWatchNotice: Boolean = false,
 )
 
 /** Nine in the morning, until somebody says otherwise. */

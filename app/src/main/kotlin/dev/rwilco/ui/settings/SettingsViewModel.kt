@@ -6,12 +6,16 @@ import androidx.lifecycle.viewModelScope
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
+import dev.rwilco.geo.PlaceLogStore
 import dev.rwilco.model.Action
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.SavedPlace
+import dev.rwilco.model.PlaceWatchPolicy
 import dev.rwilco.model.ThemeMode
 import dev.rwilco.model.Trigger
+import dev.rwilco.model.WatchLog
+import dev.rwilco.model.pollsSince
 import dev.rwilco.model.TriggerKind
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.Clock
 import java.time.DayOfWeek
 import java.time.LocalTime
 
@@ -27,6 +32,8 @@ class SettingsViewModel(
     val settings: StateFlow<AppSettings?>,
     repository: ReminderRepository,
     placeWatch: Flow<PlaceWatchState>,
+    private val placeLog: PlaceLogStore,
+    private val clock: Clock,
 ) : ViewModel() {
 
     /** Only ask for "allow all the time" when something actually waits on a place. */
@@ -38,6 +45,25 @@ class SettingsViewModel(
     val placeWatch: StateFlow<PlaceWatchState?> = placeWatch
         .map<PlaceWatchState, PlaceWatchState?> { it }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Every look the place watch took, newest first: the log behind the button. */
+    val watchLog: StateFlow<WatchLog> = placeLog.log
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WatchLog())
+
+    /**
+     * Looks that actually spent radio in the last hour — the same count the notice is about, so
+     * the screen and the notification can never disagree about what is going on.
+     */
+    val pollsThisHour: StateFlow<Int> = placeLog.log
+        .map { it.notes.pollsSince(clock.instant() - PlaceWatchPolicy.BUSY_WINDOW) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    fun clearWatchLog() {
+        viewModelScope.launch { placeLog.clear() }
+    }
+
+    /** The one thing the place watch is allowed to say about itself, and only if asked to. */
+    fun setBusyWatchNotice(on: Boolean) = update { it.copy(busyWatchNotice = on) }
 
     /** A new place when [index] is null, otherwise the one at [index] rewritten. */
     fun savePlace(index: Int?, place: SavedPlace) = update { settings ->
@@ -80,6 +106,13 @@ class SettingsViewModel(
     class Factory(private val app: RwilcoApplication) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            SettingsViewModel(app.settingsStore, app.settings, app.repository, app.placeWatcher.state) as T
+            SettingsViewModel(
+                app.settingsStore,
+                app.settings,
+                app.repository,
+                app.placeWatcher.state,
+                app.placeLog,
+                app.clock,
+            ) as T
     }
 }

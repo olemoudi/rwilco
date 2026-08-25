@@ -71,19 +71,30 @@ class PlaceArrivalTest {
     }
 
     @Test
-    fun `a rule waiting for the leaving is watched closely from inside`() {
-        val step = stepPlaceWatch(PlaceWatchState(), south(0.0, now), listOf(leavingHome), now)
-        assertTrue(
-            step.plan!!.wait < PlaceWatchPolicy.INSIDE_MIN_WAIT,
-            "the leaving is the event; it cannot be watched every half hour",
-        )
+    fun `a rule waiting for the leaving starts at half an hour and buys its way down by moving`() {
+        // Standing inside a place IS standing next to its line, so "time to the line" would ask
+        // for the fastest cadence in the app, all evening, for a door nobody walks through.
+        val standing = stepPlaceWatch(PlaceWatchState(), south(0.0, now), listOf(leavingHome), now)
+        assertEquals(PlaceWatchPolicy.LEAVING_MAX_WAIT, standing.plan!!.wait)
+        assertFalse(standing.plan!!.precise, "the GPS, for a phone sitting inside its own place")
+        // Sixty per cent of the radius crossed since the last look takes sixty per cent off the
+        // half hour. (150 m of ground, less the 30 m the two fixes' own doubt eats: 120 of 200.)
+        val later = now.plusSeconds(1800)
+        val stirring = stepPlaceWatch(standing.state, south(150.0, later), listOf(leavingHome), later)
+        assertEquals(Duration.ofMinutes(12), stirring.plan!!.wait)
+        assertTrue(stirring.events.isEmpty(), "still inside")
+        // And a whole radius' worth of it lands on the floor, which is as fast as this ever goes.
+        val sooner = later.plusSeconds(720)
+        val leaving = stepPlaceWatch(standing.state, south(200.0, sooner), listOf(leavingHome), sooner)
+        assertEquals(PlaceWatchPolicy.LEAVING_MIN_WAIT, leaving.plan!!.wait)
+        assertFalse(leaving.plan!!.precise)
     }
 
     @Test
     fun `an errand across town still sets the pace while the phone is at home`() {
         val errand = WatchedPlace("shop", homeLat - 0.02, homeLng, radiusM = 100, transition = Transition.ENTER, label = "Tienda")
         val inside = mapOf("home" to true)
-        val driving = planNextCheck(south(0.0, now), speedMps = 12.0, places = listOf(home, errand), stillStreak = 0, inside = inside)
+        val driving = planNextCheck(south(0.0, now), Movement(speedMps = 12.0, stillStreak = 0), listOf(home, errand), inside = inside)
         assertEquals("shop", driving!!.nearest.id, "the sofa planned the drive")
         assertTrue(driving.wait < PlaceWatchPolicy.INSIDE_MIN_WAIT)
     }

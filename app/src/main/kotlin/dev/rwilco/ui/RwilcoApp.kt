@@ -41,6 +41,7 @@ import dev.rwilco.ui.home.HomeScreen
 import dev.rwilco.ui.home.HomeViewModel
 import dev.rwilco.ui.settings.SettingsScreen
 import dev.rwilco.ui.settings.SettingsViewModel
+import dev.rwilco.ui.settings.WatchLogScreen
 import dev.rwilco.ui.settings.WhatsNewSheet
 import dev.rwilco.ui.theme.Tokens
 import kotlinx.coroutines.launch
@@ -123,6 +124,13 @@ fun RwilcoApp(
                 }
                 composable<Routes.Settings> {
                     SettingsScreen(
+                        viewModel = viewModel(factory = SettingsViewModel.Factory(app)),
+                        onBack = { navController.popBackStack() },
+                        onWatchLog = { navController.navigate(Routes.WatchLog) },
+                    )
+                }
+                composable<Routes.WatchLog> {
+                    WatchLogScreen(
                         viewModel = viewModel(factory = SettingsViewModel.Factory(app)),
                         onBack = { navController.popBackStack() },
                     )

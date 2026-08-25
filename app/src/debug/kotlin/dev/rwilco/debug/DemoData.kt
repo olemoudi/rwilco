@@ -11,7 +11,9 @@ import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
 import dev.rwilco.model.Transition
+import dev.rwilco.model.NoteKind
 import dev.rwilco.model.Trigger
+import dev.rwilco.model.WatchNote
 import dev.rwilco.model.TriggerRule
 import java.time.Clock
 import java.time.DayOfWeek
@@ -25,6 +27,28 @@ import java.time.temporal.TemporalAdjusters
  * done ones, and one long enough to stress the alert.
  */
 object DemoData {
+
+    /**
+     * A morning of the place watch, for the tour's capture of the location log: a rested night,
+     * the sensor catching somebody leaving, the walk out with the GPS on for the last stretch,
+     * and the geofence saying the same thing a moment later.
+     */
+    fun watchNotes(clock: Clock): List<WatchNote> {
+        val now = clock.instant()
+        fun ago(minutes: Long) = now.minusSeconds(minutes * 60)
+        return listOf(
+            WatchNote(ago(184), NoteKind.FIX, waitS = 1800, gapM = 24.0, place = "Casa", inside = true, speedMps = 0.0, movedM = 0.0, sensed = false, stillStreak = 6, charge = 71),
+            WatchNote(ago(154), NoteKind.REST, waitS = 1800, gapM = 24.0, place = "Casa", inside = true, speedMps = 0.0, movedM = 0.0, sensed = false, stillStreak = 7, charge = 70),
+            WatchNote(ago(124), NoteKind.REST, waitS = 1800, gapM = 24.0, place = "Casa", inside = true, speedMps = 0.0, movedM = 0.0, sensed = false, stillStreak = 8, charge = 69),
+            WatchNote(ago(96), NoteKind.STIR, waitS = 300, gapM = 24.0, sensed = true),
+            WatchNote(ago(91), NoteKind.FIX, waitS = 300, gapM = 61.0, place = "Casa", inside = true, speedMps = 1.3, movedM = 118.0, sensed = true, charge = 68),
+            WatchNote(ago(86), NoteKind.FIX, waitS = 120, gapM = 210.0, place = "Casa", speedMps = 1.4, movedM = 271.0, sensed = true, precise = true, charge = 67),
+            WatchNote(ago(84), NoteKind.FENCE, place = "Casa", inside = false),
+            WatchNote(ago(84), NoteKind.ECHO, place = "Casa", inside = false),
+            WatchNote(ago(60), NoteKind.FIX, waitS = 3600, gapM = 4_180.0, place = "Oficina", speedMps = 8.6, movedM = 12_400.0, sensed = true, charge = 64),
+            WatchNote(ago(12), NoteKind.BLIND, waitS = 600, sensed = false, charge = 61),
+        )
+    }
 
     suspend fun seed(repository: ReminderRepository, clock: Clock) {
         val now = clock.instant()

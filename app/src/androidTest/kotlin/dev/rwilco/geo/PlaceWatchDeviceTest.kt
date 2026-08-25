@@ -50,6 +50,20 @@ class PlaceWatchDeviceTest {
     private val fused by lazy { LocationServices.getFusedLocationProviderClient(context) }
     private val store by lazy { PlaceWatchStore(context) }
 
+    /**
+     * A phone moved by mock location is teleported, and no accelerometer anywhere feels it — so
+     * a real sensor here would talk the watch out of looking (`stepWithoutLooking`) and this
+     * test would be testing the emulator's sensor hub. It says instead what it says in a process
+     * that was killed between two checks: I was not listening. WHEN the watch looks is pinned on
+     * the JVM; what this asks is what a real fused provider hands back.
+     */
+    private val silent = object : MotionSensor(context) {
+        override fun consume(): Boolean? = null
+    }
+    private val watcher by lazy {
+        PlaceWatcher(context, app.repository, app.firing, store, app.placeLog, app.settingsStore, app.clock, silent)
+    }
+
     // Puerta del Sol, Madrid; the reminders' place.
     private val homeLat = 40.4169
     private val homeLng = -3.7035
@@ -97,7 +111,7 @@ class PlaceWatchDeviceTest {
 
         // Far away: a baseline, no events, a look planned well ahead.
         moveTo(south = 5_000.0, at = t0)
-        app.placeWatcher.check()
+        watcher.check()
         var state = store.read()
         assertEquals(mapOf("$arriving#0" to false, "$leaving#0" to false), state.inside)
         assertNull(app.repository.get(arriving)!!.lastFiredAt)
@@ -106,21 +120,21 @@ class PlaceWatchDeviceTest {
 
         // Closing in fast: the next look is soon, but still no GPS at 1.3 km from the line.
         moveTo(south = 1_500.0, at = t0 + 120_000)
-        app.placeWatcher.check()
+        watcher.check()
         state = store.read()
         assertFalse(state.precise)
         assertTrue(state.lastGapM!! in 1_200.0..1_400.0)
 
         // Three hundred metres out and moving: GPS for the last stretch.
         moveTo(south = 300.0, at = t0 + 240_000)
-        app.placeWatcher.check()
+        watcher.check()
         state = store.read()
         assertTrue("GPS should be on ${state.lastGapM} m from the line", state.precise)
         assertNull(app.repository.get(arriving)!!.lastFiredAt)
 
         // Inside: the arriving rule rings, the leaving one does not.
         moveTo(south = 50.0, at = t0 + 300_000)
-        app.placeWatcher.check()
+        watcher.check()
         state = store.read()
         assertEquals(true, state.inside["$arriving#0"])
         val rangAt = app.repository.get(arriving)!!.lastFiredAt
@@ -133,14 +147,14 @@ class PlaceWatchDeviceTest {
 
         // Standing inside: nothing new, and the watch knows it is still.
         moveTo(south = 52.0, at = t0 + 360_000)
-        app.placeWatcher.check()
+        watcher.check()
         state = store.read()
         assertEquals(1, state.stillStreak)
         assertEquals(rangAt, app.repository.get(arriving)!!.lastFiredAt)
 
         // Clearly out the other side: leaving rings, arriving is untouched.
         moveTo(south = -400.0, at = t0 + 420_000)
-        app.placeWatcher.check()
+        watcher.check()
         state = store.read()
         assertEquals(false, state.inside["$leaving#0"])
         assertNotNull("leaving should have rung", app.repository.get(leaving)!!.lastFiredAt)
@@ -154,17 +168,17 @@ class PlaceWatchDeviceTest {
         // The other way round the geofence would see a genuine move in — and be right to ring.
         moveTo(south = 40.0, at = t0)
         val arriving = seed("arrive", Transition.ENTER)
-        app.placeWatcher.check()
+        watcher.check()
         assertEquals(true, store.read().inside["$arriving#0"])
         assertNull("standing at home is not arriving", app.repository.get(arriving)!!.lastFiredAt)
 
         moveTo(south = 500.0, at = t0 + 120_000)
-        app.placeWatcher.check()
+        watcher.check()
         assertEquals(false, store.read().inside["$arriving#0"])
         assertNull(app.repository.get(arriving)!!.lastFiredAt)
 
         moveTo(south = 40.0, at = t0 + 240_000)
-        app.placeWatcher.check()
+        watcher.check()
         assertNotNull("coming back is arriving", app.repository.get(arriving)!!.lastFiredAt)
     }
 
@@ -172,15 +186,15 @@ class PlaceWatchDeviceTest {
     fun aSloppyFixDoesNotGetYouIn() = runBlocking {
         val arriving = seed("arrive", Transition.ENTER)
         moveTo(south = 1_000.0, at = t0)
-        app.placeWatcher.check()
+        watcher.check()
         // Centre inside, but the fix could be anywhere within 600 m: not an arrival.
         moveTo(south = 50.0, at = t0 + 120_000, accuracy = 600f)
-        app.placeWatcher.check()
+        watcher.check()
         assertEquals(false, store.read().inside["$arriving#0"])
         assertNull(app.repository.get(arriving)!!.lastFiredAt)
         // A proper fix in the same spot is.
         moveTo(south = 50.0, at = t0 + 240_000, accuracy = 12f)
-        app.placeWatcher.check()
+        watcher.check()
         assertNotNull(app.repository.get(arriving)!!.lastFiredAt)
     }
 
@@ -191,9 +205,9 @@ class PlaceWatchDeviceTest {
         val window = Condition.TimeWindow(now.plusHours(2).withSecond(0), now.plusHours(4).withSecond(0))
         val fenced = seed("fenced", Transition.ENTER, conditions = listOf(window))
         moveTo(south = 1_000.0, at = t0)
-        app.placeWatcher.check()
+        watcher.check()
         moveTo(south = 50.0, at = t0 + 120_000)
-        app.placeWatcher.check()
+        watcher.check()
         assertEquals("the watch saw the arrival", true, store.read().inside["$fenced#0"])
         assertNull("but the rule's hours said no", app.repository.get(fenced)!!.lastFiredAt)
     }
