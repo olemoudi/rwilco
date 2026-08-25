@@ -262,6 +262,21 @@
     <string name="settings_default_trigger_ask">No favourite</string>
     <string name="kind_default_badge">Your usual one</string>
 
+    <!-- Saved places -->
+    <string name="settings_places">Places</string>
+    <string name="settings_places_hint">Named once and offered whole — name, pin and radius — whenever a rule needs a place.</string>
+    <string name="settings_places_empty">No places saved yet.</string>
+    <string name="settings_add_place">Add a place</string>
+    <string name="settings_remove_place">Remove place</string>
+    <string name="place_saved_title">Saved place</string>
+    <string name="place_saved_pick">Saved places</string>
+    <string name="place_kilometres">%1$s km</string>
+
+    <!-- The place watch -->
+    <string name="place_watch_how">Rwilco also looks for itself: every couple of minutes walking up to a place, every hour standing still across town. GPS only near a place and moving.</string>
+    <string name="place_watch_waiting">Has not looked yet; the first look is moments away.</string>
+    <string name="place_watch_status">Last look %1$s · %2$s from %3$s · next look %4$s</string>
+
     <!-- Location -->
     <string name="settings_location">Location</string>
     <string name="perm_location_none">Rwilco cannot see where you are.</string>
@@ -327,5 +342,11 @@
         <item>A chosen day is a solid disc in the time colour, so a week reads as a pattern of lit and unlit.</item>
         <item>In the editor, each trigger row wears its family\'s colour: a date is blue, a place green, a chance violet, before a word is read.</item>
         <item>The editor\'s cards stand off the ground the way Home\'s do, and toggles turn over with a short fade rather than popping.</item>
+    </string-array>
+    <string-array name="whats_new_0_4_0">
+        <item>Rwilco now keeps its own eye on your places, next to the phone\'s: it reads where you are, judges each place for itself, and decides how long it can look away — an hour standing still across town, two minutes walking up to a door. GPS only near a place and moving, so the battery hardly notices.</item>
+        <item>Settings → Location says what that watch last saw and when it looks next.</item>
+        <item>Settings → Places keeps places by name — home, work, the gym — and the place sheet offers them whole: name, pin and radius in one tap.</item>
+        <item>A place seen by both the phone and the watch rings once.</item>
     </string-array>
 </resources>

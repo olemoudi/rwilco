@@ -19,6 +19,7 @@ import dev.rwilco.notify.AlertNotifications
 import dev.rwilco.notify.AlertPresenter
 import kotlinx.coroutines.flow.first
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 
 /**
@@ -49,6 +50,13 @@ class ReminderFiring(
         val rule = ruleIndex?.let { reminder.rules.getOrNull(it) }
         if (rule?.trigger is Trigger.Location && !rule.conditions.allHoldAt(now, clock.zone)) {
             Log.i(TAG, "$id reached its place outside the hours it asked for")
+            return
+        }
+        // Two eyes on every place — the phone's geofence and the app's own watch — and one
+        // arrival. Whichever sees it second is telling us what we already rang about.
+        val lastFired = reminder.lastFiredAt
+        if (rule?.trigger is Trigger.Location && lastFired != null && Duration.between(lastFired, now) < PLACE_ECHO) {
+            Log.i(TAG, "$id already rang for this place ${Duration.between(lastFired, now).seconds}s ago")
             return
         }
         // A snooze set after the alarm was armed (from the notification, a moment ago) wins.
@@ -115,5 +123,8 @@ class ReminderFiring(
 
     private companion object {
         const val TAG = "RwilcoAlarms"
+
+        /** Inside this of the last ring, a second sighting of the same place is the same arrival. */
+        val PLACE_ECHO: Duration = Duration.ofMinutes(5)
     }
 }

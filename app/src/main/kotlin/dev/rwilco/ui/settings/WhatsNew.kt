@@ -32,6 +32,7 @@ data class Release(val versionCode: Int, val name: String, @ArrayRes val bullets
 
 /** Newest first. Empty until there is a release worth a word; the sheet then never appears. */
 val RELEASES: List<Release> = listOf(
+    Release(versionCode = 9, name = "0.4.0", bulletsRes = R.array.whats_new_0_4_0),
     Release(versionCode = 8, name = "0.3.2", bulletsRes = R.array.whats_new_0_3_2),
     Release(versionCode = 7, name = "0.3.1", bulletsRes = R.array.whats_new_0_3_1),
     Release(versionCode = 6, name = "0.3.0", bulletsRes = R.array.whats_new_0_3_0),

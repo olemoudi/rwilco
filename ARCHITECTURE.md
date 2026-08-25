@@ -78,7 +78,10 @@ strict is asking somebody to remember how they spelled it.
 - `ReminderRepository`: reactive `open`/`done` flows for the screens, suspend writes.
 - `SettingsStore`: Preferences DataStore with one JSON blob (`AppSettings`: theme, default time
   for date-only reminders, the trigger kind offered first, when "the weekend" starts, haptics,
-  last-seen version for What's New). Additive changes need no migration.
+  last-seen version for What's New, the saved places). Additive changes need no migration.
+  `PlaceWatchStore` is a second DataStore for the place watch's memory (last fix, which places
+  it is inside, its still streak, the next look) — its own file because it is written on every
+  check.
 - `RwilcoApplication` is the dependency container (manual DI); ViewModels get it through a
   `Factory`.
 
@@ -115,7 +118,9 @@ strict is asking somebody to remember how they spelled it.
   chosen in Settings (`AppSettings.defaultTriggerKind`) first and marks it; the other five keep
   their order behind it. One configurator sheet per trigger kind under `editor/sheets/`, plus `ConditionSheet` for the
   "y sólo si" fences; the countdown sheet produces an `AtDateTime`; the place
-  sheet searches addresses through the platform `Geocoder` (`PlaceSearch.kt`), and asks every
+  sheet offers the places kept by name in Settings (`AppSettings.savedPlaces`, managed by
+  `SavedPlacesCard` through the same sheet without the arriving/leaving choice) as one-tap
+  chips, searches addresses through the platform `Geocoder` (`PlaceSearch.kt`), and asks every
   enabled provider at once for a fix (`CurrentLocation.kt`: fine *or* coarse is enough, the
   freshest last-known answers instantly, and nothing is refused because GPS alone had nothing
   to say indoors) and shows an
@@ -146,12 +151,26 @@ strict is asking somebody to remember how they spelled it.
 - `AlertActivity` shows over the lock screen and turns it on; it is its own task so dismissing
   an alarm at three in the morning does not drop anybody into the app's back stack.
 - `GeofenceManager` registers the place rules with Play Services, wholesale, and re-registers on
-  boot and from `RearmWorker` (a reboot or a Play Services update drops them all). Nothing polls
-  a position: the phone's own location stack does the watching, which is why "all the time" is
-  the whole cost of a place reminder. Settings says where that grant stands, whether or not a
-  place reminder exists yet (`LocationPermissionCard`), because a refusal discovered later is a
-  reminder that never arrives. A place is
-  judged against its conditions when it happens, not when it is armed.
+  boot and from `RearmWorker` (a reboot or a Play Services update drops them all). That is the
+  net: free, always on, the system's own word on where the phone is. Settings says where that
+  grant stands, whether or not a place reminder exists yet (`LocationPermissionCard`), because
+  a refusal discovered later is a reminder that never arrives. A place is judged against its
+  conditions when it happens, not when it is armed.
+- `PlaceWatcher` is the second opinion, and the one that decides its own cost. On each check
+  (an allow-while-idle alarm to `PlaceCheckReceiver`, exact when the phone allows it) it reads
+  one fix from the fused provider — GPS only when the nearest line is close and the phone
+  moving, the wifi/cell blend otherwise — and hands it to `stepPlaceWatch` (`core-model`,
+  `PlaceWatch.kt`), which judges every place with hysteresis (in takes a fix inside and no
+  sloppier than the place; out takes a fix clearly beyond the line), reports the crossings
+  that match a rule, and plans the next look: the time to reach the nearest line at the
+  measured speed with headroom (unknown speed plans for a slow car), clamped to 2–60 minutes,
+  doubling while the phone stands still up to 15 minutes near a line. A place with no history
+  — a new rule, first launch — is baselined by the next fix without an event, which is how a
+  reminder written while standing at home does not ring for "arriving home". State lives in
+  `PlaceWatchStore` (its own DataStore; written every check). Doze holds allow-while-idle
+  alarms to one per nine minutes, and a phone in Doze is a phone not moving, so nothing is
+  lost. Both eyes seeing the same arrival ring once: `ReminderFiring` drops a place firing
+  that repeats within five minutes of the last ring.
 - `SystemEventsReceiver` re-arms after a reboot, an install over ourselves, or the clock moving:
   a wall-clock promise is not an instant until a zone says so.
 

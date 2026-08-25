@@ -75,4 +75,10 @@ object ReminderCodec {
     /** A blob that does not parse yields the defaults rather than a crash on launch. */
     fun decodeSettings(raw: String): AppSettings =
         runCatching { json.decodeFromString(AppSettings.serializer(), raw) }.getOrDefault(AppSettings())
+
+    fun encodePlaceWatch(state: PlaceWatchState): String = json.encodeToString(PlaceWatchState.serializer(), state)
+
+    /** Losing the watch's memory costs one baseline check, never a crash. */
+    fun decodePlaceWatch(raw: String): PlaceWatchState =
+        runCatching { json.decodeFromString(PlaceWatchState.serializer(), raw) }.getOrDefault(PlaceWatchState())
 }

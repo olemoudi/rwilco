@@ -29,15 +29,22 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.rwilco.R
+import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.ThemeMode
+import dev.rwilco.model.Transition
+import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerKind
 import dev.rwilco.ui.components.RwilcoCard
+import dev.rwilco.ui.editor.sheets.LocationSheet
 import dev.rwilco.ui.components.SectionHeader
 import dev.rwilco.ui.components.DayToggles
 import dev.rwilco.ui.components.SegmentedChoice
@@ -187,7 +194,31 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
 
             SectionHeader(stringResource(R.string.settings_location))
             val hasPlaces by viewModel.hasPlaceReminders.collectAsStateWithLifecycle()
-            LocationPermissionCard(needsPlaces = hasPlaces)
+            val watch by viewModel.placeWatch.collectAsStateWithLifecycle()
+            LocationPermissionCard(needsPlaces = hasPlaces, watch = watch)
+
+            SectionHeader(stringResource(R.string.settings_places))
+            // Which saved place the sheet is open on: null closed, -1 a new one, else the index.
+            var editingPlace by rememberSaveable { mutableStateOf<Int?>(null) }
+            SavedPlacesCard(
+                places = current.savedPlaces,
+                onAdd = { editingPlace = -1 },
+                onEdit = { editingPlace = it },
+                onRemove = viewModel::removePlace,
+            )
+            editingPlace?.let { index ->
+                val existing = current.savedPlaces.getOrNull(index)
+                LocationSheet(
+                    initial = existing?.let { Trigger.Location(it.lat, it.lng, it.radiusM, Transition.ENTER, it.label) },
+                    title = stringResource(R.string.place_saved_title),
+                    pickTransition = false,
+                    onConfirm = { place ->
+                        viewModel.savePlace(index.takeIf { it >= 0 }, SavedPlace(place.label, place.lat, place.lng, place.radiusM))
+                        editingPlace = null
+                    },
+                    onDismiss = { editingPlace = null },
+                )
+            }
 
             SectionHeader(stringResource(R.string.settings_updates))
             AppUpdateCard()

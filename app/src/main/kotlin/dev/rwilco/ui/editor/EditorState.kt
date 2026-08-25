@@ -6,6 +6,7 @@ import dev.rwilco.model.DEFAULT_ACTIONS
 import dev.rwilco.model.MAX_TEXT_LENGTH
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
+import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.Status
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerKind
@@ -77,6 +78,8 @@ data class EditorUiState(
     val defaultTime: LocalTime = LocalTime.of(9, 0),
     /** The kind the picker offers first, from the settings; null when there is no favourite. */
     val defaultKind: TriggerKind? = null,
+    /** The places kept by name in Settings, offered whole in the place sheet. */
+    val savedPlaces: List<SavedPlace> = emptyList(),
 ) {
     val dirty: Boolean get() = draft != initial
     val errors: List<ValidationError> get() = validate(draft.text, draft.rules)

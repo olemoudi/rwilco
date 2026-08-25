@@ -71,6 +71,7 @@ class EditorViewModel(
                 suggestedTexts = suggestedTexts(past, now, limit = 8, exclude = draft.text),
                 defaultTime = current.defaultTime,
                 defaultKind = current.defaultTriggerKind,
+                savedPlaces = current.savedPlaces,
             )
         }
     }

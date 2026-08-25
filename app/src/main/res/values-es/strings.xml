@@ -260,6 +260,21 @@
     <string name="settings_default_trigger_ask">Sin preferencia</string>
     <string name="kind_default_badge">El que sueles usar</string>
 
+    <!-- Saved places -->
+    <string name="settings_places">Lugares</string>
+    <string name="settings_places_hint">Con nombre una vez, y se ofrecen enteros —nombre, chincheta y radio— cada vez que una regla necesita un lugar.</string>
+    <string name="settings_places_empty">Todavía no hay lugares guardados.</string>
+    <string name="settings_add_place">Añadir un lugar</string>
+    <string name="settings_remove_place">Quitar lugar</string>
+    <string name="place_saved_title">Lugar guardado</string>
+    <string name="place_saved_pick">Lugares guardados</string>
+    <string name="place_kilometres">%1$s km</string>
+
+    <!-- The place watch -->
+    <string name="place_watch_how">Rwilco también mira por su cuenta: cada par de minutos al acercarte andando a un lugar, cada hora parado al otro lado de la ciudad. GPS sólo cerca de un lugar y en movimiento.</string>
+    <string name="place_watch_waiting">Todavía no ha mirado; la primera mirada llega en un momento.</string>
+    <string name="place_watch_status">Última mirada %1$s · a %2$s de %3$s · próxima %4$s</string>
+
     <!-- Location -->
     <string name="settings_location">Ubicación</string>
     <string name="perm_location_none">Rwilco no puede ver dónde estás.</string>
@@ -325,5 +340,11 @@
         <item>Un día elegido es un disco sólido del color del tiempo, así que la semana se lee como un patrón de encendidos y apagados.</item>
         <item>En el editor, cada fila de disparador lleva el color de su familia: una fecha es azul, un lugar verde, el azar violeta, antes de leer una palabra.</item>
         <item>Las tarjetas del editor se despegan del fondo como las de la pantalla principal, y los interruptores se dan la vuelta con un fundido corto en vez de saltar.</item>
+    </string-array>
+    <string-array name="whats_new_0_4_0">
+        <item>Rwilco vigila tus lugares por su cuenta, además del teléfono: lee dónde estás, juzga cada lugar por sí mismo y decide cuánto puede dejar de mirar — una hora parado al otro lado de la ciudad, dos minutos acercándote andando a una puerta. GPS sólo cerca de un lugar y en movimiento, así que la batería apenas lo nota.</item>
+        <item>Ajustes → Ubicación dice qué vio esa vigilancia por última vez y cuándo vuelve a mirar.</item>
+        <item>Ajustes → Lugares guarda lugares con nombre —casa, trabajo, el gimnasio— y la hoja de lugar los ofrece enteros: nombre, chincheta y radio en un toque.</item>
+        <item>Un lugar visto a la vez por el teléfono y por la vigilancia suena una sola vez.</item>
     </string-array>
 </resources>

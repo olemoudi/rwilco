@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -54,8 +56,10 @@ import dev.rwilco.R
 import dev.rwilco.model.MAX_LABEL_LENGTH
 import dev.rwilco.model.MAX_RADIUS_M
 import dev.rwilco.model.MIN_RADIUS_M
+import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
+import dev.rwilco.ui.components.PresetChip
 import dev.rwilco.ui.components.SegmentedChoice
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.SheetScaffold
@@ -67,14 +71,19 @@ import org.osmdroid.util.GeoPoint
 import java.util.Locale
 
 /**
- * A place, a radius, and whether arriving or leaving matters. The pin comes from the phone's
- * own location or a long-press on the map; the radius is drawn around it as it changes.
+ * A place, a radius, and whether arriving or leaving matters. The pin comes from a saved place,
+ * the phone's own location, an address, or a long-press on the map; the radius is drawn
+ * around it as it changes. Settings hosts the same sheet to keep a place by name — without
+ * the arriving/leaving choice, which belongs to a rule, not a place.
  */
 @Composable
 fun LocationSheet(
     initial: Trigger.Location?,
     onConfirm: (Trigger.Location) -> Unit,
     onDismiss: () -> Unit,
+    title: String = stringResource(R.string.kind_place),
+    pickTransition: Boolean = true,
+    savedPlaces: List<SavedPlace> = emptyList(),
 ) {
     var label by rememberSaveable { mutableStateOf(initial?.label ?: "") }
     var transition by rememberSaveable { mutableStateOf((initial?.transition ?: Transition.ENTER).name) }
@@ -130,12 +139,42 @@ fun LocationSheet(
 
     val known = lat != null && lng != null
     SheetScaffold(
-        title = stringResource(R.string.kind_place),
+        title = title,
         onDismiss = onDismiss,
         onConfirm = { onConfirm(Trigger.Location(lat!!, lng!!, radius, Transition.valueOf(transition), label.trim())) },
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
         confirmEnabled = known && label.isNotBlank(),
     ) {
+        // The places kept by name, one tap each: name, pin and radius at once. The one that
+        // matches the pin is inverted, so a rule built from "Casa" says so.
+        if (savedPlaces.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm)) {
+                Text(
+                    text = stringResource(R.string.place_saved_pick),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                ) {
+                    for (place in savedPlaces) {
+                        PresetChip(
+                            label = place.label,
+                            selected = lat == place.lat && lng == place.lng,
+                            onClick = {
+                                label = place.label
+                                lat = place.lat
+                                lng = place.lng
+                                radius = place.radiusM
+                                failure = null
+                                results = emptyList()
+                            },
+                        )
+                    }
+                }
+            }
+        }
         OutlinedTextField(
             value = label,
             onValueChange = { label = it.take(MAX_LABEL_LENGTH) },
@@ -150,11 +189,13 @@ fun LocationSheet(
             ),
             modifier = Modifier.fillMaxWidth(),
         )
-        SegmentedChoice(
-            options = listOf(stringResource(R.string.trigger_arriving), stringResource(R.string.trigger_leaving)),
-            selectedIndex = if (transition == Transition.ENTER.name) 0 else 1,
-            onSelect = { transition = if (it == 0) Transition.ENTER.name else Transition.EXIT.name },
-        )
+        if (pickTransition) {
+            SegmentedChoice(
+                options = listOf(stringResource(R.string.trigger_arriving), stringResource(R.string.trigger_leaving)),
+                selectedIndex = if (transition == Transition.ENTER.name) 0 else 1,
+                onSelect = { transition = if (it == 0) Transition.ENTER.name else Transition.EXIT.name },
+            )
+        }
         // Typing an address is the way in for a place you are not standing in; the map and the
         // crosshair are for the two you are.
         OutlinedTextField(

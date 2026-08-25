@@ -34,4 +34,6 @@ data class AppSettings(
     val weekendTime: LocalTime = LocalTime.of(20, 30),
     /** What's-new sheet bookkeeping: the last versionCode whose notes were shown. */
     val lastSeenVersionCode: Int = 0,
+    /** Places named once and offered whole whenever a rule needs one: home, work, the gym. */
+    val savedPlaces: List<SavedPlace> = emptyList(),
 )

@@ -38,12 +38,17 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import dev.rwilco.R
+import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.TriggerFamily
 import dev.rwilco.ui.components.PermissionFixRow
 import dev.rwilco.ui.components.RwilcoCard
+import dev.rwilco.ui.components.rememberNow
+import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.theme.LocalDarkTheme
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.familyColor
+import java.time.Clock
+import java.time.Duration
 
 /** How much of the phone's location Rwilco can see, in the order the system grants it. */
 enum class LocationAccess { NONE, WHILE_IN_USE, ALWAYS }
@@ -53,12 +58,13 @@ enum class LocationAccess { NONE, WHILE_IN_USE, ALWAYS }
  *
  * Shown whether or not a place reminder exists yet, because "all the time" is the one permission
  * that has to be in place *before* it is needed: the trigger is written once and then waited on
- * for weeks, and a refusal at that point is silent. What actually watches in the background is
- * the geofencing in `GeofenceManager` — the phone's own location stack, which costs no battery
- * worth naming; Rwilco never polls a position of its own.
+ * for weeks, and a refusal at that point is silent. What watches in the background is the
+ * geofencing in `GeofenceManager` — the phone's own location stack — and, next to it, the
+ * app's own `PlaceWatcher`, whose last look and next look this card reports so the owner can
+ * see it working without a walk.
  */
 @Composable
-fun LocationPermissionCard(needsPlaces: Boolean) {
+fun LocationPermissionCard(needsPlaces: Boolean, watch: PlaceWatchState? = null) {
     val context = LocalContext.current
     var access by remember { mutableStateOf(context.locationAccess()) }
     var locationOn by remember { mutableStateOf(context.isLocationEnabled()) }
@@ -118,6 +124,21 @@ fun LocationPermissionCard(needsPlaces: Boolean) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            // With places to watch and the grant to do it, what the app's own watch is up to:
+            // the one line that proves, on the phone, that it is looking at all.
+            if (needsPlaces && access == LocationAccess.ALWAYS) {
+                Spacer(Modifier.height(Tokens.spacing.sm))
+                Text(
+                    text = stringResource(R.string.place_watch_how),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(Tokens.spacing.xs))
+                Text(
+                    text = placeWatchLine(watch),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
             when (access) {
                 LocationAccess.NONE -> PermissionFixRow(
                     text = stringResource(R.string.perm_location_missing),
@@ -150,6 +171,44 @@ fun LocationPermissionCard(needsPlaces: Boolean) {
                 )
             }
         }
+    }
+}
+
+/** "Last look 3 min ago · 1.2 km from Casa · next look in 12 min", or that it has not looked yet. */
+@Composable
+private fun placeWatchLine(watch: PlaceWatchState?): String {
+    val fix = watch?.lastFix
+    val gap = watch?.lastGapM
+    val label = watch?.nearestLabel
+    val next = watch?.nextCheckAt
+    if (fix == null || gap == null || label == null || next == null) return stringResource(R.string.place_watch_waiting)
+    val now by rememberNow(60_000, Clock.systemUTC())
+    val locale = currentLocale()
+    val distance = if (gap < 1000) {
+        stringResource(R.string.place_metres, gap.toInt())
+    } else {
+        stringResource(R.string.place_kilometres, String.format(locale, "%.1f", gap / 1000))
+    }
+    return stringResource(
+        R.string.place_watch_status,
+        stringResource(R.string.countdown_ago, spanText(Duration.between(fix.at, now))),
+        distance,
+        label,
+        stringResource(R.string.countdown_in, spanText(Duration.between(now, next))),
+    )
+}
+
+/** A span in the coarsest unit that says something: "3 d", "2 h 14 min", "5 min". Never under a minute. */
+@Composable
+private fun spanText(span: Duration): String {
+    val total = span.abs()
+    val days = total.toDays()
+    val hours = total.toHours() % 24
+    val minutes = (total.toMinutes() % 60).coerceAtLeast(if (days == 0L && hours == 0L) 1L else 0L)
+    return when {
+        days > 0 -> stringResource(R.string.countdown_days, days.toInt())
+        hours > 0 -> stringResource(R.string.countdown_hours, hours.toInt()) + " " + stringResource(R.string.countdown_minutes, minutes.toInt())
+        else -> stringResource(R.string.countdown_minutes, minutes.toInt())
     }
 }
 

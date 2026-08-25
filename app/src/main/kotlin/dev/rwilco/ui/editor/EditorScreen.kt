@@ -258,6 +258,7 @@ fun EditorScreen(
                         initial = sheet.initial as? dev.rwilco.model.Trigger.Location,
                         onConfirm = commit,
                         onDismiss = viewModel::closeSheet,
+                        savedPlaces = state.savedPlaces,
                     )
                 }
             }

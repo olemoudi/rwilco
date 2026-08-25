@@ -1,13 +1,9 @@
 package dev.rwilco.geo
 
-import android.Manifest
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
 import android.util.Log
-import androidx.core.content.ContextCompat
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingClient
 import com.google.android.gms.location.GeofencingRequest
@@ -107,12 +103,7 @@ class GeofenceManager(
     }
 
     /** Background location is what makes a place reminder work when the app is not open. */
-    fun hasBackgroundLocation(): Boolean {
-        val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        if (!fine) return false
-        return Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
-            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
-    }
+    fun hasBackgroundLocation(): Boolean = context.hasBackgroundLocation()
 
     /** Mutable on purpose: Play Services fills the transition into this intent. */
     private fun pendingIntent(): PendingIntent = PendingIntent.getBroadcast(

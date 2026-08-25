@@ -7,9 +7,12 @@ import dev.rwilco.RwilcoApplication
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.AppSettings
+import dev.rwilco.model.PlaceWatchState
+import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.ThemeMode
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerKind
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -22,12 +25,29 @@ class SettingsViewModel(
     private val store: SettingsStore,
     val settings: StateFlow<AppSettings?>,
     repository: ReminderRepository,
+    placeWatch: Flow<PlaceWatchState>,
 ) : ViewModel() {
 
     /** Only ask for "allow all the time" when something actually waits on a place. */
     val hasPlaceReminders: StateFlow<Boolean> = repository.open
         .map { reminders -> reminders.any { reminder -> reminder.rules.any { it.trigger is Trigger.Location } } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    /** What the place watch last saw and when it looks next, for the Location card. */
+    val placeWatch: StateFlow<PlaceWatchState?> = placeWatch
+        .map<PlaceWatchState, PlaceWatchState?> { it }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** A new place when [index] is null, otherwise the one at [index] rewritten. */
+    fun savePlace(index: Int?, place: SavedPlace) = update { settings ->
+        val places = settings.savedPlaces.toMutableList()
+        if (index != null && index in places.indices) places[index] = place else places += place
+        settings.copy(savedPlaces = places)
+    }
+
+    fun removePlace(index: Int) = update { settings ->
+        settings.copy(savedPlaces = settings.savedPlaces.filterIndexed { i, _ -> i != index })
+    }
 
 
     fun setTheme(theme: ThemeMode) = update { it.copy(theme = theme) }
@@ -47,6 +67,6 @@ class SettingsViewModel(
     class Factory(private val app: RwilcoApplication) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            SettingsViewModel(app.settingsStore, app.settings, app.repository) as T
+            SettingsViewModel(app.settingsStore, app.settings, app.repository, app.placeWatcher.state) as T
     }
 }

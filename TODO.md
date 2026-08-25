@@ -58,6 +58,14 @@ because they need two different things from the person.
   it; it needs a location read at fire time and a decision about what to do when it is unknown
   (fail open, presumably).
 - Snooze from the alert screen is wired; snooze from the notification only offers ten minutes.
-- Background location is a permission, not a service: geofencing does the watching. If a place
-  reminder is ever seen to miss in the street, the thing to add is a diagnostic (last geofence
-  event, last known fix), not a foreground service that polls.
+- Background location is a permission, not a service. Two eyes on every place now: the
+  geofences (the phone's) and `PlaceWatcher` (the app's own, 2026-08-25), which reads one fix
+  per look and sets its own next look from distance and speed — never a foreground service,
+  never continuous updates. Settings → Location shows what it last saw. Two platform limits
+  to keep in mind if it ever seems slow: Doze holds allow-while-idle alarms to one per nine
+  minutes (fine: a phone in Doze is not moving), and Android throttles a *background* app's
+  continuous location requests to a few an hour — the watch asks for one fix at a time, which
+  in practice answers, and falls back to the fused provider's last location when it does not.
+  To prove on the phone: the "last look · next look" line in Settings moving, a walk up to a
+  saved place ringing once (not twice), and the battery page showing nothing worth naming
+  after a day with a place reminder set.

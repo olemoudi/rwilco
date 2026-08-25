@@ -2,7 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- The place picker reads one fix from the phone; nothing runs in the background yet. -->
+    <!-- The place picker reads one fix; the place watch reads one every few minutes to an hour,
+         at a cadence it sets itself from how far the nearest place is and how fast the phone
+         is moving (PlaceWatcher). No service, no continuous updates. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- "Allow all the time": a place reminder that only works while the app is open is not a
@@ -86,6 +88,11 @@
              everything rings again". -->
         <receiver
             android:name=".geo.GeofenceReceiver"
+            android:exported="false" />
+
+        <!-- The place watch's own alarm: look where the phone is, decide when to look again. -->
+        <receiver
+            android:name=".geo.PlaceCheckReceiver"
             android:exported="false" />
 
         <receiver

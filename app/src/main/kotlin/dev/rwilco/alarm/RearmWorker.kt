@@ -24,6 +24,7 @@ class RearmWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
         return runCatching {
             app.firing.rearmAndCatchUp()
             app.geofences.sync()
+            app.placeWatcher.sync()
         }
             .fold(onSuccess = { Result.success() }, onFailure = { Result.retry() })
     }
