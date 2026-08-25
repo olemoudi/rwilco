@@ -93,11 +93,22 @@ object PlaceWatchPolicy {
     /** With no speed to go on, plan for a slow car. */
     const val UNKNOWN_MPS = 8.0
 
+    /**
+     * And do not look away for long either: the first look of a journey cannot know it is a
+     * journey, and an hour is ninety motorway kilometres. One extra look buys the speed.
+     */
+    val UNKNOWN_MAX_WAIT: Duration = Duration.ofMinutes(15)
+
     /** Planning speed over measured: people speed up. */
     const val HEADROOM = 1.5
 
-    /** An earlier fix older than this says nothing about how fast the phone is going now. */
-    val SPEED_MEMORY: Duration = Duration.ofMinutes(30)
+    /**
+     * An earlier fix older than this says nothing about how fast the phone is going now.
+     * Longer than the longest wait on purpose: the average speed over an hour's look-away is
+     * exactly the speed the next plan needs, and forgetting it would make every long wait
+     * start over blind.
+     */
+    val SPEED_MEMORY: Duration = Duration.ofMinutes(90)
 
     /** Longest the still back-off doubles for: 2 · 2⁶ min is already past MAX_WAIT. */
     const val MAX_STILL_DOUBLINGS = 6
@@ -131,15 +142,18 @@ fun planNextCheck(fix: Fix, speedMps: Double?, places: List<WatchedPlace>, still
         null -> PlaceWatchPolicy.UNKNOWN_MPS
         else -> max(speedMps * PlaceWatchPolicy.HEADROOM, PlaceWatchPolicy.WALK_MPS)
     }
-    var wait = Duration.ofSeconds((gap / planningSpeed).toLong()).clamp(PlaceWatchPolicy.MIN_WAIT, PlaceWatchPolicy.MAX_WAIT)
+    val ceiling = if (speedMps == null) PlaceWatchPolicy.UNKNOWN_MAX_WAIT else PlaceWatchPolicy.MAX_WAIT
+    var wait = Duration.ofSeconds((gap / planningSpeed).toLong()).clamp(PlaceWatchPolicy.MIN_WAIT, ceiling)
     if (still) {
         val doublings = min(stillStreak, PlaceWatchPolicy.MAX_STILL_DOUBLINGS)
         val backoff = PlaceWatchPolicy.MIN_WAIT.multipliedBy(1L shl doublings)
         val cap = if (near) PlaceWatchPolicy.STILL_NEAR_MAX else PlaceWatchPolicy.MAX_WAIT
         wait = maxOf(wait, backoff).clamp(PlaceWatchPolicy.MIN_WAIT, cap)
     }
-    // GPS is for a line that is close and a phone that is (or may be) moving towards it.
-    return WatchPlan(wait = wait, precise = near && !still, gapM = gap, nearest = nearest)
+    // GPS is for a line that is close and a phone KNOWN to be moving. Not "may be": the first
+    // look of a session at home would wake it for a phone on a bedside table.
+    val moving = speedMps != null && speedMps > PlaceWatchPolicy.STILL_MPS
+    return WatchPlan(wait = wait, precise = near && moving, gapM = gap, nearest = nearest)
 }
 
 private fun Duration.clamp(floor: Duration, ceiling: Duration): Duration = when {

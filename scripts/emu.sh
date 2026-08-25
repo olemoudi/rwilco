@@ -6,6 +6,7 @@
 #   scripts/emu.sh seed | clear        # demo data in / out (debug builds only)
 #   scripts/emu.sh shot NAME           # docs/screenshots/NAME.png (raw screencap)
 #   scripts/emu.sh tour                # run the instrumented UI tour, pull its screenshots into docs/screenshots
+#   scripts/emu.sh watch               # the place watch against mock locations (PlaceWatchDeviceTest)
 #   scripts/emu.sh dark | light        # system theme
 #   scripts/emu.sh es | en             # per-app locale (API 33+)
 #   scripts/emu.sh tz                  # Europe/Madrid, so demo times look real
@@ -64,6 +65,13 @@ case "${1:-}" in
     mkdir -p docs/screenshots
     "$ADB" exec-out run-as "$PKG" tar -cf - files/screenshots | tar -x -C docs/screenshots --strip-components=2
     ls docs/screenshots
+    ;;
+  watch)
+    # Moves the phone by mock location through the fused provider and asks the watch to look:
+    # arriving, leaving, an echo from the geofence, a sloppy fix, a rule outside its hours.
+    ./gradlew -q :app:connectedDebugAndroidTest \
+      -Pandroid.testInstrumentationRunnerArguments.class=dev.rwilco.geo.PlaceWatchDeviceTest \
+      -Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true
     ;;
   dark) "$ADB" shell cmd uimode night yes ;;
   light) "$ADB" shell cmd uimode night no ;;

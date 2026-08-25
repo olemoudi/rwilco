@@ -35,7 +35,8 @@ class PlaceWatchTest {
     fun `speed needs an earlier fix that is recent, and a step bigger than the noise`() {
         val earlier = north(0.0, at = now.minusSeconds(100))
         assertNull(speedBetween(null, north(500.0)))
-        assertNull(speedBetween(north(0.0, at = now.minusSeconds(3600)), north(500.0)), "an hour-old fix says nothing")
+        assertNull(speedBetween(north(0.0, at = now.minusSeconds(2 * 3600)), north(500.0)), "a two-hour-old fix says nothing")
+        assertEquals(500.0 / 3600, speedBetween(north(0.0, at = now.minusSeconds(3600)), north(500.0))!!, 0.001, "an hour-old one still gives the average")
         assertEquals(0.0, speedBetween(north(0.0, at = now), north(0.0, at = now)), "the same fix handed back twice is a phone that has not moved")
         assertNull(speedBetween(north(0.0, at = now), north(500.0, at = now.minusSeconds(10))), "a fix older than the last is noise")
         assertEquals(0.0, speedBetween(earlier, north(15.0)), "15 m with 10 m fixes is standing still")
@@ -51,12 +52,18 @@ class PlaceWatchTest {
     }
 
     @Test
-    fun `far away and no idea of speed, the wait is bounded by the ceiling`() {
+    fun `far away and no idea of speed, the wait is bounded by the unknown-speed ceiling`() {
         // Sixty kilometres south: home is the nearer of the two (work is north of it).
         val plan = planNextCheck(north(-60_000.0), speedMps = null, places = listOf(home, work), stillStreak = 0)!!
-        assertEquals(PlaceWatchPolicy.MAX_WAIT, plan.wait)
+        assertEquals(PlaceWatchPolicy.UNKNOWN_MAX_WAIT, plan.wait, "an hour blind is ninety motorway kilometres")
         assertFalse(plan.precise)
         assertEquals(home, plan.nearest)
+    }
+
+    @Test
+    fun `far away and known to be slow, the wait goes all the way to the ceiling`() {
+        val plan = planNextCheck(north(-60_000.0), speedMps = 1.4, places = listOf(home, work), stillStreak = 0)!!
+        assertEquals(PlaceWatchPolicy.MAX_WAIT, plan.wait)
     }
 
     @Test
@@ -85,6 +92,14 @@ class PlaceWatchTest {
         val plan = planNextCheck(north(400.0), speedMps = 1.4, places = listOf(home), stillStreak = 0)!!
         assertEquals(PlaceWatchPolicy.MIN_WAIT, plan.wait)
         assertTrue(plan.precise)
+    }
+
+    @Test
+    fun `near a line but with no speed to go on, the cadence is the fastest and the GPS stays off`() {
+        // The first look of a session at home: a phone on a bedside table, most nights.
+        val plan = planNextCheck(north(400.0), speedMps = null, places = listOf(home), stillStreak = 0)!!
+        assertEquals(PlaceWatchPolicy.MIN_WAIT, plan.wait)
+        assertFalse(plan.precise)
     }
 
     @Test

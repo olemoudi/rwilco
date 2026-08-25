@@ -349,4 +349,7 @@
         <item>Settings → Places keeps places by name — home, work, the gym — and the place sheet offers them whole: name, pin and radius in one tap.</item>
         <item>A place seen by both the phone and the watch rings once.</item>
     </string-array>
+    <string-array name="whats_new_0_4_1">
+        <item>The place watch, put through simulated journeys and a night on the bedside table: it now looks again within a quarter of an hour when it cannot yet tell how fast you are going (an hour blind is ninety motorway kilometres), remembers your speed across its longest waits, and only wakes the GPS for a phone it knows is moving.</item>
+    </string-array>
 </resources>

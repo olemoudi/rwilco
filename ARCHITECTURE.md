@@ -163,8 +163,13 @@ strict is asking somebody to remember how they spelled it.
   `PlaceWatch.kt`), which judges every place with hysteresis (in takes a fix inside and no
   sloppier than the place; out takes a fix clearly beyond the line), reports the crossings
   that match a rule, and plans the next look: the time to reach the nearest line at the
-  measured speed with headroom (unknown speed plans for a slow car), clamped to 2–60 minutes,
-  doubling while the phone stands still up to 15 minutes near a line. A place with no history
+  measured speed with headroom, clamped to 2–60 minutes, doubling while the phone stands
+  still up to 15 minutes near a line. With no speed to go on (the first look of a session)
+  it plans for a slow car and looks again within 15 minutes regardless — an hour blind is
+  ninety motorway kilometres — and the speed memory (90 min) outlasts the longest wait, so
+  the average over a look-away is the next plan's speed. The GPS is only ever asked for near
+  a line and with the phone *known* to be moving; a drive straight through a place between
+  two looks is not arriving, and is the geofence's to call. A place with no history
   — a new rule, first launch — is baselined by the next fix without an event, which is how a
   reminder written while standing at home does not ring for "arriving home". State lives in
   `PlaceWatchStore` (its own DataStore; written every check). Doze holds allow-while-idle

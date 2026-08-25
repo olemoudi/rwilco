@@ -347,4 +347,7 @@
         <item>Ajustes → Lugares guarda lugares con nombre —casa, trabajo, el gimnasio— y la hoja de lugar los ofrece enteros: nombre, chincheta y radio en un toque.</item>
         <item>Un lugar visto a la vez por el teléfono y por la vigilancia suena una sola vez.</item>
     </string-array>
+    <string-array name="whats_new_0_4_1">
+        <item>La vigilancia de lugares, pasada por viajes simulados y una noche en la mesilla: ahora vuelve a mirar antes de un cuarto de hora cuando aún no sabe a qué velocidad vas (una hora a ciegas son noventa kilómetros de autopista), recuerda tu velocidad a través de sus esperas más largas, y sólo despierta el GPS para un móvil que sabe que se mueve.</item>
+    </string-array>
 </resources>
