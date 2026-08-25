@@ -102,8 +102,24 @@ data class EditorUiState(
     val allTexts: List<String> = emptyList(),
     /** Which list of offers is being mended, if any. */
     val curating: CurateKind? = null,
+    /** The preset this reminder was started from, when it was: named on the screen. */
+    val fromPresetName: String? = null,
+    /**
+     * A preset's default words, while one is being written. Empty means the reminders made from
+     * it start blank with the keyboard up. Kept out of [draft] because a draft is a reminder in
+     * waiting and this is not part of one.
+     */
+    val presetText: String = "",
+    /** What it was on arrival, so typing into it counts as an unsaved change. */
+    val initialPresetText: String = "",
+    /**
+     * Whether to put the cursor in the words and open the keyboard on arrival. True only when
+     * a preset answered everything else: the offers below are not the fast path any more, and
+     * the one thing left to do is type.
+     */
+    val focusText: Boolean = false,
 ) {
-    val dirty: Boolean get() = draft != initial || asPreset != initialAsPreset
+    val dirty: Boolean get() = draft != initial || asPreset != initialAsPreset || presetText != initialPresetText
     val errors: List<ValidationError> get() = validate(draft.text, draft.rules)
     val canSave: Boolean get() = errors.isEmpty()
 }
@@ -111,10 +127,14 @@ data class EditorUiState(
 /** The toggle. Nothing else about the draft changes: a preset keeps all four parts. */
 fun EditorUiState.setAsPreset(asPreset: Boolean): EditorUiState = copy(asPreset = asPreset)
 
+/** The words reminders made from this preset start with; empty for "ask me every time". */
+fun EditorUiState.setPresetText(text: String): EditorUiState = copy(presetText = text.take(MAX_TEXT_LENGTH))
+
 /** The draft as a preset — new when [existing] is null, otherwise that one rewritten. */
 fun EditorUiState.toPreset(id: String, now: Instant, existing: Preset?, others: List<Preset>): Preset = Preset(
     id = id,
     name = draft.text.trim().take(MAX_PRESET_NAME),
+    text = presetText.trim(),
     tags = draft.tags,
     rules = draft.rules,
     ruleMatch = draft.ruleMatch,

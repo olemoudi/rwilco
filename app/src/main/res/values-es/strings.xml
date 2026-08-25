@@ -21,6 +21,10 @@
     <string name="editor_as_preset">Guardar como preset</string>
     <string name="editor_as_preset_hint">Una forma para reutilizar: las palabras pasan a ser su nombre, y las etiquetas, el cuándo y el qué pasa se guardan con él.</string>
     <string name="editor_preset_title">Preset</string>
+    <string name="editor_preset_text">Texto con el que empieza</string>
+    <string name="editor_preset_text_hint">Déjalo vacío para escribirlo cada vez</string>
+    <string name="editor_preset_text_empty">Los recordatorios de este preset se abren con el teclado, esperando las palabras.</string>
+    <string name="editor_preset_text_set">Los recordatorios de este preset empiezan con este texto, listos para guardar.</string>
     <string name="editor_preset_name_placeholder">¿Cómo se llama este preset?</string>
     <string name="editor_name_preset">Poner nombre al preset</string>
     <string name="editor_title_new_preset">Nuevo preset</string>
@@ -386,6 +390,10 @@
     <string-array name="whats_new_0_4_2">
         <item>Pausar un recordatorio ahora dice lo que va a hacer — la palabra «Pausar» o «Reanudar» junto al botón, porque un icono de pausa a secas se lee igual de bien como «esto está pausado».</item>
         <item>Es más grande, está arriba con las palabras del recordatorio en vez de entre los iconos grises que no se pueden pulsar, y pide un dedo que se quede. Si sueltas antes, no pasa nada.</item>
+    </string-array>
+    <string-array name="whats_new_0_5_2">
+        <item>El nombre de un preset es sólo su etiqueta. Lo que DICE el recordatorio que sale de él es una línea aparte y opcional: «texto con el que empieza».</item>
+        <item>Déjala vacía y el preset es una forma esperando palabras: al elegirlo el recordatorio se abre con el campo vacío, el cursor dentro y el teclado ya abierto. Rellénala y el recordatorio llega escrito, sin nada que hacer salvo guardar.</item>
     </string-array>
     <string-array name="whats_new_0_5_1">
         <item>Arreglado: un recordatorio del que ya te habías ocupado podía volver a sonar. «Hecho» ahora lo da por terminado, y punto — un recordatorio de lugar marcado hecho por la mañana ya no salta al volver a cruzar la misma puerta.</item>

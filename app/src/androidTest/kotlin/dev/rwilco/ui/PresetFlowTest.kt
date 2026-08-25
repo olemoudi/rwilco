@@ -3,6 +3,8 @@ package dev.rwilco.ui
 import android.app.LocaleManager
 import android.os.LocaleList
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -50,6 +52,7 @@ class PresetFlowTest {
 
     private val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as RwilcoApplication
     private val presetName = "La compra del sábado"
+    private val reminderWords = "Pan, café y pilas"
 
     private fun s(id: Int): String = rule.activity.getString(id)
 
@@ -97,16 +100,50 @@ class PresetFlowTest {
         text(s(R.string.home_new_preset)).performClick()
         waitFor(presetName)
 
-        // Picking it counts as a use and opens the form already filled in.
+        // Picking it counts as a use and opens the form with everything but the words.
         text(presetName).performClick()
         waitFor(s(R.string.editor_title_new))
         rule.waitUntil(10_000) { runBlocking { app.settingsStore.settings.first().presets.single().uses } == 1 }
+        // The name labels the shape on screen, and the words are waiting with the cursor in
+        // them: this preset was saved without default wording.
         text(presetName).assertIsDisplayed()
+        rule.onNodeWithTag(EDITOR_TEXT_TAG).assertIsFocused()
 
-        // And what is saved from there is a reminder, not another preset.
+        // Typing is all that is left, and what is saved is a reminder, not another preset.
+        rule.onNodeWithTag(EDITOR_TEXT_TAG).performTextInput(reminderWords)
         text(s(R.string.common_save)).performClick()
-        rule.waitUntil(10_000) { runBlocking { app.repository.openNow().any { it.text == presetName } } }
+        rule.waitUntil(10_000) { runBlocking { app.repository.openNow().any { it.text == reminderWords } } }
         assertEquals(1, runBlocking { app.settingsStore.settings.first().presets.size })
+    }
+
+    @Test
+    fun aPresetWithDefaultWordsArrivesFilledInAndLeavesTheKeyboardAlone() {
+        waitFor(s(R.string.home_new))
+        runBlocking {
+            app.settingsStore.update { settings ->
+                settings.copy(
+                    presets = listOf(
+                        dev.rwilco.model.Preset(
+                            id = "p1",
+                            name = presetName,
+                            text = reminderWords,
+                            createdAt = app.clock.instant(),
+                        ),
+                    ),
+                )
+            }
+        }
+        text(s(R.string.home_new)).performClick()
+        waitFor(s(R.string.home_new_title))
+        text(s(R.string.home_new_preset)).performClick()
+        waitFor(presetName)
+        text(presetName).performClick()
+
+        waitFor(reminderWords)
+        rule.onNodeWithTag(EDITOR_TEXT_TAG).assertIsNotFocused()
+        // Nothing left to do but save it.
+        text(s(R.string.common_save)).performClick()
+        rule.waitUntil(10_000) { runBlocking { app.repository.openNow().any { it.text == reminderWords } } }
     }
 
     @Test

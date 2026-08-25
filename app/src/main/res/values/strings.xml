@@ -23,6 +23,10 @@
     <string name="editor_as_preset">Keep as a preset</string>
     <string name="editor_as_preset_hint">A shape to reuse: the words become its name, and the tags, the when and the what happens are kept with it.</string>
     <string name="editor_preset_title">Preset</string>
+    <string name="editor_preset_text">Words it starts with</string>
+    <string name="editor_preset_text_hint">Leave empty to write them each time</string>
+    <string name="editor_preset_text_empty">Reminders from this preset open with the keyboard up, waiting for the words.</string>
+    <string name="editor_preset_text_set">Reminders from this preset start with these words, ready to save.</string>
     <string name="editor_preset_name_placeholder">What is this preset called?</string>
     <string name="editor_name_preset">Name the preset</string>
     <string name="editor_title_new_preset">New preset</string>
@@ -388,6 +392,10 @@
     <string-array name="whats_new_0_4_2">
         <item>Pausing a reminder now says what it will do — the word "Pause" or "Resume" next to the button, because a pause glyph on its own reads as "this is paused" just as easily.</item>
         <item>It is bigger, it sits up with the reminder\'s own words instead of among the small grey glyphs that cannot be pressed, and it takes a finger that stays. Let go early and nothing happens.</item>
+    </string-array>
+    <string-array name="whats_new_0_5_2">
+        <item>A preset\'s name is now just its label. What a reminder made from it SAYS is a separate, optional line — "words it starts with".</item>
+        <item>Leave that empty and the preset is a shape waiting for words: picking it opens the reminder with the field empty, the cursor in it and the keyboard already up. Fill it in and the reminder arrives written, with nothing to do but save.</item>
     </string-array>
     <string-array name="whats_new_0_5_1">
         <item>Fixed: a reminder you had dealt with could ring again. "Done" now finishes a reminder, full stop — a place reminder marked done in the morning no longer goes off on the way back through the same door.</item>

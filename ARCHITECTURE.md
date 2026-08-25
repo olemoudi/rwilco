@@ -130,7 +130,11 @@ strict is asking somebody to remember how they spelled it.
   reminder table. Each gets a colour (`nextPresetColor` shares the eight out evenly;
   `ui/theme/PresetVisuals.kt` says what they are) because a preset is found by colour before it
   is read — the app's third and last colour job, and the only one that means nothing in itself.
-  `presetsByPopularity` puts the ones actually used first. Home's "New" asks blank-or-preset
+  `presetsByPopularity` puts the ones actually used first. A preset's `name` labels the shape;
+  its `text` is the optional wording a reminder made from it starts with — empty means the
+  editor opens with the cursor in the words and the keyboard up (the one place in the app where
+  it opens by itself, because a preset has already answered everything else), and set means the
+  reminder arrives written. Home's "New" asks blank-or-preset
   (`NewReminderChooser`) only once a preset exists; picking one opens the editor pre-filled
   (`Routes.Editor(fromPresetId=…)`) rather than writing the reminder outright, because a preset
   can hold a date that has since passed and the form is where that gets seen.

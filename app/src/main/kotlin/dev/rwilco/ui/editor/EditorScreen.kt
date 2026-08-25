@@ -166,6 +166,8 @@ fun EditorScreen(
                 EditorSection(
                     title = stringResource(if (state.asPreset) R.string.editor_preset_title else R.string.editor_text_title),
                     icon = if (state.asPreset) Icons.Outlined.Bookmarks else Icons.AutoMirrored.Outlined.Notes,
+                    // Which shape this came from, so the form is not a mystery already filled in.
+                    note = state.fromPresetName,
                 ) {
                     // The toggle first: it changes what every part under it means. Only where
                     // it means something — turning a reminder that already exists into a
@@ -182,7 +184,13 @@ fun EditorScreen(
                         placeholderRes = if (state.asPreset) R.string.editor_preset_name_placeholder else R.string.editor_text_placeholder,
                         writeRes = if (state.asPreset) R.string.editor_name_preset else R.string.editor_write,
                         onCurate = { viewModel.curate(CurateKind.TEXTS) },
+                        autoFocus = state.focusText,
                     )
+                    // A preset carries optional wording; a reminder is its wording.
+                    if (state.asPreset) {
+                        Spacer(Modifier.height(spacing.lg))
+                        PresetTextField(text = state.presetText, onChange = viewModel::setPresetText)
+                    }
                 }
                 EditorSection(
                     title = stringResource(R.string.editor_tags_title),

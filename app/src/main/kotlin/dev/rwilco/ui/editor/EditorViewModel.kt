@@ -74,7 +74,10 @@ class EditorViewModel(
             val source = editedPreset ?: fromPresetId?.let { id -> current.presets.firstOrNull { it.id == id } }
             val draft = when {
                 loaded != null -> loaded.toDraft()
-                source != null -> Draft(text = source.name, tags = source.tags, rules = source.rules, ruleMatch = source.ruleMatch, actions = source.actions, repeats = source.repeats)
+                // Editing the preset itself starts from its name; STARTING one from it does
+                // not — the name labels the shape, and the words are what is still missing.
+                editedPreset != null -> Draft(text = editedPreset.name, tags = editedPreset.tags, rules = editedPreset.rules, ruleMatch = editedPreset.ruleMatch, actions = editedPreset.actions, repeats = editedPreset.repeats)
+                source != null -> Draft(text = source.text, tags = source.tags, rules = source.rules, ruleMatch = source.ruleMatch, actions = source.actions, repeats = source.repeats)
                 else -> Draft(actions = current.defaultActions)
             }
             // Everything ever written, done included: the point is to hand back what has been
@@ -95,6 +98,14 @@ class EditorViewModel(
                 asPreset = editedPreset != null,
                 initialAsPreset = editedPreset != null,
                 editingPreset = editedPreset,
+                // Which shape this started from, so the screen says so, and the cue to open
+                // the keyboard: everything but the words is already answered.
+                fromPresetName = if (editedPreset == null) source?.name else null,
+                presetText = editedPreset?.text.orEmpty(),
+                initialPresetText = editedPreset?.text.orEmpty(),
+                // Only when the preset left the words open: with default wording there is
+                // nothing to type, and a keyboard would be covering a finished form.
+                focusText = editedPreset == null && source != null && source.text.isBlank(),
             )
         }
     }
@@ -119,6 +130,7 @@ class EditorViewModel(
     fun setPreviewing(previewing: Boolean) = _state.update { it.copy(previewing = previewing) }
 
     fun setAsPreset(asPreset: Boolean) = _state.update { it.setAsPreset(asPreset) }
+    fun setPresetText(text: String) = _state.update { it.setPresetText(text) }
 
     fun curate(kind: CurateKind?) = _state.update { it.copy(curating = kind) }
 

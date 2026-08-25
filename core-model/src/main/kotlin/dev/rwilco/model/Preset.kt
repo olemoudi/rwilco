@@ -28,6 +28,16 @@ const val MAX_PRESET_NAME = 40
 data class Preset(
     val id: String,
     val name: String,
+    /**
+     * The words a reminder made from this one starts with, or empty when there are none.
+     *
+     * Separate from [name] because they are different jobs: the name labels the shape on a
+     * button ("la compra del sábado") and this is what the reminder actually says ("pan, café y
+     * pilas"). Some shapes have words that never change — "sacar la basura" — and some are a
+     * shape precisely because the words change every time. Empty is the second kind, and the
+     * editor opens with the cursor waiting.
+     */
+    val text: String = "",
     val tags: List<String> = emptyList(),
     val rules: List<TriggerRule> = emptyList(),
     val ruleMatch: RuleMatch = RuleMatch.ANY,
@@ -68,10 +78,16 @@ fun presetsByPopularity(presets: List<Preset>): List<Preset> = presets.sortedWit
 /** A preset used: one more use, and the clock says when. */
 fun Preset.used(now: Instant): Preset = copy(uses = uses + 1, lastUsedAt = now)
 
-/** The preset's shape as a reminder waiting to be written. */
-fun Preset.toReminder(id: String, now: Instant): Reminder = Reminder(
+/**
+ * The preset's shape as a reminder waiting for its words.
+ *
+ * The words come from the preset's own [Preset.text] — its default wording — or from [words]
+ * when the person has typed something. Never from the name: that labels the shape, and nobody
+ * wants a list of reminders all called the same.
+ */
+fun Preset.toReminder(id: String, now: Instant, words: String = text): Reminder = Reminder(
     id = id,
-    text = name,
+    text = words,
     tags = tags,
     rules = rules,
     ruleMatch = ruleMatch,

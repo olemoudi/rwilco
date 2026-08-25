@@ -60,6 +60,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -147,6 +148,38 @@ internal fun PresetToggle(asPreset: Boolean, onChange: (Boolean) -> Unit) {
 }
 
 /**
+ * A preset's default wording, or nothing. Optional on purpose: some shapes always say the same
+ * thing ("sacar la basura"), and some are a shape precisely because the words change — those
+ * hand the person an empty field and the keyboard, later, when the reminder is made.
+ */
+@Composable
+internal fun PresetTextField(text: String, onChange: (String) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Column {
+        SectionTitle(stringResource(R.string.editor_preset_text))
+        OutlinedTextField(
+            value = text,
+            onValueChange = onChange,
+            placeholder = { Text(stringResource(R.string.editor_preset_text_hint)) },
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+            shape = MaterialTheme.shapes.small,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = scheme.outline,
+                unfocusedBorderColor = scheme.outlineVariant,
+                cursorColor = scheme.primary,
+            ),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Text(
+            text = stringResource(if (text.isBlank()) R.string.editor_preset_text_empty else R.string.editor_preset_text_set),
+            style = MaterialTheme.typography.bodySmall,
+            color = scheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = Tokens.spacing.xs),
+        )
+    }
+}
+
+/**
  * The reminder's own words — offered before they are asked for.
  *
  * Everyday reminders repeat, so the keyboard is usually the slow way in: what comes up first is
@@ -164,10 +197,22 @@ internal fun TextSection(
     placeholderRes: Int = R.string.editor_text_placeholder,
     writeRes: Int = R.string.editor_write,
     onCurate: () -> Unit = {},
+    autoFocus: Boolean = false,
 ) {
     val focusRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
     var focused by remember { mutableStateOf(false) }
-    val writing = focused || text.isNotEmpty()
+    val writing = focused || text.isNotEmpty() || autoFocus
+
+    // The one place in this app where the keyboard opens by itself. Everywhere else it would
+    // cover the list that saves the typing; arriving from a preset there is nothing else left
+    // to answer, so the cursor is already where the hand was going.
+    LaunchedEffect(autoFocus) {
+        if (autoFocus) {
+            focusRequester.requestFocus()
+            keyboard?.show()
+        }
+    }
     Column {
         if (!writing) {
             // A way in, not the main event: the suggestions under it are the fast path, and a

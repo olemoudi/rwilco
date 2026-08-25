@@ -68,8 +68,14 @@ class PresetTest {
             actions = setOf(Action.SOUND),
             createdAt = now,
         )
-        val reminder = source.toReminder(id = "r1", now = now)
-        assertEquals("Pastillas", reminder.text)
+        val reminder = source.toReminder(id = "r1", now = now, words = "Pastillas de la tensión")
+        assertEquals("Pastillas de la tensión", reminder.text)
+        assertEquals("", source.toReminder(id = "r2", now = now).text, "no default words, and the name is not the words")
+        assertEquals(
+            "Las de la tensión",
+            source.copy(text = "Las de la tensión").toReminder(id = "r3", now = now).text,
+            "a preset with default words hands them over",
+        )
         assertEquals(listOf("salud"), reminder.tags)
         assertEquals(source.rules, reminder.rules)
         assertEquals(RuleMatch.ALL, reminder.ruleMatch)
