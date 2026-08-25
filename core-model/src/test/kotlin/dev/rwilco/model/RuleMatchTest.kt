@@ -7,7 +7,9 @@ import dev.rwilco.model.Fixtures.zone
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
+import java.time.DayOfWeek
 import java.time.LocalDateTime
+import java.time.LocalTime
 
 /**
  * "Todos" for events can only mean the last of them to happen, so what the model has to get
@@ -109,5 +111,73 @@ class RuleMatchTest {
     fun `the snooze still outranks everything`() {
         val all = reminder(atSix, atNine, match = RuleMatch.ALL).copy(snoozedUntil = local(2026, 8, 27, 16, 0))
         assertEquals(Wake(local(2026, 8, 27, 16, 0), null), nextWake(all, now, zone, defaultTime))
+    }
+
+    @Test
+    fun `a whole round under all, wound forward and started again`() {
+        // "Cuando llegue a casa y sean más de las nueve": the two halves happen hours apart and
+        // in either order, the phone may be restarted in between, and only the second one rings.
+        // Every step below is what some receiver actually does — the point is the sequence.
+        // The hour has to be a repeating one, not a date: a one-shot moment that has passed can
+        // never complete the set again, and the app is right to call that finished (below).
+        val everyNight = Trigger.AtTime(LocalTime.of(21, 0), DayOfWeek.entries.toSet())
+        var reminder = reminder(home, everyNight, match = RuleMatch.ALL).copy(recurrence = Recurrence.ByTrigger)
+        val arrived = local(2026, 8, 27, 18, 30)
+
+        // Nothing is armed for the place; the alarm is for nine o'clock, which is rule 1.
+        assertEquals(Wake(local(2026, 8, 27, 21, 0), 1), nextWake(reminder, now, zone, defaultTime))
+
+        // Home at half past six. A note, not a ring — and the alarm for nine stays exactly where
+        // it was, because the set is not complete.
+        assertEquals(FiringOutcome.Wait(setOf(0)), outcomeOfFiring(reminder, ruleIndex = 0))
+        reminder = reminder.copy(firedRules = setOf(0))
+        assertEquals(Wake(local(2026, 8, 27, 21, 0), 1), nextWake(reminder, arrived, zone, defaultTime))
+
+        // The phone restarts. Re-arming reads the same row and must reach the same conclusion:
+        // what was written down survives, so the evening is not started over.
+        assertEquals(Wake(local(2026, 8, 27, 21, 0), 1), nextWake(reminder, local(2026, 8, 27, 20, 0), zone, defaultTime))
+
+        // Nine o'clock: the last of them, so this one rings.
+        assertEquals(FiringOutcome.Ring, outcomeOfFiring(reminder, ruleIndex = 1))
+        reminder = reminder.copy(firedRules = setOf(0, 1), lastFiredAt = local(2026, 8, 27, 21, 0))
+        assertNull(nextWake(reminder, local(2026, 8, 27, 21, 0), zone, defaultTime), "a completed set waits for a person")
+
+        // Dealt with. The round is over, and next week starts from nothing again — half of it
+        // having happened last Thursday is not a head start.
+        val dealtAt = local(2026, 8, 27, 21, 5)
+        assertEquals(
+            Status.ACTIVE,
+            statusAfterDismissal(reminder, dealtAt, zone, defaultTime),
+            "a place can always come round again, and this one was asked to",
+        )
+        reminder = reminder.copy(firedRules = emptySet(), lastDealtAt = dealtAt, snoozedUntil = null)
+        assertEquals(
+            local(2026, 8, 28, 21, 0),
+            nextWake(reminder, dealtAt, zone, defaultTime)?.at,
+            "tomorrow's nine, with the arriving home to be earned all over again",
+        )
+    }
+
+    @Test
+    fun `a round whose other half can never happen again is finished, however it was asked to repeat`() {
+        // "Al llegar a casa, y el martes a las nueve" — the Tuesday is gone. Asking it to repeat
+        // cannot conjure a second Tuesday, and leaving it active would leave a reminder waiting
+        // for a set nothing can complete.
+        val spent = reminder(home, atNine, match = RuleMatch.ALL, fired = setOf(0, 1))
+            .copy(recurrence = Recurrence.ByTrigger, lastFiredAt = local(2026, 8, 27, 21, 0))
+
+        assertEquals(Status.DONE, statusAfterDismissal(spent, local(2026, 8, 27, 21, 5), zone, defaultTime))
+    }
+
+    @Test
+    fun `dealing with half a round is still the end of the round`() {
+        // The alert screen can be reached from the notification of the FIRST rule under ALL —
+        // there is no ring, but there is a row on Home with a "hecho" on it. Tapping it has to
+        // clear what was written down, or the reminder comes back already half satisfied.
+        val half = reminder(atSix, atNine, match = RuleMatch.ALL, fired = setOf(0))
+        assertEquals(Wake(local(2026, 8, 27, 21, 0), 1), nextWake(half, now, zone, defaultTime))
+
+        val cleared = half.copy(firedRules = emptySet())
+        assertEquals(Wake(local(2026, 8, 27, 18, 0), 0), nextWake(cleared, now, zone, defaultTime))
     }
 }

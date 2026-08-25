@@ -43,8 +43,20 @@ fun Reminder.toDraft() = Draft(text = text, tags = tags, rules = rules, ruleMatc
  * Note what is NOT carried over: a snooze, the last ring, the armed moment. Editing a reminder
  * re-decides when it rings, so a "remind me in ten minutes" from the old shape has no meaning,
  * and the scheduler writes the armed moment again the instant this is saved.
+ *
+ * [lastDealtAt] is the exception, and it has to be passed in because a save replaces the whole
+ * row. It is not a firing's leftovers but the anchor every recurrence is measured from, and
+ * dropping it to fix a typo either stops the reminder dead — with triggers there is nothing left
+ * to count from until it is dealt with again — or throws its next moment back to the day it was
+ * written.
  */
-fun Draft.toReminder(id: String, createdAt: Instant, now: Instant, status: Status): Reminder = Reminder(
+fun Draft.toReminder(
+    id: String,
+    createdAt: Instant,
+    now: Instant,
+    status: Status,
+    lastDealtAt: Instant? = null,
+): Reminder = Reminder(
     id = id,
     text = text.trim(),
     tags = tags,
@@ -57,6 +69,7 @@ fun Draft.toReminder(id: String, createdAt: Instant, now: Instant, status: Statu
     status = status,
     createdAt = createdAt,
     updatedAt = now,
+    lastDealtAt = lastDealtAt,
 )
 
 /** Which of the two lists the editor offers back is being mended. */

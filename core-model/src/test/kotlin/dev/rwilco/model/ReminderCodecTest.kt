@@ -148,4 +148,34 @@ class ReminderCodecTest {
             encoded,
         )
     }
+
+    @Test
+    fun `a recurrence from a newer build reads as none rather than as a guess`() {
+        // A shape this build has no words for cannot be honoured, and guessing at it would be
+        // guessing about when somebody's reminder comes back. "Not at all" is the answer that
+        // leaves the reminder on Home for a person to look at.
+        assertEquals(Recurrence.None, ReminderCodec.decodeRecurrence("""{"type":"every_full_moon","nights":3}"""))
+        assertEquals(Recurrence.None, ReminderCodec.decodeRecurrence("not json at all"))
+        assertEquals(Recurrence.None, ReminderCodec.decodeRecurrence(""))
+        // And an "after" carrying a unit from the future is the same story, not a crash.
+        assertEquals(Recurrence.None, ReminderCodec.decodeRecurrence("""{"type":"after","amount":2,"unit":"FORTNIGHTS"}"""))
+        // What this build does know still round-trips, unknown fields and all.
+        assertEquals(
+            Recurrence.After(6, RecurrenceUnit.HOURS),
+            ReminderCodec.decodeRecurrence("""{"type":"after","amount":6,"unit":"HOURS","comment":"from a later build"}"""),
+        )
+    }
+
+    @Test
+    fun `a rule survives its conditions being unreadable, because silence is the worse failure`() {
+        // Erring towards ringing too often is the right way round: the failure somebody notices
+        // is the one that never arrives.
+        val raw = """[{"trigger":{"type":"at_date_time","at":"2026-08-27T21:30"},""" +
+            """"conditions":[{"type":"phase_of_moon","phase":"waxing"},{"type":"time_window","from":"18:00","to":"22:00"}]}]"""
+        val rules = ReminderCodec.decodeRules(raw)
+
+        assertEquals(1, rules.size)
+        assertEquals(Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 21, 30)), rules[0].trigger)
+        assertEquals(listOf(Condition.TimeWindow(LocalTime.of(18, 0), LocalTime.of(22, 0))), rules[0].conditions)
+    }
 }

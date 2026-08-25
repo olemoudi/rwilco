@@ -15,6 +15,7 @@ import com.google.android.gms.tasks.Task
 import dev.rwilco.alarm.ReminderFiring
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.model.Fix
+import dev.rwilco.model.PlaceWatchPolicy
 import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.Status
 import dev.rwilco.model.Transition
@@ -117,9 +118,17 @@ class PlaceWatcher(
         val before = store.read()
         val now = clock.instant()
         val fix = readFix(precise = before.precise)
-        if (fix == null) {
+        // A fix the watch would not vouch for is a fix it must not judge by.
+        //
+        // When nothing fresh answers — location switched off, the provider cold — the fallback
+        // is whatever the phone had lying around, and that can be this morning's. Judging
+        // places by it writes the wrong answer into `inside`, and then the geofence's own word
+        // on a real arrival is thrown away as "we were already there" (crossingIsNews). The
+        // bound is the same one crossingIsNews uses, because it is the same question.
+        val stale = fix != null && Duration.between(fix.at, now) > PlaceWatchPolicy.SPEED_MEMORY
+        if (fix == null || stale) {
             // Nothing to go on — location off, or nothing answered. Not a reason to give up.
-            Log.w(TAG, "no fix; trying again in ${NO_FIX_RETRY.toMinutes()} min")
+            Log.w(TAG, "no fix worth having${if (stale) " (stale)" else ""}; trying again in ${NO_FIX_RETRY.toMinutes()} min")
             val at = now + NO_FIX_RETRY
             store.write(before.copy(nextCheckAt = at))
             scheduleAt(at)

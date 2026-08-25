@@ -6,11 +6,11 @@ import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Casino
 import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.HourglassTop
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.OpenInFull
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Vibration
+import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -71,7 +71,9 @@ val TriggerKind.icon: ImageVector
 val Action.icon: ImageVector
     get() = when (this) {
         Action.FULL_SCREEN -> Icons.Outlined.OpenInFull
-        Action.NOTIFICATION -> Icons.Outlined.Notifications
+        // Two stacked banners, not a bell: what this action does is drop a card down from the
+        // top of the screen, and the bell was saying "an alarm" — which is every action here.
+        Action.NOTIFICATION -> Icons.Outlined.ViewAgenda
         Action.SOUND -> Icons.AutoMirrored.Outlined.VolumeUp
         Action.VIBRATE -> Icons.Outlined.Vibration
     }

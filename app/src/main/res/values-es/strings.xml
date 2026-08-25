@@ -441,6 +441,15 @@
         <item>Pausar un recordatorio ahora dice lo que va a hacer — la palabra «Pausar» o «Reanudar» junto al botón, porque un icono de pausa a secas se lee igual de bien como «esto está pausado».</item>
         <item>Es más grande, está arriba con las palabras del recordatorio en vez de entre los iconos grises que no se pueden pulsar, y pide un dedo que se quede. Si sueltas antes, no pasa nada.</item>
     </string-array>
+    <string-array name="whats_new_0_7_5">
+        <item>Un recordatorio que se repite ya no suena sin parar. «Cada 6 h» cuenta desde que lo despachas, así que uno sin contestar devolvía siempre el mismo momento, y una alarma ya pasada llega al instante — una y otra vez hasta que tocabas Hecho. Suena una vez, espera en el inicio como vencido, y vuelve seis horas después de que tú lo digas.</item>
+        <item>Editarlo ya no lo reinicia. Corregir una errata tiraba el momento desde el que cuenta su repetición, y eso o dejaba el recordatorio muerto o lanzaba su siguiente momento al día en que se escribió.</item>
+        <item>Pedir una repetición pone la alarma ahí mismo. En un recordatorio sin otro «cuándo» era el único cambio del que nadie se enteraba, y la alarma esperaba al siguiente reinicio.</item>
+        <item>Llegar a un sitio ya no se traga una cita. «Al llegar a casa, o mañana a las nueve» apuntaba la llegada en las nueve de mañana, y mañana pasaba en silencio.</item>
+        <item>Cambiar a qué hora empieza el día mueve ya los recordatorios que dependen de ello, en vez de esperar a un reinicio.</item>
+        <item>La vigilancia de lugares descarta una lectura demasiado vieja para decir dónde está el móvil ahora, en lugar de creerse la de esta mañana y luego descartar una llegada de verdad por un sitio donde creía que ya estabas.</item>
+        <item>La acción de notificación lleva dos tarjetas apiladas en vez de una campana: la campana decía «una alarma», que es lo que son las cuatro.</item>
+    </string-array>
     <string-array name="whats_new_0_7_4">
         <item>Vuelven a funcionar los chips de reutilizar un texto o una etiqueta. Darles una segunda cosa que hacer al mantener el dedo les había quitado la primera sin avisar: dos gestos sobre un mismo chip y el toque no llegaba a ninguno. Tocar lo usa, mantener sigue abriendo la lista para arreglarla.</item>
         <item>Esas filas se paran en cinco y guardan el resto tras un «…» con buscador, en vez de crecer hasta ser un muro que leer de camino al teclado.</item>

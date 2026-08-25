@@ -179,7 +179,16 @@ private fun nextRandom(trigger: Trigger.Random, reminderId: String, now: Instant
 fun Reminder.recurrenceMoment(zone: ZoneId, dayStart: LocalTime): Instant? {
     if (!recurrence.isAnchored) return null
     if (lastDealtAt == null && rules.isNotEmpty()) return null
-    return nextRecurrence(recurrence, lastDealtAt ?: createdAt, zone, dayStart)
+    val at = nextRecurrence(recurrence, lastDealtAt ?: createdAt, zone, dayStart) ?: return null
+    // Spent, the same way a rule's moment is (see [searchFrom]) — and here it matters more.
+    //
+    // A recurrence counts from the moment it was DEALT WITH, so a reminder that rings and is
+    // ignored has an anchor that does not move: the same past moment would be handed back for
+    // ever, armed for ever, and an alarm in the past arrives at once. That is not ringing twice,
+    // it is ringing until somebody makes it stop. Once its moment has rung the answer is
+    // nothing — Home files it under overdue — until dealing with it moves the anchor on.
+    val fired = lastFiredAt ?: return at
+    return at.takeIf { it > fired }
 }
 
 /**

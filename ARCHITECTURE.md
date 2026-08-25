@@ -73,6 +73,10 @@ are exact; days, weeks and months land on `AppSettings.dayStart` and never befor
 up. The triggers say when it rings the FIRST time and the recurrence when it comes back, so
 `recurrenceMoment` takes over once it has been dealt with once — or straight away when there
 are no triggers at all, which is what makes "cada 6 h" a whole reminder on its own.
+A recurrence's moment is **spent once it has rung**, the same way a rule's is: the anchor only
+moves when somebody deals with the firing, so a reminder that rang and was ignored would
+otherwise be handed the same past moment for ever — armed for ever, and an alarm already in the
+past arrives at once. Spent, it answers *nothing*, which Home reads as overdue.
 `RecurrencePreset`s (in the settings, four built in unnamed) put the usual answers on buttons.
 Room v4 added the boolean this replaced; v5 turns it into a shape (`by_trigger` for whatever
 repeated) and rebuilds the table to drop it.
@@ -158,7 +162,10 @@ strict is asking somebody to remember how they spelled it.
   (`NewReminderChooser`) only once a preset exists; picking one opens the editor pre-filled
   (`Routes.Editor(fromPresetId=…)`) rather than writing the reminder outright, because a preset
   can hold a date that has since passed and the form is where that gets seen.
-- Editor: `EditorUiState` + pure reducers (`EditorState.kt`, tested). A toggle turns the form
+- Editor: `EditorUiState` + pure reducers (`EditorState.kt`, tested). A save replaces the whole
+  row and deliberately drops the snooze, the last ring and the armed moment — editing re-decides
+  when a reminder rings — but carries `lastDealtAt`, which is the anchor a recurrence counts
+  from rather than a firing's leftovers. A toggle turns the form
   into a preset editor (`asPreset`); the same four cards, saved to the settings instead of the
   database. The form is four cards
   (`EditorSection`), each with an icon badge and its name — the words, the tags, when, what
@@ -203,17 +210,24 @@ strict is asking somebody to remember how they spelled it.
 - `ReminderScheduler` keeps one `setAlarmClock` armed per reminder — the only kind of alarm Doze
   never defers and the rate limiter never holds back — and writes the armed moment back to the
   row. That, next to `lastFiredAt`, is what makes a firing the phone slept through detectable:
-  an armed moment in the past with no ring to match it.
+  an armed moment in the past with no ring to match it. What a change has to touch before the
+  whole list is worked out again is `schedulingKey` — the rules, the match, what is ticked off,
+  the snooze and the recurrence — and deliberately not what the scheduler itself writes back,
+  or every re-arm would come round as a change and arm everything again.
 - `ReminderFiring` is the single place that decides what a firing, a "Hecho" and a snooze do, so
   the alarm, the notification buttons and the alert screen cannot drift apart. Under ALL it
   writes the moment down and returns; only the last one goes on to ring. Nothing rings for a
   moment that is not armed: a place happens when it happens, but everything else is checked
   against the row's armed moment, so a stray delivery — a stale alarm, the same broadcast twice
   — is dropped instead of ringing a timer nobody has got round to. A ring is recorded against
-  the moment it rang *for*, not the millisecond the alarm arrived, and `nextFire`/`nextWake`
+  the moment it rang *for* (`momentRungFor`, pure and JVM-tested), not the millisecond the alarm
+  arrived, and `nextFire`/`nextWake`
   only look for moments after it (to the millisecond, which is the grain everything is stored
   at). That is what makes a moment spent: an alarm may arrive a breath early, and without it the
-  same moment would still be in the future when the scheduler next looks, and ring twice.
+  same moment would still be in the future when the scheduler next looks, and ring twice. A
+  place is the exception and must not reach for the armed moment at all: it has none of its own,
+  and under ANY the armed one belongs to whatever else the reminder is waiting for — recording
+  an arrival against it would mark tomorrow's appointment spent before it ever came.
 - `AlertPresenter` decides *where* a firing shows itself: an app open in front of somebody gets
   the banner, and the home screen, a dark screen or the lock screen get the whole screen. That
   needs two permissions granted by hand — usage access (to tell an app from the launcher) and
@@ -258,6 +272,10 @@ strict is asking somebody to remember how they spelled it.
   and is dropped, and one that stands is written into the same `inside` map so the other eye
   knows it is old news. Anything the watch cannot vouch for — no fix, one older than the speed
   memory, a place never judged — is news, because ringing once too often beats never arriving.
+  And what it will not vouch for it does not judge by: a fix older than the speed memory — the
+  stale one the provider hands back when nothing fresh answers — is treated as no fix at all,
+  because writing this morning's position into `inside` is how a real arrival later gets
+  dismissed as a place the app thought you were already in.
   State lives in
   `PlaceWatchStore` (its own DataStore; written every check). Doze holds allow-while-idle
   alarms to one per nine minutes, and a phone in Doze is a phone not moving, so nothing is

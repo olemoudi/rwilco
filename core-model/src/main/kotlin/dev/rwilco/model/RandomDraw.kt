@@ -3,6 +3,7 @@ package dev.rwilco.model
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlin.math.min
 
 /**
  * The moments a random trigger fires at, drawn deterministically from (reminder id, period)
@@ -33,7 +34,7 @@ object RandomDraw {
             Period.DAY -> {
                 val date = LocalDate.ofEpochDay(periodIndex)
                 if (!eligible(date, trigger.days)) return emptyList()
-                val offsets = List(trigger.timesPer) { rng.nextInt(windowMinutes) }.sorted()
+                val offsets = List(drawCount(trigger, windowMinutes)) { rng.nextInt(windowMinutes) }.sorted()
                 spreadApart(offsets, windowMinutes).map { minutes ->
                     date.atTime(trigger.from).plusMinutes(minutes.toLong()).atZone(zone).toInstant()
                 }
@@ -42,12 +43,12 @@ object RandomDraw {
                 val monday = weekStart(periodIndex)
                 val eligibleDays = (0L..6L).map { monday.plusDays(it) }.filter { eligible(it, trigger.days) }
                 if (eligibleDays.isEmpty()) return emptyList()
-                val pairs = List(trigger.timesPer) {
+                val pairs = List(drawCount(trigger, windowMinutes)) {
                     val day = eligibleDays[rng.nextInt(eligibleDays.size)]
                     val minute = rng.nextInt(windowMinutes)
                     day to minute
                 }
-                spreadApart(pairs.sortedWith(compareBy({ it.first }, { it.second }))).map { (day, minutes) ->
+                spreadApartInDays(pairs.sortedWith(compareBy({ it.first }, { it.second })), windowMinutes).map { (day, minutes) ->
                     day.atTime(trigger.from).plusMinutes(minutes.toLong()).atZone(zone).toInstant()
                 }
             }
@@ -60,25 +61,49 @@ object RandomDraw {
     private fun eligible(date: LocalDate, days: Set<java.time.DayOfWeek>): Boolean =
         days.isEmpty() || date.dayOfWeek in days
 
-    /** Two draws on the same minute would ring twice at once; the later one moves a minute on. */
+    /**
+     * A window cannot hold more draws than it has minutes. Validation already refuses one that
+     * cannot ([TriggerProblem.WINDOW_EMPTY]), so this only catches a trigger from an older build
+     * or a hand-edited store — where drawing more would be drawing the same minute twice.
+     */
+    private fun drawCount(trigger: Trigger.Random, windowMinutes: Int): Int =
+        min(trigger.timesPer, windowMinutes)
+
+    /**
+     * Two draws on the same minute would ring twice at once; the later one moves a minute on.
+     *
+     * Each is also held back far enough from the end of the window to leave a minute for every
+     * draw still to come. Without that, a pile-up against the last minute had nowhere to be
+     * pushed and landed on top of the one before it — which is the one case where "moves a
+     * minute on" could not.
+     */
     private fun spreadApart(sortedOffsets: List<Int>, windowMinutes: Int): List<Int> {
         val result = ArrayList<Int>(sortedOffsets.size)
-        for (offset in sortedOffsets) {
+        for ((index, offset) in sortedOffsets.withIndex()) {
+            val ceiling = windowMinutes - (sortedOffsets.size - index)
             val previous = result.lastOrNull()
-            result += if (previous != null && offset <= previous) minOf(previous + 1, windowMinutes - 1) else offset
+            val at = if (previous != null && offset <= previous) previous + 1 else offset
+            result += min(at, ceiling)
         }
         return result
     }
 
-    private fun spreadApart(sortedPairs: List<Pair<LocalDate, Int>>): List<Pair<LocalDate, Int>> {
+    /**
+     * The same, a week at a time: only draws that landed on the same day can collide, and the
+     * ceiling counts how many of those are still to come rather than the whole week's.
+     */
+    private fun spreadApartInDays(sortedPairs: List<Pair<LocalDate, Int>>, windowMinutes: Int): List<Pair<LocalDate, Int>> {
         val result = ArrayList<Pair<LocalDate, Int>>(sortedPairs.size)
-        for (pair in sortedPairs) {
+        for ((index, pair) in sortedPairs.withIndex()) {
+            val stillToCome = sortedPairs.drop(index).count { it.first == pair.first }
+            val ceiling = windowMinutes - stillToCome
             val previous = result.lastOrNull()
-            result += if (previous != null && pair.first == previous.first && pair.second <= previous.second) {
-                previous.first to previous.second + 1
+            val at = if (previous != null && pair.first == previous.first && pair.second <= previous.second) {
+                previous.second + 1
             } else {
-                pair
+                pair.second
             }
+            result += pair.first to min(at, ceiling)
         }
         return result
     }

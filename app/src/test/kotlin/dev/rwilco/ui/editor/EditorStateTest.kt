@@ -3,6 +3,8 @@ package dev.rwilco.ui.editor
 import dev.rwilco.model.Action
 import dev.rwilco.model.DEFAULT_ACTIONS
 import dev.rwilco.model.MAX_TEXT_LENGTH
+import dev.rwilco.model.Recurrence
+import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
@@ -100,6 +102,24 @@ class EditorStateTest {
         state = state.removeTrigger(0)
         assertEquals(listOf(changed), state.draft.rules.map { it.trigger })
         assertEquals(state, state.editTrigger(5), "editing a row that is not there is a no-op")
+    }
+
+    @Test
+    fun `saving keeps the moment a recurrence counts from`() {
+        // A save replaces the whole row, so anything the draft does not carry is gone. The
+        // snooze, the last ring and the armed moment are dropped on purpose — editing re-decides
+        // when it rings. lastDealtAt is not one of those: it is the anchor "cada 6 h" is measured
+        // from, and losing it to a typo either stops the reminder dead (with triggers, there is
+        // nothing to count from until it is dealt with again) or hurls its next moment back to
+        // the day it was written (without them).
+        val dealt = Instant.parse("2026-08-27T13:00:00Z")
+        val draft = Draft(text = "Pastillas", recurrence = Recurrence.After(6, RecurrenceUnit.HOURS))
+        val saved = draft.toReminder("r1", dealt.minusSeconds(86_400), dealt.plusSeconds(60), Status.ACTIVE, lastDealtAt = dealt)
+
+        assertEquals(dealt, saved.lastDealtAt)
+        assertEquals(null, saved.snoozedUntil, "a remind-me-later belonged to the old shape")
+        assertEquals(null, saved.armedFor, "the scheduler writes this again the instant it is saved")
+        assertEquals(null, draft.toReminder("r1", dealt, dealt, Status.ACTIVE).lastDealtAt, "and a new reminder has no anchor yet")
     }
 
     @Test

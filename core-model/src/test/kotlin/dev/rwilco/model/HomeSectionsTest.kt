@@ -111,4 +111,42 @@ class HomeSectionsTest {
         assertEquals(local(2026, 8, 31, 7, 30), (groups.hero!!.next as NextFire.Scheduled).at)
         assertEquals(LocalDate.of(2026, 8, 31), (groups.hero!!.next as NextFire.Scheduled).at.atZone(zone).toLocalDate())
     }
+
+    @Test
+    fun `a recurrence that has rung and is waiting for an answer is overdue, not next up`() {
+        // "Cada 6 h", rung and left alone. It has no trigger to be grouped by and its moment is
+        // behind us, so the only honest place for it is Overdue — and it must not glow as the
+        // thing that fires next, which is a card counting down to a moment already gone.
+        val rang = local(2026, 8, 27, 14, 0)
+        val pills = reminder().copy(
+            id = "pills",
+            text = "Pastillas",
+            recurrence = Recurrence.After(6, RecurrenceUnit.HOURS),
+            createdAt = local(2026, 8, 27, 8, 0),
+            lastFiredAt = rang,
+        )
+        val other = reminder(at(2026, 8, 28, 9, 0)).copy(id = "other")
+
+        val groups = groupForHome(listOf(pills, other), now, zone, defaultTime)
+
+        assertEquals("other", groups.hero?.reminder?.id, "the hero is a moment still ahead")
+        assertEquals(listOf("pills"), groups.sections[Section.OVERDUE].orEmpty().map { it.reminder.id })
+        assertNull(groups.sections[Section.NO_TRIGGER], "a recurrence is a moment, not a note on a shelf")
+    }
+
+    @Test
+    fun `dealt with, the same reminder is next up again`() {
+        val dealt = local(2026, 8, 27, 14, 30)
+        val pills = reminder().copy(
+            id = "pills",
+            recurrence = Recurrence.After(6, RecurrenceUnit.HOURS),
+            createdAt = local(2026, 8, 27, 8, 0),
+            lastFiredAt = local(2026, 8, 27, 14, 0),
+            lastDealtAt = dealt,
+        )
+
+        val groups = groupForHome(listOf(pills), now, zone, defaultTime)
+        assertEquals("pills", groups.hero?.reminder?.id)
+        assertEquals(local(2026, 8, 27, 20, 30), (groups.hero?.next as NextFire.Scheduled).at)
+    }
 }

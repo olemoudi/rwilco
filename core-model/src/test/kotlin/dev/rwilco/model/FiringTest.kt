@@ -93,6 +93,37 @@ class FiringTest {
     }
 
     @Test
+    fun `a place ringing does not spend an appointment that has not happened`() {
+        // "Al llegar a casa, o mañana a las nueve." The alarm armed is tomorrow's nine; the
+        // arrival is today. Recording the ring against the armed moment would mark tomorrow
+        // spent, and tomorrow would pass in silence.
+        val arrived = local(2026, 8, 27, 18, 0)
+        val appointment = local(2026, 8, 28, 9, 0)
+
+        assertEquals(
+            arrived,
+            momentRungFor(arrived, armedFor = appointment, late = null, eventDriven = true),
+            "a place happens when it happens, and speaks only for itself",
+        )
+        assertEquals(
+            appointment,
+            momentRungFor(appointment.minusMillis(400), armedFor = appointment, late = null, eventDriven = false),
+            "an alarm a breath early still rang for its own moment",
+        )
+    }
+
+    @Test
+    fun `a firing the phone slept through is spent now, not when it should have been`() {
+        // Three days off with a daily reminder: recording the ring against the missed moment
+        // would leave the two days in between unspent, and it would ring its way back up.
+        val missed = local(2026, 8, 24, 9, 0)
+        val backOn = local(2026, 8, 27, 15, 0)
+
+        assertEquals(backOn, momentRungFor(backOn, armedFor = missed, late = missed, eventDriven = false))
+        assertEquals(backOn, momentRungFor(backOn, armedFor = missed, late = missed, eventDriven = true))
+    }
+
+    @Test
     fun `a full-screen alert keeps its notification but hands the noise to the screen`() {
         val plan = firingPlan(setOf(Action.FULL_SCREEN, Action.SOUND, Action.VIBRATE))
         assertTrue(plan.fullScreen)

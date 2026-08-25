@@ -10,6 +10,7 @@ import androidx.core.net.toUri
 import dev.rwilco.MainActivity
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
+import dev.rwilco.model.Recurrence
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
@@ -149,8 +150,15 @@ class ReminderScheduler(
         fun ruleIndexOf(intent: Intent): Int? = intent.getIntExtra(EXTRA_RULE, -1).takeIf { it >= 0 }
 
         /** What the scheduling of a list depends on; anything else changing must not re-arm it. */
-        fun schedulingKey(reminder: Reminder): SchedulingKey =
-            SchedulingKey(reminder.id, reminder.status, reminder.rules, reminder.ruleMatch, reminder.firedRules, reminder.snoozedUntil)
+        fun schedulingKey(reminder: Reminder): SchedulingKey = SchedulingKey(
+            reminder.id,
+            reminder.status,
+            reminder.rules,
+            reminder.ruleMatch,
+            reminder.firedRules,
+            reminder.snoozedUntil,
+            reminder.recurrence,
+        )
     }
 
     data class SchedulingKey(
@@ -161,5 +169,12 @@ class ReminderScheduler(
         /** Ticking a rule off moves the armed moment on to the next one, so it belongs here. */
         val firedRules: Set<Int>,
         val snoozedUntil: Instant?,
+        /**
+         * A reminder with no trigger at all rings by its recurrence and by nothing else, so
+         * asking for one has to re-arm — and it is the only edit that changes nothing else.
+         * The moment it counts from ([Reminder.lastDealtAt]) is not here: only dealing with a
+         * firing moves it, and that re-arms on its own way through [ReminderFiring].
+         */
+        val recurrence: Recurrence,
     )
 }

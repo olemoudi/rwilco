@@ -68,7 +68,10 @@ class GeofenceManager(
                     if (place.transition == Transition.ENTER) Geofence.GEOFENCE_TRANSITION_ENTER else Geofence.GEOFENCE_TRANSITION_EXIT,
                 )
                 // A place reminder that fires the instant a GPS fix wobbles across the line is
-                // worse than one that fires half a minute late.
+                // worse than one that fires half a minute late, and the responsiveness is what
+                // buys that: Play Services is allowed to take a minute to be sure. (The
+                // loitering delay below only ever applies to a DWELL transition, which these
+                // fences do not ask for; it is set so that adding DWELL later cannot throw.)
                 .setLoiteringDelay(LOITERING_MS)
                 .setNotificationResponsiveness(RESPONSIVENESS_MS)
                 .build()

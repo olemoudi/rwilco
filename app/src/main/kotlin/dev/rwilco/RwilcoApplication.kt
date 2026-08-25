@@ -86,9 +86,12 @@ class RwilcoApplication : Application() {
                 }
         }
         appScope.launch {
-            // The hour date-only reminders ring at is a scheduling input like any other.
+            // The two hours the settings hold that decide when something rings: the one a
+            // date-only reminder goes off at, and the one "el día siguiente" means. Both are
+            // scheduling inputs, and a setting changed without a re-arm is a setting that only
+            // takes effect at the next reboot.
             settingsStore.settings
-                .map { it.defaultTime }
+                .map { it.defaultTime to it.dayStart }
                 .distinctUntilChanged()
                 .drop(1)
                 .collect { scheduler.rearmAll() }

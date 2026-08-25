@@ -443,6 +443,15 @@
         <item>Pausing a reminder now says what it will do — the word "Pause" or "Resume" next to the button, because a pause glyph on its own reads as "this is paused" just as easily.</item>
         <item>It is bigger, it sits up with the reminder\'s own words instead of among the small grey glyphs that cannot be pressed, and it takes a finger that stays. Let go early and nothing happens.</item>
     </string-array>
+    <string-array name="whats_new_0_7_5">
+        <item>A reminder that repeats no longer rings on and on. “Cada 6 h” counts from the moment you deal with it, so one you had not answered kept handing back the same moment, and an alarm already in the past arrives at once — over and over until you tapped Hecho. It rang once, waits on Home as overdue, and comes back six hours after you say so.</item>
+        <item>Editing one no longer resets it. Fixing a typo used to throw away the moment its recurrence counts from, which either stopped the reminder dead or hurled its next one back to the day it was written.</item>
+        <item>Asking for a recurrence now sets the alarm there and then. On a reminder with no other “when”, it was the one change nothing noticed, and the alarm waited for the next restart.</item>
+        <item>Arriving somewhere no longer swallows an appointment. “Al llegar a casa, o mañana a las nueve” recorded the arrival against tomorrow’s nine o’clock, and tomorrow passed in silence.</item>
+        <item>Changing what hour the day starts at now moves the reminders that depend on it, instead of waiting for a reboot.</item>
+        <item>The place watch ignores a reading too old to speak for where the phone is now, rather than believing this morning’s and then dismissing a real arrival as somewhere it thought you already were.</item>
+        <item>The notification action wears two stacked banners instead of a bell: a bell was saying “an alarm”, which is every one of the four.</item>
+    </string-array>
     <string-array name="whats_new_0_7_4">
         <item>The chips that reuse a text or a tag work again. Giving them a second thing to do on a held finger had quietly taken the first one away: two gesture handlers on one chip, and the tap went to neither. Tap uses it, hold still mends the list.</item>
         <item>Those rows now stop at five and put the rest behind a “…” with a search box, instead of growing into a wall to read past on the way to the keyboard.</item>

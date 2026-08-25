@@ -12,6 +12,7 @@ import dev.rwilco.model.Trigger
 import dev.rwilco.model.allHoldAt
 import dev.rwilco.model.firingPlan
 import dev.rwilco.model.missedFire
+import dev.rwilco.model.momentRungFor
 import dev.rwilco.model.outcomeOfFiring
 import dev.rwilco.model.rulesCombine
 import dev.rwilco.model.statusAfterDismissal
@@ -90,10 +91,10 @@ class ReminderFiring(
             FiringOutcome.Ring -> Unit
         }
         Log.i(TAG, "firing $id${if (late != null) " (late)" else ""}")
-        // Recorded against the moment it rang FOR, not the millisecond the alarm arrived: an
-        // alarm may be a breath early, and a moment whose own instant is still a second away
-        // would otherwise be armed again the moment the scheduler next looks.
-        val rangFor = listOfNotNull(now, reminder.armedFor, late).max()
+        // Recorded against the moment it rang FOR, not the millisecond the alarm arrived. See
+        // momentRungFor: a place is the one firing that must not reach for the armed moment,
+        // because that moment belongs to whatever else the reminder is still waiting for.
+        val rangFor = momentRungFor(now, reminder.armedFor, late, eventDriven)
         repository.markFired(id, rangFor)
         if (reminder.ruleMatch == RuleMatch.ALL && reminder.rulesCombine) {
             repository.setFiredRules(id, reminder.rules.indices.toSet())

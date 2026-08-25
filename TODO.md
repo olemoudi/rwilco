@@ -41,6 +41,53 @@ once and the first answer wins, and the freshest last-known fix answers immediat
 as the fallback. "Could not get a fix" and "not allowed" are two different sentences now,
 because they need two different things from the person.
 
+## Reliability pass, 0.7.5 (2026-08-25)
+A read of everything on the firing path, looking for the ways a reminder rings when it should
+not and stays silent when it should ring. Five real bugs, all in the same seam — what a moment
+means once it has rung — plus two smaller ones. Every one now has a test that fails without the
+fix.
+
+- **A recurrence rang until you answered it.** The worst of them. `recurrenceMoment` counts from
+  `lastDealtAt`, which does not move while a firing goes unanswered, so the same past moment was
+  handed back for ever; `setAlarmClock` for a moment in the past fires at once, and the ring
+  re-armed it. Fixed by making a recurrence's moment spent once `lastFiredAt` covers it — the
+  same rule `searchFrom` applies to triggers. `RingingTwiceTest`, and the second round is driven
+  end-to-end in `FiringOnceTest`.
+- **Editing a reminder threw away its recurrence anchor.** `Draft.toReminder` did not carry
+  `lastDealtAt` and a save replaces the whole row, so fixing a typo either stopped the reminder
+  dead (with triggers: nothing to count from until dealt with again) or threw its next moment
+  back to `createdAt`. It is now passed in explicitly, with the reason next to it.
+- **Asking for a recurrence armed nothing.** `schedulingKey` left `recurrence` out, and on a
+  reminder with no other "when" that is the only edit that changes nothing else — so the flow
+  that re-arms on change never fired. Silent until the next launch or the six-hourly worker.
+  `SchedulingKeyTest` now pins what is in the key and what must stay out of it.
+- **A place arrival spent a future appointment.** The ring was recorded against
+  `max(now, armedFor, late)`, and a place has no armed moment of its own: under ANY that
+  `armedFor` belongs to another rule and can be days away. "Al llegar a casa, o mañana a las
+  nueve" marked tomorrow's nine spent on the way through the front door. Now `momentRungFor`
+  (`core-model`, tested) refuses the armed moment for an event-driven firing.
+- **`dayStart` changed nothing until a reboot.** The re-arm watcher looked at `defaultTime`
+  alone, and `dayStart` is just as much a scheduling input (it is where a recurrence in days,
+  weeks or months lands).
+- **The place watch believed a stale fix.** With nothing fresh to be had, `lastLocation` hands
+  back whatever the phone had — this morning's, if location has been off. Judging places by it
+  writes the wrong answer into `inside`, and then `crossingIsNews` throws away a real geofence
+  arrival as somewhere we thought we already were. A fix older than the speed memory is now no
+  fix at all, which is the bound `crossingIsNews` already used.
+- **Two random draws could land on the same minute.** Only against the end of the window, where
+  "push the collision a minute on" had nowhere to push. Each draw now leaves room for the ones
+  behind it. The golden values are untouched.
+
+Looked at and found sound (tests added to keep it that way): wall-clock reminders across a time
+zone and across a clock put backwards or forwards (`TravellingClockTest`), a whole ALL round
+wound forward through a restart (`RuleMatchTest`), a recurrence or a condition from a newer
+build (`ReminderCodecTest`).
+
+Left alone on purpose: `Geofence.setLoiteringDelay` is inert without a DWELL transition type,
+which these fences do not ask for — the comment now says what actually damps a wobbling fix
+(`setNotificationResponsiveness`). Adding DWELL would change when a place fires and wants a
+real phone to judge it.
+
 ## Still to prove on the real phone (Pixel 8 Pro)
 - The overlay rule end to end: an alert while another app is open (banner), on the home screen
   (full screen), and with either special permission missing (banner, and Settings says which).

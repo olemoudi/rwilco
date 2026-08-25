@@ -96,6 +96,24 @@ fun outcomeOfFiring(reminder: Reminder, ruleIndex: Int?): FiringOutcome {
 }
 
 /**
+ * The moment a ring is recorded against, which is what makes that moment spent.
+ *
+ * Not the millisecond the alarm arrived: an alarm is allowed to be a breath early, and a moment
+ * whose own instant is still a second away would be armed all over again the next time the
+ * scheduler looks. So a moment that was armed counts as rung when its alarm shows up, and a
+ * catch-up ([late]) counts as rung *now* — otherwise a daily reminder the phone slept through
+ * for three days would ring three times on the way back up.
+ *
+ * [eventDriven] is the exception, and the reason this is a function rather than a `max`. A place
+ * happens when it happens; the armed moment belongs to whichever OTHER rule is still waiting,
+ * and under ANY that can be days off — "al llegar a casa, o mañana a las nueve". Reaching for it
+ * would mark tomorrow's nine o'clock spent the moment somebody walked through their own front
+ * door, and it would never ring.
+ */
+fun momentRungFor(now: Instant, armedFor: Instant?, late: Instant?, eventDriven: Boolean): Instant =
+    listOfNotNull(now, armedFor.takeUnless { eventDriven }, late).max()
+
+/**
  * The snooze offers on the alert screen and in the notification.
  *
  * They are the answers a person actually gives an alarm: not yet, later today, tomorrow, at the
