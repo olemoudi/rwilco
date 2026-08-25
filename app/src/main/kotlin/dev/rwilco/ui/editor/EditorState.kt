@@ -1,6 +1,7 @@
 package dev.rwilco.ui.editor
 
 import dev.rwilco.model.Action
+import dev.rwilco.model.SOUND_ACTIONS
 import dev.rwilco.model.Condition
 import dev.rwilco.model.DEFAULT_ACTIONS
 import dev.rwilco.model.MAX_PRESET_NAME
@@ -209,8 +210,19 @@ fun EditorUiState.setRecurrence(recurrence: Recurrence): EditorUiState = copy(dr
 fun EditorUiState.setRuleMatch(match: RuleMatch): EditorUiState =
     copy(draft = draft.copy(ruleMatch = match))
 
-fun EditorUiState.toggleAction(action: Action): EditorUiState =
-    copy(draft = draft.copy(actions = if (action in draft.actions) draft.actions - action else draft.actions + action))
+/**
+ * A tile on or off — except that the two sound tiles are one choice. Asking for a sound once
+ * and also for it until somebody answers is asking for two contradictory things, so turning on
+ * either puts the other away rather than leaving the reminder to be interpreted later.
+ */
+fun EditorUiState.toggleAction(action: Action): EditorUiState {
+    val actions = when {
+        action in draft.actions -> draft.actions - action
+        action in SOUND_ACTIONS -> draft.actions - SOUND_ACTIONS + action
+        else -> draft.actions + action
+    }
+    return copy(draft = draft.copy(actions = actions))
+}
 
 fun EditorUiState.openKindPicker(): EditorUiState = copy(sheet = EditorSheet.PickKind)
 

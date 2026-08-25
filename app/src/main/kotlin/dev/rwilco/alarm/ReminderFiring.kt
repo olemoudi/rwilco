@@ -16,6 +16,7 @@ import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.allHoldAt
 import dev.rwilco.model.togetherRule
 import dev.rwilco.model.knownInAdvance
+import dev.rwilco.model.nextSoundIn
 import dev.rwilco.model.firingPlan
 import dev.rwilco.model.missedFire
 import dev.rwilco.model.momentRungFor
@@ -42,6 +43,8 @@ class ReminderFiring(
     private val placeWatch: PlaceWatchStore,
     private val clock: Clock,
 ) {
+
+    private val repeater = SoundRepeater(context)
 
     /**
      * The moment arrived. [late] is when it should have arrived, if the phone slept through it;
@@ -115,8 +118,41 @@ class ReminderFiring(
         if (reminder.ruleMatch == RuleMatch.ALL && reminder.rulesCombine) {
             repository.setFiredRules(id, reminder.rules.indices.toSet())
         }
-        AlertPresenter.show(context, reminder, firingPlan(reminder.actions), late, settingsStore.settings.first().vibration)
+        val settings = settingsStore.settings.first()
+        val plan = firingPlan(reminder.actions)
+        AlertPresenter.show(context, reminder, plan, late, settings.vibration, settings.alertSound)
+        // "Hasta que reciba caso": the first play has gone out, so line up the second.
+        if (plan.insistent) {
+            nextSoundIn(played = 1, plays = settings.soundPlays, gapMinutes = settings.soundGapMinutes)
+                ?.let { gap -> repeater.schedule(id, played = 1, rangAt = rangFor, at = now + gap) }
+        }
         scheduler.rearmAll()
+    }
+
+    /**
+     * The same sound again, a few minutes on, because nobody has dealt with the reminder yet.
+     *
+     * Everything that could have ended the round is asked here rather than remembered: gone,
+     * paused, finished, snoozed, or dealt with since it rang. The notification is re-posted
+     * rather than a fresh sound played — it re-alerts on its own channel, which is the sound,
+     * and it puts the card back in front of somebody who has scrolled past it. Never the
+     * full-screen takeover: once was the alarm, this is the reminder of the alarm.
+     */
+    suspend fun playAgain(id: String, played: Int, rangAt: Instant) {
+        val reminder = repository.get(id) ?: return
+        val now = clock.instant()
+        if (reminder.status != Status.ACTIVE) return
+        val dealt = reminder.lastDealtAt
+        if (dealt != null && !dealt.isBefore(rangAt)) return
+        val snoozed = reminder.snoozedUntil
+        if (snoozed != null && snoozed > now) return
+        val settings = settingsStore.settings.first()
+        val plan = firingPlan(reminder.actions)
+        if (!plan.insistent) return
+        Log.i(TAG, "$id has not been dealt with; play ${played + 1} of ${settings.soundPlays}")
+        AlertPresenter.show(context, reminder, plan, late = null, vibration = settings.vibration, sound = settings.alertSound, takeScreen = false)
+        nextSoundIn(played + 1, settings.soundPlays, settings.soundGapMinutes)
+            ?.let { gap -> repeater.schedule(id, played + 1, rangAt, now + gap) }
     }
 
     /**
@@ -150,6 +186,7 @@ class ReminderFiring(
 
     /** "Hecho": finished if nothing can ring again, otherwise just this occurrence dealt with. */
     suspend fun dismiss(id: String) {
+        repeater.cancel(id)
         val reminder = repository.get(id) ?: return
         val now = clock.instant()
         val defaultTime = settingsStore.settings.first().defaultTime
@@ -166,6 +203,7 @@ class ReminderFiring(
     }
 
     suspend fun snooze(id: String, snooze: Snooze) {
+        repeater.cancel(id)
         val now = clock.instant()
         val settings = settingsStore.settings.first()
         repository.snooze(id, snooze.until(now, clock.zone, settings.weekendDay, settings.weekendTime))

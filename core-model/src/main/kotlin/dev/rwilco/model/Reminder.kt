@@ -79,7 +79,19 @@ data class Reminder(
 enum class RuleMatch { ANY, ALL, TOGETHER }
 
 /** What happens when a reminder fires. Stored by name; unknown names are dropped on read. */
-enum class Action { FULL_SCREEN, NOTIFICATION, SOUND, VIBRATE }
+/**
+ * What happens when a reminder fires.
+ *
+ * [SOUND] and [SOUND_UNTIL_ANSWERED] are the same sound asked for in two different ways — once,
+ * or again every few minutes until somebody deals with it — so they are two tiles rather than a
+ * tile and a switch, and the editor treats them as one choice: picking either puts the other
+ * away. Stored by name; unknown names are dropped on read, which is why adding one here costs
+ * nothing to anybody's saved reminders.
+ */
+enum class Action { FULL_SCREEN, NOTIFICATION, SOUND, SOUND_UNTIL_ANSWERED, VIBRATE }
+
+/** The two ways of asking for the same sound. Choosing one is choosing not the other. */
+val SOUND_ACTIONS: Set<Action> = setOf(Action.SOUND, Action.SOUND_UNTIL_ANSWERED)
 
 enum class Status { ACTIVE, PAUSED, DONE }
 

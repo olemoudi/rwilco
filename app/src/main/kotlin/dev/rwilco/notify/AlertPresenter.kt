@@ -12,6 +12,7 @@ import android.provider.Settings
 import android.util.Log
 import dev.rwilco.alarm.ReminderScheduler
 import dev.rwilco.model.FiringPlan
+import dev.rwilco.model.AlertSound
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.VibrationPattern
 import dev.rwilco.ui.alert.AlertActivity
@@ -70,7 +71,19 @@ fun alertPresentation(
  */
 object AlertPresenter {
 
-    fun show(context: Context, reminder: Reminder, plan: FiringPlan, late: Instant?, vibration: VibrationPattern = VibrationPattern()) {
+    /**
+     * [takeScreen] false is a repeat of a sound that has already been made: once was the alarm
+     * and this is the reminder of the alarm, so it never takes the screen a second time.
+     */
+    fun show(
+        context: Context,
+        reminder: Reminder,
+        plan: FiringPlan,
+        late: Instant?,
+        vibration: VibrationPattern = VibrationPattern(),
+        sound: AlertSound = AlertSound.System,
+        takeScreen: Boolean = true,
+    ) {
         // Every action turned off is an answer too: the moment passes without a word, and the
         // reminder is simply overdue on Home afterwards.
         if (!plan.notification && !plan.fullScreen) {
@@ -79,7 +92,7 @@ object AlertPresenter {
         }
         val inUse = context.isInUse()
         val presentation = alertPresentation(
-            fullScreenWanted = plan.fullScreen && late == null,
+            fullScreenWanted = plan.fullScreen && late == null && takeScreen,
             inUse = inUse,
             foreground = context.foregroundApp(),
             canOverlay = context.canDrawOverlays(),
@@ -91,6 +104,7 @@ object AlertPresenter {
             late,
             fullScreen = presentation == AlertPresentation.FULL_SCREEN,
             vibration = vibration,
+            chosen = sound,
         )
         // With the screen off or locked, the notification's full-screen intent is what launches
         // the alert — the system does it for us, and doing it here as well would race with it.

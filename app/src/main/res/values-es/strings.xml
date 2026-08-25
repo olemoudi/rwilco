@@ -614,4 +614,21 @@
         <item>La vibración la eliges tú: fuerte o suave, intermitente o continua — con un botón que la reproduce, porque una vibración es lo único de aquí que no se puede mirar.</item>
         <item>Y ya no puede desbocarse. El zumbido de un recordatorio se repetía hasta que la app lo paraba, o sea que una app que se moría a media alarma dejaba el motor en marcha hasta que alguien reiniciaba. Ahora el minuto entero se le entrega al sistema de golpe, así que termina pase lo que pase — y hasta la cadencia continua suelta el motor un instante entre tramos.</item>
     </string-array>
+
+    <!-- The second sound action, and the sounds themselves. -->
+    <string name="action_sound_until_answered">Sonido insistente</string>
+    <string name="settings_sound_title">Sonido</string>
+    <string name="settings_sound_hint">Cómo suena un recordatorio. Los cuatro nuestros están hechos como los hace un coche —dos o tres tonos cortos y silencio—, así que llaman la atención a un volumen que no molesta. Toca uno para oírlo.</string>
+    <string name="settings_sound_system">Alarma del móvil</string>
+    <string name="settings_sound_play">Reproducir</string>
+    <string name="settings_sound_custom">Archivo…</string>
+    <string name="settings_sound_plays">Cuántas veces</string>
+    <string name="settings_sound_plays_hint">Para «sonido insistente»: cuántas veces en total, contando la primera, y cada cuánto. Para en cuanto atiendes, pospones o pausas el recordatorio.</string>
+    <string name="settings_sound_plays_value">%1$d veces</string>
+    <string name="settings_sound_gap">Cada cuánto</string>
+    <string name="settings_sound_gap_value">cada %1$d min</string>
+    <string name="sound_chime_alert">Aviso</string>
+    <string name="sound_chime_two_tone">Dos tonos</string>
+    <string name="sound_chime_low">Grave</string>
+    <string name="sound_chime_soft">Suave</string>
 </resources>

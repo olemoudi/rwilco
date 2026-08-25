@@ -272,6 +272,28 @@ strict is asking somebody to remember how they spelled it.
   two minutes because nobody is there, and a display lit at full brightness until somebody comes
   home costs more battery than everything else in this app together. The alert is still on the
   screen when they do, and the notification is still in the shade either way.
+- **The sound is a choice, in two parts.** *Which* one — `AppSettings.alertSound`: one of four
+  chimes the app brings with it, the phone's own alarm tone, or a file somebody picked. The
+  chimes are synthesised rather than sourced (`scripts/chimes.py`, run it and the same files
+  come out), so they are the app's own and licensed by nobody, and they are built the way a car
+  builds one: two or three short tones in the band the ear is most sensitive to, a soft envelope
+  so nothing clicks, and then silence. A car does not shout, and a phone that only wants you to
+  look at it should not either. A custom file is kept only once `takePersistableUriPermission`
+  has succeeded — a picker Uri is readable while the app is in the foreground and an alarm three
+  days out is not, so without that it would work while being chosen and be silent when it
+  mattered — and anything that will not resolve at play time falls back to the phone's alarm
+  tone, because the wrong sound beats no sound.
+  And *how insistently* — `Action.SOUND` plays once, `Action.SOUND_UNTIL_ANSWERED` comes back
+  every `soundGapMinutes` until the reminder is dealt with, `soundPlays` times in all (five and
+  five by default). The two are one choice in the editor, since asking for a sound once and also
+  until answered is asking for two contradictory things. The round is a chain of one-shot alarms
+  (`SoundRepeater`), each carrying how many plays have gone out and which ring they belong to:
+  no column, no migration, nothing written down, because a chain that lives in its own alarms
+  needs no memory and a cancelled one leaves none behind. Each link re-posts the notification
+  rather than playing a fresh sound — it re-alerts on its own channel, which *is* the sound, and
+  it puts the card back in front of somebody who scrolled past — and never takes the screen a
+  second time. Everything that ends a round is asked at fire time rather than remembered: gone,
+  paused, finished, snoozed, or dealt with since it rang.
 - **The vibration is built whole and finite** (`core-model/Vibration.kt`): strength and rhythm
   from `AppSettings.vibration`, and a waveform long enough to last exactly its minute
   (`VibrationLimits.LONGEST`) with **no repeat count**. The obvious way to buzz until somebody

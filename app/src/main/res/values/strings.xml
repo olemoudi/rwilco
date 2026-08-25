@@ -616,4 +616,21 @@
         <item>The vibration is yours to choose: strong or gentle, in pulses or unbroken — with a button that plays it, because a vibration is the one thing here nobody can look at.</item>
         <item>And it can no longer run away. A reminder\'s buzz used to repeat until the app stopped it, which meant that an app that died mid-alarm left the motor running until somebody rebooted. The whole minute is now handed to the system up front, so it ends whatever happens — and even the unbroken rhythm lets the motor go for a moment between stretches.</item>
     </string-array>
+
+    <!-- The second sound action, and the sounds themselves. -->
+    <string name="action_sound_until_answered">Sound until answered</string>
+    <string name="settings_sound_title">Sound</string>
+    <string name="settings_sound_hint">What a reminder sounds like. The four of ours are built the way a car builds one — two or three short tones and then silence — so they catch your eye at a volume nobody minds. Tap one to hear it.</string>
+    <string name="settings_sound_system">Phone\'s alarm</string>
+    <string name="settings_sound_play">Play</string>
+    <string name="settings_sound_custom">File…</string>
+    <string name="settings_sound_plays">How many times</string>
+    <string name="settings_sound_plays_hint">For «sound until answered»: how many times in all, counting the first, and how far apart. It stops the moment the reminder is dealt with, snoozed or paused.</string>
+    <string name="settings_sound_plays_value">%1$d times</string>
+    <string name="settings_sound_gap">How far apart</string>
+    <string name="settings_sound_gap_value">every %1$d min</string>
+    <string name="sound_chime_alert">Alert</string>
+    <string name="sound_chime_two_tone">Two tone</string>
+    <string name="sound_chime_low">Low</string>
+    <string name="sound_chime_soft">Soft</string>
 </resources>

@@ -53,6 +53,8 @@ data class FiringPlan(
     val notification: Boolean,
     val sound: Boolean,
     val vibrate: Boolean,
+    /** The sound comes back every few minutes until somebody deals with the reminder. */
+    val insistent: Boolean = false,
 ) {
     /**
      * A full-screen alert rings for itself (a looping tone while the screen is up), so the
@@ -67,8 +69,9 @@ fun firingPlan(actions: Set<Action>): FiringPlan = FiringPlan(
     // A full-screen alert always leaves a notification behind: it is what the person finds if
     // the system refused the takeover, or if they left the screen without deciding.
     notification = Action.NOTIFICATION in actions || Action.FULL_SCREEN in actions,
-    sound = Action.SOUND in actions,
+    sound = actions.any { it in SOUND_ACTIONS },
     vibrate = Action.VIBRATE in actions,
+    insistent = Action.SOUND_UNTIL_ANSWERED in actions,
 )
 
 /**

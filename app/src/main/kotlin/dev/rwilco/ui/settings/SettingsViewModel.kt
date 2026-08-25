@@ -9,7 +9,10 @@ import dev.rwilco.data.SettingsStore
 import dev.rwilco.geo.PlaceLogStore
 import dev.rwilco.model.Action
 import dev.rwilco.model.AppSettings
+import dev.rwilco.model.SoundLimits
+import dev.rwilco.model.AlertSound
 import dev.rwilco.model.PlaceWatchState
+import dev.rwilco.model.SOUND_ACTIONS
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.PlaceWatchPolicy
 import dev.rwilco.model.ThemeMode
@@ -19,6 +22,7 @@ import dev.rwilco.model.WatchLog
 import dev.rwilco.model.pollsSince
 import dev.rwilco.model.TriggerKind
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -46,6 +50,15 @@ class SettingsViewModel(
     val placeWatch: StateFlow<PlaceWatchState?> = placeWatch
         .map<PlaceWatchState, PlaceWatchState?> { it }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /**
+     * Whether the two insistent-sound numbers are worth showing at all: something has to be
+     * asking for that sound, either a reminder or what a blank one starts with.
+     */
+    val insistentInUse: StateFlow<Boolean> = combine(repository.open, settings) { reminders, current ->
+        Action.SOUND_UNTIL_ANSWERED in current?.defaultActions.orEmpty() ||
+            reminders.any { Action.SOUND_UNTIL_ANSWERED in it.actions }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     /** Every look the place watch took, newest first: the log behind the button. */
     val watchLog: StateFlow<WatchLog> = placeLog.log
@@ -83,7 +96,14 @@ class SettingsViewModel(
     /** What a blank reminder starts with; the editor's own tiles, one screen up. */
     fun toggleDefaultAction(action: Action) = update { settings ->
         val actions = settings.defaultActions
-        settings.copy(defaultActions = if (action in actions) actions - action else actions + action)
+        // The two sound tiles are one choice here too; see EditorUiState.toggleAction.
+        settings.copy(
+            defaultActions = when {
+                action in actions -> actions - action
+                action in SOUND_ACTIONS -> actions - SOUND_ACTIONS + action
+                else -> actions + action
+            },
+        )
     }
     fun setDefaultTime(time: LocalTime) = update { it.copy(defaultTime = time) }
 
@@ -93,6 +113,11 @@ class SettingsViewModel(
 
     /** What a reminder feels like. Unrelated to [setHaptics], which is the UI's own touch feedback. */
     fun setVibration(pattern: VibrationPattern) = update { it.copy(vibration = pattern) }
+
+    /** What a reminder sounds like, and how insistently. */
+    fun setAlertSound(sound: AlertSound) = update { it.copy(alertSound = sound) }
+    fun setSoundPlays(plays: Int) = update { it.copy(soundPlays = plays.coerceIn(SoundLimits.PLAYS)) }
+    fun setSoundGap(minutes: Int) = update { it.copy(soundGapMinutes = minutes.coerceIn(SoundLimits.GAP_MINUTES)) }
 
     /** Null puts the six tiles back in their usual order: no favourite. */
     // The two are one row of answers on screen: choosing a kind puts the popular order away.

@@ -10,6 +10,7 @@ import androidx.compose.material.icons.outlined.HourglassTop
 import androidx.compose.material.icons.outlined.OpenInFull
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Repeat
+import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material3.MaterialTheme
@@ -77,5 +78,7 @@ val Action.icon: ImageVector
         // top of the screen, and the bell was saying "an alarm" — which is every action here.
         Action.NOTIFICATION -> Icons.Outlined.ViewAgenda
         Action.SOUND -> Icons.AutoMirrored.Outlined.VolumeUp
+        // The same speaker, coming back: what this one adds to a sound is that it repeats.
+        Action.SOUND_UNTIL_ANSWERED -> Icons.Outlined.Replay
         Action.VIBRATE -> Icons.Outlined.Vibration
     }

@@ -206,6 +206,10 @@ class EditorTourTest {
         rule.onNodeWithContentDescription(s(R.string.home_settings)).performClick()
         rule.waitUntilShown(s(R.string.settings_title))
         shot("settings")
+        // Scrolled to the last thing in the card, so the whole of it is in the frame: the
+        // two numbers only appear when something actually asks for the insistent sound.
+        text(s(R.string.settings_sound_gap)).performScrollTo()
+        shot("settings-sound")
         text(s(R.string.settings_vibration_try)).performScrollTo()
         shot("settings-vibration")
         // Dark mode only, by the owner's rule: the light scheme shares every token and layout,

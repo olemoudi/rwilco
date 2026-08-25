@@ -3,13 +3,14 @@ package dev.rwilco.ui.alert
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
-import android.media.RingtoneManager
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
+import dev.rwilco.notify.Sounds
 import java.time.Duration
+import dev.rwilco.model.AlertSound
 import dev.rwilco.model.VibrationLimits
 import dev.rwilco.model.VibrationPattern
 import dev.rwilco.model.waveformFor
@@ -33,8 +34,9 @@ class AlertRinger(private val context: Context) {
         vibrate: Boolean,
         pattern: VibrationPattern = VibrationPattern(),
         limit: Duration = VibrationLimits.LONGEST,
+        tone: AlertSound = AlertSound.System,
     ) {
-        if (sound) startSound()
+        if (sound) startSound(tone)
         if (vibrate) startVibration(pattern, limit)
     }
 
@@ -50,11 +52,8 @@ class AlertRinger(private val context: Context) {
         vibrator = null
     }
 
-    private fun startSound() {
-        val uri = RingtoneManager.getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-            ?: return
+    private fun startSound(tone: AlertSound) {
+        val uri = Sounds.uri(context, tone) ?: return
         runCatching {
             player = MediaPlayer().apply {
                 setDataSource(context, uri)

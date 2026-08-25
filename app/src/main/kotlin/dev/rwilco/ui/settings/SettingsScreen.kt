@@ -219,6 +219,17 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
             SectionHeader(stringResource(R.string.settings_alerts))
             AlertPermissionsCard()
             Spacer(Modifier.height(spacing.sm))
+            val insistent by viewModel.insistentInUse.collectAsStateWithLifecycle()
+            SoundCard(
+                sound = current.alertSound,
+                plays = current.soundPlays,
+                gapMinutes = current.soundGapMinutes,
+                insistentInUse = insistent,
+                onSound = viewModel::setAlertSound,
+                onPlays = viewModel::setSoundPlays,
+                onGap = viewModel::setSoundGap,
+            )
+            Spacer(Modifier.height(spacing.sm))
             VibrationCard(pattern = current.vibration, onChange = viewModel::setVibration)
 
             SectionHeader(

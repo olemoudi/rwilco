@@ -84,6 +84,11 @@
             android:name=".alarm.AlertActionReceiver"
             android:exported="false" />
 
+        <!-- The sound that comes back every few minutes until a reminder is dealt with. -->
+        <receiver
+            android:name=".alarm.SoundRepeatReceiver"
+            android:exported="false" />
+
         <!-- A reboot, an install over ourselves, or the clock moving: all mean "work out when
              everything rings again". -->
         <receiver

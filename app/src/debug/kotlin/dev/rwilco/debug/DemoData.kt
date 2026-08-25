@@ -89,7 +89,8 @@ object DemoData {
             reminder(
                 "pills", "Pastillas de la tensión", listOf("salud"),
                 Trigger.AtTime(LocalTime.of(7, 30), setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)),
-                actions = setOf(Action.FULL_SCREEN, Action.SOUND, Action.VIBRATE),
+                // The pills are the one that keeps asking: a reminder somebody means to answer.
+                actions = setOf(Action.FULL_SCREEN, Action.SOUND_UNTIL_ANSWERED, Action.VIBRATE),
                 ageMinutes = 2000,
             ),
             reminder(

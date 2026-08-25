@@ -168,5 +168,6 @@ val dev.rwilco.model.Action.labelRes: Int
         dev.rwilco.model.Action.FULL_SCREEN -> R.string.action_full_screen
         dev.rwilco.model.Action.NOTIFICATION -> R.string.action_notification
         dev.rwilco.model.Action.SOUND -> R.string.action_sound
+        dev.rwilco.model.Action.SOUND_UNTIL_ANSWERED -> R.string.action_sound_until_answered
         dev.rwilco.model.Action.VIBRATE -> R.string.action_vibrate
     }
