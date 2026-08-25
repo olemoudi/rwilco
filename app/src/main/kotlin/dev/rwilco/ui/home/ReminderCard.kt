@@ -14,7 +14,6 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,6 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.rwilco.R
 import dev.rwilco.model.kind
+import dev.rwilco.ui.components.HoldButton
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.TriggerKeycap
 import dev.rwilco.ui.editor.titleRes
@@ -53,17 +53,34 @@ fun ReminderCard(
     val spacing = Tokens.spacing
     val textColor = if (card.paused) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
     RwilcoCard(onClick = onClick, modifier = modifier) {
-        // Tight on purpose: a card is a glance, not a page. Two lines of text, the triggers
-        // under it, and the footer riding on the pause button's own touch target.
-        Column(modifier = Modifier.padding(start = spacing.md, top = spacing.md, end = spacing.xs)) {
-            Text(
-                text = card.text,
-                style = MaterialTheme.typography.titleMedium,
-                color = textColor,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(end = spacing.md),
-            )
+        // Tight on purpose: a card is a glance, not a page. Two lines of text with the one
+        // control beside them, the triggers under it, and the read-only footer at the foot.
+        Column(
+            modifier = Modifier.padding(
+                start = spacing.md,
+                top = spacing.md,
+                end = spacing.md,
+                bottom = spacing.md,
+            ),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = card.text,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = textColor,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(spacing.sm))
+                // The card's one control, up here with the words rather than lost among the
+                // action glyphs below — which say what will happen and cannot be pressed.
+                HoldButton(
+                    icon = if (card.paused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause,
+                    label = stringResource(if (card.paused) R.string.card_resume else R.string.card_pause),
+                    onHoldComplete = onTogglePause,
+                )
+            }
             Spacer(Modifier.height(spacing.sm))
             if (card.matchAll) {
                 Text(
@@ -76,19 +93,11 @@ fun ReminderCard(
             Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
                 for (row in card.triggers) TriggerRow(row, today, defaultTime, muted = card.paused)
             }
+            Spacer(Modifier.height(spacing.sm))
             CardFooter(
                 tags = card.tags,
                 actions = card.actions,
                 modifier = Modifier.fillMaxWidth(),
-                trailing = {
-                    IconButton(onClick = onTogglePause, modifier = Modifier.size(Tokens.sizes.touch)) {
-                        Icon(
-                            imageVector = if (card.paused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause,
-                            contentDescription = stringResource(if (card.paused) R.string.card_resume else R.string.card_pause),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                },
             )
         }
     }
