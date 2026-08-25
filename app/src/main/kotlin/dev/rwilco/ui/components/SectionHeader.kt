@@ -22,6 +22,8 @@ fun SectionHeader(
     modifier: Modifier = Modifier,
     accent: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     trailing: String? = null,
+    /** What this section is for, when it needs saying: folded behind an (i). */
+    info: String? = null,
 ) {
     Row(
         modifier = modifier.padding(top = Tokens.spacing.xl, bottom = Tokens.spacing.sm),
@@ -35,6 +37,7 @@ fun SectionHeader(
                 .weight(1f)
                 .semantics { heading() },
         )
+        if (info != null) InfoBadge(info)
         if (trailing != null) {
             Text(text = trailing, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

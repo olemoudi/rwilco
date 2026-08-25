@@ -36,4 +36,13 @@ data class AppSettings(
     val lastSeenVersionCode: Int = 0,
     /** Places named once and offered whole whenever a rule needs one: home, work, the gym. */
     val savedPlaces: List<SavedPlace> = emptyList(),
+    /**
+     * What a blank reminder starts with. The old default is still the default; this is for
+     * somebody who never wants a sound, or always wants the screen.
+     */
+    val defaultActions: Set<Action> = DEFAULT_ACTIONS,
+    /** Reminders kept by shape, under a name: see [Preset]. */
+    val presets: List<Preset> = emptyList(),
+    /** Phrases dismissed from the "or reuse one" offers; the reminders that used them stay. */
+    val hiddenTexts: List<String> = emptyList(),
 )

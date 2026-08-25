@@ -31,12 +31,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.rwilco.ui.theme.Tokens
 
-/**
- * How long the finger has to stay. Long enough that a brush of the thumb never gets there,
- * short enough that meaning it does not feel like a punishment.
- */
-private const val HOLD_MS = 700
-
 private val DISC = 44.dp
 
 /**
@@ -76,7 +70,7 @@ fun HoldButton(
         haptics.perform(HapticFeedbackType.SegmentTick)
         overlay.prompt = HoldPrompt(icon, label)
         overlay.progress.snapTo(0f)
-        overlay.progress.animateTo(1f, tween(HOLD_MS, easing = LinearEasing))
+        overlay.progress.animateTo(1f, tween(HOLD_MILLIS, easing = LinearEasing))
         haptics.perform(HapticFeedbackType.Confirm)
         onHoldComplete()
         // Done: the screen comes back whether or not the finger has lifted yet.

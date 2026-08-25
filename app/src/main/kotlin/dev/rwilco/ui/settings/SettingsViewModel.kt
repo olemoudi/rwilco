@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
+import dev.rwilco.model.Action
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.SavedPlace
@@ -51,6 +52,12 @@ class SettingsViewModel(
 
 
     fun setTheme(theme: ThemeMode) = update { it.copy(theme = theme) }
+
+    /** What a blank reminder starts with; the editor's own tiles, one screen up. */
+    fun toggleDefaultAction(action: Action) = update { settings ->
+        val actions = settings.defaultActions
+        settings.copy(defaultActions = if (action in actions) actions - action else actions + action)
+    }
     fun setDefaultTime(time: LocalTime) = update { it.copy(defaultTime = time) }
     fun setHaptics(enabled: Boolean) = update { it.copy(haptics = enabled) }
 

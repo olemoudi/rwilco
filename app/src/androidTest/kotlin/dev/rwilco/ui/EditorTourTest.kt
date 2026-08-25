@@ -73,7 +73,9 @@ class EditorTourTest {
             DemoData.seed(app.repository, app.clock)
             // A build the phone has not seen opens "What's new" over the first screen — and
             // over every capture after it, since the tour never taps it away. Seen already.
-            app.settingsStore.update { it.copy(lastSeenVersionCode = BuildConfig.VERSION_CODE) }
+            // No presets either: with one kept, "New" asks a question first, and the tour is
+            // walking the path somebody with none walks.
+            app.settingsStore.update { it.copy(lastSeenVersionCode = BuildConfig.VERSION_CODE, presets = emptyList()) }
         }
         // Yesterday's captures would otherwise be pulled along with today's and quietly go stale.
         File(context.filesDir, "screenshots").listFiles()?.forEach { it.delete() }

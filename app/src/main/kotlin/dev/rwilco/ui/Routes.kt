@@ -7,9 +7,17 @@ object Routes {
     @Serializable
     data object Home
 
-    /** Null id = a new reminder. */
+    /**
+     * The editor, wearing one of three hats. No ids at all is a blank reminder;
+     * [reminderId] edits one that exists; [fromPresetId] starts a new reminder with a preset's
+     * shape; [editPresetId] edits the preset itself.
+     */
     @Serializable
-    data class Editor(val reminderId: String? = null)
+    data class Editor(
+        val reminderId: String? = null,
+        val fromPresetId: String? = null,
+        val editPresetId: String? = null,
+    )
 
     @Serializable
     data object Done

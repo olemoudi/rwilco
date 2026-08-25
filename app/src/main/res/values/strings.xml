@@ -6,6 +6,39 @@
     <string name="common_save">Save</string>
     <string name="common_back">Back</string>
     <string name="common_undo">Undo</string>
+    <string name="common_what_is_this">What is this?</string>
+    <string name="common_done">Done</string>
+
+    <!-- Mending the lists the editor offers back -->
+    <string name="curate_hold">Edit the list</string>
+    <string name="curate_texts_title">Reminders you reuse</string>
+    <string name="curate_tags_title">Your tags</string>
+    <string name="curate_rename">Rename</string>
+    <string name="curate_rename_confirm">Save the new name</string>
+    <string name="curate_text_remove">Stop offering this one</string>
+    <string name="curate_tag_remove">Remove this tag everywhere</string>
+    <string name="common_got_it">Got it</string>
+
+    <!-- Presets -->
+    <string name="editor_as_preset">Keep as a preset</string>
+    <string name="editor_as_preset_hint">A shape to reuse: the words become its name, and the tags, the when and the what happens are kept with it.</string>
+    <string name="editor_preset_title">Preset</string>
+    <string name="editor_preset_name_placeholder">What is this preset called?</string>
+    <string name="editor_name_preset">Name the preset</string>
+    <string name="editor_title_new_preset">New preset</string>
+    <string name="editor_title_edit_preset">Edit preset</string>
+    <string name="editor_delete_preset">Delete preset</string>
+    <string name="home_new_title">Start from…</string>
+    <string name="home_new_blank">Blank</string>
+    <string name="home_new_preset">Preset</string>
+    <string name="home_new_from_preset">From a preset</string>
+    <string name="home_preset_edit">Edit this preset</string>
+    <plurals name="home_preset_triggers">
+        <item quantity="one">%1$d trigger</item>
+        <item quantity="other">%1$d triggers</item>
+    </plurals>
+    <string name="settings_default_actions">What a blank reminder does</string>
+    <string name="settings_default_actions_hint">What is switched on when you start a reminder from nothing. Every reminder can still be changed on its own.</string>
 
     <!-- Home -->
     <string name="home_title">Today</string>
@@ -352,6 +385,14 @@
     <string-array name="whats_new_0_4_2">
         <item>Pausing a reminder now says what it will do — the word "Pause" or "Resume" next to the button, because a pause glyph on its own reads as "this is paused" just as easily.</item>
         <item>It is bigger, it sits up with the reminder\'s own words instead of among the small grey glyphs that cannot be pressed, and it takes a finger that stays. Let go early and nothing happens.</item>
+    </string-array>
+    <string-array name="whats_new_0_5_0">
+        <item>Presets: a reminder you make often, kept by name. Write one as usual and turn on "Keep as a preset" — the words become its name, and the tags, the when and the what happens are kept with it.</item>
+        <item>Once you have one, "New" asks first: blank, or from a preset. The presets come up as big buttons, the ones you actually use at the top, each with a colour of its own so your hand finds it without reading.</item>
+        <item>Tapping one opens the form already filled in, so a date that has since passed gets seen and fixed rather than silently written.</item>
+        <item>Settings says what a blank reminder starts with — full screen, notification, sound, vibration — for anyone who never wants a sound, or always wants the screen.</item>
+        <item>Settings is quieter: the theme is three small icons, and the paragraphs of explanation are folded behind a (?) beside each title.</item>
+        <item>Hold one of the "or reuse one" chips — a phrase or a tag — and the list opens to be mended: rename one and it is renamed on every reminder that carries it; drop a phrase and it stops being offered, without touching what you wrote.</item>
     </string-array>
     <string-array name="whats_new_0_4_3">
         <item>Holding that button now dims the whole screen and fills one ring in the middle of it — where no thumb ever is — with the icon and the word inside. And it takes 700ms rather than two seconds: long enough to mean it, short enough not to feel like a punishment.</item>

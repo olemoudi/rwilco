@@ -26,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Notes
+import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.NotificationsActive
@@ -122,13 +123,26 @@ fun EditorScreen(
             contentWindowInsets = WindowInsets.safeDrawing,
             topBar = {
                 EditorTopBar(
-                    isNew = state.isNew,
-                    onBack = viewModel::requestClose,
-                    onPreview = {
-                        focusManager.clearFocus()
-                        viewModel.setPreviewing(true)
+                    title = stringResource(
+                        when {
+                            state.asPreset && state.editingPreset != null -> R.string.editor_title_edit_preset
+                            state.asPreset -> R.string.editor_title_new_preset
+                            state.isNew -> R.string.editor_title_new
+                            else -> R.string.editor_title_edit
+                        },
+                    ),
+                    // A preset has nothing to ring, so there is no alert to look at.
+                    onPreview = if (state.asPreset) null else {
+                        {
+                            focusManager.clearFocus()
+                            viewModel.setPreviewing(true)
+                        }
                     },
-                    onDelete = if (state.isNew) null else viewModel::delete,
+                    onDelete = if (state.isNew && state.editingPreset == null) null else viewModel::delete,
+                    deleteDescription = stringResource(
+                        if (state.editingPreset != null) R.string.editor_delete_preset else R.string.editor_delete,
+                    ),
+                    onBack = viewModel::requestClose,
                 )
             },
             bottomBar = {
@@ -149,12 +163,25 @@ fun EditorScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = spacing.screen),
             ) {
-                EditorSection(title = stringResource(R.string.editor_text_title), icon = Icons.AutoMirrored.Outlined.Notes) {
+                EditorSection(
+                    title = stringResource(if (state.asPreset) R.string.editor_preset_title else R.string.editor_text_title),
+                    icon = if (state.asPreset) Icons.Outlined.Bookmarks else Icons.AutoMirrored.Outlined.Notes,
+                ) {
+                    // The toggle first: it changes what every part under it means. Only where
+                    // it means something — turning a reminder that already exists into a
+                    // preset would leave a question about the reminder nobody asked.
+                    if (state.isNew || state.editingPreset != null) {
+                        PresetToggle(asPreset = state.asPreset, onChange = viewModel::setAsPreset)
+                        Spacer(Modifier.height(spacing.md))
+                    }
                     TextSection(
                         text = state.draft.text,
-                        suggestions = state.suggestedTexts,
+                        suggestions = if (state.asPreset) emptyList() else state.suggestedTexts,
                         onTextChange = viewModel::setText,
                         error = state.showErrors && ValidationError.TextBlank in state.errors,
+                        placeholderRes = if (state.asPreset) R.string.editor_preset_name_placeholder else R.string.editor_text_placeholder,
+                        writeRes = if (state.asPreset) R.string.editor_name_preset else R.string.editor_write,
+                        onCurate = { viewModel.curate(CurateKind.TEXTS) },
                     )
                 }
                 EditorSection(
@@ -167,6 +194,7 @@ fun EditorScreen(
                         selected = state.draft.tags,
                         onToggle = viewModel::toggleTag,
                         onAdd = viewModel::addTag,
+                        onCurate = { viewModel.curate(CurateKind.TAGS) },
                     )
                 }
                 EditorSection(
@@ -268,6 +296,26 @@ fun EditorScreen(
             DiscardDialog(onKeep = viewModel::keepEditing, onDiscard = viewModel::discard)
         }
 
+        when (state.curating) {
+            null -> Unit
+            CurateKind.TEXTS -> CuratePanel(
+                title = stringResource(R.string.curate_texts_title),
+                items = state.allTexts,
+                removeLabel = stringResource(R.string.curate_text_remove),
+                onRename = viewModel::renameText,
+                onRemove = viewModel::hideText,
+                onDismiss = { viewModel.curate(null) },
+            )
+            CurateKind.TAGS -> CuratePanel(
+                title = stringResource(R.string.curate_tags_title),
+                items = state.existingTags,
+                removeLabel = stringResource(R.string.curate_tag_remove),
+                onRename = viewModel::renameTag,
+                onRemove = viewModel::removeTag,
+                onDismiss = { viewModel.curate(null) },
+            )
+        }
+
         if (state.previewing) {
             AlertScreen(
                 content = AlertContent.fromDraft(state.draft, today, state.defaultTime),
@@ -281,7 +329,13 @@ fun EditorScreen(
 }
 
 @Composable
-private fun EditorTopBar(isNew: Boolean, onBack: () -> Unit, onPreview: () -> Unit, onDelete: (() -> Unit)?) {
+private fun EditorTopBar(
+    title: String,
+    onBack: () -> Unit,
+    onPreview: (() -> Unit)?,
+    onDelete: (() -> Unit)?,
+    deleteDescription: String,
+) {
     Surface(color = MaterialTheme.colorScheme.background) {
         Row(
             modifier = Modifier
@@ -295,7 +349,7 @@ private fun EditorTopBar(isNew: Boolean, onBack: () -> Unit, onPreview: () -> Un
                 Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.common_back))
             }
             Text(
-                text = stringResource(if (isNew) R.string.editor_title_new else R.string.editor_title_edit),
+                text = title,
                 style = MaterialTheme.typography.titleLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -303,12 +357,14 @@ private fun EditorTopBar(isNew: Boolean, onBack: () -> Unit, onPreview: () -> Un
                     .weight(1f)
                     .padding(horizontal = Tokens.spacing.sm),
             )
-            IconButton(onClick = onPreview) {
-                Icon(Icons.Outlined.Visibility, contentDescription = stringResource(R.string.editor_preview))
+            if (onPreview != null) {
+                IconButton(onClick = onPreview) {
+                    Icon(Icons.Outlined.Visibility, contentDescription = stringResource(R.string.editor_preview))
+                }
             }
             if (onDelete != null) {
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.editor_delete))
+                    Icon(Icons.Outlined.Delete, contentDescription = deleteDescription)
                 }
             }
         }

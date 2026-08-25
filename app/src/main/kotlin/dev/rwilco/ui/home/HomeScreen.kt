@@ -33,6 +33,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -58,12 +61,16 @@ import dev.rwilco.ui.theme.Tokens
 fun HomeScreen(
     viewModel: HomeViewModel,
     onNew: () -> Unit,
+    onNewFromPreset: (String) -> Unit,
+    onEditPreset: (String) -> Unit,
     onOpen: (String) -> Unit,
     onDoneList: () -> Unit,
     onSettings: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val search by viewModel.search.collectAsStateWithLifecycle()
+    val presets by viewModel.presets.collectAsStateWithLifecycle()
+    var choosing by rememberSaveable { mutableStateOf(false) }
     val snackbar = LocalSnackbar.current
     val doneMessage = stringResource(R.string.home_marked_done)
     val deletedMessage = stringResource(R.string.home_deleted)
@@ -87,6 +94,26 @@ fun HomeScreen(
 
     BackHandler(enabled = search.open) { viewModel.setSearching(false) }
 
+    if (choosing) {
+        NewReminderChooser(
+            presets = presets,
+            onBlank = {
+                choosing = false
+                onNew()
+            },
+            onPreset = { preset ->
+                choosing = false
+                viewModel.usePreset(preset)
+                onNewFromPreset(preset.id)
+            },
+            onEditPreset = { preset ->
+                choosing = false
+                onEditPreset(preset.id)
+            },
+            onDismiss = { choosing = false },
+        )
+    }
+
     val spacing = Tokens.spacing
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -96,7 +123,8 @@ fun HomeScreen(
             // be covering a result.
             if (!search.open) {
                 ExtendedFloatingActionButton(
-                    onClick = onNew,
+                    // With nothing kept under a name there is no question to ask.
+                    onClick = { if (presets.isEmpty()) onNew() else choosing = true },
                     icon = { Icon(Icons.Outlined.Add, contentDescription = null) },
                     text = { Text(stringResource(R.string.home_new), style = MaterialTheme.typography.titleMedium) },
                     containerColor = MaterialTheme.colorScheme.primary,

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -40,6 +41,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -59,6 +62,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
@@ -97,6 +101,52 @@ import java.time.temporal.ChronoUnit
 const val EDITOR_TEXT_TAG = "editorText"
 
 /**
+ * What this screen is writing: a reminder, or the shape of one kept under a name. The words
+ * become the preset's name, and everything under here — the tags, the when, the what happens —
+ * is kept with it.
+ */
+@Composable
+internal fun PresetToggle(asPreset: Boolean, onChange: (Boolean) -> Unit) {
+    val haptics = Tokens.haptics
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        // The whole row, not the switch alone: a 32dp target beside two lines of text somebody
+        // has just read is asking them to aim at the smallest part of what they are looking at.
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(
+                value = asPreset,
+                role = Role.Switch,
+                onValueChange = { on ->
+                    haptics.perform(if (on) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff)
+                    onChange(on)
+                },
+            )
+            .heightIn(min = Tokens.sizes.touch),
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.editor_as_preset), style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = stringResource(R.string.editor_as_preset_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.width(Tokens.spacing.md))
+        Switch(
+            checked = asPreset,
+            // The row owns the gesture; the switch is the picture of the state.
+            onCheckedChange = null,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = scheme.surface,
+                checkedTrackColor = scheme.onSurface,
+            ),
+        )
+    }
+}
+
+/**
  * The reminder's own words — offered before they are asked for.
  *
  * Everyday reminders repeat, so the keyboard is usually the slow way in: what comes up first is
@@ -111,6 +161,9 @@ internal fun TextSection(
     suggestions: List<String>,
     onTextChange: (String) -> Unit,
     error: Boolean,
+    placeholderRes: Int = R.string.editor_text_placeholder,
+    writeRes: Int = R.string.editor_write,
+    onCurate: () -> Unit = {},
 ) {
     val focusRequester = remember { FocusRequester() }
     var focused by remember { mutableStateOf(false) }
@@ -132,7 +185,7 @@ internal fun TextSection(
             ) {
                 Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(Tokens.spacing.sm))
-                Text(stringResource(R.string.editor_write), style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(writeRes), style = MaterialTheme.typography.labelLarge)
             }
         }
         BasicTextField(
@@ -156,7 +209,7 @@ internal fun TextSection(
                     // remember?" is one prompt too many.
                     if (writing && text.isEmpty()) {
                         Text(
-                            text = stringResource(R.string.editor_text_placeholder),
+                            text = stringResource(placeholderRes),
                             style = MaterialTheme.typography.headlineSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         )
@@ -174,7 +227,13 @@ internal fun TextSection(
                 verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
             ) {
                 for (suggestion in suggestions) {
-                    PresetChip(label = suggestion, onClick = { onTextChange(suggestion) })
+                    // Tap to use it; hold to mend the list it came from.
+                    PresetChip(
+                        label = suggestion,
+                        onClick = { onTextChange(suggestion) },
+                        onHold = onCurate,
+                        holdLabel = stringResource(R.string.curate_hold),
+                    )
                 }
             }
         }
@@ -188,6 +247,7 @@ internal fun TagsSection(
     selected: List<String>,
     onToggle: (String) -> Unit,
     onAdd: (String) -> Unit,
+    onCurate: () -> Unit = {},
 ) {
     var adding by rememberSaveable { mutableStateOf(false) }
     var newTag by rememberSaveable { mutableStateOf("") }
@@ -274,6 +334,8 @@ internal fun TagsSection(
                         label = tag,
                         selected = selected.any { it.equals(tag, ignoreCase = true) },
                         onClick = { onToggle(tag) },
+                        onHold = onCurate,
+                        holdLabel = stringResource(R.string.curate_hold),
                     )
                 }
             }

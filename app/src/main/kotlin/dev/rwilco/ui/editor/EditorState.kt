@@ -3,8 +3,11 @@ package dev.rwilco.ui.editor
 import dev.rwilco.model.Action
 import dev.rwilco.model.Condition
 import dev.rwilco.model.DEFAULT_ACTIONS
+import dev.rwilco.model.MAX_PRESET_NAME
 import dev.rwilco.model.MAX_TEXT_LENGTH
+import dev.rwilco.model.Preset
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.nextPresetColor
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.Status
@@ -47,6 +50,9 @@ fun Draft.toReminder(id: String, createdAt: Instant, now: Instant, status: Statu
     updatedAt = now,
 )
 
+/** Which of the two lists the editor offers back is being mended. */
+enum class CurateKind { TEXTS, TAGS }
+
 /** What is open on top of the editor. State, not navigation: it must survive rotation. */
 sealed interface EditorSheet {
     data object None : EditorSheet
@@ -80,11 +86,43 @@ data class EditorUiState(
     val defaultKind: TriggerKind? = null,
     /** The places kept by name in Settings, offered whole in the place sheet. */
     val savedPlaces: List<SavedPlace> = emptyList(),
+    /**
+     * Whether what is being written is a preset rather than a reminder: same form, same four
+     * parts, but nothing waiting to ring — and the words become the preset's name.
+     */
+    val asPreset: Boolean = false,
+    /** What it was when the screen opened, so flipping the toggle counts as an unsaved change. */
+    val initialAsPreset: Boolean = false,
+    /** The preset being edited, when this screen was opened on one. */
+    val editingPreset: Preset? = null,
+    /** Everything ever written, for the panel that mends the offers; the chips show fewer. */
+    val allTexts: List<String> = emptyList(),
+    /** Which list of offers is being mended, if any. */
+    val curating: CurateKind? = null,
 ) {
-    val dirty: Boolean get() = draft != initial
+    val dirty: Boolean get() = draft != initial || asPreset != initialAsPreset
     val errors: List<ValidationError> get() = validate(draft.text, draft.rules)
     val canSave: Boolean get() = errors.isEmpty()
 }
+
+/** The toggle. Nothing else about the draft changes: a preset keeps all four parts. */
+fun EditorUiState.setAsPreset(asPreset: Boolean): EditorUiState = copy(asPreset = asPreset)
+
+/** The draft as a preset — new when [existing] is null, otherwise that one rewritten. */
+fun EditorUiState.toPreset(id: String, now: Instant, existing: Preset?, others: List<Preset>): Preset = Preset(
+    id = id,
+    name = draft.text.trim().take(MAX_PRESET_NAME),
+    tags = draft.tags,
+    rules = draft.rules,
+    ruleMatch = draft.ruleMatch,
+    actions = draft.actions,
+    // A preset keeps the colour it was given: it is how it is recognised, and a colour that
+    // moves is worse than no colour at all.
+    colorIndex = existing?.colorIndex ?: nextPresetColor(others),
+    uses = existing?.uses ?: 0,
+    lastUsedAt = existing?.lastUsedAt,
+    createdAt = existing?.createdAt ?: now,
+)
 
 fun EditorUiState.withText(text: String): EditorUiState =
     copy(draft = draft.copy(text = text.take(MAX_TEXT_LENGTH)))

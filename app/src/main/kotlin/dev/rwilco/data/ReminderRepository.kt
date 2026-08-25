@@ -40,6 +40,12 @@ class ReminderRepository(private val dao: ReminderDao, private val clock: Clock)
     /** Upsert as given; the caller decides `updatedAt`. */
     suspend fun save(reminder: Reminder) = dao.upsert(reminder.toEntity())
 
+    /** A curation touching several rows at once: renaming a tag, rewording a phrase. */
+    suspend fun saveAll(reminders: List<Reminder>) {
+        if (reminders.isEmpty()) return
+        dao.upsertAll(reminders.map { it.toEntity() })
+    }
+
     suspend fun setStatus(id: String, status: Status) {
         val now = clock.instant().toEpochMilli()
         dao.setStatus(id, status.name, now, if (status == Status.DONE) now else null)

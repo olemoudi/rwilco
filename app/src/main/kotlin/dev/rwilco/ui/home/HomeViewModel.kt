@@ -5,9 +5,14 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.data.ReminderRepository
+import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.AppSettings
+import dev.rwilco.model.Preset
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
+import dev.rwilco.model.presetsByPopularity
+import dev.rwilco.model.used
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -37,9 +42,30 @@ sealed interface HomeEvent {
 
 class HomeViewModel(
     private val repository: ReminderRepository,
+    private val store: SettingsStore,
     settings: Flow<AppSettings?>,
     val clock: Clock,
 ) : ViewModel() {
+
+    /** The shapes kept under a name, the ones actually used at the top. */
+    val presets: StateFlow<List<Preset>> = settings
+        .filterNotNull()
+        .map { presetsByPopularity(it.presets) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * Reaching for a preset counts as using it, whether or not the reminder is saved in the
+     * end: what the list is ordering is what somebody reaches for, and an abandoned draft is
+     * still a reach.
+     */
+    fun usePreset(preset: Preset) {
+        viewModelScope.launch {
+            val now = clock.instant()
+            store.update { settings ->
+                settings.copy(presets = settings.presets.map { if (it.id == preset.id) it.used(now) else it })
+            }
+        }
+    }
 
     private val selectedTag = MutableStateFlow<String?>(null)
     private val searching = MutableStateFlow(false)
@@ -137,6 +163,6 @@ class HomeViewModel(
     class Factory(private val app: RwilcoApplication) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            HomeViewModel(app.repository, app.settings, app.clock) as T
+            HomeViewModel(app.repository, app.settingsStore, app.settings, app.clock) as T
     }
 }

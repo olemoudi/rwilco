@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.data.ReminderRepository
+import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.Action
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Reminder
@@ -13,8 +14,15 @@ import dev.rwilco.model.Status
 import dev.rwilco.model.Condition
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerKind
+import dev.rwilco.model.normalizeTag
+import dev.rwilco.model.normalizeTags
+import dev.rwilco.model.removeTagIn
+import dev.rwilco.model.renameTagIn
+import dev.rwilco.model.renameTextIn
 import dev.rwilco.model.suggestedTags
 import dev.rwilco.model.suggestedTexts
+import dev.rwilco.model.visibleTexts
+import dev.rwilco.model.withHiddenText
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,8 +47,11 @@ sealed interface EditorEvent {
  */
 class EditorViewModel(
     private val reminderId: String?,
+    private val fromPresetId: String?,
+    private val editPresetId: String?,
     private val repository: ReminderRepository,
-    settings: Flow<AppSettings?>,
+    private val store: SettingsStore,
+    private val settings: Flow<AppSettings?>,
     val clock: Clock,
 ) : ViewModel() {
 
@@ -57,7 +68,15 @@ class EditorViewModel(
             val current = settings.filterNotNull().first()
             val loaded = reminderId?.let { repository.get(it) }
             existing = loaded
-            val draft = loaded?.toDraft() ?: Draft()
+            // One of four openings: an existing reminder, a preset being edited, a new
+            // reminder wearing a preset's shape, or a blank one.
+            val editedPreset = editPresetId?.let { id -> current.presets.firstOrNull { it.id == id } }
+            val source = editedPreset ?: fromPresetId?.let { id -> current.presets.firstOrNull { it.id == id } }
+            val draft = when {
+                loaded != null -> loaded.toDraft()
+                source != null -> Draft(text = source.name, tags = source.tags, rules = source.rules, ruleMatch = source.ruleMatch, actions = source.actions)
+                else -> Draft(actions = current.defaultActions)
+            }
             // Everything ever written, done included: the point is to hand back what has been
             // said before rather than ask for it again.
             val past = repository.allNow()
@@ -68,10 +87,14 @@ class EditorViewModel(
                 draft = draft,
                 initial = draft,
                 existingTags = suggestedTags(past, now),
-                suggestedTexts = suggestedTexts(past, now, limit = 8, exclude = draft.text),
+                suggestedTexts = visibleTexts(suggestedTexts(past, now, limit = 8, exclude = draft.text), current.hiddenTexts),
+                allTexts = visibleTexts(suggestedTexts(past, now, limit = 100), current.hiddenTexts),
                 defaultTime = current.defaultTime,
                 defaultKind = current.defaultTriggerKind,
                 savedPlaces = current.savedPlaces,
+                asPreset = editedPreset != null,
+                initialAsPreset = editedPreset != null,
+                editingPreset = editedPreset,
             )
         }
     }
@@ -94,10 +117,68 @@ class EditorViewModel(
     fun closeSheet() = _state.update { it.closeSheet() }
     fun setPreviewing(previewing: Boolean) = _state.update { it.copy(previewing = previewing) }
 
+    fun setAsPreset(asPreset: Boolean) = _state.update { it.setAsPreset(asPreset) }
+
+    fun curate(kind: CurateKind?) = _state.update { it.copy(curating = kind) }
+
+    /**
+     * Mending the offers. A tag or a phrase is not a record of its own — it is read off the
+     * reminders that use it — so renaming one rewrites those reminders, and only those.
+     * Dropping a phrase only stops it being offered: the reminders that used it are somebody's
+     * history, not a list to tidy.
+     */
+    fun renameTag(from: String, to: String) = curateWith {
+        repository.saveAll(renameTagIn(repository.allNow(), from, to))
+        normalizeTag(to)?.let { renamed ->
+            _state.update { state ->
+                state.copy(draft = state.draft.copy(tags = normalizeTags(state.draft.tags.map { if (it.equals(from, true)) renamed else it })))
+            }
+        }
+    }
+
+    fun removeTag(tag: String) = curateWith {
+        repository.saveAll(removeTagIn(repository.allNow(), tag))
+        _state.update { state ->
+            state.copy(draft = state.draft.copy(tags = state.draft.tags.filterNot { it.equals(tag, ignoreCase = true) }))
+        }
+    }
+
+    fun renameText(from: String, to: String) = curateWith {
+        repository.saveAll(renameTextIn(repository.allNow(), from, to))
+        _state.update { state ->
+            if (state.draft.text.trim().equals(from.trim(), ignoreCase = true)) state.withText(to.trim()) else state
+        }
+    }
+
+    fun hideText(text: String) = curateWith {
+        store.update { it.copy(hiddenTexts = withHiddenText(it.hiddenTexts, text)) }
+    }
+
+    /** Every mend ends the same way: the offers are read again so the screen tells the truth. */
+    private fun curateWith(change: suspend () -> Unit) {
+        viewModelScope.launch {
+            change()
+            val past = repository.allNow()
+            val now = clock.instant()
+            val hidden = settings.filterNotNull().first().hiddenTexts
+            _state.update { state ->
+                state.copy(
+                    existingTags = suggestedTags(past, now),
+                    suggestedTexts = visibleTexts(suggestedTexts(past, now, limit = 8, exclude = state.draft.text), hidden),
+                    allTexts = visibleTexts(suggestedTexts(past, now, limit = 100), hidden),
+                )
+            }
+        }
+    }
+
     fun save() {
         val current = _state.value
         if (!current.canSave) {
             _state.update { it.copy(showErrors = true) }
+            return
+        }
+        if (current.asPreset) {
+            savePreset(current)
             return
         }
         viewModelScope.launch {
@@ -116,7 +197,33 @@ class EditorViewModel(
         }
     }
 
+    /**
+     * A preset lives in the settings, not the database: it is a shape, not something waiting.
+     * A reminder being turned into one is left where it is — the toggle says what this screen
+     * is writing, not what should happen to whatever it was opened on.
+     */
+    private fun savePreset(current: EditorUiState) {
+        viewModelScope.launch {
+            val now = clock.instant()
+            val id = current.editingPreset?.id ?: UUID.randomUUID().toString()
+            store.update { settings ->
+                val others = settings.presets.filterNot { it.id == id }
+                val preset = current.toPreset(id, now, current.editingPreset, others)
+                settings.copy(presets = others + preset)
+            }
+            events.send(EditorEvent.Saved)
+        }
+    }
+
     fun delete() {
+        val preset = _state.value.editingPreset
+        if (preset != null) {
+            viewModelScope.launch {
+                store.update { settings -> settings.copy(presets = settings.presets.filterNot { it.id == preset.id }) }
+                events.send(EditorEvent.Close)
+            }
+            return
+        }
         val target = existing ?: return
         viewModelScope.launch {
             repository.delete(target.id)
@@ -136,9 +243,14 @@ class EditorViewModel(
         events.trySend(EditorEvent.Close)
     }
 
-    class Factory(private val app: RwilcoApplication, private val reminderId: String?) : ViewModelProvider.Factory {
+    class Factory(
+        private val app: RwilcoApplication,
+        private val reminderId: String?,
+        private val fromPresetId: String? = null,
+        private val editPresetId: String? = null,
+    ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            EditorViewModel(reminderId, app.repository, app.settings, app.clock) as T
+            EditorViewModel(reminderId, fromPresetId, editPresetId, app.repository, app.settingsStore, app.settings, app.clock) as T
     }
 }

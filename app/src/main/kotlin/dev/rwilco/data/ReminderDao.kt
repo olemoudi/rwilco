@@ -29,6 +29,10 @@ interface ReminderDao {
     @Upsert
     suspend fun upsert(entity: ReminderEntity)
 
+    /** One transaction for a curation that touches many rows: a tag renamed, a phrase reworded. */
+    @Upsert
+    suspend fun upsertAll(entities: List<ReminderEntity>)
+
     @Query("UPDATE reminder SET status = :status, updatedAt = :at, doneAt = :doneAt WHERE id = :id")
     suspend fun setStatus(id: String, status: String, at: Long, doneAt: Long?)
 

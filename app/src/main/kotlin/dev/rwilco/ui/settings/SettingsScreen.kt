@@ -1,6 +1,8 @@
 package dev.rwilco.ui.settings
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -13,12 +15,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.SettingsBrightness
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -34,8 +41,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.rwilco.R
 import dev.rwilco.model.SavedPlace
@@ -43,13 +52,14 @@ import dev.rwilco.model.ThemeMode
 import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerKind
-import dev.rwilco.ui.components.RwilcoCard
-import dev.rwilco.ui.editor.sheets.LocationSheet
-import dev.rwilco.ui.components.SectionHeader
 import dev.rwilco.ui.components.DayToggles
-import dev.rwilco.ui.components.SegmentedChoice
+import dev.rwilco.ui.components.InfoBadge
+import dev.rwilco.ui.components.RwilcoCard
+import dev.rwilco.ui.components.SectionHeader
 import dev.rwilco.ui.components.TagChip
 import dev.rwilco.ui.components.TimeField
+import dev.rwilco.ui.editor.ActionsSection
+import dev.rwilco.ui.editor.sheets.LocationSheet
 import dev.rwilco.ui.editor.titleRes
 import dev.rwilco.ui.theme.Tokens
 
@@ -94,35 +104,30 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                 .padding(horizontal = spacing.screen)
                 .padding(bottom = spacing.xxl),
         ) {
-            SectionHeader(stringResource(R.string.settings_appearance))
-            RwilcoCard {
-                Column(Modifier.padding(spacing.lg)) {
-                    SegmentedChoice(
-                        options = listOf(
-                            stringResource(R.string.settings_theme_system),
-                            stringResource(R.string.settings_theme_light),
-                            stringResource(R.string.settings_theme_dark),
-                        ),
-                        selectedIndex = current.theme.ordinal,
-                        onSelect = { viewModel.setTheme(ThemeMode.entries[it]) },
-                    )
-                }
+            // Appearance is a thing you set once and never look at again, so it takes a row
+            // of three small icons rather than a card and a full-width control.
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = spacing.lg)) {
+                Text(
+                    text = stringResource(R.string.settings_appearance),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                ThemeChoice(current.theme, viewModel::setTheme)
             }
 
             SectionHeader(stringResource(R.string.settings_reminders))
             RwilcoCard {
                 Column(Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.lg)) {
                     Column {
-                        Text(stringResource(R.string.settings_default_time), style = MaterialTheme.typography.bodyLarge)
+                        SettingTitle(stringResource(R.string.settings_default_time))
                         Spacer(Modifier.height(spacing.sm))
                         TimeField(time = current.defaultTime, onChange = viewModel::setDefaultTime, modifier = Modifier.fillMaxWidth())
                     }
                     Column {
-                        Text(stringResource(R.string.settings_default_trigger), style = MaterialTheme.typography.bodyLarge)
-                        Text(
-                            stringResource(R.string.settings_default_trigger_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        SettingTitle(
+                            title = stringResource(R.string.settings_default_trigger),
+                            info = stringResource(R.string.settings_default_trigger_hint),
                         )
                         Spacer(Modifier.height(spacing.sm))
                         FlowRow(
@@ -145,11 +150,19 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                         }
                     }
                     Column {
-                        Text(stringResource(R.string.settings_weekend), style = MaterialTheme.typography.bodyLarge)
-                        Text(
-                            stringResource(R.string.settings_weekend_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        SettingTitle(
+                            title = stringResource(R.string.settings_default_actions),
+                            info = stringResource(R.string.settings_default_actions_hint),
+                        )
+                        Spacer(Modifier.height(spacing.sm))
+                        // The same four tiles the editor uses: what is set here is what a blank
+                        // reminder opens with.
+                        ActionsSection(selected = current.defaultActions, onToggle = viewModel::toggleDefaultAction)
+                    }
+                    Column {
+                        SettingTitle(
+                            title = stringResource(R.string.settings_weekend),
+                            info = stringResource(R.string.settings_weekend_hint),
                         )
                         Spacer(Modifier.height(spacing.sm))
                         // One day, not a set: "el finde" is a moment to push something to.
@@ -165,14 +178,11 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                         )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.settings_haptics), style = MaterialTheme.typography.bodyLarge)
-                            Text(
-                                stringResource(R.string.settings_haptics_hint),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
+                        SettingTitle(
+                            title = stringResource(R.string.settings_haptics),
+                            info = stringResource(R.string.settings_haptics_hint),
+                            modifier = Modifier.weight(1f),
+                        )
                         Spacer(Modifier.width(spacing.md))
                         Switch(
                             checked = current.haptics,
@@ -192,12 +202,18 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
             SectionHeader(stringResource(R.string.settings_alerts))
             AlertPermissionsCard()
 
-            SectionHeader(stringResource(R.string.settings_location))
+            SectionHeader(
+                title = stringResource(R.string.settings_location),
+                info = stringResource(R.string.perm_location_why) + "\n\n" + stringResource(R.string.place_watch_how),
+            )
             val hasPlaces by viewModel.hasPlaceReminders.collectAsStateWithLifecycle()
             val watch by viewModel.placeWatch.collectAsStateWithLifecycle()
             LocationPermissionCard(needsPlaces = hasPlaces, watch = watch)
 
-            SectionHeader(stringResource(R.string.settings_places))
+            SectionHeader(
+                title = stringResource(R.string.settings_places),
+                info = stringResource(R.string.settings_places_hint),
+            )
             // Which saved place the sheet is open on: null closed, -1 a new one, else the index.
             var editingPlace by rememberSaveable { mutableStateOf<Int?>(null) }
             SavedPlacesCard(
@@ -223,17 +239,62 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
             SectionHeader(stringResource(R.string.settings_updates))
             AppUpdateCard()
 
-            SectionHeader(stringResource(R.string.settings_about))
-            RwilcoCard {
-                Column(Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                    Text(stringResource(R.string.settings_about_body), style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        stringResource(R.string.settings_licenses),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+            SectionHeader(
+                title = stringResource(R.string.settings_about),
+                info = stringResource(R.string.settings_about_body) + "\n\n" + stringResource(R.string.settings_licenses),
+            )
+        }
+    }
+}
+
+/** A setting's name, with its explanation folded behind an (i) when it has one. */
+@Composable
+private fun SettingTitle(title: String, modifier: Modifier = Modifier, info: String? = null) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
+        Text(title, style = MaterialTheme.typography.bodyLarge)
+        if (info != null) InfoBadge(info)
+    }
+}
+
+/** Three small icons: follow the phone, always light, always dark. */
+@Composable
+private fun ThemeChoice(theme: ThemeMode, onChange: (ThemeMode) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.xs)) {
+        ThemeButton(ThemeMode.SYSTEM, Icons.Outlined.SettingsBrightness, R.string.settings_theme_system, theme, onChange)
+        ThemeButton(ThemeMode.LIGHT, Icons.Outlined.LightMode, R.string.settings_theme_light, theme, onChange)
+        ThemeButton(ThemeMode.DARK, Icons.Outlined.DarkMode, R.string.settings_theme_dark, theme, onChange)
+    }
+}
+
+@Composable
+private fun ThemeButton(
+    mode: ThemeMode,
+    icon: ImageVector,
+    labelRes: Int,
+    current: ThemeMode,
+    onChange: (ThemeMode) -> Unit,
+) {
+    val haptics = Tokens.haptics
+    val scheme = MaterialTheme.colorScheme
+    val selected = current == mode
+    Surface(
+        onClick = {
+            haptics.perform(HapticFeedbackType.SegmentTick)
+            onChange(mode)
+        },
+        shape = CircleShape,
+        // On is inverted, like every other "on" in the app.
+        color = if (selected) scheme.onSurface else scheme.surfaceContainerHigh,
+        border = if (selected) null else BorderStroke(Tokens.strokes.control, scheme.outline),
+        modifier = Modifier.size(Tokens.sizes.touch),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = stringResource(labelRes),
+                tint = if (selected) scheme.surface else scheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }

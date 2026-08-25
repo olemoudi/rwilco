@@ -114,7 +114,19 @@ strict is asking somebody to remember how they spelled it.
   own composable (`rememberNow`) so nothing else recomposes. The magnifier has a flow of its own
   (`buildSearchState`, also pure): a keystroke must not put Home through grouping and next-fire
   again. Results replace the list while it is open; a reminder opens, a tag becomes the filter.
-- Editor: `EditorUiState` + pure reducers (`EditorState.kt`, tested). The form is four cards
+- Presets (`core-model/Preset.kt`, kept in `AppSettings.presets`): a reminder somebody makes
+  often, by name — the words become the name, and the tags, rules and actions come with it.
+  Nothing about a preset waits to ring, which is why it lives in the settings rather than the
+  reminder table. Each gets a colour (`nextPresetColor` shares the eight out evenly;
+  `ui/theme/PresetVisuals.kt` says what they are) because a preset is found by colour before it
+  is read — the app's third and last colour job, and the only one that means nothing in itself.
+  `presetsByPopularity` puts the ones actually used first. Home's "New" asks blank-or-preset
+  (`NewReminderChooser`) only once a preset exists; picking one opens the editor pre-filled
+  (`Routes.Editor(fromPresetId=…)`) rather than writing the reminder outright, because a preset
+  can hold a date that has since passed and the form is where that gets seen.
+- Editor: `EditorUiState` + pure reducers (`EditorState.kt`, tested). A toggle turns the form
+  into a preset editor (`asPreset`); the same four cards, saved to the settings instead of the
+  database. The form is four cards
   (`EditorSection`), each with an icon badge and its name — the words, the tags, when, what
   happens — because four headings down one flat column read as more text. Interactive edges use
   the `Strokes` tokens (a control's line is thicker and brighter than a card's) so the screen
@@ -122,7 +134,13 @@ strict is asking somebody to remember how they spelled it.
   "cualquiera" and "todos". Text and tags are
   offered before they are asked for — `suggestedTexts`/`suggestedTags` rank what has been written before
   by how often and how recently (a 30-day half-life), and nothing is auto-focused, because a
-  keyboard that opens by itself hides the list that would have saved the typing. While a draft
+  keyboard that opens by itself hides the list that would have saved the typing. Holding one of
+  those chips (the shared `Modifier.holdable`, the same 700ms and the same overlay as
+  `HoldButton`) opens `CuratePanel` to mend the list: the pure functions in
+  `core-model/Curation.kt` rename a tag or a phrase across the reminders that carry it —
+  returning only the rows that changed, and leaving `updatedAt` alone so a rename is not read as
+  a use — while dropping a phrase only adds it to `AppSettings.hiddenTexts`, because the
+  reminders that used it are somebody's history rather than a list to tidy. While a draft
   has no trigger, "when" offers the three answers people give most (in half an hour, tonight,
   tomorrow morning) as one-tap chips that append a rule without a sheet. `TriggerKindSheet` puts the kind
   chosen in Settings (`AppSettings.defaultTriggerKind`) first and marks it; the other five keep

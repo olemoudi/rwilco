@@ -4,6 +4,39 @@
     <string name="common_save">Guardar</string>
     <string name="common_back">Atrás</string>
     <string name="common_undo">Deshacer</string>
+    <string name="common_what_is_this">¿Qué es esto?</string>
+    <string name="common_done">Listo</string>
+
+    <!-- Mending the lists the editor offers back -->
+    <string name="curate_hold">Editar la lista</string>
+    <string name="curate_texts_title">Recordatorios que reutilizas</string>
+    <string name="curate_tags_title">Tus etiquetas</string>
+    <string name="curate_rename">Renombrar</string>
+    <string name="curate_rename_confirm">Guardar el nombre nuevo</string>
+    <string name="curate_text_remove">Dejar de ofrecer este</string>
+    <string name="curate_tag_remove">Quitar esta etiqueta de todo</string>
+    <string name="common_got_it">Entendido</string>
+
+    <!-- Presets -->
+    <string name="editor_as_preset">Guardar como preset</string>
+    <string name="editor_as_preset_hint">Una forma para reutilizar: las palabras pasan a ser su nombre, y las etiquetas, el cuándo y el qué pasa se guardan con él.</string>
+    <string name="editor_preset_title">Preset</string>
+    <string name="editor_preset_name_placeholder">¿Cómo se llama este preset?</string>
+    <string name="editor_name_preset">Poner nombre al preset</string>
+    <string name="editor_title_new_preset">Nuevo preset</string>
+    <string name="editor_title_edit_preset">Editar preset</string>
+    <string name="editor_delete_preset">Borrar preset</string>
+    <string name="home_new_title">Empezar por…</string>
+    <string name="home_new_blank">En blanco</string>
+    <string name="home_new_preset">Preset</string>
+    <string name="home_new_from_preset">Desde un preset</string>
+    <string name="home_preset_edit">Editar este preset</string>
+    <plurals name="home_preset_triggers">
+        <item quantity="one">%1$d disparador</item>
+        <item quantity="other">%1$d disparadores</item>
+    </plurals>
+    <string name="settings_default_actions">Qué hace un recordatorio en blanco</string>
+    <string name="settings_default_actions_hint">Lo que viene activado al empezar un recordatorio desde cero. Cada recordatorio se puede cambiar por su cuenta.</string>
 
     <!-- Home -->
     <string name="home_title">Hoy</string>
@@ -350,6 +383,14 @@
     <string-array name="whats_new_0_4_2">
         <item>Pausar un recordatorio ahora dice lo que va a hacer — la palabra «Pausar» o «Reanudar» junto al botón, porque un icono de pausa a secas se lee igual de bien como «esto está pausado».</item>
         <item>Es más grande, está arriba con las palabras del recordatorio en vez de entre los iconos grises que no se pueden pulsar, y pide un dedo que se quede. Si sueltas antes, no pasa nada.</item>
+    </string-array>
+    <string-array name="whats_new_0_5_0">
+        <item>Presets: un recordatorio que haces a menudo, guardado con nombre. Escríbelo como siempre y activa «Guardar como preset» — las palabras pasan a ser su nombre, y las etiquetas, el cuándo y el qué pasa se guardan con él.</item>
+        <item>En cuanto tienes uno, «Nuevo» pregunta primero: en blanco, o desde un preset. Los presets salen como botones grandes, los que de verdad usas arriba, cada uno con su color para que la mano lo encuentre sin leer.</item>
+        <item>Al pulsar uno se abre el formulario ya relleno, así una fecha que ya pasó se ve y se arregla en vez de escribirse en silencio.</item>
+        <item>Ajustes dice con qué empieza un recordatorio en blanco —pantalla completa, notificación, sonido, vibración— para quien nunca quiere sonido, o siempre quiere la pantalla.</item>
+        <item>Ajustes está más callado: el tema son tres iconos pequeños, y los párrafos de explicación se pliegan tras un (?) junto a cada título.</item>
+        <item>Mantén pulsado uno de los chips de «o reutilizar una» —una frase o una etiqueta— y se abre la lista para arreglarla: al renombrar una se renombra en todos los recordatorios que la llevan; al quitar una frase deja de ofrecerse, sin tocar lo que escribiste.</item>
     </string-array>
     <string-array name="whats_new_0_4_3">
         <item>Mantener ese botón ahora atenúa toda la pantalla y llena un anillo en mitad de ella —donde nunca hay un pulgar— con el icono y la palabra dentro. Y son 700 ms en vez de dos segundos: bastante para quererlo, poco para que no parezca un castigo.</item>

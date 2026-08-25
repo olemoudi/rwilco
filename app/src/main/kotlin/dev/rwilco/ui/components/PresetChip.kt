@@ -5,9 +5,12 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -19,14 +22,25 @@ import dev.rwilco.ui.theme.Tokens
  * so the current answer is the loudest thing in the row.
  */
 @Composable
-fun PresetChip(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, selected: Boolean = false) {
+fun PresetChip(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
+    /** The second thing this chip can do, on a held finger; null when it does only one. */
+    onHold: (() -> Unit)? = null,
+    holdIcon: ImageVector = Icons.Outlined.Edit,
+    holdLabel: String = "",
+) {
     val haptics = Tokens.haptics
     val scheme = MaterialTheme.colorScheme
+    val tap = {
+        haptics.perform(HapticFeedbackType.Confirm)
+        onClick()
+    }
     AssistChip(
-        onClick = {
-            haptics.perform(HapticFeedbackType.Confirm)
-            onClick()
-        },
+        // With a hold on it the gesture is handled outside, or the two would fight over the tap.
+        onClick = if (onHold == null) tap else ({}),
         label = { Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         shape = MaterialTheme.shapes.small,
         colors = AssistChipDefaults.assistChipColors(
@@ -34,6 +48,8 @@ fun PresetChip(label: String, onClick: () -> Unit, modifier: Modifier = Modifier
             labelColor = if (selected) scheme.surface else scheme.onSurface,
         ),
         border = if (selected) null else BorderStroke(Tokens.strokes.control, scheme.outline),
-        modifier = modifier.heightIn(min = 44.dp),
+        modifier = modifier
+            .heightIn(min = 44.dp)
+            .then(if (onHold == null) Modifier else Modifier.holdable(holdIcon, holdLabel, onHold, tap)),
     )
 }
