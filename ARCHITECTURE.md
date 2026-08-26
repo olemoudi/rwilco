@@ -320,6 +320,17 @@ strict is asking somebody to remember how they spelled it.
   two minutes because nobody is there, and a display lit at full brightness until somebody comes
   home costs more battery than everything else in this app together. The alert is still on the
   screen when they do, and the notification is still in the shade either way.
+- **Where the sound comes out, and what it does to the rest** (`AlertAudio`): the alarm stream
+  always, but routed to the headphones when a pair is connected (`setPreferredDevice`, looked up
+  at the moment of playing so a pair unplugged a minute ago cannot swallow a reminder;
+  `AppSettings.alertToHeadphones`, on, and off is the honest setting for earbuds that live in a
+  drawer). And the focus request is `TRANSIENT_MAY_DUCK`, not `EXCLUSIVE`: a ten-second chime
+  has no business ending somebody's podcast, so the music drops a few decibels underneath and
+  comes back by itself. The previews in Settings use the same two, or they are previews of
+  something else — one for the tone, one for the continuous ring a full-screen alert makes
+  (capped at half a minute), one for the insistent round with its waits shortened; each button
+  is its own "parar" while it plays, and the alarm volume is a slider right there, since
+  choosing a sound without it is guesswork.
 - **The sound is a choice, in two parts.** *Which* one — `AppSettings.alertSound`: one of four
   chimes the app brings with it, the phone's own alarm tone, or a file somebody picked. The
   chimes are synthesised rather than sourced (`scripts/chimes.py`, run it and the same files

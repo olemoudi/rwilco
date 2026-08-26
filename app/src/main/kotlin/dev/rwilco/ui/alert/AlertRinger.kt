@@ -3,7 +3,6 @@ package dev.rwilco.ui.alert
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
-import android.media.AudioManager
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.VibrationAttributes
@@ -11,6 +10,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
+import dev.rwilco.notify.AlertAudio
 import dev.rwilco.notify.Sounds
 import java.time.Duration
 import dev.rwilco.model.AlertSound
@@ -39,8 +39,10 @@ class AlertRinger(private val context: Context) {
         pattern: VibrationPattern = VibrationPattern(),
         limit: Duration = VibrationLimits.LONGEST,
         tone: AlertSound = AlertSound.System,
+        /** Send it to the headphones when any are connected; see [AlertAudio.routeTo]. */
+        toHeadphones: Boolean = true,
     ) {
-        if (sound) startSound(tone)
+        if (sound) startSound(tone, toHeadphones)
         if (vibrate) startVibration(pattern, limit)
     }
 
@@ -52,30 +54,21 @@ class AlertRinger(private val context: Context) {
             }
         }
         player = null
-        focus?.let { request -> runCatching { context.getSystemService(AudioManager::class.java)?.abandonAudioFocusRequest(request) } }
+        AlertAudio.release(context, focus)
         focus = null
         runCatching { vibrator?.cancel() }
         vibrator = null
     }
 
-    private fun startSound(tone: AlertSound) {
+    private fun startSound(tone: AlertSound, toHeadphones: Boolean) {
         val uri = Sounds.uri(context, tone) ?: return
-        val attributes = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_ALARM)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            .build()
-        // Ask for the audio, exclusively: a podcast or the navigation kept talking over a chime
-        // that is deliberately gentle, and the chime was heard as nothing. Alarm usage cannot
-        // be ducked by anybody else, so nothing is given up in return.
-        runCatching {
-            val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE).setAudioAttributes(attributes).build()
-            context.getSystemService(AudioManager::class.java)?.requestAudioFocus(request)
-            focus = request
-        }
+        // Everything else drops a few decibels and carries on underneath; see AlertAudio.
+        focus = AlertAudio.duckOthers(context)
         runCatching {
             player = MediaPlayer().apply {
                 setDataSource(context, uri)
-                setAudioAttributes(attributes)
+                setAudioAttributes(AlertAudio.attributes())
+                AlertAudio.routeTo(context, this, toHeadphones)
                 isLooping = true
                 prepare()
                 start()

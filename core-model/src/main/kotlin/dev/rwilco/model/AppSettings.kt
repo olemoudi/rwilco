@@ -95,6 +95,13 @@ data class AppSettings(
      * somebody deciding for themselves.
      */
     val updatesWifiOnly: Boolean = false,
+    /**
+     * Send a reminder's sound to the headphones when any are connected, instead of letting it
+     * out of the phone's own speaker as an alarm otherwise would. On, because somebody wearing
+     * headphones is the person most likely to miss the speaker — and off is the honest setting
+     * for anybody whose earbuds live in a drawer, where a reminder would play to nobody.
+     */
+    val alertToHeadphones: Boolean = true,
 )
 
 /** How the alert screen holds more than one reminder. See [AppSettings.alertStacking]. */

@@ -882,4 +882,17 @@
         <item>The card at the top is the soonest thing that *can* happen now, not the soonest thing with a date on it. Those were the same until a phone filled up with places: nothing waiting on an arrival has a date, so one appointment months away was winning the top of the screen — counting down 138 days — while five other reminders were going to ring that evening. A place with hours on it does have a floor, the moment its window opens, and now says so: «como pronto, 18:30». A place with no hours stays in «cuando ocurra», a random draw is never lifted out, and nothing more than a week away is lifted at all.</item>
         <item>A fix that came out of the same report, and it was silently losing reminders: editing only the words of a reminder cleared the moment it was armed for without setting it again, and a firing with no armed moment is one the app drops. The alarm was still set; it just arrived to a reminder that no longer believed in it. The editor re-arms by hand now.</item>
     </string-array>
+    <string name="settings_sound_stop">Stop</string>
+    <string name="settings_sound_loop">Hear it looping</string>
+    <string name="settings_sound_loop_hint">How a full-screen reminder sounds: the same tone, round and round until you answer it. This stops itself after half a minute.</string>
+    <string name="settings_sound_volume">Alarm volume</string>
+    <string name="settings_sound_volume_hint">The phone\'s own alarm slider, here so a sound can be chosen at the level it will actually arrive at. Reminders play on the alarm stream, so this is the only volume that governs them — and at zero they are silent.</string>
+    <string name="settings_sound_headphones">To the headphones when there are any</string>
+    <string name="settings_sound_headphones_hint">A reminder is an alarm, and an alarm comes out of the phone\'s speaker even with headphones on. With this on it goes to the headphones instead when a pair is connected, and whatever you were listening to drops a little and carries on underneath rather than stopping. Turn it off if your earbuds live in a drawer: a reminder played to nobody is a reminder missed.</string>
+
+    <string-array name="whats_new_0_17_0">
+        <item>A reminder with sound now goes to your headphones when you are wearing any, instead of out of the phone\'s speaker as an alarm otherwise would. It is a setting, in Sound, and it is worth turning off if your earbuds live in a drawer: a reminder played to nobody is a reminder missed.</item>
+        <item>And it no longer stops your music. What was playing drops a few decibels and carries on underneath while the reminder sounds over it — the reminder is on the alarm channel and the music is not, so neither has to fight the other — and comes back by itself. It used to ask for the audio outright, which ended podcasts for a ten-second chime.</item>
+        <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
+    </string-array>
 </resources>

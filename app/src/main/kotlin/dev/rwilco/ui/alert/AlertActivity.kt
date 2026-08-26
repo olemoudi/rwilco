@@ -86,8 +86,14 @@ class AlertActivity : ComponentActivity() {
             val sound = plans.any { it.sound }
             val vibrate = plans.any { it.vibrate }
 
-            DisposableEffect(sound, vibrate, current.vibration, current.alertSound, ringEpoch) {
-                ringer.start(sound = sound, vibrate = vibrate, pattern = current.vibration, tone = current.alertSound)
+            DisposableEffect(sound, vibrate, current.vibration, current.alertSound, current.alertToHeadphones, ringEpoch) {
+                ringer.start(
+                    sound = sound,
+                    vibrate = vibrate,
+                    pattern = current.vibration,
+                    tone = current.alertSound,
+                    toHeadphones = current.alertToHeadphones,
+                )
                 onDispose { ringer.stop() }
             }
             // An alarm that rings for ever is one nobody leaves the house with. The alert stays

@@ -228,9 +228,11 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
                 plays = current.soundPlays,
                 gapMinutes = current.soundGapMinutes,
                 insistentInUse = insistent,
+                toHeadphones = current.alertToHeadphones,
                 onSound = viewModel::setAlertSound,
                 onPlays = viewModel::setSoundPlays,
                 onGap = viewModel::setSoundGap,
+                onToHeadphones = viewModel::setAlertToHeadphones,
             )
             Spacer(Modifier.height(spacing.sm))
             VibrationCard(pattern = current.vibration, onChange = viewModel::setVibration)
