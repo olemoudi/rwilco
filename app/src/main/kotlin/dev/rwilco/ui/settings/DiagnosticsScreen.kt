@@ -37,6 +37,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -72,8 +73,15 @@ fun DiagnosticsScreen(app: RwilcoApplication, onBack: () -> Unit) {
     val copied = stringResource(R.string.diag_copied)
     val cleared = stringResource(R.string.diag_cleared)
 
-    val report by produceState(initialValue = null as String?, reload) {
-        value = null
+    // What the log says right now, watched rather than sampled: a report built the moment the
+    // screen opened is a report that goes stale while somebody is reading it, and the reason to
+    // be on this screen at all is usually that something is happening.
+    val log by app.diagStore.log.collectAsStateWithLifecycle(initialValue = null)
+    val newest = log?.notes?.firstOrNull()?.at
+    val lines = log?.notes?.size ?: 0
+    val report by produceState(initialValue = null as String?, reload, newest, lines) {
+        // The old text stays on screen while the new one is built, so a note arriving does not
+        // blank the screen somebody is in the middle of reading.
         value = app.collectDiagnostics().report()
     }
 

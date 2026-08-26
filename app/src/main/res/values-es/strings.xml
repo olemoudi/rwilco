@@ -865,4 +865,8 @@
         <item>Hay una pantalla de «Diagnóstico» al final de Ajustes. Guarda una semana de lo que la app hizo de verdad —cada aviso que sonó y cada uno que decidió no sonar, los rearmes, qué permitía el teléfono en ese momento— más el estado con el que se juzga cada recordatorio: para qué momento está armado, cuándo sonó por última vez, qué está esperando. Un botón lo copia entero, así que cuando algo no suene puedes pegarlo donde estés pidiendo ayuda en vez de contarlo de memoria. A propósito no lleva el texto de ningún recordatorio, ni nombres de etiquetas o lugares, ni el token: un fallo vive en los momentos, no en las palabras, y los lugares van redondeados a un kilómetro.</item>
         <item>Un recordatorio con más de un disparador enseña ahora en su tarjeta cómo va cada uno. Con «todos», un ✓ en los que ya han ocurrido y un círculo vacío en lo que sigue esperando. Con «a la vez», un punto lleno en los que se cumplen ahora mismo —estás en ese lugar, la hora está dentro de esa franja— y vacío en el resto, y vuelve a cambiar solo en cuanto uno deja de cumplirse. Es justo la diferencia entre esas dos palabras, que hasta ahora pasaba donde nadie podía verla.</item>
     </string-array>
+
+    <string-array name="whats_new_0_15_1">
+        <item>La pantalla de diagnóstico se mantiene al día. Construía su informe una sola vez, al abrirse, así que lo que pasara mientras lo leías no aparecía — y el momento en que estás en esa pantalla suele ser justo cuando algo está pasando. Ahora sigue al registro, y el texto que estabas leyendo se queda quieto mientras se construye el nuevo.</item>
+    </string-array>
 </resources>

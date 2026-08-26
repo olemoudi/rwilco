@@ -867,4 +867,8 @@
         <item>There is a «Diagnostics» screen at the very bottom of Settings now. It holds a week of what the app actually did — every firing that rang and every one it decided not to, the re-arms, what the phone was allowing at the time — plus the state each reminder is judged by: what it is armed for, when it last rang, what it is waiting on. One button copies the lot, so when something does not ring you can paste it wherever you are asking for help instead of describing it from memory. It deliberately holds no reminder text, no tag or place names and no token: a bug lives in the moments, not in the words, and places are rounded to about a kilometre.</item>
         <item>A reminder with more than one trigger now shows where each one stands, on the card. Under «todos», a tick for the ones that have already happened and a hollow circle for what it is still waiting on. Under «a la vez», a filled dot for the ones that are true at this moment — you are inside that place, the hour is inside that window — and a hollow one for the rest, changing back on its own the moment one stops holding. It is the difference between those two words, which until now happened somewhere nobody could see.</item>
     </string-array>
+
+    <string-array name="whats_new_0_15_1">
+        <item>The diagnostics screen keeps up with itself. It built its report once, when it opened, so anything that happened while you were reading it was not there — and the moment you are on that screen is usually the moment something is happening. Now it follows the log, and the text you were reading stays put while the new one is built.</item>
+    </string-array>
 </resources>
