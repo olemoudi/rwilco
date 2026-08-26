@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
+import dev.rwilco.model.OFFERED_KINDS
+import dev.rwilco.model.dayShape
 import dev.rwilco.model.Action
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Recurrence
@@ -109,11 +111,12 @@ class EditorViewModel(
                 suggestedTexts = visibleTexts(suggestedTexts(past, now, limit = 8, exclude = draft.text), current.hiddenTexts),
                 allTexts = visibleTexts(suggestedTexts(past, now, limit = 100), current.hiddenTexts),
                 defaultTime = current.defaultTime,
+                dayShape = current.dayShape,
                 defaultKind = if (current.popularTriggersFirst) null else current.defaultTriggerKind,
                 // The "when"s used before, ready to be used again, and the order the tiles
                 // come up in when Settings asks for the popular ones first.
                 suggestedTriggers = suggestedTriggers(past, now, clock.zone),
-                kindOrder = if (current.popularTriggersFirst) triggerKindsByUse(past, now) else TriggerKind.entries.toList(),
+                kindOrder = if (current.popularTriggersFirst) triggerKindsByUse(past, now) else OFFERED_KINDS,
                 savedPlaces = current.savedPlaces,
                 recurrencePresets = recurrencePresetsByPopularity(current.recurrencePresets),
                 asPreset = editedPreset != null || newPreset,

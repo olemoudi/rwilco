@@ -146,7 +146,7 @@ fun HomeScreen(
                 preset = preset,
                 onConfirm = { words ->
                     askingWordsFor = null
-                    viewModel.createFromPreset(preset, words, state.defaultTime)
+                    viewModel.createFromPreset(preset, words, state.defaultTime, state.dayShape)
                 },
                 onDismiss = { askingWordsFor = null },
             )
@@ -216,7 +216,7 @@ fun HomeScreen(
                         onPick = { preset ->
                             // Words of its own: written on the spot. None: ask for them first.
                             if (preset.text.isBlank()) askingWordsFor = preset.id
-                            else viewModel.createFromPreset(preset, null, state.defaultTime)
+                            else viewModel.createFromPreset(preset, null, state.defaultTime, state.dayShape)
                         },
                         onManage = { managingPins = true },
                     )
@@ -259,6 +259,7 @@ fun HomeScreen(
                                 hero = hero,
                                 clock = viewModel.clock,
                                 today = today,
+                                defaultTime = state.defaultTime,
                                 onClick = { onOpen(hero.card.id) },
                             )
                         }

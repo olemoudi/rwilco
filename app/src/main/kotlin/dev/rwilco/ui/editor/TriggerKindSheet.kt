@@ -23,6 +23,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.rwilco.R
+import dev.rwilco.model.OFFERED_KINDS
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.TriggerKind
 import dev.rwilco.ui.components.TriggerKeycap
@@ -41,7 +42,7 @@ fun TriggerKindSheet(
     preferred: TriggerKind?,
     onPick: (TriggerKind) -> Unit,
     onDismiss: () -> Unit,
-    kinds: List<TriggerKind> = TriggerKind.entries.toList(),
+    kinds: List<TriggerKind> = OFFERED_KINDS,
 ) {
     val spacing = Tokens.spacing
     ModalBottomSheet(

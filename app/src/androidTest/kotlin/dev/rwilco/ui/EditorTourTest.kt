@@ -132,12 +132,12 @@ class EditorTourTest {
         text(s(R.string.editor_write)).performClick()
         rule.onNodeWithTag(EDITOR_TEXT_TAG).performTextInput(reminderText)
         text(s(R.string.editor_add_trigger)).performScrollTo().performClick()
-        rule.waitUntilShown(s(R.string.kind_date_time))
+        rule.waitUntilShown(s(R.string.kind_date))
         shot("editor-kinds")
 
         // Every configurator opens and cancels cleanly.
         for ((kind, name) in listOf(
-            R.string.kind_date_time to "sheet-datetime",
+            R.string.kind_date to "sheet-date",
             R.string.kind_repeat_time to "sheet-repeat",
             R.string.kind_interval to "sheet-interval",
             R.string.kind_random to "sheet-random",
@@ -148,7 +148,7 @@ class EditorTourTest {
             // The place sheet is fetching map tiles over the emulator's slow network.
             if (kind == R.string.kind_place) Thread.sleep(6_000)
             shot(name)
-            if (kind == R.string.kind_date_time) {
+            if (kind == R.string.kind_date) {
                 // The wheels, which replaced a dial nobody could hit one-handed.
                 rule.onAllNodesWithTag(TIME_FIELD_TAG, useUnmergedTree = true)[0].performClick()
                 rule.waitUntilShown(s(R.string.sheet_done))
@@ -156,10 +156,25 @@ class EditorTourTest {
                 text(s(R.string.sheet_done)).performClick()
                 rule.waitUntilGone(s(R.string.sheet_done))
             }
+            // The date tile now carries the other answer to "when in the day", and the hint
+            // under it is the day's own waking hours — the thing the settings are for.
+            if (kind == R.string.kind_date) {
+                text(s(R.string.sheet_random_in_day)).performScrollTo().performClick()
+                rule.waitUntilDisplayed(s(R.string.sheet_at_this_time))
+                shot("sheet-date-random")
+            }
+            // And the recurrence tile is four shapes, not one: months ask which day of the month.
+            if (kind == R.string.kind_repeat_time) {
+                text(s(R.string.sheet_repeat_unit_months)).performScrollTo().performClick()
+                rule.waitUntilDisplayed(s(R.string.sheet_repeat_monthly_nth))
+                shot("sheet-repeat-monthly")
+                text(s(R.string.sheet_repeat_monthly_nth)).performScrollTo().performClick()
+                rule.waitUntilDisplayed(s(R.string.repeat_ordinal_last))
+            }
             text(s(R.string.sheet_cancel)).performClick()
             rule.waitUntilGone(s(R.string.sheet_cancel))
             text(s(R.string.editor_add_trigger)).performScrollTo().performClick()
-            rule.waitUntilShown(s(R.string.kind_date_time))
+            rule.waitUntilShown(s(R.string.kind_date))
         }
 
         // A countdown becomes a trigger row and the error goes away.
@@ -181,6 +196,23 @@ class EditorTourTest {
         rule.waitUntilDisplayed(s(R.string.condition_window_hint))
         text(s(R.string.sheet_add)).performClick()
         rule.waitUntilGone(s(R.string.condition_title))
+        // Opening "nueva etiqueta" must not take the way to save with it. It used to: the
+        // field was a one-way door, the Save bar stepped aside while it was open, and anybody
+        // who scrolled back down to the triggers had lost the button with no way to get it
+        // back. Both halves are checked — the bar stays, and the field closes behind you.
+        text(s(R.string.editor_new_tag)).performScrollTo().performClick()
+        rule.waitUntilDisplayed(s(R.string.editor_new_tag_hint))
+        text(s(R.string.common_save)).assertIsDisplayed()
+        text(s(R.string.editor_add_trigger)).performScrollTo().performClick()
+        rule.waitUntilShown(s(R.string.kind_date))
+        // All the way into a configurator and back out: the tag field is left behind twice over.
+        text(s(R.string.kind_date)).performClick()
+        rule.waitUntilDisplayed(s(R.string.sheet_cancel))
+        text(s(R.string.sheet_cancel)).performClick()
+        rule.waitUntilGone(s(R.string.sheet_cancel))
+        text(s(R.string.common_save)).assertIsDisplayed()
+        text(s(R.string.editor_new_tag)).performScrollTo().assertIsDisplayed()
+
         // A tag on, so the capture shows what "on" looks like next to "off".
         text("casa").performScrollTo().performClick()
         shot("editor-filled")

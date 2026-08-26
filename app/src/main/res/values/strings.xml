@@ -181,10 +181,10 @@
     <!-- Trigger kinds -->
     <string name="kind_date_time">Date and time</string>
     <string name="kind_date_time_hint">A moment on the calendar</string>
-    <string name="kind_date">Date only</string>
-    <string name="kind_date_hint">A day, at your usual time</string>
-    <string name="kind_repeat_time">Repeating time</string>
-    <string name="kind_repeat_time_hint">The same time on chosen days</string>
+    <string name="kind_date">Date</string>
+    <string name="kind_date_hint">A day, with an hour or without one</string>
+    <string name="kind_repeat_time">Repeats</string>
+    <string name="kind_repeat_time_hint">Every day, week, month or year</string>
     <string name="kind_countdown">Countdown</string>
     <string name="kind_countdown_hint">In a while from now</string>
     <string name="kind_place">Place</string>
@@ -896,7 +896,72 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_18_0">
+        <item>A date is one tile now, not two. Pick a day and the hour is already filled in with your usual one, ready to be changed — or hand the hour over entirely with «at random during the day», and the reminder lands somewhere inside the hours you are actually up.</item>
+        <item>Which the app now knows: Settings asks when you get up and when you go to bed, once for weekdays and once for weekends, and when the weekend ends as well as when it starts. So a Friday gets up for work and goes to bed at the weekend, and a Sunday keeps the lie-in and loses the late night. A trigger given an hour of its own ignores all of it.</item>
+        <item>«A repeating time» has grown into a proper recurrence: every so many days, weeks, months or years — the days of the week for a weekly one, «day 26» or «the fourth Wednesday» for a monthly one — starting on a day you pick and ending never, on a date, or after so many times. Its hour can be left to the day too.</item>
+        <item>Nothing skips. A monthly «day 31» rings on the 28th in February rather than not at all, a yearly 29 February rings on the 28th, and the ordinals stop at «fourth» and «last» because every month has one of those.</item>
+        <item>Fixed: opening «new tag» in the editor could take the Save button away for good — the field stayed open behind you with nothing to close it, and the button steps aside while it is open. It does not step aside any more, and the field closes when you move on.</item>
+        <item>Fixed: the chimes ended with a click. They were still at three to eight per cent of their volume on the last sample and then stopped dead; they now fade to a true silence. «Soft» is where it was most audible.</item>
+        <item>Fixed: the backup badge flashed a red nought as it left. And the highlighted card at the top of Home now lists its triggers and their marks, like every other card, which is where you most want to see which of them already holds.</item>
+    </string-array>
+
     <string-array name="whats_new_0_17_1">
         <item>The little marks on a set\'s triggers are bigger and brighter, which they needed to be on the dark scheme: a third wider, a line twice as thick, and a solid middle so the ring keeps its edge over the coloured icon underneath instead of showing it through. The one that means «not known yet» is a ring with a dot in the middle of it now — it was a question mark, and a question mark three millimetres across is a smudge.</item>
     </string-array>
+
+    <!-- Recurrences and the hours somebody is up -->
+    <string name="trigger_random_in_day">at random during the day</string>
+    <string name="trigger_repeat_until">until %1$s</string>
+    <string name="trigger_monthly_day">day %1$d</string>
+    <string name="trigger_monthly_nth">%1$s %2$s</string>
+    <string name="repeat_ordinal_first">first</string>
+    <string name="repeat_ordinal_second">second</string>
+    <string name="repeat_ordinal_third">third</string>
+    <string name="repeat_ordinal_fourth">fourth</string>
+    <string name="repeat_ordinal_last">last</string>
+    <string name="sheet_random_in_day">At random during the day</string>
+    <string name="sheet_random_in_day_hint">A moment between %1$s and %2$s, from the hours you are up that day. You set them in Settings.</string>
+    <string name="sheet_at_this_time">At a time I choose</string>
+    <string name="sheet_repeat_every">Every</string>
+    <string name="sheet_repeat_unit_days">Days</string>
+    <string name="sheet_repeat_unit_weeks">Weeks</string>
+    <string name="sheet_repeat_unit_months">Months</string>
+    <string name="sheet_repeat_unit_years">Years</string>
+    <string name="sheet_repeat_starts">Starts</string>
+    <string name="sheet_repeat_ends">Ends</string>
+    <string name="sheet_repeat_ends_never">Never</string>
+    <string name="sheet_repeat_ends_on">On a date</string>
+    <string name="sheet_repeat_ends_after">After a number of times</string>
+    <string name="sheet_repeat_monthly_day">Day %1$d</string>
+    <string name="sheet_repeat_monthly_nth">A weekday</string>
+    <string name="sheet_repeat_every_value">%1$d</string>
+    <string name="settings_awake">The hours you are up</string>
+    <string name="settings_awake_hint">What “at random during the day” draws from. A trigger given an hour of its own ignores all of this.</string>
+    <string name="settings_awake_weekday">Weekdays</string>
+    <string name="settings_awake_weekend">Weekends</string>
+    <string name="settings_awake_wake">Up at</string>
+    <string name="settings_awake_sleep">To bed at</string>
+    <string name="settings_weekend_end">When "the weekend" ends</string>
+    <string name="settings_weekend_end_hint">From this moment the weekday bedtime applies again, which is what makes a Sunday night an early one.</string>
+    <plurals name="trigger_repeat_days">
+        <item quantity="one">every day</item>
+        <item quantity="other">every %1$d days</item>
+    </plurals>
+    <plurals name="trigger_repeat_weeks">
+        <item quantity="one">every week</item>
+        <item quantity="other">every %1$d weeks</item>
+    </plurals>
+    <plurals name="trigger_repeat_months">
+        <item quantity="one">every month</item>
+        <item quantity="other">every %1$d months</item>
+    </plurals>
+    <plurals name="trigger_repeat_years">
+        <item quantity="one">every year</item>
+        <item quantity="other">every %1$d years</item>
+    </plurals>
+    <plurals name="trigger_repeat_times">
+        <item quantity="one">%1$d time</item>
+        <item quantity="other">%1$d times</item>
+    </plurals>
 </resources>

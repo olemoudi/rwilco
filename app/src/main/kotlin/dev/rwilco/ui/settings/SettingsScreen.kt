@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.rwilco.BuildConfig
 import dev.rwilco.R
+import dev.rwilco.model.OFFERED_KINDS
 import dev.rwilco.model.AlertStacking
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.ThemeMode
@@ -151,7 +152,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
                                 selected = current.popularTriggersFirst,
                                 onClick = { viewModel.setPopularTriggersFirst(!current.popularTriggersFirst) },
                             )
-                            for (kind in TriggerKind.entries) {
+                            for (kind in OFFERED_KINDS) {
                                 TagChip(
                                     label = stringResource(kind.titleRes),
                                     selected = !current.popularTriggersFirst && current.defaultTriggerKind == kind,
@@ -195,6 +196,47 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
                             time = current.weekendTime,
                             onChange = { time -> viewModel.setWeekend(current.weekendDay, time) },
                             modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    Column {
+                        SettingTitle(
+                            title = stringResource(R.string.settings_weekend_end),
+                            info = stringResource(R.string.settings_weekend_end_hint),
+                        )
+                        Spacer(Modifier.height(spacing.sm))
+                        DayToggles(
+                            selected = setOf(current.weekendEndDay),
+                            onToggle = { day -> viewModel.setWeekendEnd(day, current.weekendEndTime) },
+                        )
+                        Spacer(Modifier.height(spacing.sm))
+                        TimeField(
+                            time = current.weekendEndTime,
+                            onChange = { time -> viewModel.setWeekendEnd(current.weekendEndDay, time) },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    Column {
+                        SettingTitle(
+                            title = stringResource(R.string.settings_awake),
+                            info = stringResource(R.string.settings_awake_hint),
+                        )
+                        Spacer(Modifier.height(spacing.sm))
+                        // Two pairs, labelled: the whole point of them is that they differ, and
+                        // which of the two a given day gets is decided by the two settings above.
+                        AwakePair(
+                            label = stringResource(R.string.settings_awake_weekday),
+                            wake = current.awake.wake,
+                            sleep = current.awake.sleep,
+                            onWake = { viewModel.setAwake(current.awake.copy(wake = it)) },
+                            onSleep = { viewModel.setAwake(current.awake.copy(sleep = it)) },
+                        )
+                        Spacer(Modifier.height(spacing.md))
+                        AwakePair(
+                            label = stringResource(R.string.settings_awake_weekend),
+                            wake = current.awake.weekendWake,
+                            sleep = current.awake.weekendSleep,
+                            onWake = { viewModel.setAwake(current.awake.copy(weekendWake = it)) },
+                            onSleep = { viewModel.setAwake(current.awake.copy(weekendSleep = it)) },
                         )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -431,6 +473,43 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
                     onDismiss = { showNotes = false },
                 )
             }
+        }
+    }
+}
+
+/**
+ * One day's worth of hours: up at, to bed at. A bedtime earlier than the waking hour is the
+ * next morning's and nothing here needs to say so — [dev.rwilco.model.awakeOn] reads it that
+ * way, which is what makes "to bed at 01:30" mean what anybody would expect it to.
+ */
+@Composable
+private fun AwakePair(
+    label: String,
+    wake: java.time.LocalTime,
+    sleep: java.time.LocalTime,
+    onWake: (java.time.LocalTime) -> Unit,
+    onSleep: (java.time.LocalTime) -> Unit,
+) {
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(Tokens.spacing.xs))
+        Row(horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm)) {
+            TimeField(
+                time = wake,
+                onChange = onWake,
+                label = stringResource(R.string.settings_awake_wake),
+                modifier = Modifier.weight(1f),
+            )
+            TimeField(
+                time = sleep,
+                onChange = onSleep,
+                label = stringResource(R.string.settings_awake_sleep),
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }

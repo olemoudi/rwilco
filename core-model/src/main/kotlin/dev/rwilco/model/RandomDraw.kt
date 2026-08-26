@@ -55,6 +55,22 @@ object RandomDraw {
         }
     }
 
+    /**
+     * One moment inside a day's waking hours, drawn from (reminder, day).
+     *
+     * What "at random during the day" resolves to, for a date and for a repeat that was given
+     * no hour. Same generator as the rest of this object and the same reason for it: the
+     * scheduler and the screen have to agree on the moment without either of them writing it
+     * down, and it has to hold still while the day does.
+     */
+    fun inDay(reminderId: String, date: LocalDate, window: AwakeWindow, zone: ZoneId): Instant {
+        val from = window.from.atZone(zone).toInstant()
+        val to = window.to.atZone(zone).toInstant()
+        val minutes = java.time.Duration.between(from, to).toMinutes().toInt()
+        if (minutes < 2) return from
+        return from.plusSeconds(SplitMix64(seed(reminderId, date.toEpochDay(), Period.DAY)).nextInt(minutes) * 60L)
+    }
+
     fun windowMinutes(trigger: Trigger.Random): Int =
         (trigger.to.toSecondOfDay() - trigger.from.toSecondOfDay()) / 60
 

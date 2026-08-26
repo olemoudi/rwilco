@@ -38,6 +38,19 @@ data class AppSettings(
      */
     val weekendDay: DayOfWeek = DayOfWeek.FRIDAY,
     val weekendTime: LocalTime = LocalTime.of(20, 30),
+    /**
+     * And when it stops. Sunday evening: the lie-in is still the weekend's but the early night
+     * is the week's, which is what makes a Sunday feel like a Sunday. Together with
+     * [weekendDay]/[weekendTime] this is the span [AwakeHours] is read against — see [awakeOn].
+     */
+    val weekendEndDay: DayOfWeek = DayOfWeek.SUNDAY,
+    val weekendEndTime: LocalTime = LocalTime.of(22, 0),
+    /**
+     * The hours this person is up, which is the window "at random during the day" draws from.
+     * Ignored the moment a trigger is given a time of its own: an explicit hour is somebody
+     * saying exactly when, and nothing here is allowed to argue with it.
+     */
+    val awake: AwakeHours = AwakeHours(),
     /** What's-new sheet bookkeeping: the last versionCode whose notes were shown. */
     val lastSeenVersionCode: Int = 0,
     /** Places named once and offered whole whenever a rule needs one: home, work, the gym. */

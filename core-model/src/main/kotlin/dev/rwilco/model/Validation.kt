@@ -34,6 +34,12 @@ sealed interface ValidationError {
     data class BadTrigger(val index: Int, val problem: TriggerProblem) : ValidationError
 }
 
+/** How far apart a recurrence may be asked to repeat, and how many times it may be asked to. */
+const val MIN_EVERY = 1
+const val MAX_EVERY = 99
+const val MIN_TIMES = 1
+const val MAX_TIMES = 999
+
 enum class TriggerProblem {
     DAYS_EMPTY,
     COUNTDOWN_OUT_OF_RANGE,
@@ -42,6 +48,8 @@ enum class TriggerProblem {
     LABEL_TOO_LONG,
     TIMES_OUT_OF_RANGE,
     WINDOW_EMPTY,
+    EVERY_OUT_OF_RANGE,
+    ENDS_BEFORE_START,
 }
 
 /**
@@ -115,7 +123,17 @@ fun problemOf(condition: Condition): TriggerProblem? = when (condition) {
 }
 
 fun problemOf(trigger: Trigger): TriggerProblem? = when (trigger) {
-    is Trigger.AtDateTime, is Trigger.OnDate -> null
+    is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.DayRandom -> null
+    is Trigger.Repeat -> {
+        val ends = trigger.ends
+        when {
+            trigger.every !in MIN_EVERY..MAX_EVERY -> TriggerProblem.EVERY_OUT_OF_RANGE
+            ends is RepeatEnd.After && ends.times !in MIN_TIMES..MAX_TIMES -> TriggerProblem.TIMES_OUT_OF_RANGE
+            // A series told to stop before it starts is a series with nothing in it.
+            ends is RepeatEnd.On && ends.date < trigger.startsOn -> TriggerProblem.ENDS_BEFORE_START
+            else -> null
+        }
+    }
     is Trigger.AtTime -> TriggerProblem.DAYS_EMPTY.takeIf { trigger.days.isEmpty() }
     // No days is every day here, unlike AtTime: a window is a shape of the day, not a weekly
     // appointment. A window that starts where it ends is not a window; one that wraps is.
@@ -150,6 +168,7 @@ fun warnings(
     zone: ZoneId,
     defaultTime: LocalTime,
     match: RuleMatch = RuleMatch.ANY,
+    shape: DayShape = DayShape.DEFAULT,
 ): List<ValidationWarning> {
     val found = ArrayList<ValidationWarning>()
     val doomed = ArrayList<Int>()
@@ -166,8 +185,9 @@ fun warnings(
     val moments = if (match == RuleMatch.TOGETHER && rules.size > 1) rules.count { it.trigger.isMoment } else 0
     rules.forEachIndexed { index, bare ->
         val rule = folded[index]
-        val onItsOwn = nextFireOf(rule.trigger, "", now, zone, defaultTime)
-        val oneShot = rule.trigger is Trigger.AtDateTime || rule.trigger is Trigger.OnDate
+        val onItsOwn = nextFireOf(rule.trigger, "", now, zone, defaultTime, shape)
+        val oneShot = rule.trigger is Trigger.AtDateTime || rule.trigger is Trigger.OnDate ||
+            rule.trigger is Trigger.DayRandom
         when {
             // Nothing left of the trigger itself: a date that has been and gone.
             onItsOwn == null && oneShot -> {
@@ -177,7 +197,7 @@ fun warnings(
             // The trigger still has moments, but never one its own conditions allow. This is
             // nextFireOfRule giving up after MAX_CANDIDATES, which is the same search the
             // scheduler does — so what it cannot find, nothing will.
-            onItsOwn != null && nextFireOfRule(rule, "", now, zone, defaultTime) == null -> {
+            onItsOwn != null && nextFireOfRule(rule, "", now, zone, defaultTime, shape) == null -> {
                 found += ValidationWarning.NeverFires(index)
                 doomed += index
             }

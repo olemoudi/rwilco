@@ -1,8 +1,10 @@
 package dev.rwilco.ui.editor
 
+import dev.rwilco.model.OFFERED_KINDS
 import dev.rwilco.model.Action
 import dev.rwilco.model.SOUND_ACTIONS
 import dev.rwilco.model.Condition
+import dev.rwilco.model.DayShape
 import dev.rwilco.model.DEFAULT_ACTIONS
 import dev.rwilco.model.MAX_PRESET_NAME
 import dev.rwilco.model.MAX_TEXT_LENGTH
@@ -110,10 +112,12 @@ data class EditorUiState(
     /** The "discard changes?" dialog; state so a rotation does not lose it. */
     val confirmingDiscard: Boolean = false,
     val defaultTime: LocalTime = LocalTime.of(9, 0),
+    /** The hours this person is up: what "at random during the day" is drawn from. */
+    val dayShape: DayShape = DayShape.DEFAULT,
     /** The kind the picker offers first, from the settings; null when there is no favourite. */
     val defaultKind: TriggerKind? = null,
     /** The order the six tiles come up in: their usual one, or what gets used most. */
-    val kindOrder: List<TriggerKind> = TriggerKind.entries.toList(),
+    val kindOrder: List<TriggerKind> = OFFERED_KINDS,
     /** The "when"s used before, best first, already re-hung on now. */
     val suggestedTriggers: List<Trigger> = emptyList(),
     /** The places kept by name in Settings, offered whole in the place sheet. */
@@ -252,7 +256,7 @@ fun EditorUiState.commitTrigger(index: Int?, trigger: Trigger): EditorUiState {
     // alone: a place or a date is one-shot until somebody says otherwise.
     val recurrence = when {
         draft.recurrence != Recurrence.None -> draft.recurrence
-        trigger is Trigger.AtTime || trigger is Trigger.Random -> Recurrence.ByTrigger
+        trigger is Trigger.AtTime || trigger is Trigger.Repeat || trigger is Trigger.Random -> Recurrence.ByTrigger
         else -> draft.recurrence
     }
     return copy(draft = draft.copy(rules = rules, recurrence = recurrence), sheet = EditorSheet.None)

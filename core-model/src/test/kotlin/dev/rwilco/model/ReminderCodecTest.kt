@@ -17,6 +17,11 @@ class ReminderCodecTest {
         Trigger.Location(40.4168, -3.7038, 200, Transition.ENTER, "Casa"),
         Trigger.Random(2, Period.DAY, LocalTime.of(10, 0), LocalTime.of(20, 0), emptySet()),
         Trigger.Random(1, Period.WEEK, LocalTime.of(18, 0), LocalTime.of(21, 0), setOf(DayOfWeek.SATURDAY)),
+        Trigger.DayRandom(LocalDate.of(2026, 9, 3)),
+        Trigger.Repeat(LocalDate.of(2026, 8, 26), 2, RepeatUnit.WEEK, LocalTime.of(19, 0), setOf(DayOfWeek.WEDNESDAY)),
+        Trigger.Repeat(LocalDate.of(2026, 8, 26), 1, RepeatUnit.MONTH, null, monthly = MonthlyOn.Nth(4, DayOfWeek.WEDNESDAY)),
+        Trigger.Repeat(LocalDate.of(2026, 8, 26), 1, RepeatUnit.YEAR, LocalTime.of(9, 0), ends = RepeatEnd.After(30)),
+        Trigger.Repeat(LocalDate.of(2026, 8, 26), 1, RepeatUnit.DAY, LocalTime.of(9, 0), ends = RepeatEnd.On(LocalDate.of(2027, 1, 1))),
     )
 
     @Test
@@ -37,6 +42,20 @@ class ReminderCodecTest {
             """{"trigger":{"type":"at_date_time","at":"2026-08-27T21:30"},"conditions":[]},""" +
             """{"trigger":{"type":"at_time","time":"07:30","days":["MONDAY","FRIDAY"]},""" +
             """"conditions":[{"type":"time_window","from":"18:00","to":"22:00","days":["FRIDAY"]}]}""" +
+            """]"""
+        assertEquals(expected, ReminderCodec.encodeRules(rules))
+    }
+
+    @Test
+    fun `the new discriminators are frozen too`() {
+        val rules = listOf(
+            TriggerRule(Trigger.DayRandom(LocalDate.of(2026, 9, 3))),
+            TriggerRule(Trigger.Repeat(LocalDate.of(2026, 8, 26), 2, RepeatUnit.WEEK, LocalTime.of(19, 0), setOf(DayOfWeek.WEDNESDAY))),
+        )
+        val expected = """[""" +
+            """{"trigger":{"type":"day_random","date":"2026-09-03"},"conditions":[]},""" +
+            """{"trigger":{"type":"repeat","startsOn":"2026-08-26","every":2,"unit":"WEEK","time":"19:00",""" +
+            """"days":["WEDNESDAY"],"monthly":null,"ends":{"type":"never"}},"conditions":[]}""" +
             """]"""
         assertEquals(expected, ReminderCodec.encodeRules(rules))
     }
@@ -138,7 +157,9 @@ class ReminderCodecTest {
         assertEquals(
             """{"theme":"SYSTEM","defaultTime":"09:00","haptics":true,"defaultTriggerKind":null,""" +
                 """"popularTriggersFirst":false,""" +
-                """"weekendDay":"FRIDAY","weekendTime":"20:30","lastSeenVersionCode":0,"savedPlaces":[],""" +
+                """"weekendDay":"FRIDAY","weekendTime":"20:30","weekendEndDay":"SUNDAY","weekendEndTime":"22:00",""" +
+                """"awake":{"wake":"08:00","sleep":"23:30","weekendWake":"10:00","weekendSleep":"01:30"},""" +
+                """"lastSeenVersionCode":0,"savedPlaces":[],""" +
                 """"defaultActions":["NOTIFICATION","VIBRATE"],"presets":[],"hiddenTexts":[],""" +
                 """"dayStart":"09:00","recurrencePresets":[""" +
                 """{"id":"builtin-day","recurrence":{"type":"after","amount":1,"unit":"DAYS"},"name":"","uses":0,"lastUsedAt":null},""" +

@@ -30,15 +30,75 @@ sealed interface Trigger {
     @SerialName("at_date_time")
     data class AtDateTime(val at: LocalDateTime) : Trigger
 
-    /** Once, on a day; rings at the user's default time (a setting, not stored here). */
+    /**
+     * Once, on a day; rings at the user's default time (a setting, not stored here).
+     *
+     * Nothing writes one of these any more — the date tile hands back an [AtDateTime] with the
+     * default time already in it, or a [DayRandom]. It stays because reminders written before
+     * that are still on people's phones, and it still means exactly what it meant.
+     */
     @Serializable
     @SerialName("on_date")
     data class OnDate(val date: LocalDate) : Trigger
 
-    /** Every week on [days], at [time]. */
+    /**
+     * Once, on a day, at a moment nobody chose: drawn from the hours this person is awake.
+     *
+     * The other half of the date tile. "Some time on Thursday" is a real thing to want — take
+     * the bins out, ring your mother — and pinning it to 09:00 makes it an appointment, which
+     * is the thing it is not. The draw is deterministic (see [RandomDraw]) so the app and the
+     * scheduler agree on it without storing it, and it moves with the day: a Saturday is drawn
+     * from the weekend's longer hours, a Sunday from a night that ends earlier.
+     */
+    @Serializable
+    @SerialName("day_random")
+    data class DayRandom(val date: LocalDate) : Trigger
+
+    /**
+     * Every week on [days], at [time]. Superseded by [Repeat], and kept for the reminders that
+     * were written with it: "todos los martes a las nueve" is a weekly [Repeat] now.
+     */
     @Serializable
     @SerialName("at_time")
     data class AtTime(val time: LocalTime, val days: Set<DayOfWeek>) : Trigger
+
+    /**
+     * A recurrence with a shape: every N days, weeks, months or years, from a day, until it
+     * stops.
+     *
+     * What "una hora que se repite" grew into. The weekly case it replaces was the only one the
+     * app could say, and everything people actually keep in a reminders app — the rent on the
+     * first, a birthday, the bins every other Tuesday, a fortnightly review — is one of the
+     * other three. The pieces are the ones an RRULE has, minus the ones nobody sets by hand:
+     *
+     * - [every] and [unit]: how far apart. Every counts blocks of the unit, not occurrences —
+     *   "every 2 weeks on Monday and Thursday" is two rings a fortnight, not one a fortnight.
+     * - [days]: which days of the week, for [RepeatUnit.WEEK] only. Empty means the weekday
+     *   [startsOn] falls on, so a week with nothing ticked is still a sensible weekly.
+     * - [monthly]: for [RepeatUnit.MONTH] only, "day 26" or "the fourth Wednesday". Null means
+     *   the day of the month [startsOn] falls on.
+     * - [time]: the hour, or null for a moment drawn from that day's waking hours — the same
+     *   choice, and the same words, as the date tile's.
+     * - [startsOn]: the first day it can ring, and the anchor every block is counted from.
+     *   Moving it moves the whole series, which is why it is asked for rather than assumed.
+     * - [ends]: never, on a date, or after so many times.
+     *
+     * Nothing here ever skips a block: a "day 31" in February rings on the 28th rather than not
+     * at all, and the ordinals stop at "fourth" and "last", which every month has. A reminder
+     * that silently misses a month is a worse failure than one that rings a day early, and the
+     * count behind [RepeatEnd.After] can only be exact if every block produces its dates.
+     */
+    @Serializable
+    @SerialName("repeat")
+    data class Repeat(
+        val startsOn: LocalDate,
+        val every: Int = 1,
+        val unit: RepeatUnit = RepeatUnit.WEEK,
+        val time: LocalTime? = null,
+        val days: Set<DayOfWeek> = emptySet(),
+        val monthly: MonthlyOn? = null,
+        val ends: RepeatEnd = RepeatEnd.Never,
+    ) : Trigger
 
     /**
      * A stretch of the day rather than a point in it: "de 17 a 19".
@@ -104,6 +164,46 @@ enum class Transition { ENTER, EXIT }
 
 enum class Period { DAY, WEEK }
 
+/** How far apart a [Trigger.Repeat] repeats. */
+@Serializable
+enum class RepeatUnit { DAY, WEEK, MONTH, YEAR }
+
+/** Which day of the month a monthly [Trigger.Repeat] lands on. */
+@Serializable
+sealed interface MonthlyOn {
+    /** The [day]th, or the last day of a month too short to have one. */
+    @Serializable
+    @SerialName("day_of_month")
+    data class Day(val day: Int) : MonthlyOn
+
+    /**
+     * The [ordinal]th [day] of the month: 1..4, or -1 for the last one. There is deliberately
+     * no fifth — four months in five do not have one, and "the fifth Tuesday" is a rule that
+     * mostly does not ring.
+     */
+    @Serializable
+    @SerialName("nth_weekday")
+    data class Nth(val ordinal: Int, val day: DayOfWeek) : MonthlyOn
+}
+
+/** When a [Trigger.Repeat] stops. */
+@Serializable
+sealed interface RepeatEnd {
+    @Serializable
+    @SerialName("never")
+    data object Never : RepeatEnd
+
+    /** The last day it can ring on; a moment later that day still counts. */
+    @Serializable
+    @SerialName("on")
+    data class On(val date: LocalDate) : RepeatEnd
+
+    /** After this many rings, counted from the first one on or after `startsOn`. */
+    @Serializable
+    @SerialName("after")
+    data class After(val times: Int) : RepeatEnd
+}
+
 /**
  * The colour a trigger is recognised by, everywhere it appears. Three, not six: past three a
  * palette stops helping recognition. The amber of the theme is deliberately not among them — it
@@ -111,7 +211,15 @@ enum class Period { DAY, WEEK }
  */
 enum class TriggerFamily { TIME, PLACE, CHANCE }
 
-/** The six tiles of the "add trigger" sheet; how a person picks, not how it is stored. */
+/**
+ * The tiles of the "add trigger" sheet; how a person picks, not how it is stored.
+ *
+ * [DATE_TIME] is no longer one of them — see [OFFERED_KINDS]. A day and a day-with-an-hour were
+ * two tiles asking the same question, and the answer to "which one do I want" was always "the
+ * one that lets me change my mind", so they are one tile with an hour in it. The entry stays
+ * because it is a stored value: somebody's favourite kind is written down by name, and an enum
+ * that loses a name loses the whole settings file with it.
+ */
 enum class TriggerKind(val family: TriggerFamily) {
     DATE_TIME(TriggerFamily.TIME),
     DATE(TriggerFamily.TIME),
@@ -122,9 +230,16 @@ enum class TriggerKind(val family: TriggerFamily) {
     RANDOM(TriggerFamily.CHANCE),
 }
 
+/** The tiles actually offered, in order. See [TriggerKind]. */
+val OFFERED_KINDS: List<TriggerKind> = TriggerKind.entries - TriggerKind.DATE_TIME
+
+/** What a stored favourite means now that the two date tiles are one. */
+fun TriggerKind.offered(): TriggerKind = if (this == TriggerKind.DATE_TIME) TriggerKind.DATE else this
+
 val Trigger.family: TriggerFamily
     get() = when (this) {
         is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.AtTime, is Trigger.Interval -> TriggerFamily.TIME
+        is Trigger.DayRandom, is Trigger.Repeat -> TriggerFamily.TIME
         is Trigger.Location -> TriggerFamily.PLACE
         is Trigger.Countdown -> TriggerFamily.TIME
         is Trigger.Random -> TriggerFamily.CHANCE
@@ -144,6 +259,7 @@ fun Trigger.asState(): Condition? = when (this) {
     is Trigger.Location -> Condition.AtPlace(lat, lng, radiusM, label, inside = transition == Transition.ENTER)
     is Trigger.Interval -> Condition.TimeWindow(from, to, days)
     is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.AtTime, is Trigger.Countdown, is Trigger.Random -> null
+    is Trigger.DayRandom, is Trigger.Repeat -> null
 }
 
 /** Whether this trigger is true only at an instant. See [asState]. */
@@ -152,9 +268,9 @@ val Trigger.isMoment: Boolean get() = asState() == null
 /** The tile that edits an existing trigger (a countdown re-opens as a countdown). */
 val Trigger.kind: TriggerKind
     get() = when (this) {
-        is Trigger.AtDateTime -> TriggerKind.DATE_TIME
-        is Trigger.OnDate -> TriggerKind.DATE
-        is Trigger.AtTime -> TriggerKind.REPEAT_TIME
+        // One tile edits all three: a date, with an hour or without one.
+        is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.DayRandom -> TriggerKind.DATE
+        is Trigger.AtTime, is Trigger.Repeat -> TriggerKind.REPEAT_TIME
         is Trigger.Interval -> TriggerKind.INTERVAL
         is Trigger.Location -> TriggerKind.PLACE
         is Trigger.Countdown -> TriggerKind.COUNTDOWN

@@ -78,6 +78,26 @@ def rounded(samples, cutoff=2400):
     return out
 
 
+def faded(samples, ms=70):
+    """
+    Bring the very end down to a true zero.
+
+    An exponential decay never actually reaches silence: these notes were still at three to
+    eight per cent of their peak on the last sample and then stopped dead, and a step from
+    there to nothing is a click — the "artefact just before it stops". It is worst on the
+    quietest chime, where there is no note left to hide it. Seventy milliseconds is thirty-odd
+    cycles at these frequencies: long enough to be a fade and far too short to be heard as the
+    note ending early. The trailing silence is for the encoder, which should not have to guess
+    what happens after the last sample it was given.
+    """
+    span = min(len(samples), int(RATE * ms / 1000))
+    out = list(samples)
+    for i in range(span):
+        position = i / (span - 1) if span > 1 else 1.0
+        out[len(out) - span + i] *= 0.5 + 0.5 * math.cos(math.pi * position)
+    return out + silence(20)
+
+
 def write(path, samples):
     peak = max(abs(s) for s in samples) or 1.0
     with wave.open(path, "wb") as f:
@@ -108,7 +128,7 @@ CHIMES = {
 def main(out_dir):
     os.makedirs(out_dir, exist_ok=True)
     for name, samples in CHIMES.items():
-        samples = rounded(samples)
+        samples = faded(rounded(samples))
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
             write(tmp.name, samples)
             target = os.path.join(out_dir, f"{name}.ogg")

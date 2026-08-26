@@ -35,12 +35,39 @@ Triggers (`core-model/.../Trigger.kt`), with their frozen JSON discriminators:
 
 | Kind (UI tile)        | Stored as                          | `type`         |
 |-----------------------|------------------------------------|----------------|
-| Date and time         | `AtDateTime(at: LocalDateTime)`    | `at_date_time` |
+| Date                  | `AtDateTime(at: LocalDateTime)`    | `at_date_time` |
+| Date (no hour chosen) | `DayRandom(date)` — a moment drawn from that day's waking hours | `day_random` |
 | Countdown             | `Countdown(minutes, startedAt?)`   | `countdown`    |
-| Date only             | `OnDate(date)` — rings at the default time (a setting) | `on_date` |
-| Time that repeats     | `AtTime(time, days)`               | `at_time`      |
+| Repeats               | `Repeat(startsOn, every, unit, time?, days, monthly?, ends)` | `repeat` |
 | Place                 | `Location(lat, lng, radiusM, ENTER/EXIT, label)` | `location` |
 | Random                | `Random(timesPer, DAY/WEEK, from, to, days)` | `random` |
+| *(read only)* Date only | `OnDate(date)` — rings at the default time (a setting) | `on_date` |
+| *(read only)* Time that repeats | `AtTime(time, days)`     | `at_time`      |
+
+The last two are written by no version of the app any more: a date is one tile now, with an
+hour in it or with the day's own hours behind it, and a weekly time is the `WEEK` case of
+`Repeat`. Both still decode and still mean exactly what they meant, because the discriminators
+are frozen and somebody's phone is full of them; editing one through its tile rewrites it as
+whichever of the new shapes it turns out to be.
+
+A `Repeat` is a sequence of *blocks* — days, weeks, months or years, `every` apart, counted
+from the block `startsOn` falls in — and each block yields the dates it names (`Repeats.kt`).
+Blocks and not occurrences, so "every two weeks on Monday and Thursday" is two rings a
+fortnight rather than a series that drifts a week every time it rings twice. Nothing ever
+skips a block: a monthly "day 31" rings on the 28th in February, a yearly 29 February rings on
+the 28th, and the ordinals stop at *fourth* and *last* — which is what makes the count behind
+`RepeatEnd.After` exact, and what stops a reminder from silently missing a month.
+
+**The hours somebody is up** (`Awake.kt`). A trigger with no `time` rings at a moment drawn
+from that day's waking window rather than from the twenty-four hours. `AwakeHours` holds two
+pairs — weekday and weekend — and `AppSettings.weekendDay`/`weekendTime` and
+`weekendEndDay`/`weekendEndTime` say where the weekend span begins and ends, so the two ends of
+a day are asked separately: a Friday gets up for work and goes to bed at the weekend, and a
+Sunday keeps the lie-in and loses the late night. `DayShape` is that read-only view of the
+settings, threaded through `nextFire`/`nextWake`/`nextFireOfRule`, and a change to it re-arms
+everything (`RwilcoApplication`) because it moves real armed moments. The draw itself is
+`RandomDraw.inDay`, deterministic by (reminder, day), so the screen and the scheduler agree
+without storing it. An explicit `time` ignores all of it.
 
 Wall-clock values are stored without a zone; the zone is applied when the next fire is computed.
 A countdown stores the **length**, not the moment: `startedAt` is stamped by `startCountdowns`

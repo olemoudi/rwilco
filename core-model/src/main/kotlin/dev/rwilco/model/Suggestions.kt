@@ -107,8 +107,8 @@ fun suggestedTriggers(reminders: List<Reminder>, now: Instant, zone: ZoneId, lim
  */
 fun triggerKindsByUse(reminders: List<Reminder>, now: Instant): List<TriggerKind> {
     val uses = reminders.flatMap { reminder -> reminder.rules.map { it.trigger.kind to reminder.updatedAt } }
-    val used = rankByUse(uses, now, TriggerKind.entries.size) { it.name }
-    return used + TriggerKind.entries.filter { it !in used }
+    val used = rankByUse(uses, now, OFFERED_KINDS.size) { it.name }.map { it.offered() }.distinct()
+    return used + OFFERED_KINDS.filter { it !in used }
 }
 
 /** What makes two uses the same "when". Null for a trigger with nothing to reuse. */
@@ -129,12 +129,19 @@ private fun shapeOf(trigger: Trigger): String? = when (trigger) {
     )
     is Trigger.Random -> "random:${trigger.timesPer}:${trigger.period}:${trigger.from}:${trigger.to}:" +
         trigger.days.map { it.value }.sorted().joinToString(",")
-    is Trigger.OnDate -> null
+    // The whole shape except the day it started on, which is this reminder's alone and is put
+    // back by reanchor. Two "every other Tuesday at nine" are the same answer to "when?".
+    is Trigger.Repeat -> "repeat:${trigger.every}:${trigger.unit}:${trigger.time}:" +
+        trigger.days.map { it.value }.sorted().joinToString(",") + ":${trigger.monthly}:${trigger.ends}"
+    // A day is that reminder's business, and "some time that day" without the day is nothing.
+    is Trigger.OnDate, is Trigger.DayRandom -> null
 }
 
 /** The same shape, hung on now: a length starts fresh, an hour looks for its next day. */
 private fun reanchor(trigger: Trigger, now: Instant, zone: ZoneId): Trigger = when (trigger) {
     is Trigger.Countdown -> trigger.copy(startedAt = null)
+    // A series offered again starts again: from today, keeping its shape and its ending.
+    is Trigger.Repeat -> trigger.copy(startsOn = now.atZone(zone).toLocalDate())
     is Trigger.AtDateTime -> {
         val here = now.atZone(zone)
         val time = trigger.at.toLocalTime()

@@ -7,6 +7,8 @@ import dev.rwilco.RwilcoApplication
 import dev.rwilco.alarm.ReminderFiring
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
+import dev.rwilco.model.DayShape
+import dev.rwilco.model.dayShape
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Preset
 import dev.rwilco.model.Reminder
@@ -93,10 +95,10 @@ class HomeViewModel(
      * its own; everything else the preset already answered, so the reminder is written there
      * and then — unless one of its moments has already passed, which needs a person.
      */
-    fun createFromPreset(preset: Preset, words: String? = null, defaultTime: java.time.LocalTime) {
+    fun createFromPreset(preset: Preset, words: String? = null, defaultTime: java.time.LocalTime, shape: DayShape) {
         viewModelScope.launch {
             val now = clock.instant()
-            if (warnings(preset.rules, now, clock.zone, defaultTime).any { it is ValidationWarning.InPast }) {
+            if (warnings(preset.rules, now, clock.zone, defaultTime, shape = shape).any { it is ValidationWarning.InPast }) {
                 events.send(HomeEvent.NeedsEditor(preset.id))
                 return@launch
             }
@@ -162,7 +164,7 @@ class HomeViewModel(
         // StateFlow, and on every resubscription — the app coming back after five seconds
         // away — it replays its last value, which was the instant of the last refresh, hours
         // ago: Home was built for a morning that had passed until the next minute tick.
-        buildHomeState(reminders, current.defaultTime, clock.instant(), clock.zone, tag, current.dayStart) { id, index ->
+        buildHomeState(reminders, current.defaultTime, clock.instant(), clock.zone, tag, current.dayStart, current.dayShape) { id, index ->
             insideOf(reminders, watch, id, index)
         }
     }

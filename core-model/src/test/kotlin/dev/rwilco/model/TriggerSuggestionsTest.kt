@@ -112,9 +112,9 @@ class TriggerSuggestionsTest {
         val order = triggerKindsByUse(history, now)
         assertEquals(TriggerKind.PLACE, order[0])
         assertEquals(TriggerKind.COUNTDOWN, order[1])
-        assertEquals(TriggerKind.entries.size, order.size, "a kind went missing")
+        assertEquals(OFFERED_KINDS.size, order.size, "a kind went missing")
         assertEquals(
-            TriggerKind.entries.filter { it != TriggerKind.PLACE && it != TriggerKind.COUNTDOWN },
+            OFFERED_KINDS.filter { it != TriggerKind.PLACE && it != TriggerKind.COUNTDOWN },
             order.drop(2),
             "the kinds nobody uses lost their usual order",
         )
@@ -122,6 +122,15 @@ class TriggerSuggestionsTest {
 
     @Test
     fun `with no history at all the kinds keep the order they always had`() {
-        assertEquals(TriggerKind.entries.toList(), triggerKindsByUse(emptyList(), now))
+        assertEquals(OFFERED_KINDS, triggerKindsByUse(emptyList(), now))
+    }
+
+    @Test
+    fun `a favourite saved when the two date tiles were two is offered as the one that is left`() {
+        val history = listOf(used(Trigger.AtDateTime(java.time.LocalDateTime.of(2026, 8, 27, 21, 0)), 1))
+        val order = triggerKindsByUse(history, now)
+        assertEquals(TriggerKind.DATE, order[0])
+        assertEquals(OFFERED_KINDS.size, order.size)
+        assertEquals(TriggerKind.DATE, TriggerKind.DATE_TIME.offered())
     }
 }

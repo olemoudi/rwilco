@@ -11,6 +11,7 @@ import dev.rwilco.MainActivity
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.diag.Diag
+import dev.rwilco.model.dayShape
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Reminder
@@ -72,7 +73,7 @@ class ReminderScheduler(
         for (reminder in open) {
             seen += reminder.id
             if (missedFire(reminder, now) != null) missed += reminder
-            val wake = nextWake(reminder, now, zone, defaultTime, dayStart)
+            val wake = nextWake(reminder, now, zone, defaultTime, dayStart, settings.dayShape)
             if (wake == null) {
                 cancel(reminder.id)
                 if (reminder.armedFor != null) repository.setArmedFor(reminder.id, null, null)

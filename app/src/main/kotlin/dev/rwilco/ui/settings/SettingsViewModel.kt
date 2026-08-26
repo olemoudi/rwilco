@@ -7,6 +7,7 @@ import dev.rwilco.RwilcoApplication
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.geo.PlaceLogStore
+import dev.rwilco.model.AwakeHours
 import dev.rwilco.model.Action
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.SoundLimits
@@ -137,6 +138,12 @@ class SettingsViewModel(
 
     /** What "the weekend" means when a reminder is put off to it. */
     fun setWeekend(day: DayOfWeek, time: LocalTime) = update { it.copy(weekendDay = day, weekendTime = time) }
+
+    /** And when it is over, which is what gives a Sunday night its earlier bedtime. */
+    fun setWeekendEnd(day: DayOfWeek, time: LocalTime) = update { it.copy(weekendEndDay = day, weekendEndTime = time) }
+
+    /** The hours somebody is up: where "at random during the day" draws its moment from. */
+    fun setAwake(hours: AwakeHours) = update { it.copy(awake = hours) }
 
     private fun update(transform: (AppSettings) -> AppSettings) {
         viewModelScope.launch { store.update(transform) }

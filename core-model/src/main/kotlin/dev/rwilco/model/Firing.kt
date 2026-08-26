@@ -22,7 +22,13 @@ import java.time.temporal.TemporalAdjusters
  * it. Whether something should repeat is not something a trigger's shape can answer — only the
  * person can, and until they do the answer is no.
  */
-fun statusAfterDismissal(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalTime): Status {
+fun statusAfterDismissal(
+    reminder: Reminder,
+    now: Instant,
+    zone: ZoneId,
+    defaultTime: LocalTime,
+    shape: DayShape = DayShape.DEFAULT,
+): Status {
     if (!reminder.recurrence.repeats) return Status.DONE
     // A recurrence that works out its own moments always has a next one, so there is nothing to
     // check: it stays. Anything else hands the question back to the triggers.
@@ -30,7 +36,7 @@ fun statusAfterDismissal(reminder: Reminder, now: Instant, zone: ZoneId, default
     // Dealt with means the round is over: what had already happened under ALL stops counting,
     // and the question is whether the reminder can come round again from scratch.
     val cleared = reminder.copy(status = Status.ACTIVE, snoozedUntil = null, firedRules = emptySet())
-    return if (nextFire(cleared, now, zone, defaultTime) == null) Status.DONE else Status.ACTIVE
+    return if (nextFire(cleared, now, zone, defaultTime, shape = shape) == null) Status.DONE else Status.ACTIVE
 }
 
 /**
@@ -91,14 +97,22 @@ fun firingPlan(actions: Set<Action>): FiringPlan = FiringPlan(
  * have been armed in turn had the phone been on. A repeating or random rule owes nothing:
  * its next moment is still ahead, and the set completes then, late rather than never.
  */
-fun owedUnderAll(reminder: Reminder, missed: Instant, now: Instant, zone: ZoneId, defaultTime: LocalTime): List<Wake> {
+fun owedUnderAll(
+    reminder: Reminder,
+    missed: Instant,
+    now: Instant,
+    zone: ZoneId,
+    defaultTime: LocalTime,
+    shape: DayShape = DayShape.DEFAULT,
+): List<Wake> {
     if (reminder.ruleMatch != RuleMatch.ALL || !reminder.rulesCombine) return emptyList()
     return reminder.pendingRules()
         .mapNotNull { index ->
             val rule = reminder.rules[index]
-            val oneShot = rule.trigger is Trigger.AtDateTime || rule.trigger is Trigger.OnDate || rule.trigger is Trigger.Countdown
+            val oneShot = rule.trigger is Trigger.AtDateTime || rule.trigger is Trigger.OnDate ||
+                rule.trigger is Trigger.DayRandom || rule.trigger is Trigger.Countdown
             if (!oneShot) return@mapNotNull null
-            val at = (nextFireOfRule(rule, reminder.id, missed, zone, defaultTime) as? NextFire.Scheduled)?.at ?: return@mapNotNull null
+            val at = (nextFireOfRule(rule, reminder.id, missed, zone, defaultTime, shape) as? NextFire.Scheduled)?.at ?: return@mapNotNull null
             if (at > now) null else Wake(at, index)
         }
         .sortedBy { it.at }

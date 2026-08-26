@@ -73,12 +73,11 @@ import dev.rwilco.ui.alert.AlertScreen
 import dev.rwilco.ui.components.DiscardDialog
 import dev.rwilco.ui.editor.sheets.ConditionSheet
 import dev.rwilco.ui.editor.sheets.CountdownSheet
-import dev.rwilco.ui.editor.sheets.DateOnlySheet
-import dev.rwilco.ui.editor.sheets.DateTimeSheet
+import dev.rwilco.ui.editor.sheets.DateSheet
 import dev.rwilco.ui.editor.sheets.IntervalSheet
 import dev.rwilco.ui.editor.sheets.LocationSheet
 import dev.rwilco.ui.editor.sheets.RandomSheet
-import dev.rwilco.ui.editor.sheets.RepeatTimeSheet
+import dev.rwilco.ui.editor.sheets.RepeatSheet
 import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.theme.Tokens
 
@@ -91,9 +90,6 @@ fun EditorScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
     val haptics = Tokens.haptics
-    /** Whether the tags section has its "new tag" field open; the Save bar steps aside for it. */
-    var addingTag by rememberSaveable { mutableStateOf(false) }
-
     LaunchedEffect(viewModel) {
         viewModel.eventFlow.collect { event ->
             when (event) {
@@ -126,7 +122,7 @@ fun EditorScreen(
     // moments (nextFireOfRule), and that is not work for a recomposition.
     val ruleWarnings = remember(state.draft.rules, state.draft.ruleMatch, state.defaultTime) {
         val worst = HashMap<Int, Int>()
-        for (warning in warnings(state.draft.rules, now, zone, state.defaultTime, state.draft.ruleMatch).sortedBy(::severityOf)) {
+        for (warning in warnings(state.draft.rules, now, zone, state.defaultTime, state.draft.ruleMatch, state.dayShape).sortedBy(::severityOf)) {
             val (index, message) = when (warning) {
                 // The strongest thing that can be said: under "todos" one dud rule is the
                 // whole reminder, so it is said on the rule that causes it.
@@ -173,10 +169,11 @@ fun EditorScreen(
                 )
             },
             bottomBar = {
-                // While a tag is being typed, its own + is the answer to that field. A Save
-                // button under it at the same time asks the same question twice, and the two
-                // mean different things.
-                if (!addingTag) SaveBar(
+                // Always. The one primary action of the screen used to step aside while a tag
+                // was being typed, and a person who left that field open lost the way to save
+                // at all — see TagsSection. Nothing is worth hiding "Guardar" for: clearing the
+                // focus on the way in commits whatever was in the field first.
+                SaveBar(
                     enabled = state.loaded,
                     onSave = {
                         haptics.perform(HapticFeedbackType.Confirm)
@@ -234,8 +231,6 @@ fun EditorScreen(
                         onToggle = viewModel::toggleTag,
                         onAdd = viewModel::addTag,
                         onCurate = { viewModel.curate(CurateKind.TAGS) },
-                        adding = addingTag,
-                        onAdding = { addingTag = it },
                     )
                 }
                 EditorSection(
@@ -311,16 +306,13 @@ fun EditorScreen(
             is EditorSheet.Configure -> {
                 val commit = { trigger: dev.rwilco.model.Trigger -> viewModel.commitTrigger(sheet.index, trigger) }
                 when (sheet.kind) {
-                    TriggerKind.DATE_TIME -> DateTimeSheet(
-                        initial = sheet.initial as? dev.rwilco.model.Trigger.AtDateTime,
+                    // One tile for a date, whether it carries an hour or not; DATE_TIME is a
+                    // stored favourite from when there were two, and opens the same sheet.
+                    TriggerKind.DATE, TriggerKind.DATE_TIME -> DateSheet(
+                        initial = sheet.initial,
                         now = now.atZone(zone),
-                        onConfirm = commit,
-                        onDismiss = viewModel::closeSheet,
-                    )
-                    TriggerKind.DATE -> DateOnlySheet(
-                        initial = sheet.initial as? dev.rwilco.model.Trigger.OnDate,
-                        today = today,
                         defaultTime = state.defaultTime,
+                        shape = state.dayShape,
                         onConfirm = commit,
                         onDismiss = viewModel::closeSheet,
                     )
@@ -330,8 +322,11 @@ fun EditorScreen(
                         onConfirm = commit,
                         onDismiss = viewModel::closeSheet,
                     )
-                    TriggerKind.REPEAT_TIME -> RepeatTimeSheet(
-                        initial = sheet.initial as? dev.rwilco.model.Trigger.AtTime,
+                    TriggerKind.REPEAT_TIME -> RepeatSheet(
+                        initial = sheet.initial,
+                        today = today,
+                        defaultTime = state.defaultTime,
+                        shape = state.dayShape,
                         onConfirm = commit,
                         onDismiss = viewModel::closeSheet,
                     )

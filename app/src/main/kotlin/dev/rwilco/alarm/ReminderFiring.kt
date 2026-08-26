@@ -5,6 +5,7 @@ import android.util.Log
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.diag.Diag
 import dev.rwilco.data.SettingsStore
+import dev.rwilco.model.dayShape
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.FiringOutcome
 import dev.rwilco.model.FiringPlan
@@ -249,8 +250,8 @@ class ReminderFiring(
         AlertNotifications.cancel(context, id)
         val reminder = repository.get(id) ?: return@withLock
         val now = clock.instant()
-        val defaultTime = settingsStore.settings.first().defaultTime
-        val status = statusAfterDismissal(reminder, now, clock.zone, defaultTime)
+        val settings = settingsStore.settings.first()
+        val status = statusAfterDismissal(reminder, now, clock.zone, settings.defaultTime, settings.dayShape)
         repository.snooze(id, null)
         // A round dealt with is a round over: what had already happened stops counting.
         repository.setFiredRules(id, emptySet())
@@ -292,7 +293,7 @@ class ReminderFiring(
             var left = reminder.rules.size
             while (left-- > 0) {
                 val current = repository.get(reminder.id) ?: break
-                val owed = owedUnderAll(current, at, clock.instant(), clock.zone, settings.defaultTime).firstOrNull() ?: break
+                val owed = owedUnderAll(current, at, clock.instant(), clock.zone, settings.defaultTime, settings.dayShape).firstOrNull() ?: break
                 fire(reminder.id, late = owed.at, ruleIndex = owed.ruleIndex)
             }
         }

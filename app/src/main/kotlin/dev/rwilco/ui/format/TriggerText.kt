@@ -9,6 +9,11 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import dev.rwilco.R
 import dev.rwilco.model.Condition
+import dev.rwilco.model.MonthlyOn
+import dev.rwilco.model.RepeatEnd
+import dev.rwilco.model.RepeatUnit
+import dev.rwilco.model.monthlyRule
+import dev.rwilco.model.weekDays
 import dev.rwilco.model.CountdownParts
 import dev.rwilco.model.Period
 import dev.rwilco.model.Transition
@@ -104,6 +109,19 @@ fun triggerLine(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): Tri
             secondary = daysSummary(trigger.days, locale),
             primaryMono = true,
         )
+        is Trigger.DayRandom -> TriggerLine(
+            primary = dayWord(trigger.date, today, locale),
+            secondary = stringResource(R.string.trigger_random_in_day),
+            primaryMono = true,
+        )
+        is Trigger.Repeat -> TriggerLine(
+            // The hour reads first, as it does on every other row that has one; a repeat with
+            // no hour says so in its place, because the shape is what is left to say.
+            primary = trigger.time?.let { TimeText.time(it, is24h, locale) }
+                ?: stringResource(R.string.trigger_random_in_day),
+            secondary = repeatSummary(trigger, today, locale),
+            primaryMono = trigger.time != null,
+        )
         is Trigger.Countdown -> {
             val startedAt = trigger.startedAt
             if (startedAt == null) {
@@ -160,6 +178,54 @@ fun daysSummary(days: Set<DayOfWeek>, locale: Locale): String = when (days) {
             .filter { it in days }
             .joinToString(" · ") { TimeText.dayInitial(it, locale) }
     }
+}
+
+/**
+ * A recurrence in a few words: "cada 2 semanas · L · J", "cada mes · el cuarto miércoles",
+ * "cada día · 30 veces". The unit always, what it picks out of the unit where that is a
+ * question, and where it stops when it stops.
+ */
+@Composable
+fun repeatSummary(trigger: Trigger.Repeat, today: LocalDate, locale: Locale): String {
+    val parts = ArrayList<String>(3)
+    parts += when (trigger.unit) {
+        RepeatUnit.DAY -> pluralStringResource(R.plurals.trigger_repeat_days, trigger.every, trigger.every)
+        RepeatUnit.WEEK -> pluralStringResource(R.plurals.trigger_repeat_weeks, trigger.every, trigger.every)
+        RepeatUnit.MONTH -> pluralStringResource(R.plurals.trigger_repeat_months, trigger.every, trigger.every)
+        RepeatUnit.YEAR -> pluralStringResource(R.plurals.trigger_repeat_years, trigger.every, trigger.every)
+    }
+    when (trigger.unit) {
+        // A week and a month have a choice inside them; a day and a year do not.
+        RepeatUnit.WEEK -> parts += daysSummary(trigger.weekDays(), locale)
+        RepeatUnit.MONTH -> parts += monthlyLabel(trigger.monthlyRule(), locale)
+        RepeatUnit.DAY, RepeatUnit.YEAR -> Unit
+    }
+    when (val ends = trigger.ends) {
+        is RepeatEnd.On -> parts += stringResource(R.string.trigger_repeat_until, dayWord(ends.date, today, locale))
+        is RepeatEnd.After -> parts += pluralStringResource(R.plurals.trigger_repeat_times, ends.times, ends.times)
+        RepeatEnd.Never -> Unit
+    }
+    return parts.joinToString(" · ")
+}
+
+/** "el día 26" · "el cuarto miércoles" · "el último lunes". */
+@Composable
+fun monthlyLabel(rule: MonthlyOn, locale: Locale): String = when (rule) {
+    is MonthlyOn.Day -> stringResource(R.string.trigger_monthly_day, rule.day)
+    is MonthlyOn.Nth -> stringResource(
+        R.string.trigger_monthly_nth,
+        stringResource(ordinalRes(rule.ordinal)),
+        rule.day.getDisplayName(java.time.format.TextStyle.FULL, locale),
+    )
+}
+
+/** First to fourth, and last. There is deliberately no fifth — see [MonthlyOn.Nth]. */
+fun ordinalRes(ordinal: Int): Int = when (ordinal) {
+    1 -> R.string.repeat_ordinal_first
+    2 -> R.string.repeat_ordinal_second
+    3 -> R.string.repeat_ordinal_third
+    4 -> R.string.repeat_ordinal_fourth
+    else -> R.string.repeat_ordinal_last
 }
 
 /** "45 min" · "2 h" · "2 h 30 min" · "3 d": the coarsest way to say a length that stays true. */

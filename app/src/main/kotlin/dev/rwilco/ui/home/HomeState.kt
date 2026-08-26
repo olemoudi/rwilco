@@ -1,5 +1,6 @@
 package dev.rwilco.ui.home
 
+import dev.rwilco.model.DayShape
 import dev.rwilco.model.Action
 import dev.rwilco.model.Condition
 import dev.rwilco.model.DEFAULT_DAY_START
@@ -35,6 +36,8 @@ data class HomeUiState(
     val selectedTag: TagFilter? = null,
     /** When date-only reminders ring; the cards say so under the date. */
     val defaultTime: LocalTime = LocalTime.of(9, 0),
+    /** The hours somebody is up; carried so a preset written in one tap is judged by them too. */
+    val dayShape: DayShape = DayShape.DEFAULT,
 ) {
     /** Nothing open at all (as opposed to a filter that matched nothing). */
     val empty: Boolean get() = loaded && hero == null && sections.isEmpty() && selectedTag == null
@@ -105,6 +108,8 @@ fun buildHomeState(
     zone: ZoneId,
     selectedTag: TagFilter?,
     dayStart: LocalTime = DEFAULT_DAY_START,
+    /** The hours somebody is up, which is where a moment "at random during the day" comes from. */
+    shape: DayShape = DayShape.DEFAULT,
     /** Is the phone inside this rule's circle? Only the place watch knows; null when nothing does. */
     inside: (String, Int) -> Boolean? = { _, _ -> null },
 ): HomeUiState {
@@ -118,7 +123,7 @@ fun buildHomeState(
         if (chosen !is TagFilter.Named) chosen.takeIf { it in tags }
         else tags.firstOrNull { it is TagFilter.Named && it.tag.equals(chosen.tag, ignoreCase = true) }
     }
-    val groups = groupForHome(reminders, now, zone, defaultTime, filter, dayStart)
+    val groups = groupForHome(reminders, now, zone, defaultTime, filter, dayStart, shape)
     fun card(reminder: Reminder): ReminderCardUi {
         val standings = reminder.ruleStandings(now, zone) { index -> inside(reminder.id, index) }
         return ReminderCardUi(
@@ -128,7 +133,7 @@ fun buildHomeState(
             triggers = reminder.rules.mapIndexed { index, rule ->
                 // Under "a la vez" the row says when the folded rule next holds, which is what
                 // will ring; a fold of two moments never does, and the row says nothing.
-                val next = reminder.togetherRule(index)?.let { nextFireOfRule(it, reminder.id, now, zone, defaultTime) }
+                val next = reminder.togetherRule(index)?.let { nextFireOfRule(it, reminder.id, now, zone, defaultTime, shape) }
                 TriggerRowUi(
                     trigger = rule.trigger,
                     conditions = rule.conditions,
@@ -166,6 +171,7 @@ fun buildHomeState(
         tags = tags,
         selectedTag = filter,
         defaultTime = defaultTime,
+        dayShape = shape,
     )
 }
 

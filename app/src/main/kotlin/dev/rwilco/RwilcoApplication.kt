@@ -16,6 +16,7 @@ import dev.rwilco.diag.Diag
 import dev.rwilco.diag.DiagStore
 import dev.rwilco.geo.PlaceWatcher
 import dev.rwilco.geo.hasBackgroundLocation
+import dev.rwilco.model.dayShape
 import dev.rwilco.model.AppSettings
 import dev.rwilco.notify.AlertNotifications
 import dev.rwilco.update.UpdateWorker
@@ -138,12 +139,13 @@ class RwilcoApplication : Application() {
                 }
         }
         appScope.launch {
-            // The two hours the settings hold that decide when something rings: the one a
-            // date-only reminder goes off at, and the one "el día siguiente" means. Both are
-            // scheduling inputs, and a setting changed without a re-arm is a setting that only
-            // takes effect at the next reboot.
+            // Everything the settings hold that decides when something rings: the hour a
+            // date-only reminder goes off at, the one "el día siguiente" means, and the hours
+            // somebody is up — which is the window every "al azar durante el día" is drawn
+            // from, so moving a bedtime moves real armed moments. A scheduling input changed
+            // without a re-arm is one that only takes effect at the next reboot.
             settingsStore.settings
-                .map { it.defaultTime to it.dayStart }
+                .map { Triple(it.defaultTime, it.dayStart, it.dayShape) }
                 .distinctUntilChanged()
                 .drop(1)
                 .collect { runCatching { scheduler.rearmAll() }.onFailure { Log.e(TAG, "re-arm after a settings change failed", it) } }

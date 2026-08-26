@@ -64,12 +64,13 @@ fun groupForHome(
     defaultTime: LocalTime,
     tagFilter: TagFilter? = null,
     dayStart: LocalTime = DEFAULT_DAY_START,
+    shape: DayShape = DayShape.DEFAULT,
 ): HomeGroups {
     val entries = reminders
         .filter { it.status != Status.DONE }
         .filter { tagFilter == null || tagFilter.matches(it) }
         .map {
-            HomeEntry(it, nextFire(it, now, zone, defaultTime, dayStart), nextWake(it, now, zone, defaultTime, dayStart))
+            HomeEntry(it, nextFire(it, now, zone, defaultTime, dayStart, shape), nextWake(it, now, zone, defaultTime, dayStart, shape))
         }
     val hero = heroOf(entries, now)
     val grouped = entries

@@ -312,10 +312,8 @@ internal fun TagsSection(
     onToggle: (String) -> Unit,
     onAdd: (String) -> Unit,
     onCurate: () -> Unit = {},
-    /** Hoisted: while a tag is being typed the screen puts its own Save button away. */
-    adding: Boolean = false,
-    onAdding: (Boolean) -> Unit = {},
 ) {
+    var adding by rememberSaveable { mutableStateOf(false) }
     var newTag by rememberSaveable { mutableStateOf("") }
     var listing by rememberSaveable { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
@@ -337,7 +335,7 @@ internal fun TagsSection(
     fun commit() {
         val raw = newTag
         newTag = ""
-        onAdding(false)
+        adding = false
         if (raw.isNotBlank()) {
             haptics.perform(HapticFeedbackType.Confirm)
             onAdd(raw)
@@ -348,6 +346,10 @@ internal fun TagsSection(
         // The way to a new tag sits on top, like the way to a new reminder text; what is under
         // it is the answer most of the time.
         if (adding) {
+            // Whether the focus has ever arrived. onFocusChanged reports the state the moment
+            // the field is attached, which is "not focused" — so without this the way out
+            // below fires before the way in does, and the field shuts as it opens.
+            var everFocused by remember { mutableStateOf(false) }
             LaunchedEffect(Unit) { focusRequester.requestFocus() }
             OutlinedTextField(
                 value = newTag,
@@ -370,11 +372,19 @@ internal fun TagsSection(
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .focusRequester(focusRequester),
+                    .focusRequester(focusRequester)
+                    // The way out. Opening this field used to be a one-way door: nothing but
+                    // its own + closed it again, so anybody who opened it and went back to the
+                    // form left a field open at the top of a screen they had scrolled past.
+                    // Losing the focus is somebody having moved on, and what they typed goes in
+                    // with them rather than being thrown away.
+                    .onFocusChanged { state ->
+                        if (state.isFocused) everFocused = true else if (everFocused && adding) commit()
+                    },
             )
         } else {
             OutlinedButton(
-                onClick = { onAdding(true) },
+                onClick = { adding = true },
                 shape = MaterialTheme.shapes.small,
                 border = BorderStroke(Tokens.strokes.control, MaterialTheme.colorScheme.outline),
                 colors = ButtonDefaults.outlinedButtonColors(

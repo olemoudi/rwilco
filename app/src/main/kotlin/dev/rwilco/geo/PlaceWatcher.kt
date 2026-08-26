@@ -15,6 +15,7 @@ import com.google.android.gms.tasks.Task
 import dev.rwilco.alarm.ReminderFiring
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
+import dev.rwilco.model.dayShape
 import dev.rwilco.model.Fix
 import dev.rwilco.model.Movement
 import dev.rwilco.model.NextFire
@@ -157,6 +158,7 @@ class PlaceWatcher(
         val zone = clock.zone
         val current = settings.settings.first()
         val defaultTime = current.defaultTime
+        val shape = current.dayShape
         val remembered = HashSet<String>()
         // A little before the hour it opens, so the first fix of a window is taken before
         // anything is judged by it rather than after.
@@ -184,7 +186,7 @@ class PlaceWatcher(
                 for (index in pending) {
                     val rule = folded[index] ?: continue
                     if (rule.trigger is Trigger.Location) continue
-                    val next = nextFireOfRule(rule, reminder.id, from, zone, defaultTime)
+                    val next = nextFireOfRule(rule, reminder.id, from, zone, defaultTime, shape)
                     val at = when (next) {
                         is NextFire.Scheduled -> next.at
                         is NextFire.Sometime -> next.at

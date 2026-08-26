@@ -1,5 +1,6 @@
 package dev.rwilco.diag
 
+import dev.rwilco.model.dayShape
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Condition
 import dev.rwilco.model.DiagNote
@@ -7,9 +8,13 @@ import dev.rwilco.model.NextFire
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
+import dev.rwilco.model.RepeatEnd
+import dev.rwilco.model.RepeatUnit
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.WatchNote
+import dev.rwilco.model.monthlyRule
+import dev.rwilco.model.weekDays
 import dev.rwilco.model.nextFire
 import dev.rwilco.model.nextWake
 import dev.rwilco.model.pendingRules
@@ -173,8 +178,8 @@ private fun Reminder.stateLine(now: Instant, zone: ZoneId, settings: AppSettings
     append(" fired=${stampOf(lastFiredAt)} dealt=${stampOf(lastDealtAt)} snooze=${stampOf(snoozedUntil)}")
     if (firedRules.isNotEmpty()) append(" fr=${firedRules.sorted()}")
     if (status == Status.ACTIVE) {
-        val next = nextFire(this@stateLine, now, zone, settings.defaultTime, settings.dayStart)
-        val wake = nextWake(this@stateLine, now, zone, settings.defaultTime, settings.dayStart)
+        val next = nextFire(this@stateLine, now, zone, settings.defaultTime, settings.dayStart, settings.dayShape)
+        val wake = nextWake(this@stateLine, now, zone, settings.defaultTime, settings.dayStart, settings.dayShape)
         append(" next=").append(next.describe(stampOf))
         append(" wake=${stampOf(wake?.at)}${wake?.ruleIndex?.let { "/r$it" } ?: ""}")
         val pending = pendingRules()
@@ -196,6 +201,12 @@ private fun Trigger.describe(): String = when (this) {
     is Trigger.AtDateTime -> "at $at"
     is Trigger.OnDate -> "on $date"
     is Trigger.AtTime -> "time $time ${days.describe()}"
+    is Trigger.DayRandom -> "on $date at random"
+    is Trigger.Repeat -> "repeat every $every ${unit.name.lowercase()}" +
+        (time?.let { " at $it" } ?: " at random") +
+        (if (unit == RepeatUnit.WEEK) " ${weekDays().describe()}" else "") +
+        (if (unit == RepeatUnit.MONTH) " ${monthlyRule()}" else "") +
+        " from $startsOn" + (if (ends == RepeatEnd.Never) "" else " until $ends")
     is Trigger.Interval -> "window $from-$to ${days.describe()}"
     is Trigger.Countdown -> "countdown ${minutes}m started=${startedAt ?: "-"}"
     is Trigger.Location -> "place ${describeCircle()}"

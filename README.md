@@ -16,7 +16,7 @@ Dark-first, built for one hand, no account, no server, nothing leaves the device
     <td><img src="docs/screenshots/home-search.png" width="170" alt="Search: one query over reminders and tags, each result saying which it is"></td>
     <td><img src="docs/screenshots/editor-filled.png" width="170" alt="Editor: the reminder text, a tag switched on, and a countdown trigger row in its family colour"></td>
     <td><img src="docs/screenshots/editor-kinds.png" width="170" alt="Adding a trigger: six tiles — date and time, date only, repeating time, countdown, place, random"></td>
-    <td><img src="docs/screenshots/sheet-datetime.png" width="170" alt="Date and time: shortcuts, a month calendar and the time"></td>
+    <td><img src="docs/screenshots/sheet-date.png" width="170" alt="Date: shortcuts, a month calendar, and an hour or none"></td>
     <td><img src="docs/screenshots/alert-preview.png" width="170" alt="The full-screen alert: the words as big as they fit, snooze chips and one Done button"></td>
   </tr>
 </table>

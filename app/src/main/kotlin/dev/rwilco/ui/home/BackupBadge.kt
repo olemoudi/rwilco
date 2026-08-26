@@ -95,8 +95,12 @@ fun BackupBadge(modifier: Modifier = Modifier) {
     ) {
         val scheme = MaterialTheme.colorScheme
         val done = familyColor(TriggerFamily.PLACE, LocalDarkTheme.current)
+        // Nothing pending and still on the screen means this is the disc on its way out: the
+        // copy landed and the number it was showing is gone. It leaves as the tick it became,
+        // never as a red nought — which is what a person saw for the length of the fade.
+        val settled = justDone || pending == 0
         val label = when {
-            justDone -> stringResource(R.string.home_backup_done)
+            settled -> stringResource(R.string.home_backup_done)
             activity.working -> stringResource(R.string.home_backup_working)
             else -> pluralStringResource(R.plurals.home_backup_pending, pending, pending)
         }
@@ -104,7 +108,7 @@ fun BackupBadge(modifier: Modifier = Modifier) {
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .size(Tokens.sizes.touch)
-                .clickable(enabled = !activity.working && !justDone) {
+                .clickable(enabled = !activity.working && !settled) {
                     haptics.perform(HapticFeedbackType.ContextClick)
                     VaultWorker.runNow(context)
                 }
@@ -114,10 +118,10 @@ fun BackupBadge(modifier: Modifier = Modifier) {
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .size(DISC)
-                    .background(if (justDone) done else scheme.error, CircleShape),
+                    .background(if (settled) done else scheme.error, CircleShape),
             ) {
                 when {
-                    justDone -> Icon(
+                    settled -> Icon(
                         imageVector = Icons.Filled.Check,
                         contentDescription = null,
                         tint = scheme.surface,

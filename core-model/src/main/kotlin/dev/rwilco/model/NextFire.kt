@@ -39,7 +39,14 @@ sealed interface NextFire {
  * For ALL it is the *last* of the ones still pending, because that is the one that rings — and
  * if a place is among them there is no date to give at all, so it answers with the place.
  */
-fun nextFire(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalTime, dayStart: LocalTime = DEFAULT_DAY_START): NextFire? {
+fun nextFire(
+    reminder: Reminder,
+    now: Instant,
+    zone: ZoneId,
+    defaultTime: LocalTime,
+    dayStart: LocalTime = DEFAULT_DAY_START,
+    shape: DayShape = DayShape.DEFAULT,
+): NextFire? {
     if (reminder.status != Status.ACTIVE) return null
     // A snooze outranks every rule: it is the person saying "not now, then".
     val snoozedUntil = reminder.snoozedUntil
@@ -63,7 +70,7 @@ fun nextFire(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalT
         // same rule the firing will judge — so a moment outside a sibling's window is not
         // offered, let alone armed. A fold of two moments can never ring and yields nothing.
         val rule = reminder.togetherRule(index) ?: return@mapNotNull null
-        nextFireOfRule(rule, reminder.id, from, zone, defaultTime)
+        nextFireOfRule(rule, reminder.id, from, zone, defaultTime, shape)
     }
     if (candidates.isEmpty() && rest != null) {
         return reminder.recurrenceMoment(zone, dayStart)?.let { NextFire.Scheduled(it, reminder.rules.firstOrNull()?.trigger) }
@@ -108,7 +115,14 @@ private fun NextFire.momentOrNull(): Instant? = when (this) {
  */
 data class Wake(val at: Instant, val ruleIndex: Int?)
 
-fun nextWake(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalTime, dayStart: LocalTime = DEFAULT_DAY_START): Wake? {
+fun nextWake(
+    reminder: Reminder,
+    now: Instant,
+    zone: ZoneId,
+    defaultTime: LocalTime,
+    dayStart: LocalTime = DEFAULT_DAY_START,
+    shape: DayShape = DayShape.DEFAULT,
+): Wake? {
     if (reminder.status != Status.ACTIVE) return null
     val snoozedUntil = reminder.snoozedUntil
     if (snoozedUntil != null && snoozedUntil > now) return Wake(snoozedUntil, null)
@@ -120,7 +134,7 @@ fun nextWake(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalT
     val from = maxOf(reminder.searchFrom(now), rest ?: now)
     val candidates = reminder.pendingRules().mapNotNull { index ->
         val rule = reminder.togetherRule(index) ?: return@mapNotNull null
-        nextFireOfRule(rule, reminder.id, from, zone, defaultTime)?.let { index to it }
+        nextFireOfRule(rule, reminder.id, from, zone, defaultTime, shape)?.let { index to it }
     }
     if (candidates.isEmpty() && rest != null) return reminder.recurrenceMoment(zone, dayStart)?.let { Wake(it, null) }
     return candidates
@@ -141,10 +155,17 @@ fun nextWake(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalT
  * Nothing knows where somebody will be next Tuesday, so a place condition is left out here and
  * the alarm is armed regardless; `ReminderFiring` asks it for real when the alarm goes off.
  */
-fun nextFireOfRule(rule: TriggerRule, reminderId: String, now: Instant, zone: ZoneId, defaultTime: LocalTime): NextFire? {
+fun nextFireOfRule(
+    rule: TriggerRule,
+    reminderId: String,
+    now: Instant,
+    zone: ZoneId,
+    defaultTime: LocalTime,
+    shape: DayShape = DayShape.DEFAULT,
+): NextFire? {
     var after = now
     repeat(MAX_CANDIDATES) {
-        val candidate = nextFireOf(rule.trigger, reminderId, after, zone, defaultTime) ?: return null
+        val candidate = nextFireOf(rule.trigger, reminderId, after, zone, defaultTime, shape) ?: return null
         val at = when (candidate) {
             is NextFire.Scheduled -> candidate.at
             is NextFire.Sometime -> candidate.at
@@ -160,14 +181,28 @@ fun nextFireOfRule(rule: TriggerRule, reminderId: String, now: Instant, zone: Zo
 private const val MAX_CANDIDATES = 64
 
 /** One trigger's next fire, or null when it has nothing left to do. */
-fun nextFireOf(trigger: Trigger, reminderId: String, now: Instant, zone: ZoneId, defaultTime: LocalTime): NextFire? =
+fun nextFireOf(
+    trigger: Trigger,
+    reminderId: String,
+    now: Instant,
+    zone: ZoneId,
+    defaultTime: LocalTime,
+    shape: DayShape = DayShape.DEFAULT,
+): NextFire? =
     when (trigger) {
         // atZone resolves a wall time that does not exist (a DST gap) forward, and one that
         // exists twice (a DST overlap) to its first occurrence — see NextFireTest.
         is Trigger.AtDateTime -> trigger.at.atZone(zone).toInstant().future(now)?.let { NextFire.Scheduled(it, trigger) }
         is Trigger.OnDate ->
             trigger.date.atTime(defaultTime).atZone(zone).toInstant().future(now)?.let { NextFire.Scheduled(it, trigger) }
+        // The hour nobody chose, drawn from the day this person is actually up for. Scheduled
+        // and not Sometime: the moment is settled and the app can say it. Not knowing when it
+        // will ring is what Trigger.Random is for; this is not having had to decide.
+        is Trigger.DayRandom -> RandomDraw.inDay(reminderId, trigger.date, shape.awakeOn(trigger.date), zone)
+            .future(now)
+            ?.let { NextFire.Scheduled(it, trigger) }
         is Trigger.AtTime -> nextAtTime(trigger, now, zone)?.let { NextFire.Scheduled(it, trigger) }
+        is Trigger.Repeat -> nextRepeat(trigger, reminderId, now, zone, shape)?.let { NextFire.Scheduled(it, trigger) }
         // The window opening is the moment it becomes true, and the only moment it produces.
         is Trigger.Interval -> nextAtTime(
             // No days on a window means every day; nextAtTime reads an empty set as "never",
@@ -186,6 +221,25 @@ fun nextFireOf(trigger: Trigger, reminderId: String, now: Instant, zone: ZoneId,
     }
 
 private fun Instant.future(now: Instant): Instant? = takeIf { it > now }
+
+/**
+ * The next moment a recurrence produces.
+ *
+ * From yesterday rather than today, because a day's moment is not always inside that day: a
+ * window that runs to half one in the morning can put Friday's draw on Saturday, and looking
+ * only from today would step over it. A handful of dates is enough to walk past the ones
+ * already gone — the dates are in order, so the first one still ahead is the answer.
+ */
+private fun nextRepeat(trigger: Trigger.Repeat, reminderId: String, now: Instant, zone: ZoneId, shape: DayShape): Instant? {
+    val today = now.atZone(zone).toLocalDate()
+    return trigger.occurrences(today.minusDays(1))
+        .take(REPEAT_PROBE)
+        .map { trigger.momentOn(it, reminderId, zone, shape) }
+        .firstOrNull { it > now }
+}
+
+/** Enough to step over the moments of the last day or two and find the next one still coming. */
+private const val REPEAT_PROBE = 8
 
 private fun nextAtTime(trigger: Trigger.AtTime, now: Instant, zone: ZoneId): Instant? {
     if (trigger.days.isEmpty()) return null

@@ -43,6 +43,7 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 
 /**
  * The one card that glows: the next definite moment. The lamp brightens as it nears, and the
@@ -54,6 +55,7 @@ fun HeroCard(
     hero: HeroUi,
     clock: Clock,
     today: LocalDate,
+    defaultTime: LocalTime,
     onClick: () -> Unit,
 ) {
     val spacing = Tokens.spacing
@@ -129,6 +131,26 @@ fun HeroCard(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
+            // A set of rules, spelled out, exactly as the plain cards spell it out — with the
+            // standing marks, which are the whole reason to look: this is the card of the
+            // reminder that is about to go off, and "which of the three is already true" is a
+            // more urgent question here than anywhere else on the screen. One rule says all of
+            // this in the countdown above it already, so one rule gets no list.
+            if (hero.card.triggers.size > 1) {
+                Spacer(Modifier.height(spacing.md))
+                hero.card.matchLabel?.let {
+                    Text(
+                        text = stringResource(it),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = spacing.xs),
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
+                    for (row in hero.card.triggers) TriggerRow(row, today, defaultTime)
+                    hero.card.recurrence?.let { RecurrenceRow(it) }
+                }
+            }
             if (hero.card.tags.isNotEmpty() || hero.card.actions.isNotEmpty()) {
                 Spacer(Modifier.height(spacing.sm))
                 CardFooter(tags = hero.card.tags, actions = hero.card.actions, modifier = Modifier.fillMaxWidth())
