@@ -87,6 +87,42 @@ class PresetTest {
     }
 
     @Test
+    fun `one use can say what it does without changing the shape`() {
+        val source = Preset(
+            id = "p1",
+            name = "Pastillas",
+            actions = setOf(Action.NOTIFICATION, Action.VIBRATE),
+            createdAt = now,
+        )
+        val louder = source.toReminder(
+            id = "r1",
+            now = now,
+            words = "Las de la tensión",
+            actions = setOf(Action.NOTIFICATION, Action.VIBRATE, Action.FULL_SCREEN),
+        )
+        assertEquals(setOf(Action.NOTIFICATION, Action.VIBRATE, Action.FULL_SCREEN), louder.actions)
+        // The shape itself is untouched, and the next use of it is what it always was.
+        assertEquals(setOf(Action.NOTIFICATION, Action.VIBRATE), source.actions)
+        assertEquals(setOf(Action.NOTIFICATION, Action.VIBRATE), source.toReminder(id = "r2", now = now).actions)
+    }
+
+    @Test
+    fun `the two sound tiles are one choice, wherever they are offered`() {
+        val none = emptySet<Action>()
+        assertEquals(setOf(Action.SOUND), none.toggling(Action.SOUND))
+        // Asking for the other puts the first away rather than asking for both.
+        assertEquals(setOf(Action.SOUND_UNTIL_ANSWERED), setOf(Action.SOUND).toggling(Action.SOUND_UNTIL_ANSWERED))
+        assertEquals(setOf(Action.SOUND), setOf(Action.SOUND_UNTIL_ANSWERED).toggling(Action.SOUND))
+        // Everything else is a plain on and off, and nothing else is disturbed.
+        assertEquals(
+            setOf(Action.SOUND, Action.VIBRATE),
+            setOf(Action.SOUND).toggling(Action.VIBRATE),
+        )
+        assertEquals(setOf(Action.SOUND), setOf(Action.SOUND, Action.VIBRATE).toggling(Action.VIBRATE))
+        assertEquals(none, setOf(Action.SOUND).toggling(Action.SOUND))
+    }
+
+    @Test
     fun `presets and the new settings survive a round trip through json`() {
         val settings = AppSettings(
             defaultActions = setOf(Action.FULL_SCREEN),

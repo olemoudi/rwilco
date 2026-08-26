@@ -13,6 +13,17 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.semantics.Role
+import dev.rwilco.model.Action
+import dev.rwilco.model.toggling
+import dev.rwilco.ui.theme.icon
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -245,8 +256,11 @@ fun PinPresetsPanel(
  * the keyboard already up, and one button. No form, because there is nothing else to decide.
  */
 @Composable
-fun PresetWordsDialog(preset: Preset, onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
+fun PresetWordsDialog(preset: Preset, onConfirm: (String, Set<Action>) -> Unit, onDismiss: () -> Unit) {
     var words by remember { mutableStateOf("") }
+    // What the shape brings, until this reminder says otherwise. The preset is not touched:
+    // "this one, also on the screen" is a thing to say once without editing the shape for good.
+    var actions by remember(preset.id) { mutableStateOf(preset.actions) }
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val spacing = Tokens.spacing
@@ -288,7 +302,7 @@ fun PresetWordsDialog(preset: Preset, onConfirm: (String) -> Unit, onDismiss: ()
                         capitalization = KeyboardCapitalization.Sentences,
                         imeAction = ImeAction.Done,
                     ),
-                    keyboardActions = KeyboardActions(onDone = { if (words.isNotBlank()) onConfirm(words.trim()) }),
+                    keyboardActions = KeyboardActions(onDone = { if (words.isNotBlank()) onConfirm(words.trim(), actions) }),
                     shape = MaterialTheme.shapes.small,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = scheme.outline,
@@ -300,6 +314,8 @@ fun PresetWordsDialog(preset: Preset, onConfirm: (String) -> Unit, onDismiss: ()
                         .focusRequester(focusRequester),
                 )
                 Spacer(Modifier.height(spacing.md))
+                ActionPips(selected = actions, onToggle = { actions = actions.toggling(it) })
+                Spacer(Modifier.height(spacing.md))
                 Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm), modifier = Modifier.fillMaxWidth()) {
                     TextButton(
                         onClick = onDismiss,
@@ -307,7 +323,7 @@ fun PresetWordsDialog(preset: Preset, onConfirm: (String) -> Unit, onDismiss: ()
                         modifier = Modifier.heightIn(min = Tokens.sizes.control),
                     ) { Text(stringResource(R.string.sheet_cancel)) }
                     Button(
-                        onClick = { onConfirm(words.trim()) },
+                        onClick = { onConfirm(words.trim(), actions) },
                         enabled = words.isNotBlank(),
                         shape = MaterialTheme.shapes.medium,
                         colors = ButtonDefaults.buttonColors(
@@ -318,6 +334,66 @@ fun PresetWordsDialog(preset: Preset, onConfirm: (String) -> Unit, onDismiss: ()
                             .weight(1f)
                             .heightIn(min = Tokens.sizes.control),
                     ) { Text(stringResource(R.string.home_pin_create_now), style = MaterialTheme.typography.titleMedium) }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * What it will do when it rings, as five glyphs under the words.
+ *
+ * Icons and nothing else: the dialog is one field and one button, and five named tiles would
+ * turn a two-second answer into a form. The shape's own answer is already on when it opens, so
+ * the row is read rather than filled in — and a tap is there for the day this one reminder
+ * needs the screen, or does not need the noise. Each carries its name for a screen reader,
+ * which is the reading nobody can get from a glyph.
+ */
+@Composable
+private fun ActionPips(selected: Set<Action>, onToggle: (Action) -> Unit) {
+    val haptics = Tokens.haptics
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        for (action in Action.entries) {
+            val on = action in selected
+            val fill by animateColorAsState(
+                targetValue = if (on) scheme.onSurface else scheme.surfaceContainerHigh,
+                animationSpec = tween(Tokens.motion.fast),
+                label = "pipFill",
+            )
+            val ink by animateColorAsState(
+                targetValue = if (on) scheme.surface else scheme.onSurfaceVariant,
+                animationSpec = tween(Tokens.motion.fast),
+                label = "pipInk",
+            )
+            val label = stringResource(action.labelRes)
+            Surface(
+                onClick = {
+                    haptics.perform(if (on) HapticFeedbackType.ToggleOff else HapticFeedbackType.ToggleOn)
+                    onToggle(action)
+                },
+                shape = MaterialTheme.shapes.medium,
+                color = fill,
+                border = if (on) null else BorderStroke(Tokens.strokes.control, scheme.outline),
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = Tokens.sizes.touch)
+                    .semantics {
+                        contentDescription = label
+                        role = Role.Checkbox
+                        toggleableState = if (on) ToggleableState.On else ToggleableState.Off
+                    },
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = action.icon,
+                        contentDescription = null,
+                        tint = ink,
+                        modifier = Modifier.size(Tokens.sizes.badge),
+                    )
                 }
             }
         }

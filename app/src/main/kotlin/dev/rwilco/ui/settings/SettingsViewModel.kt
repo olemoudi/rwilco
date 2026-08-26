@@ -14,7 +14,7 @@ import dev.rwilco.model.SoundLimits
 import dev.rwilco.model.AlertSound
 import dev.rwilco.model.AlertStacking
 import dev.rwilco.model.PlaceWatchState
-import dev.rwilco.model.SOUND_ACTIONS
+import dev.rwilco.model.toggling
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.PlaceWatchPolicy
 import dev.rwilco.model.ThemeMode
@@ -96,17 +96,7 @@ class SettingsViewModel(
     fun setTheme(theme: ThemeMode) = update { it.copy(theme = theme) }
 
     /** What a blank reminder starts with; the editor's own tiles, one screen up. */
-    fun toggleDefaultAction(action: Action) = update { settings ->
-        val actions = settings.defaultActions
-        // The two sound tiles are one choice here too; see EditorUiState.toggleAction.
-        settings.copy(
-            defaultActions = when {
-                action in actions -> actions - action
-                action in SOUND_ACTIONS -> actions - SOUND_ACTIONS + action
-                else -> actions + action
-            },
-        )
-    }
+    fun toggleDefaultAction(action: Action) = update { it.copy(defaultActions = it.defaultActions.toggling(action)) }
     fun setDefaultTime(time: LocalTime) = update { it.copy(defaultTime = time) }
 
     /** What "the next day" means to this person: where a recurrence in days or months lands. */

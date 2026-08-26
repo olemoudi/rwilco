@@ -22,6 +22,8 @@ import dev.rwilco.RwilcoApplication
 import dev.rwilco.model.PRESET_COLORS
 import dev.rwilco.ui.editor.EDITOR_TEXT_TAG
 import kotlinx.coroutines.flow.first
+import dev.rwilco.model.Action
+import dev.rwilco.model.DEFAULT_ACTIONS
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -207,11 +209,25 @@ class PresetFlowTest {
         // A field, already focused, and one button.
         waitFor(s(R.string.home_pin_create_now))
         rule.onNodeWithText(s(R.string.editor_text_placeholder)).performTextInput(reminderWords)
+
+        // Under the words, what it will do when it rings — the shape's answer, already on, and
+        // changeable for this one reminder without editing the shape. The preset carries the
+        // default pair (notification and vibration); this asks for the screen as well.
+        rule.onNodeWithContentDescription(s(R.string.action_full_screen)).performClick()
+        shot("preset-words")
         text(s(R.string.home_pin_create_now)).performClick()
 
         rule.waitUntil(10_000) { runBlocking { app.repository.openNow().any { it.text == reminderWords } } }
         val made = runBlocking { app.repository.openNow().first { it.text == reminderWords } }
         assertEquals("the shape came with it", listOf("compra"), made.tags)
+        assertEquals(
+            "the tiles under the words are what it does",
+            setOf(Action.NOTIFICATION, Action.VIBRATE, Action.FULL_SCREEN),
+            made.actions,
+        )
+        // And the shape itself is untouched by having been used that way once.
+        val shape = runBlocking { app.settingsStore.settings.first() }.presets.first { it.id == "p1" }
+        assertEquals("the preset kept its own answer", DEFAULT_ACTIONS, shape.actions)
     }
 
     @Test
@@ -238,5 +254,16 @@ class PresetFlowTest {
         rule.onNodeWithContentDescription(s(R.string.editor_delete_preset)).performClick()
         rule.waitUntil(10_000) { runBlocking { app.settingsStore.settings.first().presets.isEmpty() } }
         waitFor(s(R.string.home_new))
+    }
+
+    /** One capture, so a row of five glyphs can be looked at rather than reasoned about. */
+    private fun shot(name: String) {
+        rule.waitForIdle()
+        Thread.sleep(1_500)
+        val dir = java.io.File(app.filesDir, "screenshots").apply { mkdirs() }
+        val bitmap = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+        java.io.File(dir, "$name.png").outputStream().use {
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+        }
     }
 }

@@ -896,6 +896,10 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_18_1">
+        <item>Using a pinned shape that asks for its words now shows what it will do when it rings, as five glyphs under the field: the shape’s own answer, already on, and a tap away from being changed for this one reminder. Asking for the screen just this once, or for silence just this once, no longer means editing the shape and putting it back afterwards. The shape itself is untouched.</item>
+    </string-array>
+
     <string-array name="whats_new_0_18_0">
         <item>A date is one tile now, not two. Pick a day and the hour is already filled in with your usual one, ready to be changed — or hand the hour over entirely with «at random during the day», and the reminder lands somewhere inside the hours you are actually up.</item>
         <item>Which the app now knows: Settings asks when you get up and when you go to bed, once for weekdays and once for weekends, and when the weekend ends as well as when it starts. So a Friday gets up for work and goes to bed at the weekend, and a Sunday keeps the lie-in and loses the late night. A trigger given an hour of its own ignores all of it.</item>

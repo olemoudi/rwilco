@@ -144,9 +144,9 @@ fun HomeScreen(
         presets.firstOrNull { it.id == id }?.let { preset ->
             PresetWordsDialog(
                 preset = preset,
-                onConfirm = { words ->
+                onConfirm = { words, actions ->
                     askingWordsFor = null
-                    viewModel.createFromPreset(preset, words, state.defaultTime, state.dayShape)
+                    viewModel.createFromPreset(preset, words, state.defaultTime, state.dayShape, actions)
                 },
                 onDismiss = { askingWordsFor = null },
             )

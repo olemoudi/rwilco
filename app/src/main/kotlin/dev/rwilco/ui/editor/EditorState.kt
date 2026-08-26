@@ -2,7 +2,7 @@ package dev.rwilco.ui.editor
 
 import dev.rwilco.model.OFFERED_KINDS
 import dev.rwilco.model.Action
-import dev.rwilco.model.SOUND_ACTIONS
+import dev.rwilco.model.toggling
 import dev.rwilco.model.Condition
 import dev.rwilco.model.DayShape
 import dev.rwilco.model.DEFAULT_ACTIONS
@@ -219,14 +219,8 @@ fun EditorUiState.setRuleMatch(match: RuleMatch): EditorUiState =
  * and also for it until somebody answers is asking for two contradictory things, so turning on
  * either puts the other away rather than leaving the reminder to be interpreted later.
  */
-fun EditorUiState.toggleAction(action: Action): EditorUiState {
-    val actions = when {
-        action in draft.actions -> draft.actions - action
-        action in SOUND_ACTIONS -> draft.actions - SOUND_ACTIONS + action
-        else -> draft.actions + action
-    }
-    return copy(draft = draft.copy(actions = actions))
-}
+fun EditorUiState.toggleAction(action: Action): EditorUiState =
+    copy(draft = draft.copy(actions = draft.actions.toggling(action)))
 
 fun EditorUiState.openKindPicker(): EditorUiState = copy(sheet = EditorSheet.PickKind)
 

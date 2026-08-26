@@ -93,6 +93,21 @@ enum class Action { FULL_SCREEN, NOTIFICATION, SOUND, SOUND_UNTIL_ANSWERED, VIBR
 /** The two ways of asking for the same sound. Choosing one is choosing not the other. */
 val SOUND_ACTIONS: Set<Action> = setOf(Action.SOUND, Action.SOUND_UNTIL_ANSWERED)
 
+/**
+ * One action on or off — except that the two sound tiles are one choice.
+ *
+ * Asking for a sound once and also for it until somebody answers is asking for two
+ * contradictory things, so turning on either puts the other away rather than leaving the
+ * reminder to be interpreted later. Here rather than in each screen that offers the tiles:
+ * the editor, the default set in Settings and the preset dialog all have to agree, and three
+ * copies of a rule is two too many.
+ */
+fun Set<Action>.toggling(action: Action): Set<Action> = when {
+    action in this -> this - action
+    action in SOUND_ACTIONS -> this - SOUND_ACTIONS + action
+    else -> this + action
+}
+
 enum class Status { ACTIVE, PAUSED, DONE }
 
 val DEFAULT_ACTIONS: Set<Action> = setOf(Action.NOTIFICATION, Action.VIBRATE)

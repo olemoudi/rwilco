@@ -87,7 +87,17 @@ fun Preset.used(now: Instant): Preset = copy(uses = uses + 1, lastUsedAt = now)
  * when the person has typed something. Never from the name: that labels the shape, and nobody
  * wants a list of reminders all called the same.
  */
-fun Preset.toReminder(id: String, now: Instant, words: String = text): Reminder = Reminder(
+fun Preset.toReminder(
+    id: String,
+    now: Instant,
+    words: String = text,
+    /**
+     * What it should do when it rings, when that is being decided at the moment of use rather
+     * than taken from the shape — the tiles under the words in the preset dialog. The preset
+     * itself is untouched: this is one reminder saying "this time, also make a noise".
+     */
+    actions: Set<Action> = this.actions,
+): Reminder = Reminder(
     id = id,
     text = words,
     tags = tags,

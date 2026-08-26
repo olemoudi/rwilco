@@ -7,6 +7,7 @@ import dev.rwilco.RwilcoApplication
 import dev.rwilco.alarm.ReminderFiring
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
+import dev.rwilco.model.Action
 import dev.rwilco.model.DayShape
 import dev.rwilco.model.dayShape
 import dev.rwilco.model.AppSettings
@@ -95,14 +96,26 @@ class HomeViewModel(
      * its own; everything else the preset already answered, so the reminder is written there
      * and then — unless one of its moments has already passed, which needs a person.
      */
-    fun createFromPreset(preset: Preset, words: String? = null, defaultTime: java.time.LocalTime, shape: DayShape) {
+    fun createFromPreset(
+        preset: Preset,
+        words: String? = null,
+        defaultTime: java.time.LocalTime,
+        shape: DayShape,
+        /** What it should do when it rings, when the dialog was asked; null keeps the shape's. */
+        actions: Set<Action>? = null,
+    ) {
         viewModelScope.launch {
             val now = clock.instant()
             if (warnings(preset.rules, now, clock.zone, defaultTime, shape = shape).any { it is ValidationWarning.InPast }) {
                 events.send(HomeEvent.NeedsEditor(preset.id))
                 return@launch
             }
-            val reminder = preset.toReminder(id = UUID.randomUUID().toString(), now = now, words = words ?: preset.text)
+            val reminder = preset.toReminder(
+                id = UUID.randomUUID().toString(),
+                now = now,
+                words = words ?: preset.text,
+                actions = actions ?: preset.actions,
+            )
             repository.save(reminder)
             store.update { settings ->
                 settings.copy(presets = settings.presets.map { if (it.id == preset.id) it.used(now) else it })
