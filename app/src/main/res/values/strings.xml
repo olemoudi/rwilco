@@ -895,4 +895,8 @@
         <item>And it no longer stops your music. What was playing drops a few decibels and carries on underneath while the reminder sounds over it — the reminder is on the alarm channel and the music is not, so neither has to fight the other — and comes back by itself. It used to ask for the audio outright, which ended podcasts for a ten-second chime.</item>
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
+
+    <string-array name="whats_new_0_17_1">
+        <item>The little marks on a set\'s triggers are bigger and brighter, which they needed to be on the dark scheme: a third wider, a line twice as thick, and a solid middle so the ring keeps its edge over the coloured icon underneath instead of showing it through. The one that means «not known yet» is a ring with a dot in the middle of it now — it was a question mark, and a question mark three millimetres across is a smudge.</item>
+    </string-array>
 </resources>

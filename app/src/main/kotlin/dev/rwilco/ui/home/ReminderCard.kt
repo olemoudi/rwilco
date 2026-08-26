@@ -28,7 +28,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -225,35 +224,53 @@ fun TriggerRow(row: TriggerRowUi, today: LocalDate, defaultTime: LocalTime, mute
 @Composable
 private fun StandingDot(standing: RuleStanding, muted: Boolean, modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
-    val met = standing == RuleStanding.DONE || standing == RuleStanding.HOLDING
-    val known = standing != RuleStanding.UNKNOWN
     val label = stringResource(standing.labelRes)
+    val met = standing == RuleStanding.DONE || standing == RuleStanding.HOLDING
     val ink = when {
         met && !muted -> familyColor(TriggerFamily.PLACE, LocalDarkTheme.current)
         met -> scheme.onSurfaceVariant
-        else -> scheme.outline
+        // onSurfaceVariant, not outline: on the dark scheme a hairline in the outline colour
+        // over a dark keycap is a smudge, and the mark has to be readable to mean anything.
+        else -> scheme.onSurfaceVariant
     }
     Box(
         modifier = modifier
-            .size(DOT + DOT_RING * 2)
+            .size(DOT + HALO * 2)
             .background(scheme.surfaceContainer, CircleShape)
-            .padding(DOT_RING),
+            .padding(HALO),
         contentAlignment = Alignment.Center,
     ) {
         Box(
             modifier = Modifier
                 .size(DOT)
-                .alpha(if (known) 1f else 0.45f)
-                .background(if (met) ink else Color.Transparent, CircleShape)
-                .border(DOT_RING, ink, CircleShape)
+                // Card colour rather than nothing behind the hollow ones: over a coloured
+                // keycap a transparent middle shows the blue through it and the ring loses
+                // its edge, which on the dark scheme is most of what made these hard to read.
+                .background(if (met) ink else scheme.surfaceContainer, CircleShape)
+                .border(STROKE, ink, CircleShape)
                 .semantics { contentDescription = label },
-        )
+            contentAlignment = Alignment.Center,
+        ) {
+            // Nobody has looked yet: a ring with something in the middle of it, which is neither
+            // "yes" nor "no" and cannot be mistaken for either at this size. It used to be a
+            // question mark, and a question mark three millimetres across is a smudge.
+            if (standing == RuleStanding.UNKNOWN) {
+                Box(Modifier.size(PIP).background(ink, CircleShape))
+            }
+        }
     }
 }
 
-/** The dot, the ring of card colour that separates it from the keycap, and how far it sits out. */
-private val DOT = 7.dp
-private val DOT_RING = 1.5.dp
+/**
+ * The dot, its own line, the ring of card colour that separates it from the keycap, the pip in
+ * the middle of the unknown one, and how far the whole thing sits outside the corner. Bigger and
+ * brighter than it started: at seven across with a hairline it was there and not quite readable,
+ * which is the worst size for a mark whose whole job is to be read at a glance.
+ */
+private val DOT = 9.dp
+private val STROKE = 2.dp
+private val HALO = 2.dp
+private val PIP = 3.dp
 private val DOT_OUT = 3.dp
 
 /** What each mark means, said out loud for a screen reader. */
