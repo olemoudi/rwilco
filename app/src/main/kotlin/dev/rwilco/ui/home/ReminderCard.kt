@@ -1,5 +1,10 @@
 package dev.rwilco.ui.home
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,6 +28,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -156,13 +165,23 @@ fun RecurrenceRow(recurrence: Recurrence, muted: Boolean = false) {
 fun TriggerRow(row: TriggerRowUi, today: LocalDate, defaultTime: LocalTime, muted: Boolean = false) {
     val line = triggerLine(row.trigger, today, defaultTime)
     Row(verticalAlignment = Alignment.CenterVertically) {
-        // The keycap says which kind of "when" this is; sighted by colour and glyph, spoken by name.
-        TriggerKeycap(
-            family = row.family,
-            icon = row.trigger.kind.icon,
-            contentDescription = stringResource(row.trigger.kind.titleRes),
-            size = Tokens.sizes.badge,
-        )
+        // The keycap says which kind of "when" this is; sighted by colour and glyph, spoken by
+        // name — and wearing, in its corner, where this rule stands in its set.
+        Box {
+            TriggerKeycap(
+                family = row.family,
+                icon = row.trigger.kind.icon,
+                contentDescription = stringResource(row.trigger.kind.titleRes),
+                size = Tokens.sizes.badge,
+            )
+            row.standing?.let { standing ->
+                StandingDot(
+                    standing = standing,
+                    muted = muted,
+                    modifier = Modifier.align(Alignment.TopEnd).offset(x = DOT_OUT, y = -DOT_OUT),
+                )
+            }
+        }
         Spacer(Modifier.width(Tokens.spacing.sm))
         Column(modifier = Modifier.weight(1f, fill = false)) {
             Text(
@@ -192,27 +211,50 @@ fun TriggerRow(row: TriggerRowUi, today: LocalDate, defaultTime: LocalTime, mute
                 )
             }
         }
-        // Where this rule stands in its set: ticked off under "todos", true or not right now
-        // under "a la vez". It is the only way to see, from outside, what a reminder is
-        // actually waiting for — and the difference between the two words.
-        row.standing?.let { standing ->
-            Spacer(Modifier.width(Tokens.spacing.sm))
-            val met = standing == RuleStanding.DONE || standing == RuleStanding.HOLDING
-            Icon(
-                imageVector = when (standing) {
-                    RuleStanding.DONE -> Icons.Outlined.Check
-                    RuleStanding.PENDING -> Icons.Outlined.RadioButtonUnchecked
-                    RuleStanding.HOLDING -> Icons.Filled.Circle
-                    RuleStanding.NOT_HOLDING -> Icons.Outlined.RadioButtonUnchecked
-                    RuleStanding.UNKNOWN -> Icons.Outlined.QuestionMark
-                },
-                contentDescription = stringResource(standing.labelRes),
-                tint = if (met && !muted) familyColor(TriggerFamily.PLACE, LocalDarkTheme.current) else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(if (standing == RuleStanding.HOLDING) 10.dp else 16.dp),
-            )
-        }
     }
 }
+
+/**
+ * Where a rule stands, worn in the corner of its own keycap.
+ *
+ * Small enough to be read as a property of the icon rather than as a thing of its own: at this
+ * size a glyph is mush, so what carries the meaning is fill and colour — solid and green for a
+ * rule that is met, hollow for one that is not, and hollow and faint for one nobody can answer
+ * yet. The ring of card colour around it is what keeps it from smudging into the keycap.
+ */
+@Composable
+private fun StandingDot(standing: RuleStanding, muted: Boolean, modifier: Modifier = Modifier) {
+    val scheme = MaterialTheme.colorScheme
+    val met = standing == RuleStanding.DONE || standing == RuleStanding.HOLDING
+    val known = standing != RuleStanding.UNKNOWN
+    val label = stringResource(standing.labelRes)
+    val ink = when {
+        met && !muted -> familyColor(TriggerFamily.PLACE, LocalDarkTheme.current)
+        met -> scheme.onSurfaceVariant
+        else -> scheme.outline
+    }
+    Box(
+        modifier = modifier
+            .size(DOT + DOT_RING * 2)
+            .background(scheme.surfaceContainer, CircleShape)
+            .padding(DOT_RING),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(DOT)
+                .alpha(if (known) 1f else 0.45f)
+                .background(if (met) ink else Color.Transparent, CircleShape)
+                .border(DOT_RING, ink, CircleShape)
+                .semantics { contentDescription = label },
+        )
+    }
+}
+
+/** The dot, the ring of card colour that separates it from the keycap, and how far it sits out. */
+private val DOT = 7.dp
+private val DOT_RING = 1.5.dp
+private val DOT_OUT = 3.dp
 
 /** What each mark means, said out loud for a screen reader. */
 private val RuleStanding.labelRes: Int

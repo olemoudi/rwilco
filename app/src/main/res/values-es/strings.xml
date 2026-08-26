@@ -869,4 +869,8 @@
     <string-array name="whats_new_0_15_1">
         <item>La pantalla de diagnóstico se mantiene al día. Construía su informe una sola vez, al abrirse, así que lo que pasara mientras lo leías no aparecía — y el momento en que estás en esa pantalla suele ser justo cuando algo está pasando. Ahora sigue al registro, y el texto que estabas leyendo se queda quieto mientras se construye el nuevo.</item>
     </string-array>
+
+    <string-array name="whats_new_0_15_2">
+        <item>Las marcas que dicen cómo va cada disparador de un conjunto son ahora más discretas: un punto del tamaño de un punto final, puesto en la esquina del propio icono del disparador, en vez de un símbolo al final de la fila. Lleno y verde cuando la regla se cumple —ya ocurrió, o es cierta ahora mismo—, hueco cuando no, y hueco y tenue cuando todavía no se sabe. Lo mismo, con una décima parte del ruido.</item>
+    </string-array>
 </resources>

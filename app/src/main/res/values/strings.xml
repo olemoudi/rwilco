@@ -871,4 +871,8 @@
     <string-array name="whats_new_0_15_1">
         <item>The diagnostics screen keeps up with itself. It built its report once, when it opened, so anything that happened while you were reading it was not there — and the moment you are on that screen is usually the moment something is happening. Now it follows the log, and the text you were reading stays put while the new one is built.</item>
     </string-array>
+
+    <string-array name="whats_new_0_15_2">
+        <item>The marks that say where each trigger of a set stands are quieter now: a dot the size of a full stop, worn in the corner of the trigger\'s own icon, instead of a glyph at the end of the row. Filled and green where the rule is met — it has happened, or it is true at this moment — hollow where it is not, and hollow and faint where nobody can answer yet. Same meaning, a tenth of the noise.</item>
+    </string-array>
 </resources>
