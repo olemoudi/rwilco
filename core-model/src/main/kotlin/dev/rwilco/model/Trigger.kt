@@ -25,7 +25,7 @@ import java.time.LocalTime
 @Serializable
 sealed interface Trigger {
 
-    /** Once, at a wall-clock moment. Also what the "countdown" tile produces (now + duration). */
+    /** Once, at a wall-clock moment. A countdown is its own kind, [Countdown]: a length that resolves to an instant when it is saved. */
     @Serializable
     @SerialName("at_date_time")
     data class AtDateTime(val at: LocalDateTime) : Trigger
@@ -149,7 +149,7 @@ fun Trigger.asState(): Condition? = when (this) {
 /** Whether this trigger is true only at an instant. See [asState]. */
 val Trigger.isMoment: Boolean get() = asState() == null
 
-/** The tile that edits an existing trigger (a countdown re-opens as a date-time: it is one). */
+/** The tile that edits an existing trigger (a countdown re-opens as a countdown). */
 val Trigger.kind: TriggerKind
     get() = when (this) {
         is Trigger.AtDateTime -> TriggerKind.DATE_TIME

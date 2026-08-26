@@ -72,9 +72,18 @@ fun nextFire(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalT
     // folded rule's moment — the first instant the whole set holds — so the soonest of them is
     // the ring, and the "last of the pending" reading below belongs to ALL alone.
     if (reminder.ruleMatch != RuleMatch.ALL || !reminder.rulesCombine) {
-        return candidates.filterIsInstance<NextFire.Scheduled>().minByOrNull { it.at }
+        val place = candidates.filterIsInstance<NextFire.WhenAt>().firstOrNull()
+        // Under "a la vez" a window beside a place is the place's hours, not a moment of its
+        // own: its opening only rings if the phone is already there. Home once counted down to
+        // it — a clock on a reminder that rings on arrival — and, once that opening had passed
+        // with nobody there, to the next day's. The place is the honest answer; the opening is
+        // still armed (nextWake), for the morning somebody is there already.
+        val together = reminder.ruleMatch == RuleMatch.TOGETHER && reminder.rulesCombine
+        val moments = candidates.filterIsInstance<NextFire.Scheduled>()
+            .filterNot { together && place != null && it.trigger is Trigger.Interval }
+        return moments.minByOrNull { it.at }
             ?: candidates.filterIsInstance<NextFire.Sometime>().minByOrNull { it.at }
-            ?: candidates.filterIsInstance<NextFire.WhenAt>().firstOrNull()
+            ?: place
     }
     // ALL: one rule that can never happen again is one the set can never complete.
     if (candidates.size < pending.size) return null

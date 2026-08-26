@@ -3,6 +3,7 @@ package dev.rwilco.alarm
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -31,6 +32,7 @@ class RearmWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
 
     companion object {
         private const val PERIODIC = "rwilco-rearm-periodic"
+        private const val NOW = "rwilco-rearm-now"
 
         fun schedule(context: Context) {
             val request = PeriodicWorkRequestBuilder<RearmWorker>(6, TimeUnit.HOURS).build()
@@ -40,7 +42,9 @@ class RearmWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
 
         /** After a reboot, a time change, or an app update. */
         fun runNow(context: Context) {
-            WorkManager.getInstance(context).enqueue(OneTimeWorkRequestBuilder<RearmWorker>().build())
+            // Unique: a clock being scrubbed fires TIME_SET a dozen times, and one re-arm answers them all.
+            WorkManager.getInstance(context)
+                .enqueueUniqueWork(NOW, ExistingWorkPolicy.REPLACE, OneTimeWorkRequestBuilder<RearmWorker>().build())
         }
     }
 }

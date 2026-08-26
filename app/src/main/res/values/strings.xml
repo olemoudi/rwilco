@@ -253,7 +253,7 @@
     <string name="settings_haptics_hint">A small tick on chips, days and buttons. Unrelated to a reminder\'s own vibration.</string>
     <string name="settings_updates">Updates</string>
     <string name="settings_about">About</string>
-    <string name="settings_about_body">Rwilco is yours: no account, no server, nothing leaves the phone.</string>
+    <string name="settings_about_body">Rwilco is yours: no account, no server, and nothing leaves the phone unless you turn the encrypted backup on.</string>
     <string name="settings_licenses">Type: Bricolage Grotesque, Manrope and JetBrains Mono (SIL Open Font License). Maps: osmdroid and OpenStreetMap contributors.</string>
     <string name="app_version">Version %1$s (%2$d)</string>
 
@@ -672,5 +672,129 @@
         <item>What a recurrence means for a place, put right. «When I get home, every day»: dealt with, the reminder rests until the span is up (tomorrow at your day\'s start hour), and then the place is armed again — and it rings on the next arrival, not at nine. The nine o\'clock never rings by itself when a place is waiting; 0.11.3 had stopped watching the place altogether, which was wrong.</item>
         <item>A place that has rung is owed a leaving before it rings again. Neither a fix inside nor the phone\'s own geofence re-reading the line counts: the app has to have seen you outside since. To see that, the phone\'s geofences now report leavings as well as arrivals; a leaving is written down and never rings unless the rule is about leaving.</item>
         <item>«At eight, and then every six hours» is unchanged: once a date has been, the recurrence\'s own moment is the ring.</item>
+    </string-array>
+
+    <!-- The vault: the encrypted backup, behind Settings. -->
+    <string name="vault_channel_name">Backup</string>
+    <string name="vault_notice_auth_title">The backup cannot write to GitHub</string>
+    <string name="vault_notice_auth_text">The token was refused. Check it in Settings › Backup: expired, revoked, or without write access to the repository.</string>
+    <string name="vault_notice_repo_title">The backup repository is gone</string>
+    <string name="vault_notice_repo_text">GitHub does not find the repository the backup writes to. Check its name in Settings › Backup.</string>
+    <string name="vault_notice_conflict_title">Another phone wrote the backup</string>
+    <string name="vault_notice_conflict_text">The copy on GitHub is not the one this phone last wrote, so it stopped rather than write over it. Choose in Settings › Backup which one to keep.</string>
+    <string name="settings_backup">Backup</string>
+    <string name="vault_title">Backup</string>
+    <string name="vault_card_title">Encrypted backup</string>
+    <string name="vault_card_off">Off. Everything stays on this phone.</string>
+    <string name="vault_card_never">On; no copy made yet</string>
+    <string name="vault_card_last">Last copy %1$s</string>
+    <string name="vault_card_working">Copying…</string>
+    <string name="vault_card_transient">The last attempt failed; it will try again</string>
+    <string name="vault_card_attention_auth">Stopped: GitHub refused the token</string>
+    <string name="vault_card_attention_repo">Stopped: the repository is gone</string>
+    <string name="vault_card_attention_conflict">Stopped: another phone wrote the copy</string>
+    <string name="vault_intro">An encrypted copy of your reminders, presets and places in a private GitHub repository of yours, refreshed a quarter of an hour after anything changes. Everything is sealed with your passphrase before it leaves the phone: GitHub sees a file and its size, never a word of what is in it. The app keeps working without it.</string>
+    <string name="vault_intro_warning">Nobody can recover the passphrase, Rwilco included. Without it, the copy is a locked box.</string>
+    <string name="vault_field_repo">Repository</string>
+    <string name="vault_field_repo_placeholder">owner/name</string>
+    <string name="vault_field_repo_hint">A private repository, created by hand on GitHub. The app keeps one file in it, rwilco.vault; every copy is a commit, so the repository\'s history is the backup\'s history.</string>
+    <string name="vault_field_token">Access token</string>
+    <string name="vault_field_token_hint">A fine-grained personal access token limited to that repository, with Contents set to read and write (GitHub › Settings › Developer settings). It is kept on this phone only.</string>
+    <string name="vault_field_passphrase">Passphrase</string>
+    <string name="vault_field_passphrase_again">Passphrase, again</string>
+    <string name="vault_passphrase_rule">At least %1$d characters. A sentence works.</string>
+    <string name="vault_show">Show</string>
+    <string name="vault_hide">Hide</string>
+    <string name="vault_enable">Turn on</string>
+    <string name="vault_status_repo">Repository %1$s</string>
+    <string name="vault_backup_now">Back up now</string>
+    <string name="vault_restore_remote">Restore the copy from GitHub…</string>
+    <string name="vault_conflict_body">The copy on GitHub is not the one this phone last wrote — another phone, or a restore, wrote it since. Nothing has been overwritten. Bring that copy here, or keep this phone\'s and replace it.</string>
+    <string name="vault_conflict_take_remote">Bring the copy from GitHub here</string>
+    <string name="vault_conflict_keep_phone">Keep this phone\'s, replace the copy</string>
+    <string name="vault_update_credentials">Change the repository or the token…</string>
+    <string name="vault_update_credentials_title">Repository and token</string>
+    <string name="vault_export">Export to a file</string>
+    <string name="vault_export_off_hint">The same sealed copy, under a passphrase of its own.</string>
+    <string name="vault_import">Import from a file…</string>
+    <string name="vault_undo">Undo the last restore</string>
+    <string name="vault_undo_hint">What this phone held before the last restore, kept here.</string>
+    <string name="vault_disable">Turn off</string>
+    <string name="vault_disable_title">Turn the backup off?</string>
+    <string name="vault_disable_hint">Forgets the token and the key on this phone. The copy on GitHub stays as it is.</string>
+    <string name="vault_cancel">Cancel</string>
+    <string name="vault_busy_probing">Checking the repository…</string>
+    <string name="vault_busy_deriving">Working out the key from your passphrase…</string>
+    <string name="vault_busy_restoring">Restoring…</string>
+    <string name="vault_busy_sealing">Sealing…</string>
+    <string name="vault_existing_title">There is already a copy there</string>
+    <string name="vault_existing_locked">Your passphrase does not open it. You can still replace it with this phone\'s data, under this passphrase; the old copy stays in the repository\'s history.</string>
+    <string name="vault_existing_restore">Restore it here</string>
+    <string name="vault_existing_replace">Replace it with this phone</string>
+    <string name="vault_summary">Made %1$s on phone %2$s: %3$d active reminders, %4$d done, %5$d presets, %6$d places.</string>
+    <string name="vault_summary_newer">Made by a newer Rwilco than this one. Update the app first, or the parts it does not understand will be lost on the next edit.</string>
+    <string name="vault_confirm_title">Restore this copy?</string>
+    <string name="vault_confirm_empty">This phone is empty; nothing is lost.</string>
+    <plurals name="vault_confirm_replaces">
+        <item quantity="one">It replaces the one reminder on this phone. What is here now is kept behind «Undo the last restore».</item>
+        <item quantity="other">It replaces the %1$d reminders on this phone. What is here now is kept behind «Undo the last restore».</item>
+    </plurals>
+    <string name="vault_confirm_yes">Restore</string>
+    <string name="vault_passphrase_title">The copy\'s passphrase</string>
+    <string name="vault_passphrase_body">This copy was sealed with a passphrase this phone does not have. Type it to open it.</string>
+    <string name="vault_open_action">Open</string>
+    <string name="vault_export_passphrase_title">A passphrase for the file</string>
+    <string name="vault_export_passphrase_body">The file is sealed with it, and only it opens it. At least %1$d characters.</string>
+    <string name="vault_done_enabled">On. The first copy is on its way.</string>
+    <string name="vault_done_restored">Restored</string>
+    <string name="vault_done_exported">Exported</string>
+    <string name="vault_error_repo_name">Write the repository as owner/name.</string>
+    <string name="vault_error_token">The token is missing.</string>
+    <string name="vault_error_passphrase_short">The passphrase is too short.</string>
+    <string name="vault_error_passphrase_mismatch">The two passphrases differ.</string>
+    <string name="vault_error_not_private">That repository is public. The copy is sealed, but it does not belong in a public place.</string>
+    <string name="vault_error_no_push">The token cannot write to that repository.</string>
+    <string name="vault_error_auth">GitHub refused the token.</string>
+    <string name="vault_error_repo_missing">GitHub does not find that repository.</string>
+    <string name="vault_error_network">Could not reach GitHub. Try again in a moment.</string>
+    <string name="vault_error_no_remote">There is no copy in the repository yet.</string>
+    <string name="vault_error_wrong_passphrase">That passphrase does not open the copy.</string>
+    <string name="vault_error_corrupt">The copy is damaged and cannot be read.</string>
+    <string name="vault_error_newer">The copy was made by a newer Rwilco. Update the app first.</string>
+    <string name="vault_error_file">The file could not be read or written.</string>
+    <string name="vault_error_restore">The restore did not finish. Nothing was lost: try again.</string>
+
+    <!-- Two reminders at once: what the alert screen does with the second. -->
+    <string name="settings_alert_stacking">Several reminders at once</string>
+    <string name="settings_alert_stacking_hint">When two full-screen reminders ring within moments of each other: one after the other — the next appears the instant you answer the first — or all at once, the screen split into a strip per reminder. Each keeps its own notification either way.</string>
+    <string name="settings_stacking_sequential">One after the other</string>
+    <string name="settings_stacking_strips">All at once</string>
+    <plurals name="alert_waiting">
+        <item quantity="one">%1$d more waiting</item>
+        <item quantity="other">%1$d more waiting</item>
+    </plurals>
+    <plurals name="alert_count">
+        <item quantity="one">%1$d reminder</item>
+        <item quantity="other">%1$d reminders</item>
+    </plurals>
+
+    <!-- The five ways the phone itself holds a reminder back. -->
+    <string name="perm_channel_muted">A reminder notification channel is muted on the phone, so those reminders arrive silently or not at all.</string>
+    <string name="perm_channel_muted_fix">Unmute</string>
+    <string name="perm_volume_missing">The alarm volume is at zero, so a reminder with sound plays nothing.</string>
+    <string name="perm_volume_fix">Turn up</string>
+    <string name="perm_dnd_missing">Do Not Disturb is on total silence right now. Reminders only get through it if Rwilco is allowed to.</string>
+    <string name="perm_dnd_fix">Allow</string>
+    <string name="perm_restricted_missing">Background use is restricted for Rwilco, so nothing re-arms reminders while it is closed.</string>
+    <string name="perm_restricted_fix">Allow</string>
+    <string name="perm_battery_missing">Battery optimisation can stop Rwilco in the background. The alarms still ring; the net that re-arms them may not run.</string>
+    <string name="perm_battery_fix">Exclude</string>
+
+    <string-array name="whats_new_0_12_0">
+        <item>Your reminders can now live somewhere other than this phone. In Settings, «Backup»: an encrypted copy of everything — reminders, presets, places — in a private GitHub repository of yours, refreshed a quarter of an hour after any change. It is sealed with a passphrase of yours before it leaves the phone, so GitHub sees a file and its size and never a word of what is in it; every copy is a commit, so the repository\'s history is the copy\'s history. Off by default, and the app works exactly as before without it. Lose the passphrase and the copy is a locked box: nobody can open it, this app included.</item>
+        <item>Two reminders ringing at the same moment both reach you now. The second one used to take the screen from the first, whose notification then sat silently in the shade — indistinguishable from never having rung. Now they queue: one after the other, with the next appearing the instant you answer, or side by side as strips, one «Hecho» each. It is a choice, in Settings › Alerts.</item>
+        <item>«Al llegar al curro, a partir de las siete» no longer counts down to tomorrow. When hours sit beside a place under «a la vez», they are the place\'s hours and not a moment of their own, so Home says what actually rings: the arrival.</item>
+        <item>And a sweep over everything between a reminder\'s moment and you noticing it. Do Not Disturb no longer swallows a full-screen reminder: they are alarms to the phone now, not chats. A reminder that the system refuses to show full-screen makes its noise as a notification instead of arriving silently. The sound asks the phone for the speaker, so a podcast cannot bury it, and the buzz is an alarm\'s buzz, which the silent switch keeps. A moment the phone slept through by a couple of minutes rings like the moment itself instead of arriving as a grey note. And every way a firing had of quietly deciding not to ring now re-arms itself first.</item>
+        <item>Settings says out loud the five things the phone does to keep reminders from you and nobody ever finds: battery optimisation, restricted background use, total-silence Do Not Disturb, the alarm volume at zero, and a notification channel muted by hand.</item>
     </string-array>
 </resources>

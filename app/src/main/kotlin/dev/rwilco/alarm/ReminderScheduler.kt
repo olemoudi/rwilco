@@ -11,6 +11,7 @@ import dev.rwilco.MainActivity
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.Recurrence
+import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
@@ -51,7 +52,12 @@ class ReminderScheduler(
      * caller to deal with (only boot and the safety-net worker do; a plain edit does not).
      */
     suspend fun rearmAll(): List<Reminder> {
-        val settings = settingsStore.settings.first()
+        // The defaults are a fine way to arm; an exception here was the one thing that could
+        // stop every reminder being armed at once (see RwilcoApplication.appScope).
+        val settings = runCatching { settingsStore.settings.first() }.getOrElse {
+            Log.e(TAG, "settings would not read; arming with the defaults", it)
+            AppSettings()
+        }
         val defaultTime = settings.defaultTime
         val dayStart = settings.dayStart
         val now = clock.instant()
@@ -70,10 +76,14 @@ class ReminderScheduler(
                 cancel(reminder.id)
                 if (reminder.armedFor != null) repository.setArmedFor(reminder.id, null, null)
             } else {
-                arm(reminder.id, wake)
+                // The row first, the alarm second: an alarm for a moment already past arrives at
+                // once, and a firing that read the row before this write found "nothing armed"
+                // and dropped the ring.
                 if (reminder.armedFor != wake.at || reminder.armedRule != wake.ruleIndex) {
-                    repository.setArmedFor(reminder.id, wake.at, wake.ruleIndex)
+                    runCatching { repository.setArmedFor(reminder.id, wake.at, wake.ruleIndex) }
+                        .onFailure { Log.e(TAG, "could not write the armed moment of ${reminder.id}", it) }
                 }
+                arm(reminder.id, wake)
             }
         }
         // Whatever was armed and is no longer open (done, deleted) loses its alarm. A process

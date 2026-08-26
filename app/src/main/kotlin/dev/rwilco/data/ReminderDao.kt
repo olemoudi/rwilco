@@ -2,6 +2,7 @@ package dev.rwilco.data
 
 import androidx.room.Dao
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
@@ -16,9 +17,24 @@ interface ReminderDao {
     @Query("SELECT * FROM reminder WHERE status = 'DONE' ORDER BY doneAt DESC")
     fun observeDone(): Flow<List<ReminderEntity>>
 
-    /** Everything ever written, done included: what the "you have said this before" list is made of. */
-    @Query("SELECT * FROM reminder")
+    /**
+     * Everything ever written, done included: what the "you have said this before" list is made
+     * of, and what the backup is a copy of. By id so the same rows are the same bytes: the
+     * backup decides whether anything changed by hashing them, and SQLite promises no order.
+     */
+    @Query("SELECT * FROM reminder ORDER BY id")
     suspend fun getAll(): List<ReminderEntity>
+
+    /** The same, reactive: what tells the backup that something is worth copying. */
+    @Query("SELECT * FROM reminder ORDER BY id")
+    fun observeAll(): Flow<List<ReminderEntity>>
+
+    /** A restore: the table becomes exactly [rows], in one transaction or not at all. */
+    @Transaction
+    suspend fun replaceAll(rows: List<ReminderEntity>) {
+        deleteAll()
+        upsertAll(rows)
+    }
 
     @Query("SELECT * FROM reminder WHERE id = :id")
     fun observe(id: String): Flow<ReminderEntity?>

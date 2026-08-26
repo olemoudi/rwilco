@@ -2,14 +2,17 @@ package dev.rwilco.notify
 
 import android.app.AppOpsManager
 import android.app.KeyguardManager
+import android.app.NotificationManager
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.PowerManager
 import android.os.Process
 import android.provider.Settings
 import android.util.Log
+import androidx.core.app.NotificationManagerCompat
 import dev.rwilco.alarm.ReminderScheduler
 import dev.rwilco.model.FiringPlan
 import dev.rwilco.model.AlertSound
@@ -54,11 +57,14 @@ fun alertPresentation(
     inUse: Boolean,
     foreground: ForegroundApp,
     canOverlay: Boolean,
+    /** Whether the system will honour a full-screen intent at all: Android 14+ can refuse it. */
+    canFullScreen: Boolean = true,
 ): AlertPresentation = when {
     !fullScreenWanted -> AlertPresentation.BANNER
-    // Screen off or locked: the full-screen intent is the system's own job and needs no
-    // permission of ours.
-    !inUse -> AlertPresentation.FULL_SCREEN
+    // Screen off or locked: only the system's full-screen intent can light it — and when the
+    // system refuses that, the notification has to make the noise itself. Deciding
+    // FULL_SCREEN here regardless once muted the notification for a screen that never came.
+    !inUse -> if (canFullScreen) AlertPresentation.FULL_SCREEN else AlertPresentation.BANNER
     foreground == ForegroundApp.OTHER -> AlertPresentation.BANNER
     foreground == ForegroundApp.UNKNOWN -> AlertPresentation.BANNER
     !canOverlay -> AlertPresentation.BANNER
@@ -93,35 +99,49 @@ object AlertPresenter {
             return
         }
         val inUse = context.isInUse()
+        val wanted = plan.fullScreen && late == null && takeScreen
         val presentation = alertPresentation(
-            fullScreenWanted = plan.fullScreen && late == null && takeScreen,
+            fullScreenWanted = wanted,
             inUse = inUse,
             foreground = context.foregroundApp(),
             canOverlay = context.canDrawOverlays(),
+            canFullScreen = context.canUseFullScreenIntent(),
         )
+        // With the screen on, the takeover is ours to start — and it is started BEFORE the
+        // notification, because whether it took decides which channel the notification goes
+        // on. Posted first, a refused start left a silent card behind a screen that never came.
+        // With the screen off or locked, the notification's full-screen intent is what launches
+        // the alert: the system does it for us, and doing it here as well would race with it.
+        val screenTaken = presentation == AlertPresentation.FULL_SCREEN && inUse && startAlert(context, reminder, ruleIndex)
+        val fullScreen = presentation == AlertPresentation.FULL_SCREEN && (screenTaken || !inUse)
         AlertNotifications.post(
             context,
             reminder,
             plan,
             late,
-            fullScreen = presentation == AlertPresentation.FULL_SCREEN,
+            fullScreen = fullScreen,
             vibration = vibration,
             chosen = sound,
             ruleIndex = ruleIndex,
         )
-        // With the screen off or locked, the notification's full-screen intent is what launches
-        // the alert — the system does it for us, and doing it here as well would race with it.
-        if (presentation == AlertPresentation.FULL_SCREEN && inUse) {
-            runCatching {
-                context.startActivity(
-                    Intent(context, AlertActivity::class.java)
-                        .setData(ReminderScheduler.reminderUri(reminder.id))
-                        .apply { if (ruleIndex != null) putExtra(ReminderScheduler.EXTRA_RULE, ruleIndex) }
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
-                )
-            }.onFailure { Log.w(TAG, "could not take the screen; the notification carries it", it) }
+        // Notifications switched off make post() a silent no-op, and the moment is already
+        // spent. The one thing left that can reach the person is the screen itself, which knows
+        // how to show over the lock and turn the display on; it is worth a try from anywhere.
+        if (!fullScreen && wanted && !NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+            Log.w(TAG, "notifications are off; trying the screen for ${reminder.id}")
+            startAlert(context, reminder, ruleIndex)
         }
     }
+
+    /** The alert screen, started from here; false when the system would not let a background app start it. */
+    private fun startAlert(context: Context, reminder: Reminder, ruleIndex: Int?): Boolean = runCatching {
+        context.startActivity(
+            Intent(context, AlertActivity::class.java)
+                .setData(ReminderScheduler.reminderUri(reminder.id))
+                .apply { if (ruleIndex != null) putExtra(ReminderScheduler.EXTRA_RULE, ruleIndex) }
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+    }.onFailure { Log.w(TAG, "could not take the screen; the notification carries it", it) }.isSuccess
 
     private const val TAG = "RwilcoAlerts"
 }
@@ -136,6 +156,15 @@ fun Context.isInUse(): Boolean {
 }
 
 fun Context.canDrawOverlays(): Boolean = Settings.canDrawOverlays(this)
+
+/**
+ * Since Android 14 a full-screen intent is only for calls and alarms, and everyone else gets a
+ * heads-up notification instead unless the person says otherwise. Sideloaded apps land on the
+ * wrong side of that line by default.
+ */
+fun Context.canUseFullScreenIntent(): Boolean =
+    Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE ||
+        getSystemService(NotificationManager::class.java)?.canUseFullScreenIntent() ?: false
 
 /**
  * What was resumed last. Usage access is the only way an ordinary app can ask, and it is a

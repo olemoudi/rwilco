@@ -41,7 +41,9 @@ import java.time.Instant
 object AlertNotifications {
 
     private const val GROUP = "alerts"
-    private const val VERSION = "v1"
+    // v2: every alert channel carries alarm audio attributes, silent ones included, and the
+    // live alert is CATEGORY_ALARM — which is what lets Do Not Disturb tell an alarm from a chat.
+    private const val VERSION = "v2"
     const val CHANNEL_MISSED = "missed_$VERSION"
 
     fun ensureChannels(context: Context, vibration: VibrationPattern = VibrationPattern(), chosen: AlertSound = AlertSound.System) {
@@ -49,9 +51,12 @@ object AlertNotifications {
         manager.createNotificationChannelGroup(
             NotificationChannelGroup(GROUP, context.getString(R.string.notif_group_alerts)),
         )
+        // With notification-policy access granted the channels are made to bypass Do Not
+        // Disturb outright; without it the alarm attributes below are what get them through.
+        val bypass = manager.isNotificationPolicyAccessGranted
         for (sound in listOf(false, true)) {
             for (vibrate in listOf(false, true)) {
-                manager.createNotificationChannel(alertChannel(context, sound, vibrate, vibration, chosen))
+                manager.createNotificationChannel(alertChannel(context, sound, vibrate, vibration, chosen, bypass))
             }
         }
         manager.createNotificationChannel(
@@ -86,7 +91,8 @@ object AlertNotifications {
         // reminder somebody sleeps through.
         val soundHere = plan.sound && !fullScreen
         val vibrateHere = plan.vibrate && !fullScreen
-        val channel = if (late != null) CHANNEL_MISSED else channelId(soundHere, vibrateHere, vibration, effective)
+        val bypass = context.getSystemService(NotificationManager::class.java)?.isNotificationPolicyAccessGranted == true
+        val channel = if (late != null) CHANNEL_MISSED else channelId(soundHere, vibrateHere, vibration, effective, bypass)
         val open = activityIntent(context, reminder.id, ruleIndex)
         val builder = NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_notification)
@@ -95,7 +101,9 @@ object AlertNotifications {
             .setContentIntent(open)
             .setAutoCancel(false)
             .setOnlyAlertOnce(false)
-            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            // An alarm to the system, not a reminder: Do Not Disturb lets alarms through by
+            // default and holds reminders back by default, and this is the one that must arrive.
+            .setCategory(if (late != null) NotificationCompat.CATEGORY_REMINDER else NotificationCompat.CATEGORY_ALARM)
             .setPriority(if (late != null) NotificationCompat.PRIORITY_DEFAULT else NotificationCompat.PRIORITY_HIGH)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .addAction(0, context.getString(R.string.alert_done), actionIntent(context, reminder.id, AlertActionReceiver.ACTION_DONE, null))
@@ -128,32 +136,37 @@ object AlertNotifications {
 
     fun notificationId(reminderId: String): Int = reminderId.hashCode()
 
-    private fun channelId(sound: Boolean, vibrate: Boolean, vibration: VibrationPattern, chosen: AlertSound): String {
+    private fun channelId(sound: Boolean, vibrate: Boolean, vibration: VibrationPattern, chosen: AlertSound, bypass: Boolean): String {
         // Each part only belongs in the id of a channel it can actually change: a silent channel
         // would otherwise get one id per tone nobody is going to hear, and a still one per
-        // rhythm nobody is going to feel.
+        // rhythm nobody is going to feel. Bypassing Do Not Disturb is fixed at creation like
+        // the rest, so it is part of the id too: granting the access makes new channels.
         val tone = if (sound) "_${chosen.key}" else ""
         val rhythm = if (vibrate) "_${vibration.rhythm.name.first().lowercase()}" else ""
-        return "alert_${VERSION}_s${if (sound) 1 else 0}_v${if (vibrate) 1 else 0}$tone$rhythm"
+        val dnd = if (bypass) "_dnd" else ""
+        return "alert_${VERSION}_s${if (sound) 1 else 0}_v${if (vibrate) 1 else 0}$tone$rhythm$dnd"
     }
 
-    private fun alertChannel(context: Context, sound: Boolean, vibrate: Boolean, vibration: VibrationPattern, chosen: AlertSound): NotificationChannel {
+    /** The one id prefix every alert channel shares, for the Settings card's mute check. */
+    const val ALERT_CHANNEL_PREFIX = "alert_"
+
+    private fun alertChannel(context: Context, sound: Boolean, vibrate: Boolean, vibration: VibrationPattern, chosen: AlertSound, bypass: Boolean): NotificationChannel {
         val nameRes = when {
             sound && vibrate -> R.string.notif_channel_sound_vibrate
             sound -> R.string.notif_channel_sound
             vibrate -> R.string.notif_channel_vibrate
             else -> R.string.notif_channel_quiet
         }
-        return NotificationChannel(channelId(sound, vibrate, vibration, chosen), context.getString(nameRes), NotificationManager.IMPORTANCE_HIGH).apply {
+        // Alarm usage on purpose, on every one of them: somebody who ticked "Sonido" means to
+        // hear it, and a notification tone at notification volume is exactly what a phone
+        // face-down on a table swallows. The silent channels carry the same attributes with no
+        // tone — that is what makes their buzz an alarm's buzz to Do Not Disturb and to the
+        // ringer switch, rather than a notification's, which both of them drop first.
+        val alarm = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()
+        return NotificationChannel(channelId(sound, vibrate, vibration, chosen, bypass), context.getString(nameRes), NotificationManager.IMPORTANCE_HIGH).apply {
             group = GROUP
-            if (sound) {
-                // Alarm usage on purpose: somebody who ticked "Sonido" on a reminder means to
-                // hear it, and a notification tone at notification volume is exactly what a
-                // phone face-down on a table swallows.
-                setSound(Sounds.uri(context, chosen), AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
-            } else {
-                setSound(null, null)
-            }
+            setSound(if (sound) Sounds.uri(context, chosen) else null, alarm)
+            if (bypass) setBypassDnd(true)
             enableVibration(vibrate)
             if (vibrate) vibrationPattern = notificationPattern(vibration).toLongArray()
         }
@@ -167,7 +180,7 @@ object AlertNotifications {
         Intent(context, AlertActivity::class.java)
             .setData(ReminderScheduler.reminderUri(reminderId))
             .apply { if (ruleIndex != null) putExtra(ReminderScheduler.EXTRA_RULE, ruleIndex) }
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
 

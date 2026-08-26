@@ -29,11 +29,16 @@ tasks.register<JacocoReport>("jacocoAggregatedReport") {
     )
     classDirectories.setFrom(
         projects.map { it.layout.buildDirectory.dir("classes/kotlin/main") } +
-            app.layout.buildDirectory.dir("tmp/kotlin-classes/debug").map { dir ->
+            app.layout.buildDirectory.dir("intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes").map { dir ->
                 dir.asFileTree.matching {
                     include(
                         "dev/rwilco/data/ReminderEntity*",
                         "dev/rwilco/update/UpdateInfo*",
+                        "dev/rwilco/vault/VaultSnapshot*",
+                        "dev/rwilco/vault/VaultCrypto*",
+                        "dev/rwilco/vault/VaultMigrations*",
+                        "dev/rwilco/vault/VaultStep*",
+                        "dev/rwilco/vault/VaultBackup*",
                         "dev/rwilco/ui/format/*",
                         "dev/rwilco/ui/home/HomeState*",
                         "dev/rwilco/ui/editor/EditorState*",

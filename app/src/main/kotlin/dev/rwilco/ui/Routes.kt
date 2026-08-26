@@ -30,4 +30,8 @@ object Routes {
     /** The place watch's own account of itself, behind a button in Settings. */
     @Serializable
     data object WatchLog
+
+    /** The encrypted backup: off by default, set up and managed behind Settings. */
+    @Serializable
+    data object Backup
 }

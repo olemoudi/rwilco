@@ -7,13 +7,19 @@ import dev.rwilco.model.Reminder
 import dev.rwilco.model.ReminderCodec
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
+import kotlinx.serialization.Serializable
 import java.time.Instant
 
 /**
  * One row per reminder. Tags, triggers and actions are JSON text columns (see ReminderCodec):
  * nothing queries inside them, and a JSON column takes a new trigger kind without a migration.
  * Instants are epoch millis.
+ *
+ * Also the row of the encrypted backup (see `vault/`): the column names are the wire format there
+ * too, which is why they are as frozen as the schema under `app/schemas` — and why the vault
+ * inherits every lenient read the database already has.
  */
+@Serializable
 @Entity(tableName = "reminder", indices = [Index("status")])
 data class ReminderEntity(
     @PrimaryKey val id: String,

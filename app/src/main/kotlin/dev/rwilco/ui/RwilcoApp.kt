@@ -39,6 +39,8 @@ import dev.rwilco.ui.editor.EditorScreen
 import dev.rwilco.ui.editor.EditorViewModel
 import dev.rwilco.ui.home.HomeScreen
 import dev.rwilco.ui.home.HomeViewModel
+import dev.rwilco.ui.settings.BackupScreen
+import dev.rwilco.ui.settings.BackupViewModel
 import dev.rwilco.ui.settings.SettingsScreen
 import dev.rwilco.ui.settings.SettingsViewModel
 import dev.rwilco.ui.settings.WatchLogScreen
@@ -64,6 +66,12 @@ fun RwilcoApp(
         when {
             requestedDestination == MainActivity.DESTINATION_SETTINGS -> {
                 navController.navigate(Routes.Settings) { launchSingleTop = true }
+                onDestinationConsumed()
+            }
+            requestedDestination == MainActivity.DESTINATION_BACKUP -> {
+                // Settings underneath, so "back" from the backup lands where it lives.
+                navController.navigate(Routes.Settings) { launchSingleTop = true }
+                navController.navigate(Routes.Backup) { launchSingleTop = true }
                 onDestinationConsumed()
             }
             reminderId != null -> {
@@ -127,6 +135,13 @@ fun RwilcoApp(
                         viewModel = viewModel(factory = SettingsViewModel.Factory(app)),
                         onBack = { navController.popBackStack() },
                         onWatchLog = { navController.navigate(Routes.WatchLog) },
+                        onBackup = { navController.navigate(Routes.Backup) },
+                    )
+                }
+                composable<Routes.Backup> {
+                    BackupScreen(
+                        viewModel = viewModel(factory = BackupViewModel.Factory(app)),
+                        onBack = { navController.popBackStack() },
                     )
                 }
                 composable<Routes.WatchLog> {

@@ -264,6 +264,13 @@ These are standing rules for this repository. Follow them without being re-asked
   right way round, because the failure somebody notices is the one that never arrives.
 - **Room** uses `exportSchema = true` (schemas in `app/schemas`). For every `version` bump add a
   `Migration` to `RwilcoDatabase.MIGRATIONS`; **do not** enable destructive migration.
+- **The vault** (the encrypted backup, `app/.../vault/`) carries `ReminderEntity` rows and the raw
+  settings blob under a data version, `VAULT_SCHEMA`. An additive change (a new column with a
+  default) needs only the frozen column list in `VaultSchemaTest` extended; a non-additive one
+  bumps `VAULT_SCHEMA`, adds a step to `VAULT_MIGRATIONS` and a fixture pair
+  (`v{N}.snapshot.json` + `v{N}.vault`, test passphrase) under `app/src/test/resources/vault`.
+  A vault from a newer version is refused, never guessed at. The container (`VAULT_FORMAT`,
+  the KDF and the cipher) is versioned separately.
 
 ### Testing
 - All domain logic lives in `:core-model` (pure Kotlin, `java.time`, no Android) and must stay

@@ -251,7 +251,7 @@
     <string name="settings_haptics_hint">Un pequeño tic en chips, días y botones. No tiene que ver con la vibración de los avisos.</string>
     <string name="settings_updates">Actualizaciones</string>
     <string name="settings_about">Acerca de</string>
-    <string name="settings_about_body">Rwilco es tuya: sin cuenta, sin servidor, nada sale del teléfono.</string>
+    <string name="settings_about_body">Rwilco es tuya: sin cuenta, sin servidor, y nada sale del teléfono salvo que actives la copia cifrada.</string>
     <string name="settings_licenses">Tipografías: Bricolage Grotesque, Manrope y JetBrains Mono (SIL Open Font License). Mapas: osmdroid y colaboradores de OpenStreetMap.</string>
     <string name="app_version">Versión %1$s (%2$d)</string>
 
@@ -670,5 +670,129 @@
         <item>Lo que una recurrencia significa para un lugar, bien puesto. «Al llegar a casa, cada día»: atendido, el recordatorio descansa hasta que se cumple el plazo (mañana a tu hora de inicio del día), y entonces el lugar vuelve a estar armado — y suena en la siguiente llegada, no a las nueve. Las nueve nunca suenan solas cuando hay un lugar esperando; 0.11.3 había dejado de vigilar el lugar del todo, y eso estaba mal.</item>
         <item>A un lugar que ya ha sonado se le debe una salida antes de volver a sonar. Ni una posición dentro ni la geovalla del móvil releyendo la línea cuentan: la app tiene que haberte visto fuera desde entonces. Para verlo, las geovallas del móvil informan ahora también de las salidas; una salida se anota y nunca suena salvo que la regla sea de salir.</item>
         <item>«A las ocho, y luego cada seis horas» no cambia: pasada la fecha, el momento de la recurrencia es el toque.</item>
+    </string-array>
+
+    <!-- The vault: the encrypted backup, behind Settings. -->
+    <string name="vault_channel_name">Copia de seguridad</string>
+    <string name="vault_notice_auth_title">La copia no puede escribir en GitHub</string>
+    <string name="vault_notice_auth_text">GitHub ha rechazado el token. Revísalo en Ajustes › Copia de seguridad: caducado, revocado o sin permiso de escritura en el repositorio.</string>
+    <string name="vault_notice_repo_title">El repositorio de la copia no está</string>
+    <string name="vault_notice_repo_text">GitHub no encuentra el repositorio donde se guarda la copia. Revisa su nombre en Ajustes › Copia de seguridad.</string>
+    <string name="vault_notice_conflict_title">Otro teléfono ha escrito la copia</string>
+    <string name="vault_notice_conflict_text">La copia de GitHub no es la última que escribió este teléfono, así que se ha detenido en vez de sobrescribirla. Elige en Ajustes › Copia de seguridad cuál conservar.</string>
+    <string name="settings_backup">Copia de seguridad</string>
+    <string name="vault_title">Copia de seguridad</string>
+    <string name="vault_card_title">Copia cifrada</string>
+    <string name="vault_card_off">Desactivada. Todo se queda en este teléfono.</string>
+    <string name="vault_card_never">Activada; aún sin ninguna copia</string>
+    <string name="vault_card_last">Última copia %1$s</string>
+    <string name="vault_card_working">Copiando…</string>
+    <string name="vault_card_transient">El último intento falló; volverá a intentarlo</string>
+    <string name="vault_card_attention_auth">Detenida: GitHub rechazó el token</string>
+    <string name="vault_card_attention_repo">Detenida: el repositorio no está</string>
+    <string name="vault_card_attention_conflict">Detenida: otro teléfono escribió la copia</string>
+    <string name="vault_intro">Una copia cifrada de tus recordatorios, preajustes y lugares en un repositorio privado tuyo de GitHub, renovada un cuarto de hora después de cualquier cambio. Todo se cifra con tu contraseña antes de salir del teléfono: GitHub ve un archivo y su tamaño, nunca una palabra de lo que contiene. La app funciona igual sin ella.</string>
+    <string name="vault_intro_warning">Nadie puede recuperar la contraseña, Rwilco incluida. Sin ella, la copia es una caja cerrada.</string>
+    <string name="vault_field_repo">Repositorio</string>
+    <string name="vault_field_repo_placeholder">usuario/nombre</string>
+    <string name="vault_field_repo_hint">Un repositorio privado, creado a mano en GitHub. La app guarda en él un solo archivo, rwilco.vault; cada copia es un commit, así que el historial del repositorio es el historial de la copia.</string>
+    <string name="vault_field_token">Token de acceso</string>
+    <string name="vault_field_token_hint">Un token de acceso personal de grano fino limitado a ese repositorio, con Contents en lectura y escritura (GitHub › Settings › Developer settings). Se guarda solo en este teléfono.</string>
+    <string name="vault_field_passphrase">Contraseña</string>
+    <string name="vault_field_passphrase_again">Contraseña, otra vez</string>
+    <string name="vault_passphrase_rule">Al menos %1$d caracteres. Una frase vale.</string>
+    <string name="vault_show">Mostrar</string>
+    <string name="vault_hide">Ocultar</string>
+    <string name="vault_enable">Activar</string>
+    <string name="vault_status_repo">Repositorio %1$s</string>
+    <string name="vault_backup_now">Hacer copia ahora</string>
+    <string name="vault_restore_remote">Restaurar la copia de GitHub…</string>
+    <string name="vault_conflict_body">La copia de GitHub no es la última que escribió este teléfono: otro teléfono, o una restauración, la ha escrito desde entonces. No se ha sobrescrito nada. Trae aquí esa copia, o conserva la de este teléfono y reemplázala.</string>
+    <string name="vault_conflict_take_remote">Traer aquí la copia de GitHub</string>
+    <string name="vault_conflict_keep_phone">Conservar la de este teléfono y reemplazar la copia</string>
+    <string name="vault_update_credentials">Cambiar el repositorio o el token…</string>
+    <string name="vault_update_credentials_title">Repositorio y token</string>
+    <string name="vault_export">Exportar a un archivo</string>
+    <string name="vault_export_off_hint">La misma copia cifrada, con una contraseña propia.</string>
+    <string name="vault_import">Importar de un archivo…</string>
+    <string name="vault_undo">Deshacer la última restauración</string>
+    <string name="vault_undo_hint">Lo que tenía este teléfono antes de la última restauración, guardado aquí.</string>
+    <string name="vault_disable">Desactivar</string>
+    <string name="vault_disable_title">¿Desactivar la copia?</string>
+    <string name="vault_disable_hint">Olvida el token y la clave en este teléfono. La copia de GitHub se queda como está.</string>
+    <string name="vault_cancel">Cancelar</string>
+    <string name="vault_busy_probing">Comprobando el repositorio…</string>
+    <string name="vault_busy_deriving">Derivando la clave de tu contraseña…</string>
+    <string name="vault_busy_restoring">Restaurando…</string>
+    <string name="vault_busy_sealing">Cifrando…</string>
+    <string name="vault_existing_title">Ya hay una copia ahí</string>
+    <string name="vault_existing_locked">Tu contraseña no la abre. Aun así puedes reemplazarla con los datos de este teléfono, con esta contraseña; la copia antigua queda en el historial del repositorio.</string>
+    <string name="vault_existing_restore">Restaurarla aquí</string>
+    <string name="vault_existing_replace">Reemplazarla con este teléfono</string>
+    <string name="vault_summary">Hecha %1$s en el teléfono %2$s: %3$d recordatorios activos, %4$d hechos, %5$d preajustes, %6$d lugares.</string>
+    <string name="vault_summary_newer">La hizo una Rwilco más nueva que ésta. Actualiza la app antes, o lo que ésta no entienda se perderá en la siguiente edición.</string>
+    <string name="vault_confirm_title">¿Restaurar esta copia?</string>
+    <string name="vault_confirm_empty">Este teléfono está vacío; no se pierde nada.</string>
+    <plurals name="vault_confirm_replaces">
+        <item quantity="one">Reemplaza el único recordatorio de este teléfono. Lo que hay ahora queda guardado tras «Deshacer la última restauración».</item>
+        <item quantity="other">Reemplaza los %1$d recordatorios de este teléfono. Lo que hay ahora queda guardado tras «Deshacer la última restauración».</item>
+    </plurals>
+    <string name="vault_confirm_yes">Restaurar</string>
+    <string name="vault_passphrase_title">La contraseña de la copia</string>
+    <string name="vault_passphrase_body">Esta copia se cifró con una contraseña que este teléfono no tiene. Escríbela para abrirla.</string>
+    <string name="vault_open_action">Abrir</string>
+    <string name="vault_export_passphrase_title">Una contraseña para el archivo</string>
+    <string name="vault_export_passphrase_body">El archivo se cifra con ella, y solo ella lo abre. Al menos %1$d caracteres.</string>
+    <string name="vault_done_enabled">Activada. La primera copia está en camino.</string>
+    <string name="vault_done_restored">Restaurado</string>
+    <string name="vault_done_exported">Exportado</string>
+    <string name="vault_error_repo_name">Escribe el repositorio como usuario/nombre.</string>
+    <string name="vault_error_token">Falta el token.</string>
+    <string name="vault_error_passphrase_short">La contraseña es demasiado corta.</string>
+    <string name="vault_error_passphrase_mismatch">Las dos contraseñas no coinciden.</string>
+    <string name="vault_error_not_private">Ese repositorio es público. La copia va cifrada, pero no es sitio para ella.</string>
+    <string name="vault_error_no_push">El token no puede escribir en ese repositorio.</string>
+    <string name="vault_error_auth">GitHub ha rechazado el token.</string>
+    <string name="vault_error_repo_missing">GitHub no encuentra ese repositorio.</string>
+    <string name="vault_error_network">No se ha podido llegar a GitHub. Prueba en un momento.</string>
+    <string name="vault_error_no_remote">Aún no hay ninguna copia en el repositorio.</string>
+    <string name="vault_error_wrong_passphrase">Esa contraseña no abre la copia.</string>
+    <string name="vault_error_corrupt">La copia está dañada y no se puede leer.</string>
+    <string name="vault_error_newer">La copia la hizo una Rwilco más nueva. Actualiza la app antes.</string>
+    <string name="vault_error_file">No se ha podido leer o escribir el archivo.</string>
+    <string name="vault_error_restore">La restauración no ha terminado. No se ha perdido nada: prueba otra vez.</string>
+
+    <!-- Two reminders at once: what the alert screen does with the second. -->
+    <string name="settings_alert_stacking">Varios avisos a la vez</string>
+    <string name="settings_alert_stacking_hint">Cuando dos avisos a pantalla completa suenan con segundos de diferencia: uno tras otro — el siguiente aparece en cuanto contestas al primero — o todos a la vez, con la pantalla dividida en una tira por aviso. En ambos casos cada uno conserva su notificación.</string>
+    <string name="settings_stacking_sequential">Uno tras otro</string>
+    <string name="settings_stacking_strips">Todos a la vez</string>
+    <plurals name="alert_waiting">
+        <item quantity="one">%1$d más esperando</item>
+        <item quantity="other">%1$d más esperando</item>
+    </plurals>
+    <plurals name="alert_count">
+        <item quantity="one">%1$d aviso</item>
+        <item quantity="other">%1$d avisos</item>
+    </plurals>
+
+    <!-- The five ways the phone itself holds a reminder back. -->
+    <string name="perm_channel_muted">Un canal de notificaciones de los avisos está silenciado en el móvil, así que esos avisos llegan mudos o no llegan.</string>
+    <string name="perm_channel_muted_fix">Reactivar</string>
+    <string name="perm_volume_missing">El volumen de alarma está a cero, así que un aviso con sonido no suena.</string>
+    <string name="perm_volume_fix">Subir</string>
+    <string name="perm_dnd_missing">No molestar está en silencio total ahora mismo. Los avisos solo lo atraviesan si Rwilco tiene permiso.</string>
+    <string name="perm_dnd_fix">Permitir</string>
+    <string name="perm_restricted_missing">El uso en segundo plano está restringido para Rwilco, así que nada rearma los avisos con la app cerrada.</string>
+    <string name="perm_restricted_fix">Permitir</string>
+    <string name="perm_battery_missing">La optimización de batería puede detener Rwilco en segundo plano. Las alarmas suenan igual; la red que las rearma puede no correr.</string>
+    <string name="perm_battery_fix">Excluir</string>
+
+    <string-array name="whats_new_0_12_0">
+        <item>Tus recordatorios ya pueden vivir en otro sitio además de en este teléfono. En Ajustes, «Copia de seguridad»: una copia cifrada de todo — recordatorios, preajustes, lugares — en un repositorio privado tuyo de GitHub, renovada un cuarto de hora después de cualquier cambio. Se cifra con una contraseña tuya antes de salir del teléfono, así que GitHub ve un archivo y su tamaño y nunca una palabra de lo que contiene; cada copia es un commit, así que el historial del repositorio es el historial de la copia. Desactivada por defecto, y sin ella la app funciona exactamente como antes. Si pierdes la contraseña la copia es una caja cerrada: no la abre nadie, esta app incluida.</item>
+        <item>Dos avisos que suenan a la vez te llegan los dos. El segundo le quitaba la pantalla al primero, cuya notificación se quedaba muda en la bandeja — indistinguible de no haber sonado nunca. Ahora hacen cola: uno tras otro, apareciendo el siguiente en cuanto contestas, o en tiras, con un «Hecho» cada uno. Se elige en Ajustes › Avisos.</item>
+        <item>«Al llegar al curro, a partir de las siete» ya no hace una cuenta atrás hasta mañana. Cuando unas horas acompañan a un lugar bajo «a la vez», son las horas del lugar y no un momento aparte, así que Inicio dice lo que de verdad suena: la llegada.</item>
+        <item>Y un repaso a todo lo que hay entre el momento de un recordatorio y que tú te enteres. No molestar ya no se traga un aviso a pantalla completa: para el teléfono ahora son alarmas, no conversaciones. Un aviso al que el sistema le niega la pantalla completa hace su ruido como notificación en vez de llegar mudo. El sonido le pide el altavoz al teléfono, así que un podcast no puede taparlo, y la vibración es la de una alarma, que el interruptor de silencio respeta. Un momento que el móvil se durmió un par de minutos suena como el momento mismo en vez de llegar como una nota gris. Y todas las formas que tenía un disparo de decidir en silencio no sonar vuelven a armarse antes de irse.</item>
+        <item>Ajustes dice en voz alta las cinco cosas que hace el teléfono para que no te lleguen los avisos y que no encuentra nadie: la optimización de batería, el uso restringido en segundo plano, No molestar en silencio total, el volumen de alarma a cero y un canal de notificaciones silenciado a mano.</item>
     </string-array>
 </resources>

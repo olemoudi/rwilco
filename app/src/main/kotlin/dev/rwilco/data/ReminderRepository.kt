@@ -27,6 +27,15 @@ class ReminderRepository(private val dao: ReminderDao, private val clock: Clock)
     /** Everything, done included — the raw material for suggesting text somebody has used before. */
     suspend fun allNow(): List<Reminder> = dao.getAll().map(ReminderEntity::toDomain)
 
+    /** The rows themselves, as stored: what the backup copies, byte for byte. */
+    suspend fun allRows(): List<ReminderEntity> = dao.getAll()
+
+    /** The rows, reactive, so the backup hears about a change without polling. */
+    val rows: Flow<List<ReminderEntity>> = dao.observeAll()
+
+    /** A restore: the table becomes [rows] in one transaction. */
+    suspend fun replaceAll(rows: List<ReminderEntity>) = dao.replaceAll(rows)
+
     suspend fun snooze(id: String, until: Instant?) = dao.setSnooze(id, until?.toEpochMilli())
 
     suspend fun setLastDealtAt(id: String, at: Instant) = dao.setLastDealtAt(id, at.toEpochMilli())

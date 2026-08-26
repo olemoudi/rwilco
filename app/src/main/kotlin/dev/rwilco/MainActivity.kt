@@ -1,6 +1,11 @@
 package dev.rwilco
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -25,11 +30,22 @@ class MainActivity : ComponentActivity() {
     /** Where a notification asked to land (the update card lives in Settings); cleared once shown. */
     private val requestedDestination = mutableStateOf<String?>(null)
 
+    /** The answer lands in the Settings card's own check; nothing to do with it here. */
+    private val askNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         requestedDestination.value = intent?.getStringExtra(EXTRA_DESTINATION)
         val app = application as RwilcoApplication
+        // A reminders app with notifications off is a reminders app that fails silently, and on
+        // Android 13+ a fresh install starts that way. Asked once, here; refused, the Settings
+        // card keeps saying so.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
         setContent {
             val settings by app.settings.collectAsStateWithLifecycle()
             val current = settings
@@ -65,15 +81,20 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         UpdateWorker.runIfStale(this)
+        val app = application as RwilcoApplication
         // Back from system settings with "all the time" granted, or exact alarms allowed: what
         // that unlocks is armed now rather than at the next reboot.
-        (application as RwilcoApplication).resyncIfGrantsChanged()
+        app.resyncIfGrantsChanged()
+        // And whatever the phone slept through is said now, not at the six-hourly net.
+        app.catchUpIfStale()
     }
 
     companion object {
         /** Where a notification wants the app to land: [DESTINATION_SETTINGS] or a reminder. */
         const val EXTRA_DESTINATION = "dest"
         const val DESTINATION_SETTINGS = "settings"
+        /** The Backup screen, behind Settings: where a stopped backup's two choices are. */
+        const val DESTINATION_BACKUP = "backup"
         private const val REMINDER_PREFIX = "reminder:"
 
         fun reminderDestination(id: String): String = REMINDER_PREFIX + id

@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.rwilco.BuildConfig
 import dev.rwilco.R
+import dev.rwilco.model.AlertStacking
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.ThemeMode
 import dev.rwilco.model.Transition
@@ -59,6 +60,7 @@ import dev.rwilco.ui.components.DayToggles
 import dev.rwilco.ui.components.InfoBadge
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.SectionHeader
+import dev.rwilco.ui.components.SegmentedChoice
 import dev.rwilco.ui.components.TagChip
 import dev.rwilco.ui.components.TimeField
 import dev.rwilco.ui.editor.ActionsSection
@@ -68,7 +70,7 @@ import dev.rwilco.ui.theme.Tokens
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog: () -> Unit) {
+fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog: () -> Unit, onBackup: () -> Unit) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val spacing = Tokens.spacing
     val haptics = Tokens.haptics
@@ -232,6 +234,24 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
             )
             Spacer(Modifier.height(spacing.sm))
             VibrationCard(pattern = current.vibration, onChange = viewModel::setVibration)
+            Spacer(Modifier.height(spacing.sm))
+            // Two reminders ringing within moments of each other, and what the screen does with
+            // the second one. A choice rather than a rule, because both readings are right for
+            // somebody: one thing at a time, or everything that is owed an answer in one look.
+            RwilcoCard {
+                Column(Modifier.padding(spacing.lg)) {
+                    SettingTitle(
+                        title = stringResource(R.string.settings_alert_stacking),
+                        info = stringResource(R.string.settings_alert_stacking_hint),
+                    )
+                    Spacer(Modifier.height(spacing.sm))
+                    SegmentedChoice(
+                        options = listOf(stringResource(R.string.settings_stacking_sequential), stringResource(R.string.settings_stacking_strips)),
+                        selectedIndex = AlertStacking.entries.indexOf(current.alertStacking),
+                        onSelect = { viewModel.setAlertStacking(AlertStacking.entries[it]) },
+                    )
+                }
+            }
 
             SectionHeader(
                 title = stringResource(R.string.settings_location),
@@ -313,6 +333,12 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
 
             SectionHeader(stringResource(R.string.settings_updates))
             AppUpdateCard()
+
+            SectionHeader(
+                title = stringResource(R.string.settings_backup),
+                info = stringResource(R.string.vault_intro),
+            )
+            BackupCard(onOpen = onBackup)
 
             SectionHeader(
                 title = stringResource(R.string.settings_about),

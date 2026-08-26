@@ -39,8 +39,9 @@
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
-    <!-- allowBackup off: reminders are personal, and the sync/backup story is deliberately the
-         app's own (a later phase), not a transfer to whoever controls the Google account. -->
+    <!-- allowBackup off: reminders are personal, and the backup story is deliberately the app's
+         own (the vault: sealed with the person's passphrase, off by default — see vault/), not a
+         transfer to whoever controls the Google account. -->
     <application
         android:name=".RwilcoApplication"
         android:allowBackup="false"

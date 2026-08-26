@@ -339,6 +339,16 @@ strict is asking somebody to remember how they spelled it.
   the bottom-most control on it, because the bottom of the screen is where a half-awake thumb
   lands and it belongs to the one answer the screen is asking for; "Ver" (which opens the form)
   sits above it, having once sat below.
+  **Two reminders within moments of each other both reach the screen.** It is `singleTask`
+  and no start clears its task any more (every start once carried `CLEAR_TASK`, so the second
+  alert destroyed the first — whose notification, posted on the silent full-screen channel,
+  then read as "never rang"); the second arrives through `onNewIntent` and joins. What the
+  screen does with it is `AppSettings.alertStacking`: one after the other (the next appears the
+  instant the first is answered, with "N más esperando" over the words) or as strips
+  (`AlertStackScreen`, each with its own "Hecho"). Every reminder on the screen is watched in
+  the database and leaves when it stops being `awaitingAnswer` (pure, `Firing.kt`) — so
+  "Hecho" from the shade takes it down here too — and the ring's two-minute budget starts
+  over for each arrival.
 - `GeofenceManager` registers the place rules with Play Services, wholesale, and re-registers on
   boot and from `RearmWorker` (a reboot or a Play Services update drops them all). That is the
   net: free, always on, the system's own word on where the phone is. Settings says where that
@@ -529,6 +539,71 @@ strict is asking somebody to remember how they spelled it.
   alarms — rather than waiting for the six-hourly worker.
 - `SystemEventsReceiver` re-arms after a reboot, an install over ourselves, or the clock moving:
   a wall-clock promise is not an instant until a zone says so.
+- **Nothing on the way to the person is allowed to fail quietly.** Every way `fire` has of
+  *not* ringing re-arms before it leaves (the alarm that brought it is spent; a drop that left
+  nothing behind was a reminder silent until the six-hourly net); `rearmAll` writes the armed
+  moment *before* setting the alarm (an alarm for a past moment arrives at once and read the
+  row first); the settings are read — with the defaults as the answer to a read that fails —
+  *before* `markFired`, so no moment is spent by an exception nothing showed for; the app scope
+  has an exception handler and every collector survives a bad pass, because the collector on
+  `repository.open` is the only thing that arms a reminder just saved; the settings DataStore
+  replaces a corrupt file instead of throwing on every read; `AlarmReceiver` bounds itself
+  under the broadcast budget; `MainActivity.onResume` catches up (guarded to once every few
+  minutes), so a timer the phone slept through is said when the app is opened. A catch-up under
+  `LATE_IS_MISSED` (15 min) rings as the moment itself; past it, it is the quiet note.
+  On the showing side: every alert channel carries **alarm** audio attributes, silent ones
+  included, and the live notification is `CATEGORY_ALARM` — which is what lets Do Not Disturb
+  tell it from a chat and the ringer switch keep its buzz; with notification-policy access
+  granted the channels bypass DND outright (`_dnd` channels). `alertPresentation` asks whether
+  the system will honour a full-screen intent at all (Android 14+ can refuse it) and answers
+  BANNER on a dark screen when it will not, so the notification makes the noise a screen that
+  never came would have made; with the screen on the alert is started *before* the notification
+  is posted, and the channel follows whether it took. Notifications switched off make the
+  post a no-op, so the screen is tried from anywhere. `AlertRinger` asks for exclusive audio
+  focus and buzzes with alarm usage. `AlertPermissionsCard` reads ten states, the five grants
+  and the five ways the phone holds a reminder back — battery optimisation, a restricted
+  background, total-silence DND, the alarm volume at zero, a muted channel.
+
+## Backup (the vault)
+
+`vault/`, optional and off by default; with it off nothing here runs and nothing leaves the
+phone. On, it is **one file, `rwilco.vault`, in a private GitHub repository of the person's**,
+replaced whole through the Contents API — each replacement a commit, so the repository's
+history is the backup's history for free — with a fine-grained token scoped to that repository.
+
+- **What goes**: `VaultSnapshot` — the `reminder` rows as rows (their columns are already a
+  frozen contract and their JSON columns are read by `ReminderCodec`, so a vault inherits every
+  lenient read the database has) and the raw `settings_json` blob, whole. Nothing is stripped:
+  the armed moments are what lets a restore ring, late, what fell due meanwhile. The place
+  watch's two stores stay out (device state, a location trail), and so does the vault's own.
+- **Sealed before it leaves** (`VaultCrypto`): a JSON envelope with a plaintext KDF header
+  (PBKDF2-HMAC-SHA256, 600k, the vault's own salt) and two AES-256-GCM boxes under the derived
+  key — a tiny `check` so a wrong passphrase fails cleanly, and the gzipped snapshot. The KDF is
+  the app's own dozen lines over the platform HMAC, pinned to the RFC 7914 vectors on the JVM
+  and on the device, over the NFC-normalised passphrase. The remote learns a size and a time.
+- **The phone keeps the key, never the passphrase** (`VaultStore`, its own DataStore next to
+  the token, the salt and the cursors — never inside the settings, which are part of what it
+  backs up). A new phone has no store, so the only way in is the passphrase.
+- **When** (`VaultWorker`): a change to the *content* — `fingerprint`, which leaves out what the
+  scheduler writes back — queues one upload a quarter of an hour later, while the phone is
+  awake from the change; a two-hourly periodic run is the net under it. A run whose fingerprint
+  is the last uploaded makes no call. The blob sha (`git hash-object`, computed locally) is
+  written down before the PUT and compared with GitHub's answer: a 409 whose remote sha is our
+  own attempt is an upload that landed after its reply was lost; any other is **another
+  writer**, and the run stops, records `CONFLICT` and says so — never a silent clobber. Auth
+  and a missing repository stop the same way; network trouble retries with backoff.
+- **Back** (`VaultRestore`, the Backup screen): open first — derive with the *file's* salt,
+  show when, from which phone and how much — then apply in a fixed, idempotent order: rows in
+  one transaction, settings, the vault's state (adopting the salt, key and sha), then the alarms.
+  What the phone held first goes into `files/vault/before-restore.vault`, sealed under the
+  incoming key, behind an "undo" row. Enabling against a repository that already holds a vault
+  asks: restore it here, or replace it. The same envelope goes through the file picker as an
+  export/import, for any other cloud or none.
+- **Versions**: `VAULT_SCHEMA` for the data, `VAULT_FORMAT` for the container; a newer either is
+  refused. `VaultSchemaTest` freezes the row's column list and demands a fixture per data
+  version, so a change that would make old vaults unreadable fails in CI (the rule is in
+  `CLAUDE.md`). A vault written by a newer *build* under the same schema is warned about in the
+  preview: the rows keep what this build cannot read, but the editor's next save would not.
 
 ## Self-update
 

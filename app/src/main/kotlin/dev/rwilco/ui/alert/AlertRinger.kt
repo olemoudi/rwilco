@@ -2,8 +2,11 @@ package dev.rwilco.ui.alert
 
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.media.MediaPlayer
 import android.os.Build
+import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -27,6 +30,7 @@ class AlertRinger(private val context: Context) {
 
     private var player: MediaPlayer? = null
     private var vibrator: Vibrator? = null
+    private var focus: AudioFocusRequest? = null
 
     /** [limit] is how long the buzz may last; the default is the only one an alarm ever gets. */
     fun start(
@@ -48,21 +52,30 @@ class AlertRinger(private val context: Context) {
             }
         }
         player = null
+        focus?.let { request -> runCatching { context.getSystemService(AudioManager::class.java)?.abandonAudioFocusRequest(request) } }
+        focus = null
         runCatching { vibrator?.cancel() }
         vibrator = null
     }
 
     private fun startSound(tone: AlertSound) {
         val uri = Sounds.uri(context, tone) ?: return
+        val attributes = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_ALARM)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+        // Ask for the audio, exclusively: a podcast or the navigation kept talking over a chime
+        // that is deliberately gentle, and the chime was heard as nothing. Alarm usage cannot
+        // be ducked by anybody else, so nothing is given up in return.
+        runCatching {
+            val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE).setAudioAttributes(attributes).build()
+            context.getSystemService(AudioManager::class.java)?.requestAudioFocus(request)
+            focus = request
+        }
         runCatching {
             player = MediaPlayer().apply {
                 setDataSource(context, uri)
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ALARM)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build(),
-                )
+                setAudioAttributes(attributes)
                 isLooping = true
                 prepare()
                 start()
@@ -98,7 +111,15 @@ class AlertRinger(private val context: Context) {
             } else {
                 VibrationEffect.createWaveform(timings, NO_REPEAT)
             }
-            service.vibrate(effect)
+            // As an alarm, in so many words: a buzz with no usage is the first thing the ringer
+            // switch and Do Not Disturb drop, and the one thing a screen that rings for itself
+            // must not lose.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                service.vibrate(effect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM))
+            } else {
+                @Suppress("DEPRECATION")
+                service.vibrate(effect, AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build())
+            }
         }.onFailure { Log.w(TAG, "could not vibrate", it) }
     }
 

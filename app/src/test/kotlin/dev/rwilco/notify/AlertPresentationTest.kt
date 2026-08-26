@@ -14,7 +14,8 @@ class AlertPresentationTest {
         inUse: Boolean = true,
         foreground: ForegroundApp = ForegroundApp.NONE,
         canOverlay: Boolean = true,
-    ) = alertPresentation(fullScreenWanted, inUse, foreground, canOverlay)
+        canFullScreen: Boolean = true,
+    ) = alertPresentation(fullScreenWanted, inUse, foreground, canOverlay, canFullScreen)
 
     @Test
     fun `an app open in front of somebody is not interrupted`() {
@@ -38,6 +39,16 @@ class AlertPresentationTest {
     @Test
     fun `not being allowed to show falls back to the banner`() {
         assertEquals(AlertPresentation.BANNER, decide(canOverlay = false))
+    }
+
+    @Test
+    fun `a screen the system will not give becomes a banner that makes its own noise`() {
+        // Locked or dark: only the system's full-screen intent can light the screen, and when
+        // Android 14+ refuses it the notification has to carry the sound — deciding FULL_SCREEN
+        // here muted it for a screen that never came.
+        assertEquals(AlertPresentation.BANNER, decide(inUse = false, canFullScreen = false))
+        // With the screen on the app starts the alert itself, and the grant does not enter into it.
+        assertEquals(AlertPresentation.FULL_SCREEN, decide(inUse = true, canFullScreen = false))
     }
 
     @Test

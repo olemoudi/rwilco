@@ -47,7 +47,9 @@ can really prove.
 
 - The place picker's map tiles need a connection; without one the pin still works, over a
   blank map. The rest of the app never needs a connection (except to check for updates).
-- No sync or backup: what is on the phone is the only copy.
+- No sync. Backup is optional and off by default: an encrypted copy (your passphrase, sealed on
+  the phone) in a private GitHub repository of yours, refreshed after every change. Without it,
+  what is on the phone is the only copy.
 - Place reminders need location "all the time" and Play Services; without them the rest of the
   app is unaffected and Settings says so.
 

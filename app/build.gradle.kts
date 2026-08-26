@@ -24,8 +24,8 @@ android {
         // v0.1.0 and v0.2.0: the published versionName came out as the comment's placeholder
         // with the real one stuck on the end. Updates kept working (the version CODE never
         // matched the comment), so nothing complained — it just offered a nonsense version.
-        versionCode = 33
-        versionName = "0.11.4-alpha"
+        versionCode = 34
+        versionName = "0.12.0-alpha"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -113,6 +113,8 @@ dependencies {
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
     testImplementation(libs.kotlinx.coroutines.test)
+    // The vault talks to GitHub through OkHttp; the mock server answers for GitHub in tests.
+    testImplementation(libs.okhttp.mockwebserver)
 
     // Instrumented tests: what only a real device can answer — Room migrations against a real
     // SQLite file, the editor flow through real Compose, the installer reading a real APK.

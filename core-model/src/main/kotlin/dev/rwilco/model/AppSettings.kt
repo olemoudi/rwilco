@@ -81,7 +81,18 @@ data class AppSettings(
     /** For [Action.SOUND_UNTIL_ANSWERED]: how many plays in a round, and how far apart. */
     val soundPlays: Int = SoundLimits.DEFAULT_PLAYS,
     val soundGapMinutes: Int = SoundLimits.DEFAULT_GAP_MINUTES,
+    /**
+     * Two full-screen reminders within moments of each other: one after the other (the next
+     * appears the instant the first is answered) or all at once, the screen split into a
+     * strip per reminder. Sequential by default: it is what a single alert already looks
+     * like, and nothing changes under a thumb that is mid-answer.
+     */
+    val alertStacking: AlertStacking = AlertStacking.SEQUENTIAL,
 )
+
+/** How the alert screen holds more than one reminder. See [AppSettings.alertStacking]. */
+@Serializable
+enum class AlertStacking { SEQUENTIAL, STRIPS }
 
 /** Nine in the morning, until somebody says otherwise. */
 val DEFAULT_DAY_START: LocalTime = LocalTime.of(9, 0)

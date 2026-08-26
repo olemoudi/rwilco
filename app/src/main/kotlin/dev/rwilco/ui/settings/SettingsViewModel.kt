@@ -11,6 +11,7 @@ import dev.rwilco.model.Action
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.SoundLimits
 import dev.rwilco.model.AlertSound
+import dev.rwilco.model.AlertStacking
 import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.SOUND_ACTIONS
 import dev.rwilco.model.SavedPlace
@@ -118,6 +119,9 @@ class SettingsViewModel(
     fun setAlertSound(sound: AlertSound) = update { it.copy(alertSound = sound) }
     fun setSoundPlays(plays: Int) = update { it.copy(soundPlays = plays.coerceIn(SoundLimits.PLAYS)) }
     fun setSoundGap(minutes: Int) = update { it.copy(soundGapMinutes = minutes.coerceIn(SoundLimits.GAP_MINUTES)) }
+
+    /** Two full-screen reminders at once: one behind the other, or side by side as strips. */
+    fun setAlertStacking(stacking: AlertStacking) = update { it.copy(alertStacking = stacking) }
 
     /** Null puts the six tiles back in their usual order: no favourite. */
     // The two are one row of answers on screen: choosing a kind puts the popular order away.

@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -57,6 +58,8 @@ fun AlertScreen(
     content: AlertContent,
     preview: Boolean,
     onDone: () -> Unit,
+    /** Reminders ringing behind this one, shown the instant it is answered. */
+    waiting: Int = 0,
     onSnooze: (Snooze) -> Unit,
     onView: () -> Unit,
 ) {
@@ -79,6 +82,14 @@ fun AlertScreen(
                     color = scheme.primary,
                     modifier = Modifier.weight(1f),
                 )
+                if (waiting > 0) {
+                    Text(
+                        text = pluralStringResource(R.plurals.alert_waiting, waiting, waiting),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = scheme.onSurfaceVariant,
+                        modifier = Modifier.padding(end = spacing.sm),
+                    )
+                }
                 content.trigger?.let { trigger ->
                     TriggerKeycap(family = content.family, icon = trigger.kind.icon, contentDescription = null)
                 }

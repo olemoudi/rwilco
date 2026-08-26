@@ -6,6 +6,7 @@ import android.content.Intent
 import android.util.Log
 import dev.rwilco.RwilcoApplication
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** A reminder's moment arrived. Everything real happens in [ReminderFiring]. */
 class AlarmReceiver : BroadcastReceiver() {
@@ -18,12 +19,19 @@ class AlarmReceiver : BroadcastReceiver() {
         val pending = goAsync()
         app.appScope.launch {
             try {
-                app.firing.fire(id, ruleIndex = ruleIndex)
+                // Bounded under the broadcast's own budget: past it the system finishes the
+                // receiver itself, and a finish() of our own on top of that throws.
+                val done = withTimeoutOrNull(BUDGET_MS) { app.firing.fire(id, ruleIndex = ruleIndex) }
+                if (done == null) Log.e("RwilcoAlarms", "firing $id ran out of time")
             } catch (t: Throwable) {
                 Log.e("RwilcoAlarms", "firing $id failed", t)
             } finally {
-                pending.finish()
+                runCatching { pending.finish() }
             }
         }
+    }
+
+    private companion object {
+        const val BUDGET_MS = 9_000L
     }
 }

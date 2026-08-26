@@ -1,6 +1,7 @@
 package dev.rwilco.model
 
 import dev.rwilco.model.Fixtures.defaultTime
+import dev.rwilco.model.Fixtures.local
 import dev.rwilco.model.Fixtures.now
 import dev.rwilco.model.Fixtures.zone
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -94,6 +95,22 @@ class TogetherTest {
         val atFive = both.togetherRule(1)!!
         assertEquals(fiveToSeven, atFive.trigger)
         assertEquals(listOf(office.asState()), atFive.conditions)
+    }
+
+    @Test
+    fun `a place with hours beside it is the answer on Home, not the hours' opening`() {
+        val both = reminder(RuleMatch.TOGETHER, office, fiveToSeven)
+        // "Al llegar a la oficina, de cinco a siete": what rings is the arrival.
+        assertEquals(NextFire.WhenAt(office), nextFire(both, now, zone, defaultTime))
+        // Five o'clock came and went with nobody at the office: still the arrival — not, as it
+        // once read, a countdown to tomorrow's five.
+        assertEquals(NextFire.WhenAt(office), nextFire(both, now.plusSeconds(3 * 3600), zone, defaultTime))
+        // The opening is armed all the same, for a morning somebody is already there.
+        assertEquals(local(2026, 8, 27, 17, 0), nextWake(both, now, zone, defaultTime)!!.at)
+        // Under "cualquiera" the window opens whether or not anybody is there, so its moment stands.
+        assertEquals(local(2026, 8, 27, 17, 0), (nextFire(reminder(RuleMatch.ANY, office, fiveToSeven), now, zone, defaultTime) as NextFire.Scheduled).at)
+        // A moment beside a place is a real moment: nine, if at the office, is nine.
+        assertTrue(nextFire(reminder(RuleMatch.TOGETHER, office, nineAm), now, zone, defaultTime) is NextFire.Scheduled)
     }
 
     @Test

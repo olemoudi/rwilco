@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
+import dev.rwilco.model.AppSettings
 import dev.rwilco.model.FiringOutcome
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Snooze
@@ -16,6 +17,7 @@ import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.allHoldAt
 import dev.rwilco.model.togetherRule
 import dev.rwilco.model.knownInAdvance
+import dev.rwilco.model.lateForPresentation
 import dev.rwilco.model.nextSoundIn
 import dev.rwilco.model.firingPlan
 import dev.rwilco.model.missedFire
@@ -85,12 +87,17 @@ class ReminderFiring(
         // the moment this one happened is only a firing if all of them are true then. A null
         // is a set that cannot hold at all — two instants asked to coincide.
         val judged = ruleIndex?.let { reminder.togetherRule(it) }
+        // Every way of NOT ringing below re-arms before it leaves. The alarm that brought us
+        // here is spent, and a drop that left nothing behind was a reminder silent until the
+        // six-hourly net came round — or for ever, if the process died first.
         if (ruleIndex != null && judged == null) {
             Log.i(TAG, "$id asks for two moments at once, which never happens")
+            scheduler.rearmAll()
             return@withLock
         }
         if (judged != null && !conditionsHold(judged, now)) {
             Log.i(TAG, "$id came round outside what its rule asks for")
+            scheduler.rearmAll()
             return@withLock
         }
         // Nothing rings for a moment that is not armed.
@@ -104,6 +111,9 @@ class ReminderFiring(
         val eventDriven = rule?.trigger is Trigger.Location
         if (!eventDriven && late == null && (armed == null || armed > now.plusSeconds(EARLY_GRACE_SECONDS))) {
             Log.i(TAG, "$id has nothing armed for now (armed=$armed); ignoring a stray firing")
+            // A clock set back past the grace lands here too: the moment is still ahead by the
+            // new clock, and re-arming is what rings it when it comes.
+            scheduler.rearmAll()
             return@withLock
         }
         // Two eyes on every place — the phone's geofence and the app's own watch — and one
@@ -131,6 +141,15 @@ class ReminderFiring(
             FiringOutcome.Ring -> Unit
         }
         Log.i(TAG, "firing $id${if (late != null) " (late)" else ""}")
+        // Everything the showing needs is read BEFORE the moment is spent. A settings read
+        // that failed between markFired and the notification spent a moment nothing ever
+        // showed — and missedFire could never tell, because the row said it had rung. The
+        // defaults are a fine way to ring; a swallowed exception is not.
+        val settings = runCatching { settingsStore.settings.first() }.getOrElse {
+            Log.e(TAG, "settings would not read; ringing with the defaults", it)
+            AppSettings()
+        }
+        val plan = firingPlan(reminder.actions)
         // Recorded against the moment it rang FOR, not the millisecond the alarm arrived. See
         // momentRungFor: a place is the one firing that must not reach for the armed moment,
         // because that moment belongs to whatever else the reminder is still waiting for.
@@ -139,9 +158,10 @@ class ReminderFiring(
         if (reminder.ruleMatch == RuleMatch.ALL && reminder.rulesCombine) {
             repository.setFiredRules(id, reminder.rules.indices.toSet())
         }
-        val settings = settingsStore.settings.first()
-        val plan = firingPlan(reminder.actions)
-        AlertPresenter.show(context, reminder, plan, late, settings.vibration, settings.alertSound, ruleIndex = ruleIndex)
+        // A moment the phone slept through by a minute or two is still that moment, and rings
+        // like it; only one it slept through by a good while arrives as the quiet "did not ring
+        // on time" note (lateForPresentation).
+        AlertPresenter.show(context, reminder, plan, lateForPresentation(late, now), settings.vibration, settings.alertSound, ruleIndex = ruleIndex)
         // "Hasta que reciba caso": the first play has gone out, so line up the second.
         if (plan.insistent) {
             nextSoundIn(played = 1, plays = settings.soundPlays, gapMinutes = settings.soundGapMinutes)

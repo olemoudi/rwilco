@@ -1,6 +1,7 @@
 package dev.rwilco.model
 
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
@@ -194,3 +195,29 @@ enum class Snooze {
         }
     }
 }
+
+/**
+ * Rang, and nobody has dealt with it since: what keeps a reminder on the alert screen, and what
+ * takes it down when the answer comes from somewhere else (the notification's own "Hecho"). A
+ * snooze is an answer; so is a pause. Read off the row, so every door agrees.
+ */
+fun Reminder.awaitingAnswer(now: Instant): Boolean {
+    if (status != Status.ACTIVE) return false
+    val rang = lastFiredAt ?: return false
+    val dealt = lastDealtAt
+    if (dealt != null && !dealt.isBefore(rang)) return false
+    val snoozed = snoozedUntil
+    return snoozed == null || snoozed <= now
+}
+
+/** A firing this far behind its moment is a note about the past, not the moment itself. */
+val LATE_IS_MISSED: Duration = Duration.ofMinutes(15)
+
+/**
+ * How a catch-up is shown. A moment the phone slept through by a couple of minutes — a reboot,
+ * a process that took a while to come back — is still that moment and rings as one; only a
+ * moment missed by a good while arrives as the quiet "did not ring on time" note, because a
+ * timer that goes off at half past for a quarter past is no timer at all. Null means "live".
+ */
+fun lateForPresentation(late: Instant?, now: Instant): Instant? =
+    late?.takeIf { Duration.between(it, now) >= LATE_IS_MISSED }
