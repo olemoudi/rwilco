@@ -16,12 +16,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Repeat
+import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -39,10 +44,11 @@ import dev.rwilco.ui.theme.Tokens
 /**
  * What a reminder sounds like, and — for the insistent one — how often it says it again.
  *
- * The four bundled chimes are the app's own, built the way a car builds one: two or three short
- * tones and then silence. A car does not shout, and neither should a phone that only wants you
- * to look at it. Every one of them plays on a tap, because choosing a sound by reading its name
- * is choosing blind.
+ * The four bundled chimes are the app's own, built the way a car builds one: a low tone struck
+ * and left to ring, not a beep. A car does not shout, and neither should a phone that only
+ * wants you to look at it. Every one of them plays on a tap, because choosing a sound by
+ * reading its name is choosing blind — and the insistent round can be heard whole, with its
+ * waits shortened, rather than taken on trust.
  */
 @Composable
 fun SoundCard(
@@ -146,10 +152,35 @@ fun SoundCard(
                         incrementEnabled = gapMinutes < SoundLimits.GAP_MINUTES.last,
                     )
                 }
+                // What those two numbers actually feel like. The real waits are minutes long;
+                // this plays the round with them shortened, and says so underneath.
+                Column {
+                    var rehearsing by remember { mutableStateOf(false) }
+                    OutlinedButton(
+                        onClick = {
+                            if (rehearsing) preview.stop()
+                            else preview.playRound(sound, plays, REHEARSAL_GAP_MS) { rehearsing = it }
+                        },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.sizes.touch),
+                    ) {
+                        Icon(if (rehearsing) Icons.Outlined.Stop else Icons.Outlined.Repeat, contentDescription = null)
+                        Spacer(Modifier.width(spacing.sm))
+                        Text(stringResource(if (rehearsing) R.string.settings_sound_insistent_stop else R.string.settings_sound_insistent_play))
+                    }
+                    Spacer(Modifier.height(spacing.xs))
+                    Text(
+                        text = stringResource(R.string.settings_sound_insistent_hint, plays, gapMinutes),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }
 }
+
+/** The wait in the rehearsal: long enough to be a gap, short enough to sit through. */
+private const val REHEARSAL_GAP_MS = 1_200L
 
 private val AUDIO_TYPES = arrayOf("audio/mpeg", "audio/wav", "audio/x-wav", "audio/ogg", "audio/*")
 

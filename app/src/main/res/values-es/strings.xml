@@ -620,7 +620,7 @@
     <!-- The second sound action, and the sounds themselves. -->
     <string name="action_sound_until_answered">Sonido insistente</string>
     <string name="settings_sound_title">Sonido</string>
-    <string name="settings_sound_hint">Cómo suena un recordatorio. Los cuatro nuestros están hechos como los hace un coche —dos o tres tonos cortos y silencio—, así que llaman la atención a un volumen que no molesta. Toca uno para oírlo.</string>
+    <string name="settings_sound_hint">Cómo suena un recordatorio. Los cuatro nuestros están hechos como los hace un coche —un tono grave que se golpea y se deja sonar, y luego silencio— en vez de un pitido en la banda que hace que un sonido resulte estridente. Son más discretos que la alarma del móvil a propósito; toca uno para oírlo.</string>
     <string name="settings_sound_system">Alarma del móvil</string>
     <string name="settings_sound_play">Reproducir</string>
     <string name="settings_sound_custom">Archivo…</string>
@@ -629,8 +629,8 @@
     <string name="settings_sound_plays_value">%1$d veces</string>
     <string name="settings_sound_gap">Cada cuánto</string>
     <string name="settings_sound_gap_value">cada %1$d min</string>
-    <string name="sound_chime_alert">Aviso</string>
-    <string name="sound_chime_two_tone">Dos tonos</string>
+    <string name="sound_chime_alert">Puerta abierta</string>
+    <string name="sound_chime_two_tone">Din-don</string>
     <string name="sound_chime_low">Grave</string>
     <string name="sound_chime_soft">Suave</string>
     <string-array name="whats_new_0_11_0">
@@ -836,5 +836,13 @@
         <item>Las actualizaciones también pueden esperar al wifi (Ajustes › Actualizaciones). La app son cincuenta megas y una actualización se los baja enteros. «Buscar ahora» sigue saliendo por donde haya, porque lo pides tú.</item>
         <item>Abrir una cuenta atrás en marcha ya no la reinicia. La hoja devolvía siempre un temporizador nuevo, así que «en diez minutos» pasaba a ser diez minutos desde que dabas a guardar — y eso es también por lo que a veces un recordatorio se caía de la tarjeta grande de arriba después de editarlo. Si cambias la duración, sigue siendo un temporizador nuevo.</item>
         <item>La petición de permiso que 0.12.0 añadió al arrancar llega ahora después de la primera pantalla en vez de encima, y se pide una vez en lugar de en cada giro.</item>
+    </string-array>
+    <string name="settings_sound_insistent_play">Oír la tanda insistente</string>
+    <string name="settings_sound_insistent_stop">Parar</string>
+    <string name="settings_sound_insistent_hint">Suena %1$d veces en total. Aquí con las pausas acortadas; de verdad es cada %2$d min, y para en cuanto atiendes el recordatorio.</string>
+
+    <string-array name="whats_new_0_14_0">
+        <item>Los cuatro tonos están rehechos, y son más suaves. Eran pitidos en la banda que hace que cualquier sonido resulte estridente (hasta 1568 Hz, con envolventes planas); ahora son notas graves —de 330 a 800 Hz— golpeadas y dejadas caer como una lámina golpeada con un mazo, cada una con su propia octava por debajo para dar calidez y casi nada por encima. La idea es el aviso que hace un coche cuando te dejas una puerta abierta, no el zumbador: «Puerta abierta» es justo eso, un tono suave golpeado cuatro veces, sin prisa. Siguen siendo nuestros, siguen sintetizados por un script del repositorio y siguen sin licencia de nadie.</item>
+        <item>El sonido insistente se puede oír antes de fiarse de él: «Oír la tanda insistente» reproduce la tanda entera —tantas veces como volvería de verdad— con las pausas acortadas para que se pueda escuchar de un tirón, y dice debajo cuál es la pausa real.</item>
     </string-array>
 </resources>

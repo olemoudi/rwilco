@@ -14,16 +14,16 @@ import java.time.Duration
  * nobody.
  */
 enum class Chime {
-    /** Three quick ones: the blind-spot warning. The most urgent here and still not shrill. */
+    /** A door left open: one soft tone struck four times, unhurried. The most insistent here. */
     ALERT,
 
-    /** Two a fifth apart, falling: the seat-belt reminder. Says "look at me" and nothing more. */
+    /** Ding-dong, falling a fourth: the seat-belt reminder. Says "look at me" and nothing more. */
     TWO_TONE,
 
-    /** Three in a lower register, for anybody who finds the high band piercing. */
+    /** Two lower still, for a quiet room at night or an ear that finds anything above it bright. */
     LOW,
 
-    /** One warm ding with a long tail: the quietest thing here, for a phone on a desk. */
+    /** One warm note with a long tail: the quietest thing here, for a phone on a desk. */
     SOFT,
 }
 

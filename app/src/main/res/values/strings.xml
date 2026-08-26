@@ -622,7 +622,7 @@
     <!-- The second sound action, and the sounds themselves. -->
     <string name="action_sound_until_answered">Sound until answered</string>
     <string name="settings_sound_title">Sound</string>
-    <string name="settings_sound_hint">What a reminder sounds like. The four of ours are built the way a car builds one — two or three short tones and then silence — so they catch your eye at a volume nobody minds. Tap one to hear it.</string>
+    <string name="settings_sound_hint">What a reminder sounds like. The four of ours are made the way a car makes one — a low tone struck and left to ring, then quiet — rather than a beep in the band that makes a sound shrill. They are quieter than the phone\'s alarm tone on purpose; tap one to hear it.</string>
     <string name="settings_sound_system">Phone\'s alarm</string>
     <string name="settings_sound_play">Play</string>
     <string name="settings_sound_custom">File…</string>
@@ -631,8 +631,8 @@
     <string name="settings_sound_plays_value">%1$d times</string>
     <string name="settings_sound_gap">How far apart</string>
     <string name="settings_sound_gap_value">every %1$d min</string>
-    <string name="sound_chime_alert">Alert</string>
-    <string name="sound_chime_two_tone">Two tone</string>
+    <string name="sound_chime_alert">Door ajar</string>
+    <string name="sound_chime_two_tone">Ding-dong</string>
     <string name="sound_chime_low">Low</string>
     <string name="sound_chime_soft">Soft</string>
     <string-array name="whats_new_0_11_0">
@@ -838,5 +838,13 @@
         <item>Updates can wait for wifi too (Settings › Updates). The app is fifty megabytes and an update downloads all of it. «Check now» still goes over whatever there is, because you asked for it.</item>
         <item>Opening a running countdown no longer restarts it. The sheet always handed back a fresh timer, so «in ten minutes» quietly became ten minutes from whenever you pressed save — which is also why a reminder would sometimes drop out of the big card at the top after an edit. A length you actually change is still a new timer.</item>
         <item>The permission request 0.12.0 added on launch now comes after the first screen rather than on top of it, and asks once instead of on every rotation.</item>
+    </string-array>
+    <string name="settings_sound_insistent_play">Hear the insistent round</string>
+    <string name="settings_sound_insistent_stop">Stop</string>
+    <string name="settings_sound_insistent_hint">It plays %1$d times in all. Here the waits are shortened; the real one is every %2$d min, and it stops the moment you deal with the reminder.</string>
+
+    <string-array name="whats_new_0_14_0">
+        <item>The four chimes are rebuilt, and they are softer. They used to be beeps in the band that makes any sound feel shrill (up to 1568 Hz, with flat-topped envelopes); now they are low notes — 330 to 800 Hz — struck and left to decay like a bar hit with a mallet, each carrying its own octave underneath for warmth and almost nothing above it. The idea is the chime a car plays when you leave a door open, not the buzzer: «Puerta abierta» is exactly that, one soft tone struck four times, unhurried. They are still the app\'s own, still synthesised by a script in the repository, and still licensed by nobody.</item>
+        <item>The insistent sound can be heard before you trust it: «Oír la tanda insistente» plays the whole round — as many times as it would really come back — with the waits shortened to something you will sit through, and says what the real wait is underneath.</item>
     </string-array>
 </resources>

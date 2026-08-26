@@ -301,8 +301,10 @@ strict is asking somebody to remember how they spelled it.
   chimes the app brings with it, the phone's own alarm tone, or a file somebody picked. The
   chimes are synthesised rather than sourced (`scripts/chimes.py`, run it and the same files
   come out), so they are the app's own and licensed by nobody, and they are built the way a car
-  builds one: two or three short tones in the band the ear is most sensitive to, a soft envelope
-  so nothing clicks, and then silence. A car does not shout, and a phone that only wants you to
+  builds one — the door-left-open chime rather than the buzzer: a low note (330–800 Hz, *below*
+  the band that makes a tone shrill) struck and left to decay like a bar hit with a mallet,
+  carrying its own octave underneath for warmth and almost nothing above, and then silence.
+  The first four sat at 660–1568 Hz with flat-topped envelopes, which is what "beep" is made of. A car does not shout, and a phone that only wants you to
   look at it should not either. A custom file is kept only once `takePersistableUriPermission`
   has succeeded — a picker Uri is readable while the app is in the foreground and an alarm three
   days out is not, so without that it would work while being chosen and be silent when it
