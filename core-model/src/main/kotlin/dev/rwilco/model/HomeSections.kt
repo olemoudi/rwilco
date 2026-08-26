@@ -1,5 +1,6 @@
 package dev.rwilco.model
 
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
@@ -8,11 +9,23 @@ import java.util.Locale
 /** Declaration order is display order. */
 enum class Section { OVERDUE, TODAY, TOMORROW, THIS_WEEK, LATER, WHENEVER, NO_TRIGGER, PAUSED }
 
-data class HomeEntry(val reminder: Reminder, val next: NextFire?)
+data class HomeEntry(
+    val reminder: Reminder,
+    val next: NextFire?,
+    /** What the alarm is set for: the moment this reminder cannot ring before. */
+    val wake: Wake? = null,
+)
+
+/**
+ * The card that glows, and whether its moment is the ring or only the earliest it could be.
+ * A place with hours on it ("al salir de la oficina, de 18:30 a 20:00") cannot ring before the
+ * window opens, which is a real thing to say and is *not* a promise that it will ring then.
+ */
+data class Hero(val entry: HomeEntry, val atEarliest: Boolean)
 
 data class HomeGroups(
-    /** The next definite moment across everything: the one card that glows. */
-    val hero: HomeEntry?,
+    /** The next thing that can happen across everything: the one card that glows. */
+    val hero: Hero?,
     /** Only the sections with something in them, in [Section] order. */
     val sections: Map<Section, List<HomeEntry>>,
 )
@@ -55,12 +68,12 @@ fun groupForHome(
     val entries = reminders
         .filter { it.status != Status.DONE }
         .filter { tagFilter == null || tagFilter.matches(it) }
-        .map { HomeEntry(it, nextFire(it, now, zone, defaultTime, dayStart)) }
-    val hero = entries
-        .filter { it.next is NextFire.Scheduled }
-        .minByOrNull { (it.next as NextFire.Scheduled).at }
+        .map {
+            HomeEntry(it, nextFire(it, now, zone, defaultTime, dayStart), nextWake(it, now, zone, defaultTime, dayStart))
+        }
+    val hero = heroOf(entries, now)
     val grouped = entries
-        .filter { it !== hero }
+        .filter { it !== hero?.entry }
         // A reminder with no trigger but a recurrence is not "kept, not timed": it has a moment.
         .groupBy { sectionOf(it.next, it.reminder.status, it.reminder.rules.isNotEmpty() || it.reminder.recurrence.isAnchored, now, zone) }
         .mapValues { (_, list) -> list.sortedWith(compareBy({ it.sortInstant() }, { -it.reminder.updatedAt.toEpochMilli() })) }
@@ -68,6 +81,42 @@ fun groupForHome(
     for (section in Section.entries) grouped[section]?.let { ordered[section] = it }
     return HomeGroups(hero, ordered)
 }
+
+/**
+ * The one card that glows: **the soonest thing that can happen**, not the soonest thing with a
+ * date on it.
+ *
+ * Those were the same thing until somebody's phone filled up with places. A reminder waiting on
+ * an arrival has no date at all, so a single appointment five months out was the only candidate
+ * and sat at the top counting down 138 days while five other reminders were going to ring that
+ * evening. What a place-with-hours does have is a floor — it cannot ring before its window
+ * opens, which is exactly what the alarm is set for ([nextWake]) — and that is a fair thing to
+ * rank by and to say: *como pronto*, las 18:30.
+ *
+ * Three rules fall out of it. A bare place ("al llegar a casa") has no floor and cannot be
+ * ranked, so it stays in "cuando ocurra" where it belongs. A random draw is never lifted out,
+ * because a random reminder that announces its time is not random. And nothing beyond
+ * [HERO_HORIZON] is lifted at all: "lo siguiente" is a promise about soon, and a countdown of
+ * months is a card that pushes today's list down the screen to say nothing.
+ */
+private fun heroOf(entries: List<HomeEntry>, now: Instant): Hero? {
+    val horizon = now.plus(HERO_HORIZON)
+    return entries
+        .mapNotNull { entry ->
+            val at = entry.wake?.at ?: return@mapNotNull null
+            if (at.isAfter(horizon)) return@mapNotNull null
+            when (entry.next) {
+                is NextFire.Scheduled -> Hero(entry, atEarliest = false)
+                is NextFire.WhenAt -> Hero(entry, atEarliest = true)
+                // A window is the whole of what a random reminder will say about itself.
+                is NextFire.Sometime, null -> null
+            }
+        }
+        .minByOrNull { it.entry.wake!!.at }
+}
+
+/** Past a week, "lo siguiente" is not next; it is just the only one with a date. */
+val HERO_HORIZON: Duration = Duration.ofDays(7)
 
 private fun HomeEntry.sortInstant(): Instant = when (val next = next) {
     is NextFire.Scheduled -> next.at

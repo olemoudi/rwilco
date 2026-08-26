@@ -59,6 +59,15 @@ class EditorViewModel(
     private val repository: ReminderRepository,
     private val store: SettingsStore,
     private val settings: Flow<AppSettings?>,
+    /**
+     * Called after a save, to set the alarm again. A save writes a row with **no armed moment**
+     * — editing re-decides when a reminder rings — and the collector that normally re-arms only
+     * wakes for changes to what scheduling depends on (`schedulingKey`), which deliberately
+     * leaves out the words. So editing only the text left a reminder with an alarm still set
+     * and a row saying nothing was armed, and `ReminderFiring` drops a firing it has no armed
+     * moment for: the reminder went quiet until the next re-arm from somewhere else.
+     */
+    private val rearm: suspend () -> Unit,
     val clock: Clock,
 ) : ViewModel() {
 
@@ -270,6 +279,7 @@ class EditorViewModel(
                 lastFiredAt = before?.lastFiredAt,
             )
             repository.save(reminder)
+            rearm()
             events.send(EditorEvent.Saved)
         }
     }
@@ -329,6 +339,16 @@ class EditorViewModel(
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            EditorViewModel(reminderId, fromPresetId, editPresetId, newPreset, app.repository, app.settingsStore, app.settings, app.clock) as T
+            EditorViewModel(
+                reminderId,
+                fromPresetId,
+                editPresetId,
+                newPreset,
+                app.repository,
+                app.settingsStore,
+                app.settings,
+                { app.scheduler.rearmAll() },
+                app.clock,
+            ) as T
     }
 }

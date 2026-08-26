@@ -875,4 +875,11 @@
     <string-array name="whats_new_0_15_2">
         <item>The marks that say where each trigger of a set stands are quieter now: a dot the size of a full stop, worn in the corner of the trigger\'s own icon, instead of a glyph at the end of the row. Filled and green where the rule is met — it has happened, or it is true at this moment — hollow where it is not, and hollow and faint where nobody can answer yet. Same meaning, a tenth of the noise.</item>
     </string-array>
+    <string name="home_next_up_earliest">At the earliest</string>
+    <string name="home_next_up_earliest_hint">no sooner</string>
+
+    <string-array name="whats_new_0_16_0">
+        <item>The card at the top is the soonest thing that *can* happen now, not the soonest thing with a date on it. Those were the same until a phone filled up with places: nothing waiting on an arrival has a date, so one appointment months away was winning the top of the screen — counting down 138 days — while five other reminders were going to ring that evening. A place with hours on it does have a floor, the moment its window opens, and now says so: «como pronto, 18:30». A place with no hours stays in «cuando ocurra», a random draw is never lifted out, and nothing more than a week away is lifted at all.</item>
+        <item>A fix that came out of the same report, and it was silently losing reminders: editing only the words of a reminder cleared the moment it was armed for without setting it again, and a firing with no armed moment is one the app drops. The alarm was still set; it just arrived to a reminder that no longer believed in it. The editor re-arms by hand now.</item>
+    </string-array>
 </resources>

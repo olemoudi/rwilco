@@ -45,7 +45,16 @@ data class HomeUiState(
  * the reminder's own: without it a postponed reminder comes back as "next up" with a countdown
  * and no hint that it is there because somebody pushed it away.
  */
-data class HeroUi(val card: ReminderCardUi, val at: Instant, val snoozed: Boolean = false)
+/**
+ * [atEarliest] is a moment the reminder cannot ring *before* rather than one it will ring at:
+ * a place with hours on it, whose window opens then. The card says so instead of promising.
+ */
+data class HeroUi(
+    val card: ReminderCardUi,
+    val at: Instant,
+    val snoozed: Boolean = false,
+    val atEarliest: Boolean = false,
+)
 
 data class SectionUi(val section: Section, val cards: List<ReminderCardUi>)
 
@@ -145,9 +154,13 @@ fun buildHomeState(
     }
     return HomeUiState(
         loaded = true,
-        hero = groups.hero?.let {
-            val next = it.next as NextFire.Scheduled
-            HeroUi(card(it.reminder), next.at, next.snoozed)
+        hero = groups.hero?.let { hero ->
+            HeroUi(
+                card = card(hero.entry.reminder),
+                at = hero.entry.wake!!.at,
+                snoozed = (hero.entry.next as? NextFire.Scheduled)?.snoozed == true,
+                atEarliest = hero.atEarliest,
+            )
         },
         sections = groups.sections.map { (section, entries) -> SectionUi(section, entries.map { card(it.reminder) }) },
         tags = tags,

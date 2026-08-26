@@ -58,7 +58,16 @@ answers *never* instead of looping.
 definite moment (`Scheduled`), else the earliest random draw (`Sometime`, shown as a window),
 else a place (`WhenAt`); under ALL it answers with the *last* of the pending ones, or with the
 place when one is among them, because then there is no date to give. `nextWake` is the other
-question — what the alarm is set for — and is always the earliest pending moment. `groupForHome` (`HomeSections.kt`) lifts the earliest `Scheduled` out as the hero and
+question — what the alarm is set for — and is always the earliest pending moment.
+**The hero is picked by `nextWake`, not by `nextFire`** (`heroOf`): the soonest thing that *can*
+happen rather than the soonest thing with a date on it. On a phone whose reminders are mostly
+places almost nothing has a date, and a single appointment five months out was winning the top
+of the screen — counting down 138 days — while five others were going to ring that evening. A
+place with hours on it has a floor (it cannot ring before its window opens, which is exactly
+what the alarm is set for) and says so: *como pronto*. A bare place has no floor and stays in
+"cuando ocurra"; a random draw is never lifted out, because a random reminder that announces
+its time is not random; and nothing past `HERO_HORIZON` (a week) is lifted at all.
+`groupForHome` (`HomeSections.kt`) lifts that hero out and
 files the rest under Overdue / Today / Tomorrow / This week (rolling 7 days) / Later / Whenever /
 Paused. Random moments come from `RandomDraw.kt`: SplitMix64 seeded by (reminder id, period
 index), pinned by golden values in its test.
@@ -110,6 +119,13 @@ strict is asking somebody to remember how they spelled it.
   check.
 - `RwilcoApplication` is the dependency container (manual DI); ViewModels get it through a
   `Factory`.
+- **A save re-arms by hand.** The editor writes a row with no armed moment (editing re-decides
+  when a reminder rings), and the collector that re-arms wakes only on `schedulingKey`, which
+  leaves out the words, the tags and the actions — rightly, since they change nothing about
+  when it rings. So editing only the text left an alarm still set and a row saying nothing was
+  armed, and `ReminderFiring` drops a firing it has no armed moment for: the reminder went
+  quiet until some other re-arm came round. `EditorViewModel` calls the scheduler itself now,
+  and `SchedulingKeyBlindSpotTest` holds the reason.
 
 ## UI
 

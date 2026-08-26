@@ -66,10 +66,10 @@ class TagFilterTest {
         val bare = r("b")
         val all = listOf(r("a", listOf("casa")), bare, r("c", listOf("casa"), Status.PAUSED))
         val untagged = groupForHome(all, now, zone, Fixtures.defaultTime, TagFilter.Untagged)
-        val shown = listOfNotNull(untagged.hero?.reminder) + untagged.sections.values.flatten().map { it.reminder }
+        val shown = listOfNotNull(untagged.hero?.entry?.reminder) + untagged.sections.values.flatten().map { it.reminder }
         assertEquals(listOf("b"), shown.map { it.id })
         val paused = groupForHome(all, now, zone, Fixtures.defaultTime, TagFilter.Paused)
-        val stopped = listOfNotNull(paused.hero?.reminder) + paused.sections.values.flatten().map { it.reminder }
+        val stopped = listOfNotNull(paused.hero?.entry?.reminder) + paused.sections.values.flatten().map { it.reminder }
         assertEquals(listOf("c"), stopped.map { it.id })
     }
 }

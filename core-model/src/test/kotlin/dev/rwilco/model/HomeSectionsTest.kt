@@ -7,6 +7,7 @@ import dev.rwilco.model.Fixtures.reminder
 import dev.rwilco.model.Fixtures.zone
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.DayOfWeek
@@ -54,7 +55,7 @@ class HomeSectionsTest {
             id = "random",
         )
         val groups = groupForHome(listOf(tonight, random, soon), now, zone, defaultTime)
-        assertEquals("soon", groups.hero!!.reminder.id)
+        assertEquals("soon", groups.hero!!.entry.reminder.id)
         assertEquals(listOf("tonight"), groups.sections[Section.TODAY]!!.map { it.reminder.id })
         assertEquals(listOf("random"), groups.sections[Section.WHENEVER]!!.map { it.reminder.id })
     }
@@ -73,7 +74,7 @@ class HomeSectionsTest {
         val b = reminder(at(2026, 8, 27, 19, 0), id = "b", tags = listOf("casa"))
         val done = reminder(at(2026, 8, 27, 20, 0), id = "done", tags = listOf("compra"), status = Status.DONE)
         val groups = groupForHome(listOf(a, b, done), now, zone, defaultTime, tagFilter = TagFilter.Named("compra"))
-        assertEquals("a", groups.hero!!.reminder.id)
+        assertEquals("a", groups.hero!!.entry.reminder.id)
         assertTrue(groups.sections.isEmpty())
         val unfiltered = groupForHome(listOf(a, b, done), now, zone, defaultTime)
         assertEquals(listOf("b"), unfiltered.sections[Section.TODAY]!!.map { it.reminder.id })
@@ -107,9 +108,9 @@ class HomeSectionsTest {
     fun `a repeating reminder is grouped by its next occurrence`() {
         val weekly = reminder(Trigger.AtTime(LocalTime.of(7, 30), setOf(DayOfWeek.MONDAY)), id = "weekly")
         val groups = groupForHome(listOf(weekly), now, zone, defaultTime)
-        assertEquals("weekly", groups.hero!!.reminder.id)
-        assertEquals(local(2026, 8, 31, 7, 30), (groups.hero!!.next as NextFire.Scheduled).at)
-        assertEquals(LocalDate.of(2026, 8, 31), (groups.hero!!.next as NextFire.Scheduled).at.atZone(zone).toLocalDate())
+        assertEquals("weekly", groups.hero!!.entry.reminder.id)
+        assertEquals(local(2026, 8, 31, 7, 30), (groups.hero!!.entry.next as NextFire.Scheduled).at)
+        assertEquals(LocalDate.of(2026, 8, 31), (groups.hero!!.entry.next as NextFire.Scheduled).at.atZone(zone).toLocalDate())
     }
 
     @Test
@@ -129,7 +130,7 @@ class HomeSectionsTest {
 
         val groups = groupForHome(listOf(pills, other), now, zone, defaultTime)
 
-        assertEquals("other", groups.hero?.reminder?.id, "the hero is a moment still ahead")
+        assertEquals("other", groups.hero?.entry?.reminder?.id, "the hero is a moment still ahead")
         assertEquals(listOf("pills"), groups.sections[Section.OVERDUE].orEmpty().map { it.reminder.id })
         assertNull(groups.sections[Section.NO_TRIGGER], "a recurrence is a moment, not a note on a shelf")
     }
@@ -146,7 +147,84 @@ class HomeSectionsTest {
         )
 
         val groups = groupForHome(listOf(pills), now, zone, defaultTime)
-        assertEquals("pills", groups.hero?.reminder?.id)
-        assertEquals(local(2026, 8, 27, 20, 30), (groups.hero?.next as NextFire.Scheduled).at)
+        assertEquals("pills", groups.hero?.entry?.reminder?.id)
+        assertEquals(local(2026, 8, 27, 20, 30), (groups.hero?.entry?.next as NextFire.Scheduled).at)
+    }
+}
+
+/**
+ * Which card glows. The reading that had to change: a phone whose reminders are mostly places
+ * has almost nothing with a date on it, and the one appointment months away was winning the
+ * top of the screen by default while five other reminders were going to ring that evening.
+ */
+class HeroTest {
+
+    private val zone = Fixtures.zone
+    private val now = Fixtures.now
+    private val defaultTime = Fixtures.defaultTime
+    private val office = Trigger.Location(40.4369, -3.7035, 150, Transition.EXIT, "Oficina")
+
+    private fun reminder(
+        id: String,
+        vararg triggers: Trigger,
+        match: RuleMatch = RuleMatch.ANY,
+    ) = Reminder(
+        id = id,
+        text = "Algo",
+        rules = triggers.map { TriggerRule(it) },
+        ruleMatch = match,
+        createdAt = now,
+        updatedAt = now,
+    )
+
+    /** The reported shape: one date in January, and a place with tonight's hours on it. */
+    private val january = reminder("january", Trigger.OnDate(java.time.LocalDate.of(2027, 1, 11)))
+    private val tonight = reminder(
+        "tonight",
+        office,
+        Trigger.Interval(LocalTime.of(18, 30), LocalTime.of(20, 0)),
+        match = RuleMatch.ALL,
+    )
+    private val bare = reminder("bare", Trigger.Location(40.4169, -3.7035, 50, Transition.ENTER, "Casa"))
+
+    private fun heroOf(vararg reminders: Reminder) =
+        groupForHome(reminders.toList(), now, zone, defaultTime).hero
+
+    @Test
+    fun `a place with hours tonight beats an appointment in January`() {
+        val hero = heroOf(january, tonight, bare)
+        assertEquals("tonight", hero?.entry?.reminder?.id)
+        assertTrue(hero!!.atEarliest, "its moment is a floor, not an appointment")
+    }
+
+    @Test
+    fun `nothing within the week is nobody's hero`() {
+        assertNull(heroOf(january), "a countdown of months is not \"lo siguiente\"")
+        assertNull(heroOf(bare), "and a bare place has no floor to rank by at all")
+    }
+
+    @Test
+    fun `a definite moment this week still wins, and is not hedged`() {
+        val soon = reminder("soon", Trigger.AtDateTime(java.time.LocalDateTime.of(2026, 8, 28, 9, 0)))
+        val hero = heroOf(january, soon, tonight)
+        assertEquals("tonight", hero?.entry?.reminder?.id, "tonight at 18:30 is before tomorrow at 09:00")
+        val alone = heroOf(january, soon)
+        assertEquals("soon", alone?.entry?.reminder?.id)
+        assertFalse(alone!!.atEarliest)
+    }
+
+    @Test
+    fun `a random draw is never lifted out`() {
+        val random = reminder("random", Trigger.Random(2, Period.DAY, LocalTime.of(10, 0), LocalTime.of(18, 0)))
+        assertNull(heroOf(random), "a random reminder that announces its time is not random")
+        // And it does not stop a real one from being the hero.
+        assertEquals("tonight", heroOf(random, tonight)?.entry?.reminder?.id)
+    }
+
+    @Test
+    fun `the hero is lifted out of its section, whichever kind it is`() {
+        val groups = groupForHome(listOf(january, tonight, bare), now, zone, defaultTime)
+        val listed = groups.sections.values.flatten().map { it.reminder.id }
+        assertEquals(listOf("january", "bare").sorted(), listed.sorted())
     }
 }

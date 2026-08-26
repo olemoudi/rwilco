@@ -82,3 +82,48 @@ class SchedulingKeyTest {
         assertEquals(key(timed), key(timed.copy(text = "otra cosa", tags = listOf("casa"), actions = setOf(Action.SOUND))))
     }
 }
+
+/**
+ * The other half of what the key leaves out, and the bug it caused.
+ *
+ * A save writes a row with no armed moment on purpose. The collector that re-arms wakes on
+ * changes to this key — which does not include the words, the tags or the actions, and should
+ * not: they change nothing about when a reminder rings. But that means editing only the text
+ * produced a row saying "nothing is armed" and no re-arm to put it right, and a firing without
+ * an armed moment is a firing that gets dropped. The editor calls the scheduler itself now;
+ * this is here so that reason cannot be quietly deleted.
+ */
+class SchedulingKeyBlindSpotTest {
+
+    private val now = java.time.Instant.parse("2026-08-26T10:00:00Z")
+    private val reminder = dev.rwilco.model.Reminder(
+        id = "r1",
+        text = "Llamar a Marta",
+        tags = listOf("casa"),
+        rules = listOf(dev.rwilco.model.TriggerRule(dev.rwilco.model.Trigger.OnDate(java.time.LocalDate.of(2027, 1, 11)))),
+        actions = setOf(dev.rwilco.model.Action.NOTIFICATION),
+        createdAt = now,
+        updatedAt = now,
+        armedFor = now.plusSeconds(3600),
+        armedRule = 0,
+    )
+
+    @org.junit.jupiter.api.Test
+    fun `an edit to the words alone does not wake the re-arm`() {
+        val edited = reminder.copy(text = "Llamar a Marta por lo del piso", tags = listOf("casa", "piso"), armedFor = null, armedRule = null)
+        org.junit.jupiter.api.Assertions.assertEquals(
+            ReminderScheduler.schedulingKey(reminder),
+            ReminderScheduler.schedulingKey(edited),
+            "the words are not a scheduling input — which is why the editor has to re-arm by hand",
+        )
+    }
+
+    @org.junit.jupiter.api.Test
+    fun `an edit to the rules does`() {
+        val edited = reminder.copy(rules = listOf(dev.rwilco.model.TriggerRule(dev.rwilco.model.Trigger.OnDate(java.time.LocalDate.of(2027, 2, 11)))))
+        org.junit.jupiter.api.Assertions.assertNotEquals(
+            ReminderScheduler.schedulingKey(reminder),
+            ReminderScheduler.schedulingKey(edited),
+        )
+    }
+}

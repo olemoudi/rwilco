@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import dev.rwilco.R
+import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerFamily
 import dev.rwilco.model.kind
 import dev.rwilco.model.partsBetween
@@ -70,6 +71,9 @@ fun HeroCard(
     // The row whose moment this is; failing that, the first trigger — unless the moment is
     // the recurrence's own (no row matches and one is in charge), which gets its own badge.
     val nextTrigger = hero.card.triggers.firstOrNull { it.nextAt == hero.at }
+        // A place with hours: the keycap belongs to the place, which is the thing being waited
+        // for, not to the window that says when it could count.
+        ?: hero.card.triggers.firstOrNull { it.trigger is Trigger.Location }.takeIf { hero.atEarliest }
         ?: hero.card.triggers.firstOrNull().takeIf { hero.card.recurrence == null || hero.snoozed }
 
     RwilcoCard(onClick = onClick, shape = MaterialTheme.shapes.extraLarge) {
@@ -82,7 +86,14 @@ fun HeroCard(
                 Text(
                     // A postponed reminder is here because somebody pushed it away, not because
                     // its own moment is near, and a countdown that does not say so is a puzzle.
-                    text = stringResource(if (hero.snoozed) R.string.home_next_up_snoozed else R.string.home_next_up).uppercase(locale),
+                    // Neither is a place with hours: the moment is a floor, not an appointment.
+                    text = stringResource(
+                        when {
+                            hero.snoozed -> R.string.home_next_up_snoozed
+                            hero.atEarliest -> R.string.home_next_up_earliest
+                            else -> R.string.home_next_up
+                        },
+                    ).uppercase(locale),
                     style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.5.sp, fontWeight = FontWeight.SemiBold),
                     color = amber,
                     modifier = Modifier.weight(1f),
@@ -106,7 +117,8 @@ fun HeroCard(
             Spacer(Modifier.height(spacing.sm))
             LiveCountdown(at = hero.at, clock = clock, style = MonoStyles.countdown, color = amber)
             Text(
-                text = dayWord(at.toLocalDate(), today, locale) + " · " + TimeText.time(at.toLocalTime(), is24h, locale),
+                text = dayWord(at.toLocalDate(), today, locale) + " · " + TimeText.time(at.toLocalTime(), is24h, locale) +
+                    if (hero.atEarliest) " · " + stringResource(R.string.home_next_up_earliest_hint) else "",
                 style = MonoStyles.date,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
