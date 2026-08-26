@@ -1,5 +1,9 @@
 package dev.rwilco.ui.home
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -216,10 +220,15 @@ fun TriggerRow(row: TriggerRowUi, today: LocalDate, defaultTime: LocalTime, mute
 /**
  * Where a rule stands, worn in the corner of its own keycap.
  *
- * Small enough to be read as a property of the icon rather than as a thing of its own: at this
- * size a glyph is mush, so what carries the meaning is fill and colour — solid and green for a
- * rule that is met, hollow for one that is not, and hollow and faint for one nobody can answer
- * yet. The ring of card colour around it is what keeps it from smudging into the keycap.
+ * Small enough to be read as a property of the icon rather than as a thing of its own, so what
+ * carries the meaning is fill: solid for a rule that is met, hollow for one that is not. The
+ * ring of card colour around it is what keeps it from smudging into the keycap.
+ *
+ * The one that is neither is the exception, and it is the only one that gets a shape of its
+ * own: a rule nobody has been able to check yet — a place with no fix behind it — wears a
+ * pause. Two bars are legible at this size where a glyph is not, they are the one thing on a
+ * card that says "waiting" without saying yes or no, and being the odd shape out is the point:
+ * it is the odd state out.
  */
 @Composable
 private fun StandingDot(standing: RuleStanding, muted: Boolean, modifier: Modifier = Modifier) {
@@ -240,37 +249,48 @@ private fun StandingDot(standing: RuleStanding, muted: Boolean, modifier: Modifi
             .padding(HALO),
         contentAlignment = Alignment.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .size(DOT)
-                // Card colour rather than nothing behind the hollow ones: over a coloured
-                // keycap a transparent middle shows the blue through it and the ring loses
-                // its edge, which on the dark scheme is most of what made these hard to read.
-                .background(if (met) ink else scheme.surfaceContainer, CircleShape)
-                .border(STROKE, ink, CircleShape)
-                .semantics { contentDescription = label },
-            contentAlignment = Alignment.Center,
-        ) {
-            // Nobody has looked yet: a ring with something in the middle of it, which is neither
-            // "yes" nor "no" and cannot be mistaken for either at this size. It used to be a
-            // question mark, and a question mark three millimetres across is a smudge.
-            if (standing == RuleStanding.UNKNOWN) {
-                Box(Modifier.size(PIP).background(ink, CircleShape))
+        if (standing == RuleStanding.UNKNOWN) {
+            Canvas(
+                modifier = Modifier
+                    .size(DOT)
+                    .semantics { contentDescription = label },
+            ) {
+                // Drawn rather than an icon: the Material pause is two hairlines inside a 24dp
+                // box, and a third of that is a smudge. These bars are a third of the width
+                // each, which is what makes them read at three millimetres.
+                val bar = size.width * 0.32f
+                val gap = size.width * 0.16f
+                val left = (size.width - (bar * 2 + gap)) / 2f
+                val top = size.height * 0.06f
+                val tall = size.height * 0.88f
+                val round = CornerRadius(bar * 0.4f, bar * 0.4f)
+                drawRoundRect(ink, Offset(left, top), Size(bar, tall), round)
+                drawRoundRect(ink, Offset(left + bar + gap, top), Size(bar, tall), round)
             }
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(DOT)
+                    // Card colour rather than nothing behind the hollow ones: over a coloured
+                    // keycap a transparent middle shows the blue through it and the ring loses
+                    // its edge, which on the dark scheme is most of what made these hard to read.
+                    .background(if (met) ink else scheme.surfaceContainer, CircleShape)
+                    .border(STROKE, ink, CircleShape)
+                    .semantics { contentDescription = label },
+            )
         }
     }
 }
 
 /**
- * The dot, its own line, the ring of card colour that separates it from the keycap, the pip in
- * the middle of the unknown one, and how far the whole thing sits outside the corner. Bigger and
- * brighter than it started: at seven across with a hairline it was there and not quite readable,
- * which is the worst size for a mark whose whole job is to be read at a glance.
+ * The mark, its own line, the ring of card colour that separates it from the keycap, and how far
+ * the whole thing sits outside the corner. Bigger and brighter than it started: at seven across
+ * with a hairline it was there and not quite readable, which is the worst size for a mark whose
+ * whole job is to be read at a glance.
  */
 private val DOT = 9.dp
 private val STROKE = 2.dp
 private val HALO = 2.dp
-private val PIP = 3.dp
 private val DOT_OUT = 3.dp
 
 /** What each mark means, said out loud for a screen reader. */

@@ -71,6 +71,17 @@ val Recurrence.repeats: Boolean get() = this != Recurrence.None
  * dealt with, and never before the span itself is up. Hours are left exact, because somebody
  * who says "every six hours" means six hours.
  */
+/**
+ * Whether this recurrence measures its span in whole days or more, which is what makes it a
+ * thing that lands on a *day* rather than at an instant. See `Reminder.restUntil`.
+ */
+val Recurrence.countsInDays: Boolean
+    get() = when (this) {
+        Recurrence.None, Recurrence.ByTrigger -> false
+        is Recurrence.After -> unit != RecurrenceUnit.HOURS
+        is Recurrence.MonthlyWeekday -> true
+    }
+
 fun nextRecurrence(
     recurrence: Recurrence,
     anchor: Instant,

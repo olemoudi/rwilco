@@ -278,11 +278,27 @@ private fun nextRandom(trigger: Trigger.Random, reminderId: String, now: Instant
  * arrival is not a ring — and from then they speak again. Null when nothing rests: no anchored
  * recurrence, never dealt with, or no rules to rest (the recurrence is then the ring itself,
  * see [recurrenceMoment]).
+ *
+ * A rest counted in days ends with the day, not at [dayStart], whenever any rule names an hour
+ * of its own — because then the recurrence's job is to say *which day* it comes back on and the
+ * rules' job is to say when in it. Ending it at nine in the morning put nine in front of every
+ * rule due earlier: "al llegar al trabajo, entre las siete y las ocho, al día siguiente" came
+ * back to a window that had closed an hour before it was allowed to look, every day, for ever.
+ * The plainest shape had it too — "todos los días a las nueve" with a day that starts at nine
+ * ended its rest exactly on the moment, which is not *after* it, so it rang every other day.
+ *
+ * [dayStart] still governs a rest with nothing to defer to: a reminder that is only a place can
+ * ring at any hour it is watched, and without it "the next day" would begin one minute past
+ * midnight — the same evening, to anybody who was out. A rest counted in hours is exact and is
+ * never moved.
  */
 fun Reminder.restUntil(zone: ZoneId, dayStart: LocalTime): Instant? {
     if (!recurrence.isAnchored || rules.isEmpty()) return null
     val dealt = lastDealtAt ?: return null
-    return nextRecurrence(recurrence, dealt, zone, dayStart)
+    val back = nextRecurrence(recurrence, dealt, zone, dayStart) ?: return null
+    if (!recurrence.countsInDays) return back
+    if (rules.none { it.trigger.namesAnHour }) return back
+    return back.atZone(zone).toLocalDate().atStartOfDay(zone).toInstant()
 }
 
 /**
@@ -292,7 +308,10 @@ fun Reminder.restUntil(zone: ZoneId, dayStart: LocalTime): Instant? {
  */
 fun Reminder.recurrenceMoment(zone: ZoneId, dayStart: LocalTime): Instant? {
     if (!recurrence.isAnchored) return null
-    val at = if (rules.isEmpty()) nextRecurrence(recurrence, lastDealtAt ?: createdAt, zone, dayStart) else restUntil(zone, dayStart)
+    // Not restUntil: when the recurrence is the thing that rings, the hour the day starts at is
+    // exactly the hour it should ring at — there are no rules here with an hour to defer to.
+    val dealt = if (rules.isEmpty()) lastDealtAt ?: createdAt else lastDealtAt ?: return null
+    val at = nextRecurrence(recurrence, dealt, zone, dayStart)
     if (at == null) return null
     // Spent, the same way a rule's moment is (see [searchFrom]) — and here it matters more.
     //

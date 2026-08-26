@@ -262,6 +262,22 @@ fun Trigger.asState(): Condition? = when (this) {
     is Trigger.DayRandom, is Trigger.Repeat -> null
 }
 
+/**
+ * Whether this trigger names an hour of the day it is due on.
+ *
+ * What a rest defers to (see `restUntil`). A place names no hour — it rings whenever somebody
+ * arrives, at any hour it is being watched — and neither does a countdown, which names a moment
+ * rather than a time of day. Everything else does, including the two that leave the choosing to
+ * the day: an hour drawn from somebody's waking hours is still an hour, and still one the rest
+ * must not be standing in front of.
+ */
+val Trigger.namesAnHour: Boolean
+    get() = when (this) {
+        is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.DayRandom -> true
+        is Trigger.AtTime, is Trigger.Repeat, is Trigger.Interval, is Trigger.Random -> true
+        is Trigger.Countdown, is Trigger.Location -> false
+    }
+
 /** Whether this trigger is true only at an instant. See [asState]. */
 val Trigger.isMoment: Boolean get() = asState() == null
 

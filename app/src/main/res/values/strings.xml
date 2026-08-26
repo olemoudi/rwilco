@@ -896,6 +896,12 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_18_2">
+        <item>Fixed, and it was silencing reminders: a recurrence counted in days ended its rest at the hour «the next day» starts at — nine in the morning by default — and that hour then stood in front of every rule due earlier. «When I get to work, between seven and eight, the next day» came back each morning to a window that had closed an hour before the reminder was allowed to look, so it never rang again. The plainest shape had it too: «every day at nine», with a day that starts at nine, rang every other day.</item>
+        <item>A recurrence now says which day it comes back on and the rules say when in that day, which is what the two were always meant to mean. A reminder that is only a place still waits for the day to start — there is no hour of its own to defer to, and without it «the next day» would begin one minute past midnight.</item>
+        <item>The mark for a rule nobody has been able to check yet — a place with no fix behind it — is a pause now, where it was a ring with a dot in it. Two bars are the one shape on a card that says «waiting» without saying yes or no, and being the odd shape out among four circles is the point: it is the odd state out.</item>
+    </string-array>
+
     <string-array name="whats_new_0_18_1">
         <item>Using a pinned shape that asks for its words now shows what it will do when it rings, as five glyphs under the field: the shape’s own answer, already on, and a tap away from being changed for this one reminder. Asking for the screen just this once, or for silence just this once, no longer means editing the shape and putting it back afterwards. The shape itself is untouched.</item>
     </string-array>
