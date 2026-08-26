@@ -88,6 +88,12 @@ object ReminderCodec {
     fun decodePlaceWatch(raw: String): PlaceWatchState =
         runCatching { json.decodeFromString(PlaceWatchState.serializer(), raw) }.getOrDefault(PlaceWatchState())
 
+    fun encodeDiagLog(log: DiagLog): String = json.encodeToString(DiagLog.serializer(), log)
+
+    /** The app's own account of itself is the one thing here nobody would miss; losing it costs nothing. */
+    fun decodeDiagLog(raw: String): DiagLog =
+        runCatching { json.decodeFromString(DiagLog.serializer(), raw) }.getOrDefault(DiagLog())
+
     fun encodeWatchLog(log: WatchLog): String = json.encodeToString(WatchLog.serializer(), log)
 
     /** A log that will not parse is a log worth losing; nothing depends on it but the reading. */

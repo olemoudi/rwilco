@@ -1,16 +1,12 @@
 package dev.rwilco.ui.settings
 
 import android.Manifest
-import android.app.ActivityManager
-import android.app.AlarmManager
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
-import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -43,8 +39,13 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import dev.rwilco.R
 import dev.rwilco.model.TriggerFamily
-import dev.rwilco.notify.AlertNotifications
+import dev.rwilco.notify.alarmVolumeIsUp
+import dev.rwilco.notify.anyAlertChannelMuted
 import dev.rwilco.notify.canDrawOverlays
+import dev.rwilco.notify.canGetThroughDnd
+import dev.rwilco.notify.canScheduleExactAlarms
+import dev.rwilco.notify.ignoresBatteryOptimisations
+import dev.rwilco.notify.isBackgroundRestricted
 import dev.rwilco.notify.canUseFullScreenIntent
 import dev.rwilco.notify.hasUsageAccess
 import dev.rwilco.ui.components.PermissionFixRow
@@ -90,7 +91,7 @@ fun AlertPermissionsCard() {
                 unrestricted = !context.isBackgroundRestricted()
                 throughDnd = context.canGetThroughDnd()
                 alarmVolume = context.alarmVolumeIsUp()
-                channels = context.noAlertChannelMuted()
+                channels = !context.anyAlertChannelMuted()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -223,37 +224,3 @@ fun AlertPermissionsCard() {
 
 private fun appNotificationSettings(context: Context): Intent =
     Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-
-private fun Context.canScheduleExactAlarms(): Boolean =
-    Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
-        getSystemService(AlarmManager::class.java)?.canScheduleExactAlarms() ?: false
-
-private fun Context.ignoresBatteryOptimisations(): Boolean =
-    getSystemService(PowerManager::class.java)?.isIgnoringBatteryOptimizations(packageName) ?: true
-
-private fun Context.isBackgroundRestricted(): Boolean =
-    getSystemService(ActivityManager::class.java)?.isBackgroundRestricted ?: false
-
-/**
- * Do Not Disturb lets alarms through unless it is on total silence, and the alerts are alarms
- * to it (see AlertNotifications). Total silence is the one mode only policy access gets past —
- * and it is the mode people put on for the night, which is when a morning timer matters.
- */
-private fun Context.canGetThroughDnd(): Boolean {
-    val manager = getSystemService(NotificationManager::class.java) ?: return true
-    return manager.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_NONE || manager.isNotificationPolicyAccessGranted
-}
-
-/** Every alert plays on the alarm stream, so this slider is the only one that can mute them. */
-private fun Context.alarmVolumeIsUp(): Boolean {
-    val audio = getSystemService(AudioManager::class.java) ?: return true
-    return runCatching { audio.getStreamVolume(AudioManager.STREAM_ALARM) > audio.getStreamMinVolume(AudioManager.STREAM_ALARM) }.getOrDefault(true)
-}
-
-/** A channel muted by hand is invisible to `areNotificationsEnabled`; this is the check it lacks. */
-private fun Context.noAlertChannelMuted(): Boolean {
-    val manager = getSystemService(NotificationManager::class.java) ?: return true
-    return runCatching {
-        manager.notificationChannels.none { it.id.startsWith(AlertNotifications.ALERT_CHANNEL_PREFIX) && it.importance == NotificationManager.IMPORTANCE_NONE }
-    }.getOrDefault(true)
-}

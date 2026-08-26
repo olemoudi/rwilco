@@ -40,6 +40,7 @@ import dev.rwilco.ui.editor.EditorViewModel
 import dev.rwilco.ui.home.HomeScreen
 import dev.rwilco.ui.home.HomeViewModel
 import dev.rwilco.ui.settings.BackupScreen
+import dev.rwilco.ui.settings.DiagnosticsScreen
 import dev.rwilco.ui.settings.BackupViewModel
 import dev.rwilco.ui.settings.SettingsScreen
 import dev.rwilco.ui.settings.SettingsViewModel
@@ -136,7 +137,11 @@ fun RwilcoApp(
                         onBack = { navController.popBackStack() },
                         onWatchLog = { navController.navigate(Routes.WatchLog) },
                         onBackup = { navController.navigate(Routes.Backup) },
+                        onDiagnostics = { navController.navigate(Routes.Diagnostics) },
                     )
+                }
+                composable<Routes.Diagnostics> {
+                    DiagnosticsScreen(app = app, onBack = { navController.popBackStack() })
                 }
                 composable<Routes.Backup> {
                     BackupScreen(

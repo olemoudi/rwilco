@@ -3,9 +3,11 @@ package dev.rwilco.alarm
 import android.content.Context
 import android.util.Log
 import dev.rwilco.data.ReminderRepository
+import dev.rwilco.diag.Diag
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.FiringOutcome
+import dev.rwilco.model.FiringPlan
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Snooze
 import dev.rwilco.model.Status
@@ -68,8 +70,8 @@ class ReminderFiring(
      * check: the moment it was armed for already satisfied them.
      */
     suspend fun fire(id: String, late: Instant? = null, ruleIndex: Int? = null) = lock.withLock {
-        val reminder = repository.get(id) ?: return@withLock
-        if (reminder.status != Status.ACTIVE) return@withLock
+        val reminder = repository.get(id) ?: return@withLock Diag.note(TAG_DIAG, "r=${short(id)} gone")
+        if (reminder.status != Status.ACTIVE) return@withLock Diag.note(TAG_DIAG, "r=${short(id)} not active (${reminder.status})")
         val now = clock.instant()
         // A catch-up is decided from a row read before the re-arm; by the time it gets here the
         // moment it is about may have rung on its own — the alarm for a past moment arrives at
@@ -77,6 +79,7 @@ class ReminderFiring(
         val fired = reminder.lastFiredAt
         if (late != null && fired != null && !fired.isBefore(late)) {
             Log.i(TAG, "$id already rang for the moment the catch-up is about")
+            Diag.note(TAG_DIAG, "r=${short(id)} catch-up dropped: already rang $fired for $late")
             return@withLock
         }
         // A place is judged when it happens; a moment was judged when it was armed. Judging an
@@ -92,11 +95,13 @@ class ReminderFiring(
         // six-hourly net came round — or for ever, if the process died first.
         if (ruleIndex != null && judged == null) {
             Log.i(TAG, "$id asks for two moments at once, which never happens")
+            Diag.note(TAG_DIAG, "r=${short(id)} dropped: two moments at once (rule $ruleIndex)")
             scheduler.rearmAll()
             return@withLock
         }
         if (judged != null && !conditionsHold(judged, now)) {
             Log.i(TAG, "$id came round outside what its rule asks for")
+            Diag.note(TAG_DIAG, "r=${short(id)} dropped: conditions of rule $ruleIndex do not hold")
             scheduler.rearmAll()
             return@withLock
         }
@@ -111,6 +116,7 @@ class ReminderFiring(
         val eventDriven = rule?.trigger is Trigger.Location
         if (!eventDriven && late == null && (armed == null || armed > now.plusSeconds(EARLY_GRACE_SECONDS))) {
             Log.i(TAG, "$id has nothing armed for now (armed=$armed); ignoring a stray firing")
+            Diag.note(TAG_DIAG, "r=${short(id)} dropped: nothing armed (armed=$armed now=$now rule=$ruleIndex)")
             // A clock set back past the grace lands here too: the moment is still ahead by the
             // new clock, and re-arming is what rings it when it comes.
             scheduler.rearmAll()
@@ -121,11 +127,13 @@ class ReminderFiring(
         val lastFired = reminder.lastFiredAt
         if (rule?.trigger is Trigger.Location && lastFired != null && Duration.between(lastFired, now) < PLACE_ECHO) {
             Log.i(TAG, "$id already rang for this place ${Duration.between(lastFired, now).seconds}s ago")
+            Diag.note(TAG_DIAG, "r=${short(id)} dropped: place echo ${Duration.between(lastFired, now).seconds}s after the last ring")
             return@withLock
         }
         // A snooze set after the alarm was armed (from the notification, a moment ago) wins.
         val snoozed = reminder.snoozedUntil
         if (snoozed != null && snoozed > now) {
+            Diag.note(TAG_DIAG, "r=${short(id)} dropped: snoozed until $snoozed")
             scheduler.rearmAll()
             return@withLock
         }
@@ -134,6 +142,7 @@ class ReminderFiring(
         when (val outcome = outcomeOfFiring(reminder, ruleIndex)) {
             is FiringOutcome.Wait -> {
                 Log.i(TAG, "$id noted rule $ruleIndex; still waiting for the rest")
+                Diag.note(TAG_DIAG, "r=${short(id)} rule $ruleIndex happened; waiting for ${outcome.fired}")
                 repository.setFiredRules(id, outcome.fired)
                 scheduler.rearmAll()
                 return@withLock
@@ -154,6 +163,7 @@ class ReminderFiring(
         // momentRungFor: a place is the one firing that must not reach for the armed moment,
         // because that moment belongs to whatever else the reminder is still waiting for.
         val rangFor = momentRungFor(now, reminder.armedFor, late, eventDriven)
+        Diag.note(TAG_DIAG, "r=${short(id)} RANG for $rangFor rule=$ruleIndex${if (late != null) " (late for $late)" else ""} plan=${plan.summary()}")
         repository.markFired(id, rangFor)
         if (reminder.ruleMatch == RuleMatch.ALL && reminder.rulesCombine) {
             repository.setFiredRules(id, reminder.rules.indices.toSet())
@@ -234,6 +244,7 @@ class ReminderFiring(
      * take it down rather than leave a button that does nothing.
      */
     suspend fun dismiss(id: String) = lock.withLock {
+        Diag.note(TAG_DIAG, "r=${short(id)} dealt with")
         repeater.cancel(id)
         AlertNotifications.cancel(context, id)
         val reminder = repository.get(id) ?: return@withLock
@@ -251,6 +262,7 @@ class ReminderFiring(
     }
 
     suspend fun snooze(id: String, snooze: Snooze) = lock.withLock {
+        Diag.note(TAG_DIAG, "r=${short(id)} snoozed ($snooze)")
         repeater.cancel(id)
         AlertNotifications.cancel(context, id)
         if (repository.get(id) == null) return@withLock
@@ -288,6 +300,18 @@ class ReminderFiring(
 
     private companion object {
         const val TAG = "RwilcoAlarms"
+        const val TAG_DIAG = "fire"
+
+        /** Eight characters of a UUID: enough to follow one reminder through a report. */
+        fun short(id: String): String = id.take(8)
+
+        /** `FS+N+S+V`, which is what a firing is actually asked to do. */
+        fun FiringPlan.summary(): String = buildString {
+            if (fullScreen) append("FS+")
+            if (notification) append("N+")
+            if (sound) append(if (insistent) "S!+" else "S+")
+            if (vibrate) append("V+")
+        }.trimEnd('+').ifEmpty { "nothing" }
 
         /** Inside this of the last ring, a second sighting of the same place is the same arrival. */
         val PLACE_ECHO: Duration = Duration.ofMinutes(5)

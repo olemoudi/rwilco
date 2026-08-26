@@ -8,6 +8,8 @@ import dev.rwilco.model.Recurrence
 import dev.rwilco.model.Reminder
 import dev.rwilco.R
 import dev.rwilco.model.RuleMatch
+import dev.rwilco.model.RuleStanding
+import dev.rwilco.model.ruleStandings
 import dev.rwilco.model.SearchHit
 import dev.rwilco.model.Section
 import dev.rwilco.model.Status
@@ -79,8 +81,11 @@ data class TriggerRowUi(
     val nextAt: Instant?,
     /** A random trigger's window for the day of its next draw. */
     val window: Pair<Instant, Instant>?,
-    /** Under "all of them": this one has already happened and is being waited on no longer. */
-    val fired: Boolean = false,
+    /**
+     * Where this rule stands in its set right now — ticked off under "todos", true or not under
+     * "a la vez". Null for a lone rule and for "cualquiera", where a rule has no standing.
+     */
+    val standing: RuleStanding? = null,
 )
 
 /** Everything Home shows, from the open reminders. Pure and JVM-tested. */
@@ -91,6 +96,8 @@ fun buildHomeState(
     zone: ZoneId,
     selectedTag: TagFilter?,
     dayStart: LocalTime = DEFAULT_DAY_START,
+    /** Is the phone inside this rule's circle? Only the place watch knows; null when nothing does. */
+    inside: (String, Int) -> Boolean? = { _, _ -> null },
 ): HomeUiState {
     val tags = tagFilters(reminders)
     // A filter on something that is no longer offered is no filter: the last reminder carrying
@@ -103,36 +110,39 @@ fun buildHomeState(
         else tags.firstOrNull { it is TagFilter.Named && it.tag.equals(chosen.tag, ignoreCase = true) }
     }
     val groups = groupForHome(reminders, now, zone, defaultTime, filter, dayStart)
-    fun card(reminder: Reminder) = ReminderCardUi(
-        id = reminder.id,
-        text = reminder.text,
-        tags = reminder.tags,
-        triggers = reminder.rules.mapIndexed { index, rule ->
-            // Under "a la vez" the row says when the folded rule next holds, which is what
-            // will ring; a fold of two moments never does, and the row says nothing.
-            val next = reminder.togetherRule(index)?.let { nextFireOfRule(it, reminder.id, now, zone, defaultTime) }
-            TriggerRowUi(
-                trigger = rule.trigger,
-                conditions = rule.conditions,
-                family = rule.trigger.family,
-                nextAt = (next as? NextFire.Scheduled)?.at,
-                window = (next as? NextFire.Sometime)?.let { it.windowStart to it.windowEnd },
-                fired = reminder.ruleMatch == RuleMatch.ALL && index in reminder.firedRules,
-            )
-        },
-        actions = reminder.actions,
-        paused = reminder.status == Status.PAUSED,
-        matchLabel = if (reminder.rules.size > 1) {
-            when (reminder.ruleMatch) {
-                RuleMatch.ALL -> R.string.card_match_all
-                RuleMatch.TOGETHER -> R.string.card_match_together
-                RuleMatch.ANY -> null
-            }
-        } else {
-            null
-        },
-        recurrence = reminder.recurrence.takeIf { it.isAnchored },
-    )
+    fun card(reminder: Reminder): ReminderCardUi {
+        val standings = reminder.ruleStandings(now, zone) { index -> inside(reminder.id, index) }
+        return ReminderCardUi(
+            id = reminder.id,
+            text = reminder.text,
+            tags = reminder.tags,
+            triggers = reminder.rules.mapIndexed { index, rule ->
+                // Under "a la vez" the row says when the folded rule next holds, which is what
+                // will ring; a fold of two moments never does, and the row says nothing.
+                val next = reminder.togetherRule(index)?.let { nextFireOfRule(it, reminder.id, now, zone, defaultTime) }
+                TriggerRowUi(
+                    trigger = rule.trigger,
+                    conditions = rule.conditions,
+                    family = rule.trigger.family,
+                    nextAt = (next as? NextFire.Scheduled)?.at,
+                    window = (next as? NextFire.Sometime)?.let { it.windowStart to it.windowEnd },
+                    standing = standings.getOrNull(index),
+                )
+            },
+            actions = reminder.actions,
+            paused = reminder.status == Status.PAUSED,
+            matchLabel = if (reminder.rules.size > 1) {
+                when (reminder.ruleMatch) {
+                    RuleMatch.ALL -> R.string.card_match_all
+                    RuleMatch.TOGETHER -> R.string.card_match_together
+                    RuleMatch.ANY -> null
+                }
+            } else {
+                null
+            },
+            recurrence = reminder.recurrence.takeIf { it.isAnchored },
+        )
+    }
     return HomeUiState(
         loaded = true,
         hero = groups.hero?.let {

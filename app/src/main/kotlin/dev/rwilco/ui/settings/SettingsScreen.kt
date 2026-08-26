@@ -70,7 +70,7 @@ import dev.rwilco.ui.theme.Tokens
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog: () -> Unit, onBackup: () -> Unit) {
+fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog: () -> Unit, onBackup: () -> Unit, onDiagnostics: () -> Unit) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val spacing = Tokens.spacing
     val haptics = Tokens.haptics
@@ -385,6 +385,32 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
                         )
                         Text(
                             text = stringResource(R.string.settings_release_notes_hint, BuildConfig.VERSION_NAME),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Spacer(Modifier.height(spacing.sm))
+            // Last of all, because nobody comes looking for it until something is broken.
+            RwilcoCard {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = Tokens.sizes.touch)
+                        .clickable(onClick = onDiagnostics)
+                        .padding(horizontal = spacing.lg, vertical = spacing.md),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.diag_title), style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            text = stringResource(R.string.diag_row_hint),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

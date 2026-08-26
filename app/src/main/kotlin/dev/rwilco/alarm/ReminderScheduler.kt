@@ -10,6 +10,7 @@ import androidx.core.net.toUri
 import dev.rwilco.MainActivity
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
+import dev.rwilco.diag.Diag
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Reminder
@@ -91,6 +92,8 @@ class ReminderScheduler(
         // ringing is the armed-moment check in ReminderFiring.fire, not this list.
         for (id in armed.toList() - seen) cancel(id)
         Log.i(TAG, "armed ${seen.size} reminders, ${missed.size} missed")
+        Diag.note("arm", "armed=${seen.size} missed=${missed.size} exact=${if (canScheduleExact()) "y" else "n"}")
+        for (reminder in missed) Diag.note("arm", "r=${reminder.id.take(8)} missed its moment ${reminder.armedFor} (rule ${reminder.armedRule})")
         return missed
     }
 

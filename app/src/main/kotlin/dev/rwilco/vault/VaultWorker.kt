@@ -12,6 +12,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import dev.rwilco.RwilcoApplication
+import dev.rwilco.diag.Diag
 import dev.rwilco.model.backupDelay
 import java.time.Clock
 import java.util.concurrent.TimeUnit
@@ -37,6 +38,7 @@ class VaultWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
         val forced = inputData.getBoolean(KEY_FORCED, false)
         val result = app.vaultBackup().run()
         Log.i(TAG, "backup run: $result${if (forced) " (forced)" else ""}")
+        Diag.note("vault", "run=$result${if (forced) " (asked for)" else ""} outcome=${app.vaultStore.read().lastOutcome}")
         // A run that has to come back keeps its own place in the queue; anything else has
         // finished this round, so the next one is booked from what it just wrote down.
         if (!(result == VaultRunResult.RETRY && !forced)) schedule(applicationContext, app.vaultStore.read(), replace = true)
@@ -78,6 +80,7 @@ class VaultWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
                 request,
             )
             Log.i(TAG, "next copy in ${wait.toMinutes()} min (${state.cadence})")
+            Diag.note("vault", "next copy in ${wait.toMinutes()} min (${state.cadence}${if (state.wifiOnly) ", wifi only" else ""})")
         }
 
         /** Off: nothing runs any more. */

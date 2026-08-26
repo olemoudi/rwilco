@@ -34,4 +34,8 @@ object Routes {
     /** The encrypted backup: off by default, set up and managed behind Settings. */
     @Serializable
     data object Backup
+
+    /** What the app knows about itself, for when something did not happen. */
+    @Serializable
+    data object Diagnostics
 }

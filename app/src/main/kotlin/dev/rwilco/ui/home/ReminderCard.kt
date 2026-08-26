@@ -11,7 +11,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Autorenew
+import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.QuestionMark
+import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Icon
@@ -24,6 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.rwilco.R
+import dev.rwilco.model.RuleStanding
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.TriggerFamily
 import dev.rwilco.model.kind
@@ -35,7 +39,9 @@ import dev.rwilco.ui.editor.titleRes
 import dev.rwilco.ui.format.conditionLabel
 import dev.rwilco.ui.format.triggerLine
 import dev.rwilco.ui.theme.MonoStyles
+import dev.rwilco.ui.theme.LocalDarkTheme
 import dev.rwilco.ui.theme.Tokens
+import dev.rwilco.ui.theme.familyColor
 import dev.rwilco.ui.theme.icon
 import java.time.LocalDate
 import java.time.LocalTime
@@ -186,15 +192,34 @@ fun TriggerRow(row: TriggerRowUi, today: LocalDate, defaultTime: LocalTime, mute
                 )
             }
         }
-        // Under "all of them", the ones already behind us: what is left is what it is waiting for.
-        if (row.fired) {
+        // Where this rule stands in its set: ticked off under "todos", true or not right now
+        // under "a la vez". It is the only way to see, from outside, what a reminder is
+        // actually waiting for — and the difference between the two words.
+        row.standing?.let { standing ->
             Spacer(Modifier.width(Tokens.spacing.sm))
+            val met = standing == RuleStanding.DONE || standing == RuleStanding.HOLDING
             Icon(
-                imageVector = Icons.Outlined.Check,
-                contentDescription = stringResource(R.string.card_rule_happened),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(16.dp),
+                imageVector = when (standing) {
+                    RuleStanding.DONE -> Icons.Outlined.Check
+                    RuleStanding.PENDING -> Icons.Outlined.RadioButtonUnchecked
+                    RuleStanding.HOLDING -> Icons.Filled.Circle
+                    RuleStanding.NOT_HOLDING -> Icons.Outlined.RadioButtonUnchecked
+                    RuleStanding.UNKNOWN -> Icons.Outlined.QuestionMark
+                },
+                contentDescription = stringResource(standing.labelRes),
+                tint = if (met && !muted) familyColor(TriggerFamily.PLACE, LocalDarkTheme.current) else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(if (standing == RuleStanding.HOLDING) 10.dp else 16.dp),
             )
         }
     }
 }
+
+/** What each mark means, said out loud for a screen reader. */
+private val RuleStanding.labelRes: Int
+    get() = when (this) {
+        RuleStanding.DONE -> R.string.card_rule_happened
+        RuleStanding.PENDING -> R.string.card_rule_pending
+        RuleStanding.HOLDING -> R.string.card_rule_holding
+        RuleStanding.NOT_HOLDING -> R.string.card_rule_not_holding
+        RuleStanding.UNKNOWN -> R.string.card_rule_unknown
+    }

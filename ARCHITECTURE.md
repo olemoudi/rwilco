@@ -143,6 +143,13 @@ strict is asking somebody to remember how they spelled it.
   left resting there outlives the row (the list reuses it by key), which once handed a reminder
   back from "undo" frozen halfway across the screen. `SwipeableCardTest` drives the gesture
   against a hand-driven clock; `HomeSwipeTest` walks swipe → undo → swipe on the real screen.
+- **Each rule of a set carries a mark** (`RuleStanding`, pure): under ALL, ticked off or still
+  to happen (`firedRules`); under TOGETHER, true at this moment or not — a window against the
+  clock, a place against the watch's own memory of which circles the phone is inside, and a
+  question mark when nothing has looked yet. It changes back when the rule stops holding,
+  because that is the whole difference between the two words, and it was invisible: a card said
+  "todos" and nothing about what it was still waiting for. A moment under TOGETHER gets no mark
+  — it is not a state, it is what rings when the states around it hold — and neither does ANY.
 - A card shows one row per rule, and — when the recurrence works out its own moments
   (`After`, `MonthlyWeekday`) — a row for that too, last, because that is the order the two
   answer in. It is the only way a reminder whose whole arrangement is "cada 6 h" says anything
@@ -539,6 +546,18 @@ strict is asking somebody to remember how they spelled it.
   running, so `RwilcoApplication.resyncIfGrantsChanged()` (from `MainActivity.onResume`) arms
   what a new grant unlocks — background location: geofences and the watch; exact alarms: the
   alarms — rather than waiting for the six-hourly worker.
+- **Diagnostics** (`diag/`): the app's own account of itself, because a reminder that never
+  arrived leaves nothing behind — no crash, no error, an empty screen. `Diag.note(tag, text)` is
+  written from every decision that could be the one (a firing dropped and why, a re-arm, the
+  presentation decision and its five inputs, the vault, the updater, a boot), lands in a ring of
+  its own (`DiagLog`: 300 lines, a week, and a repeat of the same line inside a minute replaces
+  it rather than piling on), and `Diagnostics.report()` — pure, JVM-tested — turns it and the
+  state around it into one block of text to copy: the build and the clock, the ten things the
+  phone can do to hold a reminder back, the settings that decide when things ring, the backup,
+  and one two-line entry per reminder with every stamp the firing path judges by. It carries no
+  reminder text, no tag or place names and no token: a bug lives in the moments, not in the
+  words, and a circle rounded to two decimals still tells two of them apart. Behind the last row
+  in Settings.
 - `SystemEventsReceiver` re-arms after a reboot, an install over ourselves, or the clock moving:
   a wall-clock promise is not an instant until a zone says so.
 - **Nothing on the way to the person is allowed to fail quietly.** Every way `fire` has of

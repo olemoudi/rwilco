@@ -845,4 +845,24 @@
         <item>Los cuatro tonos están rehechos, y son más suaves. Eran pitidos en la banda que hace que cualquier sonido resulte estridente (hasta 1568 Hz, con envolventes planas); ahora son notas graves —de 330 a 800 Hz— golpeadas y dejadas caer como una lámina golpeada con un mazo, cada una con su propia octava por debajo para dar calidez y casi nada por encima. La idea es el aviso que hace un coche cuando te dejas una puerta abierta, no el zumbador: «Puerta abierta» es justo eso, un tono suave golpeado cuatro veces, sin prisa. Siguen siendo nuestros, siguen sintetizados por un script del repositorio y siguen sin licencia de nadie.</item>
         <item>El sonido insistente se puede oír antes de fiarse de él: «Oír la tanda insistente» reproduce la tanda entera —tantas veces como volvería de verdad— con las pausas acortadas para que se pueda escuchar de un tirón, y dice debajo cuál es la pausa real.</item>
     </string-array>
+
+    <!-- The diagnostics report, at the very bottom of Settings. -->
+    <string name="diag_title">Diagnóstico</string>
+    <string name="diag_row_hint">Lo que ha ido haciendo la app, para copiarlo y enviarlo cuando algo falle.</string>
+    <string name="diag_hint">Una semana de decisiones, y el estado desde el que se juzga todo. No lleva el texto de ningún recordatorio, ni nombres de etiquetas o lugares, ni el token: un fallo vive en los momentos, no en las palabras. Cópialo y pégalo donde estés pidiendo ayuda.</string>
+    <string name="diag_copy">Copiar</string>
+    <string name="diag_share">Enviar…</string>
+    <string name="diag_clear">Vaciar el registro</string>
+    <string name="diag_copied">Copiado</string>
+    <string name="diag_cleared">Registro vaciado</string>
+    <string name="diag_building">Leyendo…</string>
+    <string name="card_rule_pending">Aún por ocurrir</string>
+    <string name="card_rule_holding">Se cumple ahora mismo</string>
+    <string name="card_rule_not_holding">No se cumple ahora mismo</string>
+    <string name="card_rule_unknown">Todavía no se sabe</string>
+
+    <string-array name="whats_new_0_15_0">
+        <item>Hay una pantalla de «Diagnóstico» al final de Ajustes. Guarda una semana de lo que la app hizo de verdad —cada aviso que sonó y cada uno que decidió no sonar, los rearmes, qué permitía el teléfono en ese momento— más el estado con el que se juzga cada recordatorio: para qué momento está armado, cuándo sonó por última vez, qué está esperando. Un botón lo copia entero, así que cuando algo no suene puedes pegarlo donde estés pidiendo ayuda en vez de contarlo de memoria. A propósito no lleva el texto de ningún recordatorio, ni nombres de etiquetas o lugares, ni el token: un fallo vive en los momentos, no en las palabras, y los lugares van redondeados a un kilómetro.</item>
+        <item>Un recordatorio con más de un disparador enseña ahora en su tarjeta cómo va cada uno. Con «todos», un ✓ en los que ya han ocurrido y un círculo vacío en lo que sigue esperando. Con «a la vez», un punto lleno en los que se cumplen ahora mismo —estás en ese lugar, la hora está dentro de esa franja— y vacío en el resto, y vuelve a cambiar solo en cuanto uno deja de cumplirse. Es justo la diferencia entre esas dos palabras, que hasta ahora pasaba donde nadie podía verla.</item>
+    </string-array>
 </resources>

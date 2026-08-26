@@ -14,6 +14,7 @@ import android.provider.Settings
 import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import dev.rwilco.alarm.ReminderScheduler
+import dev.rwilco.diag.Diag
 import dev.rwilco.model.FiringPlan
 import dev.rwilco.model.AlertSound
 import dev.rwilco.model.Reminder
@@ -99,13 +100,16 @@ object AlertPresenter {
             return
         }
         val inUse = context.isInUse()
+        val foreground = context.foregroundApp()
+        val overlay = context.canDrawOverlays()
+        val fsi = context.canUseFullScreenIntent()
         val wanted = plan.fullScreen && late == null && takeScreen
         val presentation = alertPresentation(
             fullScreenWanted = wanted,
             inUse = inUse,
-            foreground = context.foregroundApp(),
-            canOverlay = context.canDrawOverlays(),
-            canFullScreen = context.canUseFullScreenIntent(),
+            foreground = foreground,
+            canOverlay = overlay,
+            canFullScreen = fsi,
         )
         // With the screen on, the takeover is ours to start — and it is started BEFORE the
         // notification, because whether it took decides which channel the notification goes
@@ -114,6 +118,11 @@ object AlertPresenter {
         // the alert: the system does it for us, and doing it here as well would race with it.
         val screenTaken = presentation == AlertPresentation.FULL_SCREEN && inUse && startAlert(context, reminder, ruleIndex)
         val fullScreen = presentation == AlertPresentation.FULL_SCREEN && (screenTaken || !inUse)
+        Diag.note(
+            "show",
+            "r=${reminder.id.take(8)} $presentation screen=${if (screenTaken) "taken" else if (inUse) "refused" else "system"} " +
+                "inUse=$inUse fg=$foreground overlay=$overlay fsi=$fsi notif=${NotificationManagerCompat.from(context).areNotificationsEnabled()}",
+        )
         AlertNotifications.post(
             context,
             reminder,

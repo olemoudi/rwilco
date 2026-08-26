@@ -39,9 +39,10 @@ tasks.register<JacocoReport>("jacocoAggregatedReport") {
                         "dev/rwilco/vault/VaultMigrations*",
                         "dev/rwilco/vault/VaultStep*",
                         "dev/rwilco/vault/VaultPending*",
+                        "dev/rwilco/diag/DiagReport*",
+                        "dev/rwilco/ui/home/HomeState*",
                         "dev/rwilco/vault/VaultBackup*",
                         "dev/rwilco/ui/format/*",
-                        "dev/rwilco/ui/home/HomeState*",
                         "dev/rwilco/ui/editor/EditorState*",
                         "dev/rwilco/ui/components/calendar/MonthGrid*",
                     )

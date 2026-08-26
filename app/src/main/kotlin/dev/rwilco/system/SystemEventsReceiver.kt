@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import dev.rwilco.alarm.RearmWorker
+import dev.rwilco.diag.Diag
 import dev.rwilco.update.UpdateWorker
 
 /**
@@ -26,6 +27,7 @@ class SystemEventsReceiver : BroadcastReceiver() {
             else -> return
         }
         Log.i(TAG, "re-arming after ${intent.action}")
+        Diag.note("sys", "re-arming after ${intent.action?.substringAfterLast('.')}")
         RearmWorker.schedule(context)
         RearmWorker.runNow(context)
         // The update check rides along on boot and after an update, as it always has.

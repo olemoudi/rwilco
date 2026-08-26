@@ -16,6 +16,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import dev.rwilco.RwilcoApplication
+import dev.rwilco.diag.Diag
 import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
@@ -30,10 +31,12 @@ class UpdateWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         // the phone will be on when they run. A tap on "Buscar ahora" says so and goes anyway.
         if (!stagedOnly && !inputData.getBoolean(KEY_MANUAL, false) && onSomebodyElsesData()) {
             Log.i(TAG, "skipping the update check: mobile data, and updates are set to wifi only")
+            Diag.note("update", "check skipped: metered network, wifi only")
             return Result.success()
         }
         val updater = Updater(applicationContext)
         val outcome = if (stagedOnly) updater.installStaged() else updater.checkAndUpdate()
+        Diag.note("update", "outcome=$outcome${if (stagedOnly) " (staged)" else ""}")
         return when (outcome) {
             UpdateCheckOutcome.TRANSIENT_FAILURE ->
                 if (runAttemptCount < MAX_RETRIES) Result.retry() else Result.failure()

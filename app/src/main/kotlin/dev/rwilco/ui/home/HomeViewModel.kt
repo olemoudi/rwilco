@@ -11,7 +11,10 @@ import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Preset
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
+import dev.rwilco.geo.GeofenceIds
+import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.TagFilter
+import dev.rwilco.model.Trigger
 import dev.rwilco.model.ValidationWarning
 import dev.rwilco.model.presetsByPopularity
 import dev.rwilco.model.toReminder
@@ -61,6 +64,8 @@ class HomeViewModel(
     /** "Hecho" is one answer with one meaning, wherever it is given: see [markDone]. */
     private val firing: ReminderFiring,
     settings: Flow<AppSettings?>,
+    /** Which circles the phone is inside, as the place watch last saw it. */
+    private val placeWatch: Flow<PlaceWatchState>,
     val clock: Clock,
 ) : ViewModel() {
 
@@ -149,15 +154,30 @@ class HomeViewModel(
         selectedTag,
         // refreshTick is a StateFlow, so the merge has a value from the first collection on.
         merge(refreshTick, minutePulse),
-    ) { reminders, current, tag, _ ->
+        // Which circles the phone is in, as the watch last saw it: the rule marks read it, and
+        // it changes on its own, which is what makes a mark change back.
+        placeWatch,
+    ) { reminders, current, tag, _, watch ->
         // The ticks only say WHEN to rebuild; the moment is read fresh. refreshTick is a
         // StateFlow, and on every resubscription — the app coming back after five seconds
         // away — it replays its last value, which was the instant of the last refresh, hours
         // ago: Home was built for a morning that had passed until the next minute tick.
-        buildHomeState(reminders, current.defaultTime, clock.instant(), clock.zone, tag, current.dayStart)
+        buildHomeState(reminders, current.defaultTime, clock.instant(), clock.zone, tag, current.dayStart) { id, index ->
+            insideOf(reminders, watch, id, index)
+        }
     }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
+
+    /**
+     * Whether the phone is inside the circle of one rule, from the watch's own memory. Keyed by
+     * the id that carries the circle itself, so an edited place is a different question rather
+     * than the old answer (see GeofenceIds).
+     */
+    private fun insideOf(reminders: List<Reminder>, watch: PlaceWatchState, id: String, index: Int): Boolean? {
+        val place = reminders.firstOrNull { it.id == id }?.rules?.getOrNull(index)?.trigger as? Trigger.Location ?: return null
+        return watch.inside[GeofenceIds.encode(id, index, place)]
+    }
 
     /**
      * The magnifier's own state, kept apart from [state]: a keystroke must not send Home
@@ -239,6 +259,6 @@ class HomeViewModel(
     class Factory(private val app: RwilcoApplication) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            HomeViewModel(app.repository, app.settingsStore, app.firing, app.settings, app.clock) as T
+            HomeViewModel(app.repository, app.settingsStore, app.firing, app.settings, app.placeWatch.state, app.clock) as T
     }
 }

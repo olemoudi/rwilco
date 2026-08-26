@@ -12,6 +12,8 @@ import android.os.Build
 import dev.rwilco.geo.GeofenceManager
 import dev.rwilco.geo.PlaceLogStore
 import dev.rwilco.geo.PlaceWatchStore
+import dev.rwilco.diag.Diag
+import dev.rwilco.diag.DiagStore
 import dev.rwilco.geo.PlaceWatcher
 import dev.rwilco.geo.hasBackgroundLocation
 import dev.rwilco.model.AppSettings
@@ -68,8 +70,16 @@ class RwilcoApplication : Application() {
     lateinit var placeLog: PlaceLogStore
         private set
 
+    /** Which circles the phone is inside, as the watch last saw it: what Home's rule marks read. */
+    lateinit var placeWatch: PlaceWatchStore
+        private set
+
     /** The encrypted backup's own memory: credentials, key, cursors. Off by default. */
     lateinit var vaultStore: VaultStore
+        private set
+
+    /** What the app did and why, for the report somebody pastes into a conversation. */
+    lateinit var diagStore: DiagStore
         private set
 
     /** Null until the first read lands; the activity paints the window ground until then. */
@@ -84,12 +94,14 @@ class RwilcoApplication : Application() {
             .map<AppSettings, AppSettings?> { it }
             .stateIn(appScope, SharingStarted.Eagerly, null)
         scheduler = ReminderScheduler(this, repository, settingsStore, clock)
-        val placeWatch = PlaceWatchStore(this)
+        placeWatch = PlaceWatchStore(this)
         firing = ReminderFiring(this, repository, settingsStore, scheduler, placeWatch, clock)
         geofences = GeofenceManager(this, repository)
         placeLog = PlaceLogStore(this)
         placeWatcher = PlaceWatcher(this, repository, firing, placeWatch, placeLog, settingsStore, clock)
         vaultStore = VaultStore(this)
+        diagStore = DiagStore(this)
+        Diag.install(diagStore, appScope, clock)
         AlertNotifications.ensureChannels(this)
 
         // The periodic checks only. The one-off check at launch is MainActivity's, because "the
