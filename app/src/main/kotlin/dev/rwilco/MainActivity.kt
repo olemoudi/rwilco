@@ -4,7 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import android.graphics.Color
 import android.os.Bundle
@@ -30,9 +30,6 @@ class MainActivity : ComponentActivity() {
     /** Where a notification asked to land (the update card lives in Settings); cleared once shown. */
     private val requestedDestination = mutableStateOf<String?>(null)
 
-    /** The answer lands in the Settings card's own check; nothing to do with it here. */
-    private val askNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
-
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -44,7 +41,9 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
-            askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+            // Asked with the plain call rather than a result launcher: the answer is not needed
+            // here — the Settings card re-reads it on every resume and says so if it was no.
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), ASK_NOTIFICATIONS)
         }
         setContent {
             val settings by app.settings.collectAsStateWithLifecycle()
@@ -90,6 +89,9 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
+        /** The one permission this activity asks for by hand; the answer is read, not awaited. */
+        private const val ASK_NOTIFICATIONS = 1
+
         /** Where a notification wants the app to land: [DESTINATION_SETTINGS] or a reminder. */
         const val EXTRA_DESTINATION = "dest"
         const val DESTINATION_SETTINGS = "settings"
