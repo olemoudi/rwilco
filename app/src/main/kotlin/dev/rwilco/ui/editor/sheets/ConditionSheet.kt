@@ -57,11 +57,19 @@ fun ConditionSheet(
     var to by rememberTime(window?.to ?: LocalTime.of(22, 0))
     var days by rememberSaveable { mutableStateOf(window?.days?.map { it.name }?.toSet() ?: emptySet()) }
     var inside by rememberSaveable { mutableStateOf(atPlace?.inside ?: true) }
+    // The condition's own place is offered too when nothing saved carries its name any more —
+    // deleted or renamed in Settings since — so re-opening it does not quietly point it at
+    // whichever place happens to be first.
+    val offered = if (atPlace != null && savedPlaces.none { it.label == atPlace.label }) {
+        savedPlaces + SavedPlace(atPlace.label, atPlace.lat, atPlace.lng, atPlace.radiusM)
+    } else {
+        savedPlaces
+    }
     var chosen by rememberSaveable {
-        mutableStateOf(savedPlaces.indexOfFirst { it.label == atPlace?.label }.coerceAtLeast(0))
+        mutableStateOf(offered.indexOfFirst { it.label == atPlace?.label }.coerceAtLeast(0))
     }
     val selected = days.map(DayOfWeek::valueOf).toSet()
-    val pickedPlace = savedPlaces.getOrNull(chosen)
+    val pickedPlace = offered.getOrNull(chosen)
 
     SheetScaffold(
         title = stringResource(R.string.condition_title),
@@ -98,7 +106,7 @@ fun ConditionSheet(
                 horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
             ) {
-                savedPlaces.forEachIndexed { index, saved ->
+                offered.forEachIndexed { index, saved ->
                     PresetChip(saved.label, selected = index == chosen, onClick = { chosen = index })
                 }
             }

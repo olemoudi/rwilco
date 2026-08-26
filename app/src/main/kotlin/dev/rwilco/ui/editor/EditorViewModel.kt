@@ -168,7 +168,9 @@ class EditorViewModel(
     }
 
     private suspend fun refreshRecurrencePresets() {
-        val current = settings.filterNotNull().first()
+        // From the store itself: the app-wide StateFlow catches up with a write on another
+        // thread, and reading it straight after the write can still see the old value.
+        val current = store.settings.first()
         _state.update { it.copy(recurrencePresets = recurrencePresetsByPopularity(current.recurrencePresets)) }
     }
     fun openKindPicker() = _state.update { it.openKindPicker() }
@@ -228,7 +230,7 @@ class EditorViewModel(
             change()
             val past = repository.allNow()
             val now = clock.instant()
-            val hidden = settings.filterNotNull().first().hiddenTexts
+            val hidden = store.settings.first().hiddenTexts
             _state.update { state ->
                 state.copy(
                     existingTags = suggestedTags(past, now),
@@ -251,7 +253,10 @@ class EditorViewModel(
         }
         viewModelScope.launch {
             val now = clock.instant()
-            val before = existing
+            // The row as it is NOW, not as it was when the form opened: it may have rung and
+            // been dealt with from the notification in between, and a save built on the
+            // snapshot would hand back the status and the anchor from before that.
+            val before = existing?.let { repository.get(it.id) ?: it }
             val reminder = current.draft.toReminder(
                 id = before?.id ?: UUID.randomUUID().toString(),
                 createdAt = before?.createdAt ?: now,

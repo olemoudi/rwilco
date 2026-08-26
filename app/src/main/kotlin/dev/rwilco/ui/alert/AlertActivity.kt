@@ -45,6 +45,7 @@ class AlertActivity : ComponentActivity() {
 
         val app = application as RwilcoApplication
         val reminderId = ReminderScheduler.reminderIdOf(intent)
+        val ruleIndex = ReminderScheduler.ruleIndexOf(intent)
         if (reminderId == null) {
             finish()
             return
@@ -80,7 +81,7 @@ class AlertActivity : ComponentActivity() {
 
             RwilcoTheme(darkTheme = current.theme.resolvesToDark(), haptics = current.haptics) {
                 AlertScreen(
-                    content = AlertContent.fromReminder(loaded, today, current.defaultTime),
+                    content = AlertContent.fromReminder(loaded, today, current.defaultTime, ruleIndex),
                     preview = false,
                     onDone = { act { app.firing.dismiss(reminderId) } },
                     onSnooze = { snooze: Snooze -> act { app.firing.snooze(reminderId, snooze) } },

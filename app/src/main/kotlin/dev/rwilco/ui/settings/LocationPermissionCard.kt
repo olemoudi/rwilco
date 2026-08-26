@@ -51,7 +51,15 @@ import java.time.Clock
 import java.time.Duration
 
 /** How much of the phone's location Rwilco can see, in the order the system grants it. */
-enum class LocationAccess { NONE, WHILE_IN_USE, ALWAYS }
+enum class LocationAccess {
+    NONE,
+
+    /** Coarse only. Enough to drop a pin, never to judge a two-hundred-metre circle. */
+    APPROXIMATE,
+
+    WHILE_IN_USE,
+    ALWAYS,
+}
 
 /**
  * Where a place reminder stands or falls.
@@ -86,7 +94,7 @@ fun LocationPermissionCard(needsPlaces: Boolean, watch: PlaceWatchState? = null)
     val askForeground = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         access = context.locationAccess()
         // A flat refusal cannot be asked again from here: the system stops showing the dialog.
-        if (access == LocationAccess.NONE) context.startActivity(appDetails(context))
+        if (access == LocationAccess.NONE || access == LocationAccess.APPROXIMATE) context.startActivity(appDetails(context))
     }
     val askBackground = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         access = context.locationAccess()
@@ -111,6 +119,7 @@ fun LocationPermissionCard(needsPlaces: Boolean, watch: PlaceWatchState? = null)
                     text = stringResource(
                         when (access) {
                             LocationAccess.NONE -> R.string.perm_location_none
+                            LocationAccess.APPROXIMATE -> R.string.perm_location_approximate
                             LocationAccess.WHILE_IN_USE -> R.string.perm_location_while_in_use
                             LocationAccess.ALWAYS -> R.string.perm_location_always
                         },
@@ -142,6 +151,17 @@ fun LocationPermissionCard(needsPlaces: Boolean, watch: PlaceWatchState? = null)
             when (access) {
                 LocationAccess.NONE -> PermissionFixRow(
                     text = stringResource(R.string.perm_location_missing),
+                    action = stringResource(R.string.perm_location_fix),
+                    onFix = {
+                        askForeground.launch(
+                            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+                        )
+                    },
+                )
+                // Approximate is a yes that does not help: the card has to say "precise", or
+                // the person is sent round the background grant for a problem it cannot fix.
+                LocationAccess.APPROXIMATE -> PermissionFixRow(
+                    text = stringResource(R.string.perm_location_precise_missing),
                     action = stringResource(R.string.perm_location_fix),
                     onFix = {
                         askForeground.launch(
@@ -189,12 +209,15 @@ private fun placeWatchLine(watch: PlaceWatchState?): String {
     } else {
         stringResource(R.string.place_kilometres, String.format(locale, "%.1f", gap / 1000))
     }
+    // A next look behind us is one the alarm has not delivered yet (Doze holds them), and
+    // saying "in" about it would be the card lying about the one thing it is there to show.
+    val nextIn = if (next > now) R.string.countdown_in else R.string.countdown_ago
     return stringResource(
         R.string.place_watch_status,
         stringResource(R.string.countdown_ago, spanText(Duration.between(fix.at, now))),
         distance,
         label,
-        stringResource(R.string.countdown_in, spanText(Duration.between(now, next))),
+        stringResource(nextIn, spanText(Duration.between(now, next))),
     )
 }
 
@@ -221,9 +244,10 @@ fun Context.locationAccess(): LocationAccess {
     val fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
     val coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
     if (!fine && !coarse) return LocationAccess.NONE
+    if (!fine) return LocationAccess.APPROXIMATE
     val background = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
         ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
-    return if (fine && background) LocationAccess.ALWAYS else LocationAccess.WHILE_IN_USE
+    return if (background) LocationAccess.ALWAYS else LocationAccess.WHILE_IN_USE
 }
 
 /** The phone's own location switch, which no permission can substitute for. */

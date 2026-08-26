@@ -25,9 +25,9 @@ class SoundRepeater(private val context: Context) {
     private val alarms = context.getSystemService(AlarmManager::class.java)
 
     /** The next play of [reminderId]'s round, [played] having already gone out. */
-    fun schedule(reminderId: String, played: Int, rangAt: Instant, at: Instant) {
+    fun schedule(reminderId: String, played: Int, rangAt: Instant, at: Instant, ruleIndex: Int? = null) {
         runCatching {
-            alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.toEpochMilli(), intent(reminderId, played, rangAt))
+            alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.toEpochMilli(), intent(reminderId, played, rangAt, ruleIndex))
         }.onFailure { Log.w(TAG, "could not line up the next play for $reminderId", it) }
     }
 
@@ -45,7 +45,7 @@ class SoundRepeater(private val context: Context) {
      * FLAG_UPDATE_CURRENT replace round three with round four rather than leaving both armed —
      * and what lets [cancel] match without knowing which round is pending.
      */
-    private fun intent(reminderId: String, played: Int, rangAt: Instant): PendingIntent = PendingIntent.getBroadcast(
+    private fun intent(reminderId: String, played: Int, rangAt: Instant, ruleIndex: Int? = null): PendingIntent = PendingIntent.getBroadcast(
         context,
         0,
         Intent(context, SoundRepeatReceiver::class.java)
@@ -53,7 +53,8 @@ class SoundRepeater(private val context: Context) {
             .setData(ReminderScheduler.reminderUri(reminderId))
             .putExtra(SoundRepeatReceiver.EXTRA_ID, reminderId)
             .putExtra(SoundRepeatReceiver.EXTRA_PLAYED, played)
-            .putExtra(SoundRepeatReceiver.EXTRA_RANG_AT, rangAt.toEpochMilli()),
+            .putExtra(SoundRepeatReceiver.EXTRA_RANG_AT, rangAt.toEpochMilli())
+            .apply { if (ruleIndex != null) putExtra(ReminderScheduler.EXTRA_RULE, ruleIndex) },
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
 

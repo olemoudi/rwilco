@@ -87,7 +87,9 @@ fun SwipeableCard(
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_PAUSE) spent = true
+            // Only a box that is open: spending one at rest would swallow the first swipe
+            // on every card after every alert, screen-off or app switch.
+            if (event == Lifecycle.Event.ON_PAUSE && state.targetValue != SwipeToDismissBoxValue.Settled) spent = true
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }

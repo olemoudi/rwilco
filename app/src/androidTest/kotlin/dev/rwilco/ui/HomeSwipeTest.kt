@@ -134,7 +134,9 @@ class HomeSwipeTest {
 
         val swipedAt = app.clock.instant()
         swipeCardRightAndHold(pills)
-        rule.waitUntil(10_000) { runBlocking { app.repository.get(id)?.lastDealtAt } != null }
+        // The anchor and the alarm are written by the same dismissal, the alarm last: a row
+        // read between the two would say "dealt with, nothing armed" for a few milliseconds.
+        rule.waitUntil(10_000) { runBlocking { app.repository.get(id)?.let { it.lastDealtAt != null && it.armedFor != null } } == true }
 
         val after = runBlocking { app.repository.get(id)!! }
         assertEquals("a reminder asked to come back was finished instead", Status.ACTIVE, after.status)

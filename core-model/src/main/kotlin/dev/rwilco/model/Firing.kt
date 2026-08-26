@@ -67,12 +67,41 @@ data class FiringPlan(
 fun firingPlan(actions: Set<Action>): FiringPlan = FiringPlan(
     fullScreen = Action.FULL_SCREEN in actions,
     // A full-screen alert always leaves a notification behind: it is what the person finds if
-    // the system refused the takeover, or if they left the screen without deciding.
-    notification = Action.NOTIFICATION in actions || Action.FULL_SCREEN in actions,
+    // the system refused the takeover, or if they left the screen without deciding. And a
+    // sound or a buzz needs one to be carried by — a notification's channel IS how the phone
+    // makes them — so asking for either is asking for the notification, whether or not its
+    // tile is ticked. The only firing with nothing to do is one asked for nothing.
+    notification = actions.isNotEmpty(),
     sound = actions.any { it in SOUND_ACTIONS },
     vibrate = Action.VIBRATE in actions,
     insistent = Action.SOUND_UNTIL_ANSWERED in actions,
 )
+
+/**
+ * Under ALL, the one-shot moments that came and went while the phone was off, after the one
+ * that was armed: what a catch-up still owes once it has rung that one.
+ *
+ * Only the armed moment is detectable as missed ([missedFire]), and under ALL only the
+ * earliest pending moment is ever armed — the next is armed once the first has been written
+ * down. So a phone off from before the first until after the second wakes owing both, notes
+ * the first, and would then wait for a second that has already been and gone: the set never
+ * completes. These are the moments after [missed] that a one-shot rule (a date, a date and
+ * time, a countdown) produced before [now] with its own hours holding — the ones that would
+ * have been armed in turn had the phone been on. A repeating or random rule owes nothing:
+ * its next moment is still ahead, and the set completes then, late rather than never.
+ */
+fun owedUnderAll(reminder: Reminder, missed: Instant, now: Instant, zone: ZoneId, defaultTime: LocalTime): List<Wake> {
+    if (reminder.ruleMatch != RuleMatch.ALL || !reminder.rulesCombine) return emptyList()
+    return reminder.pendingRules()
+        .mapNotNull { index ->
+            val rule = reminder.rules[index]
+            val oneShot = rule.trigger is Trigger.AtDateTime || rule.trigger is Trigger.OnDate || rule.trigger is Trigger.Countdown
+            if (!oneShot) return@mapNotNull null
+            val at = (nextFireOfRule(rule, reminder.id, missed, zone, defaultTime) as? NextFire.Scheduled)?.at ?: return@mapNotNull null
+            if (at > now) null else Wake(at, index)
+        }
+        .sortedBy { it.at }
+}
 
 /**
  * What a rule's moment does to the reminder as a whole.

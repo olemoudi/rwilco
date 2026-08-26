@@ -287,6 +287,22 @@ class PlaceWatchTest {
     }
 
     @Test
+    fun `a sloppy first fix baselines on the side that rings nothing`() {
+        // A cell fix a kilometre wide, centred 300 m from home: it cannot say which side of the
+        // line the phone is on. Read as "outside", the next good fix at home would ring an
+        // arrival at somebody who never left; read as "inside", the real arrival still comes
+        // after the watch has seen them leave.
+        val sloppy = north(300.0, accuracy = 1200.0)
+        assertTrue(insideAfter(null, home, sloppy), "waiting for an arrival: could be inside, so inside")
+        assertFalse(insideAfter(null, work.copy(lat = homeLat, lng = homeLng, radiusM = 200), sloppy), "waiting for a leaving: not clearly inside, so outside")
+        val settled = stepPlaceWatch(PlaceWatchState(inside = mapOf(home.id to true)), north(50.0), listOf(home), now)
+        assertTrue(settled.events.isEmpty(), "a good fix at home after a sloppy one is not an arrival")
+        // A good fix reads as the plain answer either way.
+        assertTrue(insideAfter(null, home, north(50.0)))
+        assertFalse(insideAfter(null, home, north(300.0)))
+    }
+
+    @Test
     fun `a new place is baselined by the next fix, the rest keep their history`() {
         val known = PlaceWatchState(inside = mapOf(home.id to false))
         val step = stepPlaceWatch(known, north(50.0), listOf(home, work), now)

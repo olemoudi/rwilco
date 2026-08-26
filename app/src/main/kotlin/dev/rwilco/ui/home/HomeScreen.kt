@@ -99,7 +99,7 @@ fun HomeScreen(
                 is HomeEvent.Created -> snackbar.show(
                     message = createdMessage,
                     undoLabel = undoLabel,
-                    onUndo = { viewModel.undoCreated(event.reminder) },
+                    onUndo = { viewModel.undoCreated(event.reminder, event.preset) },
                 )
                 // Something it carries has already passed: the form, not a silent overdue.
                 is HomeEvent.NeedsEditor -> onNewFromPreset(event.presetId)

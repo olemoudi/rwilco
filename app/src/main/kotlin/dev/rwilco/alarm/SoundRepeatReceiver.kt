@@ -16,11 +16,12 @@ class SoundRepeatReceiver : BroadcastReceiver() {
         val id = intent.getStringExtra(EXTRA_ID) ?: return
         val played = intent.getIntExtra(EXTRA_PLAYED, 0)
         val rangAt = Instant.ofEpochMilli(intent.getLongExtra(EXTRA_RANG_AT, 0L))
+        val ruleIndex = ReminderScheduler.ruleIndexOf(intent)
         val app = context.applicationContext as RwilcoApplication
         val pending = goAsync()
         app.appScope.launch {
             try {
-                withTimeoutOrNull(BUDGET_MS) { app.firing.playAgain(id, played, rangAt) }
+                withTimeoutOrNull(BUDGET_MS) { app.firing.playAgain(id, played, rangAt, ruleIndex) }
                     ?: Log.w(TAG, "the repeat for $id ran out of time")
             } catch (t: Throwable) {
                 Log.e(TAG, "the repeat for $id failed", t)

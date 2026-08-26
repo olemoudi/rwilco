@@ -24,7 +24,17 @@ class PlaceConditionTest {
     private val home = Condition.AtPlace(homeLat, homeLng, radiusM = 200, label = "Casa")
     private val office = Condition.AtPlace(homeLat + 1_500 / 111_195.0, homeLng, radiusM = 150, label = "Oficina")
 
-    private fun at(metresNorth: Double) = Fix(homeLat + metresNorth / 111_195.0, homeLng, accuracyM = 10.0, at = now)
+    private fun at(metresNorth: Double, accuracy: Double = 10.0) = Fix(homeLat + metresNorth / 111_195.0, homeLng, accuracyM = accuracy, at = now)
+
+    @Test
+    fun `a fix too sloppy to answer is no answer, and the condition holds`() {
+        val atHome = Condition.AtPlace(homeLat, homeLng, 200, "Casa", inside = true)
+        val away = Condition.AtPlace(homeLat, homeLng, 200, "Casa", inside = false)
+        val sloppy = at(400.0, accuracy = 1500.0)
+        assertTrue(atHome.holdsAt(now, zone, sloppy), "a kilometre of doubt cannot say no")
+        assertTrue(away.holdsAt(now, zone, sloppy))
+        assertFalse(atHome.holdsAt(now, zone, at(400.0)), "a good fix outside still says no")
+    }
 
     private val evening = Condition.TimeWindow(LocalTime.of(18, 0), LocalTime.of(22, 0))
     private val nineAm = Trigger.AtTime(LocalTime.of(9, 0), java.time.DayOfWeek.entries.toSet())

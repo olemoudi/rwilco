@@ -11,6 +11,7 @@ import com.google.android.gms.location.LocationServices
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.model.Status
 import dev.rwilco.model.pendingRules
+import dev.rwilco.model.recurrenceInCharge
 import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -44,7 +45,8 @@ class GeofenceManager(
 
     suspend fun sync(): GeofenceState {
         val places = repository.openNow()
-            .filter { it.status == Status.ACTIVE }
+            // Once a recurrence is in charge the rules are not asked again, a place among them.
+            .filter { it.status == Status.ACTIVE && !it.recurrenceInCharge }
             .flatMap { reminder ->
                 // Only the rules still waiting to happen. Under "todos" a place that has
                 // already been ticked off has nothing left to report, and a geofence is not
@@ -55,7 +57,7 @@ class GeofenceManager(
                 val pending = reminder.pendingRules().toSet()
                 reminder.rules.mapIndexedNotNull { index, rule ->
                     if (index !in pending) return@mapIndexedNotNull null
-                    (rule.trigger as? Trigger.Location)?.let { GeofenceIds.encode(reminder.id, index) to it }
+                    (rule.trigger as? Trigger.Location)?.let { GeofenceIds.encode(reminder.id, index, it) to it }
                 }
             }
             // A hard limit of 100 per app: past that Play Services refuses the whole batch, so

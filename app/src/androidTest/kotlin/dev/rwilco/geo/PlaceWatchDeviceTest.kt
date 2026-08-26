@@ -28,6 +28,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalTime
 import java.util.concurrent.TimeUnit
@@ -68,6 +69,13 @@ class PlaceWatchDeviceTest {
     private val homeLat = 40.4169
     private val homeLng = -3.7035
     private val radius = 200
+
+    /** The watch's key for the one place a seeded reminder carries. */
+    private fun key(id: String, transition: Transition) =
+        GeofenceIds.encode(id, 0, Trigger.Location(homeLat, homeLng, radius, transition, "Casa"))
+
+    private fun conditionKey(id: String) =
+        GeofenceIds.encodeCondition(id, 0, 0, Condition.AtPlace(homeLat, homeLng, radius, "Casa", inside = true))
 
     /** Fix times are synthetic and ordered, ten minutes back so they are never in the future. */
     private val t0 = System.currentTimeMillis() - 10 * 60_000L
@@ -113,7 +121,7 @@ class PlaceWatchDeviceTest {
         moveTo(south = 5_000.0, at = t0)
         watcher.check()
         var state = store.read()
-        assertEquals(mapOf("$arriving#0" to false, "$leaving#0" to false), state.inside)
+        assertEquals(mapOf(key(arriving, Transition.ENTER) to false, key(leaving, Transition.EXIT) to false), state.inside)
         assertNull(app.repository.get(arriving)!!.lastFiredAt)
         assertNotNull(state.nextCheckAt)
         assertFalse("GPS five kilometres out", state.precise)
@@ -136,7 +144,7 @@ class PlaceWatchDeviceTest {
         moveTo(south = 50.0, at = t0 + 300_000)
         watcher.check()
         state = store.read()
-        assertEquals(true, state.inside["$arriving#0"])
+        assertEquals(true, state.inside[key(arriving, Transition.ENTER)])
         val rangAt = app.repository.get(arriving)!!.lastFiredAt
         assertNotNull("arriving should have rung", rangAt)
         assertNull(app.repository.get(leaving)!!.lastFiredAt)
@@ -156,7 +164,7 @@ class PlaceWatchDeviceTest {
         moveTo(south = -400.0, at = t0 + 420_000)
         watcher.check()
         state = store.read()
-        assertEquals(false, state.inside["$leaving#0"])
+        assertEquals(false, state.inside[key(leaving, Transition.EXIT)])
         assertNotNull("leaving should have rung", app.repository.get(leaving)!!.lastFiredAt)
         assertEquals(rangAt, app.repository.get(arriving)!!.lastFiredAt)
     }
@@ -169,12 +177,12 @@ class PlaceWatchDeviceTest {
         moveTo(south = 40.0, at = t0)
         val arriving = seed("arrive", Transition.ENTER)
         watcher.check()
-        assertEquals(true, store.read().inside["$arriving#0"])
+        assertEquals(true, store.read().inside[key(arriving, Transition.ENTER)])
         assertNull("standing at home is not arriving", app.repository.get(arriving)!!.lastFiredAt)
 
         moveTo(south = 500.0, at = t0 + 120_000)
         watcher.check()
-        assertEquals(false, store.read().inside["$arriving#0"])
+        assertEquals(false, store.read().inside[key(arriving, Transition.ENTER)])
         assertNull(app.repository.get(arriving)!!.lastFiredAt)
 
         moveTo(south = 40.0, at = t0 + 240_000)
@@ -190,7 +198,7 @@ class PlaceWatchDeviceTest {
         // Centre inside, but the fix could be anywhere within 600 m: not an arrival.
         moveTo(south = 50.0, at = t0 + 120_000, accuracy = 600f)
         watcher.check()
-        assertEquals(false, store.read().inside["$arriving#0"])
+        assertEquals(false, store.read().inside[key(arriving, Transition.ENTER)])
         assertNull(app.repository.get(arriving)!!.lastFiredAt)
         // A proper fix in the same spot is.
         moveTo(south = 50.0, at = t0 + 240_000, accuracy = 12f)
@@ -210,12 +218,35 @@ class PlaceWatchDeviceTest {
         watcher.check()
         // Arriving cannot ring for two more hours, so the watch does not spend a fix finding
         // out that somebody arrived: the circle was never judged at all.
-        assertNull("the watch read a position it could do nothing with", store.read().inside["$fenced#0"])
+        assertNull("the watch read a position it could do nothing with", store.read().inside[key(fenced, Transition.ENTER)])
         assertNull("and nothing rang", app.repository.get(fenced)!!.lastFiredAt)
         // Left alone is not given up on: the next look is the hour the window opens.
         val next = store.read().nextCheckAt
         assertNotNull("the watch stopped instead of sleeping", next)
         assertTrue("woke for a window that has not opened: $next", next!! > Instant.now().plusSeconds(3_600))
+    }
+
+    @Test
+    fun aCircleOnlyAskedAboutIsWatchedJustBeforeItsMoment() = runBlocking {
+        // "A las X, y sólo si estoy en casa": the phone's position matters at X and at no
+        // other time, so a circle two hours from being asked about is not judged at all, and
+        // the next look is the lead before that moment.
+        val later = app.clock.instant().plus(Duration.ofHours(2))
+        val asked = seedClock("asked", at = later)
+        moveTo(south = 1_000.0, at = t0)
+        watcher.check()
+        assertNull("judged a circle nobody is going to ask about for two hours", store.read().inside[conditionKey(asked)])
+        val next = store.read().nextCheckAt
+        assertNotNull("left alone is not given up on", next)
+        val lead = Duration.between(next!!, later)
+        assertTrue("the look should be the lead before the moment, not $lead", lead.toMinutes() in 4..6)
+
+        // With the moment a few minutes off, the circle is watched and the answer is in hand.
+        cancelWatchAlarm()
+        val soonId = seedClock("soon", at = app.clock.instant().plus(Duration.ofMinutes(3)))
+        moveTo(south = 1_000.0, at = t0 + 60_000)
+        watcher.check()
+        assertEquals(false, store.read().inside[conditionKey(soonId)])
     }
 
     @Test
@@ -265,6 +296,29 @@ class PlaceWatchDeviceTest {
         )
         // The app syncs the watch on every change and plans a look five seconds out; the test
         // wants to be the only one looking, so that alarm goes.
+        Thread.sleep(1_500)
+        cancelWatchAlarm()
+        return "watch-$id"
+    }
+
+    /** A clock rule at [at] that only asks whether the phone is at home; returns its id. */
+    private suspend fun seedClock(id: String, at: Instant): String {
+        val now = app.clock.instant()
+        app.repository.save(
+            Reminder(
+                id = "watch-$id",
+                text = "Clock test $id",
+                rules = listOf(
+                    TriggerRule(
+                        Trigger.AtDateTime(java.time.LocalDateTime.ofInstant(at, app.clock.zone)),
+                        listOf(Condition.AtPlace(homeLat, homeLng, radius, "Casa", inside = true)),
+                    ),
+                ),
+                status = Status.ACTIVE,
+                createdAt = now,
+                updatedAt = now,
+            ),
+        )
         Thread.sleep(1_500)
         cancelWatchAlarm()
         return "watch-$id"

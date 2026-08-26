@@ -370,6 +370,8 @@
     <!-- Location -->
     <string name="settings_location">Location</string>
     <string name="perm_location_none">Rwilco cannot see where you are.</string>
+    <string name="perm_location_approximate">Approximate only: a two-hundred-metre circle cannot be judged with a kilometre of doubt.</string>
+    <string name="perm_location_precise_missing">Place reminders need your precise location, not the approximate one.</string>
     <string name="perm_location_while_in_use">Only while Rwilco is open.</string>
     <string name="perm_location_always">All the time: place reminders work with the app closed.</string>
     <string name="perm_location_why">Places are watched by the phone\'s own location service. Rwilco never follows you around: it is told when you arrive, and asks nothing in between.</string>
@@ -653,5 +655,17 @@
         <item>The app stopped checking GitHub for updates every time the place watch woke it up — a few dozen times a day, for a file that had not changed. Opening the app checks, as before, and so does the twelve-hourly check.</item>
         <item>A reminder that comes back «every 6 h» and has rung once without an answer stays overdue until you deal with it: it no longer rings again at the hour of the trigger that only ever meant the first time.</item>
         <item>«Done» on the notification of a reminder you had already deleted takes the notification down.</item>
+    </string-array>
+    <string-array name="whats_new_0_11_3">
+        <item>A place that is only ever asked about — «at nine, and only if I am home», or a place under «all at once» that cannot ring on its own — is now watched only in the five minutes before that moment, and not all day. And once a reminder is coming back on its own schedule («every 6 h»), nothing of its places is watched or geofenced any more: the recurrence is in charge, and arriving somewhere does not ring it.</item>
+        <item>«All at once» sets are now scheduled from the whole set: «at nine, and between eight and ten on Mondays» arms Monday at nine, not tomorrow at nine. Its cards on Home say the same.</item>
+        <item>A full-screen reminder that arrives as a banner — an app in front, or usage access never granted — now makes its sound and its buzz. It used to be silent, because the sound was left to a screen that never came. Likewise every «until answered» repeat of a full-screen reminder.</item>
+        <item>«Sound» or «vibration» with the notification unticked no longer does nothing: whatever you asked for is carried by a notification, because that is how the phone makes it.</item>
+        <item>Under «all of them», a phone off across two of its moments no longer waits for ever for the second one: both are owed when it wakes, and the last one rings.</item>
+        <item>Editing a reminder\'s rules — deleting one, moving a place — no longer hands one circle another\'s memory, which could ring «arriving home» at somebody sitting at home. A first fix too sloppy to place you is read on the side that rings nothing, and «only if I am home» judged on such a fix holds rather than saying no.</item>
+        <item>The alert screen names the rule that actually rang, not the first one on the list.</item>
+        <item>Home no longer comes back from the background built for an hour that has passed; the first swipe after every alert works; the pin panel scrolls; a tag filter survives the tag changing its spelling.</item>
+        <item>The place sheet: a rotation while it was locating or searching no longer leaves it busy for ever, and the radius slider lands on the tick it shows. A countdown can no longer be set past a week and then refuse to save without a word. After eleven at night the date-time sheet offers tomorrow. A place condition being edited keeps its own place even if the saved one was renamed or deleted. Editing a built-in recurrence preset saves the edit. Saving a reminder that rang and was dealt with while the editor was open keeps the «done».</item>
+        <item>Settings: «approximate» location says what is actually missing (the precise grant) instead of sending you round the background one; a look the watch has not yet taken says «ago», not «in».</item>
     </string-array>
 </resources>

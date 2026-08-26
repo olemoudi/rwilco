@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.DeleteOutline
@@ -125,7 +125,7 @@ fun WatchLogScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                     }
                 }
             }
-            items(log.notes, key = { "${it.at.toEpochMilli()}-${it.kind}" }) { note -> NoteRow(note) }
+            itemsIndexed(log.notes, key = { index, note -> "${note.at.toEpochMilli()}-${note.kind}-$index" }) { _, note -> NoteRow(note) }
         }
     }
 }

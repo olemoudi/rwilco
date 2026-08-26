@@ -60,7 +60,10 @@ sealed interface Condition {
  * [where] is null when nobody knows — no fix, or one too old to speak for the moment — and a
  * place condition then **holds**. That is the house rule everywhere in this app: erring towards
  * ringing too often is the right way round, because the failure somebody notices is the one
- * that never arrives. A time window never needs it.
+ * that never arrives. A fix sloppier than the circle is the same thing said with a number: a
+ * cell tower's kilometre of doubt cannot say which side of a two-hundred-metre line the phone
+ * is on, and reading its centre as a confident "no" would silence "y sólo si estoy en casa"
+ * for somebody sitting at home. A time window never needs any of it.
  */
 fun Condition.holdsAt(at: Instant, zone: ZoneId, where: Fix? = null): Boolean = when (this) {
     is Condition.TimeWindow -> {
@@ -73,7 +76,8 @@ fun Condition.holdsAt(at: Instant, zone: ZoneId, where: Fix? = null): Boolean = 
         inside && (days.isEmpty() || day in days)
     }
     is Condition.AtPlace -> {
-        if (where == null) true else (distanceMeters(where.lat, where.lng, lat, lng) <= radiusM) == inside
+        if (where == null || where.accuracyM > radiusM) true
+        else (distanceMeters(where.lat, where.lng, lat, lng) <= radiusM) == inside
     }
 }
 

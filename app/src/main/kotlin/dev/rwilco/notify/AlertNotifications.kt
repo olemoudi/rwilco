@@ -72,10 +72,22 @@ object AlertNotifications {
         fullScreen: Boolean = plan.fullScreen,
         vibration: VibrationPattern = VibrationPattern(),
         chosen: AlertSound = AlertSound.System,
+        ruleIndex: Int? = null,
     ) {
-        ensureChannels(context, vibration, chosen)
-        val channel = if (late != null) CHANNEL_MISSED else channelId(plan.notificationSound, plan.notificationVibrate, vibration, chosen)
-        val open = activityIntent(context, reminder.id)
+        // A file that will not open right now plays as the system tone (Sounds.uri), and the
+        // channel has to be NAMED for the tone it will actually carry: a channel's sound is
+        // fixed the moment it is created, so one made under the file's own key while the file
+        // was away would keep the system tone for ever, card back in or not.
+        val effective = if (chosen is AlertSound.Custom && !Sounds.readable(context, Uri.parse(chosen.uri))) AlertSound.System else chosen
+        ensureChannels(context, vibration, effective)
+        // The noise follows where the firing is actually shown, not what was ticked: a
+        // full-screen alert rings for itself, but one that ends up as a banner — an app in
+        // front, usage access never granted — has no screen to ring, and a silent banner is a
+        // reminder somebody sleeps through.
+        val soundHere = plan.sound && !fullScreen
+        val vibrateHere = plan.vibrate && !fullScreen
+        val channel = if (late != null) CHANNEL_MISSED else channelId(soundHere, vibrateHere, vibration, effective)
+        val open = activityIntent(context, reminder.id, ruleIndex)
         val builder = NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(reminder.text)
@@ -148,11 +160,13 @@ object AlertNotifications {
     }
 
 
-    private fun activityIntent(context: Context, reminderId: String): PendingIntent = PendingIntent.getActivity(
+    /** The rule rides as an extra: not part of the identity, refreshed by FLAG_UPDATE_CURRENT. */
+    private fun activityIntent(context: Context, reminderId: String, ruleIndex: Int?): PendingIntent = PendingIntent.getActivity(
         context,
         0,
         Intent(context, AlertActivity::class.java)
             .setData(ReminderScheduler.reminderUri(reminderId))
+            .apply { if (ruleIndex != null) putExtra(ReminderScheduler.EXTRA_RULE, ruleIndex) }
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )

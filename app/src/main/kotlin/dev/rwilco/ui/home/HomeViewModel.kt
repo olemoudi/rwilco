@@ -46,7 +46,7 @@ sealed interface HomeEvent {
     data object Refreshed : HomeEvent
 
     /** A preset was turned into a reminder in one tap; the snackbar offers to undo it. */
-    data class Created(val reminder: Reminder) : HomeEvent
+    data class Created(val reminder: Reminder, val preset: Preset) : HomeEvent
 
     /**
      * A preset could not be written blind — a moment it carries has already passed — so the
@@ -100,13 +100,18 @@ class HomeViewModel(
             store.update { settings ->
                 settings.copy(presets = settings.presets.map { if (it.id == preset.id) it.used(now) else it })
             }
-            events.send(HomeEvent.Created(reminder))
+            events.send(HomeEvent.Created(reminder, preset))
         }
     }
 
     /** Undoing a one-tap creation: the reminder goes, and so does the use it counted. */
-    fun undoCreated(reminder: Reminder) {
-        viewModelScope.launch { repository.delete(reminder.id) }
+    fun undoCreated(reminder: Reminder, preset: Preset) {
+        viewModelScope.launch {
+            repository.delete(reminder.id)
+            store.update { settings ->
+                settings.copy(presets = settings.presets.map { if (it.id == preset.id) it.copy(uses = preset.uses, lastUsedAt = preset.lastUsedAt) else it })
+            }
+        }
     }
 
     /**
@@ -144,8 +149,12 @@ class HomeViewModel(
         selectedTag,
         // refreshTick is a StateFlow, so the merge has a value from the first collection on.
         merge(refreshTick, minutePulse),
-    ) { reminders, current, tag, now ->
-        buildHomeState(reminders, current.defaultTime, now, clock.zone, tag, current.dayStart)
+    ) { reminders, current, tag, _ ->
+        // The ticks only say WHEN to rebuild; the moment is read fresh. refreshTick is a
+        // StateFlow, and on every resubscription — the app coming back after five seconds
+        // away — it replays its last value, which was the instant of the last refresh, hours
+        // ago: Home was built for a morning that had passed until the next minute tick.
+        buildHomeState(reminders, current.defaultTime, clock.instant(), clock.zone, tag, current.dayStart)
     }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())

@@ -83,6 +83,8 @@ object AlertPresenter {
         vibration: VibrationPattern = VibrationPattern(),
         sound: AlertSound = AlertSound.System,
         takeScreen: Boolean = true,
+        /** The rule whose moment rang, so the screen can say which; null for a snooze or a recurrence. */
+        ruleIndex: Int? = null,
     ) {
         // Every action turned off is an answer too: the moment passes without a word, and the
         // reminder is simply overdue on Home afterwards.
@@ -105,6 +107,7 @@ object AlertPresenter {
             fullScreen = presentation == AlertPresentation.FULL_SCREEN,
             vibration = vibration,
             chosen = sound,
+            ruleIndex = ruleIndex,
         )
         // With the screen off or locked, the notification's full-screen intent is what launches
         // the alert — the system does it for us, and doing it here as well would race with it.
@@ -113,6 +116,7 @@ object AlertPresenter {
                 context.startActivity(
                     Intent(context, AlertActivity::class.java)
                         .setData(ReminderScheduler.reminderUri(reminder.id))
+                        .apply { if (ruleIndex != null) putExtra(ReminderScheduler.EXTRA_RULE, ruleIndex) }
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
                 )
             }.onFailure { Log.w(TAG, "could not take the screen; the notification carries it", it) }

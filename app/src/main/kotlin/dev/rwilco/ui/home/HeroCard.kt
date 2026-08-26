@@ -67,7 +67,10 @@ fun HeroCard(
         else -> 0.45f
     }
     val at = hero.at.atZone(clock.zone)
-    val nextTrigger = hero.card.triggers.firstOrNull { it.nextAt == hero.at } ?: hero.card.triggers.firstOrNull()
+    // The row whose moment this is; failing that, the first trigger — unless the moment is
+    // the recurrence's own (no row matches and one is in charge), which gets its own badge.
+    val nextTrigger = hero.card.triggers.firstOrNull { it.nextAt == hero.at }
+        ?: hero.card.triggers.firstOrNull().takeIf { hero.card.recurrence == null || hero.snoozed }
 
     RwilcoCard(onClick = onClick, shape = MaterialTheme.shapes.extraLarge) {
         Column(

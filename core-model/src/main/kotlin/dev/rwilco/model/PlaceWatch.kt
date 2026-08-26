@@ -151,6 +151,19 @@ object PlaceWatchPolicy {
     /** Longest the still back-off doubles for: 2 · 2⁶ min is already past MAX_WAIT. */
     const val MAX_STILL_DOUBLINGS = 6
 
+    /**
+     * How long before a clock rule's moment the circles it only *asks about* are watched.
+     *
+     * "A las nueve, y sólo si estoy en casa" needs to know where the phone is at nine, and at
+     * no other time: the answer at four in the afternoon is worth nothing and costs a fix.
+     * So a circle that is only ever asked about — a place condition on a clock rule, or a
+     * place folded into one under "a la vez" — is left alone until this long before the
+     * moment, when one look is taken and the ordinary cadence carries it to the alarm. Five
+     * minutes is long enough for a first fix to land and short enough that what it says
+     * still holds when the alarm goes off.
+     */
+    val ASK_LEAD: Duration = Duration.ofMinutes(5)
+
     /** Above this much battery left, none of the below applies. See [batteryFloor]. */
     const val SPARING_FROM = 0.50
 
@@ -365,14 +378,24 @@ private fun Duration.clamp(floor: Duration, ceiling: Duration): Duration = when 
 
 /**
  * Whether the phone counts as inside a place after this fix, given whether it was before.
- * With no history, the plain answer. Otherwise with hysteresis: getting in takes a fix whose
- * centre is inside and that is not so sloppy it could be anywhere; getting out takes a fix
- * clearly beyond the line. A fix wobbling on the line changes nothing.
+ *
+ * With hysteresis: getting in takes a fix whose centre is inside and that is not so sloppy it
+ * could be anywhere; getting out takes a fix clearly beyond the line. A fix wobbling on the
+ * line changes nothing.
+ *
+ * With no history, the side that rings nothing. A first fix is often the worst one — the
+ * cached cell fix a cold provider hands back — and the plain answer read off its centre seeds
+ * the memory with a guess that the next good fix then "corrects" with an event: a phone that
+ * never left home told it has just arrived, which is the one thing the baseline exists to
+ * prevent. A place waiting for an arrival is therefore taken to be inside when the fix could
+ * be — the real arrival is still caught, after the watch has seen the phone leave — and a
+ * place waiting for a leaving is taken to be outside unless the fix is clearly in. With a
+ * good fix the two read as the plain answer; only doubt is resolved towards silence.
  */
 fun insideAfter(wasInside: Boolean?, place: WatchedPlace, fix: Fix): Boolean {
     val distance = distanceMeters(fix.lat, fix.lng, place.lat, place.lng)
     return when (wasInside) {
-        null -> distance <= place.radiusM
+        null -> if (place.transition == Transition.ENTER) distance <= place.radiusM + fix.accuracyM else distance + fix.accuracyM <= place.radiusM
         false -> distance <= place.radiusM && fix.accuracyM <= place.radiusM
         true -> distance <= place.radiusM + fix.accuracyM
     }

@@ -19,6 +19,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.rwilco.R
+import dev.rwilco.model.MAX_COUNTDOWN_MINUTES
+import dev.rwilco.model.MIN_COUNTDOWN_MINUTES
 import dev.rwilco.model.Trigger
 import dev.rwilco.ui.components.PresetChip
 import dev.rwilco.ui.components.SheetScaffold
@@ -60,7 +62,7 @@ fun CountdownSheet(
         // lets a preset hold "in half an hour" and mean it every time.
         onConfirm = { onConfirm(Trigger.Countdown(minutes)) },
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
-        confirmEnabled = minutes > 0,
+        confirmEnabled = minutes in MIN_COUNTDOWN_MINUTES..MAX_COUNTDOWN_MINUTES,
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
@@ -77,8 +79,9 @@ fun CountdownSheet(
                 Stepper(
                     valueLabel = hours.toString(),
                     onDecrement = { minutes = (minutes - 60).coerceAtLeast(rest) },
-                    onIncrement = { minutes = (minutes + 60).coerceAtMost(24 * 60 * 7) },
+                    onIncrement = { minutes = (minutes + 60).coerceAtMost(MAX_COUNTDOWN_MINUTES) },
                     decrementEnabled = hours > 0,
+                    incrementEnabled = minutes + 60 <= MAX_COUNTDOWN_MINUTES,
                 )
             }
             Spacer(Modifier.width(Tokens.spacing.md))
@@ -87,8 +90,9 @@ fun CountdownSheet(
                 Stepper(
                     valueLabel = rest.toString(),
                     onDecrement = { minutes = (minutes - 5).coerceAtLeast(0) },
-                    onIncrement = { minutes = minutes + 5 },
+                    onIncrement = { minutes = (minutes + 5).coerceAtMost(MAX_COUNTDOWN_MINUTES) },
                     decrementEnabled = rest > 0,
+                    incrementEnabled = minutes < MAX_COUNTDOWN_MINUTES,
                 )
             }
         }

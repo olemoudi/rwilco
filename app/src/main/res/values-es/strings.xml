@@ -368,6 +368,8 @@
     <!-- Location -->
     <string name="settings_location">Ubicación</string>
     <string name="perm_location_none">Rwilco no puede ver dónde estás.</string>
+    <string name="perm_location_approximate">Sólo aproximada: un círculo de doscientos metros no se puede juzgar con un kilómetro de duda.</string>
+    <string name="perm_location_precise_missing">Los recordatorios de lugar necesitan tu ubicación precisa, no la aproximada.</string>
     <string name="perm_location_while_in_use">Sólo mientras Rwilco está abierto.</string>
     <string name="perm_location_always">Siempre: los recordatorios de lugar funcionan con la app cerrada.</string>
     <string name="perm_location_why">De los lugares se encarga el servicio de ubicación del propio teléfono. Rwilco no te sigue: le avisan cuando llegas, y entre medias no pregunta nada.</string>
@@ -651,5 +653,17 @@
         <item>La app ha dejado de consultar GitHub por actualizaciones cada vez que el vigilante de lugares la despertaba — unas docenas de veces al día, por un archivo que no había cambiado. Abrir la app comprueba, como antes, y también la comprobación de cada doce horas.</item>
         <item>Un recordatorio que vuelve «cada 6 h» y ha sonado una vez sin respuesta se queda como vencido hasta que lo atiendes: ya no vuelve a sonar a la hora del disparador que sólo significaba la primera vez.</item>
         <item>«Hecho» en la notificación de un recordatorio que ya habías borrado retira la notificación.</item>
+    </string-array>
+    <string-array name="whats_new_0_11_3">
+        <item>Un lugar que sólo se pregunta — «a las nueve, y sólo si estoy en casa», o un lugar bajo «a la vez» que no puede sonar por sí solo — ahora se vigila únicamente en los cinco minutos antes de ese momento, y no todo el día. Y en cuanto un recordatorio vuelve por su propio calendario («cada 6 h»), ninguno de sus lugares se vigila ni se geovalla: manda la recurrencia, y llegar a un sitio no lo hace sonar.</item>
+        <item>Los conjuntos «a la vez» se programan ahora desde el conjunto entero: «a las nueve, y de ocho a diez los lunes» arma el lunes a las nueve, no mañana a las nueve. Sus tarjetas en Inicio dicen lo mismo.</item>
+        <item>Un aviso a pantalla completa que llega como banner — una app delante, o el acceso de uso nunca concedido — ahora suena y vibra. Antes quedaba mudo, porque el sonido se dejaba a una pantalla que no llegaba. Lo mismo cada repetición «hasta que conteste» de un aviso a pantalla completa.</item>
+        <item>«Sonido» o «vibración» con la notificación desmarcada ya no se queda en nada: lo que pides lo lleva una notificación, porque así es como el móvil lo hace.</item>
+        <item>Bajo «todos», un móvil apagado a través de dos de sus momentos ya no espera para siempre al segundo: al despertar se deben los dos, y el último suena.</item>
+        <item>Editar las reglas de un recordatorio — borrar una, mover un lugar — ya no le pasa a un círculo la memoria de otro, que podía hacer sonar «al llegar a casa» a alguien sentado en casa. Una primera posición demasiado imprecisa para situarte se lee del lado que no suena, y «sólo si estoy en casa» juzgado con una posición así se cumple en vez de decir que no.</item>
+        <item>La pantalla de aviso nombra la regla que sonó de verdad, no la primera de la lista.</item>
+        <item>Inicio ya no vuelve del segundo plano construido para una hora ya pasada; el primer deslizamiento tras cada aviso funciona; el panel de anclar hace scroll; un filtro de etiqueta sobrevive a que la etiqueta cambie de grafía.</item>
+        <item>La hoja de lugar: girar el móvil mientras localizaba o buscaba ya no la deja ocupada para siempre, y el deslizador de radio cae en la marca que enseña. Una cuenta atrás ya no puede pasar de una semana y luego negarse a guardar sin decir nada. Pasadas las once de la noche la hoja de fecha y hora ofrece mañana. Una condición de lugar en edición conserva su propio lugar aunque el guardado se haya renombrado o borrado. Editar un preajuste de recurrencia de serie guarda el cambio. Guardar un recordatorio que sonó y se atendió con el editor abierto conserva el «hecho».</item>
+        <item>Ajustes: la ubicación «aproximada» dice lo que falta de verdad (el permiso preciso) en vez de mandarte a por el de segundo plano; una mirada que el vigilante aún no ha dado dice «hace», no «en».</item>
     </string-array>
 </resources>

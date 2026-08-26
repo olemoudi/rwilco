@@ -55,9 +55,16 @@ fun nextFire(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalT
     }
     val pending = reminder.pendingRules()
     val candidates = pending.mapNotNull { index ->
-        nextFireOfRule(reminder.rules[index], reminder.id, reminder.searchFrom(now), zone, defaultTime)
+        // Under "a la vez" the rule is judged with its siblings folded in as conditions — the
+        // same rule the firing will judge — so a moment outside a sibling's window is not
+        // offered, let alone armed. A fold of two moments can never ring and yields nothing.
+        val rule = reminder.togetherRule(index) ?: return@mapNotNull null
+        nextFireOfRule(rule, reminder.id, reminder.searchFrom(now), zone, defaultTime)
     }
-    if (reminder.ruleMatch == RuleMatch.ANY || !reminder.rulesCombine) {
+    // ANY and TOGETHER alike: the earliest. Under "a la vez" each candidate is already the
+    // folded rule's moment — the first instant the whole set holds — so the soonest of them is
+    // the ring, and the "last of the pending" reading below belongs to ALL alone.
+    if (reminder.ruleMatch != RuleMatch.ALL || !reminder.rulesCombine) {
         return candidates.filterIsInstance<NextFire.Scheduled>().minByOrNull { it.at }
             ?: candidates.filterIsInstance<NextFire.Sometime>().minByOrNull { it.at }
             ?: candidates.filterIsInstance<NextFire.WhenAt>().firstOrNull()
@@ -94,7 +101,8 @@ fun nextWake(reminder: Reminder, now: Instant, zone: ZoneId, defaultTime: LocalT
     if (reminder.recurrenceInCharge) return reminder.recurrenceMoment(zone, dayStart)?.let { Wake(it, null) }
     return reminder.pendingRules()
         .mapNotNull { index ->
-            val at = nextFireOfRule(reminder.rules[index], reminder.id, reminder.searchFrom(now), zone, defaultTime)?.momentOrNull()
+            val rule = reminder.togetherRule(index) ?: return@mapNotNull null
+            val at = nextFireOfRule(rule, reminder.id, reminder.searchFrom(now), zone, defaultTime)?.momentOrNull()
             at?.let { Wake(it, index) }
         }
         .minByOrNull { it.at }

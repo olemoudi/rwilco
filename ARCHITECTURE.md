@@ -237,6 +237,10 @@ strict is asking somebody to remember how they spelled it.
   scheduler itself writes back, or every re-arm would come round as a change and arm everything
   again. `lastDealtAt` is in it for the undo: taking a "hecho" back puts the whole row as it
   was, and on a reminder that stayed ACTIVE either side of it nothing else in the key moves.
+  Under ALL only the earliest pending moment is armed, so a phone off across two of them wakes
+  owing both and only one is detectably missed; `owedUnderAll` (pure) lists the one-shot
+  moments after the missed one that have since passed, and `rearmAndCatchUp` fires them in
+  turn, so the set completes late rather than never.
 - `ReminderFiring` is the single place that decides what a firing, a "Hecho" and a snooze do, so
   the alarm, the notification buttons, the alert screen **and Home's swipe** cannot drift apart.
   Home's used to file the reminder as DONE itself, which is right for most of them and wrong for
@@ -266,7 +270,12 @@ strict is asking somebody to remember how they spelled it.
   that rang and was ignored is overdue, and does not come back at the hour of a trigger whose
   job was the first ring only.
 - `AlertPresenter` decides *where* a firing shows itself: an app open in front of somebody gets
-  the banner, and the home screen, a dark screen or the lock screen get the whole screen. That
+  the banner, and the home screen, a dark screen or the lock screen get the whole screen. The
+  noise follows that decision, not the tile: a full-screen alert rings for itself, but one
+  shown as a banner has no screen to ring and its notification carries the sound and the buzz
+  (`AlertNotifications.post` picks the channel from the presentation it was handed). And any
+  action at all implies a notification (`firingPlan`): a sound or a buzz is made by a channel,
+  so "sonido" with "notificación" unticked is still a notification rather than nothing. That
   needs two permissions granted by hand — usage access (to tell an app from the launcher) and
   "display over other apps" (Android forbids a background activity start without it). Missing
   either falls back to the banner, which is what the system does on its own, and Settings says
@@ -338,8 +347,11 @@ strict is asking somebody to remember how they spelled it.
   a place is being inside its circle, a `Trigger.Interval` ("de 17 a 19") is being in its
   window, and everything else is a **moment**, true at an instant and false either side. So it
   is implemented by folding: `Reminder.togetherRule(i)` hands back rule *i* with every other
-  rule's state as one of its conditions, and firing, scheduling and `warnings` all then run the
-  ordinary conditioned-rule machinery. Two moments asked to coincide never do, which the fold
+  rule's state as one of its conditions, and firing, scheduling (`nextFire`/`nextWake`, which
+  once armed the bare rule's moment and rang "a las nueve, y de ocho a diez los lunes" every
+  day), Home's rows, the place watch and `warnings` all then run the ordinary conditioned-rule
+  machinery. Under TOGETHER the earliest folded moment is the ring, as under ANY; "the last of
+  the pending" is ALL's reading alone. Two moments asked to coincide never do, which the fold
   reports as null and `momentsCannotCoincide` says out loud — and "en casa Y a las nueve" is
   *not* that trap, because a place is a state: it means being at home at nine, and it is the
   clock's rule that rings it.
@@ -360,7 +372,10 @@ strict is asking somebody to remember how they spelled it.
   polls on its own account. What it watches is every circle still worth watching, and three
   things take circles off that list. A rule's trigger counts only while the rule is still
   pending (`pendingRules` — under ALL a place already ticked off has nothing left to report, and
-  both the watch and the hundred-geofence allowance stop spending on it). The circles named by
+  both the watch and the hundred-geofence allowance stop spending on it), and only while the
+  rules are being asked at all: once an anchored recurrence is in charge (`recurrenceInCharge`)
+  nothing of theirs is watched or geofenced, and `ReminderFiring` refuses a crossing for it.
+  The circles named by
   `Condition.AtPlace` are watched for their state alone (`WatchedPlace.fires = false`, so
   `stepPlaceWatch` never turns one into a firing) and never geofenced, because a geofence
   reports a crossing and a condition has none. And **a circle is left alone entirely while the
@@ -368,7 +383,13 @@ strict is asking somebody to remember how they spelled it.
   oficina, entre las cinco y las siete" cannot ring at three in the morning however far anybody
   walks, so the watch spends nothing on it and sleeps until five instead of cancelling — a
   couple of minutes early, so the first fix of a window is taken before anything is judged by
-  it. Only windows gate; a sibling place cannot gate another place, because answering it would
+  it. **A circle that is only ever asked about is left alone until just before it is asked**:
+  "a las nueve, y sólo si estoy en casa" needs the phone's position at nine and at no other
+  time, so the condition's circle — and, under "a la vez", a place that cannot ring on its own
+  and is only asked at a sibling's moment — is watched from `PlaceWatchPolicy.ASK_LEAD` (five
+  minutes) before that rule's next moment (`nextFireOfRule`, after any snooze) and not before;
+  the one look it gets is fresh when the alarm asks, and the ordinary cadence carries it there.
+  A sibling place cannot gate another place, because answering it would
   need the very fix this exists to avoid spending. The geofences are *not* gated: they are the
   free eye and the net under all of this, and one firing outside its hours costs a condition
   check that says no.
@@ -455,6 +476,16 @@ strict is asking somebody to remember how they spelled it.
   alarm reaches an app the system had cleaned up) leaves a pending look standing unless a place
   has never been judged or nothing is pending at all; looking soon unconditionally would mean a
   second fix five seconds after every check, all day, for a list of places that had not changed.
+  A watched circle's id (`GeofenceIds`) carries the circle itself — pin, radius, which way it
+  is waited on — and not just the rule's index, because `inside` is remembered by that id: a
+  rule deleted above another once handed the survivor the memory of a place that was gone, and
+  rang an arrival at somebody who had not moved. An edited circle is a new id, which costs one
+  baseline look and rings nothing. With no history the baseline resolves doubt towards silence
+  (`insideAfter`): a place waiting for an arrival is inside when the fix *could* be, one waiting
+  for a leaving is outside unless the fix is clearly in — a cold provider's first fix is often a
+  cell tower's kilometre, and the plain answer off its centre is a guess the next good fix
+  "corrects" with an event. The same doubt is no answer to a place condition
+  (`Condition.holdsAt`): a fix sloppier than the circle holds it, like no fix at all.
   A crossing Play Services reports is judged the same way (`crossingIsNews`): an arrival
   announced while the app's own recent fix still has the phone inside is a line nobody crossed
   and is dropped, and one that stands is written into the same `inside` map so the other eye

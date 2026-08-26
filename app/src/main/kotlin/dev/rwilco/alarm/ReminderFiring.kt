@@ -21,6 +21,8 @@ import dev.rwilco.model.firingPlan
 import dev.rwilco.model.missedFire
 import dev.rwilco.model.momentRungFor
 import dev.rwilco.model.outcomeOfFiring
+import dev.rwilco.model.owedUnderAll
+import dev.rwilco.model.recurrenceInCharge
 import dev.rwilco.model.rulesCombine
 import dev.rwilco.model.statusAfterDismissal
 import dev.rwilco.notify.AlertNotifications
@@ -101,6 +103,14 @@ class ReminderFiring(
         // going off. A catch-up says [late] and is the app itself asking on purpose.
         val armed = reminder.armedFor
         val eventDriven = rule?.trigger is Trigger.Location
+        // The triggers say when it rings the first time and the recurrence when it comes back:
+        // once one is in charge, an arrival is not a ring. The clock's moments already answer
+        // this through nextWake (nothing of theirs is armed); a place has no armed moment to
+        // be refused by, so it is refused here.
+        if (eventDriven && reminder.recurrenceInCharge) {
+            Log.i(TAG, "$id is on its recurrence now; a crossing does not ring it")
+            return@withLock
+        }
         if (!eventDriven && late == null && (armed == null || armed > now.plusSeconds(EARLY_GRACE_SECONDS))) {
             Log.i(TAG, "$id has nothing armed for now (armed=$armed); ignoring a stray firing")
             return@withLock
@@ -140,11 +150,11 @@ class ReminderFiring(
         }
         val settings = settingsStore.settings.first()
         val plan = firingPlan(reminder.actions)
-        AlertPresenter.show(context, reminder, plan, late, settings.vibration, settings.alertSound)
+        AlertPresenter.show(context, reminder, plan, late, settings.vibration, settings.alertSound, ruleIndex = ruleIndex)
         // "Hasta que reciba caso": the first play has gone out, so line up the second.
         if (plan.insistent) {
             nextSoundIn(played = 1, plays = settings.soundPlays, gapMinutes = settings.soundGapMinutes)
-                ?.let { gap -> repeater.schedule(id, played = 1, rangAt = rangFor, at = now + gap) }
+                ?.let { gap -> repeater.schedule(id, played = 1, rangAt = rangFor, at = now + gap, ruleIndex = ruleIndex) }
         }
         scheduler.rearmAll()
     }
@@ -158,7 +168,7 @@ class ReminderFiring(
      * and it puts the card back in front of somebody who has scrolled past it. Never the
      * full-screen takeover: once was the alarm, this is the reminder of the alarm.
      */
-    suspend fun playAgain(id: String, played: Int, rangAt: Instant) = lock.withLock {
+    suspend fun playAgain(id: String, played: Int, rangAt: Instant, ruleIndex: Int? = null) = lock.withLock {
         val reminder = repository.get(id) ?: return@withLock
         val now = clock.instant()
         if (reminder.status != Status.ACTIVE) return@withLock
@@ -170,9 +180,9 @@ class ReminderFiring(
         val plan = firingPlan(reminder.actions)
         if (!plan.insistent) return@withLock
         Log.i(TAG, "$id has not been dealt with; play ${played + 1} of ${settings.soundPlays}")
-        AlertPresenter.show(context, reminder, plan, late = null, vibration = settings.vibration, sound = settings.alertSound, takeScreen = false)
+        AlertPresenter.show(context, reminder, plan, late = null, vibration = settings.vibration, sound = settings.alertSound, takeScreen = false, ruleIndex = ruleIndex)
         nextSoundIn(played + 1, settings.soundPlays, settings.soundGapMinutes)
-            ?.let { gap -> repeater.schedule(id, played + 1, rangAt, now + gap) }
+            ?.let { gap -> repeater.schedule(id, played + 1, rangAt, now + gap, ruleIndex) }
     }
 
     /**
@@ -246,10 +256,22 @@ class ReminderFiring(
      */
     suspend fun rearmAndCatchUp() {
         val missed = scheduler.rearmAll()
+        val settings = settingsStore.settings.first()
         for (reminder in missed) {
             val at = missedFire(reminder, clock.instant()) ?: continue
             // The rule the moment belonged to, or the whole thing is recorded against the wrong one.
             fire(reminder.id, late = at, ruleIndex = reminder.armedRule)
+            // Under ALL only the earliest pending moment is ever armed, and the next only once
+            // the first is written down. A phone off across two of them wakes owing both, and
+            // the second — never armed, so never "missed" — would otherwise leave the set
+            // waiting for something that has already happened. Each is fired in turn; the
+            // last one to complete the set rings.
+            var left = reminder.rules.size
+            while (left-- > 0) {
+                val current = repository.get(reminder.id) ?: break
+                val owed = owedUnderAll(current, at, clock.instant(), clock.zone, settings.defaultTime).firstOrNull() ?: break
+                fire(reminder.id, late = owed.at, ruleIndex = owed.ruleIndex)
+            }
         }
     }
 

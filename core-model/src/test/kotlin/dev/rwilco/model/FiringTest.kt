@@ -142,6 +142,34 @@ class FiringTest {
     }
 
     @Test
+    fun `a sound or a buzz is carried by a notification whether or not one was ticked`() {
+        // The channel is how the phone makes either of them, so unticking "notificación" and
+        // keeping "sonido" is still a notification — a silent moment that only turns overdue
+        // on Home is what it used to be.
+        assertTrue(firingPlan(setOf(Action.SOUND)).notification)
+        assertTrue(firingPlan(setOf(Action.VIBRATE)).notification)
+        assertFalse(firingPlan(emptySet()).notification, "asked for nothing, nothing happens")
+    }
+
+    @Test
+    fun `under all, the moments that passed after the missed one are still owed`() {
+        // Off from eight in the evening until ten the next morning, with "todos" waiting on
+        // 21:00 and then 09:00. Only the 21:00 was armed; the 09:00 would have been armed in
+        // turn. Both are owed, in order, and a repeating rule is not — its next is still ahead.
+        val first = Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 21, 0))
+        val second = Trigger.AtDateTime(LocalDateTime.of(2026, 8, 28, 9, 0))
+        val both = reminder(first, second, weekly).copy(ruleMatch = RuleMatch.ALL)
+        val backOn = local(2026, 8, 28, 10, 0)
+        assertEquals(
+            listOf(Wake(local(2026, 8, 28, 9, 0), 1)),
+            owedUnderAll(both, missed = local(2026, 8, 27, 21, 0), now = backOn, zone = zone, defaultTime = defaultTime),
+        )
+        assertEquals(emptyList<Wake>(), owedUnderAll(both.copy(firedRules = setOf(1)), local(2026, 8, 27, 21, 0), backOn, zone, defaultTime), "written down already")
+        assertEquals(emptyList<Wake>(), owedUnderAll(both.copy(ruleMatch = RuleMatch.ANY), local(2026, 8, 27, 21, 0), backOn, zone, defaultTime), "under any, nothing accumulates")
+        assertEquals(emptyList<Wake>(), owedUnderAll(both, local(2026, 8, 27, 21, 0), local(2026, 8, 28, 8, 0), zone, defaultTime), "not owed until it has passed")
+    }
+
+    @Test
     fun `a full-screen alert keeps its notification but hands the noise to the screen`() {
         val plan = firingPlan(setOf(Action.FULL_SCREEN, Action.SOUND, Action.VIBRATE))
         assertTrue(plan.fullScreen)

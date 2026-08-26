@@ -37,6 +37,25 @@ class TogetherTest {
     )
 
     @Test
+    fun `the alarm is set from the folded rule, so a moment outside a sibling's window is never armed`() {
+        // "A las nueve, y de ocho a diez los lunes": Mondays at nine. The firing judges the
+        // rule with the window folded in; the scheduler has to offer the same moment, or it
+        // arms tomorrow's nine o'clock on a Tuesday and the alarm rings for a set that does
+        // not hold.
+        val mondays = Trigger.Interval(LocalTime.of(8, 0), LocalTime.of(10, 0), setOf(DayOfWeek.MONDAY))
+        val set = reminder(RuleMatch.TOGETHER, nineAm, mondays)
+        val wake = nextWake(set, now, zone, defaultTime)
+        assertNotNull(wake)
+        val at = wake!!.at.atZone(zone)
+        assertEquals(DayOfWeek.MONDAY, at.dayOfWeek, "nine o'clock on a day the window is shut is not the set")
+        assertEquals(LocalTime.of(9, 0), at.toLocalTime())
+        assertEquals(0, wake.ruleIndex, "the clock's rule is the one that rings it")
+        assertEquals(wake.at, (nextFire(set, now, zone, defaultTime) as NextFire.Scheduled).at, "and Home says the same")
+        // Two moments folded together can never both be true, so nothing is armed at all.
+        assertNull(nextWake(reminder(RuleMatch.TOGETHER, nineAm, tenAm), now, zone, defaultTime))
+    }
+
+    @Test
     fun `a time range rings when it opens, every day unless days are given`() {
         val next = nextFireOf(fiveToSeven, "r", now, zone, defaultTime)
         assertNotNull(next)

@@ -17,6 +17,7 @@ import dev.rwilco.model.family
 import dev.rwilco.model.groupForHome
 import dev.rwilco.model.isAnchored
 import dev.rwilco.model.nextFireOfRule
+import dev.rwilco.model.togetherRule
 import dev.rwilco.model.search
 import dev.rwilco.model.TagFilter
 import dev.rwilco.model.tagFilters
@@ -94,14 +95,22 @@ fun buildHomeState(
     val tags = tagFilters(reminders)
     // A filter on something that is no longer offered is no filter: the last reminder carrying
     // that tag was deleted, the last untagged one was named, the last paused one resumed.
-    val filter = selectedTag?.takeIf { it in tags }
+    // Case-insensitively, and by the spelling on offer: the chip reads whichever spelling
+    // came first, and a filter set on "Compra" must not clear because that reminder went and
+    // "compra" is what is left.
+    val filter = selectedTag?.let { chosen ->
+        if (chosen !is TagFilter.Named) chosen.takeIf { it in tags }
+        else tags.firstOrNull { it is TagFilter.Named && it.tag.equals(chosen.tag, ignoreCase = true) }
+    }
     val groups = groupForHome(reminders, now, zone, defaultTime, filter, dayStart)
     fun card(reminder: Reminder) = ReminderCardUi(
         id = reminder.id,
         text = reminder.text,
         tags = reminder.tags,
         triggers = reminder.rules.mapIndexed { index, rule ->
-            val next = nextFireOfRule(rule, reminder.id, now, zone, defaultTime)
+            // Under "a la vez" the row says when the folded rule next holds, which is what
+            // will ring; a fold of two moments never does, and the row says nothing.
+            val next = reminder.togetherRule(index)?.let { nextFireOfRule(it, reminder.id, now, zone, defaultTime) }
             TriggerRowUi(
                 trigger = rule.trigger,
                 conditions = rule.conditions,

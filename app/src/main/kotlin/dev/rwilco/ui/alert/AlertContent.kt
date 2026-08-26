@@ -17,9 +17,13 @@ data class AlertContent(
     val defaultTime: LocalTime,
 ) {
     companion object {
-        /** A reminder that is actually ringing. */
-        fun fromReminder(reminder: dev.rwilco.model.Reminder, today: LocalDate, defaultTime: LocalTime): AlertContent {
-            val trigger = reminder.rules.firstOrNull()?.trigger
+        /**
+         * A reminder that is actually ringing. [ruleIndex] is the rule whose moment this is,
+         * when one is — a snooze's and a recurrence's moments have none, and fall back to the
+         * first rule, which is what the card is recognised by.
+         */
+        fun fromReminder(reminder: dev.rwilco.model.Reminder, today: LocalDate, defaultTime: LocalTime, ruleIndex: Int? = null): AlertContent {
+            val trigger = (ruleIndex?.let { reminder.rules.getOrNull(it) } ?: reminder.rules.firstOrNull())?.trigger
             return AlertContent(
                 text = reminder.text,
                 tags = reminder.tags,

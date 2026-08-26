@@ -36,8 +36,12 @@ fun DateTimeSheet(
     onDismiss: () -> Unit,
 ) {
     val today = now.toLocalDate()
-    var date by rememberDate(initial?.at?.toLocalDate() ?: today)
-    var time by rememberTime(initial?.at?.toLocalTime() ?: nextRoundHour(now.toLocalTime()))
+    // Past eleven at night the next round hour is midnight, which is tomorrow: paired with
+    // today it would be a moment already gone.
+    val guess = nextRoundHour(now.toLocalTime())
+    val guessDate = if (guess <= now.toLocalTime()) today.plusDays(1) else today
+    var date by rememberDate(initial?.at?.toLocalDate() ?: guessDate)
+    var time by rememberTime(initial?.at?.toLocalTime() ?: guess)
     val locale = currentLocale()
     val is24h = rememberIs24h()
 

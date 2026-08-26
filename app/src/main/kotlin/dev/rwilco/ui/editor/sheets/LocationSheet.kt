@@ -69,6 +69,7 @@ import dev.rwilco.ui.theme.Tokens
 import kotlinx.coroutines.launch
 import org.osmdroid.util.GeoPoint
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /**
  * A place, a radius, and whether arriving or leaving matters. The pin comes from a saved place,
@@ -90,13 +91,15 @@ fun LocationSheet(
     var radius by rememberSaveable { mutableIntStateOf(initial?.radiusM ?: 200) }
     var lat by rememberSaveable { mutableStateOf(initial?.lat) }
     var lng by rememberSaveable { mutableStateOf(initial?.lng) }
-    var locating by rememberSaveable { mutableStateOf(false) }
+    // Plain remember, on purpose: the work behind these runs in the sheet's own scope, which a
+    // rotation cancels, so a saved "busy" would be a spinner with nothing behind it for ever.
+    var locating by remember { mutableStateOf(false) }
     /** Null while nothing has gone wrong; otherwise which of the two things went wrong. */
     var failure by rememberSaveable { mutableStateOf<String?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
     var results by remember { mutableStateOf<List<FoundPlace>>(emptyList()) }
-    var searching by rememberSaveable { mutableStateOf(false) }
-    var searched by rememberSaveable { mutableStateOf(false) }
+    var searching by remember { mutableStateOf(false) }
+    var searched by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val haptics = Tokens.haptics
@@ -307,7 +310,9 @@ fun LocationSheet(
             }
             Slider(
                 value = radius.toFloat(),
-                onValueChange = { radius = (it / 50).toInt() * 50 },
+                // Rounded, not truncated: a tick the slider snaps to can arrive a hair under
+                // its own value, and truncation then lands fifty metres short of it.
+                onValueChange = { radius = (it / 50).roundToInt() * 50 },
                 valueRange = MIN_RADIUS_M.toFloat()..MAX_RADIUS_M.toFloat(),
                 steps = (MAX_RADIUS_M - MIN_RADIUS_M) / 50 - 1,
                 colors = SliderDefaults.colors(

@@ -154,7 +154,9 @@ internal fun RecurrenceSection(
             onConfirm = { built, name ->
                 editing = null
                 onCustom(built)
-                if (name.isNotBlank()) onSavePreset(existing?.id, name.trim(), built)
+                // A preset being edited is saved whatever its name says — the built-in ones
+                // have none, and an edit that changes nothing on the list is not an edit.
+                if (existing != null || name.isNotBlank()) onSavePreset(existing?.id, name.trim(), built)
             },
             onDismiss = { editing = null },
         )
