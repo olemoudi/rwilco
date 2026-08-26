@@ -46,7 +46,7 @@ Wall-clock values are stored without a zone; the zone is applied when the next f
 A countdown stores the **length**, not the moment: `startedAt` is stamped by `startCountdowns`
 where a reminder is written (the editor's save, or straight from a preset) and stripped by
 `clearCountdowns` where a preset is, so a shape holds "half an hour" rather than one particular
-half hour. Null reads as "from now", which is what the editor shows while one is being written.
+half hour. Null reads as "from now", which is what the editor shows while one is being written, and `countdownOf` is what keeps a length nobody changed from becoming a *new* timer at the next save.
 Reminders written before this hold their countdown as the `AtDateTime` it once produced, which
 is what it always was.
 
@@ -584,10 +584,14 @@ history is the backup's history for free — with a fine-grained token scoped to
 - **The phone keeps the key, never the passphrase** (`VaultStore`, its own DataStore next to
   the token, the salt and the cursors — never inside the settings, which are part of what it
   backs up). A new phone has no store, so the only way in is the passphrase.
-- **When** (`VaultWorker`): a change to the *content* — `fingerprint`, which leaves out what the
-  scheduler writes back — queues one upload a quarter of an hour later, while the phone is
-  awake from the change; a two-hourly periodic run is the net under it. A run whose fingerprint
-  is the last uploaded makes no call. The blob sha (`git hash-object`, computed locally) is
+- **When** (`VaultWorker`, `BackupCadence`): **the way anacron counts** — not "every four hours
+  on the hour" but *four hours after the last run that came to something*, which is a copy made
+  or a look that found nothing to copy (`VaultState.lastRunAt`). A run that could not reach
+  GitHub is retried with a growing wait until it goes through, and only then does the clock
+  start again: three days failing, a copy on the fourth and a weekly cadence puts the next one
+  on the eleventh day. So there is no periodic request — each run books the next — and the
+  cadence is a setting (hourly to weekly, four hours by default), as is whether copies wait for
+  wifi. A run whose fingerprint is the last uploaded makes no call. The blob sha (`git hash-object`, computed locally) is
   written down before the PUT and compared with GitHub's answer: a 409 whose remote sha is our
   own attempt is an upload that landed after its reply was lost; any other is **another
   writer**, and the run stops, records `CONFLICT` and says so — never a silent clobber. Auth
@@ -599,6 +603,11 @@ history is the backup's history for free — with a fine-grained token scoped to
   incoming key, behind an "undo" row. Enabling against a repository that already holds a vault
   asks: restore it here, or replace it. The same envelope goes through the file picker as an
   export/import, for any other cloud or none.
+- **What is waiting** (`pendingChanges`, pure): the reminders written or edited since the last
+  copy, plus one if the settings moved — and at least one whenever the fingerprint says a copy
+  is owed, because a deletion leaves nothing to count. It is the red disc in the corner of Home
+  (`BackupBadge`), which exists only while it has something to say: a tap makes the copy on the
+  spot, turns into a ring while it goes up and a tick when it lands, and then goes away.
 - **Versions**: `VAULT_SCHEMA` for the data, `VAULT_FORMAT` for the container; a newer either is
   refused. `VaultSchemaTest` freezes the row's column list and demands a fixture per data
   version, so a change that would make old vaults unreadable fails in CI (the rule is in

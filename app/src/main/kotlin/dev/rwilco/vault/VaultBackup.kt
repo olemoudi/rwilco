@@ -50,12 +50,15 @@ class VaultBackup(
     private suspend fun doRun(): VaultRunResult {
         val state = store.read()
         if (!state.enabled || !state.hasKey) return VaultRunResult.DONE
-        val snapshot = buildSnapshot(rows(), settingsJson().orEmpty(), clock.instant(), state.deviceId, appVersionCode, dbVersion)
+        val settings = settingsJson().orEmpty()
+        val snapshot = buildSnapshot(rows(), settings, clock.instant(), state.deviceId, appVersionCode, dbVersion)
         val print = snapshot.fingerprint()
         when (nextVaultStep(state.enabled, print, state.lastUploadedFingerprint)) {
             VaultStep.DISABLED -> return VaultRunResult.DONE
             VaultStep.NOTHING_CHANGED -> {
-                record(VaultOutcome.UP_TO_DATE)
+                // A look that found nothing to copy is a run that worked: the cadence counts
+                // from it, or an untouched phone would ask again every few minutes for ever.
+                record(VaultOutcome.UP_TO_DATE, ran = true)
                 return VaultRunResult.DONE
             }
             VaultStep.UPLOAD -> Unit
@@ -65,13 +68,13 @@ class VaultBackup(
             val bytes = VaultCrypto.seal(encodeSnapshot(snapshot), state.keyBytes(), state.saltBytes(), state.iterations)
             val sha = VaultCrypto.gitBlobSha(bytes)
             store.update { if (it.enabled) it.copy(lastAttemptSha = sha) else it }
-            return upload(transportFor(state), bytes, sha, state.remoteSha, print)
+            return upload(transportFor(state), bytes, sha, state.remoteSha, print, settingsHash(settings))
         } finally {
             VaultCenter.report(working = false)
         }
     }
 
-    private suspend fun upload(transport: VaultTransport, bytes: ByteArray, sha: String, replacing: String?, print: String): VaultRunResult {
+    private suspend fun upload(transport: VaultTransport, bytes: ByteArray, sha: String, replacing: String?, print: String, settingsHash: String): VaultRunResult {
         try {
             val stored = transport.write(bytes, replacing)
             if (stored != sha) {
@@ -81,12 +84,12 @@ class VaultBackup(
                 record(VaultOutcome.TRANSIENT)
                 return VaultRunResult.RETRY
             }
-            uploaded(print, stored)
+            uploaded(print, stored, bytes.size.toLong(), settingsHash)
             return VaultRunResult.DONE
         } catch (e: VaultTransportException) {
             log("upload refused: ${e.failure} (${e.message})")
             return when (e.failure) {
-                TransportFailure.CONFLICT -> conflict(transport, sha, print)
+                TransportFailure.CONFLICT -> conflict(transport, sha, print, bytes.size.toLong(), settingsHash)
                 TransportFailure.AUTH -> attention(VaultOutcome.AUTH)
                 TransportFailure.REPO_MISSING -> attention(VaultOutcome.REPO_MISSING)
                 TransportFailure.TRANSIENT -> {
@@ -98,7 +101,7 @@ class VaultBackup(
     }
 
     /** The file moved under us. Ours after all, or somebody else's — the sha says which. */
-    private suspend fun conflict(transport: VaultTransport, sha: String, print: String): VaultRunResult {
+    private suspend fun conflict(transport: VaultTransport, sha: String, print: String, bytes: Long, settingsHash: String): VaultRunResult {
         val remote = try {
             transport.read()
         } catch (e: VaultTransportException) {
@@ -109,19 +112,29 @@ class VaultBackup(
         return when (judgeConflict(remote?.sha, sha)) {
             ConflictVerdict.OURS_LANDED -> {
                 log("conflict was our own earlier upload landing; adopting it")
-                uploaded(print, remote!!.sha)
+                uploaded(print, remote!!.sha, bytes, settingsHash)
                 VaultRunResult.DONE
             }
             ConflictVerdict.OTHER_WRITER -> attention(VaultOutcome.CONFLICT)
         }
     }
 
-    private suspend fun uploaded(print: String, sha: String) {
+    private suspend fun uploaded(print: String, sha: String, bytes: Long, settingsHash: String) {
         val now = clock.instant()
         store.update {
             if (!it.enabled) it
-            else it.copy(lastUploadedFingerprint = print, lastUploadedAt = now, remoteSha = sha, lastOutcome = VaultOutcome.UPLOADED, lastOutcomeAt = now)
+            else it.copy(
+                lastUploadedFingerprint = print,
+                lastUploadedAt = now,
+                lastRunAt = now,
+                lastUploadedBytes = bytes,
+                lastUploadedSettingsHash = settingsHash,
+                remoteSha = sha,
+                lastOutcome = VaultOutcome.UPLOADED,
+                lastOutcomeAt = now,
+            )
         }
+        VaultCenter.succeeded()
         onResolved()
     }
 
@@ -131,10 +144,14 @@ class VaultBackup(
         return VaultRunResult.FAILED
     }
 
-    private suspend fun record(outcome: VaultOutcome) {
+    /** [ran] is a run that came to something: what the cadence counts from. */
+    private suspend fun record(outcome: VaultOutcome, ran: Boolean = false) {
         val now = clock.instant()
         // A run finishing after "off" must not write a cursor into an empty store.
-        store.update { if (it.enabled) it.copy(lastOutcome = outcome, lastOutcomeAt = now) else it }
+        store.update {
+            if (!it.enabled) it
+            else it.copy(lastOutcome = outcome, lastOutcomeAt = now, lastRunAt = if (ran) now else it.lastRunAt)
+        }
     }
 
     companion object {

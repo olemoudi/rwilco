@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import java.util.concurrent.atomic.AtomicBoolean
 import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -35,16 +36,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         requestedDestination.value = intent?.getStringExtra(EXTRA_DESTINATION)
         val app = application as RwilcoApplication
-        // A reminders app with notifications off is a reminders app that fails silently, and on
-        // Android 13+ a fresh install starts that way. Asked once, here; refused, the Settings
-        // card keeps saying so.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
-            // Asked with the plain call rather than a result launcher: the answer is not needed
-            // here — the Settings card re-reads it on every resume and says so if it was no.
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), ASK_NOTIFICATIONS)
-        }
         setContent {
             val settings by app.settings.collectAsStateWithLifecycle()
             val current = settings
@@ -86,11 +77,29 @@ class MainActivity : ComponentActivity() {
         app.resyncIfGrantsChanged()
         // And whatever the phone slept through is said now, not at the six-hourly net.
         app.catchUpIfStale()
+        askForNotificationsOnce()
+    }
+
+    /**
+     * A reminders app with notifications off is a reminders app that fails silently, and on
+     * Android 13+ a fresh install starts that way. Asked once per process and from `onResume`,
+     * not from `onCreate`: a dialog thrown up while the first frame is still being built lands
+     * on top of whatever the app was doing, and every rotation would ask again. Refused, the
+     * Settings card keeps saying so, which is where the second ask lives.
+     */
+    private fun askForNotificationsOnce() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
+        if (!asked.compareAndSet(false, true)) return
+        ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), ASK_NOTIFICATIONS)
     }
 
     companion object {
         /** The one permission this activity asks for by hand; the answer is read, not awaited. */
         private const val ASK_NOTIFICATIONS = 1
+
+        /** Once per process: somebody who said no is not asked again by every launch. */
+        private val asked = AtomicBoolean(false)
 
         /** Where a notification wants the app to land: [DESTINATION_SETTINGS] or a reminder. */
         const val EXTRA_DESTINATION = "dest"

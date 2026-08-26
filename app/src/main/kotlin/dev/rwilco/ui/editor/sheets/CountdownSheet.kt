@@ -22,6 +22,7 @@ import dev.rwilco.R
 import dev.rwilco.model.MAX_COUNTDOWN_MINUTES
 import dev.rwilco.model.MIN_COUNTDOWN_MINUTES
 import dev.rwilco.model.Trigger
+import dev.rwilco.model.countdownOf
 import dev.rwilco.ui.components.PresetChip
 import dev.rwilco.ui.components.SheetScaffold
 import dev.rwilco.ui.components.Stepper
@@ -59,8 +60,9 @@ fun CountdownSheet(
         title = stringResource(R.string.kind_countdown),
         onDismiss = onDismiss,
         // A length, not a moment: the clock starts when the reminder is saved, which is what
-        // lets a preset hold "in half an hour" and mean it every time.
-        onConfirm = { onConfirm(Trigger.Countdown(minutes)) },
+        // lets a preset hold "in half an hour" and mean it every time — and a length left alone
+        // keeps the clock it already had, so looking at a running timer does not restart it.
+        onConfirm = { onConfirm(countdownOf(minutes, initial)) },
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
         confirmEnabled = minutes in MIN_COUNTDOWN_MINUTES..MAX_COUNTDOWN_MINUTES,
     ) {

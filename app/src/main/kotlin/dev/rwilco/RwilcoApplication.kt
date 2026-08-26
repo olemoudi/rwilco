@@ -22,7 +22,6 @@ import dev.rwilco.vault.VaultBackup
 import dev.rwilco.vault.VaultNotifications
 import dev.rwilco.vault.VaultStore
 import dev.rwilco.vault.VaultWorker
-import dev.rwilco.vault.fingerprint
 import android.util.Log
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -30,8 +29,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collectIndexed
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -96,7 +96,6 @@ class RwilcoApplication : Application() {
         // app was started" is not "somebody opened the app": the place watch's own alarm starts
         // this process every few minutes to an hour, and each of those used to enqueue a trip
         // to GitHub for a version.json that had not changed since the last one.
-        UpdateWorker.schedule(this)
         RearmWorker.schedule(this)
         grants = Grants.read(this)
 
@@ -138,20 +137,27 @@ class RwilcoApplication : Application() {
                 .collect { runCatching { scheduler.rearmAll() }.onFailure { Log.e(TAG, "re-arm after a settings change failed", it) } }
         }
         appScope.launch {
-            // The backup's net runs only while it is on; off cancels whatever was queued.
+            // The backup runs while it is on, at the cadence it was given, counted from the last
+            // one that worked. Turning it off cancels what was booked; changing the cadence or
+            // the wifi rule re-books it (replace), and a plain launch leaves a booking — or a
+            // retry in flight — exactly where it is.
             vaultStore.state
-                .map { it.enabled }
-                .distinctUntilChanged()
-                .collect { enabled -> if (enabled) VaultWorker.schedule(this@RwilcoApplication) else VaultWorker.cancel(this@RwilcoApplication) }
+                .distinctUntilChangedBy { Triple(it.enabled, it.cadence, it.wifiOnly) }
+                .collectIndexed { index, state ->
+                    // The first pass is the process starting: leave a booking, or a retry in
+                    // flight, where it is. Every pass after it is somebody having changed the
+                    // rule, which re-books.
+                    if (state.enabled) VaultWorker.schedule(this@RwilcoApplication, state, replace = index > 0)
+                    else VaultWorker.cancel(this@RwilcoApplication)
+                }
         }
         appScope.launch {
-            // What makes the backup's promise real: a change to the content — not to what the
-            // scheduler writes back, which the fingerprint leaves out — queues one upload for a
-            // quarter of an hour later, while the phone is awake from the change.
-            combine(repository.rows, settingsStore.raw) { rows, raw -> fingerprint(rows, raw.orEmpty()) }
+            // The update check follows the same rule the person set for it: on any connection,
+            // or only where the data is not being paid for by the megabyte.
+            settingsStore.settings
+                .map { it.updatesWifiOnly }
                 .distinctUntilChanged()
-                .drop(1)
-                .collect { if (vaultStore.read().enabled) VaultWorker.runSoon(this@RwilcoApplication) }
+                .collect { wifiOnly -> UpdateWorker.schedule(this@RwilcoApplication, wifiOnly) }
         }
     }
 

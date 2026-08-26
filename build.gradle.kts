@@ -38,6 +38,7 @@ tasks.register<JacocoReport>("jacocoAggregatedReport") {
                         "dev/rwilco/vault/VaultCrypto*",
                         "dev/rwilco/vault/VaultMigrations*",
                         "dev/rwilco/vault/VaultStep*",
+                        "dev/rwilco/vault/VaultPending*",
                         "dev/rwilco/vault/VaultBackup*",
                         "dev/rwilco/ui/format/*",
                         "dev/rwilco/ui/home/HomeState*",

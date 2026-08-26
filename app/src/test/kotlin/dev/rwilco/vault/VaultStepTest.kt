@@ -59,11 +59,4 @@ class VaultStepTest {
         assertFalse(isRepoName("a b"))
         assertFalse(isRepoName("ñu"))
     }
-
-    @Test
-    fun `a passphrase has to be long`() {
-        assertFalse(passphraseIsStrongEnough("short"))
-        assertFalse(passphraseIsStrongEnough("elevenchars"))
-        assertTrue(passphraseIsStrongEnough("twelve chars"))
-    }
 }

@@ -30,7 +30,8 @@ class SystemEventsReceiver : BroadcastReceiver() {
         RearmWorker.runNow(context)
         // The update check rides along on boot and after an update, as it always has.
         if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
-            UpdateWorker.schedule(context)
+            // The periodic check is scheduled by the Application, which is the only place that
+            // knows whether it is allowed on mobile data; this is the one-off that rides along.
             UpdateWorker.runNow(context)
         }
     }

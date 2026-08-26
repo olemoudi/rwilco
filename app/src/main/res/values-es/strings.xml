@@ -691,11 +691,11 @@
     <string name="vault_card_attention_auth">Detenida: GitHub rechazó el token</string>
     <string name="vault_card_attention_repo">Detenida: el repositorio no está</string>
     <string name="vault_card_attention_conflict">Detenida: otro teléfono escribió la copia</string>
-    <string name="vault_intro">Una copia cifrada de tus recordatorios, preajustes y lugares en un repositorio privado tuyo de GitHub, renovada un cuarto de hora después de cualquier cambio. Todo se cifra con tu contraseña antes de salir del teléfono: GitHub ve un archivo y su tamaño, nunca una palabra de lo que contiene. La app funciona igual sin ella.</string>
+    <string name="vault_intro">Una copia cifrada de tus recordatorios, preajustes y lugares en un repositorio privado tuyo de GitHub, rehecha cada pocas horas — tú eliges cada cuánto. Todo se cifra con tu contraseña antes de salir del teléfono: GitHub ve un archivo y su tamaño, nunca una palabra de lo que contiene. La app funciona igual sin ella.</string>
     <string name="vault_intro_warning">Nadie puede recuperar la contraseña, Rwilco incluida. Sin ella, la copia es una caja cerrada.</string>
     <string name="vault_field_repo">Repositorio</string>
-    <string name="vault_field_repo_placeholder">usuario/nombre</string>
-    <string name="vault_field_repo_hint">Un repositorio privado, creado a mano en GitHub. La app guarda en él un solo archivo, rwilco.vault; cada copia es un commit, así que el historial del repositorio es el historial de la copia.</string>
+    <string name="vault_field_repo_placeholder">usuario/nombre — o la dirección entera</string>
+    <string name="vault_field_repo_hint">Vale «usuario/nombre» o la dirección entera (https://github.com/usuario/nombre). Un repositorio privado, creado a mano en GitHub: la app guarda en él un solo archivo, rwilco.vault, y cada copia es un commit, así que el historial del repositorio es el historial de la copia.</string>
     <string name="vault_field_token">Token de acceso</string>
     <string name="vault_field_token_hint">Un token de acceso personal de grano fino limitado a ese repositorio, con Contents en lectura y escritura (GitHub › Settings › Developer settings). Se guarda solo en este teléfono.</string>
     <string name="vault_field_passphrase">Contraseña</string>
@@ -794,5 +794,47 @@
         <item>«Al llegar al curro, a partir de las siete» ya no hace una cuenta atrás hasta mañana. Cuando unas horas acompañan a un lugar bajo «a la vez», son las horas del lugar y no un momento aparte, así que Inicio dice lo que de verdad suena: la llegada.</item>
         <item>Y un repaso a todo lo que hay entre el momento de un recordatorio y que tú te enteres. No molestar ya no se traga un aviso a pantalla completa: para el teléfono ahora son alarmas, no conversaciones. Un aviso al que el sistema le niega la pantalla completa hace su ruido como notificación en vez de llegar mudo. El sonido le pide el altavoz al teléfono, así que un podcast no puede taparlo, y la vibración es la de una alarma, que el interruptor de silencio respeta. Un momento que el móvil se durmió un par de minutos suena como el momento mismo en vez de llegar como una nota gris. Y todas las formas que tenía un disparo de decidir en silencio no sonar vuelven a armarse antes de irse.</item>
         <item>Ajustes dice en voz alta las cinco cosas que hace el teléfono para que no te lleguen los avisos y que no encuentra nadie: la optimización de batería, el uso restringido en segundo plano, No molestar en silencio total, el volumen de alarma a cero y un canal de notificaciones silenciado a mano.</item>
+    </string-array>
+
+    <!-- What the backup costs, how often it happens, and the rehearsal. -->
+    <string name="vault_test">Probar el repositorio y el token</string>
+    <string name="vault_test_ok_empty">Funciona: el repositorio es privado, el token puede escribir en él y aún no hay ninguna copia.</string>
+    <string name="vault_test_ok_existing">Funciona: el repositorio es privado, el token puede escribir en él y ya hay una copia de %1$s.</string>
+    <string name="vault_status_size">La última copia pesó %1$s.</string>
+    <string name="vault_cadence">Cada cuánto</string>
+    <string name="vault_cadence_hint">La espera desde la última copia que salió bien, no una hora fija. Si una copia falla se reintenta hasta que entra, y solo entonces empieza la espera otra vez: tres días fallando, una copia al cuarto y «cada semana» pone la siguiente en el día once. Siempre puedes pedir una desde la insignia de la pantalla principal.</string>
+    <string name="vault_cadence_1h">Cada hora</string>
+    <string name="vault_cadence_4h">Cada 4 h</string>
+    <string name="vault_cadence_8h">Cada 8 h</string>
+    <string name="vault_cadence_24h">Cada día</string>
+    <string name="vault_cadence_72h">Cada 3 días</string>
+    <string name="vault_cadence_week">Cada semana</string>
+    <string name="vault_wifi_only">Solo con wifi</string>
+    <string name="vault_wifi_only_hint">Una copia son unas decenas de kilobytes, así que rara vez va de datos. Está aquí porque son tus datos, no los de la app. Con esto activado las copias esperan al wifi; pedir una a mano sale por donde haya.</string>
+    <string name="vault_dry_run">Probar un archivo</string>
+    <string name="vault_dry_run_hint">Lo abre y dice qué contiene. En este teléfono no cambia nada.</string>
+    <string name="vault_dry_run_title">El archivo funciona</string>
+    <string name="vault_dry_run_ok">En este teléfono no ha cambiado nada: esto era un ensayo.</string>
+    <string name="vault_pass_not_yet">Todavía no: al menos %1$d caracteres, con letras y números.</string>
+    <string name="vault_pass_enough">Suficiente.</string>
+    <string name="vault_pass_good">Buena.</string>
+    <string name="vault_pass_strong">Larga y variada: de las buenas.</string>
+    <string name="settings_updates_wifi">Actualizar solo con wifi</string>
+    <string name="settings_updates_wifi_hint">La app son unos cincuenta megas, y una actualización se los descarga enteros. Con esto activado las comprobaciones y las descargas esperan al wifi; «Buscar ahora» sale por donde haya, porque lo has pedido tú.</string>
+    <string name="home_backup_working">Haciendo la copia cifrada…</string>
+    <string name="home_backup_done">Copia hecha</string>
+    <plurals name="home_backup_pending">
+        <item quantity="one">%1$d cambio esperando a copiarse. Toca para copiar ahora.</item>
+        <item quantity="other">%1$d cambios esperando a copiarse. Toca para copiar ahora.</item>
+    </plurals>
+
+    <string-array name="whats_new_0_13_0">
+        <item>La copia cifrada la marcas tú. En Ajustes › Copia de seguridad, «cada cuánto»: cada hora, cada cuatro (lo normal ahora), cada ocho, cada día, cada tres días o cada semana — y cuenta como anacron, desde la última copia que salió bien de verdad. Una copia que falla se reintenta hasta que entra, y solo entonces empieza la espera otra vez: tres días fallando, una copia al cuarto y «cada semana» pone la siguiente el día once. También hay «solo con wifi», y la pantalla dice cuánto pesó la última copia, así que los datos que cuesta son un número que puedes ver.</item>
+        <item>Un círculo rojo pequeño en la esquina de la pantalla principal cuenta lo que está esperando a copiarse. Al pulsarlo la copia se hace ahí mismo: el número pasa a ser un anillo mientras sube y un check cuando llega, y luego desaparece. Sin nada que copiar, no hay círculo.</item>
+        <item>Antes de darle un token a la app ya puedes comprobarlo: «Probar el repositorio y el token» dice si existe, si es privado, si el token puede escribir y si ya hay una copia — sin escribir ni un byte. Y «Probar un archivo» abre una copia, te dice qué contiene y no cambia nada: un ensayo de la restauración.</item>
+        <item>El campo de la contraseña lleva una barra debajo, para ver cuándo ya vale en vez de adivinarlo: al menos doce caracteres con letras y números.</item>
+        <item>Las actualizaciones también pueden esperar al wifi (Ajustes › Actualizaciones). La app son cincuenta megas y una actualización se los baja enteros. «Buscar ahora» sigue saliendo por donde haya, porque lo pides tú.</item>
+        <item>Abrir una cuenta atrás en marcha ya no la reinicia. La hoja devolvía siempre un temporizador nuevo, así que «en diez minutos» pasaba a ser diez minutos desde que dabas a guardar — y eso es también por lo que a veces un recordatorio se caía de la tarjeta grande de arriba después de editarlo. Si cambias la duración, sigue siendo un temporizador nuevo.</item>
+        <item>La petición de permiso que 0.12.0 añadió al arrancar llega ahora después de la primera pantalla en vez de encima, y se pide una vez en lugar de en cada giro.</item>
     </string-array>
 </resources>

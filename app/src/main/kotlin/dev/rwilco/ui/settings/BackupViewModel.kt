@@ -1,12 +1,15 @@
 package dev.rwilco.ui.settings
 
 import android.net.Uri
+import android.text.format.Formatter
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
+import dev.rwilco.model.BackupCadence
+import dev.rwilco.model.passphraseIsStrongEnough
 import dev.rwilco.vault.GitHubVault
 import dev.rwilco.vault.KDF_ITERATIONS
 import dev.rwilco.vault.OpenedVault
@@ -23,7 +26,6 @@ import dev.rwilco.vault.VaultTransportException
 import dev.rwilco.vault.VaultWorker
 import dev.rwilco.vault.fingerprint
 import dev.rwilco.vault.isRepoName
-import dev.rwilco.vault.passphraseIsStrongEnough
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -49,6 +51,8 @@ sealed interface RestoreSource {
     data object File : RestoreSource
     /** The copy kept before the last restore. */
     data object Undo : RestoreSource
+    /** A rehearsal: open it, say what is in it, change nothing. */
+    data object Probe : RestoreSource
 }
 
 /** The one thing happening on the Backup screen, if anything: what its dialogs are made of. */
@@ -62,8 +66,10 @@ sealed interface BackupPhase {
     data class AskPassphrase(val bytes: ByteArray, val source: RestoreSource) : BackupPhase
     /** An export with no vault on: the file needs a passphrase of its own. */
     data class AskExportPassphrase(val uri: Uri) : BackupPhase
-    data class Failed(@StringRes val message: Int) : BackupPhase
-    data class Done(@StringRes val message: Int) : BackupPhase
+    /** A file opened to see whether it would work, and nothing else. */
+    data class DryRun(val summary: dev.rwilco.vault.VaultSummary) : BackupPhase
+    data class Failed(@StringRes val message: Int, val arg: String? = null) : BackupPhase
+    data class Done(@StringRes val message: Int, val arg: String? = null) : BackupPhase
 }
 
 class BackupViewModel(private val app: RwilcoApplication) : ViewModel() {
@@ -74,7 +80,9 @@ class BackupViewModel(private val app: RwilcoApplication) : ViewModel() {
         .map<VaultState, VaultState?> { it }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    val working: StateFlow<Boolean> = VaultCenter.working
+    val working: StateFlow<Boolean> = VaultCenter.activity
+        .map { it.working }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     /** How many reminders a restore would replace. */
     val localCount: StateFlow<Int> = app.repository.rows
@@ -183,7 +191,7 @@ class BackupViewModel(private val app: RwilcoApplication) : ViewModel() {
                             )
                         }
                         // The content changed under the vault; the next run uploads it.
-                        RestoreSource.File, RestoreSource.Undo -> state.copy(lastUploadedFingerprint = null)
+                        RestoreSource.File, RestoreSource.Undo, RestoreSource.Probe -> state.copy(lastUploadedFingerprint = null)
                     }
                 }
             } catch (e: Exception) {
@@ -206,11 +214,56 @@ class BackupViewModel(private val app: RwilcoApplication) : ViewModel() {
             } catch (e: VaultException) {
                 return@launch fail(messageOf(e))
             }
-            mutablePhase.value = BackupPhase.Confirm(opened, ask.source)
+            mutablePhase.value = phaseFor(opened, ask.source)
         }
     }
 
+    /** A rehearsal stops at what it found; anything else goes on to ask before it replaces. */
+    private fun phaseFor(opened: OpenedVault, source: RestoreSource): BackupPhase =
+        if (source == RestoreSource.Probe) BackupPhase.DryRun(opened.summary) else BackupPhase.Confirm(opened, source)
+
     fun backupNow() = VaultWorker.runNow(app)
+
+    /** How often a copy is made when nobody asks; the next one is re-booked from the last good run. */
+    fun setCadence(cadence: BackupCadence) {
+        viewModelScope.launch { app.vaultStore.update { it.copy(cadence = cadence) } }
+    }
+
+    fun setWifiOnly(only: Boolean) {
+        viewModelScope.launch { app.vaultStore.update { it.copy(wifiOnly = only) } }
+    }
+
+    /**
+     * Does the repository exist, is it private, can this token write to it, and is there a copy
+     * in it already — asked without writing a byte. The one thing somebody wants before they
+     * hand an app a token and a passphrase: proof that the boring half works.
+     */
+    fun testConnection() {
+        val current = state.value
+        val credentials = if (current != null && current.enabled) {
+            Credentials(current.owner, current.repo, current.pat)
+        } else {
+            val f = form.value
+            credentialsOf(f.repo, f.token) ?: return
+        }
+        viewModelScope.launch {
+            val remote = probeAndRead(transportFor(credentials)) ?: return@launch
+            val bytes = remote.value?.bytes?.size?.toLong()
+            if (bytes == null) {
+                done(R.string.vault_test_ok_empty)
+            } else {
+                done(R.string.vault_test_ok_existing, Formatter.formatShortFileSize(app, bytes))
+            }
+        }
+    }
+
+    /** A rehearsal of an import: the file is opened and described, and nothing on the phone moves. */
+    fun dryRunImport(uri: Uri) {
+        viewModelScope.launch {
+            val bytes = readFile(uri) ?: return@launch fail(R.string.vault_error_file)
+            offer(bytes, RestoreSource.Probe, state.value)
+        }
+    }
 
     /** The vault on: read the copy from GitHub and offer it. */
     fun restoreFromRemote() {
@@ -309,7 +362,7 @@ class BackupViewModel(private val app: RwilcoApplication) : ViewModel() {
                 return fail(messageOf(e))
             }
             if (opened != null) {
-                mutablePhase.value = BackupPhase.Confirm(opened, source)
+                mutablePhase.value = phaseFor(opened, source)
                 return
             }
         }
@@ -378,8 +431,8 @@ class BackupViewModel(private val app: RwilcoApplication) : ViewModel() {
         mutablePhase.value = BackupPhase.Failed(message)
     }
 
-    private fun done(@StringRes message: Int) {
-        mutablePhase.value = BackupPhase.Done(message)
+    private fun done(@StringRes message: Int, arg: String? = null) {
+        mutablePhase.value = BackupPhase.Done(message, arg)
     }
 
     @StringRes

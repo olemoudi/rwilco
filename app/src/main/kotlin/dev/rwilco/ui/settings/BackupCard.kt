@@ -41,7 +41,7 @@ fun BackupCard(onOpen: () -> Unit) {
     val spacing = Tokens.spacing
     val app = LocalContext.current.applicationContext as RwilcoApplication
     val state by app.vaultStore.state.collectAsStateWithLifecycle(initialValue = null)
-    val working by VaultCenter.working.collectAsStateWithLifecycle()
+    val activity by VaultCenter.activity.collectAsStateWithLifecycle()
 
     RwilcoCard {
         Row(
@@ -63,7 +63,7 @@ fun BackupCard(onOpen: () -> Unit) {
                 Text(stringResource(R.string.vault_card_title), style = MaterialTheme.typography.titleMedium)
                 val current = state
                 Text(
-                    text = if (current == null) "" else vaultStatusText(current, working),
+                    text = if (current == null) "" else vaultStatusText(current, activity.working),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (current?.needsAttention == true) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                 )

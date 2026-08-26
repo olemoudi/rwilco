@@ -1,5 +1,7 @@
 package dev.rwilco.vault
 
+import dev.rwilco.model.BackupCadence
+import dev.rwilco.model.DEFAULT_BACKUP_CADENCE
 import dev.rwilco.model.InstantSerializer
 import kotlinx.serialization.Serializable
 import java.time.Instant
@@ -38,8 +40,21 @@ data class VaultState(
     val iterations: Int = KDF_ITERATIONS,
     /** This install, for the preview on another phone; random, minted with the vault. */
     val deviceId: String = "",
+    /** How often a copy is made when nobody asks for one; the clock starts at [lastRunAt]. */
+    val cadence: BackupCadence = DEFAULT_BACKUP_CADENCE,
+    /** Only over wifi: a copy is kilobytes, but it is somebody else's data plan to spend. */
+    val wifiOnly: Boolean = false,
     val lastUploadedFingerprint: String? = null,
     @Serializable(with = InstantSerializer::class) val lastUploadedAt: Instant? = null,
+    /**
+     * The last run that came to something — a copy made, or a look that found nothing to copy.
+     * What the cadence counts from, so a run that failed never moves the next one closer.
+     */
+    @Serializable(with = InstantSerializer::class) val lastRunAt: Instant? = null,
+    /** What the last copy weighed, so the data it costs is a number somebody can see. */
+    val lastUploadedBytes: Long? = null,
+    /** The settings blob as it was in the last copy, for counting what has changed since. */
+    val lastUploadedSettingsHash: String? = null,
     /** The blob sha the remote file had after our last successful write; what the next PUT replaces. */
     val remoteSha: String? = null,
     /** The blob sha of the bytes last sent, written down before sending (see [judgeConflict]). */

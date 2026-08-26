@@ -27,6 +27,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.BeforeClass
+import androidx.test.rule.GrantPermissionRule
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -47,7 +48,15 @@ class PresetFlowTest {
         }
     }
 
-    @get:Rule
+    /**
+     * Handed over rather than asked for: the app asks for notifications on its first resume, and
+     * a system dialog over the screen is a tap that lands nowhere and a screenshot of the
+     * permission controller.
+     */
+    @get:Rule(order = 0)
+    val notifications: GrantPermissionRule = GrantPermissionRule.grant(android.Manifest.permission.POST_NOTIFICATIONS)
+
+    @get:Rule(order = 1)
     val rule = createAndroidComposeRule<MainActivity>()
 
     private val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as RwilcoApplication

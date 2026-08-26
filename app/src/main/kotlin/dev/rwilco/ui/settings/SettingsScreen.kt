@@ -333,6 +333,28 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
 
             SectionHeader(stringResource(R.string.settings_updates))
             AppUpdateCard()
+            Spacer(Modifier.height(spacing.sm))
+            RwilcoCard {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(spacing.lg)) {
+                    SettingTitle(
+                        title = stringResource(R.string.settings_updates_wifi),
+                        info = stringResource(R.string.settings_updates_wifi_hint),
+                        modifier = Modifier.weight(1f),
+                    )
+                    Spacer(Modifier.width(spacing.md))
+                    Switch(
+                        checked = current.updatesWifiOnly,
+                        onCheckedChange = { on ->
+                            if (on) haptics.perform(HapticFeedbackType.ToggleOn)
+                            viewModel.setUpdatesWifiOnly(on)
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.surface,
+                            checkedTrackColor = MaterialTheme.colorScheme.onSurface,
+                        ),
+                    )
+                }
+            }
 
             SectionHeader(
                 title = stringResource(R.string.settings_backup),

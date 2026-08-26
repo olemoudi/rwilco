@@ -25,6 +25,7 @@ import dev.rwilco.ui.home.HOME_SEARCH_TAG
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import androidx.test.rule.GrantPermissionRule
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -39,7 +40,15 @@ import java.time.LocalTime
 @RunWith(AndroidJUnit4::class)
 class HomeSearchTest {
 
-    @get:Rule
+    /**
+     * Handed over rather than asked for: the app asks for notifications on its first resume, and
+     * a system dialog over the screen is a tap that lands nowhere and a screenshot of the
+     * permission controller.
+     */
+    @get:Rule(order = 0)
+    val notifications: GrantPermissionRule = GrantPermissionRule.grant(android.Manifest.permission.POST_NOTIFICATIONS)
+
+    @get:Rule(order = 1)
     val rule = createAndroidComposeRule<MainActivity>()
 
     private val instrumentation = InstrumentationRegistry.getInstrumentation()

@@ -96,3 +96,31 @@ class CountdownTriggerTest {
         assertNull(problemOf(Trigger.Countdown(MAX_COUNTDOWN_MINUTES)))
     }
 }
+
+/** Opening the sheet on a timer already running must not put it back to the beginning. */
+class CountdownReopenTest {
+
+    private val started = java.time.Instant.parse("2026-08-26T10:00:00Z")
+    private val running = Trigger.Countdown(30, started)
+
+    @org.junit.jupiter.api.Test
+    fun `the same length is the same timer, stamp and all`() {
+        org.junit.jupiter.api.Assertions.assertEquals(running, countdownOf(30, running))
+        // And so it survives the save, which only stamps the ones that never started.
+        val saved = startCountdowns(listOf(TriggerRule(countdownOf(30, running))), started.plusSeconds(600))
+        org.junit.jupiter.api.Assertions.assertEquals(started, (saved.single().trigger as Trigger.Countdown).startedAt)
+    }
+
+    @org.junit.jupiter.api.Test
+    fun `a length somebody changed is a new timer, starting at the save`() {
+        org.junit.jupiter.api.Assertions.assertEquals(Trigger.Countdown(45), countdownOf(45, running))
+        val savedAt = started.plusSeconds(600)
+        val saved = startCountdowns(listOf(TriggerRule(countdownOf(45, running))), savedAt)
+        org.junit.jupiter.api.Assertions.assertEquals(savedAt, (saved.single().trigger as Trigger.Countdown).startedAt)
+    }
+
+    @org.junit.jupiter.api.Test
+    fun `a countdown written from nothing starts at the save`() {
+        org.junit.jupiter.api.Assertions.assertEquals(Trigger.Countdown(30), countdownOf(30, null))
+    }
+}

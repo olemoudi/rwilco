@@ -56,8 +56,3 @@ private val REPO_NAME = Regex("[A-Za-z0-9._-]{1,100}")
 
 /** An owner or repository name GitHub could have: what goes into a path segment. */
 fun isRepoName(name: String): Boolean = REPO_NAME.matches(name) && name != "." && name != ".."
-
-/** The passphrase rule, in one place: long enough that guessing it is the slow way in. */
-const val MIN_PASSPHRASE_LENGTH = 12
-
-fun passphraseIsStrongEnough(passphrase: String): Boolean = passphrase.length >= MIN_PASSPHRASE_LENGTH

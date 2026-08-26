@@ -171,6 +171,18 @@ fun startCountdowns(rules: List<TriggerRule>, now: Instant): List<TriggerRule> =
     if (trigger is Trigger.Countdown && trigger.startedAt == null) rule.copy(trigger = trigger.copy(startedAt = now)) else rule
 }
 
+/**
+ * The countdown a configurator hands back, given the one it was opened on.
+ *
+ * A length that has not changed is **the same timer, still running**: opening the sheet to look
+ * at it, or to change something else about the reminder, must not put it back to the beginning.
+ * That is what it did — the sheet always built a fresh countdown, [startCountdowns] stamped it
+ * at the save, and "in ten minutes" quietly became ten minutes from whenever you pressed save.
+ * A length somebody actually changed is a new timer and starts when the reminder is written.
+ */
+fun countdownOf(minutes: Int, previous: Trigger.Countdown?): Trigger.Countdown =
+    if (previous != null && previous.minutes == minutes) previous else Trigger.Countdown(minutes)
+
 /** The other way: a preset keeps the length and never the moment, or it could only be used once. */
 fun clearCountdowns(rules: List<TriggerRule>): List<TriggerRule> = rules.map { rule ->
     val trigger = rule.trigger

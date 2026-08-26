@@ -120,6 +120,9 @@ class SettingsViewModel(
     fun setSoundPlays(plays: Int) = update { it.copy(soundPlays = plays.coerceIn(SoundLimits.PLAYS)) }
     fun setSoundGap(minutes: Int) = update { it.copy(soundGapMinutes = minutes.coerceIn(SoundLimits.GAP_MINUTES)) }
 
+    /** Updates only where the data is not paid for by the megabyte; the button always goes. */
+    fun setUpdatesWifiOnly(only: Boolean) = update { it.copy(updatesWifiOnly = only) }
+
     /** Two full-screen reminders at once: one behind the other, or side by side as strips. */
     fun setAlertStacking(stacking: AlertStacking) = update { it.copy(alertStacking = stacking) }
 

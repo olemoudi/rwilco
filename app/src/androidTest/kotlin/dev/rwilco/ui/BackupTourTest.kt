@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.os.LocaleList
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -25,6 +26,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
 import org.junit.BeforeClass
+import androidx.test.rule.GrantPermissionRule
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -47,7 +49,15 @@ class BackupTourTest {
         }
     }
 
-    @get:Rule
+    /**
+     * Handed over rather than asked for: the app asks for notifications on its first resume, and
+     * a system dialog over the screen is a tap that lands nowhere and a screenshot of the
+     * permission controller.
+     */
+    @get:Rule(order = 0)
+    val notifications: GrantPermissionRule = GrantPermissionRule.grant(android.Manifest.permission.POST_NOTIFICATIONS)
+
+    @get:Rule(order = 1)
     val rule = createAndroidComposeRule<MainActivity>()
 
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
@@ -84,7 +94,27 @@ class BackupTourTest {
         runBlocking { app.vaultStore.update { it.copy(lastOutcome = VaultOutcome.CONFLICT, lastOutcomeAt = app.clock.instant()) } }
         rule.waitUntilShown(s(R.string.vault_conflict_keep_phone))
         shot("backup-conflict")
+
     }
+
+    @Test
+    fun theHomeBadgeCountsWhatIsWaiting() {
+        // Nothing is navigated: the rule starts at Home, and turning the vault on from under it
+        // is what the badge is for — it appears because this vault has never copied anything.
+        rule.waitUntilShown(s(R.string.home_title))
+        runBlocking {
+            app.vaultStore.update {
+                it.copy(enabled = true, owner = "olemoudi", repo = "rwilco-vault", pat = "x", key = "a2V5", salt = "c2FsdA==", deviceId = "tour")
+            }
+        }
+        rule.waitUntil(timeoutMillis = 10_000) {
+            rule.onAllNodesWithContentDescription(waitingLabel(), substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        shot("home-badge")
+    }
+
+    /** The badge says what it is for; the number depends on what this phone happens to hold. */
+    private fun waitingLabel(): String = s(R.string.vault_card_title).take(0) + "copiarse"
 
     private fun androidx.compose.ui.test.junit4.ComposeTestRule.waitUntilShown(text: String) {
         waitUntil(timeoutMillis = 10_000) { onAllNodesWithText(text, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }

@@ -34,6 +34,7 @@ import dev.rwilco.ui.editor.EDITOR_TEXT_TAG
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.BeforeClass
+import androidx.test.rule.GrantPermissionRule
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -59,7 +60,15 @@ class EditorTourTest {
         }
     }
 
-    @get:Rule
+    /**
+     * Handed over rather than asked for: the app asks for notifications on its first resume, and
+     * a system dialog over the screen is a tap that lands nowhere and a screenshot of the
+     * permission controller.
+     */
+    @get:Rule(order = 0)
+    val notifications: GrantPermissionRule = GrantPermissionRule.grant(android.Manifest.permission.POST_NOTIFICATIONS)
+
+    @get:Rule(order = 1)
     val rule = createAndroidComposeRule<MainActivity>()
 
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
@@ -222,7 +231,9 @@ class EditorTourTest {
         shot("settings-release-notes")
         text(s(R.string.whats_new_ok)).performClick()
         rule.waitUntilGone(s(R.string.whats_new_ok))
-        text(s(R.string.watch_log_open)).performClick()
+        // Back up the screen: the release notes are at the very bottom, and Settings has grown
+        // sections since this line was written — the row is above the fold by the time we get here.
+        text(s(R.string.watch_log_open)).performScrollTo().performClick()
         rule.waitUntilShown(s(R.string.watch_log_title))
         shot("watch-log")
         rule.onNodeWithContentDescription(s(R.string.common_back)).performClick()

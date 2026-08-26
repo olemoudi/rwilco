@@ -88,6 +88,13 @@ data class AppSettings(
      * like, and nothing changes under a thumb that is mid-answer.
      */
     val alertStacking: AlertStacking = AlertStacking.SEQUENTIAL,
+    /**
+     * Check for and download updates only where the data is not being paid for by the megabyte.
+     * The APK is fifty megabytes; the check itself is a hundred bytes, but downloading what it
+     * finds is what somebody notices on their bill. "Buscar ahora" is always allowed: a tap is
+     * somebody deciding for themselves.
+     */
+    val updatesWifiOnly: Boolean = false,
 )
 
 /** How the alert screen holds more than one reminder. See [AppSettings.alertStacking]. */

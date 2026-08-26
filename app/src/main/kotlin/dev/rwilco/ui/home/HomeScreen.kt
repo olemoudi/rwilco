@@ -342,7 +342,9 @@ private fun Header(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Row {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Only while the encrypted copy has something waiting; see BackupBadge.
+            BackupBadge()
             IconButton(onClick = onSearch) {
                 Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.home_search))
             }

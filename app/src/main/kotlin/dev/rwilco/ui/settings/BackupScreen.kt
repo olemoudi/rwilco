@@ -2,8 +2,12 @@ package dev.rwilco.ui.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,7 +19,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -35,16 +41,21 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -52,11 +63,19 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.text.format.Formatter
 import dev.rwilco.R
+import dev.rwilco.model.BackupCadence
+import dev.rwilco.model.MIN_PASSPHRASE_LENGTH
+import dev.rwilco.model.PassphraseStrength
+import dev.rwilco.model.TriggerFamily
+import dev.rwilco.model.passphraseStrength
 import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.ui.components.RwilcoCard
+import dev.rwilco.ui.components.TagChip
+import dev.rwilco.ui.theme.LocalDarkTheme
 import dev.rwilco.ui.theme.Tokens
-import dev.rwilco.vault.MIN_PASSPHRASE_LENGTH
+import dev.rwilco.ui.theme.familyColor
 import dev.rwilco.vault.VaultOutcome
 import dev.rwilco.vault.VaultState
 import dev.rwilco.vault.VaultSummary
@@ -69,6 +88,7 @@ import java.time.LocalDate
  * decision — a copy already there, a passphrase, "this replaces what is on the phone" — is a
  * dialog driven by [BackupPhase], so the screen underneath never has to change shape.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BackupScreen(viewModel: BackupViewModel, onBack: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -85,11 +105,14 @@ fun BackupScreen(viewModel: BackupViewModel, onBack: () -> Unit) {
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let(viewModel::importFrom)
     }
+    val dryRunLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let(viewModel::dryRunImport)
+    }
 
     // "Done" is a line at the bottom, not a dialog: there is nothing to decide about it.
     val current = phase
     if (current is BackupPhase.Done) {
-        val message = stringResource(current.message)
+        val message = current.arg?.let { stringResource(current.message, it) } ?: stringResource(current.message)
         LaunchedEffect(current) {
             snackbar.show(message)
             viewModel.dismiss()
@@ -138,6 +161,7 @@ fun BackupScreen(viewModel: BackupViewModel, onBack: () -> Unit) {
                     hasUndo = hasUndo,
                     onExport = { exportLauncher.launch(exportName()) },
                     onImport = { importLauncher.launch(arrayOf("*/*")) },
+                    onDryRun = { dryRunLauncher.launch(arrayOf("*/*")) },
                     onUndo = viewModel::undoRestore,
                 )
             } else {
@@ -147,6 +171,7 @@ fun BackupScreen(viewModel: BackupViewModel, onBack: () -> Unit) {
                     hasUndo = hasUndo,
                     onExport = { exportLauncher.launch(exportName()) },
                     onImport = { importLauncher.launch(arrayOf("*/*")) },
+                    onDryRun = { dryRunLauncher.launch(arrayOf("*/*")) },
                     onUndo = viewModel::undoRestore,
                 )
                 OffCard(viewModel::disable)
@@ -182,11 +207,17 @@ private fun SetupCard(viewModel: BackupViewModel) {
                 label = stringResource(R.string.vault_field_token),
                 hint = stringResource(R.string.vault_field_token_hint),
             )
+            // Before a passphrase, before anything is written: proof that the boring half works.
+            OutlinedButton(
+                onClick = viewModel::testConnection,
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.sizes.control),
+            ) { Text(stringResource(R.string.vault_test)) }
             SecretField(
                 value = form.passphrase,
                 onChange = { value -> viewModel.edit { it.copy(passphrase = value) } },
                 label = stringResource(R.string.vault_field_passphrase),
-                hint = stringResource(R.string.vault_passphrase_rule, MIN_PASSPHRASE_LENGTH),
+                strength = true,
             )
             SecretField(
                 value = form.again,
@@ -231,6 +262,13 @@ private fun StatusCard(vault: VaultState, working: Boolean, viewModel: BackupVie
                 }
                 else -> Unit
             }
+            vault.lastUploadedBytes?.let { bytes ->
+                Text(
+                    text = stringResource(R.string.vault_status_size, Formatter.formatShortFileSize(LocalContext.current, bytes)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             OutlinedButton(
                 onClick = viewModel::backupNow,
                 enabled = !working,
@@ -240,8 +278,11 @@ private fun StatusCard(vault: VaultState, working: Boolean, viewModel: BackupVie
             if (vault.lastOutcome != VaultOutcome.CONFLICT) {
                 NavRow(stringResource(R.string.vault_restore_remote), onClick = viewModel::restoreFromRemote)
             }
+            NavRow(stringResource(R.string.vault_test), onClick = viewModel::testConnection)
         }
     }
+    Spacer(Modifier.height(Tokens.spacing.sm))
+    CadenceCard(vault, viewModel)
     if (editingCredentials) {
         CredentialsDialog(
             repo = "${vault.owner}/${vault.repo}",
@@ -256,12 +297,13 @@ private fun StatusCard(vault: VaultState, working: Boolean, viewModel: BackupVie
 
 /** The file transport, on or off: the same envelope, carried by hand. */
 @Composable
-private fun FileRows(hasKey: Boolean, hasUndo: Boolean, onExport: () -> Unit, onImport: () -> Unit, onUndo: () -> Unit) {
+private fun FileRows(hasKey: Boolean, hasUndo: Boolean, onExport: () -> Unit, onImport: () -> Unit, onDryRun: () -> Unit, onUndo: () -> Unit) {
     val spacing = Tokens.spacing
     RwilcoCard {
         Column(Modifier.padding(horizontal = spacing.lg, vertical = spacing.sm)) {
             NavRow(stringResource(R.string.vault_export), subtitle = if (hasKey) null else stringResource(R.string.vault_export_off_hint), onClick = onExport)
             NavRow(stringResource(R.string.vault_import), onClick = onImport)
+            NavRow(stringResource(R.string.vault_dry_run), subtitle = stringResource(R.string.vault_dry_run_hint), onClick = onDryRun)
             if (hasUndo) NavRow(stringResource(R.string.vault_undo), subtitle = stringResource(R.string.vault_undo_hint), onClick = onUndo)
         }
     }
@@ -302,7 +344,8 @@ private fun PhaseDialogs(phase: BackupPhase, localCount: Int, viewModel: BackupV
     when (phase) {
         BackupPhase.Idle, is BackupPhase.Done -> Unit
         is BackupPhase.Busy -> BusyDialog(stringResource(phase.message))
-        is BackupPhase.Failed -> MessageDialog(stringResource(phase.message), onDismiss = viewModel::dismiss)
+        is BackupPhase.Failed -> MessageDialog(phase.arg?.let { stringResource(phase.message, it) } ?: stringResource(phase.message), onDismiss = viewModel::dismiss)
+        is BackupPhase.DryRun -> DryRunDialog(phase.summary, viewModel::dismiss)
         is BackupPhase.Existing -> ExistingDialog(phase, viewModel)
         is BackupPhase.Confirm -> ConfirmDialog(phase.opened.summary, localCount, viewModel)
         is BackupPhase.AskPassphrase -> PassphraseDialog(
@@ -320,6 +363,81 @@ private fun PhaseDialogs(phase: BackupPhase, localCount: Int, viewModel: BackupV
             onDismiss = viewModel::dismiss,
         )
     }
+}
+
+/** How often, and over what: the two things that decide what the backup costs. */
+@Composable
+private fun CadenceCard(vault: VaultState, viewModel: BackupViewModel) {
+    val spacing = Tokens.spacing
+    val haptics = Tokens.haptics
+    RwilcoCard {
+        Column(Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.md)) {
+            SettingTitle(
+                title = stringResource(R.string.vault_cadence),
+                info = stringResource(R.string.vault_cadence_hint),
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                verticalArrangement = Arrangement.spacedBy(spacing.sm),
+            ) {
+                for (cadence in BackupCadence.entries) {
+                    TagChip(
+                        label = stringResource(cadence.labelRes),
+                        selected = cadence == vault.cadence,
+                        onClick = { viewModel.setCadence(cadence) },
+                    )
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                SettingTitle(
+                    title = stringResource(R.string.vault_wifi_only),
+                    info = stringResource(R.string.vault_wifi_only_hint),
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(spacing.md))
+                Switch(
+                    checked = vault.wifiOnly,
+                    onCheckedChange = { on ->
+                        if (on) haptics.perform(HapticFeedbackType.ToggleOn)
+                        viewModel.setWifiOnly(on)
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.surface,
+                        checkedTrackColor = MaterialTheme.colorScheme.onSurface,
+                    ),
+                )
+            }
+        }
+    }
+}
+
+/** What the cadence chips say. */
+private val BackupCadence.labelRes: Int
+    get() = when (this) {
+        BackupCadence.HOURLY -> R.string.vault_cadence_1h
+        BackupCadence.EVERY_4_HOURS -> R.string.vault_cadence_4h
+        BackupCadence.EVERY_8_HOURS -> R.string.vault_cadence_8h
+        BackupCadence.DAILY -> R.string.vault_cadence_24h
+        BackupCadence.EVERY_3_DAYS -> R.string.vault_cadence_72h
+        BackupCadence.WEEKLY -> R.string.vault_cadence_week
+    }
+
+/** A rehearsal: what the file holds, and the fact that nothing on the phone moved. */
+@Composable
+private fun DryRunDialog(summary: VaultSummary, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.vault_dry_run_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm)) {
+                SummaryText(summary)
+                Text(stringResource(R.string.vault_dry_run_ok), style = MaterialTheme.typography.bodyMedium)
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_got_it)) } },
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = MaterialTheme.shapes.extraLarge,
+    )
 }
 
 @Composable
@@ -483,7 +601,7 @@ private fun PlainField(value: String, onChange: (String) -> Unit, label: String,
 
 /** A token or a passphrase: hidden by default, shown on request, never auto-corrected. */
 @Composable
-private fun SecretField(value: String, onChange: (String) -> Unit, label: String, hint: String? = null) {
+private fun SecretField(value: String, onChange: (String) -> Unit, label: String, hint: String? = null, strength: Boolean = false) {
     val scheme = MaterialTheme.colorScheme
     var shown by rememberSaveable { mutableStateOf(false) }
     Column {
@@ -506,10 +624,50 @@ private fun SecretField(value: String, onChange: (String) -> Unit, label: String
             colors = fieldColors(),
             modifier = Modifier.fillMaxWidth(),
         )
+        if (strength) StrengthBar(value)
         if (hint != null) {
             Text(hint, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, modifier = Modifier.padding(top = Tokens.spacing.xs))
         }
     }
+}
+
+/**
+ * Four segments and one line of words: whether this passphrase is good enough yet, and how
+ * much better than that it is. The floor is what the app refuses to go on without — twelve
+ * characters with letters and digits in them — and the segments past it are encouragement,
+ * because the thing this protects has no way back if it is guessed.
+ */
+@Composable
+private fun StrengthBar(passphrase: String) {
+    val scheme = MaterialTheme.colorScheme
+    val spacing = Tokens.spacing
+    val strength = remember(passphrase) { passphraseStrength(passphrase) }
+    val filled = if (strength.meetsMinimum) familyColor(TriggerFamily.PLACE, LocalDarkTheme.current) else scheme.error
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(spacing.xs),
+        modifier = Modifier.fillMaxWidth().padding(top = spacing.sm),
+    ) {
+        repeat(PassphraseStrength.LEVELS) { index ->
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(Tokens.strokes.strong * 2)
+                    .background(if (index < strength.level) filled else scheme.surfaceContainerHigh, CircleShape),
+            )
+        }
+    }
+    Text(
+        text = when {
+            passphrase.isEmpty() -> stringResource(R.string.vault_passphrase_rule, MIN_PASSPHRASE_LENGTH)
+            !strength.meetsMinimum -> stringResource(R.string.vault_pass_not_yet, MIN_PASSPHRASE_LENGTH)
+            strength.level >= 4 -> stringResource(R.string.vault_pass_strong)
+            strength.level == 3 -> stringResource(R.string.vault_pass_good)
+            else -> stringResource(R.string.vault_pass_enough)
+        },
+        style = MaterialTheme.typography.bodySmall,
+        color = if (passphrase.isNotEmpty() && !strength.meetsMinimum) scheme.error else scheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = Tokens.spacing.xs),
+    )
 }
 
 @Composable

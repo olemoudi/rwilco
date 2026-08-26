@@ -693,11 +693,11 @@
     <string name="vault_card_attention_auth">Stopped: GitHub refused the token</string>
     <string name="vault_card_attention_repo">Stopped: the repository is gone</string>
     <string name="vault_card_attention_conflict">Stopped: another phone wrote the copy</string>
-    <string name="vault_intro">An encrypted copy of your reminders, presets and places in a private GitHub repository of yours, refreshed a quarter of an hour after anything changes. Everything is sealed with your passphrase before it leaves the phone: GitHub sees a file and its size, never a word of what is in it. The app keeps working without it.</string>
+    <string name="vault_intro">An encrypted copy of your reminders, presets and places in a private GitHub repository of yours, made again every few hours — you choose how often. Everything is sealed with your passphrase before it leaves the phone: GitHub sees a file and its size, never a word of what is in it. The app keeps working without it.</string>
     <string name="vault_intro_warning">Nobody can recover the passphrase, Rwilco included. Without it, the copy is a locked box.</string>
     <string name="vault_field_repo">Repository</string>
-    <string name="vault_field_repo_placeholder">owner/name</string>
-    <string name="vault_field_repo_hint">A private repository, created by hand on GitHub. The app keeps one file in it, rwilco.vault; every copy is a commit, so the repository\'s history is the backup\'s history.</string>
+    <string name="vault_field_repo_placeholder">owner/name — or the whole address</string>
+    <string name="vault_field_repo_hint">Either «owner/name» or the whole address (https://github.com/owner/name). A private repository, created by hand on GitHub: the app keeps one file in it, rwilco.vault, and every copy is a commit, so the repository’s history is the copy’s history.</string>
     <string name="vault_field_token">Access token</string>
     <string name="vault_field_token_hint">A fine-grained personal access token limited to that repository, with Contents set to read and write (GitHub › Settings › Developer settings). It is kept on this phone only.</string>
     <string name="vault_field_passphrase">Passphrase</string>
@@ -796,5 +796,47 @@
         <item>«Al llegar al curro, a partir de las siete» no longer counts down to tomorrow. When hours sit beside a place under «a la vez», they are the place\'s hours and not a moment of their own, so Home says what actually rings: the arrival.</item>
         <item>And a sweep over everything between a reminder\'s moment and you noticing it. Do Not Disturb no longer swallows a full-screen reminder: they are alarms to the phone now, not chats. A reminder that the system refuses to show full-screen makes its noise as a notification instead of arriving silently. The sound asks the phone for the speaker, so a podcast cannot bury it, and the buzz is an alarm\'s buzz, which the silent switch keeps. A moment the phone slept through by a couple of minutes rings like the moment itself instead of arriving as a grey note. And every way a firing had of quietly deciding not to ring now re-arms itself first.</item>
         <item>Settings says out loud the five things the phone does to keep reminders from you and nobody ever finds: battery optimisation, restricted background use, total-silence Do Not Disturb, the alarm volume at zero, and a notification channel muted by hand.</item>
+    </string-array>
+
+    <!-- What the backup costs, how often it happens, and the rehearsal. -->
+    <string name="vault_test">Test the repository and the token</string>
+    <string name="vault_test_ok_empty">It works: the repository is private, the token can write to it, and there is no copy in it yet.</string>
+    <string name="vault_test_ok_existing">It works: the repository is private, the token can write to it, and there is already a copy of %1$s in it.</string>
+    <string name="vault_status_size">The last copy weighed %1$s.</string>
+    <string name="vault_cadence">How often</string>
+    <string name="vault_cadence_hint">The wait after the last copy that worked — not a fixed hour. If a copy fails it is retried until it goes through, and only then does the wait start again: three days failing, a copy on the fourth and «every week» puts the next one on the eleventh day. You can always ask for one from the badge on the main screen.</string>
+    <string name="vault_cadence_1h">Every hour</string>
+    <string name="vault_cadence_4h">Every 4 h</string>
+    <string name="vault_cadence_8h">Every 8 h</string>
+    <string name="vault_cadence_24h">Every day</string>
+    <string name="vault_cadence_72h">Every 3 days</string>
+    <string name="vault_cadence_week">Every week</string>
+    <string name="vault_wifi_only">Only over wifi</string>
+    <string name="vault_wifi_only_hint">A copy is a few tens of kilobytes, so this is rarely about the data. It is here because it is your data plan, not the app\'s. With it on, copies wait for wifi; asking for one by hand goes over whatever there is.</string>
+    <string name="vault_dry_run">Test a file</string>
+    <string name="vault_dry_run_hint">Opens it and says what is in it. Nothing on this phone changes.</string>
+    <string name="vault_dry_run_title">The file works</string>
+    <string name="vault_dry_run_ok">Nothing on this phone has changed: this was a rehearsal.</string>
+    <string name="vault_pass_not_yet">Not yet: at least %1$d characters, with letters and digits.</string>
+    <string name="vault_pass_enough">Good enough.</string>
+    <string name="vault_pass_good">A good one.</string>
+    <string name="vault_pass_strong">Long and varied — the best kind.</string>
+    <string name="settings_updates_wifi">Update only over wifi</string>
+    <string name="settings_updates_wifi_hint">The app is about fifty megabytes, and an update downloads all of it. With this on, checks and downloads wait for wifi; «Check now» goes over whatever there is, because you asked for it.</string>
+    <string name="home_backup_working">Making the encrypted copy…</string>
+    <string name="home_backup_done">Copy made</string>
+    <plurals name="home_backup_pending">
+        <item quantity="one">%1$d change waiting to be copied. Tap to copy now.</item>
+        <item quantity="other">%1$d changes waiting to be copied. Tap to copy now.</item>
+    </plurals>
+
+    <string-array name="whats_new_0_13_0">
+        <item>The encrypted copy is yours to pace now. In Settings › Backup, «how often»: every hour, every four (the new normal), every eight, daily, every three days or weekly — and it counts the way anacron does, from the last copy that actually worked. A copy that fails is retried until it goes through, and only then does the wait start again: three days failing, a copy on the fourth and «every week» puts the next one on the eleventh day. There is also «only over wifi», and the screen says what the last copy weighed, so the data it costs is a number you can see.</item>
+        <item>A small red circle in the corner of the main screen counts what is waiting to be copied. Tap it and the copy happens on the spot: the number turns into a ring while it goes up and a tick when it lands, and then it goes away. No copy waiting, no circle.</item>
+        <item>Before handing the app a token you can now check it: «Test the repository and the token» says whether it exists, whether it is private, whether the token can write and whether there is already a copy in it — without writing a byte. And «Test a file» opens a copy, tells you what is in it and changes nothing: a rehearsal of a restore.</item>
+        <item>The passphrase field has a bar under it, so you can see when it is long enough instead of guessing: at least twelve characters with letters and digits in them.</item>
+        <item>Updates can wait for wifi too (Settings › Updates). The app is fifty megabytes and an update downloads all of it. «Check now» still goes over whatever there is, because you asked for it.</item>
+        <item>Opening a running countdown no longer restarts it. The sheet always handed back a fresh timer, so «in ten minutes» quietly became ten minutes from whenever you pressed save — which is also why a reminder would sometimes drop out of the big card at the top after an edit. A length you actually change is still a new timer.</item>
+        <item>The permission request 0.12.0 added on launch now comes after the first screen rather than on top of it, and asks once instead of on every rotation.</item>
     </string-array>
 </resources>
