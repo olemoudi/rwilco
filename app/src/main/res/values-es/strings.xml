@@ -666,4 +666,9 @@
         <item>La hoja de lugar: girar el móvil mientras localizaba o buscaba ya no la deja ocupada para siempre, y el deslizador de radio cae en la marca que enseña. Una cuenta atrás ya no puede pasar de una semana y luego negarse a guardar sin decir nada. Pasadas las once de la noche la hoja de fecha y hora ofrece mañana. Una condición de lugar en edición conserva su propio lugar aunque el guardado se haya renombrado o borrado. Editar un preajuste de recurrencia de serie guarda el cambio. Guardar un recordatorio que sonó y se atendió con el editor abierto conserva el «hecho».</item>
         <item>Ajustes: la ubicación «aproximada» dice lo que falta de verdad (el permiso preciso) en vez de mandarte a por el de segundo plano; una mirada que el vigilante aún no ha dado dice «hace», no «en».</item>
     </string-array>
+    <string-array name="whats_new_0_11_4">
+        <item>Lo que una recurrencia significa para un lugar, bien puesto. «Al llegar a casa, cada día»: atendido, el recordatorio descansa hasta que se cumple el plazo (mañana a tu hora de inicio del día), y entonces el lugar vuelve a estar armado — y suena en la siguiente llegada, no a las nueve. Las nueve nunca suenan solas cuando hay un lugar esperando; 0.11.3 había dejado de vigilar el lugar del todo, y eso estaba mal.</item>
+        <item>A un lugar que ya ha sonado se le debe una salida antes de volver a sonar. Ni una posición dentro ni la geovalla del móvil releyendo la línea cuentan: la app tiene que haberte visto fuera desde entonces. Para verlo, las geovallas del móvil informan ahora también de las salidas; una salida se anota y nunca suena salvo que la regla sea de salir.</item>
+        <item>«A las ocho, y luego cada seis horas» no cambia: pasada la fecha, el momento de la recurrencia es el toque.</item>
+    </string-array>
 </resources>

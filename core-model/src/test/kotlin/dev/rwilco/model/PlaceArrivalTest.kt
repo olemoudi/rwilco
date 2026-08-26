@@ -129,4 +129,25 @@ class PlaceArrivalTest {
         assertFalse(crossingIsNews(state, "home", Transition.ENTER, now))
         assertTrue(crossingIsNews(state.remembering("home", Transition.EXIT), "home", Transition.ENTER, now))
     }
+
+    @Test
+    fun `a place that has rung is owed a leaving before it rings again`() {
+        // Strict: the geofence's word alone is not enough the second time round; the app has
+        // to have seen the phone on the other side of the line since.
+        val id = "r1#0@x"
+        val now = Instant.parse("2026-08-27T18:00:00Z")
+        val unknown = PlaceWatchState()
+        assertTrue(crossingIsNews(unknown, id, Transition.ENTER, now), "the first time, the doubt rings")
+        assertFalse(crossingIsNews(unknown, id, Transition.ENTER, now, strict = true), "the second time, the doubt does not")
+        val seenOutside = PlaceWatchState(inside = mapOf(id to false))
+        val seenInside = PlaceWatchState(inside = mapOf(id to true))
+        assertTrue(crossingIsNews(seenOutside, id, Transition.ENTER, now, strict = true))
+        assertFalse(crossingIsNews(seenInside, id, Transition.ENTER, now, strict = true), "still inside as far as the app knows: not an arrival")
+        assertTrue(crossingIsNews(seenInside, id, Transition.EXIT, now, strict = true))
+        assertFalse(crossingIsNews(seenOutside, id, Transition.EXIT, now, strict = true))
+        // And a stale fix, which the lenient reading forgives, forgives nothing here.
+        val stale = PlaceWatchState(lastFix = Fix(0.0, 0.0, 10.0, now.minusSeconds(4 * 3600)), inside = mapOf(id to true))
+        assertTrue(crossingIsNews(stale, id, Transition.ENTER, now))
+        assertFalse(crossingIsNews(stale, id, Transition.ENTER, now, strict = true))
+    }
 }

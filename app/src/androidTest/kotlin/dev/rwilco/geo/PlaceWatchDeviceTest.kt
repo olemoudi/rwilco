@@ -13,6 +13,8 @@ import com.google.android.gms.tasks.Tasks
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.model.Condition
 import dev.rwilco.model.PlaceWatchState
+import dev.rwilco.model.Recurrence
+import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
 import dev.rwilco.model.Transition
@@ -250,6 +252,64 @@ class PlaceWatchDeviceTest {
     }
 
     @Test
+    fun aPlaceThatHasRungIsOwedALeavingBeforeItRingsAgain() = runBlocking {
+        // "Al llegar a casa, cada día": rang and was dealt with at home, two days ago. The
+        // rest is long over, so the place is armed again — but arriving is something that
+        // happens after leaving, and neither the geofence's word nor a fix inside is that.
+        // At home FIRST, then the rule, as writtenWhileAtHome… does: a fence registered around
+        // a phone already inside reports nothing, which is also what a real phone does.
+        moveTo(south = 50.0, at = t0)
+        val bins = "watch-bins"
+        val twoDaysAgo = app.clock.instant().minus(Duration.ofDays(2)).truncatedTo(java.time.temporal.ChronoUnit.MILLIS)
+        val written = twoDaysAgo.minus(Duration.ofHours(1))
+        app.repository.save(
+            Reminder(
+                id = bins,
+                text = "Sacar la basura",
+                rules = listOf(TriggerRule(Trigger.Location(homeLat, homeLng, radius, Transition.ENTER, "Casa"))),
+                recurrence = Recurrence.After(1, RecurrenceUnit.DAYS),
+                status = Status.ACTIVE,
+                createdAt = written,
+                updatedAt = written,
+                lastFiredAt = twoDaysAgo,
+                lastDealtAt = twoDaysAgo.plusSeconds(60),
+            ),
+        )
+        Thread.sleep(1_500)
+        cancelWatchAlarm()
+        val key = key(bins, Transition.ENTER)
+        watcher.check()
+        assertEquals(true, store.read().inside[key])
+        assertEquals("standing at home is not arriving", twoDaysAgo, app.repository.get(bins)!!.lastFiredAt)
+
+        // Play Services re-reading the line the phone never left: not an arrival.
+        assertFalse("still inside as far as the watch knows", watcher.accept(key, Transition.ENTER))
+        // Nor is a fix inside.
+        moveTo(south = 52.0, at = t0 + 60_000)
+        watcher.check()
+        assertEquals(twoDaysAgo, app.repository.get(bins)!!.lastFiredAt)
+
+        // Seen outside — by the system's own word this time — and the next arrival rings.
+        assertFalse("a leaving is written down, never rung", watcher.accept(key, Transition.EXIT))
+        assertEquals(false, store.read().inside[key])
+        assertTrue("back after a leaving is arriving", watcher.accept(key, Transition.ENTER))
+        app.firing.fire(bins, ruleIndex = 0)
+        assertTrue(app.repository.get(bins)!!.lastFiredAt!! > twoDaysAgo)
+
+        // Dealt with again, just now: the place rests until tomorrow, keeps its memory, and a
+        // crossing meanwhile is written down but does not ring.
+        app.firing.dismiss(bins)
+        Thread.sleep(1_500)
+        cancelWatchAlarm()
+        watcher.check()
+        val resting = store.read()
+        assertNotNull("resting is not forgotten", resting.inside[key])
+        assertTrue("the next look is when the rest is up: ${resting.nextCheckAt}", resting.nextCheckAt!! > Instant.now().plusSeconds(3_600))
+        assertFalse("a crossing during the rest does not ring", watcher.accept(key, Transition.EXIT).also { } || watcher.accept(key, Transition.ENTER))
+        assertEquals(true, store.read().inside[key])
+    }
+
+    @Test
     fun theAlarmsReceiverLooksToo() = runBlocking {
         seed("arrive", Transition.ENTER)
         moveTo(south = 3_000.0, at = t0)
@@ -282,13 +342,19 @@ class PlaceWatchDeviceTest {
     }
 
     /** One reminder with one place rule at home; returns its id. */
-    private suspend fun seed(id: String, transition: Transition, conditions: List<Condition> = emptyList()): String {
+    private suspend fun seed(
+        id: String,
+        transition: Transition,
+        conditions: List<Condition> = emptyList(),
+        recurrence: Recurrence = Recurrence.None,
+    ): String {
         val now = app.clock.instant()
         app.repository.save(
             Reminder(
                 id = "watch-$id",
                 text = "Place test $id",
                 rules = listOf(TriggerRule(Trigger.Location(homeLat, homeLng, radius, transition, "Casa"), conditions)),
+                recurrence = recurrence,
                 status = Status.ACTIVE,
                 createdAt = now,
                 updatedAt = now,

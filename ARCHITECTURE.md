@@ -265,10 +265,15 @@ strict is asking somebody to remember how they spelled it.
   the moment it is about (the alarm for a past moment arrives at once, racing it). Every entry
   into `ReminderFiring` — a firing, a repeat, "hecho", a snooze — takes one mutex, so two doors
   opening on the same second read each other's writes instead of both ringing.
-  Once an anchored recurrence is in charge (`recurrenceInCharge`: dealt with once, or no rules
-  at all) the rules are not consulted again, not even when its moment is spent: a "cada 6 h"
-  that rang and was ignored is overdue, and does not come back at the hour of a trigger whose
-  job was the first ring only.
+  **An anchored recurrence on a reminder with rules is a rest, not a ring.** Dealt with, the
+  rules say nothing until the span is up (`Reminder.restUntil`, counted from `lastDealtAt`):
+  nothing is armed, no place is watched, a crossing is written down but does not ring. From
+  then they speak again — a place is watched again and rings on a *fresh* arrival, a clock
+  finds its first moment past the rest. Only when no rule has anything left to say (a date
+  that has been, a countdown that ran out) does the recurrence's own moment ring, which is what
+  "a las ocho, y luego cada seis horas" means; and rung and ignored, that moment is spent like
+  any other (`recurrenceMoment`). With no rules at all the recurrence is the whole arrangement
+  and its moment is always the ring.
 - `AlertPresenter` decides *where* a firing shows itself: an app open in front of somebody gets
   the banner, and the home screen, a dark screen or the lock screen get the whole screen. The
   noise follows that decision, not the tile: a full-screen alert rings for itself, but one
@@ -372,9 +377,17 @@ strict is asking somebody to remember how they spelled it.
   polls on its own account. What it watches is every circle still worth watching, and three
   things take circles off that list. A rule's trigger counts only while the rule is still
   pending (`pendingRules` — under ALL a place already ticked off has nothing left to report, and
-  both the watch and the hundred-geofence allowance stop spending on it), and only while the
-  rules are being asked at all: once an anchored recurrence is in charge (`recurrenceInCharge`)
-  nothing of theirs is watched or geofenced, and `ReminderFiring` refuses a crossing for it.
+  both the watch and the hundred-geofence allowance stop spending on it), and not while it
+  rests (`restUntil`): a resting circle is left alone but **keeps its memory** of which side of
+  the line the phone was on (`Watching.remembered`, merged back on every write), because that
+  memory is what the next crossing is judged by. **A place that has rung is owed a leaving
+  before it rings again**: the watch's own events already need the memory to say "outside"
+  first, and the geofence's word is held to the same standard once `lastFiredAt` is set
+  (`crossingIsNews(strict = true)`: a crossing the app has not seen the other side of is not
+  news, however stale the last fix). To feed that memory the geofences register *both*
+  crossings for every place; `PlaceWatcher.accept` writes either down and answers "ring" only
+  for the crossing the rule waits for, on a circle that is live — not resting, not outside its
+  hours. The first ring keeps the benefit of the doubt.
   The circles named by
   `Condition.AtPlace` are watched for their state alone (`WatchedPlace.fires = false`, so
   `stepPlaceWatch` never turns one into a firing) and never geofenced, because a geofence

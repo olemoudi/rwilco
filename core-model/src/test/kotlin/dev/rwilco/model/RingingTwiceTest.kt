@@ -6,6 +6,7 @@ import dev.rwilco.model.Fixtures.zone
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.Duration
 import java.time.Instant
@@ -71,23 +72,38 @@ class RingingTwiceTest {
     }
 
     @Test
-    fun `once the recurrence is in charge, a spent moment does not fall back to the triggers`() {
-        // "A las ocho todos los días, y luego cada seis horas." Dealt with at 08:05, so the
-        // recurrence took over and rang at 14:05; nobody answered. The daily trigger's job was
-        // the first ring only: handing the reminder back to it here would ring at eight
-        // tomorrow, which nobody asked for — what was asked for is six hours after the next
-        // "hecho", and until then the honest word is overdue.
-        val daily = Trigger.AtTime(LocalTime.of(8, 0), java.time.DayOfWeek.entries.toSet())
-        val dealt = local(2026, 8, 28, 8, 5)
-        val rang = dealt.plus(Duration.ofHours(6))
-        val ignored = everySixHours(daily, lastDealtAt = dealt, lastFiredAt = rang)
-        val now = rang.plusSeconds(30)
+    fun `dealt with, the rules rest for the span and then speak again`() {
+        // "Al llegar a casa, cada día." Dealt with at 19:30, at home: until nine the next
+        // morning nothing is armed and the place is not a ring; from nine the place speaks
+        // again — and it is the place that rings, on a fresh arrival, never the nine o'clock.
+        val home = Trigger.Location(40.4169, -3.7035, 200, Transition.ENTER, "Casa")
+        val dealt = local(2026, 8, 27, 19, 30)
+        val bins = Reminder(
+            id = "r3",
+            text = "Sacar la basura",
+            rules = listOf(TriggerRule(home)),
+            recurrence = Recurrence.After(1, RecurrenceUnit.DAYS),
+            createdAt = written,
+            updatedAt = written,
+            lastFiredAt = local(2026, 8, 27, 19, 0),
+            lastDealtAt = dealt,
+        )
+        assertEquals(local(2026, 8, 28, 9, 0), bins.restUntil(zone, dayStart), "the span, counted from the hecho")
+        assertNull(nextWake(bins, dealt.plusSeconds(60), zone, defaultTime, dayStart), "a place has no moment to arm, resting or not")
+        assertNull(nextWake(bins, local(2026, 8, 28, 12, 0), zone, defaultTime, dayStart))
+        assertTrue(nextFire(bins, local(2026, 8, 28, 12, 0), zone, defaultTime, dayStart) is NextFire.WhenAt, "and Home says: when you get there")
 
-        assertNull(nextWake(ignored, now, zone, defaultTime, dayStart), "the trigger has had its turn")
-        assertNull(nextFire(ignored, now, zone, defaultTime, dayStart))
-        // Before it was ever dealt with, the trigger is the one that speaks.
-        val fresh = everySixHours(daily)
-        assertEquals(local(2026, 8, 28, 8, 0), nextWake(fresh, written, zone, defaultTime, dayStart)?.at)
+        // A clock rule finds its first moment after the rest, not the recurrence's own.
+        val daily = Trigger.AtTime(LocalTime.of(8, 0), java.time.DayOfWeek.entries.toSet())
+        val pills = everySixHours(daily, lastDealtAt = local(2026, 8, 28, 8, 5), lastFiredAt = local(2026, 8, 28, 8, 0))
+        assertEquals(local(2026, 8, 29, 8, 0), nextWake(pills, local(2026, 8, 28, 8, 6), zone, defaultTime, dayStart)?.at, "eight tomorrow: the first moment past the six hours")
+
+        // With nothing left in the rules, the recurrence's moment is the ring — and, rung and
+        // ignored, it is spent like any other.
+        val once = Trigger.AtDateTime(java.time.LocalDateTime.of(2026, 8, 28, 8, 0))
+        val dose = everySixHours(once, lastDealtAt = local(2026, 8, 28, 8, 5), lastFiredAt = local(2026, 8, 28, 8, 0))
+        assertEquals(Wake(local(2026, 8, 28, 14, 5), null), nextWake(dose, local(2026, 8, 28, 8, 6), zone, defaultTime, dayStart))
+        assertNull(nextWake(dose.copy(lastFiredAt = local(2026, 8, 28, 14, 5)), local(2026, 8, 28, 14, 6), zone, defaultTime, dayStart))
     }
 
     @Test

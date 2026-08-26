@@ -668,4 +668,9 @@
         <item>The place sheet: a rotation while it was locating or searching no longer leaves it busy for ever, and the radius slider lands on the tick it shows. A countdown can no longer be set past a week and then refuse to save without a word. After eleven at night the date-time sheet offers tomorrow. A place condition being edited keeps its own place even if the saved one was renamed or deleted. Editing a built-in recurrence preset saves the edit. Saving a reminder that rang and was dealt with while the editor was open keeps the «done».</item>
         <item>Settings: «approximate» location says what is actually missing (the precise grant) instead of sending you round the background one; a look the watch has not yet taken says «ago», not «in».</item>
     </string-array>
+    <string-array name="whats_new_0_11_4">
+        <item>What a recurrence means for a place, put right. «When I get home, every day»: dealt with, the reminder rests until the span is up (tomorrow at your day\'s start hour), and then the place is armed again — and it rings on the next arrival, not at nine. The nine o\'clock never rings by itself when a place is waiting; 0.11.3 had stopped watching the place altogether, which was wrong.</item>
+        <item>A place that has rung is owed a leaving before it rings again. Neither a fix inside nor the phone\'s own geofence re-reading the line counts: the app has to have seen you outside since. To see that, the phone\'s geofences now report leavings as well as arrivals; a leaving is written down and never rings unless the rule is about leaving.</item>
+        <item>«At eight, and then every six hours» is unchanged: once a date has been, the recurrence\'s own moment is the ring.</item>
+    </string-array>
 </resources>

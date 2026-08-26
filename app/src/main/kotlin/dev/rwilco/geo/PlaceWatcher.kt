@@ -25,7 +25,7 @@ import dev.rwilco.model.Status
 import dev.rwilco.model.pendingRules
 import dev.rwilco.model.nextFireOfRule
 import dev.rwilco.model.openFrom
-import dev.rwilco.model.recurrenceInCharge
+import dev.rwilco.model.restUntil
 import dev.rwilco.model.windows
 import dev.rwilco.model.togetherRule
 import dev.rwilco.model.place
@@ -155,7 +155,9 @@ class PlaceWatcher(
     private suspend fun watching(): Watching {
         val now = clock.instant()
         val zone = clock.zone
-        val defaultTime = settings.settings.first().defaultTime
+        val current = settings.settings.first()
+        val defaultTime = current.defaultTime
+        val remembered = HashSet<String>()
         // A little before the hour it opens, so the first fix of a window is taken before
         // anything is judged by it rather than after.
         val soon = now + PlaceWatchPolicy.MIN_WAIT
@@ -165,13 +167,15 @@ class PlaceWatcher(
             if (gate > soon && (seen == null || gate < seen)) opens = gate
         }
         val places = repository.openNow()
-            .filter { it.status == Status.ACTIVE && !it.recurrenceInCharge }
+            .filter { it.status == Status.ACTIVE }
             .flatMap { reminder ->
                 val pending = reminder.pendingRules().toSet()
                 val folded = reminder.rules.indices.map { reminder.togetherRule(it) }
                 // A rule's moment cannot be asked before a snooze is over: the snooze rings
-                // instead, with no rule behind it and nothing asked.
-                val from = maxOf(now, reminder.snoozedUntil ?: now)
+                // instead, with no rule behind it and nothing asked. Nor before a rest is —
+                // dealt with and coming back on a span, the rules say nothing until it is up.
+                val rest = reminder.restUntil(zone, current.dayStart)
+                val from = maxOf(now, reminder.snoozedUntil ?: now, rest ?: now)
                 // When each pending clock rule next rings — the moment its own circles, and
                 // under "a la vez" every sibling place, are going to be asked about. A rule
                 // that cannot ring (a fold of two moments, a window that never holds) asks
@@ -194,18 +198,23 @@ class PlaceWatcher(
                     val fold = folded[index]
                     val place = rule.trigger as? Trigger.Location
                     val gate: Instant? = if (place != null) {
-                        // Its own hours (and, folded in, its siblings'). A fold that comes back
-                        // null is a crossing that can never ring — the circle is still watched,
-                        // quietly, because a sibling's moment is going to ask where the phone
-                        // is; but only from that moment's lead, and not at all if there is no
-                        // such moment.
+                        // Its own hours (and, folded in, its siblings'), and its rest. A fold
+                        // that comes back null is a crossing that can never ring — the circle
+                        // is still watched, quietly, because a sibling's moment is going to
+                        // ask where the phone is; but only from that moment's lead, and not
+                        // at all if there is no such moment.
                         val hours = (fold ?: rule).windows().openFrom(now, zone)
-                        when {
+                        val opens = when {
                             hours == null -> null
                             fold != null -> hours
                             soonestMoment == null -> null
                             else -> maxOf(hours, soonestMoment - PlaceWatchPolicy.ASK_LEAD)
                         }
+                        // A resting circle keeps its memory. Which side of the line the phone
+                        // was on is what decides whether the next crossing is an arrival, and
+                        // a place that has rung is owed a leaving before it rings again.
+                        if (opens != null && rest != null) remembered += GeofenceIds.encode(reminder.id, index, place)
+                        opens?.let { maxOf(it, rest ?: it) }
                     } else {
                         // A clock rule asks about its circles at its own next moment and at no
                         // other time.
@@ -247,11 +256,14 @@ class PlaceWatcher(
                     listOfNotNull(trigger) + asked
                 }
             }
-        return Watching(places, opens)
+        return Watching(places, opens, remembered)
     }
 
-    /** The circles worth a fix now, and when the next one that is not becomes worth one. */
-    private data class Watching(val places: List<WatchedPlace>, val opensAt: Instant?)
+    /**
+     * The circles worth a fix now, when the next one that is not becomes worth one, and the
+     * ids of circles that are resting and must keep the memory of which side the phone is on.
+     */
+    private data class Watching(val places: List<WatchedPlace>, val opensAt: Instant?, val remembered: Set<String>)
 
     /**
      * The list of places changed, or the app started: forget places that are gone, and look soon
@@ -273,12 +285,12 @@ class PlaceWatcher(
             // Nothing worth a fix now is not the same as nothing to watch: a set whose hours
             // open at five is worth waking for at five and worth nothing until then.
             val gate = watch.opensAt.takeIf { context.hasBackgroundLocation() }
-            store.write(current.copy(inside = emptyMap(), nextCheckAt = gate))
+            store.write(current.copy(inside = current.inside.filterKeys { it in watch.remembered }, nextCheckAt = gate))
             if (gate == null) cancel() else scheduleAt(gate)
             return@withLock
         }
         val ids = places.mapTo(HashSet()) { it.id }
-        val judged = current.inside.filterKeys { it in ids }
+        val judged = current.inside.filterKeys { it in ids || it in watch.remembered }
         val now = clock.instant()
         // Whichever comes first: what the store remembers, and what a stir already pulled
         // forward in this process (which the store will not have caught up with yet).
@@ -297,15 +309,23 @@ class PlaceWatcher(
     suspend fun accept(placeId: String, transition: Transition): Boolean = lock.withLock {
         val state = store.read()
         val now = clock.instant()
-        val label = runCatching { places().firstOrNull { it.id == placeId }?.label }.getOrNull()
-        if (!crossingIsNews(state, placeId, transition, now)) {
+        val live = runCatching { places().firstOrNull { it.id == placeId } }.getOrNull()
+        val label = live?.label ?: placeId
+        // A place that has already rung is owed a leaving before it rings again: the crossing
+        // has to be one the app has seen the other side of, and what it cannot vouch for is
+        // not news. The first ring keeps the benefit of the doubt.
+        val reminder = repository.get(GeofenceIds.reminderIdOf(placeId))
+        val strict = reminder?.lastFiredAt != null
+        if (!crossingIsNews(state, placeId, transition, now, strict = strict)) {
             Log.i(TAG, "geofence says $transition at $placeId, but we were already there")
-            log.note(WatchNote(at = now, kind = NoteKind.ECHO, place = label ?: placeId, inside = state.inside[placeId]))
+            log.note(WatchNote(at = now, kind = NoteKind.ECHO, place = label, inside = state.inside[placeId]))
             return@withLock false
         }
         store.write(state.remembering(placeId, transition))
-        log.note(WatchNote(at = now, kind = NoteKind.FENCE, place = label ?: placeId, inside = transition == Transition.ENTER))
-        true
+        log.note(WatchNote(at = now, kind = NoteKind.FENCE, place = label, inside = transition == Transition.ENTER))
+        // Written down either way; rung only for the crossing the rule waits for, and only
+        // while the circle is worth watching at all — not resting, not outside its hours.
+        live != null && live.fires && live.transition == transition
     }
 
     /**
@@ -362,10 +382,13 @@ class PlaceWatcher(
         val sensed = motion.consume()
         val rest = stepWithoutLooking(before, places, now, sensed, charge)
         val rested = rest?.plan
+        // What a step forgets — the circles it was not handed — is what a resting circle
+        // needs kept: see Watching.remembered.
+        val kept = before.inside.filterKeys { it in watch.remembered }
         if (rest != null && rested != null) {
             // Never past the moment another circle's hours open, for the same reason as below.
             val at = watch.opensAt?.coerceAtMost(now + rested.wait) ?: (now + rested.wait)
-            store.write(rest.state.copy(nextCheckAt = at))
+            store.write(rest.state.copy(inside = kept + rest.state.inside, nextCheckAt = at))
             scheduleAt(at, rested.gapM)
             Log.i(TAG, "nothing has moved; no fix taken, next look in ${Duration.between(now, at).toMinutes()} min")
             write(NoteKind.REST, now, rest.state, rested, rest.movement, charge)
@@ -396,7 +419,7 @@ class PlaceWatcher(
         val step = stepPlaceWatch(before, fix, places, now, sensed, charge)
         val plan = step.plan
         if (plan == null) {
-            store.write(step.state)
+            store.write(step.state.copy(inside = kept + step.state.inside))
             cancel()
             return
         }
@@ -406,7 +429,7 @@ class PlaceWatcher(
         // The next look is armed BEFORE anything rings. Ringing is the slow part of a look —
         // a notification, maybe a screen — and the receiver's budget is short; a look cut off
         // in the middle of it must already have left the watch its next link.
-        store.write(step.state.copy(nextCheckAt = at))
+        store.write(step.state.copy(inside = kept + step.state.inside, nextCheckAt = at))
         scheduleAt(at, plan.gapM)
         Log.i(TAG, "${plan.gapM.toInt()} m from ${plan.nearest.label}; next look in ${Duration.between(now, at).toMinutes()} min${if (plan.precise) " (gps)" else ""}")
         write(NoteKind.FIX, now, step.state, plan, step.movement, charge)

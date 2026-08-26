@@ -541,6 +541,11 @@ fun movementSince(previous: Fix?, fix: Fix, sensed: Boolean?, stillStreak: Int):
  * Anything the app cannot vouch for is news: no fix, a fix too old to speak for now, or a place
  * never judged. A crossing that reaches here was seen by the system, and ringing once too often
  * beats the reminder that never arrives.
+ *
+ * Except [strict], which is the reading for a place that has already rung: it rings *again*
+ * only for a crossing the app has seen the other side of — an arrival after the phone was
+ * seen outside, a leaving after it was seen inside — and what it cannot vouch for is then not
+ * news. The first ring is owed the benefit of the doubt; the second is owed a leaving.
  */
 fun crossingIsNews(
     state: PlaceWatchState,
@@ -548,7 +553,9 @@ fun crossingIsNews(
     transition: Transition,
     now: Instant,
     staleAfter: Duration = PlaceWatchPolicy.SPEED_MEMORY,
+    strict: Boolean = false,
 ): Boolean {
+    if (strict) return state.inside[placeId] == (transition == Transition.EXIT)
     val fix = state.lastFix ?: return true
     if (Duration.between(fix.at, now) > staleAfter) return true
     val inside = state.inside[placeId] ?: return true

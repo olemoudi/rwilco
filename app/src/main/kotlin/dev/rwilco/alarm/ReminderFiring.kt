@@ -22,7 +22,6 @@ import dev.rwilco.model.missedFire
 import dev.rwilco.model.momentRungFor
 import dev.rwilco.model.outcomeOfFiring
 import dev.rwilco.model.owedUnderAll
-import dev.rwilco.model.recurrenceInCharge
 import dev.rwilco.model.rulesCombine
 import dev.rwilco.model.statusAfterDismissal
 import dev.rwilco.notify.AlertNotifications
@@ -103,14 +102,6 @@ class ReminderFiring(
         // going off. A catch-up says [late] and is the app itself asking on purpose.
         val armed = reminder.armedFor
         val eventDriven = rule?.trigger is Trigger.Location
-        // The triggers say when it rings the first time and the recurrence when it comes back:
-        // once one is in charge, an arrival is not a ring. The clock's moments already answer
-        // this through nextWake (nothing of theirs is armed); a place has no armed moment to
-        // be refused by, so it is refused here.
-        if (eventDriven && reminder.recurrenceInCharge) {
-            Log.i(TAG, "$id is on its recurrence now; a crossing does not ring it")
-            return@withLock
-        }
         if (!eventDriven && late == null && (armed == null || armed > now.plusSeconds(EARLY_GRACE_SECONDS))) {
             Log.i(TAG, "$id has nothing armed for now (armed=$armed); ignoring a stray firing")
             return@withLock

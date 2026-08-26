@@ -11,7 +11,6 @@ import com.google.android.gms.location.LocationServices
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.model.Status
 import dev.rwilco.model.pendingRules
-import dev.rwilco.model.recurrenceInCharge
 import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -45,8 +44,7 @@ class GeofenceManager(
 
     suspend fun sync(): GeofenceState {
         val places = repository.openNow()
-            // Once a recurrence is in charge the rules are not asked again, a place among them.
-            .filter { it.status == Status.ACTIVE && !it.recurrenceInCharge }
+            .filter { it.status == Status.ACTIVE }
             .flatMap { reminder ->
                 // Only the rules still waiting to happen. Under "todos" a place that has
                 // already been ticked off has nothing left to report, and a geofence is not
@@ -76,9 +74,12 @@ class GeofenceManager(
                 .setRequestId(id)
                 .setCircularRegion(place.lat, place.lng, place.radiusM.toFloat())
                 .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                .setTransitionTypes(
-                    if (place.transition == Transition.ENTER) Geofence.GEOFENCE_TRANSITION_ENTER else Geofence.GEOFENCE_TRANSITION_EXIT,
-                )
+                // Both crossings, whichever the rule waits for: the other one is what tells the
+                // place watch the phone has been on the far side of the line, which is what a
+                // place that has already rung is owed before it may ring again — and the
+                // system sees a leaving the watch's own hourly look would miss. The receiver
+                // only rings the one the rule asked for; the other is written down.
+                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT)
                 // A place reminder that fires the instant a GPS fix wobbles across the line is
                 // worse than one that fires half a minute late, and the responsiveness is what
                 // buys that: Play Services is allowed to take a minute to be sure. (The
