@@ -125,7 +125,7 @@ fun buildHomeState(
     }
     val groups = groupForHome(reminders, now, zone, defaultTime, filter, dayStart, shape)
     fun card(reminder: Reminder): ReminderCardUi {
-        val standings = reminder.ruleStandings(now, zone) { index -> inside(reminder.id, index) }
+        val standings = reminder.ruleStandings(now, zone, dayStart) { index -> inside(reminder.id, index) }
         return ReminderCardUi(
             id = reminder.id,
             text = reminder.text,

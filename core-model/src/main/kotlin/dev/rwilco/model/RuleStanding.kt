@@ -1,6 +1,7 @@
 package dev.rwilco.model
 
 import java.time.Instant
+import java.time.LocalTime
 import java.time.ZoneId
 
 /**
@@ -35,11 +36,26 @@ enum class RuleStanding {
  * set read as "either of them", or a moment under TOGETHER, which is not a state but the thing
  * that rings when the states around it hold.
  *
+ * **A resting set has no standings at all.** Dealt with and coming back on a span, its rules
+ * are not being asked: no circle of theirs is watched, no window of theirs is judged, and what
+ * it is waiting for is the rest — which the card's own recurrence row already says. A mark
+ * there would be an answer to a question nobody put, and the place ones would be worse than
+ * that: the watch keeps a resting circle's last judgement on purpose (`Watching.remembered`,
+ * so a place that has rung is owed a leaving before it rings again), and reading that as
+ * "no se cumple ahora mismo" states last night's memory as this minute's fact.
+ *
  * [inside] answers "is the phone inside rule `index`'s circle?", or null when nothing knows;
  * only the app can say, and only from the place watch's last fix.
  */
-fun Reminder.ruleStandings(now: Instant, zone: ZoneId, inside: (Int) -> Boolean? = { null }): List<RuleStanding?> {
+fun Reminder.ruleStandings(
+    now: Instant,
+    zone: ZoneId,
+    dayStart: LocalTime = DEFAULT_DAY_START,
+    inside: (Int) -> Boolean? = { null },
+): List<RuleStanding?> {
     if (!rulesCombine) return rules.map { null }
+    val rest = restUntil(zone, dayStart)
+    if (rest != null && rest > now) return rules.map { null }
     return rules.mapIndexed { index, rule ->
         when (ruleMatch) {
             RuleMatch.ALL -> if (index in firedRules) RuleStanding.DONE else RuleStanding.PENDING

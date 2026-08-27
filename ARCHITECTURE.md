@@ -207,6 +207,11 @@ strict is asking somebody to remember how they spelled it.
   because that is the whole difference between the two words, and it was invisible: a card said
   "todos" and nothing about what it was still waiting for. A moment under TOGETHER gets no mark
   — it is not a state, it is what rings when the states around it hold — and neither does ANY.
+  **A resting set gets none either** (`restUntil`): dealt with and coming back on a span, its
+  rules are not being asked at all, and what it waits for is the rest, which the recurrence row
+  already says. The place marks would be worse than merely idle — the watch keeps a resting
+  circle's last judgement on purpose (`Watching.remembered`), so a mark there stated last
+  night's memory as this minute's fact.
 - A card shows one row per rule, and — when the recurrence works out its own moments
   (`After`, `MonthlyWeekday`) — a row for that too, last, because that is the order the two
   answer in. It is the only way a reminder whose whole arrangement is "cada 6 h" says anything

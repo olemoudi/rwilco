@@ -5,6 +5,7 @@ import dev.rwilco.model.Fixtures.zone
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.LocalTime
 
 /**
@@ -73,5 +74,37 @@ class RuleStandingTest {
     fun `a moment has no standing under a la vez, because it is what rings`() {
         val set = reminder(RuleMatch.TOGETHER, nineAm, afternoon)
         assertEquals(listOf(null, RuleStanding.HOLDING), set.ruleStandings(now, zone))
+    }
+
+    @Test
+    fun `a resting set says nothing about any of its rules`() {
+        // The card that started this: "al llegar a casa, entre las 19:00 y las 21:30, cada
+        // semana desde que lo marcas hecho", dealt with and back in a week. Until then no
+        // circle of it is watched and no window of it is judged.
+        val resting = reminder(RuleMatch.TOGETHER, office, evening).copy(
+            recurrence = Recurrence.After(1, RecurrenceUnit.WEEKS),
+            lastDealtAt = now,
+        )
+        assertEquals(listOf(null, null), resting.ruleStandings(now, zone))
+        // Quiet even with an answer to hand: the watch keeps a resting circle's last
+        // judgement for its own bookkeeping, and that memory is not the card's to state.
+        assertEquals(listOf(null, null), resting.ruleStandings(now, zone) { true })
+    }
+
+    @Test
+    fun `a rest that is over gives the marks back`() {
+        val over = reminder(RuleMatch.TOGETHER, office, afternoon).copy(
+            recurrence = Recurrence.After(1, RecurrenceUnit.WEEKS),
+            lastDealtAt = now.minus(Duration.ofDays(14)),
+        )
+        assertEquals(RuleStanding.HOLDING, over.ruleStandings(now, zone) { true }[0])
+        assertEquals(RuleStanding.HOLDING, over.ruleStandings(now, zone) { true }[1], "15:00 is inside 14-18")
+    }
+
+    @Test
+    fun `a set with no recurrence rests never`() {
+        // Dealt with once and not asked back: nothing is resting, so the marks stand.
+        val plain = reminder(RuleMatch.TOGETHER, office, afternoon).copy(lastDealtAt = now)
+        assertEquals(RuleStanding.NOT_HOLDING, plain.ruleStandings(now, zone) { false }[0])
     }
 }
