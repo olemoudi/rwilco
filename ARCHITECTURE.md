@@ -453,6 +453,22 @@ strict is asking somebody to remember how they spelled it.
   either falls back to the banner, which is what the system does on its own, and Settings says
   so. The decision itself is a pure function with JVM tests. "Hecho" finishes
   a one-shot and leaves anything that can come round again.
+- **What the shade actually shows** (`AlertNotifications`): the reminder's words as the title and
+  again as `BigTextStyle` so nothing is cut when it opens, the tags under it, three actions
+  ("Hecho", ten minutes, two hours — three is what a notification shows), the amber on the glyph
+  and the app-name line (`AMBER_ARGB`, the one place that cannot ask a Compose theme for a colour
+  because it is built in a receiver), and the time. A missed one counts *up* from the moment it
+  should have rung — "this should have reached you an hour and ten minutes ago" is the whole
+  point of that notification, and a bare timestamp makes somebody work it out. One asked to
+  insist (`SOUND_UNTIL_ANSWERED`) is `setOngoing`, so the half-asleep swipe that clears the shade
+  cannot take it; everything else stays swipeable, because most reminders are read and let go.
+  All of them join one bundle with a summary line, and **the summary comes down only when there
+  is nothing left**: cancelling a group's summary cancels its surviving children too, so pulling
+  it at "fewer than two" — the reading that sounds right — cleared the shade of an alert somebody
+  still had to deal with. `NotificationBundleTest` found that and holds the door shut. There is
+  nothing above `IMPORTANCE_HIGH` + `PRIORITY_HIGH` + `CATEGORY_ALARM` for an ordinary
+  notification; anything more prominent than this means `MessagingStyle` conversations or
+  `CallStyle`, which are a different kind of thing to be.
 - `AlertNotifications` has one channel per sound/vibration combination, because a channel's
   sound is fixed the moment it is created — which is also how the vibration setting reaches a
   notification: the chosen rhythm is part of the channel id, so changing it means a different

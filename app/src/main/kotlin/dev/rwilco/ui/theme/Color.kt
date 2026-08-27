@@ -14,6 +14,16 @@ import androidx.compose.ui.graphics.Color
  */
 
 private val Amber = Color(0xFFFFB454)
+
+/**
+ * The amber, as a plain colour integer, for the one place that cannot ask a Compose theme for
+ * it: a notification is built in a broadcast receiver with no composition to read from.
+ *
+ * Here rather than in `colors.xml` so the app is one colour and not two that have to be kept
+ * saying the same thing. It is the dark scheme's amber on purpose — a notification is drawn on
+ * the system's own surface, not on ours, and this is the value that reads on it either way.
+ */
+const val AMBER_ARGB: Int = 0xFFFFB454.toInt()
 private val AmberDeep = Color(0xFFB86E00)
 private val OnAmber = Color(0xFF2A1B00)
 private val AmberContainerDark = Color(0xFF3D2A05)

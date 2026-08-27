@@ -22,6 +22,7 @@ import dev.rwilco.model.Snooze
 import dev.rwilco.model.VibrationPattern
 import dev.rwilco.model.key
 import dev.rwilco.model.notificationPattern
+import dev.rwilco.ui.theme.AMBER_ARGB
 import java.time.Instant
 
 /**
@@ -41,6 +42,16 @@ import java.time.Instant
 object AlertNotifications {
 
     private const val GROUP = "alerts"
+
+    /**
+     * The bundle every alert joins, and the id of the one line that stands for the bundle.
+     *
+     * Not the same thing as [GROUP], which is the *channel* group — the heading in the system's
+     * own settings. This is the shade's own bundling: five reminders that come due while
+     * somebody is out should be one thing to pull down, not five things to scroll past.
+     */
+    private const val BUNDLE = "dev.rwilco.alerts"
+    private const val SUMMARY_ID = 1
     // v2: every alert channel carries alarm audio attributes, silent ones included, and the
     // live alert is CATEGORY_ALARM — which is what lets Do Not Disturb tell an alarm from a chat.
     private const val VERSION = "v2"
@@ -101,6 +112,20 @@ object AlertNotifications {
             .setContentIntent(open)
             .setAutoCancel(false)
             .setOnlyAlertOnce(false)
+            // The amber, which is the app's one word for "this is what fires next" — said here
+            // on the glyph and on the line that carries the app's name, which is all of a
+            // notification the system lets an app colour.
+            .setColor(AMBER_ARGB)
+            .setGroup(BUNDLE)
+            // The children make the noise and the summary never does. Without this the bundle
+            // announces itself as well, which is the same alarm twice.
+            .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
+            // When it rang, said outright. On a missed one it counts up instead — "this should
+            // have reached you an hour and ten minutes ago" is the whole point of the missed
+            // notification, and a bare timestamp makes somebody work it out.
+            .setShowWhen(true)
+            .setWhen((late ?: Instant.now()).toEpochMilli())
+            .setUsesChronometer(late != null)
             // An alarm to the system, not a reminder: Do Not Disturb lets alarms through by
             // default and holds reminders back by default, and this is the one that must arrive.
             .setCategory(if (late != null) NotificationCompat.CATEGORY_REMINDER else NotificationCompat.CATEGORY_ALARM)
@@ -127,11 +152,55 @@ object AlertNotifications {
         // own decision on top of that — see AlertPresenter: an app open in front of somebody
         // gets the banner and nothing else.
         if (fullScreen && late == null) builder.setFullScreenIntent(open, true)
-        runCatching { NotificationManagerCompat.from(context).notify(notificationId(reminder.id), builder.build()) }
+        // "Hasta que reciba caso" means what it says: this one cannot be flicked away in the
+        // half-asleep swipe that clears the shade. Everything else stays swipeable, because
+        // most reminders are read and let go and pinning those would be nagging.
+        if (plan.insistent && late == null) builder.setOngoing(true)
+        runCatching {
+            NotificationManagerCompat.from(context).notify(notificationId(reminder.id), builder.build())
+            syncSummary(context)
+        }
     }
 
     fun cancel(context: Context, reminderId: String) {
-        runCatching { NotificationManagerCompat.from(context).cancel(notificationId(reminderId)) }
+        runCatching {
+            NotificationManagerCompat.from(context).cancel(notificationId(reminderId))
+            syncSummary(context)
+        }
+    }
+
+    /**
+     * The one line that stands for the bundle, kept saying the truth about what is under it.
+     *
+     * **It is taken down only when there is nothing left**, and that is not a style choice:
+     * cancelling a group's summary takes the group's surviving children with it. Pulling it at
+     * "fewer than two", which is the reading that sounds right, cleared the shade of the alert
+     * somebody still had to deal with — found by [NotificationBundleTest], which now holds the
+     * door shut.
+     *
+     * A single child under a summary is not a problem to solve either: Android draws that group
+     * as the child alone. So the rule is the simple one — say how many there are while there are
+     * any — and the count comes from what is actually posted, since a notification can go by
+     * being swiped as well as by [cancel].
+     */
+    private fun syncSummary(context: Context) {
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        val children = manager.activeNotifications.count { it.id != SUMMARY_ID && it.notification.group == BUNDLE }
+        if (children == 0) {
+            NotificationManagerCompat.from(context).cancel(SUMMARY_ID)
+            return
+        }
+        val summary = NotificationCompat.Builder(context, CHANNEL_MISSED)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setColor(AMBER_ARGB)
+            .setContentTitle(context.resources.getQuantityString(R.plurals.notif_summary, children, children))
+            .setGroup(BUNDLE)
+            .setGroupSummary(true)
+            .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .build()
+        NotificationManagerCompat.from(context).notify(SUMMARY_ID, summary)
     }
 
     fun notificationId(reminderId: String): Int = reminderId.hashCode()

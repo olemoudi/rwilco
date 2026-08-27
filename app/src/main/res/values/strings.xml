@@ -1045,4 +1045,8 @@
         <item quantity="one">%1$d time</item>
         <item quantity="other">%1$d times</item>
     </plurals>
+    <plurals name="notif_summary">
+        <item quantity="one">%1$d reminder</item>
+        <item quantity="other">%1$d reminders</item>
+    </plurals>
 </resources>

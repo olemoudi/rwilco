@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Status-bar icon: the lamp, in the single colour the system tints. -->
+<!--
+  Status-bar icon: the lamp, in the single colour the system tints.
+
+  A ring and a core, both solid. It used to be two filled circles with the outer one at 40%
+  alpha, which is a legitimate way to draw a halo and the wrong way to draw a status-bar icon:
+  the system hands this to a 24dp slot on a busy strip, and a soft edge at 40% there is not a
+  halo, it is a smudge. A stroked ring holds its shape at that size.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
@@ -7,9 +14,10 @@
     android:viewportHeight="24">
     <path
         android:fillColor="#FFFFFFFF"
-        android:fillAlpha="0.4"
-        android:pathData="M12,12m-10,0a10,10 0 1,1 20,0a10,10 0 1,1 -20,0" />
-    <path
-        android:fillColor="#FFFFFFFF"
         android:pathData="M12,12m-6,0a6,6 0 1,1 12,0a6,6 0 1,1 -12,0" />
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.75"
+        android:fillColor="#00000000"
+        android:pathData="M12,12m-9.1,0a9.1,9.1 0 1,1 18.2,0a9.1,9.1 0 1,1 -18.2,0" />
 </vector>
