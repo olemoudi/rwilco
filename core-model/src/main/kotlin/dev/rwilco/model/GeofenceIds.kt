@@ -46,7 +46,17 @@ object GeofenceIds {
     fun triggerIndexOf(geofenceId: String): Int? =
         geofenceId.substringAfter(SEPARATOR, missingDelimiterValue = "").substringBefore(CIRCLE).toIntOrNull()
 
-    /** Five decimals is about a metre: the same pin however the number was rounded on the way. */
+    /**
+     * The geometry alone, without which side of it anybody is waiting for.
+     *
+     * Five decimals is about a metre: the same pin however the number was rounded on the way.
+     * It is public because it is also how a circle is recognised *backwards* — a condition
+     * carries a place but no id, and this is what finds the watch's memory of that place (see
+     * `PlaceWatchState.sideOf`).
+     */
+    fun circleKey(lat: Double, lng: Double, radiusM: Int): String =
+        String.format(Locale.ROOT, "%.5f,%.5f,%d", lat, lng, radiusM)
+
     private fun circle(lat: Double, lng: Double, radiusM: Int, way: Char): String =
-        String.format(Locale.ROOT, "%.5f,%.5f,%d,%c", lat, lng, radiusM, way)
+        circleKey(lat, lng, radiusM) + "," + way
 }

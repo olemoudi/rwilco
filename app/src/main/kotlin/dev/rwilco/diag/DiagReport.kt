@@ -154,6 +154,7 @@ fun Diagnostics.report(): String = buildString {
             appendLine(
                 "${note.at.atZone(zone).format(short)} ${note.kind.name.padEnd(5)}" +
                     (note.gapM?.let { " gap=${it.toInt()}m" } ?: "") +
+                    (note.accuracyM?.let { " acc=${it}m" } ?: "") +
                     (note.inside?.let { " inside=${yes(it)}" } ?: "") +
                     (note.speedMps?.let { " v=${fixed(it, 1)}" } ?: "") +
                     (note.waitS?.let { " next=${it / 60}m" } ?: "") +

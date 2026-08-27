@@ -27,6 +27,8 @@ import dev.rwilco.model.missedFire
 import dev.rwilco.model.momentRungFor
 import dev.rwilco.model.outcomeOfFiring
 import dev.rwilco.model.owedUnderAll
+import dev.rwilco.model.holdsAt
+import dev.rwilco.model.sideOf
 import dev.rwilco.model.presenceAlreadyRang
 import dev.rwilco.model.rulesCombine
 import dev.rwilco.model.statusAfterDismissal
@@ -240,8 +242,25 @@ class ReminderFiring(
         val (places, hours) = asked.partition { it is Condition.AtPlace }
         if (!hours.allHoldAt(now, clock.zone)) return false
         if (places.isEmpty()) return true
-        val where = placeWatch.read().lastFix?.takeIf { Duration.between(it.at, now) <= PlaceWatchPolicy.SPEED_MEMORY }
-        return places.allHoldAt(now, clock.zone, where)
+        val watch = placeWatch.read()
+        val where = watch.lastFix?.takeIf { Duration.between(it.at, now) <= PlaceWatchPolicy.SPEED_MEMORY }
+        // **Ask the watch, not the fix.** The watch keeps which side of every circle it last saw
+        // the phone on, and that memory knows two things a raw measurement does not: what the
+        // system's geofences reported (a crossing writes straight into it, with no fix of its
+        // own) and which way its own doubt was resolved. Measuring the fix again instead was a
+        // second, worse opinion — and on a fifty-metre circle, the tightest the app allows and
+        // smaller than an ordinary network fix is accurate, it resolved to "yes" wherever the
+        // phone was. A reminder rang twenty minutes after the phone's geofences had said the
+        // phone had gone.
+        //
+        // Only while a fix still speaks for now, though. Past that the memory is old news like
+        // everything else, and the house rule takes over: what nobody can vouch for holds,
+        // because the failure somebody notices is the one that never arrives.
+        return places.all { condition ->
+            val circle = condition as Condition.AtPlace
+            val remembered = if (where != null) watch.sideOf(circle.lat, circle.lng, circle.radiusM) else null
+            if (remembered != null) remembered == circle.inside else condition.holdsAt(now, clock.zone, where)
+        }
     }
 
     /**

@@ -156,4 +156,40 @@ class PlaceConditionTest {
         val rules = listOf(TriggerRule(nineAm, listOf(home, evening)))
         assertEquals(rules, ReminderCodec.decodeRules(ReminderCodec.encodeRules(rules)))
     }
+
+    // ---- what the watch remembers, which is what a firing should ask --------------------
+
+    @Test
+    fun `the watch is asked about a circle by its geometry, not by whose rule it is`() {
+        // The same doorway is watched under a different id by every rule that names it, and by
+        // both sides of it. They are all the same question about the same place, and a
+        // condition carries the place without an id to look it up by.
+        val home = Trigger.Location(40.4169, -3.7035, 50, Presence.INSIDE, "Casa")
+        val leaving = home.copy(presence = Presence.OUTSIDE)
+        val state = PlaceWatchState(
+            inside = mapOf(
+                GeofenceIds.encode("r1", 0, home) to false,
+                GeofenceIds.encode("r2", 3, leaving) to false,
+            ),
+        )
+        assertEquals(false, state.sideOf(40.4169, -3.7035, 50))
+        // A circle nobody has judged has no answer, which is not the same as "outside".
+        assertNull(state.sideOf(40.4169, -3.7035, 150), "a different circle is a different question")
+        assertNull(PlaceWatchState().sideOf(40.4169, -3.7035, 50))
+    }
+
+    @Test
+    fun `a fix sloppier than the circle cannot overrule what the watch saw`() {
+        // The evening this is about. A fifty-metre circle is the tightest the app allows and is
+        // smaller than an ordinary network fix is accurate, so measuring the fix against it
+        // resolves to "yes" wherever the phone is — which is what rang a reminder at somebody
+        // twenty minutes after their own geofences had said they had gone.
+        val casa = Condition.AtPlace(40.4169, -3.7035, 50, "Casa", inside = true)
+        val vague = Fix(40.4169, -3.7035, accuracyM = 80.0, at = now)
+        assertTrue(casa.holdsAt(now, zone, vague), "measured against the fix, the fence is a no-op")
+
+        val home = Trigger.Location(40.4169, -3.7035, 50, Presence.INSIDE, "Casa")
+        val gone = PlaceWatchState(lastFix = vague, inside = mapOf(GeofenceIds.encode("r1", 0, home) to false))
+        assertEquals(false, gone.sideOf(casa.lat, casa.lng, casa.radiusM), "the watch knew")
+    }
 }

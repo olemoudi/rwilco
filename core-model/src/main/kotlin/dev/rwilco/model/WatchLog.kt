@@ -63,6 +63,15 @@ data class WatchNote(
     val stillStreak: Int = 0,
     /** Battery left, 0..100; null while charging or when the phone would not say. */
     val charge: Int? = null,
+    /**
+     * How wide the doubt on this fix was, in metres.
+     *
+     * Not diagnostics for their own sake: it is the number that says whether a circle could be
+     * judged at all. A fifty-metre circle read off a fix accurate to eighty is not a judgement,
+     * and without this in the log a false ring and a real one look identical afterwards — which
+     * is exactly where an evening went once.
+     */
+    val accuracyM: Int? = null,
     /** Whether the GPS was asked for. */
     val precise: Boolean = false,
 ) {

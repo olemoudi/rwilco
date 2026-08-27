@@ -428,6 +428,7 @@ class PlaceWatcher(
                 sensed = movement.sensed,
                 stillStreak = state.stillStreak,
                 charge = charge?.let { (it * 100).roundToInt() },
+                accuracyM = state.lastFix?.accuracyM?.roundToInt(),
                 precise = plan?.precise ?: false,
             ),
         )

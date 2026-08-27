@@ -629,6 +629,27 @@ fun crossingIsNews(
     return inside != (transition == Transition.ENTER)
 }
 
+/**
+ * Which side of a circle the watch last saw the phone on, or null when it has never judged one.
+ *
+ * **This is what a firing should ask, and for a while did not.** A place condition carries a
+ * circle but no id, so `ReminderFiring` used to answer it by measuring the last raw fix against
+ * the circle — a second, worse opinion about a question this map already holds the answer to.
+ * Worse in two ways: it knows nothing of the geofences (a crossing the system reported writes
+ * straight in here, with no fix of its own), and it has to resolve its own doubt, which it does
+ * towards "yes" whenever the fix is sloppier than the circle. A fifty-metre circle — the
+ * tightest the app allows — is smaller than an ordinary network fix is accurate, so "y sólo si
+ * estoy en casa" quietly became "always" on the tightest circles somebody could draw. It rang a
+ * reminder twenty minutes after the phone's own geofences had said the phone left.
+ *
+ * Matched on the geometry, because the same circle is watched under a different id by every
+ * rule that names it, and by both sides: they are all the same question about the same place.
+ */
+fun PlaceWatchState.sideOf(lat: Double, lng: Double, radiusM: Int): Boolean? {
+    val key = GeofenceIds.circleKey(lat, lng, radiusM)
+    return inside.entries.firstOrNull { it.key.contains(key) }?.value
+}
+
 /** The same crossing written down, so the eye that saw it second knows it is old news. */
 fun PlaceWatchState.remembering(placeId: String, transition: Transition): PlaceWatchState =
     copy(inside = inside + (placeId to (transition == Transition.ENTER)))
