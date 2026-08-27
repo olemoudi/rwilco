@@ -101,7 +101,7 @@ class BackupTourTest {
     fun theHomeBadgeCountsWhatIsWaiting() {
         // Nothing is navigated: the rule starts at Home, and turning the vault on from under it
         // is what the badge is for — it appears because this vault has never copied anything.
-        rule.waitUntilShown(s(R.string.home_title))
+        rule.waitUntilShown(s(R.string.app_name))
         runBlocking {
             app.vaultStore.update {
                 it.copy(enabled = true, owner = "olemoudi", repo = "rwilco-vault", pat = "x", key = "a2V5", salt = "c2FsdA==", deviceId = "tour")

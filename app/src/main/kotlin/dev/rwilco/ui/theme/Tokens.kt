@@ -53,6 +53,12 @@ data class Sizes(
     val keycap: Dp = 36.dp,
     /** The small square that carries a section's icon. */
     val badge: Dp = 28.dp,
+    /**
+     * The cog beside the wordmark on Home: the one glyph on the screen drawn larger than the
+     * ordinary 24dp, because it and the name are a single control and it has to look like the
+     * way in rather than like the fourth icon in a row of four.
+     */
+    val cog: Dp = 32.dp,
     /** The clock column down the left of the location log, so every row's numbers line up. */
     val logTime: Dp = 52.dp,
 )

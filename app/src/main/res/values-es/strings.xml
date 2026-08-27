@@ -50,12 +50,9 @@
     <string name="settings_default_actions_hint">Lo que viene activado al empezar un recordatorio desde cero. Cada recordatorio se puede cambiar por su cuenta.</string>
 
     <!-- Home -->
-    <string name="home_title">Hoy</string>
     <string name="home_new">Nuevo</string>
     <string name="home_next_up">Lo siguiente</string>
     <string name="home_next_up_snoozed">Pospuesto hasta</string>
-    <string name="home_refresh">Actualizar</string>
-    <string name="home_refreshed">Actualizado</string>
     <string name="home_done_list">Recordatorios hechos</string>
     <string name="home_settings">Ajustes</string>
     <string name="home_all_tags">Todo</string>

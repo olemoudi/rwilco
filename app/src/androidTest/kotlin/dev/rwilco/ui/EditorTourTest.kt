@@ -149,6 +149,20 @@ class EditorTourTest {
             shot(name)
             // The four readings of a circle out of two controls: the switch relabels the
             // segments, so what is on screen is always one of the four things people say.
+            // A sheet no longer settles into "hidden", so a fling that runs out of content
+            // cannot take a half-filled form with it. The ways out that MEAN it have to still
+            // work, and the back gesture is the one that goes through the sheet rather than
+            // through a button of ours — so it is the one worth pinning. On the window sheet
+            // because it opens instantly; the place one spends six seconds on map tiles.
+            if (kind == R.string.kind_interval) {
+                rule.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+                rule.waitUntilGone(s(R.string.sheet_cancel))
+                // Back closes the picker behind it too, so the way in is the button again.
+                text(s(R.string.editor_add_trigger)).performScrollTo().performClick()
+                rule.waitUntilShown(s(R.string.kind_date))
+                text(s(R.string.kind_interval)).performClick()
+                rule.waitUntilDisplayed(s(R.string.sheet_cancel))
+            }
             if (kind == R.string.kind_place) {
                 text(s(R.string.place_side_inside)).performScrollTo().assertIsDisplayed()
                 text(s(R.string.place_needs_crossing)).performScrollTo().performClick()

@@ -49,7 +49,6 @@ sealed interface HomeEvent {
         enum class Kind { DONE, DELETED }
     }
 
-    data object Refreshed : HomeEvent
 
     /** A preset was turned into a reminder in one tap; the snackbar offers to undo it. */
     data class Created(val reminder: Reminder, val preset: Preset) : HomeEvent
@@ -151,7 +150,14 @@ class HomeViewModel(
     private val selectedTag = MutableStateFlow<TagFilter?>(null)
     private val searching = MutableStateFlow(false)
     private val query = MutableStateFlow("")
-    private val refreshTick = MutableStateFlow(clock.instant())
+    /**
+     * The seed the minute pulse has not produced yet.
+     *
+     * It was the manual "actualizar" tick until that button went; what it still does is give
+     * [combine] a value to work with before [minutePulse]'s first delay is up, which is the
+     * difference between Home drawing at once and Home drawing in a minute's time.
+     */
+    private val startTick = MutableStateFlow(clock.instant())
     private val events = Channel<HomeEvent>(Channel.BUFFERED)
     val eventFlow: Flow<HomeEvent> = events.receiveAsFlow()
 
@@ -167,15 +173,15 @@ class HomeViewModel(
         repository.open,
         settings.filterNotNull(),
         selectedTag,
-        // refreshTick is a StateFlow, so the merge has a value from the first collection on.
-        merge(refreshTick, minutePulse),
+        // startTick is a StateFlow, so the merge has a value from the first collection on.
+        merge(startTick, minutePulse),
         // Which circles the phone is in, as the watch last saw it: the rule marks read it, and
         // it changes on its own, which is what makes a mark change back.
         placeWatch,
     ) { reminders, current, tag, _, watch ->
-        // The ticks only say WHEN to rebuild; the moment is read fresh. refreshTick is a
+        // The ticks only say WHEN to rebuild; the moment is read fresh. startTick is a
         // StateFlow, and on every resubscription — the app coming back after five seconds
-        // away — it replays its last value, which was the instant of the last refresh, hours
+        // away — it replays its last value, the instant the ViewModel was made, possibly hours
         // ago: Home was built for a morning that had passed until the next minute tick.
         buildHomeState(reminders, current.defaultTime, clock.instant(), clock.zone, tag, current.dayStart, current.dayShape) { id, index ->
             insideOf(reminders, watch, id, index)
@@ -214,10 +220,6 @@ class HomeViewModel(
         query.value = text
     }
 
-    fun refresh() {
-        refreshTick.value = clock.instant()
-        events.trySend(HomeEvent.Refreshed)
-    }
 
     /** Tapping the selected chip again clears the filter. */
     fun selectTag(tag: TagFilter?) {

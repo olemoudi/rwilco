@@ -1,6 +1,7 @@
 package dev.rwilco.ui.home
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,6 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -20,7 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Lightbulb
-import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.Settings
@@ -38,8 +40,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -47,15 +51,13 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.rwilco.R
 import dev.rwilco.model.Section
+import dev.rwilco.model.TagFilter
 import dev.rwilco.ui.components.EmptyState
 import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.ui.components.SectionHeader
-import dev.rwilco.model.TagFilter
 import dev.rwilco.ui.components.TagChip
 import dev.rwilco.ui.components.rememberNow
-import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.currentLocale
-import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.tagColor
 
@@ -81,7 +83,6 @@ fun HomeScreen(
     val snackbar = LocalSnackbar.current
     val doneMessage = stringResource(R.string.home_marked_done)
     val deletedMessage = stringResource(R.string.home_deleted)
-    val refreshedMessage = stringResource(R.string.home_refreshed)
     val undoLabel = stringResource(R.string.common_undo)
     val swipeDoneLabel = stringResource(R.string.card_swipe_done)
     val swipeDeleteLabel = stringResource(R.string.card_swipe_delete)
@@ -95,7 +96,6 @@ fun HomeScreen(
                     undoLabel = undoLabel,
                     onUndo = { viewModel.undo(event) },
                 )
-                HomeEvent.Refreshed -> snackbar.show(refreshedMessage)
                 is HomeEvent.Created -> snackbar.show(
                     message = createdMessage,
                     undoLabel = undoLabel,
@@ -199,9 +199,7 @@ fun HomeScreen(
                     )
                 } else {
                     Header(
-                        today = today,
                         onSearch = { viewModel.setSearching(true) },
-                        onRefresh = viewModel::refresh,
                         onDoneList = onDoneList,
                         onSettings = onSettings,
                     )
@@ -322,41 +320,59 @@ private val Section.titleRes: Int
         Section.PAUSED -> R.string.home_section_paused
     }
 
+/**
+ * The name, the way into the settings, and the two lists this screen is not.
+ *
+ * It used to be "Hoy" over the date in mono, which is two lines saying something the phone's own
+ * status bar says better and the sections below say again — "Vencidos", "Hoy", "Mañana" are
+ * where the day actually lives. So the corner says whose screen this is instead, and the cog
+ * that used to be the fourth of four icons in the far corner comes and stands next to it.
+ *
+ * **The name and the cog are one control**, not a label beside a button: there is nothing else
+ * this corner has ever done, so anything a thumb lands on here means "ajustes" — a target the
+ * width of the wordmark rather than 48 square points. The cog is drawn larger than the ordinary
+ * glyph ([Sizes.cog]) so it reads as the way in rather than as one more thing in a row.
+ */
 @Composable
 private fun Header(
-    today: java.time.LocalDate,
     onSearch: () -> Unit,
-    onRefresh: () -> Unit,
     onDoneList: () -> Unit,
     onSettings: () -> Unit,
 ) {
     val locale = currentLocale()
-    Row(verticalAlignment = Alignment.Top) {
-        Column(modifier = Modifier.weight(1f)) {
-            // The app's own name was a line of decoration on the app's own screen; the row it
-            // took is worth more as somewhere to put the shapes you reach for.
-            Text(stringResource(R.string.home_title), style = MaterialTheme.typography.headlineLarge)
-            Spacer(Modifier.height(Tokens.spacing.xs))
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clip(MaterialTheme.shapes.small)
+                .clickable(role = Role.Button, onClick = onSettings)
+                .heightIn(min = Tokens.sizes.touch)
+                .padding(end = Tokens.spacing.sm),
+        ) {
             Text(
-                text = TimeText.dateLong(today, locale),
-                style = MonoStyles.date,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                // The launcher's own name, said the way a wordmark is said. Uppercased here
+                // rather than stored twice, so there is one place the app is called anything.
+                text = stringResource(R.string.app_name).uppercase(locale),
+                style = MaterialTheme.typography.headlineMedium.copy(letterSpacing = 1.sp),
+            )
+            Spacer(Modifier.width(Tokens.spacing.sm))
+            Icon(
+                imageVector = Icons.Outlined.Settings,
+                // The row merges its children, so this is what names the whole control: a
+                // reader hears "RWILCO, ajustes, botón", which is the truth about it.
+                contentDescription = stringResource(R.string.home_settings),
+                modifier = Modifier.size(Tokens.sizes.cog),
             )
         }
+        Spacer(Modifier.weight(1f))
         Row(verticalAlignment = Alignment.CenterVertically) {
             // Only while the encrypted copy has something waiting; see BackupBadge.
             BackupBadge()
             IconButton(onClick = onSearch) {
                 Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.home_search))
             }
-            IconButton(onClick = onRefresh) {
-                Icon(Icons.Outlined.Refresh, contentDescription = stringResource(R.string.home_refresh))
-            }
             IconButton(onClick = onDoneList) {
                 Icon(Icons.Outlined.History, contentDescription = stringResource(R.string.home_done_list))
-            }
-            IconButton(onClick = onSettings) {
-                Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.home_settings))
             }
         }
     }

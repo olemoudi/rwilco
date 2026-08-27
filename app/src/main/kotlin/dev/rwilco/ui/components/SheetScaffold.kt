@@ -17,6 +17,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -30,6 +31,16 @@ import dev.rwilco.ui.theme.Tokens
 /**
  * Every configurator sheet: a title, scrollable content, and the one confirm button kept out
  * of the scroll so it can never sink below the fold.
+ *
+ * **A fling may not throw the form away.** The content scrolls inside the sheet, and when a
+ * scroll back up to the top ran out of list with speed to spare, the nested-scroll contract
+ * handed what was left to the sheet — which read a downward flick as "cerrar" and took a
+ * half-filled place, radius and all, with it. Nothing about that gesture said "throw this
+ * away": it was somebody going back to check what they had typed. So the sheet refuses to
+ * *settle* into hidden, which is the state a drag or a fling asks for; it still follows a
+ * finger on the handle and springs back, and every deliberate way out — the back gesture, the
+ * scrim, "Cancelar" — is programmatic and untouched. It is the same rule as Home's swipes and
+ * the hold buttons: the gestures that destroy something have to mean it.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,7 +52,10 @@ fun SheetScaffold(
     confirmEnabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { it != SheetValue.Hidden },
+    )
     val haptics = Tokens.haptics
     val spacing = Tokens.spacing
     ModalBottomSheet(
