@@ -40,6 +40,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -60,6 +61,9 @@ import dev.rwilco.ui.components.rememberNow
 import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.tagColor
+
+/** So a test can scroll the list itself; a lazy list does not compose what is off screen. */
+const val HOME_LIST_TAG = "homeList"
 
 @Composable
 fun HomeScreen(
@@ -181,7 +185,9 @@ fun HomeScreen(
         val defaultTime = state.defaultTime
 
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .testTag(HOME_LIST_TAG),
             contentPadding = PaddingValues(
                 start = spacing.screen,
                 end = spacing.screen,
