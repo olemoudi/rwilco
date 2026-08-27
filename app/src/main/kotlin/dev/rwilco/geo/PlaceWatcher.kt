@@ -205,7 +205,14 @@ class PlaceWatcher(
                         // is still watched, quietly, because a sibling's moment is going to
                         // ask where the phone is; but only from that moment's lead, and not
                         // at all if there is no such moment.
+                        //
+                        // The hours open with a run-up ([PlaceWatchPolicy.WINDOW_LEAD]): a
+                        // watch that started at the stroke of the window would take a baseline
+                        // where it needed an arrival, and somebody walking in a minute later
+                        // would not be rung. Far from the window it still costs nothing, which
+                        // is what the gate is for.
                         val hours = (fold ?: rule).windows().openFrom(now, zone)
+                            ?.minus(PlaceWatchPolicy.WINDOW_LEAD)
                         val opens = when {
                             hours == null -> null
                             fold != null -> hours
@@ -368,11 +375,20 @@ class PlaceWatcher(
         val places = watch.places
         if (places.isEmpty() || !context.hasBackgroundLocation()) {
             val gate = watch.opensAt.takeIf { context.hasBackgroundLocation() }
+            // What is no longer watched is no longer known. Leaving the last answer standing
+            // would have a card say "no se cumple ahora mismo" about a circle nothing has
+            // looked at since the window closed last night; the honest mark for that is the
+            // one that says nobody has looked. A resting circle is the exception and keeps its
+            // memory, because which side of the line the phone is on is what decides whether
+            // the next crossing is an arrival. sync() has always done this; a look had not.
+            val current = store.read()
+            val forgotten = current.inside.filterKeys { it in watch.remembered }
             if (gate == null) {
+                store.write(current.copy(inside = forgotten))
                 cancel()
             } else {
                 Log.i(TAG, "nothing worth a fix until the hours open")
-                store.write(store.read().copy(nextCheckAt = gate, precise = false))
+                store.write(current.copy(inside = forgotten, nextCheckAt = gate, precise = false))
                 scheduleAt(gate)
             }
             return

@@ -211,8 +211,9 @@ class PlaceWatchDeviceTest {
     @Test
     fun aPlaceOutsideItsHoursIsNotEvenLookedAt() = runBlocking {
         val now = app.clock.instant().atZone(app.clock.zone).toLocalTime()
-        // A two-hour window that starts two hours from now: never open during the test.
-        val window = Condition.TimeWindow(now.plusHours(2).withSecond(0), now.plusHours(4).withSecond(0))
+        // A window that opens four hours out — past the two-hour run-up, so the gate is shut
+        // for the whole test.
+        val window = Condition.TimeWindow(now.plusHours(4).withSecond(0), now.plusHours(6).withSecond(0))
         val fenced = seed("fenced", Transition.ENTER, conditions = listOf(window))
         moveTo(south = 1_000.0, at = t0)
         watcher.check()
@@ -226,6 +227,37 @@ class PlaceWatchDeviceTest {
         val next = store.read().nextCheckAt
         assertNotNull("the watch stopped instead of sleeping", next)
         assertTrue("woke for a window that has not opened: $next", next!! > Instant.now().plusSeconds(3_600))
+    }
+
+    @Test
+    fun aCircleIsWatchedTheRunUpBeforeItsWindowOpens() = runBlocking {
+        // The gate is not the stroke of the window: it is [PlaceWatchPolicy.WINDOW_LEAD] before
+        // it. A watch that started at the stroke would spend its first fix on a baseline, and
+        // somebody who walked in a minute later would not have arrived anywhere.
+        val now = app.clock.instant().atZone(app.clock.zone).toLocalTime()
+        val window = Condition.TimeWindow(now.plusHours(1).withSecond(0), now.plusHours(3).withSecond(0))
+        val soon = seed("runup", Transition.ENTER, conditions = listOf(window))
+        moveTo(south = 1_000.0, at = t0)
+        watcher.check()
+        assertEquals(
+            "a window an hour out is inside the run-up and should already be watched",
+            false,
+            store.read().inside[key(soon, Transition.ENTER)],
+        )
+    }
+
+    @Test
+    fun aLookThatFindsNothingToWatchForgetsWhatItCannotVouchFor() = runBlocking {
+        val now = app.clock.instant().atZone(app.clock.zone).toLocalTime()
+        val window = Condition.TimeWindow(now.plusHours(4).withSecond(0), now.plusHours(6).withSecond(0))
+        val fenced = seed("stale", Transition.ENTER, conditions = listOf(window))
+        val id = key(fenced, Transition.ENTER)
+        // Last night's answer, still in the store: the window closed hours ago and nothing has
+        // looked since. Left standing, a card reads it as "no se cumple ahora mismo" — a
+        // verdict on a circle nobody is watching.
+        store.write(store.read().copy(inside = mapOf(id to false)))
+        watcher.check()
+        assertNull("a look kept an answer it had no business vouching for", store.read().inside[id])
     }
 
     @Test

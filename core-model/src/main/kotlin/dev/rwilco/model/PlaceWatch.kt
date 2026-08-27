@@ -164,6 +164,24 @@ object PlaceWatchPolicy {
      */
     val ASK_LEAD: Duration = Duration.ofMinutes(5)
 
+    /**
+     * How long before a gating window opens the circle behind it starts being watched.
+     *
+     * A place under "a la vez" cannot ring outside its set's hours, so it is left alone until
+     * they are near — but *near* and not *exactly*. Two reasons, and they are the same reason
+     * twice. A watch that began at the stroke of the window would have no idea which side of
+     * the line the phone was on, so its first fix would be a baseline and not an arrival, and
+     * somebody who walked in at one minute past would not be rung. And a circle judged for the
+     * first time at the very moment it can ring has had no chance to settle its cadence: the
+     * ordinary approach — hourly far away, minutes near the line — needs a run-up to be worth
+     * anything.
+     *
+     * Two hours is that run-up. It is long enough for the cadence to find the phone and for an
+     * arrival to be an arrival, and short enough that a window once a day costs two hours of
+     * adaptive looking rather than twenty-four — which is the whole point of gating at all.
+     */
+    val WINDOW_LEAD: Duration = Duration.ofMinutes(120)
+
     /** Above this much battery left, none of the below applies. See [batteryFloor]. */
     const val SPARING_FROM = 0.50
 

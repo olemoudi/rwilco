@@ -481,9 +481,19 @@ strict is asking somebody to remember how they spelled it.
   reports a crossing and a condition has none. And **a circle is left alone entirely while the
   hours the rest of its set needs cannot hold** (`List<Condition.TimeWindow>.openFrom`): "en la
   oficina, entre las cinco y las siete" cannot ring at three in the morning however far anybody
-  walks, so the watch spends nothing on it and sleeps until five instead of cancelling — a
-  couple of minutes early, so the first fix of a window is taken before anything is judged by
-  it. **A circle that is only ever asked about is left alone until just before it is asked**:
+  walks, so the watch spends nothing on it and sleeps instead of cancelling. It wakes
+  `PlaceWatchPolicy.WINDOW_LEAD` (two hours) *before* the window, not at it: a watch that began
+  at the stroke of five would spend its first fix learning which side of the line the phone was
+  on, so somebody who walked in at one minute past would have arrived nowhere — and a circle
+  judged for the first time at the moment it can ring has had no run-up for its cadence to find
+  the phone. Two hours is the run-up; a window once a day still costs two hours of looking
+  rather than twenty-four, which is the whole point of gating.
+  **A look that finds nothing worth a fix forgets what it can no longer vouch for**: `inside`
+  is filtered down to the resting circles (`Watching.remembered`), because an answer left
+  standing from before the window closed would have a card say "no se cumple ahora mismo"
+  about a circle nothing has looked at since last night. `sync()` always did this; `look()`
+  did not, and the mark a person saw then depended on whether the process happened to restart.
+  **A circle that is only ever asked about is left alone until just before it is asked**:
   "a las nueve, y sólo si estoy en casa" needs the phone's position at nine and at no other
   time, so the condition's circle — and, under "a la vez", a place that cannot ring on its own
   and is only asked at a sibling's moment — is watched from `PlaceWatchPolicy.ASK_LEAD` (five

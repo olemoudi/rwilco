@@ -915,6 +915,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_19_1">
+        <item>Fixed, and a card was stating it with a straight face: a place under «a la vez» whose hours had closed kept showing the last thing the watch saw as if it were now. At eight on a Thursday morning, «al llegar a casa, entre las 19:00 y las 21:30» said «no se cumple ahora mismo» about a circle nothing had looked at since the night before. It now wears the mark that means nobody has looked, which is the truth.</item>
+        <item>The watch starts two hours before a window opens rather than at the stroke of it. Beginning at 19:00 meant the first fix went on learning which side of the line the phone was on, so somebody who walked in at 19:01 had arrived nowhere and was not rung. Two hours is enough of a run-up for an arrival to be an arrival — and a window once a day still costs two hours of looking instead of twenty-four, which is the whole point of leaving a circle alone.</item>
+    </string-array>
+
     <string-array name="whats_new_0_19_0">
         <item>Settings is an index now, not a scroll. What was thirty-odd controls in one column — twice what any published guideline allows on a settings screen — is ten rows, each carrying its own current value: the sound by name, the hours you are up as «08:00–23:30», how many places you have kept. Most questions are answered without opening anything.</item>
         <item>Each row opens where it stands, and they are independent: opening one does not close another and pull the screen out from under your thumb. A caret means «this opens here»; an arrow means «this goes somewhere else». Everything starts closed.</item>
