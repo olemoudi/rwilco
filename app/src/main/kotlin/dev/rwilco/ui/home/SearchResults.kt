@@ -25,6 +25,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -35,6 +39,8 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.unit.dp
 import dev.rwilco.R
 import dev.rwilco.ui.components.RwilcoCard
@@ -53,19 +59,41 @@ fun SearchField(query: String, onQueryChange: (String) -> Unit, onClose: () -> U
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    // **The field owns the cursor; the ViewModel owns the search.**
+    //
+    // It used to hand its text out and read it back — value = query, straight off a StateFlow
+    // — and that round trip is not free: every keystroke crosses to Dispatchers.Default,
+    // rebuilds the whole result list and only then comes back. Type two letters inside that gap
+    // and the field is handed a string one letter old; a text field given a String has to work
+    // the selection out for itself, and against a stale value it works it out one place to the
+    // left. Which is what typing quickly did.
+    //
+    // A TextFieldValue held here keeps the caret where the person put it, and [query] is only
+    // the seed: the field is composed fresh each time the magnifier opens (and the magnifier
+    // always opens empty), so there is no second writer to reconcile with.
+    var field by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(TextFieldValue(query, TextRange(query.length)))
+    }
+    val clear = {
+        field = TextFieldValue("")
+        onQueryChange("")
+    }
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         IconButton(onClick = onClose) {
             Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.common_back))
         }
         OutlinedTextField(
-            value = query,
-            onValueChange = onQueryChange,
+            value = field,
+            onValueChange = {
+                field = it
+                onQueryChange(it.text)
+            },
             placeholder = { Text(stringResource(R.string.home_search_hint)) },
             singleLine = true,
             leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
             trailingIcon = {
-                if (query.isNotEmpty()) {
-                    IconButton(onClick = { onQueryChange("") }) {
+                if (field.text.isNotEmpty()) {
+                    IconButton(onClick = clear) {
                         Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.home_search_clear))
                     }
                 }
