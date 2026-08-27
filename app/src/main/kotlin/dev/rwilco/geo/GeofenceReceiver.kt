@@ -8,6 +8,8 @@ import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofenceStatusCodes
 import com.google.android.gms.location.GeofencingEvent
 import dev.rwilco.RwilcoApplication
+import dev.rwilco.model.Crossing
+import dev.rwilco.model.GeofenceIds
 import dev.rwilco.model.Transition
 import kotlinx.coroutines.launch
 
@@ -31,9 +33,16 @@ class GeofenceReceiver : BroadcastReceiver() {
         app.appScope.launch {
             try {
                 for (placeId in fenced) {
-                    // Its own watch has the last word on whether this is an arrival at all.
-                    if (!app.placeWatcher.accept(placeId, transition)) continue
-                    app.firing.fire(GeofenceIds.reminderIdOf(placeId), ruleIndex = GeofenceIds.triggerIndexOf(placeId))
+                    // Its own watch has the last word on whether this is an arrival at all, and
+                    // on what an arrival is worth: under "todos" a place that has been ticked
+                    // off is waiting for the crossing that takes the tick back.
+                    val reminderId = GeofenceIds.reminderIdOf(placeId)
+                    val ruleIndex = GeofenceIds.triggerIndexOf(placeId)
+                    when (app.placeWatcher.accept(placeId, transition)) {
+                        Crossing.RINGS -> app.firing.fire(reminderId, ruleIndex = ruleIndex)
+                        Crossing.TAKES_BACK -> ruleIndex?.let { app.firing.untick(reminderId, it) }
+                        Crossing.NOTHING -> Unit
+                    }
                 }
             } catch (t: Throwable) {
                 Log.e(TAG, "firing a place reminder failed", t)

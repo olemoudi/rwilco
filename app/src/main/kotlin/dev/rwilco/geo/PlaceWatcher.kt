@@ -15,24 +15,16 @@ import com.google.android.gms.tasks.Task
 import dev.rwilco.alarm.ReminderFiring
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
+import dev.rwilco.model.GeofenceIds
 import dev.rwilco.model.dayShape
+import dev.rwilco.model.watchedCircles
+import dev.rwilco.model.Crossing
 import dev.rwilco.model.Fix
 import dev.rwilco.model.Movement
-import dev.rwilco.model.NextFire
 import dev.rwilco.model.NoteKind
 import dev.rwilco.model.PlaceWatchPolicy
 import dev.rwilco.model.PlaceWatchState
-import dev.rwilco.model.RuleMatch
-import dev.rwilco.model.Status
-import dev.rwilco.model.pendingRules
-import dev.rwilco.model.nextFireOfRule
-import dev.rwilco.model.openFrom
-import dev.rwilco.model.restUntil
-import dev.rwilco.model.windows
-import dev.rwilco.model.togetherRule
-import dev.rwilco.model.place
 import dev.rwilco.model.Transition
-import dev.rwilco.model.Trigger
 import dev.rwilco.model.WatchPlan
 import dev.rwilco.model.WatchNote
 import dev.rwilco.model.WatchedPlace
@@ -142,163 +134,41 @@ class PlaceWatcher(
      * has to be in hand at the moment some other trigger goes off. And only then: see
      * [PlaceWatchPolicy.ASK_LEAD].
      *
-     * These are the circles worth a fix, and the only ones a crossing may be *rung* from. A
+     * These are the circles worth a fix, and the only ones a crossing is acted on from. A
      * circle whose gate is shut is not here at all — see [Watching.listening].
      */
     suspend fun places(): List<WatchedPlace> = watching().asking
 
     /**
-     * What is worth watching now, what merely rides along, and when the next shut gate opens.
-     * See [places] for the two kinds of circle; the gates below are what save the polls.
+     * What is worth a fix now, what merely rides along, and when the next shut gate opens.
      *
-     * Three gates, and a circle *asks* for a fix only while every one that applies to it is open.
-     * The *hours*: a place under "a la vez" whose sibling windows cannot hold right now cannot
-     * ring, so the watch spends nothing on it until they can. The *moment*: a circle a clock
-     * rule only asks about ("a las nueve, y sólo si estoy en casa") is asked at that rule's next
-     * moment and at no other time, so it is left alone until [PlaceWatchPolicy.ASK_LEAD] before
-     * it — and the same for a place under "a la vez" that cannot ring on its own, which is only
-     * ever asked at a sibling's moment. And the *recurrence*: once one is in charge the rules
-     * are never asked again, so nothing of theirs is watched at all.
+     * All of the deciding is `Reminder.watchedCircles` (`core-model`, `PlaceGate.kt`) — the
+     * gates, the cadence floor under "todos", the circles waiting to come undone — because it
+     * is arithmetic on the rules and the clock, a card needs the same answer to say whether a
+     * circle is costing anything, and none of it can be tested on a JVM from in here. What is
+     * left is this: sort them into the ones that ask for a fix and the ones that only listen,
+     * and remember when the soonest shut gate opens.
      *
-     * A shut gate stops the circle from *buying* a fix; it does not stop it from being told.
-     * The look is one fix for however many circles are being waited on, and judging one more
-     * against it costs arithmetic — so a circle whose gate is shut is handed to the step as
-     * [Watching.listening]: judged, never planned from, never rung. What that buys is the one
-     * thing a gate used to throw away. The circle behind "el 26, y cuando llegue a casa" spends
-     * the month knowing which side of its line the phone is on, at nobody's expense, so the
-     * morning the gate opens the first fix is a *crossing* and not a baseline.
+     * A shut gate stops a circle from *buying* a fix; it does not stop it from being told. The
+     * look is one fix for however many circles are being waited on, and judging one more
+     * against it costs arithmetic, so the shut ones go to the step as [Watching.listening]:
+     * judged, never planned from, never rung.
      */
     private suspend fun watching(): Watching {
         val now = clock.instant()
-        val zone = clock.zone
         val current = settings.settings.first()
-        val defaultTime = current.defaultTime
-        val shape = current.dayShape
-        val remembered = HashSet<String>()
+        val asking = ArrayList<WatchedPlace>()
         val listening = ArrayList<WatchedPlace>()
-        // A little before the hour it opens, so the first fix of a window is taken before
-        // anything is judged by it rather than after.
-        val soon = now + PlaceWatchPolicy.MIN_WAIT
+        val remembered = HashSet<String>()
         var opens: Instant? = null
-        fun notYet(gate: Instant) {
-            val seen = opens
-            if (gate > soon && (seen == null || gate < seen)) opens = gate
-        }
-        val asking = repository.openNow()
-            .filter { it.status == Status.ACTIVE }
-            .flatMap { reminder ->
-                val pending = reminder.pendingRules().toSet()
-                val folded = reminder.rules.indices.map { reminder.togetherRule(it) }
-                // A rule's moment cannot be asked before a snooze is over: the snooze rings
-                // instead, with no rule behind it and nothing asked. Nor before a rest is —
-                // dealt with and coming back on a span, the rules say nothing until it is up.
-                val rest = reminder.restUntil(zone, current.dayStart)
-                val from = maxOf(now, reminder.snoozedUntil ?: now, rest ?: now)
-                // When each pending clock rule next rings — the moment its own circles, and
-                // under "a la vez" every sibling place, are going to be asked about. A rule
-                // that cannot ring (a fold of two moments, a window that never holds) asks
-                // nothing and is not here.
-                val moments = HashMap<Int, Instant>()
-                for (index in pending) {
-                    val rule = folded[index] ?: continue
-                    if (rule.trigger is Trigger.Location) continue
-                    val next = nextFireOfRule(rule, reminder.id, from, zone, defaultTime, shape)
-                    val at = when (next) {
-                        is NextFire.Scheduled -> next.at
-                        is NextFire.Sometime -> next.at
-                        is NextFire.WhenAt, null -> null
-                    }
-                    if (at != null) moments[index] = at
-                }
-                val soonestMoment = moments.values.minOrNull()
-                reminder.rules.flatMapIndexed { index, rule ->
-                    if (index !in pending) return@flatMapIndexed emptyList()
-                    val fold = folded[index]
-                    val place = rule.trigger as? Trigger.Location
-                    val gate: Instant? = if (place != null) {
-                        // Its own hours (and, folded in, its siblings'), and its rest. A fold
-                        // that comes back null is a crossing that can never ring — the circle
-                        // is still watched, quietly, because a sibling's moment is going to
-                        // ask where the phone is; but only from that moment's lead, and not
-                        // at all if there is no such moment.
-                        //
-                        // The hours open with a run-up ([PlaceWatchPolicy.WINDOW_LEAD]): a
-                        // watch that started at the stroke of the window would take a baseline
-                        // where it needed an arrival, and somebody walking in a minute later
-                        // would not be rung. Far from the window it still costs nothing, which
-                        // is what the gate is for.
-                        val hours = (fold ?: rule).windows().openFrom(now, zone)
-                            ?.minus(PlaceWatchPolicy.WINDOW_LEAD)
-                        val opens = when {
-                            hours == null -> null
-                            // Under "todos" the siblings are rules of their own, not conditions,
-                            // so the fold carries none of their hours and this circle would be
-                            // watched all the way to a moment a month off. Every one of them
-                            // still has to happen, so the soonest is the earliest the set can
-                            // ring at all, and the run-up before it is all the looking worth
-                            // doing. A crossing before that has to be *recorded* and not
-                            // caught in the act — the ring waits for the moment either way —
-                            // and the geofence records it for free. When nothing is left
-                            // pending but this circle, soonestMoment is null and it is watched
-                            // like any other: then it is the one that rings.
-                            reminder.ruleMatch == RuleMatch.ALL && soonestMoment != null ->
-                                maxOf(hours, soonestMoment - PlaceWatchPolicy.WINDOW_LEAD)
-                            fold != null -> hours
-                            soonestMoment == null -> null
-                            else -> maxOf(hours, soonestMoment - PlaceWatchPolicy.ASK_LEAD)
-                        }
-                        // A resting circle keeps its memory. Which side of the line the phone
-                        // was on is what decides whether the next crossing is an arrival, and
-                        // a place that has rung is owed a leaving before it rings again.
-                        if (opens != null && rest != null) remembered += GeofenceIds.encode(reminder.id, index, place)
-                        opens?.let { maxOf(it, rest ?: it) }
-                    } else {
-                        // A clock rule asks about its circles at its own next moment and at no
-                        // other time.
-                        moments[index]?.minus(PlaceWatchPolicy.ASK_LEAD)
-                    }
-                    // No gate at all is a circle nothing is ever going to ask about: not
-                    // watched, not listened to, and its memory is not worth keeping either.
-                    if (gate == null) return@flatMapIndexed emptyList()
-                    val shut = gate > soon
-                    if (shut) notYet(gate)
-                    val trigger = place?.let {
-                        WatchedPlace(
-                            id = GeofenceIds.encode(reminder.id, index, it),
-                            lat = it.lat,
-                            lng = it.lng,
-                            radiusM = it.radiusM,
-                            transition = it.transition,
-                            label = it.label,
-                            // A crossing that cannot complete the set is worth knowing about
-                            // and not worth ringing about.
-                            fires = fold != null,
-                        )
-                    }
-                    val asked = rule.conditions.mapIndexedNotNull { at, condition ->
-                        condition.place?.let { circle ->
-                            WatchedPlace(
-                                id = GeofenceIds.encodeCondition(reminder.id, index, at, circle),
-                                lat = circle.lat,
-                                lng = circle.lng,
-                                radiusM = circle.radiusM,
-                                // Waiting to be there reads as an arrival, waiting not to be as
-                                // a leaving; it is the cadence that reads it, never a firing.
-                                transition = if (circle.inside) Transition.ENTER else Transition.EXIT,
-                                label = circle.label,
-                                fires = false,
-                            )
-                        }
-                    }
-                    val circles = listOfNotNull(trigger) + asked
-                    if (!shut) return@flatMapIndexed circles
-                    // Shut: it rides along on whatever fix somebody else pays for. A crossing
-                    // it may not ring is a crossing it must not report, so it goes to the step
-                    // as a listener and never as a place — see [Watching.listening].
-                    listening += circles
-                    emptyList()
-                }
+        for (reminder in repository.openNow()) {
+            for (circle in reminder.watchedCircles(now, clock.zone, current.defaultTime, current.dayShape, current.dayStart)) {
+                val gate = circle.opensAt
+                if (gate == null) asking += circle.place else listening += circle.place
+                if (gate != null && (opens == null || gate < opens!!)) opens = gate
+                if (circle.resting) remembered += circle.place.id
             }
+        }
         return Watching(asking, listening, opens, remembered)
     }
 
@@ -366,7 +236,7 @@ class PlaceWatcher(
      * of the line: Play Services re-reading a line nobody crossed, which is what makes a place
      * reminder ring at somebody who never left home.
      */
-    suspend fun accept(placeId: String, transition: Transition): Boolean = lock.withLock {
+    suspend fun accept(placeId: String, transition: Transition): Crossing = lock.withLock {
         val state = store.read()
         val now = clock.instant()
         val live = runCatching { places().firstOrNull { it.id == placeId } }.getOrNull()
@@ -379,13 +249,15 @@ class PlaceWatcher(
         if (!crossingIsNews(state, placeId, transition, now, strict = strict)) {
             Log.i(TAG, "geofence says $transition at $placeId, but we were already there")
             log.note(WatchNote(at = now, kind = NoteKind.ECHO, place = label, inside = state.inside[placeId]))
-            return@withLock false
+            return@withLock Crossing.NOTHING
         }
         store.write(state.remembering(placeId, transition))
         log.note(WatchNote(at = now, kind = NoteKind.FENCE, place = label, inside = transition == Transition.ENTER))
-        // Written down either way; rung only for the crossing the rule waits for, and only
-        // while the circle is worth watching at all — not resting, not outside its hours.
-        live != null && live.fires && live.transition == transition
+        // Written down either way; acted on only for the crossing the rule waits for, and only
+        // while the circle is worth watching at all — not resting, not outside its hours. What
+        // acting on it means is the circle's own to say: a place under "todos" that has already
+        // been ticked off is waiting for the crossing that takes that tick back.
+        if (live != null && live.transition == transition) live.crossing else Crossing.NOTHING
     }
 
     /**
@@ -507,10 +379,16 @@ class PlaceWatcher(
         scheduleAt(at, plan.gapM)
         Log.i(TAG, "${plan.gapM.toInt()} m from ${plan.nearest.label}; next look in ${Duration.between(now, at).toMinutes()} min${if (plan.precise) " (gps)" else ""}")
         write(NoteKind.FIX, now, step.state, plan, step.movement, charge)
+        val what = places.associate { it.id to it.crossing }
         for (event in step.events) {
             val reminderId = GeofenceIds.reminderIdOf(event.placeId)
+            val ruleIndex = GeofenceIds.triggerIndexOf(event.placeId)
             Log.i(TAG, "watch saw ${event.transition} at ${event.placeId}")
-            firing.fire(reminderId, ruleIndex = GeofenceIds.triggerIndexOf(event.placeId))
+            if (what[event.placeId] == Crossing.TAKES_BACK && ruleIndex != null) {
+                firing.untick(reminderId, ruleIndex)
+            } else {
+                firing.fire(reminderId, ruleIndex = ruleIndex)
+            }
         }
     }
 

@@ -10,6 +10,8 @@ import dev.rwilco.model.Reminder
 import dev.rwilco.R
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.RuleStanding
+import dev.rwilco.model.watchedCircles
+import dev.rwilco.model.watchingRule
 import dev.rwilco.model.ruleStandings
 import dev.rwilco.model.SearchHit
 import dev.rwilco.model.Section
@@ -98,6 +100,15 @@ data class TriggerRowUi(
      * "a la vez". Null for a lone rule and for "cualquiera", where a rule has no standing.
      */
     val standing: RuleStanding? = null,
+    /**
+     * Whether the place watch is spending anything on this rule's circle right now.
+     *
+     * Always true for everything that is not a place: nothing else costs a radio. A circle
+     * whose gate is shut ("en la oficina, a la vez que de 17 a 19", at three in the morning)
+     * is judged for free on the positions other reminders pay for and asks for none of its
+     * own, and the mark says so — the shape is the battery, the colour is the answer.
+     */
+    val watched: Boolean = true,
 )
 
 /** Everything Home shows, from the open reminders. Pure and JVM-tested. */
@@ -126,6 +137,7 @@ fun buildHomeState(
     val groups = groupForHome(reminders, now, zone, defaultTime, filter, dayStart, shape)
     fun card(reminder: Reminder): ReminderCardUi {
         val standings = reminder.ruleStandings(now, zone, dayStart) { index -> inside(reminder.id, index) }
+        val circles = reminder.watchedCircles(now, zone, defaultTime, shape, dayStart)
         return ReminderCardUi(
             id = reminder.id,
             text = reminder.text,
@@ -141,6 +153,7 @@ fun buildHomeState(
                     nextAt = (next as? NextFire.Scheduled)?.at,
                     window = (next as? NextFire.Sometime)?.let { it.windowStart to it.windowEnd },
                     standing = standings.getOrNull(index),
+                    watched = rule.trigger !is Trigger.Location || circles.watchingRule(index),
                 )
             },
             actions = reminder.actions,

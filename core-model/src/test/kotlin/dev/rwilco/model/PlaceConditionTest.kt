@@ -143,8 +143,8 @@ class PlaceConditionTest {
 
     @Test
     fun `a watched circle that fires nothing reports nothing`() {
-        val silent = WatchedPlace("r1#0c0", homeLat, homeLng, 200, Transition.ENTER, "Casa", fires = false)
-        val loud = silent.copy(id = "r1#0", fires = true)
+        val silent = WatchedPlace("r1#0c0", homeLat, homeLng, 200, Transition.ENTER, "Casa", Crossing.NOTHING)
+        val loud = silent.copy(id = "r1#0", crossing = Crossing.RINGS)
         val outside = PlaceWatchState(inside = mapOf(silent.id to false, loud.id to false))
         val step = stepPlaceWatch(outside, at(0.0), listOf(silent, loud), now)
         assertEquals(listOf(PlaceEvent(loud.id, Transition.ENTER)), step.events, "the silent one rang")

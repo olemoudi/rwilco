@@ -31,14 +31,37 @@ import kotlin.math.sqrt
 @Serializable
 data class Fix(val lat: Double, val lng: Double, val accuracyM: Double, val at: Instant)
 
+/** What a crossing at a watched circle does to the rule behind it. */
+enum class Crossing {
+    /** Rings it — or, under "todos", ticks it off and waits for the rest. */
+    RINGS,
+
+    /**
+     * Takes a tick back. Under "todos" a place is a *state*: "cuando salga de la oficina" is
+     * met by being out of it, so walking back in un-meets it, and the set is waiting on that
+     * rule again. Which is why a ticked-off place is still watched, wearing the crossing it is
+     * now waiting for — the opposite one — and why this exists at all: everything else on a
+     * list of rules is an event, and an event that has happened has happened.
+     */
+    TAKES_BACK,
+
+    /**
+     * Nothing. The circle behind a [Condition.AtPlace] ("y sólo si estoy en casa"), which has
+     * to be tracked so the answer is ready when a reminder rings, but which is a state and not
+     * an event and so must never ring anything itself. It costs the same to watch as any other
+     * place, which is the honest price of asking: the app has to know whether you are.
+     */
+    NOTHING,
+}
+
 /**
  * A place some rule is waiting on. [id] is whatever the caller needs to find the rule again.
  *
- * [fires] is false for a place that is only ever *asked about* — the circle behind a
- * [Condition.AtPlace], which has to be tracked so the answer is ready when a reminder rings,
- * but which is a state and not an event and so must never ring anything itself. It costs the
- * same to watch as any other place, which is the honest price of asking "and only if I am
- * home": the app has to know whether you are.
+ * [floor] is the least often this circle is worth looking at, whatever the arithmetic makes of
+ * the distance: a circle whose set cannot complete for hours is worth watching — the crossings
+ * in between are what it is *for* — and is not worth watching every two minutes. It floors this
+ * circle's own ask and nobody else's, so a doorstep three streets away still sets the cadence
+ * and this one is judged on the way past, free.
  */
 data class WatchedPlace(
     val id: String,
@@ -47,7 +70,8 @@ data class WatchedPlace(
     val radiusM: Int,
     val transition: Transition,
     val label: String,
-    val fires: Boolean = true,
+    val crossing: Crossing = Crossing.RINGS,
+    val floor: Duration = Duration.ZERO,
 )
 
 /** A place kept in Settings, offered whole — name, pin and radius — when a rule needs one. */
@@ -338,6 +362,7 @@ fun planNextCheck(
 
 private fun planFor(place: WatchedPlace, fix: Fix, movement: Movement, inside: Boolean?): WatchPlan {
     val gap = gapToLine(place, fix)
+    val floor = place.floor
     val near = gap < PlaceWatchPolicy.NEAR_M
     val planningSpeed = when (val speed = movement.speedMps) {
         null -> PlaceWatchPolicy.UNKNOWN_MPS
@@ -357,12 +382,14 @@ private fun planFor(place: WatchedPlace, fix: Fix, movement: Movement, inside: B
     if (inside == true) {
         // Inside, only one of the two crossings is still ahead, and neither is urgent. Never
         // GPS: being close to the line is what being inside means, and that is not a reason.
-        val floor = if (place.transition == Transition.ENTER) PlaceWatchPolicy.INSIDE_MIN_WAIT else leavingWait(place, movement)
-        return WatchPlan(maxOf(wait, floor), precise = false, gapM = gap, nearest = place)
+        val inFloor = if (place.transition == Transition.ENTER) PlaceWatchPolicy.INSIDE_MIN_WAIT else leavingWait(place, movement)
+        return WatchPlan(maxOf(wait, maxOf(inFloor, floor)), precise = false, gapM = gap, nearest = place)
     }
     // GPS is for a line that is close and a phone KNOWN to be moving. Not "may be": the first
-    // look of a session at home would wake it for a phone on a bedside table.
-    return WatchPlan(wait = wait, precise = near && movement.movingByFix, gapM = gap, nearest = place)
+    // look of a session at home would wake it for a phone on a bedside table. A circle held to
+    // its own floor is not being approached in any sense the GPS is for, either.
+    val waited = maxOf(wait, floor)
+    return WatchPlan(wait = waited, precise = waited <= wait && near && movement.movingByFix, gapM = gap, nearest = place)
 }
 
 /**
@@ -494,7 +521,7 @@ fun stepPlaceWatch(
     val movement = movementSince(state.lastFix, fix, sensed, state.stillStreak)
     val inside = (places + listening).associate { place -> place.id to insideAfter(state.inside[place.id], place, fix) }
     val events = places.mapNotNull { place ->
-        if (!place.fires) return@mapNotNull null
+        if (place.crossing == Crossing.NOTHING) return@mapNotNull null
         val before = state.inside[place.id] ?: return@mapNotNull null
         val after = inside.getValue(place.id)
         when {

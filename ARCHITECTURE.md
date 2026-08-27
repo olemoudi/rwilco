@@ -6,7 +6,9 @@ file changes in the same commit.
 ## Modules
 
 - `:core-model` — pure Kotlin (`java.time`, kotlinx-serialization), no Android. The domain
-  model (`Reminder`, `Trigger`, `Action`, `Status`, `AppSettings`), tag normalisation, and — as
+  model (`Reminder`, `Trigger`, `Action`, `Status`, `AppSettings`), which circles the place
+  watch owes a position (`PlaceGate.kt`) and how they are named (`GeofenceIds`), tag
+  normalisation, and — as
   milestones land — the trigger JSON codec, next-fire computation, Home grouping, search and
   validation. Fully unit-tested with JUnit 5.
 - `:app` — the Android app: Room + DataStore persistence, the Compose UI, the self-updater.
@@ -224,7 +226,12 @@ strict is asking somebody to remember how they spelled it.
 - **Each rule of a set carries a mark** (`RuleStanding`, pure): under ALL, ticked off or still
   to happen (`firedRules`); under TOGETHER, true at this moment or not — a window against the
   clock, a place against the watch's own memory of which circles the phone is inside, and a
-  question mark when nothing has looked yet. It changes back when the rule stops holding,
+  question mark when nothing has looked yet. **The mark answers two questions and keeps them
+  apart**: the colour is the rule (green and filled when it is met), the shape is the battery
+  (a pause instead of a dot when the watch is spending nothing on that circle,
+  `TriggerRowUi.watched` ← `Gated.opensAt`). Which is what makes a green pause mean something —
+  a circle whose gate is shut still knows where the phone is, because it is judged for free on
+  the positions the other circles pay for; costing nothing and holding are not the same news. It changes back when the rule stops holding,
   because that is the whole difference between the two words, and it was invisible: a card said
   "todos" and nothing about what it was still waiting for. A moment under TOGETHER gets no mark
   — it is not a state, it is what rings when the states around it hold — and neither does ANY.
@@ -459,7 +466,12 @@ strict is asking somebody to remember how they spelled it.
   a refusal discovered later is a reminder that never arrives. A place is judged against its
   conditions when it happens, not when it is armed.
 - **Three readings of a list of rules.** `RuleMatch.ANY` ORs them; `ALL` accumulates (every one
-  has to have happened, in any order, and the *last* of them rings — see `Reminder.firedRules`);
+  has to have happened, in any order, and the *last* of them rings — see `Reminder.firedRules`)
+  **except that a place under ALL is a state and can come undone**: "cuando salga de la oficina,
+  y de 18:30 a 20:00" is met by being out of the office, and somebody who goes back for their
+  keys is not, so the crossing opposite the one the rule waits for takes its tick off again
+  (`Crossing.TAKES_BACK`, `ReminderFiring.untick`). Nothing else on a list of rules can — a date
+  that has passed has passed;
   `TOGETHER` is the conjunction, every rule true at the same moment, ringing the instant the
   last one becomes true. That last one needs each trigger read as a *state* (`Trigger.asState`):
   a place is being inside its circle, a `Trigger.Interval` ("de 17 a 19") is being in its
@@ -501,13 +513,19 @@ strict is asking somebody to remember how they spelled it.
   first, and the geofence's word is held to the same standard once `lastFiredAt` is set
   (`crossingIsNews(strict = true)`: a crossing the app has not seen the other side of is not
   news, however stale the last fix). To feed that memory the geofences register *both*
-  crossings for every place; `PlaceWatcher.accept` writes either down and answers "ring" only
-  for the crossing the rule waits for, on a circle that is live — not resting, not outside its
-  hours. The first ring keeps the benefit of the doubt.
+  crossings for every place; `PlaceWatcher.accept` writes either down and answers with what the
+  circle says a crossing is worth (`Crossing`: rings it, takes its tick back, or nothing at
+  all), and only on a circle that is live — not resting, not outside its hours. The first ring
+  keeps the benefit of the doubt.
   The circles named by
-  `Condition.AtPlace` are watched for their state alone (`WatchedPlace.fires = false`, so
+  `Condition.AtPlace` are watched for their state alone (`Crossing.NOTHING`, so
   `stepPlaceWatch` never turns one into a firing) and never geofenced, because a geofence
-  reports a crossing and a condition has none. And **a circle is left alone entirely while the
+  reports a crossing and a condition has none.
+  **The whole of the gating below is pure** (`core-model`, `PlaceGate.kt`:
+  `Reminder.watchedCircles`), because the same answer serves two callers — the watch, deciding
+  what to spend, and a card, saying whether it is spending — and because none of it could be
+  asked anything but a phone while it lived in the watch.
+  And **a circle is left alone entirely while the
   hours the rest of its set needs cannot hold** (`List<Condition.TimeWindow>.openFrom`): "en la
   oficina, entre las cinco y las siete" cannot ring at three in the morning however far anybody
   walks, so the watch spends nothing on it and sleeps instead of cancelling. It wakes
@@ -522,13 +540,17 @@ strict is asking somebody to remember how they spelled it.
   reason above — because an answer left standing from before the window closed would have a card
   say "no se cumple ahora mismo" about a circle nothing has looked at since last night. `sync()` always did this; `look()`
   did not, and the mark a person saw then depended on whether the process happened to restart.
-  **Under "todos" the gate is the soonest sibling moment**, less the same run-up: the siblings
-  are rules of their own and not conditions, so the fold carries none of their hours and a
-  circle would otherwise be watched all the way to a moment a month off. Every rule of an ALL
-  set has to happen, so the soonest of them is the earliest the set can ring; a crossing before
-  that has to be *recorded* and not caught in the act — the ring waits for the moment either
-  way — and the geofence records it for free. When nothing is left pending but the circle it is
-  watched like any other, because then it is the one that rings.
+  **Under "todos" a place is never gated by its siblings, only slowed.** It was, once, and that
+  was wrong in the way that costs a reminder rather than a battery: a place under ALL is a
+  *state*, the crossing that meets it happens when it happens, and a circle switched off until
+  a moment six weeks out lost every crossing in between — the set then waiting for a leaving
+  that had already happened and would not happen again. So the circle stays on and pays for the
+  waiting instead: `WatchedPlace.floor` holds it to `PlaceWatchPolicy.MAX_WAIT` (an hourly wifi
+  position, never the GPS) while the soonest sibling moment is more than a run-up away, and
+  hands it back to the ordinary distance arithmetic once the set is within `WINDOW_LEAD` of
+  being able to ring at all. A floor is that circle's own: a doorstep three streets away still
+  sets the cadence for everybody, and this one is judged on the way past for nothing. A place
+  already ticked off is watched too, wearing the crossing that would take the tick back.
   **A circle that is only ever asked about is left alone until just before it is asked**:
   "a las nueve, y sólo si estoy en casa" needs the phone's position at nine and at no other
   time, so the condition's circle — and, under "a la vez", a place that cannot ring on its own

@@ -237,6 +237,31 @@ class ReminderFiring(
     }
 
     /**
+     * A rule of a "todos" set stops being met: the phone walked back into the place it had left.
+     *
+     * The other three readings of a list of rules have nothing like this, and neither did this
+     * one until a place under "todos" was read for what it is — a *state*. "Cuando salga de la
+     * oficina, y de 18:30 a 20:00" is met by being out of the office, and somebody who goes back
+     * for their keys is not out of it any more; ticking that off for good and ringing at 18:30
+     * would be answering a question nobody asked. So the tick comes back off, the set is waiting
+     * on that rule again, and the alarms are re-armed around what is left.
+     *
+     * Nothing else here can come undone: a date that has passed has passed. Only a place, only
+     * under "todos", and only from the crossing opposite the one the rule waits for — which is
+     * what the watch hands over ([Crossing.TAKES_BACK]).
+     */
+    suspend fun untick(id: String, ruleIndex: Int) = lock.withLock {
+        val reminder = repository.get(id) ?: return@withLock
+        if (reminder.status != Status.ACTIVE) return@withLock
+        if (reminder.ruleMatch != RuleMatch.ALL || !reminder.rulesCombine) return@withLock
+        if (ruleIndex !in reminder.firedRules) return@withLock
+        Diag.note(TAG_DIAG, "r=${short(id)} rule $ruleIndex is not met any more")
+        Log.i(TAG, "$id rule $ruleIndex came undone")
+        repository.setFiredRules(id, reminder.firedRules - ruleIndex)
+        scheduler.rearmAll()
+    }
+
+    /**
      * "Hecho": finished if nothing can ring again, otherwise just this occurrence dealt with.
      *
      * The noise and the notification go first, and go whether or not the reminder still exists:

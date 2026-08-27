@@ -1,7 +1,5 @@
-package dev.rwilco.geo
+package dev.rwilco.model
 
-import dev.rwilco.model.Condition
-import dev.rwilco.model.Trigger
 import java.util.Locale
 
 /**

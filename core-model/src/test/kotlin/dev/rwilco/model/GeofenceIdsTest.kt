@@ -1,8 +1,5 @@
-package dev.rwilco.geo
+package dev.rwilco.model
 
-import dev.rwilco.model.Condition
-import dev.rwilco.model.Transition
-import dev.rwilco.model.Trigger
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull

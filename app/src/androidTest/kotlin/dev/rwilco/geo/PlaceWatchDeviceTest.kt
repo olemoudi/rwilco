@@ -12,6 +12,8 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.tasks.Tasks
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.model.Condition
+import dev.rwilco.model.Crossing
+import dev.rwilco.model.GeofenceIds
 import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RecurrenceUnit
@@ -256,7 +258,7 @@ class PlaceWatchDeviceTest {
         watcher.check()
         assertEquals(true, store.read().inside[paused])
         assertNull("a circle outside its hours rang", app.repository.get(fenced)!!.lastFiredAt)
-        assertFalse("the fence rang a circle outside its hours", watcher.accept(paused, Transition.ENTER))
+        assertEquals("the fence rang a circle outside its hours", Crossing.NOTHING, watcher.accept(paused, Transition.ENTER))
         assertNull(app.repository.get(fenced)!!.lastFiredAt)
         assertNotNull("the circle that paid for the fix should have rung", app.repository.get(live)!!.lastFiredAt)
     }
@@ -293,25 +295,54 @@ class PlaceWatchDeviceTest {
     }
 
     @Test
-    fun underAllACircleWaitsForTheRunUpOfTheSoonestSiblingMoment() = runBlocking {
+    fun underAllTheCadenceIsHourlyUntilTheSetIsNearlyAbleToRing() = runBlocking {
         // The card that found this: "el 26 de cada mes, y cuando llegue a casa", read as
-        // "todos". Both have to happen, so the moment is the earliest the set can ring — and
-        // a circle watched from today to a moment six hours off buys nothing the geofence is
-        // not already recording for free.
+        // "todos". The circle is never switched off — a place under "todos" is a state, and
+        // the arrival that meets it happens when it happens — but while the set is more than a
+        // run-up away from being able to ring at all, the hourly look is all it is worth.
         val far = seedAllWithMoment("allfar", at = app.clock.instant().plus(Duration.ofHours(6)))
         moveTo(south = 1_000.0, at = t0)
         watcher.check()
-        assertNull(
-            "watched a circle whose set cannot ring for six hours",
-            store.read().inside[keyAt(far, 1, Transition.ENTER)],
-        )
+        assertEquals(false, store.read().inside[keyAt(far, 1, Transition.ENTER)])
+        val slow = Duration.between(Instant.now(), store.read().nextCheckAt!!)
+        assertTrue("a set six hours out should be looked at hourly, not $slow", slow.toMinutes() >= 55)
 
-        // Inside the run-up it is watched like any other circle.
+        // Inside the run-up the distance has it back: a kilometre out is minutes, not an hour.
         cancelWatchAlarm()
         val near = seedAllWithMoment("allnear", at = app.clock.instant().plus(Duration.ofMinutes(90)))
         moveTo(south = 1_000.0, at = t0 + 60_000)
         watcher.check()
         assertEquals(false, store.read().inside[keyAt(near, 1, Transition.ENTER)])
+        val quick = Duration.between(Instant.now(), store.read().nextCheckAt!!)
+        assertTrue("inside the run-up the cadence is the distance's, not $quick", quick.toMinutes() < 55)
+    }
+
+    @Test
+    fun underAllAPlaceIsWatchedAllTheWayAndComesUndoneWhenYouWalkBack() = runBlocking {
+        // "Cuando llegue a casa, y mañana a las nueve", read as "todos". A place under "todos"
+        // is a state: the set cannot ring until tomorrow, but the arrival that meets this rule
+        // happens when it happens, and a circle switched off until tomorrow would lose it. So
+        // it is watched all the way — at the hourly cadence and no faster — and walking back
+        // out un-meets it.
+        val tomorrow = app.clock.instant().plus(Duration.ofHours(20))
+        val id = seedAllWithMoment("undo", at = tomorrow)
+        val circle = keyAt(id, 1, Transition.ENTER)
+
+        moveTo(south = 5_000.0, at = t0)
+        watcher.check()
+        assertEquals("a circle whose set cannot ring for a day was not watched", false, store.read().inside[circle])
+
+        // Arriving meets the rule: ticked off, and nothing rings — tomorrow is still to come.
+        moveTo(south = 50.0, at = t0 + 120_000)
+        watcher.check()
+        assertEquals(setOf(1), app.repository.get(id)!!.firedRules)
+        assertNull("a set with a day to go rang", app.repository.get(id)!!.lastFiredAt)
+
+        // And walking back out takes the tick with it: the set is waiting on this rule again.
+        moveTo(south = 5_000.0, at = t0 + 240_000)
+        watcher.check()
+        assertEquals("leaving did not take the tick back", emptySet<Int>(), app.repository.get(id)!!.firedRules)
+        assertNull(app.repository.get(id)!!.lastFiredAt)
     }
 
     @Test
@@ -414,16 +445,16 @@ class PlaceWatchDeviceTest {
         assertEquals("standing at home is not arriving", twoDaysAgo, app.repository.get(bins)!!.lastFiredAt)
 
         // Play Services re-reading the line the phone never left: not an arrival.
-        assertFalse("still inside as far as the watch knows", watcher.accept(key, Transition.ENTER))
+        assertEquals("still inside as far as the watch knows", Crossing.NOTHING, watcher.accept(key, Transition.ENTER))
         // Nor is a fix inside.
         moveTo(south = 52.0, at = t0 + 60_000)
         watcher.check()
         assertEquals(twoDaysAgo, app.repository.get(bins)!!.lastFiredAt)
 
         // Seen outside — by the system's own word this time — and the next arrival rings.
-        assertFalse("a leaving is written down, never rung", watcher.accept(key, Transition.EXIT))
+        assertEquals("a leaving is written down, never rung", Crossing.NOTHING, watcher.accept(key, Transition.EXIT))
         assertEquals(false, store.read().inside[key])
-        assertTrue("back after a leaving is arriving", watcher.accept(key, Transition.ENTER))
+        assertEquals("back after a leaving is arriving", Crossing.RINGS, watcher.accept(key, Transition.ENTER))
         app.firing.fire(bins, ruleIndex = 0)
         assertTrue(app.repository.get(bins)!!.lastFiredAt!! > twoDaysAgo)
 
@@ -436,7 +467,8 @@ class PlaceWatchDeviceTest {
         val resting = store.read()
         assertNotNull("resting is not forgotten", resting.inside[key])
         assertTrue("the next look is when the rest is up: ${resting.nextCheckAt}", resting.nextCheckAt!! > Instant.now().plusSeconds(3_600))
-        assertFalse("a crossing during the rest does not ring", watcher.accept(key, Transition.EXIT).also { } || watcher.accept(key, Transition.ENTER))
+        assertEquals("a crossing during the rest does not ring", Crossing.NOTHING, watcher.accept(key, Transition.EXIT))
+        assertEquals(Crossing.NOTHING, watcher.accept(key, Transition.ENTER))
         assertEquals(true, store.read().inside[key])
     }
 

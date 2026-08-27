@@ -9,8 +9,11 @@ import com.google.android.gms.location.GeofencingClient
 import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
 import dev.rwilco.data.ReminderRepository
+import dev.rwilco.model.GeofenceIds
+import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
 import dev.rwilco.model.pendingRules
+import dev.rwilco.model.rulesCombine
 import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -53,9 +56,15 @@ class GeofenceManager(
                 // geofence reports a crossing and a condition has none; PlaceWatcher tracks
                 // their state instead.
                 val pending = reminder.pendingRules().toSet()
+                val accumulates = reminder.ruleMatch == RuleMatch.ALL && reminder.rulesCombine
                 reminder.rules.mapIndexedNotNull { index, rule ->
-                    if (index !in pending) return@mapIndexedNotNull null
-                    (rule.trigger as? Trigger.Location)?.let { GeofenceIds.encode(reminder.id, index, it) to it }
+                    val place = rule.trigger as? Trigger.Location ?: return@mapIndexedNotNull null
+                    // Except a place under "todos", which is a state: ticked off, it is still
+                    // watched for the crossing back, and the system is the eye that sees it
+                    // first.
+                    val ticked = accumulates && index in reminder.firedRules
+                    if (index !in pending && !ticked) return@mapIndexedNotNull null
+                    GeofenceIds.encode(reminder.id, index, place) to place
                 }
             }
             // A hard limit of 100 per app: past that Play Services refuses the whole batch, so

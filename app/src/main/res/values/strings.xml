@@ -891,6 +891,8 @@
     <string name="card_rule_pending">Still to happen</string>
     <string name="card_rule_holding">True right now</string>
     <string name="card_rule_not_holding">Not true right now</string>
+    <!-- The mark on a rule whose circle the watch is not spending anything on. %1$s is the standing. -->
+    <string name="card_rule_dot_paused">%1$s · paused, spending nothing</string>
     <string name="card_rule_unknown">Not known yet</string>
 
     <string-array name="whats_new_0_15_0">

@@ -9,12 +9,12 @@ import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.Action
 import dev.rwilco.model.DayShape
+import dev.rwilco.model.GeofenceIds
 import dev.rwilco.model.dayShape
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Preset
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
-import dev.rwilco.geo.GeofenceIds
 import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.TagFilter
 import dev.rwilco.model.Trigger

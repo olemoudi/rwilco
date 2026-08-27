@@ -890,6 +890,8 @@
     <string name="card_rule_holding">Se cumple ahora mismo</string>
     <string name="card_rule_not_holding">No se cumple ahora mismo</string>
     <string name="card_rule_unknown">Todavía no se sabe</string>
+    <!-- The mark on a rule whose circle the watch is not spending anything on. %1$s is the standing. -->
+    <string name="card_rule_dot_paused">%1$s · en pausa, sin gastar batería</string>
 
     <string-array name="whats_new_0_15_0">
         <item>Hay una pantalla de «Diagnóstico» al final de Ajustes. Guarda una semana de lo que la app hizo de verdad —cada aviso que sonó y cada uno que decidió no sonar, los rearmes, qué permitía el teléfono en ese momento— más el estado con el que se juzga cada recordatorio: para qué momento está armado, cuándo sonó por última vez, qué está esperando. Un botón lo copia entero, así que cuando algo no suene puedes pegarlo donde estés pidiendo ayuda en vez de contarlo de memoria. A propósito no lleva el texto de ningún recordatorio, ni nombres de etiquetas o lugares, ni el token: un fallo vive en los momentos, no en las palabras, y los lugares van redondeados a un kilómetro.</item>

@@ -190,6 +190,7 @@ fun TriggerRow(row: TriggerRowUi, today: LocalDate, defaultTime: LocalTime, mute
             )
             row.standing?.let { standing ->
                 StandingDot(
+                    watched = row.watched,
                     standing = standing,
                     muted = muted,
                     modifier = Modifier.align(Alignment.TopEnd).offset(x = DOT_OUT, y = -DOT_OUT),
@@ -235,16 +236,24 @@ fun TriggerRow(row: TriggerRowUi, today: LocalDate, defaultTime: LocalTime, mute
  * carries the meaning is fill: solid for a rule that is met, hollow for one that is not. The
  * ring of card colour around it is what keeps it from smudging into the keycap.
  *
- * The one that is neither is the exception, and it is the only one that gets a shape of its
- * own: a rule nobody has been able to check yet — a place with no fix behind it — wears a
- * pause. Two bars are legible at this size where a glyph is not, they are the one thing on a
- * card that says "waiting" without saying yes or no, and being the odd shape out is the point:
- * it is the odd state out.
+ * The shape is the other question, and it is about the battery rather than the rule: a circle
+ * the watch is not spending anything on wears a pause instead of a dot. Two of those — a rule
+ * nobody has been able to check yet, and one nobody is checking — and they are the same fact
+ * from either end. Two bars are legible at this size where a glyph is not, and being the odd
+ * shape out is the point.
+ *
+ * The two questions stay apart, which is what makes a green pause mean something: a circle
+ * whose gate is shut still knows where the phone is, because it is judged for nothing on the
+ * positions the other circles pay for. Costing nothing and holding are not the same news.
  */
 @Composable
-private fun StandingDot(standing: RuleStanding, muted: Boolean, modifier: Modifier = Modifier) {
+private fun StandingDot(standing: RuleStanding, watched: Boolean, muted: Boolean, modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
-    val label = stringResource(standing.labelRes)
+    val label = if (watched) {
+        stringResource(standing.labelRes)
+    } else {
+        stringResource(R.string.card_rule_dot_paused, stringResource(standing.labelRes))
+    }
     val met = standing == RuleStanding.DONE || standing == RuleStanding.HOLDING
     val ink = when {
         met && !muted -> familyColor(TriggerFamily.PLACE, LocalDarkTheme.current)
@@ -260,7 +269,10 @@ private fun StandingDot(standing: RuleStanding, muted: Boolean, modifier: Modifi
             .padding(HALO),
         contentAlignment = Alignment.Center,
     ) {
-        if (standing == RuleStanding.UNKNOWN) {
+        // Two bars for the two ways a circle costs nothing: nobody has looked yet, or nobody
+        // is looking — and the ink says the answer anyway, because a circle whose gate is shut
+        // still knows where the phone is (it rides along on everybody else's positions).
+        if (standing == RuleStanding.UNKNOWN || !watched) {
             Canvas(
                 modifier = Modifier
                     .size(DOT)

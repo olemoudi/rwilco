@@ -38,6 +38,34 @@ class HomeStateTest {
     private val paused = reminder("paused", Trigger.AtDateTime(LocalDateTime.of(2026, 8, 28, 16, 0)), status = Status.PAUSED)
 
     @Test
+    fun `a row says whether its circle is costing anything`() {
+        // The shape is the battery and the colour is the answer, so the row has to carry both.
+        // "En casa, a la vez que de 20 a 22" at three in the afternoon: the circle cannot ring
+        // for five hours and is not worth a position until two before, so it rides along on
+        // whatever the others pay for — and the card says so.
+        val gated = Reminder(
+            id = "gated",
+            text = "Regar",
+            rules = listOf(
+                TriggerRule(Trigger.Location(40.4, -3.7, 200, Transition.ENTER, "Casa")),
+                TriggerRule(Trigger.Interval(LocalTime.of(20, 0), LocalTime.of(22, 0))),
+            ),
+            ruleMatch = dev.rwilco.model.RuleMatch.TOGETHER,
+            status = Status.ACTIVE,
+            createdAt = now,
+            updatedAt = now,
+        )
+        val state = buildHomeState(listOf(gated, place), defaultTime, now, zone, selectedTag = null)
+        val cards = listOfNotNull(state.hero?.card) + state.sections.flatMap { it.cards }
+        val rows = cards.first { it.id == "gated" }.triggers
+        assertFalse(rows[0].watched, "a circle five hours from being able to ring is not worth a position")
+        assertTrue(rows[1].watched, "and nothing but a place is ever not watched")
+        // A place with nothing in front of it is watched, and the row says nothing about
+        // battery it does not have to.
+        assertTrue(cards.first { it.id == "place" }.triggers[0].watched)
+    }
+
+    @Test
     fun `the hero and the sections come out as cards with per-trigger moments`() {
         val state = buildHomeState(listOf(soon, place, random, paused), defaultTime, now, zone, selectedTag = null)
         assertTrue(state.loaded)
