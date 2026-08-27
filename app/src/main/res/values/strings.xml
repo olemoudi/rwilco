@@ -915,6 +915,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_19_3">
+        <item>A set read as «todos» no longer watches its places around the clock. «El 26 de cada mes, y cuando llegue a casa» was spending a fix every half hour, every day, for a month — because under «todos» the siblings are rules of their own rather than conditions, so nothing gated the circle at all. It now waits for the run-up to the soonest sibling moment, like every other gated circle.</item>
+        <item>Nothing is lost by waiting. Under «todos» a crossing before the moment has to be written down, not caught in the act — the ring waits for the moment either way — and the phone\'s own geofences record it for free. And when the moment has already happened and the place is all that is left, it is watched at once: then it is the one that rings.</item>
+    </string-array>
+
     <string-array name="whats_new_0_19_2">
         <item>A reminder that has been dealt with and is coming back on a span no longer puts marks on its rules. It is not waiting for them — it is waiting for the span, which the recurrence row already says — so a tick or a ring there was an answer to a question nobody had put.</item>
         <item>The place marks were the worse half of it. The watch keeps a resting circle\'s last judgement on purpose, because a place that has rung is owed a leaving before it rings again; the card was reading that bookkeeping as a live verdict and saying «no se cumple ahora mismo» about a circle nothing had looked at in hours.</item>

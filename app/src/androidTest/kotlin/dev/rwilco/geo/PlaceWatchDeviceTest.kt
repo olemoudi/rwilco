@@ -16,6 +16,7 @@ import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
 import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
@@ -75,6 +76,10 @@ class PlaceWatchDeviceTest {
     /** The watch's key for the one place a seeded reminder carries. */
     private fun key(id: String, transition: Transition) =
         GeofenceIds.encode(id, 0, Trigger.Location(homeLat, homeLng, radius, transition, "Casa"))
+
+    /** The watch's key for the place at [index] of a seeded reminder. */
+    private fun keyAt(id: String, index: Int, transition: Transition) =
+        GeofenceIds.encode(id, index, Trigger.Location(homeLat, homeLng, radius, transition, "Casa"))
 
     private fun conditionKey(id: String) =
         GeofenceIds.encodeCondition(id, 0, 0, Condition.AtPlace(homeLat, homeLng, radius, "Casa", inside = true))
@@ -261,6 +266,38 @@ class PlaceWatchDeviceTest {
     }
 
     @Test
+    fun underAllACircleWaitsForTheRunUpOfTheSoonestSiblingMoment() = runBlocking {
+        // The card that found this: "el 26 de cada mes, y cuando llegue a casa", read as
+        // "todos". Both have to happen, so the moment is the earliest the set can ring — and
+        // a circle watched from today to a moment six hours off buys nothing the geofence is
+        // not already recording for free.
+        val far = seedAllWithMoment("allfar", at = app.clock.instant().plus(Duration.ofHours(6)))
+        moveTo(south = 1_000.0, at = t0)
+        watcher.check()
+        assertNull(
+            "watched a circle whose set cannot ring for six hours",
+            store.read().inside[keyAt(far, 1, Transition.ENTER)],
+        )
+
+        // Inside the run-up it is watched like any other circle.
+        cancelWatchAlarm()
+        val near = seedAllWithMoment("allnear", at = app.clock.instant().plus(Duration.ofMinutes(90)))
+        moveTo(south = 1_000.0, at = t0 + 60_000)
+        watcher.check()
+        assertEquals(false, store.read().inside[keyAt(near, 1, Transition.ENTER)])
+    }
+
+    @Test
+    fun underAllTheLastRulePendingIsWatchedWhateverTheHour() = runBlocking {
+        // The moment has already happened this round, so nothing stands between this circle
+        // and the ring: it is the one that completes the set, and it is watched now.
+        val last = seedAllWithMoment("alllast", at = app.clock.instant().plus(Duration.ofHours(6)), fired = setOf(0))
+        moveTo(south = 1_000.0, at = t0)
+        watcher.check()
+        assertEquals(false, store.read().inside[keyAt(last, 1, Transition.ENTER)])
+    }
+
+    @Test
     fun aCircleOnlyAskedAboutIsWatchedJustBeforeItsMoment() = runBlocking {
         // "A las X, y sólo si estoy en casa": the phone's position matters at X and at no
         // other time, so a circle two hours from being asked about is not judged at all, and
@@ -394,6 +431,32 @@ class PlaceWatchDeviceTest {
         )
         // The app syncs the watch on every change and plans a look five seconds out; the test
         // wants to be the only one looking, so that alarm goes.
+        Thread.sleep(1_500)
+        cancelWatchAlarm()
+        return "watch-$id"
+    }
+
+    /**
+     * "El 26 de cada mes, y cuando llegue a casa": a set read as "todos" whose rule 0 is a
+     * moment at [at] and whose rule 1 is the place. Returns its id.
+     */
+    private suspend fun seedAllWithMoment(id: String, at: Instant, fired: Set<Int> = emptySet()): String {
+        val now = app.clock.instant()
+        app.repository.save(
+            Reminder(
+                id = "watch-$id",
+                text = "All test $id",
+                rules = listOf(
+                    TriggerRule(Trigger.AtDateTime(java.time.LocalDateTime.ofInstant(at, app.clock.zone))),
+                    TriggerRule(Trigger.Location(homeLat, homeLng, radius, Transition.ENTER, "Casa")),
+                ),
+                ruleMatch = RuleMatch.ALL,
+                firedRules = fired,
+                status = Status.ACTIVE,
+                createdAt = now,
+                updatedAt = now,
+            ),
+        )
         Thread.sleep(1_500)
         cancelWatchAlarm()
         return "watch-$id"

@@ -22,6 +22,7 @@ import dev.rwilco.model.NextFire
 import dev.rwilco.model.NoteKind
 import dev.rwilco.model.PlaceWatchPolicy
 import dev.rwilco.model.PlaceWatchState
+import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
 import dev.rwilco.model.pendingRules
 import dev.rwilco.model.nextFireOfRule
@@ -215,6 +216,18 @@ class PlaceWatcher(
                             ?.minus(PlaceWatchPolicy.WINDOW_LEAD)
                         val opens = when {
                             hours == null -> null
+                            // Under "todos" the siblings are rules of their own, not conditions,
+                            // so the fold carries none of their hours and this circle would be
+                            // watched all the way to a moment a month off. Every one of them
+                            // still has to happen, so the soonest is the earliest the set can
+                            // ring at all, and the run-up before it is all the looking worth
+                            // doing. A crossing before that has to be *recorded* and not
+                            // caught in the act — the ring waits for the moment either way —
+                            // and the geofence records it for free. When nothing is left
+                            // pending but this circle, soonestMoment is null and it is watched
+                            // like any other: then it is the one that rings.
+                            reminder.ruleMatch == RuleMatch.ALL && soonestMoment != null ->
+                                maxOf(hours, soonestMoment - PlaceWatchPolicy.WINDOW_LEAD)
                             fold != null -> hours
                             soonestMoment == null -> null
                             else -> maxOf(hours, soonestMoment - PlaceWatchPolicy.ASK_LEAD)

@@ -913,6 +913,11 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_19_3">
+        <item>Un conjunto leído como «todos» deja de vigilar sus lugares a todas horas. «El 26 de cada mes, y cuando llegue a casa» estaba gastando una posición cada media hora, todos los días, durante un mes — porque bajo «todos» las hermanas son reglas propias y no condiciones, así que no había nada que frenara el círculo. Ahora espera a la carrerilla del momento hermano más próximo, como cualquier otro círculo con puerta.</item>
+        <item>No se pierde nada por esperar. Bajo «todos» un cruce anterior al momento hay que apuntarlo, no pillarlo en el acto — el aviso espera al momento de todas formas — y las geovallas del propio teléfono lo apuntan gratis. Y cuando el momento ya ha pasado y sólo queda el lugar, se vigila enseguida: entonces es él quien hace sonar.</item>
+    </string-array>
+
     <string-array name="whats_new_0_19_2">
         <item>Un recordatorio ya hecho y que vuelve dentro de un plazo deja de poner marcas en sus reglas. No está esperándolas a ellas: espera al plazo, que ya lo dice la fila de la recurrencia — así que un anillo o un punto ahí era la respuesta a una pregunta que nadie había hecho.</item>
         <item>Las marcas de lugar eran la mitad peor. La vigilancia guarda a propósito el último juicio de un círculo que descansa, porque un lugar que ha sonado debe una salida antes de volver a sonar; la tarjeta leía esa contabilidad como un veredicto en vivo y decía «no se cumple ahora mismo» de un círculo que nadie había mirado en horas.</item>

@@ -498,6 +498,13 @@ strict is asking somebody to remember how they spelled it.
   standing from before the window closed would have a card say "no se cumple ahora mismo"
   about a circle nothing has looked at since last night. `sync()` always did this; `look()`
   did not, and the mark a person saw then depended on whether the process happened to restart.
+  **Under "todos" the gate is the soonest sibling moment**, less the same run-up: the siblings
+  are rules of their own and not conditions, so the fold carries none of their hours and a
+  circle would otherwise be watched all the way to a moment a month off. Every rule of an ALL
+  set has to happen, so the soonest of them is the earliest the set can ring; a crossing before
+  that has to be *recorded* and not caught in the act — the ring waits for the moment either
+  way — and the geofence records it for free. When nothing is left pending but the circle it is
+  watched like any other, because then it is the one that rings.
   **A circle that is only ever asked about is left alone until just before it is asked**:
   "a las nueve, y sólo si estoy en casa" needs the phone's position at nine and at no other
   time, so the condition's circle — and, under "a la vez", a place that cannot ring on its own
