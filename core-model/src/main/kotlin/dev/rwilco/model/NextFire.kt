@@ -55,14 +55,14 @@ fun nextFire(
     }
     // No rules at all: the recurrence is the whole arrangement, and its moment is the ring.
     if (reminder.rules.isEmpty()) {
-        return reminder.recurrenceMoment(zone, dayStart)?.let { NextFire.Scheduled(it, null) }
+        return reminder.recurrenceMoment(now, zone, dayStart, shape)?.let { NextFire.Scheduled(it, null) }
     }
     // Dealt with and asked to come back on a span: the rules rest until the span is up, and
     // then speak again from there — a place is watched again, a clock finds its next moment
     // after the rest. Only when none of them has anything left to say (a date that has been,
     // a countdown that ran out) does the recurrence's own moment ring, which is what "a las
     // ocho, y luego cada seis horas" means.
-    val rest = reminder.restUntil(zone, dayStart)
+    val rest = reminder.restUntil(zone, dayStart, shape)
     val from = maxOf(reminder.searchFrom(now), rest ?: now)
     val pending = reminder.pendingRules()
     val candidates = pending.mapNotNull { index ->
@@ -73,7 +73,7 @@ fun nextFire(
         nextFireOfRule(rule, reminder.id, from, zone, defaultTime, shape)
     }
     if (candidates.isEmpty() && rest != null) {
-        return reminder.recurrenceMoment(zone, dayStart)?.let { NextFire.Scheduled(it, reminder.rules.firstOrNull()?.trigger) }
+        return reminder.recurrenceMoment(now, zone, dayStart, shape)?.let { NextFire.Scheduled(it, reminder.rules.firstOrNull()?.trigger) }
     }
     // ANY and TOGETHER alike: the earliest. Under "a la vez" each candidate is already the
     // folded rule's moment — the first instant the whole set holds — so the soonest of them is
@@ -129,14 +129,14 @@ fun nextWake(
     // A recurrence's moment is the ring itself: there is no rule behind it to tick off. It is
     // the alarm when there are no rules, and after a rest when the rules have nothing left to
     // say (see nextFire); a place among the rules is something left to say, and arms nothing.
-    if (reminder.rules.isEmpty()) return reminder.recurrenceMoment(zone, dayStart)?.let { Wake(it, null) }
-    val rest = reminder.restUntil(zone, dayStart)
+    if (reminder.rules.isEmpty()) return reminder.recurrenceMoment(now, zone, dayStart, shape)?.let { Wake(it, null) }
+    val rest = reminder.restUntil(zone, dayStart, shape)
     val from = maxOf(reminder.searchFrom(now), rest ?: now)
     val candidates = reminder.pendingRules().mapNotNull { index ->
         val rule = reminder.togetherRule(index) ?: return@mapNotNull null
         nextFireOfRule(rule, reminder.id, from, zone, defaultTime, shape)?.let { index to it }
     }
-    if (candidates.isEmpty() && rest != null) return reminder.recurrenceMoment(zone, dayStart)?.let { Wake(it, null) }
+    if (candidates.isEmpty() && rest != null) return reminder.recurrenceMoment(now, zone, dayStart, shape)?.let { Wake(it, null) }
     return candidates
         .mapNotNull { (index, next) -> next.momentOrNull()?.let { Wake(it, index) } }
         .minByOrNull { it.at }
@@ -273,6 +273,33 @@ private fun nextRandom(trigger: Trigger.Random, reminderId: String, now: Instant
 }
 
 /**
+ * The calendar's next moment after [after], with its own fences applied; null when the
+ * recurrence is not a calendar, or when the series has run out ([RepeatEnd]).
+ *
+ * The same walk [nextFireOfRule] does for a rule, and for the same reason: "el día 1, y sólo si
+ * estoy en casa" is a search, and it has to stop after [MAX_CANDIDATES] so a calendar that can
+ * never clear its fences answers *never* instead of looping.
+ */
+fun Reminder.calendarMoment(after: Instant, zone: ZoneId, shape: DayShape): Instant? =
+    (recurrence as? Recurrence.Calendar)?.nextMoment(id, after, zone, shape)
+
+/** See [Reminder.calendarMoment]. Taken apart from the reminder so a warning can ask it too. */
+fun Recurrence.Calendar.nextMoment(reminderId: String, after: Instant, zone: ZoneId, shape: DayShape): Instant? {
+    val fences = conditions.filter { it.knownInAdvance }
+    var from = after
+    repeat(MAX_CANDIDATES) {
+        val at = nextRepeat(repeat, reminderId, from, zone, shape) ?: return null
+        if (fences.allHoldAt(at, zone)) return at
+        from = at
+    }
+    return null
+}
+
+/** The calendar's next date with no fences applied: whether the series itself has anything left. */
+internal fun Recurrence.Calendar.nextDateMoment(reminderId: String, after: Instant, zone: ZoneId, shape: DayShape): Instant? =
+    nextRepeat(repeat, reminderId, after, zone, shape)
+
+/**
  * When a reminder that has been dealt with comes back: the anchored recurrence's span, counted
  * from the last "hecho". Until then its rules rest — nothing is armed, no place is watched, an
  * arrival is not a ring — and from then they speak again. Null when nothing rests: no anchored
@@ -292,12 +319,15 @@ private fun nextRandom(trigger: Trigger.Random, reminderId: String, now: Instant
  * midnight — the same evening, to anybody who was out. A rest counted in hours is exact and is
  * never moved.
  */
-fun Reminder.restUntil(zone: ZoneId, dayStart: LocalTime): Instant? {
+fun Reminder.restUntil(zone: ZoneId, dayStart: LocalTime, shape: DayShape = DayShape.DEFAULT): Instant? {
     if (!recurrence.isAnchored || rules.isEmpty()) return null
     // Nothing rests until it has been dealt with, whichever moment the span is counted from:
     // a reminder still waiting for an answer is overdue, not resting.
     val dealt = lastDealtAt ?: return null
-    val back = nextRecurrence(recurrence, recurrenceAnchor(dealt), zone, dayStart) ?: return null
+    // A calendar names the day it comes back on; a span counts one out from what happened.
+    val back = calendarMoment(recurrenceAnchor(dealt), zone, shape)
+        ?: nextRecurrence(recurrence, recurrenceAnchor(dealt), zone, dayStart)
+        ?: return null
     if (!recurrence.countsInDays) return back
     if (rules.none { it.trigger.namesAnHour }) return back
     return back.atZone(zone).toLocalDate().atStartOfDay(zone).toInstant()
@@ -320,8 +350,16 @@ private fun Reminder.recurrenceAnchor(dealt: Instant): Instant =
  * rules at all — "cada 6 h" as a whole reminder — from the moment it was written or last dealt
  * with; and after a rest ([restUntil]) when the rules have nothing left to say. Null otherwise.
  */
-fun Reminder.recurrenceMoment(zone: ZoneId, dayStart: LocalTime): Instant? {
+fun Reminder.recurrenceMoment(
+    now: Instant,
+    zone: ZoneId,
+    dayStart: LocalTime,
+    shape: DayShape = DayShape.DEFAULT,
+): Instant? {
     if (!recurrence.isAnchored) return null
+    // A calendar knows its own next date and needs no anchor: from now, and past the one that
+    // already rang ([searchFrom]), which is the same walk a repeating rule has always had.
+    if (recurrence.isCalendar) return calendarMoment(searchFrom(now), zone, shape)
     // Not restUntil: when the recurrence is the thing that rings, the hour the day starts at is
     // exactly the hour it should ring at — there are no rules here with an hour to defer to.
     val dealt = if (rules.isEmpty()) lastDealtAt ?: createdAt else lastDealtAt ?: return null

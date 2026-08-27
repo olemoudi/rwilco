@@ -20,7 +20,10 @@ import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerKind
 import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.ValidationError
+import dev.rwilco.model.asRepeat
 import dev.rwilco.model.clearCountdowns
+import dev.rwilco.model.conditions
+import dev.rwilco.model.withConditions
 import dev.rwilco.model.kind
 import dev.rwilco.model.startCountdowns
 import dev.rwilco.model.normalizeTag
@@ -93,6 +96,12 @@ sealed interface EditorSheet {
 
     /** A restriction on the rule at [ruleIndex]; [conditionIndex] is null when adding one. */
     data class ConfigureCondition(val ruleIndex: Int, val conditionIndex: Int?, val initial: Condition?) : EditorSheet
+
+    /** The calendar in "Vuelve"; [initial] is the one set, or null when there is none yet. */
+    data class ConfigureCalendar(val initial: Trigger.Repeat?) : EditorSheet
+
+    /** A fence on that calendar — the same "y sólo si" a rule has; [index] null when adding. */
+    data class ConfigureRecurrenceCondition(val index: Int?, val initial: Condition?) : EditorSheet
 }
 
 data class EditorUiState(
@@ -155,7 +164,7 @@ data class EditorUiState(
     val focusText: Boolean = false,
 ) {
     val dirty: Boolean get() = draft != initial || asPreset != initialAsPreset || presetText != initialPresetText
-    val errors: List<ValidationError> get() = validate(draft.text, draft.rules)
+    val errors: List<ValidationError> get() = validate(draft.text, draft.rules, draft.recurrence)
     val canSave: Boolean get() = errors.isEmpty()
 }
 
@@ -207,6 +216,44 @@ fun EditorUiState.addTag(raw: String): EditorUiState {
 fun EditorUiState.setRecurrence(recurrence: Recurrence): EditorUiState = copy(draft = draft.copy(recurrence = recurrence))
 
 /**
+ * The calendar sheet, opened on whatever is already set — including a legacy "el cuarto
+ * miércoles", which opens as the calendar it always was and is written back as one.
+ */
+fun EditorUiState.openCalendar(): EditorUiState =
+    copy(sheet = EditorSheet.ConfigureCalendar(draft.recurrence.asRepeat()))
+
+/** The sheet's result. The fences already on the calendar stay on it. */
+fun EditorUiState.commitCalendar(repeat: Trigger.Repeat): EditorUiState = copy(
+    draft = draft.copy(recurrence = Recurrence.Calendar(repeat, draft.recurrence.conditions)),
+    sheet = EditorSheet.None,
+)
+
+fun EditorUiState.addRecurrenceCondition(): EditorUiState =
+    copy(sheet = EditorSheet.ConfigureRecurrenceCondition(null, null))
+
+fun EditorUiState.editRecurrenceCondition(index: Int): EditorUiState {
+    val condition = draft.recurrence.conditions.getOrNull(index) ?: return this
+    return copy(sheet = EditorSheet.ConfigureRecurrenceCondition(index, condition))
+}
+
+fun EditorUiState.removeRecurrenceCondition(index: Int): EditorUiState =
+    withRecurrenceConditions { it.filterIndexed { at, _ -> at != index } }
+
+fun EditorUiState.commitRecurrenceCondition(index: Int?, condition: Condition): EditorUiState =
+    withRecurrenceConditions { conditions ->
+        if (index != null && index in conditions.indices) {
+            conditions.mapIndexed { at, existing -> if (at == index) condition else existing }
+        } else {
+            conditions + condition
+        }
+    }.copy(sheet = EditorSheet.None)
+
+private fun EditorUiState.withRecurrenceConditions(
+    transform: (List<Condition>) -> List<Condition>,
+): EditorUiState =
+    copy(draft = draft.copy(recurrence = draft.recurrence.withConditions(transform(draft.recurrence.conditions))))
+
+/**
  * Changing how the rules combine starts the round over: what had already happened under ALL was
  * an answer to a different question, and carrying it into the new shape would ring something
  * half-satisfied by history.
@@ -245,12 +292,13 @@ fun EditorUiState.commitTrigger(index: Int?, trigger: Trigger): EditorUiState {
     } else {
         draft.rules + TriggerRule(trigger)
     }
-    // Choosing "a time that repeats" or "at random" IS choosing a recurrence, so it says so —
-    // in plain sight, right under the row, and changeable. Every other kind leaves the answer
-    // alone: a place or a date is one-shot until somebody says otherwise.
+    // Choosing "at random" IS choosing a recurrence — "tres veces al día" says so outright — so
+    // it says so in plain sight, right under the row, and changeable. Every other kind leaves
+    // the answer alone: a place or a date is one-shot until somebody says otherwise, and a
+    // calendar is asked for in "Vuelve" rather than arrived at from here.
     val recurrence = when {
         draft.recurrence != Recurrence.None -> draft.recurrence
-        trigger is Trigger.AtTime || trigger is Trigger.Repeat || trigger is Trigger.Random -> Recurrence.ByTrigger
+        trigger is Trigger.Random -> Recurrence.ByTrigger
         else -> draft.recurrence
     }
     return copy(draft = draft.copy(rules = rules, recurrence = recurrence), sheet = EditorSheet.None)

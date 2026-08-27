@@ -3,19 +3,20 @@ package dev.rwilco.ui.editor.sheets
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -34,6 +35,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -49,6 +52,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -56,20 +60,20 @@ import dev.rwilco.R
 import dev.rwilco.model.MAX_LABEL_LENGTH
 import dev.rwilco.model.MAX_RADIUS_M
 import dev.rwilco.model.MIN_RADIUS_M
+import dev.rwilco.model.Presence
 import dev.rwilco.model.SavedPlace
-import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
 import dev.rwilco.ui.components.PresetChip
-import dev.rwilco.ui.components.SegmentedChoice
 import dev.rwilco.ui.components.RwilcoCard
+import dev.rwilco.ui.components.SegmentedChoice
 import dev.rwilco.ui.components.SheetScaffold
 import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
-import kotlinx.coroutines.launch
-import org.osmdroid.util.GeoPoint
 import java.util.Locale
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
+import org.osmdroid.util.GeoPoint
 
 /**
  * A place, a radius, and whether arriving or leaving matters. The pin comes from a saved place,
@@ -87,7 +91,8 @@ fun LocationSheet(
     savedPlaces: List<SavedPlace> = emptyList(),
 ) {
     var label by rememberSaveable { mutableStateOf(initial?.label ?: "") }
-    var transition by rememberSaveable { mutableStateOf((initial?.transition ?: Transition.ENTER).name) }
+    var presence by rememberSaveable { mutableStateOf((initial?.presence ?: Presence.INSIDE).name) }
+    var onCrossing by rememberSaveable { mutableStateOf(initial?.onCrossing ?: false) }
     var radius by rememberSaveable { mutableIntStateOf(initial?.radiusM ?: 200) }
     var lat by rememberSaveable { mutableStateOf(initial?.lat) }
     var lng by rememberSaveable { mutableStateOf(initial?.lng) }
@@ -144,7 +149,7 @@ fun LocationSheet(
     SheetScaffold(
         title = title,
         onDismiss = onDismiss,
-        onConfirm = { onConfirm(Trigger.Location(lat!!, lng!!, radius, Transition.valueOf(transition), label.trim())) },
+        onConfirm = { onConfirm(Trigger.Location(lat!!, lng!!, radius, Presence.valueOf(presence), label.trim(), onCrossing)) },
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
         confirmEnabled = known && label.isNotBlank(),
     ) {
@@ -193,10 +198,11 @@ fun LocationSheet(
             modifier = Modifier.fillMaxWidth(),
         )
         if (pickTransition) {
-            SegmentedChoice(
-                options = listOf(stringResource(R.string.trigger_arriving), stringResource(R.string.trigger_leaving)),
-                selectedIndex = if (transition == Transition.ENTER.name) 0 else 1,
-                onSelect = { transition = if (it == 0) Transition.ENTER.name else Transition.EXIT.name },
+            PresenceChoice(
+                presence = Presence.valueOf(presence),
+                onCrossing = onCrossing,
+                onPresence = { presence = it.name },
+                onCrossingChange = { onCrossing = it },
             )
         }
         // Typing an address is the way in for a place you are not standing in; the map and the
@@ -347,3 +353,74 @@ private fun ResultRow(place: FoundPlace, onPick: () -> Unit) {
 /** Saveable across a rotation, which an enum entry is not without a custom saver. */
 private const val FAILURE_PERMISSION = "permission"
 private const val FAILURE_NO_FIX = "no_fix"
+
+/**
+ * Which side of the line, and whether the phone has to be seen crossing it.
+ *
+ * Two controls and not four buttons, because it is two questions — and the switch **relabels**
+ * the segments rather than sitting apart from them, so what somebody reads is always one of the
+ * four things a place rule can be: "mientras estoy", "mientras no estoy", "al llegar", "al
+ * salir". A place used to be a doorway and only a doorway, and the commonest thing anybody means
+ * — "cuando esté en casa" — could not be written at all: a reminder made at home waited for you
+ * to leave first. The line underneath says what the choice costs, because that is the half of it
+ * nobody can guess.
+ */
+@Composable
+private fun PresenceChoice(
+    presence: Presence,
+    onCrossing: Boolean,
+    onPresence: (Presence) -> Unit,
+    onCrossingChange: (Boolean) -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val haptics = Tokens.haptics
+    Column(verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm)) {
+        SegmentedChoice(
+            options = listOf(
+                stringResource(if (onCrossing) R.string.place_side_arriving else R.string.place_side_inside),
+                stringResource(if (onCrossing) R.string.place_side_leaving else R.string.place_side_outside),
+            ),
+            selectedIndex = if (presence == Presence.INSIDE) 0 else 1,
+            onSelect = { onPresence(if (it == 0) Presence.INSIDE else Presence.OUTSIDE) },
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .toggleable(
+                    value = onCrossing,
+                    role = Role.Switch,
+                    onValueChange = { on ->
+                        haptics.perform(if (on) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff)
+                        onCrossingChange(on)
+                    },
+                )
+                .heightIn(min = Tokens.sizes.touch),
+        ) {
+            Text(
+                text = stringResource(R.string.place_needs_crossing),
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(Tokens.spacing.md))
+            Switch(
+                checked = onCrossing,
+                // The row owns the gesture; the switch is the picture of the state.
+                onCheckedChange = null,
+                colors = SwitchDefaults.colors(checkedThumbColor = scheme.surface, checkedTrackColor = scheme.onSurface),
+            )
+        }
+        Text(
+            text = stringResource(
+                when {
+                    presence == Presence.INSIDE && onCrossing -> R.string.place_means_arriving
+                    presence == Presence.INSIDE -> R.string.place_means_inside
+                    onCrossing -> R.string.place_means_leaving
+                    else -> R.string.place_means_outside
+                },
+            ),
+            style = MaterialTheme.typography.bodySmall,
+            color = scheme.onSurfaceVariant,
+        )
+    }
+}

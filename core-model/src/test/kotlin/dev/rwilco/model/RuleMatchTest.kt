@@ -20,7 +20,7 @@ class RuleMatchTest {
 
     private val atSix = Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 18, 0))
     private val atNine = Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 21, 0))
-    private val home = Trigger.Location(40.4, -3.7, 200, Transition.ENTER, "Casa")
+    private val home = Trigger.Location(40.4, -3.7, 200, Presence.INSIDE, "Casa")
 
     private fun reminder(vararg triggers: Trigger, match: RuleMatch, fired: Set<Int> = emptySet()) =
         Fixtures.reminder(*triggers).copy(ruleMatch = match, firedRules = fired)

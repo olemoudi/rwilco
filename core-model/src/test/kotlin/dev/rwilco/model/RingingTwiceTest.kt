@@ -76,7 +76,7 @@ class RingingTwiceTest {
         // "Al llegar a casa, cada día." Dealt with at 19:30, at home: until nine the next
         // morning nothing is armed and the place is not a ring; from nine the place speaks
         // again — and it is the place that rings, on a fresh arrival, never the nine o'clock.
-        val home = Trigger.Location(40.4169, -3.7035, 200, Transition.ENTER, "Casa")
+        val home = Trigger.Location(40.4169, -3.7035, 200, Presence.INSIDE, "Casa")
         val dealt = local(2026, 8, 27, 19, 30)
         val bins = Reminder(
             id = "r3",

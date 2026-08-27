@@ -23,9 +23,18 @@ object GeofenceIds {
     private const val SEPARATOR = '#'
     private const val CONDITION = 'c'
     private const val CIRCLE = '@'
+    private const val CROSSING = "!"
 
+    /**
+     * The side keeps the letter the crossing had (`E`/`X`), so no id already registered on a
+     * phone changes shape; a rule that asks for the doorway ([Trigger.Location.onCrossing])
+     * gets a letter of its own, because it is a different thing to watch for and its memory of
+     * which side the phone is on must not be inherited from the state reading.
+     */
     fun encode(reminderId: String, triggerIndex: Int, place: Trigger.Location): String =
-        "$reminderId$SEPARATOR$triggerIndex$CIRCLE" + circle(place.lat, place.lng, place.radiusM, place.transition.name.first())
+        "$reminderId$SEPARATOR$triggerIndex$CIRCLE" +
+            circle(place.lat, place.lng, place.radiusM, place.presence.asTransition.name.first()) +
+            if (place.onCrossing) CROSSING else ""
 
     /** The [conditionIndex]th circle named by rule [ruleIndex]'s conditions. Never a trigger. */
     fun encodeCondition(reminderId: String, ruleIndex: Int, conditionIndex: Int, place: Condition.AtPlace): String =

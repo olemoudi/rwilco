@@ -66,10 +66,14 @@ sealed interface Trigger {
      * A recurrence with a shape: every N days, weeks, months or years, from a day, until it
      * stops.
      *
-     * What "una hora que se repite" grew into. The weekly case it replaces was the only one the
-     * app could say, and everything people actually keep in a reminders app — the rent on the
-     * first, a birthday, the bins every other Tuesday, a fortnightly review — is one of the
-     * other three. The pieces are the ones an RRULE has, minus the ones nobody sets by hand:
+     * **No longer a way of starting.** This is the calendar behind [Recurrence.Calendar] and it
+     * is reached from "Vuelve", never from the "cuándo" card: a repeat is the answer to "¿y
+     * vuelve?", and having it in both places meant nothing on either screen said which of the
+     * two a reminder had. It stays a [Trigger] because that is the shape every phone already has
+     * on disk and the discriminators are frozen — the ones stored as rules are folded into the
+     * recurrence on the way in (`foldRepeats`).
+     *
+     * The pieces are the ones an RRULE has, minus the ones nobody sets by hand:
      *
      * - [every] and [unit]: how far apart. Every counts blocks of the unit, not occurrences —
      *   "every 2 weeks on Monday and Thursday" is two rings a fortnight, not one a fortnight.
@@ -133,15 +137,34 @@ sealed interface Trigger {
     @SerialName("countdown")
     data class Countdown(val minutes: Int, val startedAt: Instant? = null) : Trigger
 
-    /** Arriving at or leaving a circle around a place. */
+    /**
+     * Being inside a circle around a place, or being outside it.
+     *
+     * **A place is a state, and [onCrossing] is the exception.** It used to be an event and
+     * only an event — "al llegar" meant a line the phone had to be *seen* going through — and
+     * that one decision spread: a reminder written at home would not ring until you had left
+     * and come back, a set under "todos" could not tick off a place you were already standing
+     * in, and the first fix of a session had to be biased towards silence so it did not invent
+     * an arrival. Most of the time nobody means the doorway; they mean "cuando esté en casa".
+     *
+     * So [presence] says which side of the line the rule is about and nothing more: it holds
+     * whenever the phone is on that side, whether or not anybody watched it get there. A
+     * reminder that is only "mientras esté en casa", written at home, rings at once.
+     *
+     * [onCrossing] asks for the doorway back — "al llegar", "al salir" — and means exactly one
+     * thing: a side nobody has seen yet does not count as the other side. The phone has to be
+     * seen on the far side first, and only then does arriving ring.
+     */
     @Serializable
     @SerialName("location")
     data class Location(
         val lat: Double,
         val lng: Double,
         val radiusM: Int,
-        val transition: Transition,
+        // The on-disk key is "transition", from when this was a crossing and nothing else.
+        @SerialName("transition") val presence: Presence,
         val label: String,
+        val onCrossing: Boolean = false,
     ) : Trigger
 
     /**
@@ -160,7 +183,36 @@ sealed interface Trigger {
     ) : Trigger
 }
 
+/**
+ * Which way a phone went through a line. The watch's word, not a rule's: a crossing is a thing
+ * that happens, and only the geofences and the step between two fixes ever see one.
+ */
 enum class Transition { ENTER, EXIT }
+
+/**
+ * Which side of a line a rule is about. A rule's word, and a *state*: true for as long as the
+ * phone is on that side.
+ *
+ * The names on disk are the crossings this used to be, and they are frozen: every phone holds
+ * `"transition":"ENTER"` for what is now [INSIDE]. Reading them as sides rather than doorways is
+ * the whole of the change — see [Trigger.Location].
+ */
+@Serializable
+enum class Presence {
+    @SerialName("ENTER")
+    INSIDE,
+
+    @SerialName("EXIT")
+    OUTSIDE,
+}
+
+/** The side as the watch counts it, for a circle it is keeping an eye on. */
+val Presence.asTransition: Transition
+    get() = if (this == Presence.INSIDE) Transition.ENTER else Transition.EXIT
+
+/** The other side: what "mientras no estoy" is to "mientras estoy". */
+val Presence.opposite: Presence
+    get() = if (this == Presence.INSIDE) Presence.OUTSIDE else Presence.INSIDE
 
 enum class Period { DAY, WEEK }
 
@@ -214,11 +266,14 @@ enum class TriggerFamily { TIME, PLACE, CHANCE }
 /**
  * The tiles of the "add trigger" sheet; how a person picks, not how it is stored.
  *
- * [DATE_TIME] is no longer one of them — see [OFFERED_KINDS]. A day and a day-with-an-hour were
- * two tiles asking the same question, and the answer to "which one do I want" was always "the
- * one that lets me change my mind", so they are one tile with an hour in it. The entry stays
- * because it is a stored value: somebody's favourite kind is written down by name, and an enum
- * that loses a name loses the whole settings file with it.
+ * [DATE_TIME] and [REPEAT_TIME] are no longer among them — see [OFFERED_KINDS]. A day and a
+ * day-with-an-hour were two tiles asking the same question, and the answer to "which one do I
+ * want" was always "the one that lets me change my mind", so they are one tile with an hour in
+ * it. A repeating time was a whole second way of saying what "Vuelve" says, on a different card,
+ * with nothing on either screen to tell you which one a reminder had; it is a calendar in
+ * "Vuelve" now ([Recurrence.Calendar]). Both entries stay because they are stored values:
+ * somebody's favourite kind is written down by name, and an enum that loses a name loses the
+ * whole settings file with it.
  */
 enum class TriggerKind(val family: TriggerFamily) {
     DATE_TIME(TriggerFamily.TIME),
@@ -231,10 +286,14 @@ enum class TriggerKind(val family: TriggerFamily) {
 }
 
 /** The tiles actually offered, in order. See [TriggerKind]. */
-val OFFERED_KINDS: List<TriggerKind> = TriggerKind.entries - TriggerKind.DATE_TIME
+val OFFERED_KINDS: List<TriggerKind> = TriggerKind.entries - TriggerKind.DATE_TIME - TriggerKind.REPEAT_TIME
 
-/** What a stored favourite means now that the two date tiles are one. */
-fun TriggerKind.offered(): TriggerKind = if (this == TriggerKind.DATE_TIME) TriggerKind.DATE else this
+/**
+ * What a stored favourite means now that the two date tiles are one and the repeating time has
+ * moved to "Vuelve". A favourite that is no longer a tile falls back to the date, which is the
+ * nearest thing still on the sheet — and the sheet must never open with nothing marked.
+ */
+fun TriggerKind.offered(): TriggerKind = if (this in OFFERED_KINDS) this else TriggerKind.DATE
 
 /**
  * Whether this trigger works out its own next date, over and over, without being asked again.
@@ -266,7 +325,7 @@ val Trigger.family: TriggerFamily
  * with none of them has nothing to start it.
  */
 fun Trigger.asState(): Condition? = when (this) {
-    is Trigger.Location -> Condition.AtPlace(lat, lng, radiusM, label, inside = transition == Transition.ENTER)
+    is Trigger.Location -> Condition.AtPlace(lat, lng, radiusM, label, inside = presence == Presence.INSIDE)
     is Trigger.Interval -> Condition.TimeWindow(from, to, days)
     is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.AtTime, is Trigger.Countdown, is Trigger.Random -> null
     is Trigger.DayRandom, is Trigger.Repeat -> null

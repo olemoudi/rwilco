@@ -69,25 +69,33 @@ class TriggerSuggestionsTest {
     }
 
     @Test
-    fun `a place, an arrangement and a chance come back as they were`() {
-        val place = Trigger.Location(40.4169, -3.7035, 200, Transition.ENTER, "Casa")
-        val weekly = Trigger.AtTime(LocalTime.of(7, 30), setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY))
+    fun `a place and a chance come back as they were`() {
+        val place = Trigger.Location(40.4169, -3.7035, 200, Presence.INSIDE, "Casa")
         val chance = Trigger.Random(2, Period.DAY, LocalTime.of(10, 0), LocalTime.of(20, 0), emptySet())
-        val offered = suggestedTriggers(listOf(used(place, 1), used(weekly, 2), used(chance, 3)), now, zone)
-        assertEquals(listOf(place, weekly, chance), offered)
+        val offered = suggestedTriggers(listOf(used(place, 1), used(chance, 3)), now, zone)
+        assertEquals(listOf(place, chance), offered)
+    }
+
+    @Test
+    fun `a repeating time is not offered back, because no tile can open one`() {
+        // It is the calendar in "Vuelve" now. What offers one again is the recurrence presets,
+        // and a chip that opens nothing is worse than a chip that is not there.
+        val weekly = Trigger.AtTime(LocalTime.of(7, 30), setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY))
+        val series = Trigger.Repeat(startsOn = today.minusDays(7), time = LocalTime.of(9, 0))
+        assertTrue(suggestedTriggers(listOf(used(weekly, 1), used(series, 2)), now, zone).isEmpty())
     }
 
     @Test
     fun `the same door pinned twice is one place`() {
-        val a = Trigger.Location(40.416900, -3.703500, 200, Transition.ENTER, "Casa")
-        val b = Trigger.Location(40.416903, -3.703498, 200, Transition.ENTER, "Casa")
+        val a = Trigger.Location(40.416900, -3.703500, 200, Presence.INSIDE, "Casa")
+        val b = Trigger.Location(40.416903, -3.703498, 200, Presence.INSIDE, "Casa")
         assertEquals(1, suggestedTriggers(listOf(used(a, 1), used(b, 2)), now, zone).size)
     }
 
     @Test
     fun `arriving and leaving the same place are two different whens`() {
-        val arrive = Trigger.Location(40.4169, -3.7035, 200, Transition.ENTER, "Casa")
-        assertEquals(2, suggestedTriggers(listOf(used(arrive, 1), used(arrive.copy(transition = Transition.EXIT), 2)), now, zone).size)
+        val arrive = Trigger.Location(40.4169, -3.7035, 200, Presence.INSIDE, "Casa")
+        assertEquals(2, suggestedTriggers(listOf(used(arrive, 1), used(arrive.copy(presence = Presence.OUTSIDE), 2)), now, zone).size)
     }
 
     @Test
@@ -105,8 +113,8 @@ class TriggerSuggestionsTest {
     @Test
     fun `the kinds sort themselves by use, and the unused keep their order`() {
         val history = listOf(
-            used(Trigger.Location(40.0, -3.0, 200, Transition.ENTER, "Casa"), 1),
-            used(Trigger.Location(41.0, -3.0, 200, Transition.ENTER, "Gym"), 2),
+            used(Trigger.Location(40.0, -3.0, 200, Presence.INSIDE, "Casa"), 1),
+            used(Trigger.Location(41.0, -3.0, 200, Presence.INSIDE, "Gym"), 2),
             used(Trigger.Countdown(30), 3),
         )
         val order = triggerKindsByUse(history, now)

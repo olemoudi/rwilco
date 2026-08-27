@@ -13,7 +13,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.rwilco.model.Condition
 import dev.rwilco.model.RuleStanding
-import dev.rwilco.model.Transition
+import dev.rwilco.model.Presence
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.family
 import dev.rwilco.ui.components.RwilcoCard
@@ -42,7 +42,7 @@ class StandingMarkTest {
 
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
 
-    private val place = Trigger.Location(40.4169, -3.7035, 150, Transition.ENTER, "Casa")
+    private val place = Trigger.Location(40.4169, -3.7035, 150, Presence.INSIDE, "Casa")
     private val clock = Trigger.AtTime(LocalTime.of(20, 30), java.time.DayOfWeek.entries.toSet())
 
     @Test

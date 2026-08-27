@@ -63,7 +63,7 @@ import dev.rwilco.model.AlertStacking
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.ThemeMode
-import dev.rwilco.model.Transition
+import dev.rwilco.model.Presence
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.VibrationRhythm
 import dev.rwilco.model.VibrationStrength
@@ -437,7 +437,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
             editingPlace?.let { index ->
                 val existing = current.savedPlaces.getOrNull(index)
                 LocationSheet(
-                    initial = existing?.let { Trigger.Location(it.lat, it.lng, it.radiusM, Transition.ENTER, it.label) },
+                    initial = existing?.let { Trigger.Location(it.lat, it.lng, it.radiusM, Presence.INSIDE, it.label) },
                     title = stringResource(R.string.place_saved_title),
                     pickTransition = false,
                     onConfirm = { place ->

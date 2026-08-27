@@ -22,8 +22,8 @@ class TogetherTest {
 
     private val homeLat = 40.4169
     private val homeLng = -3.7035
-    private val office = Trigger.Location(homeLat + 0.02, homeLng, 150, Transition.ENTER, "Oficina")
-    private val home = Trigger.Location(homeLat, homeLng, 200, Transition.ENTER, "Casa")
+    private val office = Trigger.Location(homeLat + 0.02, homeLng, 150, Presence.INSIDE, "Oficina")
+    private val home = Trigger.Location(homeLat, homeLng, 200, Presence.INSIDE, "Casa")
     private val fiveToSeven = Trigger.Interval(LocalTime.of(17, 0), LocalTime.of(19, 0))
     private val nineAm = Trigger.AtTime(LocalTime.of(9, 0), DayOfWeek.entries.toSet())
     private val tenAm = Trigger.AtTime(LocalTime.of(10, 0), DayOfWeek.entries.toSet())
@@ -75,7 +75,7 @@ class TogetherTest {
     fun `states are the ones that can be true alongside something else`() {
         assertEquals(Condition.TimeWindow(LocalTime.of(17, 0), LocalTime.of(19, 0)), fiveToSeven.asState())
         assertEquals(Condition.AtPlace(homeLat, homeLng, 200, "Casa", inside = true), home.asState())
-        assertEquals(false, (home.copy(transition = Transition.EXIT).asState() as Condition.AtPlace).inside)
+        assertEquals(false, (home.copy(presence = Presence.OUTSIDE).asState() as Condition.AtPlace).inside)
         for (moment in listOf(nineAm, Trigger.OnDate(java.time.LocalDate.of(2026, 9, 1)), Trigger.Countdown(30))) {
             assertNull(moment.asState(), "$moment is only ever true at an instant")
             assertTrue(moment.isMoment)
@@ -137,7 +137,7 @@ class TogetherTest {
 
     @Test
     fun `one moment among states is exactly what at once is for`() {
-        val fine = reminder(RuleMatch.TOGETHER, nineAm, home.copy(transition = Transition.EXIT))
+        val fine = reminder(RuleMatch.TOGETHER, nineAm, home.copy(presence = Presence.OUTSIDE))
         assertFalse(fine.momentsCannotCoincide())
         assertNotNull(fine.togetherRule(0))
         assertTrue(warnings(fine.rules, now, zone, defaultTime, RuleMatch.TOGETHER).isEmpty())

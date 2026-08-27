@@ -32,6 +32,12 @@ sealed interface ValidationError {
     data object TextBlank : ValidationError
     data object TextTooLong : ValidationError
     data class BadTrigger(val index: Int, val problem: TriggerProblem) : ValidationError
+
+    /**
+     * The calendar in "Vuelve" is nonsense in itself — a series told to stop before it starts,
+     * a gap of nothing. No index: there is one recurrence, and it is not one of the rules.
+     */
+    data class BadRecurrence(val problem: TriggerProblem) : ValidationError
 }
 
 /** How far apart a recurrence may be asked to repeat, and how many times it may be asked to. */
@@ -98,7 +104,11 @@ sealed interface ValidationWarning {
     data class MomentsCannotCoincide(val index: Int) : ValidationWarning
 }
 
-fun validate(text: String, rules: List<TriggerRule>): List<ValidationError> {
+fun validate(
+    text: String,
+    rules: List<TriggerRule>,
+    recurrence: Recurrence = Recurrence.None,
+): List<ValidationError> {
     val errors = ArrayList<ValidationError>()
     if (text.isBlank()) errors += ValidationError.TextBlank
     if (text.length > MAX_TEXT_LENGTH) errors += ValidationError.TextTooLong
@@ -108,7 +118,46 @@ fun validate(text: String, rules: List<TriggerRule>): List<ValidationError> {
             problemOf(condition)?.let { errors += ValidationError.BadTrigger(index, it) }
         }
     }
+    problemOf(recurrence)?.let { errors += ValidationError.BadRecurrence(it) }
     return errors
+}
+
+/**
+ * What is worth saying about the calendar in "Vuelve", and is not worth blocking a save over.
+ *
+ * The same two things worth saying about a rule, one card up. [ValidationWarning] is indexed by
+ * rule and a recurrence has no index, so this is asked on its own rather than bent into that
+ * list — and it is asked at all because the fences moved here with the calendar, and a fence
+ * nothing can ever clear is exactly as silent here as it was on a rule.
+ */
+enum class RecurrenceWarning {
+    /** The series has run out: an ending already behind us, or a count already spent. */
+    OVER,
+
+    /** It still names dates, but never one its own fences allow. */
+    NEVER_FIRES,
+}
+
+fun recurrenceWarning(
+    recurrence: Recurrence,
+    now: Instant,
+    zone: ZoneId,
+    shape: DayShape = DayShape.DEFAULT,
+): RecurrenceWarning? {
+    val calendar = recurrence as? Recurrence.Calendar ?: return null
+    if (calendar.nextDateMoment("", now, zone, shape) == null) return RecurrenceWarning.OVER
+    // The same search the scheduler does, so what it cannot find, nothing will.
+    return if (calendar.nextMoment("", now, zone, shape) == null) RecurrenceWarning.NEVER_FIRES else null
+}
+
+/**
+ * A recurrence that is nonsense in itself. Only a calendar can be: a span is two numbers the
+ * stepper cannot take out of range, and the shapes nothing writes any more were checked when
+ * they were written.
+ */
+fun problemOf(recurrence: Recurrence): TriggerProblem? {
+    val calendar = recurrence as? Recurrence.Calendar ?: return null
+    return problemOf(calendar.repeat) ?: calendar.conditions.firstNotNullOfOrNull { problemOf(it) }
 }
 
 fun problemOf(condition: Condition): TriggerProblem? = when (condition) {
@@ -247,7 +296,7 @@ private fun betterAsCondition(rules: List<TriggerRule>, match: RuleMatch): Valid
 fun TriggerRule.placesConflict(): Boolean {
     val circles = ArrayList<Condition.AtPlace>()
     (trigger as? Trigger.Location)?.let {
-        circles += Condition.AtPlace(it.lat, it.lng, it.radiusM, it.label, inside = it.transition == Transition.ENTER)
+        circles += Condition.AtPlace(it.lat, it.lng, it.radiusM, it.label, inside = it.presence == Presence.INSIDE)
     }
     conditions.mapNotNullTo(circles) { it.place }
     for (i in circles.indices) {

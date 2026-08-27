@@ -4,6 +4,8 @@ import dev.rwilco.model.Fixtures.defaultTime
 import dev.rwilco.model.Fixtures.now
 import dev.rwilco.model.Fixtures.zone
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -22,8 +24,8 @@ class PlaceGateTest {
 
     private val homeLat = 40.4169
     private val homeLng = -3.7035
-    private val home = Trigger.Location(homeLat, homeLng, radiusM = 200, transition = Transition.ENTER, label = "Casa")
-    private val leavingHome = home.copy(transition = Transition.EXIT)
+    private val home = Trigger.Location(homeLat, homeLng, radiusM = 200, presence = Presence.INSIDE, label = "Casa")
+    private val leavingHome = home.copy(presence = Presence.OUTSIDE)
 
     private fun reminder(
         vararg rules: TriggerRule,
@@ -168,5 +170,34 @@ class PlaceGateTest {
     @Test
     fun `a finished reminder is watched by nobody`() {
         assertTrue(reminder(TriggerRule(home)).copy(status = Status.DONE).circles().isEmpty())
+    }
+
+    // ---- the two readings of a circle, on their way to the watch -------------------------
+
+    @Test
+    fun `the reading a rule asks for is the one the watch is handed`() {
+        val being = reminder(TriggerRule(home)).watchedCircles(now, zone, defaultTime).single()
+        assertEquals(Transition.ENTER, being.place.transition)
+        assertFalse(being.place.onCrossing, "a place is a state unless somebody asks for the doorway")
+
+        val arriving = reminder(TriggerRule(home.copy(onCrossing = true))).watchedCircles(now, zone, defaultTime).single()
+        assertTrue(arriving.place.onCrossing)
+        // A doorway circle is a different thing to watch, so it keeps its own memory of which
+        // side the phone is on rather than inheriting the state reading's.
+        assertNotEquals(being.place.id, arriving.place.id)
+    }
+
+    @Test
+    fun `a ticked-off place is watched as a state, whichever reading ticked it`() {
+        // Under "todos" a tick comes off when the rule stops being true — not on a second
+        // doorway. "Al llegar a casa" ticked off is un-ticked by not being at home, and asking
+        // for a crossing to say so would leave the set holding a rule that is plainly untrue.
+        val arriving = TriggerRule(home.copy(onCrossing = true))
+        val nine = TriggerRule(Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 21, 0)))
+        val ticked = reminder(arriving, nine, match = RuleMatch.ALL, fired = setOf(0))
+        val circle = ticked.watchedCircles(now, zone, defaultTime).first { it.ruleIndex == 0 }
+        assertEquals(Crossing.TAKES_BACK, circle.place.crossing)
+        assertEquals(Transition.EXIT, circle.place.transition, "it is waiting to stop being true")
+        assertFalse(circle.place.onCrossing, "a tick comes off on the state, not on a doorway")
     }
 }

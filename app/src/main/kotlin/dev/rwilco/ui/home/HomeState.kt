@@ -77,10 +77,10 @@ data class ReminderCardUi(
      * The recurrence, when it works out its own moments — and only then.
      *
      * It gets a row of its own because it is a "when" like any other and the triggers cannot
-     * speak for it: a reminder whose only arrangement is "cada 6 h" has no trigger at all, and
-     * without this its card said nothing whatsoever about when it rings. `ByTrigger` is left
-     * out on purpose: the repeating trigger already on the card IS that answer, and saying it
-     * twice is noise.
+     * speak for it: a reminder whose only arrangement is "cada 6 h" or "cada lunes" has no
+     * trigger at all, and without this its card said nothing whatsoever about when it rings.
+     * `ByTrigger` is left out on purpose: the random window already on the card IS that answer,
+     * and saying it twice is noise.
      */
     val recurrence: Recurrence? = null,
 )
@@ -136,7 +136,7 @@ fun buildHomeState(
     }
     val groups = groupForHome(reminders, now, zone, defaultTime, filter, dayStart, shape)
     fun card(reminder: Reminder): ReminderCardUi {
-        val standings = reminder.ruleStandings(now, zone, dayStart) { index -> inside(reminder.id, index) }
+        val standings = reminder.ruleStandings(now, zone, dayStart, shape) { index -> inside(reminder.id, index) }
         val circles = reminder.watchedCircles(now, zone, defaultTime, shape, dayStart)
         return ReminderCardUi(
             id = reminder.id,

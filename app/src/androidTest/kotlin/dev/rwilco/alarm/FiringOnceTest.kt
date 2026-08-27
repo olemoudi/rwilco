@@ -7,6 +7,7 @@ import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
+import dev.rwilco.model.Presence
 import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
@@ -180,7 +181,7 @@ class FiringOnceTest {
                 id = id,
                 text = "Llamar a Marta",
                 rules = listOf(
-                    TriggerRule(Trigger.Location(40.4168, -3.7038, 200, Transition.ENTER, "Casa")),
+                    TriggerRule(Trigger.Location(40.4168, -3.7038, 200, Presence.INSIDE, "Casa")),
                     TriggerRule(Trigger.AtDateTime(LocalDateTime.ofInstant(appointment, app.clock.zone))),
                 ),
                 createdAt = now,

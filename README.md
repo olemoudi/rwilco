@@ -4,8 +4,9 @@
 [![coverage](.github/badges/coverage.svg)](https://github.com/olemoudi/rwilco/actions/workflows/ci.yml)
 
 A personal reminders app that lives entirely on your phone. Write what you want to remember,
-tag it if you like, say *when* — a date, a date and time, a time that repeats, a countdown, a
-place, or a random moment — and say *what should happen*: take over the screen, notify, sound,
+tag it if you like, say *when* — a date, a date and time, a stretch of the day, a countdown, a
+place, or a random moment — say whether it *comes back* (on a calendar of its own, or so long
+after you deal with it), and say *what should happen*: take over the screen, notify, sound,
 vibrate.
 
 Dark-first, built for one hand, no account, no server, nothing leaves the device.
@@ -15,7 +16,7 @@ Dark-first, built for one hand, no account, no server, nothing leaves the device
     <td><img src="docs/screenshots/home.png" width="170" alt="Today: the next reminder glows amber with a live countdown, then the day's sections"></td>
     <td><img src="docs/screenshots/home-search.png" width="170" alt="Search: one query over reminders and tags, each result saying which it is"></td>
     <td><img src="docs/screenshots/editor-filled.png" width="170" alt="Editor: the reminder text, a tag switched on, and a countdown trigger row in its family colour"></td>
-    <td><img src="docs/screenshots/editor-kinds.png" width="170" alt="Adding a trigger: six tiles — date and time, date only, repeating time, countdown, place, random"></td>
+    <td><img src="docs/screenshots/editor-kinds.png" width="170" alt="Adding a trigger: five tiles — date, a stretch of the day, countdown, place, random"></td>
     <td><img src="docs/screenshots/sheet-date.png" width="170" alt="Date: shortcuts, a month calendar, and an hour or none"></td>
     <td><img src="docs/screenshots/alert-preview.png" width="170" alt="The full-screen alert: the words as big as they fit, snooze chips and one Done button"></td>
   </tr>

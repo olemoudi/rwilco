@@ -7,10 +7,11 @@ import dev.rwilco.model.DEFAULT_ACTIONS
 import dev.rwilco.model.Period
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RecurrenceUnit
+import dev.rwilco.model.RepeatUnit
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
-import dev.rwilco.model.Transition
+import dev.rwilco.model.Presence
 import dev.rwilco.model.NoteKind
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.WatchNote
@@ -57,12 +58,18 @@ object DemoData {
         val tonight = today.atTime(21, 30).let { if (it.isAfter(local.toLocalDateTime())) it else it.plusDays(1) }
         val nextSaturday = today.with(TemporalAdjusters.next(DayOfWeek.SATURDAY))
 
-        fun reminder(id: String, text: String, tags: List<String>, vararg triggers: Trigger, actions: Set<Action> = DEFAULT_ACTIONS, status: Status = Status.ACTIVE, ageMinutes: Long = 0) =
+        // "Todos los lunes a las 7:30" is a calendar in "Vuelve" now, not a trigger.
+        fun weekly(at: LocalTime, vararg days: DayOfWeek) = Recurrence.Calendar(
+            Trigger.Repeat(startsOn = today, unit = RepeatUnit.WEEK, time = at, days = days.toSet()),
+        )
+
+        fun reminder(id: String, text: String, tags: List<String>, vararg triggers: Trigger, actions: Set<Action> = DEFAULT_ACTIONS, status: Status = Status.ACTIVE, ageMinutes: Long = 0, recurrence: Recurrence = Recurrence.None) =
             Reminder(
                 id = "demo-$id",
                 text = text,
                 tags = tags,
                 rules = triggers.map { TriggerRule(it) },
+                recurrence = recurrence,
                 actions = actions,
                 status = status,
                 createdAt = now.minus(Duration.ofMinutes(ageMinutes + 60)),
@@ -88,15 +95,15 @@ object DemoData {
             ),
             reminder(
                 "pills", "Pastillas de la tensión", listOf("salud"),
-                Trigger.AtTime(LocalTime.of(7, 30), setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)),
                 // The pills are the one that keeps asking: a reminder somebody means to answer.
                 actions = setOf(Action.FULL_SCREEN, Action.SOUND_UNTIL_ANSWERED, Action.VIBRATE),
                 ageMinutes = 2000,
+                recurrence = weekly(LocalTime.of(7, 30), DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY),
             ),
             reminder(
                 "plants", "Regar las plantas del balcón", listOf("casa"),
-                Trigger.AtTime(LocalTime.of(10, 0), setOf(DayOfWeek.SATURDAY)),
                 ageMinutes = 3000,
+                recurrence = weekly(LocalTime.of(10, 0), DayOfWeek.SATURDAY),
             ),
             reminder(
                 "long", "Preguntarle a Marta por el presupuesto de la reforma del baño, mirar si el fontanero puede venir el jueves y avisar al seguro antes de que caduque el parte del vecino de arriba", listOf("casa", "papeleo"),
@@ -117,7 +124,7 @@ object DemoData {
             ),
             reminder(
                 "umbrella", "Coger el paraguas del paragüero", listOf("casa"),
-                Trigger.Location(40.4168, -3.7038, 150, Transition.EXIT, "Casa"),
+                Trigger.Location(40.4168, -3.7038, 150, Presence.OUTSIDE, "Casa"),
                 ageMinutes = 400,
             ).let { umbrella ->
                 // The one that shows a rule with a condition on it: only on the way out in the
@@ -147,7 +154,7 @@ object DemoData {
             // The two shapes 0.3 added: rules that all have to happen, and a note nothing rings.
             reminder(
                 "all", "Llamar a Marta por lo del presupuesto", listOf("trabajo"),
-                Trigger.Location(40.4168, -3.7038, 200, Transition.ENTER, "Casa"),
+                Trigger.Location(40.4168, -3.7038, 200, Presence.INSIDE, "Casa"),
                 Trigger.AtDateTime(local.plusHours(4).toLocalDateTime().withSecond(0).withNano(0)),
                 ageMinutes = 20,
             ).copy(ruleMatch = RuleMatch.ALL, firedRules = setOf(0)),

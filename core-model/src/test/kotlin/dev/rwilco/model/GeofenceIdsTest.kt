@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test
 class GeofenceIdsTest {
 
     private val uuid = "3f2a9c1e-7b4d-4f0a-9c2e-6d5b8a1f0c33"
-    private val home = Trigger.Location(40.4169, -3.7035, 200, Transition.ENTER, "Casa")
+    private val home = Trigger.Location(40.4169, -3.7035, 200, Presence.INSIDE, "Casa")
 
     @Test
     fun `a geofence id carries the reminder, which of its places it is, and the circle itself`() {
@@ -23,7 +23,7 @@ class GeofenceIdsTest {
         // Which is what stops an edited list of rules handing one circle another's memory.
         val moved = GeofenceIds.encode(uuid, 0, home.copy(lat = 40.4500))
         val wider = GeofenceIds.encode(uuid, 0, home.copy(radiusM = 300))
-        val leaving = GeofenceIds.encode(uuid, 0, home.copy(transition = Transition.EXIT))
+        val leaving = GeofenceIds.encode(uuid, 0, home.copy(presence = Presence.OUTSIDE))
         val same = GeofenceIds.encode(uuid, 0, home.copy(label = "Home"))
         assertEquals(GeofenceIds.encode(uuid, 0, home), same, "the label is not the circle")
         assertEquals(3, setOf(moved, wider, leaving).size)

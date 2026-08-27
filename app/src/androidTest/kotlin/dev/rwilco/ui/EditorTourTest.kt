@@ -138,7 +138,6 @@ class EditorTourTest {
         // Every configurator opens and cancels cleanly.
         for ((kind, name) in listOf(
             R.string.kind_date to "sheet-date",
-            R.string.kind_repeat_time to "sheet-repeat",
             R.string.kind_interval to "sheet-interval",
             R.string.kind_random to "sheet-random",
             R.string.kind_place to "sheet-place",
@@ -148,6 +147,16 @@ class EditorTourTest {
             // The place sheet is fetching map tiles over the emulator's slow network.
             if (kind == R.string.kind_place) Thread.sleep(6_000)
             shot(name)
+            // The four readings of a circle out of two controls: the switch relabels the
+            // segments, so what is on screen is always one of the four things people say.
+            if (kind == R.string.kind_place) {
+                text(s(R.string.place_side_inside)).performScrollTo().assertIsDisplayed()
+                text(s(R.string.place_needs_crossing)).performScrollTo().performClick()
+                rule.waitUntilDisplayed(s(R.string.place_side_arriving))
+                shot("sheet-place-crossing")
+                text(s(R.string.place_side_leaving)).performScrollTo().performClick()
+                rule.waitUntilDisplayed(s(R.string.place_means_leaving))
+            }
             if (kind == R.string.kind_date) {
                 // The wheels, which replaced a dial nobody could hit one-handed.
                 rule.onAllNodesWithTag(TIME_FIELD_TAG, useUnmergedTree = true)[0].performClick()
@@ -162,19 +171,6 @@ class EditorTourTest {
                 text(s(R.string.sheet_random_in_day)).performScrollTo().performClick()
                 rule.waitUntilDisplayed(s(R.string.sheet_at_this_time))
                 shot("sheet-date-random")
-            }
-            // And the recurrence tile is four shapes, not one: months ask which day of the
-            // month, and so do years — "el primer miércoles de mayo" is a yearly, and saying
-            // it any other way is arithmetic on a date that moves.
-            if (kind == R.string.kind_repeat_time) {
-                text(s(R.string.sheet_repeat_unit_months)).performScrollTo().performClick()
-                rule.waitUntilDisplayed(s(R.string.sheet_repeat_monthly_nth))
-                shot("sheet-repeat-monthly")
-                text(s(R.string.sheet_repeat_monthly_nth)).performScrollTo().performClick()
-                rule.waitUntilDisplayed(s(R.string.repeat_ordinal_last))
-                text(s(R.string.sheet_repeat_unit_years)).performScrollTo().performClick()
-                rule.waitUntilDisplayed(s(R.string.sheet_repeat_monthly_nth))
-                shot("sheet-repeat-yearly")
             }
             text(s(R.string.sheet_cancel)).performClick()
             rule.waitUntilGone(s(R.string.sheet_cancel))
@@ -205,6 +201,31 @@ class EditorTourTest {
         shot("editor-recurrence-ringing")
         text(s(R.string.recur_none)).performScrollTo().performClick()
         rule.waitUntilGone(s(R.string.recur_counts_from))
+
+        // The other half of "Vuelve", and the reason there is no repeating-time tile any more:
+        // a calendar is four shapes, not one. Months ask which day of the month, and so do
+        // years — "el primer miércoles de mayo" is a yearly, and saying it any other way is
+        // arithmetic on a date that moves.
+        text(s(R.string.recur_calendar)).performScrollTo().performClick()
+        rule.waitUntilDisplayed(s(R.string.sheet_cancel))
+        shot("sheet-calendar")
+        text(s(R.string.sheet_repeat_unit_months)).performScrollTo().performClick()
+        rule.waitUntilDisplayed(s(R.string.sheet_repeat_monthly_nth))
+        shot("sheet-calendar-monthly")
+        text(s(R.string.sheet_repeat_monthly_nth)).performScrollTo().performClick()
+        rule.waitUntilDisplayed(s(R.string.repeat_ordinal_last))
+        text(s(R.string.sheet_repeat_unit_years)).performScrollTo().performClick()
+        rule.waitUntilDisplayed(s(R.string.sheet_repeat_monthly_nth))
+        shot("sheet-calendar-yearly")
+        // The confirm bar is the sheet's own footer, outside the scrolling column.
+        text(s(R.string.sheet_add)).performClick()
+        rule.waitUntilGone(s(R.string.sheet_repeat_ends))
+        // Back on the card it reads itself back, and can be fenced like the rule it used to be.
+        // The section headings are drawn uppercase, so the way back to the card is a button.
+        text(s(R.string.recur_none)).performScrollTo()
+        shot("editor-recurrence-calendar")
+        text(s(R.string.recur_none)).performClick()
+        rule.waitForIdle()
 
         // A rule can be fenced in, by hours or by a place: the trigger only counts inside them.
         text(s(R.string.editor_add_condition)).performScrollTo().performClick()

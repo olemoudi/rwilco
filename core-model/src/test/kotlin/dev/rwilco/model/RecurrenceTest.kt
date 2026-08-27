@@ -349,7 +349,7 @@ class RecurrenceTest {
         val dealt = local(2026, 8, 27, 9, 30)
         val pills = reminder(Recurrence.After(6, RecurrenceUnit.HOURS), lastDealtAt = dealt)
             .copy(lastFiredAt = rang)
-        assertEquals(local(2026, 8, 27, 15, 30), pills.recurrenceMoment(zone, dayStart))
+        assertEquals(local(2026, 8, 27, 15, 30), pills.recurrenceMoment(dealt, zone, dayStart))
     }
 
     @Test
@@ -361,7 +361,7 @@ class RecurrenceTest {
             lastDealtAt = dealt,
         ).copy(lastFiredAt = rang)
         // Eight plus six, not half nine plus six: the rhythm somebody set does not drift.
-        assertEquals(local(2026, 8, 27, 14, 0), pills.recurrenceMoment(zone, dayStart))
+        assertEquals(local(2026, 8, 27, 14, 0), pills.recurrenceMoment(dealt, zone, dayStart))
     }
 
     @Test
@@ -373,7 +373,7 @@ class RecurrenceTest {
             Recurrence.After(6, RecurrenceUnit.HOURS, RecurrenceFrom.RANG),
             lastDealtAt = dealt,
         )
-        assertEquals(local(2026, 8, 27, 15, 30), swiped.recurrenceMoment(zone, dayStart))
+        assertEquals(local(2026, 8, 27, 15, 30), swiped.recurrenceMoment(dealt, zone, dayStart))
     }
 
     @Test

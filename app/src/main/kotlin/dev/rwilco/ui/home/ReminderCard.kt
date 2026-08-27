@@ -47,6 +47,7 @@ import dev.rwilco.model.kind
 import dev.rwilco.ui.components.HoldButton
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.TriggerKeycap
+import dev.rwilco.model.conditions
 import dev.rwilco.ui.editor.recurrenceLabel
 import dev.rwilco.ui.editor.titleRes
 import dev.rwilco.ui.format.conditionLabel
@@ -117,7 +118,7 @@ fun ReminderCard(
                 for (row in card.triggers) TriggerRow(row, today, defaultTime, muted = card.paused)
                 // Last, because that is the order the two answer in: the triggers say when it
                 // rings the first time and the recurrence says when it comes back.
-                card.recurrence?.let { RecurrenceRow(it, muted = card.paused) }
+                card.recurrence?.let { RecurrenceRow(it, today, muted = card.paused) }
             }
             Spacer(Modifier.height(spacing.sm))
             CardFooter(
@@ -137,7 +138,7 @@ fun ReminderCard(
  * line is the part people get wrong about it: the clock starts at the "hecho", not at the ring.
  */
 @Composable
-fun RecurrenceRow(recurrence: Recurrence, muted: Boolean = false) {
+fun RecurrenceRow(recurrence: Recurrence, today: LocalDate, muted: Boolean = false) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         TriggerKeycap(
             family = TriggerFamily.TIME,
@@ -148,7 +149,7 @@ fun RecurrenceRow(recurrence: Recurrence, muted: Boolean = false) {
         Spacer(Modifier.width(Tokens.spacing.sm))
         Column(modifier = Modifier.weight(1f, fill = false)) {
             Text(
-                text = recurrenceLabel(recurrence),
+                text = recurrenceLabel(recurrence, today),
                 style = MaterialTheme.typography.titleSmall,
                 color = if (muted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
@@ -160,8 +161,8 @@ fun RecurrenceRow(recurrence: Recurrence, muted: Boolean = false) {
             Text(
                 text = stringResource(
                     when {
-                        recurrence == Recurrence.ByTrigger || recurrence is Recurrence.MonthlyWeekday ->
-                            R.string.card_recurrence_from_calendar
+                        recurrence == Recurrence.ByTrigger || recurrence is Recurrence.MonthlyWeekday ||
+                            recurrence is Recurrence.Calendar -> R.string.card_recurrence_from_calendar
                         recurrence.countsFromRinging -> R.string.card_recurrence_from_ringing
                         else -> R.string.card_recurrence_from_done
                     },
@@ -171,6 +172,19 @@ fun RecurrenceRow(recurrence: Recurrence, muted: Boolean = false) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            // The calendar's fences read like a rule's, because that is what they are.
+            if (recurrence.conditions.isNotEmpty()) {
+                Text(
+                    text = stringResource(
+                        R.string.editor_only_if_prefix,
+                        recurrence.conditions.map { conditionLabel(it) }.joinToString(" · "),
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }

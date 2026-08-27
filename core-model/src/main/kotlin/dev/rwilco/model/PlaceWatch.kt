@@ -68,10 +68,16 @@ data class WatchedPlace(
     val lat: Double,
     val lng: Double,
     val radiusM: Int,
+    /** Which side of the line this circle is waiting for. */
     val transition: Transition,
     val label: String,
     val crossing: Crossing = Crossing.RINGS,
     val floor: Duration = Duration.ZERO,
+    /**
+     * Whether the phone has to be *seen* getting to that side, rather than simply being there.
+     * See [Trigger.Location.onCrossing]; the whole of it is one line in [stepPlaceWatch].
+     */
+    val onCrossing: Boolean = false,
 )
 
 /** A place kept in Settings, offered whole — name, pin and radius — when a rule needs one. */
@@ -428,14 +434,15 @@ private fun Duration.clamp(floor: Duration, ceiling: Duration): Duration = when 
  * could be anywhere; getting out takes a fix clearly beyond the line. A fix wobbling on the
  * line changes nothing.
  *
- * With no history, the side that rings nothing. A first fix is often the worst one — the
- * cached cell fix a cold provider hands back — and the plain answer read off its centre seeds
- * the memory with a guess that the next good fix then "corrects" with an event: a phone that
- * never left home told it has just arrived, which is the one thing the baseline exists to
- * prevent. A place waiting for an arrival is therefore taken to be inside when the fix could
- * be — the real arrival is still caught, after the watch has seen the phone leave — and a
- * place waiting for a leaving is taken to be outside unless the fix is clearly in. With a
- * good fix the two read as the plain answer; only doubt is resolved towards silence.
+ * With no history, doubt goes to the side the rule is about: a circle waiting to be inside is
+ * taken to be inside when the fix could be, and one waiting to be outside is taken to be
+ * outside unless the fix is clearly in. A first fix is often the worst one — the cached cell
+ * fix a cold provider hands back — and this is what it buys for each reading. For a *crossing*
+ * it buys silence: the plain answer read off a bad centre would seed the memory with a guess
+ * that the next good fix "corrects" with an event, telling a phone that never left home it has
+ * just arrived. For a *state* it buys the ring, which is the thing that reading is for:
+ * "mientras esté en casa", written at home, is true now and says so. With a good fix the two
+ * read as the plain answer; only doubt leans, and it leans the same way in both.
  */
 fun insideAfter(wasInside: Boolean?, place: WatchedPlace, fix: Fix): Boolean {
     val distance = distanceMeters(fix.lat, fix.lng, place.lat, place.lng)
@@ -520,15 +527,18 @@ fun stepPlaceWatch(
 ): WatchStep {
     val movement = movementSince(state.lastFix, fix, sensed, state.stillStreak)
     val inside = (places + listening).associate { place -> place.id to insideAfter(state.inside[place.id], place, fix) }
+    // A circle reports the moment its own side becomes true, and not again while it stays
+    // true. The one difference between the two readings of a place is what "before" nothing
+    // counts as: a state ("mientras esté en casa") is satisfied by simply being there, so a
+    // first judgement that finds the phone inside is news; a crossing ("al llegar") wants the
+    // doorway, so a side nobody has seen yet is not the other side and it waits.
     val events = places.mapNotNull { place ->
         if (place.crossing == Crossing.NOTHING) return@mapNotNull null
-        val before = state.inside[place.id] ?: return@mapNotNull null
-        val after = inside.getValue(place.id)
-        when {
-            !before && after && place.transition == Transition.ENTER -> PlaceEvent(place.id, Transition.ENTER)
-            before && !after && place.transition == Transition.EXIT -> PlaceEvent(place.id, Transition.EXIT)
-            else -> null
-        }
+        val before = state.inside[place.id]
+        if (place.onCrossing && before == null) return@mapNotNull null
+        val wantsInside = place.transition == Transition.ENTER
+        if (before == wantsInside || inside.getValue(place.id) != wantsInside) return@mapNotNull null
+        PlaceEvent(place.id, place.transition)
     }
     val plan = planNextCheck(fix, movement, places, inside, charge)
     val next = PlaceWatchState(

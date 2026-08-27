@@ -9,7 +9,7 @@ import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
-import dev.rwilco.model.Transition
+import dev.rwilco.model.Presence
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -36,7 +36,7 @@ class DiagReportTest {
         rules = listOf(
             TriggerRule(Trigger.AtTime(LocalTime.of(9, 0), setOf(DayOfWeek.MONDAY))),
             TriggerRule(
-                Trigger.Location(40.4169, -3.7035, 150, Transition.ENTER, "Casa de mis padres"),
+                Trigger.Location(40.4169, -3.7035, 150, Presence.INSIDE, "Casa de mis padres"),
                 listOf(Condition.TimeWindow(LocalTime.of(18, 0), LocalTime.of(22, 0))),
             ),
         ),
@@ -83,7 +83,7 @@ class DiagReportTest {
         assertTrue(report.contains("armed=2026-08-26 12:10:00"), "in the phone's own zone")
         assertTrue(report.contains("fired=2026-08-26 11:30:00"))
         assertTrue(report.contains("time 09:00 d=1"))
-        assertTrue(report.contains("place 150m ENTER"))
+        assertTrue(report.contains("place 150m INSIDE"))
         assertTrue(report.contains("if(win 18:00-22:00"))
         assertTrue(report.contains("rec=after 6 HOURS"))
         assertTrue(report.contains("next="))

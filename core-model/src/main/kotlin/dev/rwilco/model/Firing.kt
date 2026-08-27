@@ -30,13 +30,32 @@ fun statusAfterDismissal(
     shape: DayShape = DayShape.DEFAULT,
 ): Status {
     if (!reminder.recurrence.repeats) return Status.DONE
-    // A recurrence that works out its own moments always has a next one, so there is nothing to
-    // check: it stays. Anything else hands the question back to the triggers.
-    if (reminder.recurrence.isAnchored) return Status.ACTIVE
+    // A span counted from an event always has a next one, so there is nothing to check: it
+    // stays. A calendar is asked like the triggers are, because a calendar can run out
+    // ([RepeatEnd]) and a series that has rung its last time is finished.
+    if (reminder.recurrence.isAnchored && !reminder.recurrence.isCalendar) return Status.ACTIVE
     // Dealt with means the round is over: what had already happened under ALL stops counting,
     // and the question is whether the reminder can come round again from scratch.
     val cleared = reminder.copy(status = Status.ACTIVE, snoozedUntil = null, firedRules = emptySet())
     return if (nextFire(cleared, now, zone, defaultTime, shape = shape) == null) Status.DONE else Status.ACTIVE
+}
+
+/**
+ * Whether a place read as a *state* has already had its say in this round.
+ *
+ * "Mientras esté en casa" is true for as long as somebody is at home, so the watch reports it
+ * true whenever it is asked afresh, and without this a reminder left unanswered would ring all
+ * evening. Dealing with it starts the next round — and a recurrence's rest holds the rules quiet
+ * until it is up — which is the same shape every other trigger has.
+ *
+ * A *crossing* is the exception it exists to be: "al llegar a casa" that rang and was ignored
+ * rings again when somebody leaves and comes back, because a second doorway is a second thing
+ * that happened. So it is never spent here, only by being dealt with.
+ */
+fun Reminder.presenceAlreadyRang(place: Trigger.Location): Boolean {
+    if (place.onCrossing) return false
+    val fired = lastFiredAt ?: return false
+    return fired > (lastDealtAt ?: Instant.MIN)
 }
 
 /**

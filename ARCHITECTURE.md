@@ -33,6 +33,26 @@ Conditions (`Condition.kt`) are states, asked "were you true at that moment?", w
 makes them safe to AND with anything. Today there is one, `time_window` (hours + days, crossing
 midnight allowed); a place condition is the obvious next one.
 
+**A place is a state, and the doorway is the exception** (`Trigger.Location`). It used to be an
+event and only an event — "al llegar" meant a line the phone had to be *seen* going through —
+and that one decision spread: a reminder written at home would not ring until you had left and
+come back, a set under "todos" could not tick off a place you were already standing in, and the
+first fix of a session had to be biased towards silence so it did not invent an arrival. Most of
+the time nobody means the doorway; they mean "cuando esté en casa". So `presence`
+(`Presence.INSIDE`/`OUTSIDE`) says which side of the line the rule is about and nothing more: it
+holds whenever the phone is on that side, whether or not anybody watched it get there. A reminder
+that is only "mientras esté en casa", written at home, rings at once. `onCrossing` asks for the
+doorway back — "al llegar", "al salir" — and means exactly one thing: **a side nobody has seen
+yet does not count as the other side**, which is a single line in `stepPlaceWatch` and was
+already there. Four readings, two questions, and the same four words on every screen
+(`placeReading`).
+
+The on-disk shape did not move: `Presence.INSIDE` is `@SerialName("ENTER")` under the frozen key
+`transition`, and `onCrossing` is a new field with a default. **The default is the migration** —
+every place written before this reads as a state, which is the reading it almost always meant,
+and `ReminderCodecTest` pins both halves. What it costs is stated plainly: somebody's existing
+"al llegar a casa", sitting at home, will ring on the next look.
+
 Triggers (`core-model/.../Trigger.kt`), with their frozen JSON discriminators:
 
 | Kind (UI tile)        | Stored as                          | `type`         |
@@ -40,17 +60,20 @@ Triggers (`core-model/.../Trigger.kt`), with their frozen JSON discriminators:
 | Date                  | `AtDateTime(at: LocalDateTime)`    | `at_date_time` |
 | Date (no hour chosen) | `DayRandom(date)` — a moment drawn from that day's waking hours | `day_random` |
 | Countdown             | `Countdown(minutes, startedAt?)`   | `countdown`    |
-| Repeats               | `Repeat(startsOn, every, unit, time?, days, monthly?, ends)` | `repeat` |
-| Place                 | `Location(lat, lng, radiusM, ENTER/EXIT, label)` | `location` |
+| Interval              | `Interval(from, to, days)` — a stretch of the day | `interval` |
+| Place                 | `Location(lat, lng, radiusM, INSIDE/OUTSIDE, label, onCrossing)` | `location` |
 | Random                | `Random(timesPer, DAY/WEEK, from, to, days)` | `random` |
+| *(not a tile)* Calendar | `Repeat(startsOn, every, unit, time?, days, monthly?, ends)` | `repeat` |
 | *(read only)* Date only | `OnDate(date)` — rings at the default time (a setting) | `on_date` |
 | *(read only)* Time that repeats | `AtTime(time, days)`     | `at_time`      |
 
-The last two are written by no version of the app any more: a date is one tile now, with an
-hour in it or with the day's own hours behind it, and a weekly time is the `WEEK` case of
-`Repeat`. Both still decode and still mean exactly what they meant, because the discriminators
-are frozen and somebody's phone is full of them; editing one through its tile rewrites it as
-whichever of the new shapes it turns out to be.
+The last three are written by no version of the app as a *rule*. A date is one tile now, with an
+hour in it or with the day's own hours behind it; a weekly time is the `WEEK` case of `Repeat`;
+and `Repeat` itself is no longer a way of starting at all — it is the calendar inside
+`Recurrence.Calendar`, reached from "Vuelve". All three still decode and still mean exactly what
+they meant, because the discriminators are frozen and somebody's phone is full of them.
+`foldRepeats` (`LegacyRepeats.kt`) turns a stored `Repeat`/`AtTime` rule into the calendar it
+always was on the way in — see **Persistence** below.
 
 A `Repeat` is a sequence of *blocks* — days, weeks, months or years, `every` apart, counted
 from the block `startsOn` falls in — and each block yields the dates it names (`Repeats.kt`).
@@ -107,28 +130,49 @@ index), pinned by golden values in its test.
 
 Dealing with a firing (`statusAfterDismissal`) finishes a reminder unless its `Recurrence` says
 otherwise — `None` by default, because "hecho" means finished and a place can always come round
-again. `Recurrence.kt` is the whole vocabulary: `ByTrigger` hands the question back to the
-triggers (a repeating time, a random window), while `After(amount, unit, from)` and
-`MonthlyWeekday(ordinal, day)` work out their own moments. Hours are exact; days, weeks, months
-and years land on `AppSettings.dayStart` and never before the span is up.
+again. `Recurrence.kt` is the whole vocabulary, and it is **the only place in the app where
+anything repeats**:
 
-**The anchor is the question the app used to answer for you** (`RecurrenceFrom`). "Cada semana"
-is half a sentence — the other half is which moment the week is counted from — and there are
-three answers, asked once in "Vuelve" and nowhere else: the **calendar** (`ByTrigger`: a
-`Trigger.Repeat` or a random window works out its own dates and never drifts), the **ringing**
-(`RANG`, `lastFiredAt`: answer it late and the rhythm holds, which is what anybody who set
-08:00 / 14:00 / 20:00 meant), or **dealing with it** (`DEALT`, `lastDealtAt`: the clock starts
-when you do, and six hours between doses is six hours between doses). `DEALT` is the default
-and what every install before the field wrote, so old JSON reads as itself. `recurrenceAnchor`
-picks the instant and falls back to `lastDealtAt` when there is no firing to count from — a
-reminder swiped done on Home never rang, and "cada 6 h desde que suena" must still come back.
-The trigger and the recurrence are *not* merged and must not be: a `Trigger.Repeat` is a rule,
-so it can be ANDed with a place ("el día 26, y cuando llegue a casa"), it can name two days in
-one block, and it can end — none of which a span from an event can say.
+- `Calendar(repeat, conditions)` — the dates a series names, with an hour in them and an end.
+  The shape is `Trigger.Repeat` itself, carried rather than copied: it is what every phone
+  already holds on disk, its discriminators are frozen, and a second copy of the same seven
+  fields is a second place for the arithmetic to disagree. `conditions` are the "y sólo si"
+  fences the rule it used to be could carry.
+- `After(amount, unit, from)` — a span counted from something that happened. Hours are exact;
+  days, weeks, months and years land on `AppSettings.dayStart` and never before the span is up.
+- `ByTrigger` — hands the question back to a trigger that names its own dates, which is now only
+  a random window ("tres veces al día" is its own answer to "¿y vuelve?").
+- `MonthlyWeekday(ordinal, day)` — read-only. It is `Calendar` of a month with a `MonthlyOn.Nth`
+  in it, said twice; nothing writes one, and opening one in "Vuelve" rewrites it as the calendar
+  it always was.
+
+**A repeat used to be two things and that was the whole problem.** A "una hora que se repite"
+tile wrote a `Trigger.Repeat` *rule*, this wrote a recurrence, the two overlapped almost exactly,
+and nothing on either screen said which of them a given reminder had — the anchor row in "Vuelve"
+even had a button that reached across and opened the trigger sheet. A repeat is not a way of
+starting; it is the answer to "¿y vuelve?". What the move costs is the *simultaneous* AND: a
+calendar can no longer sit in a `RuleMatch.ALL`/`TOGETHER` set beside a place. What it does not
+cost is the sentence people actually write — "el día 26, y cuando llegue a casa" is a place rule
+with a monthly calendar in "Vuelve", and the rest semantics below say exactly that.
+
+**The anchor is a question only a span has** (`RecurrenceFrom`). "Cada semana" is half a
+sentence — the other half is which moment the week is counted from — and there are two answers,
+asked once in "Vuelve" and nowhere else: the **ringing** (`RANG`, `lastFiredAt`: answer it late
+and the rhythm holds, which is what anybody who set 08:00 / 14:00 / 20:00 meant), or **dealing
+with it** (`DEALT`, `lastDealtAt`: the clock starts when you do, and six hours between doses is
+six hours between doses). `DEALT` is the default and what every install before the field wrote,
+so old JSON reads as itself. `recurrenceAnchor` picks the instant and falls back to `lastDealtAt`
+when there is no firing to count from — a reminder swiped done on Home never rang, and "cada 6 h
+desde que suena" must still come back. A `Calendar` is never asked: its dates are its own, and it
+answers `null` to `nextRecurrence` (the span question) on purpose. `Reminder.calendarMoment`
+walks its dates instead, applying its fences the same way `nextFireOfRule` applies a rule's, and
+stopping after 64 candidates so a calendar that can never clear them answers *never* rather than
+looping — which is what `recurrenceWarning` says out loud in the editor.
 
 The triggers say when it rings the FIRST time and the recurrence when it comes back, so
 `recurrenceMoment` takes over once it has been dealt with once — or straight away when there
-are no triggers at all, which is what makes "cada 6 h" a whole reminder on its own.
+are no triggers at all, which is what makes "cada 6 h" and "todos los lunes a las 9" whole
+reminders on their own.
 A recurrence's moment is **spent once it has rung**, the same way a rule's is: under `DEALT` the
 anchor only moves when somebody deals with the firing, so a reminder that rang and was ignored
 would otherwise be handed the same past moment for ever — armed for ever, and an alarm already
@@ -136,9 +180,16 @@ in the past arrives at once. Spent, it answers *nothing*, which Home reads as ov
 `RANG` the anchor moves with the firing instead, so an unanswered one comes back on its rhythm
 rather than waiting to be acknowledged — which is the whole difference between the two, and the
 thing to know before choosing it.
-`RecurrencePreset`s (in the settings, four built in unnamed) put the usual answers on buttons.
-Room v4 added the boolean this replaced; v5 turns it into a shape (`by_trigger` for whatever
-repeated) and rebuilds the table to drop it.
+`RecurrencePreset`s (in the settings, four built in unnamed) put the usual **spans** on buttons;
+a calendar is not one of them, because a calendar carries a `startsOn` that is that reminder's
+own. Room v4 added the boolean this replaced; v5 turns it into a shape (`by_trigger` for whatever
+repeated) and rebuilds the table to drop it. The `calendar` shape needed no Room version at all:
+the column is JSON, and what it holds is folded on read.
+
+`Validation.problemOf(Recurrence)` blocks a save on a calendar that is nonsense in itself (a
+series told to stop before it starts), reusing the checks the trigger already had, and
+`recurrenceWarning` says — without blocking — that a series has run out or can never clear its
+own fences.
 
 `Validation.kt` decides what blocks a save, which is only the words and a trigger that is
 nonsense in itself: a reminder needs **neither a trigger nor an action**. One with neither is a
@@ -158,6 +209,15 @@ strict is asking somebody to remember how they spelled it.
 - Room (`app/.../data/`): one table, `reminder(id, text, tags, triggers, ruleMatch, actions,
   status, createdAt, updatedAt, doneAt, …, armedFor, armedRule, firedRules, repeats)`; tags/triggers/actions are JSON text columns written by
   `ReminderCodec`, read leniently (unknown trigger kinds and actions are dropped, never fatal).
+  **The read path is also where a shape that moved is migrated**, which is why the repeating
+  time needed no Room version: `foldRepeats` (`LegacyRepeats.kt`, pure and idempotent) lifts a
+  stored `Repeat`/`AtTime` **rule** into `Recurrence.Calendar` in `ReminderEntity.toDomain` —
+  keeping the shape byte for byte and carrying the rule's conditions across as the calendar's
+  fences — and moves `armedRule`/`firedRules` with the rule it removes. The row itself is
+  rewritten the next time anything saves it. A *second* repeating rule on one reminder is
+  dropped: two calendars is a thing the app can no longer say, and a rule nothing can edit is
+  worse than one that is gone. `SettingsStore` folds the presets the same way on the way out of
+  DataStore, because a preset written then holds a repeating rule too.
   `RwilcoDatabase.VERSION` + `MIGRATIONS` are guarded by `MigrationChainTest` (JVM) and
   `DatabaseMigrationTest` (device). Schemas are exported to `app/schemas`.
 - `ReminderRepository`: reactive `open`/`done` flows for the screens, suspend writes.
@@ -241,11 +301,13 @@ strict is asking somebody to remember how they spelled it.
   circle's last judgement on purpose (`Watching.remembered`), so a mark there stated last
   night's memory as this minute's fact.
 - A card shows one row per rule, and — when the recurrence works out its own moments
-  (`After`, `MonthlyWeekday`) — a row for that too, last, because that is the order the two
-  answer in. It is the only way a reminder whose whole arrangement is "cada 6 h" says anything
-  about when it rings: it carries no trigger at all, so without it the card was blank. Its
-  second line says the part people get wrong, that the clock starts at the "hecho" and not at
-  the ring. `ByTrigger` gets no row: the repeating trigger above it already IS that answer.
+  (`Calendar`, `After`, `MonthlyWeekday`) — a row for that too, last, because that is the order
+  the two answer in. It is the only way a reminder whose whole arrangement is "cada 6 h" or
+  "todos los lunes a las 9" says anything about when it rings: it carries no trigger at all, so
+  without it the card was blank. Its second line says the part people get wrong — that the clock
+  starts at the "hecho" and not at the ring, or that a calendar keeps its own dates — and a
+  calendar's fences read under it exactly as a rule's do. `ByTrigger` gets no row: the random
+  window above it already IS that answer.
 - Home: `HomeViewModel` combines the open reminders, settings, the tag filter and a minute pulse
   into `HomeUiState` (`buildHomeState`, pure and tested). The hero card's countdown ticks in its
   own composable (`rememberNow`) so nothing else recomposes. The magnifier has a flow of its own
@@ -296,8 +358,13 @@ strict is asking somebody to remember how they spelled it.
   half-life), and nothing is auto-focused, because a keyboard that opens by itself hides the list
   that would have saved the typing. A trigger is offered by its *shape*, never its instant: a
   length comes back as a length, an hour comes back re-hung on today or tomorrow, a place comes
-  back whole, and a bare date has nothing to reuse. Settings can also let `triggerKindsByUse`
-  sort the six tiles, which is a favourite nobody has to keep choosing. Each row shows
+  back whole, and a bare date has nothing to reuse. A repeating time is deliberately not offered
+  back either: no tile opens one any more, and a chip that opens nothing is worse than a chip
+  that is not there. Settings can also let `triggerKindsByUse`
+  sort the five tiles, which is a favourite nobody has to keep choosing. A stored favourite that
+  is no longer a tile (`DATE_TIME`, `REPEAT_TIME`) falls back to the date rather than opening
+  nothing: the enum keeps every name it ever had, because one that loses a name loses the whole
+  settings file with it. Each row shows
   `VISIBLE_SUGGESTIONS` of them and puts the rest behind `MoreChip` → `PickSheet` (a searchable
   list), because a row that grows with every reminder ever written stops being a shortcut.
   Holding one of those chips (the shared `Modifier.holdable`, the same 700ms and the same overlay
@@ -311,7 +378,10 @@ strict is asking somebody to remember how they spelled it.
   tomorrow morning) as one-tap chips that append a rule without a sheet. `TriggerKindSheet` puts the kind
   chosen in Settings (`AppSettings.defaultTriggerKind`) first and marks it; the other five keep
   their order behind it. One configurator sheet per trigger kind under `editor/sheets/`, plus `ConditionSheet` for the
-  "y sólo si" fences; the countdown sheet produces an `AtDateTime`; the place
+  "y sólo si" fences and `CalendarSheet`, which belongs to "Vuelve" rather than to the tiles and
+  is where the whole calendar is built (how often, what inside that, when in the day, from when,
+  until when, read back in the words the card will use); the countdown sheet produces an
+  `AtDateTime`; the place
   sheet offers the places kept by name in Settings (`AppSettings.savedPlaces`, managed by
   `SavedPlacesCard` through the same sheet without the arriving/leaving choice) as one-tap
   chips, searches addresses through the platform `Geocoder` (`PlaceSearch.kt`), and asks every
@@ -593,9 +663,19 @@ strict is asking somebody to remember how they spelled it.
   The GPS is only ever asked for near a line and with the phone *known* to be moving, on the
   evidence of two fixes; a drive straight through a place between two looks is not arriving, and
   is the geofence's to call. A place with no history
-  — a new rule, first launch — is baselined by the next fix without an event, which is how a
-  reminder written while standing at home does not ring for "arriving home"; it waits until the
-  watch has seen the phone leave, and while it waits it costs the least of anything in the app.
+  — a new rule, first launch — is judged by the next fix, and what that judgement *means*
+  depends on the reading: a **state** that finds itself true says so at once (which is how
+  "mientras esté en casa", written at home, rings), while a **doorway** (`onCrossing`) is
+  baselined without an event and waits until the watch has seen the phone on the far side. Doubt
+  in that first fix leans the same way for both — towards the side the rule is about
+  (`insideAfter`) — and it buys the state its ring and the doorway its silence. While a doorway
+  waits it costs the least of anything in the app.
+  A state says it *once*: the watch reports the moment it becomes true and holds its tongue
+  while it stays true, and what stops a second ring after that is the round it already rang in
+  (`presenceAlreadyRang`), which dealing with the reminder starts again. That is also why a
+  resting circle keeps its baseline only when it waits for a doorway (`Watching.remembered`): a
+  state has to be *asked afresh* when a recurrence's rest is over, or "mientras esté en casa, y
+  vuelve cada día" would ring once and never again for a phone that never left.
   Both ways of being inside a place are cheap, for different reasons. Waiting for an *arrival*
   from inside is half an hour a look and never GPS: the only thing that can happen indoors is
   going out, and stepping out and back inside that half hour is not arriving either. Waiting for
@@ -670,7 +750,9 @@ strict is asking somebody to remember how they spelled it.
   A crossing Play Services reports is judged the same way (`crossingIsNews`): an arrival
   announced while the app's own recent fix still has the phone inside is a line nobody crossed
   and is dropped, and one that stands is written into the same `inside` map so the other eye
-  knows it is old news. Anything the watch cannot vouch for — no fix, one older than the speed
+  knows it is old news. Its `strict` reading — "already rung, so it is owed the far side" — is
+  now asked only of a doorway; a state needs none of it, because what stops it ringing twice is
+  the round, not the geometry. Anything the watch cannot vouch for — no fix, one older than the speed
   memory, a place never judged — is news, because ringing once too often beats never arriving.
   And what it will not vouch for it does not judge by: a fix older than the speed memory — the
   stale one the provider hands back when nothing fresh answers — is treated as no fix at all,

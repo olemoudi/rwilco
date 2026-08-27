@@ -214,7 +214,8 @@ private fun Trigger.describe(): String = when (this) {
 }
 
 /** Rounded to two decimals — about a kilometre: two rules on one circle still match, and that is all. */
-private fun Trigger.Location.describeCircle(): String = "${radiusM}m $transition @${fixed(lat, 2)},${fixed(lng, 2)}"
+private fun Trigger.Location.describeCircle(): String =
+    "${radiusM}m $presence${if (onCrossing) "/crossing" else ""} @${fixed(lat, 2)},${fixed(lng, 2)}"
 
 private fun Condition.describe(): String = when (this) {
     is Condition.TimeWindow -> "win $from-$to ${days.describe()}"
@@ -226,6 +227,7 @@ private fun Recurrence.describe(): String = when (this) {
     Recurrence.ByTrigger -> "byTrigger"
     is Recurrence.After -> "after $amount $unit"
     is Recurrence.MonthlyWeekday -> "monthly $ordinal $day"
+    is Recurrence.Calendar -> "calendar " + repeat.describe() + conditions.joinToString("") { " +" + it.describe() }
 }
 
 private fun Set<java.time.DayOfWeek>.describe(): String =

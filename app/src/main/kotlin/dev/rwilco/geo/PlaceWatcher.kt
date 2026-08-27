@@ -166,7 +166,13 @@ class PlaceWatcher(
                 val gate = circle.opensAt
                 if (gate == null) asking += circle.place else listening += circle.place
                 if (gate != null && (opens == null || gate < opens!!)) opens = gate
-                if (circle.resting) remembered += circle.place.id
+                // A resting circle keeps its baseline only if it is waiting for a doorway. A
+                // *state* has to be asked afresh when the rest is over, and keeping the answer
+                // is how "mientras esté en casa, y vuelve cada día" rang once and then never
+                // again: the phone never left, so the side never changed, so there was no
+                // moment for the watch to report. Forgotten, the first look after the rest
+                // finds it true and says so.
+                if (circle.resting && circle.place.onCrossing) remembered += circle.place.id
             }
         }
         return Watching(asking, listening, opens, remembered)
@@ -241,11 +247,13 @@ class PlaceWatcher(
         val now = clock.instant()
         val live = runCatching { places().firstOrNull { it.id == placeId } }.getOrNull()
         val label = live?.label ?: placeId
-        // A place that has already rung is owed a leaving before it rings again: the crossing
-        // has to be one the app has seen the other side of, and what it cannot vouch for is
-        // not news. The first ring keeps the benefit of the doubt.
+        // A circle that asks for the doorway and has already rung is owed the other side before
+        // it rings again: the crossing has to be one the app has seen the far side of, and what
+        // it cannot vouch for is not news. The first ring keeps the benefit of the doubt. A
+        // circle read as a state needs none of this — what stops it ringing twice is the round
+        // it has already rung in (`ReminderFiring`), not the geometry.
         val reminder = repository.get(GeofenceIds.reminderIdOf(placeId))
-        val strict = reminder?.lastFiredAt != null
+        val strict = live?.onCrossing == true && reminder?.lastFiredAt != null
         if (!crossingIsNews(state, placeId, transition, now, strict = strict)) {
             Log.i(TAG, "geofence says $transition at $placeId, but we were already there")
             log.note(WatchNote(at = now, kind = NoteKind.ECHO, place = label, inside = state.inside[placeId]))

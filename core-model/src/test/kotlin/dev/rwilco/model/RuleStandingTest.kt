@@ -14,8 +14,8 @@ import java.time.LocalTime
  */
 class RuleStandingTest {
 
-    private val office = Trigger.Location(40.4369, -3.7035, 150, Transition.ENTER, "Oficina")
-    private val leavingOffice = office.copy(transition = Transition.EXIT)
+    private val office = Trigger.Location(40.4369, -3.7035, 150, Presence.INSIDE, "Oficina")
+    private val leavingOffice = office.copy(presence = Presence.OUTSIDE)
     private val afternoon = Trigger.Interval(LocalTime.of(14, 0), LocalTime.of(18, 0))
     private val evening = Trigger.Interval(LocalTime.of(20, 0), LocalTime.of(23, 0))
     private val nineAm = Trigger.AtTime(LocalTime.of(9, 0), DayOfWeek.entries.toSet())

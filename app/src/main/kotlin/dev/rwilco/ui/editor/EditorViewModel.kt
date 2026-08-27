@@ -142,6 +142,19 @@ class EditorViewModel(
     fun setRuleMatch(match: RuleMatch) = _state.update { it.setRuleMatch(match) }
     fun setRecurrence(recurrence: Recurrence) = _state.update { it.setRecurrence(recurrence) }
 
+    fun openCalendar() = _state.update { it.openCalendar() }
+
+    fun commitCalendar(repeat: Trigger.Repeat) = _state.update { it.commitCalendar(repeat) }
+
+    fun addRecurrenceCondition() = _state.update { it.addRecurrenceCondition() }
+
+    fun editRecurrenceCondition(index: Int) = _state.update { it.editRecurrenceCondition(index) }
+
+    fun removeRecurrenceCondition(index: Int) = _state.update { it.removeRecurrenceCondition(index) }
+
+    fun commitRecurrenceCondition(index: Int?, condition: Condition) =
+        _state.update { it.commitRecurrenceCondition(index, condition) }
+
     /** Picking one off the row counts as a use, which is what keeps the row in a useful order. */
     fun pickRecurrencePreset(preset: RecurrencePreset) {
         // The preset says the span; the anchor already chosen on the card says which moment it

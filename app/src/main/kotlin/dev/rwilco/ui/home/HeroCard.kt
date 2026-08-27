@@ -148,7 +148,7 @@ fun HeroCard(
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
                     for (row in hero.card.triggers) TriggerRow(row, today, defaultTime)
-                    hero.card.recurrence?.let { RecurrenceRow(it) }
+                    hero.card.recurrence?.let { RecurrenceRow(it, today) }
                 }
             }
             if (hero.card.tags.isNotEmpty() || hero.card.actions.isNotEmpty()) {

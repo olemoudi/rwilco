@@ -19,7 +19,7 @@ class FiringTest {
     private val tonight = Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 21, 30))
     private val past = Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 8, 0))
     private val weekly = Trigger.AtTime(LocalTime.of(7, 30), setOf(DayOfWeek.MONDAY))
-    private val place = Trigger.Location(40.4, -3.7, 200, Transition.ENTER, "Casa")
+    private val place = Trigger.Location(40.4, -3.7, 200, Presence.INSIDE, "Casa")
 
     @Test
     fun `a snooze outranks the triggers and is marked as such`() {
@@ -190,4 +190,26 @@ class FiringTest {
         assertFalse(quiet.notificationVibrate)
     }
 
+
+    // ---- a place, said once or said at every doorway --------------------------------------
+
+    private val casa = Trigger.Location(40.4169, -3.7035, 200, Presence.INSIDE, "Casa")
+
+    @Test
+    fun `a state has its say once a round, and a doorway at every doorway`() {
+        val rang = local(2026, 8, 27, 19, 0)
+        val fresh = reminder(casa)
+        assertFalse(fresh.presenceAlreadyRang(casa), "it has never rung")
+
+        val ignored = fresh.copy(lastFiredAt = rang)
+        assertTrue(ignored.presenceAlreadyRang(casa), "still at home is not a second thing happening")
+        // A doorway is never spent this way: leaving and coming back is a second arrival.
+        val doorway = casa.copy(onCrossing = true)
+        assertFalse(ignored.presenceAlreadyRang(doorway))
+
+        // Dealing with it starts the next round for both.
+        val dealt = ignored.copy(lastDealtAt = rang.plusSeconds(60))
+        assertFalse(dealt.presenceAlreadyRang(casa))
+        assertFalse(dealt.presenceAlreadyRang(doorway))
+    }
 }

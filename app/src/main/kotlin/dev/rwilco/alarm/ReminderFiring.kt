@@ -27,6 +27,7 @@ import dev.rwilco.model.missedFire
 import dev.rwilco.model.momentRungFor
 import dev.rwilco.model.outcomeOfFiring
 import dev.rwilco.model.owedUnderAll
+import dev.rwilco.model.presenceAlreadyRang
 import dev.rwilco.model.rulesCombine
 import dev.rwilco.model.statusAfterDismissal
 import dev.rwilco.notify.AlertNotifications
@@ -126,9 +127,16 @@ class ReminderFiring(
         // Two eyes on every place — the phone's geofence and the app's own watch — and one
         // arrival. Whichever sees it second is telling us what we already rang about.
         val lastFired = reminder.lastFiredAt
-        if (rule?.trigger is Trigger.Location && lastFired != null && Duration.between(lastFired, now) < PLACE_ECHO) {
+        val place = rule?.trigger as? Trigger.Location
+        if (place != null && lastFired != null && Duration.between(lastFired, now) < PLACE_ECHO) {
             Log.i(TAG, "$id already rang for this place ${Duration.between(lastFired, now).seconds}s ago")
             Diag.note(TAG_DIAG, "r=${short(id)} dropped: place echo ${Duration.between(lastFired, now).seconds}s after the last ring")
+            return@withLock
+        }
+        // A state rings once a round; a crossing rings for every doorway. See presenceAlreadyRang.
+        if (place != null && reminder.presenceAlreadyRang(place)) {
+            Log.i(TAG, "$id already rang for being there; waiting for the round to start again")
+            Diag.note(TAG_DIAG, "r=${short(id)} dropped: state place already rang at $lastFired")
             return@withLock
         }
         // A snooze set after the alarm was armed (from the notification, a moment ago) wins.

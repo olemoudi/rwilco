@@ -36,7 +36,7 @@ class HomeSectionsTest {
 
     @Test
     fun `whenever, paused and overdue are their own sections`() {
-        val place = Trigger.Location(40.4, -3.7, 200, Transition.ENTER, "Casa")
+        val place = Trigger.Location(40.4, -3.7, 200, Presence.INSIDE, "Casa")
         assertEquals(Section.WHENEVER, sectionOf(NextFire.WhenAt(place), Status.ACTIVE, hasRules = true, now, zone))
         val random = Trigger.Random(1, Period.DAY, LocalTime.of(10, 0), LocalTime.of(20, 0), emptySet())
         assertEquals(Section.WHENEVER, sectionOf(NextFire.Sometime(now, now, now, random), Status.ACTIVE, hasRules = true, now, zone))
@@ -162,7 +162,7 @@ class HeroTest {
     private val zone = Fixtures.zone
     private val now = Fixtures.now
     private val defaultTime = Fixtures.defaultTime
-    private val office = Trigger.Location(40.4369, -3.7035, 150, Transition.EXIT, "Oficina")
+    private val office = Trigger.Location(40.4369, -3.7035, 150, Presence.OUTSIDE, "Oficina")
 
     private fun reminder(
         id: String,
@@ -185,7 +185,7 @@ class HeroTest {
         Trigger.Interval(LocalTime.of(18, 30), LocalTime.of(20, 0)),
         match = RuleMatch.ALL,
     )
-    private val bare = reminder("bare", Trigger.Location(40.4169, -3.7035, 50, Transition.ENTER, "Casa"))
+    private val bare = reminder("bare", Trigger.Location(40.4169, -3.7035, 50, Presence.INSIDE, "Casa"))
 
     private fun heroOf(vararg reminders: Reminder) =
         groupForHome(reminders.toList(), now, zone, defaultTime).hero

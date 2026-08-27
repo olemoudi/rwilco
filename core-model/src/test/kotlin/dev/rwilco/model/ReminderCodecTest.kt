@@ -1,5 +1,6 @@
 package dev.rwilco.model
 
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -14,7 +15,7 @@ class ReminderCodecTest {
         Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 21, 30)),
         Trigger.OnDate(LocalDate.of(2026, 9, 1)),
         Trigger.AtTime(LocalTime.of(7, 30), setOf(DayOfWeek.MONDAY, DayOfWeek.FRIDAY)),
-        Trigger.Location(40.4168, -3.7038, 200, Transition.ENTER, "Casa"),
+        Trigger.Location(40.4168, -3.7038, 200, Presence.INSIDE, "Casa"),
         Trigger.Random(2, Period.DAY, LocalTime.of(10, 0), LocalTime.of(20, 0), emptySet()),
         Trigger.Random(1, Period.WEEK, LocalTime.of(18, 0), LocalTime.of(21, 0), setOf(DayOfWeek.SATURDAY)),
         Trigger.DayRandom(LocalDate.of(2026, 9, 3)),
@@ -200,5 +201,39 @@ class ReminderCodecTest {
         assertEquals(1, rules.size)
         assertEquals(Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 21, 30)), rules[0].trigger)
         assertEquals(listOf(Condition.TimeWindow(LocalTime.of(18, 0), LocalTime.of(22, 0))), rules[0].conditions)
+    }
+
+    // ---- a place, whose reading changed without its bytes changing ----------------------
+
+    @Test
+    fun `a place still writes the word every phone already has on disk`() {
+        // Presence.INSIDE is what "al entrar" became, and the key and the value it is stored
+        // under are frozen: a build that renamed either would silently drop every place
+        // reminder in the world on the next start.
+        val rule = TriggerRule(Trigger.Location(40.4169, -3.7035, 200, Presence.INSIDE, "Casa"))
+        val json = ReminderCodec.encodeRules(listOf(rule))
+        assertTrue(json.contains("\"transition\":\"ENTER\""), json)
+        assertTrue(json.contains("\"type\":\"location\""), json)
+        assertEquals(listOf(rule), ReminderCodec.decodeRules(json))
+
+        val leaving = TriggerRule(Trigger.Location(40.4169, -3.7035, 200, Presence.OUTSIDE, "Casa"))
+        assertTrue(ReminderCodec.encodeRules(listOf(leaving)).contains("\"transition\":\"EXIT\""))
+    }
+
+    @Test
+    fun `a place written before the doorway was a choice reads as a state`() {
+        // The whole of the migration: a row with no `onCrossing` key is "mientras estoy",
+        // which is what people meant by "al llegar" almost every time they wrote one.
+        val old = """[{"trigger":{"type":"location","lat":40.4169,"lng":-3.7035,"radiusM":200,"transition":"ENTER","label":"Casa"}}]"""
+        val rules = ReminderCodec.decodeRules(old)
+        val place = rules.single().trigger as Trigger.Location
+        assertEquals(Presence.INSIDE, place.presence)
+        assertFalse(place.onCrossing, "an old place must not come back asking for a doorway")
+    }
+
+    @Test
+    fun `asking for the doorway survives the trip`() {
+        val rule = TriggerRule(Trigger.Location(40.4169, -3.7035, 200, Presence.OUTSIDE, "Casa", onCrossing = true))
+        assertEquals(listOf(rule), ReminderCodec.decodeRules(ReminderCodec.encodeRules(listOf(rule))))
     }
 }

@@ -7,7 +7,7 @@ import dev.rwilco.model.Reminder
 import dev.rwilco.model.Section
 import dev.rwilco.model.Status
 import dev.rwilco.model.TagFilter
-import dev.rwilco.model.Transition
+import dev.rwilco.model.Presence
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.TriggerFamily
@@ -33,7 +33,7 @@ class HomeStateTest {
         Reminder(id = id, text = "text $id", tags = tags, rules = triggers.map(::TriggerRule), status = status, createdAt = now, updatedAt = now)
 
     private val soon = reminder("soon", Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 16, 0)), tags = listOf("casa"))
-    private val place = reminder("place", Trigger.Location(40.4, -3.7, 200, Transition.ENTER, "Casa"), tags = listOf("casa"))
+    private val place = reminder("place", Trigger.Location(40.4, -3.7, 200, Presence.INSIDE, "Casa"), tags = listOf("casa"))
     private val random = reminder("random", Trigger.Random(2, Period.DAY, LocalTime.of(10, 0), LocalTime.of(20, 0), emptySet()), tags = listOf("salud"))
     private val paused = reminder("paused", Trigger.AtDateTime(LocalDateTime.of(2026, 8, 28, 16, 0)), status = Status.PAUSED)
 
@@ -47,7 +47,7 @@ class HomeStateTest {
             id = "gated",
             text = "Regar",
             rules = listOf(
-                TriggerRule(Trigger.Location(40.4, -3.7, 200, Transition.ENTER, "Casa")),
+                TriggerRule(Trigger.Location(40.4, -3.7, 200, Presence.INSIDE, "Casa")),
                 TriggerRule(Trigger.Interval(LocalTime.of(20, 0), LocalTime.of(22, 0))),
             ),
             ruleMatch = dev.rwilco.model.RuleMatch.TOGETHER,

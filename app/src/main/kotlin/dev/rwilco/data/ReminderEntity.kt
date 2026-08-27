@@ -7,8 +7,10 @@ import dev.rwilco.model.Reminder
 import dev.rwilco.model.ReminderCodec
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
+import dev.rwilco.model.foldRepeats
 import kotlinx.serialization.Serializable
 import java.time.Instant
+import java.time.ZoneId
 
 /**
  * One row per reminder. Tags, triggers and actions are JSON text columns (see ReminderCodec):
@@ -50,7 +52,17 @@ data class ReminderEntity(
 /** The stored form of no recurrence, and what every row written before v5 gets. */
 const val NO_RECURRENCE = "{\"type\":\"none\"}"
 
-fun ReminderEntity.toDomain(): Reminder = Reminder(
+/**
+ * The row as the app understands it today.
+ *
+ * [foldRepeats] is the one thing here that is not a straight decode: a repeating time used to be
+ * a *trigger* and is a calendar in "Vuelve" now, so every row still holding the old shape is
+ * read as the new one. In the read path rather than in a Room migration on purpose — that is
+ * where this repo has always put a shape that changed (the bare trigger list v0.1.0 wrote is
+ * still read here too) — and the row itself is rewritten the next time anything saves it. The
+ * zone is only ever used to give a legacy weekly the day it was written on.
+ */
+fun ReminderEntity.toDomain(zone: ZoneId = ZoneId.systemDefault()): Reminder = Reminder(
     id = id,
     text = text,
     tags = ReminderCodec.decodeTags(tags),
@@ -70,7 +82,7 @@ fun ReminderEntity.toDomain(): Reminder = Reminder(
     firedRules = decodeIndices(firedRules),
     recurrence = ReminderCodec.decodeRecurrence(recurrence),
     lastDealtAt = lastDealtAt?.let(Instant::ofEpochMilli),
-)
+).foldRepeats(zone)
 
 fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
     id = id,

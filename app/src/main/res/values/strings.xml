@@ -97,8 +97,6 @@
     <string name="trigger_every_day">every day</string>
     <string name="trigger_weekdays">weekdays</string>
     <string name="trigger_weekends">weekends</string>
-    <string name="trigger_arriving">arriving</string>
-    <string name="trigger_leaving">leaving</string>
     <string name="trigger_arrive_at">when arriving at %1$s</string>
     <string name="trigger_leave_from">when leaving %1$s</string>
     <plurals name="trigger_times_a_day">
@@ -133,7 +131,7 @@
     <string name="editor_what_title">What happens</string>
     <string name="editor_recurrence_title">Comes back</string>
     <string name="recur_none">Don\'t repeat</string>
-    <string name="recur_by_trigger">When it\'s due</string>
+    <string name="recur_by_trigger">Left to chance</string>
     <string name="recur_hours">Every %1$d h</string>
     <string name="recur_next_day">The next day</string>
     <string name="recur_days">Every %1$d days</string>
@@ -143,6 +141,7 @@
     <string name="recur_months">Every %1$d months</string>
     <string name="recur_monthly_weekday">%1$s %2$s of the month</string>
     <string name="recur_more">More</string>
+    <string name="recur_calendar">By the calendar</string>
     <string name="recur_custom">Custom</string>
     <string name="recur_custom_title">Custom recurrence</string>
     <string name="recur_list_title">Recurrences</string>
@@ -150,19 +149,13 @@
     <string name="recur_delete">Delete</string>
     <string name="recur_save_as">Keep it under a name</string>
     <string name="recur_save_as_hint">Leave empty not to keep it</string>
-    <string name="recur_kind_after">After doing it</string>
-    <string name="recur_kind_monthly">A day of the month</string>
     <string name="recur_every">Every</string>
-    <string name="recur_which_one">Which one</string>
     <string name="recur_year">Every year</string>
     <string name="recur_years">Every %1$d years</string>
     <string name="recur_unit_years">years</string>
     <string name="recur_counts_from">Counts from</string>
-    <string name="recur_from_calendar">The calendar</string>
     <string name="recur_from_ringing">When it rings</string>
     <string name="recur_from_dealt">When you\'re done</string>
-    <string name="recur_from_ringing_hint">Counted from the moment it rings, so answering late does not move the next one. A reminder left unanswered still comes back on its rhythm.</string>
-    <string name="recur_from_calendar_hint">Worked out by a trigger of its own — a repeat or a random window — so it never drifts, however late you answer.</string>
     <string name="card_recurrence_from_ringing">from when it rings</string>
     <string name="card_recurrence_from_calendar">on its own dates</string>
     <string name="recur_after_done">Counted from the moment you mark it done, not from the clock.</string>
@@ -184,6 +177,7 @@
     <string name="editor_repeats_off">Marking it done finishes it.</string>
     <string name="editor_error_text">Write what you want to remember.</string>
     <string name="editor_warning_past">This moment has already passed.</string>
+    <string name="editor_warning_recurrence_over">This series has already ended, so it will not ring again.</string>
     <string name="editor_discard_title">Discard changes?</string>
     <string name="editor_discard_body">What you changed here will be lost.</string>
     <string name="editor_discard_confirm">Discard</string>
@@ -199,7 +193,7 @@
     <string name="kind_countdown">Countdown</string>
     <string name="kind_countdown_hint">In a while from now</string>
     <string name="kind_place">Place</string>
-    <string name="kind_place_hint">Arriving at or leaving somewhere</string>
+    <string name="kind_place_hint">Being somewhere, or getting there</string>
     <string name="kind_random">Random</string>
     <string name="kind_random_hint">Surprise moments in a window</string>
 
@@ -598,6 +592,19 @@
 
     <!-- Conditions on a trigger: the second kind is a place. -->
     <string name="condition_kind_hours">Hours</string>
+    <string name="place_while_inside">while I\'m there</string>
+    <string name="place_while_outside">while I\'m not there</string>
+    <string name="place_on_arrival">when I get there</string>
+    <string name="place_on_leaving">when I leave</string>
+    <string name="place_side_inside">While I\'m there</string>
+    <string name="place_side_outside">While I\'m not there</string>
+    <string name="place_side_arriving">When I get there</string>
+    <string name="place_side_leaving">When I leave</string>
+    <string name="place_needs_crossing">Only when I cross the line</string>
+    <string name="place_means_inside">Being there is enough: if you are already there when everything else is due, it rings.</string>
+    <string name="place_means_outside">Being away is enough: if you are already away when everything else is due, it rings.</string>
+    <string name="place_means_arriving">It has to see you arrive. If you are already there, it waits until you leave and come back.</string>
+    <string name="place_means_leaving">It has to see you leave. If you are already away, it waits until you go there and leave again.</string>
     <string name="condition_kind_place">Place</string>
     <string name="condition_place_hint">Only counts when the phone is there — or when it is not. Pick from the places you keep in Settings.</string>
     <string name="condition_place_inside">I am there</string>

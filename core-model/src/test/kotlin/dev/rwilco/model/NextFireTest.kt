@@ -52,7 +52,7 @@ class NextFireTest {
 
     @Test
     fun `a place waits and a random trigger becomes a draw inside its window`() {
-        val place = Trigger.Location(40.4, -3.7, 200, Transition.ENTER, "Casa")
+        val place = Trigger.Location(40.4, -3.7, 200, Presence.INSIDE, "Casa")
         assertEquals(NextFire.WhenAt(place), next(place))
 
         val random = Trigger.Random(3, Period.DAY, LocalTime.of(10, 0), LocalTime.of(20, 0), emptySet())
@@ -75,7 +75,7 @@ class NextFireTest {
     fun `the earliest definite moment wins and a draw beats a place`() {
         val tonight = Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 21, 30))
         val tomorrow = Trigger.OnDate(LocalDate.of(2026, 8, 28))
-        val place = Trigger.Location(40.4, -3.7, 200, Transition.ENTER, "Casa")
+        val place = Trigger.Location(40.4, -3.7, 200, Presence.INSIDE, "Casa")
         val random = Trigger.Random(1, Period.DAY, LocalTime.of(16, 0), LocalTime.of(20, 0), emptySet())
         assertEquals(tonight, next(tomorrow, place, random, tonight)!!.trigger)
         assertEquals(random, next(place, random)!!.trigger)
@@ -132,7 +132,7 @@ class RuleNextFireTest {
 
     @Test
     fun `a place is judged when it happens, so conditions leave it alone`() {
-        val place = Trigger.Location(40.4, -3.7, 200, Transition.ENTER, "Casa")
+        val place = Trigger.Location(40.4, -3.7, 200, Presence.INSIDE, "Casa")
         val rule = TriggerRule(place, listOf(Condition.TimeWindow(LocalTime.of(18, 0), LocalTime.of(22, 0))))
         assertEquals(NextFire.WhenAt(place), nextFireOfRule(rule, "r1", now, zone, defaultTime))
     }

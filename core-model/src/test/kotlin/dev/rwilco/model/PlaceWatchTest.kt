@@ -15,8 +15,11 @@ class PlaceWatchTest {
     // Puerta del Sol, Madrid.
     private val homeLat = 40.4169
     private val homeLng = -3.7035
-    private val home = WatchedPlace("r1#0", homeLat, homeLng, radiusM = 200, transition = Transition.ENTER, label = "Casa")
-    private val work = WatchedPlace("r2#0", 40.4500, -3.6900, radiusM = 150, transition = Transition.EXIT, label = "Trabajo")
+    // The doorway reading throughout: this file is about what the watch SEES, and a crossing is
+    // the only thing it has to see. The state reading has its own tests below and in
+    // PlaceArrivalTest.
+    private val home = WatchedPlace("r1#0", homeLat, homeLng, radiusM = 200, transition = Transition.ENTER, label = "Casa", onCrossing = true)
+    private val work = WatchedPlace("r2#0", 40.4500, -3.6900, radiusM = 150, transition = Transition.EXIT, label = "Trabajo", onCrossing = true)
 
     /** A point [metres] due north of home: one degree of latitude is ~111.2 km everywhere. */
     private fun north(metres: Double, accuracy: Double = 10.0, at: Instant = now) =
@@ -278,10 +281,10 @@ class PlaceWatchTest {
     }
 
     @Test
-    fun `with no history the plain answer, and no event`() {
+    fun `with no history the plain answer, and no event for a crossing`() {
         val step = stepPlaceWatch(PlaceWatchState(), north(50.0), listOf(home, work), now)
         assertEquals(mapOf(home.id to true, work.id to false), step.state.inside)
-        assertTrue(step.events.isEmpty(), "standing at home when the rule is written is not arriving")
+        assertTrue(step.events.isEmpty(), "standing at home when a doorway rule is written is not arriving")
         assertNotNull(step.plan)
         assertEquals(now + step.plan!!.wait, step.state.nextCheckAt)
     }
@@ -308,6 +311,19 @@ class PlaceWatchTest {
         val step = stepPlaceWatch(known, north(50.0), listOf(home, work), now)
         assertEquals(listOf(PlaceEvent(home.id, Transition.ENTER)), step.events)
         assertEquals(false, step.state.inside[work.id])
+    }
+
+    @Test
+    fun `a state needs no history, and a crossing does`() {
+        // The one line between the two readings: what "nothing known yet" counts as. For a
+        // state it is not the other side — the phone is where it is — and for a crossing it is
+        // not the other side either, which is why the crossing waits.
+        val being = home.copy(onCrossing = false)
+        assertEquals(listOf(PlaceEvent(home.id, Transition.ENTER)), stepPlaceWatch(PlaceWatchState(), north(50.0), listOf(being), now).events)
+        assertTrue(stepPlaceWatch(PlaceWatchState(), north(50.0), listOf(home), now).events.isEmpty())
+        // Once it holds, neither says it twice.
+        val held = PlaceWatchState(inside = mapOf(home.id to true))
+        assertTrue(stepPlaceWatch(held, north(50.0), listOf(being), now).events.isEmpty())
     }
 
     @Test

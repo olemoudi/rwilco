@@ -42,38 +42,38 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 /**
- * A recurrence with a shape: every so many days, weeks, months or years, from a day, until it
+ * The calendar behind "Vuelve": every so many days, weeks, months or years, from a day, until it
  * stops.
  *
- * The tile used to ask for a time and a set of weekdays, which is one of the four shapes people
- * keep in a reminders app and not the interesting one. The order here is the order the question
- * is asked in — how often, what inside that, when in the day, from when, until when — and the
- * line at the bottom reads the whole thing back in the same words the card will use, because a
- * recurrence built out of five controls is a thing you want to see before you agree to it.
+ * It opens from the recurrence card and nowhere else. It used to be a *trigger* tile, which put
+ * "cada semana" on one card and "vuelve cada semana" on another with nothing to tell them apart;
+ * a repeat is an answer to "¿y vuelve?", so this is where it is asked. The order is the order
+ * the question is asked in — how often, what inside that, when in the day, from when, until when
+ * — and the line at the bottom reads the whole thing back in the same words the card will use,
+ * because a calendar built out of five controls is a thing you want to see before you agree to
+ * it.
  */
 @Composable
-fun RepeatSheet(
-    initial: Trigger?,
+fun CalendarSheet(
+    initial: Trigger.Repeat?,
     today: LocalDate,
     defaultTime: LocalTime,
     shape: DayShape,
-    onConfirm: (Trigger) -> Unit,
+    onConfirm: (Trigger.Repeat) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val existing = initial as? Trigger.Repeat
-    // A weekly trigger from before this sheet existed opens as what it always was.
-    val legacy = initial as? Trigger.AtTime
+    val existing = initial
 
     var every by rememberSaveable { mutableIntStateOf(existing?.every ?: 1) }
     var unitName by rememberSaveable { mutableStateOf((existing?.unit ?: RepeatUnit.WEEK).name) }
     val unit = RepeatUnit.valueOf(unitName)
     var startsOn by rememberDate(existing?.startsOn ?: today)
     var days by rememberSaveable {
-        mutableStateOf((existing?.days ?: legacy?.days ?: setOf(today.dayOfWeek)).map { it.name }.toSet())
+        mutableStateOf((existing?.days ?: setOf(today.dayOfWeek)).map { it.name }.toSet())
     }
     val selectedDays = days.map(DayOfWeek::valueOf).toSet()
     var atRandom by rememberSaveable { mutableStateOf(existing != null && existing.time == null) }
-    var time by rememberTime(existing?.time ?: legacy?.time ?: defaultTime)
+    var time by rememberTime(existing?.time ?: defaultTime)
 
     val startingNth = existing?.monthly as? MonthlyOn.Nth
     var byWeekday by rememberSaveable { mutableStateOf(startingNth != null) }
@@ -110,7 +110,7 @@ fun RepeatSheet(
     )
 
     SheetScaffold(
-        title = stringResource(R.string.kind_repeat_time),
+        title = stringResource(R.string.recur_calendar),
         onDismiss = onDismiss,
         onConfirm = { onConfirm(built) },
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),

@@ -194,9 +194,10 @@ These are standing rules for this repository. Follow them without being re-asked
 ### What this is
 - A personal, offline-first reminders app for Android: Kotlin + Jetpack Compose + Material 3
   (1.4, Expressive theme) + Room + DataStore. No accounts, no server, no telemetry.
-- A reminder is free text + optional tags + one or more **triggers** (date, date+time, repeating
-  time, countdown — stored as a date-time —, place, random) + **actions** when it fires (full
-  screen, notification, sound, vibration). See `ARCHITECTURE.md` for the model and the
+- A reminder is free text + optional tags + zero or more **triggers** (date, date+time, interval,
+  countdown, place, random) + a **recurrence** ("Vuelve": the one place anything repeats — a
+  calendar, or a span from the ring or the "hecho") + **actions** when it fires (full screen,
+  notification, sound, vibration). See `ARCHITECTURE.md` for the model and the
   next-fire semantics; keep that file current when they change.
 - Phase 1 (this repo today) is the UI, local persistence and distribution. Actually firing
   reminders (AlarmManager, full-screen intents, geofencing, sounds) is phase 2.
@@ -262,6 +263,8 @@ These are standing rules for this repository. Follow them without being re-asked
   `TriggerRule`s, and still reads the bare trigger list v0.1.0 wrote — do not drop that path.
   An unknown *condition* is dropped without its rule: erring towards ringing too often is the
   right way round, because the failure somebody notices is the one that never arrives.
+  A `Repeat`/`AtTime` **rule** is a shape that moved, not one that was lost: `foldRepeats`
+  (`LegacyRepeats.kt`) lifts it into `Recurrence.Calendar` in the read path — keep that path too.
 - **Room** uses `exportSchema = true` (schemas in `app/schemas`). For every `version` bump add a
   `Migration` to `RwilcoDatabase.MIGRATIONS`; **do not** enable destructive migration.
 - **The vault** (the encrypted backup, `app/.../vault/`) carries `ReminderEntity` rows and the raw

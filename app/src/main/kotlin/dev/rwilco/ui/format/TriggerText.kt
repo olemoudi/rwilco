@@ -9,6 +9,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import dev.rwilco.R
 import dev.rwilco.model.Condition
+import dev.rwilco.model.Presence
 import dev.rwilco.model.MonthlyOn
 import dev.rwilco.model.RepeatEnd
 import dev.rwilco.model.RepeatUnit
@@ -16,7 +17,6 @@ import dev.rwilco.model.monthlyRule
 import dev.rwilco.model.weekDays
 import dev.rwilco.model.CountdownParts
 import dev.rwilco.model.Period
-import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -59,6 +59,21 @@ fun countdownText(parts: CountdownParts): String {
         else -> seconds
     }
     return if (parts.overdue) stringResource(R.string.countdown_ago, body) else stringResource(R.string.countdown_in, body)
+}
+
+/**
+ * The four ways of reading a circle, in the four words people use for them.
+ *
+ * Two questions and not four answers: which side of the line ([presence]), and whether the phone
+ * has to be seen getting there ([onCrossing]). Every screen that says what a place rule means
+ * comes through here, so the card, the row and the sheet cannot use three different words for
+ * the same rule.
+ */
+fun placeReading(presence: Presence, onCrossing: Boolean): Int = when {
+    presence == Presence.INSIDE && onCrossing -> R.string.place_on_arrival
+    presence == Presence.INSIDE -> R.string.place_while_inside
+    onCrossing -> R.string.place_on_leaving
+    else -> R.string.place_while_outside
 }
 
 /** A condition in a few words: "18:00–22:00 · L M X J V". */
@@ -143,7 +158,7 @@ fun triggerLine(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): Tri
         }
         is Trigger.Location -> TriggerLine(
             primary = trigger.label,
-            secondary = stringResource(if (trigger.transition == Transition.ENTER) R.string.trigger_arriving else R.string.trigger_leaving),
+            secondary = stringResource(placeReading(trigger.presence, trigger.onCrossing)),
             primaryMono = false,
         )
         is Trigger.Random -> TriggerLine(

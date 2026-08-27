@@ -183,4 +183,61 @@ class EditorStateTest {
         assertEquals("trimmed", draft.copy(text = "  trimmed  ").toReminder("x", Instant.EPOCH, Instant.EPOCH, Status.ACTIVE).text)
         assertEquals(TriggerKind.DATE, loaded.commitTrigger(null, Trigger.OnDate(LocalDate.of(2026, 9, 1))).editTrigger(1).let { (it.sheet as EditorSheet.Configure).kind })
     }
+
+    // ---- the calendar in "Vuelve" -------------------------------------------------------
+
+    private val mondays = Trigger.Repeat(
+        startsOn = LocalDate.of(2026, 8, 24),
+        time = LocalTime.of(9, 0),
+        days = setOf(DayOfWeek.MONDAY),
+    )
+
+    @Test
+    fun `the calendar sheet opens on what is set and writes it back`() {
+        val blank = EditorUiState()
+        assertEquals(EditorSheet.ConfigureCalendar(null), blank.openCalendar().sheet)
+
+        val set = blank.commitCalendar(mondays)
+        assertEquals(Recurrence.Calendar(mondays), set.draft.recurrence)
+        assertEquals(EditorSheet.None, set.sheet)
+        assertEquals(EditorSheet.ConfigureCalendar(mondays), set.openCalendar().sheet)
+    }
+
+    @Test
+    fun `a legacy monthly weekday opens as the calendar it always was`() {
+        val legacy = EditorUiState().setRecurrence(Recurrence.MonthlyWeekday(1, DayOfWeek.WEDNESDAY))
+        val sheet = legacy.openCalendar().sheet as EditorSheet.ConfigureCalendar
+        assertEquals(dev.rwilco.model.MonthlyOn.Nth(1, DayOfWeek.WEDNESDAY), sheet.initial?.monthly)
+    }
+
+    @Test
+    fun `the calendar keeps its fences when the shape is edited`() {
+        val window = dev.rwilco.model.Condition.TimeWindow(LocalTime.of(18, 0), LocalTime.of(22, 0))
+        val fenced = EditorUiState()
+            .commitCalendar(mondays)
+            .commitRecurrenceCondition(null, window)
+        assertEquals(listOf(window), (fenced.draft.recurrence as Recurrence.Calendar).conditions)
+
+        val reshaped = fenced.commitCalendar(mondays.copy(every = 2))
+        assertEquals(Recurrence.Calendar(mondays.copy(every = 2), listOf(window)), reshaped.draft.recurrence)
+
+        assertEquals(Recurrence.Calendar(mondays.copy(every = 2)), reshaped.removeRecurrenceCondition(0).draft.recurrence)
+    }
+
+    @Test
+    fun `a calendar that ends before it starts blocks the save`() {
+        val backwards = mondays.copy(ends = dev.rwilco.model.RepeatEnd.On(LocalDate.of(2026, 8, 1)))
+        val state = EditorUiState().withText("Basura").commitCalendar(backwards)
+        assertFalse(state.canSave)
+        assertTrue(state.errors.any { it is ValidationError.BadRecurrence })
+        assertTrue(EditorUiState().withText("Basura").commitCalendar(mondays).canSave)
+    }
+
+    @Test
+    fun `a random trigger still says it comes back, and nothing else does`() {
+        val chance = Trigger.Random(2, dev.rwilco.model.Period.DAY, LocalTime.of(10, 0), LocalTime.of(20, 0))
+        assertEquals(Recurrence.ByTrigger, EditorUiState().commitTrigger(null, chance).draft.recurrence)
+        val date = Trigger.AtDateTime(LocalDateTime.of(2026, 8, 28, 9, 0))
+        assertEquals(Recurrence.None, EditorUiState().commitTrigger(null, date).draft.recurrence)
+    }
 }

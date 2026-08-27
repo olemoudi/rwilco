@@ -10,9 +10,11 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.ReminderCodec
+import dev.rwilco.model.foldRepeats
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.time.ZoneId
 
 // A file that will not parse is replaced by an empty one: the settings come back as defaults,
 // which is a loss, where a read that throws on every attempt — from the firing, from the
@@ -30,15 +32,24 @@ class SettingsStore(private val context: Context) {
 
     private val key = stringPreferencesKey("settings_json")
 
-    val settings: Flow<AppSettings> = context.settingsDataStore.data.map { prefs ->
-        prefs[key]?.let(ReminderCodec::decodeSettings) ?: AppSettings()
-    }
+    val settings: Flow<AppSettings> = context.settingsDataStore.data.map { prefs -> prefs.decode() }
 
     suspend fun update(transform: (AppSettings) -> AppSettings) {
         context.settingsDataStore.edit { prefs ->
-            val current = prefs[key]?.let(ReminderCodec::decodeSettings) ?: AppSettings()
-            prefs[key] = ReminderCodec.encodeSettings(transform(current))
+            prefs[key] = ReminderCodec.encodeSettings(transform(prefs.decode()))
         }
+    }
+
+    /**
+     * The blob, with the presets folded like the reminders are (`foldRepeats`): a preset written
+     * when a repeating time was a trigger holds one as a rule, and the editor has no tile left to
+     * open it with. Here rather than in the codec because it wants a zone, and here rather than
+     * once at launch because a preset can also arrive from a restored backup.
+     */
+    private fun Preferences.decode(): AppSettings {
+        val settings = this[key]?.let(ReminderCodec::decodeSettings) ?: return AppSettings()
+        val zone = ZoneId.systemDefault()
+        return settings.copy(presets = settings.presets.map { it.foldRepeats(zone) })
     }
 
     /**

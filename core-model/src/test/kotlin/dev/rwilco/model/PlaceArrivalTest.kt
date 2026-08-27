@@ -9,29 +9,77 @@ import java.time.Duration
 import java.time.Instant
 
 /**
- * Arriving somewhere you already are.
+ * Being somewhere you already are, and arriving somewhere you already are.
  *
- * "Cuando llegue a casa", written on the sofa, must not ring on the sofa. It waits for the
- * phone to leave — and while it is waiting there is nothing to catch, so it waits cheaply: half
- * an hour between looks, no GPS. Stepping out for the bin and back inside that half hour is not
- * an arrival either, which is exactly why the coarse watch costs nothing to be wrong about.
+ * The two readings of a circle, held apart. **"Mientras esté en casa", written on the sofa,
+ * rings on the sofa** — that is the whole of what a state means, and it is what people mean
+ * almost every time. **"Al llegar a casa" waits for the doorway**: written on the sofa it says
+ * nothing until the phone has been seen away and comes back. While it waits there is nothing to
+ * catch, so it waits cheaply — half an hour between looks, no GPS — and stepping out for the bin
+ * and back inside that half hour is not an arrival either, which is exactly why the coarse watch
+ * costs nothing to be wrong about.
  */
 class PlaceArrivalTest {
 
     private val homeLat = 40.4169
     private val homeLng = -3.7035
-    private val home = WatchedPlace("home", homeLat, homeLng, radiusM = 200, transition = Transition.ENTER, label = "Casa")
+    /** "Al llegar a casa": the doorway reading, which is what this file is mostly about. */
+    private val home = WatchedPlace("home", homeLat, homeLng, radiusM = 200, transition = Transition.ENTER, label = "Casa", onCrossing = true)
     private val leavingHome = home.copy(id = "leave", transition = Transition.EXIT)
+    /** "Mientras esté en casa": the state reading, and the default. */
+    private val atHome = home.copy(id = "at", onCrossing = false)
 
     /** A fix [metres] south of home; 0 is the middle of the kitchen. */
     private fun south(metres: Double, at: Instant, accuracy: Double = 15.0) =
         Fix(homeLat - metres / 111_195.0, homeLng, accuracy, at)
 
     @Test
-    fun `a reminder written at home does not ring at home`() {
+    fun `al llegar, written at home, does not ring at home`() {
         val step = stepPlaceWatch(PlaceWatchState(), south(0.0, now), listOf(home), now)
         assertTrue(step.events.isEmpty(), "it rang for arriving where it was written")
         assertEquals(mapOf("home" to true), step.state.inside)
+    }
+
+    @Test
+    fun `mientras este, written at home, rings at once`() {
+        // The consequence of reading a place as a state, and the point of doing it: nobody who
+        // writes "acuérdate cuando estés en casa" from the sofa means "espera a salir primero".
+        val step = stepPlaceWatch(PlaceWatchState(), south(0.0, now), listOf(atHome), now)
+        assertEquals(listOf(PlaceEvent("at", Transition.ENTER)), step.events)
+    }
+
+    @Test
+    fun `mientras este, written away, waits until you are there`() {
+        val away = stepPlaceWatch(PlaceWatchState(), south(1_500.0, now), listOf(atHome), now)
+        assertTrue(away.events.isEmpty(), "it rang for a phone across town")
+        val back = now.plus(Duration.ofMinutes(20))
+        val arrived = stepPlaceWatch(away.state, south(0.0, back), listOf(atHome), back)
+        assertEquals(listOf(PlaceEvent("at", Transition.ENTER)), arrived.events)
+    }
+
+    @Test
+    fun `a state says so once, and not again while it stays true`() {
+        // The watch reports the moment it becomes true and then holds its tongue. What stops a
+        // second ring after that is the round it already rang in (ReminderFiring); what stops a
+        // second ring every five minutes is this.
+        var step = stepPlaceWatch(PlaceWatchState(), south(0.0, now), listOf(atHome), now)
+        assertEquals(1, step.events.size)
+        repeat(3) {
+            val later = now.plus(Duration.ofHours(it + 1L))
+            step = stepPlaceWatch(step.state, south(0.0, later), listOf(atHome), later)
+            assertTrue(step.events.isEmpty(), "it said it again after ${it + 1}h on the sofa")
+        }
+    }
+
+    @Test
+    fun `mientras no este is the same thing from the other side`() {
+        val away = atHome.copy(id = "away", transition = Transition.EXIT)
+        // Written while out: true already, so it says so.
+        val out = stepPlaceWatch(PlaceWatchState(), south(1_500.0, now), listOf(away), now)
+        assertEquals(listOf(PlaceEvent("away", Transition.EXIT)), out.events)
+        // Written at home: nothing until the phone actually leaves.
+        val inside = stepPlaceWatch(PlaceWatchState(), south(0.0, now), listOf(away), now)
+        assertTrue(inside.events.isEmpty())
     }
 
     @Test
@@ -92,7 +140,7 @@ class PlaceArrivalTest {
 
     @Test
     fun `an errand across town still sets the pace while the phone is at home`() {
-        val errand = WatchedPlace("shop", homeLat - 0.02, homeLng, radiusM = 100, transition = Transition.ENTER, label = "Tienda")
+        val errand = WatchedPlace("shop", homeLat - 0.02, homeLng, radiusM = 100, transition = Transition.ENTER, label = "Tienda", onCrossing = true)
         val inside = mapOf("home" to true)
         val driving = planNextCheck(south(0.0, now), Movement(speedMps = 12.0, stillStreak = 0), listOf(home, errand), inside = inside)
         assertEquals("shop", driving!!.nearest.id, "the sofa planned the drive")

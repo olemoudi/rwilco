@@ -18,7 +18,8 @@ class PlaceWatchJourneyTest {
 
     private val homeLat = 40.4169
     private val homeLng = -3.7035
-    private val home = WatchedPlace("home", homeLat, homeLng, radiusM = 200, transition = Transition.ENTER, label = "Casa")
+    // The doorway reading: a journey is about crossings, which is what this file walks.
+    private val home = WatchedPlace("home", homeLat, homeLng, radiusM = 200, transition = Transition.ENTER, label = "Casa", onCrossing = true)
     private val leavingHome = home.copy(id = "leave", transition = Transition.EXIT)
 
     /** A fix [metres] south of home (negative is north), with a walking-grade accuracy. */
@@ -193,7 +194,7 @@ class PlaceWatchJourneyTest {
     }
 
     @Test
-    fun `a check never rings a place it has no history for, whatever the fix`() {
+    fun `a doorway never rings on a place it has no history for, whatever the fix`() {
         val random = Random(42)
         repeat(500) {
             val fix = Fix(homeLat + random.nextDouble(-0.01, 0.01), homeLng + random.nextDouble(-0.01, 0.01), random.nextDouble(3.0, 300.0), now)

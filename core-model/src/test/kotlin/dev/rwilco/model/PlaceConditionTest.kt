@@ -38,7 +38,7 @@ class PlaceConditionTest {
 
     private val evening = Condition.TimeWindow(LocalTime.of(18, 0), LocalTime.of(22, 0))
     private val nineAm = Trigger.AtTime(LocalTime.of(9, 0), java.time.DayOfWeek.entries.toSet())
-    private val arriveHome = Trigger.Location(homeLat, homeLng, 200, Transition.ENTER, "Casa")
+    private val arriveHome = Trigger.Location(homeLat, homeLng, 200, Presence.INSIDE, "Casa")
 
     @Test
     fun `a place condition is about where the phone is, and holds when nobody knows`() {
@@ -94,7 +94,7 @@ class PlaceConditionTest {
         assertFalse(TriggerRule(arriveHome, listOf(home)).placesConflict(), "arriving where you must be is fine")
         // Leaving home means being outside it, so "al salir de casa, y sólo si estoy en casa"
         // is the same contradiction the other way round.
-        val leaveHome = arriveHome.copy(transition = Transition.EXIT)
+        val leaveHome = arriveHome.copy(presence = Presence.OUTSIDE)
         assertTrue(TriggerRule(leaveHome, listOf(home)).placesConflict())
         assertFalse(TriggerRule(leaveHome, listOf(office)).placesConflict())
     }

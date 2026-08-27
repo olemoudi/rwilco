@@ -1,7 +1,9 @@
 package dev.rwilco.ui.editor
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -11,16 +13,23 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Casino
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.FilterAlt
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -30,11 +39,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
@@ -43,52 +52,70 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.rwilco.R
+import dev.rwilco.model.Condition
 import dev.rwilco.model.LAST_ORDINAL
 import dev.rwilco.model.MAX_RECURRENCE_AMOUNT
 import dev.rwilco.model.MIN_RECURRENCE_AMOUNT
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RecurrencePreset
+import dev.rwilco.model.asRepeat
+import dev.rwilco.model.conditions
 import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.sameSpanAs
 import dev.rwilco.model.countsFromRinging
 import dev.rwilco.model.RecurrenceFrom
 import dev.rwilco.ui.components.SegmentedChoice
+import dev.rwilco.ui.format.repeatSummary
+import dev.rwilco.ui.format.conditionLabel
 import dev.rwilco.ui.components.Stepper
 import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.theme.Tokens
-import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.format.TextStyle
 
 /** How many recurrences get a button of their own before the rest go behind the dots. */
 private const val VISIBLE_PRESETS = 4
 
 /**
- * What "hecho" leaves behind, and when it comes back.
+ * What "hecho" leaves behind, and when it comes back — the one place in the app where anything
+ * repeats.
+ *
+ * It used to be two places. A "una hora que se repite" tile wrote a *trigger* that named its own
+ * dates, this card wrote a recurrence that counted a span, they overlapped almost exactly ("el
+ * cuarto miércoles" could be written either way), and nothing on either screen said which of the
+ * two a given reminder had — the anchor row here even had a button that reached across and
+ * opened the trigger sheet. A repeat is not a way of starting; it is the answer to "¿y vuelve?".
+ * So there is one card, and it has both answers on it:
+ *
+ * - **por calendario** — the dates a series names, with an hour in them and an end
+ *   ([Recurrence.Calendar]), behind its own sheet because it is five controls deep; and
+ * - **cada tanto** — a span counted from something that happened ([Recurrence.After]), which is
+ *   what the buttons and "personalizado" build.
  *
  * The answers people give most are buttons — "no repetir" first, because it is the default and
- * the way back — and everything else is one tap further in: the dots open the whole list, and
- * "personalizado" builds one from parts. A recurrence somebody builds can be kept under a name
- * from inside that same pane, which is what puts it in the row next time.
+ * the way back — and everything else is one tap further in.
  *
- * **The anchor is asked here and nowhere else.** "Cada semana" is half a sentence: the other
- * half is which moment the week is counted from, and the app used to decide it silently — from
- * dealing with it if you set a span, from the calendar if you happened to add a repeating
- * trigger, and nothing on either screen said which you had. Three answers, one row: the
- * calendar (a trigger works out its own dates and never drifts), the ringing (the rhythm holds
- * however late you answer), or dealing with it (the clock starts when you do). Picking the
- * calendar with nothing to work the dates out opens the sheet that makes one, because the
- * honest answer to "por calendario" is "which calendar?".
+ * **The anchor is asked here and nowhere else**, and only of a span: "cada semana" is half a
+ * sentence, and the other half is which moment the week is counted from — the ringing (the
+ * rhythm holds however late you answer) or dealing with it (the clock starts when you do). A
+ * calendar is not asked, because a calendar already knows: its dates are its own.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun RecurrenceSection(
     recurrence: Recurrence,
     presets: List<RecurrencePreset>,
-    /** Whether some rule already works out its own next time — a repeat, a random window. */
-    calendarDecides: Boolean,
+    today: LocalDate,
+    /** Whether a random rule is on the draft: the last trigger that names dates of its own. */
+    chanceDecides: Boolean,
+    /** The worst thing there is to say about the calendar, or null when there is nothing. */
+    warning: Int?,
     onPick: (RecurrencePreset) -> Unit,
     onCustom: (Recurrence) -> Unit,
-    onAddRepeat: () -> Unit,
+    onCalendar: () -> Unit,
+    onAddCondition: () -> Unit,
+    onEditCondition: (Int) -> Unit,
+    onRemoveCondition: (Int) -> Unit,
     onSavePreset: (String?, String, Recurrence) -> Unit,
     onDeletePreset: (String) -> Unit,
 ) {
@@ -96,6 +123,8 @@ internal fun RecurrenceSection(
     // The preset being built or edited: null closed, "" a new one, otherwise its id.
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
     val spacing = Tokens.spacing
+    val spans = presets.take(VISIBLE_PRESETS - 1)
+    val calendar = recurrence.asRepeat()
 
     Column {
         FlowRow(
@@ -107,16 +136,15 @@ internal fun RecurrenceSection(
                 selected = recurrence == Recurrence.None,
                 onClick = { onCustom(Recurrence.None) },
             )
-            for (preset in presets.take(VISIBLE_PRESETS - 1)) {
+            for (preset in spans) {
                 RecurrenceButton(
-                    label = presetLabel(preset),
+                    label = presetLabel(preset, today),
                     selected = recurrence.sameSpanAs(preset.recurrence),
                     onClick = { onPick(preset) },
                 )
             }
-        }
-        Spacer(Modifier.height(spacing.sm))
-        Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm), verticalAlignment = Alignment.CenterVertically) {
+            // One flow and not two rows: they are all answers to the same question, and a card
+            // that spends four lines on seven buttons pushes "y sólo si" off the screen.
             if (presets.size > VISIBLE_PRESETS - 1) {
                 RecurrenceButton(
                     icon = Icons.Outlined.MoreHoriz,
@@ -127,16 +155,33 @@ internal fun RecurrenceSection(
                 )
             }
             RecurrenceButton(
+                icon = Icons.Outlined.CalendarMonth,
+                label = stringResource(R.string.recur_calendar),
+                selected = calendar != null,
+                onClick = onCalendar,
+            )
+            RecurrenceButton(
                 icon = Icons.Outlined.Tune,
                 label = stringResource(R.string.recur_custom),
-                // Selected when what is set is not one of the buttons above.
-                selected = recurrence != Recurrence.None &&
-                    presets.take(VISIBLE_PRESETS - 1).none { recurrence.sameSpanAs(it.recurrence) },
+                // Selected when a span is set that is not one of the buttons above.
+                selected = recurrence is Recurrence.After && spans.none { recurrence.sameSpanAs(it.recurrence) },
                 onClick = { editing = "" },
             )
+            // Only where it means anything: a random window is the one trigger left that works
+            // out dates of its own, and offering "lo decide el azar" without one is offering
+            // nothing.
+            if (chanceDecides) {
+                RecurrenceButton(
+                    icon = Icons.Outlined.Casino,
+                    label = stringResource(R.string.recur_by_trigger),
+                    selected = recurrence == Recurrence.ByTrigger,
+                    onClick = { onCustom(Recurrence.ByTrigger) },
+                )
+            }
         }
-        // Which moment the span is counted from: the other half of the sentence.
-        if (recurrence != Recurrence.None) {
+        // Which moment the span is counted from: the other half of the sentence, and a question
+        // only a span has. A calendar answers it by being a calendar.
+        if (recurrence is Recurrence.After) {
             Spacer(Modifier.height(spacing.md))
             Text(
                 text = stringResource(R.string.recur_counts_from),
@@ -149,31 +194,43 @@ internal fun RecurrenceSection(
                 verticalArrangement = Arrangement.spacedBy(spacing.sm),
             ) {
                 RecurrenceButton(
-                    label = stringResource(R.string.recur_from_calendar),
-                    selected = recurrence == Recurrence.ByTrigger || recurrence is Recurrence.MonthlyWeekday,
-                    onClick = { if (calendarDecides) onCustom(Recurrence.ByTrigger) else onAddRepeat() },
-                )
-                RecurrenceButton(
                     label = stringResource(R.string.recur_from_ringing),
                     selected = recurrence.countsFromRinging,
-                    onClick = { onCustom(spanOf(recurrence).copy(from = RecurrenceFrom.RANG)) },
+                    onClick = { onCustom(recurrence.copy(from = RecurrenceFrom.RANG)) },
                 )
                 RecurrenceButton(
                     label = stringResource(R.string.recur_from_dealt),
-                    selected = recurrence is Recurrence.After && !recurrence.countsFromRinging,
-                    onClick = { onCustom(spanOf(recurrence).copy(from = RecurrenceFrom.DEALT)) },
+                    selected = !recurrence.countsFromRinging,
+                    onClick = { onCustom(recurrence.copy(from = RecurrenceFrom.DEALT)) },
                 )
             }
             // What is set, in words — and only when it is not already written on a button,
             // which is what the line was always for and never actually checked.
-            if (presets.take(VISIBLE_PRESETS - 1).none { recurrence.sameSpanAs(it.recurrence) }) {
+            if (spans.none { recurrence.sameSpanAs(it.recurrence) }) {
                 Spacer(Modifier.height(spacing.sm))
                 Text(
-                    text = recurrenceLabel(recurrence),
+                    text = recurrenceLabel(recurrence, today),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+        // A calendar reads itself back, and carries the fences the rule it used to be could
+        // carry: "el día 1, y sólo si estoy en casa" is the one thing the move would have lost.
+        if (calendar != null) {
+            Spacer(Modifier.height(spacing.md))
+            Text(
+                text = repeatSummary(calendar, today, currentLocale()),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            if (warning != null) FieldWarning(stringResource(warning))
+            RecurrenceConditions(
+                conditions = recurrence.conditions,
+                onAdd = onAddCondition,
+                onEdit = onEditCondition,
+                onRemove = onRemoveCondition,
+            )
         }
     }
 
@@ -181,6 +238,7 @@ internal fun RecurrenceSection(
         RecurrenceListDialog(
             presets = presets,
             selected = recurrence,
+            today = today,
             onPick = {
                 listing = false
                 onPick(it)
@@ -196,8 +254,11 @@ internal fun RecurrenceSection(
     editing?.let { id ->
         val existing = presets.firstOrNull { it.id == id }
         CustomRecurrenceDialog(
-            initial = existing?.recurrence ?: recurrence.takeIf { it != Recurrence.None } ?: Recurrence.After(1, RecurrenceUnit.DAYS),
+            initial = existing?.recurrence as? Recurrence.After
+                ?: recurrence as? Recurrence.After
+                ?: Recurrence.After(1, RecurrenceUnit.DAYS),
             initialName = existing?.name.orEmpty(),
+            today = today,
             onConfirm = { built, name ->
                 editing = null
                 onCustom(built)
@@ -210,10 +271,61 @@ internal fun RecurrenceSection(
     }
 }
 
-
-/** The span behind whatever is set, so switching anchor keeps the number somebody chose. */
-private fun spanOf(recurrence: Recurrence): Recurrence.After =
-    recurrence as? Recurrence.After ?: Recurrence.After(1, RecurrenceUnit.DAYS)
+/**
+ * The calendar's fences, laid out like a rule's: chips under what they restrict, because that is
+ * what they are — not another way to ring, but a fence around this one.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun RecurrenceConditions(
+    conditions: List<Condition>,
+    onAdd: () -> Unit,
+    onEdit: (Int) -> Unit,
+    onRemove: (Int) -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(Tokens.spacing.xs),
+        modifier = Modifier.padding(top = Tokens.spacing.xs),
+    ) {
+        conditions.forEachIndexed { index, condition ->
+            InputChip(
+                selected = false,
+                onClick = { onEdit(index) },
+                colors = InputChipDefaults.inputChipColors(
+                    containerColor = Color.Transparent,
+                    labelColor = scheme.onSurface,
+                    leadingIconColor = scheme.onSurfaceVariant,
+                    trailingIconColor = scheme.onSurfaceVariant,
+                ),
+                border = BorderStroke(Tokens.strokes.edge, scheme.outlineVariant),
+                label = { Text(conditionLabel(condition), style = MaterialTheme.typography.labelMedium) },
+                leadingIcon = { Icon(Icons.Outlined.FilterAlt, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                trailingIcon = {
+                    Icon(
+                        imageVector = Icons.Outlined.Close,
+                        contentDescription = stringResource(R.string.editor_remove_condition),
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clickable { onRemove(index) },
+                    )
+                },
+                shape = MaterialTheme.shapes.small,
+            )
+        }
+        TextButton(
+            onClick = onAdd,
+            colors = ButtonDefaults.textButtonColors(contentColor = scheme.onSurfaceVariant),
+            contentPadding = PaddingValues(horizontal = Tokens.spacing.sm),
+        ) {
+            Text(
+                text = stringResource(if (conditions.isEmpty()) R.string.editor_add_condition else R.string.editor_add_another_condition),
+                style = MaterialTheme.typography.labelMedium,
+            )
+        }
+    }
+}
 
 @Composable
 private fun RecurrenceButton(
@@ -267,6 +379,7 @@ private fun RecurrenceButton(
 private fun RecurrenceListDialog(
     presets: List<RecurrencePreset>,
     selected: Recurrence,
+    today: LocalDate,
     onPick: (RecurrencePreset) -> Unit,
     onEdit: (RecurrencePreset) -> Unit,
     onDelete: (String) -> Unit,
@@ -303,7 +416,7 @@ private fun RecurrenceListDialog(
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = spacing.md)) {
                                     Text(
-                                        text = presetLabel(preset),
+                                        text = presetLabel(preset, today),
                                         style = MaterialTheme.typography.bodyLarge,
                                         color = if (preset.recurrence == selected) scheme.surface else scheme.onSurface,
                                         maxLines = 1,
@@ -311,8 +424,14 @@ private fun RecurrenceListDialog(
                                     )
                                 }
                             }
-                            IconButton(onClick = { onEdit(preset) }) {
-                                Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.recur_edit), tint = scheme.onSurfaceVariant)
+                            // Only a span can be built out of the parts this dialog has. One
+                            // kept from before the calendar moved here says something this
+                            // pane cannot say, and an "edit" that quietly rewrote it as
+                            // "cada día" would be losing it rather than editing it.
+                            if (preset.recurrence is Recurrence.After) {
+                                IconButton(onClick = { onEdit(preset) }) {
+                                    Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.recur_edit), tint = scheme.onSurfaceVariant)
+                                }
                             }
                             IconButton(onClick = { onDelete(preset.id) }) {
                                 Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.recur_delete), tint = scheme.onSurfaceVariant)
@@ -334,32 +453,29 @@ private fun RecurrenceListDialog(
 }
 
 /**
- * One built from parts. The name field sits above the parts on purpose: it is the answer to
- * "will I want this again?", and that is worth asking before the fiddling rather than after.
+ * A span built from parts: how many, of what. The name field sits above them on purpose — it is
+ * the answer to "will I want this again?", and that is worth asking before the fiddling rather
+ * than after.
+ *
+ * Spans only. The other shape a recurrence can have is a calendar, and a calendar is five
+ * controls and two month grids deep — it has its own sheet, at its own height, rather than a
+ * segmented control squeezing it into a dialog capped at 620dp.
  */
 @Composable
 private fun CustomRecurrenceDialog(
-    initial: Recurrence,
+    initial: Recurrence.After,
     initialName: String,
+    today: LocalDate,
     onConfirm: (Recurrence, String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
     var name by rememberSaveable { mutableStateOf(initialName) }
-    var byMonthDay by rememberSaveable { mutableStateOf(initial is Recurrence.MonthlyWeekday) }
-    var amount by rememberSaveable { mutableStateOf((initial as? Recurrence.After)?.amount ?: 1) }
-    var unit by rememberSaveable { mutableStateOf(((initial as? Recurrence.After)?.unit ?: RecurrenceUnit.DAYS).name) }
-    var ordinal by rememberSaveable { mutableStateOf((initial as? Recurrence.MonthlyWeekday)?.ordinal ?: 1) }
-    var weekday by rememberSaveable { mutableStateOf(((initial as? Recurrence.MonthlyWeekday)?.day ?: DayOfWeek.SUNDAY).name) }
-    val locale = currentLocale()
-    val ordinals = stringArrayResource(R.array.recur_ordinals)
+    var amount by rememberSaveable { mutableStateOf(initial.amount) }
+    var unit by rememberSaveable { mutableStateOf(initial.unit.name) }
 
-    val built: Recurrence = if (byMonthDay) {
-        Recurrence.MonthlyWeekday(ordinal, DayOfWeek.valueOf(weekday))
-    } else {
-        Recurrence.After(amount, RecurrenceUnit.valueOf(unit), (initial as? Recurrence.After)?.from ?: RecurrenceFrom.DEALT)
-    }
+    val built = Recurrence.After(amount, RecurrenceUnit.valueOf(unit), initial.from)
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
@@ -388,58 +504,40 @@ private fun CustomRecurrenceDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(spacing.lg))
-                SegmentedChoice(
-                    options = listOf(stringResource(R.string.recur_kind_after), stringResource(R.string.recur_kind_monthly)),
-                    selectedIndex = if (byMonthDay) 1 else 0,
-                    onSelect = { byMonthDay = it == 1 },
-                )
-                Spacer(Modifier.height(spacing.lg))
-                if (byMonthDay) {
-                    SectionTitle(stringResource(R.string.recur_which_one))
-                    SegmentedChoice(
-                        options = ordinals.toList(),
-                        selectedIndex = if (ordinal >= LAST_ORDINAL) ordinals.lastIndex else ordinal - 1,
-                        onSelect = { ordinal = if (it == ordinals.lastIndex) LAST_ORDINAL else it + 1 },
-                    )
-                    Spacer(Modifier.height(spacing.md))
-                    SectionTitle(stringResource(R.string.random_days_label))
-                    WeekdayChoice(selected = DayOfWeek.valueOf(weekday), onSelect = { weekday = it.name })
-                } else {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.recur_every), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                        Stepper(
-                            valueLabel = amount.toString(),
-                            onDecrement = { amount = (amount - 1).coerceAtLeast(MIN_RECURRENCE_AMOUNT) },
-                            onIncrement = { amount = (amount + 1).coerceAtMost(MAX_RECURRENCE_AMOUNT) },
-                            decrementEnabled = amount > MIN_RECURRENCE_AMOUNT,
-                            incrementEnabled = amount < MAX_RECURRENCE_AMOUNT,
-                        )
-                    }
-                    Spacer(Modifier.height(spacing.sm))
-                    SegmentedChoice(
-                        options = listOf(
-                            stringResource(R.string.recur_unit_hours),
-                            stringResource(R.string.recur_unit_days),
-                            stringResource(R.string.recur_unit_weeks),
-                            stringResource(R.string.recur_unit_months),
-                            stringResource(R.string.recur_unit_years),
-                        ),
-                        selectedIndex = RecurrenceUnit.valueOf(unit).ordinal,
-                        onSelect = { unit = RecurrenceUnit.entries[it].name },
-                    )
-                    Spacer(Modifier.height(spacing.sm))
-                    // Which moment it counts from is asked on the card, not here: this pane
-                    // builds the span, and a second copy of that question would be a second
-                    // place for the two to disagree.
-                    Text(
-                        text = stringResource(R.string.recur_after_done),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = scheme.onSurfaceVariant,
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.recur_every), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    Stepper(
+                        valueLabel = amount.toString(),
+                        onDecrement = { amount = (amount - 1).coerceAtLeast(MIN_RECURRENCE_AMOUNT) },
+                        onIncrement = { amount = (amount + 1).coerceAtMost(MAX_RECURRENCE_AMOUNT) },
+                        decrementEnabled = amount > MIN_RECURRENCE_AMOUNT,
+                        incrementEnabled = amount < MAX_RECURRENCE_AMOUNT,
                     )
                 }
+                Spacer(Modifier.height(spacing.sm))
+                SegmentedChoice(
+                    options = listOf(
+                        stringResource(R.string.recur_unit_hours),
+                        stringResource(R.string.recur_unit_days),
+                        stringResource(R.string.recur_unit_weeks),
+                        stringResource(R.string.recur_unit_months),
+                        stringResource(R.string.recur_unit_years),
+                    ),
+                    selectedIndex = RecurrenceUnit.valueOf(unit).ordinal,
+                    onSelect = { unit = RecurrenceUnit.entries[it].name },
+                )
+                Spacer(Modifier.height(spacing.sm))
+                // Which moment it counts from is asked on the card, not here: this pane
+                // builds the span, and a second copy of that question would be a second
+                // place for the two to disagree.
+                Text(
+                    text = stringResource(R.string.recur_after_done),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = scheme.onSurfaceVariant,
+                )
                 Spacer(Modifier.height(spacing.lg))
                 Text(
-                    text = recurrenceLabel(built),
+                    text = recurrenceLabel(built, today),
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Spacer(Modifier.height(spacing.md))
@@ -463,35 +561,24 @@ private fun CustomRecurrenceDialog(
     }
 }
 
-/** Seven initials in the locale's week order; the same shape as the day toggles elsewhere. */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun WeekdayChoice(selected: DayOfWeek, onSelect: (DayOfWeek) -> Unit) {
-    val locale = currentLocale()
-    val days = remember(locale) { List(7) { java.time.temporal.WeekFields.of(locale).firstDayOfWeek.plus(it.toLong()) } }
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.xs), verticalArrangement = Arrangement.spacedBy(Tokens.spacing.xs)) {
-        for (day in days) {
-            RecurrenceButton(
-                label = day.getDisplayName(TextStyle.SHORT, locale),
-                selected = day == selected,
-                onClick = { onSelect(day) },
-            )
-        }
-    }
-}
-
 /** A preset's own name, or the shape's own words when it has none. */
 @Composable
-private fun presetLabel(preset: RecurrencePreset): String =
-    preset.name.ifEmpty { recurrenceLabel(preset.recurrence) }
+private fun presetLabel(preset: RecurrencePreset, today: LocalDate): String =
+    preset.name.ifEmpty { recurrenceLabel(preset.recurrence, today) }
 
-/** A recurrence in as few words as it can be said in. */
+/**
+ * A recurrence in as few words as it can be said in.
+ *
+ * [today] is only ever used by a calendar, whose ending is read as a day word ("hasta el
+ * martes") rather than a date nobody has to count from.
+ */
 @Composable
-fun recurrenceLabel(recurrence: Recurrence): String {
+fun recurrenceLabel(recurrence: Recurrence, today: LocalDate): String {
     val locale = currentLocale()
     return when (recurrence) {
         Recurrence.None -> stringResource(R.string.recur_none)
         Recurrence.ByTrigger -> stringResource(R.string.recur_by_trigger)
+        is Recurrence.Calendar -> repeatSummary(recurrence.repeat, today, locale)
         is Recurrence.After -> when (recurrence.unit) {
             RecurrenceUnit.HOURS -> stringResource(R.string.recur_hours, recurrence.amount)
             RecurrenceUnit.DAYS ->
@@ -507,6 +594,7 @@ fun recurrenceLabel(recurrence: Recurrence): String {
                 if (recurrence.amount == 1) stringResource(R.string.recur_year)
                 else stringResource(R.string.recur_years, recurrence.amount)
         }
+        // Nothing writes one any more; it is still what somebody's saved preset says.
         is Recurrence.MonthlyWeekday -> {
             val ordinals = stringArrayResource(R.array.recur_ordinals)
             val ordinal = if (recurrence.ordinal >= LAST_ORDINAL) ordinals.last() else ordinals[(recurrence.ordinal - 1).coerceIn(ordinals.indices)]

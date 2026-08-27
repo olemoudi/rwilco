@@ -114,34 +114,32 @@ fun triggerKindsByUse(reminders: List<Reminder>, now: Instant): List<TriggerKind
 /** What makes two uses the same "when". Null for a trigger with nothing to reuse. */
 private fun shapeOf(trigger: Trigger): String? = when (trigger) {
     is Trigger.Countdown -> "countdown:${trigger.minutes}"
-    is Trigger.AtTime -> "at_time:${trigger.time}:" + trigger.days.map { it.value }.sorted().joinToString(",")
     is Trigger.Interval -> "interval:${trigger.from}-${trigger.to}:" + trigger.days.map { it.value }.sorted().joinToString(",")
     // Only the hour survives; the day it fell on was that reminder's business.
     is Trigger.AtDateTime -> "at_date_time:${trigger.at.toLocalTime()}"
     // Four decimals is about eleven metres: the same door, however the pin was dropped.
     is Trigger.Location -> String.format(
         Locale.ROOT,
-        "location:%.4f,%.4f:%d:%s",
+        "location:%.4f,%.4f:%d:%s:%b",
         trigger.lat,
         trigger.lng,
         trigger.radiusM,
-        trigger.transition.name,
+        trigger.presence.name,
+        trigger.onCrossing,
     )
     is Trigger.Random -> "random:${trigger.timesPer}:${trigger.period}:${trigger.from}:${trigger.to}:" +
         trigger.days.map { it.value }.sorted().joinToString(",")
-    // The whole shape except the day it started on, which is this reminder's alone and is put
-    // back by reanchor. Two "every other Tuesday at nine" are the same answer to "when?".
-    is Trigger.Repeat -> "repeat:${trigger.every}:${trigger.unit}:${trigger.time}:" +
-        trigger.days.map { it.value }.sorted().joinToString(",") + ":${trigger.monthly}:${trigger.ends}"
     // A day is that reminder's business, and "some time that day" without the day is nothing.
     is Trigger.OnDate, is Trigger.DayRandom -> null
+    // A repeating time is not a trigger any more: it is the calendar in "Vuelve", and what
+    // offers one again is the recurrence presets, not this row. Offering a shape no tile can
+    // open would be offering a dead end — and the same goes for the weekly time it was before.
+    is Trigger.Repeat, is Trigger.AtTime -> null
 }
 
 /** The same shape, hung on now: a length starts fresh, an hour looks for its next day. */
 private fun reanchor(trigger: Trigger, now: Instant, zone: ZoneId): Trigger = when (trigger) {
     is Trigger.Countdown -> trigger.copy(startedAt = null)
-    // A series offered again starts again: from today, keeping its shape and its ending.
-    is Trigger.Repeat -> trigger.copy(startsOn = now.atZone(zone).toLocalDate())
     is Trigger.AtDateTime -> {
         val here = now.atZone(zone)
         val time = trigger.at.toLocalTime()

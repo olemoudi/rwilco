@@ -95,8 +95,6 @@
     <string name="trigger_every_day">cada día</string>
     <string name="trigger_weekdays">laborables</string>
     <string name="trigger_weekends">fines de semana</string>
-    <string name="trigger_arriving">al llegar</string>
-    <string name="trigger_leaving">al salir</string>
     <string name="trigger_arrive_at">al llegar a %1$s</string>
     <string name="trigger_leave_from">al salir de %1$s</string>
     <plurals name="trigger_times_a_day">
@@ -131,7 +129,7 @@
     <string name="editor_what_title">Qué pasa</string>
     <string name="editor_recurrence_title">Vuelve</string>
     <string name="recur_none">No repetir</string>
-    <string name="recur_by_trigger">Cuando toque</string>
+    <string name="recur_by_trigger">Lo decide el azar</string>
     <string name="recur_hours">Cada %1$d h</string>
     <string name="recur_next_day">Al día siguiente</string>
     <string name="recur_days">Cada %1$d días</string>
@@ -141,6 +139,7 @@
     <string name="recur_months">Cada %1$d meses</string>
     <string name="recur_monthly_weekday">%1$s %2$s del mes</string>
     <string name="recur_more">Más</string>
+    <string name="recur_calendar">Por calendario</string>
     <string name="recur_custom">Personalizado</string>
     <string name="recur_custom_title">Recurrencia personalizada</string>
     <string name="recur_list_title">Recurrencias</string>
@@ -148,19 +147,13 @@
     <string name="recur_delete">Borrar</string>
     <string name="recur_save_as">Guardar con un nombre</string>
     <string name="recur_save_as_hint">Déjalo vacío para no guardarla</string>
-    <string name="recur_kind_after">Tras hacerlo</string>
-    <string name="recur_kind_monthly">Un día del mes</string>
     <string name="recur_every">Cada</string>
-    <string name="recur_which_one">Cuál</string>
     <string name="recur_year">Cada año</string>
     <string name="recur_years">Cada %1$d años</string>
     <string name="recur_unit_years">años</string>
     <string name="recur_counts_from">Cuenta desde</string>
-    <string name="recur_from_calendar">El calendario</string>
     <string name="recur_from_ringing">Que suena</string>
     <string name="recur_from_dealt">Que lo hago</string>
-    <string name="recur_from_ringing_hint">Se cuenta desde que suena, así que contestar tarde no mueve el siguiente. Un recordatorio sin contestar vuelve igual, a su ritmo.</string>
-    <string name="recur_from_calendar_hint">Lo decide un disparador propio —una repetición o una franja al azar—, así que no se desplaza por mucho que tardes en contestar.</string>
     <string name="card_recurrence_from_ringing">desde que suena</string>
     <string name="card_recurrence_from_calendar">en sus propias fechas</string>
     <string name="recur_after_done">Se cuenta desde que lo marcas hecho, no desde el reloj.</string>
@@ -182,6 +175,7 @@
     <string name="editor_repeats_off">Marcarlo hecho lo da por terminado.</string>
     <string name="editor_error_text">Escribe qué quieres recordar.</string>
     <string name="editor_warning_past">Ese momento ya ha pasado.</string>
+    <string name="editor_warning_recurrence_over">Esta serie ya ha terminado, así que no volverá a sonar.</string>
     <string name="editor_discard_title">¿Descartar los cambios?</string>
     <string name="editor_discard_body">Lo que has cambiado aquí se perderá.</string>
     <string name="editor_discard_confirm">Descartar</string>
@@ -197,7 +191,7 @@
     <string name="kind_countdown">Cuenta atrás</string>
     <string name="kind_countdown_hint">Dentro de un rato</string>
     <string name="kind_place">Lugar</string>
-    <string name="kind_place_hint">Al llegar a un sitio o al salir</string>
+    <string name="kind_place_hint">Estar en un sitio, o llegar a él</string>
     <string name="kind_random">Al azar</string>
     <string name="kind_random_hint">Momentos sorpresa en una franja</string>
 
@@ -596,6 +590,19 @@
 
     <!-- Conditions on a trigger: the second kind is a place. -->
     <string name="condition_kind_hours">Horas</string>
+    <string name="place_while_inside">mientras estoy</string>
+    <string name="place_while_outside">mientras no estoy</string>
+    <string name="place_on_arrival">al llegar</string>
+    <string name="place_on_leaving">al salir</string>
+    <string name="place_side_inside">Mientras estoy</string>
+    <string name="place_side_outside">Mientras no estoy</string>
+    <string name="place_side_arriving">Al llegar</string>
+    <string name="place_side_leaving">Al salir</string>
+    <string name="place_needs_crossing">Sólo al cruzar la línea</string>
+    <string name="place_means_inside">Basta con que estés allí: si ya estás cuando toque todo lo demás, suena.</string>
+    <string name="place_means_outside">Basta con que no estés allí: si ya estás fuera cuando toque todo lo demás, suena.</string>
+    <string name="place_means_arriving">Tiene que verte llegar. Si ya estás allí, espera a que salgas y vuelvas.</string>
+    <string name="place_means_leaving">Tiene que verte salir. Si ya estás fuera, espera a que entres y vuelvas a salir.</string>
     <string name="condition_kind_place">Lugar</string>
     <string name="condition_place_hint">Sólo cuenta cuando el teléfono está allí — o cuando no lo está. Elige entre los lugares que guardas en Ajustes.</string>
     <string name="condition_place_inside">Estoy allí</string>

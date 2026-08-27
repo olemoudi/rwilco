@@ -51,10 +51,11 @@ fun Reminder.ruleStandings(
     now: Instant,
     zone: ZoneId,
     dayStart: LocalTime = DEFAULT_DAY_START,
+    shape: DayShape = DayShape.DEFAULT,
     inside: (Int) -> Boolean? = { null },
 ): List<RuleStanding?> {
     if (!rulesCombine) return rules.map { null }
-    val rest = restUntil(zone, dayStart)
+    val rest = restUntil(zone, dayStart, shape)
     if (rest != null && rest > now) return rules.map { null }
     return rules.mapIndexed { index, rule ->
         when (ruleMatch) {

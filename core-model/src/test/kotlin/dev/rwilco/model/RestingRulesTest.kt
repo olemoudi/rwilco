@@ -25,7 +25,7 @@ class RestingRulesTest {
     /** Nine in the morning, the default, and deliberately later than the windows below. */
     private val dayStart: LocalTime = LocalTime.of(9, 0)
 
-    private val work = Trigger.Location(40.4735, -3.6829, 200, Transition.ENTER, "Ciudad BBVA")
+    private val work = Trigger.Location(40.4735, -3.6829, 200, Presence.INSIDE, "Ciudad BBVA")
 
     private fun daily(vararg triggers: Trigger, dealt: Instant, fired: Instant, match: RuleMatch = RuleMatch.TOGETHER) = Reminder(
         id = "r1",
@@ -89,7 +89,7 @@ class RestingRulesTest {
         // and without the day's start hour "the next day" would begin one minute past midnight,
         // which is the same evening to anybody who was out.
         val bins = daily(
-            Trigger.Location(40.4169, -3.7035, 200, Transition.ENTER, "Casa"),
+            Trigger.Location(40.4169, -3.7035, 200, Presence.INSIDE, "Casa"),
             dealt = local(2026, 8, 26, 19, 30),
             fired = local(2026, 8, 26, 19, 0),
             match = RuleMatch.ANY,

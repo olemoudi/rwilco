@@ -28,10 +28,39 @@ sealed interface Recurrence {
     @SerialName("none")
     data object None : Recurrence
 
-    /** The triggers decide again: a repeating time or a random window, as they always did. */
+    /**
+     * The triggers decide again. Only a random window says this now — "tres veces al día" is
+     * its own answer to "when does it come back" and the tile that writes it is the only one
+     * left that names dates of its own. It still decodes for the reminders written when a
+     * repeating time was a trigger too; those are folded into [Calendar] on the way in
+     * (`foldRepeats`).
+     */
     @Serializable
     @SerialName("by_trigger")
     data object ByTrigger : Recurrence
+
+    /**
+     * A calendar: the dates a series names and the hour inside them, with the fences it has to
+     * clear.
+     *
+     * This is what used to be a *trigger* — the "una hora que se repite" tile — and being two
+     * things was the whole problem: "cada semana" was a trigger on one screen and a recurrence
+     * on another, and nothing said which of the two a reminder had. A repeat is not a way of
+     * starting; it is the answer to "¿y vuelve?", so it lives here with the rest of that
+     * answer.
+     *
+     * [repeat] is the shape itself, unchanged and still [Trigger.Repeat]: it is the form every
+     * phone already has on disk, its `@SerialName`s are frozen, and a second copy of the same
+     * seven fields is a second place for the arithmetic to disagree. [conditions] are the
+     * fences the rule it used to be could carry ("y sólo si estoy en casa") — the one thing
+     * that would have been lost in the move, and the reason they are here.
+     */
+    @Serializable
+    @SerialName("calendar")
+    data class Calendar(
+        val repeat: Trigger.Repeat,
+        val conditions: List<Condition> = emptyList(),
+    ) : Recurrence
 
     /**
      * A span after [from]. Hours are exact — "cada 6 h" means six hours — while days, weeks,
@@ -46,7 +75,14 @@ sealed interface Recurrence {
         val from: RecurrenceFrom = RecurrenceFrom.DEALT,
     ) : Recurrence
 
-    /** The [ordinal]th [day] of each month; [LAST_ORDINAL] for the last one. */
+    /**
+     * The [ordinal]th [day] of each month; [LAST_ORDINAL] for the last one.
+     *
+     * Nothing writes one of these any more — it is a [Calendar] of a month with a
+     * [MonthlyOn.Nth] in it, said twice — but it stays because it is what somebody's phone and
+     * somebody's saved presets are full of, and it still means exactly what it meant. Opening
+     * one in "Vuelve" rewrites it as the calendar it always was.
+     */
     @Serializable
     @SerialName("monthly_weekday")
     data class MonthlyWeekday(val ordinal: Int, val day: DayOfWeek) : Recurrence
@@ -95,7 +131,39 @@ const val MIN_RECURRENCE_AMOUNT = 1
 const val MAX_RECURRENCE_AMOUNT = 99
 
 /** Whether the recurrence works out its own moments, rather than handing the job to the triggers. */
-val Recurrence.isAnchored: Boolean get() = this is Recurrence.After || this is Recurrence.MonthlyWeekday
+val Recurrence.isAnchored: Boolean
+    get() = this is Recurrence.After || this is Recurrence.MonthlyWeekday || this is Recurrence.Calendar
+
+/**
+ * Whether it names dates of its own rather than counting a span from something that happened.
+ *
+ * The difference that matters everywhere a moment is worked out: a calendar knows its next date
+ * without being told when the last one was dealt with, and a span knows nothing else. It is also
+ * the difference between a recurrence that can *end* ([RepeatEnd]) and one that cannot.
+ */
+val Recurrence.isCalendar: Boolean get() = this is Recurrence.Calendar
+
+/** The fences on the recurrence's own moment; empty for everything that is not a calendar. */
+val Recurrence.conditions: List<Condition>
+    get() = (this as? Recurrence.Calendar)?.conditions.orEmpty()
+
+/** The same calendar with its fences replaced; anything else is left exactly as it is. */
+fun Recurrence.withConditions(conditions: List<Condition>): Recurrence =
+    if (this is Recurrence.Calendar) copy(conditions = conditions) else this
+
+/**
+ * The calendar behind a recurrence, for the sheet that edits one: what is set if it is already a
+ * calendar, the same shape a legacy [Recurrence.MonthlyWeekday] always was, and null otherwise.
+ */
+fun Recurrence.asRepeat(): Trigger.Repeat? = when (this) {
+    is Recurrence.Calendar -> repeat
+    is Recurrence.MonthlyWeekday -> Trigger.Repeat(
+        startsOn = java.time.LocalDate.EPOCH,
+        unit = RepeatUnit.MONTH,
+        monthly = MonthlyOn.Nth(if (ordinal >= LAST_ORDINAL) -1 else ordinal, day),
+    )
+    else -> null
+}
 
 /** Whether dealing with a firing leaves anything behind at all. */
 val Recurrence.repeats: Boolean get() = this != Recurrence.None
@@ -117,16 +185,25 @@ val Recurrence.countsInDays: Boolean
     get() = when (this) {
         Recurrence.None, Recurrence.ByTrigger -> false
         is Recurrence.After -> unit != RecurrenceUnit.HOURS
-        is Recurrence.MonthlyWeekday -> true
+        // A calendar names days and nothing shorter, whatever hour it puts inside one.
+        is Recurrence.MonthlyWeekday, is Recurrence.Calendar -> true
     }
 
+/**
+ * The next moment a *span* produces, counted from [anchor].
+ *
+ * A calendar is deliberately not one of them and answers null here: its moments come from the
+ * dates it names rather than from anything that happened, and working one out needs the reminder
+ * they belong to — the hour nobody chose is drawn by (reminder, day). `Reminder.calendarMoment`
+ * is the question for a calendar, and every caller here asks it first.
+ */
 fun nextRecurrence(
     recurrence: Recurrence,
     anchor: Instant,
     zone: ZoneId,
     dayStart: LocalTime,
 ): Instant? = when (recurrence) {
-    Recurrence.None, Recurrence.ByTrigger -> null
+    Recurrence.None, Recurrence.ByTrigger, is Recurrence.Calendar -> null
     is Recurrence.After -> when (recurrence.unit) {
         RecurrenceUnit.HOURS -> anchor.plusSeconds(recurrence.amount * 3_600L)
         RecurrenceUnit.DAYS -> anchor.atDayStart(zone, dayStart) { it.plusDays(recurrence.amount.toLong()) }

@@ -20,6 +20,7 @@ import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
+import dev.rwilco.model.Presence
 import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
@@ -76,12 +77,12 @@ class PlaceWatchDeviceTest {
     private val radius = 200
 
     /** The watch's key for the one place a seeded reminder carries. */
-    private fun key(id: String, transition: Transition) =
-        GeofenceIds.encode(id, 0, Trigger.Location(homeLat, homeLng, radius, transition, "Casa"))
+    private fun key(id: String, presence: Presence) =
+        GeofenceIds.encode(id, 0, Trigger.Location(homeLat, homeLng, radius, presence, "Casa"))
 
     /** The watch's key for the place at [index] of a seeded reminder. */
-    private fun keyAt(id: String, index: Int, transition: Transition) =
-        GeofenceIds.encode(id, index, Trigger.Location(homeLat, homeLng, radius, transition, "Casa"))
+    private fun keyAt(id: String, index: Int, presence: Presence) =
+        GeofenceIds.encode(id, index, Trigger.Location(homeLat, homeLng, radius, presence, "Casa"))
 
     private fun conditionKey(id: String) =
         GeofenceIds.encodeCondition(id, 0, 0, Condition.AtPlace(homeLat, homeLng, radius, "Casa", inside = true))
@@ -123,14 +124,14 @@ class PlaceWatchDeviceTest {
 
     @Test
     fun arrivingIsSeenOnceLeavingIsSeenAndAnEchoIsDropped() = runBlocking {
-        val arriving = seed("arrive", Transition.ENTER)
-        val leaving = seed("leave", Transition.EXIT)
+        val arriving = seed("arrive", Presence.INSIDE)
+        val leaving = seed("leave", Presence.OUTSIDE)
 
         // Far away: a baseline, no events, a look planned well ahead.
         moveTo(south = 5_000.0, at = t0)
         watcher.check()
         var state = store.read()
-        assertEquals(mapOf(key(arriving, Transition.ENTER) to false, key(leaving, Transition.EXIT) to false), state.inside)
+        assertEquals(mapOf(key(arriving, Presence.INSIDE) to false, key(leaving, Presence.OUTSIDE) to false), state.inside)
         assertNull(app.repository.get(arriving)!!.lastFiredAt)
         assertNotNull(state.nextCheckAt)
         assertFalse("GPS five kilometres out", state.precise)
@@ -153,7 +154,7 @@ class PlaceWatchDeviceTest {
         moveTo(south = 50.0, at = t0 + 300_000)
         watcher.check()
         state = store.read()
-        assertEquals(true, state.inside[key(arriving, Transition.ENTER)])
+        assertEquals(true, state.inside[key(arriving, Presence.INSIDE)])
         val rangAt = app.repository.get(arriving)!!.lastFiredAt
         assertNotNull("arriving should have rung", rangAt)
         assertNull(app.repository.get(leaving)!!.lastFiredAt)
@@ -173,7 +174,7 @@ class PlaceWatchDeviceTest {
         moveTo(south = -400.0, at = t0 + 420_000)
         watcher.check()
         state = store.read()
-        assertEquals(false, state.inside[key(leaving, Transition.EXIT)])
+        assertEquals(false, state.inside[key(leaving, Presence.OUTSIDE)])
         assertNotNull("leaving should have rung", app.repository.get(leaving)!!.lastFiredAt)
         assertEquals(rangAt, app.repository.get(arriving)!!.lastFiredAt)
     }
@@ -184,14 +185,14 @@ class PlaceWatchDeviceTest {
         // phone already inside (no initial trigger), and the watch has no history to ring from.
         // The other way round the geofence would see a genuine move in — and be right to ring.
         moveTo(south = 40.0, at = t0)
-        val arriving = seed("arrive", Transition.ENTER)
+        val arriving = seed("arrive", Presence.INSIDE)
         watcher.check()
-        assertEquals(true, store.read().inside[key(arriving, Transition.ENTER)])
+        assertEquals(true, store.read().inside[key(arriving, Presence.INSIDE)])
         assertNull("standing at home is not arriving", app.repository.get(arriving)!!.lastFiredAt)
 
         moveTo(south = 500.0, at = t0 + 120_000)
         watcher.check()
-        assertEquals(false, store.read().inside[key(arriving, Transition.ENTER)])
+        assertEquals(false, store.read().inside[key(arriving, Presence.INSIDE)])
         assertNull(app.repository.get(arriving)!!.lastFiredAt)
 
         moveTo(south = 40.0, at = t0 + 240_000)
@@ -201,13 +202,13 @@ class PlaceWatchDeviceTest {
 
     @Test
     fun aSloppyFixDoesNotGetYouIn() = runBlocking {
-        val arriving = seed("arrive", Transition.ENTER)
+        val arriving = seed("arrive", Presence.INSIDE)
         moveTo(south = 1_000.0, at = t0)
         watcher.check()
         // Centre inside, but the fix could be anywhere within 600 m: not an arrival.
         moveTo(south = 50.0, at = t0 + 120_000, accuracy = 600f)
         watcher.check()
-        assertEquals(false, store.read().inside[key(arriving, Transition.ENTER)])
+        assertEquals(false, store.read().inside[key(arriving, Presence.INSIDE)])
         assertNull(app.repository.get(arriving)!!.lastFiredAt)
         // A proper fix in the same spot is.
         moveTo(south = 50.0, at = t0 + 240_000, accuracy = 12f)
@@ -221,14 +222,14 @@ class PlaceWatchDeviceTest {
         // A window that opens four hours out — past the two-hour run-up, so the gate is shut
         // for the whole test.
         val window = Condition.TimeWindow(now.plusHours(4).withSecond(0), now.plusHours(6).withSecond(0))
-        val fenced = seed("fenced", Transition.ENTER, conditions = listOf(window))
+        val fenced = seed("fenced", Presence.INSIDE, conditions = listOf(window))
         moveTo(south = 1_000.0, at = t0)
         watcher.check()
         moveTo(south = 50.0, at = t0 + 120_000)
         watcher.check()
         // Arriving cannot ring for two more hours, so the watch does not spend a fix finding
         // out that somebody arrived: the circle was never judged at all.
-        assertNull("the watch read a position it could do nothing with", store.read().inside[key(fenced, Transition.ENTER)])
+        assertNull("the watch read a position it could do nothing with", store.read().inside[key(fenced, Presence.INSIDE)])
         assertNull("and nothing rang", app.repository.get(fenced)!!.lastFiredAt)
         // Left alone is not given up on: the next look is the hour the window opens.
         val next = store.read().nextCheckAt
@@ -244,9 +245,9 @@ class PlaceWatchDeviceTest {
         // more circle against a fix already in hand costs arithmetic. So it is told.
         val time = app.clock.instant().atZone(app.clock.zone).toLocalTime()
         val window = Condition.TimeWindow(time.plusHours(4).withSecond(0), time.plusHours(6).withSecond(0))
-        val fenced = seed("fenced", Transition.ENTER, conditions = listOf(window))
-        val live = seed("live", Transition.ENTER)
-        val paused = key(fenced, Transition.ENTER)
+        val fenced = seed("fenced", Presence.INSIDE, conditions = listOf(window))
+        val live = seed("live", Presence.INSIDE)
+        val paused = key(fenced, Presence.INSIDE)
 
         moveTo(south = 1_000.0, at = t0)
         watcher.check()
@@ -270,13 +271,13 @@ class PlaceWatchDeviceTest {
         // somebody who walked in a minute later would not have arrived anywhere.
         val now = app.clock.instant().atZone(app.clock.zone).toLocalTime()
         val window = Condition.TimeWindow(now.plusHours(1).withSecond(0), now.plusHours(3).withSecond(0))
-        val soon = seed("runup", Transition.ENTER, conditions = listOf(window))
+        val soon = seed("runup", Presence.INSIDE, conditions = listOf(window))
         moveTo(south = 1_000.0, at = t0)
         watcher.check()
         assertEquals(
             "a window an hour out is inside the run-up and should already be watched",
             false,
-            store.read().inside[key(soon, Transition.ENTER)],
+            store.read().inside[key(soon, Presence.INSIDE)],
         )
     }
 
@@ -284,8 +285,8 @@ class PlaceWatchDeviceTest {
     fun aLookThatFindsNothingToWatchForgetsWhatItCannotVouchFor() = runBlocking {
         val now = app.clock.instant().atZone(app.clock.zone).toLocalTime()
         val window = Condition.TimeWindow(now.plusHours(4).withSecond(0), now.plusHours(6).withSecond(0))
-        val fenced = seed("stale", Transition.ENTER, conditions = listOf(window))
-        val id = key(fenced, Transition.ENTER)
+        val fenced = seed("stale", Presence.INSIDE, conditions = listOf(window))
+        val id = key(fenced, Presence.INSIDE)
         // Last night's answer, still in the store: the window closed hours ago and nothing has
         // looked since. Left standing, a card reads it as "no se cumple ahora mismo" — a
         // verdict on a circle nobody is watching.
@@ -303,7 +304,7 @@ class PlaceWatchDeviceTest {
         val far = seedAllWithMoment("allfar", at = app.clock.instant().plus(Duration.ofHours(6)))
         moveTo(south = 1_000.0, at = t0)
         watcher.check()
-        assertEquals(false, store.read().inside[keyAt(far, 1, Transition.ENTER)])
+        assertEquals(false, store.read().inside[keyAt(far, 1, Presence.INSIDE)])
         val slow = Duration.between(Instant.now(), store.read().nextCheckAt!!)
         assertTrue("a set six hours out should be looked at hourly, not $slow", slow.toMinutes() >= 55)
 
@@ -312,7 +313,7 @@ class PlaceWatchDeviceTest {
         val near = seedAllWithMoment("allnear", at = app.clock.instant().plus(Duration.ofMinutes(90)))
         moveTo(south = 1_000.0, at = t0 + 60_000)
         watcher.check()
-        assertEquals(false, store.read().inside[keyAt(near, 1, Transition.ENTER)])
+        assertEquals(false, store.read().inside[keyAt(near, 1, Presence.INSIDE)])
         val quick = Duration.between(Instant.now(), store.read().nextCheckAt!!)
         assertTrue("inside the run-up the cadence is the distance's, not $quick", quick.toMinutes() < 55)
     }
@@ -326,7 +327,7 @@ class PlaceWatchDeviceTest {
         // out un-meets it.
         val tomorrow = app.clock.instant().plus(Duration.ofHours(20))
         val id = seedAllWithMoment("undo", at = tomorrow)
-        val circle = keyAt(id, 1, Transition.ENTER)
+        val circle = keyAt(id, 1, Presence.INSIDE)
 
         moveTo(south = 5_000.0, at = t0)
         watcher.check()
@@ -352,7 +353,7 @@ class PlaceWatchDeviceTest {
         val last = seedAllWithMoment("alllast", at = app.clock.instant().plus(Duration.ofHours(6)), fired = setOf(0))
         moveTo(south = 1_000.0, at = t0)
         watcher.check()
-        assertEquals(false, store.read().inside[keyAt(last, 1, Transition.ENTER)])
+        assertEquals(false, store.read().inside[keyAt(last, 1, Presence.INSIDE)])
     }
 
     @Test
@@ -388,7 +389,7 @@ class PlaceWatchDeviceTest {
         val waiting = seedTogether("far", at = far)
         moveTo(south = 50.0, at = t0)
         watcher.check()
-        assertNull("a circle only asked about at the moment was watched two hours early", store.read().inside[key(waiting, Transition.ENTER)])
+        assertNull("a circle only asked about at the moment was watched two hours early", store.read().inside[key(waiting, Presence.INSIDE)])
         val next = store.read().nextCheckAt
         assertNotNull("left alone is not given up on", next)
         val lead = Duration.between(next!!, far)
@@ -401,8 +402,8 @@ class PlaceWatchDeviceTest {
         val asking = seedTogether("soon", at = moment)
         moveTo(south = 50.0, at = t0 + 60_000)
         watcher.check()
-        assertEquals(true, store.read().inside[key(asking, Transition.ENTER)])
-        assertEquals("the circle two hours out rode along", true, store.read().inside[key(waiting, Transition.ENTER)])
+        assertEquals(true, store.read().inside[key(asking, Presence.INSIDE)])
+        assertEquals("the circle two hours out rode along", true, store.read().inside[key(waiting, Presence.INSIDE)])
 
         // And it is the MOMENT that rings, not the place: the alarm carries its rule index, the
         // set is folded into it as "y estoy en casa", and that is answered from the fix the
@@ -428,7 +429,7 @@ class PlaceWatchDeviceTest {
             Reminder(
                 id = bins,
                 text = "Sacar la basura",
-                rules = listOf(TriggerRule(Trigger.Location(homeLat, homeLng, radius, Transition.ENTER, "Casa"))),
+                rules = listOf(TriggerRule(Trigger.Location(homeLat, homeLng, radius, Presence.INSIDE, "Casa"))),
                 recurrence = Recurrence.After(1, RecurrenceUnit.DAYS),
                 status = Status.ACTIVE,
                 createdAt = written,
@@ -439,7 +440,7 @@ class PlaceWatchDeviceTest {
         )
         Thread.sleep(1_500)
         cancelWatchAlarm()
-        val key = key(bins, Transition.ENTER)
+        val key = key(bins, Presence.INSIDE)
         watcher.check()
         assertEquals(true, store.read().inside[key])
         assertEquals("standing at home is not arriving", twoDaysAgo, app.repository.get(bins)!!.lastFiredAt)
@@ -474,7 +475,7 @@ class PlaceWatchDeviceTest {
 
     @Test
     fun theAlarmsReceiverLooksToo() = runBlocking {
-        seed("arrive", Transition.ENTER)
+        seed("arrive", Presence.INSIDE)
         moveTo(south = 3_000.0, at = t0)
         val before = store.read()
         context.sendBroadcast(Intent(context, PlaceCheckReceiver::class.java).setAction(PlaceCheckReceiver.ACTION))
@@ -491,7 +492,7 @@ class PlaceWatchDeviceTest {
 
     @Test
     fun syncLooksSoonAndForgetsPlacesThatAreGone() = runBlocking {
-        val id = seed("arrive", Transition.ENTER)
+        val id = seed("arrive", Presence.INSIDE)
         app.placeWatcher.sync()
         val planned = store.read().nextCheckAt
         assertNotNull(planned)
@@ -507,7 +508,7 @@ class PlaceWatchDeviceTest {
     /** One reminder with one place rule at home; returns its id. */
     private suspend fun seed(
         id: String,
-        transition: Transition,
+        presence: Presence,
         conditions: List<Condition> = emptyList(),
         recurrence: Recurrence = Recurrence.None,
     ): String {
@@ -516,7 +517,7 @@ class PlaceWatchDeviceTest {
             Reminder(
                 id = "watch-$id",
                 text = "Place test $id",
-                rules = listOf(TriggerRule(Trigger.Location(homeLat, homeLng, radius, transition, "Casa"), conditions)),
+                rules = listOf(TriggerRule(Trigger.Location(homeLat, homeLng, radius, presence, "Casa"), conditions)),
                 recurrence = recurrence,
                 status = Status.ACTIVE,
                 createdAt = now,
@@ -542,7 +543,7 @@ class PlaceWatchDeviceTest {
                 text = "All test $id",
                 rules = listOf(
                     TriggerRule(Trigger.AtDateTime(java.time.LocalDateTime.ofInstant(at, app.clock.zone))),
-                    TriggerRule(Trigger.Location(homeLat, homeLng, radius, Transition.ENTER, "Casa")),
+                    TriggerRule(Trigger.Location(homeLat, homeLng, radius, Presence.INSIDE, "Casa")),
                 ),
                 ruleMatch = RuleMatch.ALL,
                 firedRules = fired,
@@ -568,7 +569,7 @@ class PlaceWatchDeviceTest {
                 id = "watch-$id",
                 text = "Together test $id",
                 rules = listOf(
-                    TriggerRule(Trigger.Location(homeLat, homeLng, radius, Transition.ENTER, "Casa")),
+                    TriggerRule(Trigger.Location(homeLat, homeLng, radius, Presence.INSIDE, "Casa")),
                     TriggerRule(Trigger.AtDateTime(java.time.LocalDateTime.ofInstant(at, app.clock.zone))),
                 ),
                 ruleMatch = RuleMatch.TOGETHER,

@@ -62,7 +62,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.rwilco.R
+import dev.rwilco.model.RecurrenceWarning
 import dev.rwilco.model.decidesItsOwnDates
+import dev.rwilco.model.recurrenceWarning
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.TriggerKind
 import dev.rwilco.model.ValidationError
@@ -78,7 +80,7 @@ import dev.rwilco.ui.editor.sheets.DateSheet
 import dev.rwilco.ui.editor.sheets.IntervalSheet
 import dev.rwilco.ui.editor.sheets.LocationSheet
 import dev.rwilco.ui.editor.sheets.RandomSheet
-import dev.rwilco.ui.editor.sheets.RepeatSheet
+import dev.rwilco.ui.editor.sheets.CalendarSheet
 import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.theme.Tokens
 
@@ -139,6 +141,15 @@ fun EditorScreen(
             worst.putIfAbsent(index, message)
         }
         worst
+    }
+    // The same question for the calendar in "Vuelve", which has fences of its own and no rule
+    // index to hang a message on. Remembered for the same reason: it walks moments.
+    val recurrenceWarning = remember(state.draft.recurrence, state.defaultTime, state.dayShape) {
+        when (recurrenceWarning(state.draft.recurrence, now, zone, state.dayShape)) {
+            RecurrenceWarning.OVER -> R.string.editor_warning_recurrence_over
+            RecurrenceWarning.NEVER_FIRES -> R.string.editor_warning_never_fires
+            null -> null
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -270,10 +281,15 @@ fun EditorScreen(
                     RecurrenceSection(
                         recurrence = state.draft.recurrence,
                         presets = state.recurrencePresets,
-                        calendarDecides = state.draft.rules.any { it.trigger.decidesItsOwnDates },
+                        today = today,
+                        chanceDecides = state.draft.rules.any { it.trigger.decidesItsOwnDates },
+                        warning = recurrenceWarning,
                         onPick = viewModel::pickRecurrencePreset,
                         onCustom = viewModel::setRecurrence,
-                        onAddRepeat = { viewModel.pickKind(TriggerKind.REPEAT_TIME) },
+                        onCalendar = viewModel::openCalendar,
+                        onAddCondition = viewModel::addRecurrenceCondition,
+                        onEditCondition = viewModel::editRecurrenceCondition,
+                        onRemoveCondition = viewModel::removeRecurrenceCondition,
                         onSavePreset = viewModel::saveRecurrencePreset,
                         onDeletePreset = viewModel::deleteRecurrencePreset,
                     )
@@ -298,6 +314,20 @@ fun EditorScreen(
                 kinds = state.kindOrder,
                 preferred = state.defaultKind,
                 onPick = viewModel::pickKind,
+                onDismiss = viewModel::closeSheet,
+            )
+            is EditorSheet.ConfigureCalendar -> CalendarSheet(
+                initial = sheet.initial,
+                today = today,
+                defaultTime = state.defaultTime,
+                shape = state.dayShape,
+                onConfirm = viewModel::commitCalendar,
+                onDismiss = viewModel::closeSheet,
+            )
+            is EditorSheet.ConfigureRecurrenceCondition -> ConditionSheet(
+                initial = sheet.initial,
+                savedPlaces = state.savedPlaces,
+                onConfirm = { condition -> viewModel.commitRecurrenceCondition(sheet.index, condition) },
                 onDismiss = viewModel::closeSheet,
             )
             is EditorSheet.ConfigureCondition -> ConditionSheet(
@@ -325,9 +355,12 @@ fun EditorScreen(
                         onConfirm = commit,
                         onDismiss = viewModel::closeSheet,
                     )
-                    TriggerKind.REPEAT_TIME -> RepeatSheet(
+                    // A repeating time is not a tile any more — it is the calendar in
+                    // "Vuelve" — but the kind is still a stored favourite, so it opens the
+                    // nearest thing the sheet still has rather than nothing at all.
+                    TriggerKind.REPEAT_TIME -> DateSheet(
                         initial = sheet.initial,
-                        today = today,
+                        now = now.atZone(zone),
                         defaultTime = state.defaultTime,
                         shape = state.dayShape,
                         onConfirm = commit,

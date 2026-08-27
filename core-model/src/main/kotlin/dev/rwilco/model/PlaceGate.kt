@@ -14,8 +14,6 @@ import java.time.ZoneId
  * deciding what to spend, and a card, saying whether it is spending.
  */
 
-/** The other side of a line: what a circle waits for once it has seen this one. */
-val Transition.other: Transition get() = if (this == Transition.ENTER) Transition.EXIT else Transition.ENTER
 
 /**
  * One circle of one reminder, and what the watch owes it right now.
@@ -47,10 +45,10 @@ data class Gated(
  * under "a la vez" that cannot ring on its own and is only ever read at a sibling's moment. And
  * the **recurrence**: a reminder resting on a span is not being asked anything at all.
  *
- * **Under "todos" a place is never gated by its siblings**, and that is the difference between
- * the two words made concrete. There, a place is a *state*: "cuando salga de la oficina" is met
- * by being out of it, un-met by walking back in, and the set rings when the last of its rules
- * is met — which may be a date six weeks off. A circle switched off until that date throws away
+ * **Under "todos" a place is never gated by its siblings.** A place is a *state* everywhere
+ * now — "cuando salga de la oficina" is met by being out of it and un-met by walking back in —
+ * and under "todos" the set rings when the last of its rules is met, which may be a date six
+ * weeks off. A circle switched off until that date throws away
  * every crossing in between, and the set is then waiting for a leaving that already happened
  * and will not happen again. So it stays on and pays for the waiting instead:
  * [WatchedPlace.floor] holds it to the cheapest cadence there is
@@ -78,7 +76,7 @@ fun Reminder.watchedCircles(
     // A rule's moment cannot be asked before a snooze is over: the snooze rings instead, with
     // no rule behind it and nothing asked. Nor before a rest is — dealt with and coming back on
     // a span, the rules say nothing until it is up.
-    val rest = restUntil(zone, dayStart)?.takeIf { it > now }
+    val rest = restUntil(zone, dayStart, shape)?.takeIf { it > now }
     val from = maxOf(now, snoozedUntil ?: now, rest ?: now)
     // When each pending clock rule next rings — the moment its own circles, and under "a la
     // vez" every sibling place, are going to be asked about. A rule that cannot ring (a fold of
@@ -139,8 +137,13 @@ fun Reminder.watchedCircles(
                     lat = it.lat,
                     lng = it.lng,
                     radiusM = it.radiusM,
-                    transition = if (ticked) it.transition.other else it.transition,
+                    transition = if (ticked) it.presence.opposite.asTransition else it.presence.asTransition,
                     label = it.label,
+                    // A tick comes off when the state stops holding, never on a doorway: "al
+                    // llegar a casa" ticked off is un-ticked by not being at home any more,
+                    // and asking for a second crossing to say so would leave the set holding a
+                    // rule that is plainly untrue.
+                    onCrossing = it.onCrossing && !ticked,
                     crossing = when {
                         ticked -> Crossing.TAKES_BACK
                         // A crossing that cannot complete the set is worth knowing about and
