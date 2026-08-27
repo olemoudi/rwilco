@@ -270,6 +270,20 @@ data class RecurrencePreset(
     val lastUsedAt: Instant? = null,
 )
 
+/**
+ * [preset] written into this list: **in its own place** when it is already there, at the end when
+ * it is new.
+ *
+ * In place is the whole point. The order of the list is the last tie-break the sort below falls
+ * back on, and the four built-in recurrences are tied on everything else — no uses, never used —
+ * so one rebuilt at the end of the list drops behind the rest and off the row of buttons, which
+ * only has room for three. Editing "al día siguiente" to give it a name made it vanish from the
+ * card, which reads as losing it rather than renaming it.
+ */
+fun List<RecurrencePreset>.keeping(preset: RecurrencePreset): List<RecurrencePreset> =
+    if (none { it.id == preset.id }) this + preset
+    else map { if (it.id == preset.id) preset else it }
+
 /** Most used first, then the most recently used, then the order they were given in. */
 fun recurrencePresetsByPopularity(presets: List<RecurrencePreset>): List<RecurrencePreset> =
     presets.sortedWith(compareByDescending<RecurrencePreset> { it.uses }.thenByDescending { it.lastUsedAt ?: Instant.EPOCH })

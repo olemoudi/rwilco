@@ -221,10 +221,15 @@ class EditorTourTest {
         text(s(R.string.sheet_add)).performClick()
         rule.waitUntilGone(s(R.string.sheet_repeat_ends))
         // Back on the card it reads itself back, and can be fenced like the rule it used to be.
-        // The section headings are drawn uppercase, so the way back to the card is a button.
-        text(s(R.string.recur_none)).performScrollTo()
+        // Scrolled to the fence button rather than to the top of the card: it is the last thing
+        // on it, and a capture that crops the one control this shot is for shows nothing.
+        // Two "sólo si" on the screen by now — the countdown rule has one — and the calendar's
+        // is the lower, because "Vuelve" sits under "Cuándo".
+        rule.onAllNodesWithText(s(R.string.editor_add_condition), useUnmergedTree = true)[1]
+            .performScrollTo()
+            .assertIsDisplayed()
         shot("editor-recurrence-calendar")
-        text(s(R.string.recur_none)).performClick()
+        text(s(R.string.recur_none)).performScrollTo().performClick()
         rule.waitForIdle()
 
         // A rule can be fenced in, by hours or by a place: the trigger only counts inside them.

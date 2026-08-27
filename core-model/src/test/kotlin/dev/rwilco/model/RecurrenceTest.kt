@@ -383,4 +383,33 @@ class RecurrenceTest {
         assertEquals(Recurrence.After(6, RecurrenceUnit.HOURS, RecurrenceFrom.DEALT), old)
         assertFalse(old.countsFromRinging)
     }
+
+    @Test
+    fun `editing a preset leaves it exactly where it was`() {
+        // The bug this pins: the four built-in recurrences are tied on everything the sort
+        // looks at — no uses, never used — so the list's own order is the only thing telling
+        // them apart, and only the first three get a button. Rebuilding an edited preset at the
+        // end of the list dropped it off the card, which reads as losing it.
+        val presets = defaultRecurrencePresets()
+        val day = presets.first()
+        val renamed = day.copy(name = "Mañana")
+
+        val kept = presets.keeping(renamed)
+        assertEquals(presets.map { it.id }, kept.map { it.id }, "the order did not survive an edit")
+        assertEquals("Mañana", kept.first().name)
+        assertEquals(day.id, recurrencePresetsByPopularity(kept).first().id, "and it is still on the row")
+
+        // One that is not there yet joins at the end, which is where a new thing belongs.
+        val fresh = RecurrencePreset(id = "new", recurrence = Recurrence.After(3, RecurrenceUnit.DAYS))
+        assertEquals(presets.map { it.id } + "new", presets.keeping(fresh).map { it.id })
+    }
+
+    @Test
+    fun `an edit does not spend the uses that earned a preset its place`() {
+        val presets = defaultRecurrencePresets()
+        val used = presets[2].copy(uses = 9, lastUsedAt = local(2026, 8, 27, 9, 0))
+        val kept = presets.keeping(used)
+        assertEquals(used.id, recurrencePresetsByPopularity(kept).first().id)
+        assertEquals(9, kept.first { it.id == used.id }.uses)
+    }
 }

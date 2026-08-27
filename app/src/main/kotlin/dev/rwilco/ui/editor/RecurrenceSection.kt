@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Casino
 import androidx.compose.material.icons.outlined.Close
@@ -31,7 +32,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -43,7 +46,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
@@ -272,8 +274,17 @@ internal fun RecurrenceSection(
 }
 
 /**
- * The calendar's fences, laid out like a rule's: chips under what they restrict, because that is
- * what they are — not another way to ring, but a fence around this one.
+ * The calendar's fences: chips under what they restrict, because that is what they are — not
+ * another way to ring, but a fence around this one.
+ *
+ * **Everything here has to look pressable on its own.** On a trigger row the same cluster sits
+ * inside a family-coloured surface with an edge of its own, and the container does half the
+ * saying; here it sits on the bare card under a line of grey summary text, so a bare text button
+ * read as one more line of that summary and nobody found it. It wears the app's own "add one
+ * more of these" shape instead — the same outlined pill as "nueva etiqueta", with the plus that
+ * says what it does — and the chips get a control's line rather than a card's, which is the
+ * token that means "this can be pressed". Both to [Sizes.touch], which they were under: a 32dp
+ * chip is below the floor this app sets for anything a thumb has to hit.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -286,42 +297,51 @@ private fun RecurrenceConditions(
     val scheme = MaterialTheme.colorScheme
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
-        verticalArrangement = Arrangement.spacedBy(Tokens.spacing.xs),
-        modifier = Modifier.padding(top = Tokens.spacing.xs),
+        verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
+        modifier = Modifier.padding(top = Tokens.spacing.sm),
     ) {
         conditions.forEachIndexed { index, condition ->
             InputChip(
                 selected = false,
                 onClick = { onEdit(index) },
                 colors = InputChipDefaults.inputChipColors(
-                    containerColor = Color.Transparent,
+                    containerColor = scheme.surfaceContainerHigh,
                     labelColor = scheme.onSurface,
                     leadingIconColor = scheme.onSurfaceVariant,
                     trailingIconColor = scheme.onSurfaceVariant,
                 ),
-                border = BorderStroke(Tokens.strokes.edge, scheme.outlineVariant),
-                label = { Text(conditionLabel(condition), style = MaterialTheme.typography.labelMedium) },
-                leadingIcon = { Icon(Icons.Outlined.FilterAlt, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                border = BorderStroke(Tokens.strokes.control, scheme.outline),
+                label = { Text(conditionLabel(condition), style = MaterialTheme.typography.labelLarge) },
+                leadingIcon = { Icon(Icons.Outlined.FilterAlt, contentDescription = null, modifier = Modifier.size(18.dp)) },
                 trailingIcon = {
                     Icon(
                         imageVector = Icons.Outlined.Close,
                         contentDescription = stringResource(R.string.editor_remove_condition),
                         modifier = Modifier
-                            .size(18.dp)
+                            .size(20.dp)
                             .clickable { onRemove(index) },
                     )
                 },
                 shape = MaterialTheme.shapes.small,
+                modifier = Modifier.heightIn(min = Tokens.sizes.touch),
             )
         }
-        TextButton(
+        OutlinedButton(
             onClick = onAdd,
-            colors = ButtonDefaults.textButtonColors(contentColor = scheme.onSurfaceVariant),
-            contentPadding = PaddingValues(horizontal = Tokens.spacing.sm),
+            shape = MaterialTheme.shapes.small,
+            border = BorderStroke(Tokens.strokes.control, scheme.outline),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = scheme.surfaceContainerHigh,
+                contentColor = scheme.onSurface,
+            ),
+            contentPadding = PaddingValues(horizontal = Tokens.spacing.md),
+            modifier = Modifier.heightIn(min = Tokens.sizes.touch),
         ) {
+            Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(Tokens.spacing.sm))
             Text(
                 text = stringResource(if (conditions.isEmpty()) R.string.editor_add_condition else R.string.editor_add_another_condition),
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelLarge,
             )
         }
     }

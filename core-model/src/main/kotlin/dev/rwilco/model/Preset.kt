@@ -73,6 +73,16 @@ fun nextPresetColor(existing: List<Preset>): Int {
  * Most used first, and among equals the one used most recently — which for a preset never used
  * is the day it was made, so a new one sits above an old one nobody touches.
  */
+/**
+ * [preset] written into this list, in its own place when it is already there. See the recurrence
+ * presets' [List.keeping], which is the same rule and the same reason: order is what the sort
+ * below falls back on when two presets are tied, and rebuilding one at the end of the list moves
+ * it for no reason anybody asked for.
+ */
+fun List<Preset>.keeping(preset: Preset): List<Preset> =
+    if (none { it.id == preset.id }) this + preset
+    else map { if (it.id == preset.id) preset else it }
+
 fun presetsByPopularity(presets: List<Preset>): List<Preset> = presets.sortedWith(
     compareByDescending<Preset> { it.uses }.thenByDescending { it.lastUsedAt ?: it.createdAt },
 )

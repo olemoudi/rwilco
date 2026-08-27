@@ -13,6 +13,7 @@ import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RecurrencePreset
 import dev.rwilco.model.withSpanOf
+import dev.rwilco.model.keeping
 import dev.rwilco.model.recurrencePresetsByPopularity
 import dev.rwilco.model.used
 import dev.rwilco.model.Reminder
@@ -173,7 +174,6 @@ class EditorViewModel(
         viewModelScope.launch {
             val presetId = id ?: UUID.randomUUID().toString()
             store.update { settings ->
-                val others = settings.recurrencePresets.filterNot { it.id == presetId }
                 val existing = settings.recurrencePresets.firstOrNull { it.id == presetId }
                 val preset = RecurrencePreset(
                     id = presetId,
@@ -182,7 +182,7 @@ class EditorViewModel(
                     uses = existing?.uses ?: 0,
                     lastUsedAt = existing?.lastUsedAt,
                 )
-                settings.copy(recurrencePresets = others + preset)
+                settings.copy(recurrencePresets = settings.recurrencePresets.keeping(preset))
             }
             refreshRecurrencePresets()
         }
@@ -313,9 +313,11 @@ class EditorViewModel(
             val now = clock.instant()
             val id = current.editingPreset?.id ?: UUID.randomUUID().toString()
             store.update { settings ->
+                // The colour a new one gets is worked out from the others, so that is the list
+                // toPreset is shown; where the preset itself goes is [keeping]'s business.
                 val others = settings.presets.filterNot { it.id == id }
                 val preset = current.toPreset(id, now, current.editingPreset, others)
-                settings.copy(presets = others + preset)
+                settings.copy(presets = settings.presets.keeping(preset))
             }
             events.send(EditorEvent.Saved)
         }

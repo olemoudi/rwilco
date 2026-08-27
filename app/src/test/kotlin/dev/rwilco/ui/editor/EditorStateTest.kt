@@ -3,6 +3,7 @@ package dev.rwilco.ui.editor
 import dev.rwilco.model.Action
 import dev.rwilco.model.DEFAULT_ACTIONS
 import dev.rwilco.model.MAX_TEXT_LENGTH
+import dev.rwilco.model.keeping
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.nextFire
 import dev.rwilco.model.RecurrenceUnit
@@ -239,5 +240,21 @@ class EditorStateTest {
         assertEquals(Recurrence.ByTrigger, EditorUiState().commitTrigger(null, chance).draft.recurrence)
         val date = Trigger.AtDateTime(LocalDateTime.of(2026, 8, 28, 9, 0))
         assertEquals(Recurrence.None, EditorUiState().commitTrigger(null, date).draft.recurrence)
+    }
+
+    @Test
+    fun `editing a reminder preset leaves it where it was too`() {
+        // The same rule as the recurrence presets', and the same reason: order is what the
+        // popularity sort falls back on when two are tied, and Home's quick buttons are the
+        // first few of it.
+        val born = Instant.parse("2026-08-20T09:00:00Z")
+        val presets = (1..3).map { dev.rwilco.model.Preset(id = "p$it", name = "Preset $it", createdAt = born) }
+        val renamed = presets[0].copy(name = "La compra")
+        assertEquals(listOf("p1", "p2", "p3"), presets.keeping(renamed).map { it.id })
+        assertEquals("La compra", presets.keeping(renamed).first().name)
+        assertEquals(
+            listOf("p1", "p2", "p3", "p4"),
+            presets.keeping(dev.rwilco.model.Preset(id = "p4", name = "Nuevo", createdAt = born)).map { it.id },
+        )
     }
 }
