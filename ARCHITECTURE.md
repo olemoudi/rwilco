@@ -487,7 +487,10 @@ strict is asking somebody to remember how they spelled it.
   and usually meant as one conditioned rule (`BetterAsCondition`). None of it blocks saving.
 - `PlaceWatcher` is the second opinion, and the one that decides its own cost. However many
   places are being waited on there is **one** alarm, **one** fix and **one** decision: no rule
-  polls on its own account. What it watches is every circle still worth watching, and three
+  polls on its own account. The cadence is the most impatient circle's (`planNextCheck` takes
+  the soonest wait any one of them asks for) and the answer is everybody's (`stepPlaceWatch`
+  judges them all against that one fix), so a place across town that would settle for half an
+  hour is judged every five minutes anyway, at the doorstep's expense and nobody else's. What it watches is every circle still worth watching, and three
   things take circles off that list. A rule's trigger counts only while the rule is still
   pending (`pendingRules` — under ALL a place already ticked off has nothing left to report, and
   both the watch and the hundred-geofence allowance stop spending on it), and not while it
@@ -515,9 +518,9 @@ strict is asking somebody to remember how they spelled it.
   the phone. Two hours is the run-up; a window once a day still costs two hours of looking
   rather than twenty-four, which is the whole point of gating.
   **A look that finds nothing worth a fix forgets what it can no longer vouch for**: `inside`
-  is filtered down to the resting circles (`Watching.remembered`), because an answer left
-  standing from before the window closed would have a card say "no se cumple ahora mismo"
-  about a circle nothing has looked at since last night. `sync()` always did this; `look()`
+  is filtered down to the resting circles (`Watching.remembered`) — listeners included, for the
+  reason above — because an answer left standing from before the window closed would have a card
+  say "no se cumple ahora mismo" about a circle nothing has looked at since last night. `sync()` always did this; `look()`
   did not, and the mark a person saw then depended on whether the process happened to restart.
   **Under "todos" the gate is the soonest sibling moment**, less the same run-up: the siblings
   are rules of their own and not conditions, so the fold carries none of their hours and a
@@ -536,6 +539,19 @@ strict is asking somebody to remember how they spelled it.
   need the very fix this exists to avoid spending. The geofences are *not* gated: they are the
   free eye and the net under all of this, and one firing outside its hours costs a condition
   check that says no.
+  **A shut gate stops a circle from buying a look; it does not stop it from being told what one
+  found.** Every gate above saves the same thing — the radios — and none of them is a reason to
+  throw away an answer somebody has already paid for. So a gated circle is handed to
+  `stepPlaceWatch` as a *listener* (`Watching.listening`): judged into `inside`, never given to
+  `planNextCheck` (it cannot pull the cadence towards itself or wake the GPS) and never turned
+  into an event — a reminder that cannot ring must not report a crossing, and `places()`, which
+  is what `accept` reads, still excludes it, so neither eye can fire it. The circle behind "el
+  26, y cuando llegue a casa" therefore spends the month knowing which side of its line the
+  phone is on, at nobody's expense, and the morning its gate opens the first fix is a crossing
+  rather than a baseline. What a listener is *not* owed is memory through a look that takes **no
+  fix**: what nothing is refreshing is dropped, because a judgement left standing for weeks and
+  then subtracted from a fresh one invents a crossing nobody made — and a rule ticked off under
+  "todos" by a crossing nobody made is the one mistake here that cannot be seen from the card.
   On each check (an allow-while-idle alarm to `PlaceCheckReceiver`,
   exact when the phone allows it) it reads one fix from the fused provider — GPS only when the
   nearest line is close and the phone moving, the wifi/cell blend otherwise — and hands it to

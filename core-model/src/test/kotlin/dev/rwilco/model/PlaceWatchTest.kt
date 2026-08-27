@@ -324,6 +324,48 @@ class PlaceWatchTest {
     }
 
     @Test
+    fun `a circle that only listens is judged by a fix it did not pay for`() {
+        // The forty-days-out case: its gate is shut, so it buys nothing — but a fix somebody
+        // else's doorstep paid for is already in hand, and judging one more circle against it
+        // costs arithmetic. What that buys is the baseline for the morning the gate opens.
+        val gated = home.copy(id = "r3#0")
+        val step = stepPlaceWatch(PlaceWatchState(), north(3000.0), listOf(work), now, listening = listOf(gated))
+        assertEquals(mapOf(work.id to false, gated.id to false), step.state.inside)
+    }
+
+    @Test
+    fun `a listener neither rings nor asks for a look of its own`() {
+        // Standing at its own door and walking through it. An asking circle would ring and
+        // would hold the cadence at the floor; a listener does neither — it cannot ring,
+        // because the reminder behind it cannot, and the look it would ask for is the one its
+        // gate exists to save.
+        val gated = home.copy(id = "r3#0")
+        val far = work.copy(lat = homeLat + 2.7, transition = Transition.ENTER)
+        val outside = PlaceWatchState(inside = mapOf(gated.id to false))
+        val listened = stepPlaceWatch(outside, north(50.0), listOf(far), now, listening = listOf(gated))
+        assertTrue(listened.events.isEmpty(), "a circle nobody is waiting on reported a crossing")
+        assertEquals(true, listened.state.inside[gated.id], "but it does know where the phone is")
+        assertEquals(far.id, listened.plan!!.nearest.id, "a listener voted on the cadence")
+        assertTrue(listened.plan!!.wait > PlaceWatchPolicy.STILL_NEAR_MAX, "and pulled the look forward")
+        // The same circle, asking: the ring and the two-minute cadence both come back.
+        val asked = stepPlaceWatch(outside, north(50.0), listOf(far, gated), now)
+        assertEquals(listOf(PlaceEvent(gated.id, Transition.ENTER)), asked.events)
+        assertEquals(gated.id, asked.plan!!.nearest.id)
+        assertTrue(asked.plan!!.wait < listened.plan!!.wait, "the near circle should have taken the cadence over")
+    }
+
+    @Test
+    fun `a look that takes no fix at all still keeps its listeners up to date`() {
+        // The cheapest check there is — the sensor felt nothing, so the stored fix is read
+        // again — and the listeners are judged by it like everybody else. Free twice over.
+        val gated = home.copy(id = "r3#0")
+        val resting = PlaceWatchState(lastFix = north(3000.0, at = now), inside = mapOf(work.id to false), stillStreak = 3)
+        val step = stepWithoutLooking(resting, listOf(work), now.plusSeconds(600), sensed = false, listening = listOf(gated))!!
+        assertEquals(false, step.state.inside[gated.id])
+        assertTrue(step.events.isEmpty())
+    }
+
+    @Test
     fun `a still streak counts up and a move resets it`() {
         val start = stepPlaceWatch(PlaceWatchState(), north(3000.0, at = now), listOf(home), now)
         val later = now.plusSeconds(600)

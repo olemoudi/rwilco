@@ -235,6 +235,33 @@ class PlaceWatchDeviceTest {
     }
 
     @Test
+    fun aPausedCircleRidesAlongOnTheFixAnotherOnePaidFor() = runBlocking {
+        // The other half of aPlaceOutsideItsHoursIsNotEvenLookedAt. Shut out of the hours it
+        // needs, "fenced" buys no fix of its own and never will until they come round — but
+        // "live" is watching the same city and pays for one every few minutes, and judging one
+        // more circle against a fix already in hand costs arithmetic. So it is told.
+        val time = app.clock.instant().atZone(app.clock.zone).toLocalTime()
+        val window = Condition.TimeWindow(time.plusHours(4).withSecond(0), time.plusHours(6).withSecond(0))
+        val fenced = seed("fenced", Transition.ENTER, conditions = listOf(window))
+        val live = seed("live", Transition.ENTER)
+        val paused = key(fenced, Transition.ENTER)
+
+        moveTo(south = 1_000.0, at = t0)
+        watcher.check()
+        assertEquals("the paused circle was not told where the phone was", false, store.read().inside[paused])
+
+        // And it is told the arrival too. Told, and nothing else: it is not on the list a
+        // crossing may be rung from, by either eye.
+        moveTo(south = 50.0, at = t0 + 120_000)
+        watcher.check()
+        assertEquals(true, store.read().inside[paused])
+        assertNull("a circle outside its hours rang", app.repository.get(fenced)!!.lastFiredAt)
+        assertFalse("the fence rang a circle outside its hours", watcher.accept(paused, Transition.ENTER))
+        assertNull(app.repository.get(fenced)!!.lastFiredAt)
+        assertNotNull("the circle that paid for the fix should have rung", app.repository.get(live)!!.lastFiredAt)
+    }
+
+    @Test
     fun aCircleIsWatchedTheRunUpBeforeItsWindowOpens() = runBlocking {
         // The gate is not the stroke of the window: it is [PlaceWatchPolicy.WINDOW_LEAD] before
         // it. A watch that started at the stroke would spend its first fix on a baseline, and

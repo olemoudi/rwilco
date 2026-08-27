@@ -471,6 +471,16 @@ data class WatchStep(
  * rules wait for, and plan the next look from [now] (not from the fix, which may be an old
  * one the phone had lying around). [sensed] is the motion sensor's word since the last check,
  * null when it had none; [charge] is how much battery is left to spend on the next one.
+ *
+ * [listening] is the other half of the watch, and it is free. A circle whose reminder cannot
+ * ring for weeks asks for no fix of its own — that is the whole point of gating it — but a fix
+ * is being read anyway, for somebody else, and judging one more circle against it costs
+ * arithmetic. So these are judged into [PlaceWatchState.inside] and nowhere else: they cast no
+ * vote on when to look again ([planNextCheck] never sees them, so no gated circle can pull the
+ * cadence towards itself or wake the GPS) and they report no crossing, because a reminder that
+ * cannot ring must not. What they get is the thing that costs a radio to buy and nothing to
+ * keep: an up-to-date answer to which side of the line the phone is on, so that when the gate
+ * opens the first crossing is a crossing rather than a baseline.
  */
 fun stepPlaceWatch(
     state: PlaceWatchState,
@@ -479,9 +489,10 @@ fun stepPlaceWatch(
     now: Instant,
     sensed: Boolean? = null,
     charge: Double? = null,
+    listening: List<WatchedPlace> = emptyList(),
 ): WatchStep {
     val movement = movementSince(state.lastFix, fix, sensed, state.stillStreak)
-    val inside = places.associate { place -> place.id to insideAfter(state.inside[place.id], place, fix) }
+    val inside = (places + listening).associate { place -> place.id to insideAfter(state.inside[place.id], place, fix) }
     val events = places.mapNotNull { place ->
         if (!place.fires) return@mapNotNull null
         val before = state.inside[place.id] ?: return@mapNotNull null
@@ -526,10 +537,11 @@ fun stepWithoutLooking(
     now: Instant,
     sensed: Boolean?,
     charge: Double? = null,
+    listening: List<WatchedPlace> = emptyList(),
 ): WatchStep? {
     if (sensed != false || state.stillStreak == 0) return null
     val fix = state.lastFix ?: return null
-    val step = stepPlaceWatch(state, fix, places, now, sensed = false, charge = charge)
+    val step = stepPlaceWatch(state, fix, places, now, sensed = false, charge = charge, listening = listening)
     val wait = step.plan?.wait ?: return null
     if (Duration.between(fix.at, now + wait) > PlaceWatchPolicy.SPEED_MEMORY) return null
     return step

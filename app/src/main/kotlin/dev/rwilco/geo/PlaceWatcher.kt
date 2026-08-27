@@ -65,7 +65,10 @@ import kotlin.math.roundToInt
  * fix, judges every place against it with hysteresis (`stepPlaceWatch`), fires the crossings
  * that match a rule, and sets the next alarm to the soonest look any one place asks for — from
  * two minutes walking up to a door to an afternoon for a place three provinces away, which no
- * road gets anybody to sooner.
+ * road gets anybody to sooner. So the cadence is the most impatient circle's and the answer is
+ * everybody's: a place across town that would settle for half an hour is judged every five
+ * minutes anyway, because the fix the doorstep paid for is already in hand. That is also why a
+ * circle whose gate is shut is not dropped but demoted — see [Watching.listening].
  *
  * What it costs: a fix is wifi/cell unless the line is close and the phone moving, when it is
  * GPS for a few seconds; the alarm is allow-while-idle, which Doze holds to one per nine
@@ -138,14 +141,17 @@ class PlaceWatcher(
      * `fires = false`, so `stepPlaceWatch` never turns one into a firing — because the answer
      * has to be in hand at the moment some other trigger goes off. And only then: see
      * [PlaceWatchPolicy.ASK_LEAD].
+     *
+     * These are the circles worth a fix, and the only ones a crossing may be *rung* from. A
+     * circle whose gate is shut is not here at all — see [Watching.listening].
      */
-    suspend fun places(): List<WatchedPlace> = watching().places
+    suspend fun places(): List<WatchedPlace> = watching().asking
 
     /**
-     * What is worth watching now, and when the next circle that is not worth watching becomes
-     * so. See [places] for the two kinds; the gates below are what save the polls.
+     * What is worth watching now, what merely rides along, and when the next shut gate opens.
+     * See [places] for the two kinds of circle; the gates below are what save the polls.
      *
-     * Three gates, and a circle is watched only while every one that applies to it is open.
+     * Three gates, and a circle *asks* for a fix only while every one that applies to it is open.
      * The *hours*: a place under "a la vez" whose sibling windows cannot hold right now cannot
      * ring, so the watch spends nothing on it until they can. The *moment*: a circle a clock
      * rule only asks about ("a las nueve, y sólo si estoy en casa") is asked at that rule's next
@@ -153,6 +159,14 @@ class PlaceWatcher(
      * it — and the same for a place under "a la vez" that cannot ring on its own, which is only
      * ever asked at a sibling's moment. And the *recurrence*: once one is in charge the rules
      * are never asked again, so nothing of theirs is watched at all.
+     *
+     * A shut gate stops the circle from *buying* a fix; it does not stop it from being told.
+     * The look is one fix for however many circles are being waited on, and judging one more
+     * against it costs arithmetic — so a circle whose gate is shut is handed to the step as
+     * [Watching.listening]: judged, never planned from, never rung. What that buys is the one
+     * thing a gate used to throw away. The circle behind "el 26, y cuando llegue a casa" spends
+     * the month knowing which side of its line the phone is on, at nobody's expense, so the
+     * morning the gate opens the first fix is a *crossing* and not a baseline.
      */
     private suspend fun watching(): Watching {
         val now = clock.instant()
@@ -161,6 +175,7 @@ class PlaceWatcher(
         val defaultTime = current.defaultTime
         val shape = current.dayShape
         val remembered = HashSet<String>()
+        val listening = ArrayList<WatchedPlace>()
         // A little before the hour it opens, so the first fix of a window is taken before
         // anything is judged by it rather than after.
         val soon = now + PlaceWatchPolicy.MIN_WAIT
@@ -169,7 +184,7 @@ class PlaceWatcher(
             val seen = opens
             if (gate > soon && (seen == null || gate < seen)) opens = gate
         }
-        val places = repository.openNow()
+        val asking = repository.openNow()
             .filter { it.status == Status.ACTIVE }
             .flatMap { reminder ->
                 val pending = reminder.pendingRules().toSet()
@@ -242,11 +257,11 @@ class PlaceWatcher(
                         // other time.
                         moments[index]?.minus(PlaceWatchPolicy.ASK_LEAD)
                     }
+                    // No gate at all is a circle nothing is ever going to ask about: not
+                    // watched, not listened to, and its memory is not worth keeping either.
                     if (gate == null) return@flatMapIndexed emptyList()
-                    if (gate > soon) {
-                        notYet(gate)
-                        return@flatMapIndexed emptyList()
-                    }
+                    val shut = gate > soon
+                    if (shut) notYet(gate)
                     val trigger = place?.let {
                         WatchedPlace(
                             id = GeofenceIds.encode(reminder.id, index, it),
@@ -275,17 +290,35 @@ class PlaceWatcher(
                             )
                         }
                     }
-                    listOfNotNull(trigger) + asked
+                    val circles = listOfNotNull(trigger) + asked
+                    if (!shut) return@flatMapIndexed circles
+                    // Shut: it rides along on whatever fix somebody else pays for. A crossing
+                    // it may not ring is a crossing it must not report, so it goes to the step
+                    // as a listener and never as a place — see [Watching.listening].
+                    listening += circles
+                    emptyList()
                 }
             }
-        return Watching(places, opens, remembered)
+        return Watching(asking, listening, opens, remembered)
     }
 
     /**
-     * The circles worth a fix now, when the next one that is not becomes worth one, and the
-     * ids of circles that are resting and must keep the memory of which side the phone is on.
+     * The circles worth a fix now, the ones that only ride along on it, when the next shut gate
+     * opens, and the ids of resting circles that must keep the memory of which side the phone
+     * is on even through a look that takes no fix at all.
+     *
+     * [listening] never plans and never rings; it is judged and nothing else. What it buys is
+     * an up-to-date baseline for the moment its gate opens, paid for by somebody else's look —
+     * and only while the looks are actually happening: a watch with nothing left to ask about
+     * takes no fix, and a memory nothing has refreshed is dropped rather than kept to be
+     * compared against weeks later, which is how a "crossing" nobody made gets invented.
      */
-    private data class Watching(val places: List<WatchedPlace>, val opensAt: Instant?, val remembered: Set<String>)
+    private data class Watching(
+        val asking: List<WatchedPlace>,
+        val listening: List<WatchedPlace>,
+        val opensAt: Instant?,
+        val remembered: Set<String>,
+    )
 
     /**
      * The list of places changed, or the app started: forget places that are gone, and look soon
@@ -301,7 +334,7 @@ class PlaceWatcher(
      */
     suspend fun sync() = lock.withLock {
         val watch = watching()
-        val places = watch.places
+        val places = watch.asking
         val current = store.read()
         if (places.isEmpty() || !context.hasBackgroundLocation()) {
             // Nothing worth a fix now is not the same as nothing to watch: a set whose hours
@@ -312,7 +345,12 @@ class PlaceWatcher(
             return@withLock
         }
         val ids = places.mapTo(HashSet()) { it.id }
-        val judged = current.inside.filterKeys { it in ids || it in watch.remembered }
+        // A listening circle is not gone, it is waiting, and what the last fix said about it
+        // still stands: this is a change of list, not a look. (Every resting circle is one of
+        // them, so `remembered` has nothing to add here.) Only the circles that asked for a fix
+        // decide whether one is worth taking now.
+        val known = (watch.asking + watch.listening).mapTo(HashSet()) { it.id }
+        val judged = current.inside.filterKeys { it in known }
         val now = clock.instant()
         // Whichever comes first: what the store remembers, and what a stir already pulled
         // forward in this process (which the store will not have caught up with yet).
@@ -385,7 +423,7 @@ class PlaceWatcher(
 
     private suspend fun look() {
         val watch = watching()
-        val places = watch.places
+        val places = watch.asking
         if (places.isEmpty() || !context.hasBackgroundLocation()) {
             val gate = watch.opensAt.takeIf { context.hasBackgroundLocation() }
             // What is no longer watched is no longer known. Leaving the last answer standing
@@ -394,6 +432,12 @@ class PlaceWatcher(
             // one that says nobody has looked. A resting circle is the exception and keeps its
             // memory, because which side of the line the phone is on is what decides whether
             // the next crossing is an arrival. sync() has always done this; a look had not.
+            //
+            // A listening circle is NOT the exception. What it knows is worth exactly as much
+            // as the looks that keep renewing it, and this is the look where those stop: a
+            // judgement left standing here would be compared, whenever the gate finally opens,
+            // against a fix from another week, and the crossing that comes out of that
+            // subtraction is one nobody made.
             val current = store.read()
             val forgotten = current.inside.filterKeys { it in watch.remembered }
             if (gate == null) {
@@ -411,15 +455,12 @@ class PlaceWatcher(
         val charge = battery.remaining()
         // What the phone felt while nobody was looking; the next listening window starts here.
         val sensed = motion.consume()
-        val rest = stepWithoutLooking(before, places, now, sensed, charge)
+        val rest = stepWithoutLooking(before, places, now, sensed, charge, listening = watch.listening)
         val rested = rest?.plan
-        // What a step forgets — the circles it was not handed — is what a resting circle
-        // needs kept: see Watching.remembered.
-        val kept = before.inside.filterKeys { it in watch.remembered }
         if (rest != null && rested != null) {
             // Never past the moment another circle's hours open, for the same reason as below.
             val at = watch.opensAt?.coerceAtMost(now + rested.wait) ?: (now + rested.wait)
-            store.write(rest.state.copy(inside = kept + rest.state.inside, nextCheckAt = at))
+            store.write(rest.state.copy(nextCheckAt = at))
             scheduleAt(at, rested.gapM)
             Log.i(TAG, "nothing has moved; no fix taken, next look in ${Duration.between(now, at).toMinutes()} min")
             write(NoteKind.REST, now, rest.state, rested, rest.movement, charge)
@@ -447,10 +488,10 @@ class PlaceWatcher(
             return
         }
         // A fix resets the blind streak: PlaceWatchState is rebuilt from scratch by the step.
-        val step = stepPlaceWatch(before, fix, places, now, sensed, charge)
+        val step = stepPlaceWatch(before, fix, places, now, sensed, charge, listening = watch.listening)
         val plan = step.plan
         if (plan == null) {
-            store.write(step.state.copy(inside = kept + step.state.inside))
+            store.write(step.state)
             cancel()
             return
         }
@@ -460,7 +501,9 @@ class PlaceWatcher(
         // The next look is armed BEFORE anything rings. Ringing is the slow part of a look —
         // a notification, maybe a screen — and the receiver's budget is short; a look cut off
         // in the middle of it must already have left the watch its next link.
-        store.write(step.state.copy(inside = kept + step.state.inside, nextCheckAt = at))
+        // A resting circle's memory needs no merging back in any more: it is one of the
+        // listeners the step was handed, so this judgement is its own and up to date.
+        store.write(step.state.copy(nextCheckAt = at))
         scheduleAt(at, plan.gapM)
         Log.i(TAG, "${plan.gapM.toInt()} m from ${plan.nearest.label}; next look in ${Duration.between(now, at).toMinutes()} min${if (plan.precise) " (gps)" else ""}")
         write(NoteKind.FIX, now, step.state, plan, step.movement, charge)
