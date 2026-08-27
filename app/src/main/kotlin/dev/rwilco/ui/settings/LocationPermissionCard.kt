@@ -62,6 +62,34 @@ enum class LocationAccess {
 }
 
 /**
+ * Whether a place reminder can be kept at all: what was granted, and whether the phone's own
+ * location switch is even on. Held out of the card so the group that folds it away can say, on
+ * the closed row, that a place reminder is waiting on something.
+ */
+data class PlaceReadiness(val access: LocationAccess, val locationOn: Boolean) {
+    /** Everything a geofence needs. Anything less and a place trigger is a promise unkept. */
+    val ready: Boolean get() = access == LocationAccess.ALWAYS && locationOn
+}
+
+/** Re-read on every resume: the person may have gone to system settings and come back. */
+@Composable
+fun rememberPlaceReadiness(): PlaceReadiness {
+    val context = LocalContext.current
+    var readiness by remember { mutableStateOf(PlaceReadiness(context.locationAccess(), context.isLocationEnabled())) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                readiness = PlaceReadiness(context.locationAccess(), context.isLocationEnabled())
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    return readiness
+}
+
+/**
  * Where a place reminder stands or falls.
  *
  * Shown whether or not a place reminder exists yet, because "all the time" is the one permission
@@ -72,35 +100,20 @@ enum class LocationAccess {
  * see it working without a walk.
  */
 @Composable
-fun LocationPermissionCard(needsPlaces: Boolean, watch: PlaceWatchState? = null) {
+fun LocationPermissionCard(readiness: PlaceReadiness, needsPlaces: Boolean, watch: PlaceWatchState? = null) {
     val context = LocalContext.current
-    var access by remember { mutableStateOf(context.locationAccess()) }
-    var locationOn by remember { mutableStateOf(context.isLocationEnabled()) }
-
-    // The grant can change while we are away — the person may have gone to system settings and
-    // come back — so it is re-read every time the screen is resumed rather than once.
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                access = context.locationAccess()
-                locationOn = context.isLocationEnabled()
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
+    val access = readiness.access
+    val locationOn = readiness.locationOn
 
     val askForeground = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
-        access = context.locationAccess()
         // A flat refusal cannot be asked again from here: the system stops showing the dialog.
-        if (access == LocationAccess.NONE || access == LocationAccess.APPROXIMATE) context.startActivity(appDetails(context))
+        val granted = context.locationAccess()
+        if (granted == LocationAccess.NONE || granted == LocationAccess.APPROXIMATE) context.startActivity(appDetails(context))
     }
     val askBackground = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
-        access = context.locationAccess()
         // Since Android 11 "all the time" only exists on the app's own settings page; the
         // request above is refused without ever showing a dialog, so this is the way through.
-        if (access != LocationAccess.ALWAYS) context.startActivity(appDetails(context))
+        if (context.locationAccess() != LocationAccess.ALWAYS) context.startActivity(appDetails(context))
     }
 
     RwilcoCard {

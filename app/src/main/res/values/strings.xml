@@ -247,7 +247,6 @@
     <string name="settings_theme_system">System</string>
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
-    <string name="settings_reminders">Reminders</string>
     <string name="settings_default_time">Time for date-only reminders</string>
     <string name="settings_haptics">Vibration on touch</string>
     <string name="settings_haptics_hint">A small tick on chips, days and buttons. Unrelated to a reminder\'s own vibration.</string>
@@ -255,6 +254,27 @@
     <string name="settings_about">About</string>
     <string name="settings_about_body">Rwilco is yours: no account, no server, and nothing leaves the phone unless you turn the encrypted backup on.</string>
     <string name="settings_licenses">Type: Bricolage Grotesque, Manrope and JetBrains Mono (SIL Open Font License). Maps: osmdroid and OpenStreetMap contributors.</string>
+    <!-- Settings: the groups the screen folds into -->
+    <string name="settings_group_new">New reminders</string>
+    <string name="settings_group_day">Your day</string>
+    <string name="settings_group_look">Look and feel</string>
+    <string name="settings_group_expand">Open</string>
+    <string name="settings_group_collapse">Close</string>
+    <string name="settings_summary_join">%1$s · %2$s</string>
+    <string name="settings_summary_ready">Everything is in place</string>
+    <plurals name="settings_summary_broken">
+        <item quantity="one">%d thing needs fixing</item>
+        <item quantity="other">%d things need fixing</item>
+    </plurals>
+    <plurals name="settings_summary_places">
+        <item quantity="one">%d place</item>
+        <item quantity="other">%d places</item>
+    </plurals>
+    <string name="settings_summary_no_places">None saved yet</string>
+    <string name="settings_summary_location_missing">Permission missing</string>
+    <string name="settings_summary_wifi_only">Only over wifi</string>
+    <string name="settings_summary_any_network">Over any network</string>
+
     <string name="app_version">Version %1$s (%2$d)</string>
 
     <!-- Self-update -->
@@ -368,7 +388,6 @@
     <string name="place_watch_status">Last look %1$s · %2$s from %3$s · next look %4$s</string>
 
     <!-- Location -->
-    <string name="settings_location">Location</string>
     <string name="perm_location_none">Rwilco cannot see where you are.</string>
     <string name="perm_location_approximate">Approximate only: a two-hundred-metre circle cannot be judged with a kilometre of doubt.</string>
     <string name="perm_location_precise_missing">Place reminders need your precise location, not the approximate one.</string>
@@ -894,6 +913,13 @@
         <item>A reminder with sound now goes to your headphones when you are wearing any, instead of out of the phone\'s speaker as an alarm otherwise would. It is a setting, in Sound, and it is worth turning off if your earbuds live in a drawer: a reminder played to nobody is a reminder missed.</item>
         <item>And it no longer stops your music. What was playing drops a few decibels and carries on underneath while the reminder sounds over it — the reminder is on the alarm channel and the music is not, so neither has to fight the other — and comes back by itself. It used to ask for the audio outright, which ended podcasts for a ten-second chime.</item>
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_19_0">
+        <item>Settings is an index now, not a scroll. What was thirty-odd controls in one column — twice what any published guideline allows on a settings screen — is ten rows, each carrying its own current value: the sound by name, the hours you are up as «08:00–23:30», how many places you have kept. Most questions are answered without opening anything.</item>
+        <item>Each row opens where it stands, and they are independent: opening one does not close another and pull the screen out from under your thumb. A caret means «this opens here»; an arrow means «this goes somewhere else». Everything starts closed.</item>
+        <item>The groups are by meaning rather than by what happened to be next to what. «Reminders» was a drawer holding the default hour, the favourite trigger, the shape of your week and the vibration of the interface; it is now «New reminders» and «Your day», and touch feedback has gone where it belongs, with the theme. Location and Places were two sections saying the same thing and are one.</item>
+        <item>A fold is never allowed to hide a phone that will not ring. When something is in the way of a reminder arriving, the closed row says so — «3 cosas por arreglar», in red, with the badge to match — and that group opens itself the first time you come in. It is the only thing on the screen that moves by itself, and the reason is that every one of those failures is silent.</item>
     </string-array>
 
     <string-array name="whats_new_0_18_2">

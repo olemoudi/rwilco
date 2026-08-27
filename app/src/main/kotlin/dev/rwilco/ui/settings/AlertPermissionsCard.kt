@@ -55,57 +55,87 @@ import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.familyColor
 
 /**
- * Whether the phone will actually let a reminder through, and the way to fix it when it will
- * not. Each of these fails silently, which is the worst way for a reminders app to fail: the
- * person only finds out by not being reminded. Location has a card of its own next door.
- *
- * Ten states, read again every time the screen comes back: the five grants that decide how a
- * firing is shown, and the five ways the phone itself can hold one back — battery
+ * The ten states that decide whether a reminder actually arrives: the five grants that say how
+ * a firing is shown, and the five ways the phone itself can hold one back — battery
  * optimisation, a restricted background, Do Not Disturb on total silence, the alarm volume at
  * zero, and a reminder channel muted by hand.
+ *
+ * Held out here rather than inside the card because the group that folds the card away has to
+ * be able to say, without opening, that something is wrong. Every one of these fails silently,
+ * which is the worst way for a reminders app to fail: the person only finds out by not being
+ * reminded — so a fold that hid it would be worse than no fold at all.
+ */
+data class AlertReadiness(
+    val notifications: Boolean = true,
+    val channels: Boolean = true,
+    val fullScreen: Boolean = true,
+    val exactAlarms: Boolean = true,
+    val alarmVolume: Boolean = true,
+    val throughDnd: Boolean = true,
+    val unrestricted: Boolean = true,
+    val battery: Boolean = true,
+    val overlay: Boolean = true,
+    val usageAccess: Boolean = true,
+) {
+    /** How many of the ten are in the way; zero is a phone that will ring. */
+    val problems: Int
+        get() = listOf(
+            notifications, channels, fullScreen, exactAlarms, alarmVolume,
+            throughDnd, unrestricted, battery, overlay, usageAccess,
+        ).count { !it }
+
+    val allGood: Boolean get() = problems == 0
+}
+
+/**
+ * Read again every time the screen comes back: the person may have gone to system settings and
+ * changed any of them. Everything starts granted so a fresh screen never flashes red before the
+ * first read.
  */
 @Composable
-fun AlertPermissionsCard() {
+fun rememberAlertReadiness(): AlertReadiness {
     val context = LocalContext.current
-    var notifications by remember { mutableStateOf(true) }
-    var fullScreen by remember { mutableStateOf(true) }
-    var exactAlarms by remember { mutableStateOf(true) }
-    var overlay by remember { mutableStateOf(true) }
-    var usageAccess by remember { mutableStateOf(true) }
-    var battery by remember { mutableStateOf(true) }
-    var unrestricted by remember { mutableStateOf(true) }
-    var throughDnd by remember { mutableStateOf(true) }
-    var alarmVolume by remember { mutableStateOf(true) }
-    var channels by remember { mutableStateOf(true) }
-
+    var readiness by remember { mutableStateOf(AlertReadiness()) }
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                notifications = NotificationManagerCompat.from(context).areNotificationsEnabled()
-                fullScreen = context.canUseFullScreenIntent()
-                exactAlarms = context.canScheduleExactAlarms()
-                overlay = context.canDrawOverlays()
-                usageAccess = context.hasUsageAccess()
-                battery = context.ignoresBatteryOptimisations()
-                unrestricted = !context.isBackgroundRestricted()
-                throughDnd = context.canGetThroughDnd()
-                alarmVolume = context.alarmVolumeIsUp()
-                channels = !context.anyAlertChannelMuted()
+                readiness = AlertReadiness(
+                    notifications = NotificationManagerCompat.from(context).areNotificationsEnabled(),
+                    channels = !context.anyAlertChannelMuted(),
+                    fullScreen = context.canUseFullScreenIntent(),
+                    exactAlarms = context.canScheduleExactAlarms(),
+                    alarmVolume = context.alarmVolumeIsUp(),
+                    throughDnd = context.canGetThroughDnd(),
+                    unrestricted = !context.isBackgroundRestricted(),
+                    battery = context.ignoresBatteryOptimisations(),
+                    overlay = context.canDrawOverlays(),
+                    usageAccess = context.hasUsageAccess(),
+                )
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
+    return readiness
+}
 
+/**
+ * What is in the way of a reminder arriving, and the way to fix each one. Location has a card
+ * of its own next door.
+ */
+@Composable
+fun AlertPermissionsCard(readiness: AlertReadiness) {
+    val context = LocalContext.current
+    // A grant needs no bookkeeping here: the dialog resumes the activity behind it, and the
+    // resume is what re-reads all ten. Only a refusal has anywhere else to go.
     val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        notifications = granted && NotificationManagerCompat.from(context).areNotificationsEnabled()
         if (!granted) context.startActivity(appNotificationSettings(context))
     }
 
     RwilcoCard {
         Column(Modifier.padding(Tokens.spacing.lg)) {
-            if (notifications && fullScreen && exactAlarms && overlay && usageAccess && battery && unrestricted && throughDnd && alarmVolume && channels) {
+            if (readiness.allGood) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Outlined.CheckCircle,
@@ -117,7 +147,7 @@ fun AlertPermissionsCard() {
                     Text(stringResource(R.string.perm_all_good), style = MaterialTheme.typography.bodyMedium)
                 }
             }
-            if (!notifications) {
+            if (!readiness.notifications) {
                 PermissionFixRow(
                     text = stringResource(R.string.perm_notifications_missing),
                     action = stringResource(R.string.perm_notifications_fix),
@@ -132,14 +162,14 @@ fun AlertPermissionsCard() {
                     },
                 )
             }
-            if (!channels) {
+            if (!readiness.channels) {
                 PermissionFixRow(
                     text = stringResource(R.string.perm_channel_muted),
                     action = stringResource(R.string.perm_channel_muted_fix),
                     onFix = { context.startActivity(appNotificationSettings(context)) },
                 )
             }
-            if (!fullScreen) {
+            if (!readiness.fullScreen) {
                 PermissionFixRow(
                     text = stringResource(R.string.perm_fullscreen_missing),
                     action = stringResource(R.string.perm_fullscreen_fix),
@@ -152,7 +182,7 @@ fun AlertPermissionsCard() {
                     },
                 )
             }
-            if (!exactAlarms) {
+            if (!readiness.exactAlarms) {
                 PermissionFixRow(
                     text = stringResource(R.string.perm_alarms_missing),
                     action = stringResource(R.string.perm_alarms_fix),
@@ -165,14 +195,14 @@ fun AlertPermissionsCard() {
                     },
                 )
             }
-            if (!alarmVolume) {
+            if (!readiness.alarmVolume) {
                 PermissionFixRow(
                     text = stringResource(R.string.perm_volume_missing),
                     action = stringResource(R.string.perm_volume_fix),
                     onFix = { context.startActivity(Intent(Settings.ACTION_SOUND_SETTINGS)) },
                 )
             }
-            if (!throughDnd) {
+            if (!readiness.throughDnd) {
                 PermissionFixRow(
                     text = stringResource(R.string.perm_dnd_missing),
                     action = stringResource(R.string.perm_dnd_fix),
@@ -182,7 +212,7 @@ fun AlertPermissionsCard() {
             // The two that decide whether the app is allowed to keep its promises with the
             // screen off: a restricted background runs no safety net, and battery optimisation
             // is what the phone's own "app killers" hide behind.
-            if (!unrestricted) {
+            if (!readiness.unrestricted) {
                 PermissionFixRow(
                     text = stringResource(R.string.perm_restricted_missing),
                     action = stringResource(R.string.perm_restricted_fix),
@@ -191,7 +221,7 @@ fun AlertPermissionsCard() {
                     },
                 )
             }
-            if (!battery) {
+            if (!readiness.battery) {
                 PermissionFixRow(
                     text = stringResource(R.string.perm_battery_missing),
                     action = stringResource(R.string.perm_battery_fix),
@@ -200,7 +230,7 @@ fun AlertPermissionsCard() {
             }
             // The two that decide whether a firing takes the screen or knocks: without them the
             // alert is always a banner, which is what the system does on its own.
-            if (!overlay) {
+            if (!readiness.overlay) {
                 PermissionFixRow(
                     text = stringResource(R.string.perm_overlay_missing),
                     action = stringResource(R.string.perm_overlay_fix),
@@ -211,7 +241,7 @@ fun AlertPermissionsCard() {
                     },
                 )
             }
-            if (!usageAccess) {
+            if (!readiness.usageAccess) {
                 PermissionFixRow(
                     text = stringResource(R.string.perm_usage_missing),
                     action = stringResource(R.string.perm_usage_fix),

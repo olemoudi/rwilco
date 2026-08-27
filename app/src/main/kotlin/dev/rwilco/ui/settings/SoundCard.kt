@@ -25,8 +25,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -37,7 +35,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -76,7 +73,6 @@ fun SoundCard(
     onToHeadphones: (Boolean) -> Unit,
 ) {
     val spacing = Tokens.spacing
-    val haptics = Tokens.haptics
     val context = LocalContext.current
     val preview = remember(context) { SoundPreview(context) }
     DisposableEffect(preview) { onDispose { preview.stop() } }
@@ -172,25 +168,12 @@ fun SoundCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                SettingTitle(
-                    title = stringResource(R.string.settings_sound_headphones),
-                    info = stringResource(R.string.settings_sound_headphones_hint),
-                    modifier = Modifier.weight(1f),
-                )
-                Spacer(Modifier.width(spacing.md))
-                Switch(
-                    checked = toHeadphones,
-                    onCheckedChange = { on ->
-                        if (on) haptics.perform(HapticFeedbackType.ToggleOn)
-                        onToHeadphones(on)
-                    },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.surface,
-                        checkedTrackColor = MaterialTheme.colorScheme.onSurface,
-                    ),
-                )
-            }
+            SettingSwitchRow(
+                title = stringResource(R.string.settings_sound_headphones),
+                info = stringResource(R.string.settings_sound_headphones_hint),
+                checked = toHeadphones,
+                onCheckedChange = onToHeadphones,
+            )
             // The two numbers only mean anything to a reminder that asks for the insistent
             // sound, so they only appear once something does.
             if (insistentInUse) {

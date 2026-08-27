@@ -245,7 +245,6 @@
     <string name="settings_theme_system">Sistema</string>
     <string name="settings_theme_light">Claro</string>
     <string name="settings_theme_dark">Oscuro</string>
-    <string name="settings_reminders">Recordatorios</string>
     <string name="settings_default_time">Hora de los recordatorios de solo fecha</string>
     <string name="settings_haptics">Vibración al tocar</string>
     <string name="settings_haptics_hint">Un pequeño tic en chips, días y botones. No tiene que ver con la vibración de los avisos.</string>
@@ -253,6 +252,27 @@
     <string name="settings_about">Acerca de</string>
     <string name="settings_about_body">Rwilco es tuya: sin cuenta, sin servidor, y nada sale del teléfono salvo que actives la copia cifrada.</string>
     <string name="settings_licenses">Tipografías: Bricolage Grotesque, Manrope y JetBrains Mono (SIL Open Font License). Mapas: osmdroid y colaboradores de OpenStreetMap.</string>
+    <!-- Ajustes: los grupos en los que se pliega la pantalla -->
+    <string name="settings_group_new">Recordatorios nuevos</string>
+    <string name="settings_group_day">Tu día</string>
+    <string name="settings_group_look">Aspecto y tacto</string>
+    <string name="settings_group_expand">Abrir</string>
+    <string name="settings_group_collapse">Cerrar</string>
+    <string name="settings_summary_join">%1$s · %2$s</string>
+    <string name="settings_summary_ready">Todo en su sitio</string>
+    <plurals name="settings_summary_broken">
+        <item quantity="one">%d cosa por arreglar</item>
+        <item quantity="other">%d cosas por arreglar</item>
+    </plurals>
+    <plurals name="settings_summary_places">
+        <item quantity="one">%d lugar</item>
+        <item quantity="other">%d lugares</item>
+    </plurals>
+    <string name="settings_summary_no_places">Ninguno todavía</string>
+    <string name="settings_summary_location_missing">Falta el permiso</string>
+    <string name="settings_summary_wifi_only">Solo con wifi</string>
+    <string name="settings_summary_any_network">Con cualquier red</string>
+
     <string name="app_version">Versión %1$s (%2$d)</string>
 
     <!-- Self-update -->
@@ -366,7 +386,6 @@
     <string name="place_watch_status">Última mirada %1$s · a %2$s de %3$s · próxima %4$s</string>
 
     <!-- Location -->
-    <string name="settings_location">Ubicación</string>
     <string name="perm_location_none">Rwilco no puede ver dónde estás.</string>
     <string name="perm_location_approximate">Sólo aproximada: un círculo de doscientos metros no se puede juzgar con un kilómetro de duda.</string>
     <string name="perm_location_precise_missing">Los recordatorios de lugar necesitan tu ubicación precisa, no la aproximada.</string>
@@ -892,6 +911,13 @@
         <item>Un aviso con sonido va ahora a tus auriculares cuando los llevas puestos, en vez de salir por el altavoz del móvil como haría cualquier alarma. Es un ajuste, en Sonido, y merece la pena desactivarlo si tus auriculares viven en un cajón: un aviso que suena para nadie es un aviso perdido.</item>
         <item>Y ya no te corta la música. Lo que estuvieras escuchando baja unos decibelios y sigue por debajo mientras el aviso suena por encima —el aviso va por el canal de alarma y la música no, así que ninguno tiene que pelear con el otro— y vuelve solo a su volumen. Antes pedía el audio en exclusiva, lo que mataba un podcast por un tono de diez segundos.</item>
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_19_0">
+        <item>Los ajustes son un índice, ya no un scroll. Lo que eran treinta y pico controles en una sola columna —el doble de lo que permite cualquier guía publicada para una pantalla de ajustes— son diez filas, cada una con su valor a la vista: el sonido por su nombre, tus horas como «08:00–23:30», cuántos lugares tienes guardados. Casi todo se responde sin abrir nada.</item>
+        <item>Cada fila se abre donde está, y son independientes: abrir una no cierra otra ni te mueve la pantalla bajo el dedo. Un chevrón quiere decir «esto se abre aquí»; una flecha, «esto lleva a otro sitio». Todo empieza cerrado.</item>
+        <item>Los grupos son por significado y no por lo que casualmente estaba al lado de qué. «Recordatorios» era un cajón con la hora por defecto, el disparador favorito, la forma de tu semana y la vibración de la interfaz; ahora son «Recordatorios nuevos» y «Tu día», y la vibración al tocar se ha ido donde le toca, con el tema. Ubicación y Lugares decían lo mismo dos veces y son uno.</item>
+        <item>Un pliegue no puede esconder nunca un teléfono que no va a sonar. Cuando algo impide que llegue un recordatorio, la fila cerrada lo dice —«3 cosas por arreglar», en rojo, con el icono a juego— y ese grupo se abre solo la primera vez que entras. Es lo único de la pantalla que se mueve por su cuenta, y es porque cada uno de esos fallos es silencioso.</item>
     </string-array>
 
     <string-array name="whats_new_0_18_2">

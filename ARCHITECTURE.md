@@ -158,6 +158,20 @@ strict is asking somebody to remember how they spelled it.
 
 - Single activity, `navigation-compose` type-safe routes (`Routes.kt`): Home, Editor(id?),
   Done, Settings. Sheets, the place picker and the alert preview are ViewModel state.
+- **Settings is an index, not a scroll** (`SettingsScreen.kt`, `SettingsGroup.kt`). Thirty-odd
+  controls in one column is past every published ceiling for a settings screen, so they fold
+  into ten rows, each carrying its own current value — the sound's name, "08:00–23:30", "3
+  lugares" — and each opening where it stands. The rows are independent (closing one because
+  another opened moves a header out from under the thumb that tapped it), all start closed, and
+  a caret means "opens here" where an arrow means "goes somewhere else". Grouping is by
+  meaning rather than by what happened to be adjacent: `NEW` is what a blank reminder starts
+  as, `DAY` is the shape of the week, `PLACES` folds the permission and the saved places
+  together because they were two sections saying the same thing.
+- **A fold may never hide a phone that will not ring.** `AlertReadiness` (ten grants and
+  blocks) and `PlaceReadiness` are held outside their cards so a closed row can say "3 cosas
+  por arreglar" in the error colour with the badge to match, and the groups in trouble open
+  themselves once on arrival. It is the only automatic thing on the screen, and the reason is
+  that every one of those states fails silently.
 - Theme (`ui/theme/`): hand-authored dark/light schemes (amber `primary` = "what fires next"),
   `RwilcoTypography` on three bundled variable fonts (Bricolage Grotesque display, Manrope body,
   JetBrains Mono for times/dates), `RwilcoShapes`, tokens (`Spacing`, `Motion`, `Sizes`) and
