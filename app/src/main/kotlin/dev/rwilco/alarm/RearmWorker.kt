@@ -26,6 +26,10 @@ class RearmWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
             app.firing.rearmAndCatchUp()
             app.geofences.sync()
             app.placeWatcher.sync()
+            // The history is kept for three months and swept here, beside the re-arm, because
+            // this is the one thing in the app that keeps running whether or not anybody opens
+            // it — and a list nobody opens is exactly the one that grows.
+            app.repository.sweepOldDone()
         }
             .fold(onSuccess = { Result.success() }, onFailure = { Result.retry() })
     }

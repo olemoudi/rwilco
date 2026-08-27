@@ -89,10 +89,14 @@ fun CountdownSheet(
             Spacer(Modifier.width(Tokens.spacing.md))
             Column(modifier = Modifier.weight(1f)) {
                 Text(stringResource(R.string.countdown_minutes_label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // One minute a step. It moved five at a time to make the long way round
+                // quicker, and bought that by making three minutes, or one, impossible to ask
+                // for: from the five-minute chip the only places to go were nought and ten.
+                // The long way round is what the chips above are for.
                 Stepper(
                     valueLabel = rest.toString(),
-                    onDecrement = { minutes = (minutes - 5).coerceAtLeast(0) },
-                    onIncrement = { minutes = (minutes + 5).coerceAtMost(MAX_COUNTDOWN_MINUTES) },
+                    onDecrement = { minutes = (minutes - 1).coerceAtLeast(0) },
+                    onIncrement = { minutes = (minutes + 1).coerceAtMost(MAX_COUNTDOWN_MINUTES) },
                     decrementEnabled = rest > 0,
                     incrementEnabled = minutes < MAX_COUNTDOWN_MINUTES,
                 )

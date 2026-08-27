@@ -227,4 +227,22 @@ class HeroTest {
         val listed = groups.sections.values.flatten().map { it.reminder.id }
         assertEquals(listOf("january", "bare").sorted(), listed.sorted())
     }
+
+    @Test
+    fun `editing a reminder does not move its card`() {
+        // Every card in "cuando ocurra" ties on the moment, so the tie-break IS the order.
+        // It used to be "last edited first", which meant fixing a typo threw the reminder to
+        // the top of its section — the one thing editing the words should never do.
+        val home = Trigger.Location(40.4169, -3.7035, 200, Presence.INSIDE, "Casa")
+        val office = Trigger.Location(40.45, -3.69, 200, Presence.INSIDE, "Oficina")
+        val first = reminder("first", home).copy(createdAt = local(2026, 8, 1, 9, 0), updatedAt = local(2026, 8, 1, 9, 0))
+        val second = reminder("second", office).copy(createdAt = local(2026, 8, 2, 9, 0), updatedAt = local(2026, 8, 2, 9, 0))
+        val order = { list: List<Reminder> ->
+            groupForHome(list, now, zone, defaultTime).sections.getValue(Section.WHENEVER).map { it.reminder.id }
+        }
+        assertEquals(listOf("first", "second"), order(listOf(first, second)))
+        // The same two, with the older one edited a moment ago.
+        val edited = first.copy(text = "Sacar la basura", updatedAt = now)
+        assertEquals(listOf("first", "second"), order(listOf(edited, second)), "editing moved the card")
+    }
 }

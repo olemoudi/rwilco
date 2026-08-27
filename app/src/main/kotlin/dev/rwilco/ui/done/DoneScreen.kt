@@ -39,6 +39,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.rwilco.R
+import dev.rwilco.ui.components.SectionHeader
+import dev.rwilco.model.groupDone
+import dev.rwilco.model.DoneSection
 import dev.rwilco.model.Reminder
 import dev.rwilco.ui.components.EmptyState
 import dev.rwilco.ui.components.RwilcoCard
@@ -112,16 +115,35 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
                     )
                 }
             }
-            items(list.orEmpty(), key = { it.id }) { reminder ->
-                DoneCard(
-                    reminder = reminder,
-                    doneLabel = reminder.doneAt?.let { doneAt ->
-                        val at = doneAt.atZone(clock.zone)
-                        dayWord(at.toLocalDate(), today, locale) + " · " + TimeText.time(at.toLocalTime(), is24h, locale)
-                    },
-                    onOpen = { onOpen(reminder.id) },
-                    onRestore = { viewModel.restore(reminder.id) },
-                )
+            // Three bands rather than one long list: what got done today, what got done this
+            // week, and the rest — which is a place to look rather than a place to read.
+            for ((section, reminders) in groupDone(list.orEmpty(), clock.instant(), clock.zone)) {
+                item(key = "head-$section") {
+                    SectionHeader(title = stringResource(section.titleRes), trailing = reminders.size.toString())
+                }
+                items(reminders, key = { it.id }) { reminder ->
+                    DoneCard(
+                        reminder = reminder,
+                        doneLabel = reminder.doneAt?.let { doneAt ->
+                            val at = doneAt.atZone(clock.zone)
+                            dayWord(at.toLocalDate(), today, locale) + " · " + TimeText.time(at.toLocalTime(), is24h, locale)
+                        },
+                        onOpen = { onOpen(reminder.id) },
+                        onRestore = { viewModel.restore(reminder.id) },
+                    )
+                }
+            }
+            // Said once, at the bottom, because a list that quietly forgets things is worse
+            // than one that says how long it remembers for.
+            if (!list.isNullOrEmpty()) {
+                item(key = "kept") {
+                    Text(
+                        text = stringResource(R.string.done_kept_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = spacing.lg),
+                    )
+                }
             }
         }
     }
@@ -178,3 +200,10 @@ private fun DoneCard(reminder: Reminder, doneLabel: String?, onOpen: () -> Unit,
         }
     }
 }
+
+private val DoneSection.titleRes: Int
+    get() = when (this) {
+        DoneSection.TODAY -> R.string.done_section_today
+        DoneSection.LAST_WEEK -> R.string.done_section_last_week
+        DoneSection.EARLIER -> R.string.done_section_earlier
+    }

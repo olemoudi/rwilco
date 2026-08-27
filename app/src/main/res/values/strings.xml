@@ -237,6 +237,10 @@
     <!-- Done list -->
     <string name="done_title">Done</string>
     <string name="done_purge">Clear all</string>
+    <string name="done_section_today">Today</string>
+    <string name="done_section_last_week">The last 7 days</string>
+    <string name="done_section_earlier">Earlier</string>
+    <string name="done_kept_note">The history keeps the last three months.</string>
     <string name="done_purge_title">Clear done reminders?</string>
     <string name="done_purge_body">They are removed for good. Reminders you bring back first are kept.</string>
     <string name="done_empty_title">Nothing done yet</string>

@@ -2,6 +2,7 @@ package dev.rwilco.data
 
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
+import dev.rwilco.model.expiredDone
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.Clock
@@ -68,6 +69,20 @@ class ReminderRepository(private val dao: ReminderDao, private val clock: Clock)
     suspend fun restore(reminder: Reminder) = dao.upsert(reminder.toEntity())
 
     suspend fun purgeDone() = dao.purgeDone()
+
+    /**
+     * The history, trimmed to the three months it is kept for ([DONE_KEPT_MONTHS]); the number
+     * of rows that went.
+     *
+     * The rule lives in [expiredDone] and the deletion is by id rather than by a WHERE clause
+     * saying the same thing in SQL: one place to read it, one place to test it, and no chance of
+     * the two drifting into disagreeing about what "three months" means.
+     */
+    suspend fun sweepOldDone(): Int {
+        val stale = expiredDone(allNow(), clock.instant(), clock.zone)
+        if (stale.isNotEmpty()) dao.deleteAll(stale)
+        return stale.size
+    }
 
     suspend fun deleteAll() = dao.deleteAll()
 }

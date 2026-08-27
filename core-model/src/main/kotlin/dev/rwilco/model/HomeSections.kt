@@ -77,7 +77,12 @@ fun groupForHome(
         .filter { it !== hero?.entry }
         // A reminder with no trigger but a recurrence is not "kept, not timed": it has a moment.
         .groupBy { sectionOf(it.next, it.reminder.status, it.reminder.rules.isNotEmpty() || it.reminder.recurrence.isAnchored, now, zone) }
-        .mapValues { (_, list) -> list.sortedWith(compareBy({ it.sortInstant() }, { -it.reminder.updatedAt.toEpochMilli() })) }
+        // By the moment, then by the day it was written. **Not by when it was last edited**,
+        // which is what it was: in the sections where nothing has a moment — vencidos, cuando
+        // ocurra, sin fecha, en pausa — every card ties on the first key, so the second was the
+        // whole order, and fixing a typo threw the reminder to the top of its section. Nothing
+        // about editing the words says anything about where a card belongs.
+        .mapValues { (_, list) -> list.sortedWith(compareBy({ it.sortInstant() }, { it.reminder.createdAt })) }
     val ordered = LinkedHashMap<Section, List<HomeEntry>>()
     for (section in Section.entries) grouped[section]?.let { ordered[section] = it }
     return HomeGroups(hero, ordered)

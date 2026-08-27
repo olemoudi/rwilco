@@ -119,6 +119,7 @@ class RwilcoApplication : Application() {
                 firing.rearmAndCatchUp()
                 geofences.sync()
                 placeWatcher.sync()
+                repository.sweepOldDone()
             }.onFailure { Log.e(TAG, "the launch re-arm failed", it) }
         }
         appScope.launch {

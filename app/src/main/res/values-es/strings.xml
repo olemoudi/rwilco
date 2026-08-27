@@ -235,6 +235,10 @@
     <!-- Done list -->
     <string name="done_title">Hechos</string>
     <string name="done_purge">Vaciar</string>
+    <string name="done_section_today">Hoy</string>
+    <string name="done_section_last_week">Los últimos 7 días</string>
+    <string name="done_section_earlier">Anteriormente</string>
+    <string name="done_kept_note">El historial guarda los últimos tres meses.</string>
     <string name="done_purge_title">¿Vaciar los recordatorios hechos?</string>
     <string name="done_purge_body">Se eliminan para siempre. Los que recuperes antes se conservan.</string>
     <string name="done_empty_title">Nada hecho todavía</string>

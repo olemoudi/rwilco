@@ -75,6 +75,9 @@ interface ReminderDao {
     @Query("DELETE FROM reminder WHERE status = 'DONE'")
     suspend fun purgeDone()
 
+    @Query("DELETE FROM reminder WHERE id IN (:ids)")
+    suspend fun deleteAll(ids: List<String>)
+
     @Query("DELETE FROM reminder")
     suspend fun deleteAll()
 }

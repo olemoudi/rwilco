@@ -13,6 +13,7 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -80,6 +81,8 @@ class EditorTourTest {
 
     /** The activity's resources, not the instrumentation's: the app runs under its own per-app locale. */
     private fun s(id: Int): String = rule.activity.getString(id)
+
+    private fun s(id: Int, arg: Any): String = rule.activity.getString(id, arg)
 
     private fun text(value: String) = rule.onNodeWithText(value, useUnmergedTree = true)
 
@@ -196,6 +199,14 @@ class EditorTourTest {
         text(s(R.string.kind_countdown)).performClick()
         rule.waitUntilDisplayed(s(R.string.sheet_add))
         shot("sheet-countdown")
+        // A minute at a time. The chips are the coarse answers; the stepper is the fine one,
+        // and it moved five at a time, so from the five-minute chip three minutes could not be
+        // asked for at all — only nought or ten.
+        text(s(R.string.countdown_minutes, 5)).performClick()
+        val less = rule.onAllNodesWithContentDescription(s(R.string.stepper_less), useUnmergedTree = true)
+        less[1].performClick()
+        less[1].performClick()
+        rule.waitUntilDisplayed("3")
         text(s(R.string.sheet_add)).performClick()
         rule.waitUntilGone(s(R.string.sheet_add))
         rule.onNodeWithContentDescription(s(R.string.editor_edit_trigger)).assertIsDisplayed()
