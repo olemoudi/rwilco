@@ -348,6 +348,41 @@ class PlaceWatchDeviceTest {
     }
 
     @Test
+    fun underTogetherAPlaceIsAskedAboutJustBeforeTheMomentAndTheMomentRings() = runBlocking {
+        // "Al llegar a casa" y "a las 16:00", a la vez. Read as a state, the place has nothing
+        // to be caught in the act of — arriving at noon and staying is being at home at four —
+        // so it buys no run-up. What the set needs is where the phone is AT the moment, and one
+        // look before it is the whole cost. Two hours out the circle is worth nothing.
+        val far = app.clock.instant().plus(Duration.ofHours(2))
+        val waiting = seedTogether("far", at = far)
+        moveTo(south = 50.0, at = t0)
+        watcher.check()
+        assertNull("a circle only asked about at the moment was watched two hours early", store.read().inside[key(waiting, Transition.ENTER)])
+        val next = store.read().nextCheckAt
+        assertNotNull("left alone is not given up on", next)
+        val lead = Duration.between(next!!, far)
+        assertTrue("the look should be the lead before the moment, not $lead", lead.toMinutes() in 4..6)
+
+        // Inside the lead it is watched like any other circle — and so, free of charge, is the
+        // one still two hours from being asked, on the fix this one paid for.
+        cancelWatchAlarm()
+        val moment = app.clock.instant().plus(Duration.ofSeconds(25))
+        val asking = seedTogether("soon", at = moment)
+        moveTo(south = 50.0, at = t0 + 60_000)
+        watcher.check()
+        assertEquals(true, store.read().inside[key(asking, Transition.ENTER)])
+        assertEquals("the circle two hours out rode along", true, store.read().inside[key(waiting, Transition.ENTER)])
+
+        // And it is the MOMENT that rings, not the place: the alarm carries its rule index, the
+        // set is folded into it as "y estoy en casa", and that is answered from the fix the
+        // look above left behind. Nothing here rang the place.
+        val deadline = System.currentTimeMillis() + 40_000
+        while (app.repository.get(asking)!!.lastFiredAt == null && System.currentTimeMillis() < deadline) Thread.sleep(500)
+        assertNotNull("at home when the moment came, and nothing rang", app.repository.get(asking)!!.lastFiredAt)
+        assertNull("the circle two hours out rang", app.repository.get(waiting)!!.lastFiredAt)
+    }
+
+    @Test
     fun aPlaceThatHasRungIsOwedALeavingBeforeItRingsAgain() = runBlocking {
         // "Al llegar a casa, cada día": rang and was dealt with at home, two days ago. The
         // rest is long over, so the place is armed again — but arriving is something that
@@ -479,6 +514,32 @@ class PlaceWatchDeviceTest {
                 ),
                 ruleMatch = RuleMatch.ALL,
                 firedRules = fired,
+                status = Status.ACTIVE,
+                createdAt = now,
+                updatedAt = now,
+            ),
+        )
+        Thread.sleep(1_500)
+        cancelWatchAlarm()
+        return "watch-$id"
+    }
+
+    /**
+     * "Al llegar a casa" y "a las [at]", a la vez: rule 0 is the place, rule 1 the moment.
+     * The place folds to nothing (a moment cannot be a state), so it never rings on its own;
+     * the moment folds the place in as "y estoy en casa". Returns its id.
+     */
+    private suspend fun seedTogether(id: String, at: Instant): String {
+        val now = app.clock.instant()
+        app.repository.save(
+            Reminder(
+                id = "watch-$id",
+                text = "Together test $id",
+                rules = listOf(
+                    TriggerRule(Trigger.Location(homeLat, homeLng, radius, Transition.ENTER, "Casa")),
+                    TriggerRule(Trigger.AtDateTime(java.time.LocalDateTime.ofInstant(at, app.clock.zone))),
+                ),
+                ruleMatch = RuleMatch.TOGETHER,
                 status = Status.ACTIVE,
                 createdAt = now,
                 updatedAt = now,
