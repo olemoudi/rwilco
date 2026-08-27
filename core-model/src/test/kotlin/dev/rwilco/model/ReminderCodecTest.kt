@@ -162,10 +162,10 @@ class ReminderCodecTest {
                 """"lastSeenVersionCode":0,"savedPlaces":[],""" +
                 """"defaultActions":["NOTIFICATION","VIBRATE"],"presets":[],"hiddenTexts":[],""" +
                 """"dayStart":"09:00","recurrencePresets":[""" +
-                """{"id":"builtin-day","recurrence":{"type":"after","amount":1,"unit":"DAYS"},"name":"","uses":0,"lastUsedAt":null},""" +
-                """{"id":"builtin-6h","recurrence":{"type":"after","amount":6,"unit":"HOURS"},"name":"","uses":0,"lastUsedAt":null},""" +
-                """{"id":"builtin-week","recurrence":{"type":"after","amount":1,"unit":"WEEKS"},"name":"","uses":0,"lastUsedAt":null},""" +
-                """{"id":"builtin-month","recurrence":{"type":"after","amount":1,"unit":"MONTHS"},"name":"","uses":0,"lastUsedAt":null}],""" +
+                """{"id":"builtin-day","recurrence":{"type":"after","amount":1,"unit":"DAYS","from":"DEALT"},"name":"","uses":0,"lastUsedAt":null},""" +
+                """{"id":"builtin-6h","recurrence":{"type":"after","amount":6,"unit":"HOURS","from":"DEALT"},"name":"","uses":0,"lastUsedAt":null},""" +
+                """{"id":"builtin-week","recurrence":{"type":"after","amount":1,"unit":"WEEKS","from":"DEALT"},"name":"","uses":0,"lastUsedAt":null},""" +
+                """{"id":"builtin-month","recurrence":{"type":"after","amount":1,"unit":"MONTHS","from":"DEALT"},"name":"","uses":0,"lastUsedAt":null}],""" +
                 """"busyWatchNotice":false,"vibration":{"strength":"STRONG","rhythm":"PULSED"},""" +
                 """"alertSound":{"type":"system"},"soundPlays":5,"soundGapMinutes":5,"alertStacking":"SEQUENTIAL","updatesWifiOnly":false,"alertToHeadphones":true}""",
             encoded,

@@ -163,13 +163,18 @@ class EditorTourTest {
                 rule.waitUntilDisplayed(s(R.string.sheet_at_this_time))
                 shot("sheet-date-random")
             }
-            // And the recurrence tile is four shapes, not one: months ask which day of the month.
+            // And the recurrence tile is four shapes, not one: months ask which day of the
+            // month, and so do years — "el primer miércoles de mayo" is a yearly, and saying
+            // it any other way is arithmetic on a date that moves.
             if (kind == R.string.kind_repeat_time) {
                 text(s(R.string.sheet_repeat_unit_months)).performScrollTo().performClick()
                 rule.waitUntilDisplayed(s(R.string.sheet_repeat_monthly_nth))
                 shot("sheet-repeat-monthly")
                 text(s(R.string.sheet_repeat_monthly_nth)).performScrollTo().performClick()
                 rule.waitUntilDisplayed(s(R.string.repeat_ordinal_last))
+                text(s(R.string.sheet_repeat_unit_years)).performScrollTo().performClick()
+                rule.waitUntilDisplayed(s(R.string.sheet_repeat_monthly_nth))
+                shot("sheet-repeat-yearly")
             }
             text(s(R.string.sheet_cancel)).performClick()
             rule.waitUntilGone(s(R.string.sheet_cancel))
@@ -184,6 +189,22 @@ class EditorTourTest {
         text(s(R.string.sheet_add)).performClick()
         rule.waitUntilGone(s(R.string.sheet_add))
         rule.onNodeWithContentDescription(s(R.string.editor_edit_trigger)).assertIsDisplayed()
+
+        // "Vuelve" asks the whole question: the span on the buttons, and which moment it is
+        // counted from underneath. Choosing an anchor must not clear the span, which is the
+        // one way these two halves could quietly fight each other.
+        text(s(R.string.recur_week)).performScrollTo().performClick()
+        rule.waitForIdle()
+        // The anchor row appears under the buttons, which puts it below the fold on a phone.
+        text(s(R.string.recur_counts_from)).performScrollTo()
+        rule.waitUntilDisplayed(s(R.string.recur_counts_from))
+        shot("editor-recurrence")
+        text(s(R.string.recur_from_ringing)).performScrollTo().performClick()
+        rule.waitForIdle()
+        text(s(R.string.recur_week)).performScrollTo().assertIsDisplayed()
+        shot("editor-recurrence-ringing")
+        text(s(R.string.recur_none)).performScrollTo().performClick()
+        rule.waitUntilGone(s(R.string.recur_counts_from))
 
         // A rule can be fenced in, by hours or by a place: the trigger only counts inside them.
         text(s(R.string.editor_add_condition)).performScrollTo().performClick()
@@ -246,25 +267,32 @@ class EditorTourTest {
 
         rule.onNodeWithContentDescription(s(R.string.home_settings)).performClick()
         rule.waitUntilShown(s(R.string.settings_title))
+        // The folded index is the screen now: ten rows, each carrying its own current value.
         shot("settings")
-        // Scrolled to the last thing in the card, so the whole of it is in the frame: the
-        // two numbers only appear when something actually asks for the insistent sound.
+        // Everything below lives inside a group, so the group is opened before it is reached
+        // for. Scrolled to the last thing in each card, so the whole of it is in the frame:
+        // the two insistent numbers only appear when something asks for that sound.
+        openGroup(s(R.string.settings_sound_title))
         text(s(R.string.settings_sound_gap)).performScrollTo()
         shot("settings-sound")
+        openGroup(s(R.string.settings_vibration_strength))
         text(s(R.string.settings_vibration_try)).performScrollTo()
         shot("settings-vibration")
         // Dark mode only, by the owner's rule: the light scheme shares every token and layout,
         // and each extra pass through the emulator costs minutes.
+        openGroup(s(R.string.settings_places))
         text(s(R.string.watch_log_open)).performScrollTo()
         shot("settings-location")
         // The change log lives at the very bottom, which is the last thing the tour scrolls to.
+        openGroup(s(R.string.settings_about))
         text(s(R.string.settings_release_notes)).performScrollTo().performClick()
         rule.waitUntilDisplayed(s(R.string.whats_new_ok))
         shot("settings-release-notes")
         text(s(R.string.whats_new_ok)).performClick()
         rule.waitUntilGone(s(R.string.whats_new_ok))
         // Back up the screen: the release notes are at the very bottom, and Settings has grown
-        // sections since this line was written — the row is above the fold by the time we get here.
+        // sections since this line was written — the row is above the fold by the time we get
+        // here. Places is still open from the screenshot above, so the row is there to reach.
         text(s(R.string.watch_log_open)).performScrollTo().performClick()
         rule.waitUntilShown(s(R.string.watch_log_title))
         shot("watch-log")
@@ -284,6 +312,16 @@ class EditorTourTest {
         rule.waitUntilShown(s(R.string.editor_title_edit))
         rule.onNodeWithContentDescription(s(R.string.editor_delete)).performClick()
         rule.waitUntilGone(reminderText)
+    }
+
+    /**
+     * Opens one of Settings' folded groups by its title. Idempotent by way of being called
+     * once per group: a second call would close it again, which is exactly the trap a helper
+     * called "open" should not set, so each group is opened where it is first needed.
+     */
+    private fun openGroup(title: String) {
+        text(title).performScrollTo().performClick()
+        rule.waitForIdle()
     }
 
     // Case-insensitive: labels such as "Lo siguiente" are drawn in capitals.

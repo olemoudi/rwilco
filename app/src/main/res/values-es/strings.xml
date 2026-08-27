@@ -152,6 +152,17 @@
     <string name="recur_kind_monthly">Un día del mes</string>
     <string name="recur_every">Cada</string>
     <string name="recur_which_one">Cuál</string>
+    <string name="recur_year">Cada año</string>
+    <string name="recur_years">Cada %1$d años</string>
+    <string name="recur_unit_years">años</string>
+    <string name="recur_counts_from">Cuenta desde</string>
+    <string name="recur_from_calendar">El calendario</string>
+    <string name="recur_from_ringing">Que suena</string>
+    <string name="recur_from_dealt">Que lo hago</string>
+    <string name="recur_from_ringing_hint">Se cuenta desde que suena, así que contestar tarde no mueve el siguiente. Un recordatorio sin contestar vuelve igual, a su ritmo.</string>
+    <string name="recur_from_calendar_hint">Lo decide un disparador propio —una repetición o una franja al azar—, así que no se desplaza por mucho que tardes en contestar.</string>
+    <string name="card_recurrence_from_ringing">desde que suena</string>
+    <string name="card_recurrence_from_calendar">en sus propias fechas</string>
     <string name="recur_after_done">Se cuenta desde que lo marcas hecho, no desde el reloj.</string>
     <string name="recur_unit_hours">horas</string>
     <string name="recur_unit_days">días</string>
@@ -913,6 +924,13 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_20_0">
+        <item>«Vuelve» hace ahora la pregunta entera. «Cada semana» siempre fue media frase —la otra mitad es desde qué momento se cuenta esa semana— y la app lo decidía en silencio: desde que lo hacías si ponías un plazo, desde el calendario si resultaba que habías añadido un disparador que se repite, y ninguna de las dos pantallas decía cuál tenías. Tres respuestas, una fila: el calendario, que suena, o que lo hago.</item>
+        <item>«Que suena» es nuevo, y es el que la gente quería decir. Si la dosis de las ocho la marcas hecha a las nueve y media, la siguiente era a las tres y media y el ritmo se iba desplazando cada día; contada desde que suena se queda en las dos. Conviene saberlo antes de elegirlo: uno sin contestar vuelve a su ritmo en vez de esperar a que lo atiendas.</item>
+        <item>Una recurrencia puede contarse en años. Y una repetición anual puede nombrar un día de la semana de su mes, que no se podía decir de ninguna forma: «el primer miércoles de mayo» es una anual de verdad, y cualquier otra manera de escribirlo es aritmética sobre una fecha que se mueve — el primer miércoles de mayo es el 6 en 2026 y el 5 en 2027.</item>
+        <item>La hoja de «añadir disparador» son seis filas iguales en vez de una matriz de dos columnas. Seis cosas en dos columnas es una forma que hay que leer —a lo ancho, luego abajo, luego atrás— y con un número impar la última celda es un hueco.</item>
+    </string-array>
+
     <string-array name="whats_new_0_19_3">
         <item>Un conjunto leído como «todos» deja de vigilar sus lugares a todas horas. «El 26 de cada mes, y cuando llegue a casa» estaba gastando una posición cada media hora, todos los días, durante un mes — porque bajo «todos» las hermanas son reglas propias y no condiciones, así que no había nada que frenara el círculo. Ahora espera a la carrerilla del momento hermano más próximo, como cualquier otro círculo con puerta.</item>
         <item>No se pierde nada por esperar. Bajo «todos» un cruce anterior al momento hay que apuntarlo, no pillarlo en el acto — el aviso espera al momento de todas formas — y las geovallas del propio teléfono lo apuntan gratis. Y cuando el momento ya ha pasado y sólo queda el lugar, se vigila enseguida: entonces es él quien hace sonar.</item>
@@ -962,6 +980,7 @@
     <!-- Recurrences and the hours somebody is up -->
     <string name="trigger_random_in_day">al azar durante el día</string>
     <string name="trigger_repeat_until">hasta el %1$s</string>
+    <string name="trigger_yearly_of_month">%1$s de %2$s</string>
     <string name="trigger_monthly_day">el día %1$d</string>
     <string name="trigger_monthly_nth">el %1$s %2$s</string>
     <string name="repeat_ordinal_first">primer</string>
@@ -983,6 +1002,7 @@
     <string name="sheet_repeat_ends_on">En una fecha</string>
     <string name="sheet_repeat_ends_after">Tras un número de veces</string>
     <string name="sheet_repeat_monthly_day">El día %1$d</string>
+    <string name="sheet_repeat_yearly_day">El día %1$d de %2$s</string>
     <string name="sheet_repeat_monthly_nth">Un día de la semana</string>
     <string name="sheet_repeat_every_value">%1$d</string>
     <string name="settings_awake">Tus horas de vigilia</string>

@@ -236,6 +236,16 @@ val OFFERED_KINDS: List<TriggerKind> = TriggerKind.entries - TriggerKind.DATE_TI
 /** What a stored favourite means now that the two date tiles are one. */
 fun TriggerKind.offered(): TriggerKind = if (this == TriggerKind.DATE_TIME) TriggerKind.DATE else this
 
+/**
+ * Whether this trigger works out its own next date, over and over, without being asked again.
+ *
+ * What makes "por calendario" an answer somebody can give: these three name dates rather than
+ * one moment, so a reminder carrying one has a calendar to come back on. Everything else fires
+ * once and has nothing more to say.
+ */
+val Trigger.decidesItsOwnDates: Boolean
+    get() = this is Trigger.Repeat || this is Trigger.Random || this is Trigger.AtTime
+
 val Trigger.family: TriggerFamily
     get() = when (this) {
         is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.AtTime, is Trigger.Interval -> TriggerFamily.TIME

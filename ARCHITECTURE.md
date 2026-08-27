@@ -56,7 +56,11 @@ Blocks and not occurrences, so "every two weeks on Monday and Thursday" is two r
 fortnight rather than a series that drifts a week every time it rings twice. Nothing ever
 skips a block: a monthly "day 31" rings on the 28th in February, a yearly 29 February rings on
 the 28th, and the ordinals stop at *fourth* and *last* — which is what makes the count behind
-`RepeatEnd.After` exact, and what stops a reminder from silently missing a month.
+`RepeatEnd.After` exact, and what stops a reminder from silently missing a month. **A year takes
+the same `monthly` rule a month does**, its month coming from `startsOn`: "el primer miércoles
+de mayo" is a yearly, and every other way of saying it is arithmetic on a date that moves — the
+first Wednesday of May is the 6th in 2026 and the 5th in 2027. With nothing set the rule is the
+day `startsOn` falls on, which is what plain year arithmetic gave and keeps 29 February right.
 
 **The hours somebody is up** (`Awake.kt`). A trigger with no `time` rings at a moment drawn
 from that day's waking window rather than from the twenty-four hours. `AwakeHours` holds two
@@ -102,17 +106,34 @@ index), pinned by golden values in its test.
 Dealing with a firing (`statusAfterDismissal`) finishes a reminder unless its `Recurrence` says
 otherwise — `None` by default, because "hecho" means finished and a place can always come round
 again. `Recurrence.kt` is the whole vocabulary: `ByTrigger` hands the question back to the
-triggers (a repeating time, a random window), while `After(amount, unit)` and
-`MonthlyWeekday(ordinal, day)` work out their own moments from `Reminder.lastDealtAt` — the
-instant the person dealt with the last firing, which is the only one that knows anything. Hours
-are exact; days, weeks and months land on `AppSettings.dayStart` and never before the span is
-up. The triggers say when it rings the FIRST time and the recurrence when it comes back, so
+triggers (a repeating time, a random window), while `After(amount, unit, from)` and
+`MonthlyWeekday(ordinal, day)` work out their own moments. Hours are exact; days, weeks, months
+and years land on `AppSettings.dayStart` and never before the span is up.
+
+**The anchor is the question the app used to answer for you** (`RecurrenceFrom`). "Cada semana"
+is half a sentence — the other half is which moment the week is counted from — and there are
+three answers, asked once in "Vuelve" and nowhere else: the **calendar** (`ByTrigger`: a
+`Trigger.Repeat` or a random window works out its own dates and never drifts), the **ringing**
+(`RANG`, `lastFiredAt`: answer it late and the rhythm holds, which is what anybody who set
+08:00 / 14:00 / 20:00 meant), or **dealing with it** (`DEALT`, `lastDealtAt`: the clock starts
+when you do, and six hours between doses is six hours between doses). `DEALT` is the default
+and what every install before the field wrote, so old JSON reads as itself. `recurrenceAnchor`
+picks the instant and falls back to `lastDealtAt` when there is no firing to count from — a
+reminder swiped done on Home never rang, and "cada 6 h desde que suena" must still come back.
+The trigger and the recurrence are *not* merged and must not be: a `Trigger.Repeat` is a rule,
+so it can be ANDed with a place ("el día 26, y cuando llegue a casa"), it can name two days in
+one block, and it can end — none of which a span from an event can say.
+
+The triggers say when it rings the FIRST time and the recurrence when it comes back, so
 `recurrenceMoment` takes over once it has been dealt with once — or straight away when there
 are no triggers at all, which is what makes "cada 6 h" a whole reminder on its own.
-A recurrence's moment is **spent once it has rung**, the same way a rule's is: the anchor only
-moves when somebody deals with the firing, so a reminder that rang and was ignored would
-otherwise be handed the same past moment for ever — armed for ever, and an alarm already in the
-past arrives at once. Spent, it answers *nothing*, which Home reads as overdue.
+A recurrence's moment is **spent once it has rung**, the same way a rule's is: under `DEALT` the
+anchor only moves when somebody deals with the firing, so a reminder that rang and was ignored
+would otherwise be handed the same past moment for ever — armed for ever, and an alarm already
+in the past arrives at once. Spent, it answers *nothing*, which Home reads as overdue. Under
+`RANG` the anchor moves with the firing instead, so an unanswered one comes back on its rhythm
+rather than waiting to be acknowledged — which is the whole difference between the two, and the
+thing to know before choosing it.
 `RecurrencePreset`s (in the settings, four built in unnamed) put the usual answers on buttons.
 Room v4 added the boolean this replaced; v5 turns it into a shape (`by_trigger` for whatever
 repeated) and rebuilds the table to drop it.

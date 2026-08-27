@@ -166,6 +166,30 @@ class RepeatTriggerTest {
         )
     }
 
+    @Test
+    fun `a year names a month too, so it takes the same rule a month does`() {
+        // "El primer miércoles de mayo": a yearly that is a weekday and not a date. Said any
+        // other way it is arithmetic on a day that moves — 2027's first Wednesday is the 5th,
+        // 2028's the 3rd — and a year of plusYears would have rung on the 6th every time.
+        val mothersDay = repeat(date(2026, 5, 6), unit = RepeatUnit.YEAR, monthly = MonthlyOn.Nth(1, DayOfWeek.WEDNESDAY))
+        assertEquals(
+            listOf(date(2026, 5, 6), date(2027, 5, 5), date(2028, 5, 3), date(2029, 5, 2)),
+            mothersDay.first(4),
+        )
+    }
+
+    @Test
+    fun `a yearly can also name the last weekday of its month`() {
+        val lastSunday = repeat(date(2026, 3, 29), unit = RepeatUnit.YEAR, monthly = MonthlyOn.Nth(-1, DayOfWeek.SUNDAY))
+        assertEquals(listOf(date(2026, 3, 29), date(2027, 3, 28), date(2028, 3, 26)), lastSunday.first(3))
+    }
+
+    @Test
+    fun `a yearly every two years keeps its rule and its stride`() {
+        val every = repeat(date(2026, 5, 6), every = 2, unit = RepeatUnit.YEAR, monthly = MonthlyOn.Nth(1, DayOfWeek.WEDNESDAY))
+        assertEquals(listOf(date(2026, 5, 6), date(2028, 5, 3), date(2030, 5, 1)), every.first(3))
+    }
+
     // ---- endings ----------------------------------------------------------------------------
 
     @Test

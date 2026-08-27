@@ -154,6 +154,17 @@
     <string name="recur_kind_monthly">A day of the month</string>
     <string name="recur_every">Every</string>
     <string name="recur_which_one">Which one</string>
+    <string name="recur_year">Every year</string>
+    <string name="recur_years">Every %1$d years</string>
+    <string name="recur_unit_years">years</string>
+    <string name="recur_counts_from">Counts from</string>
+    <string name="recur_from_calendar">The calendar</string>
+    <string name="recur_from_ringing">When it rings</string>
+    <string name="recur_from_dealt">When you\'re done</string>
+    <string name="recur_from_ringing_hint">Counted from the moment it rings, so answering late does not move the next one. A reminder left unanswered still comes back on its rhythm.</string>
+    <string name="recur_from_calendar_hint">Worked out by a trigger of its own — a repeat or a random window — so it never drifts, however late you answer.</string>
+    <string name="card_recurrence_from_ringing">from when it rings</string>
+    <string name="card_recurrence_from_calendar">on its own dates</string>
     <string name="recur_after_done">Counted from the moment you mark it done, not from the clock.</string>
     <string name="recur_unit_hours">hours</string>
     <string name="recur_unit_days">days</string>
@@ -915,6 +926,13 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_20_0">
+        <item>«Vuelve» asks the whole question now. «Cada semana» was only ever half a sentence — the other half is which moment the week is counted from — and the app used to decide it silently: from dealing with it if you set a span, from the calendar if you happened to add a repeating trigger, and nothing on either screen said which one you had. Three answers, one row: the calendar, the ringing, or dealing with it.</item>
+        <item>«When it rings» is new, and it is the one people kept meaning. If the eight o\'clock dose is marked done at half nine, the next one used to be half three and the rhythm drifted later every day; counted from the ringing it stays at two. Worth knowing before you pick it: one left unanswered comes back on its rhythm rather than waiting to be acknowledged.</item>
+        <item>A recurrence can be counted in years. And a yearly repeat can name a weekday of its month, which nothing could say before: «el primer miércoles de mayo» is a real yearly, and every other way of writing it is arithmetic on a date that moves — the first Wednesday of May is the 6th in 2026 and the 5th in 2027.</item>
+        <item>The «add trigger» sheet is six uniform rows instead of a two-column grid. Six things in two columns is a shape that has to be read — across, then down, then back — and with an odd count the last cell is a hole.</item>
+    </string-array>
+
     <string-array name="whats_new_0_19_3">
         <item>A set read as «todos» no longer watches its places around the clock. «El 26 de cada mes, y cuando llegue a casa» was spending a fix every half hour, every day, for a month — because under «todos» the siblings are rules of their own rather than conditions, so nothing gated the circle at all. It now waits for the run-up to the soonest sibling moment, like every other gated circle.</item>
         <item>Nothing is lost by waiting. Under «todos» a crossing before the moment has to be written down, not caught in the act — the ring waits for the moment either way — and the phone\'s own geofences record it for free. And when the moment has already happened and the place is all that is left, it is watched at once: then it is the one that rings.</item>
@@ -964,6 +982,7 @@
     <!-- Recurrences and the hours somebody is up -->
     <string name="trigger_random_in_day">at random during the day</string>
     <string name="trigger_repeat_until">until %1$s</string>
+    <string name="trigger_yearly_of_month">%1$s of %2$s</string>
     <string name="trigger_monthly_day">day %1$d</string>
     <string name="trigger_monthly_nth">%1$s %2$s</string>
     <string name="repeat_ordinal_first">first</string>
@@ -985,6 +1004,7 @@
     <string name="sheet_repeat_ends_on">On a date</string>
     <string name="sheet_repeat_ends_after">After a number of times</string>
     <string name="sheet_repeat_monthly_day">Day %1$d</string>
+    <string name="sheet_repeat_yearly_day">Day %1$d of %2$s</string>
     <string name="sheet_repeat_monthly_nth">A weekday</string>
     <string name="sheet_repeat_every_value">%1$d</string>
     <string name="settings_awake">The hours you are up</string>

@@ -294,12 +294,26 @@ private fun nextRandom(trigger: Trigger.Random, reminderId: String, now: Instant
  */
 fun Reminder.restUntil(zone: ZoneId, dayStart: LocalTime): Instant? {
     if (!recurrence.isAnchored || rules.isEmpty()) return null
+    // Nothing rests until it has been dealt with, whichever moment the span is counted from:
+    // a reminder still waiting for an answer is overdue, not resting.
     val dealt = lastDealtAt ?: return null
-    val back = nextRecurrence(recurrence, dealt, zone, dayStart) ?: return null
+    val back = nextRecurrence(recurrence, recurrenceAnchor(dealt), zone, dayStart) ?: return null
     if (!recurrence.countsInDays) return back
     if (rules.none { it.trigger.namesAnHour }) return back
     return back.atZone(zone).toLocalDate().atStartOfDay(zone).toInstant()
 }
+
+/**
+ * The moment a recurrence counts its span from: the firing when it was asked to, and dealing
+ * with it otherwise.
+ *
+ * [dealt] is the fallback for both, and it has to be: a reminder marked done from Home without
+ * ever ringing has no firing to count from, and "cada 6 h desde que suena" must still come
+ * back. It is also what keeps the two anchors the same answer for everything that is dealt
+ * with the moment it rings, which is most things.
+ */
+private fun Reminder.recurrenceAnchor(dealt: Instant): Instant =
+    if (recurrence.countsFromRinging) lastFiredAt ?: dealt else dealt
 
 /**
  * The moment the recurrence itself rings, when it is the recurrence's turn to say: with no
@@ -311,7 +325,7 @@ fun Reminder.recurrenceMoment(zone: ZoneId, dayStart: LocalTime): Instant? {
     // Not restUntil: when the recurrence is the thing that rings, the hour the day starts at is
     // exactly the hour it should ring at — there are no rules here with an hour to defer to.
     val dealt = if (rules.isEmpty()) lastDealtAt ?: createdAt else lastDealtAt ?: return null
-    val at = nextRecurrence(recurrence, dealt, zone, dayStart)
+    val at = nextRecurrence(recurrence, recurrenceAnchor(dealt), zone, dayStart)
     if (at == null) return null
     // Spent, the same way a rule's moment is (see [searchFrom]) — and here it matters more.
     //

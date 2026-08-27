@@ -62,6 +62,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.rwilco.R
+import dev.rwilco.model.decidesItsOwnDates
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.TriggerKind
 import dev.rwilco.model.ValidationError
@@ -269,8 +270,10 @@ fun EditorScreen(
                     RecurrenceSection(
                         recurrence = state.draft.recurrence,
                         presets = state.recurrencePresets,
+                        calendarDecides = state.draft.rules.any { it.trigger.decidesItsOwnDates },
                         onPick = viewModel::pickRecurrencePreset,
                         onCustom = viewModel::setRecurrence,
+                        onAddRepeat = { viewModel.pickKind(TriggerKind.REPEAT_TIME) },
                         onSavePreset = viewModel::saveRecurrencePreset,
                         onDeletePreset = viewModel::deleteRecurrencePreset,
                     )

@@ -34,13 +34,17 @@ sealed interface Recurrence {
     data object ByTrigger : Recurrence
 
     /**
-     * A span after it was dealt with. Hours are exact — "cada 6 h" means six hours — while days,
-     * weeks and months land on the day's start hour (a setting), because "al día siguiente" is
+     * A span after [from]. Hours are exact — "cada 6 h" means six hours — while days, weeks,
+     * months and years land on the day's start hour (a setting), because "al día siguiente" is
      * a morning, not a time of night.
      */
     @Serializable
     @SerialName("after")
-    data class After(val amount: Int, val unit: RecurrenceUnit) : Recurrence
+    data class After(
+        val amount: Int,
+        val unit: RecurrenceUnit,
+        val from: RecurrenceFrom = RecurrenceFrom.DEALT,
+    ) : Recurrence
 
     /** The [ordinal]th [day] of each month; [LAST_ORDINAL] for the last one. */
     @Serializable
@@ -48,7 +52,41 @@ sealed interface Recurrence {
     data class MonthlyWeekday(val ordinal: Int, val day: DayOfWeek) : Recurrence
 }
 
-enum class RecurrenceUnit { HOURS, DAYS, WEEKS, MONTHS }
+enum class RecurrenceUnit { HOURS, DAYS, WEEKS, MONTHS, YEARS }
+
+/**
+ * Which moment a span is counted from — the one thing about "cada 6 h" that two people mean
+ * differently, and that the app used to decide for them.
+ *
+ * [DEALT] is "six hours between doses": take it late and the next one moves with you. [RANG] is
+ * "six hours apart, on the hour": answer it late and the rhythm does not drift, which is what
+ * anybody who set 08:00, 14:00, 20:00 meant and what the app could not say until now. Both are
+ * right for somebody, which is exactly why it is asked rather than assumed.
+ *
+ * A consequence worth knowing: under [RANG] a reminder that is ignored still has an anchor that
+ * moves, so it comes back on its rhythm rather than waiting to be acknowledged. Under [DEALT]
+ * the anchor only moves when somebody deals with it, which is what stops it ringing for ever.
+ */
+enum class RecurrenceFrom { DEALT, RANG }
+
+/** Whether the span is counted from the firing rather than from dealing with it. */
+val Recurrence.countsFromRinging: Boolean
+    get() = this is Recurrence.After && from == RecurrenceFrom.RANG
+
+/**
+ * The same span, whatever moment it counts from.
+ *
+ * The anchor is a separate answer to a separate question — "cada 6 h" and "al sonar" are two
+ * halves of one sentence — so a button that says "cada 6 h" stays lit when the anchor changes
+ * under it, and picking it again does not undo the anchor.
+ */
+fun Recurrence.sameSpanAs(other: Recurrence): Boolean =
+    if (this is Recurrence.After && other is Recurrence.After) amount == other.amount && unit == other.unit
+    else this == other
+
+/** [other]'s span, kept counting from wherever this one was counting from. */
+fun Recurrence.withSpanOf(other: Recurrence): Recurrence =
+    if (this is Recurrence.After && other is Recurrence.After) other.copy(from = from) else other
 
 /** "The last Sunday of the month" rather than a numbered one. */
 const val LAST_ORDINAL = 5
@@ -94,6 +132,9 @@ fun nextRecurrence(
         RecurrenceUnit.DAYS -> anchor.atDayStart(zone, dayStart) { it.plusDays(recurrence.amount.toLong()) }
         RecurrenceUnit.WEEKS -> anchor.atDayStart(zone, dayStart) { it.plusWeeks(recurrence.amount.toLong()) }
         RecurrenceUnit.MONTHS -> anchor.atDayStart(zone, dayStart) { it.plusMonths(recurrence.amount.toLong()) }
+        // The 29th of February lands on the 28th rather than skipping three years in four,
+        // which is what plusYears does and what anybody with that birthday expects.
+        RecurrenceUnit.YEARS -> anchor.atDayStart(zone, dayStart) { it.plusYears(recurrence.amount.toLong()) }
     }
     is Recurrence.MonthlyWeekday -> nextMonthlyWeekday(recurrence, anchor, zone, dayStart)
 }

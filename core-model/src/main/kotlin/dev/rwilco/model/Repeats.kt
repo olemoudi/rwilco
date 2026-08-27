@@ -81,8 +81,12 @@ private fun Trigger.Repeat.datesIn(block: Int): List<LocalDate> {
         // plusMonths keeps the day where it can and pulls it back to the end of the month where
         // it cannot, which is also what a "day 31" means in February.
         RepeatUnit.MONTH -> listOf(dayIn(YearMonth.from(startsOn).plusMonths(step), monthlyRule()))
-        // The same for the twenty-ninth of February, which otherwise rings once in four years.
-        RepeatUnit.YEAR -> listOf(startsOn.plusYears(step))
+        // A year names a month as well as a day, so it takes the same rule a month does: "el
+        // primer miércoles de mayo" is a yearly, and saying it any other way is arithmetic on
+        // a date that moves. With nothing set the rule is the day startsOn falls on, which is
+        // what plusYears did — including the twenty-ninth of February landing on the
+        // twenty-eighth rather than ringing once in four years.
+        RepeatUnit.YEAR -> listOf(dayIn(YearMonth.from(startsOn).plusYears(step), monthlyRule()))
     }
 }
 

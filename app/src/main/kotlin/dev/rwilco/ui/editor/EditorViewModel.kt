@@ -12,6 +12,7 @@ import dev.rwilco.model.Action
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RecurrencePreset
+import dev.rwilco.model.withSpanOf
 import dev.rwilco.model.recurrencePresetsByPopularity
 import dev.rwilco.model.used
 import dev.rwilco.model.Reminder
@@ -143,7 +144,9 @@ class EditorViewModel(
 
     /** Picking one off the row counts as a use, which is what keeps the row in a useful order. */
     fun pickRecurrencePreset(preset: RecurrencePreset) {
-        _state.update { it.setRecurrence(preset.recurrence) }
+        // The preset says the span; the anchor already chosen on the card says which moment it
+        // counts from, and picking a different span is no reason to forget it.
+        _state.update { state -> state.setRecurrence(state.draft.recurrence.withSpanOf(preset.recurrence)) }
         viewModelScope.launch {
             val now = clock.instant()
             store.update { settings ->

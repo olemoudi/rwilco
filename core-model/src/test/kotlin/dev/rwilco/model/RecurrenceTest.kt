@@ -323,4 +323,64 @@ class RecurrenceTest {
         val used = presets.mapIndexed { index, preset -> if (index == 2) preset.used(Instant.EPOCH.plusSeconds(10)) else preset }
         assertEquals(presets[2].id, recurrencePresetsByPopularity(used).first().id)
     }
+
+    // ---- years, and the moment a span counts from ------
+
+    @Test
+    fun `a span in years lands on the day's start hour, years later`() {
+        val dealt = local(2026, 8, 27, 15, 40)
+        val back = nextRecurrence(Recurrence.After(2, RecurrenceUnit.YEARS), dealt, zone, dayStart)
+        assertEquals(local(2028, 8, 27, 9, 0), back)
+    }
+
+    @Test
+    fun `the twenty-ninth of February comes back on the twenty-eighth rather than in four years`() {
+        val dealt = local(2028, 2, 29, 12, 0)
+        assertEquals(
+            local(2029, 2, 28, 9, 0),
+            nextRecurrence(Recurrence.After(1, RecurrenceUnit.YEARS), dealt, zone, dayStart),
+        )
+    }
+
+    @Test
+    fun `counted from dealing with it, answering late moves the next one`() {
+        // Rang at eight, dealt with at half nine: the next dose is six hours after the dose.
+        val rang = local(2026, 8, 27, 8, 0)
+        val dealt = local(2026, 8, 27, 9, 30)
+        val pills = reminder(Recurrence.After(6, RecurrenceUnit.HOURS), lastDealtAt = dealt)
+            .copy(lastFiredAt = rang)
+        assertEquals(local(2026, 8, 27, 15, 30), pills.recurrenceMoment(zone, dayStart))
+    }
+
+    @Test
+    fun `counted from the ringing, answering late does not move the next one`() {
+        val rang = local(2026, 8, 27, 8, 0)
+        val dealt = local(2026, 8, 27, 9, 30)
+        val pills = reminder(
+            Recurrence.After(6, RecurrenceUnit.HOURS, RecurrenceFrom.RANG),
+            lastDealtAt = dealt,
+        ).copy(lastFiredAt = rang)
+        // Eight plus six, not half nine plus six: the rhythm somebody set does not drift.
+        assertEquals(local(2026, 8, 27, 14, 0), pills.recurrenceMoment(zone, dayStart))
+    }
+
+    @Test
+    fun `counted from the ringing still works for one that never rang`() {
+        // Swiped done on Home without ever ringing: there is no firing to count from, and
+        // "cada 6 h desde que suena" must still come back.
+        val dealt = local(2026, 8, 27, 9, 30)
+        val swiped = reminder(
+            Recurrence.After(6, RecurrenceUnit.HOURS, RecurrenceFrom.RANG),
+            lastDealtAt = dealt,
+        )
+        assertEquals(local(2026, 8, 27, 15, 30), swiped.recurrenceMoment(zone, dayStart))
+    }
+
+    @Test
+    fun `a stored recurrence with no anchor written reads as counting from dealing with it`() {
+        // Every install before this field existed. Anything else would move real armed moments.
+        val old = ReminderCodec.decodeRecurrence("""{"type":"after","amount":6,"unit":"HOURS"}""")
+        assertEquals(Recurrence.After(6, RecurrenceUnit.HOURS, RecurrenceFrom.DEALT), old)
+        assertFalse(old.countsFromRinging)
+    }
 }

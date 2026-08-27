@@ -21,6 +21,7 @@ import dev.rwilco.model.Trigger
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.format.TextStyle
 import java.time.temporal.WeekFields
 import java.util.Locale
 
@@ -195,10 +196,16 @@ fun repeatSummary(trigger: Trigger.Repeat, today: LocalDate, locale: Locale): St
         RepeatUnit.YEAR -> pluralStringResource(R.plurals.trigger_repeat_years, trigger.every, trigger.every)
     }
     when (trigger.unit) {
-        // A week and a month have a choice inside them; a day and a year do not.
+        // A week, a month and a year each have a choice inside them; a day does not. A year's
+        // is a month's plus the month, because "el primer miércoles" alone names no date.
         RepeatUnit.WEEK -> parts += daysSummary(trigger.weekDays(), locale)
         RepeatUnit.MONTH -> parts += monthlyLabel(trigger.monthlyRule(), locale)
-        RepeatUnit.DAY, RepeatUnit.YEAR -> Unit
+        RepeatUnit.YEAR -> parts += stringResource(
+            R.string.trigger_yearly_of_month,
+            monthlyLabel(trigger.monthlyRule(), locale),
+            trigger.startsOn.month.getDisplayName(TextStyle.FULL, locale),
+        )
+        RepeatUnit.DAY -> Unit
     }
     when (val ends = trigger.ends) {
         is RepeatEnd.On -> parts += stringResource(R.string.trigger_repeat_until, dayWord(ends.date, today, locale))

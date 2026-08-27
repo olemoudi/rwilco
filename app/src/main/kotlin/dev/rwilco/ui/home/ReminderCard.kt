@@ -39,6 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.rwilco.R
+import dev.rwilco.model.countsFromRinging
 import dev.rwilco.model.RuleStanding
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.TriggerFamily
@@ -153,8 +154,18 @@ fun RecurrenceRow(recurrence: Recurrence, muted: Boolean = false) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            // The second line is the half of the sentence the first one cannot say: "cada
+            // semana" is the same words whether the week is counted from the calendar, from
+            // the ringing or from you.
             Text(
-                text = stringResource(R.string.card_recurrence_from_done),
+                text = stringResource(
+                    when {
+                        recurrence == Recurrence.ByTrigger || recurrence is Recurrence.MonthlyWeekday ->
+                            R.string.card_recurrence_from_calendar
+                        recurrence.countsFromRinging -> R.string.card_recurrence_from_ringing
+                        else -> R.string.card_recurrence_from_done
+                    },
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,

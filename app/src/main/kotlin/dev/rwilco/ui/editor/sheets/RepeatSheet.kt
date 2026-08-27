@@ -37,6 +37,7 @@ import dev.rwilco.ui.format.ordinalRes
 import dev.rwilco.ui.format.repeatSummary
 import dev.rwilco.ui.theme.Tokens
 import java.time.DayOfWeek
+import java.time.format.TextStyle
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -99,7 +100,8 @@ fun RepeatSheet(
         unit = unit,
         time = if (atRandom) null else time,
         days = if (unit == RepeatUnit.WEEK) selectedDays else emptySet(),
-        monthly = if (unit == RepeatUnit.MONTH) monthly else null,
+        // A year names a month as well as a day, so it takes the same rule a month does.
+        monthly = if (unit == RepeatUnit.MONTH || unit == RepeatUnit.YEAR) monthly else null,
         ends = when (endMode) {
             1 -> RepeatEnd.On(endDate)
             2 -> RepeatEnd.After(endTimes)
@@ -143,11 +145,18 @@ fun RepeatSheet(
             )
         }
 
-        if (unit == RepeatUnit.MONTH) {
+        // The same two answers for a month and for a year: the day, or a weekday of it. A
+        // yearly says the month too, because "el día 6" of an unnamed month is not an answer.
+        if (unit == RepeatUnit.MONTH || unit == RepeatUnit.YEAR) {
+            val monthName = startsOn.month.getDisplayName(TextStyle.FULL, currentLocale())
             Column(verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm)) {
                 SegmentedChoice(
                     options = listOf(
-                        stringResource(R.string.sheet_repeat_monthly_day, startsOn.dayOfMonth),
+                        if (unit == RepeatUnit.YEAR) {
+                            stringResource(R.string.sheet_repeat_yearly_day, startsOn.dayOfMonth, monthName)
+                        } else {
+                            stringResource(R.string.sheet_repeat_monthly_day, startsOn.dayOfMonth)
+                        },
                         stringResource(R.string.sheet_repeat_monthly_nth),
                     ),
                     selectedIndex = if (byWeekday) 1 else 0,
