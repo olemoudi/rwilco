@@ -575,9 +575,21 @@ strict is asking somebody to remember how they spelled it.
   two kinds: `Condition.TimeWindow` and
   `Condition.AtPlace` ("y sólo si estoy en casa"). A place condition is the one thing nothing
   can answer in advance, so `nextFireOfRule` leaves it out and arms the alarm anyway
-  (`knownInAdvance`), and `ReminderFiring` asks it for real when the alarm goes off — from the
-  place watch's last fix, and only while that fix still speaks for now; past the speed memory it
-  is no fix at all, and no fix means the condition holds. `warnings()` says what can be said
+  (`knownInAdvance`), and `ReminderFiring` asks it for real when the alarm goes off — **from the
+  watch's memory of which side of that circle the phone is on** (`PlaceWatchState.sideOf`),
+  matched on the circle's geometry, because the same doorway is watched under a different id by
+  every rule that names it and a condition carries the place with no id to look it up by.
+  Measuring the last raw fix against the circle instead — which is what it did — is a second and
+  worse opinion about a question that map already answers: it knows nothing of the system's
+  geofences (a crossing writes straight into it, with no fix of its own) and it has to resolve
+  its own doubt, which `holdsAt` does towards *yes* whenever the fix is sloppier than the circle.
+  Fifty metres is the tightest circle the app allows and is smaller than an ordinary network fix
+  is accurate, so on exactly the circles somebody draws when they mean "at home and not next
+  door" the fence was never a fence: a "a la vez" set rang in the street twenty minutes after
+  the phone's own geofences had recorded it leaving. `TogetherPlaceFiringTest` walks that
+  evening. The house rule is untouched — a circle nobody has judged still holds, and the memory
+  counts only while a fix still speaks for now; past the speed memory it is old news like
+  everything else, and no answer means the condition holds. `warnings()` says what can be said
   before somebody waits a week to find out: a rule whose moments never meet its own hours
   (`NeverFires`, which is just `nextFireOfRule` giving up), circles that cannot both be true
   (`PlacesConflict`), either of those under ALL taking the whole reminder down with it
