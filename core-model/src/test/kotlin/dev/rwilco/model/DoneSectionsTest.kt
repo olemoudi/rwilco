@@ -26,6 +26,41 @@ class DoneSectionsTest {
     )
 
     @Test
+    fun `the fortnight of bars is oldest first and ends today`() {
+        val counts = doneByDay(
+            listOf(
+                done("today-1", local(2026, 8, 27, 1, 0)),
+                done("today-2", local(2026, 8, 27, 14, 30)),
+                done("monday", local(2026, 8, 24, 9, 0)),
+                // The first day still inside a fortnight ending today, and the one before it.
+                done("edge-in", local(2026, 8, 14, 9, 0)),
+                done("edge-out", local(2026, 8, 13, 23, 59)),
+            ),
+            now,
+            zone,
+        )
+        assertEquals(14, counts.size)
+        assertEquals(1, counts.first(), "the fourteenth day back is in")
+        assertEquals(2, counts.last(), "today is the last bar")
+        assertEquals(1, counts[13 - 3], "monday, three days back")
+        assertEquals(4, counts.sum(), "and the day before the window is not counted")
+    }
+
+    @Test
+    fun `nothing finished is a fortnight of empty bars, not an empty chart`() {
+        // The chart draws a dash per empty day, so the row has to keep its length.
+        assertEquals(List(14) { 0 }, doneByDay(emptyList(), now, zone))
+        assertEquals(emptyList<Int>(), doneByDay(emptyList(), now, zone, days = 0))
+    }
+
+    @Test
+    fun `a row filed before doneAt existed is counted by the day it was last touched`() {
+        // The same fallback groupDone uses: finishedAt() is never null, so a bar is never lost.
+        val counts = doneByDay(listOf(done("old", at = null).copy(updatedAt = local(2026, 8, 26, 9, 0))), now, zone)
+        assertEquals(1, counts[13 - 1])
+    }
+
+    @Test
     fun `today, the week behind it, and everything before that`() {
         val groups = groupDone(
             listOf(

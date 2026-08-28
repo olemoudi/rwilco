@@ -43,6 +43,8 @@ import dev.rwilco.ui.components.SectionHeader
 import dev.rwilco.model.groupDone
 import dev.rwilco.model.DoneSection
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.doneByDay
+import dev.rwilco.ui.components.DayBars
 import dev.rwilco.ui.components.EmptyState
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.TagLabel
@@ -53,6 +55,9 @@ import dev.rwilco.ui.format.rememberIs24h
 import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
 import java.time.Clock
+
+/** The last seven bars of the fortnight: what "esta semana" means on this screen. */
+private const val DAYS_IN_A_WEEK = 7
 
 @Composable
 fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpen: (String) -> Unit) {
@@ -115,6 +120,16 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
                     )
                 }
             }
+            // The screen's own face, before the bands: how many this week, and the shape of the
+            // fortnight behind it. A list of what got done answers "did I do it?"; this answers
+            // "how is it going?", which is the question somebody opens this screen with and
+            // which no amount of scrolling was ever going to answer.
+            if (!list.isNullOrEmpty()) {
+                item(key = "chart") {
+                    val bars = doneByDay(list, clock.instant(), clock.zone)
+                    DoneHeadline(counts = bars, week = bars.takeLast(DAYS_IN_A_WEEK).sum())
+                }
+            }
             // Three bands rather than one long list: what got done today, what got done this
             // week, and the rest — which is a place to look rather than a place to read.
             for ((section, reminders) in groupDone(list.orEmpty(), clock.instant(), clock.zone)) {
@@ -165,6 +180,31 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             shape = MaterialTheme.shapes.extraLarge,
         )
+    }
+}
+
+/**
+ * The number, the words for it, and the fortnight under them.
+ *
+ * The count is in `displayLarge`, which is the one Material role this app sets in JetBrains
+ * Mono — the size a number is read at when it is the only thing being said.
+ */
+@Composable
+private fun DoneHeadline(counts: List<Int>, week: Int) {
+    val spacing = Tokens.spacing
+    Column(modifier = Modifier.padding(top = spacing.sm, bottom = spacing.md)) {
+        Text(
+            text = week.toString(),
+            style = MaterialTheme.typography.displayLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = stringResource(R.string.done_this_week),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(spacing.lg))
+        DayBars(counts = counts, label = stringResource(R.string.done_chart_label, counts.size, counts.sum()))
     }
 }
 

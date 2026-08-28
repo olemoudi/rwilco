@@ -2,6 +2,7 @@ package dev.rwilco.model
 
 import java.time.Instant
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 /**
  * How the history reads: today, the week behind it, and everything before that.
@@ -60,6 +61,40 @@ fun groupDone(
         }
         .toSortedMap(compareBy { it.ordinal })
 }
+
+/**
+ * How many were finished on each of the last [days] days, oldest first, today last.
+ *
+ * The whole point of it is the shape rather than the numbers: a fortnight of bars says "this is
+ * a week you got things done in" at a glance, which is a thing a list of cards can only say by
+ * being scrolled. Days and not hours, because a reminder is a thing you deal with over a day.
+ *
+ * Counted by the same [finishedAt] the bands are, so a row can never be in a band and out of the
+ * chart. Anything older than the window, and anything still open, is simply not counted.
+ */
+fun doneByDay(
+    reminders: List<Reminder>,
+    now: Instant,
+    zone: ZoneId,
+    days: Int = DONE_CHART_DAYS,
+): List<Int> {
+    if (days <= 0) return emptyList()
+    val today = now.atZone(zone).toLocalDate()
+    val first = today.minusDays(days - 1L)
+    val counts = IntArray(days)
+    for (reminder in reminders) {
+        val day = reminder.finishedAt().atZone(zone).toLocalDate()
+        if (day.isBefore(first) || day.isAfter(today)) continue
+        counts[ChronoUnit.DAYS.between(first, day).toInt()]++
+    }
+    return counts.toList()
+}
+
+/**
+ * A fortnight: long enough for a rhythm to show (the weekend dip, the Monday pile), short enough
+ * that every bar is still wide enough to be a bar on a phone.
+ */
+const val DONE_CHART_DAYS = 14
 
 /** The moment before which a finished reminder is not kept. See [DONE_KEPT_MONTHS]. */
 fun doneCutoff(now: Instant, zone: ZoneId): Instant =

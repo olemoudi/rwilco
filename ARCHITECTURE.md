@@ -125,7 +125,11 @@ what the alarm is set for) and says so: *como pronto*. A bare place has no floor
 its time is not random; and nothing past `HERO_HORIZON` (a week) is lifted at all.
 `groupForHome` (`HomeSections.kt`) lifts that hero out and
 files the rest under Overdue / Today / Tomorrow / This week (rolling 7 days) / Later / Whenever /
-Paused. Random moments come from `RandomDraw.kt`: SplitMix64 seeded by (reminder id, period
+Paused. **A snooze is said on the card, not only on the hero**: the hero has always worn it in
+its own words (*pospuesto hasta*), and everywhere else the rows went on describing the rule, so
+a fortnightly reminder put off for two hours read as a fortnight away — one card telling
+somebody the opposite of what would happen. `ReminderCardUi.snoozedUntil` carries it and
+`SnoozedRow` says it, above the rules it outranks. Random moments come from `RandomDraw.kt`: SplitMix64 seeded by (reminder id, period
 index), pinned by golden values in its test.
 
 Dealing with a firing (`statusAfterDismissal`) finishes a reminder unless its `Recurrence` says
@@ -266,15 +270,29 @@ strict is asking somebody to remember how they spelled it.
   JetBrains Mono for times/dates), `RwilcoShapes`, tokens (`Spacing`, `Motion`, `Sizes`) and
   `Haptics` behind one setting. Trigger families (time / place / chance) have their own colours
   in `FamilyVisuals.kt` — a `color`, a `tint` for keycaps, a `wash`/`edge` for a trigger's own
-  row in the editor, and `onColor` for text on a solid fill. **A selected neutral control is
+  row in the editor, and `onColor` for text on a solid fill. **The same colour is also the card's
+  rail** (`RwilcoCard(rail = …)`, `railFamily`): a 5dp band down the leading edge in the family of
+  whatever will ring — the earliest moment's, else the first rule's, else the clock when a
+  recurrence is doing the work alone, and nothing at all for a note. It is what gives a list of
+  fifteen cards a rhythm you can read without reading, and it is the app's own palette said at
+  the area it was always worth rather than at the 36dp of a keycap. Drawn *inside* the surface,
+  so the card's clip curves it into the corner; the hero has none (it already wears the amber);
+  a paused card's goes grey with the rest of it. The keycap wash went up with it (0.22/0.14 →
+  0.28/0.18): beside a solid band the old one read as a grey-blue square.
+  `SectionHeader` was raised to `titleMedium` at full contrast with the count in a pill for the
+  same reason — on a screen of full-contrast cards, "Vencidos 1" in muted `titleSmall` was the
+  least visible thing on Home and it is the one somebody is looking for. **A selected neutral control is
   inverted** (`onSurface` fill, `surface` ink: tags, presets, action tiles, segments, AM/PM),
   the same swap as the primary button, because three greys never read as "on"; a selected day
   is a solid disc of the time family. Plain `MaterialTheme`: material3 1.4.0 keeps the
   expressive theme internal.
-- A card's one control is `HoldButton` (`ui/components/`): a 44dp disc with a control's own
-  line and the verb small underneath ("Pausar"/"Reanudar", never a bare glyph, which reads as
-  the state rather than the action), in the card's top row rather than among the read-only
-  action glyphs. It fires only after a 700ms hold, and what reports on the hold is
+- A card's one control is `HoldButton` (`ui/components/`): a control's own line and the verb
+  ("Pausar"/"Reanudar", never a bare glyph, which reads as the state rather than the action), in
+  one of two shapes — a 44dp disc with the verb underneath where the control is the point, and a
+  `compact` pill with the verb beside the glyph on a card, at the end of the footer's read-only
+  action glyphs. The pill is what it wears on Home: as a disc in the top row it took a column
+  ~96dp wide out of the one line of the card anybody actually reads, and the reminder's own words
+  were wrapping around it. It fires only after a 700ms hold, and what reports on the hold is
   `HoldOverlay` — the whole screen dimmed behind one ring filling in the middle of it, which
   is the one place no thumb is ever over. The overlay lives at the root of `RwilcoApp` and is
   reached through `LocalHoldOverlay`, because a control in the corner of a card cannot dim the
@@ -306,6 +324,19 @@ strict is asking somebody to remember how they spelled it.
   already says. The place marks would be worse than merely idle — the watch keeps a resting
   circle's last judgement on purpose (`Watching.remembered`), so a mark there stated last
   night's memory as this minute's fact.
+- **A set of rules is drawn as a set** (`RuleTree`, `ui/components/`): a root carrying the
+  reading's glyph, and a branch per rule hanging off a trunk. Three rows used to be three rows
+  with a small grey word over them — and no word at all on the commonest reading — so "al llegar
+  a casa" and "a las nueve" on one card read as a list, and a list reads as an OR whatever it
+  means. The trunk is **dashed for "cualquiera"**, where the rows are alternatives and any one of
+  them is the whole thing, and **solid for "todos" and "a la vez"**, where none of them means
+  anything alone; the glyph separates those two — a list being ticked off for the one that
+  accumulates over days, two overlapping circles for the one that has to be true at a single
+  instant. The word is still only written for those two: "cualquiera" is what a list already
+  looks like, and the glyph says it to a screen reader. Never drawn for one rule, which is not a
+  set. `RuleTreeTest` renders the three side by side (`docs/screenshots/rule-trees.png`), for the
+  same reason the standing marks have a test of their own: a dashed line and a 16dp glyph cannot
+  be judged from the code.
 - A card shows one row per rule, and — when the recurrence works out its own moments
   (`Calendar`, `After`, `MonthlyWeekday`) — a row for that too, last, because that is the order
   the two answer in. It is the only way a reminder whose whole arrangement is "cada 6 h" or
@@ -329,6 +360,15 @@ strict is asking somebody to remember how they spelled it.
   own composable (`rememberNow`) so nothing else recomposes. The magnifier has a flow of its own
   (`buildSearchState`, also pure): a keystroke must not put Home through grouping and next-fire
   again. Results replace the list while it is open; a reminder opens, a tag becomes the filter.
+- **"Hechos" opens with a number and a fortnight**, not with a list: how many were dealt with in
+  the last seven days in `displayLarge` — the one Material role this app sets in JetBrains Mono,
+  the size a number is read at when it is the only thing being said — over `DayBars`, one bar per
+  day for a fortnight (`doneByDay`, pure and tested, counting by the same `finishedAt()` the
+  bands do). A list of what got done answers "did I do it?"; this answers "how is it going?",
+  which is the question somebody opens that screen with and which no amount of scrolling was
+  going to answer — it was a title, two cards and half a phone of nothing. The bars are ink and
+  never amber, an empty day is a dash on the floor rather than a gap, and the scale has a floor
+  of three so a week with one "hecho" in it does not draw a full-height bar about a Tuesday.
 - The chip row is a `TagFilter` (`core-model/TagFilter.kt`), not a string: `Named` for a tag
   somebody typed, and two the app keeps for itself — `Untagged` and `Paused`. Those two are not
   tags (never stored on a reminder, never suggested, never edited) and they appear **only while
@@ -408,6 +448,16 @@ strict is asking somebody to remember how they spelled it.
   fix, a crosshair button to centre on where you are, radius circle, inverted tiles on the dark
   scheme, tile cache in `cacheDir`). The alert preview is `AlertScreen`,
   the same composable phase 2 will host in a full-screen-intent activity.
+- **The draft reads itself back over the button that saves it** (`ReminderSentence`, and
+  `sentenceParts` beside it — pure, so the shape of the sentence is JVM-tested and the wording is
+  the composable's job). The form is five cards down a scrolling column: by the time somebody
+  reaches "Guardar" the words are three screens up, and what is about to be saved has to be
+  assembled in the head out of four separate places. The line says it in one sentence — the
+  words, the rules with the reading's own word between them ("o", "y", "y, a la vez,"), each
+  rule's fences, and the recurrence last — with **each piece in the colour of what it is**, the
+  same family code the keycaps and the cards' rails use. It stays off the screen until there is
+  something to say beyond the words themselves (`saysMoreThanWords`), which is also what keeps it
+  from sitting under the keyboard while somebody types into a blank draft.
 
 ## Firing
 
@@ -426,6 +476,10 @@ strict is asking somebody to remember how they spelled it.
   turn, so the set completes late rather than never.
 - `ReminderFiring` is the single place that decides what a firing, a "Hecho" and a snooze do, so
   the alarm, the notification buttons, the alert screen **and Home's swipe** cannot drift apart.
+  Every answer it gives is written down before the notification comes down, and its settings read
+  is caught and bounded (`settings()`): the other way round, a store that would not answer took
+  the whole answer with it — a "posponer" that only cleared the shade, leaving the reminder
+  counting down to its own next moment as if nobody had said anything.
   Home's used to file the reminder as DONE itself, which is right for most of them and wrong for
   every one asked to come back: a "cada 6 h" was finished by the swipe instead of starting its
   next round, and the anchor its recurrence counts from was never written down. Under ALL it
@@ -481,7 +535,12 @@ strict is asking somebody to remember how they spelled it.
   All of them join one bundle with a summary line, and **the summary comes down only when there
   is nothing left**: cancelling a group's summary cancels its surviving children too, so pulling
   it at "fewer than two" — the reading that sounds right — cleared the shade of an alert somebody
-  still had to deal with. `NotificationBundleTest` found that and holds the door shut. There is
+  still had to deal with. `NotificationBundleTest` found that and holds the door shut. **How many
+  are left is counted from what the call just did** (`bundleChildren`), not from what the system
+  answers: cancelling is handed to a thread of its own and is not done when the call returns, so
+  asking straight afterwards could still be told about the notification on its way out — and the
+  summary posted for it then stayed behind alone, an empty line reading "1 recordatorio" over
+  nothing, to be swiped away by hand. There is
   nothing above `IMPORTANCE_HIGH` + `PRIORITY_HIGH` + `CATEGORY_ALARM` for an ordinary
   notification; anything more prominent than this means `MessagingStyle` conversations or
   `CallStyle`, which are a different kind of thing to be.

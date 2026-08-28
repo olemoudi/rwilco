@@ -7,7 +7,6 @@ import dev.rwilco.model.DEFAULT_DAY_START
 import dev.rwilco.model.NextFire
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.Reminder
-import dev.rwilco.R
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.RuleStanding
 import dev.rwilco.model.watchedCircles
@@ -70,9 +69,36 @@ data class ReminderCardUi(
     val triggers: List<TriggerRowUi>,
     val actions: Set<Action>,
     val paused: Boolean,
-    /** Every trigger has to happen, and the card says so: otherwise the rows read as an OR. */
-    /** The word the card wears when its rules combine, or null when any one of them is enough. */
-    val matchLabel: Int? = null,
+    /**
+     * How this card's rules are read together, or null when there is only one of them and
+     * there is no set to read.
+     *
+     * The reading itself rather than a word for it: the card draws the set as a tree
+     * ([RuleTree]) whose trunk and glyph both come from this, and a string resource could only
+     * ever have said one of the two.
+     */
+    val match: RuleMatch? = null,
+    /**
+     * When somebody pushed it away to, while that moment is still ahead.
+     *
+     * It is on the card and not only on the hero because a snooze is the whole answer to "when
+     * does this ring next", and the rows underneath cannot say it: they go on describing the
+     * rule, so a fortnightly reminder put off for two hours read as a fortnight away — the one
+     * card on Home that was telling somebody the opposite of what would happen. The hero says
+     * it in its own words (it is what fires next); every other card says it here.
+     */
+    val snoozedUntil: Instant? = null,
+    /**
+     * The colour band down the card's edge: the family of what will ring, or null for a
+     * reminder with no "when" at all.
+     *
+     * The family of the rule with the earliest moment, because that is the one the card is
+     * about; failing that the first rule's, so a card that is only places still says "place";
+     * and [TriggerFamily.TIME] for a reminder whose whole arrangement is a recurrence, which is
+     * a clock even though it carries no trigger. The hero is left out of this — it already
+     * wears the amber and its lamp, and two marks on one card is one too many.
+     */
+    val rail: TriggerFamily? = null,
     /**
      * The recurrence, when it works out its own moments — and only then.
      *
@@ -138,35 +164,31 @@ fun buildHomeState(
     fun card(reminder: Reminder): ReminderCardUi {
         val standings = reminder.ruleStandings(now, zone, dayStart, shape) { index -> inside(reminder.id, index) }
         val circles = reminder.watchedCircles(now, zone, defaultTime, shape, dayStart)
+        val rows = reminder.rules.mapIndexed { index, rule ->
+            // Under "a la vez" the row says when the folded rule next holds, which is what
+            // will ring; a fold of two moments never does, and the row says nothing.
+            val next = reminder.togetherRule(index)?.let { nextFireOfRule(it, reminder.id, now, zone, defaultTime, shape) }
+            TriggerRowUi(
+                trigger = rule.trigger,
+                conditions = rule.conditions,
+                family = rule.trigger.family,
+                nextAt = (next as? NextFire.Scheduled)?.at,
+                window = (next as? NextFire.Sometime)?.let { it.windowStart to it.windowEnd },
+                standing = standings.getOrNull(index),
+                watched = rule.trigger !is Trigger.Location || circles.watchingRule(index),
+            )
+        }
         return ReminderCardUi(
             id = reminder.id,
             text = reminder.text,
             tags = reminder.tags,
-            triggers = reminder.rules.mapIndexed { index, rule ->
-                // Under "a la vez" the row says when the folded rule next holds, which is what
-                // will ring; a fold of two moments never does, and the row says nothing.
-                val next = reminder.togetherRule(index)?.let { nextFireOfRule(it, reminder.id, now, zone, defaultTime, shape) }
-                TriggerRowUi(
-                    trigger = rule.trigger,
-                    conditions = rule.conditions,
-                    family = rule.trigger.family,
-                    nextAt = (next as? NextFire.Scheduled)?.at,
-                    window = (next as? NextFire.Sometime)?.let { it.windowStart to it.windowEnd },
-                    standing = standings.getOrNull(index),
-                    watched = rule.trigger !is Trigger.Location || circles.watchingRule(index),
-                )
-            },
+            triggers = rows,
             actions = reminder.actions,
+            rail = railFamily(reminder, rows),
             paused = reminder.status == Status.PAUSED,
-            matchLabel = if (reminder.rules.size > 1) {
-                when (reminder.ruleMatch) {
-                    RuleMatch.ALL -> R.string.card_match_all
-                    RuleMatch.TOGETHER -> R.string.card_match_together
-                    RuleMatch.ANY -> null
-                }
-            } else {
-                null
-            },
+            // A paused reminder rings at no moment at all, so a snooze on it is not news.
+            snoozedUntil = reminder.snoozedUntil?.takeIf { it > now && reminder.status == Status.ACTIVE },
+            match = reminder.ruleMatch.takeIf { reminder.rules.size > 1 },
             recurrence = reminder.recurrence.takeIf { it.isAnchored },
         )
     }
@@ -186,6 +208,19 @@ fun buildHomeState(
         defaultTime = defaultTime,
         dayShape = shape,
     )
+}
+
+/**
+ * The family a card's colour band belongs to. See [ReminderCardUi.rail].
+ *
+ * Pure and separate from [buildHomeState] so the rule is one readable sentence and a test can
+ * hold it: the earliest moment's family, else the first rule's, else the clock when a
+ * recurrence is doing the work on its own, else nothing.
+ */
+internal fun railFamily(reminder: Reminder, rows: List<TriggerRowUi>): TriggerFamily? {
+    rows.filter { it.nextAt != null }.minByOrNull { it.nextAt!! }?.let { return it.family }
+    rows.firstOrNull()?.let { return it.family }
+    return TriggerFamily.TIME.takeIf { reminder.recurrence.isAnchored }
 }
 
 /** What the magnifier shows: the query as typed, and what it found. */

@@ -239,6 +239,8 @@
     <string name="done_section_last_week">Los últimos 7 días</string>
     <string name="done_section_earlier">Anteriormente</string>
     <string name="done_kept_note">El historial guarda los últimos tres meses.</string>
+    <string name="done_this_week">hechos esta semana</string>
+    <string name="done_chart_label">Los últimos %1$d días: %2$d hechos.</string>
     <string name="done_purge_title">¿Vaciar los recordatorios hechos?</string>
     <string name="done_purge_body">Se eliminan para siempre. Los que recuperes antes se conservan.</string>
     <string name="done_empty_title">Nada hecho todavía</string>
@@ -328,6 +330,10 @@
     <string name="editor_add_another_condition">Y sólo si…</string>
     <string name="editor_remove_condition">Quitar condición</string>
     <string name="editor_only_if_prefix">sólo si %1$s</string>
+    <string name="editor_sentence_or">o</string>
+    <string name="editor_sentence_and">y</string>
+    <string name="editor_sentence_at_once">y, a la vez,</string>
+    <string name="editor_sentence_returns">y vuelve</string>
     <string name="condition_title">Sólo si</string>
     <string name="condition_window_hint">El disparador sólo cuenta dentro de estas horas.</string>
     <string name="condition_window_error">Elige dos horas distintas.</string>
@@ -432,6 +438,7 @@
     <string name="editor_match_all_hint">Tienen que ocurrir todos; suena con el último.</string>
     <string name="card_match_all">todos</string>
     <string name="card_recurrence">Repetición</string>
+    <string name="card_snoozed">Pospuesto</string>
     <string name="card_recurrence_from_done">desde que lo marcas hecho</string>
     <string name="card_rule_happened">Ya ha ocurrido</string>
 

@@ -241,6 +241,8 @@
     <string name="done_section_last_week">The last 7 days</string>
     <string name="done_section_earlier">Earlier</string>
     <string name="done_kept_note">The history keeps the last three months.</string>
+    <string name="done_this_week">done this week</string>
+    <string name="done_chart_label">The last %1$d days: %2$d done.</string>
     <string name="done_purge_title">Clear done reminders?</string>
     <string name="done_purge_body">They are removed for good. Reminders you bring back first are kept.</string>
     <string name="done_empty_title">Nothing done yet</string>
@@ -330,6 +332,10 @@
     <string name="editor_add_another_condition">And only if…</string>
     <string name="editor_remove_condition">Remove condition</string>
     <string name="editor_only_if_prefix">only if %1$s</string>
+    <string name="editor_sentence_or">or</string>
+    <string name="editor_sentence_and">and</string>
+    <string name="editor_sentence_at_once">and, at once,</string>
+    <string name="editor_sentence_returns">and comes back</string>
     <string name="condition_title">Only if</string>
     <string name="condition_window_hint">The trigger only counts inside these hours.</string>
     <string name="condition_window_error">Pick two different times.</string>
@@ -434,6 +440,7 @@
     <string name="editor_match_all_hint">All of them have to happen; the last one rings it.</string>
     <string name="card_match_all">all of them</string>
     <string name="card_recurrence">Repeats</string>
+    <string name="card_snoozed">Put off</string>
     <string name="card_recurrence_from_done">from when you mark it done</string>
     <string name="card_rule_happened">Already happened</string>
 

@@ -100,11 +100,13 @@ object DemoData {
                 ageMinutes = 2000,
                 recurrence = weekly(LocalTime.of(7, 30), DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY),
             ),
+            // Rang this morning and was pushed away for a couple of hours: the state a card has
+            // to say out loud, because everything else on it goes on describing next Saturday.
             reminder(
                 "plants", "Regar las plantas del balcón", listOf("casa"),
                 ageMinutes = 3000,
                 recurrence = weekly(LocalTime.of(10, 0), DayOfWeek.SATURDAY),
-            ),
+            ).copy(snoozedUntil = now.plus(Duration.ofHours(2))),
             reminder(
                 "long", "Preguntarle a Marta por el presupuesto de la reforma del baño, mirar si el fontanero puede venir el jueves y avisar al seguro antes de que caduque el parte del vecino de arriba", listOf("casa", "papeleo"),
                 Trigger.AtDateTime(today.plusDays(1).atTime(18, 0)),

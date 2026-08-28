@@ -290,6 +290,7 @@ fun HomeScreen(
                                 card = card,
                                 today = today,
                                 defaultTime = defaultTime,
+                                zone = zone,
                                 onClick = { onOpen(card.id) },
                                 onTogglePause = { viewModel.togglePause(card.id, card.paused) },
                                 // What the swipes do, for whoever cannot swipe.

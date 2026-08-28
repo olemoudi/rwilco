@@ -6,7 +6,12 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -43,8 +48,13 @@ private val DISC = 44.dp
  * action on a card that must never happen by accident — silencing what is meant to ring.
  *
  * [label] is the verb, not the state — a pause glyph on its own reads as "this is paused" as
- * easily as "pause this" — and it sits small under the disc, where it names the button without
- * taking the room a reminder's own words need.
+ * easily as "pause this" — and it is always said, in both shapes this comes in.
+ *
+ * [compact] lays the same control out as a pill with the verb beside the glyph instead of a disc
+ * with the verb under it. The disc is right where the control is the point (the alert, a screen
+ * of its own); the pill is right on a card, where the disc and its caption took a column ~96dp
+ * wide out of the top row and stood there competing with the reminder's own words for the width
+ * — on the one line of the card that anybody actually reads.
  *
  * A screen reader gets an ordinary click action instead: TalkBack's double tap is already a
  * deliberate act, and there is no thumb to slip.
@@ -55,6 +65,7 @@ fun HoldButton(
     label: String,
     onHoldComplete: () -> Unit,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
 ) {
     val haptics = Tokens.haptics
     val motion = Tokens.motion
@@ -95,29 +106,45 @@ fun HoldButton(
         overlay.prompt = null
     }
 
-    Column(
-        modifier = modifier
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onPress = {
-                        pressed = true
-                        tryAwaitRelease()
-                        pressed = false
-                    },
-                )
+    val held = modifier
+        .pointerInput(Unit) {
+            detectTapGestures(
+                onPress = {
+                    pressed = true
+                    tryAwaitRelease()
+                    pressed = false
+                },
+            )
+        }
+        .semantics(mergeDescendants = true) {
+            contentDescription = label
+            role = Role.Button
+            onClick {
+                onHoldComplete()
+                true
             }
-            .semantics(mergeDescendants = true) {
-                contentDescription = label
-                role = Role.Button
-                onClick {
-                    onHoldComplete()
-                    true
-                }
-            },
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        // A control's own surface and line: the small grey glyphs on the card are read-only,
-        // and nothing but this should look pressable.
+        }
+    // A control's own surface and line, in both shapes: the small grey glyphs on the card are
+    // read-only, and nothing but this should look pressable.
+    if (compact) {
+        Surface(
+            shape = MaterialTheme.shapes.small,
+            color = scheme.surfaceContainerHigh,
+            border = BorderStroke(Tokens.strokes.control, scheme.outline),
+            modifier = held.heightIn(min = DISC),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = Tokens.spacing.md),
+            ) {
+                Icon(imageVector = icon, contentDescription = null, tint = scheme.onSurface, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(Tokens.spacing.xs))
+                Text(text = label, style = MaterialTheme.typography.labelMedium, color = scheme.onSurface)
+            }
+        }
+        return
+    }
+    Column(modifier = held, horizontalAlignment = Alignment.CenterHorizontally) {
         Surface(
             shape = CircleShape,
             color = scheme.surfaceContainerHigh,

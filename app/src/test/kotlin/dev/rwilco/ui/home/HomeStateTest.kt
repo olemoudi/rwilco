@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.DayOfWeek
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
@@ -36,6 +37,85 @@ class HomeStateTest {
     private val place = reminder("place", Trigger.Location(40.4, -3.7, 200, Presence.INSIDE, "Casa"), tags = listOf("casa"))
     private val random = reminder("random", Trigger.Random(2, Period.DAY, LocalTime.of(10, 0), LocalTime.of(20, 0), emptySet()), tags = listOf("salud"))
     private val paused = reminder("paused", Trigger.AtDateTime(LocalDateTime.of(2026, 8, 28, 16, 0)), status = Status.PAUSED)
+
+    @Test
+    fun `the card's colour band is the family of what will ring`() {
+        // The earliest moment decides, not the first rule written: "al llegar a casa, o esta
+        // tarde a las seis" is a clock this afternoon and a place after that.
+        val both = Reminder(
+            id = "both",
+            text = "Llamar a Marta",
+            rules = listOf(
+                TriggerRule(Trigger.Location(40.4, -3.7, 200, Presence.INSIDE, "Casa")),
+                TriggerRule(Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 18, 0))),
+            ),
+            status = Status.ACTIVE,
+            createdAt = now,
+            updatedAt = now,
+        )
+        // Nothing with a moment: the first rule speaks for the card.
+        val placeOnly = reminder("place-only", Trigger.Location(40.4, -3.7, 200, Presence.INSIDE, "Casa"))
+        // No rules at all, but a recurrence works out its own moments: that is a clock.
+        val recurring = Reminder(
+            id = "recurring",
+            text = "Tomar el antibiótico",
+            recurrence = Recurrence.After(8, RecurrenceUnit.HOURS),
+            status = Status.ACTIVE,
+            createdAt = now,
+            updatedAt = now,
+            lastDealtAt = now.minusSeconds(3600),
+        )
+        // A note nothing rings has no band at all.
+        val note = Reminder(id = "note", text = "Ideas para el regalo", status = Status.ACTIVE, createdAt = now, updatedAt = now)
+
+        val state = buildHomeState(listOf(both, placeOnly, recurring, note), defaultTime, now, zone, selectedTag = null)
+        val cards = (listOfNotNull(state.hero?.card) + state.sections.flatMap { it.cards }).associateBy { it.id }
+        assertEquals(TriggerFamily.TIME, cards.getValue("both").rail)
+        assertEquals(TriggerFamily.PLACE, cards.getValue("place-only").rail)
+        assertEquals(TriggerFamily.TIME, cards.getValue("recurring").rail)
+        assertNull(cards.getValue("note").rail)
+    }
+
+    @Test
+    fun `a postponed reminder says so on its card, not only when it is the one that glows`() {
+        // The one that sent this looking: "los viernes cada dos semanas", put off for two hours.
+        // Something sooner takes the glowing card, so this one is a plain card in a section —
+        // and a plain card knew nothing about a snooze, so it went on saying "in a fortnight".
+        val fortnightly = Reminder(
+            id = "fortnightly",
+            text = "Sacar el contenedor",
+            recurrence = Recurrence.Calendar(
+                Trigger.Repeat(
+                    startsOn = LocalDate.of(2026, 8, 28),
+                    every = 2,
+                    unit = dev.rwilco.model.RepeatUnit.WEEK,
+                    time = LocalTime.of(9, 0),
+                    days = setOf(DayOfWeek.FRIDAY),
+                ),
+            ),
+            status = Status.ACTIVE,
+            createdAt = now,
+            updatedAt = now,
+            snoozedUntil = now.plusSeconds(2 * 3600),
+        )
+        val state = buildHomeState(listOf(fortnightly, soon), defaultTime, now, zone, selectedTag = null)
+        assertEquals("soon", state.hero?.card?.id)
+        val card = state.sections.flatMap { it.cards }.first { it.id == "fortnightly" }
+        assertEquals(now.plusSeconds(2 * 3600), card.snoozedUntil)
+    }
+
+    @Test
+    fun `a snooze that has come and gone is not on the card any more`() {
+        val past = reminder("past", Trigger.AtDateTime(LocalDateTime.of(2026, 8, 29, 16, 0)))
+            .copy(snoozedUntil = now.minusSeconds(60))
+        // Paused is the other one: it rings at no moment at all, so a snooze on it says nothing.
+        val held = reminder("held", Trigger.AtDateTime(LocalDateTime.of(2026, 8, 29, 16, 0)), status = Status.PAUSED)
+            .copy(snoozedUntil = now.plusSeconds(3600))
+        val state = buildHomeState(listOf(past, held), defaultTime, now, zone, selectedTag = null)
+        val cards = (listOfNotNull(state.hero?.card) + state.sections.flatMap { it.cards }).associateBy { it.id }
+        assertNull(cards.getValue("past").snoozedUntil)
+        assertNull(cards.getValue("held").snoozedUntil)
+    }
 
     @Test
     fun `a row says whether its circle is costing anything`() {

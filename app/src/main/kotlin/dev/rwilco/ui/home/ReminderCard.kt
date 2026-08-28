@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.QuestionMark
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.Snooze
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -45,20 +46,27 @@ import dev.rwilco.model.Recurrence
 import dev.rwilco.model.TriggerFamily
 import dev.rwilco.model.kind
 import dev.rwilco.ui.components.HoldButton
+import dev.rwilco.ui.components.RuleTree
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.TriggerKeycap
 import dev.rwilco.model.conditions
 import dev.rwilco.ui.editor.recurrenceLabel
 import dev.rwilco.ui.editor.titleRes
+import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.conditionLabel
+import dev.rwilco.ui.format.currentLocale
+import dev.rwilco.ui.format.dayWord
+import dev.rwilco.ui.format.rememberIs24h
 import dev.rwilco.ui.format.triggerLine
 import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.LocalDarkTheme
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.familyColor
 import dev.rwilco.ui.theme.icon
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 
 /**
  * One reminder at a glance. [modifier] is where Home hangs the accessibility actions for the
@@ -70,62 +78,65 @@ fun ReminderCard(
     card: ReminderCardUi,
     today: LocalDate,
     defaultTime: LocalTime,
+    zone: ZoneId,
     onClick: () -> Unit,
     onTogglePause: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val spacing = Tokens.spacing
-    val textColor = if (card.paused) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
-    RwilcoCard(onClick = onClick, modifier = modifier) {
-        // Tight on purpose: a card is a glance, not a page. Two lines of text with the one
-        // control beside them, the triggers under it, and the read-only footer at the foot.
-        Column(
-            modifier = Modifier.padding(
-                start = spacing.md,
-                top = spacing.md,
-                end = spacing.md,
-                bottom = spacing.md,
-            ),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = card.text,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = textColor,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                Spacer(Modifier.width(spacing.sm))
-                // The card's one control, up here with the words rather than lost among the
-                // action glyphs below — which say what will happen and cannot be pressed.
-                HoldButton(
-                    icon = if (card.paused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause,
-                    label = stringResource(if (card.paused) R.string.card_resume else R.string.card_pause),
-                    onHoldComplete = onTogglePause,
-                )
-            }
-            Spacer(Modifier.height(spacing.sm))
-            if (card.matchLabel != null) {
-                Text(
-                    text = stringResource(card.matchLabel),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = spacing.xs),
-                )
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
-                for (row in card.triggers) TriggerRow(row, today, defaultTime, muted = card.paused)
+    val scheme = MaterialTheme.colorScheme
+    val textColor = if (card.paused) scheme.onSurfaceVariant else scheme.onSurface
+    // A paused reminder is not going to ring, so its band says nothing about which family
+    // would have: it goes the same grey as everything else on the card.
+    val rail = card.rail?.let { if (card.paused) scheme.onSurfaceVariant else familyColor(it, LocalDarkTheme.current) }
+    RwilcoCard(onClick = onClick, modifier = modifier, rail = rail) {
+        // A card is a glance, not a page — but the words are the glance, so they get the width
+        // and the size, and the one control goes down to the footer with the rest of the
+        // furniture. Under the title: the rules, then the read-only footer.
+        Column(modifier = Modifier.padding(spacing.lg)) {
+            Text(
+                text = card.text,
+                style = MaterialTheme.typography.titleLarge,
+                color = textColor,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(spacing.md))
+            Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                // First, because it is what happens next: a snooze outranks every rule under it
+                // until it has rung.
+                card.snoozedUntil?.let { SnoozedRow(it, today, zone, muted = card.paused) }
+                // More than one rule is an arrangement, and the tree is what says which one.
+                // A single rule is just itself, and hangs off nothing.
+                if (card.match != null && card.triggers.size > 1) {
+                    RuleTree(match = card.match, count = card.triggers.size, muted = card.paused) { index ->
+                        TriggerRow(card.triggers[index], today, defaultTime, muted = card.paused)
+                    }
+                } else {
+                    for (row in card.triggers) TriggerRow(row, today, defaultTime, muted = card.paused)
+                }
                 // Last, because that is the order the two answer in: the triggers say when it
                 // rings the first time and the recurrence says when it comes back.
                 card.recurrence?.let { RecurrenceRow(it, today, muted = card.paused) }
             }
-            Spacer(Modifier.height(spacing.sm))
+            Spacer(Modifier.height(spacing.md))
             CardFooter(
                 tags = card.tags,
                 actions = card.actions,
                 modifier = Modifier.fillMaxWidth(),
-            )
+            ) {
+                // The card's one pressable thing, at the end of the row of read-only glyphs that
+                // say what it will do. It still holds to fire and it still says the verb; what
+                // it no longer does is take a column out of the line with the words in it.
+                Spacer(Modifier.width(spacing.sm))
+                HoldButton(
+                    icon = if (card.paused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause,
+                    label = stringResource(if (card.paused) R.string.card_resume else R.string.card_pause),
+                    onHoldComplete = onTogglePause,
+                    compact = true,
+                )
+            }
         }
     }
 }
@@ -185,6 +196,45 @@ fun RecurrenceRow(recurrence: Recurrence, today: LocalDate, muted: Boolean = fal
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+        }
+    }
+}
+
+/**
+ * "Pospuesto · hoy", and the hour it comes back at — a row in the same language as the rules
+ * above it, because that is what somebody is reading the card for.
+ *
+ * Only the plain cards carry it. The hero says the same thing in its own words, over a
+ * countdown to the very moment, and saying it twice on one card is noise.
+ */
+@Composable
+fun SnoozedRow(until: Instant, today: LocalDate, zone: ZoneId, muted: Boolean = false) {
+    val locale = currentLocale()
+    val is24h = rememberIs24h()
+    val at = until.atZone(zone)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        TriggerKeycap(
+            family = TriggerFamily.TIME,
+            icon = Icons.Outlined.Snooze,
+            contentDescription = stringResource(R.string.card_snoozed),
+            size = Tokens.sizes.badge,
+        )
+        Spacer(Modifier.width(Tokens.spacing.sm))
+        Column(modifier = Modifier.weight(1f, fill = false)) {
+            Text(
+                text = TimeText.time(at.toLocalTime(), is24h, locale),
+                style = MonoStyles.label,
+                color = if (muted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = stringResource(R.string.card_snoozed) + " · " + dayWord(at.toLocalDate(), today, locale),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

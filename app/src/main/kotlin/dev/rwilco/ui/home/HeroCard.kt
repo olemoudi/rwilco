@@ -26,6 +26,7 @@ import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerFamily
 import dev.rwilco.model.kind
 import dev.rwilco.model.partsBetween
+import dev.rwilco.ui.components.RuleTree
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.TriggerKeycap
 import dev.rwilco.ui.components.lampGlow
@@ -138,16 +139,15 @@ fun HeroCard(
             // this in the countdown above it already, so one rule gets no list.
             if (hero.card.triggers.size > 1) {
                 Spacer(Modifier.height(spacing.md))
-                hero.card.matchLabel?.let {
-                    Text(
-                        text = stringResource(it),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = spacing.xs),
-                    )
-                }
-                Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
-                    for (row in hero.card.triggers) TriggerRow(row, today, defaultTime)
+                Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                    val match = hero.card.match
+                    if (match != null) {
+                        RuleTree(match = match, count = hero.card.triggers.size) { index ->
+                            TriggerRow(hero.card.triggers[index], today, defaultTime)
+                        }
+                    } else {
+                        for (row in hero.card.triggers) TriggerRow(row, today, defaultTime)
+                    }
                     hero.card.recurrence?.let { RecurrenceRow(it, today) }
                 }
             }

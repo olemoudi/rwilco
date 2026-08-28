@@ -38,9 +38,13 @@ fun TriggerFamily.color(): Color = familyColor(this, LocalDarkTheme.current)
  * The same colour as a wash, for the keycap behind a trigger's icon. Stronger on the dark
  * scheme, and not as a matter of taste: the same alpha over a near-black surface lands a
  * fraction of the contrast it lands over white.
+ *
+ * Raised from 0.22/0.14 once the cards started carrying a rail of the same colour: beside a
+ * solid 3dp line the old wash read as a grey-blue square rather than as the family's own
+ * colour, and a keycap that does not say which family it is has no other job.
  */
 @Composable
-fun TriggerFamily.tint(): Color = color().copy(alpha = if (LocalDarkTheme.current) 0.22f else 0.14f)
+fun TriggerFamily.tint(): Color = color().copy(alpha = if (LocalDarkTheme.current) 0.28f else 0.18f)
 
 /**
  * Text or a glyph on a solid family fill (a day toggle that is on). The family colours are

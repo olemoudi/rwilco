@@ -83,6 +83,8 @@ import dev.rwilco.ui.editor.sheets.RandomSheet
 import dev.rwilco.ui.editor.sheets.CalendarSheet
 import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.theme.Tokens
+import java.time.LocalDate
+import java.time.LocalTime
 
 @Composable
 fun EditorScreen(
@@ -187,6 +189,16 @@ fun EditorScreen(
                 // focus on the way in commits whatever was in the field first.
                 SaveBar(
                     enabled = state.loaded,
+                    // Read back over the button that commits it: five cards up a scrolling
+                    // column is too far to hold the whole thing in your head.
+                    sentence = sentenceParts(
+                        text = state.draft.text,
+                        rules = state.draft.rules,
+                        match = state.draft.ruleMatch,
+                        recurrence = state.draft.recurrence,
+                    ),
+                    today = today,
+                    defaultTime = state.defaultTime,
                     onSave = {
                         haptics.perform(HapticFeedbackType.Confirm)
                         focusManager.clearFocus()
@@ -468,15 +480,32 @@ private fun EditorTopBar(
 
 /** The one primary action, fixed at the bottom, above the keyboard when it is up. */
 @Composable
-private fun SaveBar(enabled: Boolean, onSave: () -> Unit) {
+private fun SaveBar(
+    enabled: Boolean,
+    sentence: List<SentencePart>,
+    today: LocalDate,
+    defaultTime: LocalTime,
+    onSave: () -> Unit,
+) {
     Surface(color = MaterialTheme.colorScheme.background) {
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .imePadding()
                 .padding(horizontal = Tokens.spacing.screen, vertical = Tokens.spacing.md),
         ) {
+            // Only once there is an arrangement to read: while somebody is typing the words into
+            // a blank draft this would be their own sentence handed back to them, under the
+            // keyboard, in the room the form needs.
+            if (sentence.saysMoreThanWords()) {
+                ReminderSentence(
+                    parts = sentence,
+                    today = today,
+                    defaultTime = defaultTime,
+                    modifier = Modifier.padding(bottom = Tokens.spacing.sm),
+                )
+            }
             Button(
                 onClick = onSave,
                 enabled = enabled,

@@ -26,6 +26,24 @@ import dev.rwilco.ui.theme.AMBER_ARGB
 import java.time.Instant
 
 /**
+ * How many alerts the bundle actually has: what the system lists, plus or minus the one this
+ * call has just posted or cancelled.
+ *
+ * The system's list is what it has got round to. A cancel is handed to a thread of its own and
+ * is not done when the call returns, so asking straight afterwards can still be told about the
+ * notification on its way out — and the summary posted for it then stayed in the shade on its
+ * own, an empty line reading "1 recordatorio" over nothing, to be swiped away by hand. The id
+ * this call is about is therefore counted from what we did, never from what the list says
+ * about it.
+ */
+internal fun bundleChildren(listed: List<Int>, posted: Int?, cancelled: Int?): Int {
+    val ids = listed.toMutableSet()
+    if (cancelled != null) ids -= cancelled
+    if (posted != null) ids += posted
+    return ids.size
+}
+
+/**
  * The notification a firing leaves behind, and the channels it needs.
  *
  * A channel's sound and vibration are fixed the moment it is created and can never be changed
@@ -158,14 +176,14 @@ object AlertNotifications {
         if (plan.insistent && late == null) builder.setOngoing(true)
         runCatching {
             NotificationManagerCompat.from(context).notify(notificationId(reminder.id), builder.build())
-            syncSummary(context)
+            syncSummary(context, posted = notificationId(reminder.id))
         }
     }
 
     fun cancel(context: Context, reminderId: String) {
         runCatching {
             NotificationManagerCompat.from(context).cancel(notificationId(reminderId))
-            syncSummary(context)
+            syncSummary(context, cancelled = notificationId(reminderId))
         }
     }
 
@@ -181,11 +199,13 @@ object AlertNotifications {
      * A single child under a summary is not a problem to solve either: Android draws that group
      * as the child alone. So the rule is the simple one — say how many there are while there are
      * any — and the count comes from what is actually posted, since a notification can go by
-     * being swiped as well as by [cancel].
+     * being swiped as well as by [cancel], corrected for the one this call has just changed
+     * ([bundleChildren]).
      */
-    private fun syncSummary(context: Context) {
+    private fun syncSummary(context: Context, posted: Int? = null, cancelled: Int? = null) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
-        val children = manager.activeNotifications.count { it.id != SUMMARY_ID && it.notification.group == BUNDLE }
+        val listed = manager.activeNotifications.filter { it.id != SUMMARY_ID && it.notification.group == BUNDLE }.map { it.id }
+        val children = bundleChildren(listed, posted, cancelled)
         if (children == 0) {
             NotificationManagerCompat.from(context).cancel(SUMMARY_ID)
             return

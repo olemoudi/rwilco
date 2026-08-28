@@ -37,6 +37,7 @@ import dev.rwilco.notify.AlertPresenter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -163,12 +164,8 @@ class ReminderFiring(
         Log.i(TAG, "firing $id${if (late != null) " (late)" else ""}")
         // Everything the showing needs is read BEFORE the moment is spent. A settings read
         // that failed between markFired and the notification spent a moment nothing ever
-        // showed — and missedFire could never tell, because the row said it had rung. The
-        // defaults are a fine way to ring; a swallowed exception is not.
-        val settings = runCatching { settingsStore.settings.first() }.getOrElse {
-            Log.e(TAG, "settings would not read; ringing with the defaults", it)
-            AppSettings()
-        }
+        // showed — and missedFire could never tell, because the row said it had rung.
+        val settings = settings()
         val plan = firingPlan(reminder.actions)
         // Recorded against the moment it rang FOR, not the millisecond the alarm arrived. See
         // momentRungFor: a place is the one firing that must not reach for the armed moment,
@@ -208,7 +205,7 @@ class ReminderFiring(
         if (dealt != null && !dealt.isBefore(rangAt)) return@withLock
         val snoozed = reminder.snoozedUntil
         if (snoozed != null && snoozed > now) return@withLock
-        val settings = settingsStore.settings.first()
+        val settings = settings()
         val plan = firingPlan(reminder.actions)
         if (!plan.insistent) return@withLock
         Log.i(TAG, "$id has not been dealt with; play ${played + 1} of ${settings.soundPlays}")
@@ -302,7 +299,7 @@ class ReminderFiring(
         AlertNotifications.cancel(context, id)
         val reminder = repository.get(id) ?: return@withLock
         val now = clock.instant()
-        val settings = settingsStore.settings.first()
+        val settings = settings()
         val status = statusAfterDismissal(reminder, now, clock.zone, settings.defaultTime, settings.dayShape)
         repository.snooze(id, null)
         // A round dealt with is a round over: what had already happened stops counting.
@@ -314,16 +311,53 @@ class ReminderFiring(
         scheduler.rearmAll()
     }
 
+    /**
+     * "Posponer": it rings again then, and not at its own moment until it has.
+     *
+     * **The row is written before the notification comes down.** The other way round, anything
+     * that went wrong in between — a settings read that would not answer was the one that could
+     * — left the alert gone from the shade and the snooze never written: the reminder went back
+     * to counting down to its own next moment, a fortnight off, as if nobody had answered it at
+     * all. An alert still in the shade is an answer somebody can give again; a silent reminder
+     * that ignored the answer is not.
+     */
     suspend fun snooze(id: String, snooze: Snooze) = lock.withLock {
-        Diag.note(TAG_DIAG, "r=${short(id)} snoozed ($snooze)")
+        // A notification outlives the row it was posted for (see [dismiss]), and "Posponer" on
+        // one of those has nothing to write — but it still has a card to take down.
+        if (repository.get(id) == null) {
+            repeater.cancel(id)
+            AlertNotifications.cancel(context, id)
+            return@withLock
+        }
+        val now = clock.instant()
+        val settings = settings()
+        val until = snooze.until(now, clock.zone, settings.weekendDay, settings.weekendTime)
+        repository.snooze(id, until)
+        Diag.note(TAG_DIAG, "r=${short(id)} snoozed ($snooze) until $until")
         repeater.cancel(id)
         AlertNotifications.cancel(context, id)
-        if (repository.get(id) == null) return@withLock
-        val now = clock.instant()
-        val settings = settingsStore.settings.first()
-        repository.snooze(id, snooze.until(now, clock.zone, settings.weekendDay, settings.weekendTime))
         scheduler.rearmAll()
     }
+
+    /**
+     * The settings, or the defaults if they will not read.
+     *
+     * Every answer this class gives needs them for something, and none of them is worth losing
+     * over it: a swallowed exception here used to take the whole answer with it — the "hecho"
+     * that never marked anything done, the "posponer" that only took the notification down.
+     * The defaults are a fine way to ring, to postpone and to finish.
+     *
+     * Bounded as well as caught, because most of this runs inside a broadcast that the system
+     * gives about ten seconds to: a read off the disk that will not come back would run that
+     * clock out and take the answer with it, and a store that slow has nothing to say that is
+     * worth a lost "posponer".
+     */
+    private suspend fun settings(): AppSettings = runCatching {
+        withTimeoutOrNull(SETTINGS_TIMEOUT_MS) { settingsStore.settings.first() }
+    }.getOrElse {
+        Log.e(TAG, "settings would not read", it)
+        null
+    } ?: AppSettings().also { Log.w(TAG, "going with the default settings") }
 
     /**
      * Re-arms everything and speaks up about what was missed while the phone was off. Used at
@@ -332,7 +366,7 @@ class ReminderFiring(
      */
     suspend fun rearmAndCatchUp() {
         val missed = scheduler.rearmAll()
-        val settings = settingsStore.settings.first()
+        val settings = settings()
         for (reminder in missed) {
             val at = missedFire(reminder, clock.instant()) ?: continue
             // The rule the moment belonged to, or the whole thing is recorded against the wrong one.
@@ -371,5 +405,11 @@ class ReminderFiring(
 
         /** Alarms arrive late, never early — but a few seconds of slack costs nothing. */
         const val EARLY_GRACE_SECONDS = 5L
+
+        /**
+         * Long enough for a cold process to read its own settings off the disk, short enough to
+         * be well inside the window a broadcast has to answer in.
+         */
+        const val SETTINGS_TIMEOUT_MS = 5_000L
     }
 }
