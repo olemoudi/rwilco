@@ -90,6 +90,12 @@ class SettingsInsistentToneTest {
         rule.waitUntil(timeoutMillis = 10_000) {
             rule.onAllNodesWithText(s(R.string.settings_sound_custom), useUnmergedTree = true).fetchSemanticsNodes().size >= 2
         }
+        // And its own "oírlo en continuo": a full-screen alert for a reminder that keeps asking
+        // rings this tone round and round, so it is the one that most needs hearing that way.
+        check(rule.onAllNodesWithText(s(R.string.settings_sound_loop), useUnmergedTree = true).fetchSemanticsNodes().size >= 2) {
+            "the insistent tone should offer the continuous preview too"
+        }
+        rule.onNodeWithText(s(R.string.settings_sound_two_tones), useUnmergedTree = true).performScrollTo()
         shot("settings-insistent-tone-on")
     }
 

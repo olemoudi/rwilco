@@ -81,14 +81,22 @@ fun SoundCard(
     DisposableEffect(preview) { onDispose { preview.stop() } }
     // Which preview is playing, if any: every button here is its own "parar" while it runs.
     var playing by remember { mutableStateOf<PreviewMode?>(null) }
-    val listen: (PreviewMode) -> Unit = { mode ->
+    // And which of the two tones it is playing, because the same continuous preview is offered
+    // for both and only the button that started one may say "parar".
+    var playingInsistent by remember { mutableStateOf(false) }
+    // The tone the reminders that keep asking actually use, which is the one above until
+    // somebody draws the distinction (AppSettings.soundFor).
+    val insistentTone = insistentSound ?: sound
+    val listen: (PreviewMode, Boolean) -> Unit = { mode, insistent ->
         if (playing != null) {
             preview.stop()
         } else {
+            val tone = if (insistent) insistentTone else sound
+            playingInsistent = insistent
             when (mode) {
-                PreviewMode.ONCE -> preview.play(sound, toHeadphones) { playing = it }
-                PreviewMode.LOOPING -> preview.playLooping(sound, toHeadphones) { playing = it }
-                PreviewMode.ROUND -> preview.playRound(sound, plays, REHEARSAL_GAP_MS, toHeadphones) { playing = it }
+                PreviewMode.ONCE -> preview.play(tone, toHeadphones) { playing = it }
+                PreviewMode.LOOPING -> preview.playLooping(tone, toHeadphones) { playing = it }
+                PreviewMode.ROUND -> preview.playRound(tone, plays, REHEARSAL_GAP_MS, toHeadphones) { playing = it }
             }
         }
     }
@@ -114,7 +122,7 @@ fun SoundCard(
             AlarmVolume()
             Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm), modifier = Modifier.fillMaxWidth()) {
                 OutlinedButton(
-                    onClick = { listen(PreviewMode.ONCE) },
+                    onClick = { listen(PreviewMode.ONCE, false) },
                     modifier = Modifier.weight(1f).heightIn(min = Tokens.sizes.touch),
                 ) {
                     Icon(if (playing != null) Icons.Outlined.Stop else Icons.Outlined.PlayArrow, contentDescription = null)
@@ -133,13 +141,14 @@ fun SoundCard(
             // What a full-screen reminder sounds like: the same tone, round and round until
             // somebody answers it. Half a minute of it here is more than anybody needs.
             Column {
+                val looping = playing == PreviewMode.LOOPING && !playingInsistent
                 OutlinedButton(
-                    onClick = { listen(PreviewMode.LOOPING) },
+                    onClick = { listen(PreviewMode.LOOPING, false) },
                     modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.sizes.touch),
                 ) {
-                    Icon(if (playing == PreviewMode.LOOPING) Icons.Outlined.Stop else Icons.Outlined.Loop, contentDescription = null)
+                    Icon(if (looping) Icons.Outlined.Stop else Icons.Outlined.Loop, contentDescription = null)
                     Spacer(Modifier.width(spacing.sm))
-                    Text(stringResource(if (playing == PreviewMode.LOOPING) R.string.settings_sound_stop else R.string.settings_sound_loop))
+                    Text(stringResource(if (looping) R.string.settings_sound_stop else R.string.settings_sound_loop))
                 }
                 Spacer(Modifier.height(spacing.xs))
                 Text(
@@ -187,6 +196,22 @@ fun SoundCard(
                         Spacer(Modifier.width(spacing.sm))
                         Text(stringResource(R.string.settings_sound_custom))
                     }
+                    // And heard in continuo, like the one above. This tone is not only what the
+                    // round repeats: a full-screen alert carrying a reminder that keeps asking
+                    // rings THIS one, round and round (AppSettings.soundFor), so it is the half
+                    // of the choice that most needs hearing that way. A chip plays itself once
+                    // when it is tapped, which is why only this button is here, and there is no
+                    // second copy of the hint above: it would say the same thing twice.
+                    Spacer(Modifier.height(spacing.sm))
+                    val loopingInsistent = playing == PreviewMode.LOOPING && playingInsistent
+                    OutlinedButton(
+                        onClick = { listen(PreviewMode.LOOPING, true) },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.sizes.touch),
+                    ) {
+                        Icon(if (loopingInsistent) Icons.Outlined.Stop else Icons.Outlined.Loop, contentDescription = null)
+                        Spacer(Modifier.width(spacing.sm))
+                        Text(stringResource(if (loopingInsistent) R.string.settings_sound_stop else R.string.settings_sound_loop))
+                    }
                 }
             }
             // The two numbers are the other half of it, and they stay behind the fold: they
@@ -222,7 +247,7 @@ fun SoundCard(
                 // this plays the round with them shortened, and says so underneath.
                 Column {
                     OutlinedButton(
-                        onClick = { listen(PreviewMode.ROUND) },
+                        onClick = { listen(PreviewMode.ROUND, true) },
                         modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.sizes.touch),
                     ) {
                         Icon(if (playing == PreviewMode.ROUND) Icons.Outlined.Stop else Icons.Outlined.Repeat, contentDescription = null)
