@@ -154,36 +154,45 @@ fun SoundCard(
                 checked = toHeadphones,
                 onCheckedChange = onToHeadphones,
             )
-            // The two numbers only mean anything to a reminder that asks for the insistent
-            // sound, so they only appear once something does.
-            if (insistentInUse) {
-                // A tone you are going to hear five times is a different choice from one you
-                // hear once. Off, there is no distinction and both use the one above.
-                SettingSwitchRow(
-                    title = stringResource(R.string.settings_sound_two_tones),
-                    info = stringResource(R.string.settings_sound_two_tones_hint),
-                    checked = insistentSound != null,
-                    // Turning it on starts from what is already chosen, so the switch by itself
-                    // never changes what anything sounds like.
-                    onCheckedChange = { on -> onInsistentSound(if (on) sound else null) },
-                )
-                if (insistentSound != null) {
-                    Column {
-                        SoundChips(
-                            sound = insistentSound,
-                            onPick = { onInsistentSound(it); preview.play(it, toHeadphones) { p -> playing = p } },
-                        )
-                        Spacer(Modifier.height(spacing.sm))
-                        OutlinedButton(
-                            onClick = { pickInsistent.launch(AUDIO_TYPES) },
-                            modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.sizes.touch),
-                        ) {
-                            Icon(Icons.Outlined.LibraryMusic, contentDescription = null)
-                            Spacer(Modifier.width(spacing.sm))
-                            Text(stringResource(R.string.settings_sound_custom))
-                        }
+            // A tone you are going to hear five times is a different choice from one you hear
+            // once. Off, there is no distinction and both use the one above.
+            //
+            // **Always here**, unlike the two numbers below. It used to be inside their fold,
+            // which made it a setting nobody could find: with nothing yet asking for the
+            // insistent sound the whole row was missing, so somebody who went to Settings to
+            // choose that tone found no such choice — and a preference that only appears once
+            // you have already written the reminder is, to anybody looking for it, a
+            // preference the app does not offer. What a thing sounds like is answered here,
+            // like every other tone on this card, whether or not anything is asking yet.
+            SettingSwitchRow(
+                title = stringResource(R.string.settings_sound_two_tones),
+                info = stringResource(R.string.settings_sound_two_tones_hint),
+                checked = insistentSound != null,
+                // Turning it on starts from what is already chosen, so the switch by itself
+                // never changes what anything sounds like.
+                onCheckedChange = { on -> onInsistentSound(if (on) sound else null) },
+            )
+            if (insistentSound != null) {
+                Column {
+                    SoundChips(
+                        sound = insistentSound,
+                        onPick = { onInsistentSound(it); preview.play(it, toHeadphones) { p -> playing = p } },
+                    )
+                    Spacer(Modifier.height(spacing.sm))
+                    OutlinedButton(
+                        onClick = { pickInsistent.launch(AUDIO_TYPES) },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.sizes.touch),
+                    ) {
+                        Icon(Icons.Outlined.LibraryMusic, contentDescription = null)
+                        Spacer(Modifier.width(spacing.sm))
+                        Text(stringResource(R.string.settings_sound_custom))
                     }
                 }
+            }
+            // The two numbers are the other half of it, and they stay behind the fold: they
+            // describe a round — how many times it comes back, and how far apart — and that
+            // only means anything to a reminder that has asked for one.
+            if (insistentInUse) {
                 Column {
                     SettingTitle(
                         title = stringResource(R.string.settings_sound_plays),

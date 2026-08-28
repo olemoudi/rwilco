@@ -70,12 +70,13 @@ class SettingsTourTest {
                 lastSeenVersionCode = BuildConfig.VERSION_CODE,
                 theme = ThemeMode.DARK,
                 // The two tones, already told apart: the switch itself is a switch, and what is
-                // worth a picture is the second row it brings with it.
+                // worth a picture is the second row of chimes it brings with it.
                 insistentSound = AlertSound.Bundled(Chime.ALERT),
             )
         }
-        // The sound card only offers the insistent settings once something actually asks for
-        // them, so the screen it is being photographed on has to have one.
+        // The tone is offered whether or not anything is asking (SettingsInsistentToneTest);
+        // the round's two numbers are not, so the screen being photographed here has to have a
+        // reminder that asks for that sound.
         DemoData.seed(app.repository, app.clock)
     }
 
@@ -115,7 +116,7 @@ class SettingsTourTest {
         shot("settings-index-again")
 
         // The two tones: one for the reminders that say it once and one for the ones that keep
-        // asking, which only offers itself while something is asking.
+        // asking, with the round's numbers under them because this phone has such a reminder.
         rule.onNodeWithText(s(R.string.settings_sound_title), useUnmergedTree = true).performScrollTo().performClick()
         rule.waitUntilShown(s(R.string.settings_sound_two_tones))
         // Two of everything is how you know the second row is there: the label it adds is the

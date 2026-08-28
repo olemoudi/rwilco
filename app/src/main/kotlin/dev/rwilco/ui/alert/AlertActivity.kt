@@ -22,6 +22,7 @@ import dev.rwilco.alarm.ReminderScheduler
 import dev.rwilco.model.AlertStacking
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Snooze
+import dev.rwilco.model.VibrationLimits
 import dev.rwilco.model.awaitingAnswer
 import dev.rwilco.model.firingPlan
 import dev.rwilco.model.soundFor
@@ -102,10 +103,16 @@ class AlertActivity : ComponentActivity() {
             }
             // An alarm that rings for ever is one nobody leaves the house with. The alert stays
             // up; the noise gives up, exactly as an alarm clock does — and so does the hold on
-            // the screen. Nobody answered in two minutes because nobody is here, and a screen
-            // lit at full brightness until somebody comes home costs more battery than
-            // everything else in this app put together. The alert is still on it when they do,
-            // and the notification is still in the shade either way.
+            // the screen. Nobody answered in a minute because nobody is here, and a screen lit
+            // at full brightness until somebody comes home costs more battery than everything
+            // else in this app put together. The alert is still on it when they do, and the
+            // notification is still in the shade either way.
+            //
+            // **The noise stops when the buzz does** ([VibrationLimits.LONGEST]). The two are
+            // one alarm and they used to end at different times — the motor at its minute, the
+            // looping tone a minute later — so the last half of it was a sound with nothing
+            // under it. A minute is what the vibration's own limit was argued down to, and a
+            // ring that has gone round for one has made the same point.
             LaunchedEffect(ringEpoch) {
                 delay(RING_TIMEOUT_MS)
                 ringer.stop()
@@ -213,7 +220,8 @@ class AlertActivity : ComponentActivity() {
     }
 
     private companion object {
-        const val RING_TIMEOUT_MS = 2 * 60 * 1000L
+        /** As long as the buzz beside it, and no longer: see the LaunchedEffect above. */
+        val RING_TIMEOUT_MS = VibrationLimits.LONGEST.toMillis()
         const val STATE_RINGING = "ringing"
         const val STATE_RULES = "rules"
     }

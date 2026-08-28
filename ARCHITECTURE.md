@@ -659,15 +659,23 @@ strict is asking somebody to remember how they spelled it.
   that turns it on starts from whatever is already chosen, for the same reason. The alert screen
   can be carrying several reminders at once and takes the insistent tone if any of them asks for
   it. The channel id already carries the tone, so a second one is simply a second channel.
+  **The choice is offered whether or not anything is asking for it yet**: the switch sat inside
+  the fold that hides the round's two numbers (how many times, how far apart — those do only
+  mean something to a reminder that has asked for one, and they stay there), so with nothing
+  insistent written yet the row was simply absent, and somebody who went to Settings to choose
+  that tone found no such setting. A preference that appears only after you have written the
+  reminder is, to anybody looking for it, a preference the app does not have.
 - `AlertNotifications` has one channel per sound/vibration combination, because a channel's
   sound is fixed the moment it is created — which is also how the vibration setting reaches a
   notification: the chosen rhythm is part of the channel id, so changing it means a different
   channel rather than an edit Android would ignore. Only the rhythm; a channel's pattern is
   durations and nothing else, with no way to say how hard, so a gentle notification and a strong
   one are the same notification. A full-screen alert's notification stays silent: the
-  screen does its own ring (`AlertRinger`) and gives up after two minutes — and so does
-  its hold on the screen (`FLAG_KEEP_SCREEN_ON` is cleared with the noise). Nobody answered in
-  two minutes because nobody is there, and a display lit at full brightness until somebody comes
+  screen does its own ring (`AlertRinger`) and gives up **when the buzz does** — one minute,
+  `VibrationLimits.LONGEST` — and so does its hold on the screen (`FLAG_KEEP_SCREEN_ON` is
+  cleared with the noise). The two are one alarm, and they used to end a minute apart: the motor
+  stopped at its limit and the looping tone went on alone. Nobody answered in
+  a minute because nobody is there, and a display lit at full brightness until somebody comes
   home costs more battery than everything else in this app together. The alert is still on the
   screen when they do, and the notification is still in the shade either way.
 - **Where the sound comes out, and what it does to the rest** (`AlertAudio`): the alarm stream
@@ -733,7 +741,7 @@ strict is asking somebody to remember how they spelled it.
   instant the first is answered, with "N más esperando" over the words) or as strips
   (`AlertStackScreen`, each with its own "Hecho"). Every reminder on the screen is watched in
   the database and leaves when it stops being `awaitingAnswer` (pure, `Firing.kt`) — so
-  "Hecho" from the shade takes it down here too — and the ring's two-minute budget starts
+  "Hecho" from the shade takes it down here too — and the ring's minute starts
   over for each arrival.
 - `GeofenceManager` registers the place rules with Play Services, wholesale, and re-registers on
   boot and from `RearmWorker` (a reboot or a Play Services update drops them all). That is the
