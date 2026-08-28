@@ -108,9 +108,6 @@ import java.util.Locale
 /** Lets the instrumented tour find the text field; a BasicTextField has no other handle. */
 const val EDITOR_TEXT_TAG = "editorText"
 
-/** The safety net's switch: a Switch beside a label has nothing else to be found by. */
-const val EDITOR_NET_TAG = "editorSafetyNet"
-
 /**
  * What this screen is writing: a reminder, or the shape of one kept under a name. The words
  * become the preset's name, and everything under here — the tags, the when, the what happens —
@@ -688,57 +685,31 @@ private fun TriggerEditRow(
 }
 
 /**
- * The safety net, asked for on the card about what happens — because this is the one thing the
- * app does when everything on that card has already happened and nothing came of it.
+ * What the safety net comes to for *this* reminder, at the foot of the form.
  *
- * The line under it is this reminder's own number rather than the rule in the abstract: "un
- * aviso discreto 2 h 24 min después" is something somebody can agree or disagree with, and
- * "una décima parte de la cadencia" is not. Where the rings are too close together to leave
- * room for a net, the switch says so and does not pretend to be available.
+ * It used to be a switch, and a switch about the wrong thing: which of your reminders is going
+ * to be the one that gets away is exactly what nobody can answer in advance. So the net holds
+ * for everything and there is nothing left to ask — but there is something worth saying, and
+ * this is it. "Un aviso discreto 2 h 24 min después" is a number somebody can agree or disagree
+ * with; "una décima parte de la cadencia" is a rule somebody has to work out. Where the rings
+ * are too close together for a net to fit between them, it says that instead.
+ *
+ * At the end, under the last card and not inside one: it is not part of any of the four answers
+ * above it, it is what happens if none of them lands.
  */
 @Composable
-internal fun SafetyNetRow(
-    on: Boolean,
-    cadence: java.time.Duration?,
-    settings: SafetyNetSettings,
-    onToggle: (Boolean) -> Unit,
-) {
-    val haptics = Tokens.haptics
-    val scheme = MaterialTheme.colorScheme
+internal fun SafetyNetNote(cadence: java.time.Duration?, settings: SafetyNetSettings) {
     val tooFast = tooFastForNet(cadence, settings)
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.editor_net_title),
-                style = MaterialTheme.typography.titleSmall,
-                color = if (tooFast) scheme.onSurfaceVariant else scheme.onSurface,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = if (tooFast && cadence != null) {
-                    stringResource(R.string.editor_net_too_fast, durationText(cadence.toMinutes().toInt()))
-                } else {
-                    stringResource(R.string.editor_net_hint, durationText(netWait(cadence, settings).toMinutes().toInt()))
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = scheme.onSurfaceVariant,
-            )
-        }
-        Spacer(Modifier.width(Tokens.spacing.md))
-        Switch(
-            checked = on,
-            enabled = !tooFast,
-            modifier = Modifier.testTag(EDITOR_NET_TAG),
-            onCheckedChange = { want ->
-                if (want) haptics.perform(HapticFeedbackType.ToggleOn) else haptics.perform(HapticFeedbackType.ToggleOff)
-                onToggle(want)
-            },
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = scheme.surface,
-                checkedTrackColor = scheme.onSurface,
-            ),
-        )
-    }
+    Text(
+        text = if (tooFast && cadence != null) {
+            stringResource(R.string.editor_net_too_fast, durationText(cadence.toMinutes().toInt()))
+        } else {
+            stringResource(R.string.editor_net_note, durationText(netWait(cadence, settings).toMinutes().toInt()))
+        },
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = Tokens.spacing.lg),
+    )
 }
 
 @OptIn(ExperimentalLayoutApi::class)

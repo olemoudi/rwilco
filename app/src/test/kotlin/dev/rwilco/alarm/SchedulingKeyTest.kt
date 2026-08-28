@@ -73,14 +73,6 @@ class SchedulingKeyTest {
     }
 
     @Test
-    fun `asking for the safety net is asking for an alarm`() {
-        // The net keeps an alarm of its own, so turning it on has to reach the scheduler — and
-        // it is an edit like any other, which is what this key is for.
-        val timed = note.copy(rules = listOf(TriggerRule(Trigger.AtDateTime(LocalDateTime.of(2026, 8, 28, 9, 0)))))
-        assertNotEquals(key(timed), key(timed.copy(safetyNet = true)))
-    }
-
-    @Test
     fun `what the scheduler writes back is not in it, or nothing would ever settle`() {
         val timed = note.copy(rules = listOf(TriggerRule(Trigger.AtDateTime(LocalDateTime.of(2026, 8, 28, 9, 0)))))
 

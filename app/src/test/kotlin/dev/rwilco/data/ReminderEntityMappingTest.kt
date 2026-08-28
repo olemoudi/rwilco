@@ -71,25 +71,24 @@ class ReminderEntityMappingTest {
     }
 
     @Test
-    fun `the safety net survives the trip, and a row written before it reads as off`() {
+    fun `what the safety net writes down survives the trip`() {
         val watched = reminder.copy(
-            safetyNet = true,
             lastFiredAt = Instant.ofEpochMilli(1_700_000_000_000),
             nudgedAt = Instant.ofEpochMilli(1_700_086_400_000),
         )
         val row = watched.toEntity()
-        assertEquals(true, row.safetyNet)
         assertEquals(1_700_086_400_000, row.nudgedAt)
         assertEquals(watched, row.toDomain())
-        // Room v6 added both columns with a default that says what every older row meant: the
-        // net is a thing you ask for, and nothing written before it existed ever did.
-        assertEquals(false, row.copy(safetyNet = false, nudgedAt = null).toDomain().safetyNet)
-        // And Room v7's own column: a moment dealt with before it could ring.
+        assertEquals(null, row.copy(nudgedAt = null).toDomain().nudgedAt)
+        // Room v7's own column: a moment dealt with before it could ring.
         val ahead = watched.copy(dealtThrough = Instant.ofEpochMilli(1_700_172_800_000))
         assertEquals(1_700_172_800_000, ahead.toEntity().dealtThrough)
         assertEquals(ahead, ahead.toEntity().toDomain())
         assertEquals(null, row.copy(dealtThrough = null).toDomain().dealtThrough)
-        assertEquals(null, row.copy(safetyNet = false, nudgedAt = null).toDomain().nudgedAt)
+        // The column the switch used to write is still on disk — it is the vault's wire format
+        // too — and says nothing to anybody now: the net holds for every reminder.
+        assertEquals(false, row.safetyNet, "nothing writes anything else any more")
+        assertEquals(watched, row.copy(safetyNet = true).toDomain(), "and nothing reads it")
     }
 
     @Test

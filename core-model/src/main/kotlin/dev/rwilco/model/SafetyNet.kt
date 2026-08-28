@@ -17,12 +17,20 @@ import java.time.ZoneId
  * sitting in "vencidos" saying nothing, for ever, and the app that took the trouble to work all
  * that out says nothing either.
  *
- * One switch for both, because they are one question — *avísame si esto se me escapa* — and
- * asking it twice would be asking somebody to know in advance which way it was going to escape.
+ * One net for both, because they are one question — *avísame si esto se me escapa* — and asking
+ * it twice would be asking somebody to know in advance which way it was going to escape.
  *
- * **It is asked for, per reminder** ([Reminder.safetyNet]), and it fires **once** per firing
- * nobody answered ([Reminder.nudgedAt]) — a net that keeps nagging is an alarm again, which is
- * exactly the thing somebody chose to let go of.
+ * **And it is not asked for at all.** It began as a switch on each reminder, which was a switch
+ * about the one thing nobody can predict: which of your reminders is going to be the one that
+ * gets away. Anybody who could answer that in advance would not need the net. So it holds for
+ * everything, and what is left to decide is only how long it waits — three numbers in Settings,
+ * answered once. The editor says what they come to for the reminder being written, which is the
+ * only place that answer means anything concrete.
+ *
+ * It speaks **once** per moment ([Reminder.nudgedAt]) — a net that keeps nagging is an alarm
+ * again, which is exactly the thing somebody chose to let go of. And it speaks **at any hour**:
+ * a silent notification on a low channel wakes nobody, so holding it back until morning would
+ * only make it later without making it quieter.
  *
  * **What it waits for depends on whether the reminder is coming back:**
  *
@@ -190,7 +198,7 @@ fun Reminder.netDue(
     dayStart: LocalTime = DEFAULT_DAY_START,
     shape: DayShape = DayShape.DEFAULT,
 ): NetDue? {
-    if (!safetyNet || status != Status.ACTIVE) return null
+    if (status != Status.ACTIVE) return null
     val about: Instant
     val word: NetWord
     when {

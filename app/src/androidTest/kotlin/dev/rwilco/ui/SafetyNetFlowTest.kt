@@ -4,9 +4,7 @@ import android.graphics.Bitmap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -23,7 +21,6 @@ import dev.rwilco.model.Reminder
 import dev.rwilco.model.ThemeMode
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
-import dev.rwilco.ui.editor.EDITOR_NET_TAG
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Rule
@@ -34,11 +31,12 @@ import java.time.LocalDate
 import java.util.UUID
 
 /**
- * The safety net, from the switch to the mark on the card.
+ * What the safety net says for the reminder being written, and where it says it.
  *
- * A device test because every part of it is a screen: that the switch is where somebody would
- * look for it, that it says this reminder's own wait rather than the rule in the abstract, and
- * that a card carrying a net says so at a glance.
+ * There is nothing to switch on any more — the net holds for everything — so what is left on
+ * the form is one line at the foot of it, saying what the numbers in Settings come to for *this*
+ * reminder. A device test because that is the whole of it: a line in the right place, with this
+ * reminder's own number in it.
  */
 @RunWith(AndroidJUnit4::class)
 class SafetyNetFlowTest {
@@ -78,32 +76,20 @@ class SafetyNetFlowTest {
     }
 
     @Test
-    fun theNetIsAskedForOnTheReminderAndSaidOnItsCard() {
+    fun theFormSaysWhatTheNetComesToForThisReminder() {
         rule.waitUntilShown(words)
-        // Nothing wears the mark until somebody asks for one.
-        check(rule.onAllNodesWithText(words, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
-        rule.onAllNodesWithContentDescription(s(R.string.card_safety_net)).assertCountEquals(0)
-
         rule.onNodeWithText(words).performClick()
-        rule.waitUntilShown(s(R.string.editor_net_title))
-        rule.onNodeWithText(s(R.string.editor_net_title), useUnmergedTree = true).performScrollTo().assertIsDisplayed()
-        // A tenth of six hours, said in this reminder's own numbers rather than as the rule.
-        // Matched on the number alone: "36 min" is the same in both languages, and which one
-        // this device is in depends on what ran before it.
-        check(rule.onAllNodesWithText("36 min", substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()) {
-            "the row should say a tenth of six hours"
+        // At the foot of the form, under the last card: it is not one of the four answers, it
+        // is what happens if none of them lands.
+        rule.waitUntilShown(s(R.string.editor_what_title))
+        // A tenth of six hours, in this reminder's own numbers rather than as the rule. Matched
+        // on the number alone: "36 min" is the same in both languages, and which one this device
+        // is in depends on what ran before it.
+        rule.waitUntil(timeoutMillis = 10_000) {
+            rule.onAllNodesWithText("36 min", substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
         }
+        rule.onNodeWithText("36 min", substring = true, useUnmergedTree = true).performScrollTo().assertIsDisplayed()
         shot("editor-safety-net")
-
-        rule.onNodeWithTag(EDITOR_NET_TAG).performScrollTo().performClick()
-        rule.onNodeWithText(s(R.string.common_save)).performClick()
-
-        rule.waitUntilShown(words)
-        rule.onNodeWithContentDescription(s(R.string.card_safety_net), useUnmergedTree = true).assertIsDisplayed()
-        shot("home-safety-net-mark")
-        runBlocking {
-            check(app.repository.allNow().single().safetyNet) { "the switch should have reached the row" }
-        }
     }
 
     @Test

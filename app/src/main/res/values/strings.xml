@@ -477,7 +477,6 @@
     <string name="editor_match_all_hint">All of them have to happen; the last one rings it.</string>
     <string name="card_match_all">all of them</string>
     <string name="card_recurrence">Repeats</string>
-    <string name="card_safety_net">Safety net on</string>
     <string name="card_snoozed">Put off</string>
     <string name="card_recurrence_from_done">from when you mark it done</string>
     <string name="card_rule_happened">Already happened</string>
@@ -490,8 +489,7 @@
     <string name="home_section_no_trigger">Kept, not timed</string>
     <string name="editor_when_optional">optional</string>
     <string name="editor_what_optional">optional</string>
-    <string name="editor_net_title">Safety net</string>
-    <string name="editor_net_hint">If it rings and you let it go — or if its moment passes without it ringing at all — one quiet word about it %1$s later.</string>
+    <string name="editor_net_note">If it rings and you let it go — or if its moment passes without it ringing at all — one quiet word about it %1$s later.</string>
     <string name="editor_net_too_fast">It comes back every %1$s — too often for a net, since the next ring gets there first.</string>
     <string name="editor_when_empty">Nothing rings it: it is simply kept, under its tags.</string>
     <string name="editor_what_empty">The moment passes in silence.</string>
@@ -692,7 +690,6 @@
     <!-- The two chips the app keeps for itself, at the end of the tag row. -->
     <string name="home_tag_untagged">No tag</string>
     <string name="home_tag_paused">Paused</string>
-    <string name="home_tag_safety_net">With a net</string>
 
     <!-- What a reminder feels like. -->
     <string name="settings_vibration_strength">Vibration</string>

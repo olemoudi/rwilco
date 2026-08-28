@@ -22,7 +22,6 @@ class SafetyNetTest {
     private fun reminder(
         vararg rules: TriggerRule,
         recurrence: Recurrence = Recurrence.None,
-        safetyNet: Boolean = true,
         lastFiredAt: Instant? = null,
         lastDealtAt: Instant? = null,
         nudgedAt: Instant? = null,
@@ -39,7 +38,6 @@ class SafetyNetTest {
         snoozedUntil = snoozedUntil,
         lastFiredAt = lastFiredAt,
         lastDealtAt = lastDealtAt,
-        safetyNet = safetyNet,
         nudgedAt = nudgedAt,
     )
 
@@ -169,7 +167,6 @@ class SafetyNetTest {
         val missed = reminder(
             TriggerRule(Trigger.AtDateTime(thursday.atTime(9, 0)), listOf(home)),
         ).copy(createdAt = local(2026, 8, 26, 12, 0), updatedAt = local(2026, 8, 26, 12, 0))
-        assertNull(missed.copy(safetyNet = false).netDue(now, zone, defaultTime, settings))
         assertNull(missed.copy(lastDealtAt = now).netDue(now, zone, defaultTime, settings), "dealt with")
         assertNull(missed.copy(status = Status.PAUSED).netDue(now, zone, defaultTime, settings))
         assertNull(missed.copy(snoozedUntil = now.plusSeconds(3600)).netDue(now, zone, defaultTime, settings))
@@ -183,7 +180,6 @@ class SafetyNetTest {
     fun `every answer there is takes the net down`() {
         val rang = local(2026, 8, 27, 9, 0)
         val once = reminder(TriggerRule(Trigger.AtDateTime(LocalDate.of(2026, 8, 27).atTime(9, 0))), lastFiredAt = rang)
-        assertNull(once.copy(safetyNet = false).due(), "not asked for")
         // Never having rung is not an answer — it is the other way one gets away, and the net
         // says so in its own words.
         assertEquals(

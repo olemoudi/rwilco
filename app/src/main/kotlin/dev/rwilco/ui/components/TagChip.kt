@@ -42,10 +42,6 @@ fun TagChip(
     modifier: Modifier = Modifier,
     tint: Color? = null,
     enabled: Boolean = true,
-    /** A glyph before the word, for a chip the app keeps for itself and wants recognised. */
-    leadingIcon: ImageVector? = null,
-    /** What that glyph is drawn in while the chip is not selected; the label's colour by default. */
-    leadingIconTint: Color? = null,
     /** The second thing this chip can do, on a held finger; null when it does only one. */
     onHold: (() -> Unit)? = null,
     holdIcon: ImageVector = Icons.Outlined.Edit,
@@ -63,15 +59,6 @@ fun TagChip(
         // The chip keeps its own click; a hold that has just completed stands it down.
         onClick = { if (!hold.held) tap() },
         label = { Text(label, style = MaterialTheme.typography.labelLarge) },
-        leadingIcon = leadingIcon?.let {
-            {
-                Icon(
-                    imageVector = it,
-                    contentDescription = null,
-                    modifier = Modifier.size(FilterChipDefaults.IconSize),
-                )
-            }
-        },
         enabled = enabled,
         shape = MaterialTheme.shapes.small,
         colors = FilterChipDefaults.filterChipColors(
@@ -81,11 +68,6 @@ fun TagChip(
             // The family colours are light on the dark scheme and dark on the light one, so the
             // lowest surface is the one that reads on a fill of either. Same reasoning as onColor.
             selectedLabelColor = if (tint != null) scheme.surfaceContainerLowest else scheme.surface,
-            // The glyph may say something the word cannot — the safety net's own red, the same
-            // one its mark wears on a card. Selected, it goes with the label: a red glyph on the
-            // near-white fill of a chosen chip is the one place that colour stops being legible.
-            iconColor = leadingIconTint ?: tint ?: scheme.onSurfaceVariant,
-            selectedLeadingIconColor = if (tint != null) scheme.surfaceContainerLowest else scheme.surface,
         ),
         border = if (selected) null else BorderStroke(Tokens.strokes.control, tint ?: scheme.outline),
         modifier = modifier

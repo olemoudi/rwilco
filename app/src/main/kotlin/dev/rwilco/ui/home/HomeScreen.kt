@@ -22,7 +22,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.BugReport
-import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Search
@@ -447,10 +446,6 @@ private fun TagFilterRow(tags: List<TagFilter>, selected: TagFilter?, onSelect: 
                 selected = tag == selected,
                 onClick = { onSelect(tag) },
                 tint = (tag as? TagFilter.Named)?.let { tagColor(it.tag) },
-                // The one chip with a glyph, and the same glyph its mark wears on a card: the
-                // row is read by shape before it is read by word, and that is the shape.
-                leadingIcon = Icons.Outlined.HealthAndSafety.takeIf { tag == TagFilter.SafetyNet },
-                leadingIconTint = MaterialTheme.colorScheme.error.takeIf { tag == TagFilter.SafetyNet },
             )
         }
     }
@@ -462,7 +457,6 @@ private val TagFilter.key: String
         is TagFilter.Named -> "tag-$tag"
         TagFilter.Untagged -> "rwilco-untagged"
         TagFilter.Paused -> "rwilco-paused"
-        TagFilter.SafetyNet -> "rwilco-safety-net"
     }
 
 @Composable
@@ -470,5 +464,4 @@ private fun TagFilter.label(): String = when (this) {
     is TagFilter.Named -> tag
     TagFilter.Untagged -> stringResource(R.string.home_tag_untagged)
     TagFilter.Paused -> stringResource(R.string.home_tag_paused)
-    TagFilter.SafetyNet -> stringResource(R.string.home_tag_safety_net)
 }

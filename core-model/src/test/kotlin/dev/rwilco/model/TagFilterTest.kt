@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test
 import java.time.LocalDate
 
 /**
- * The three chips the app keeps for itself. What they are for is being *absent*: a row that ends
+ * The two chips the app keeps for itself. What they are for is being *absent*: a row that ends
  * in "sin etiqueta" every day of your life is a row nobody reads to the end.
  */
 class TagFilterTest {
@@ -71,23 +71,5 @@ class TagFilterTest {
         val paused = groupForHome(all, now, zone, Fixtures.defaultTime, TagFilter.Paused)
         val stopped = listOfNotNull(paused.hero?.entry?.reminder) + paused.sections.values.flatten().map { it.reminder }
         assertEquals(listOf("c"), stopped.map { it.id })
-    }
-
-    @Test
-    fun `the safety net is a tag nobody types`() {
-        val plain = listOf(r("a", listOf("casa")))
-        assertFalse(TagFilter.SafetyNet in tagFilters(plain), "nothing under it, nothing to say")
-
-        val watched = r("b", listOf("salud")).copy(safetyNet = true)
-        val chips = tagFilters(plain + watched)
-        assertEquals(TagFilter.SafetyNet, chips.last(), "and at the end of the row, with the app's own")
-        assertTrue(TagFilter.SafetyNet.matches(watched))
-        assertFalse(TagFilter.SafetyNet.matches(plain.single()))
-        assertEquals(1, TagFilter.SafetyNet.countIn(plain + watched))
-
-        // Home narrows to it like any other chip.
-        val shown = groupForHome(plain + watched, now, Fixtures.zone, Fixtures.defaultTime, TagFilter.SafetyNet)
-        val listed = shown.sections.values.flatten().map { it.reminder.id } + listOfNotNull(shown.hero?.entry?.reminder?.id)
-        assertEquals(listOf("b"), listed.distinct())
     }
 }

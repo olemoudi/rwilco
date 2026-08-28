@@ -154,7 +154,6 @@ class EditorViewModel(
     fun toggleTag(tag: String) = _state.update { it.toggleTag(tag) }
     fun addTag(raw: String) = _state.update { it.addTag(raw) }
     fun toggleAction(action: Action) = _state.update { it.toggleAction(action) }
-    fun setSafetyNet(on: Boolean) = _state.update { it.setSafetyNet(on) }
     fun setRuleMatch(match: RuleMatch) = _state.update { it.setRuleMatch(match) }
     fun setRecurrence(recurrence: Recurrence) = _state.update { it.setRecurrence(recurrence) }
 

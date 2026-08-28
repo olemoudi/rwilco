@@ -465,16 +465,11 @@ strict is asking somebody to remember how they spelled it.
   never amber, an empty day is a dash on the floor rather than a gap, and the scale has a floor
   of three so a week with one "hecho" in it does not draw a full-height bar about a Tuesday.
 - The chip row is a `TagFilter` (`core-model/TagFilter.kt`), not a string: `Named` for a tag
-  somebody typed, and three the app keeps for itself — `Untagged`, `Paused` and `SafetyNet`.
-  Those three are not tags (never stored on a reminder, never suggested, never edited) and they
-  appear **only while they have something in them**, at the end of the row, because "sin
-  etiqueta" is a job to do rather than a filing category and a row that always ends in chips
-  nobody can act on is a row people stop reading at the third one. `SafetyNet` is the automatic
-  one: nobody types it, it is asked for a reminder at a time on the switch in the editor, and the
-  row is where "which ones did I ask that of?" gets answered. It is the only chip with a glyph,
-  and it is the glyph its mark wears on a card, in the same error red — a row is read by shape
-  before it is read by word. The red is on the glyph alone: colouring the chip would make an
-  app-owned one read as somebody's word for something, which is what the neutral rule is for.
+  somebody typed, and two the app keeps for itself — `Untagged` and `Paused`. Those two are not
+  tags (never stored on a reminder, never suggested, never edited) and they appear **only while
+  they have something in them**, at the end of the row, because "sin etiqueta" is a job to do
+  rather than a filing category and a row that always ends in two chips nobody can act on is a
+  row people stop reading at the third one.
   Every real tag carries a colour worked out from its own name (`ui/theme/TagColors.kt`):
   nothing stored, so the same word is the same colour on every screen and after a reinstall.
   It is a **palette of sixteen hues in two shades**, not a continuum — two tags either get the
@@ -651,9 +646,15 @@ strict is asking somebody to remember how they spelled it.
   (`nextFire == null`, never rung, never dealt with). The second one is anchored on
   `lastMomentGone`: the last moment the shape named that came and went, walked forwards from the
   day it was written, because forwards is the only direction any of this arithmetic goes — and
-  only ever asked of a reminder with nothing left ahead, which is why the walk is short. Asked
-  for per reminder (`Reminder.safetyNet`, a switch on the "qué pasa" card) and said **once per
-  moment** (`Reminder.nudgedAt`), quietly: `CHANNEL_NET` is
+  only ever asked of a reminder with nothing left ahead, which is why the walk is short.
+  **It is not asked for.** It began as a switch on each reminder, which was a switch about the
+  one thing nobody can answer in advance — which of your reminders is going to be the one that
+  gets away — and anybody who could answer it would not need a net. So it holds for every
+  reminder; the switch, the red mark on the card and the chip that filtered by it are all gone,
+  and what is left to decide is only how long it waits. Said **once per moment**
+  (`Reminder.nudgedAt`) and **at any hour** — a silent word on a low channel wakes nobody, so
+  holding it back until morning would only make it later without making it quieter — quietly:
+  `CHANNEL_NET` is
   `IMPORTANCE_LOW`, silent, still, never a screen and never pinned — the same card with the same
   three buttons, on a line that says *puede que se te haya pasado* and a clock counting up from
   the ring. What it waits for is `nudgeAt`: the whole wait (`afterHours`, a day) when the
@@ -670,10 +671,10 @@ strict is asking somebody to remember how they spelled it.
   the app does in the loudest surface the phone has. Everything is asked again at fire time
   (`ReminderFiring.nudge`): a day is long, and dealt with, paused, put off and rung again all
   happen inside it. The three numbers live in Settings, under their own group, which is also
-  where the rule is written down. A card carrying one wears a filled disc in the theme's error
-  red (`SafetyNetMark`) — amber is spoken for, and red is what a thing that catches you is
-  painted in; contrast is 6.2:1 dark and 4.6:1 light against the card, and the same again for
-  the glyph on the disc.
+  where the rule is written down — and one line at the foot of the editor (`SafetyNetNote`) says
+  what they come to for the reminder being written, because "un aviso discreto 36 min después"
+  is a number somebody can agree or disagree with and "una décima parte de la cadencia" is a
+  rule they would have to work out.
 - `AlertPresenter` decides *where* a firing shows itself: an app open in front of somebody gets
   the banner, and the home screen, a dark screen or the lock screen get the whole screen. The
   noise follows that decision, not the tile: a full-screen alert rings for itself, but one

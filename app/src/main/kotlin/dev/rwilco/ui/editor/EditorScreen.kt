@@ -328,14 +328,11 @@ fun EditorScreen(
                         selected = state.draft.actions,
                         onToggle = viewModel::toggleAction,
                     )
-                    Spacer(Modifier.height(spacing.lg))
-                    SafetyNetRow(
-                        on = state.draft.safetyNet,
-                        cadence = netCadence,
-                        settings = state.safetyNetSettings,
-                        onToggle = viewModel::setSafetyNet,
-                    )
                 }
+                // What happens if none of the four cards above it lands: the last word on the
+                // form, and the only one the person did not have to answer.
+                Spacer(Modifier.height(spacing.lg))
+                SafetyNetNote(cadence = netCadence, settings = state.safetyNetSettings)
                 Spacer(Modifier.height(spacing.xxl))
             }
         }

@@ -57,12 +57,6 @@ data class Reminder(
      */
     val firedRules: Set<Int> = emptySet(),
     /**
-     * Whether a firing nobody answers is followed, once and quietly, by "puede que se te haya
-     * pasado". Off by default: it is a second notification, and nobody gets one they did not
-     * ask for. See [SafetyNetSettings].
-     */
-    val safetyNet: Boolean = false,
-    /**
      * The last moment that has been **dealt with without ringing** — every moment up to and
      * including it is spent.
      *

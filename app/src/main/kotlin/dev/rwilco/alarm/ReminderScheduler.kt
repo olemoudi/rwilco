@@ -239,7 +239,6 @@ class ReminderScheduler(
             reminder.snoozedUntil,
             reminder.recurrence,
             reminder.lastDealtAt,
-            reminder.safetyNet,
         )
     }
 
@@ -263,14 +262,5 @@ class ReminderScheduler(
          * moves — so the alarm would still be set for the round that was just taken back.
          */
         val lastDealtAt: Instant?,
-        /**
-         * Whether the safety net is asked for. Only the switch, and deliberately not the two
-         * moments it is worked out from ([Reminder.lastFiredAt], [Reminder.nudgedAt]): those are
-         * written by a firing, and everything that writes one — the ring, the "hecho", the
-         * snooze, the net's own word — calls the scheduler on its way out already. Putting them
-         * here would put every ring through a second full pass to arrive at the same answer,
-         * which is the rule this key exists to keep.
-         */
-        val safetyNet: Boolean,
     )
 }

@@ -45,11 +45,9 @@ data class Draft(
     /** How it comes back after being dealt with. Asked for, never assumed. */
     val recurrence: Recurrence = Recurrence.None,
     val actions: Set<Action> = DEFAULT_ACTIONS,
-    /** Whether a firing nobody answers gets one quiet word about it. See `SafetyNetSettings`. */
-    val safetyNet: Boolean = false,
 )
 
-fun Reminder.toDraft() = Draft(text = text, tags = tags, rules = rules, ruleMatch = ruleMatch, actions = actions, recurrence = recurrence, safetyNet = safetyNet)
+fun Reminder.toDraft() = Draft(text = text, tags = tags, rules = rules, ruleMatch = ruleMatch, actions = actions, recurrence = recurrence)
 
 /**
  * Note what is NOT carried over: a snooze and the armed moment. Editing a reminder re-decides
@@ -89,7 +87,6 @@ fun Draft.toReminder(
     ruleMatch = ruleMatch,
     actions = actions,
     recurrence = recurrence,
-    safetyNet = safetyNet,
     status = status,
     createdAt = createdAt,
     updatedAt = now,
@@ -204,7 +201,6 @@ fun EditorUiState.toPreset(id: String, now: Instant, existing: Preset?, others: 
     ruleMatch = draft.ruleMatch,
     actions = draft.actions,
     recurrence = draft.recurrence,
-    safetyNet = draft.safetyNet,
     // A preset keeps the colour it was given: it is how it is recognised, and a colour that
     // moves is worse than no colour at all.
     colorIndex = existing?.colorIndex ?: nextPresetColor(others),
@@ -288,8 +284,6 @@ fun EditorUiState.setRuleMatch(match: RuleMatch): EditorUiState =
  */
 fun EditorUiState.toggleAction(action: Action): EditorUiState =
     copy(draft = draft.copy(actions = draft.actions.toggling(action)))
-
-fun EditorUiState.setSafetyNet(on: Boolean): EditorUiState = copy(draft = draft.copy(safetyNet = on))
 
 fun EditorUiState.openKindPicker(): EditorUiState = copy(sheet = EditorSheet.PickKind)
 

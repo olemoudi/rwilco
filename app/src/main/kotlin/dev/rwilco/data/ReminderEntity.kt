@@ -47,7 +47,16 @@ data class ReminderEntity(
     val recurrence: String = NO_RECURRENCE,
     /** When a firing was last dealt with: what every recurrence counts from. */
     val lastDealtAt: Long? = null,
-    /** Whether a firing nobody answers gets one quiet word about it. See `SafetyNetSettings`. */
+    /**
+     * Once: whether this reminder in particular was watched by the safety net.
+     *
+     * Nothing writes anything but `false` any more and nothing reads it: the net holds for
+     * every reminder now, because a switch about "which of these is going to be the one that
+     * gets away" is a switch nobody can answer. The column stays where it is because it is also
+     * the vault's wire format — the shape on disk is the one thing this app does not rewrite
+     * under somebody's feet — and because a column is cheaper to leave than a backup format is
+     * to version.
+     */
     val safetyNet: Boolean = false,
     /** When that word was last said, so it is said once per firing and not once an hour. */
     val nudgedAt: Long? = null,
@@ -88,7 +97,6 @@ fun ReminderEntity.toDomain(zone: ZoneId = ZoneId.systemDefault()): Reminder = R
     firedRules = decodeIndices(firedRules),
     recurrence = ReminderCodec.decodeRecurrence(recurrence),
     lastDealtAt = lastDealtAt?.let(Instant::ofEpochMilli),
-    safetyNet = safetyNet,
     nudgedAt = nudgedAt?.let(Instant::ofEpochMilli),
     dealtThrough = dealtThrough?.let(Instant::ofEpochMilli),
 ).foldRepeats(zone)
@@ -111,7 +119,6 @@ fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
     firedRules = encodeIndices(firedRules),
     recurrence = ReminderCodec.encodeRecurrence(recurrence),
     lastDealtAt = lastDealtAt?.toEpochMilli(),
-    safetyNet = safetyNet,
     nudgedAt = nudgedAt?.toEpochMilli(),
     dealtThrough = dealtThrough?.toEpochMilli(),
 )
