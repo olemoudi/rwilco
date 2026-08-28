@@ -30,6 +30,7 @@ import dev.rwilco.model.outcomeOfFiring
 import dev.rwilco.model.owedUnderAll
 import dev.rwilco.model.holdsAt
 import dev.rwilco.model.sideOf
+import dev.rwilco.model.speaksFor
 import dev.rwilco.model.presenceAlreadyRang
 import dev.rwilco.model.rulesCombine
 import dev.rwilco.model.statusAfterDismissal
@@ -92,10 +93,15 @@ class ReminderFiring(
         // alarm again here would silence a firing the phone slept through — the catch-up runs
         // long after the window it was armed inside.
         val rule = ruleIndex?.let { reminder.rules.getOrNull(it) }
+        // Everything the showing needs is read BEFORE the moment is spent. A settings read
+        // that failed between markFired and the notification spent a moment nothing ever
+        // showed — and missedFire could never tell, because the row said it had rung. Read
+        // this early because the fold below needs the shape of the day too.
+        val settings = settings()
         // Under "a la vez" the rule is judged with every other one folded into it as a state:
         // the moment this one happened is only a firing if all of them are true then. A null
         // is a set that cannot hold at all — two instants asked to coincide.
-        val judged = ruleIndex?.let { reminder.ruleInSet(it) }
+        val judged = ruleIndex?.let { reminder.ruleInSet(it, settings.dayShape) }
         // Every way of NOT ringing below re-arms before it leaves. The alarm that brought us
         // here is spent, and a drop that left nothing behind was a reminder silent until the
         // six-hourly net came round — or for ever, if the process died first.
@@ -105,7 +111,7 @@ class ReminderFiring(
             scheduler.rearmAll()
             return@withLock
         }
-        if (judged != null && !conditionsHold(judged, now)) {
+        if (judged != null && !conditionsHold(judged, now, moment = late ?: now)) {
             Log.i(TAG, "$id came round outside what its rule asks for")
             Diag.note(TAG_DIAG, "r=${short(id)} dropped: conditions of rule $ruleIndex do not hold")
             scheduler.rearmAll()
@@ -163,10 +169,6 @@ class ReminderFiring(
             FiringOutcome.Ring -> Unit
         }
         Log.i(TAG, "firing $id${if (late != null) " (late)" else ""}")
-        // Everything the showing needs is read BEFORE the moment is spent. A settings read
-        // that failed between markFired and the notification spent a moment nothing ever
-        // showed — and missedFire could never tell, because the row said it had rung.
-        val settings = settings()
         val plan = firingPlan(reminder.actions)
         // Recorded against the moment it rang FOR, not the millisecond the alarm arrived. See
         // momentRungFor: a place is the one firing that must not reach for the armed moment,
@@ -226,11 +228,18 @@ class ReminderFiring(
      * What is asked of every trigger is the *place* conditions, because they are the ones
      * nothing could ask in advance ([knownInAdvance]): the scheduler leaves them out and arms
      * the alarm, and this is where "y sólo si estoy en casa" actually gets answered. It is
-     * answered from the place watch's last fix, and only while that fix still speaks for now —
-     * past [PlaceWatchPolicy.SPEED_MEMORY] it is no fix at all, and no fix means the condition
-     * holds. Ringing once too often beats the reminder that never arrives.
+     * answered from the place watch's last fix, and only while that fix still speaks for the
+     * [moment] being asked about — past [PlaceWatchPolicy.SPEED_MEMORY] either side of it, it
+     * is no fix at all, and no fix means the condition holds. Ringing once too often beats the
+     * reminder that never arrives.
+     *
+     * [moment] is [now] for a live firing and the missed moment for a catch-up, and that is
+     * the whole reason it is a parameter: "a las nueve, y sólo si estoy en casa", slept through
+     * and caught up at noon from the office, is a question about nine o'clock, and a fix taken
+     * at noon does not answer it. Asked of now, it said no, and a moment nobody could vouch for
+     * was dropped for good.
      */
-    private suspend fun conditionsHold(rule: TriggerRule, now: Instant): Boolean {
+    private suspend fun conditionsHold(rule: TriggerRule, now: Instant, moment: Instant): Boolean {
         val asked = if (rule.trigger is Trigger.Location) rule.conditions else rule.conditions.filterNot { it.knownInAdvance }
         if (asked.isEmpty()) return true
         // Where the phone is comes LAST, and only if everything a clock can settle has already
@@ -241,7 +250,7 @@ class ReminderFiring(
         if (!hours.allHoldAt(now, clock.zone)) return false
         if (places.isEmpty()) return true
         val watch = placeWatch.read()
-        val where = watch.lastFix?.takeIf { Duration.between(it.at, now) <= PlaceWatchPolicy.SPEED_MEMORY }
+        val where = watch.lastFix?.takeIf { it.speaksFor(moment) }
         // **Ask the watch, not the fix.** The watch keeps which side of every circle it last saw
         // the phone on, and that memory knows two things a raw measurement does not: what the
         // system's geofences reported (a crossing writes straight into it, with no fix of its
@@ -302,13 +311,12 @@ class ReminderFiring(
         val now = clock.instant()
         val settings = settings()
         val status = statusAfterDismissal(reminder, now, clock.zone, settings.defaultTime, settings.dayShape)
-        repository.snooze(id, null)
-        // A round dealt with is a round over: what had already happened stops counting.
-        repository.setFiredRules(id, emptySet())
-        // The moment every recurrence counts from — "six hours after the last one" is six hours
-        // after this, not after whenever the alarm happened to go off.
-        repository.setLastDealtAt(id, now)
-        repository.setStatus(id, status)
+        // One write: the snooze goes, a round dealt with is a round over (what had already
+        // happened stops counting), and the moment every recurrence counts from is stamped —
+        // "six hours after the last one" is six hours after this, not after whenever the alarm
+        // happened to go off. Four writes could be cut in two by a process dying, and a round
+        // closed with its anchor unmoved is a reminder that never comes back.
+        repository.dealtWith(id, now, status)
         scheduler.rearmAll()
     }
 

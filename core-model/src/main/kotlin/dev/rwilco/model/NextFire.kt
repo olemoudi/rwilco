@@ -69,7 +69,7 @@ fun nextFire(
         // Under "a la vez" the rule is judged with its siblings folded in as conditions — the
         // same rule the firing will judge — so a moment outside a sibling's window is not
         // offered, let alone armed. A fold of two moments can never ring and yields nothing.
-        val rule = reminder.ruleInSet(index) ?: return@mapNotNull null
+        val rule = reminder.ruleInSet(index, shape) ?: return@mapNotNull null
         nextFireOfRule(rule, reminder.id, from, zone, defaultTime, shape)
     }
     if (candidates.isEmpty() && rest != null) {
@@ -133,7 +133,7 @@ fun nextWake(
     val rest = reminder.restUntil(zone, dayStart, shape)
     val from = maxOf(reminder.searchFrom(now), rest ?: now)
     val candidates = reminder.pendingRules().mapNotNull { index ->
-        val rule = reminder.ruleInSet(index) ?: return@mapNotNull null
+        val rule = reminder.ruleInSet(index, shape) ?: return@mapNotNull null
         nextFireOfRule(rule, reminder.id, from, zone, defaultTime, shape)?.let { index to it }
     }
     if (candidates.isEmpty() && rest != null) return reminder.recurrenceMoment(now, zone, dayStart, shape)?.let { Wake(it, null) }
@@ -164,8 +164,11 @@ fun nextFireOfRule(
     shape: DayShape = DayShape.DEFAULT,
 ): NextFire? {
     var after = now
+    // The rule's own hour fences reach the draw, so a day with no hour draws from the minutes
+    // they allow instead of being rejected below (see RandomDraw.inDay).
+    val windows = rule.windows()
     repeat(MAX_CANDIDATES) {
-        val candidate = nextFireOf(rule.trigger, reminderId, after, zone, defaultTime, shape) ?: return null
+        val candidate = nextFireOf(rule.trigger, reminderId, after, zone, defaultTime, shape, windows) ?: return null
         val at = when (candidate) {
             is NextFire.Scheduled -> candidate.at
             is NextFire.Sometime -> candidate.at
@@ -180,7 +183,13 @@ fun nextFireOfRule(
 /** Enough to walk two months of daily moments, or a fortnight of a five-a-day random window. */
 private const val MAX_CANDIDATES = 64
 
-/** One trigger's next fire, or null when it has nothing left to do. */
+/**
+ * One trigger's next fire, or null when it has nothing left to do.
+ *
+ * [fences] only reach the two shapes that *draw* an hour — a date with none and a calendar with
+ * none — and narrow the draw to the minutes they allow. Everything with an hour of its own is
+ * left to the walk in [nextFireOfRule], which asks the fences of each moment in turn.
+ */
 fun nextFireOf(
     trigger: Trigger,
     reminderId: String,
@@ -188,6 +197,7 @@ fun nextFireOf(
     zone: ZoneId,
     defaultTime: LocalTime,
     shape: DayShape = DayShape.DEFAULT,
+    fences: List<Condition.TimeWindow> = emptyList(),
 ): NextFire? =
     when (trigger) {
         // atZone resolves a wall time that does not exist (a DST gap) forward, and one that
@@ -204,11 +214,12 @@ fun nextFireOf(
             trigger.date,
             trigger.window?.on(trigger.date) ?: shape.awakeOn(trigger.date),
             zone,
+            fences,
         )
             .future(now)
             ?.let { NextFire.Scheduled(it, trigger) }
         is Trigger.AtTime -> nextAtTime(trigger, now, zone)?.let { NextFire.Scheduled(it, trigger) }
-        is Trigger.Repeat -> nextRepeat(trigger, reminderId, now, zone, shape)?.let { NextFire.Scheduled(it, trigger) }
+        is Trigger.Repeat -> nextRepeat(trigger, reminderId, now, zone, shape, fences)?.let { NextFire.Scheduled(it, trigger) }
         // The window opening is the moment it becomes true, and the only moment it produces.
         is Trigger.Interval -> nextAtTime(
             // No days on a window means every day; nextAtTime reads an empty set as "never",
@@ -236,11 +247,18 @@ private fun Instant.future(now: Instant): Instant? = takeIf { it > now }
  * only from today would step over it. A handful of dates is enough to walk past the ones
  * already gone — the dates are in order, so the first one still ahead is the answer.
  */
-private fun nextRepeat(trigger: Trigger.Repeat, reminderId: String, now: Instant, zone: ZoneId, shape: DayShape): Instant? {
+private fun nextRepeat(
+    trigger: Trigger.Repeat,
+    reminderId: String,
+    now: Instant,
+    zone: ZoneId,
+    shape: DayShape,
+    fences: List<Condition.TimeWindow> = emptyList(),
+): Instant? {
     val today = now.atZone(zone).toLocalDate()
     return trigger.occurrences(today.minusDays(1))
         .take(REPEAT_PROBE)
-        .map { trigger.momentOn(it, reminderId, zone, shape) }
+        .map { trigger.momentOn(it, reminderId, zone, shape, fences) }
         .firstOrNull { it > now }
 }
 
@@ -292,9 +310,13 @@ fun Reminder.calendarMoment(after: Instant, zone: ZoneId, shape: DayShape): Inst
 /** See [Reminder.calendarMoment]. Taken apart from the reminder so a warning can ask it too. */
 fun Recurrence.Calendar.nextMoment(reminderId: String, after: Instant, zone: ZoneId, shape: DayShape): Instant? {
     val fences = conditions.filter { it.knownInAdvance }
+    // The hour fences reach the draw itself (RandomDraw.inDay): "el primer viernes de cada mes,
+    // sólo de 16 a 17" with no hour draws from that hour, instead of drawing from the whole day
+    // and clearing the fence one month in fifteen.
+    val windows = conditions.filterIsInstance<Condition.TimeWindow>()
     var from = after
     repeat(MAX_CANDIDATES) {
-        val at = nextRepeat(repeat, reminderId, from, zone, shape) ?: return null
+        val at = nextRepeat(repeat, reminderId, from, zone, shape, windows) ?: return null
         if (fences.allHoldAt(at, zone)) return at
         from = at
     }

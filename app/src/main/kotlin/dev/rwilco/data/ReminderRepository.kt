@@ -39,8 +39,6 @@ class ReminderRepository(private val dao: ReminderDao, private val clock: Clock)
 
     suspend fun snooze(id: String, until: Instant?) = dao.setSnooze(id, until?.toEpochMilli())
 
-    suspend fun setLastDealtAt(id: String, at: Instant) = dao.setLastDealtAt(id, at.toEpochMilli())
-
     suspend fun markFired(id: String, at: Instant) = dao.markFired(id, at.toEpochMilli())
 
     suspend fun setArmedFor(id: String, at: Instant?, ruleIndex: Int?) =
@@ -56,6 +54,12 @@ class ReminderRepository(private val dao: ReminderDao, private val clock: Clock)
     suspend fun saveAll(reminders: List<Reminder>) {
         if (reminders.isEmpty()) return
         dao.upsertAll(reminders.map { it.toEntity() })
+    }
+
+    /** A firing dealt with at [at]: see `ReminderDao.dealtWith`. */
+    suspend fun dealtWith(id: String, at: Instant, status: Status) {
+        val millis = at.toEpochMilli()
+        dao.dealtWith(id, millis, status.name, if (status == Status.DONE) millis else null)
     }
 
     suspend fun setStatus(id: String, status: Status) {

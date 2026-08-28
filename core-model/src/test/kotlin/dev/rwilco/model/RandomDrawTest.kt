@@ -2,6 +2,7 @@ package dev.rwilco.model
 
 import dev.rwilco.model.Fixtures.zone
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -89,5 +90,60 @@ class RandomDrawTest {
     fun `an empty or inverted window draws nothing`() {
         assertTrue(RandomDraw.draws(daily.copy(from = LocalTime.of(12, 0), to = LocalTime.of(12, 0)), "x", 20692L, zone).isEmpty())
         assertTrue(RandomDraw.draws(daily.copy(from = LocalTime.of(13, 0), to = LocalTime.of(12, 0)), "x", 20692L, zone).isEmpty())
+    }
+
+
+    @Test
+    fun `a day with no fences is the draw it always was`() {
+        // Golden values captured before the draw learnt about fences. A reminder with none must
+        // ring at the very minute it did on the last build, or every "a cualquier hora" on every
+        // phone moves on the update.
+        val shape = DayShape.DEFAULT
+        fun drawn(date: LocalDate) = RandomDraw.inDay("golden", date, shape.awakeOn(date), zone).atZone(zone).toLocalDateTime()
+        assertEquals(LocalDateTime.of(2026, 8, 27, 15, 57), drawn(LocalDate.of(2026, 8, 27)))
+        // A Friday is drawn into the small hours of Saturday, as it always was.
+        assertEquals(LocalDateTime.of(2026, 8, 29, 1, 7), drawn(LocalDate.of(2026, 8, 28)))
+        assertEquals(LocalDateTime.of(2026, 8, 29, 18, 34), drawn(LocalDate.of(2026, 8, 29)))
+        assertEquals(LocalDateTime.of(2026, 9, 3, 22, 55), drawn(LocalDate.of(2026, 9, 3)))
+        val lunch = DayWindow(LocalTime.of(14, 0), LocalTime.of(16, 0))
+        assertEquals(
+            LocalDateTime.of(2026, 8, 27, 15, 14),
+            RandomDraw.inDay("r1", thursday, lunch.on(thursday), zone).atZone(zone).toLocalDateTime(),
+        )
+        // The same with an empty fence list spelled out: not a different path.
+        assertEquals(
+            RandomDraw.inDay("r1", thursday, lunch.on(thursday), zone),
+            RandomDraw.inDay("r1", thursday, lunch.on(thursday), zone, emptyList()),
+        )
+    }
+
+    @Test
+    fun `a fenced draw lands inside the fence, and a fence no minute clears falls back to the plain draw`() {
+        val shape = DayShape.DEFAULT
+        val teatime = listOf(Condition.TimeWindow(LocalTime.of(16, 0), LocalTime.of(17, 0)))
+        // Many days and many reminders: it is the fence doing the work, not one lucky minute.
+        for (day in 0L until 60L) {
+            val date = thursday.plusDays(day)
+            for (id in listOf("a", "b", "c")) {
+                val at = RandomDraw.inDay(id, date, shape.awakeOn(date), zone, teatime).atZone(zone).toLocalDateTime()
+                assertTrue(at >= date.atTime(16, 0) && at < date.atTime(17, 0), "$id drew $at on $date")
+            }
+        }
+        // A fence that wraps midnight, on a Friday whose waking hours run past it too.
+        val night = listOf(Condition.TimeWindow(LocalTime.of(23, 0), LocalTime.of(6, 0)))
+        val friday = LocalDate.of(2026, 8, 28)
+        val late = RandomDraw.inDay("a", friday, shape.awakeOn(friday), zone, night).atZone(zone).toLocalDateTime()
+        assertTrue(late >= friday.atTime(23, 0) && late < friday.plusDays(1).atTime(1, 30), "drew $late")
+        // A fence on another day of the week allows no minute of this one: the plain draw comes
+        // back — the same minute as with no fence at all — for the caller's walk to reject.
+        val mondays = listOf(Condition.TimeWindow(LocalTime.MIDNIGHT, LocalTime.MIDNIGHT, setOf(DayOfWeek.MONDAY)))
+        assertEquals(
+            RandomDraw.inDay("a", thursday, shape.awakeOn(thursday), zone),
+            RandomDraw.inDay("a", thursday, shape.awakeOn(thursday), zone, mondays),
+        )
+        assertFalse(mondays.first().holdsAt(RandomDraw.inDay("a", thursday, shape.awakeOn(thursday), zone, mondays), zone))
+        // A window too short to draw from is its own start, fences or not.
+        val minute = AwakeWindow(thursday.atTime(16, 0), thursday.atTime(16, 1))
+        assertEquals(thursday.atTime(16, 0).atZone(zone).toInstant(), RandomDraw.inDay("a", thursday, minute, zone, teatime))
     }
 }

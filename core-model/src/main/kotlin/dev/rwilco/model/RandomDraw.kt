@@ -62,13 +62,36 @@ object RandomDraw {
      * no hour. Same generator as the rest of this object and the same reason for it: the
      * scheduler and the screen have to agree on the moment without either of them writing it
      * down, and it has to hold still while the day does.
+     *
+     * **A draw is made inside its [fences], never judged against them afterwards.** "El jueves
+     * a cualquier hora, y sólo si es entre las 16 y las 17" has one moment in it, and a moment
+     * drawn from the whole day and then asked "is it between four and five?" is a reminder that
+     * fifteen times in sixteen silently does not ring — and for a monthly calendar with no hour,
+     * one that rings once a year. So the minutes the fences allow are listed and the draw is one
+     * of those. With no fences this is, to the bit, the draw it has always been: one call on the
+     * generator, the same seed, the same minute. When no minute of the window clears the fences
+     * the plain draw is handed back and the caller's walk rejects it, which is what a fence that
+     * names *other days* ("sólo los lunes") has to do to a daily calendar.
      */
-    fun inDay(reminderId: String, date: LocalDate, window: AwakeWindow, zone: ZoneId): Instant {
+    fun inDay(
+        reminderId: String,
+        date: LocalDate,
+        window: AwakeWindow,
+        zone: ZoneId,
+        fences: List<Condition.TimeWindow> = emptyList(),
+    ): Instant {
         val from = window.from.atZone(zone).toInstant()
         val to = window.to.atZone(zone).toInstant()
         val minutes = java.time.Duration.between(from, to).toMinutes().toInt()
         if (minutes < 2) return from
-        return from.plusSeconds(SplitMix64(seed(reminderId, date.toEpochDay(), Period.DAY)).nextInt(minutes) * 60L)
+        val rng = SplitMix64(seed(reminderId, date.toEpochDay(), Period.DAY))
+        if (fences.isEmpty()) return from.plusSeconds(rng.nextInt(minutes) * 60L)
+        val eligible = (0 until minutes).filter { offset ->
+            val at = from.plusSeconds(offset * 60L).atZone(zone).toLocalDateTime()
+            fences.all { it.holdsAt(at) }
+        }
+        val offset = if (eligible.isEmpty()) rng.nextInt(minutes) else eligible[rng.nextInt(eligible.size)]
+        return from.plusSeconds(offset * 60L)
     }
 
     fun windowMinutes(trigger: Trigger.Random): Int =

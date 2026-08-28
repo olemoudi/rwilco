@@ -32,6 +32,7 @@ class EditorStateTest {
     private val tonight = Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 21, 30))
     private val weekly = Trigger.AtTime(LocalTime.of(7, 30), setOf(DayOfWeek.MONDAY))
     private val blank = EditorUiState(loaded = true, existingTags = listOf("Compra", "casa"))
+    private val zone = ZoneId.of("Europe/Madrid")
 
     @Test
     fun `a blank editor is clean, invalid and quiet about it`() {
@@ -49,7 +50,7 @@ class EditorStateTest {
             .setRuleMatch(RuleMatch.ALL)
         assertEquals(RuleMatch.ALL, state.draft.ruleMatch)
         val stamp = Instant.parse("2026-08-27T13:00:00Z")
-        val saved = state.draft.toReminder("id", stamp, stamp, Status.ACTIVE)
+        val saved = state.draft.toReminder("id", stamp, stamp, Status.ACTIVE, zone = zone)
         assertEquals(RuleMatch.ALL, saved.ruleMatch)
         assertEquals(RuleMatch.ALL, saved.toDraft().ruleMatch)
     }
@@ -119,12 +120,12 @@ class EditorStateTest {
         // the day it was written (without them).
         val dealt = Instant.parse("2026-08-27T13:00:00Z")
         val draft = Draft(text = "Pastillas", recurrence = Recurrence.After(6, RecurrenceUnit.HOURS))
-        val saved = draft.toReminder("r1", dealt.minusSeconds(86_400), dealt.plusSeconds(60), Status.ACTIVE, lastDealtAt = dealt)
+        val saved = draft.toReminder("r1", dealt.minusSeconds(86_400), dealt.plusSeconds(60), Status.ACTIVE, lastDealtAt = dealt, zone = zone)
 
         assertEquals(dealt, saved.lastDealtAt)
         assertEquals(null, saved.snoozedUntil, "a remind-me-later belonged to the old shape")
         assertEquals(null, saved.armedFor, "the scheduler writes this again the instant it is saved")
-        assertEquals(null, draft.toReminder("r1", dealt, dealt, Status.ACTIVE).lastDealtAt, "and a new reminder has no anchor yet")
+        assertEquals(null, draft.toReminder("r1", dealt, dealt, Status.ACTIVE, zone = zone).lastDealtAt, "and a new reminder has no anchor yet")
     }
 
     @Test
@@ -152,6 +153,7 @@ class EditorStateTest {
             status = Status.ACTIVE,
             lastDealtAt = before.lastDealtAt,
             lastFiredAt = before.lastFiredAt,
+            zone = zone,
         )
 
         assertEquals(rang, saved.lastFiredAt)
@@ -179,9 +181,9 @@ class EditorStateTest {
         val draft = reminder.toDraft()
         val loaded = EditorUiState(loaded = true, isNew = false, draft = draft, initial = draft)
         assertFalse(loaded.dirty)
-        val saved = draft.toReminder("r1", reminder.createdAt, Instant.ofEpochSecond(3), Status.PAUSED)
+        val saved = draft.toReminder("r1", reminder.createdAt, Instant.ofEpochSecond(3), Status.PAUSED, zone = zone)
         assertEquals(reminder.copy(updatedAt = Instant.ofEpochSecond(3)), saved)
-        assertEquals("trimmed", draft.copy(text = "  trimmed  ").toReminder("x", Instant.EPOCH, Instant.EPOCH, Status.ACTIVE).text)
+        assertEquals("trimmed", draft.copy(text = "  trimmed  ").toReminder("x", Instant.EPOCH, Instant.EPOCH, Status.ACTIVE, zone = zone).text)
         assertEquals(TriggerKind.DATE, loaded.commitTrigger(null, Trigger.OnDate(LocalDate.of(2026, 9, 1))).editTrigger(1).let { (it.sheet as EditorSheet.Configure).kind })
     }
 
@@ -256,5 +258,25 @@ class EditorStateTest {
             listOf("p1", "p2", "p3", "p4"),
             presets.keeping(dev.rwilco.model.Preset(id = "p4", name = "Nuevo", createdAt = born)).map { it.id },
         )
+    }
+
+
+    @Test
+    fun `a day left to the day, saved while it is under way, is drawn from what is left of it`() {
+        // "Hoy, a cualquier hora" saved at 17:03: the draw is seeded by an id the save mints,
+        // so the words could not be checked against it — and one time in two the minute drawn
+        // from the whole day had already gone. The save narrows the day to what is left.
+        val today = LocalDate.of(2026, 8, 27)
+        val at = LocalDateTime.of(today, LocalTime.of(17, 3, 20)).atZone(zone).toInstant()
+        val draft = Draft(text = "Sacar la basura", rules = listOf(TriggerRule(Trigger.DayRandom(today))))
+        val saved = draft.toReminder("r1", at, at, Status.ACTIVE, zone = zone)
+        val day = saved.rules.single().trigger as Trigger.DayRandom
+        assertEquals(LocalTime.of(17, 4), day.window?.from)
+        assertEquals(LocalTime.of(23, 30), day.window?.to, "to the default bedtime")
+        val next = nextFire(saved, at, zone, LocalTime.of(9, 0))
+        assertTrue(next != null && next is dev.rwilco.model.NextFire.Scheduled && next.at > at, "rings tonight: $next")
+        // Tomorrow's is left exactly as written.
+        val tomorrow = draft.copy(rules = listOf(TriggerRule(Trigger.DayRandom(today.plusDays(1)))))
+        assertNull((tomorrow.toReminder("r2", at, at, Status.ACTIVE, zone = zone).rules.single().trigger as Trigger.DayRandom).window)
     }
 }

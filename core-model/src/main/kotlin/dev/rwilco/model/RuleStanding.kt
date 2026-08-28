@@ -60,7 +60,7 @@ fun Reminder.ruleStandings(
     return rules.mapIndexed { index, rule ->
         when (ruleMatch) {
             RuleMatch.ALL -> if (index in firedRules) RuleStanding.DONE else RuleStanding.PENDING
-            RuleMatch.TOGETHER -> when (val state = rule.trigger.asState()) {
+            RuleMatch.TOGETHER -> when (val state = rule.trigger.asState(shape)) {
                 is Condition.TimeWindow -> if (state.holdsAt(now, zone)) RuleStanding.HOLDING else RuleStanding.NOT_HOLDING
                 is Condition.AtPlace -> when (inside(index)) {
                     // A rule waiting to arrive holds while the phone is in; one waiting to leave

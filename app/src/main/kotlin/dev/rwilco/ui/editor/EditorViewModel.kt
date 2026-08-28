@@ -297,6 +297,8 @@ class EditorViewModel(
                 // the armed moment do not. See Draft.toReminder.
                 lastDealtAt = before?.lastDealtAt,
                 lastFiredAt = before?.lastFiredAt,
+                zone = clock.zone,
+                shape = current.dayShape,
             )
             repository.save(reminder)
             rearm()

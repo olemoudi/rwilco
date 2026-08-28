@@ -102,6 +102,13 @@ private const val EARTH_RADIUS_M = 6_371_000.0
  * twice (indoors, nothing fresh, the provider repeats what it had): reading that as "unknown"
  * would plan for a moving car and keep the GPS trying every two minutes for nothing.
  */
+/**
+ * Whether this fix can say anything about where the phone was at [moment]: only while it is
+ * within [PlaceWatchPolicy.SPEED_MEMORY] of it, either side. Past that the honest answer to
+ * "where was it?" is "nobody knows", and what nobody can vouch for holds ([Condition.holdsAt]).
+ */
+fun Fix.speaksFor(moment: Instant): Boolean = Duration.between(at, moment).abs() <= PlaceWatchPolicy.SPEED_MEMORY
+
 fun speedBetween(previous: Fix?, current: Fix): Double? {
     if (previous == null) return null
     val elapsed = Duration.between(previous.at, current.at)

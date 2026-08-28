@@ -142,10 +142,10 @@ fun Reminder.pendingRules(): List<Int> = when {
  * The trigger part applies under ALL as well, and to nothing under ANY: a rule in an "either"
  * set depends on nobody, so it keeps the reading it has on its own.
  */
-fun Reminder.ruleInSet(index: Int): TriggerRule? {
+fun Reminder.ruleInSet(index: Int, shape: DayShape = DayShape.DEFAULT): TriggerRule? {
     val bare = rules.getOrNull(index) ?: return null
     if (!rulesCombine || ruleMatch == RuleMatch.ANY) return bare
-    val rule = bare.copy(trigger = bare.trigger.whenCombined())
+    val rule = bare.copy(trigger = bare.trigger.whenCombined(shape, bare.windows()))
     if (ruleMatch != RuleMatch.TOGETHER) return rule
     val others = rules.filterIndexed { at, _ -> at != index }
     // A sibling that is only ever true at an instant cannot be true at *this* instant, so the
@@ -153,7 +153,7 @@ fun Reminder.ruleInSet(index: Int): TriggerRule? {
     // ring a set that [momentsCannotCoincide] has already called impossible — which is the one
     // way this could have quietly done the wrong thing.
     if (others.any { it.trigger.isMoment }) return null
-    return rule.copy(conditions = rule.conditions + others.flatMap { it.conditions } + others.mapNotNull { it.trigger.asState() })
+    return rule.copy(conditions = rule.conditions + others.flatMap { it.conditions } + others.mapNotNull { it.trigger.asState(shape) })
 }
 
 /**

@@ -26,10 +26,12 @@ import dev.rwilco.model.clearCountdowns
 import dev.rwilco.model.conditions
 import dev.rwilco.model.withConditions
 import dev.rwilco.model.kind
+import dev.rwilco.model.settleDays
 import dev.rwilco.model.startCountdowns
 import dev.rwilco.model.normalizeTag
 import dev.rwilco.model.validate
 import java.time.Instant
+import java.time.ZoneId
 import java.time.LocalTime
 
 /** What the editor is editing: the reminder minus its identity and bookkeeping. */
@@ -67,13 +69,18 @@ fun Draft.toReminder(
     status: Status,
     lastDealtAt: Instant? = null,
     lastFiredAt: Instant? = null,
+    /** Where and how the day is shaped, for a date left to the day: see [settleDays]. */
+    zone: ZoneId,
+    shape: DayShape = DayShape.DEFAULT,
 ): Reminder = Reminder(
     id = id,
     text = text.trim(),
     tags = tags,
     // A countdown that has not started begins now; one already ticking keeps its own start, so
-    // fixing a typo does not put half an hour back on the clock.
-    rules = startCountdowns(rules, now),
+    // fixing a typo does not put half an hour back on the clock. A date left to the day is
+    // drawn from what is left of it, or "hoy a cualquier hora" saved in the evening was born
+    // overdue.
+    rules = settleDays(startCountdowns(rules, now), now, zone, shape),
     ruleMatch = ruleMatch,
     actions = actions,
     recurrence = recurrence,

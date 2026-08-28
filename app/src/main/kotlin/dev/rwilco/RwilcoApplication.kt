@@ -42,12 +42,14 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import dev.rwilco.system.SystemZoneClock
 import java.time.Clock
 
 /** Process-wide dependency container (manual DI — no frameworks). */
 class RwilcoApplication : Application() {
 
-    val clock: Clock = Clock.systemDefaultZone()
+    /** Its zone is read live: a phone that changes zones re-arms in the new one (SystemZoneClock). */
+    val clock: Clock = SystemZoneClock()
     /**
      * Every background job in the app runs here. The handler is what stands between one throw
      * in one collector and the process dying with every alarm-side promise in it: logged, the

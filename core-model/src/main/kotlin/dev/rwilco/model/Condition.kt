@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 import java.time.DayOfWeek
 import java.time.Instant
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 
@@ -66,19 +67,25 @@ sealed interface Condition {
  * for somebody sitting at home. A time window never needs any of it.
  */
 fun Condition.holdsAt(at: Instant, zone: ZoneId, where: Fix? = null): Boolean = when (this) {
-    is Condition.TimeWindow -> {
-        val moment = at.atZone(zone)
-        val time = moment.toLocalTime()
-        val crossesMidnight = to <= from
-        val inside = if (crossesMidnight) time >= from || time < to else time >= from && time < to
-        // On the far side of midnight the moment still belongs to the day the window opened.
-        val day = if (crossesMidnight && time < to) moment.toLocalDate().minusDays(1).dayOfWeek else moment.dayOfWeek
-        inside && (days.isEmpty() || day in days)
-    }
+    is Condition.TimeWindow -> holdsAt(at.atZone(zone).toLocalDateTime())
     is Condition.AtPlace -> {
         if (where == null || where.accuracyM > radiusM) true
         else (distanceMeters(where.lat, where.lng, lat, lng) <= radiusM) == inside
     }
+}
+
+/**
+ * The same question of a wall-clock moment, which is all a window ever needed: the zone only
+ * served to turn the instant into one. Asked directly wherever the moment is already on the
+ * clock — a draw being narrowed to its fences, a gate being opened.
+ */
+fun Condition.TimeWindow.holdsAt(at: LocalDateTime): Boolean {
+    val time = at.toLocalTime()
+    val crossesMidnight = to <= from
+    val inside = if (crossesMidnight) time >= from || time < to else time >= from && time < to
+    // On the far side of midnight the moment still belongs to the day the window opened.
+    val day = if (crossesMidnight && time < to) at.toLocalDate().minusDays(1).dayOfWeek else at.dayOfWeek
+    return inside && (days.isEmpty() || day in days)
 }
 
 /** Whether every condition on a rule held at [at]. */

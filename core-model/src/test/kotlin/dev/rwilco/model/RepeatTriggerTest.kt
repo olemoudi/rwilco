@@ -243,4 +243,22 @@ class RepeatTriggerTest {
         assertTrue(!repeat(date(2026, 8, 26), every = 3).isPlain)
         assertTrue(!repeat(date(2026, 8, 26), ends = RepeatEnd.After(4)).isPlain)
     }
+
+
+    // ---- the cap ----------------------------------------------------------------------------
+
+    @Test
+    fun `a count outlasts the block cap, so a daily series two years old still has its dates`() {
+        // Six hundred blocks is the cap on a series with no end. A counted one is bounded by its
+        // own count and must not be cut short by the cap: it used to be, and a daily series with
+        // 999 rings in it went quiet on its six-hundredth day with four hundred still owed.
+        val counted = repeat(date(2024, 12, 1), ends = RepeatEnd.After(999))
+        val all = counted.occurrences().toList()
+        assertEquals(999, all.size)
+        assertEquals(date(2024, 12, 1).plusDays(998), all.last())
+        // Asked from well past the old cap, the series is still there.
+        assertEquals(date(2026, 8, 28), counted.first(1, from = date(2026, 8, 28)).single())
+        // An endless one is still capped, which is what stops anybody walking it for ever.
+        assertEquals(600, repeat(date(2024, 12, 1)).occurrences().take(700).count())
+    }
 }

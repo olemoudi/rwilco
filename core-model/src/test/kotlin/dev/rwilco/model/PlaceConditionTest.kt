@@ -192,4 +192,16 @@ class PlaceConditionTest {
         val gone = PlaceWatchState(lastFix = vague, inside = mapOf(GeofenceIds.encode("r1", 0, home) to false))
         assertEquals(false, gone.sideOf(casa.lat, casa.lng, casa.radiusM), "the watch knew")
     }
+
+    @Test
+    fun `a fix speaks for a moment it is near, either side, and for nothing further off`() {
+        // What a catch-up asks: "a las nueve, y sólo si estoy en casa", slept through and rung
+        // at noon. A fix from noon says nothing about nine, so the condition holds and it rings.
+        val fix = at(0.0)
+        assertTrue(fix.speaksFor(now))
+        assertTrue(fix.speaksFor(now.minus(PlaceWatchPolicy.SPEED_MEMORY)))
+        assertTrue(fix.speaksFor(now.plus(PlaceWatchPolicy.SPEED_MEMORY)))
+        assertFalse(fix.speaksFor(now.minus(PlaceWatchPolicy.SPEED_MEMORY).minusSeconds(1)))
+        assertFalse(fix.speaksFor(now.minusSeconds(3 * 3600)), "a fix from noon does not answer for nine")
+    }
 }

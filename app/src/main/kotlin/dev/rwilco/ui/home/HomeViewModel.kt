@@ -114,6 +114,8 @@ class HomeViewModel(
                 now = now,
                 words = words ?: preset.text,
                 actions = actions ?: preset.actions,
+                zone = clock.zone,
+                shape = shape,
             )
             repository.save(reminder)
             store.update { settings ->

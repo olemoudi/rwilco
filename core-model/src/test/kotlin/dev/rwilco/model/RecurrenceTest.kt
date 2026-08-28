@@ -205,7 +205,7 @@ class RecurrenceTest {
             recurrence = Recurrence.After(8, RecurrenceUnit.HOURS),
             createdAt = local(2026, 1, 1, 9, 0),
         )
-        val made = preset.toReminder(id = "r1", now = local(2026, 8, 27, 15, 0), words = "Tomar la pastilla")
+        val made = preset.toReminder(id = "r1", now = local(2026, 8, 27, 15, 0), words = "Tomar la pastilla", zone = Fixtures.zone)
         assertEquals(Recurrence.After(8, RecurrenceUnit.HOURS), made.recurrence)
     }
 

@@ -68,12 +68,12 @@ class PresetTest {
             actions = setOf(Action.SOUND),
             createdAt = now,
         )
-        val reminder = source.toReminder(id = "r1", now = now, words = "Pastillas de la tensión")
+        val reminder = source.toReminder(id = "r1", now = now, words = "Pastillas de la tensión", zone = Fixtures.zone)
         assertEquals("Pastillas de la tensión", reminder.text)
-        assertEquals("", source.toReminder(id = "r2", now = now).text, "no default words, and the name is not the words")
+        assertEquals("", source.toReminder(id = "r2", now = now, zone = Fixtures.zone).text, "no default words, and the name is not the words")
         assertEquals(
             "Las de la tensión",
-            source.copy(text = "Las de la tensión").toReminder(id = "r3", now = now).text,
+            source.copy(text = "Las de la tensión").toReminder(id = "r3", now = now, zone = Fixtures.zone).text,
             "a preset with default words hands them over",
         )
         assertEquals(listOf("salud"), reminder.tags)
@@ -99,11 +99,12 @@ class PresetTest {
             now = now,
             words = "Las de la tensión",
             actions = setOf(Action.NOTIFICATION, Action.VIBRATE, Action.FULL_SCREEN),
+            zone = Fixtures.zone,
         )
         assertEquals(setOf(Action.NOTIFICATION, Action.VIBRATE, Action.FULL_SCREEN), louder.actions)
         // The shape itself is untouched, and the next use of it is what it always was.
         assertEquals(setOf(Action.NOTIFICATION, Action.VIBRATE), source.actions)
-        assertEquals(setOf(Action.NOTIFICATION, Action.VIBRATE), source.toReminder(id = "r2", now = now).actions)
+        assertEquals(setOf(Action.NOTIFICATION, Action.VIBRATE), source.toReminder(id = "r2", now = now, zone = Fixtures.zone).actions)
     }
 
     @Test

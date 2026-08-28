@@ -20,7 +20,10 @@ import java.time.temporal.TemporalAdjusters
  * behind [RepeatEnd.After] exact and what stops a "day 31" from silently missing February.
  */
 
-/** A cap, not a limit anybody should reach: nothing here skips, so one block is one step. */
+/**
+ * A cap on an endless series, not a limit anybody should reach: nothing here skips, so one
+ * block is one step, and callers only ever take a handful of dates from wherever they stand.
+ */
 private const val MAX_BLOCKS = 600
 
 /** Which days a weekly repeat names. Empty means the one its start day falls on. */
@@ -40,8 +43,13 @@ fun Trigger.Repeat.occurrences(from: LocalDate = startsOn): Sequence<LocalDate> 
     // beginning; the other two can start at the block [from] is in, because nothing before it
     // changes what comes after.
     val firstBlock = if (end is RepeatEnd.After) 0 else blockOf(from)
-    val dates = generateSequence(firstBlock) { it + 1 }
-        .take(MAX_BLOCKS)
+    val blocks = generateSequence(firstBlock) { it + 1 }
+    // "After N times" is bounded by N itself: every block past the first yields a date on or
+    // after the start, so take(times) ends the walk within N blocks. The cap is for the two
+    // endings that count nothing — and it must not reach a counted series, or a daily one
+    // started two years ago ran dry at its six-hundredth day with rings still owed.
+    val capped = if (end is RepeatEnd.After) blocks else blocks.take(MAX_BLOCKS)
+    val dates = capped
         .flatMap { datesIn(it).asSequence() }
         .filter { !it.isBefore(startsOn) }
     val bounded = when (end) {
@@ -111,14 +119,24 @@ private fun dayIn(month: YearMonth, rule: MonthlyOn): LocalDate = when (rule) {
  * The three answers narrow, in that order: an hour is exact, a window is "somewhere in here",
  * and the waking hours are "somewhere today". [Trigger.Repeat.window] is only ever read when
  * there is no hour, because an hour somebody typed is not a thing anything else may argue with.
+ *
+ * [fences] are the hour fences the moment has to clear ("y sólo si es entre las 16 y las 17"),
+ * and a draw is made inside them rather than judged against them afterwards — see
+ * [RandomDraw.inDay]. An hour somebody typed is left to the walk that asks the fences.
  */
-fun Trigger.Repeat.momentOn(date: LocalDate, reminderId: String, zone: ZoneId, shape: DayShape): Instant {
+fun Trigger.Repeat.momentOn(
+    date: LocalDate,
+    reminderId: String,
+    zone: ZoneId,
+    shape: DayShape,
+    fences: List<Condition.TimeWindow> = emptyList(),
+): Instant {
     val hour = time
     val span = window
     return when {
         hour != null -> date.atTime(hour).atZone(zone).toInstant()
-        span != null -> RandomDraw.inDay(reminderId, date, span.on(date), zone)
-        else -> RandomDraw.inDay(reminderId, date, shape.awakeOn(date), zone)
+        span != null -> RandomDraw.inDay(reminderId, date, span.on(date), zone, fences)
+        else -> RandomDraw.inDay(reminderId, date, shape.awakeOn(date), zone, fences)
     }
 }
 

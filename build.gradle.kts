@@ -34,6 +34,7 @@ tasks.register<JacocoReport>("jacocoAggregatedReport") {
                     include(
                         "dev/rwilco/data/ReminderEntity*",
                         "dev/rwilco/update/UpdateInfo*",
+                        "dev/rwilco/system/SystemZoneClock*",
                         "dev/rwilco/vault/VaultSnapshot*",
                         "dev/rwilco/vault/VaultCrypto*",
                         "dev/rwilco/vault/VaultMigrations*",

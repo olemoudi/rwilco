@@ -3,8 +3,10 @@ package dev.rwilco.model
 import dev.rwilco.model.Fixtures.zone
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -143,15 +145,82 @@ class DayWindowTest {
             said.none { it is ValidationWarning.MomentsCannotCoincide },
             "a window and a moment can coincide: $said",
         )
-        // Without the window it is two instants, and that is exactly what the warning is for.
+        // Two instants — a length that runs out and an appointment — and that is exactly what
+        // the warning is for. (A day with no window is not one of them any more: it is the
+        // stretch this person is up for, see below.)
         val bare = warnings(
-            listOf(TriggerRule(Trigger.DayRandom(friday)), appointment),
+            listOf(TriggerRule(Trigger.Countdown(30, Fixtures.now)), appointment),
             Fixtures.now,
             zone,
             Fixtures.defaultTime,
             match = RuleMatch.TOGETHER,
         )
         assertTrue(bare.any { it is ValidationWarning.MomentsCannotCoincide }, "two instants still cannot: $bare")
+    }
+
+    @Test
+    fun `a bare day in a set is the gate over its waking hours`() {
+        // "El jueves a cualquier hora, y a la vez en la oficina" was one minute of Thursday,
+        // drawn from the whole day and rung only if the phone happened to be inside the circle
+        // at it. A day with no window is a window all the same — the hours this person is up —
+        // and in a set it gates like any other: open from getting up, a state to its siblings.
+        val bare = TriggerRule(Trigger.DayRandom(friday))
+        val place = TriggerRule(Trigger.Location(40.4, -3.7, 150, Presence.INSIDE, "Oficina"))
+        val alone = Reminder(id = "r", text = "x", rules = listOf(bare), createdAt = Fixtures.now, updatedAt = Fixtures.now)
+        assertEquals(bare, alone.ruleInSet(0), "on its own the day is still a draw")
+        // Somebody who gets up at ten and turns in at eleven, week and weekend alike: the gate
+        // opens at ten, not at the default eight. (A Friday goes to bed at the weekend's hour.)
+        val lieIn = DayShape(hours = AwakeHours(LocalTime.of(10, 0), LocalTime.of(23, 0), LocalTime.of(10, 0), LocalTime.of(23, 0)))
+        for (match in listOf(RuleMatch.ALL, RuleMatch.TOGETHER)) {
+            val combined = alone.copy(rules = listOf(bare, place), ruleMatch = match)
+            assertEquals(Trigger.AtDateTime(friday.atTime(8, 0)), combined.ruleInSet(0)!!.trigger, "$match: opens when the day does")
+            assertEquals(Trigger.AtDateTime(friday.atTime(10, 0)), combined.ruleInSet(0, lieIn)!!.trigger, "$match: this person's own hours")
+        }
+        val together = alone.copy(rules = listOf(bare, place), ruleMatch = RuleMatch.TOGETHER)
+        // Friday under the default shape runs to the weekend's bedtime, half past one.
+        assertTrue(
+            together.ruleInSet(1)!!.conditions.contains(Condition.TimeWindow(LocalTime.of(8, 0), LocalTime.of(1, 30))),
+            "the waking hours are folded into the place as a state: ${together.ruleInSet(1)!!.conditions}",
+        )
+        assertTrue(
+            together.ruleInSet(1, lieIn)!!.conditions.contains(Condition.TimeWindow(LocalTime.of(10, 0), LocalTime.of(23, 0))),
+        )
+        assertTrue(!together.momentsCannotCoincide(), "a day and a place can both be true at once")
+        assertTrue(!Trigger.DayRandom(friday).isMoment, "a day is a stretch, not an instant")
+    }
+
+    @Test
+    fun `the gate opens where the day's own fences allow`() {
+        // "El viernes a cualquier hora, y sólo si es entre las 16 y las 17", in a set. The door
+        // used to open at eight — the start of the day — which the rule's own fence then
+        // rejected, so the rule answered never and the set never completed. The door opens at
+        // the first minute the fence allows.
+        val teatime = Condition.TimeWindow(LocalTime.of(16, 0), LocalTime.of(17, 0))
+        val fenced = TriggerRule(Trigger.DayRandom(friday), listOf(teatime))
+        val place = TriggerRule(Trigger.Location(40.4, -3.7, 150, Presence.INSIDE, "Oficina"))
+        val start = friday.atStartOfDay(zone).toInstant()
+        for (match in listOf(RuleMatch.ALL, RuleMatch.TOGETHER)) {
+            val set = Reminder(id = "r", text = "x", rules = listOf(fenced, place), ruleMatch = match, createdAt = start, updatedAt = start)
+            val rule = set.ruleInSet(0)!!
+            assertEquals(Trigger.AtDateTime(friday.atTime(16, 0)), rule.trigger, "$match")
+            val next = nextFireOfRule(rule, "r", start, zone, Fixtures.defaultTime) as NextFire.Scheduled
+            assertEquals(friday.atTime(16, 0).atZone(zone).toInstant(), next.at, "$match: armed at the opening")
+            assertTrue(
+                warnings(listOf(fenced, place), start, zone, Fixtures.defaultTime, match).none { it is ValidationWarning.NeverFires || it is ValidationWarning.NeverCompletes },
+                "$match: nothing to warn about",
+            )
+        }
+        // The same with a window of its own: the fence narrows it from within.
+        val lunchFenced = TriggerRule(Trigger.DayRandom(friday, lunch), listOf(Condition.TimeWindow(LocalTime.of(15, 0), LocalTime.of(18, 0))))
+        val windowed = Reminder(id = "r", text = "x", rules = listOf(lunchFenced, place), ruleMatch = RuleMatch.ALL, createdAt = start, updatedAt = start)
+        assertEquals(Trigger.AtDateTime(friday.atTime(15, 0)), windowed.ruleInSet(0)!!.trigger)
+        // A fence on another day allows no minute of this one: the door opens where it always
+        // did, the walk says never, and the editor says so out loud.
+        val mondays = TriggerRule(Trigger.DayRandom(friday), listOf(Condition.TimeWindow(LocalTime.MIDNIGHT, LocalTime.MIDNIGHT, setOf(DayOfWeek.MONDAY))))
+        val doomed = Reminder(id = "r", text = "x", rules = listOf(mondays, place), ruleMatch = RuleMatch.ALL, createdAt = start, updatedAt = start)
+        assertEquals(Trigger.AtDateTime(friday.atTime(8, 0)), doomed.ruleInSet(0)!!.trigger)
+        assertNull(nextFireOfRule(doomed.ruleInSet(0)!!, "r", start, zone, Fixtures.defaultTime))
+        assertTrue(warnings(listOf(mondays, place), start, zone, Fixtures.defaultTime, RuleMatch.ALL).any { it is ValidationWarning.NeverCompletes })
     }
 
     @Test

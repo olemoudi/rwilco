@@ -168,7 +168,7 @@ fun buildHomeState(
         val rows = reminder.rules.mapIndexed { index, rule ->
             // Under "a la vez" the row says when the folded rule next holds, which is what
             // will ring; a fold of two moments never does, and the row says nothing.
-            val next = reminder.ruleInSet(index)?.let { nextFireOfRule(it, reminder.id, now, zone, defaultTime, shape) }
+            val next = reminder.ruleInSet(index, shape)?.let { nextFireOfRule(it, reminder.id, now, zone, defaultTime, shape) }
             TriggerRowUi(
                 trigger = rule.trigger,
                 conditions = rule.conditions,

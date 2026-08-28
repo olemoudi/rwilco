@@ -210,4 +210,74 @@ class RandomDayTest {
         val wake = nextWake(reminder(trigger), early, zone, defaultTime, shape = shape)
         assertEquals(drawFor(trigger), wake?.at)
     }
+
+
+    // ---- a day written while it is under way ------------------------------------------------
+
+    private fun bare(day: Int, window: DayWindow? = null) = listOf(TriggerRule(Trigger.DayRandom(date(day), window)))
+
+    private fun settled(rules: List<TriggerRule>, at: Instant) =
+        settleDays(rules, at, zone, shape).single().trigger as Trigger.DayRandom
+
+    @Test
+    fun `a day written while it is under way is drawn from what is left of it`() {
+        // Thursday the 27th at 15:00:20: the next whole minute is 15:01, and the day this
+        // person is up for ends at half past eleven.
+        val at = local(2026, 8, 27, 15, 0).plusSeconds(20)
+        assertEquals(DayWindow(LocalTime.of(15, 1), LocalTime.of(23, 30)), settled(bare(27), at).window)
+        // And the draw is then always ahead: the whole point.
+        for (id in listOf("r1", "r2", "r3", "r4", "r5")) {
+            val next = drawFor(settleDays(bare(27), at, zone, shape).single().trigger, at = at, id = id)
+            assertTrue(next != null && next > at, "$id: $next is not ahead of $at")
+        }
+        // A stretch of its own is narrowed the same way: "a la hora de comer" at three is three to four.
+        val lunch = DayWindow(LocalTime.of(14, 0), LocalTime.of(16, 0))
+        assertEquals(DayWindow(LocalTime.of(15, 1), LocalTime.of(16, 0)), settled(bare(27, lunch), at).window)
+        // Exactly on the minute: the next whole minute is still the next one.
+        assertEquals(LocalTime.of(15, 1), settled(bare(27), local(2026, 8, 27, 15, 0)).window?.from)
+    }
+
+    @Test
+    fun `a friday under way runs on to the weekend's bedtime, the next morning`() {
+        val at = local(2026, 8, 28, 22, 10)
+        val day = settled(bare(28), at)
+        assertEquals(DayWindow(LocalTime.of(22, 11), LocalTime.of(1, 30)), day.window)
+        // Which DayWindow.on lays over midnight, so the draw is inside Friday night.
+        assertInside(drawFor(day, at = at), AwakeWindow(date(28).atTime(22, 11), date(29).atTime(1, 30)))
+    }
+
+    @Test
+    fun `a day is left alone when it has not opened, when it has closed, and when the clock is past midnight`() {
+        // Not yet up: nothing to narrow.
+        assertEquals(bare(27), settleDays(bare(27), local(2026, 8, 27, 6, 0), zone, shape))
+        // Already in bed: the "ya ha pasado" word is the right one, and the window says so.
+        assertEquals(bare(27), settleDays(bare(27), local(2026, 8, 27, 23, 45), zone, shape))
+        val lunch = DayWindow(LocalTime.of(14, 0), LocalTime.of(16, 0))
+        assertEquals(bare(27, lunch), settleDays(bare(27, lunch), local(2026, 8, 27, 17, 0), zone, shape))
+        // The small hours of Saturday belong to Friday's waking window, but a window laid on the
+        // Friday cannot start on the Saturday: left as written.
+        assertEquals(bare(28), settleDays(bare(28), local(2026, 8, 29, 0, 30), zone, shape))
+        // Another day altogether, and every other kind of trigger, untouched.
+        assertEquals(bare(29), settleDays(bare(29), local(2026, 8, 27, 15, 0), zone, shape))
+        val others = listOf(
+            TriggerRule(Trigger.AtDateTime(date(27).atTime(20, 0))),
+            TriggerRule(Trigger.Countdown(30, early)),
+            TriggerRule(Trigger.Interval(LocalTime.of(16, 0), LocalTime.of(17, 0))),
+        )
+        assertEquals(others, settleDays(others, local(2026, 8, 27, 15, 0), zone, shape))
+    }
+
+    @Test
+    fun `the editor's warning and the save agree, without either knowing the id`() {
+        // At five in the evening "hoy a cualquier hora" is not in the past: it is tonight.
+        val at = local(2026, 8, 27, 17, 0)
+        assertTrue(warnings(bare(27), at, zone, defaultTime, shape = shape).none { it is ValidationWarning.InPast })
+        // At a quarter to midnight it is, and the word is said.
+        assertTrue(warnings(bare(27), local(2026, 8, 27, 23, 45), zone, defaultTime, shape = shape).any { it is ValidationWarning.InPast })
+        // A preset made into a reminder in the evening is settled on the way, and rings tonight.
+        val preset = Preset(id = "p", name = "Basura", text = "Sacar la basura", rules = bare(27), createdAt = early)
+        val made = preset.toReminder(id = "r9", now = at, zone = zone, shape = shape)
+        val next = nextFire(made, at, zone, defaultTime, shape = shape)
+        assertTrue(next is NextFire.Scheduled && next.at > at && next.at.atZone(zone).toLocalDate() == date(27), "$next")
+    }
 }

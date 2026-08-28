@@ -73,7 +73,7 @@ class CountdownTriggerTest {
             createdAt = now.minusSeconds(90 * 24 * 3600L),
         )
         val later = now.plusSeconds(3600)
-        val made = preset.toReminder(id = "r1", now = later, words = "Sacar el pan")
+        val made = preset.toReminder(id = "r1", now = later, words = "Sacar el pan", zone = Fixtures.zone)
         assertEquals(later, (made.rules.single().trigger as Trigger.Countdown).startedAt)
         val next = nextFire(made, later, zone, defaultTime) as NextFire.Scheduled
         assertEquals(later.plusSeconds(25 * 60), next.at, "three months after it was invented, it is still 25 minutes")

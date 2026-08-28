@@ -219,6 +219,10 @@ fun warnings(
     match: RuleMatch = RuleMatch.ANY,
     shape: DayShape = DayShape.DEFAULT,
 ): List<ValidationWarning> {
+    // Judged as they will be saved: a day left to the day is narrowed to what is left of it at
+    // the save (settleDays), and a warning read off the unnarrowed draw said "ya ha pasado" of
+    // a reminder that was going to ring tonight.
+    val rules = settleDays(rules, now, zone, shape)
     val found = ArrayList<ValidationWarning>()
     val doomed = ArrayList<Int>()
     // Under "a la vez" every rule is judged with the others folded into it as conditions, which
@@ -227,7 +231,7 @@ fun warnings(
     // the warning is worked out from the same trigger the firing will use, not from the one
     // written down.
     val inSet = if (match != RuleMatch.ANY && rules.size > 1) {
-        rules.map { it.copy(trigger = it.trigger.whenCombined()) }
+        rules.map { it.copy(trigger = it.trigger.whenCombined(shape, it.windows())) }
     } else {
         rules
     }
@@ -238,7 +242,7 @@ fun warnings(
             // "and only while it is open", which is the whole of what it does for them. This is
             // the same order Reminder.ruleInSet folds in, and it has to stay the same order.
             val others = rules.filterIndexed { at, _ -> at != index }
-            inSet[index].let { it.copy(conditions = it.conditions + others.flatMap { o -> o.conditions } + others.mapNotNull { o -> o.trigger.asState() }) }
+            inSet[index].let { it.copy(conditions = it.conditions + others.flatMap { o -> o.conditions } + others.mapNotNull { o -> o.trigger.asState(shape) }) }
         }
     } else {
         inSet

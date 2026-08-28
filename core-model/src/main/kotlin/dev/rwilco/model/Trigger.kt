@@ -16,6 +16,8 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 /**
  * What makes a reminder fire. The `@SerialName`s are the on-disk discriminators and are frozen:
@@ -333,16 +335,24 @@ val Trigger.family: TriggerFamily
  * state and nothing else. Everything else is a *moment*: true at one instant and false either
  * side of it, which is exactly why two of them together can never both be true, and why a set
  * with none of them has nothing to start it.
+ *
+ * A day with no hour is a state too — for the hours this person is up on it, which is what
+ * [shape] is for — and not a moment: "el jueves a cualquier hora, y a la vez en la oficina" is
+ * a whole day at the office, not one minute of it. See [whenCombined].
  */
-fun Trigger.asState(): Condition? = when (this) {
+fun Trigger.asState(shape: DayShape = DayShape.DEFAULT): Condition? = when (this) {
     is Trigger.Location -> Condition.AtPlace(lat, lng, radiusM, label, inside = presence == Presence.INSIDE)
     is Trigger.Interval -> Condition.TimeWindow(from, to, days)
     // A day with a window on it is a state for as long as the window lasts, exactly as an
-    // interval is — see [whenCombined] for the other half of what that means.
-    is Trigger.DayRandom -> window?.let { Condition.TimeWindow(it.from, it.to) }
+    // interval is — and a day with none is a state for as long as its waking hours last. See
+    // [whenCombined] for the other half of what that means.
+    is Trigger.DayRandom -> stretchOf(shape).let { Condition.TimeWindow(it.from.toLocalTime(), it.to.toLocalTime()) }
     is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.AtTime, is Trigger.Countdown, is Trigger.Random -> null
     is Trigger.Repeat -> null
 }
+
+/** The stretch of the day a date with no hour is drawn from: the one it was given, or the day this person is up for. */
+fun Trigger.DayRandom.stretchOf(shape: DayShape): AwakeWindow = window?.on(date) ?: shape.awakeOn(date)
 
 /**
  * The same trigger as its own set makes it, for a set that combines ([RuleMatch.ALL] and
@@ -358,11 +368,31 @@ fun Trigger.asState(): Condition? = when (this) {
  *
  * So the moment becomes the opening, and the window becomes a condition on every sibling
  * ([asState]) — which is exactly what an [Trigger.Interval] has always been, reached from the
- * other side. Everything else comes back untouched.
+ * other side. A day with no window is the same gate over the hours this person is up ([shape]):
+ * "el jueves, y a la vez en la oficina" used to be one minute of Thursday, drawn from the whole
+ * day and rung only if the phone happened to be inside the circle at it. And the gate opens at
+ * the first minute the rule's own hour [fences] allow, not at the window's start: a door that
+ * opened at eight for a rule that says "sólo de 16 a 17" was a moment the fence rejected, and a
+ * set that never completed. Everything else comes back untouched.
  */
-fun Trigger.whenCombined(): Trigger = when (this) {
-    is Trigger.DayRandom -> window?.let { Trigger.AtDateTime(date.atTime(it.from)) } ?: this
+fun Trigger.whenCombined(shape: DayShape = DayShape.DEFAULT, fences: List<Condition.TimeWindow> = emptyList()): Trigger = when (this) {
+    is Trigger.DayRandom -> Trigger.AtDateTime(gateOpening(stretchOf(shape), fences))
     else -> this
+}
+
+/**
+ * The first minute of [window] that every one of [fences] allows, or its start when none does —
+ * the walk that asks the fences then answers *never*, and says so, instead of a set that waits
+ * for a moment it has already ruled out.
+ */
+private fun gateOpening(window: AwakeWindow, fences: List<Condition.TimeWindow>): LocalDateTime {
+    if (fences.isEmpty()) return window.from
+    var at = window.from
+    while (at < window.to) {
+        if (fences.all { it.holdsAt(at) }) return at
+        at = at.plusMinutes(1)
+    }
+    return window.from
 }
 
 /**
@@ -404,6 +434,33 @@ val Trigger.kind: TriggerKind
 fun startCountdowns(rules: List<TriggerRule>, now: Instant): List<TriggerRule> = rules.map { rule ->
     val trigger = rule.trigger
     if (trigger is Trigger.Countdown && trigger.startedAt == null) rule.copy(trigger = trigger.copy(startedAt = now)) else rule
+}
+
+/**
+ * A day whose hour was left to the day, written while that day is already under way, is drawn
+ * from what is left of it.
+ *
+ * "Hoy, a cualquier hora" saved at five in the afternoon drew its minute from the whole day —
+ * by (reminder, day), the same on every screen — and one time in two that minute had already
+ * gone by: the reminder was born overdue and never rang, and the editor could not say so,
+ * because the id the draw is seeded by is minted at the save. So the window is narrowed to
+ * what is left, here, where a countdown is stamped ([startCountdowns]) and for the same reason:
+ * the moment it is written is the moment it starts. The card then says exactly what will
+ * happen — "hoy entre las 17:04 y las 23:30" — and [warnings] runs the same narrowing, so what
+ * it says and what is saved agree without either knowing the id.
+ *
+ * Left alone when the window has not opened yet (nothing to narrow), when it has closed (the
+ * "ya ha pasado" word is then the right one), and when the next minute is not on the day at
+ * all — the small hours of a Saturday belong to a Friday's waking window, and a window laid on
+ * the Friday cannot start on the Saturday.
+ */
+fun settleDays(rules: List<TriggerRule>, now: Instant, zone: ZoneId, shape: DayShape): List<TriggerRule> = rules.map { rule ->
+    val day = rule.trigger as? Trigger.DayRandom ?: return@map rule
+    val window = day.stretchOf(shape)
+    val nextMinute = now.atZone(zone).toLocalDateTime().truncatedTo(ChronoUnit.MINUTES).plusMinutes(1)
+    if (nextMinute.toLocalDate() != day.date) return@map rule
+    if (nextMinute <= window.from || nextMinute >= window.to) return@map rule
+    rule.copy(trigger = day.copy(window = DayWindow(nextMinute.toLocalTime(), window.to.toLocalTime())))
 }
 
 /**

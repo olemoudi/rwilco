@@ -98,6 +98,29 @@ everything (`RwilcoApplication`) because it moves real armed moments. The draw i
 `RandomDraw.inDay`, deterministic by (reminder, day), so the screen and the scheduler agree
 without storing it. An explicit `time` ignores all of it.
 
+**A draw is made inside its fences, never judged against them afterwards.** A rule's "y sólo
+si" hour windows (`TriggerRule.windows()`) and a calendar's own fences reach `inDay`, which
+lists the minutes of the window they allow and draws one of those. Judging a whole-day draw
+against the fence afterwards was a reminder that mostly did not ring: "el jueves a cualquier
+hora, y sólo si es entre las 16 y las 17" has one draw in it and cleared the fence one time in
+sixteen, and "el primer viernes de cada mes, sólo de 16 a 17" with no hour rang about once a
+year — `nextMoment` walked sixty-four *months* of single draws and `recurrenceWarning` only
+spoke when all of them failed. With no fences the draw is, to the bit, what it always was
+(`RandomDrawTest` pins it); when no minute of the day clears the fences the plain draw comes
+back for the walk to reject, which is what a fence naming *other days* ("sólo los lunes") has to
+do to a daily calendar. The random tile (`Trigger.Random`) is deliberately not fenced this way:
+its own `from`/`to` is its hour fence, a `days` fence works through the walk, and an hour fence
+narrower than its window is a duplicate the sheet already expresses — a known limitation.
+
+**A day written while it is under way is drawn from what is left of it** (`settleDays`, beside
+`startCountdowns` and applied at the same two saves). "Hoy, a cualquier hora" saved at five drew
+its minute from the whole day, and one time in two that minute had gone: the reminder was born
+overdue and never rang, and the editor could not say so because the id the draw is seeded by is
+minted at the save. The window is narrowed to the next whole minute → the day's end, so the
+card says exactly what will happen ("hoy entre las 17:04 y las 23:30"), and `warnings` runs the
+same narrowing so what it says and what is saved agree without either knowing the id. Both
+`toReminder`s take a `zone` for it — required, so no save can bypass it.
+
 **Three answers to "when in the day", not two** (`DayWindow`). Between an hour somebody picked
 and the whole of the day they are up for sits a stretch they named: "a la hora de comer". Both
 shapes that leave the hour to the day carry an optional one — `Trigger.DayRandom` (the date
@@ -115,7 +138,12 @@ and not a trip to the settings.
 between two and four, which is the whole point of naming a stretch instead of an hour. Put it in
 a set and that reading falls apart: "a la hora de comer, y a la vez en la oficina" cannot mean
 "at 15:37 if you happen to be at the office" — a draw landing while the other half is false is a
-reminder that silently does not ring. So in a combining set (ALL and TOGETHER, never ANY, where
+reminder that silently does not ring. **A day with no window is the same kind of thing over the
+hours this person is up** (`asState`/`whenCombined` take the `DayShape`): "el jueves, y a la vez
+en la oficina" used to be one minute of Thursday, rung only if the phone happened to be inside
+the circle at it. And the gate opens at the first minute the rule's own hour fences allow, not
+at the window's start — a door that opened at eight for a rule saying "sólo de 16 a 17" was a
+moment the fence rejected, and a set that never completed. So in a combining set (ALL and TOGETHER, never ANY, where
 the rules depend on nobody) the window becomes a **gate**: its moment is the opening, and it
 reaches every sibling as a `TimeWindow` state (`asState`), so the ring lands the instant
 everything else is true inside it — which can be its first second. That is exactly what
@@ -136,7 +164,11 @@ is what it always was.
 
 `nextFireOfRule` walks a rule's candidate moments until its conditions hold, stopping after 64
 so a rule that can never be satisfied ("a las 09:00, y sólo si es entre las 18:00 y las 22:00")
-answers *never* instead of looping.
+answers *never* instead of looping. `Simulation` (a test harness beside `Fixtures`) is a phone
+in memory — the row, the alarm, the person answering, a phone switched off — driven exactly as
+`ReminderScheduler`/`ReminderFiring` drive the real one, so `FiringAuditTest` and
+`SnoozeJourneyTest` can wind a shape through a year of alarms and say of every ring when and
+why; a scenario that fails there is a finding about the model, not about the test.
 
 `nextFire(reminder, now, zone, defaultTime)` (`NextFire.kt`) picks, under ANY, the earliest
 definite moment (`Scheduled`), else the earliest random draw (`Sometime`, shown as a window),
@@ -503,7 +535,14 @@ strict is asking somebody to remember how they spelled it.
 
 - `ReminderScheduler` keeps one `setAlarmClock` armed per reminder — the only kind of alarm Doze
   never defers and the rate limiter never holds back — and writes the armed moment back to the
-  row. That, next to `lastFiredAt`, is what makes a firing the phone slept through detectable:
+  row. **One pass at a time** (a mutex): passes come from six doors, and two side by side could
+  read a row either side of an edit and let the older reading write last — the row and the alarm
+  then named a moment somebody had just edited away. Nothing that holds another lock calls back
+  into it, so there is no order to get wrong. **The clock's zone is read live**
+  (`SystemZoneClock`): `Clock.systemDefaultZone()` copies the zone once, and a process the place
+  watch keeps alive for days re-armed every wall-clock moment in the zone it started in, after a
+  `TIMEZONE_CHANGED` that had already reached it.
+  That, next to `lastFiredAt`, is what makes a firing the phone slept through detectable:
   an armed moment in the past with no ring to match it. What a change has to touch before the
   whole list is worked out again is `schedulingKey` — the rules, the match, what is ticked off,
   the snooze, the recurrence and the moment it counts from — and deliberately not what the
@@ -541,7 +580,13 @@ strict is asking somebody to remember how they spelled it.
   catch-up is recorded as rung now, and stands down if the row already shows a ring at or after
   the moment it is about (the alarm for a past moment arrives at once, racing it). Every entry
   into `ReminderFiring` — a firing, a repeat, "hecho", a snooze — takes one mutex, so two doors
-  opening on the same second read each other's writes instead of both ringing.
+  opening on the same second read each other's writes instead of both ringing. **"Hecho" is one
+  write** (`ReminderDao.dealtWith`: the snooze, the round, the anchor and the status together),
+  because four writes could be cut in two by a process dying, and a round closed with its anchor
+  unmoved is a reminder that never comes back. **A place fence on a catch-up is asked about the
+  moment, not about now** (`Fix.speaksFor`): "a las nueve, y sólo si estoy en casa", slept
+  through and caught up at noon from the office, is a question about nine o'clock, a fix from
+  noon does not answer it, and what nobody can vouch for holds.
   **An anchored recurrence on a reminder with rules is a rest, not a ring.** Dealt with, the
   rules say nothing until the span is up (`Reminder.restUntil`, counted from `lastDealtAt`):
   nothing is armed, no place is watched, a crossing is written down but does not ring. From

@@ -22,6 +22,8 @@ import dev.rwilco.model.Wake
 import dev.rwilco.model.missedFire
 import dev.rwilco.model.nextWake
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.Clock
 import java.time.Instant
 import java.util.Collections
@@ -50,10 +52,21 @@ class ReminderScheduler(
     private val armed = Collections.synchronizedSet(mutableSetOf<String>())
 
     /**
+     * One pass at a time. A pass is a read of every row, a decision each, and a write of the
+     * armed moment plus the alarm itself — and passes come from six doors (the launch, the
+     * collector on every save, the settings, the editor, the safety net, a grant changing).
+     * Two side by side could read the row before an edit and after it, and the one that read
+     * it before could write last: the row and the alarm then named a moment somebody had just
+     * edited away, and the moment they meant waited for the next pass. Never called back from
+     * anything that holds another lock, so there is no order to get wrong.
+     */
+    private val lock = Mutex()
+
+    /**
      * Re-arms everything and returns the reminders whose moment came and went unheard, for the
      * caller to deal with (only boot and the safety-net worker do; a plain edit does not).
      */
-    suspend fun rearmAll(): List<Reminder> {
+    suspend fun rearmAll(): List<Reminder> = lock.withLock {
         // The defaults are a fine way to arm; an exception here was the one thing that could
         // stop every reminder being armed at once (see RwilcoApplication.appScope).
         val settings = runCatching { settingsStore.settings.first() }.getOrElse {
@@ -66,7 +79,7 @@ class ReminderScheduler(
         val zone = clock.zone
         val open = runCatching { repository.openNow() }.getOrElse {
             Log.e(TAG, "could not read the reminders to arm", it)
-            return emptyList()
+            return@withLock emptyList()
         }
         val missed = ArrayList<Reminder>()
         val seen = HashSet<String>(open.size)
@@ -95,7 +108,7 @@ class ReminderScheduler(
         Log.i(TAG, "armed ${seen.size} reminders, ${missed.size} missed")
         Diag.note("arm", "armed=${seen.size} missed=${missed.size} exact=${if (canScheduleExact()) "y" else "n"}")
         for (reminder in missed) Diag.note("arm", "r=${reminder.id.take(8)} missed its moment ${reminder.armedFor} (rule ${reminder.armedRule})")
-        return missed
+        missed
     }
 
     fun cancel(id: String) {

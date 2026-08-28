@@ -60,8 +60,13 @@ interface ReminderDao {
     @Query("UPDATE reminder SET lastFiredAt = :at, snoozedUntil = NULL WHERE id = :id")
     suspend fun markFired(id: String, at: Long)
 
-    @Query("UPDATE reminder SET lastDealtAt = :at WHERE id = :id")
-    suspend fun setLastDealtAt(id: String, at: Long)
+    /**
+     * "Hecho", in one write: the snooze and the half-finished round go, the anchor every
+     * recurrence counts from and the status are stamped. One statement rather than four, so a
+     * process that dies in the middle cannot leave a round closed and its anchor unmoved.
+     */
+    @Query("UPDATE reminder SET snoozedUntil = NULL, firedRules = '', lastDealtAt = :at, status = :status, updatedAt = :at, doneAt = :doneAt WHERE id = :id")
+    suspend fun dealtWith(id: String, at: Long, status: String, doneAt: Long?)
 
     @Query("UPDATE reminder SET armedFor = :at, armedRule = :ruleIndex WHERE id = :id")
     suspend fun setArmedFor(id: String, at: Long?, ruleIndex: Int?)

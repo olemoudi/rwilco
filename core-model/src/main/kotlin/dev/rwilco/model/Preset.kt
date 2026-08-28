@@ -5,6 +5,7 @@ package dev.rwilco.model
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 import java.time.Instant
+import java.time.ZoneId
 
 /**
  * How many colours a preset can be given. A preset is found by its colour before it is read —
@@ -107,13 +108,16 @@ fun Preset.toReminder(
      * itself is untouched: this is one reminder saying "this time, also make a noise".
      */
     actions: Set<Action> = this.actions,
+    /** Where and how the day is shaped, for a date left to the day: see [settleDays]. */
+    zone: ZoneId,
+    shape: DayShape = DayShape.DEFAULT,
 ): Reminder = Reminder(
     id = id,
     text = words,
     tags = tags,
     // Any countdown it carries starts ticking now: that is the whole reason a preset stores a
-    // length rather than a moment.
-    rules = startCountdowns(rules, now),
+    // length rather than a moment. And a date left to the day is drawn from what is left of it.
+    rules = settleDays(startCountdowns(rules, now), now, zone, shape),
     ruleMatch = ruleMatch,
     actions = actions,
     recurrence = recurrence,
