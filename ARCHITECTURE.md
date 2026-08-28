@@ -254,7 +254,13 @@ strict is asking somebody to remember how they spelled it.
   blocks) and `PlaceReadiness` are held outside their cards so a closed row can say "3 cosas
   por arreglar" in the error colour with the badge to match, and the groups in trouble open
   themselves once on arrival. It is the only automatic thing on the screen, and the reason is
-  that every one of those states fails silently.
+  that every one of those states fails silently. **"Vibración al tocar" is the same shape of
+  problem in one row**: Android gates every app's touch feedback behind its own switch and there
+  is no asking it nicely, so with that off ours can only ever turn the tick *off* — somebody
+  turns it on, nothing happens, and the app looks broken. It gets the same red row and the same
+  one button rather than a fix of our own: driving the motor ourselves would override a
+  preference somebody set on purpose, and would feel worse than the haptics the phone has
+  already tuned.
 - Theme (`ui/theme/`): hand-authored dark/light schemes (amber `primary` = "what fires next"),
   `RwilcoTypography` on three bundled variable fonts (Bricolage Grotesque display, Manrope body,
   JetBrains Mono for times/dates), `RwilcoShapes`, tokens (`Spacing`, `Motion`, `Sizes`) and
@@ -308,6 +314,16 @@ strict is asking somebody to remember how they spelled it.
   starts at the "hecho" and not at the ring, or that a calendar keeps its own dates — and a
   calendar's fences read under it exactly as a rule's do. `ByTrigger` gets no row: the random
   window above it already IS that answer.
+- **The corner where things go wrong** (`Header`): beside the magnifier and the history there is
+  a bug, and one tap puts the whole diagnostic report on the clipboard with a line to say so. It
+  has always existed three screens deep in the settings, which is the wrong depth for the thing
+  somebody reaches for at the exact moment the app has just done something inexplicable — by the
+  time they have found it, the log has moved on. Built in `RwilcoApp` and not in Home's
+  ViewModel: a report is a snapshot of the whole app, and that ViewModel knows about none of it.
+- **The undo lives at the top of the screen**, which is the only part of it nothing else wants.
+  At the bottom it landed squarely on "Nuevo" — the one button every screen puts in the thumb's
+  way on purpose — so the price of being told a reminder was deleted was not being able to write
+  the next one for five seconds. An undo is a thing to read; the reaching is the button under it.
 - Home: `HomeViewModel` combines the open reminders, settings, the tag filter and a minute pulse
   into `HomeUiState` (`buildHomeState`, pure and tested). The hero card's countdown ticks in its
   own composable (`rememberNow`) so nothing else recomposes. The magnifier has a flow of its own
@@ -638,6 +654,14 @@ strict is asking somebody to remember how they spelled it.
   reason above — because an answer left standing from before the window closed would have a card
   say "no se cumple ahora mismo" about a circle nothing has looked at since last night. `sync()` always did this; `look()`
   did not, and the mark a person saw then depended on whether the process happened to restart.
+  **A state that has already had its say is not watched at all.** "Mientras esté en casa" rings
+  once a round (`presenceAlreadyRang`), so once it has rung every firing of that rule is dropped
+  until somebody deals with it — and a circle that can only produce dropped firings is a radio
+  spent to learn nothing. On a real phone it was the one circle with no gate whatsoever: a
+  single-rule set has no window to close it and a recurrence cannot rest a reminder nobody has
+  dealt with, so it bought a fix every few minutes, GPS included. Only when it is the reminder's
+  *only* rule, though: with siblings the circle is still wanted, because under "a la vez" it is
+  folded into every other rule as a state and those rules are not spent.
   **Under "todos" a place is never gated by its siblings, only slowed.** It was, once, and that
   was wrong in the way that costs a reminder rather than a battery: a place under ALL is a
   *state*, the crossing that meets it happens when it happens, and a circle switched off until
@@ -786,6 +810,11 @@ strict is asking somebody to remember how they spelled it.
   stale one the provider hands back when nothing fresh answers — is treated as no fix at all,
   because writing this morning's position into `inside` is how a real arrival later gets
   dismissed as a place the app thought you were already in.
+  Every note says **which circle** it is about — the geometry, rounded to about a kilometre like
+  everything else here, never the label, because a place name is somebody's life and a circle is
+  a fact about a bug — and how wide the fix's doubt was. Without those, a page of geofence
+  crossings says only that *something* was crossed, and a false ring and a real one look
+  identical afterwards; both were learnt chasing a real one.
   State lives in
   `PlaceWatchStore` (its own DataStore; written every check). Doze holds allow-while-idle
   alarms to one per nine minutes, and a phone in Doze is a phone not moving, so nothing is

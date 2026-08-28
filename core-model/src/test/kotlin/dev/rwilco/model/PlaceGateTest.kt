@@ -1,6 +1,7 @@
 package dev.rwilco.model
 
 import dev.rwilco.model.Fixtures.defaultTime
+import dev.rwilco.model.Fixtures.local
 import dev.rwilco.model.Fixtures.now
 import dev.rwilco.model.Fixtures.zone
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -199,5 +200,38 @@ class PlaceGateTest {
         assertEquals(Crossing.TAKES_BACK, circle.place.crossing)
         assertEquals(Transition.EXIT, circle.place.transition, "it is waiting to stop being true")
         assertFalse(circle.place.onCrossing, "a tick comes off on the state, not on a doorway")
+    }
+
+    @Test
+    fun `a lone state that has already rung stops costing a radio`() {
+        // Found on a real phone: the one circle with no gate at all. A single-rule set has no
+        // window to close it, and a recurrence cannot rest a reminder nobody has dealt with, so
+        // it asked for a position every few minutes — for a reminder whose every firing the
+        // ring guard was already dropping.
+        val rang = local(2026, 8, 27, 18, 21)
+        val spent = reminder(TriggerRule(home)).copy(lastFiredAt = rang)
+        assertTrue(spent.watchedCircles(now, zone, defaultTime).isEmpty(), "it is still paying for fixes")
+
+        // Before it rings, and after it is dealt with, it is watched like anything else.
+        assertEquals(1, reminder(TriggerRule(home)).watchedCircles(now, zone, defaultTime).size)
+        val dealt = spent.copy(lastDealtAt = rang.plusSeconds(60), recurrence = Recurrence.None)
+        assertEquals(1, dealt.watchedCircles(now, zone, defaultTime).size)
+    }
+
+    @Test
+    fun `a doorway that has rung keeps being watched, because it can ring again`() {
+        val doorway = home.copy(onCrossing = true)
+        val rung = reminder(TriggerRule(doorway)).copy(lastFiredAt = local(2026, 8, 27, 18, 21))
+        assertEquals(1, rung.watchedCircles(now, zone, defaultTime).size)
+    }
+
+    @Test
+    fun `a spent state with siblings is still watched, because they are not spent`() {
+        // Under "a la vez" the circle is folded into every other rule as a state, and a window
+        // beside it can ring again — this map is what answers where the phone was when it did.
+        val evening = TriggerRule(Trigger.Interval(LocalTime.of(19, 0), LocalTime.of(21, 30)))
+        val set = reminder(TriggerRule(home), evening, match = RuleMatch.TOGETHER)
+            .copy(lastFiredAt = local(2026, 8, 27, 18, 21))
+        assertTrue(set.watchedCircles(now, zone, defaultTime).any { it.ruleIndex == 0 })
     }
 }

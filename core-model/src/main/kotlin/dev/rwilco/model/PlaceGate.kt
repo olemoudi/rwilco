@@ -108,6 +108,21 @@ fun Reminder.watchedCircles(
         // A rule that is not pending has nothing left to report — unless it is a place under
         // "todos", which is a state and can come undone.
         if (index !in pending && !ticked) return@flatMapIndexed emptyList()
+        // **A state that has already had its say is not worth a radio.** "Mientras esté en casa"
+        // rings once a round (`presenceAlreadyRang`), so once it has rung, every firing of this
+        // rule is dropped until somebody deals with it — and watching a circle that can only
+        // produce dropped firings is paying for a position to learn nothing. It was the one
+        // circle on a real phone with no gate at all: a single-rule set has no window to close
+        // it, and its recurrence cannot rest a reminder nobody has dealt with. So it cost a fix
+        // every few minutes, GPS included, for a reminder that could not ring.
+        //
+        // Only when it is the reminder's *only* rule. With siblings the circle is still wanted:
+        // under "a la vez" it is folded into every other rule as a state, and those rules are
+        // not spent — a window beside it can ring again, and it is this map that answers where
+        // the phone was when it did.
+        if (place != null && !place.onCrossing && rules.size == 1 && presenceAlreadyRang(place)) {
+            return@flatMapIndexed emptyList()
+        }
         val fold = folded[index]
         val gate: Instant? = if (place != null) {
             // Its own hours and, folded in, its siblings'. A fold that comes back null is a

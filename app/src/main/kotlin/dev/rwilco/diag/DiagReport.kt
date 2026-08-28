@@ -84,7 +84,12 @@ const val DIAG_REMINDERS = 30
 const val DIAG_NOTES = 120
 
 /** And the tail of the place watch's own account, which has a screen of its own for the whole of it. */
-const val DIAG_WATCH_NOTES = 15
+/**
+ * Fifteen was about twenty minutes of a phone sitting still, and the one time this was used in
+ * anger the thing worth seeing — a set of geofence crossings — was forty minutes back. A watch
+ * note is one short line; twice as many is worth the paste.
+ */
+const val DIAG_WATCH_NOTES = 30
 
 /**
  * The report, as one block of text to be copied and handed over.
@@ -153,6 +158,9 @@ fun Diagnostics.report(): String = buildString {
         for (note in watch.take(DIAG_WATCH_NOTES)) {
             appendLine(
                 "${note.at.atZone(zone).format(short)} ${note.kind.name.padEnd(5)}" +
+                    // Which circle, rounded to about a kilometre like every other one here:
+                    // enough to tell four co-located circles apart, not enough to find a door.
+                    (note.lat?.let { lat -> note.lng?.let { lng -> " @${fixed(lat, 2)},${fixed(lng, 2)}${note.radiusM?.let { "/${it}m" } ?: ""}" } } ?: "") +
                     (note.gapM?.let { " gap=${it.toInt()}m" } ?: "") +
                     (note.accuracyM?.let { " acc=${it}m" } ?: "") +
                     (note.inside?.let { " inside=${yes(it)}" } ?: "") +

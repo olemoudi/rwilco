@@ -1,5 +1,8 @@
 package dev.rwilco.ui.settings
 
+import android.content.Context
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -51,24 +54,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.rwilco.BuildConfig
 import dev.rwilco.R
-import dev.rwilco.model.OFFERED_KINDS
 import dev.rwilco.model.AlertSound
 import dev.rwilco.model.AlertStacking
 import dev.rwilco.model.AppSettings
+import dev.rwilco.model.OFFERED_KINDS
+import dev.rwilco.model.Presence
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.ThemeMode
-import dev.rwilco.model.Presence
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.VibrationRhythm
 import dev.rwilco.model.VibrationStrength
 import dev.rwilco.ui.components.DayToggles
 import dev.rwilco.ui.components.InfoBadge
+import dev.rwilco.ui.components.PermissionFixRow
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.SegmentedChoice
 import dev.rwilco.ui.components.TagChip
@@ -107,6 +112,7 @@ private val OpenGroups = listSaver<Set<Group>, String>(
 fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog: () -> Unit, onBackup: () -> Unit, onDiagnostics: () -> Unit) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val spacing = Tokens.spacing
+    val context = LocalContext.current
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -479,6 +485,21 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
                             checked = current.haptics,
                             onCheckedChange = viewModel::setHaptics,
                         )
+                        // **This switch can only ever turn the tick OFF.** Android gates every
+                        // app's touch feedback behind its own "vibración al tocar", and there
+                        // is no asking it nicely: with that off, this one is a switch somebody
+                        // turns on and nothing happens — which is a worse thing to ship than
+                        // the missing tick. So it says so, in the same red row and with the
+                        // same one button that every other silently-failing state on this
+                        // screen gets (see AlertReadiness).
+                        if (current.haptics && !systemHapticsOn(context)) {
+                            PermissionFixRow(
+                                text = stringResource(R.string.settings_haptics_system_off),
+                                action = stringResource(R.string.settings_haptics_system_fix),
+                            ) {
+                                runCatching { context.startActivity(Intent(Settings.ACTION_SOUND_SETTINGS)) }
+                            }
+                        }
                     }
                 }
             }
@@ -663,3 +684,12 @@ private fun ThemeButton(
         }
     }
 }
+
+/**
+ * Whether the phone's own touch feedback is on.
+ *
+ * Read straight rather than remembered: it can be changed in the system settings the row below
+ * sends somebody to, and they come back to this screen expecting the warning to have gone.
+ */
+private fun systemHapticsOn(context: Context): Boolean =
+    Settings.System.getInt(context.contentResolver, Settings.System.HAPTIC_FEEDBACK_ENABLED, 1) != 0

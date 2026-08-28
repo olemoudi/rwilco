@@ -256,11 +256,11 @@ class PlaceWatcher(
         val strict = live?.onCrossing == true && reminder?.lastFiredAt != null
         if (!crossingIsNews(state, placeId, transition, now, strict = strict)) {
             Log.i(TAG, "geofence says $transition at $placeId, but we were already there")
-            log.note(WatchNote(at = now, kind = NoteKind.ECHO, place = label, inside = state.inside[placeId]))
+            log.note(WatchNote(at = now, kind = NoteKind.ECHO, place = label, lat = live?.lat, lng = live?.lng, radiusM = live?.radiusM, inside = state.inside[placeId]))
             return@withLock Crossing.NOTHING
         }
         store.write(state.remembering(placeId, transition))
-        log.note(WatchNote(at = now, kind = NoteKind.FENCE, place = label, inside = transition == Transition.ENTER))
+        log.note(WatchNote(at = now, kind = NoteKind.FENCE, place = label, lat = live?.lat, lng = live?.lng, radiusM = live?.radiusM, inside = transition == Transition.ENTER))
         // Written down either way; acted on only for the crossing the rule waits for, and only
         // while the circle is worth watching at all — not resting, not outside its hours. What
         // acting on it means is the circle's own to say: a place under "todos" that has already
@@ -422,6 +422,9 @@ class PlaceWatcher(
                 waitS = plan?.wait?.seconds ?: state.nextCheckAt?.let { Duration.between(now, it).seconds },
                 gapM = plan?.gapM,
                 place = plan?.nearest?.label,
+                lat = plan?.nearest?.lat,
+                lng = plan?.nearest?.lng,
+                radiusM = plan?.nearest?.radiusM,
                 inside = plan?.nearest?.let { state.inside[it.id] },
                 speedMps = movement.speedMps,
                 movedM = movement.movedM,

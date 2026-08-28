@@ -77,8 +77,8 @@ class PlaceWatchDeviceTest {
     private val radius = 200
 
     /** The watch's key for the one place a seeded reminder carries. */
-    private fun key(id: String, presence: Presence) =
-        GeofenceIds.encode(id, 0, Trigger.Location(homeLat, homeLng, radius, presence, "Casa"))
+    private fun key(id: String, presence: Presence, onCrossing: Boolean = false) =
+        GeofenceIds.encode(id, 0, Trigger.Location(homeLat, homeLng, radius, presence, "Casa", onCrossing))
 
     /** The watch's key for the place at [index] of a seeded reminder. */
     private fun keyAt(id: String, index: Int, presence: Presence) =
@@ -124,14 +124,15 @@ class PlaceWatchDeviceTest {
 
     @Test
     fun arrivingIsSeenOnceLeavingIsSeenAndAnEchoIsDropped() = runBlocking {
-        val arriving = seed("arrive", Presence.INSIDE)
-        val leaving = seed("leave", Presence.OUTSIDE)
+        // Doorways ("al llegar", "al salir"), because a crossing is what this walk is about.
+        val arriving = seed("arrive", Presence.INSIDE, onCrossing = true)
+        val leaving = seed("leave", Presence.OUTSIDE, onCrossing = true)
 
         // Far away: a baseline, no events, a look planned well ahead.
         moveTo(south = 5_000.0, at = t0)
         watcher.check()
         var state = store.read()
-        assertEquals(mapOf(key(arriving, Presence.INSIDE) to false, key(leaving, Presence.OUTSIDE) to false), state.inside)
+        assertEquals(mapOf(key(arriving, Presence.INSIDE, true) to false, key(leaving, Presence.OUTSIDE, true) to false), state.inside)
         assertNull(app.repository.get(arriving)!!.lastFiredAt)
         assertNotNull(state.nextCheckAt)
         assertFalse("GPS five kilometres out", state.precise)
@@ -154,7 +155,7 @@ class PlaceWatchDeviceTest {
         moveTo(south = 50.0, at = t0 + 300_000)
         watcher.check()
         state = store.read()
-        assertEquals(true, state.inside[key(arriving, Presence.INSIDE)])
+        assertEquals(true, state.inside[key(arriving, Presence.INSIDE, true)])
         val rangAt = app.repository.get(arriving)!!.lastFiredAt
         assertNotNull("arriving should have rung", rangAt)
         assertNull(app.repository.get(leaving)!!.lastFiredAt)
@@ -174,30 +175,41 @@ class PlaceWatchDeviceTest {
         moveTo(south = -400.0, at = t0 + 420_000)
         watcher.check()
         state = store.read()
-        assertEquals(false, state.inside[key(leaving, Presence.OUTSIDE)])
+        assertEquals(false, state.inside[key(leaving, Presence.OUTSIDE, true)])
         assertNotNull("leaving should have rung", app.repository.get(leaving)!!.lastFiredAt)
         assertEquals(rangAt, app.repository.get(arriving)!!.lastFiredAt)
     }
 
     @Test
-    fun writtenWhileAtHomeDoesNotRingUntilYouLeaveAndComeBack() = runBlocking {
-        // Standing at home FIRST, then the rule: the phone's geofence is registered with the
-        // phone already inside (no initial trigger), and the watch has no history to ring from.
-        // The other way round the geofence would see a genuine move in — and be right to ring.
+    fun aDoorwayWrittenWhileAtHomeDoesNotRingUntilYouLeaveAndComeBack() = runBlocking {
+        // "Al llegar a casa" — the doorway reading, which is the one that waits. Standing at
+        // home FIRST, then the rule: the phone's geofence is registered with the phone already
+        // inside (no initial trigger), and the watch has no history to ring from. The other way
+        // round the geofence would see a genuine move in — and be right to ring.
         moveTo(south = 40.0, at = t0)
-        val arriving = seed("arrive", Presence.INSIDE)
+        val arriving = seed("arrive", Presence.INSIDE, onCrossing = true)
         watcher.check()
-        assertEquals(true, store.read().inside[key(arriving, Presence.INSIDE)])
+        assertEquals(true, store.read().inside[key(arriving, Presence.INSIDE, true)])
         assertNull("standing at home is not arriving", app.repository.get(arriving)!!.lastFiredAt)
 
         moveTo(south = 500.0, at = t0 + 120_000)
         watcher.check()
-        assertEquals(false, store.read().inside[key(arriving, Presence.INSIDE)])
+        assertEquals(false, store.read().inside[key(arriving, Presence.INSIDE, true)])
         assertNull(app.repository.get(arriving)!!.lastFiredAt)
 
         moveTo(south = 40.0, at = t0 + 240_000)
         watcher.check()
         assertNotNull("coming back is arriving", app.repository.get(arriving)!!.lastFiredAt)
+    }
+
+    @Test
+    fun aStateWrittenWhileAtHomeRingsAtHome() = runBlocking {
+        // The other reading, and the default: "mientras esté en casa" is true the moment it is
+        // written on the sofa, and says so on the first look rather than waiting for a doorway.
+        moveTo(south = 40.0, at = t0)
+        val being = seed("being", Presence.INSIDE)
+        watcher.check()
+        assertNotNull("being there is being there", app.repository.get(being)!!.lastFiredAt)
     }
 
     @Test
@@ -415,7 +427,7 @@ class PlaceWatchDeviceTest {
     }
 
     @Test
-    fun aPlaceThatHasRungIsOwedALeavingBeforeItRingsAgain() = runBlocking {
+    fun aDoorwayThatHasRungIsOwedALeavingBeforeItRingsAgain() = runBlocking {
         // "Al llegar a casa, cada día": rang and was dealt with at home, two days ago. The
         // rest is long over, so the place is armed again — but arriving is something that
         // happens after leaving, and neither the geofence's word nor a fix inside is that.
@@ -429,7 +441,7 @@ class PlaceWatchDeviceTest {
             Reminder(
                 id = bins,
                 text = "Sacar la basura",
-                rules = listOf(TriggerRule(Trigger.Location(homeLat, homeLng, radius, Presence.INSIDE, "Casa"))),
+                rules = listOf(TriggerRule(Trigger.Location(homeLat, homeLng, radius, Presence.INSIDE, "Casa", onCrossing = true))),
                 recurrence = Recurrence.After(1, RecurrenceUnit.DAYS),
                 status = Status.ACTIVE,
                 createdAt = written,
@@ -440,7 +452,7 @@ class PlaceWatchDeviceTest {
         )
         Thread.sleep(1_500)
         cancelWatchAlarm()
-        val key = key(bins, Presence.INSIDE)
+        val key = key(bins, Presence.INSIDE, true)
         watcher.check()
         assertEquals(true, store.read().inside[key])
         assertEquals("standing at home is not arriving", twoDaysAgo, app.repository.get(bins)!!.lastFiredAt)
@@ -511,13 +523,14 @@ class PlaceWatchDeviceTest {
         presence: Presence,
         conditions: List<Condition> = emptyList(),
         recurrence: Recurrence = Recurrence.None,
+        onCrossing: Boolean = false,
     ): String {
         val now = app.clock.instant()
         app.repository.save(
             Reminder(
                 id = "watch-$id",
                 text = "Place test $id",
-                rules = listOf(TriggerRule(Trigger.Location(homeLat, homeLng, radius, presence, "Casa"), conditions)),
+                rules = listOf(TriggerRule(Trigger.Location(homeLat, homeLng, radius, presence, "Casa", onCrossing), conditions)),
                 recurrence = recurrence,
                 status = Status.ACTIVE,
                 createdAt = now,

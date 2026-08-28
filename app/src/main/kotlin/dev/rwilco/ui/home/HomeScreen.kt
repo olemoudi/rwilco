@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Search
@@ -75,6 +76,7 @@ fun HomeScreen(
     onOpen: (String) -> Unit,
     onDoneList: () -> Unit,
     onSettings: () -> Unit,
+    onDiagnostics: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val search by viewModel.search.collectAsStateWithLifecycle()
@@ -208,6 +210,7 @@ fun HomeScreen(
                         onSearch = { viewModel.setSearching(true) },
                         onDoneList = onDoneList,
                         onSettings = onSettings,
+                        onDiagnostics = onDiagnostics,
                     )
                 }
             }
@@ -344,6 +347,7 @@ private fun Header(
     onSearch: () -> Unit,
     onDoneList: () -> Unit,
     onSettings: () -> Unit,
+    onDiagnostics: () -> Unit,
 ) {
     val locale = currentLocale()
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -379,6 +383,15 @@ private fun Header(
             }
             IconButton(onClick = onDoneList) {
                 Icon(Icons.Outlined.History, contentDescription = stringResource(R.string.home_done_list))
+            }
+            // One tap, and the report is on the clipboard. It has always been three screens
+            // deep in the settings, which is the wrong depth for the thing somebody reaches for
+            // at the exact moment the app has just done something inexplicable — by the time
+            // they have found it, the log has moved on.
+            IconButton(onClick = onDiagnostics) {
+                // The same size as the two beside it: it is a way out of trouble, not a
+                // feature, and it should sit quietly until somebody needs it.
+                Icon(Icons.Outlined.BugReport, contentDescription = stringResource(R.string.home_diagnostics))
             }
         }
     }

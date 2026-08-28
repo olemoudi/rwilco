@@ -252,6 +252,8 @@
     <string name="settings_theme_light">Claro</string>
     <string name="settings_theme_dark">Oscuro</string>
     <string name="settings_default_time">Hora de los recordatorios de solo fecha</string>
+    <string name="settings_haptics_system_off">La vibración al tocar de Android está apagada, así que aquí no puede vibrar nada.</string>
+    <string name="settings_haptics_system_fix">Abrir</string>
     <string name="settings_haptics">Vibración al tocar</string>
     <string name="settings_haptics_hint">Un pequeño tic en chips, días y botones. No tiene que ver con la vibración de los avisos.</string>
     <string name="settings_updates">Actualizaciones</string>
@@ -353,6 +355,9 @@
     </string-array>
 
     <!-- Search -->
+    <string name="home_diagnostics_failed">El diagnóstico no se ha podido generar</string>
+    <string name="home_diagnostics">Copiar el diagnóstico</string>
+    <string name="home_diagnostics_copied">Diagnóstico copiado — pégalo donde quieras</string>
     <string name="home_search">Buscar</string>
     <string name="home_search_hint">Buscar recordatorios y etiquetas</string>
     <string name="home_search_clear">Borrar</string>

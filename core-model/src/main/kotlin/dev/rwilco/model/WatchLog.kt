@@ -53,6 +53,19 @@ data class WatchNote(
     /** Metres to the nearest line, and whose. */
     val gapM: Double? = null,
     val place: String? = null,
+    /**
+     * Which circle, as geometry rather than as somebody's word for it.
+     *
+     * The label is kept for the screen and never reaches the report — a place name is somebody's
+     * life, not a fact about a bug. The circle is a fact about a bug, and without it a line of
+     * three geofences crossing at once says only that *something* was crossed: chasing a real
+     * false alarm meant guessing which of four co-located circles the log was talking about. The
+     * report rounds these the same way it rounds a reminder's, so the redaction stays in one
+     * place.
+     */
+    val lat: Double? = null,
+    val lng: Double? = null,
+    val radiusM: Int? = null,
     /** Inside that place, at this look. */
     val inside: Boolean? = null,
     val speedMps: Double? = null,
