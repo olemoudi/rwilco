@@ -189,6 +189,8 @@ fun problemOf(trigger: Trigger): TriggerProblem? = when (trigger) {
     // No days is every day here, unlike AtTime: a window is a shape of the day, not a weekly
     // appointment. A window that starts where it ends is not a window; one that wraps is.
     is Trigger.Interval -> TriggerProblem.WINDOW_EMPTY.takeIf { trigger.from == trigger.to }
+    // An hour is an hour; no days is every day, the same as a window and unlike AtTime.
+    is Trigger.TimeOfDay -> null
     // Both days count, so a single-day range is fine; one that ends before it starts is not.
     is Trigger.DateRange -> TriggerProblem.ENDS_BEFORE_START.takeIf { trigger.to < trigger.from }
     is Trigger.Countdown -> TriggerProblem.COUNTDOWN_OUT_OF_RANGE.takeIf { trigger.minutes !in MIN_COUNTDOWN_MINUTES..MAX_COUNTDOWN_MINUTES }

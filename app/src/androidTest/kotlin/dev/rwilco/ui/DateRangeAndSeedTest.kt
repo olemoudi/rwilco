@@ -18,8 +18,10 @@ import dev.rwilco.MainActivity
 import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.model.ThemeMode
+import dev.rwilco.model.TriggerKind
 import dev.rwilco.model.Trigger
 import dev.rwilco.ui.editor.EDITOR_TEXT_TAG
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Rule
@@ -105,6 +107,27 @@ class DateRangeAndSeedTest {
         rule.waitUntilShown(s(R.string.sheet_repeat_starts))
         text(s(R.string.sheet_time)).performScrollTo().assertIsDisplayed()
         shot("sheet-calendar-seeded")
+    }
+
+    @Test
+    fun aFavouriteThatIsNoLongerATileIsNotASecondRow() {
+        // Reported from a phone with the sheet in the screenshot: two rows reading "Fecha y
+        // hora", the first badged "el que sueles usar", both opening the same sheet. The stored
+        // favourite was DATE_TIME, retired when the two date tiles became one — and the sheet
+        // put it on top without asking what it had turned into. A phantom since that release;
+        // renaming the date tile is what made the two rows read the same.
+        runBlocking { app.settingsStore.update { it.copy(defaultTriggerKind = TriggerKind.DATE_TIME) } }
+        runBlocking {
+            val read = app.settingsStore.settings.first().defaultTriggerKind
+            check(read == TriggerKind.DATE) { "the decode should have folded it to the tile it became: $read" }
+        }
+
+        openNewReminder()
+        text(s(R.string.editor_add_trigger)).performScrollTo().performClick()
+        rule.waitUntilShown(s(R.string.kind_default_badge))
+        val rows = rule.onAllNodesWithText(s(R.string.kind_date), useUnmergedTree = true).fetchSemanticsNodes().size
+        check(rows == 1) { "«${s(R.string.kind_date)}» should be one row, not $rows" }
+        shot("editor-kinds-favourite")
     }
 
     private fun openNewReminder() {

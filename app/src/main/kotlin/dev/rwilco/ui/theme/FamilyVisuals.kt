@@ -2,8 +2,8 @@ package dev.rwilco.ui.theme
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
-import androidx.compose.material.icons.outlined.CalendarToday
-import androidx.compose.material.icons.outlined.DateRange
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Casino
 import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.HourglassTop
@@ -68,8 +68,13 @@ fun TriggerFamily.edge(): Color = color().copy(alpha = if (LocalDarkTheme.curren
 val TriggerKind.icon: ImageVector
     get() = when (this) {
         TriggerKind.DATE_TIME -> Icons.Outlined.Event
-        TriggerKind.DATE -> Icons.Outlined.CalendarToday
-        TriggerKind.DATE_RANGE -> Icons.Outlined.DateRange
+        // A calendar with one day marked on it, and one with a month of them: DateRange and
+        // CalendarToday sat next to each other as a marked calendar and a blank one, which is
+        // not a difference anybody reads at 24dp.
+        TriggerKind.DATE -> Icons.Outlined.Event
+        TriggerKind.DATE_RANGE -> Icons.Outlined.CalendarMonth
+        // A clock face: the one tile that is about an hour and no day in particular.
+        TriggerKind.TIME_OF_DAY -> Icons.Outlined.Schedule
         TriggerKind.REPEAT_TIME -> Icons.Outlined.Repeat
         // A clock with a slice of it filled: a stretch OF the day, which is what a range is.
         // The hourglass this used to be said "time passing", and said it in almost the same

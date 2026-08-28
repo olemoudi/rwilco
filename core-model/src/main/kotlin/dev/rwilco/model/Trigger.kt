@@ -122,6 +122,30 @@ sealed interface Trigger {
     ) : Trigger
 
     /**
+     * A time of day and nothing else: "a las 09:00", on [days] (empty means every day).
+     *
+     * The point in the day that [Interval] is a stretch of, and it exists for the same reason:
+     * so it can be combined. "A las 09:00, y a la vez entre el 1 y el 15" and "a las 09:00, y a
+     * la vez en casa" are sentences nothing else could write — a date names one day, a window
+     * has to be given a width it does not have, and a calendar in "Vuelve" cannot sit in a set
+     * at all. Here it is the *moment* of the set and everything else is the state it has to land
+     * inside, which is the shape "a la vez" was built around.
+     *
+     * On its own it is the next such time on an allowed day, and again on the next one if
+     * nobody deals with it — exactly what [Interval] does, and bounded the same way: by the
+     * fences on its rule, and spent on the first "hecho". An unbounded "todos los días a las
+     * nueve" is still "Vuelve"'s to say ([Recurrence.Calendar]), and this is not a second way of
+     * saying it: a calendar names *dates*, carries a start and an end, and answers "¿y vuelve?".
+     *
+     * Not [AtTime], which is the same two fields and cannot be reused: that one is the old
+     * "una hora que se repite" tile, and a rule holding one is folded into the calendar it
+     * always was on the way in (`foldRepeats`). Reviving it would resurrect every one of those.
+     */
+    @Serializable
+    @SerialName("time_of_day")
+    data class TimeOfDay(val time: LocalTime, val days: Set<DayOfWeek> = emptySet()) : Trigger
+
+    /**
      * A stretch of the day rather than a point in it: "de 17 a 19".
      *
      * The only trigger that is a *state* — it is true for two hours, not at one instant — and
@@ -320,6 +344,7 @@ enum class TriggerKind(val family: TriggerFamily) {
     DATE(TriggerFamily.TIME),
     DATE_RANGE(TriggerFamily.TIME),
     REPEAT_TIME(TriggerFamily.TIME),
+    TIME_OF_DAY(TriggerFamily.TIME),
     INTERVAL(TriggerFamily.TIME),
     COUNTDOWN(TriggerFamily.TIME),
     PLACE(TriggerFamily.PLACE),
@@ -337,6 +362,21 @@ val OFFERED_KINDS: List<TriggerKind> = TriggerKind.entries - TriggerKind.DATE_TI
 fun TriggerKind.offered(): TriggerKind = if (this in OFFERED_KINDS) this else TriggerKind.DATE
 
 /**
+ * The tiles in the order the sheet shows them: the favourite first, the rest behind it.
+ *
+ * The favourite is read through [offered] here as well as where it is stored, because this is
+ * the place that breaks when it is not. A favourite outside [kinds] was put at the top *and*
+ * left out of nothing, so it came out as an extra row — and once two kinds shared a name it was
+ * a row word for word identical to the one under it, wearing "el que sueles usar" and opening
+ * the same sheet. One normalisation, in the function that does the ordering, so no caller can
+ * reintroduce it.
+ */
+fun kindsOrdered(preferred: TriggerKind?, kinds: List<TriggerKind> = OFFERED_KINDS): List<TriggerKind> {
+    val favourite = preferred?.offered()?.takeIf { it in kinds } ?: return kinds
+    return listOf(favourite) + kinds.filter { it != favourite }
+}
+
+/**
  * Whether this trigger works out its own next date, over and over, without being asked again.
  *
  * What makes "por calendario" an answer somebody can give: these three name dates rather than
@@ -349,7 +389,7 @@ val Trigger.decidesItsOwnDates: Boolean
 val Trigger.family: TriggerFamily
     get() = when (this) {
         is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.AtTime, is Trigger.Interval -> TriggerFamily.TIME
-        is Trigger.DayRandom, is Trigger.Repeat, is Trigger.DateRange -> TriggerFamily.TIME
+        is Trigger.DayRandom, is Trigger.Repeat, is Trigger.DateRange, is Trigger.TimeOfDay -> TriggerFamily.TIME
         is Trigger.Location -> TriggerFamily.PLACE
         is Trigger.Countdown -> TriggerFamily.TIME
         is Trigger.Random -> TriggerFamily.CHANCE
@@ -381,6 +421,8 @@ fun Trigger.asState(shape: DayShape = DayShape.DEFAULT): Condition? = when (this
     // hours turned one Sunday evening into every evening. See [Condition.TimeWindow.date].
     is Trigger.DayRandom -> stretchOf(shape).let { Condition.TimeWindow(it.from.toLocalTime(), it.to.toLocalTime(), date = date) }
     is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.AtTime, is Trigger.Countdown, is Trigger.Random -> null
+    // A time of day is an instant, which is the whole difference between it and an interval.
+    is Trigger.TimeOfDay -> null
     is Trigger.Repeat -> null
 }
 
@@ -400,6 +442,7 @@ val Trigger.namesAnHour: Boolean
     get() = when (this) {
         is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.DayRandom -> true
         is Trigger.AtTime, is Trigger.Repeat, is Trigger.Interval, is Trigger.Random -> true
+        is Trigger.TimeOfDay -> true
         // The default one, which is still an hour a rest must not be standing in front of.
         is Trigger.DateRange -> true
         is Trigger.Countdown, is Trigger.Location -> false
@@ -415,6 +458,7 @@ val Trigger.kind: TriggerKind
         is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.DayRandom -> TriggerKind.DATE
         is Trigger.AtTime, is Trigger.Repeat -> TriggerKind.REPEAT_TIME
         is Trigger.Interval -> TriggerKind.INTERVAL
+        is Trigger.TimeOfDay -> TriggerKind.TIME_OF_DAY
         is Trigger.DateRange -> TriggerKind.DATE_RANGE
         is Trigger.Location -> TriggerKind.PLACE
         is Trigger.Countdown -> TriggerKind.COUNTDOWN

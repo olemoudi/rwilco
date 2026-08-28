@@ -141,4 +141,24 @@ class TriggerSuggestionsTest {
         assertEquals(OFFERED_KINDS.size, order.size)
         assertEquals(TriggerKind.DATE, TriggerKind.DATE_TIME.offered())
     }
+
+    @Test
+    fun `a favourite that is no longer a tile never becomes a second row`() {
+        // The sheet puts the favourite first and the rest behind it. A favourite outside the
+        // list was added and subtracted from nothing, so it came out as an extra row — and once
+        // DATE was renamed "Fecha y hora" that row read word for word like the one under it,
+        // badged "el que sueles usar" and opening the same sheet.
+        for (stale in listOf(TriggerKind.DATE_TIME, TriggerKind.REPEAT_TIME)) {
+            val ordered = kindsOrdered(stale)
+            assertEquals(OFFERED_KINDS.size, ordered.size, "$stale added a row")
+            assertEquals(ordered.distinct(), ordered, "$stale is in there twice")
+            assertEquals(TriggerKind.DATE, ordered.first(), "$stale leads as the tile it became")
+        }
+        // A real favourite still leads, and nothing is lost behind it.
+        val ordered = kindsOrdered(TriggerKind.PLACE)
+        assertEquals(TriggerKind.PLACE, ordered.first())
+        assertEquals(OFFERED_KINDS.toSet(), ordered.toSet())
+        // And no favourite at all is the plain order.
+        assertEquals(OFFERED_KINDS, kindsOrdered(null))
+    }
 }

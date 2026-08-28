@@ -197,6 +197,10 @@
     <string name="kind_date_hint">Un día, y cuándo dentro de él</string>
     <string name="kind_date_range">Intervalo de fechas</string>
     <string name="kind_date_range_hint">Entre dos días del calendario</string>
+    <string name="kind_time_of_day">Hora concreta</string>
+    <string name="kind_time_of_day_hint">A las 09:00, los días que digas</string>
+    <string name="time_of_day_hint_alone">Sola, suena a esa hora el próximo día que cuente, y al siguiente si la dejas pasar.</string>
+    <string name="time_of_day_hint_together">Con «a la vez» éste es el momento alrededor del que tienen que ser ciertos los demás: «a las 09:00, y en casa».</string>
     <string name="kind_repeat_time">Se repite</string>
     <string name="kind_repeat_time_hint">Cada día, semana, mes o año</string>
     <string name="kind_countdown">Cuenta atrás</string>

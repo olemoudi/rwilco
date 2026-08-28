@@ -218,6 +218,7 @@ private fun Trigger.describe(): String = when (this) {
         " from $startsOn" + (if (ends == RepeatEnd.Never) "" else " until $ends")
     is Trigger.Interval -> "window $from-$to ${days.describe()}"
     is Trigger.DateRange -> "dates $from..$to"
+    is Trigger.TimeOfDay -> "hour $time ${days.describe()}"
     is Trigger.Countdown -> "countdown ${minutes}m started=${startedAt ?: "-"}"
     is Trigger.Location -> "place ${describeCircle()}"
     is Trigger.Random -> "random $timesPer/$period $from-$to ${days.describe()}"

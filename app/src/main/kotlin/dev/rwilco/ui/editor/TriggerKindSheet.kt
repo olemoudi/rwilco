@@ -28,6 +28,8 @@ import dev.rwilco.R
 import dev.rwilco.model.OFFERED_KINDS
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.TriggerKind
+import dev.rwilco.model.kindsOrdered
+import dev.rwilco.model.offered
 import dev.rwilco.ui.components.TriggerKeycap
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.icon
@@ -67,14 +69,15 @@ fun TriggerKindSheet(
         ) {
             Text(stringResource(R.string.editor_add_trigger), style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(spacing.lg))
-            val ordered = remember(preferred, kinds) {
-                if (preferred == null) kinds else listOf(preferred) + kinds.filter { it != preferred }
-            }
+            // Through `offered`, so a favourite that is no longer a tile is the tile it turned
+            // into rather than a seventh row saying the same thing as the second.
+            val favourite = remember(preferred, kinds) { preferred?.offered()?.takeIf { it in kinds } }
+            val ordered = remember(favourite, kinds) { kindsOrdered(favourite, kinds) }
             Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
                 for (kind in ordered) {
                     KindRow(
                         kind = kind,
-                        isDefault = kind == preferred,
+                        isDefault = kind == favourite,
                         onClick = { onPick(kind) },
                     )
                 }
@@ -138,6 +141,7 @@ val TriggerKind.titleRes: Int
         TriggerKind.DATE_TIME -> R.string.kind_date_time
         TriggerKind.DATE -> R.string.kind_date
         TriggerKind.DATE_RANGE -> R.string.kind_date_range
+        TriggerKind.TIME_OF_DAY -> R.string.kind_time_of_day
         TriggerKind.REPEAT_TIME -> R.string.kind_repeat_time
         TriggerKind.INTERVAL -> R.string.kind_interval
         TriggerKind.COUNTDOWN -> R.string.kind_countdown
@@ -150,6 +154,7 @@ private val TriggerKind.hintRes: Int
         TriggerKind.DATE_TIME -> R.string.kind_date_time_hint
         TriggerKind.DATE -> R.string.kind_date_hint
         TriggerKind.DATE_RANGE -> R.string.kind_date_range_hint
+        TriggerKind.TIME_OF_DAY -> R.string.kind_time_of_day_hint
         TriggerKind.REPEAT_TIME -> R.string.kind_repeat_time_hint
         TriggerKind.INTERVAL -> R.string.kind_interval_hint
         TriggerKind.COUNTDOWN -> R.string.kind_countdown_hint

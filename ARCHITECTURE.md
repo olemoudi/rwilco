@@ -66,6 +66,7 @@ Triggers (`core-model/.../Trigger.kt`), with their frozen JSON discriminators:
 | Date                  | `AtDateTime(at: LocalDateTime)`    | `at_date_time` |
 | Date (no hour chosen) | `DayRandom(date, window?)` — the stretch it opens with: the one it was given, or that day's waking hours | `day_random` |
 | Date range            | `DateRange(from, to)` — a stretch of the calendar, both ends included | `date_range` |
+| Time of day           | `TimeOfDay(time, days)` — an hour, on the days it counts | `time_of_day` |
 | Countdown             | `Countdown(minutes, startedAt?)`   | `countdown`    |
 | Interval              | `Interval(from, to, days)` — a stretch of the day | `interval` |
 | Place                 | `Location(lat, lng, radiusM, INSIDE/OUTSIDE, label, onCrossing)` | `location` |
@@ -170,6 +171,27 @@ until somebody deals with it — the same thing `Trigger.Interval` does with a s
 one unit up, and what stops a range written at six in the evening from being a reminder that
 never rings. Bounded by the range and spent on the first "hecho", so it is not the open-ended
 repeat that "Vuelve" alone is allowed to say.
+
+**And an hour is the point that stretch is made of** (`Trigger.TimeOfDay`). "A las 09:00, y a la
+vez entre el 1 y el 15" and "a las 09:00, y a la vez en casa" are sentences nothing else could
+write: a date names one day, a window has to be given a width it does not have, and a calendar in
+"Vuelve" cannot sit in a set at all. So the tile exists to be the *moment* of a set, with
+everything else the state it has to land inside — which is the shape "a la vez" was built around.
+Alone it is the next such time on a day it allows, and again on the next one if nobody deals with
+it, exactly as `Trigger.Interval` behaves. It is **not** `Trigger.AtTime`, which is the same two
+fields: that one is the retired "una hora que se repite" tile, a rule holding one is folded into
+the calendar it always was (`foldRepeats`), and reviving it would resurrect every repeat that
+move retired. An unbounded "todos los días a las nueve" is still `Recurrence.Calendar`'s to say —
+a calendar names dates, carries a start and an end, and answers "¿y vuelve?".
+
+**A favourite is always one of the tiles** (`kindsOrdered`). `AppSettings.defaultTriggerKind` is
+stored by name and outlives the tile it names, so it is read through `offered()` both in
+`SettingsStore`'s decode — the repo's usual place for a shape that moved — and in the ordering
+itself, which is the function that breaks without it: the favourite went on the top of the list
+and was subtracted from nothing, so one outside the list came out as an *extra* row. It was a
+phantom from the day `DATE_TIME` was retired; renaming the date tile "Fecha y hora" is only what
+made it visible, as a row word for word identical to the one under it, badged "el que sueles
+usar" and opening the same sheet.
 
 **A set no longer rewrites a rule, because there is nothing left to rewrite** (`Reminder.ruleInSet`).
 This is where `Trigger.whenCombined` used to live: a window meant a draw on its own and its own

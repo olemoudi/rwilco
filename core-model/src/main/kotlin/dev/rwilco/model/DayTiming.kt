@@ -34,6 +34,7 @@ sealed interface DayTiming {
 fun Trigger.dayTiming(): DayTiming? = when (this) {
     is Trigger.AtDateTime -> DayTiming.At(at.toLocalTime())
     is Trigger.AtTime -> DayTiming.At(time)
+    is Trigger.TimeOfDay -> DayTiming.At(time)
     is Trigger.Interval -> DayTiming.In(DayWindow(from, to))
     is Trigger.DayRandom -> window?.let { DayTiming.In(it) } ?: DayTiming.Whenever
     is Trigger.Repeat -> time?.let { DayTiming.At(it) } ?: window?.let { DayTiming.In(it) } ?: DayTiming.Whenever

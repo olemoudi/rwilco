@@ -150,6 +150,7 @@ class EditorTourTest {
         for ((kind, name) in listOf(
             R.string.kind_date to "sheet-date",
             R.string.kind_date_range to "sheet-date-range",
+            R.string.kind_time_of_day to "sheet-time-of-day",
             R.string.kind_interval to "sheet-interval",
             R.string.kind_random to "sheet-random",
             R.string.kind_place to "sheet-place",
@@ -203,6 +204,13 @@ class EditorTourTest {
                 shot("time-wheels")
                 text(s(R.string.sheet_done)).performClick()
                 rule.waitUntilGone(s(R.string.sheet_done))
+            }
+            // An hour and the days it counts on, and no date anywhere: the point a window is a
+            // stretch of, and the moment a set is built around.
+            if (kind == R.string.kind_time_of_day) {
+                text(s(R.string.time_of_day_hint_alone)).performScrollTo().assertIsDisplayed()
+                text(s(R.string.trigger_weekdays)).performScrollTo().performClick()
+                rule.waitForIdle()
             }
             // Two calendars and no hour at all: a stretch of the calendar, said as a trigger.
             if (kind == R.string.kind_date_range) {

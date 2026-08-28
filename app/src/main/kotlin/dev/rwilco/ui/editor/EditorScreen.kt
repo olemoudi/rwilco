@@ -81,6 +81,7 @@ import dev.rwilco.ui.editor.sheets.DateSheet
 import dev.rwilco.ui.editor.sheets.IntervalSheet
 import dev.rwilco.ui.editor.sheets.LocationSheet
 import dev.rwilco.ui.editor.sheets.RandomSheet
+import dev.rwilco.ui.editor.sheets.TimeOfDaySheet
 import dev.rwilco.ui.editor.sheets.CalendarSheet
 import dev.rwilco.model.Status
 import dev.rwilco.model.namesAnHour
@@ -385,6 +386,13 @@ fun EditorScreen(
                     TriggerKind.DATE_RANGE -> DateRangeSheet(
                         initial = sheet.initial as? dev.rwilco.model.Trigger.DateRange,
                         today = today,
+                        combining = state.draft.ruleMatch == RuleMatch.TOGETHER && state.draft.rules.size > 1,
+                        onConfirm = commit,
+                        onDismiss = viewModel::closeSheet,
+                    )
+                    TriggerKind.TIME_OF_DAY -> TimeOfDaySheet(
+                        initial = sheet.initial as? dev.rwilco.model.Trigger.TimeOfDay,
+                        defaultTime = state.defaultTime,
                         combining = state.draft.ruleMatch == RuleMatch.TOGETHER && state.draft.rules.size > 1,
                         onConfirm = commit,
                         onDismiss = viewModel::closeSheet,

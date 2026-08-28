@@ -224,6 +224,13 @@ fun nextFireOf(
                 ?.let { NextFire.Scheduled(it, trigger) }
         is Trigger.AtTime -> nextAtTime(trigger, now, zone)?.let { NextFire.Scheduled(it, trigger) }
         is Trigger.Repeat -> nextRepeat(trigger, reminderId, now, zone, shape, fences)?.let { NextFire.Scheduled(it, trigger) }
+        // The next such time on a day it allows. The same walk the window's opening takes, and
+        // the same reading of an empty day set: a shape of the day, not a weekly appointment.
+        is Trigger.TimeOfDay -> nextAtTime(
+            Trigger.AtTime(trigger.time, trigger.days.ifEmpty { DayOfWeek.entries.toSet() }),
+            now,
+            zone,
+        )?.let { NextFire.Scheduled(it, trigger) }
         // The window opening is the moment it becomes true, and the only moment it produces.
         is Trigger.Interval -> nextAtTime(
             // No days on a window means every day; nextAtTime reads an empty set as "never",

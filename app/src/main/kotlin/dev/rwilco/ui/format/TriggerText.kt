@@ -135,6 +135,17 @@ fun triggerLine(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): Tri
             secondary = daysSummary(trigger.days, locale),
             primaryMono = true,
         )
+        // No days is every day here, as it is on a window: it says which days are allowed, never
+        // how often the reminder comes back — that one is "Vuelve"'s answer and nobody else's.
+        is Trigger.TimeOfDay -> TriggerLine(
+            primary = TimeText.time(trigger.time, is24h, locale),
+            secondary = if (trigger.days.isEmpty() || trigger.days.size == 7) {
+                stringResource(R.string.trigger_any_day_of_week)
+            } else {
+                daysSummary(trigger.days, locale)
+            },
+            primaryMono = true,
+        )
         is Trigger.DayRandom -> TriggerLine(
             primary = dayWord(trigger.date, today, locale),
             // Which stretch of the day, when it was given one: "al azar durante el día" and
@@ -227,6 +238,11 @@ fun triggerPhrase(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): S
             R.string.editor_sentence_at_time,
             TimeText.time(trigger.time, is24h, locale),
             daysSummary(trigger.days, locale),
+        )
+        is Trigger.TimeOfDay -> stringResource(
+            R.string.editor_sentence_at_time,
+            TimeText.time(trigger.time, is24h, locale),
+            everyDayOr(trigger.days, locale),
         )
         is Trigger.Interval -> stringResource(
             R.string.editor_sentence_interval,

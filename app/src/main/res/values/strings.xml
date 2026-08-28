@@ -199,6 +199,10 @@
     <string name="kind_date_hint">A day, and when in it</string>
     <string name="kind_date_range">Date range</string>
     <string name="kind_date_range_hint">Between two days on the calendar</string>
+    <string name="kind_time_of_day">Time of day</string>
+    <string name="kind_time_of_day_hint">At 09:00, on the days you say</string>
+    <string name="time_of_day_hint_alone">On its own it rings at that time on the next day it counts on, and on the one after that if you leave it.</string>
+    <string name="time_of_day_hint_together">With «at once» this is the moment the others have to be true around: «at 09:00, and at home».</string>
     <string name="kind_repeat_time">Repeats</string>
     <string name="kind_repeat_time_hint">Every day, week, month or year</string>
     <string name="kind_countdown">Countdown</string>
