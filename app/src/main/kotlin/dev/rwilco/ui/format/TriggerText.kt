@@ -21,6 +21,7 @@ import dev.rwilco.model.Trigger
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.TextStyle
 import java.time.temporal.WeekFields
 import java.util.Locale
@@ -168,6 +169,110 @@ fun triggerLine(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): Tri
         )
     }
 }
+
+/**
+ * A trigger as a clause somebody could say out loud, for the sentence over the save button.
+ *
+ * Not the same job as [triggerLine], and that is why it is a second function rather than a
+ * flag on the first. A row is two halves — the reading and the words under it — laid out one
+ * over the other, and folding those two into a line gives "Casa mientras no estoy", which is
+ * a label with a space in it and not a sentence. Prose puts the preposition where speech puts
+ * it: *mientras no estoy en Casa*, *durante la franja 18:30–20:00 laborables*.
+ *
+ * Every phrase here starts lower case and carries its own preposition, so it drops into the
+ * middle of a sentence after the words and after "o"/"y" without anything having to be
+ * patched around it. The two crossing readings need no strings of their own: "al llegar a %s"
+ * and "al salir de %s" were already written.
+ */
+@Composable
+fun triggerPhrase(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): String {
+    val locale = currentLocale()
+    val is24h = rememberIs24h()
+    return when (trigger) {
+        is Trigger.AtDateTime -> atDayAndTime(trigger.at.toLocalDate(), trigger.at.toLocalTime(), today)
+        // The hour it will actually ring at, which for a bare date is the one from the settings.
+        is Trigger.OnDate -> atDayAndTime(trigger.date, defaultTime, today)
+        is Trigger.DayRandom -> dayWord(trigger.date, today, locale) + ", " + stringResource(R.string.trigger_random_in_day)
+        is Trigger.AtTime -> stringResource(
+            R.string.editor_sentence_at_time,
+            TimeText.time(trigger.time, is24h, locale),
+            daysSummary(trigger.days, locale),
+        )
+        is Trigger.Interval -> stringResource(
+            R.string.editor_sentence_interval,
+            TimeText.window(trigger.from, trigger.to, is24h, locale),
+            everyDayOr(trigger.days, locale),
+        )
+        is Trigger.Repeat -> stringResource(
+            R.string.editor_sentence_repeat,
+            trigger.time?.let { TimeText.time(it, is24h, locale) } ?: stringResource(R.string.trigger_random_in_day),
+            repeatSummary(trigger, today, locale),
+        )
+        is Trigger.Countdown -> {
+            val startedAt = trigger.startedAt
+            // Not started: it is a length, and what it is counted from. Started: it is a moment
+            // like any other, and the row above still says how long it was.
+            if (startedAt == null) {
+                durationText(trigger.minutes) + " " + stringResource(R.string.trigger_countdown_from_start)
+            } else {
+                val fires = startedAt.plusSeconds(trigger.minutes * 60L).atZone(ZoneId.systemDefault())
+                atDayAndTime(fires.toLocalDate(), fires.toLocalTime(), today)
+            }
+        }
+        is Trigger.Location -> stringResource(placePhrase(trigger.presence, trigger.onCrossing), trigger.label)
+        is Trigger.Random -> stringResource(
+            R.string.editor_sentence_random,
+            randomSummary(trigger, locale),
+            TimeText.window(trigger.from, trigger.to, is24h, locale),
+        )
+    }
+}
+
+/** "hoy a las 09:00": the one shape three of the triggers come down to. */
+@Composable
+private fun atDayAndTime(date: LocalDate, time: LocalTime, today: LocalDate): String {
+    val locale = currentLocale()
+    return stringResource(
+        R.string.editor_sentence_at_datetime,
+        dayWord(date, today, locale),
+        TimeText.time(time, rememberIs24h(), locale),
+    )
+}
+
+/** The four readings of a circle, said the way they are said in a sentence. */
+fun placePhrase(presence: Presence, onCrossing: Boolean): Int = when {
+    presence == Presence.INSIDE && onCrossing -> R.string.trigger_arrive_at
+    presence == Presence.INSIDE -> R.string.editor_sentence_place_inside
+    onCrossing -> R.string.trigger_leave_from
+    else -> R.string.editor_sentence_place_outside
+}
+
+/**
+ * A fence as the rest of the sentence "sólo …", so that two of them join with an "y" and
+ * neither repeats the word.
+ */
+@Composable
+fun conditionPhrase(condition: Condition): String = when (condition) {
+    is Condition.TimeWindow -> stringResource(
+        R.string.editor_sentence_window_of,
+        TimeText.window(condition.from, condition.to, is24h = rememberIs24h(), locale = currentLocale()) +
+            everyDaySuffix(condition.days, currentLocale()),
+    )
+    is Condition.AtPlace -> stringResource(
+        if (condition.inside) R.string.editor_sentence_if_at else R.string.editor_sentence_if_away,
+        condition.label,
+    )
+}
+
+/** No days, or all seven, is "cada día" rather than a list of every letter. */
+@Composable
+private fun everyDayOr(days: Set<DayOfWeek>, locale: Locale): String =
+    if (days.isEmpty() || days.size == 7) stringResource(R.string.trigger_every_day) else daysSummary(days, locale)
+
+/** The same, said only when it narrows anything: a fence on every day says nothing extra. */
+@Composable
+private fun everyDaySuffix(days: Set<DayOfWeek>, locale: Locale): String =
+    if (days.isEmpty() || days.size == 7) "" else " " + daysSummary(days, locale)
 
 @Composable
 private fun randomSummary(trigger: Trigger.Random, locale: Locale): String {

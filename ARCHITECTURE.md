@@ -270,15 +270,18 @@ strict is asking somebody to remember how they spelled it.
   JetBrains Mono for times/dates), `RwilcoShapes`, tokens (`Spacing`, `Motion`, `Sizes`) and
   `Haptics` behind one setting. Trigger families (time / place / chance) have their own colours
   in `FamilyVisuals.kt` — a `color`, a `tint` for keycaps, a `wash`/`edge` for a trigger's own
-  row in the editor, and `onColor` for text on a solid fill. **The same colour is also the card's
-  rail** (`RwilcoCard(rail = …)`, `railFamily`): a 5dp band down the leading edge in the family of
-  whatever will ring — the earliest moment's, else the first rule's, else the clock when a
-  recurrence is doing the work alone, and nothing at all for a note. It is what gives a list of
-  fifteen cards a rhythm you can read without reading, and it is the app's own palette said at
-  the area it was always worth rather than at the 36dp of a keycap. Drawn *inside* the surface,
-  so the card's clip curves it into the corner; the hero has none (it already wears the amber);
-  a paused card's goes grey with the rest of it. The keycap wash went up with it (0.22/0.14 →
-  0.28/0.18): beside a solid band the old one read as a grey-blue square.
+  row in the editor, and `onColor` for text on a solid fill. Every card also carries a
+  **rail** (`RwilcoCard(rail = …)`): a 5dp band down the leading edge, in **the colour of the
+  reminder's first tag**, and nothing for an untagged one — a state Home already has a chip for.
+  It started as the family of whatever fires next, which is the honest reading and the wrong one
+  to look at: on a real list nearly everything next is a clock, so nearly every card came out the
+  same blue and the rhythm the band exists for never appeared. A tag is what actually varies from
+  one card to the next, and it is the person's own word for the thing. It costs nothing to be
+  sure of, either — the tag hues already have the amber and the three family hues cut out of
+  them, so a rail can never be read as a keycap. Drawn *inside* the surface, so the card's clip
+  curves it into the corner; the hero has none (it already wears the amber); a paused card's goes
+  grey with the rest of it. The keycap wash went up alongside it (0.22/0.14 → 0.28/0.18): beside
+  a solid band the old one read as a grey-blue square.
   `SectionHeader` was raised to `titleMedium` at full contrast with the count in a pill for the
   same reason — on a screen of full-contrast cards, "Vencidos 1" in muted `titleSmall` was the
   least visible thing on Home and it is the one somebody is looking for. **A selected neutral control is
@@ -455,7 +458,16 @@ strict is asking somebody to remember how they spelled it.
   assembled in the head out of four separate places. The line says it in one sentence — the
   words, the rules with the reading's own word between them ("o", "y", "y, a la vez,"), each
   rule's fences, and the recurrence last — with **each piece in the colour of what it is**, the
-  same family code the keycaps and the cards' rails use. It stays off the screen until there is
+  same family code the keycaps use. Every "when" has a **clause of its own** for this
+  (`triggerPhrase`, beside `triggerLine` and deliberately not a flag on it): a row is two halves
+  laid one over the other, and folding those gives "Casa mientras no estoy", which is a label
+  with a space in it. Prose puts the preposition where speech puts it — *mientras no estoy en
+  Casa*, *durante la franja 18:30–20:00 laborables*, *al llegar a la oficina* — and every phrase
+  carries its own, so it drops in after the words and after "o"/"y" with nothing to patch around
+  it. The fences read the same way (`conditionPhrase`): "sólo" said once, then clauses joined
+  with the same "y" the rules use. `SentenceTest` renders every shape
+  (`docs/screenshots/sentences.png`), because a phrase is right or wrong by ear and no assertion
+  ever caught "Casa mientras no estoy". It stays off the screen until there is
   something to say beyond the words themselves (`saysMoreThanWords`), which is also what keeps it
   from sitting under the keyboard while somebody types into a blank draft.
 

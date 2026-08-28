@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AltRoute
+import androidx.compose.material.icons.automirrored.outlined.AltRoute
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.JoinInner
 import androidx.compose.material3.Icon
@@ -136,7 +136,7 @@ private fun RuleBranch(match: RuleMatch, last: Boolean, muted: Boolean, content:
 private val RuleMatch.glyph: ImageVector
     get() = when (this) {
         // A road that splits: take either.
-        RuleMatch.ANY -> Icons.Outlined.AltRoute
+        RuleMatch.ANY -> Icons.AutoMirrored.Outlined.AltRoute
         // A list with its ticks: they happen in any order, over days, and are counted off.
         RuleMatch.ALL -> Icons.Outlined.Checklist
         // Two circles and the piece they share: the one moment all of them are true.

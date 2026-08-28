@@ -39,41 +39,15 @@ class HomeStateTest {
     private val paused = reminder("paused", Trigger.AtDateTime(LocalDateTime.of(2026, 8, 28, 16, 0)), status = Status.PAUSED)
 
     @Test
-    fun `the card's colour band is the family of what will ring`() {
-        // The earliest moment decides, not the first rule written: "al llegar a casa, o esta
-        // tarde a las seis" is a clock this afternoon and a place after that.
-        val both = Reminder(
-            id = "both",
-            text = "Llamar a Marta",
-            rules = listOf(
-                TriggerRule(Trigger.Location(40.4, -3.7, 200, Presence.INSIDE, "Casa")),
-                TriggerRule(Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 18, 0))),
-            ),
-            status = Status.ACTIVE,
-            createdAt = now,
-            updatedAt = now,
-        )
-        // Nothing with a moment: the first rule speaks for the card.
-        val placeOnly = reminder("place-only", Trigger.Location(40.4, -3.7, 200, Presence.INSIDE, "Casa"))
-        // No rules at all, but a recurrence works out its own moments: that is a clock.
-        val recurring = Reminder(
-            id = "recurring",
-            text = "Tomar el antibiótico",
-            recurrence = Recurrence.After(8, RecurrenceUnit.HOURS),
-            status = Status.ACTIVE,
-            createdAt = now,
-            updatedAt = now,
-            lastDealtAt = now.minusSeconds(3600),
-        )
-        // A note nothing rings has no band at all.
-        val note = Reminder(id = "note", text = "Ideas para el regalo", status = Status.ACTIVE, createdAt = now, updatedAt = now)
-
-        val state = buildHomeState(listOf(both, placeOnly, recurring, note), defaultTime, now, zone, selectedTag = null)
+    fun `the card's colour band is its first tag, and nothing without one`() {
+        // The band was the family of whatever fires next, which came out blue on nearly every
+        // card because nearly everything next is a clock. A tag is what actually varies.
+        val filed = reminder("filed", Trigger.AtDateTime(LocalDateTime.of(2026, 8, 29, 9, 0)), tags = listOf("casa", "salud"))
+        val unfiled = reminder("unfiled", Trigger.AtDateTime(LocalDateTime.of(2026, 8, 29, 10, 0)))
+        val state = buildHomeState(listOf(filed, unfiled), defaultTime, now, zone, selectedTag = null)
         val cards = (listOfNotNull(state.hero?.card) + state.sections.flatMap { it.cards }).associateBy { it.id }
-        assertEquals(TriggerFamily.TIME, cards.getValue("both").rail)
-        assertEquals(TriggerFamily.PLACE, cards.getValue("place-only").rail)
-        assertEquals(TriggerFamily.TIME, cards.getValue("recurring").rail)
-        assertNull(cards.getValue("note").rail)
+        assertEquals("casa", cards.getValue("filed").railTag, "the first tag, the one the footer reads first")
+        assertNull(cards.getValue("unfiled").railTag)
     }
 
     @Test

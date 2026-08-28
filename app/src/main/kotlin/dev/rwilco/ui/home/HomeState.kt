@@ -89,16 +89,17 @@ data class ReminderCardUi(
      */
     val snoozedUntil: Instant? = null,
     /**
-     * The colour band down the card's edge: the family of what will ring, or null for a
-     * reminder with no "when" at all.
+     * The tag whose colour runs down the card's edge, or null for a reminder with no tags.
      *
-     * The family of the rule with the earliest moment, because that is the one the card is
-     * about; failing that the first rule's, so a card that is only places still says "place";
-     * and [TriggerFamily.TIME] for a reminder whose whole arrangement is a recurrence, which is
-     * a clock even though it carries no trigger. The hero is left out of this — it already
-     * wears the amber and its lamp, and two marks on one card is one too many.
+     * It was the family of whatever fires next, which was the honest reading and the wrong one
+     * to look at: on a real list nearly everything next is a clock, so nearly every card came
+     * out the same blue and the rhythm the band exists for never appeared. A tag is what
+     * actually varies between one card and the next — and it is the person's own word for the
+     * thing, which is a better reason to give something a colour than the shape of its trigger.
+     * The first tag, the one the footer reads first; nothing for an untagged reminder, which is
+     * a state Home already has a chip for.
      */
-    val rail: TriggerFamily? = null,
+    val railTag: String? = null,
     /**
      * The recurrence, when it works out its own moments — and only then.
      *
@@ -184,7 +185,7 @@ fun buildHomeState(
             tags = reminder.tags,
             triggers = rows,
             actions = reminder.actions,
-            rail = railFamily(reminder, rows),
+            railTag = reminder.tags.firstOrNull(),
             paused = reminder.status == Status.PAUSED,
             // A paused reminder rings at no moment at all, so a snooze on it is not news.
             snoozedUntil = reminder.snoozedUntil?.takeIf { it > now && reminder.status == Status.ACTIVE },
@@ -208,19 +209,6 @@ fun buildHomeState(
         defaultTime = defaultTime,
         dayShape = shape,
     )
-}
-
-/**
- * The family a card's colour band belongs to. See [ReminderCardUi.rail].
- *
- * Pure and separate from [buildHomeState] so the rule is one readable sentence and a test can
- * hold it: the earliest moment's family, else the first rule's, else the clock when a
- * recurrence is doing the work on its own, else nothing.
- */
-internal fun railFamily(reminder: Reminder, rows: List<TriggerRowUi>): TriggerFamily? {
-    rows.filter { it.nextAt != null }.minByOrNull { it.nextAt!! }?.let { return it.family }
-    rows.firstOrNull()?.let { return it.family }
-    return TriggerFamily.TIME.takeIf { reminder.recurrence.isAnchored }
 }
 
 /** What the magnifier shows: the query as typed, and what it found. */

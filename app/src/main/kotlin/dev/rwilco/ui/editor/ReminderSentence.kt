@@ -15,9 +15,9 @@ import dev.rwilco.R
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.TriggerFamily
 import dev.rwilco.model.family
-import dev.rwilco.ui.format.conditionLabel
+import dev.rwilco.ui.format.conditionPhrase
 import dev.rwilco.ui.format.currentLocale
-import dev.rwilco.ui.format.triggerLine
+import dev.rwilco.ui.format.triggerPhrase
 import dev.rwilco.ui.theme.color
 import java.time.LocalDate
 import java.time.LocalTime
@@ -80,19 +80,17 @@ private fun sentenceText(parts: List<SentencePart>, today: LocalDate, defaultTim
                 is SentencePart.Join -> append(stringResource(part.match.joinRes))
 
                 is SentencePart.Rule -> {
-                    val line = triggerLine(part.rule.trigger, today, defaultTime)
-                    // The same two halves the rows show, said as one: "20:30 · cada día" is a
-                    // row, "20:30 cada día" is a sentence.
-                    val said = listOf(line.primary, line.secondary).filter { it.isNotBlank() }.joinToString(" ")
                     withStyle(SpanStyle(color = part.rule.trigger.family.color(), fontWeight = FontWeight.SemiBold)) {
-                        append(said.replaceFirstChar { it.lowercase(locale) })
+                        append(triggerPhrase(part.rule.trigger, today, defaultTime))
                     }
                     if (part.rule.conditions.isNotEmpty()) {
-                        // A plain loop: conditionLabel reads string resources, and a composable
-                        // cannot be called from joinToString's lambda.
+                        // A plain loop: conditionPhrase reads string resources, and a composable
+                        // cannot be called from joinToString's lambda. Joined with the same "y"
+                        // the rules use, and the "sólo" said once in front of all of them.
                         val fences = mutableListOf<String>()
-                        for (condition in part.rule.conditions) fences += conditionLabel(condition)
-                        append(" " + stringResource(R.string.editor_only_if_prefix, fences.joinToString(" · ")))
+                        for (condition in part.rule.conditions) fences += conditionPhrase(condition)
+                        val joined = fences.joinToString(" " + stringResource(R.string.editor_sentence_and) + " ")
+                        append(" " + stringResource(R.string.editor_sentence_only, joined))
                     }
                 }
 

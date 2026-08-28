@@ -62,6 +62,7 @@ import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.LocalDarkTheme
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.familyColor
+import dev.rwilco.ui.theme.tagColor
 import dev.rwilco.ui.theme.icon
 import java.time.Instant
 import java.time.LocalDate
@@ -86,9 +87,9 @@ fun ReminderCard(
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
     val textColor = if (card.paused) scheme.onSurfaceVariant else scheme.onSurface
-    // A paused reminder is not going to ring, so its band says nothing about which family
-    // would have: it goes the same grey as everything else on the card.
-    val rail = card.rail?.let { if (card.paused) scheme.onSurfaceVariant else familyColor(it, LocalDarkTheme.current) }
+    // A paused reminder is not going to ring at all, so its band drops the colour with the rest
+    // of the card and goes the same grey.
+    val rail = card.railTag?.let { if (card.paused) scheme.onSurfaceVariant else tagColor(it) }
     RwilcoCard(onClick = onClick, modifier = modifier, rail = rail) {
         // A card is a glance, not a page — but the words are the glance, so they get the width
         // and the size, and the one control goes down to the footer with the rest of the

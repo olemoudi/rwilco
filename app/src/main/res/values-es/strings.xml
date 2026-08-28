@@ -334,6 +334,18 @@
     <string name="editor_sentence_and">y</string>
     <string name="editor_sentence_at_once">y, a la vez,</string>
     <string name="editor_sentence_returns">y vuelve</string>
+    <!-- La frase de encima del botón de guardar: cada "cuándo" como algo que se puede decir. -->
+    <string name="editor_sentence_at_datetime">%1$s a las %2$s</string>
+    <string name="editor_sentence_at_time">a las %1$s %2$s</string>
+    <string name="editor_sentence_interval">durante la franja %1$s %2$s</string>
+    <string name="editor_sentence_random">%1$s, en la franja %2$s</string>
+    <string name="editor_sentence_repeat">a las %1$s, %2$s</string>
+    <string name="editor_sentence_place_inside">mientras estoy en %1$s</string>
+    <string name="editor_sentence_place_outside">mientras no estoy en %1$s</string>
+    <string name="editor_sentence_only">sólo %1$s</string>
+    <string name="editor_sentence_window_of">en la franja %1$s</string>
+    <string name="editor_sentence_if_at">si estoy en %1$s</string>
+    <string name="editor_sentence_if_away">si no estoy en %1$s</string>
     <string name="condition_title">Sólo si</string>
     <string name="condition_window_hint">El disparador sólo cuenta dentro de estas horas.</string>
     <string name="condition_window_error">Elige dos horas distintas.</string>

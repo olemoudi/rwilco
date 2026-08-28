@@ -336,6 +336,18 @@
     <string name="editor_sentence_and">and</string>
     <string name="editor_sentence_at_once">and, at once,</string>
     <string name="editor_sentence_returns">and comes back</string>
+    <!-- The sentence over the save button: every "when" as a clause you could say out loud. -->
+    <string name="editor_sentence_at_datetime">%1$s at %2$s</string>
+    <string name="editor_sentence_at_time">at %1$s %2$s</string>
+    <string name="editor_sentence_interval">during %1$s %2$s</string>
+    <string name="editor_sentence_random">%1$s, in the %2$s window</string>
+    <string name="editor_sentence_repeat">at %1$s, %2$s</string>
+    <string name="editor_sentence_place_inside">while I am at %1$s</string>
+    <string name="editor_sentence_place_outside">while I am away from %1$s</string>
+    <string name="editor_sentence_only">only %1$s</string>
+    <string name="editor_sentence_window_of">during %1$s</string>
+    <string name="editor_sentence_if_at">if I am at %1$s</string>
+    <string name="editor_sentence_if_away">if I am away from %1$s</string>
     <string name="condition_title">Only if</string>
     <string name="condition_window_hint">The trigger only counts inside these hours.</string>
     <string name="condition_window_error">Pick two different times.</string>
