@@ -1,12 +1,15 @@
-@file:UseSerializers(LocalTimeSerializer::class, DayOfWeekSerializer::class)
+@file:UseSerializers(LocalTimeSerializer::class, LocalDateSerializer::class, DayOfWeekSerializer::class)
 
 package dev.rwilco.model
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 import java.time.DayOfWeek
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
@@ -22,17 +25,31 @@ import java.time.ZoneId
 sealed interface Condition {
 
     /**
-     * Between two times of day, on [days] (empty means every day).
+     * Between two times of day, on [days] (empty means every day) and on [date] (null means
+     * every date those days allow).
      *
      * A window that ends before it starts crosses midnight, and the moment then belongs to the
      * day the window opened: 02:00 on Wednesday is inside "los martes, de 22:00 a 06:00".
+     *
+     * [date] is never typed by anybody — the "y sólo si" sheet offers hours and days, not dates
+     * — and is the one thing a **dated** rule has to keep when it is folded into its siblings as
+     * a state ([Trigger.asState]). "El domingo de 20:30 a 22:00, y a la vez en casa" is a state
+     * about one Sunday evening; folded as hours alone it became every evening, and a set that
+     * could not ring until Sunday rang on the Friday somebody walked through their own front
+     * door. Written only when it is set, so nothing already on disk changes shape.
      */
+    @OptIn(ExperimentalSerializationApi::class)
     @Serializable
     @SerialName("time_window")
     data class TimeWindow(
         val from: LocalTime,
         val to: LocalTime,
         val days: Set<DayOfWeek> = emptySet(),
+        // Never written unless it is set, which is never: this one is synthesised at the moment
+        // a rule is folded into its siblings and no sheet offers it. So the shape on disk does
+        // not move for anything anybody has already typed — the frozen-shape test says so.
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
+        val date: LocalDate? = null,
     ) : Condition
 
     /**
@@ -83,9 +100,10 @@ fun Condition.TimeWindow.holdsAt(at: LocalDateTime): Boolean {
     val time = at.toLocalTime()
     val crossesMidnight = to <= from
     val inside = if (crossesMidnight) time >= from || time < to else time >= from && time < to
-    // On the far side of midnight the moment still belongs to the day the window opened.
-    val day = if (crossesMidnight && time < to) at.toLocalDate().minusDays(1).dayOfWeek else at.dayOfWeek
-    return inside && (days.isEmpty() || day in days)
+    // On the far side of midnight the moment still belongs to the day the window opened, which
+    // is the day both the weekday and the date are asked of.
+    val day = if (crossesMidnight && time < to) at.toLocalDate().minusDays(1) else at.toLocalDate()
+    return inside && (days.isEmpty() || day.dayOfWeek in days) && (date == null || day == date)
 }
 
 /** Whether every condition on a rule held at [at]. */

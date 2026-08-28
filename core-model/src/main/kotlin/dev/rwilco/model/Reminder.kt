@@ -200,11 +200,20 @@ fun List<Condition.TimeWindow>.openFrom(now: Instant, zone: ZoneId): Instant? {
     if (isEmpty() || allHoldAt(now, zone)) return now
     // A conjunction of windows can only begin where one of them begins, so those are the only
     // candidates worth trying — and one that does not satisfy the others is not the beginning.
-    return mapNotNull { window ->
-        (nextFireOf(Trigger.Interval(window.from, window.to, window.days), "", now, zone, LocalTime.MIDNIGHT) as? NextFire.Scheduled)
-            ?.at
-            ?.takeIf { allHoldAt(it, zone) }
-    }.minOrNull()
+    return mapNotNull { window -> window.opensAfter(now, zone)?.takeIf { allHoldAt(it, zone) } }.minOrNull()
+}
+
+/**
+ * When this window next opens, or null when it never will again.
+ *
+ * A window with a date of its own opens on that date and on no other, and once that date has
+ * gone it has no opening left — which is what makes a circle beside it worth nothing at all
+ * rather than worth a position every evening for ever.
+ */
+private fun Condition.TimeWindow.opensAfter(now: Instant, zone: ZoneId): Instant? {
+    val only = date
+    if (only != null) return only.atTime(from).atZone(zone).toInstant().takeIf { it > now }
+    return (nextFireOf(Trigger.Interval(from, to, days), "", now, zone, LocalTime.MIDNIGHT) as? NextFire.Scheduled)?.at
 }
 
 /** The windows on a rule, wherever they came from: its own conditions or a folded-in sibling. */

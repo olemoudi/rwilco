@@ -30,8 +30,14 @@ turn to write it down (`nextWake`), and only the moment that completes the set r
 (`outcomeOfFiring`). Dealing with the firing clears the set and starts the round again.
 
 Conditions (`Condition.kt`) are states, asked "were you true at that moment?", which is what
-makes them safe to AND with anything. Today there is one, `time_window` (hours + days, crossing
-midnight allowed); a place condition is the obvious next one.
+makes them safe to AND with anything: `time_window` (hours + days, crossing midnight allowed)
+and `at_place`. A window also carries an optional **date**, which nobody ever types — the "y
+sólo si" sheet offers hours and days — and which exists for one thing: a *dated* rule folded
+into its siblings as a state. "El domingo de 20:30 a 22:00, y a la vez en casa" is a state about
+one Sunday evening, and folded as hours alone it became every evening: the set rang on the
+Friday somebody walked through their own front door, and the circle was paying for a position
+every night until it did. It is `@EncodeDefault(NEVER)`, so nothing anybody has typed changes
+shape on disk.
 
 **A place is a state, and the doorway is the exception** (`Trigger.Location`). It used to be an
 event and only an event — "al llegar" meant a line the phone had to be *seen* going through —

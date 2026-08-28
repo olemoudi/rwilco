@@ -216,4 +216,52 @@ class TogetherTest {
         val rules = listOf(TriggerRule(fiveToSeven), TriggerRule(office))
         assertEquals(rules, ReminderCodec.decodeRules(ReminderCodec.encodeRules(rules)))
     }
+
+    @Test
+    fun `a dated window folded into a place keeps its date, or the set rings days early`() {
+        // "El domingo de 20:30 a 22:00, y a la vez en casa." The day rule is a *state* to its
+        // sibling — being inside those hours — and the day is half of what that state says. A
+        // fold that keeps only the hours turns one Sunday evening into every evening, and a
+        // place that rings on arrival rings on the Friday.
+        val sunday = java.time.LocalDate.of(2026, 8, 30)
+        val evening = DayWindow(LocalTime.of(20, 30), LocalTime.of(22, 0))
+        val set = Reminder(
+            id = "r1",
+            text = "Quitar los relojes de la terraza",
+            rules = listOf(TriggerRule(Trigger.DayRandom(sunday, evening)), TriggerRule(home)),
+            ruleMatch = RuleMatch.TOGETHER,
+            createdAt = now,
+            updatedAt = now,
+        )
+        val folded = set.ruleInSet(1)!!.windows()
+        assertFalse(folded.allHoldAt(local(2026, 8, 28, 20, 45), zone), "Friday at 20:45 is not the Sunday it names")
+        assertFalse(folded.allHoldAt(local(2026, 8, 29, 21, 0), zone), "nor is the Saturday")
+        assertTrue(folded.allHoldAt(local(2026, 8, 30, 20, 45), zone), "and the Sunday is")
+        assertFalse(folded.allHoldAt(local(2026, 8, 30, 22, 30), zone), "after its hours, no")
+    }
+
+    @Test
+    fun `and the circle is left alone until that day`() {
+        // The other half of the same fold: a position is the most expensive answer this app
+        // buys, and a circle that cannot matter until Sunday has no business asking for one on
+        // the Friday.
+        val sunday = java.time.LocalDate.of(2026, 8, 30)
+        val evening = DayWindow(LocalTime.of(20, 30), LocalTime.of(22, 0))
+        val set = Reminder(
+            id = "r1",
+            text = "Quitar los relojes de la terraza",
+            rules = listOf(TriggerRule(Trigger.DayRandom(sunday, evening)), TriggerRule(home)),
+            ruleMatch = RuleMatch.TOGETHER,
+            createdAt = now,
+            updatedAt = now,
+        )
+        val friday = local(2026, 8, 28, 20, 12)
+        val gated = set.watchedCircles(friday, zone, defaultTime).single { it.ruleIndex == 1 }
+        // Shut until the run-up to the Sunday window: PlaceWatchPolicy.WINDOW_LEAD before it,
+        // so the first position is taken before anything is judged by it rather than after.
+        assertEquals(local(2026, 8, 30, 20, 30).minus(PlaceWatchPolicy.WINDOW_LEAD), gated.opensAt)
+        // On the Sunday evening itself it is open, and pays for its own positions again.
+        val sundayEvening = local(2026, 8, 30, 20, 40)
+        assertNull(set.watchedCircles(sundayEvening, zone, defaultTime).single { it.ruleIndex == 1 }.opensAt)
+    }
 }

@@ -120,8 +120,8 @@ class DayWindowTest {
         // The place's rule now carries "and only between two and four" — which is what makes an
         // arrival at 15:10 ring and one at 17:00 not.
         assertTrue(
-            together.ruleInSet(1)!!.conditions.contains(Condition.TimeWindow(LocalTime.of(14, 0), LocalTime.of(16, 0))),
-            "the window is folded into the place as a state",
+            together.ruleInSet(1)!!.conditions.contains(Condition.TimeWindow(LocalTime.of(14, 0), LocalTime.of(16, 0), date = friday)),
+            "the window is folded into the place as a state, on the day it is about",
         )
         // Two states can coincide, so the set is not the impossible kind.
         assertTrue(!together.momentsCannotCoincide(), "a window and a place can both be true at once")
@@ -179,11 +179,11 @@ class DayWindowTest {
         val together = alone.copy(rules = listOf(bare, place), ruleMatch = RuleMatch.TOGETHER)
         // Friday under the default shape runs to the weekend's bedtime, half past one.
         assertTrue(
-            together.ruleInSet(1)!!.conditions.contains(Condition.TimeWindow(LocalTime.of(8, 0), LocalTime.of(1, 30))),
+            together.ruleInSet(1)!!.conditions.contains(Condition.TimeWindow(LocalTime.of(8, 0), LocalTime.of(1, 30), date = friday)),
             "the waking hours are folded into the place as a state: ${together.ruleInSet(1)!!.conditions}",
         )
         assertTrue(
-            together.ruleInSet(1, lieIn)!!.conditions.contains(Condition.TimeWindow(LocalTime.of(10, 0), LocalTime.of(23, 0))),
+            together.ruleInSet(1, lieIn)!!.conditions.contains(Condition.TimeWindow(LocalTime.of(10, 0), LocalTime.of(23, 0), date = friday)),
         )
         assertTrue(!together.momentsCannotCoincide(), "a day and a place can both be true at once")
         assertTrue(!Trigger.DayRandom(friday).isMoment, "a day is a stretch, not an instant")

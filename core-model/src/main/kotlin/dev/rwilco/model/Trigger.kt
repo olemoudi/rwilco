@@ -346,7 +346,9 @@ fun Trigger.asState(shape: DayShape = DayShape.DEFAULT): Condition? = when (this
     // A day with a window on it is a state for as long as the window lasts, exactly as an
     // interval is — and a day with none is a state for as long as its waking hours last. See
     // [whenCombined] for the other half of what that means.
-    is Trigger.DayRandom -> stretchOf(shape).let { Condition.TimeWindow(it.from.toLocalTime(), it.to.toLocalTime()) }
+    // With the date on it: a day is a state about *that* day, and a fold that kept only the
+    // hours turned one Sunday evening into every evening. See [Condition.TimeWindow.date].
+    is Trigger.DayRandom -> stretchOf(shape).let { Condition.TimeWindow(it.from.toLocalTime(), it.to.toLocalTime(), date = date) }
     is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.AtTime, is Trigger.Countdown, is Trigger.Random -> null
     is Trigger.Repeat -> null
 }
