@@ -65,8 +65,11 @@ interface ReminderDao {
      * recurrence counts from and the status are stamped. One statement rather than four, so a
      * process that dies in the middle cannot leave a round closed and its anchor unmoved.
      */
-    @Query("UPDATE reminder SET snoozedUntil = NULL, firedRules = '', lastDealtAt = :at, status = :status, updatedAt = :at, doneAt = :doneAt WHERE id = :id")
-    suspend fun dealtWith(id: String, at: Long, status: String, doneAt: Long?)
+    @Query(
+        "UPDATE reminder SET snoozedUntil = NULL, firedRules = '', lastDealtAt = :at, " +
+            "status = :status, updatedAt = :at, doneAt = :doneAt, dealtThrough = :through WHERE id = :id",
+    )
+    suspend fun dealtWith(id: String, at: Long, status: String, doneAt: Long?, through: Long?)
 
     /** The safety net has said its word about the firing at hand; it says one per firing. */
     @Query("UPDATE reminder SET nudgedAt = :at WHERE id = :id")

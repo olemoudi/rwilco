@@ -311,6 +311,7 @@ class EditorViewModel(
                 // the armed moment do not. See Draft.toReminder.
                 lastDealtAt = before?.lastDealtAt,
                 lastFiredAt = before?.lastFiredAt,
+                dealtThrough = before?.dealtThrough,
                 zone = clock.zone,
                 shape = current.dayShape,
             )

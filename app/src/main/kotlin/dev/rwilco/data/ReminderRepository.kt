@@ -58,10 +58,14 @@ class ReminderRepository(private val dao: ReminderDao, private val clock: Clock)
         dao.upsertAll(reminders.map { it.toEntity() })
     }
 
-    /** A firing dealt with at [at]: see `ReminderDao.dealtWith`. */
-    suspend fun dealtWith(id: String, at: Instant, status: Status) {
+    /**
+     * A firing dealt with at [at]: see `ReminderDao.dealtWith`. [through] is the moment that was
+     * coming and has been dealt with before it could ring, or null when the thing dealt with was
+     * a firing that had already happened.
+     */
+    suspend fun dealtWith(id: String, at: Instant, status: Status, through: Instant?) {
         val millis = at.toEpochMilli()
-        dao.dealtWith(id, millis, status.name, if (status == Status.DONE) millis else null)
+        dao.dealtWith(id, millis, status.name, if (status == Status.DONE) millis else null, through?.toEpochMilli())
     }
 
     suspend fun setStatus(id: String, status: Status) {

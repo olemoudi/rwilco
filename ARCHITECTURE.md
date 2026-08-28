@@ -382,8 +382,11 @@ strict is asking somebody to remember how they spelled it.
   held in — and a reminder that comes back is worse, since it is dealt with, sorted, and lands
   back in the same place, so the card under the thumb turns into a different reading of itself.
   The row goes blank at once (the action has taken: the glass is full and the phone has said so)
-  and keeps its height, leaving the hole it made; the list closes up on the release, when there
-  is no finger left for it to move anything under. Which way it went is remembered from when the
+  and keeps its height, leaving the hole it made; **the hole closes on the release**, when there
+  is no finger left for it to move anything under — the card below sliding up as the row leaves,
+  or this same one fading back in with its next moment on it, which is what a reminder that
+  comes round again does. Left blank instead it stayed blank: the row is still in the list under
+  the same key, and nothing rebuilt it until a scroll took it off screen and back. Which way it went is remembered from when the
   glass filled, not read off the box at release — by then the box is sliding back and would
   answer "neither".
 - **Held, a card says what can be done to it** (`ReminderActionsMenu`), and the menu opens at the
@@ -582,6 +585,16 @@ strict is asking somebody to remember how they spelled it.
   owing both and only one is detectably missed; `owedUnderAll` (pure) lists the one-shot
   moments after the missed one that have since passed, and `rearmAndCatchUp` fires them in
   turn, so the set completes late rather than never.
+- **A "hecho" deals with whatever is owed** (`momentDealtWith`, pure). Usually that is the firing
+  waiting for an answer, and then it spends nothing else. When nothing is waiting, what is being
+  dealt with is the moment that was *coming*: a daily at two o'clock ticked off this morning
+  means tomorrow's two o'clock is done, the day after is what is next, and ticking it off again
+  sends it on another day. The moment goes into `Reminder.dealtThrough` (Room v7), which
+  `searchFrom` reads like a ring and `recurrenceAnchor` counts a span from — so "cada día" moves
+  a day per "hecho" rather than a day per afternoon somebody happened to tick it off in. It is
+  kept apart from `lastFiredAt` on purpose: that one means "it rang", which is what tells a
+  firing the phone slept through from one that was answered, and a moment that never rang has no
+  business in it. A place answers null: nothing about arriving somewhere can be done in advance.
 - `ReminderFiring` is the single place that decides what a firing, a "Hecho" and a snooze do, so
   the alarm, the notification buttons, the alert screen **and Home's swipe** cannot drift apart.
   Every answer it gives is written down before the notification comes down, and its settings read

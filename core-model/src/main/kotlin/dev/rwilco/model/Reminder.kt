@@ -63,6 +63,18 @@ data class Reminder(
      */
     val safetyNet: Boolean = false,
     /**
+     * The last moment that has been **dealt with without ringing** — every moment up to and
+     * including it is spent.
+     *
+     * "Hecho" on a reminder that is not waiting for an answer is not a note about the past: it
+     * is somebody saying they have done the next one. A daily at two o'clock, ticked off this
+     * morning, means tomorrow's two o'clock is dealt with and the day after is what is coming —
+     * and ticking it off again sends it on another day. Kept apart from [lastFiredAt] because
+     * that one means "it rang", which is what tells a firing the phone slept through from one
+     * that was answered, and a moment that never rang has no business in it.
+     */
+    val dealtThrough: Instant? = null,
+    /**
      * When the net last said something. Paired with [lastFiredAt] it is what makes the word
      * once per firing: nudged at or after the ring it is about, there is nothing left owed.
      */

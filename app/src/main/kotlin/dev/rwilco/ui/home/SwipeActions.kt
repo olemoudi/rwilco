@@ -140,6 +140,13 @@ fun SwipeableCard(
         val done = takenAsDone ?: return@LaunchedEffect
         if (pressed) return@LaunchedEffect
         if (done) onDone() else onDelete()
+        // And the hole closes with it. It was made for the hand, and the hand has gone: what
+        // belongs in that space now fades into it — the card below sliding up as the row
+        // leaves, or this same one back with its next moment on it, which is what a reminder
+        // that comes round again does. Left blank instead, it stayed blank: the row is still
+        // in the list under the same key, so nothing rebuilt it until a scroll took it off
+        // screen and back.
+        takenAsDone = null
     }
 
     val doneColor = familyColor(TriggerFamily.PLACE, LocalDarkTheme.current)
@@ -148,7 +155,9 @@ fun SwipeableCard(
     // something the thumb might have meant to press.
     val shown by animateFloatAsState(
         targetValue = if (takenAsDone != null) 0f else 1f,
-        animationSpec = tween(motion.fast),
+        // Out fast, because the hole is the answer to a gesture that has just finished; back in
+        // slower, because it is a card arriving rather than one being taken away.
+        animationSpec = tween(if (takenAsDone != null) motion.fast else motion.medium),
         label = "swipeTaken",
     )
     SwipeToDismissBox(

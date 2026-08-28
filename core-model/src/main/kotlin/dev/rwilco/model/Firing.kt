@@ -41,6 +41,33 @@ fun statusAfterDismissal(
 }
 
 /**
+ * The moment a "hecho" spends, or null when it spends none.
+ *
+ * **A "hecho" deals with whatever is owed.** Usually that is the firing waiting for an answer,
+ * and then it spends nothing extra: the ring is what is being answered, and taking tomorrow's
+ * moment with it would skip a day nobody asked to skip.
+ *
+ * When nothing is waiting, the thing being dealt with is the moment that was coming. A daily at
+ * two o'clock, ticked off this morning, means tomorrow's two o'clock is done and the day after
+ * is what is next — and ticking it off again sends it on another day, which is exactly what
+ * doing it twice means. The moment goes into [Reminder.dealtThrough], where `searchFrom` and
+ * `recurrenceAnchor` read it.
+ *
+ * A place has no moment to spend and answers null, which is right: nothing about arriving
+ * somewhere can be done in advance.
+ */
+fun Reminder.momentDealtWith(
+    now: Instant,
+    zone: ZoneId,
+    defaultTime: LocalTime,
+    dayStart: LocalTime = DEFAULT_DAY_START,
+    shape: DayShape = DayShape.DEFAULT,
+): Instant? {
+    if (awaitingAnswer(now)) return null
+    return nextFire(this, now, zone, defaultTime, dayStart, shape)?.moment
+}
+
+/**
  * Whether a place read as a *state* has already had its say in this round.
  *
  * "Mientras esté en casa" is true for as long as somebody is at home, so the watch reports it

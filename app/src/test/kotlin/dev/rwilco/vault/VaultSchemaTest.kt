@@ -62,6 +62,8 @@ class VaultSchemaTest {
             "snoozedUntil", "lastFiredAt", "armedFor", "ruleMatch", "armedRule", "firedRules", "recurrence", "lastDealtAt",
             // Room v6: the safety net, off for everything written before it existed.
             "safetyNet", "nudgedAt",
+            // Room v7: a moment dealt with before it rang; nothing older has one.
+            "dealtThrough",
         )
     }
 }

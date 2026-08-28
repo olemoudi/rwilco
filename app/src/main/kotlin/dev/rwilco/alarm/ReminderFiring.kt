@@ -18,6 +18,7 @@ import dev.rwilco.model.Condition
 import dev.rwilco.model.PlaceWatchPolicy
 import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.allHoldAt
+import dev.rwilco.model.awaitingAnswer
 import dev.rwilco.model.ruleInSet
 import dev.rwilco.model.knownInAdvance
 import dev.rwilco.model.lateForPresentation
@@ -26,6 +27,7 @@ import dev.rwilco.model.soundFor
 import dev.rwilco.model.firingPlan
 import dev.rwilco.model.missedFire
 import dev.rwilco.model.nudgeAt
+import dev.rwilco.model.momentDealtWith
 import dev.rwilco.model.momentRungFor
 import dev.rwilco.model.outcomeOfFiring
 import dev.rwilco.model.owedUnderAll
@@ -311,13 +313,24 @@ class ReminderFiring(
         val reminder = repository.get(id) ?: return@withLock
         val now = clock.instant()
         val settings = settings()
-        val status = statusAfterDismissal(reminder, now, clock.zone, settings.defaultTime, settings.dayShape)
+        // **A "hecho" deals with whatever is owed.** Usually that is the firing waiting for an
+        // answer. When nothing is — the card says "mañana a las 14:00" and somebody ticks it off
+        // this morning — what is being dealt with is that moment, so it is spent and the next
+        // one is the day after. Ticking it off again sends it on another day, which is the whole
+        // of what somebody means by doing it twice. Only when nothing is waiting: after it rings,
+        // the ring IS what is being answered, and taking tomorrow's with it would skip a day.
+        val consumed = reminder.momentDealtWith(now, clock.zone, settings.defaultTime, settings.dayStart, settings.dayShape)
+        // Asked of the reminder as this "hecho" leaves it, so the last date of a series that has
+        // been dealt with ahead of time finishes it rather than waiting for a moment nobody is
+        // going to be told about.
+        val dealt = reminder.copy(dealtThrough = consumed ?: reminder.dealtThrough)
+        val status = statusAfterDismissal(dealt, now, clock.zone, settings.defaultTime, settings.dayShape)
         // One write: the snooze goes, a round dealt with is a round over (what had already
         // happened stops counting), and the moment every recurrence counts from is stamped —
         // "six hours after the last one" is six hours after this, not after whenever the alarm
         // happened to go off. Four writes could be cut in two by a process dying, and a round
         // closed with its anchor unmoved is a reminder that never comes back.
-        repository.dealtWith(id, now, status)
+        repository.dealtWith(id, now, status, consumed)
         scheduler.rearmAll()
     }
 

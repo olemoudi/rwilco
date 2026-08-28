@@ -18,7 +18,7 @@ abstract class RwilcoDatabase : RoomDatabase() {
 
     companion object {
         /** A named constant so MigrationChainTest can assert the chain reaches it. */
-        const val VERSION = 6
+        const val VERSION = 7
         private const val NAME = "rwilco.db"
 
         /** One entry per version step; `// vN: what it added` on each. */
@@ -89,6 +89,14 @@ abstract class RwilcoDatabase : RoomDatabase() {
                 override fun migrate(db: SupportSQLiteDatabase) {
                     db.execSQL("ALTER TABLE reminder ADD COLUMN safetyNet INTEGER NOT NULL DEFAULT 0")
                     db.execSQL("ALTER TABLE reminder ADD COLUMN nudgedAt INTEGER")
+                }
+            },
+            // v7: the moment a "hecho" spends when nothing has rung yet. Null everywhere it did
+            // not exist, which is what every row already meant: nothing had been dealt with
+            // ahead of time, because there was no way to.
+            object : Migration(6, 7) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE reminder ADD COLUMN dealtThrough INTEGER")
                 }
             },
         )

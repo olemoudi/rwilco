@@ -72,6 +72,8 @@ fun Draft.toReminder(
     status: Status,
     lastDealtAt: Instant? = null,
     lastFiredAt: Instant? = null,
+    /** A moment already dealt with ahead of time stays dealt with across an edit. */
+    dealtThrough: Instant? = null,
     /** Where and how the day is shaped, for a date left to the day: see [settleDays]. */
     zone: ZoneId,
     shape: DayShape = DayShape.DEFAULT,
@@ -93,6 +95,7 @@ fun Draft.toReminder(
     updatedAt = now,
     lastDealtAt = lastDealtAt,
     lastFiredAt = lastFiredAt,
+    dealtThrough = dealtThrough,
 )
 
 /** Which of the two lists the editor offers back is being mended. */

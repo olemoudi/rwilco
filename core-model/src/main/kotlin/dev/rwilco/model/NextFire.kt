@@ -98,7 +98,9 @@ fun nextFire(
     return candidates.maxByOrNull { it.momentOrNull() ?: Instant.MIN }
 }
 
-/** The moment a candidate carries, where it has one; a place has none by nature. */
+/** The moment this answer carries, where it has one; a place has none by nature. */
+val NextFire.moment: Instant? get() = momentOrNull()
+
 private fun NextFire.momentOrNull(): Instant? = when (this) {
     is NextFire.Scheduled -> at
     is NextFire.Sometime -> at
@@ -370,8 +372,13 @@ fun Reminder.restUntil(zone: ZoneId, dayStart: LocalTime, shape: DayShape = DayS
  * back. It is also what keeps the two anchors the same answer for everything that is dealt
  * with the moment it rings, which is most things.
  */
-private fun Reminder.recurrenceAnchor(dealt: Instant): Instant =
-    if (recurrence.countsFromRinging) lastFiredAt ?: dealt else dealt
+private fun Reminder.recurrenceAnchor(dealt: Instant): Instant {
+    val from = if (recurrence.countsFromRinging) lastFiredAt ?: dealt else dealt
+    // A moment dealt with before it arrived is the moment the span counts from: ticking off
+    // tomorrow's two o'clock this morning makes the next one a day after *that*, not a day
+    // after the morning it was ticked off in.
+    return listOfNotNull(from, dealtThrough).max()
+}
 
 /**
  * The moment the recurrence itself rings, when it is the recurrence's turn to say: with no
@@ -416,6 +423,7 @@ fun Reminder.recurrenceMoment(
  * inside the millisecond that rang is the moment that rang.
  */
 private fun Reminder.searchFrom(now: Instant): Instant {
-    val fired = lastFiredAt?.plusMillis(1) ?: return now
-    return if (fired > now) fired else now
+    // Two ways a moment is spent: it rang, or it was dealt with before it could ([dealtThrough]).
+    val spent = listOfNotNull(lastFiredAt, dealtThrough).maxOrNull()?.plusMillis(1) ?: return now
+    return if (spent > now) spent else now
 }

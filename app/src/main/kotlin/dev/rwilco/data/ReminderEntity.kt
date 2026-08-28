@@ -51,6 +51,8 @@ data class ReminderEntity(
     val safetyNet: Boolean = false,
     /** When that word was last said, so it is said once per firing and not once an hour. */
     val nudgedAt: Long? = null,
+    /** The last moment dealt with before it could ring; every moment up to it is spent. */
+    val dealtThrough: Long? = null,
 )
 
 /** The stored form of no recurrence, and what every row written before v5 gets. */
@@ -88,6 +90,7 @@ fun ReminderEntity.toDomain(zone: ZoneId = ZoneId.systemDefault()): Reminder = R
     lastDealtAt = lastDealtAt?.let(Instant::ofEpochMilli),
     safetyNet = safetyNet,
     nudgedAt = nudgedAt?.let(Instant::ofEpochMilli),
+    dealtThrough = dealtThrough?.let(Instant::ofEpochMilli),
 ).foldRepeats(zone)
 
 fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
@@ -110,6 +113,7 @@ fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
     lastDealtAt = lastDealtAt?.toEpochMilli(),
     safetyNet = safetyNet,
     nudgedAt = nudgedAt?.toEpochMilli(),
+    dealtThrough = dealtThrough?.toEpochMilli(),
 )
 
 /**

@@ -157,4 +157,42 @@ class HomeSwipeTest {
             Duration.between(swipedAt, armed).toMinutes() in 55..65,
         )
     }
+
+    @Test
+    fun aHechoOnSomethingThatHasNotRungDealsWithTheOneThatWasComing() = runBlocking {
+        // A daily at two o'clock whose next one is tomorrow, and nothing has rung.
+        val two = java.time.LocalTime.of(14, 0)
+        val tomorrow = java.time.LocalDate.now().plusDays(1)
+        app.repository.deleteAll()
+        val now = app.clock.instant()
+        app.repository.save(
+            Reminder(
+                id = id,
+                text = words,
+                recurrence = dev.rwilco.model.Recurrence.Calendar(
+                    dev.rwilco.model.Trigger.Repeat(
+                        startsOn = tomorrow,
+                        unit = dev.rwilco.model.RepeatUnit.DAY,
+                        time = two,
+                    ),
+                ),
+                createdAt = now,
+                updatedAt = now,
+            ),
+        )
+        waitFor(words)
+
+        swipeCardRightAndHold()
+        // Tomorrow's is what was dealt with, so it is spent and the day after is what is next.
+        val expected = tomorrow.atTime(two).atZone(app.clock.zone).toInstant()
+        rule.waitUntil(10_000) { runBlocking { app.repository.get(id)?.dealtThrough } == expected }
+        val after = app.repository.get(id)!!
+        assertEquals(Status.ACTIVE, after.status)
+        assertEquals(expected, after.dealtThrough)
+        assertEquals(
+            tomorrow.plusDays(1).atTime(two).atZone(app.clock.zone).toInstant(),
+            (dev.rwilco.model.nextFire(after, app.clock.instant(), app.clock.zone, java.time.LocalTime.of(9, 0)) as dev.rwilco.model.NextFire.Scheduled).at,
+        )
+        Unit
+    }
 }

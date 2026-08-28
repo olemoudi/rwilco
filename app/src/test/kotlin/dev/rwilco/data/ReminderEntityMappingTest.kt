@@ -84,6 +84,11 @@ class ReminderEntityMappingTest {
         // Room v6 added both columns with a default that says what every older row meant: the
         // net is a thing you ask for, and nothing written before it existed ever did.
         assertEquals(false, row.copy(safetyNet = false, nudgedAt = null).toDomain().safetyNet)
+        // And Room v7's own column: a moment dealt with before it could ring.
+        val ahead = watched.copy(dealtThrough = Instant.ofEpochMilli(1_700_172_800_000))
+        assertEquals(1_700_172_800_000, ahead.toEntity().dealtThrough)
+        assertEquals(ahead, ahead.toEntity().toDomain())
+        assertEquals(null, row.copy(dealtThrough = null).toDomain().dealtThrough)
         assertEquals(null, row.copy(safetyNet = false, nudgedAt = null).toDomain().nudgedAt)
     }
 
