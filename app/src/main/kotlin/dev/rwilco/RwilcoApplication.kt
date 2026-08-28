@@ -19,6 +19,7 @@ import dev.rwilco.geo.hasBackgroundLocation
 import dev.rwilco.model.dayShape
 import dev.rwilco.model.AppSettings
 import dev.rwilco.notify.AlertNotifications
+import dev.rwilco.notify.SoundStore
 import dev.rwilco.update.UpdateWorker
 import dev.rwilco.vault.GitHubVault
 import dev.rwilco.vault.VaultBackup
@@ -36,6 +37,8 @@ import kotlinx.coroutines.flow.collectIndexed
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -189,6 +192,26 @@ class RwilcoApplication : Application() {
         onResolved = { VaultNotifications.cancel(this) },
         log = { Log.i("RwilcoVault", it) },
     )
+
+    /**
+     * The two chosen tones, settled: one of our own copies is kept, somebody else's is adopted
+     * while it can still be read, and one that cannot be read at all goes back to the phone's
+     * own alarm. Then the copies nothing points at are dropped.
+     *
+     * At launch and after a restore, which are the two moments a stored sound can have stopped
+     * being true — a vault from another phone names files that were never on this one. Written
+     * back only when something actually changed: a settings write re-encodes the whole blob, and
+     * one restored from a newer build carries fields this one has no words for.
+     */
+    suspend fun settleSounds() {
+        val current = runCatching { settings.filterNotNull().first() }.getOrNull() ?: return
+        val settled = SoundStore.settle(this, current)
+        if (settled != current) {
+            Log.i(TAG, "a chosen sound had stopped being playable; settling it")
+            settingsStore.update { SoundStore.settle(this, it) }
+        }
+        SoundStore.sweep(this, settled)
+    }
 
     companion object {
         private const val TAG = "RwilcoApp"

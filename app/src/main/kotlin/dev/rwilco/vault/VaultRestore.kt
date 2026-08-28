@@ -60,6 +60,9 @@ class VaultRestore(private val app: RwilcoApplication) {
         }
         app.repository.replaceAll(opened.snapshot.reminders)
         app.settingsStore.replaceRaw(opened.snapshot.settingsJson)
+        // A vault from another phone names sound files that were never on this one. Anything
+        // that cannot be opened goes back to the phone's own alarm rather than to silence.
+        app.settleSounds()
         app.vaultStore.update(adopt)
         app.firing.rearmAndCatchUp()
         app.geofences.sync()

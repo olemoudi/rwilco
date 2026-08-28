@@ -584,6 +584,27 @@ strict is asking somebody to remember how they spelled it.
   nothing above `IMPORTANCE_HIGH` + `PRIORITY_HIGH` + `CATEGORY_ALARM` for an ordinary
   notification; anything more prominent than this means `MessagingStyle` conversations or
   `CallStyle`, which are a different kind of thing to be.
+- **A chosen sound is copied into the app's own storage** (`SoundStore`). A picked file belongs
+  to whoever picked it: it can be deleted, moved, emptied out of a downloads folder, or live in
+  an app that gets uninstalled, and the persistable permission goes with any of those. An alarm
+  whose tone quietly stops existing is the failure this app exists not to have, so the file is
+  copied in the moment it is chosen and the reminder points at the copy from then on. It is
+  handed out through a `FileProvider` and not as a bare path, because a channel's tone is played
+  by **the system**, which cannot read anything inside an app's own files; the read is granted to
+  `com.android.systemui` and `android` every time the channels are ensured, since a grant does
+  not survive a reboot. `SoundStoreTest` checks that grant against systemui's real uid, because
+  a channel the system cannot open is silent and silence is the one failure worse than a wrong
+  tone. The channel id already hashes the Uri, so adopting a sound makes a new channel with the
+  new tone rather than reusing one whose sound is frozen.
+- **At launch and after a restore the two tones are settled** (`RwilcoApplication.settleSounds`):
+  one of our copies is kept, somebody else's is adopted while it can still be read — which is
+  what carries a sound chosen before any of this existed — and anything that cannot be opened at
+  all goes back to the phone's own alarm. A vault from another phone names files that were never
+  on this one, and the honest answer to that is the default tone, not silence and not a broken
+  setting. It is written back only when something actually changed, because a settings write
+  re-encodes the whole blob and a restored one from a newer build carries fields this build has
+  no words for. Copies nothing points at are then dropped; the one thing that costs is undoing a
+  restore that had changed the sound, which lands on the default tone like any missing one.
 - **Two tones, split by what the reminder was asked to do** (`AppSettings.soundFor`): "sonido"
   says it once, "hasta que reciba caso" comes back every few minutes until somebody answers, and
   a tone that is right for the first is often wrong for the second — you are going to hear the

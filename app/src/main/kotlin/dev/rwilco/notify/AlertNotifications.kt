@@ -77,6 +77,10 @@ object AlertNotifications {
 
     fun ensureChannels(context: Context, vibration: VibrationPattern = VibrationPattern(), chosen: AlertSound = AlertSound.System) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        // A channel's tone is played by the system, and one of our own copies lives where the
+        // system cannot reach. The grant does not survive a reboot, so it is re-done here rather
+        // than once when the sound was chosen. See SoundStore.
+        Sounds.uri(context, chosen)?.let { SoundStore.grantToSystem(context, it) }
         manager.createNotificationChannelGroup(
             NotificationChannelGroup(GROUP, context.getString(R.string.notif_group_alerts)),
         )

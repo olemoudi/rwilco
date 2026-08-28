@@ -115,5 +115,22 @@
         <receiver
             android:name=".update.InstallReceiver"
             android:exported="false" />
+
+        <!--
+          The app's own copies of the sounds somebody chose. A notification channel's tone is
+          played by the system, and the system cannot read a file inside an app's own storage —
+          so the copy is handed over as a content Uri and the read is granted to the packages
+          that do the playing (SoundStore.grantToSystem). Not exported: nothing but a grant of
+          ours opens it.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.sounds"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/sound_paths" />
+        </provider>
     </application>
 </manifest>

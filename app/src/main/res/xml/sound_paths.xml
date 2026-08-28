@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The one folder the provider hands out: the app's own copies of the sounds somebody chose.
+  Nothing else in filesDir is reachable through it — not the vault, not the diagnostics, not the
+  screenshots the tour writes.
+-->
+<paths>
+    <files-path name="sounds" path="sounds/" />
+</paths>

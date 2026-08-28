@@ -11,6 +11,7 @@ import android.provider.OpenableColumns
 import android.util.Log
 import dev.rwilco.model.AlertSound
 import dev.rwilco.notify.AlertAudio
+import dev.rwilco.notify.SoundStore
 import dev.rwilco.notify.Sounds
 
 /**
@@ -138,14 +139,14 @@ class SoundPreview(private val context: Context) {
  * played later.
  */
 fun Context.rememberSound(uri: Uri): AlertSound.Custom? {
-    val taken = runCatching {
-        contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }.isSuccess
-    if (!taken || !Sounds.readable(this, uri)) {
-        Log.w("RwilcoAlarms", "no lasting permission for $uri; not keeping it")
-        return null
-    }
-    return AlertSound.Custom(uri.toString(), displayName(uri) ?: uri.lastPathSegment.orEmpty())
+    // Asked for anyway, and not depended on. The permission is what lets us read the file long
+    // enough to copy it; the copy is what makes the sound ours. A picker that hands back a
+    // one-shot Uri is fine — the copy happens in the same breath.
+    runCatching { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+    val label = displayName(uri) ?: uri.lastPathSegment.orEmpty()
+    val kept = SoundStore.keep(this, uri, label)
+    if (kept == null) Log.w("RwilcoAlarms", "could not keep a copy of $uri; not choosing it")
+    return kept
 }
 
 private fun Context.displayName(uri: Uri): String? = runCatching {
