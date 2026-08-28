@@ -80,8 +80,9 @@ class SafetyNetFlowTest {
         rule.waitUntilShown(words)
         rule.onNodeWithText(words).performClick()
         // At the foot of the form, under the last card: it is not one of the four answers, it
-        // is what happens if none of them lands.
-        rule.waitUntilShown(s(R.string.editor_what_title))
+        // is what happens if none of them lands. Waited for by the button that ends the form,
+        // because a section's own title is drawn in capitals and is not the string it was given.
+        rule.waitUntilShown(s(R.string.common_save))
         // A tenth of six hours, in this reminder's own numbers rather than as the rule. Matched
         // on the number alone: "36 min" is the same in both languages, and which one this device
         // is in depends on what ran before it.
