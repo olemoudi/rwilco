@@ -8,14 +8,17 @@ object Routes {
     data object Home
 
     /**
-     * The editor, wearing one of three hats. No ids at all is a blank reminder;
+     * The editor, wearing one of four hats. No ids at all is a blank reminder;
      * [reminderId] edits one that exists; [fromPresetId] starts a new reminder with a preset's
-     * shape; [editPresetId] edits the preset itself.
+     * shape; [cloneOfId] starts one with another reminder's shape and no words;
+     * [editPresetId] edits the preset itself.
      */
     @Serializable
     data class Editor(
         val reminderId: String? = null,
         val fromPresetId: String? = null,
+        /** A new reminder shaped like this one, waiting for its own words. */
+        val cloneOfId: String? = null,
         val editPresetId: String? = null,
         /** A blank form that starts as a preset: the way in from "add a preset button". */
         val newPreset: Boolean = false,

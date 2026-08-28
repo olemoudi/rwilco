@@ -37,6 +37,9 @@
     <string name="home_new_preset">Preset</string>
     <string name="home_new_from_preset">From a preset</string>
     <string name="home_preset_edit">Edit this preset</string>
+    <string name="home_card_actions">Reminder actions</string>
+    <string name="home_clone">Clone reminder</string>
+    <string name="home_clone_hint">The same again, with the words blank</string>
     <string name="home_pin_manage">Add a preset button</string>
     <string name="home_pin_title">Buttons on the main screen</string>
     <string name="home_pin_hint">One tap writes the reminder. If the preset has no words of its own, it asks for them and nothing else.</string>

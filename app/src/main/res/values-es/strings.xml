@@ -35,6 +35,9 @@
     <string name="home_new_preset">Preset</string>
     <string name="home_new_from_preset">Desde un preset</string>
     <string name="home_preset_edit">Editar este preset</string>
+    <string name="home_card_actions">Acciones del recordatorio</string>
+    <string name="home_clone">Clonar recordatorio</string>
+    <string name="home_clone_hint">Lo mismo otra vez, con las palabras en blanco</string>
     <string name="home_pin_manage">Añadir un botón de preset</string>
     <string name="home_pin_title">Botones en la pantalla principal</string>
     <string name="home_pin_hint">Un toque escribe el recordatorio. Si el preset no trae texto propio, te lo pide y nada más.</string>

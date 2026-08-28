@@ -370,6 +370,19 @@ strict is asking somebody to remember how they spelled it.
   left resting there outlives the row (the list reuses it by key), which once handed a reminder
   back from "undo" frozen halfway across the screen. `SwipeableCardTest` drives the gesture
   against a hand-driven clock; `HomeSwipeTest` walks swipe → undo → swipe on the real screen.
+- **Held, a card says what can be done to it** (`ReminderActionsMenu`), and the menu opens at the
+  **top of the screen**: a held press lands wherever the card is, which on a list is the middle,
+  and a menu that opens under the thumb that opened it has to be read around the hand holding it.
+  "Nuevo" can ask its question in the middle because by then the thumb is on a button at the
+  bottom; this one has no such luxury. The reminder's own words are the title, because a long
+  press does not say which card it caught. One action so far: **clonar**
+  (`Routes.Editor(cloneOfId)`), a new reminder wearing this one's tags, rules, reading, actions
+  and recurrence with **the words left blank and the keyboard already up** — the same `focusText`
+  a preset with no wording uses, and for the same reason: everything else has been answered. A
+  countdown is cleared on the way (`clearCountdowns`), so "dentro de media hora" copied at noon
+  is half an hour from the save; nothing that *happened* to the original comes with it, because
+  `toDraft` carries the shape alone. Nothing is written until Guardar. `HomeCloneTest` walks the
+  hold → menu → editor on the real screen.
 - **Each rule of a set carries a mark** (`RuleStanding`, pure): under ALL, ticked off or still
   to happen (`firedRules`); under TOGETHER, true at this moment or not — a window against the
   clock, a place against the watch's own memory of which circles the phone is inside, and a

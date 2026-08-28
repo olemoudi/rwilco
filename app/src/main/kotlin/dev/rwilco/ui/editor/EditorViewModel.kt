@@ -9,6 +9,7 @@ import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.OFFERED_KINDS
 import dev.rwilco.model.dayShape
 import dev.rwilco.model.Action
+import dev.rwilco.model.clearCountdowns
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RecurrencePreset
@@ -58,6 +59,8 @@ sealed interface EditorEvent {
 class EditorViewModel(
     private val reminderId: String?,
     private val fromPresetId: String?,
+    /** The reminder this one is a copy of: its shape, and none of its words. */
+    private val cloneOfId: String?,
     private val editPresetId: String?,
     private val newPreset: Boolean,
     private val repository: ReminderRepository,
@@ -88,12 +91,21 @@ class EditorViewModel(
             val current = settings.filterNotNull().first()
             val loaded = reminderId?.let { repository.get(it) }
             existing = loaded
-            // One of four openings: an existing reminder, a preset being edited, a new
-            // reminder wearing a preset's shape, or a blank one.
+            // One of five openings: an existing reminder, a preset being edited, a new reminder
+            // wearing a preset's shape, a copy of another reminder, or a blank one.
             val editedPreset = editPresetId?.let { id -> current.presets.firstOrNull { it.id == id } }
             val source = editedPreset ?: fromPresetId?.let { id -> current.presets.firstOrNull { it.id == id } }
+            val cloned = cloneOfId?.let { repository.get(it) }
             val draft = when {
                 loaded != null -> loaded.toDraft()
+                // A copy is the shape and not the reminder: the words are what makes one
+                // reminder a different reminder from another, so they are the one thing left
+                // blank — with the keyboard already up, since everything else is answered.
+                // A countdown is cleared for the same reason a preset clears one: "in half an
+                // hour" copied at noon means half an hour from the save, not from noon
+                // yesterday. Nothing that happened to the original comes with it either — no
+                // snooze, no ring, no anchor — because toDraft carries the shape alone.
+                cloned != null -> cloned.toDraft().copy(text = "", rules = clearCountdowns(cloned.rules))
                 // Editing the preset itself starts from its name; STARTING one from it does
                 // not — the name labels the shape, and the words are what is still missing.
                 editedPreset != null -> Draft(text = editedPreset.name, tags = editedPreset.tags, rules = editedPreset.rules, ruleMatch = editedPreset.ruleMatch, actions = editedPreset.actions, recurrence = editedPreset.recurrence)
@@ -132,7 +144,7 @@ class EditorViewModel(
                 initialPresetText = editedPreset?.text.orEmpty(),
                 // Only when the preset left the words open: with default wording there is
                 // nothing to type, and a keyboard would be covering a finished form.
-                focusText = editedPreset == null && source != null && source.text.isBlank(),
+                focusText = editedPreset == null && (cloned != null || (source != null && source.text.isBlank())),
             )
         }
     }
@@ -358,6 +370,7 @@ class EditorViewModel(
         private val app: RwilcoApplication,
         private val reminderId: String?,
         private val fromPresetId: String? = null,
+        private val cloneOfId: String? = null,
         private val editPresetId: String? = null,
         private val newPreset: Boolean = false,
     ) : ViewModelProvider.Factory {
@@ -366,6 +379,7 @@ class EditorViewModel(
             EditorViewModel(
                 reminderId,
                 fromPresetId,
+                cloneOfId,
                 editPresetId,
                 newPreset,
                 app.repository,

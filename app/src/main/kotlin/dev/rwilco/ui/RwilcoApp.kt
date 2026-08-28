@@ -110,6 +110,7 @@ fun RwilcoApp(
                         onEditPreset = { id -> navController.navigate(Routes.Editor(editPresetId = id)) },
                         onNewPreset = { navController.navigate(Routes.Editor(newPreset = true)) },
                         onOpen = { id -> navController.navigate(Routes.Editor(id)) },
+                        onClone = { id -> navController.navigate(Routes.Editor(cloneOfId = id)) },
                         onDoneList = { navController.navigate(Routes.Done) },
                         onSettings = { navController.navigate(Routes.Settings) },
                         // Built here rather than in the ViewModel: a report is a snapshot of the
@@ -136,8 +137,8 @@ fun RwilcoApp(
                     val undoLabel = stringResource(R.string.common_undo)
                     EditorScreen(
                         viewModel = viewModel(
-                            key = "editor/${route.reminderId}/${route.fromPresetId}/${route.editPresetId}/${route.newPreset}",
-                            factory = EditorViewModel.Factory(app, route.reminderId, route.fromPresetId, route.editPresetId, route.newPreset),
+                            key = "editor/${route.reminderId}/${route.fromPresetId}/${route.cloneOfId}/${route.editPresetId}/${route.newPreset}",
+                            factory = EditorViewModel.Factory(app, route.reminderId, route.fromPresetId, route.cloneOfId, route.editPresetId, route.newPreset),
                         ),
                         onClose = { navController.popBackStack() },
                         onDeleted = { reminder ->

@@ -82,6 +82,9 @@ fun ReminderCard(
     zone: ZoneId,
     onClick: () -> Unit,
     onTogglePause: () -> Unit,
+    /** Held: the menu of what can be done to this reminder. */
+    onLongClick: () -> Unit = {},
+    longClickLabel: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val spacing = Tokens.spacing
@@ -90,7 +93,7 @@ fun ReminderCard(
     // A paused reminder is not going to ring at all, so its band drops the colour with the rest
     // of the card and goes the same grey.
     val rail = card.railTag?.let { if (card.paused) scheme.onSurfaceVariant else tagColor(it) }
-    RwilcoCard(onClick = onClick, modifier = modifier, rail = rail) {
+    RwilcoCard(onClick = onClick, onLongClick = onLongClick, longClickLabel = longClickLabel, modifier = modifier, rail = rail) {
         // A card is a glance, not a page — but the words are the glance, so they get the width
         // and the size, and the one control goes down to the footer with the rest of the
         // furniture. Under the title: the rules, then the read-only footer.

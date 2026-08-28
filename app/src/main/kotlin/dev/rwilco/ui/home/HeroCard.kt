@@ -58,6 +58,9 @@ fun HeroCard(
     today: LocalDate,
     defaultTime: LocalTime,
     onClick: () -> Unit,
+    /** Held: the menu of what can be done to this reminder, the same as any other card. */
+    onLongClick: () -> Unit = {},
+    longClickLabel: String? = null,
 ) {
     val spacing = Tokens.spacing
     val amber = MaterialTheme.colorScheme.primary
@@ -79,7 +82,7 @@ fun HeroCard(
         ?: hero.card.triggers.firstOrNull { it.trigger is Trigger.Location }.takeIf { hero.atEarliest }
         ?: hero.card.triggers.firstOrNull().takeIf { hero.card.recurrence == null || hero.snoozed }
 
-    RwilcoCard(onClick = onClick, shape = MaterialTheme.shapes.extraLarge) {
+    RwilcoCard(onClick = onClick, onLongClick = onLongClick, longClickLabel = longClickLabel, shape = MaterialTheme.shapes.extraLarge) {
         Column(
             modifier = Modifier
                 .lampGlow(amber, intensity)

@@ -1,13 +1,18 @@
 package dev.rwilco.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.semantics.Role
+import dev.rwilco.ui.theme.Tokens
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -30,6 +35,13 @@ import androidx.compose.ui.unit.dp
 fun RwilcoCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    /**
+     * A press held on the card. Only ever alongside [onClick]: a card whose only way in is a
+     * gesture nothing announces is a card most people never open.
+     */
+    onLongClick: (() -> Unit)? = null,
+    /** What the held press does, for a screen reader — it cannot feel the hold. */
+    longClickLabel: String? = null,
     shape: Shape = MaterialTheme.shapes.large,
     color: Color = MaterialTheme.colorScheme.surfaceContainer,
     rail: Color? = null,
@@ -45,7 +57,30 @@ fun RwilcoCard(
     } else {
         { Box(Modifier.fillMaxWidth().railBehind(rail)) { content() } }
     }
-    if (onClick != null) {
+    val haptics = Tokens.haptics
+    if (onClick != null && onLongClick != null) {
+        // Surface's own onClick knows nothing about a held press, so the gesture is a modifier
+        // and the surface is the plain one. Clipped first, or the ripple squares off the
+        // corners the card is drawn with.
+        Surface(
+            modifier = modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .combinedClickable(
+                    role = Role.Button,
+                    onLongClickLabel = longClickLabel,
+                    onLongClick = {
+                        haptics.perform(HapticFeedbackType.LongPress)
+                        onLongClick()
+                    },
+                    onClick = onClick,
+                ),
+            shape = shape,
+            color = color,
+            border = border,
+            content = painted,
+        )
+    } else if (onClick != null) {
         Surface(
             onClick = onClick,
             modifier = modifier.fillMaxWidth(),

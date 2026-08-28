@@ -74,6 +74,8 @@ fun HomeScreen(
     onEditPreset: (String) -> Unit,
     onNewPreset: () -> Unit,
     onOpen: (String) -> Unit,
+    /** A new reminder shaped like this one, waiting for its own words. */
+    onClone: (String) -> Unit,
     onDoneList: () -> Unit,
     onSettings: () -> Unit,
     onDiagnostics: () -> Unit,
@@ -86,10 +88,13 @@ fun HomeScreen(
     var managingPins by rememberSaveable { mutableStateOf(false) }
     // The preset whose words are being asked for before it can be written.
     var askingWordsFor by rememberSaveable { mutableStateOf<String?>(null) }
+    // The card being held, and so the one the actions menu is about.
+    var actingOn by rememberSaveable { mutableStateOf<String?>(null) }
     val snackbar = LocalSnackbar.current
     val doneMessage = stringResource(R.string.home_marked_done)
     val deletedMessage = stringResource(R.string.home_deleted)
     val undoLabel = stringResource(R.string.common_undo)
+    val cardActionsLabel = stringResource(R.string.home_card_actions)
     val swipeDoneLabel = stringResource(R.string.card_swipe_done)
     val swipeDeleteLabel = stringResource(R.string.card_swipe_delete)
     val createdMessage = stringResource(R.string.home_created)
@@ -155,6 +160,25 @@ fun HomeScreen(
                     viewModel.createFromPreset(preset, words, state.defaultTime, state.dayShape, actions)
                 },
                 onDismiss = { askingWordsFor = null },
+            )
+        }
+    }
+
+    // Held on a card: what can be done to that reminder. The words come off the card rather
+    // than the id alone, so the menu can say which one it caught.
+    actingOn?.let { id ->
+        val held = state.hero?.card?.takeIf { it.id == id }
+            ?: state.sections.firstNotNullOfOrNull { section -> section.cards.firstOrNull { it.id == id } }
+        if (held == null) {
+            actingOn = null
+        } else {
+            ReminderActionsMenu(
+                words = held.text,
+                onClone = {
+                    actingOn = null
+                    onClone(held.id)
+                },
+                onDismiss = { actingOn = null },
             )
         }
     }
@@ -268,6 +292,8 @@ fun HomeScreen(
                                 today = today,
                                 defaultTime = state.defaultTime,
                                 onClick = { onOpen(hero.card.id) },
+                                onLongClick = { actingOn = hero.card.id },
+                                longClickLabel = cardActionsLabel,
                             )
                         }
                     }
@@ -293,6 +319,8 @@ fun HomeScreen(
                                 zone = zone,
                                 onClick = { onOpen(card.id) },
                                 onTogglePause = { viewModel.togglePause(card.id, card.paused) },
+                                onLongClick = { actingOn = card.id },
+                                longClickLabel = cardActionsLabel,
                                 // What the swipes do, for whoever cannot swipe.
                                 modifier = Modifier.semantics {
                                     customActions = listOf(
