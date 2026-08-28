@@ -688,6 +688,8 @@
     <string name="settings_sound_system">Phone\'s alarm</string>
     <string name="settings_sound_play">Play</string>
     <string name="settings_sound_custom">File…</string>
+    <string name="settings_sound_two_tones">A different sound when it keeps asking</string>
+    <string name="settings_sound_two_tones_hint">A tone you hear once and a tone you hear five times are not the same choice. Off, both use the sound above.</string>
     <string name="settings_sound_plays">How many times</string>
     <string name="settings_sound_plays_hint">For «sound until answered»: how many times in all, counting the first, and how far apart. It stops the moment the reminder is dealt with, snoozed or paused.</string>
     <string name="settings_sound_plays_value">%1$d times</string>
@@ -1025,6 +1027,19 @@
     <string name="repeat_ordinal_fourth">fourth</string>
     <string name="repeat_ordinal_last">last</string>
     <string name="sheet_random_in_day">At random during the day</string>
+    <string name="sheet_in_window">In a window</string>
+    <string name="sheet_in_window_hint">A moment nobody chose, somewhere inside it.</string>
+    <string name="settings_windows">Times of day</string>
+    <string name="settings_windows_hint">Stretches of the day kept by name, offered wherever one is asked for: at lunchtime, in the evening.</string>
+    <string name="settings_windows_empty">Nothing named yet.</string>
+    <string name="settings_add_window">Name a stretch</string>
+    <string name="settings_remove_window">Forget this one</string>
+    <string name="settings_window_name">Name</string>
+    <string name="settings_window_name_hint">At lunchtime</string>
+    <plurals name="settings_summary_windows">
+        <item quantity="one">%1$d named</item>
+        <item quantity="other">%1$d named</item>
+    </plurals>
     <string name="sheet_random_in_day_hint">A moment between %1$s and %2$s, from the hours you are up that day. You set them in Settings.</string>
     <string name="sheet_at_this_time">At a time I choose</string>
     <string name="sheet_repeat_every">Every</string>

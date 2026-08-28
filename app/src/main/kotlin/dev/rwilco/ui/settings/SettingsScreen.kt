@@ -214,11 +214,13 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
             ) {
                 SoundCard(
                     sound = current.alertSound,
+                    insistentSound = current.insistentSound,
                     plays = current.soundPlays,
                     gapMinutes = current.soundGapMinutes,
                     insistentInUse = insistent,
                     toHeadphones = current.alertToHeadphones,
                     onSound = viewModel::setAlertSound,
+                    onInsistentSound = viewModel::setInsistentSound,
                     onPlays = viewModel::setSoundPlays,
                     onGap = viewModel::setSoundGap,
                     onToHeadphones = viewModel::setAlertToHeadphones,
@@ -320,7 +322,12 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
             SettingsGroup(
                 icon = Icons.Outlined.Schedule,
                 title = stringResource(R.string.settings_group_day),
-                summary = TimeText.window(current.awake.wake, current.awake.sleep, rememberIs24h(), currentLocale()),
+                summary = TimeText.window(current.awake.wake, current.awake.sleep, rememberIs24h(), currentLocale()) +
+                    if (current.savedWindows.isEmpty()) {
+                        ""
+                    } else {
+                        " · " + pluralStringResource(R.plurals.settings_summary_windows, current.savedWindows.size, current.savedWindows.size)
+                    },
                 expanded = Group.DAY in open,
                 onToggle = { toggle(Group.DAY) },
             ) {
@@ -392,6 +399,18 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
                                 sleep = current.awake.weekendSleep,
                                 onWake = { viewModel.setAwake(current.awake.copy(weekendWake = it)) },
                                 onSleep = { viewModel.setAwake(current.awake.copy(weekendSleep = it)) },
+                            )
+                        }
+                        // The stretches of that day worth a name of their own. Here rather than
+                        // in a card of its own because this group IS the shape of the day: when
+                        // you get up, when the weekend is, and which bits of it you call things.
+                        Column {
+                            SettingTitle(title = stringResource(R.string.settings_windows))
+                            Spacer(Modifier.height(spacing.sm))
+                            SavedWindowsCard(
+                                windows = current.savedWindows,
+                                onSave = viewModel::saveWindow,
+                                onRemove = viewModel::removeWindow,
                             )
                         }
                     }

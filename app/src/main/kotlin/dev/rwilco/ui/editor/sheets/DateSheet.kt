@@ -17,8 +17,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.rwilco.R
 import dev.rwilco.model.DayShape
+import dev.rwilco.model.DayWindow
+import dev.rwilco.model.SavedWindow
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.awakeOn
+import dev.rwilco.model.window
 import dev.rwilco.ui.components.PresetChip
 import dev.rwilco.ui.components.SegmentedChoice
 import dev.rwilco.ui.components.SheetScaffold
@@ -50,6 +53,7 @@ fun DateSheet(
     now: ZonedDateTime,
     defaultTime: LocalTime,
     shape: DayShape,
+    savedWindows: List<SavedWindow>,
     onConfirm: (Trigger) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -68,7 +72,20 @@ fun DateSheet(
             else -> defaultTime
         },
     )
-    var atRandom by rememberSaveable { mutableStateOf(initial is Trigger.DayRandom) }
+    val startingWindow = (initial as? Trigger.DayRandom)?.window
+    var kindName by rememberSaveable {
+        mutableStateOf(
+            when {
+                startingWindow != null -> WhenKind.IN_WINDOW
+                initial is Trigger.DayRandom -> WhenKind.ANY_TIME
+                else -> WhenKind.AT_TIME
+            }.name,
+        )
+    }
+    val kind = WhenKind.valueOf(kindName)
+    var windowFrom by rememberTime(startingWindow?.from ?: LocalTime.of(14, 0))
+    var windowTo by rememberTime(startingWindow?.to ?: LocalTime.of(16, 0))
+    val window = DayWindow(windowFrom, windowTo)
     val locale = currentLocale()
     val is24h = rememberIs24h()
 
@@ -83,9 +100,17 @@ fun DateSheet(
         title = stringResource(R.string.kind_date),
         onDismiss = onDismiss,
         onConfirm = {
-            onConfirm(if (atRandom) Trigger.DayRandom(date) else Trigger.AtDateTime(LocalDateTime.of(date, time)))
+            onConfirm(
+                when (kind) {
+                    WhenKind.AT_TIME -> Trigger.AtDateTime(LocalDateTime.of(date, time))
+                    WhenKind.IN_WINDOW -> Trigger.DayRandom(date, window)
+                    WhenKind.ANY_TIME -> Trigger.DayRandom(date)
+                },
+            )
         },
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
+        // A stretch with no width has no moment in it.
+        confirmEnabled = kind != WhenKind.IN_WINDOW || windowFrom != windowTo,
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
@@ -95,43 +120,59 @@ fun DateSheet(
                 val label = dayWord(presetDate, today, locale) + " " + TimeText.time(presetTime, is24h, locale)
                 PresetChip(
                     label = label.replaceFirstChar { it.titlecase(locale) },
-                    selected = !atRandom && date == presetDate && time == presetTime,
+                    selected = kind == WhenKind.AT_TIME && date == presetDate && time == presetTime,
                     onClick = {
                         date = presetDate
                         time = presetTime
-                        atRandom = false
+                        kindName = WhenKind.AT_TIME.name
                     },
                 )
             }
         }
         MonthCalendar(selected = date, today = today, onSelect = { date = it }, minDate = today)
         WhenInTheDay(
-            atRandom = atRandom,
-            onAtRandom = { atRandom = it },
+            kind = kind,
+            onKind = { kindName = it.name },
             time = time,
             onTime = { time = it },
+            window = window,
+            onWindow = { windowFrom = it.from; windowTo = it.to },
             date = date,
             shape = shape,
+            savedWindows = savedWindows,
         )
     }
 }
 
+/** The three answers to "when in the day", narrowing from an hour to the whole of it. */
+enum class WhenKind { AT_TIME, IN_WINDOW, ANY_TIME }
+
 /**
- * The two answers to "when in the day": an hour, or none of your business.
+ * When in the day: an hour I pick, somewhere inside a stretch I name, or none of your business.
  *
- * Shared by the date tile and the recurrence tile, because it is the same question and has to
- * be the same control. The hint under the random half is the day's own window, worked out for
- * whichever day is selected — a Saturday and a Tuesday say different things, which is the whole
- * point of having asked for the hours in the first place.
+ * Shared by the date tile and the recurrence tile, because it is the same question and has to be
+ * the same control. The three narrow in order — a moment, a stretch, the day — and the middle
+ * one is the one that needed a name for a stretch to be worth having: "a la hora de comer" is a
+ * thing people say and "entre las 14:00 y las 16:00" is a thing they have to think about. The
+ * chips are those names ([SavedWindow], kept in the settings); the two fields under them are
+ * always there, so a stretch nobody has named is still one tap further than a chip and not a
+ * trip to the settings.
+ *
+ * The hint under the last one is the day's own window, worked out for whichever day is selected
+ * — a Saturday and a Tuesday say different things, which is the whole point of having asked for
+ * the hours in the first place.
  */
 @Composable
 fun WhenInTheDay(
-    atRandom: Boolean,
-    onAtRandom: (Boolean) -> Unit,
+    kind: WhenKind,
+    onKind: (WhenKind) -> Unit,
     time: LocalTime,
     onTime: (LocalTime) -> Unit,
+    window: DayWindow,
+    onWindow: (DayWindow) -> Unit,
     date: java.time.LocalDate,
     shape: DayShape,
+    savedWindows: List<SavedWindow> = emptyList(),
 ) {
     val is24h = rememberIs24h()
     val locale = currentLocale()
@@ -139,29 +180,72 @@ fun WhenInTheDay(
         SegmentedChoice(
             options = listOf(
                 stringResource(R.string.sheet_at_this_time),
+                stringResource(R.string.sheet_in_window),
                 stringResource(R.string.sheet_random_in_day),
             ),
-            selectedIndex = if (atRandom) 1 else 0,
-            onSelect = { onAtRandom(it == 1) },
+            selectedIndex = kind.ordinal,
+            onSelect = { onKind(WhenKind.entries[it]) },
         )
-        if (atRandom) {
-            val window = shape.awakeOn(date)
-            Text(
-                text = stringResource(
-                    R.string.sheet_random_in_day_hint,
-                    TimeText.time(window.from.toLocalTime(), is24h, locale),
-                    TimeText.time(window.to.toLocalTime(), is24h, locale),
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else {
-            TimeField(
+        when (kind) {
+            WhenKind.AT_TIME -> TimeField(
                 time = time,
                 onChange = onTime,
                 label = stringResource(R.string.sheet_time),
                 modifier = Modifier.fillMaxWidth(),
             )
+            WhenKind.IN_WINDOW -> {
+                if (savedWindows.isNotEmpty()) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    ) {
+                        for (saved in savedWindows) {
+                            PresetChip(
+                                label = saved.label,
+                                selected = saved.window == window,
+                                onClick = { onWindow(saved.window) },
+                            )
+                        }
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm), modifier = Modifier.fillMaxWidth()) {
+                    TimeField(
+                        time = window.from,
+                        onChange = { onWindow(window.copy(from = it)) },
+                        label = stringResource(R.string.random_from),
+                        modifier = Modifier.weight(1f),
+                    )
+                    TimeField(
+                        time = window.to,
+                        onChange = { onWindow(window.copy(to = it)) },
+                        label = stringResource(R.string.random_to),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                Text(
+                    text = stringResource(
+                        if (window.from == window.to) R.string.condition_window_error else R.string.sheet_in_window_hint,
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (window.from == window.to) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
+            WhenKind.ANY_TIME -> {
+                val awake = shape.awakeOn(date)
+                Text(
+                    text = stringResource(
+                        R.string.sheet_random_in_day_hint,
+                        TimeText.time(awake.from.toLocalTime(), is24h, locale),
+                        TimeText.time(awake.to.toLocalTime(), is24h, locale),
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }

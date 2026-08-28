@@ -63,11 +63,14 @@ import dev.rwilco.ui.theme.Tokens
 @Composable
 fun SoundCard(
     sound: AlertSound,
+    /** The tone for the reminders that keep asking, or null when there is no distinction. */
+    insistentSound: AlertSound?,
     plays: Int,
     gapMinutes: Int,
     insistentInUse: Boolean,
     toHeadphones: Boolean,
     onSound: (AlertSound) -> Unit,
+    onInsistentSound: (AlertSound?) -> Unit,
     onPlays: (Int) -> Unit,
     onGap: (Int) -> Unit,
     onToHeadphones: (Boolean) -> Unit,
@@ -94,6 +97,9 @@ fun SoundCard(
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) onSound(context.rememberSound(uri) ?: return@rememberLauncherForActivityResult)
     }
+    val pickInsistent = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) onInsistentSound(context.rememberSound(uri) ?: return@rememberLauncherForActivityResult)
+    }
 
     RwilcoCard {
         Column(Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.lg)) {
@@ -103,33 +109,7 @@ fun SoundCard(
                     info = stringResource(R.string.settings_sound_hint),
                 )
                 Spacer(Modifier.height(spacing.sm))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                ) {
-                    for (chime in Chime.entries) {
-                        val choice = AlertSound.Bundled(chime)
-                        PresetChip(
-                            label = stringResource(chime.labelRes),
-                            selected = sound == choice,
-                            onClick = {
-                                onSound(choice)
-                                preview.play(choice, toHeadphones) { playing = it }
-                            },
-                        )
-                    }
-                    PresetChip(
-                        label = stringResource(R.string.settings_sound_system),
-                        selected = sound == AlertSound.System,
-                        onClick = {
-                            onSound(AlertSound.System)
-                            preview.play(AlertSound.System, toHeadphones) { playing = it }
-                        },
-                    )
-                    (sound as? AlertSound.Custom)?.let { custom ->
-                        PresetChip(label = custom.label, selected = true, onClick = { preview.play(custom, toHeadphones) { playing = it } })
-                    }
-                }
+                SoundChips(sound = sound, onPick = { onSound(it); preview.play(it, toHeadphones) { p -> playing = p } })
             }
             AlarmVolume()
             Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm), modifier = Modifier.fillMaxWidth()) {
@@ -177,6 +157,33 @@ fun SoundCard(
             // The two numbers only mean anything to a reminder that asks for the insistent
             // sound, so they only appear once something does.
             if (insistentInUse) {
+                // A tone you are going to hear five times is a different choice from one you
+                // hear once. Off, there is no distinction and both use the one above.
+                SettingSwitchRow(
+                    title = stringResource(R.string.settings_sound_two_tones),
+                    info = stringResource(R.string.settings_sound_two_tones_hint),
+                    checked = insistentSound != null,
+                    // Turning it on starts from what is already chosen, so the switch by itself
+                    // never changes what anything sounds like.
+                    onCheckedChange = { on -> onInsistentSound(if (on) sound else null) },
+                )
+                if (insistentSound != null) {
+                    Column {
+                        SoundChips(
+                            sound = insistentSound,
+                            onPick = { onInsistentSound(it); preview.play(it, toHeadphones) { p -> playing = p } },
+                        )
+                        Spacer(Modifier.height(spacing.sm))
+                        OutlinedButton(
+                            onClick = { pickInsistent.launch(AUDIO_TYPES) },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.sizes.touch),
+                        ) {
+                            Icon(Icons.Outlined.LibraryMusic, contentDescription = null)
+                            Spacer(Modifier.width(spacing.sm))
+                            Text(stringResource(R.string.settings_sound_custom))
+                        }
+                    }
+                }
                 Column {
                     SettingTitle(
                         title = stringResource(R.string.settings_sound_plays),
@@ -221,6 +228,32 @@ fun SoundCard(
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * The four chimes, the phone's own, and whatever file has been chosen: one row, used for each of
+ * the two tones. The custom chip only appears once there is one; choosing a new file is the
+ * button underneath, not a chip that would open a picker.
+ */
+@Composable
+private fun SoundChips(sound: AlertSound, onPick: (AlertSound) -> Unit) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+    ) {
+        for (chime in Chime.entries) {
+            val choice = AlertSound.Bundled(chime)
+            PresetChip(label = stringResource(chime.labelRes), selected = sound == choice, onClick = { onPick(choice) })
+        }
+        PresetChip(
+            label = stringResource(R.string.settings_sound_system),
+            selected = sound == AlertSound.System,
+            onClick = { onPick(AlertSound.System) },
+        )
+        (sound as? AlertSound.Custom)?.let { custom ->
+            PresetChip(label = custom.label, selected = true, onClick = { onPick(custom) })
         }
     }
 }

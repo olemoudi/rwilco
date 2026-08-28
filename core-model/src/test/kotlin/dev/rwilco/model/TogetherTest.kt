@@ -88,11 +88,11 @@ class TogetherTest {
     fun `at once folds every other rule into the one that happened`() {
         val both = reminder(RuleMatch.TOGETHER, office, fiveToSeven)
         // Arriving at the office is judged with "and only between five and seven" on it...
-        val onArrival = both.togetherRule(0)!!
+        val onArrival = both.ruleInSet(0)!!
         assertEquals(office, onArrival.trigger)
         assertEquals(listOf(fiveToSeven.asState()), onArrival.conditions)
         // ...and five o'clock is judged with "and only if I am at the office".
-        val atFive = both.togetherRule(1)!!
+        val atFive = both.ruleInSet(1)!!
         assertEquals(fiveToSeven, atFive.trigger)
         assertEquals(listOf(office.asState()), atFive.conditions)
     }
@@ -118,8 +118,8 @@ class TogetherTest {
         val impossible = reminder(RuleMatch.TOGETHER, nineAm, tenAm)
         assertTrue(impossible.momentsCannotCoincide())
         // Neither rule can be judged at all: the set cannot hold, so nothing rings.
-        assertNull(impossible.togetherRule(0))
-        assertNull(impossible.togetherRule(1))
+        assertNull(impossible.ruleInSet(0))
+        assertNull(impossible.ruleInSet(1))
         val said = warnings(impossible.rules, now, zone, defaultTime, RuleMatch.TOGETHER)
         assertTrue(ValidationWarning.MomentsCannotCoincide(0) in said)
         assertTrue(ValidationWarning.MomentsCannotCoincide(1) in said)
@@ -129,17 +129,17 @@ class TogetherTest {
         // there is what is true.
         val atHomeAtNine = reminder(RuleMatch.TOGETHER, home, nineAm)
         assertFalse(atHomeAtNine.momentsCannotCoincide())
-        assertEquals(listOf(home.asState()), atHomeAtNine.togetherRule(1)!!.conditions)
+        assertEquals(listOf(home.asState()), atHomeAtNine.ruleInSet(1)!!.conditions)
         // And the other way round it cannot ring: arriving home at some other hour is not nine
         // o'clock, so the rule that rings this set is the clock's.
-        assertNull(atHomeAtNine.togetherRule(0))
+        assertNull(atHomeAtNine.ruleInSet(0))
     }
 
     @Test
     fun `one moment among states is exactly what at once is for`() {
         val fine = reminder(RuleMatch.TOGETHER, nineAm, home.copy(presence = Presence.OUTSIDE))
         assertFalse(fine.momentsCannotCoincide())
-        assertNotNull(fine.togetherRule(0))
+        assertNotNull(fine.ruleInSet(0))
         assertTrue(warnings(fine.rules, now, zone, defaultTime, RuleMatch.TOGETHER).isEmpty())
         // Two places is fine as long as they overlap: nothing here is a moment but the crossings.
         val overlapping = reminder(RuleMatch.TOGETHER, home, home.copy(radiusM = 1_000, label = "Barrio"))
@@ -176,7 +176,7 @@ class TogetherTest {
         val threeAm = Fixtures.local(2026, 8, 27, 3, 0)
         val sixPm = Fixtures.local(2026, 8, 27, 18, 0)
         val office = reminder(RuleMatch.TOGETHER, this.office, fiveToSeven)
-        val windows = office.togetherRule(0)!!.windows()
+        val windows = office.ruleInSet(0)!!.windows()
         assertEquals(listOf(fiveToSeven.asState()), windows)
         // At three in the morning the set cannot ring however far anybody walks, so the answer
         // is not "watch" but "wake me at five".
@@ -207,8 +207,8 @@ class TogetherTest {
         // "En casa Y a las nueve": the crossing cannot ring (nine o'clock is not now), but the
         // nine o'clock rule is going to ask where the phone is, so it has to have been watched.
         val atHomeAtNine = reminder(RuleMatch.TOGETHER, home, nineAm)
-        assertNull(atHomeAtNine.togetherRule(0), "arriving home at some other hour rings nothing")
-        assertEquals(listOf(home.asState()), atHomeAtNine.togetherRule(1)!!.conditions)
+        assertNull(atHomeAtNine.ruleInSet(0), "arriving home at some other hour rings nothing")
+        assertEquals(listOf(home.asState()), atHomeAtNine.ruleInSet(1)!!.conditions)
     }
 
     @Test

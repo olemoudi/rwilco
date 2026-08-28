@@ -18,10 +18,11 @@ import dev.rwilco.model.Condition
 import dev.rwilco.model.PlaceWatchPolicy
 import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.allHoldAt
-import dev.rwilco.model.togetherRule
+import dev.rwilco.model.ruleInSet
 import dev.rwilco.model.knownInAdvance
 import dev.rwilco.model.lateForPresentation
 import dev.rwilco.model.nextSoundIn
+import dev.rwilco.model.soundFor
 import dev.rwilco.model.firingPlan
 import dev.rwilco.model.missedFire
 import dev.rwilco.model.momentRungFor
@@ -94,7 +95,7 @@ class ReminderFiring(
         // Under "a la vez" the rule is judged with every other one folded into it as a state:
         // the moment this one happened is only a firing if all of them are true then. A null
         // is a set that cannot hold at all — two instants asked to coincide.
-        val judged = ruleIndex?.let { reminder.togetherRule(it) }
+        val judged = ruleIndex?.let { reminder.ruleInSet(it) }
         // Every way of NOT ringing below re-arms before it leaves. The alarm that brought us
         // here is spent, and a drop that left nothing behind was a reminder silent until the
         // six-hourly net came round — or for ever, if the process died first.
@@ -179,7 +180,7 @@ class ReminderFiring(
         // A moment the phone slept through by a minute or two is still that moment, and rings
         // like it; only one it slept through by a good while arrives as the quiet "did not ring
         // on time" note (lateForPresentation).
-        AlertPresenter.show(context, reminder, plan, lateForPresentation(late, now), settings.vibration, settings.alertSound, ruleIndex = ruleIndex)
+        AlertPresenter.show(context, reminder, plan, lateForPresentation(late, now), settings.vibration, settings.soundFor(plan), ruleIndex = ruleIndex)
         // "Hasta que reciba caso": the first play has gone out, so line up the second.
         if (plan.insistent) {
             nextSoundIn(played = 1, plays = settings.soundPlays, gapMinutes = settings.soundGapMinutes)
@@ -209,7 +210,7 @@ class ReminderFiring(
         val plan = firingPlan(reminder.actions)
         if (!plan.insistent) return@withLock
         Log.i(TAG, "$id has not been dealt with; play ${played + 1} of ${settings.soundPlays}")
-        AlertPresenter.show(context, reminder, plan, late = null, vibration = settings.vibration, sound = settings.alertSound, takeScreen = false, ruleIndex = ruleIndex)
+        AlertPresenter.show(context, reminder, plan, late = null, vibration = settings.vibration, sound = settings.soundFor(plan), takeScreen = false, ruleIndex = ruleIndex)
         nextSoundIn(played + 1, settings.soundPlays, settings.soundGapMinutes)
             ?.let { gap -> repeater.schedule(id, played + 1, rangAt, now + gap, ruleIndex) }
     }

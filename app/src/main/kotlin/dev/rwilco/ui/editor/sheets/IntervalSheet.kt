@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.rwilco.R
+import dev.rwilco.model.SavedWindow
 import dev.rwilco.model.Trigger
 import dev.rwilco.ui.components.DayToggles
 import dev.rwilco.ui.components.PresetChip
@@ -37,6 +38,7 @@ import java.time.LocalTime
 fun IntervalSheet(
     initial: Trigger.Interval?,
     combining: Boolean,
+    savedWindows: List<SavedWindow> = emptyList(),
     onConfirm: (Trigger) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -57,6 +59,22 @@ fun IntervalSheet(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        // The same names the calendar offers, because it is the same stretch of the day being
+        // asked for twice — the point of naming one is not having to answer it again.
+        if (savedWindows.isNotEmpty()) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+            ) {
+                for (saved in savedWindows) {
+                    PresetChip(
+                        label = saved.label,
+                        selected = saved.from == from && saved.to == to,
+                        onClick = { from = saved.from; to = saved.to },
+                    )
+                }
+            }
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm), modifier = Modifier.fillMaxWidth()) {
             TimeField(time = from, onChange = { from = it }, label = stringResource(R.string.random_from), modifier = Modifier.weight(1f))
             TimeField(time = to, onChange = { to = it }, label = stringResource(R.string.random_to), modifier = Modifier.weight(1f))

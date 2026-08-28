@@ -120,6 +120,7 @@ class EditorViewModel(
                 suggestedTriggers = suggestedTriggers(past, now, clock.zone),
                 kindOrder = if (current.popularTriggersFirst) triggerKindsByUse(past, now) else OFFERED_KINDS,
                 savedPlaces = current.savedPlaces,
+                savedWindows = current.savedWindows,
                 recurrencePresets = recurrencePresetsByPopularity(current.recurrencePresets),
                 asPreset = editedPreset != null || newPreset,
                 initialAsPreset = editedPreset != null || newPreset,

@@ -24,6 +24,7 @@ import dev.rwilco.model.Reminder
 import dev.rwilco.model.Snooze
 import dev.rwilco.model.awaitingAnswer
 import dev.rwilco.model.firingPlan
+import dev.rwilco.model.soundFor
 import dev.rwilco.ui.theme.RwilcoTheme
 import dev.rwilco.ui.theme.resolvesToDark
 import kotlinx.coroutines.Job
@@ -85,13 +86,16 @@ class AlertActivity : ComponentActivity() {
             val plans = reminders.map { firingPlan(it.actions) }
             val sound = plans.any { it.sound }
             val vibrate = plans.any { it.vibrate }
+            // One screen can carry several reminders; if any of them is the kind that keeps
+            // asking, the tone is the one chosen for that.
+            val tone = current.soundFor(plans.any { it.insistent })
 
-            DisposableEffect(sound, vibrate, current.vibration, current.alertSound, current.alertToHeadphones, ringEpoch) {
+            DisposableEffect(sound, vibrate, current.vibration, tone, current.alertToHeadphones, ringEpoch) {
                 ringer.start(
                     sound = sound,
                     vibrate = vibrate,
                     pattern = current.vibration,
-                    tone = current.alertSound,
+                    tone = tone,
                     toHeadphones = current.alertToHeadphones,
                 )
                 onDispose { ringer.stop() }

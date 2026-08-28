@@ -222,15 +222,29 @@ fun warnings(
     val found = ArrayList<ValidationWarning>()
     val doomed = ArrayList<Int>()
     // Under "a la vez" every rule is judged with the others folded into it as conditions, which
-    // is exactly what it will be judged by when the alarm goes off (Reminder.togetherRule).
-    val folded = if (match == RuleMatch.TOGETHER && rules.size > 1) {
-        rules.indices.map { index ->
-            val others = rules.filterIndexed { at, _ -> at != index }
-            rules[index].let { it.copy(conditions = it.conditions + others.flatMap { o -> o.conditions } + others.mapNotNull { o -> o.trigger.asState() }) }
-        }
+    // is exactly what it will be judged by when the alarm goes off (Reminder.ruleInSet).
+    // A set that combines also changes what a rule's trigger MEANS (Trigger.whenCombined), so
+    // the warning is worked out from the same trigger the firing will use, not from the one
+    // written down.
+    val inSet = if (match != RuleMatch.ANY && rules.size > 1) {
+        rules.map { it.copy(trigger = it.trigger.whenCombined()) }
     } else {
         rules
     }
+    val folded = if (match == RuleMatch.TOGETHER && rules.size > 1) {
+        inSet.indices.map { index ->
+            // The siblings' STATES come off the rules as written, never off the rewrite: a
+            // window that a set turned into its own opening still has to reach the others as
+            // "and only while it is open", which is the whole of what it does for them. This is
+            // the same order Reminder.ruleInSet folds in, and it has to stay the same order.
+            val others = rules.filterIndexed { at, _ -> at != index }
+            inSet[index].let { it.copy(conditions = it.conditions + others.flatMap { o -> o.conditions } + others.mapNotNull { o -> o.trigger.asState() }) }
+        }
+    } else {
+        inSet
+    }
+    // Counted on the rules as written, for the same reason: whether a rule is only ever true at
+    // an instant is a fact about what somebody asked for, not about the moment a set gives it.
     val moments = if (match == RuleMatch.TOGETHER && rules.size > 1) rules.count { it.trigger.isMoment } else 0
     rules.forEachIndexed { index, bare ->
         val rule = folded[index]

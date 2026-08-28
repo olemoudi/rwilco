@@ -72,7 +72,7 @@ fun Reminder.watchedCircles(
 ): List<Gated> {
     if (status != Status.ACTIVE) return emptyList()
     val pending = pendingRules().toSet()
-    val folded = rules.indices.map { togetherRule(it) }
+    val folded = rules.indices.map { ruleInSet(it) }
     // A rule's moment cannot be asked before a snooze is over: the snooze rings instead, with
     // no rule behind it and nothing asked. Nor before a rest is — dealt with and coming back on
     // a span, the rules say nothing until it is up.

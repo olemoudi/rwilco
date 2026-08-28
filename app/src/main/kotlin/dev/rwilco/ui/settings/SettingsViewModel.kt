@@ -16,6 +16,7 @@ import dev.rwilco.model.AlertStacking
 import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.toggling
 import dev.rwilco.model.SavedPlace
+import dev.rwilco.model.SavedWindow
 import dev.rwilco.model.PlaceWatchPolicy
 import dev.rwilco.model.ThemeMode
 import dev.rwilco.model.Trigger
@@ -92,6 +93,17 @@ class SettingsViewModel(
         settings.copy(savedPlaces = settings.savedPlaces.filterIndexed { i, _ -> i != index })
     }
 
+    /** The same two, for a stretch of the day kept under a name. */
+    fun saveWindow(index: Int?, window: SavedWindow) = update { settings ->
+        val windows = settings.savedWindows.toMutableList()
+        if (index != null && index in windows.indices) windows[index] = window else windows += window
+        settings.copy(savedWindows = windows)
+    }
+
+    fun removeWindow(index: Int) = update { settings ->
+        settings.copy(savedWindows = settings.savedWindows.filterIndexed { i, _ -> i != index })
+    }
+
 
     fun setTheme(theme: ThemeMode) = update { it.copy(theme = theme) }
 
@@ -108,6 +120,9 @@ class SettingsViewModel(
 
     /** What a reminder sounds like, and how insistently. */
     fun setAlertSound(sound: AlertSound) = update { it.copy(alertSound = sound) }
+
+    /** Null puts the two back together: the insistent reminders go back to the one above. */
+    fun setInsistentSound(sound: AlertSound?) = update { it.copy(insistentSound = sound) }
     fun setSoundPlays(plays: Int) = update { it.copy(soundPlays = plays.coerceIn(SoundLimits.PLAYS)) }
     fun setSoundGap(minutes: Int) = update { it.copy(soundGapMinutes = minutes.coerceIn(SoundLimits.GAP_MINUTES)) }
 

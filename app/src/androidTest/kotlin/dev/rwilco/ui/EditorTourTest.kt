@@ -29,6 +29,7 @@ import dev.rwilco.MainActivity
 import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.model.SavedPlace
+import dev.rwilco.model.SavedWindow
 import dev.rwilco.debug.DemoData
 import dev.rwilco.ui.components.TIME_FIELD_TAG
 import dev.rwilco.ui.editor.EDITOR_TEXT_TAG
@@ -40,6 +41,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
+import java.time.LocalTime
 
 /**
  * Walks the whole first-phase UI the way a thumb would — create, configure every trigger kind,
@@ -104,6 +106,12 @@ class EditorTourTest {
                     savedPlaces = listOf(
                         SavedPlace("Casa", 40.4169, -3.7035, 200),
                         SavedPlace("Oficina", 40.4500, -3.6900, 150),
+                    ),
+                    // A stretch of the day under its own name, so the window half of "when in
+                    // the day" has the chips it is for rather than two bare fields.
+                    savedWindows = listOf(
+                        SavedWindow("A la hora de comer", LocalTime.of(14, 0), LocalTime.of(16, 0)),
+                        SavedWindow("Por la tarde", LocalTime.of(17, 0), LocalTime.of(20, 0)),
                     ),
                 )
             }
@@ -185,6 +193,11 @@ class EditorTourTest {
             // The date tile now carries the other answer to "when in the day", and the hint
             // under it is the day's own waking hours — the thing the settings are for.
             if (kind == R.string.kind_date) {
+                // The third answer to "when in the day": a stretch, by the name somebody gave
+                // it. The two fields under the chips are the way out of needing a name at all.
+                text(s(R.string.sheet_in_window)).performScrollTo().performClick()
+                rule.waitUntilDisplayed(s(R.string.sheet_in_window_hint))
+                shot("sheet-date-window")
                 text(s(R.string.sheet_random_in_day)).performScrollTo().performClick()
                 rule.waitUntilDisplayed(s(R.string.sheet_at_this_time))
                 shot("sheet-date-random")

@@ -333,6 +333,7 @@ fun EditorScreen(
                 today = today,
                 defaultTime = state.defaultTime,
                 shape = state.dayShape,
+                savedWindows = state.savedWindows,
                 onConfirm = viewModel::commitCalendar,
                 onDismiss = viewModel::closeSheet,
             )
@@ -358,12 +359,14 @@ fun EditorScreen(
                         now = now.atZone(zone),
                         defaultTime = state.defaultTime,
                         shape = state.dayShape,
+                        savedWindows = state.savedWindows,
                         onConfirm = commit,
                         onDismiss = viewModel::closeSheet,
                     )
                     TriggerKind.INTERVAL -> IntervalSheet(
                         initial = sheet.initial as? dev.rwilco.model.Trigger.Interval,
                         combining = state.draft.ruleMatch == RuleMatch.TOGETHER && state.draft.rules.size > 1,
+                        savedWindows = state.savedWindows,
                         onConfirm = commit,
                         onDismiss = viewModel::closeSheet,
                     )
@@ -375,6 +378,7 @@ fun EditorScreen(
                         now = now.atZone(zone),
                         defaultTime = state.defaultTime,
                         shape = state.dayShape,
+                        savedWindows = state.savedWindows,
                         onConfirm = commit,
                         onDismiss = viewModel::closeSheet,
                     )

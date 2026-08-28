@@ -58,6 +58,37 @@ val AppSettings.dayShape: DayShape
 data class AwakeWindow(val from: LocalDateTime, val to: LocalDateTime)
 
 /**
+ * A stretch of any day, by the clock: "de dos a cuatro", with no date attached to it yet.
+ *
+ * What a moment "at some point in the afternoon" is drawn from, and the shape a [SavedWindow]
+ * keeps. Two wall times and nothing else — the days it applies to belong to whatever is using
+ * it (a calendar names its own days, a window trigger has its own), because "a la hora de comer"
+ * is a time of day and not a filing rule.
+ */
+@Serializable
+data class DayWindow(val from: LocalTime, val to: LocalTime)
+
+/**
+ * The window laid on a date. An end at or before the start is the next morning's, which is the
+ * same rule [awakeOn] uses for a bedtime past midnight and is what "de 22:00 a 01:00" means.
+ */
+fun DayWindow.on(date: LocalDate): AwakeWindow =
+    AwakeWindow(date.atTime(from), if (to > from) date.atTime(to) else date.plusDays(1).atTime(to))
+
+/**
+ * A window kept under somebody's own name: "a la hora de comer", "por la tarde", "de noche".
+ *
+ * Named the way places are ([SavedPlace]) and for the same reason: a stretch of the day you use
+ * over and over is worth answering once. Nothing that uses one keeps a reference to it — the
+ * two times are copied into the trigger, exactly as a place's pin and radius are — so renaming
+ * one, or deleting it, never reaches back into a reminder that was written with it.
+ */
+@Serializable
+data class SavedWindow(val label: String, val from: LocalTime, val to: LocalTime)
+
+val SavedWindow.window: DayWindow get() = DayWindow(from, to)
+
+/**
  * Whether a moment falls in the weekend, as this person has drawn it.
  *
  * Minutes since Monday midnight, so the span is one comparison and a span that wraps the week

@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.rwilco.R
 import dev.rwilco.model.DayShape
+import dev.rwilco.model.DayWindow
 import dev.rwilco.model.MAX_EVERY
 import dev.rwilco.model.MAX_TIMES
 import dev.rwilco.model.MIN_EVERY
@@ -25,7 +26,9 @@ import dev.rwilco.model.MIN_TIMES
 import dev.rwilco.model.MonthlyOn
 import dev.rwilco.model.RepeatEnd
 import dev.rwilco.model.RepeatUnit
+import dev.rwilco.model.SavedWindow
 import dev.rwilco.model.Trigger
+import dev.rwilco.model.window
 import dev.rwilco.ui.components.DayToggles
 import dev.rwilco.ui.components.PresetChip
 import dev.rwilco.ui.components.SegmentedChoice
@@ -59,6 +62,7 @@ fun CalendarSheet(
     today: LocalDate,
     defaultTime: LocalTime,
     shape: DayShape,
+    savedWindows: List<SavedWindow>,
     onConfirm: (Trigger.Repeat) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -72,8 +76,20 @@ fun CalendarSheet(
         mutableStateOf((existing?.days ?: setOf(today.dayOfWeek)).map { it.name }.toSet())
     }
     val selectedDays = days.map(DayOfWeek::valueOf).toSet()
-    var atRandom by rememberSaveable { mutableStateOf(existing != null && existing.time == null) }
+    var kindName by rememberSaveable {
+        mutableStateOf(
+            when {
+                existing?.window != null -> WhenKind.IN_WINDOW
+                existing != null && existing.time == null -> WhenKind.ANY_TIME
+                else -> WhenKind.AT_TIME
+            }.name,
+        )
+    }
+    val kind = WhenKind.valueOf(kindName)
     var time by rememberTime(existing?.time ?: defaultTime)
+    var windowFrom by rememberTime(existing?.window?.from ?: LocalTime.of(14, 0))
+    var windowTo by rememberTime(existing?.window?.to ?: LocalTime.of(16, 0))
+    val window = DayWindow(windowFrom, windowTo)
 
     val startingNth = existing?.monthly as? MonthlyOn.Nth
     var byWeekday by rememberSaveable { mutableStateOf(startingNth != null) }
@@ -98,7 +114,8 @@ fun CalendarSheet(
         startsOn = startsOn,
         every = every,
         unit = unit,
-        time = if (atRandom) null else time,
+        time = if (kind == WhenKind.AT_TIME) time else null,
+        window = if (kind == WhenKind.IN_WINDOW) window else null,
         days = if (unit == RepeatUnit.WEEK) selectedDays else emptySet(),
         // A year names a month as well as a day, so it takes the same rule a month does.
         monthly = if (unit == RepeatUnit.MONTH || unit == RepeatUnit.YEAR) monthly else null,
@@ -114,8 +131,10 @@ fun CalendarSheet(
         onDismiss = onDismiss,
         onConfirm = { onConfirm(built) },
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
-        // A week with no day ticked is a week that never comes round.
-        confirmEnabled = unit != RepeatUnit.WEEK || selectedDays.isNotEmpty(),
+        // A week with no day ticked is a week that never comes round, and a stretch with no
+        // width has no moment in it.
+        confirmEnabled = (unit != RepeatUnit.WEEK || selectedDays.isNotEmpty()) &&
+            (kind != WhenKind.IN_WINDOW || windowFrom != windowTo),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm)) {
             Label(stringResource(R.string.sheet_repeat_every))
@@ -185,12 +204,15 @@ fun CalendarSheet(
         }
 
         WhenInTheDay(
-            atRandom = atRandom,
-            onAtRandom = { atRandom = it },
+            kind = kind,
+            onKind = { kindName = it.name },
             time = time,
             onTime = { time = it },
+            window = window,
+            onWindow = { windowFrom = it.from; windowTo = it.to },
             date = startsOn,
             shape = shape,
+            savedWindows = savedWindows,
         )
 
         Column(verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm)) {

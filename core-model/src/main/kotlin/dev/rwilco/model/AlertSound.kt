@@ -77,6 +77,23 @@ object SoundLimits {
 }
 
 /**
+ * Which of the two tones a firing plays.
+ *
+ * The split is the action somebody ticked, not the way the noise happens to come out: "sonido"
+ * says it once and stops, "hasta que reciba caso" comes back every few minutes until somebody
+ * answers — and a tone that is right for the first is often wrong for the second. One you want
+ * to notice; the other you are going to hear five times, so it had better be something you can
+ * stand hearing five times.
+ *
+ * [AppSettings.insistentSound] null means there is no distinction, which is what everybody
+ * starts with and what nothing changes on its own.
+ */
+fun AppSettings.soundFor(insistent: Boolean): AlertSound =
+    if (insistent) insistentSound ?: alertSound else alertSound
+
+fun AppSettings.soundFor(plan: FiringPlan): AlertSound = soundFor(plan.insistent)
+
+/**
  * How long until the next play, or null when there is not one.
  *
  * [played] counts what has already been heard, the first one included, so a round of five is

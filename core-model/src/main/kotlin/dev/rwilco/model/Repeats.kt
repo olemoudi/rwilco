@@ -104,15 +104,21 @@ private fun dayIn(month: YearMonth, rule: MonthlyOn): LocalDate = when (rule) {
 }
 
 /**
- * The moment this repeat rings on [date]: its own hour, or one drawn from that day's waking
- * hours. The draw is by (reminder, day), so it holds still while the day does.
+ * The moment this repeat rings on [date]: its own hour, or one drawn from the stretch of the day
+ * it was given, or from that day's waking hours. The draw is by (reminder, day), so it holds
+ * still while the day does.
+ *
+ * The three answers narrow, in that order: an hour is exact, a window is "somewhere in here",
+ * and the waking hours are "somewhere today". [Trigger.Repeat.window] is only ever read when
+ * there is no hour, because an hour somebody typed is not a thing anything else may argue with.
  */
 fun Trigger.Repeat.momentOn(date: LocalDate, reminderId: String, zone: ZoneId, shape: DayShape): Instant {
     val hour = time
-    return if (hour != null) {
-        date.atTime(hour).atZone(zone).toInstant()
-    } else {
-        RandomDraw.inDay(reminderId, date, shape.awakeOn(date), zone)
+    val span = window
+    return when {
+        hour != null -> date.atTime(hour).atZone(zone).toInstant()
+        span != null -> RandomDraw.inDay(reminderId, date, span.on(date), zone)
+        else -> RandomDraw.inDay(reminderId, date, shape.awakeOn(date), zone)
     }
 }
 

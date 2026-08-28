@@ -42,7 +42,8 @@ sealed interface Trigger {
     data class OnDate(val date: LocalDate) : Trigger
 
     /**
-     * Once, on a day, at a moment nobody chose: drawn from the hours this person is awake.
+     * Once, on a day, at a moment nobody chose: drawn from the hours this person is awake, or
+     * from [window] when there is one — "a la hora de comer" rather than "some time today".
      *
      * The other half of the date tile. "Some time on Thursday" is a real thing to want — take
      * the bins out, ring your mother — and pinning it to 09:00 makes it an appointment, which
@@ -52,7 +53,7 @@ sealed interface Trigger {
      */
     @Serializable
     @SerialName("day_random")
-    data class DayRandom(val date: LocalDate) : Trigger
+    data class DayRandom(val date: LocalDate, val window: DayWindow? = null) : Trigger
 
     /**
      * Every week on [days], at [time]. Superseded by [Repeat], and kept for the reminders that
@@ -81,8 +82,9 @@ sealed interface Trigger {
      *   [startsOn] falls on, so a week with nothing ticked is still a sensible weekly.
      * - [monthly]: for [RepeatUnit.MONTH] only, "day 26" or "the fourth Wednesday". Null means
      *   the day of the month [startsOn] falls on.
-     * - [time]: the hour, or null for a moment drawn from that day's waking hours — the same
-     *   choice, and the same words, as the date tile's.
+     * - [time]: the hour. Null is a moment nobody chose, drawn from [window] when there is one
+     *   and from that day's waking hours when there is not — the same three answers, and the
+     *   same words, as the date tile's.
      * - [startsOn]: the first day it can ring, and the anchor every block is counted from.
      *   Moving it moves the whole series, which is why it is asked for rather than assumed.
      * - [ends]: never, on a date, or after so many times.
@@ -102,6 +104,14 @@ sealed interface Trigger {
         val days: Set<DayOfWeek> = emptySet(),
         val monthly: MonthlyOn? = null,
         val ends: RepeatEnd = RepeatEnd.Never,
+        /**
+         * Only read when [time] is null: the stretch of the day the moment is drawn from.
+         *
+         * Last in the list rather than beside [time] where it belongs, because the order of a
+         * data class's parameters is its `copy` and its positional calls, and everything that
+         * already builds one of these predates it.
+         */
+        val window: DayWindow? = null,
     ) : Trigger
 
     /**
@@ -327,8 +337,32 @@ val Trigger.family: TriggerFamily
 fun Trigger.asState(): Condition? = when (this) {
     is Trigger.Location -> Condition.AtPlace(lat, lng, radiusM, label, inside = presence == Presence.INSIDE)
     is Trigger.Interval -> Condition.TimeWindow(from, to, days)
+    // A day with a window on it is a state for as long as the window lasts, exactly as an
+    // interval is — see [whenCombined] for the other half of what that means.
+    is Trigger.DayRandom -> window?.let { Condition.TimeWindow(it.from, it.to) }
     is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.AtTime, is Trigger.Countdown, is Trigger.Random -> null
-    is Trigger.DayRandom, is Trigger.Repeat -> null
+    is Trigger.Repeat -> null
+}
+
+/**
+ * The same trigger as its own set makes it, for a set that combines ([RuleMatch.ALL] and
+ * [RuleMatch.TOGETHER]).
+ *
+ * **A window is only a draw while it depends on nothing else.** "El viernes a la hora de comer"
+ * on its own means a minute nobody chose somewhere between two and four, which is the whole
+ * point of naming a stretch instead of an hour. Put it in a set and that reading falls apart:
+ * "a la hora de comer, y a la vez en la oficina" cannot mean "at 15:37 if you happen to be at
+ * the office" — a draw that lands while the other half is false is a reminder that silently
+ * does not ring. In a set the window is a *gate*: it is met as soon as it is open, so the ring
+ * lands the moment everything else is true and we are inside it, which can be its first second.
+ *
+ * So the moment becomes the opening, and the window becomes a condition on every sibling
+ * ([asState]) — which is exactly what an [Trigger.Interval] has always been, reached from the
+ * other side. Everything else comes back untouched.
+ */
+fun Trigger.whenCombined(): Trigger = when (this) {
+    is Trigger.DayRandom -> window?.let { Trigger.AtDateTime(date.atTime(it.from)) } ?: this
+    else -> this
 }
 
 /**

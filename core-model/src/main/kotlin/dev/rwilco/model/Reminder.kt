@@ -130,17 +130,23 @@ fun Reminder.pendingRules(): List<Int> = when {
 }
 
 /**
- * One rule of a TOGETHER set, with every other rule folded into it as a condition.
+ * One rule as its own set makes it: the trigger a combining set gives it ([Trigger.whenCombined]),
+ * and — under TOGETHER — every other rule folded into it as a condition.
  *
- * This is the whole of how "a la vez" works, and why it needed almost no new machinery: asking
- * "did rule 2 just happen, and is everything else true right now?" is asking whether rule 2's
- * conditions hold, once the others have been read as states. A sibling with no state reading —
- * another moment — folds to nothing and takes the set with it, which is what [cannotCoincide]
+ * The folding is the whole of how "a la vez" works, and why it needed almost no new machinery:
+ * asking "did rule 2 just happen, and is everything else true right now?" is asking whether rule
+ * 2's conditions hold, once the others have been read as states. A sibling with no state reading
+ * — another moment — folds to nothing and takes the set with it, which is what [cannotCoincide]
  * exists to say before anybody waits for it.
+ *
+ * The trigger part applies under ALL as well, and to nothing under ANY: a rule in an "either"
+ * set depends on nobody, so it keeps the reading it has on its own.
  */
-fun Reminder.togetherRule(index: Int): TriggerRule? {
-    val rule = rules.getOrNull(index) ?: return null
-    if (ruleMatch != RuleMatch.TOGETHER || !rulesCombine) return rule
+fun Reminder.ruleInSet(index: Int): TriggerRule? {
+    val bare = rules.getOrNull(index) ?: return null
+    if (!rulesCombine || ruleMatch == RuleMatch.ANY) return bare
+    val rule = bare.copy(trigger = bare.trigger.whenCombined())
+    if (ruleMatch != RuleMatch.TOGETHER) return rule
     val others = rules.filterIndexed { at, _ -> at != index }
     // A sibling that is only ever true at an instant cannot be true at *this* instant, so the
     // set cannot hold and this rule must not ring. Folding it to nothing and carrying on would

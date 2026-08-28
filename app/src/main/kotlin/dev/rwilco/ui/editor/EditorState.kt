@@ -15,6 +15,7 @@ import dev.rwilco.model.Reminder
 import dev.rwilco.model.nextPresetColor
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.SavedPlace
+import dev.rwilco.model.SavedWindow
 import dev.rwilco.model.Status
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerKind
@@ -131,6 +132,8 @@ data class EditorUiState(
     val suggestedTriggers: List<Trigger> = emptyList(),
     /** The places kept by name in Settings, offered whole in the place sheet. */
     val savedPlaces: List<SavedPlace> = emptyList(),
+    /** The stretches of the day kept by name, offered wherever one is asked for. */
+    val savedWindows: List<SavedWindow> = emptyList(),
     /**
      * Whether what is being written is a preset rather than a reminder: same form, same four
      * parts, but nothing waiting to ring — and the words become the preset's name.

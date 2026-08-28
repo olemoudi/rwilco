@@ -56,6 +56,13 @@ data class AppSettings(
     /** Places named once and offered whole whenever a rule needs one: home, work, the gym. */
     val savedPlaces: List<SavedPlace> = emptyList(),
     /**
+     * Stretches of the day named once and offered wherever one is asked for: "a la hora de
+     * comer", "por la tarde". The same idea as [savedPlaces] — a thing you answer over and over
+     * is worth answering once — and, like a place, what a trigger keeps is the two times rather
+     * than a reference, so renaming or deleting one never reaches back into a reminder.
+     */
+    val savedWindows: List<SavedWindow> = emptyList(),
+    /**
      * What a blank reminder starts with. The old default is still the default; this is for
      * somebody who never wants a sound, or always wants the screen.
      */
@@ -91,6 +98,16 @@ data class AppSettings(
      * slept through. They are one tap away in Settings.
      */
     val alertSound: AlertSound = AlertSound.System,
+    /**
+     * A second tone for the reminders that keep asking ([Action.SOUND_UNTIL_ANSWERED]), or null
+     * to use [alertSound] for both.
+     *
+     * Null and not a default of its own, because the two are not equal choices: one of them is
+     * *the* sound and the other is a distinction somebody draws on purpose. A default would also
+     * have quietly changed what half of everybody's reminders sound like on the update, which is
+     * the one thing an alarm is never allowed to do. See [soundFor].
+     */
+    val insistentSound: AlertSound? = null,
     /** For [Action.SOUND_UNTIL_ANSWERED]: how many plays in a round, and how far apart. */
     val soundPlays: Int = SoundLimits.DEFAULT_PLAYS,
     val soundGapMinutes: Int = SoundLimits.DEFAULT_GAP_MINUTES,

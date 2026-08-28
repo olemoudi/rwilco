@@ -686,6 +686,8 @@
     <string name="settings_sound_system">Alarma del móvil</string>
     <string name="settings_sound_play">Reproducir</string>
     <string name="settings_sound_custom">Archivo…</string>
+    <string name="settings_sound_two_tones">Otro sonido cuando insiste</string>
+    <string name="settings_sound_two_tones_hint">Un tono que oyes una vez y uno que vas a oír cinco no son la misma elección. Apagado, los dos usan el sonido de arriba.</string>
     <string name="settings_sound_plays">Cuántas veces</string>
     <string name="settings_sound_plays_hint">Para «sonido insistente»: cuántas veces en total, contando la primera, y cada cuánto. Para en cuanto atiendes, pospones o pausas el recordatorio.</string>
     <string name="settings_sound_plays_value">%1$d veces</string>
@@ -1023,6 +1025,19 @@
     <string name="repeat_ordinal_fourth">cuarto</string>
     <string name="repeat_ordinal_last">último</string>
     <string name="sheet_random_in_day">Al azar durante el día</string>
+    <string name="sheet_in_window">En una franja</string>
+    <string name="sheet_in_window_hint">Un momento que no elige nadie, en algún punto dentro de ella.</string>
+    <string name="settings_windows">Franjas del día</string>
+    <string name="settings_windows_hint">Ratos del día guardados con nombre, que se ofrecen allí donde hace falta uno: a la hora de comer, por la tarde.</string>
+    <string name="settings_windows_empty">Todavía no hay ninguna.</string>
+    <string name="settings_add_window">Nombrar una franja</string>
+    <string name="settings_remove_window">Olvidar esta</string>
+    <string name="settings_window_name">Nombre</string>
+    <string name="settings_window_name_hint">A la hora de comer</string>
+    <plurals name="settings_summary_windows">
+        <item quantity="one">%1$d con nombre</item>
+        <item quantity="other">%1$d con nombre</item>
+    </plurals>
     <string name="sheet_random_in_day_hint">Un momento entre las %1$s y las %2$s, sacado de tus horas de vigilia de ese día; las cambias en Ajustes.</string>
     <string name="sheet_at_this_time">A una hora que elijo</string>
     <string name="sheet_repeat_every">Cada</string>

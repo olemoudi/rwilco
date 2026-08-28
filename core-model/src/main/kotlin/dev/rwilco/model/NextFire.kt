@@ -69,7 +69,7 @@ fun nextFire(
         // Under "a la vez" the rule is judged with its siblings folded in as conditions — the
         // same rule the firing will judge — so a moment outside a sibling's window is not
         // offered, let alone armed. A fold of two moments can never ring and yields nothing.
-        val rule = reminder.togetherRule(index) ?: return@mapNotNull null
+        val rule = reminder.ruleInSet(index) ?: return@mapNotNull null
         nextFireOfRule(rule, reminder.id, from, zone, defaultTime, shape)
     }
     if (candidates.isEmpty() && rest != null) {
@@ -133,7 +133,7 @@ fun nextWake(
     val rest = reminder.restUntil(zone, dayStart, shape)
     val from = maxOf(reminder.searchFrom(now), rest ?: now)
     val candidates = reminder.pendingRules().mapNotNull { index ->
-        val rule = reminder.togetherRule(index) ?: return@mapNotNull null
+        val rule = reminder.ruleInSet(index) ?: return@mapNotNull null
         nextFireOfRule(rule, reminder.id, from, zone, defaultTime, shape)?.let { index to it }
     }
     if (candidates.isEmpty() && rest != null) return reminder.recurrenceMoment(now, zone, dayStart, shape)?.let { Wake(it, null) }
@@ -198,7 +198,13 @@ fun nextFireOf(
         // The hour nobody chose, drawn from the day this person is actually up for. Scheduled
         // and not Sometime: the moment is settled and the app can say it. Not knowing when it
         // will ring is what Trigger.Random is for; this is not having had to decide.
-        is Trigger.DayRandom -> RandomDraw.inDay(reminderId, trigger.date, shape.awakeOn(trigger.date), zone)
+        // The stretch it was given, or the day this person is actually up for.
+        is Trigger.DayRandom -> RandomDraw.inDay(
+            reminderId,
+            trigger.date,
+            trigger.window?.on(trigger.date) ?: shape.awakeOn(trigger.date),
+            zone,
+        )
             .future(now)
             ?.let { NextFire.Scheduled(it, trigger) }
         is Trigger.AtTime -> nextAtTime(trigger, now, zone)?.let { NextFire.Scheduled(it, trigger) }

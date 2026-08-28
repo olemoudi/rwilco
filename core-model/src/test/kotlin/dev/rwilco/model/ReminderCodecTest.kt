@@ -54,11 +54,33 @@ class ReminderCodecTest {
             TriggerRule(Trigger.Repeat(LocalDate.of(2026, 8, 26), 2, RepeatUnit.WEEK, LocalTime.of(19, 0), setOf(DayOfWeek.WEDNESDAY))),
         )
         val expected = """[""" +
-            """{"trigger":{"type":"day_random","date":"2026-09-03"},"conditions":[]},""" +
+            """{"trigger":{"type":"day_random","date":"2026-09-03","window":null},"conditions":[]},""" +
             """{"trigger":{"type":"repeat","startsOn":"2026-08-26","every":2,"unit":"WEEK","time":"19:00",""" +
-            """"days":["WEDNESDAY"],"monthly":null,"ends":{"type":"never"}},"conditions":[]}""" +
+            """"days":["WEDNESDAY"],"monthly":null,"ends":{"type":"never"},"window":null},"conditions":[]}""" +
             """]"""
         assertEquals(expected, ReminderCodec.encodeRules(rules))
+    }
+
+    @Test
+    fun `a repeat or a date written before windows existed still reads`() {
+        // The additive half of the frozen shape: a new optional field must never stop an older
+        // phone's JSON decoding, or an update empties the reminder instead of widening it.
+        val before = """[{"trigger":{"type":"day_random","date":"2026-09-03"},"conditions":[]},""" +
+            """{"trigger":{"type":"repeat","startsOn":"2026-08-26","every":2,"unit":"WEEK","time":"19:00",""" +
+            """"days":["WEDNESDAY"],"monthly":null,"ends":{"type":"never"}},"conditions":[]}]"""
+        val read = ReminderCodec.decodeRules(before)
+        assertEquals(Trigger.DayRandom(LocalDate.of(2026, 9, 3), window = null), read[0].trigger)
+        assertEquals(null, (read[1].trigger as Trigger.Repeat).window)
+    }
+
+    @Test
+    fun `a window survives the round trip on both of the shapes that can hold one`() {
+        val lunch = DayWindow(LocalTime.of(14, 0), LocalTime.of(16, 0))
+        val rules = listOf(
+            TriggerRule(Trigger.DayRandom(LocalDate.of(2026, 9, 3), lunch)),
+            TriggerRule(Trigger.Repeat(LocalDate.of(2026, 8, 26), unit = RepeatUnit.DAY, window = lunch)),
+        )
+        assertEquals(rules, ReminderCodec.decodeRules(ReminderCodec.encodeRules(rules)))
     }
 
     @Test
@@ -160,7 +182,7 @@ class ReminderCodecTest {
                 """"popularTriggersFirst":false,""" +
                 """"weekendDay":"FRIDAY","weekendTime":"20:30","weekendEndDay":"SUNDAY","weekendEndTime":"22:00",""" +
                 """"awake":{"wake":"08:00","sleep":"23:30","weekendWake":"10:00","weekendSleep":"01:30"},""" +
-                """"lastSeenVersionCode":0,"savedPlaces":[],""" +
+                """"lastSeenVersionCode":0,"savedPlaces":[],"savedWindows":[],""" +
                 """"defaultActions":["NOTIFICATION","VIBRATE"],"presets":[],"hiddenTexts":[],""" +
                 """"dayStart":"09:00","recurrencePresets":[""" +
                 """{"id":"builtin-day","recurrence":{"type":"after","amount":1,"unit":"DAYS","from":"DEALT"},"name":"","uses":0,"lastUsedAt":null},""" +
@@ -168,7 +190,7 @@ class ReminderCodecTest {
                 """{"id":"builtin-week","recurrence":{"type":"after","amount":1,"unit":"WEEKS","from":"DEALT"},"name":"","uses":0,"lastUsedAt":null},""" +
                 """{"id":"builtin-month","recurrence":{"type":"after","amount":1,"unit":"MONTHS","from":"DEALT"},"name":"","uses":0,"lastUsedAt":null}],""" +
                 """"busyWatchNotice":false,"vibration":{"strength":"STRONG","rhythm":"PULSED"},""" +
-                """"alertSound":{"type":"system"},"soundPlays":5,"soundGapMinutes":5,"alertStacking":"SEQUENTIAL","updatesWifiOnly":false,"alertToHeadphones":true}""",
+                """"alertSound":{"type":"system"},"insistentSound":null,"soundPlays":5,"soundGapMinutes":5,"alertStacking":"SEQUENTIAL","updatesWifiOnly":false,"alertToHeadphones":true}""",
             encoded,
         )
     }

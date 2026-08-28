@@ -98,6 +98,34 @@ everything (`RwilcoApplication`) because it moves real armed moments. The draw i
 `RandomDraw.inDay`, deterministic by (reminder, day), so the screen and the scheduler agree
 without storing it. An explicit `time` ignores all of it.
 
+**Three answers to "when in the day", not two** (`DayWindow`). Between an hour somebody picked
+and the whole of the day they are up for sits a stretch they named: "a la hora de comer". Both
+shapes that leave the hour to the day carry an optional one — `Trigger.DayRandom` (the date
+tile) and `Trigger.Repeat` (the calendar behind "Vuelve") — and it is only ever read when there
+is no `time`, because an hour somebody typed is not a thing anything else may argue with. The
+draw is the same `RandomDraw.inDay` with a narrower window. `SavedWindow` in the settings is a
+name over two times, offered as chips wherever a stretch is asked for (the date tile, the
+calendar, the window trigger) and never referenced: what a trigger keeps is the two times, so
+renaming or deleting one never reaches back into a reminder — the same rule a place follows.
+The fields are always there under the chips, so a stretch nobody has named is one tap further
+and not a trip to the settings.
+
+**A window is only a draw while nothing else depends on it** (`Trigger.whenCombined`,
+`Reminder.ruleInSet`). "El viernes a la hora de comer" on its own means a minute nobody chose
+between two and four, which is the whole point of naming a stretch instead of an hour. Put it in
+a set and that reading falls apart: "a la hora de comer, y a la vez en la oficina" cannot mean
+"at 15:37 if you happen to be at the office" — a draw landing while the other half is false is a
+reminder that silently does not ring. So in a combining set (ALL and TOGETHER, never ANY, where
+the rules depend on nobody) the window becomes a **gate**: its moment is the opening, and it
+reaches every sibling as a `TimeWindow` state (`asState`), so the ring lands the instant
+everything else is true inside it — which can be its first second. That is exactly what
+`Trigger.Interval` has always been, reached from the other side. `Reminder.ruleInSet` (which
+`togetherRule` grew into) is the one funnel for "the rule as its own set makes it", and
+`warnings` folds the same way — but both count states off the rules **as written**, never off
+the rewrite: a window that a set turned into its own opening is still a state to its siblings,
+and counting the rewrite made "a la vez" claim two instants could never coincide when one of
+them was a two-hour stretch. `DayWindowTest` holds both halves.
+
 Wall-clock values are stored without a zone; the zone is applied when the next fire is computed.
 A countdown stores the **length**, not the moment: `startedAt` is stamped by `startCountdowns`
 where a reminder is written (the editor's save, or straight from a preset) and stripped by
@@ -556,6 +584,15 @@ strict is asking somebody to remember how they spelled it.
   nothing above `IMPORTANCE_HIGH` + `PRIORITY_HIGH` + `CATEGORY_ALARM` for an ordinary
   notification; anything more prominent than this means `MessagingStyle` conversations or
   `CallStyle`, which are a different kind of thing to be.
+- **Two tones, split by what the reminder was asked to do** (`AppSettings.soundFor`): "sonido"
+  says it once, "hasta que reciba caso" comes back every few minutes until somebody answers, and
+  a tone that is right for the first is often wrong for the second — you are going to hear the
+  second one five times. `insistentSound` is null until somebody draws that distinction, and null
+  means "the same one": a default of its own would have quietly changed what half of everybody's
+  reminders sound like on the update, which is the one thing an alarm may never do. The switch
+  that turns it on starts from whatever is already chosen, for the same reason. The alert screen
+  can be carrying several reminders at once and takes the insistent tone if any of them asks for
+  it. The channel id already carries the tone, so a second one is simply a second channel.
 - `AlertNotifications` has one channel per sound/vibration combination, because a channel's
   sound is fixed the moment it is created — which is also how the vibration setting reaches a
   notification: the chosen rhythm is part of the channel id, so changing it means a different

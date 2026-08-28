@@ -20,6 +20,9 @@ import dev.rwilco.BuildConfig
 import dev.rwilco.MainActivity
 import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
+import dev.rwilco.debug.DemoData
+import dev.rwilco.model.AlertSound
+import dev.rwilco.model.Chime
 import dev.rwilco.model.ThemeMode
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
@@ -62,7 +65,18 @@ class SettingsTourTest {
 
     @Before
     fun dark() = runBlocking {
-        app.settingsStore.update { it.copy(lastSeenVersionCode = BuildConfig.VERSION_CODE, theme = ThemeMode.DARK) }
+        app.settingsStore.update {
+            it.copy(
+                lastSeenVersionCode = BuildConfig.VERSION_CODE,
+                theme = ThemeMode.DARK,
+                // The two tones, already told apart: the switch itself is a switch, and what is
+                // worth a picture is the second row it brings with it.
+                insistentSound = AlertSound.Bundled(Chime.ALERT),
+            )
+        }
+        // The sound card only offers the insistent settings once something actually asks for
+        // them, so the screen it is being photographed on has to have one.
+        DemoData.seed(app.repository, app.clock)
     }
 
     @Test
@@ -91,9 +105,26 @@ class SettingsTourTest {
         rule.waitUntilShown(s(R.string.settings_awake))
         shot("settings-group-open")
 
+        // The stretches of the day kept by name live at the foot of that same group: it is the
+        // shape of the day, and this is which bits of it you call things.
+        rule.onNodeWithText(s(R.string.settings_add_window), useUnmergedTree = true).performScrollTo()
+        shot("settings-windows")
+
         rule.onNodeWithText(s(R.string.settings_group_day), useUnmergedTree = true).performScrollTo().performClick()
         rule.waitUntilGone(s(R.string.settings_awake))
         shot("settings-index-again")
+
+        // The two tones: one for the reminders that say it once and one for the ones that keep
+        // asking, which only offers itself while something is asking.
+        rule.onNodeWithText(s(R.string.settings_sound_title), useUnmergedTree = true).performScrollTo().performClick()
+        rule.waitUntilShown(s(R.string.settings_sound_two_tones))
+        // Two of everything is how you know the second row is there: the label it adds is the
+        // same label the first one already has.
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText(s(R.string.settings_sound_custom), useUnmergedTree = true).fetchSemanticsNodes().size >= 2
+        }
+        rule.onNodeWithText(s(R.string.settings_sound_two_tones), useUnmergedTree = true).performScrollTo()
+        shot("settings-sound-two-tones")
     }
 
     @Test

@@ -128,7 +128,11 @@ fun triggerLine(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): Tri
         )
         is Trigger.DayRandom -> TriggerLine(
             primary = dayWord(trigger.date, today, locale),
-            secondary = stringResource(R.string.trigger_random_in_day),
+            // Which stretch of the day, when it was given one: "al azar durante el día" and
+            // "a la hora de comer" are the same shape and a very different arrangement.
+            secondary = trigger.window
+                ?.let { TimeText.window(it.from, it.to, is24h, locale) }
+                ?: stringResource(R.string.trigger_random_in_day),
             primaryMono = true,
         )
         is Trigger.Repeat -> TriggerLine(
@@ -192,7 +196,13 @@ fun triggerPhrase(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): S
         is Trigger.AtDateTime -> atDayAndTime(trigger.at.toLocalDate(), trigger.at.toLocalTime(), today)
         // The hour it will actually ring at, which for a bare date is the one from the settings.
         is Trigger.OnDate -> atDayAndTime(trigger.date, defaultTime, today)
-        is Trigger.DayRandom -> dayWord(trigger.date, today, locale) + ", " + stringResource(R.string.trigger_random_in_day)
+        is Trigger.DayRandom -> trigger.window?.let {
+            stringResource(
+                R.string.editor_sentence_interval,
+                TimeText.window(it.from, it.to, is24h, locale),
+                dayWord(trigger.date, today, locale),
+            )
+        } ?: (dayWord(trigger.date, today, locale) + ", " + stringResource(R.string.trigger_random_in_day))
         is Trigger.AtTime -> stringResource(
             R.string.editor_sentence_at_time,
             TimeText.time(trigger.time, is24h, locale),
