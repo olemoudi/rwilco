@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SearchOff
@@ -60,7 +61,10 @@ import dev.rwilco.ui.components.SectionHeader
 import dev.rwilco.ui.components.TagChip
 import dev.rwilco.ui.components.rememberNow
 import dev.rwilco.ui.format.currentLocale
+import dev.rwilco.model.TriggerFamily
+import dev.rwilco.ui.theme.LocalDarkTheme
 import dev.rwilco.ui.theme.Tokens
+import dev.rwilco.ui.theme.familyColor
 import dev.rwilco.ui.theme.tagColor
 
 /** So a test can scroll the list itself; a lazy list does not compose what is off screen. */
@@ -445,7 +449,16 @@ private fun TagFilterRow(tags: List<TagFilter>, selected: TagFilter?, onSelect: 
                 label = tag.label(),
                 selected = tag == selected,
                 onClick = { onSelect(tag) },
-                tint = (tag as? TagFilter.Named)?.let { tagColor(it.tag) },
+                // The places wear the family's own colour and its pin, and no word at all: a
+                // pin is what a place looks like everywhere else in this app, and the hue is one
+                // no tag can have (the tag circle has the three family hues cut out of it), so
+                // it cannot be read as somebody's word for something.
+                tint = when (tag) {
+                    is TagFilter.Named -> tagColor(tag.tag)
+                    TagFilter.Place -> familyColor(TriggerFamily.PLACE, LocalDarkTheme.current)
+                    else -> null
+                },
+                icon = Icons.Outlined.Place.takeIf { tag == TagFilter.Place },
             )
         }
     }
@@ -457,6 +470,7 @@ private val TagFilter.key: String
         is TagFilter.Named -> "tag-$tag"
         TagFilter.Untagged -> "rwilco-untagged"
         TagFilter.Paused -> "rwilco-paused"
+        TagFilter.Place -> "rwilco-place"
     }
 
 @Composable
@@ -464,4 +478,5 @@ private fun TagFilter.label(): String = when (this) {
     is TagFilter.Named -> tag
     TagFilter.Untagged -> stringResource(R.string.home_tag_untagged)
     TagFilter.Paused -> stringResource(R.string.home_tag_paused)
+    TagFilter.Place -> stringResource(R.string.home_tag_place)
 }

@@ -471,11 +471,18 @@ strict is asking somebody to remember how they spelled it.
   never amber, an empty day is a dash on the floor rather than a gap, and the scale has a floor
   of three so a week with one "hecho" in it does not draw a full-height bar about a Tuesday.
 - The chip row is a `TagFilter` (`core-model/TagFilter.kt`), not a string: `Named` for a tag
-  somebody typed, and two the app keeps for itself — `Untagged` and `Paused`. Those two are not
-  tags (never stored on a reminder, never suggested, never edited) and they appear **only while
-  they have something in them**, at the end of the row, because "sin etiqueta" is a job to do
-  rather than a filing category and a row that always ends in two chips nobody can act on is a
-  row people stop reading at the third one.
+  somebody typed, and three the app keeps for itself — `Untagged`, `Paused` and `Place`. Those
+  three are not tags (never stored on a reminder, never suggested, never edited) and they appear
+  **only while they have something in them**, at the end of the row, because "sin etiqueta" is a
+  job to do rather than a filing category and a row that always ends in chips nobody can act on
+  is a row people stop reading at the third one. `Place` is the one the app works out best: a
+  place is the thing people write most and remember least — *¿qué tenía puesto para cuando
+  llegue?* — and it is **the pin and no word at all**, in the place family's own green. A pin is
+  what a place looks like everywhere else here, and that hue is one no tag can have (the tag
+  circle has the three family hues cut out of it), so a wordless chip cannot be read as
+  somebody's word for something. Only a *trigger* counts: a place used as a fence ("a las nueve,
+  y sólo si estoy en casa") is a reminder about nine o'clock, and filing it under the places
+  would answer a question nobody asked.
   Every real tag carries a colour worked out from its own name (`ui/theme/TagColors.kt`):
   nothing stored, so the same word is the same colour on every screen and after a reinstall.
   It is a **palette of sixteen hues in two shades**, not a continuum — two tags either get the

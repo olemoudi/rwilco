@@ -42,6 +42,12 @@ fun TagChip(
     modifier: Modifier = Modifier,
     tint: Color? = null,
     enabled: Boolean = true,
+    /**
+     * A glyph *instead of* the word, for a chip the app keeps for itself whose meaning has a
+     * shape of its own. [label] is then what a screen reader says and what a test finds it by:
+     * the chip is not silent, it is only wordless.
+     */
+    icon: ImageVector? = null,
     /** The second thing this chip can do, on a held finger; null when it does only one. */
     onHold: (() -> Unit)? = null,
     holdIcon: ImageVector = Icons.Outlined.Edit,
@@ -58,7 +64,13 @@ fun TagChip(
         selected = selected,
         // The chip keeps its own click; a hold that has just completed stands it down.
         onClick = { if (!hold.held) tap() },
-        label = { Text(label, style = MaterialTheme.typography.labelLarge) },
+        label = {
+            if (icon == null) {
+                Text(label, style = MaterialTheme.typography.labelLarge)
+            } else {
+                Icon(icon, contentDescription = label, modifier = Modifier.size(18.dp))
+            }
+        },
         enabled = enabled,
         shape = MaterialTheme.shapes.small,
         colors = FilterChipDefaults.filterChipColors(

@@ -138,10 +138,10 @@ class HomeStateTest {
         assertNull(placeRow.nextAt)
         assertNull(placeRow.window)
         assertTrue(state.sections[1].cards.single().paused)
-        // The tags in use, and then the app's own two — one reminder here carries no tag and
-        // one is paused, so both have something to show.
+        // The tags in use, and then the app's own three — one reminder here carries no tag, one
+        // is paused and one rings at a place, so all three have something to show.
         assertEquals(
-            listOf(TagFilter.Named("casa"), TagFilter.Named("salud"), TagFilter.Untagged, TagFilter.Paused),
+            listOf(TagFilter.Named("casa"), TagFilter.Named("salud"), TagFilter.Untagged, TagFilter.Paused, TagFilter.Place),
             state.tags,
         )
     }

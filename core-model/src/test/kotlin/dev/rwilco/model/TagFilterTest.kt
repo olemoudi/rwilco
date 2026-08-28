@@ -72,4 +72,28 @@ class TagFilterTest {
         val stopped = listOfNotNull(paused.hero?.entry?.reminder) + paused.sections.values.flatten().map { it.reminder }
         assertEquals(listOf("c"), stopped.map { it.id })
     }
+
+    @Test
+    fun `the places are a chip nobody types`() {
+        val home = Trigger.Location(40.4, -3.7, 150, Presence.INSIDE, "Casa")
+        val clocks = listOf(r("a", listOf("casa")), r("b"))
+        assertFalse(TagFilter.Place in tagFilters(clocks), "nothing rings anywhere, nothing to say")
+
+        val somewhere = reminder(home, id = "c")
+        val chips = tagFilters(clocks + somewhere)
+        assertEquals(TagFilter.Place, chips.last(), "at the end of the row, with the app's own")
+        assertTrue(TagFilter.Place.matches(somewhere))
+        assertFalse(TagFilter.Place.matches(clocks.first()))
+
+        // A place used as a fence is a reminder about nine o'clock with a condition on it, and
+        // filing it under the places would answer a question nobody asked.
+        val fenced = reminder(trigger, id = "d", conditions = listOf(Condition.AtPlace(40.4, -3.7, 150, "Casa")))
+        assertFalse(TagFilter.Place.matches(fenced))
+        assertFalse(TagFilter.Place in tagFilters(clocks + fenced))
+
+        // And Home narrows to it like any other chip.
+        val shown = groupForHome(clocks + somewhere, now, Fixtures.zone, Fixtures.defaultTime, TagFilter.Place)
+        val listed = shown.sections.values.flatten().map { it.reminder.id } + listOfNotNull(shown.hero?.entry?.reminder?.id)
+        assertEquals(listOf("c"), listed.distinct())
+    }
 }
