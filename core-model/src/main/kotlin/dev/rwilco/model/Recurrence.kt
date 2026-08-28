@@ -64,8 +64,9 @@ sealed interface Recurrence {
 
     /**
      * A span after [from]. Hours are exact — "cada 6 h" means six hours — while days, weeks,
-     * months and years land on the day's start hour (a setting), because "al día siguiente" is
-     * a morning, not a time of night.
+     * months and years land on an hour of the day rather than on whatever minute the last one
+     * happened to be answered at: [hour] says which, and "al día siguiente" means a morning
+     * unless somebody says otherwise.
      */
     @Serializable
     @SerialName("after")
@@ -73,6 +74,12 @@ sealed interface Recurrence {
         val amount: Int,
         val unit: RecurrenceUnit,
         val from: RecurrenceFrom = RecurrenceFrom.DEALT,
+        /**
+         * Which hour a span of days or more lands on. Ignored by [RecurrenceUnit.HOURS], which
+         * is exact by definition, and last in the list because the order of a data class's
+         * parameters is its `copy` and everything that already builds one predates it.
+         */
+        val hour: RecurrenceHour = RecurrenceHour.DayStart,
     ) : Recurrence
 
     /**
@@ -89,6 +96,47 @@ sealed interface Recurrence {
 }
 
 enum class RecurrenceUnit { HOURS, DAYS, WEEKS, MONTHS, YEARS }
+
+/**
+ * What hour a span measured in days or more comes back at — the question "cada día" leaves open
+ * and the app used to answer on its own.
+ *
+ * [DayStart] is that old answer and stays the default, so every reminder already written means
+ * exactly what it meant: "al día siguiente" is a morning, not one minute past whenever you
+ * happened to tick the last one off at. But it is not always the right one — a reminder dealt
+ * with at bedtime every night wants to come back at bedtime, not at nine — so [Same] keeps the
+ * hour of whatever moment the span is counted from (the ring or the "hecho", see
+ * [RecurrenceFrom]), and [At] pins one outright.
+ *
+ * Only ever read where the recurrence's own moment is the ring: with rules that name an hour of
+ * their own the span says which *day* it comes back on and they say when in it (see
+ * `Reminder.restUntil`), which is the same division of labour it has always had.
+ */
+@Serializable
+sealed interface RecurrenceHour {
+    /** The hour the day starts at (`AppSettings.dayStart`); what every span meant before this existed. */
+    @Serializable
+    @SerialName("day_start")
+    data object DayStart : RecurrenceHour
+
+    /** The same hour as the moment it is counted from. */
+    @Serializable
+    @SerialName("same")
+    data object Same : RecurrenceHour
+
+    /** This hour, whatever the last one happened at. */
+    @Serializable
+    @SerialName("at")
+    data class At(val time: LocalTime) : RecurrenceHour
+}
+
+/** The hour a span will actually land on, given the moment it is counted from. */
+fun RecurrenceHour.of(anchor: LocalTime, dayStart: LocalTime): LocalTime = when (this) {
+    RecurrenceHour.DayStart -> dayStart
+    // To the minute: an alarm on the second is a thing no other moment in this app is.
+    RecurrenceHour.Same -> anchor.truncatedTo(java.time.temporal.ChronoUnit.MINUTES)
+    is RecurrenceHour.At -> time
+}
 
 /**
  * Which moment a span is counted from — the one thing about "cada 6 h" that two people mean
@@ -120,9 +168,13 @@ fun Recurrence.sameSpanAs(other: Recurrence): Boolean =
     if (this is Recurrence.After && other is Recurrence.After) amount == other.amount && unit == other.unit
     else this == other
 
+/** Whether this span lands on an hour of the day at all: everything but the exact ones. */
+val Recurrence.landsOnAnHour: Boolean
+    get() = this is Recurrence.After && unit != RecurrenceUnit.HOURS
+
 /** [other]'s span, kept counting from wherever this one was counting from. */
 fun Recurrence.withSpanOf(other: Recurrence): Recurrence =
-    if (this is Recurrence.After && other is Recurrence.After) other.copy(from = from) else other
+    if (this is Recurrence.After && other is Recurrence.After) other.copy(from = from, hour = hour) else other
 
 /** "The last Sunday of the month" rather than a numbered one. */
 const val LAST_ORDINAL = 5
@@ -204,31 +256,36 @@ fun nextRecurrence(
     dayStart: LocalTime,
 ): Instant? = when (recurrence) {
     Recurrence.None, Recurrence.ByTrigger, is Recurrence.Calendar -> null
-    is Recurrence.After -> when (recurrence.unit) {
-        RecurrenceUnit.HOURS -> anchor.plusSeconds(recurrence.amount * 3_600L)
-        RecurrenceUnit.DAYS -> anchor.atDayStart(zone, dayStart) { it.plusDays(recurrence.amount.toLong()) }
-        RecurrenceUnit.WEEKS -> anchor.atDayStart(zone, dayStart) { it.plusWeeks(recurrence.amount.toLong()) }
-        RecurrenceUnit.MONTHS -> anchor.atDayStart(zone, dayStart) { it.plusMonths(recurrence.amount.toLong()) }
-        // The 29th of February lands on the 28th rather than skipping three years in four,
-        // which is what plusYears does and what anybody with that birthday expects.
-        RecurrenceUnit.YEARS -> anchor.atDayStart(zone, dayStart) { it.plusYears(recurrence.amount.toLong()) }
+    is Recurrence.After -> {
+        val hour = recurrence.hour
+        when (recurrence.unit) {
+            RecurrenceUnit.HOURS -> anchor.plusSeconds(recurrence.amount * 3_600L)
+            RecurrenceUnit.DAYS -> anchor.landingAt(zone, hour, dayStart) { it.plusDays(recurrence.amount.toLong()) }
+            RecurrenceUnit.WEEKS -> anchor.landingAt(zone, hour, dayStart) { it.plusWeeks(recurrence.amount.toLong()) }
+            RecurrenceUnit.MONTHS -> anchor.landingAt(zone, hour, dayStart) { it.plusMonths(recurrence.amount.toLong()) }
+            // The 29th of February lands on the 28th rather than skipping three years in four,
+            // which is what plusYears does and what anybody with that birthday expects.
+            RecurrenceUnit.YEARS -> anchor.landingAt(zone, hour, dayStart) { it.plusYears(recurrence.amount.toLong()) }
+        }
     }
     is Recurrence.MonthlyWeekday -> nextMonthlyWeekday(recurrence, anchor, zone, dayStart)
 }
 
 /**
- * Move the anchor's date by [step], then take the day's start hour. If that lands on or before
- * the anchor — dealing with something at 23:00 and asking for "tomorrow at 09:00" cannot mean
- * this morning — the next day is taken instead.
+ * Move the anchor's date by [step], then take the hour [hour] asks for. If that lands on or
+ * before the anchor — dealing with something at 23:00 and asking for "tomorrow at 09:00" cannot
+ * mean this morning — the next day is taken instead.
  */
-private inline fun Instant.atDayStart(
+private inline fun Instant.landingAt(
     zone: ZoneId,
+    hour: RecurrenceHour,
     dayStart: LocalTime,
     step: (java.time.LocalDate) -> java.time.LocalDate,
 ): Instant {
     val here = atZone(zone)
-    var candidate = step(here.toLocalDate()).atTime(dayStart).atZone(zone).toInstant()
-    while (candidate <= this) candidate = candidate.atZone(zone).toLocalDate().plusDays(1).atTime(dayStart).atZone(zone).toInstant()
+    val at = hour.of(here.toLocalTime(), dayStart)
+    var candidate = step(here.toLocalDate()).atTime(at).atZone(zone).toInstant()
+    while (candidate <= this) candidate = candidate.atZone(zone).toLocalDate().plusDays(1).atTime(at).atZone(zone).toInstant()
     return candidate
 }
 

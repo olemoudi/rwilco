@@ -82,6 +82,7 @@ import dev.rwilco.ui.editor.sheets.LocationSheet
 import dev.rwilco.ui.editor.sheets.RandomSheet
 import dev.rwilco.ui.editor.sheets.CalendarSheet
 import dev.rwilco.model.Status
+import dev.rwilco.model.namesAnHour
 import dev.rwilco.model.ringCadence
 import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.theme.Tokens
@@ -305,6 +306,8 @@ fun EditorScreen(
                         presets = state.recurrencePresets,
                         today = today,
                         chanceDecides = state.draft.rules.any { it.trigger.decidesItsOwnDates },
+                        defaultTime = state.defaultTime,
+                        rulesNameAnHour = state.draft.rules.any { it.trigger.namesAnHour },
                         warning = recurrenceWarning,
                         onPick = viewModel::pickRecurrencePreset,
                         onCustom = viewModel::setRecurrence,

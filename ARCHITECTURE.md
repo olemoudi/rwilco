@@ -202,8 +202,15 @@ anything repeats**:
   already holds on disk, its discriminators are frozen, and a second copy of the same seven
   fields is a second place for the arithmetic to disagree. `conditions` are the "y sólo si"
   fences the rule it used to be could carry.
-- `After(amount, unit, from)` — a span counted from something that happened. Hours are exact;
-  days, weeks, months and years land on `AppSettings.dayStart` and never before the span is up.
+- `After(amount, unit, from, hour)` — a span counted from something that happened. Hours are
+  exact; days, weeks, months and years land on an hour of the day and never before the span is
+  up. **Which hour is a question too** (`RecurrenceHour`): the hour the day starts at
+  (`AppSettings.dayStart`, the default and what every reminder written before the field means),
+  **the same hour** as the moment it is counted from — a reminder answered at bedtime every
+  night wants to come back at bedtime, not at nine — or **one of its own**. Only read where the
+  recurrence's moment is the ring: with rules that name an hour the span says which *day* and
+  they say when in it (`restUntil`), which the editor says out loud rather than offering a
+  control that decides nothing.
 - `ByTrigger` — hands the question back to a trigger that names its own dates, which is now only
   a random window ("tres veces al día" is its own answer to "¿y vuelve?").
 - `MonthlyWeekday(ordinal, day)` — read-only. It is `Calendar` of a month with a `MonthlyOn.Nth`

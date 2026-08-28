@@ -412,4 +412,71 @@ class RecurrenceTest {
         assertEquals(used.id, recurrencePresetsByPopularity(kept).first().id)
         assertEquals(9, kept.first { it.id == used.id }.uses)
     }
+
+    // ---- what hour a span of days lands on ---------------------------------------------------
+
+    @Test
+    fun `a span of days lands on the hour it was asked for`() {
+        // Dealt with at ten past eleven at night.
+        val dealt = local(2026, 8, 27, 23, 10)
+        val daily = Recurrence.After(1, RecurrenceUnit.DAYS)
+        // The old answer, and still the default: the hour the day starts at.
+        assertEquals(local(2026, 8, 28, 9, 0), nextRecurrence(daily, dealt, zone, LocalTime.of(9, 0)))
+        // The same hour it was answered at, which is what "a la misma hora" means.
+        assertEquals(
+            local(2026, 8, 28, 23, 10),
+            nextRecurrence(daily.copy(hour = RecurrenceHour.Same), dealt, zone, LocalTime.of(9, 0)),
+        )
+        // Or an hour of its own, whatever the last one happened at.
+        assertEquals(
+            local(2026, 8, 28, 7, 30),
+            nextRecurrence(daily.copy(hour = RecurrenceHour.At(LocalTime.of(7, 30))), dealt, zone, LocalTime.of(9, 0)),
+        )
+    }
+
+    @Test
+    fun `the same hour is the same hour a week or a month later, and never before the span is up`() {
+        val dealt = local(2026, 8, 27, 21, 45)
+        val weekly = Recurrence.After(1, RecurrenceUnit.WEEKS, hour = RecurrenceHour.Same)
+        assertEquals(local(2026, 9, 3, 21, 45), nextRecurrence(weekly, dealt, zone, LocalTime.of(9, 0)))
+        val monthly = Recurrence.After(1, RecurrenceUnit.MONTHS, hour = RecurrenceHour.At(LocalTime.of(8, 0)))
+        assertEquals(local(2026, 9, 27, 8, 0), nextRecurrence(monthly, dealt, zone, LocalTime.of(9, 0)))
+        // An hour earlier in the day than the anchor still lands a whole day on, never today.
+        val early = Recurrence.After(1, RecurrenceUnit.DAYS, hour = RecurrenceHour.At(LocalTime.of(7, 0)))
+        assertEquals(local(2026, 8, 28, 7, 0), nextRecurrence(early, local(2026, 8, 27, 23, 30), zone, LocalTime.of(9, 0)))
+        // And the seconds of the moment it was answered at are not part of "the same hour".
+        val fussy = local(2026, 8, 27, 21, 45).plusSeconds(37)
+        assertEquals(local(2026, 9, 3, 21, 45), nextRecurrence(weekly, fussy, zone, LocalTime.of(9, 0)))
+    }
+
+    @Test
+    fun `an hour of its own means nothing to a span counted in hours`() {
+        val sixHourly = Recurrence.After(6, RecurrenceUnit.HOURS, hour = RecurrenceHour.At(LocalTime.of(7, 30)))
+        val dealt = local(2026, 8, 27, 23, 10)
+        assertEquals(dealt.plusSeconds(6 * 3600), nextRecurrence(sixHourly, dealt, zone, LocalTime.of(9, 0)))
+    }
+
+    @Test
+    fun `the hour survives a round trip, and one written before it existed reads as the day's start`() {
+        val same = Recurrence.After(1, RecurrenceUnit.DAYS, hour = RecurrenceHour.Same)
+        assertEquals(same, ReminderCodec.decodeRecurrence(ReminderCodec.encodeRecurrence(same)))
+        val at = Recurrence.After(2, RecurrenceUnit.WEEKS, hour = RecurrenceHour.At(LocalTime.of(7, 30)))
+        assertEquals(at, ReminderCodec.decodeRecurrence(ReminderCodec.encodeRecurrence(at)))
+        // Every span on every phone was written without the field, and means what it meant.
+        assertEquals(
+            Recurrence.After(1, RecurrenceUnit.DAYS),
+            ReminderCodec.decodeRecurrence("""{"type":"after","amount":1,"unit":"DAYS","from":"DEALT"}"""),
+        )
+        assertEquals(
+            RecurrenceHour.DayStart,
+            (ReminderCodec.decodeRecurrence("""{"type":"after","amount":1,"unit":"DAYS"}""") as Recurrence.After).hour,
+        )
+    }
+
+    @Test
+    fun `picking a different span keeps the hour, the way it keeps the anchor`() {
+        val mine = Recurrence.After(1, RecurrenceUnit.DAYS, RecurrenceFrom.RANG, RecurrenceHour.At(LocalTime.of(7, 30)))
+        val picked = mine.withSpanOf(Recurrence.After(1, RecurrenceUnit.WEEKS))
+        assertEquals(Recurrence.After(1, RecurrenceUnit.WEEKS, RecurrenceFrom.RANG, RecurrenceHour.At(LocalTime.of(7, 30))), picked)
+    }
 }

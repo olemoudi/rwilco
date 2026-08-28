@@ -154,6 +154,13 @@
     <string name="recur_years">Every %1$d years</string>
     <string name="recur_unit_years">years</string>
     <string name="recur_counts_from">Counts from</string>
+    <string name="recur_hour">At what time</string>
+    <string name="recur_hour_day_start">When the day starts</string>
+    <string name="recur_hour_same">The same time</string>
+    <string name="recur_hour_custom">Another time</string>
+    <string name="recur_hour_same_short">at the same time</string>
+    <string name="recur_hour_at">at %1$s</string>
+    <string name="recur_hour_rules_note">The rules above already name an hour, so this only decides which day it comes back on.</string>
     <string name="recur_from_ringing">When it rings</string>
     <string name="recur_from_dealt">When you\'re done</string>
     <string name="card_recurrence_from_ringing">from when it rings</string>
