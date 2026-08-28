@@ -691,6 +691,7 @@
     <!-- The two chips the app keeps for itself, at the end of the tag row. -->
     <string name="home_tag_untagged">No tag</string>
     <string name="home_tag_paused">Paused</string>
+    <string name="home_tag_safety_net">With a net</string>
 
     <!-- What a reminder feels like. -->
     <string name="settings_vibration_strength">Vibration</string>

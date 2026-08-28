@@ -465,11 +465,16 @@ strict is asking somebody to remember how they spelled it.
   never amber, an empty day is a dash on the floor rather than a gap, and the scale has a floor
   of three so a week with one "hecho" in it does not draw a full-height bar about a Tuesday.
 - The chip row is a `TagFilter` (`core-model/TagFilter.kt`), not a string: `Named` for a tag
-  somebody typed, and two the app keeps for itself — `Untagged` and `Paused`. Those two are not
-  tags (never stored on a reminder, never suggested, never edited) and they appear **only while
-  they have something in them**, at the end of the row, because "sin etiqueta" is a job to do
-  rather than a filing category and a row that always ends in two chips nobody can act on is a
-  row people stop reading at the third one.
+  somebody typed, and three the app keeps for itself — `Untagged`, `Paused` and `SafetyNet`.
+  Those three are not tags (never stored on a reminder, never suggested, never edited) and they
+  appear **only while they have something in them**, at the end of the row, because "sin
+  etiqueta" is a job to do rather than a filing category and a row that always ends in chips
+  nobody can act on is a row people stop reading at the third one. `SafetyNet` is the automatic
+  one: nobody types it, it is asked for a reminder at a time on the switch in the editor, and the
+  row is where "which ones did I ask that of?" gets answered. It is the only chip with a glyph,
+  and it is the glyph its mark wears on a card, in the same error red — a row is read by shape
+  before it is read by word. The red is on the glyph alone: colouring the chip would make an
+  app-owned one read as somebody's word for something, which is what the neutral rule is for.
   Every real tag carries a colour worked out from its own name (`ui/theme/TagColors.kt`):
   nothing stored, so the same word is the same colour on every screen and after a reinstall.
   It is a **palette of sixteen hues in two shades**, not a continuum — two tags either get the
