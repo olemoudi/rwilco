@@ -95,6 +95,8 @@
     <string name="trigger_rings_at">rings at %1$s</string>
     <string name="trigger_countdown_from_start">from when the reminder is made</string>
     <string name="trigger_every_day">every day</string>
+    <string name="trigger_any_day">Any day</string>
+    <string name="trigger_any_day_of_week">any day of the week</string>
     <string name="trigger_weekdays">weekdays</string>
     <string name="trigger_weekends">weekends</string>
     <string name="trigger_arrive_at">when arriving at %1$s</string>

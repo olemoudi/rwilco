@@ -114,8 +114,12 @@ fun triggerLine(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): Tri
         )
         is Trigger.Interval -> TriggerLine(
             primary = TimeText.window(trigger.from, trigger.to, is24h, locale),
+            // A window with no days named is not a thing that happens every day — whether it
+            // comes back at all is what "Vuelve" answers, one row further down the same card.
+            // What an empty day set says is that no day is ruled out, which is a different
+            // sentence: "cada día" beside "cada mes" read as two claims about repeating.
             secondary = if (trigger.days.isEmpty() || trigger.days.size == 7) {
-                stringResource(R.string.trigger_every_day)
+                stringResource(R.string.trigger_any_day_of_week)
             } else {
                 daysSummary(trigger.days, locale)
             },
@@ -274,10 +278,16 @@ fun conditionPhrase(condition: Condition): String = when (condition) {
     )
 }
 
-/** No days, or all seven, is "cada día" rather than a list of every letter. */
+/**
+ * No days, or all seven, is "cualquier día de la semana" rather than a list of every letter.
+ *
+ * Which is not the same as "cada día", and the difference is the whole of what a day set means
+ * on a window: it says which days are *allowed*, never how often the reminder comes back. That
+ * one is "Vuelve"'s answer and nobody else's.
+ */
 @Composable
 private fun everyDayOr(days: Set<DayOfWeek>, locale: Locale): String =
-    if (days.isEmpty() || days.size == 7) stringResource(R.string.trigger_every_day) else daysSummary(days, locale)
+    if (days.isEmpty() || days.size == 7) stringResource(R.string.trigger_any_day_of_week) else daysSummary(days, locale)
 
 /** The same, said only when it narrows anything: a fence on every day says nothing extra. */
 @Composable

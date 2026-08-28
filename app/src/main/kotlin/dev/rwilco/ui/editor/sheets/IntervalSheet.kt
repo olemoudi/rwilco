@@ -90,7 +90,7 @@ fun IntervalSheet(
             horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
             modifier = Modifier.horizontalScroll(rememberScrollState()),
         ) {
-            PresetChip(stringResource(R.string.trigger_every_day), selected = selected.isEmpty(), onClick = { days = emptySet() })
+            PresetChip(stringResource(R.string.trigger_any_day), selected = selected.isEmpty(), onClick = { days = emptySet() })
             PresetChip(stringResource(R.string.trigger_weekdays), selected = selected == WEEKDAYS, onClick = { days = WEEKDAYS.map { it.name }.toSet() })
             PresetChip(stringResource(R.string.trigger_weekends), selected = selected == WEEKEND, onClick = { days = WEEKEND.map { it.name }.toSet() })
         }

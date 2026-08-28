@@ -93,6 +93,8 @@
     <string name="trigger_rings_at">suena a las %1$s</string>
     <string name="trigger_countdown_from_start">desde que se cree el recordatorio</string>
     <string name="trigger_every_day">cada día</string>
+    <string name="trigger_any_day">Cualquier día</string>
+    <string name="trigger_any_day_of_week">cualquier día de la semana</string>
     <string name="trigger_weekdays">laborables</string>
     <string name="trigger_weekends">fines de semana</string>
     <string name="trigger_arrive_at">al llegar a %1$s</string>
