@@ -16,15 +16,20 @@ import java.time.Duration
 import dev.rwilco.model.AlertSound
 import dev.rwilco.model.VibrationLimits
 import dev.rwilco.model.VibrationPattern
+import dev.rwilco.model.loopsOnScreen
 import dev.rwilco.model.waveformFor
 
 /**
  * The noise a full-screen alert makes while it is on screen.
  *
- * It loops, unlike the notification's one-shot tone, because a takeover that rings once and
- * then sits there silently is a screen you sleep through. It is the alert screen's own doing
- * (see [FiringPlan.notificationSound]): the notification that carried it stays quiet so the two
- * never overlap.
+ * It is the alert screen's own doing (see [FiringPlan.notificationSound]): the notification that
+ * carried it stays quiet so the two never overlap.
+ *
+ * **Round and round only if that is what was asked for.** A takeover that rings once and then
+ * sits there silently is a screen you can sleep through, which is why looping was the whole of
+ * it — but "sonido" and "hasta que reciba caso" are two different promises about how many times
+ * somebody is going to hear the same tone, and the loop made them the same thing on the one
+ * surface where it is loudest. See [loopsOnScreen].
  */
 class AlertRinger(private val context: Context) {
 
@@ -41,8 +46,10 @@ class AlertRinger(private val context: Context) {
         tone: AlertSound = AlertSound.System,
         /** Send it to the headphones when any are connected; see [AlertAudio.routeTo]. */
         toHeadphones: Boolean = true,
+        /** Round and round, or once and done: see [loopsOnScreen]. */
+        looping: Boolean = true,
     ) {
-        if (sound) startSound(tone, toHeadphones)
+        if (sound) startSound(tone, toHeadphones, looping)
         if (vibrate) startVibration(pattern, limit)
     }
 
@@ -60,7 +67,7 @@ class AlertRinger(private val context: Context) {
         vibrator = null
     }
 
-    private fun startSound(tone: AlertSound, toHeadphones: Boolean) {
+    private fun startSound(tone: AlertSound, toHeadphones: Boolean, looping: Boolean) {
         val uri = Sounds.uri(context, tone) ?: return
         // Everything else drops a few decibels and carries on underneath; see AlertAudio.
         focus = AlertAudio.duckOthers(context)
@@ -69,7 +76,7 @@ class AlertRinger(private val context: Context) {
                 setDataSource(context, uri)
                 setAudioAttributes(AlertAudio.attributes())
                 AlertAudio.routeTo(context, this, toHeadphones)
-                isLooping = true
+                isLooping = looping
                 prepare()
                 start()
             }

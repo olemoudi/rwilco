@@ -212,4 +212,21 @@ class FiringTest {
         assertFalse(dealt.presenceAlreadyRang(casa))
         assertFalse(dealt.presenceAlreadyRang(doorway))
     }
+
+    @Test
+    fun `the screen goes round and round only for the ones that asked to be insisted at`() {
+        // The two sound tiles are one choice — once, or again until somebody answers — and on a
+        // full-screen alert they used to be the same thing, because the screen looped whatever
+        // it was given. "Sonido" is a promise about how many times you hear it.
+        val once = firingPlan(setOf(Action.FULL_SCREEN, Action.NOTIFICATION, Action.SOUND))
+        val insisting = firingPlan(setOf(Action.FULL_SCREEN, Action.NOTIFICATION, Action.SOUND_UNTIL_ANSWERED))
+        assertTrue(once.sound, "it still makes a noise")
+        assertFalse(loopsOnScreen(listOf(once)), "but it says it once")
+        assertTrue(loopsOnScreen(listOf(insisting)))
+        // A screen can be carrying several at once: one that insists is enough to keep it going,
+        // the same way it takes the insistent tone if any of them wants it.
+        assertTrue(loopsOnScreen(listOf(once, insisting)))
+        assertFalse(loopsOnScreen(listOf(once, firingPlan(setOf(Action.VIBRATE)))))
+        assertFalse(loopsOnScreen(emptyList()))
+    }
 }

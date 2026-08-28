@@ -117,6 +117,20 @@ data class FiringPlan(
     val notificationVibrate: Boolean get() = vibrate && !fullScreen
 }
 
+/**
+ * Whether the screen's own ring goes round and round, or says the tone once and stops.
+ *
+ * The two sound tiles are one choice — once, or again until somebody answers — and on a
+ * full-screen alert they used to be the same thing: the screen looped whatever it was given,
+ * because looping is what a takeover needs to be worth taking the screen for. But "sonido" is
+ * a promise about how many times you are going to hear it, and a screen that says it over and
+ * over for a minute has broken that promise louder than any other part of the app could.
+ *
+ * A screen can carry several reminders at once, so it loops when *any* of them asked to be
+ * insisted at — the same way it takes the insistent tone if any of them wants it.
+ */
+fun loopsOnScreen(plans: List<FiringPlan>): Boolean = plans.any { it.insistent }
+
 fun firingPlan(actions: Set<Action>): FiringPlan = FiringPlan(
     fullScreen = Action.FULL_SCREEN in actions,
     // A full-screen alert always leaves a notification behind: it is what the person finds if

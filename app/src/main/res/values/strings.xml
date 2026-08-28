@@ -977,7 +977,7 @@
     </string-array>
     <string name="settings_sound_stop">Stop</string>
     <string name="settings_sound_loop">Hear it looping</string>
-    <string name="settings_sound_loop_hint">How a full-screen reminder sounds: the same tone, round and round until you answer it. This stops itself after half a minute.</string>
+    <string name="settings_sound_loop_hint">How a full-screen reminder that keeps asking sounds: the same tone, round and round until you answer it. One asked for «sound» says it once and stops, on the screen as anywhere else. This preview stops itself after half a minute.</string>
     <string name="settings_sound_volume">Alarm volume</string>
     <string name="settings_sound_volume_hint">The phone\'s own alarm slider, here so a sound can be chosen at the level it will actually arrive at. Reminders play on the alarm stream, so this is the only volume that governs them — and at zero they are silent.</string>
     <string name="settings_sound_headphones">To the headphones when there are any</string>

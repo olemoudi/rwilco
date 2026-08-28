@@ -975,7 +975,7 @@
     </string-array>
     <string name="settings_sound_stop">Parar</string>
     <string name="settings_sound_loop">Oírlo en continuo</string>
-    <string name="settings_sound_loop_hint">Cómo suena un aviso a pantalla completa: el mismo tono, una y otra vez hasta que lo atiendes. Aquí se para solo a los treinta segundos.</string>
+    <string name="settings_sound_loop_hint">Cómo suena a pantalla completa un aviso que insiste: el mismo tono, una y otra vez hasta que lo atiendes. Uno con «sonido» lo dice una vez y calla, en la pantalla igual que en cualquier otro sitio. Esta prueba se para sola a los treinta segundos.</string>
     <string name="settings_sound_volume">Volumen de alarma</string>
     <string name="settings_sound_volume_hint">El propio deslizador de alarma del móvil, aquí para poder elegir un sonido al volumen al que va a llegar de verdad. Los avisos suenan por el canal de alarma, así que es el único volumen que los gobierna — y a cero son mudos.</string>
     <string name="settings_sound_headphones">A los auriculares cuando los haya</string>

@@ -25,6 +25,7 @@ import dev.rwilco.model.Snooze
 import dev.rwilco.model.VibrationLimits
 import dev.rwilco.model.awaitingAnswer
 import dev.rwilco.model.firingPlan
+import dev.rwilco.model.loopsOnScreen
 import dev.rwilco.model.soundFor
 import dev.rwilco.ui.theme.RwilcoTheme
 import dev.rwilco.ui.theme.resolvesToDark
@@ -91,13 +92,17 @@ class AlertActivity : ComponentActivity() {
             // asking, the tone is the one chosen for that.
             val tone = current.soundFor(plans.any { it.insistent })
 
-            DisposableEffect(sound, vibrate, current.vibration, tone, current.alertToHeadphones, ringEpoch) {
+            val looping = loopsOnScreen(plans)
+            DisposableEffect(sound, vibrate, current.vibration, tone, current.alertToHeadphones, looping, ringEpoch) {
                 ringer.start(
                     sound = sound,
                     vibrate = vibrate,
                     pattern = current.vibration,
                     tone = tone,
                     toHeadphones = current.alertToHeadphones,
+                    // "Sonido" is once, here too: the screen only goes round and round for the
+                    // reminders that asked to be insisted at.
+                    looping = loopsOnScreen(plans),
                 )
                 onDispose { ringer.stop() }
             }

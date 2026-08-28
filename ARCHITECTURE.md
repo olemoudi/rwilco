@@ -750,7 +750,12 @@ strict is asking somebody to remember how they spelled it.
   channel rather than an edit Android would ignore. Only the rhythm; a channel's pattern is
   durations and nothing else, with no way to say how hard, so a gentle notification and a strong
   one are the same notification. A full-screen alert's notification stays silent: the
-  screen does its own ring (`AlertRinger`) and gives up **when the buzz does** — one minute,
+  screen does its own ring (`AlertRinger`) — **round and round only if that is what was asked
+  for** (`loopsOnScreen`): "sonido" says the tone once here as it does anywhere else, and the
+  loop belongs to "hasta que reciba caso" alone. It looped whatever it was given until 0.36.1,
+  which made the two tiles the same thing on the one surface where the difference is loudest —
+  a reminder asked to say it once said it over and over for a minute. It gives up **when the
+  buzz does** — one minute,
   `VibrationLimits.LONGEST` — and so does its hold on the screen (`FLAG_KEEP_SCREEN_ON` is
   cleared with the noise). The two are one alarm, and they used to end a minute apart: the motor
   stopped at its limit and the looping tone went on alone. Nobody answered in
