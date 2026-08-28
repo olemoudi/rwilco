@@ -643,9 +643,17 @@ strict is asking somebody to remember how they spelled it.
   "a las ocho, y luego cada seis horas" means; and rung and ignored, that moment is spent like
   any other (`recurrenceMoment`). With no rules at all the recurrence is the whole arrangement
   and its moment is always the ring.
-- **The safety net** (`core-model/SafetyNet.kt`) is the one thing the app does about a firing
-  nobody answered. Asked for per reminder (`Reminder.safetyNet`, a switch on the "qué pasa"
-  card) and said **once per firing** (`Reminder.nudgedAt`), quietly: `CHANNEL_NET` is
+- **The safety net** (`core-model/SafetyNet.kt`) is the one thing the app does about a reminder
+  that got away. **There are two ways one does** (`NetWord`), and one switch for both, because
+  nobody knows in advance which it will be: it **rang and was never answered** (`LET_GO`), or it
+  **never rang at all** (`NEVER_RANG`) — the moment came while a fence was shut, or while the
+  other half of an "a la vez" was false, and there is no moment left for it to ring at
+  (`nextFire == null`, never rung, never dealt with). The second one is anchored on
+  `lastMomentGone`: the last moment the shape named that came and went, walked forwards from the
+  day it was written, because forwards is the only direction any of this arithmetic goes — and
+  only ever asked of a reminder with nothing left ahead, which is why the walk is short. Asked
+  for per reminder (`Reminder.safetyNet`, a switch on the "qué pasa" card) and said **once per
+  moment** (`Reminder.nudgedAt`), quietly: `CHANNEL_NET` is
   `IMPORTANCE_LOW`, silent, still, never a screen and never pinned — the same card with the same
   three buttons, on a line that says *puede que se te haya pasado* and a clock counting up from
   the ring. What it waits for is `nudgeAt`: the whole wait (`afterHours`, a day) when the

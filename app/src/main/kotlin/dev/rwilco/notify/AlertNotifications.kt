@@ -16,6 +16,7 @@ import dev.rwilco.alarm.AlertActionReceiver
 import dev.rwilco.alarm.ReminderScheduler
 import dev.rwilco.ui.alert.AlertActivity
 import dev.rwilco.model.FiringPlan
+import dev.rwilco.model.NetWord
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.AlertSound
 import dev.rwilco.model.Snooze
@@ -127,11 +128,14 @@ object AlertNotifications {
         chosen: AlertSound = AlertSound.System,
         ruleIndex: Int? = null,
         /**
-         * The safety net's word about a firing nobody answered: the same card, on the quietest
-         * channel there is, saying so in its own line. Never a screen, never a sound, never
-         * pinned — everything that makes an alarm an alarm is exactly what this is not.
+         * The safety net's word about a reminder that got away, and which way it got away: the
+         * same card, on the quietest channel there is, saying so in its own line. Never a
+         * screen, never a sound, never pinned — everything that makes an alarm an alarm is
+         * exactly what this is not.
          */
-        nudge: Boolean = false,
+        nudge: NetWord? = null,
+        /** The moment that word is about, which its clock counts up from. */
+        nudgeAbout: Instant? = null,
     ) {
         // A file that will not open right now plays as the system tone (Sounds.uri), and the
         // channel has to be NAMED for the tone it will actually carry: a channel's sound is
@@ -147,7 +151,7 @@ object AlertNotifications {
         val vibrateHere = plan.vibrate && !fullScreen
         val bypass = context.getSystemService(NotificationManager::class.java)?.isNotificationPolicyAccessGranted == true
         val channel = when {
-            nudge -> CHANNEL_NET
+            nudge != null -> CHANNEL_NET
             late != null -> CHANNEL_MISSED
             else -> channelId(soundHere, vibrateHere, vibration, effective, bypass)
         }
@@ -173,14 +177,14 @@ object AlertNotifications {
             .setShowWhen(true)
             // A net's word counts up from the ring it is about — "hace un día" is the whole of
             // what it has to say, and a bare timestamp makes somebody work it out.
-            .setWhen((late ?: reminder.lastFiredAt.takeIf { nudge } ?: Instant.now()).toEpochMilli())
-            .setUsesChronometer(late != null || nudge)
+            .setWhen((late ?: nudgeAbout ?: Instant.now()).toEpochMilli())
+            .setUsesChronometer(late != null || nudge != null)
             // An alarm to the system, not a reminder: Do Not Disturb lets alarms through by
             // default and holds reminders back by default, and this is the one that must arrive.
-            .setCategory(if (late != null || nudge) NotificationCompat.CATEGORY_REMINDER else NotificationCompat.CATEGORY_ALARM)
+            .setCategory(if (late != null || nudge != null) NotificationCompat.CATEGORY_REMINDER else NotificationCompat.CATEGORY_ALARM)
             .setPriority(
                 when {
-                    nudge -> NotificationCompat.PRIORITY_LOW
+                    nudge != null -> NotificationCompat.PRIORITY_LOW
                     late != null -> NotificationCompat.PRIORITY_DEFAULT
                     else -> NotificationCompat.PRIORITY_HIGH
                 },
@@ -200,18 +204,23 @@ object AlertNotifications {
                 actionIntent(context, reminder.id, AlertActionReceiver.ACTION_SNOOZE, Snooze.TWO_HOURS),
             )
         if (reminder.tags.isNotEmpty()) builder.setContentText(reminder.tags.joinToString(" · "))
-        if (nudge) builder.setSubText(context.getString(R.string.notif_net_subtext))
-        else if (late != null) builder.setSubText(context.getString(R.string.alert_missed_subtext))
+        when {
+            nudge == NetWord.LET_GO -> builder.setSubText(context.getString(R.string.notif_net_subtext))
+            // The other way one gets away, and a different thing to be told: this one never
+            // reached you at all, because its moment came while something was shut.
+            nudge == NetWord.NEVER_RANG -> builder.setSubText(context.getString(R.string.notif_net_subtext_never))
+            late != null -> builder.setSubText(context.getString(R.string.alert_missed_subtext))
+        }
         // A full-screen alert is a request, not a promise: the system may refuse it (since
         // Android 14 it is for calls and alarms unless the person says otherwise), and then this
         // is simply a heads-up notification with the same buttons. [fullScreen] is the caller's
         // own decision on top of that — see AlertPresenter: an app open in front of somebody
         // gets the banner and nothing else.
-        if (fullScreen && late == null && !nudge) builder.setFullScreenIntent(open, true)
+        if (fullScreen && late == null && nudge == null) builder.setFullScreenIntent(open, true)
         // "Hasta que reciba caso" means what it says: this one cannot be flicked away in the
         // half-asleep swipe that clears the shade. Everything else stays swipeable, because
         // most reminders are read and let go and pinning those would be nagging.
-        if (plan.insistent && late == null && !nudge) builder.setOngoing(true)
+        if (plan.insistent && late == null && nudge == null) builder.setOngoing(true)
         runCatching {
             NotificationManagerCompat.from(context).notify(notificationId(reminder.id), builder.build())
             syncSummary(context, posted = notificationId(reminder.id))

@@ -331,8 +331,9 @@
     <string name="notif_channel_net">Safety net</string>
     <string name="notif_channel_net_description">A quiet word about a reminder that rang and was never answered.</string>
     <string name="notif_net_subtext">You may have let this one go</string>
+    <string name="notif_net_subtext_never">This never reached you</string>
     <string name="settings_net_title">Safety net</string>
-    <string name="settings_net_about">A reminder can be asked to keep one eye on you: if it rings and you never answer it, you get one quiet word about it — no sound, no screen, once. The switch is on each reminder, under «what happens»; these are what it means by «later».</string>
+    <string name="settings_net_about">A reminder can be asked to keep one eye on you. There are two ways one gets away — it rings and you never answer it, or its moment comes while a fence is shut and there is none left for it to ring at — and one switch for both, since nobody knows in advance which way it will be. Either way you get one quiet word about it: no sound, no screen, once. The switch is on each reminder, under «what happens»; these are what it means by «later».</string>
     <string name="settings_net_after">At most it waits</string>
     <string name="settings_net_after_hint">And this is the whole wait when the reminder has nothing left to ring: a date that has been, a countdown that ran out. Nothing else is coming, so there is no hurry.</string>
     <string name="settings_net_after_value">%1$d h</string>
@@ -490,7 +491,7 @@
     <string name="editor_when_optional">optional</string>
     <string name="editor_what_optional">optional</string>
     <string name="editor_net_title">Safety net</string>
-    <string name="editor_net_hint">If it rings and you let it go, one quiet word about it %1$s later.</string>
+    <string name="editor_net_hint">If it rings and you let it go — or if its moment passes without it ringing at all — one quiet word about it %1$s later.</string>
     <string name="editor_net_too_fast">It comes back every %1$s — too often for a net, since the next ring gets there first.</string>
     <string name="editor_when_empty">Nothing rings it: it is simply kept, under its tags.</string>
     <string name="editor_what_empty">The moment passes in silence.</string>

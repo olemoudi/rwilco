@@ -14,7 +14,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 
-/** The quiet word about a reminder that rang and that nobody answered. */
+/** The quiet word about a reminder that got away, either way it got away. */
 class SafetyNetTest {
 
     private val settings = SafetyNetSettings()
@@ -128,11 +128,68 @@ class SafetyNetTest {
     }
 
     @Test
+    fun `a moment that came while a fence was shut, with none left, is the other way one gets away`() {
+        // "El jueves a las nueve, y sólo si estoy en casa." Thursday nine came while nobody was
+        // home; nothing rang, and there is no second Thursday for this one.
+        val thursday = LocalDate.of(2026, 8, 27)
+        val home = Condition.AtPlace(40.4, -3.7, 200, "Casa")
+        val missed = reminder(
+            TriggerRule(Trigger.AtDateTime(thursday.atTime(9, 0)), listOf(home)),
+        ).copy(createdAt = local(2026, 8, 26, 12, 0), updatedAt = local(2026, 8, 26, 12, 0))
+        // Nothing left to ring, and it never did.
+        assertNull(nextFire(missed, now, zone, defaultTime))
+        assertNull(missed.lastFiredAt)
+        val due = missed.netDue(now, zone, defaultTime, settings)
+        assertEquals(NetWord.NEVER_RANG, due?.word)
+        assertEquals(local(2026, 8, 27, 9, 0), due?.about, "the moment that came and went")
+        assertEquals(local(2026, 8, 28, 9, 0), due?.at, "a day later, since nothing else is coming")
+    }
+
+    @Test
+    fun `a moment still ahead is not something that got away`() {
+        val friday = LocalDate.of(2026, 8, 28)
+        val ahead = reminder(TriggerRule(Trigger.AtDateTime(friday.atTime(9, 0))))
+        assertNull(ahead.netDue(now, zone, defaultTime, settings), "it has not happened yet")
+    }
+
+    @Test
+    fun `something that comes round again is never the never-rang kind`() {
+        // A daily whose window was shut this morning still has tomorrow, so nothing got away.
+        val daily = reminder(
+            TriggerRule(Trigger.Interval(LocalTime.of(9, 0), LocalTime.of(10, 0))),
+            recurrence = Recurrence.ByTrigger,
+        )
+        assertNull(daily.netDue(now, zone, defaultTime, settings))
+    }
+
+    @Test
+    fun `dealing with it, or being told about it once, takes the never-rang word down too`() {
+        val thursday = LocalDate.of(2026, 8, 27)
+        val home = Condition.AtPlace(40.4, -3.7, 200, "Casa")
+        val missed = reminder(
+            TriggerRule(Trigger.AtDateTime(thursday.atTime(9, 0)), listOf(home)),
+        ).copy(createdAt = local(2026, 8, 26, 12, 0), updatedAt = local(2026, 8, 26, 12, 0))
+        assertNull(missed.copy(safetyNet = false).netDue(now, zone, defaultTime, settings))
+        assertNull(missed.copy(lastDealtAt = now).netDue(now, zone, defaultTime, settings), "dealt with")
+        assertNull(missed.copy(status = Status.PAUSED).netDue(now, zone, defaultTime, settings))
+        assertNull(missed.copy(snoozedUntil = now.plusSeconds(3600)).netDue(now, zone, defaultTime, settings))
+        assertNull(
+            missed.copy(nudgedAt = local(2026, 8, 28, 9, 0)).netDue(now, zone, defaultTime, settings),
+            "said once is said",
+        )
+    }
+
+    @Test
     fun `every answer there is takes the net down`() {
         val rang = local(2026, 8, 27, 9, 0)
         val once = reminder(TriggerRule(Trigger.AtDateTime(LocalDate.of(2026, 8, 27).atTime(9, 0))), lastFiredAt = rang)
         assertNull(once.copy(safetyNet = false).due(), "not asked for")
-        assertNull(once.copy(lastFiredAt = null).due(), "never rang, so nothing was let go")
+        // Never having rung is not an answer — it is the other way one gets away, and the net
+        // says so in its own words.
+        assertEquals(
+            NetWord.NEVER_RANG,
+            once.copy(lastFiredAt = null).netDue(now, zone, defaultTime, settings)?.word,
+        )
         assertNull(once.copy(lastDealtAt = rang.plusSeconds(60)).due(), "hecho")
         assertNull(once.copy(snoozedUntil = now.plusSeconds(3600)).due(), "a snooze is an answer")
         assertNull(once.copy(status = Status.PAUSED).due(), "paused")

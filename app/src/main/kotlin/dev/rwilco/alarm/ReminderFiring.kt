@@ -26,7 +26,7 @@ import dev.rwilco.model.nextSoundIn
 import dev.rwilco.model.soundFor
 import dev.rwilco.model.firingPlan
 import dev.rwilco.model.missedFire
-import dev.rwilco.model.nudgeAt
+import dev.rwilco.model.netDue
 import dev.rwilco.model.momentDealtWith
 import dev.rwilco.model.momentRungFor
 import dev.rwilco.model.outcomeOfFiring
@@ -351,15 +351,15 @@ class ReminderFiring(
         val reminder = repository.get(id) ?: return@withLock Diag.note(TAG_DIAG, "r=${short(id)} gone")
         val now = clock.instant()
         val settings = settings()
-        val due = reminder.nudgeAt(now, clock.zone, settings.defaultTime, settings.safetyNet, settings.dayStart, settings.dayShape)
-        if (due == null || due > now.plusSeconds(EARLY_GRACE_SECONDS)) {
-            Log.i(TAG, "$id: the safety net has nothing to say (due=$due)")
-            Diag.note(TAG_DIAG, "r=${short(id)} net dropped (due=$due now=$now)")
+        val due = reminder.netDue(now, clock.zone, settings.defaultTime, settings.safetyNet, settings.dayStart, settings.dayShape)
+        if (due == null || due.at > now.plusSeconds(EARLY_GRACE_SECONDS)) {
+            Log.i(TAG, "$id: the safety net has nothing to say (due=${due?.at})")
+            Diag.note(TAG_DIAG, "r=${short(id)} net dropped (due=${due?.at} now=$now)")
             scheduler.rearmAll()
             return@withLock
         }
-        Log.i(TAG, "safety net for $id, about the firing at ${reminder.lastFiredAt}")
-        Diag.note(TAG_DIAG, "r=${short(id)} NET said, about the firing at ${reminder.lastFiredAt}")
+        Log.i(TAG, "safety net for $id, about the moment at ${due.about} (${due.word})")
+        Diag.note(TAG_DIAG, "r=${short(id)} NET said (${due.word}), about the moment at ${due.about}")
         repository.setNudgedAt(id, now)
         AlertNotifications.post(
             context = context,
@@ -368,7 +368,10 @@ class ReminderFiring(
             plan = FiringPlan(fullScreen = false, notification = true, sound = false, vibrate = false),
             late = null,
             fullScreen = false,
-            nudge = true,
+            // Which way it got away is the whole of what the word has to say, and the moment it
+            // is about is what the clock on it counts up from.
+            nudge = due.word,
+            nudgeAbout = due.about,
         )
         scheduler.rearmAll()
     }

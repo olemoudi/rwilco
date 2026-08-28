@@ -329,8 +329,9 @@
     <string name="notif_channel_net">Red de seguridad</string>
     <string name="notif_channel_net_description">Un aviso discreto sobre un recordatorio que sonó y que nadie atendió.</string>
     <string name="notif_net_subtext">Puede que se te haya pasado</string>
+    <string name="notif_net_subtext_never">Esto no llegó a sonar</string>
     <string name="settings_net_title">Red de seguridad</string>
-    <string name="settings_net_about">A un recordatorio se le puede pedir que te vigile: si suena y no lo atiendes nunca, recibes un aviso discreto sobre él — sin sonido, sin pantalla, una sola vez. El interruptor está en cada recordatorio, en «qué pasa»; esto es lo que significa ahí «más tarde».</string>
+    <string name="settings_net_about">A un recordatorio se le puede pedir que te vigile. Hay dos formas de que se escape — que suene y no lo atiendas nunca, o que su momento llegue con alguna condición cerrada y ya no le quede ninguno en el que sonar — y un solo interruptor para las dos, porque nadie sabe de antemano cuál va a ser. En cualquiera de los casos recibes un aviso discreto: sin sonido, sin pantalla, una sola vez. El interruptor está en cada recordatorio, en «qué pasa»; esto es lo que significa ahí «más tarde».</string>
     <string name="settings_net_after">Como mucho espera</string>
     <string name="settings_net_after_hint">Y es toda la espera cuando al recordatorio no le queda nada por sonar: una fecha que ya pasó, una cuenta atrás agotada. No viene nada detrás, así que no hay prisa.</string>
     <string name="settings_net_after_value">%1$d h</string>
@@ -488,7 +489,7 @@
     <string name="editor_when_optional">opcional</string>
     <string name="editor_what_optional">opcional</string>
     <string name="editor_net_title">Red de seguridad</string>
-    <string name="editor_net_hint">Si suena y lo dejas pasar, un aviso discreto %1$s después.</string>
+    <string name="editor_net_hint">Si suena y lo dejas pasar — o si su momento pasa sin que llegue a sonar — un aviso discreto %1$s después.</string>
     <string name="editor_net_too_fast">Vuelve cada %1$s: demasiado seguido para una red, el siguiente aviso llega antes.</string>
     <string name="editor_when_empty">No suena: se queda guardado, bajo sus etiquetas.</string>
     <string name="editor_what_empty">El momento pasa en silencio.</string>

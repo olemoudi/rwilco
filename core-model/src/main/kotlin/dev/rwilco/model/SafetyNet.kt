@@ -7,12 +7,18 @@ import java.time.LocalTime
 import java.time.ZoneId
 
 /**
- * The safety net: one quiet word about a reminder that rang and that nobody ever answered.
+ * The safety net: one quiet word about a reminder that got away.
  *
- * Everything else in this app is about a moment arriving. This is about a moment that arrived
- * and was let go — the notification swiped off the lock screen at a traffic light, the alert
- * read while both hands were full. The reminder is then sitting in "vencidos" saying nothing,
- * for ever, and the app that took the trouble to wake the phone up says nothing either.
+ * Everything else in this app is about a moment arriving. This is about the two ways one fails
+ * to. **It was let go** — the notification swiped off the lock screen at a traffic light, the
+ * alert read while both hands were full — or **it never reached you at all**: the moment came
+ * while a fence was shut ("y sólo si estoy en casa", a set under "a la vez" whose halves never
+ * held together), and now there is no moment left for it to ring at. Either way the reminder is
+ * sitting in "vencidos" saying nothing, for ever, and the app that took the trouble to work all
+ * that out says nothing either.
+ *
+ * One switch for both, because they are one question — *avísame si esto se me escapa* — and
+ * asking it twice would be asking somebody to know in advance which way it was going to escape.
  *
  * **It is asked for, per reminder** ([Reminder.safetyNet]), and it fires **once** per firing
  * nobody answered ([Reminder.nudgedAt]) — a net that keeps nagging is an alarm again, which is
@@ -31,9 +37,7 @@ import java.time.ZoneId
  *   cannot be armed at all. A reminder that comes back every twenty minutes needs no net; the
  *   next one *is* the net, and a second notification between two of them is noise.
  *
- * A reminder that has never rung has nothing to be caught: the net is about a firing, not about
- * a reminder that was written already too late (which the editor says out loud at the time). A
- * place is treated as having nothing next, because nothing can say when somebody will be back.
+ * A place is treated as having nothing next, because nothing can say when somebody will be back.
  */
 @Serializable
 data class SafetyNetSettings(
@@ -120,14 +124,100 @@ fun netWait(cadence: Duration?, settings: SafetyNetSettings): Duration {
     return minOf(longest, share)
 }
 
+/** Which way the reminder got away, which is the only thing the word itself has to say. */
+enum class NetWord {
+    /** It rang and nobody ever answered it. */
+    LET_GO,
+
+    /** Its moment came while something was shut, and there is none left for it to ring at. */
+    NEVER_RANG,
+}
+
+/** A word owed: when it is due, the moment it is about, and which of the two it is. */
+data class NetDue(val at: Instant, val about: Instant, val word: NetWord)
+
 /**
- * When the quiet word is due, or null when it is not owed at all: the net is off, the reminder
- * has been dealt with (or paused, or put off, which are answers), it has never rung, this
- * firing has already been nudged about, or it comes back too fast to be worth catching.
+ * The last moment this reminder named that came and went, or null when it named none.
  *
- * Only the moment. Whether it still holds when that moment arrives is asked again then, because
- * everything about it can change in the day it waits.
+ * Walked forward from the day it was written rather than searched backwards, because forwards is
+ * the only direction any of this arithmetic goes: a copy with nothing spent is asked what it
+ * would do, over and over, and the last answer before now is the moment that got away. Only ever
+ * asked of a reminder with nothing left ahead of it ([netDue]), which is why the walk is short —
+ * anything that repeats has a next moment and never gets here.
  */
+fun Reminder.lastMomentGone(
+    now: Instant,
+    zone: ZoneId,
+    defaultTime: LocalTime,
+    dayStart: LocalTime = DEFAULT_DAY_START,
+    shape: DayShape = DayShape.DEFAULT,
+): Instant? {
+    val fresh = copy(
+        status = Status.ACTIVE,
+        snoozedUntil = null,
+        firedRules = emptySet(),
+        lastFiredAt = null,
+        lastDealtAt = null,
+        dealtThrough = null,
+    )
+    var cursor = createdAt.minusMillis(1)
+    var last: Instant? = null
+    repeat(MOMENTS_WALKED) {
+        val at = nextWake(fresh, cursor, zone, defaultTime, dayStart, shape)?.at ?: return last
+        if (!at.isBefore(now)) return last
+        last = at
+        cursor = at
+    }
+    return last
+}
+
+/** Enough to walk out of anything that gets here; a shape with more than this has a next moment. */
+private const val MOMENTS_WALKED = 64
+
+/**
+ * The word this reminder is owed, or null when it is owed none: the net is off, it is paused or
+ * done, it has been dealt with or put off (which are answers), the word has already been said,
+ * or it comes back too fast to be worth catching.
+ *
+ * Only the moment and the reason. Whether it still holds when that moment arrives is asked again
+ * then, because everything about it can change in the day it waits.
+ */
+fun Reminder.netDue(
+    now: Instant,
+    zone: ZoneId,
+    defaultTime: LocalTime,
+    settings: SafetyNetSettings,
+    dayStart: LocalTime = DEFAULT_DAY_START,
+    shape: DayShape = DayShape.DEFAULT,
+): NetDue? {
+    if (!safetyNet || status != Status.ACTIVE) return null
+    val about: Instant
+    val word: NetWord
+    when {
+        // It rang and nobody has answered it since.
+        awaitingAnswer(now) -> {
+            about = lastFiredAt ?: return null
+            word = NetWord.LET_GO
+        }
+        // It never rang, nobody has dealt with it, and there is no moment left for it to ring
+        // at: its moment came while something was shut, and there will not be another.
+        lastFiredAt == null && lastDealtAt == null &&
+            nextFire(this, now, zone, defaultTime, dayStart, shape) == null -> {
+            about = lastMomentGone(now, zone, defaultTime, dayStart, shape) ?: return null
+            word = NetWord.NEVER_RANG
+        }
+        else -> return null
+    }
+    // Put off is an answer, whichever way it got away.
+    snoozedUntil?.let { if (it > now) return null }
+    // One word per moment. A second one about the same moment is the nagging this is not.
+    nudgedAt?.let { if (!it.isBefore(about)) return null }
+    val cadence = ringCadence(now, zone, defaultTime, dayStart, shape)
+    if (tooFastForNet(cadence, settings)) return null
+    return NetDue(about.plus(netWait(cadence, settings)), about, word)
+}
+
+/** Just the moment, for the scheduler, which only has an alarm to set. */
 fun Reminder.nudgeAt(
     now: Instant,
     zone: ZoneId,
@@ -135,13 +225,4 @@ fun Reminder.nudgeAt(
     settings: SafetyNetSettings,
     dayStart: LocalTime = DEFAULT_DAY_START,
     shape: DayShape = DayShape.DEFAULT,
-): Instant? {
-    if (!safetyNet) return null
-    if (!awaitingAnswer(now)) return null
-    val rang = lastFiredAt ?: return null
-    // One word per firing. A second one about the same ring is the nagging this is not.
-    nudgedAt?.let { if (!it.isBefore(rang)) return null }
-    val cadence = ringCadence(now, zone, defaultTime, dayStart, shape)
-    if (tooFastForNet(cadence, settings)) return null
-    return rang.plus(netWait(cadence, settings))
-}
+): Instant? = netDue(now, zone, defaultTime, settings, dayStart, shape)?.at
