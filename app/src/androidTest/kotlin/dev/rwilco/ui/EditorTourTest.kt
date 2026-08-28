@@ -149,6 +149,7 @@ class EditorTourTest {
         // Every configurator opens and cancels cleanly.
         for ((kind, name) in listOf(
             R.string.kind_date to "sheet-date",
+            R.string.kind_date_range to "sheet-date-range",
             R.string.kind_interval to "sheet-interval",
             R.string.kind_random to "sheet-random",
             R.string.kind_place to "sheet-place",
@@ -182,7 +183,20 @@ class EditorTourTest {
                 text(s(R.string.place_side_leaving)).performScrollTo().performClick()
                 rule.waitUntilDisplayed(s(R.string.place_means_leaving))
             }
+            // The date tile carries all three answers to "when in the day", and it opens on the
+            // one that asks for nothing: the hint under it is the day's own waking hours, which
+            // is the thing the settings are for.
             if (kind == R.string.kind_date) {
+                rule.waitUntilDisplayed(s(R.string.sheet_any_time))
+                shot("sheet-date-any-time")
+                // The middle one: a stretch, by the name somebody gave it. The two fields under
+                // the chips are the way out of needing a name at all.
+                text(s(R.string.sheet_in_window)).performScrollTo().performClick()
+                rule.waitUntilDisplayed(s(R.string.sheet_in_window_hint))
+                shot("sheet-date-window")
+                // And the narrowest, which is the only one with an hour to pick.
+                text(s(R.string.sheet_at_this_time)).performScrollTo().performClick()
+                rule.waitUntilDisplayed(s(R.string.sheet_time))
                 // The wheels, which replaced a dial nobody could hit one-handed.
                 rule.onAllNodesWithTag(TIME_FIELD_TAG, useUnmergedTree = true)[0].performClick()
                 rule.waitUntilShown(s(R.string.sheet_done))
@@ -190,17 +204,10 @@ class EditorTourTest {
                 text(s(R.string.sheet_done)).performClick()
                 rule.waitUntilGone(s(R.string.sheet_done))
             }
-            // The date tile now carries the other answer to "when in the day", and the hint
-            // under it is the day's own waking hours — the thing the settings are for.
-            if (kind == R.string.kind_date) {
-                // The third answer to "when in the day": a stretch, by the name somebody gave
-                // it. The two fields under the chips are the way out of needing a name at all.
-                text(s(R.string.sheet_in_window)).performScrollTo().performClick()
-                rule.waitUntilDisplayed(s(R.string.sheet_in_window_hint))
-                shot("sheet-date-window")
-                text(s(R.string.sheet_random_in_day)).performScrollTo().performClick()
-                rule.waitUntilDisplayed(s(R.string.sheet_at_this_time))
-                shot("sheet-date-random")
+            // Two calendars and no hour at all: a stretch of the calendar, said as a trigger.
+            if (kind == R.string.kind_date_range) {
+                text(s(R.string.date_range_from)).performScrollTo().assertIsDisplayed()
+                text(s(R.string.date_range_to)).performScrollTo().assertIsDisplayed()
             }
             text(s(R.string.sheet_cancel)).performClick()
             rule.waitUntilGone(s(R.string.sheet_cancel))

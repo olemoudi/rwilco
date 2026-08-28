@@ -141,9 +141,9 @@
     <string name="recur_months">Cada %1$d meses</string>
     <string name="recur_monthly_weekday">%1$s %2$s del mes</string>
     <string name="recur_more">Más</string>
-    <string name="recur_calendar">Por calendario</string>
-    <string name="recur_custom">Personalizado</string>
-    <string name="recur_custom_title">Recurrencia personalizada</string>
+    <string name="recur_calendar">Días concretos</string>
+    <string name="recur_custom">Cada cierto tiempo</string>
+    <string name="recur_custom_title">Cada cierto tiempo</string>
     <string name="recur_list_title">Recurrencias</string>
     <string name="recur_edit">Editar</string>
     <string name="recur_delete">Borrar</string>
@@ -193,8 +193,10 @@
     <!-- Trigger kinds -->
     <string name="kind_date_time">Fecha y hora</string>
     <string name="kind_date_time_hint">Un momento del calendario</string>
-    <string name="kind_date">Fecha</string>
-    <string name="kind_date_hint">Un día, con hora o sin ella</string>
+    <string name="kind_date">Fecha y hora</string>
+    <string name="kind_date_hint">Un día, y cuándo dentro de él</string>
+    <string name="kind_date_range">Intervalo de fechas</string>
+    <string name="kind_date_range_hint">Entre dos días del calendario</string>
     <string name="kind_repeat_time">Se repite</string>
     <string name="kind_repeat_time_hint">Cada día, semana, mes o año</string>
     <string name="kind_countdown">Cuenta atrás</string>
@@ -1044,7 +1046,14 @@
     </string-array>
 
     <!-- Recurrences and the hours somebody is up -->
-    <string name="trigger_random_in_day">al azar durante el día</string>
+    <string name="trigger_when_day_starts">en cuanto empieza el día</string>
+    <string name="trigger_until">hasta el %1$s</string>
+    <string name="condition_date_range">%1$s – %2$s</string>
+    <string name="editor_sentence_date_range">entre el %1$s y el %2$s</string>
+    <string name="date_range_from">Desde</string>
+    <string name="date_range_to">Hasta</string>
+    <string name="date_range_hint_alone">Solo, suena a tu hora de siempre el primer día, y cada día que siga abierto hasta que lo despaches.</string>
+    <string name="date_range_hint_together">Con «a la vez» éste es el tramo del calendario dentro del que tienen que caer los demás: «en casa, y entre el 1 y el 15».</string>
     <string name="trigger_repeat_until">hasta el %1$s</string>
     <string name="trigger_yearly_of_month">%1$s de %2$s</string>
     <string name="trigger_monthly_day">el día %1$d</string>
@@ -1054,9 +1063,9 @@
     <string name="repeat_ordinal_third">tercer</string>
     <string name="repeat_ordinal_fourth">cuarto</string>
     <string name="repeat_ordinal_last">último</string>
-    <string name="sheet_random_in_day">Al azar durante el día</string>
+    <string name="sheet_any_time">Me da igual la hora</string>
     <string name="sheet_in_window">En una franja</string>
-    <string name="sheet_in_window_hint">Un momento que no elige nadie, en algún punto dentro de ella.</string>
+    <string name="sheet_in_window_hint">Suena cuando se abre la franja, y sigue valiendo hasta que cierra.</string>
     <string name="settings_windows">Franjas del día</string>
     <string name="settings_windows_hint">Ratos del día guardados con nombre, que se ofrecen allí donde hace falta uno: a la hora de comer, por la tarde.</string>
     <string name="settings_windows_empty">Todavía no hay ninguna.</string>
@@ -1068,7 +1077,7 @@
         <item quantity="one">%1$d con nombre</item>
         <item quantity="other">%1$d con nombre</item>
     </plurals>
-    <string name="sheet_random_in_day_hint">Un momento entre las %1$s y las %2$s, sacado de tus horas de vigilia de ese día; las cambias en Ajustes.</string>
+    <string name="sheet_any_time_hint">Suena en cuanto empieza tu día, a las %1$s, y sigue valiendo hasta las %2$s. Cambias tus horas en Ajustes.</string>
     <string name="sheet_at_this_time">A una hora que elijo</string>
     <string name="sheet_repeat_every">Cada</string>
     <string name="sheet_repeat_unit_days">Días</string>

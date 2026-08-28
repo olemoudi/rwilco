@@ -130,7 +130,8 @@ private fun shapeOf(trigger: Trigger): String? = when (trigger) {
     is Trigger.Random -> "random:${trigger.timesPer}:${trigger.period}:${trigger.from}:${trigger.to}:" +
         trigger.days.map { it.value }.sorted().joinToString(",")
     // A day is that reminder's business, and "some time that day" without the day is nothing.
-    is Trigger.OnDate, is Trigger.DayRandom -> null
+    // Two days are two of the same: "entre el 1 y el 15" is about one August, not a shape.
+    is Trigger.OnDate, is Trigger.DayRandom, is Trigger.DateRange -> null
     // A repeating time is not a trigger any more: it is the calendar in "Vuelve", and what
     // offers one again is the recurrence presets, not this row. Offering a shape no tile can
     // open would be offering a dead end — and the same goes for the weekly time it was before.

@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.rwilco.R
 import dev.rwilco.model.DayShape
+import dev.rwilco.model.DayTiming
 import dev.rwilco.model.DayWindow
 import dev.rwilco.model.MAX_EVERY
 import dev.rwilco.model.MAX_TIMES
@@ -55,6 +56,12 @@ import java.time.LocalTime
  * — and the line at the bottom reads the whole thing back in the same words the card will use,
  * because a calendar built out of five controls is a thing you want to see before you agree to
  * it.
+ *
+ * A new one opens on the hour the rules above it already name ([suggested]). "El 26 a las 20:00,
+ * y vuelve cada mes" is one sentence, and asking for 20:00 twice — once in the trigger, once
+ * here, three rows apart — is asking somebody to notice that the second control exists and then
+ * to agree with themselves. Only ever a starting point, and only ever for a calendar that does
+ * not exist yet.
  */
 @Composable
 fun CalendarSheet(
@@ -63,10 +70,18 @@ fun CalendarSheet(
     defaultTime: LocalTime,
     shape: DayShape,
     savedWindows: List<SavedWindow>,
+    /**
+     * What the rules above already said about the time of day ([dayTimingOf]), for a calendar
+     * being created. Ignored when there is an [initial]: an answer somebody has given is not
+     * something a trigger may reach back and change.
+     */
+    suggested: DayTiming?,
     onConfirm: (Trigger.Repeat) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val existing = initial
+    // The rules' answer, or none, which is what a calendar with nothing above it starts from.
+    val seed = if (existing == null) suggested else null
 
     var every by rememberSaveable { mutableIntStateOf(existing?.every ?: 1) }
     var unitName by rememberSaveable { mutableStateOf((existing?.unit ?: RepeatUnit.WEEK).name) }
@@ -81,14 +96,18 @@ fun CalendarSheet(
             when {
                 existing?.window != null -> WhenKind.IN_WINDOW
                 existing != null && existing.time == null -> WhenKind.ANY_TIME
-                else -> WhenKind.AT_TIME
+                existing != null -> WhenKind.AT_TIME
+                seed is DayTiming.At -> WhenKind.AT_TIME
+                seed is DayTiming.In -> WhenKind.IN_WINDOW
+                else -> WhenKind.ANY_TIME
             }.name,
         )
     }
     val kind = WhenKind.valueOf(kindName)
-    var time by rememberTime(existing?.time ?: defaultTime)
-    var windowFrom by rememberTime(existing?.window?.from ?: LocalTime.of(14, 0))
-    var windowTo by rememberTime(existing?.window?.to ?: LocalTime.of(16, 0))
+    var time by rememberTime(existing?.time ?: (seed as? DayTiming.At)?.time ?: defaultTime)
+    val seededWindow = (seed as? DayTiming.In)?.window
+    var windowFrom by rememberTime(existing?.window?.from ?: seededWindow?.from ?: LocalTime.of(14, 0))
+    var windowTo by rememberTime(existing?.window?.to ?: seededWindow?.to ?: LocalTime.of(16, 0))
     val window = DayWindow(windowFrom, windowTo)
 
     val startingNth = existing?.monthly as? MonthlyOn.Nth
@@ -255,8 +274,9 @@ fun CalendarSheet(
     }
 }
 
+/** A control's own line. Shared with the sheets beside this one; same package, same shape. */
 @Composable
-private fun Label(text: String) {
+internal fun Label(text: String) {
     Text(text = text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 

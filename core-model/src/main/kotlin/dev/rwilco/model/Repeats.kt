@@ -112,18 +112,23 @@ private fun dayIn(month: YearMonth, rule: MonthlyOn): LocalDate = when (rule) {
 }
 
 /**
- * The moment this repeat rings on [date]: its own hour, or one drawn from the stretch of the day
- * it was given, or from that day's waking hours. The draw is by (reminder, day), so it holds
- * still while the day does.
+ * The moment this repeat rings on [date]: its own hour, or the opening of the stretch of the day
+ * it was given, or of that day's waking hours.
  *
- * The three answers narrow, in that order: an hour is exact, a window is "somewhere in here",
- * and the waking hours are "somewhere today". [Trigger.Repeat.window] is only ever read when
- * there is no hour, because an hour somebody typed is not a thing anything else may argue with.
+ * The three answers narrow, in that order: an hour is exact, a window is "as soon as this
+ * stretch is under way", and the waking hours are "as soon as the day is". [Trigger.Repeat.window]
+ * is only ever read when there is no hour, because an hour somebody typed is not a thing anything
+ * else may argue with.
  *
  * [fences] are the hour fences the moment has to clear ("y sólo si es entre las 16 y las 17"),
- * and a draw is made inside them rather than judged against them afterwards — see
- * [RandomDraw.inDay]. An hour somebody typed is left to the walk that asks the fences.
+ * and the opening is moved inside them rather than judged against them afterwards — see
+ * [openingOf]. An hour somebody typed is left to the walk that asks the fences.
+ *
+ * [reminderId] is no longer read — the moment was drawn from it, and a calendar with no hour is
+ * an opening now rather than a lottery — but it stays on the signature because it is what every
+ * caller has to hand and what a moment that goes back to being drawn would need again.
  */
+@Suppress("UNUSED_PARAMETER")
 fun Trigger.Repeat.momentOn(
     date: LocalDate,
     reminderId: String,
@@ -135,8 +140,7 @@ fun Trigger.Repeat.momentOn(
     val span = window
     return when {
         hour != null -> date.atTime(hour).atZone(zone).toInstant()
-        span != null -> RandomDraw.inDay(reminderId, date, span.on(date), zone, fences)
-        else -> RandomDraw.inDay(reminderId, date, shape.awakeOn(date), zone, fences)
+        else -> openingOf(span?.on(date) ?: shape.awakeOn(date), fences).atZone(zone).toInstant()
     }
 }
 

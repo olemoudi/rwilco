@@ -29,14 +29,11 @@ import dev.rwilco.ui.components.TimeField
 import dev.rwilco.ui.components.calendar.MonthCalendar
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.currentLocale
-import dev.rwilco.ui.format.dayWord
 import dev.rwilco.ui.format.rememberIs24h
 import dev.rwilco.ui.theme.Tokens
-import java.time.DayOfWeek
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZonedDateTime
-import java.time.temporal.TemporalAdjusters
 
 /**
  * A day, and then the question of when in it.
@@ -44,8 +41,16 @@ import java.time.temporal.TemporalAdjusters
  * One tile, where there were two. "Fecha" and "fecha y hora" asked the same thing and differed
  * only in whether the hour came from the settings, which is not a decision anybody wants to
  * make before picking a day — and picking the wrong tile meant going back and starting again.
- * So the hour is here, filled in with the usual one, and the other answer to "when in it" is
- * beside it: leave it to the day, which draws a moment from the hours this person is up.
+ * So the hour is here, and beside it the two answers that do not name one.
+ *
+ * It opens on the laxest of the three, because that is the one that needs no thinking about: a
+ * day is a thing you know, an hour is a thing you have to decide, and a sheet that opens on the
+ * decision makes you take it before you have picked the day. Narrowing from there is one tap.
+ *
+ * There are no chips over the calendar any more. Three guesses at a date ("mañana a las 9",
+ * "el sábado a las 10") sat above a control that answers the same question completely, and each
+ * of them also quietly picked the hour — so tapping one undid the choice below it and the two
+ * halves of the sheet disagreed about what you had said.
  */
 @Composable
 fun DateSheet(
@@ -78,7 +83,11 @@ fun DateSheet(
             when {
                 startingWindow != null -> WhenKind.IN_WINDOW
                 initial is Trigger.DayRandom -> WhenKind.ANY_TIME
-                else -> WhenKind.AT_TIME
+                // An hour on disk is one somebody typed (or, for the old date-only shape, the
+                // one it has always meant); a sheet with nothing behind it opens on the answer
+                // that asks for nothing.
+                initial != null -> WhenKind.AT_TIME
+                else -> WhenKind.ANY_TIME
             }.name,
         )
     }
@@ -86,15 +95,6 @@ fun DateSheet(
     var windowFrom by rememberTime(startingWindow?.from ?: LocalTime.of(14, 0))
     var windowTo by rememberTime(startingWindow?.to ?: LocalTime.of(16, 0))
     val window = DayWindow(windowFrom, windowTo)
-    val locale = currentLocale()
-    val is24h = rememberIs24h()
-
-    val presets = buildList {
-        val tonight = LocalTime.of(20, 0)
-        if (now.toLocalTime().isBefore(tonight)) add(today to tonight)
-        add(today.plusDays(1) to LocalTime.of(9, 0))
-        add(today.with(TemporalAdjusters.next(DayOfWeek.SATURDAY)) to LocalTime.of(10, 0))
-    }
 
     SheetScaffold(
         title = stringResource(R.string.kind_date),
@@ -112,23 +112,6 @@ fun DateSheet(
         // A stretch with no width has no moment in it.
         confirmEnabled = kind != WhenKind.IN_WINDOW || windowFrom != windowTo,
     ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-        ) {
-            for ((presetDate, presetTime) in presets) {
-                val label = dayWord(presetDate, today, locale) + " " + TimeText.time(presetTime, is24h, locale)
-                PresetChip(
-                    label = label.replaceFirstChar { it.titlecase(locale) },
-                    selected = kind == WhenKind.AT_TIME && date == presetDate && time == presetTime,
-                    onClick = {
-                        date = presetDate
-                        time = presetTime
-                        kindName = WhenKind.AT_TIME.name
-                    },
-                )
-            }
-        }
         MonthCalendar(selected = date, today = today, onSelect = { date = it }, minDate = today)
         WhenInTheDay(
             kind = kind,
@@ -144,22 +127,33 @@ fun DateSheet(
     }
 }
 
-/** The three answers to "when in the day", narrowing from an hour to the whole of it. */
-enum class WhenKind { AT_TIME, IN_WINDOW, ANY_TIME }
+/**
+ * The three answers to "when in the day", widening from the whole of it to an hour.
+ *
+ * In that order because that is the order they are decided in: not caring is where everybody
+ * starts, and each step to the right is somebody choosing to say more. The first is also what a
+ * new sheet opens on, so the common answer costs no taps at all.
+ */
+enum class WhenKind { ANY_TIME, IN_WINDOW, AT_TIME }
 
 /**
  * When in the day: an hour I pick, somewhere inside a stretch I name, or none of your business.
  *
- * Shared by the date tile and the recurrence tile, because it is the same question and has to be
- * the same control. The three narrow in order — a moment, a stretch, the day — and the middle
- * one is the one that needed a name for a stretch to be worth having: "a la hora de comer" is a
- * thing people say and "entre las 14:00 y las 16:00" is a thing they have to think about. The
- * chips are those names ([SavedWindow], kept in the settings); the two fields under them are
- * always there, so a stretch nobody has named is still one tap further than a chip and not a
- * trip to the settings.
+ * Shared by the date tile and the calendar behind "Vuelve", because it is the same question and
+ * has to be the same control — which is also why the calendar opens on whatever the rules above
+ * it already answered (`dayTimingOf`). The three widen in order — the day, a stretch, a moment —
+ * and the middle one is the one that needed a name for a stretch to be worth having: "a la hora
+ * de comer" is a thing people say and "entre las 14:00 y las 16:00" is a thing they have to
+ * think about. The chips are those names ([SavedWindow], kept in the settings); the two fields
+ * under them are always there, so a stretch nobody has named is still one tap further than a
+ * chip and not a trip to the settings.
  *
- * The hint under the last one is the day's own window, worked out for whichever day is selected
- * — a Saturday and a Tuesday say different things, which is the whole point of having asked for
+ * **Neither of the first two is a lottery.** They open when their stretch opens and stay true
+ * until it closes ([openingOf]) — the hints say so in as many words — because a moment nobody
+ * can predict is a thing to ask for on purpose, and there is a tile for it.
+ *
+ * The hint under the first is the day's own window, worked out for whichever day is selected —
+ * a Saturday and a Tuesday say different things, which is the whole point of having asked for
  * the hours in the first place.
  */
 @Composable
@@ -179,9 +173,9 @@ fun WhenInTheDay(
     Column(verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm)) {
         SegmentedChoice(
             options = listOf(
-                stringResource(R.string.sheet_at_this_time),
+                stringResource(R.string.sheet_any_time),
                 stringResource(R.string.sheet_in_window),
-                stringResource(R.string.sheet_random_in_day),
+                stringResource(R.string.sheet_at_this_time),
             ),
             selectedIndex = kind.ordinal,
             onSelect = { onKind(WhenKind.entries[it]) },
@@ -238,7 +232,7 @@ fun WhenInTheDay(
                 val awake = shape.awakeOn(date)
                 Text(
                     text = stringResource(
-                        R.string.sheet_random_in_day_hint,
+                        R.string.sheet_any_time_hint,
                         TimeText.time(awake.from.toLocalTime(), is24h, locale),
                         TimeText.time(awake.to.toLocalTime(), is24h, locale),
                     ),

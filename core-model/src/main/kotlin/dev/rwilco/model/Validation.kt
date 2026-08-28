@@ -163,6 +163,8 @@ fun problemOf(recurrence: Recurrence): TriggerProblem? {
 fun problemOf(condition: Condition): TriggerProblem? = when (condition) {
     // A window that starts where it ends is not a window; one that crosses midnight is.
     is Condition.TimeWindow -> TriggerProblem.WINDOW_EMPTY.takeIf { condition.from == condition.to }
+    // Both days count, so a range of one day is a range; one that ends before it starts is not.
+    is Condition.DateRange -> TriggerProblem.ENDS_BEFORE_START.takeIf { condition.to < condition.from }
     is Condition.AtPlace -> when {
         condition.lat !in -90.0..90.0 || condition.lng !in -180.0..180.0 -> TriggerProblem.COORDINATES_INVALID
         condition.radiusM !in MIN_RADIUS_M..MAX_RADIUS_M -> TriggerProblem.RADIUS_OUT_OF_RANGE
@@ -187,6 +189,8 @@ fun problemOf(trigger: Trigger): TriggerProblem? = when (trigger) {
     // No days is every day here, unlike AtTime: a window is a shape of the day, not a weekly
     // appointment. A window that starts where it ends is not a window; one that wraps is.
     is Trigger.Interval -> TriggerProblem.WINDOW_EMPTY.takeIf { trigger.from == trigger.to }
+    // Both days count, so a single-day range is fine; one that ends before it starts is not.
+    is Trigger.DateRange -> TriggerProblem.ENDS_BEFORE_START.takeIf { trigger.to < trigger.from }
     is Trigger.Countdown -> TriggerProblem.COUNTDOWN_OUT_OF_RANGE.takeIf { trigger.minutes !in MIN_COUNTDOWN_MINUTES..MAX_COUNTDOWN_MINUTES }
     is Trigger.Location -> when {
         trigger.lat !in -90.0..90.0 || trigger.lng !in -180.0..180.0 -> TriggerProblem.COORDINATES_INVALID
@@ -220,41 +224,33 @@ fun warnings(
     shape: DayShape = DayShape.DEFAULT,
 ): List<ValidationWarning> {
     // Judged as they will be saved: a day left to the day is narrowed to what is left of it at
-    // the save (settleDays), and a warning read off the unnarrowed draw said "ya ha pasado" of
+    // the save (settleDays), and a warning read off the unnarrowed window said "ya ha pasado" of
     // a reminder that was going to ring tonight.
     val rules = settleDays(rules, now, zone, shape)
     val found = ArrayList<ValidationWarning>()
     val doomed = ArrayList<Int>()
     // Under "a la vez" every rule is judged with the others folded into it as conditions, which
-    // is exactly what it will be judged by when the alarm goes off (Reminder.ruleInSet).
-    // A set that combines also changes what a rule's trigger MEANS (Trigger.whenCombined), so
-    // the warning is worked out from the same trigger the firing will use, not from the one
-    // written down.
-    val inSet = if (match != RuleMatch.ANY && rules.size > 1) {
-        rules.map { it.copy(trigger = it.trigger.whenCombined(shape, it.windows())) }
-    } else {
-        rules
-    }
+    // is exactly what it will be judged by when the alarm goes off (Reminder.ruleInSet) — and
+    // in the same order, which is the one thing about this that has to match.
     val folded = if (match == RuleMatch.TOGETHER && rules.size > 1) {
-        inSet.indices.map { index ->
-            // The siblings' STATES come off the rules as written, never off the rewrite: a
-            // window that a set turned into its own opening still has to reach the others as
-            // "and only while it is open", which is the whole of what it does for them. This is
-            // the same order Reminder.ruleInSet folds in, and it has to stay the same order.
+        rules.indices.map { index ->
             val others = rules.filterIndexed { at, _ -> at != index }
-            inSet[index].let { it.copy(conditions = it.conditions + others.flatMap { o -> o.conditions } + others.mapNotNull { o -> o.trigger.asState(shape) }) }
+            rules[index].let { it.copy(conditions = it.conditions + others.flatMap { o -> o.conditions } + others.mapNotNull { o -> o.trigger.asState(shape) }) }
         }
     } else {
-        inSet
+        rules
     }
     // Counted on the rules as written, for the same reason: whether a rule is only ever true at
     // an instant is a fact about what somebody asked for, not about the moment a set gives it.
     val moments = if (match == RuleMatch.TOGETHER && rules.size > 1) rules.count { it.trigger.isMoment } else 0
     rules.forEachIndexed { index, bare ->
         val rule = folded[index]
-        val onItsOwn = nextFireOf(rule.trigger, "", now, zone, defaultTime, shape)
+        // With the rule's own hour fences, exactly as nextFireOfRule reaches them: a day with no
+        // hour opens at the first minute they allow, so "el jueves, sólo de 16 a 17" is judged on
+        // the 16:00 it will actually ring at rather than on breakfast time.
+        val onItsOwn = nextFireOf(rule.trigger, "", now, zone, defaultTime, shape, rule.windows())
         val oneShot = rule.trigger is Trigger.AtDateTime || rule.trigger is Trigger.OnDate ||
-            rule.trigger is Trigger.DayRandom
+            rule.trigger is Trigger.DayRandom || rule.trigger is Trigger.DateRange
         when {
             // Nothing left of the trigger itself: a date that has been and gone.
             onItsOwn == null && oneShot -> {

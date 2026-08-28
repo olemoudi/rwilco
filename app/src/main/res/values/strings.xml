@@ -143,9 +143,9 @@
     <string name="recur_months">Every %1$d months</string>
     <string name="recur_monthly_weekday">%1$s %2$s of the month</string>
     <string name="recur_more">More</string>
-    <string name="recur_calendar">By the calendar</string>
-    <string name="recur_custom">Custom</string>
-    <string name="recur_custom_title">Custom recurrence</string>
+    <string name="recur_calendar">Specific days</string>
+    <string name="recur_custom">Every so often</string>
+    <string name="recur_custom_title">Every so often</string>
     <string name="recur_list_title">Recurrences</string>
     <string name="recur_edit">Edit</string>
     <string name="recur_delete">Delete</string>
@@ -195,8 +195,10 @@
     <!-- Trigger kinds -->
     <string name="kind_date_time">Date and time</string>
     <string name="kind_date_time_hint">A moment on the calendar</string>
-    <string name="kind_date">Date</string>
-    <string name="kind_date_hint">A day, with an hour or without one</string>
+    <string name="kind_date">Date and time</string>
+    <string name="kind_date_hint">A day, and when in it</string>
+    <string name="kind_date_range">Date range</string>
+    <string name="kind_date_range_hint">Between two days on the calendar</string>
     <string name="kind_repeat_time">Repeats</string>
     <string name="kind_repeat_time_hint">Every day, week, month or year</string>
     <string name="kind_countdown">Countdown</string>
@@ -1046,7 +1048,14 @@
     </string-array>
 
     <!-- Recurrences and the hours somebody is up -->
-    <string name="trigger_random_in_day">at random during the day</string>
+    <string name="trigger_when_day_starts">when the day starts</string>
+    <string name="trigger_until">until %1$s</string>
+    <string name="condition_date_range">%1$s – %2$s</string>
+    <string name="editor_sentence_date_range">between %1$s and %2$s</string>
+    <string name="date_range_from">From</string>
+    <string name="date_range_to">To</string>
+    <string name="date_range_hint_alone">On its own it rings at your usual time on the first day, and on each day it is still open until you deal with it.</string>
+    <string name="date_range_hint_together">With «at once» this is the stretch of the calendar the others have to fall inside: «at home, and between the 1st and the 15th».</string>
     <string name="trigger_repeat_until">until %1$s</string>
     <string name="trigger_yearly_of_month">%1$s of %2$s</string>
     <string name="trigger_monthly_day">day %1$d</string>
@@ -1056,9 +1065,9 @@
     <string name="repeat_ordinal_third">third</string>
     <string name="repeat_ordinal_fourth">fourth</string>
     <string name="repeat_ordinal_last">last</string>
-    <string name="sheet_random_in_day">At random during the day</string>
+    <string name="sheet_any_time">Any time is fine</string>
     <string name="sheet_in_window">In a window</string>
-    <string name="sheet_in_window_hint">A moment nobody chose, somewhere inside it.</string>
+    <string name="sheet_in_window_hint">Rings when the window opens, and goes on counting until it closes.</string>
     <string name="settings_windows">Times of day</string>
     <string name="settings_windows_hint">Stretches of the day kept by name, offered wherever one is asked for: at lunchtime, in the evening.</string>
     <string name="settings_windows_empty">Nothing named yet.</string>
@@ -1070,7 +1079,7 @@
         <item quantity="one">%1$d named</item>
         <item quantity="other">%1$d named</item>
     </plurals>
-    <string name="sheet_random_in_day_hint">A moment between %1$s and %2$s, from the hours you are up that day. You set them in Settings.</string>
+    <string name="sheet_any_time_hint">Rings as soon as your day starts, at %1$s, and goes on counting until %2$s. You set your hours in Settings.</string>
     <string name="sheet_at_this_time">At a time I choose</string>
     <string name="sheet_repeat_every">Every</string>
     <string name="sheet_repeat_unit_days">Days</string>

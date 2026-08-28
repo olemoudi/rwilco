@@ -147,23 +147,22 @@ fun Reminder.pendingRules(): List<Int> = when {
 }
 
 /**
- * One rule as its own set makes it: the trigger a combining set gives it ([Trigger.whenCombined]),
- * and — under TOGETHER — every other rule folded into it as a condition.
+ * One rule as its own set makes it: under TOGETHER, every other rule folded into it as a
+ * condition; everywhere else, itself.
  *
  * The folding is the whole of how "a la vez" works, and why it needed almost no new machinery:
  * asking "did rule 2 just happen, and is everything else true right now?" is asking whether rule
  * 2's conditions hold, once the others have been read as states. A sibling with no state reading
- * — another moment — folds to nothing and takes the set with it, which is what [cannotCoincide]
- * exists to say before anybody waits for it.
+ * — another moment — folds to nothing and takes the set with it, which is what
+ * [momentsCannotCoincide] exists to say before anybody waits for it.
  *
- * The trigger part applies under ALL as well, and to nothing under ANY: a rule in an "either"
- * set depends on nobody, so it keeps the reading it has on its own.
+ * It used to rewrite the rule's own *trigger* too, because a day with no hour meant one drawn
+ * minute alone and its window's opening in company. It means the opening either way now
+ * ([openingOf]), so there is one reading of a rule and this only has to add the company's.
  */
 fun Reminder.ruleInSet(index: Int, shape: DayShape = DayShape.DEFAULT): TriggerRule? {
-    val bare = rules.getOrNull(index) ?: return null
-    if (!rulesCombine || ruleMatch == RuleMatch.ANY) return bare
-    val rule = bare.copy(trigger = bare.trigger.whenCombined(shape, bare.windows()))
-    if (ruleMatch != RuleMatch.TOGETHER) return rule
+    val rule = rules.getOrNull(index) ?: return null
+    if (!rulesCombine || ruleMatch != RuleMatch.TOGETHER) return rule
     val others = rules.filterIndexed { at, _ -> at != index }
     // A sibling that is only ever true at an instant cannot be true at *this* instant, so the
     // set cannot hold and this rule must not ring. Folding it to nothing and carrying on would

@@ -137,6 +137,7 @@ val TriggerKind.titleRes: Int
     get() = when (this) {
         TriggerKind.DATE_TIME -> R.string.kind_date_time
         TriggerKind.DATE -> R.string.kind_date
+        TriggerKind.DATE_RANGE -> R.string.kind_date_range
         TriggerKind.REPEAT_TIME -> R.string.kind_repeat_time
         TriggerKind.INTERVAL -> R.string.kind_interval
         TriggerKind.COUNTDOWN -> R.string.kind_countdown
@@ -148,6 +149,7 @@ private val TriggerKind.hintRes: Int
     get() = when (this) {
         TriggerKind.DATE_TIME -> R.string.kind_date_time_hint
         TriggerKind.DATE -> R.string.kind_date_hint
+        TriggerKind.DATE_RANGE -> R.string.kind_date_range_hint
         TriggerKind.REPEAT_TIME -> R.string.kind_repeat_time_hint
         TriggerKind.INTERVAL -> R.string.kind_interval_hint
         TriggerKind.COUNTDOWN -> R.string.kind_countdown_hint

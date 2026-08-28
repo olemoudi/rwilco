@@ -53,6 +53,17 @@ sealed interface Condition {
     ) : Condition
 
     /**
+     * Between two days of the calendar, both included: "y sólo si estamos en agosto".
+     *
+     * The state [Trigger.DateRange] reads as, and the one condition that says nothing about the
+     * hour — a day is either in the stretch or it is not. Days rather than instants on purpose:
+     * "entre el 1 y el 15" means the whole of the 15th to everybody who says it.
+     */
+    @Serializable
+    @SerialName("date_range")
+    data class DateRange(val from: LocalDate, val to: LocalDate) : Condition
+
+    /**
      * Being somewhere, or not being there: "a las nueve, y sólo si estoy en casa".
      *
      * The state that matches [Trigger.Location]'s event, and the reason it is a condition and
@@ -85,6 +96,7 @@ sealed interface Condition {
  */
 fun Condition.holdsAt(at: Instant, zone: ZoneId, where: Fix? = null): Boolean = when (this) {
     is Condition.TimeWindow -> holdsAt(at.atZone(zone).toLocalDateTime())
+    is Condition.DateRange -> at.atZone(zone).toLocalDate() in from..to
     is Condition.AtPlace -> {
         if (where == null || where.accuracyM > radiusM) true
         else (distanceMeters(where.lat, where.lng, lat, lng) <= radiusM) == inside

@@ -76,6 +76,7 @@ import dev.rwilco.ui.alert.AlertScreen
 import dev.rwilco.ui.components.DiscardDialog
 import dev.rwilco.ui.editor.sheets.ConditionSheet
 import dev.rwilco.ui.editor.sheets.CountdownSheet
+import dev.rwilco.ui.editor.sheets.DateRangeSheet
 import dev.rwilco.ui.editor.sheets.DateSheet
 import dev.rwilco.ui.editor.sheets.IntervalSheet
 import dev.rwilco.ui.editor.sheets.LocationSheet
@@ -347,6 +348,7 @@ fun EditorScreen(
             )
             is EditorSheet.ConfigureCalendar -> CalendarSheet(
                 initial = sheet.initial,
+                suggested = sheet.suggested,
                 today = today,
                 defaultTime = state.defaultTime,
                 shape = state.dayShape,
@@ -377,6 +379,13 @@ fun EditorScreen(
                         defaultTime = state.defaultTime,
                         shape = state.dayShape,
                         savedWindows = state.savedWindows,
+                        onConfirm = commit,
+                        onDismiss = viewModel::closeSheet,
+                    )
+                    TriggerKind.DATE_RANGE -> DateRangeSheet(
+                        initial = sheet.initial as? dev.rwilco.model.Trigger.DateRange,
+                        today = today,
+                        combining = state.draft.ruleMatch == RuleMatch.TOGETHER && state.draft.rules.size > 1,
                         onConfirm = commit,
                         onDismiss = viewModel::closeSheet,
                     )

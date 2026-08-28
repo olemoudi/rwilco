@@ -30,8 +30,8 @@ turn to write it down (`nextWake`), and only the moment that completes the set r
 (`outcomeOfFiring`). Dealing with the firing clears the set and starts the round again.
 
 Conditions (`Condition.kt`) are states, asked "were you true at that moment?", which is what
-makes them safe to AND with anything: `time_window` (hours + days, crossing midnight allowed)
-and `at_place`. A window also carries an optional **date**, which nobody ever types — the "y
+makes them safe to AND with anything: `time_window` (hours + days, crossing midnight allowed),
+`date_range` (two days of the calendar, both ends included) and `at_place`. A window also carries an optional **date**, which nobody ever types — the "y
 sólo si" sheet offers hours and days — and which exists for one thing: a *dated* rule folded
 into its siblings as a state. "El domingo de 20:30 a 22:00, y a la vez en casa" is a state about
 one Sunday evening, and folded as hours alone it became every evening: the set rang on the
@@ -64,7 +64,8 @@ Triggers (`core-model/.../Trigger.kt`), with their frozen JSON discriminators:
 | Kind (UI tile)        | Stored as                          | `type`         |
 |-----------------------|------------------------------------|----------------|
 | Date                  | `AtDateTime(at: LocalDateTime)`    | `at_date_time` |
-| Date (no hour chosen) | `DayRandom(date)` — a moment drawn from that day's waking hours | `day_random` |
+| Date (no hour chosen) | `DayRandom(date, window?)` — the stretch it opens with: the one it was given, or that day's waking hours | `day_random` |
+| Date range            | `DateRange(from, to)` — a stretch of the calendar, both ends included | `date_range` |
 | Countdown             | `Countdown(minutes, startedAt?)`   | `countdown`    |
 | Interval              | `Interval(from, to, days)` — a stretch of the day | `interval` |
 | Place                 | `Location(lat, lng, radiusM, INSIDE/OUTSIDE, label, onCrossing)` | `location` |
@@ -93,72 +94,100 @@ de mayo" is a yearly, and every other way of saying it is arithmetic on a date t
 first Wednesday of May is the 6th in 2026 and the 5th in 2027. With nothing set the rule is the
 day `startsOn` falls on, which is what plain year arithmetic gave and keeps 29 February right.
 
-**The hours somebody is up** (`Awake.kt`). A trigger with no `time` rings at a moment drawn
-from that day's waking window rather than from the twenty-four hours. `AwakeHours` holds two
+**The hours somebody is up** (`Awake.kt`). A trigger with no `time` rings when that day's waking
+window opens, rather than at some hour of the twenty-four. `AwakeHours` holds two
 pairs — weekday and weekend — and `AppSettings.weekendDay`/`weekendTime` and
 `weekendEndDay`/`weekendEndTime` say where the weekend span begins and ends, so the two ends of
 a day are asked separately: a Friday gets up for work and goes to bed at the weekend, and a
 Sunday keeps the lie-in and loses the late night. `DayShape` is that read-only view of the
 settings, threaded through `nextFire`/`nextWake`/`nextFireOfRule`, and a change to it re-arms
-everything (`RwilcoApplication`) because it moves real armed moments. The draw itself is
-`RandomDraw.inDay`, deterministic by (reminder, day), so the screen and the scheduler agree
-without storing it. An explicit `time` ignores all of it.
+everything (`RwilcoApplication`) because it moves real armed moments. The moment itself is
+`openingOf`, the first minute of the stretch, so the screen and the scheduler agree without
+storing anything. An explicit `time` ignores all of it.
 
-**A draw is made inside its fences, never judged against them afterwards.** A rule's "y sólo
-si" hour windows (`TriggerRule.windows()`) and a calendar's own fences reach `inDay`, which
-lists the minutes of the window they allow and draws one of those. Judging a whole-day draw
-against the fence afterwards was a reminder that mostly did not ring: "el jueves a cualquier
-hora, y sólo si es entre las 16 y las 17" has one draw in it and cleared the fence one time in
-sixteen, and "el primer viernes de cada mes, sólo de 16 a 17" with no hour rang about once a
-year — `nextMoment` walked sixty-four *months* of single draws and `recurrenceWarning` only
-spoke when all of them failed. With no fences the draw is, to the bit, what it always was
-(`RandomDrawTest` pins it); when no minute of the day clears the fences the plain draw comes
-back for the walk to reject, which is what a fence naming *other days* ("sólo los lunes") has to
-do to a daily calendar. The random tile (`Trigger.Random`) is deliberately not fenced this way:
-its own `from`/`to` is its hour fence, a `days` fence works through the walk, and an hour fence
-narrower than its window is a duplicate the sheet already expresses — a known limitation.
+**A day with no hour is a stretch, not a lottery** (`openingOf`). It used to be a moment drawn
+from the waking hours by (reminder, day), and that reading only ever survived while the shape
+depended on nothing else: the moment it sat in a set beside a place, the draw had to be rewritten
+into the window's *opening* or the ring would land at 15:37 while the other half was false. Two
+readings of one control, and which one you got depended on what else was on the card — so the
+opening is the only reading now. "El jueves, me da igual la hora" rings when Thursday's waking
+hours start and goes on being true all day, which is exactly what `Trigger.Interval` has always
+been, one unit up. Two reminders on the same stretch therefore ring together, which is the
+visible cost and the honest one: chance is a thing to ask for on purpose, and `Trigger.Random` is
+the tile that asks for it.
 
-**A day written while it is under way is drawn from what is left of it** (`settleDays`, beside
-`startCountdowns` and applied at the same two saves). "Hoy, a cualquier hora" saved at five drew
-its minute from the whole day, and one time in two that minute had gone: the reminder was born
-overdue and never rang, and the editor could not say so because the id the draw is seeded by is
-minted at the save. The window is narrowed to the next whole minute → the day's end, so the
-card says exactly what will happen ("hoy entre las 17:04 y las 23:30"), and `warnings` runs the
-same narrowing so what it says and what is saved agree without either knowing the id. Both
+**The opening is moved inside the fences, never judged against them afterwards.** A rule's "y
+sólo si" hour windows (`TriggerRule.windows()`) and a calendar's own fences reach `openingOf`,
+which walks to the first minute they all allow. A door that opened at eight for a rule saying
+"sólo de 16 a 17" was a moment the fence rejected, so the rule answered *never*: "el jueves a
+cualquier hora, y sólo si es entre las 16 y las 17" opens at 16:00, and "el primer viernes de
+cada mes, sólo de 16 a 17" with no hour rings that Friday rather than about once a year. When no
+minute of the stretch clears the fences the plain opening comes back for the walk to reject,
+which is what a fence naming *other days* ("sólo los lunes") has to do to a daily calendar. The
+random tile (`Trigger.Random`) is deliberately not fenced this way: its own `from`/`to` is its
+hour fence, a `days` fence works through the walk, and an hour fence narrower than its window is
+a duplicate the sheet already expresses — a known limitation.
+
+**A day written while it is under way starts from what is left of it** (`settleDays`, beside
+`startCountdowns` and applied at the same two saves). "Hoy, me da igual la hora" saved at five in
+the afternoon has an opening — eight in the morning — that has already gone, so the reminder was
+born overdue and never rang. The window is narrowed to the next whole minute → the day's end, so
+it opens at 17:04 and rings within the minute, which is what "en cuanto estemos en ese día" says.
+`warnings` runs the same narrowing, so what the editor says and what is saved agree. Both
 `toReminder`s take a `zone` for it — required, so no save can bypass it.
 
 **Three answers to "when in the day", not two** (`DayWindow`). Between an hour somebody picked
 and the whole of the day they are up for sits a stretch they named: "a la hora de comer". Both
 shapes that leave the hour to the day carry an optional one — `Trigger.DayRandom` (the date
 tile) and `Trigger.Repeat` (the calendar behind "Vuelve") — and it is only ever read when there
-is no `time`, because an hour somebody typed is not a thing anything else may argue with. The
-draw is the same `RandomDraw.inDay` with a narrower window. `SavedWindow` in the settings is a
+is no `time`, because an hour somebody typed is not a thing anything else may argue with. A
+named stretch is the same `openingOf` over a narrower window. `SavedWindow` in the settings is a
 name over two times, offered as chips wherever a stretch is asked for (the date tile, the
 calendar, the window trigger) and never referenced: what a trigger keeps is the two times, so
 renaming or deleting one never reaches back into a reminder — the same rule a place follows.
 The fields are always there under the chips, so a stretch nobody has named is one tap further
 and not a trip to the settings.
 
-**A window is only a draw while nothing else depends on it** (`Trigger.whenCombined`,
-`Reminder.ruleInSet`). "El viernes a la hora de comer" on its own means a minute nobody chose
-between two and four, which is the whole point of naming a stretch instead of an hour. Put it in
-a set and that reading falls apart: "a la hora de comer, y a la vez en la oficina" cannot mean
-"at 15:37 if you happen to be at the office" — a draw landing while the other half is false is a
-reminder that silently does not ring. **A day with no window is the same kind of thing over the
-hours this person is up** (`asState`/`whenCombined` take the `DayShape`): "el jueves, y a la vez
-en la oficina" used to be one minute of Thursday, rung only if the phone happened to be inside
-the circle at it. And the gate opens at the first minute the rule's own hour fences allow, not
-at the window's start — a door that opened at eight for a rule saying "sólo de 16 a 17" was a
-moment the fence rejected, and a set that never completed. So in a combining set (ALL and TOGETHER, never ANY, where
-the rules depend on nobody) the window becomes a **gate**: its moment is the opening, and it
-reaches every sibling as a `TimeWindow` state (`asState`), so the ring lands the instant
-everything else is true inside it — which can be its first second. That is exactly what
-`Trigger.Interval` has always been, reached from the other side. `Reminder.ruleInSet` (which
-`togetherRule` grew into) is the one funnel for "the rule as its own set makes it", and
-`warnings` folds the same way — but both count states off the rules **as written**, never off
-the rewrite: a window that a set turned into its own opening is still a state to its siblings,
-and counting the rewrite made "a la vez" claim two instants could never coincide when one of
-them was a two-hour stretch. `DayWindowTest` holds both halves.
+**And the calendar opens on whatever the rules already answered** (`DayTiming`, `dayTimingOf`).
+"El 26 a las 20:00, y vuelve cada mes" is one sentence, and asking for 20:00 twice — once in the
+trigger, once in "Vuelve", three rows apart — is asking somebody to notice the second control
+exists and then to agree with themselves. The first rule that says anything about the time of
+day seeds the calendar sheet: an hour, a stretch, or "me da igual". The first and not a vote,
+because a reminder with two clocks in it has no single answer; nothing is stored, because every
+trigger already carries its own; and only for a calendar that does not exist yet, because an
+answer somebody has given is not something a trigger may reach back and change. A countdown, a
+place, a random window and a date range say nothing here, and neither does `OnDate`, whose hour
+is the settings' rather than one anybody typed.
+
+**A stretch of the calendar is a stretch of a day, one unit up** (`Trigger.DateRange`). Some
+things are true for a while: "renovar el abono" is not a Tuesday, it is the fortnight the window
+is open, and writing it as a date meant picking a day out of that fortnight and hoping. It names
+no hour on purpose — the sheet offers none — so it rings at `defaultTime` on `from` and is a
+state (`Condition.DateRange`) for every day through to `to` inclusive, both ends counted. The
+state is the half that does the work: "al llegar a casa, y a la vez entre el 1 y el 15" is the
+sentence it exists to make writable. It rings on `from` and on each later day it is still open,
+until somebody deals with it — the same thing `Trigger.Interval` does with a stretch of the day,
+one unit up, and what stops a range written at six in the evening from being a reminder that
+never rings. Bounded by the range and spent on the first "hecho", so it is not the open-ended
+repeat that "Vuelve" alone is allowed to say.
+
+**A set no longer rewrites a rule, because there is nothing left to rewrite** (`Reminder.ruleInSet`).
+This is where `Trigger.whenCombined` used to live: a window meant a draw on its own and its own
+opening in company, so a combining set had to swap one for the other. With the opening as the
+only reading, a rule in a set is the rule as written and `ruleInSet` has one job left — under
+TOGETHER, folding every *other* rule into it as a condition (`asState`), so the ring lands the
+instant the whole set is true. It is the one funnel for "the rule as its own set makes it", and
+`warnings` folds the same way and in the same order. Under ALL and ANY a rule now comes back
+untouched. `DayWindowTest` holds it: the same trigger, the same moment, alone and in company.
+
+**A state beside a place is the place's hours, not a moment of its own** (`nextFire`). Under "a
+la vez", a `Scheduled` whose trigger is a state is dropped from the running for what to show,
+and the place is the answer: its opening only rings if the phone is already there, so Home
+counting down to it is a clock on a reminder that rings on arrival. It is still armed
+(`nextWake`), for the morning somebody is there already. Written for `Trigger.Interval` and now
+asked of every state (`isMoment`), because a day with no hour and a stretch of the calendar are
+openings in exactly the same way — and a day that reached here as its own *rewritten* opening
+used to slip through as a plain moment.
 
 Wall-clock values are stored without a zone; the zone is applied when the next fire is computed.
 A countdown stores the **length**, not the moment: `startedAt` is stamped by `startCountdowns`

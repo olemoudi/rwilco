@@ -87,6 +87,11 @@ fun conditionLabel(condition: Condition): String {
             val window = TimeText.window(condition.from, condition.to, is24h, locale)
             if (condition.days.isEmpty() || condition.days.size == 7) window else "$window · " + daysSummary(condition.days, locale)
         }
+        is Condition.DateRange -> stringResource(
+            R.string.condition_date_range,
+            TimeText.dayDate(condition.from, locale),
+            TimeText.dayDate(condition.to, locale),
+        )
         is Condition.AtPlace -> stringResource(
             if (condition.inside) R.string.condition_at_place else R.string.condition_away_from_place,
             condition.label,
@@ -136,14 +141,14 @@ fun triggerLine(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): Tri
             // "a la hora de comer" are the same shape and a very different arrangement.
             secondary = trigger.window
                 ?.let { TimeText.window(it.from, it.to, is24h, locale) }
-                ?: stringResource(R.string.trigger_random_in_day),
+                ?: stringResource(R.string.trigger_when_day_starts),
             primaryMono = true,
         )
         is Trigger.Repeat -> TriggerLine(
             // The hour reads first, as it does on every other row that has one; a repeat with
             // no hour says so in its place, because the shape is what is left to say.
             primary = trigger.time?.let { TimeText.time(it, is24h, locale) }
-                ?: stringResource(R.string.trigger_random_in_day),
+                ?: stringResource(R.string.trigger_when_day_starts),
             secondary = repeatSummary(trigger, today, locale),
             primaryMono = trigger.time != null,
         )
@@ -165,6 +170,11 @@ fun triggerLine(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): Tri
                 )
             }
         }
+        is Trigger.DateRange -> TriggerLine(
+            primary = TimeText.dayDate(trigger.from, locale),
+            secondary = stringResource(R.string.trigger_until, TimeText.dayDate(trigger.to, locale)),
+            primaryMono = true,
+        )
         is Trigger.Location -> TriggerLine(
             primary = trigger.label,
             secondary = stringResource(placeReading(trigger.presence, trigger.onCrossing)),
@@ -206,7 +216,13 @@ fun triggerPhrase(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): S
                 TimeText.window(it.from, it.to, is24h, locale),
                 dayWord(trigger.date, today, locale),
             )
-        } ?: (dayWord(trigger.date, today, locale) + ", " + stringResource(R.string.trigger_random_in_day))
+        } ?: (dayWord(trigger.date, today, locale) + ", " + stringResource(R.string.trigger_when_day_starts))
+        // The same words as the fence it folds into siblings as, because it is the same stretch.
+        is Trigger.DateRange -> stringResource(
+            R.string.editor_sentence_date_range,
+            TimeText.dayDate(trigger.from, locale),
+            TimeText.dayDate(trigger.to, locale),
+        )
         is Trigger.AtTime -> stringResource(
             R.string.editor_sentence_at_time,
             TimeText.time(trigger.time, is24h, locale),
@@ -219,7 +235,7 @@ fun triggerPhrase(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): S
         )
         is Trigger.Repeat -> stringResource(
             R.string.editor_sentence_repeat,
-            trigger.time?.let { TimeText.time(it, is24h, locale) } ?: stringResource(R.string.trigger_random_in_day),
+            trigger.time?.let { TimeText.time(it, is24h, locale) } ?: stringResource(R.string.trigger_when_day_starts),
             repeatSummary(trigger, today, locale),
         )
         is Trigger.Countdown -> {
@@ -271,6 +287,11 @@ fun conditionPhrase(condition: Condition): String = when (condition) {
         R.string.editor_sentence_window_of,
         TimeText.window(condition.from, condition.to, is24h = rememberIs24h(), locale = currentLocale()) +
             everyDaySuffix(condition.days, currentLocale()),
+    )
+    is Condition.DateRange -> stringResource(
+        R.string.editor_sentence_date_range,
+        TimeText.dayDate(condition.from, currentLocale()),
+        TimeText.dayDate(condition.to, currentLocale()),
     )
     is Condition.AtPlace -> stringResource(
         if (condition.inside) R.string.editor_sentence_if_at else R.string.editor_sentence_if_away,

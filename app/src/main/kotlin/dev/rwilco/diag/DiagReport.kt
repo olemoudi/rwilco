@@ -217,6 +217,7 @@ private fun Trigger.describe(): String = when (this) {
         (if (unit == RepeatUnit.MONTH) " ${monthlyRule()}" else "") +
         " from $startsOn" + (if (ends == RepeatEnd.Never) "" else " until $ends")
     is Trigger.Interval -> "window $from-$to ${days.describe()}"
+    is Trigger.DateRange -> "dates $from..$to"
     is Trigger.Countdown -> "countdown ${minutes}m started=${startedAt ?: "-"}"
     is Trigger.Location -> "place ${describeCircle()}"
     is Trigger.Random -> "random $timesPer/$period $from-$to ${days.describe()}"
@@ -228,6 +229,7 @@ private fun Trigger.Location.describeCircle(): String =
 
 private fun Condition.describe(): String = when (this) {
     is Condition.TimeWindow -> "win $from-$to ${days.describe()}"
+    is Condition.DateRange -> "dates $from..$to"
     is Condition.AtPlace -> "at ${radiusM}m @${fixed(lat, 2)},${fixed(lng, 2)} in=${yes(inside)}"
 }
 

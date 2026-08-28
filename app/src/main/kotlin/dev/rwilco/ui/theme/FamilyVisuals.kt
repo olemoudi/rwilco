@@ -3,6 +3,7 @@ package dev.rwilco.ui.theme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Casino
 import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.HourglassTop
@@ -68,6 +69,7 @@ val TriggerKind.icon: ImageVector
     get() = when (this) {
         TriggerKind.DATE_TIME -> Icons.Outlined.Event
         TriggerKind.DATE -> Icons.Outlined.CalendarToday
+        TriggerKind.DATE_RANGE -> Icons.Outlined.DateRange
         TriggerKind.REPEAT_TIME -> Icons.Outlined.Repeat
         // A clock with a slice of it filled: a stretch OF the day, which is what a range is.
         // The hourglass this used to be said "time passing", and said it in almost the same

@@ -80,14 +80,18 @@ fun nextFire(
     // the ring, and the "last of the pending" reading below belongs to ALL alone.
     if (reminder.ruleMatch != RuleMatch.ALL || !reminder.rulesCombine) {
         val place = candidates.filterIsInstance<NextFire.WhenAt>().firstOrNull()
-        // Under "a la vez" a window beside a place is the place's hours, not a moment of its
+        // Under "a la vez" a *state* beside a place is the place's hours, not a moment of its
         // own: its opening only rings if the phone is already there. Home once counted down to
         // it — a clock on a reminder that rings on arrival — and, once that opening had passed
         // with nobody there, to the next day's. The place is the honest answer; the opening is
         // still armed (nextWake), for the morning somebody is there already.
+        //
+        // Every state, not just the window it was written for. A day with no hour and a stretch
+        // of the calendar are openings in exactly the same way now ([openingOf]), and a day that
+        // reached here as its own rewritten opening used to slip through as a plain moment.
         val together = reminder.ruleMatch == RuleMatch.TOGETHER && reminder.rulesCombine
         val moments = candidates.filterIsInstance<NextFire.Scheduled>()
-            .filterNot { together && place != null && it.trigger is Trigger.Interval }
+            .filterNot { together && place != null && it.trigger?.isMoment == false }
         return moments.minByOrNull { it.at }
             ?: candidates.filterIsInstance<NextFire.Sometime>().minByOrNull { it.at }
             ?: place
@@ -166,8 +170,8 @@ fun nextFireOfRule(
     shape: DayShape = DayShape.DEFAULT,
 ): NextFire? {
     var after = now
-    // The rule's own hour fences reach the draw, so a day with no hour draws from the minutes
-    // they allow instead of being rejected below (see RandomDraw.inDay).
+    // The rule's own hour fences reach the opening, so a day with no hour opens at the first
+    // minute they allow instead of being rejected below (see openingOf).
     val windows = rule.windows()
     repeat(MAX_CANDIDATES) {
         val candidate = nextFireOf(rule.trigger, reminderId, after, zone, defaultTime, shape, windows) ?: return null
@@ -188,9 +192,10 @@ private const val MAX_CANDIDATES = 64
 /**
  * One trigger's next fire, or null when it has nothing left to do.
  *
- * [fences] only reach the two shapes that *draw* an hour — a date with none and a calendar with
- * none — and narrow the draw to the minutes they allow. Everything with an hour of its own is
- * left to the walk in [nextFireOfRule], which asks the fences of each moment in turn.
+ * [fences] only reach the two shapes that *leave* the hour to the day — a date with none and a
+ * calendar with none — and move their opening to the first minute the fences allow. Everything
+ * with an hour of its own is left to the walk in [nextFireOfRule], which asks the fences of each
+ * moment in turn.
  */
 fun nextFireOf(
     trigger: Trigger,
@@ -207,19 +212,16 @@ fun nextFireOf(
         is Trigger.AtDateTime -> trigger.at.atZone(zone).toInstant().future(now)?.let { NextFire.Scheduled(it, trigger) }
         is Trigger.OnDate ->
             trigger.date.atTime(defaultTime).atZone(zone).toInstant().future(now)?.let { NextFire.Scheduled(it, trigger) }
-        // The hour nobody chose, drawn from the day this person is actually up for. Scheduled
-        // and not Sometime: the moment is settled and the app can say it. Not knowing when it
-        // will ring is what Trigger.Random is for; this is not having had to decide.
-        // The stretch it was given, or the day this person is actually up for.
-        is Trigger.DayRandom -> RandomDraw.inDay(
-            reminderId,
-            trigger.date,
-            trigger.window?.on(trigger.date) ?: shape.awakeOn(trigger.date),
-            zone,
-            fences,
-        )
-            .future(now)
-            ?.let { NextFire.Scheduled(it, trigger) }
+        // The hour nobody chose: the opening of the stretch it was given, or of the day this
+        // person is actually up for. Not a draw — see [openingOf]. Scheduled and not Sometime:
+        // the moment is settled and the app can say it out loud. Not knowing when it will ring
+        // is what Trigger.Random is for; this is not having had to decide.
+        is Trigger.DayRandom ->
+            openingOf(trigger.window?.on(trigger.date) ?: shape.awakeOn(trigger.date), fences)
+                .atZone(zone)
+                .toInstant()
+                .future(now)
+                ?.let { NextFire.Scheduled(it, trigger) }
         is Trigger.AtTime -> nextAtTime(trigger, now, zone)?.let { NextFire.Scheduled(it, trigger) }
         is Trigger.Repeat -> nextRepeat(trigger, reminderId, now, zone, shape, fences)?.let { NextFire.Scheduled(it, trigger) }
         // The window opening is the moment it becomes true, and the only moment it produces.
@@ -230,6 +232,24 @@ fun nextFireOf(
             now,
             zone,
         )?.let { NextFire.Scheduled(it, trigger) }
+        // A stretch of the calendar names no hour, so it opens at the one a date with no hour
+        // has always meant — and at the same hour on each day it is still open, which is what
+        // Trigger.Interval does with a stretch of the day, one unit up. Nothing else in the app
+        // would survive being written at six in the evening: a range that only ever rang at
+        // 09:00 on its first day was, for anybody who wrote one that afternoon, a reminder that
+        // silently never rang and an editor saying "ya ha pasado" of a fortnight still open.
+        // Bounded by the range and spent the moment somebody deals with it, so it is not the
+        // open-ended repeat that "Vuelve" alone is allowed to say.
+        is Trigger.DateRange -> {
+            val today = now.atZone(zone).toLocalDate()
+            generateSequence(maxOf(trigger.from, today)) { it.plusDays(1) }
+                .takeWhile { it <= trigger.to }
+                // Today's hour and tomorrow's: one of the two is ahead, or the range is over.
+                .take(2)
+                .map { it.atTime(defaultTime).atZone(zone).toInstant() }
+                .firstOrNull { it > now }
+                ?.let { NextFire.Scheduled(it, trigger) }
+        }
         // Not yet stamped (a preset's copy, a draft): it would start now, so that is what it
         // answers — which is also what the editor should show while it is being written.
         is Trigger.Countdown -> (trigger.startedAt ?: now).plusSeconds(trigger.minutes * 60L)
@@ -312,9 +332,9 @@ fun Reminder.calendarMoment(after: Instant, zone: ZoneId, shape: DayShape): Inst
 /** See [Reminder.calendarMoment]. Taken apart from the reminder so a warning can ask it too. */
 fun Recurrence.Calendar.nextMoment(reminderId: String, after: Instant, zone: ZoneId, shape: DayShape): Instant? {
     val fences = conditions.filter { it.knownInAdvance }
-    // The hour fences reach the draw itself (RandomDraw.inDay): "el primer viernes de cada mes,
-    // sólo de 16 a 17" with no hour draws from that hour, instead of drawing from the whole day
-    // and clearing the fence one month in fifteen.
+    // The hour fences reach the opening itself (openingOf): "el primer viernes de cada mes, sólo
+    // de 16 a 17" with no hour opens at 16:00, instead of opening at breakfast and being
+    // rejected every month.
     val windows = conditions.filterIsInstance<Condition.TimeWindow>()
     var from = after
     repeat(MAX_CANDIDATES) {

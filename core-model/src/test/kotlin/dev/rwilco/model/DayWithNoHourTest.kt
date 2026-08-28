@@ -17,14 +17,15 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 
 /**
- * "At random during the day", for a date and for a recurrence.
+ * "Me da igual la hora", for a date and for a calendar: the stretch a day with no hour covers,
+ * and the moment it opens at.
  *
- * The whole point of the setting is that the day it lands on decides the window, so most of
- * this is the same question asked of a Tuesday, a Friday, a Saturday and a Sunday. The draw
- * itself only has to be inside its window and hold still; which minute it picks is nobody's
- * business, including this test's.
+ * The whole point of the setting is that the day it lands on decides the stretch, so most of
+ * this is the same question asked of a Tuesday, a Friday, a Saturday and a Sunday. What it used
+ * to be was a draw inside that stretch, seeded by (reminder, day); it is the opening now, so
+ * these say *which* minute rather than only that it was inside.
  */
-class RandomDayTest {
+class DayWithNoHourTest {
 
     private val shape = DayShape(
         hours = AwakeHours(
@@ -44,8 +45,12 @@ class RandomDayTest {
     /** Long before any of these days, so nothing is filtered out for being in the past. */
     private val early: Instant = local(2026, 8, 20, 6, 0)
 
-    private fun drawFor(trigger: Trigger, at: Instant = early, id: String = "r1"): Instant? =
+    private fun momentOf(trigger: Trigger, at: Instant = early, id: String = "r1"): Instant? =
         (nextFireOf(trigger, id, at, zone, defaultTime, shape) as? NextFire.Scheduled)?.at
+
+    /** The moment a day with no hour produces: the first minute of the stretch it covers. */
+    private fun assertOpensAt(moment: Instant?, window: AwakeWindow) =
+        assertEquals(window.from, requireNotNull(moment) { "nothing at all" }.atZone(zone).toLocalDateTime())
 
     private fun assertInside(moment: Instant?, window: AwakeWindow) {
         val at = requireNotNull(moment) { "nothing was drawn at all" }
@@ -59,55 +64,63 @@ class RandomDayTest {
     // ---- a date drawn at random -------------------------------------------------------------
 
     @Test
-    fun `a weekday is drawn from the weekday hours`() {
-        assertInside(drawFor(Trigger.DayRandom(date(25))), shape.awakeOn(date(25)))
+    fun `a weekday opens with the weekday hours`() {
+        assertOpensAt(momentOf(Trigger.DayRandom(date(25))), shape.awakeOn(date(25)))
     }
 
     @Test
-    fun `a saturday is drawn from the weekend hours`() {
+    fun `a saturday opens with the weekend hours`() {
         val window = shape.awakeOn(date(29))
         assertEquals(LocalDateTime.of(2026, 8, 29, 10, 0), window.from)
-        assertInside(drawFor(Trigger.DayRandom(date(29))), window)
+        assertOpensAt(momentOf(Trigger.DayRandom(date(29))), window)
     }
 
     @Test
-    fun `a friday can be drawn into the small hours of saturday`() {
+    fun `a friday runs on into the small hours of saturday`() {
         val window = shape.awakeOn(date(28))
         assertEquals(LocalDateTime.of(2026, 8, 29, 1, 30), window.to)
-        assertInside(drawFor(Trigger.DayRandom(date(28))), window)
+        // It opens on the Friday morning and is true right through to half one on Saturday,
+        // which is what the stretch is: the whole of it, not one minute drawn out of it.
+        assertOpensAt(momentOf(Trigger.DayRandom(date(28))), window)
+        assertInside(momentOf(Trigger.DayRandom(date(28))), window)
     }
 
     @Test
     fun `a sunday is put to bed at the weekday hour`() {
         val window = shape.awakeOn(date(30))
         assertEquals(LocalDateTime.of(2026, 8, 30, 23, 30), window.to)
-        assertInside(drawFor(Trigger.DayRandom(date(30))), window)
+        assertOpensAt(momentOf(Trigger.DayRandom(date(30))), window)
     }
 
     @Test
-    fun `the same day drawn twice is the same moment`() {
-        val once = drawFor(Trigger.DayRandom(date(29)))
-        val twice = drawFor(Trigger.DayRandom(date(29)), at = early.plusSeconds(3600))
+    fun `the same day asked twice is the same moment`() {
+        val once = momentOf(Trigger.DayRandom(date(29)))
+        val twice = momentOf(Trigger.DayRandom(date(29)), at = early.plusSeconds(3600))
         assertEquals(once, twice)
     }
 
     @Test
-    fun `two reminders on the same day do not have to ring together`() {
-        val one = drawFor(Trigger.DayRandom(date(29)), id = "one")
-        val other = drawFor(Trigger.DayRandom(date(29)), id = "other")
-        assertNotEquals(one, other)
+    fun `two reminders on the same day ring together`() {
+        // They used to get a minute each, drawn from (reminder, day), and that was the whole
+        // objection to it: "me da igual la hora" is not a request for a lottery, it is somebody
+        // declining to answer the question. Two of them on Saturday both go off when Saturday
+        // starts, and anybody who wants the minute to be a surprise has a tile for that.
+        val one = momentOf(Trigger.DayRandom(date(29)), id = "one")
+        val other = momentOf(Trigger.DayRandom(date(29)), id = "other")
+        assertEquals(one, other)
+        assertNotEquals(one, momentOf(Trigger.Random(1, Period.DAY, LocalTime.of(9, 0), LocalTime.of(21, 0)), id = "one"))
     }
 
     @Test
-    fun `a day already gone has nothing left to draw`() {
-        assertNull(drawFor(Trigger.DayRandom(date(20)), at = now))
+    fun `a day already gone has nothing left`() {
+        assertNull(momentOf(Trigger.DayRandom(date(20)), at = now))
     }
 
     @Test
     fun `the hours somebody keeps move the moment`() {
         val nightOwl = shape.copy(hours = shape.hours.copy(wake = LocalTime.of(14, 0), sleep = LocalTime.of(23, 0)))
         val moment = (nextFireOf(Trigger.DayRandom(date(25)), "r1", early, zone, defaultTime, nightOwl) as NextFire.Scheduled).at
-        assertTrue(moment.atZone(zone).toLocalTime() >= LocalTime.of(14, 0))
+        assertEquals(LocalTime.of(14, 0), moment.atZone(zone).toLocalTime())
     }
 
     // ---- a recurrence drawn at random -------------------------------------------------------
@@ -120,7 +133,7 @@ class RandomDayTest {
     )
 
     @Test
-    fun `a recurrence with no hour draws one from each day it lands on`() {
+    fun `a calendar with no hour opens with each day it lands on`() {
         val everyDay = Trigger.Repeat(startsOn = date(24), unit = RepeatUnit.DAY, time = null)
         // Tuesday, Friday, Saturday and Sunday of the same week, each inside its own window.
         var at = local(2026, 8, 24, 6, 0)
@@ -142,13 +155,13 @@ class RandomDayTest {
     }
 
     @Test
-    fun `a weekly saturday is drawn from the weekend and a weekly tuesday is not`() {
+    fun `a weekly saturday opens with the weekend and a weekly tuesday does not`() {
         // The two windows do not merely differ, they overlap the wrong way round: a Saturday
         // runs to half one on Sunday morning, so its draw can be *earlier* on the clock than a
         // Tuesday's and still be later in the day. The window is the thing to ask, not the hour.
-        assertInside(drawFor(weekly(setOf(DayOfWeek.SATURDAY))), shape.awakeOn(date(29)))
-        assertInside(drawFor(weekly(setOf(DayOfWeek.TUESDAY))), shape.awakeOn(date(25)))
-        val tuesday = drawFor(weekly(setOf(DayOfWeek.TUESDAY)))!!.atZone(zone).toLocalTime()
+        assertInside(momentOf(weekly(setOf(DayOfWeek.SATURDAY))), shape.awakeOn(date(29)))
+        assertInside(momentOf(weekly(setOf(DayOfWeek.TUESDAY))), shape.awakeOn(date(25)))
+        val tuesday = momentOf(weekly(setOf(DayOfWeek.TUESDAY)))!!.atZone(zone).toLocalTime()
         assertTrue(
             tuesday >= LocalTime.of(8, 0) && tuesday <= LocalTime.of(23, 30),
             "a Tuesday should be inside the working day and nothing else: $tuesday",
@@ -205,10 +218,10 @@ class RandomDayTest {
     }
 
     @Test
-    fun `the wake a scheduler sets is the moment that was drawn`() {
+    fun `the wake a scheduler sets is that moment`() {
         val trigger = Trigger.DayRandom(date(29))
         val wake = nextWake(reminder(trigger), early, zone, defaultTime, shape = shape)
-        assertEquals(drawFor(trigger), wake?.at)
+        assertEquals(momentOf(trigger), wake?.at)
     }
 
 
@@ -220,14 +233,14 @@ class RandomDayTest {
         settleDays(rules, at, zone, shape).single().trigger as Trigger.DayRandom
 
     @Test
-    fun `a day written while it is under way is drawn from what is left of it`() {
+    fun `a day written while it is under way starts from what is left of it`() {
         // Thursday the 27th at 15:00:20: the next whole minute is 15:01, and the day this
         // person is up for ends at half past eleven.
         val at = local(2026, 8, 27, 15, 0).plusSeconds(20)
         assertEquals(DayWindow(LocalTime.of(15, 1), LocalTime.of(23, 30)), settled(bare(27), at).window)
         // And the draw is then always ahead: the whole point.
         for (id in listOf("r1", "r2", "r3", "r4", "r5")) {
-            val next = drawFor(settleDays(bare(27), at, zone, shape).single().trigger, at = at, id = id)
+            val next = momentOf(settleDays(bare(27), at, zone, shape).single().trigger, at = at, id = id)
             assertTrue(next != null && next > at, "$id: $next is not ahead of $at")
         }
         // A stretch of its own is narrowed the same way: "a la hora de comer" at three is three to four.
@@ -243,7 +256,7 @@ class RandomDayTest {
         val day = settled(bare(28), at)
         assertEquals(DayWindow(LocalTime.of(22, 11), LocalTime.of(1, 30)), day.window)
         // Which DayWindow.on lays over midnight, so the draw is inside Friday night.
-        assertInside(drawFor(day, at = at), AwakeWindow(date(28).atTime(22, 11), date(29).atTime(1, 30)))
+        assertInside(momentOf(day, at = at), AwakeWindow(date(28).atTime(22, 11), date(29).atTime(1, 30)))
     }
 
     @Test

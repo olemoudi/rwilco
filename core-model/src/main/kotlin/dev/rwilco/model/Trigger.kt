@@ -44,14 +44,19 @@ sealed interface Trigger {
     data class OnDate(val date: LocalDate) : Trigger
 
     /**
-     * Once, on a day, at a moment nobody chose: drawn from the hours this person is awake, or
-     * from [window] when there is one — "a la hora de comer" rather than "some time today".
+     * Once, on a day, at no hour anybody chose: true for the whole of [window] when there is one
+     * — "a la hora de comer" — and for the whole of that day's waking hours when there is not.
      *
      * The other half of the date tile. "Some time on Thursday" is a real thing to want — take
-     * the bins out, ring your mother — and pinning it to 09:00 makes it an appointment, which
-     * is the thing it is not. The draw is deterministic (see [RandomDraw]) so the app and the
-     * scheduler agree on it without storing it, and it moves with the day: a Saturday is drawn
-     * from the weekend's longer hours, a Sunday from a night that ends earlier.
+     * the bins out, ring your mother — and pinning it to 09:00 makes it an appointment, which is
+     * the thing it is not. **It is a stretch, not a lottery** ([openingOf]): it rings when the
+     * stretch opens and goes on being true until it closes, so it can be ANDed with a place or
+     * fenced by an hour without the ring landing somewhere nobody can see it. The stretch moves
+     * with the day — a Saturday gets the weekend's longer hours, a Sunday a night that ends
+     * earlier — and chance, where somebody actually wants it, is [Random].
+     *
+     * The name on disk is `day_random`, from when the moment inside it was drawn. It is frozen,
+     * like every other discriminator here.
      */
     @Serializable
     @SerialName("day_random")
@@ -84,9 +89,9 @@ sealed interface Trigger {
      *   [startsOn] falls on, so a week with nothing ticked is still a sensible weekly.
      * - [monthly]: for [RepeatUnit.MONTH] only, "day 26" or "the fourth Wednesday". Null means
      *   the day of the month [startsOn] falls on.
-     * - [time]: the hour. Null is a moment nobody chose, drawn from [window] when there is one
-     *   and from that day's waking hours when there is not — the same three answers, and the
-     *   same words, as the date tile's.
+     * - [time]: the hour. Null is no hour anybody chose: it opens with [window] when there is one
+     *   and with that day's waking hours when there is not — the same three answers, and the same
+     *   words, as the date tile's.
      * - [startsOn]: the first day it can ring, and the anchor every block is counted from.
      *   Moving it moves the whole series, which is why it is asked for rather than assumed.
      * - [ends]: never, on a date, or after so many times.
@@ -107,7 +112,7 @@ sealed interface Trigger {
         val monthly: MonthlyOn? = null,
         val ends: RepeatEnd = RepeatEnd.Never,
         /**
-         * Only read when [time] is null: the stretch of the day the moment is drawn from.
+         * Only read when [time] is null: the stretch of the day the moment opens with.
          *
          * Last in the list rather than beside [time] where it belongs, because the order of a
          * data class's parameters is its `copy` and its positional calls, and everything that
@@ -135,6 +140,29 @@ sealed interface Trigger {
         val to: LocalTime,
         val days: Set<DayOfWeek> = emptySet(),
     ) : Trigger
+
+    /**
+     * A stretch of the calendar rather than a point on it: "entre el 1 y el 15", both days
+     * included.
+     *
+     * What [Interval] is to a day, this is to a year, and it exists for the same reason: some
+     * things are true for a while. "Renovar el abono" is not a Tuesday, it is the fortnight the
+     * window is open, and writing it as a date meant picking a day out of that fortnight and
+     * hoping it was the right one.
+     *
+     * It names no hour on purpose — the sheet does not offer one — so it rings **at the default
+     * time** (the same hour a date with no hour has always meant, `AppSettings`) on [from], and
+     * on each later day it is still open, until somebody deals with it. That is exactly what
+     * [Interval] does with a stretch of the day, and it is what stops a range written at six in
+     * the evening from being a reminder that never rings at all.
+     *
+     * And it is a *state* for every day from [from] to [to] inclusive. The state is the half
+     * that does the work: "al llegar a casa, y a la vez entre el 1 y el 15" is the sentence this
+     * makes writable, and the ring is there because a trigger that never rings is not a trigger.
+     */
+    @Serializable
+    @SerialName("date_range")
+    data class DateRange(val from: LocalDate, val to: LocalDate) : Trigger
 
     /**
      * A stretch of time from the moment it starts, not a moment on the calendar.
@@ -290,6 +318,7 @@ enum class TriggerFamily { TIME, PLACE, CHANCE }
 enum class TriggerKind(val family: TriggerFamily) {
     DATE_TIME(TriggerFamily.TIME),
     DATE(TriggerFamily.TIME),
+    DATE_RANGE(TriggerFamily.TIME),
     REPEAT_TIME(TriggerFamily.TIME),
     INTERVAL(TriggerFamily.TIME),
     COUNTDOWN(TriggerFamily.TIME),
@@ -320,7 +349,7 @@ val Trigger.decidesItsOwnDates: Boolean
 val Trigger.family: TriggerFamily
     get() = when (this) {
         is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.AtTime, is Trigger.Interval -> TriggerFamily.TIME
-        is Trigger.DayRandom, is Trigger.Repeat -> TriggerFamily.TIME
+        is Trigger.DayRandom, is Trigger.Repeat, is Trigger.DateRange -> TriggerFamily.TIME
         is Trigger.Location -> TriggerFamily.PLACE
         is Trigger.Countdown -> TriggerFamily.TIME
         is Trigger.Random -> TriggerFamily.CHANCE
@@ -338,14 +367,16 @@ val Trigger.family: TriggerFamily
  *
  * A day with no hour is a state too — for the hours this person is up on it, which is what
  * [shape] is for — and not a moment: "el jueves a cualquier hora, y a la vez en la oficina" is
- * a whole day at the office, not one minute of it. See [whenCombined].
+ * a whole day at the office, not one minute of it. Its ring is the opening of that stretch
+ * ([openingOf]), so the state and the moment are two readings of the same window.
  */
 fun Trigger.asState(shape: DayShape = DayShape.DEFAULT): Condition? = when (this) {
     is Trigger.Location -> Condition.AtPlace(lat, lng, radiusM, label, inside = presence == Presence.INSIDE)
     is Trigger.Interval -> Condition.TimeWindow(from, to, days)
+    // A stretch of the calendar, true on every one of its days. The same shape one unit up.
+    is Trigger.DateRange -> Condition.DateRange(from, to)
     // A day with a window on it is a state for as long as the window lasts, exactly as an
-    // interval is — and a day with none is a state for as long as its waking hours last. See
-    // [whenCombined] for the other half of what that means.
+    // interval is — and a day with none is a state for as long as its waking hours last.
     // With the date on it: a day is a state about *that* day, and a fold that kept only the
     // hours turned one Sunday evening into every evening. See [Condition.TimeWindow.date].
     is Trigger.DayRandom -> stretchOf(shape).let { Condition.TimeWindow(it.from.toLocalTime(), it.to.toLocalTime(), date = date) }
@@ -353,49 +384,8 @@ fun Trigger.asState(shape: DayShape = DayShape.DEFAULT): Condition? = when (this
     is Trigger.Repeat -> null
 }
 
-/** The stretch of the day a date with no hour is drawn from: the one it was given, or the day this person is up for. */
+/** The stretch of the day a date with no hour covers: the one it was given, or the day this person is up for. */
 fun Trigger.DayRandom.stretchOf(shape: DayShape): AwakeWindow = window?.on(date) ?: shape.awakeOn(date)
-
-/**
- * The same trigger as its own set makes it, for a set that combines ([RuleMatch.ALL] and
- * [RuleMatch.TOGETHER]).
- *
- * **A window is only a draw while it depends on nothing else.** "El viernes a la hora de comer"
- * on its own means a minute nobody chose somewhere between two and four, which is the whole
- * point of naming a stretch instead of an hour. Put it in a set and that reading falls apart:
- * "a la hora de comer, y a la vez en la oficina" cannot mean "at 15:37 if you happen to be at
- * the office" — a draw that lands while the other half is false is a reminder that silently
- * does not ring. In a set the window is a *gate*: it is met as soon as it is open, so the ring
- * lands the moment everything else is true and we are inside it, which can be its first second.
- *
- * So the moment becomes the opening, and the window becomes a condition on every sibling
- * ([asState]) — which is exactly what an [Trigger.Interval] has always been, reached from the
- * other side. A day with no window is the same gate over the hours this person is up ([shape]):
- * "el jueves, y a la vez en la oficina" used to be one minute of Thursday, drawn from the whole
- * day and rung only if the phone happened to be inside the circle at it. And the gate opens at
- * the first minute the rule's own hour [fences] allow, not at the window's start: a door that
- * opened at eight for a rule that says "sólo de 16 a 17" was a moment the fence rejected, and a
- * set that never completed. Everything else comes back untouched.
- */
-fun Trigger.whenCombined(shape: DayShape = DayShape.DEFAULT, fences: List<Condition.TimeWindow> = emptyList()): Trigger = when (this) {
-    is Trigger.DayRandom -> Trigger.AtDateTime(gateOpening(stretchOf(shape), fences))
-    else -> this
-}
-
-/**
- * The first minute of [window] that every one of [fences] allows, or its start when none does —
- * the walk that asks the fences then answers *never*, and says so, instead of a set that waits
- * for a moment it has already ruled out.
- */
-private fun gateOpening(window: AwakeWindow, fences: List<Condition.TimeWindow>): LocalDateTime {
-    if (fences.isEmpty()) return window.from
-    var at = window.from
-    while (at < window.to) {
-        if (fences.all { it.holdsAt(at) }) return at
-        at = at.plusMinutes(1)
-    }
-    return window.from
-}
 
 /**
  * Whether this trigger names an hour of the day it is due on.
@@ -410,6 +400,8 @@ val Trigger.namesAnHour: Boolean
     get() = when (this) {
         is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.DayRandom -> true
         is Trigger.AtTime, is Trigger.Repeat, is Trigger.Interval, is Trigger.Random -> true
+        // The default one, which is still an hour a rest must not be standing in front of.
+        is Trigger.DateRange -> true
         is Trigger.Countdown, is Trigger.Location -> false
     }
 
@@ -423,6 +415,7 @@ val Trigger.kind: TriggerKind
         is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.DayRandom -> TriggerKind.DATE
         is Trigger.AtTime, is Trigger.Repeat -> TriggerKind.REPEAT_TIME
         is Trigger.Interval -> TriggerKind.INTERVAL
+        is Trigger.DateRange -> TriggerKind.DATE_RANGE
         is Trigger.Location -> TriggerKind.PLACE
         is Trigger.Countdown -> TriggerKind.COUNTDOWN
         is Trigger.Random -> TriggerKind.RANDOM

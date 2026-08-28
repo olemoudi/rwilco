@@ -124,3 +124,35 @@ fun DayShape.awakeOn(date: LocalDate): AwakeWindow {
     val to = if (sleep > wake) date.atTime(sleep) else date.plusDays(1).atTime(sleep)
     return AwakeWindow(from, to)
 }
+
+/**
+ * The first minute of [window] that every one of [fences] allows, or its start when none does.
+ *
+ * **A day with no hour is not a lottery.** It used to be: a moment drawn from the waking hours
+ * by (reminder, day), so "el jueves, a cualquier hora" was one minute of Thursday and nobody —
+ * not the person, not the screen — could say which. That reading only ever survived while the
+ * shape depended on nothing else; the moment it sat in a set beside a place, the draw had to
+ * become the window's opening or the ring would land while the other half was false. Two
+ * readings of one control, and the one you got depended on what else was on the card.
+ *
+ * So this is the only reading now. A stretch with no hour in it is **true from the moment it
+ * opens until the moment it closes**, and the ring is the opening: "el jueves, me da igual la
+ * hora" rings when Thursday's waking hours start and goes on being true all day, which is what
+ * makes it safe to AND with anything. Chance is still a thing you can ask for — it is
+ * [Trigger.Random], the tile that is about nothing else.
+ *
+ * The fences are the rule's own "y sólo si" hours ([TriggerRule.windows]). A door that opened
+ * at eight for a rule saying "sólo de 16 a 17" was a moment the fence rejected and a set that
+ * never completed, so the opening is the first minute the fences actually allow. When no minute
+ * of the window clears them the plain opening comes back for the caller's walk to reject, which
+ * is what a fence naming *other days* ("sólo los lunes") has to do to a daily calendar.
+ */
+fun openingOf(window: AwakeWindow, fences: List<Condition.TimeWindow> = emptyList()): LocalDateTime {
+    if (fences.isEmpty()) return window.from
+    var at = window.from
+    while (at < window.to) {
+        if (fences.all { it.holdsAt(at) }) return at
+        at = at.plusMinutes(1)
+    }
+    return window.from
+}

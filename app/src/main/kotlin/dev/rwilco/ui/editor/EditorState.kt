@@ -1,6 +1,8 @@
 package dev.rwilco.ui.editor
 
+import dev.rwilco.model.DayTiming
 import dev.rwilco.model.OFFERED_KINDS
+import dev.rwilco.model.dayTimingOf
 import dev.rwilco.model.Action
 import dev.rwilco.model.toggling
 import dev.rwilco.model.Condition
@@ -110,7 +112,7 @@ sealed interface EditorSheet {
     data class ConfigureCondition(val ruleIndex: Int, val conditionIndex: Int?, val initial: Condition?) : EditorSheet
 
     /** The calendar in "Vuelve"; [initial] is the one set, or null when there is none yet. */
-    data class ConfigureCalendar(val initial: Trigger.Repeat?) : EditorSheet
+    data class ConfigureCalendar(val initial: Trigger.Repeat?, val suggested: DayTiming? = null) : EditorSheet
 
     /** A fence on that calendar — the same "y sólo si" a rule has; [index] null when adding. */
     data class ConfigureRecurrenceCondition(val index: Int?, val initial: Condition?) : EditorSheet
@@ -236,7 +238,7 @@ fun EditorUiState.setRecurrence(recurrence: Recurrence): EditorUiState = copy(dr
  * miércoles", which opens as the calendar it always was and is written back as one.
  */
 fun EditorUiState.openCalendar(): EditorUiState =
-    copy(sheet = EditorSheet.ConfigureCalendar(draft.recurrence.asRepeat()))
+    copy(sheet = EditorSheet.ConfigureCalendar(draft.recurrence.asRepeat(), dayTimingOf(draft.rules)))
 
 /** The sheet's result. The fences already on the calendar stay on it. */
 fun EditorUiState.commitCalendar(repeat: Trigger.Repeat): EditorUiState = copy(
