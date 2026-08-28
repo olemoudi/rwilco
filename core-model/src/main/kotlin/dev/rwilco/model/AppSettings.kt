@@ -132,6 +132,11 @@ data class AppSettings(
      * for anybody whose earbuds live in a drawer, where a reminder would play to nobody.
      */
     val alertToHeadphones: Boolean = true,
+    /**
+     * How long the safety net waits before saying anything, and what shapes it will not be
+     * armed on at all. See [SafetyNetSettings], which holds the whole of the reasoning.
+     */
+    val safetyNet: SafetyNetSettings = SafetyNetSettings(),
 )
 
 /** How the alert screen holds more than one reminder. See [AppSettings.alertStacking]. */

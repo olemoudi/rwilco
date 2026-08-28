@@ -370,6 +370,15 @@ strict is asking somebody to remember how they spelled it.
   left resting there outlives the row (the list reuses it by key), which once handed a reminder
   back from "undo" frozen halfway across the screen. `SwipeableCardTest` drives the gesture
   against a hand-driven clock; `HomeSwipeTest` walks swipe → undo → swipe on the real screen.
+  **And nothing moves until the hand leaves**: the glass fills under a thumb that is still on the
+  screen, so acting there and then pulled the next card up into the space this one was being
+  held in — and a reminder that comes back is worse, since it is dealt with, sorted, and lands
+  back in the same place, so the card under the thumb turns into a different reading of itself.
+  The row goes blank at once (the action has taken: the glass is full and the phone has said so)
+  and keeps its height, leaving the hole it made; the list closes up on the release, when there
+  is no finger left for it to move anything under. Which way it went is remembered from when the
+  glass filled, not read off the box at release — by then the box is sliding back and would
+  answer "neither".
 - **Held, a card says what can be done to it** (`ReminderActionsMenu`), and the menu opens at the
   **top of the screen**: a held press lands wherever the card is, which on a list is the middle,
   and a menu that opens under the thumb that opened it has to be read around the hand holding it.
@@ -609,6 +618,29 @@ strict is asking somebody to remember how they spelled it.
   "a las ocho, y luego cada seis horas" means; and rung and ignored, that moment is spent like
   any other (`recurrenceMoment`). With no rules at all the recurrence is the whole arrangement
   and its moment is always the ring.
+- **The safety net** (`core-model/SafetyNet.kt`) is the one thing the app does about a firing
+  nobody answered. Asked for per reminder (`Reminder.safetyNet`, a switch on the "qué pasa"
+  card) and said **once per firing** (`Reminder.nudgedAt`), quietly: `CHANNEL_NET` is
+  `IMPORTANCE_LOW`, silent, still, never a screen and never pinned — the same card with the same
+  three buttons, on a line that says *puede que se te haya pasado* and a clock counting up from
+  the ring. What it waits for is `nudgeAt`: the whole wait (`afterHours`, a day) when the
+  reminder has nothing left to ring, and otherwise a **tenth** (`fraction`) of the gap to its
+  next ring, whichever is shorter — the point being to catch it before the next one buries it.
+  Under `minCadenceMinutes` (an hour) it cannot be armed at all: there the next ring already is
+  the net. The gap is `ringCadence`, asked of the *shape* rather than of the row — a six-hourly
+  reminder that rang and was ignored has no next moment of its own (an anchored recurrence
+  counts from the "hecho") and its rhythm is six hours all the same. It keeps **its own alarm**,
+  on its own `PendingIntent` (`nudgeUri`), deliberately not touching `armedFor`: that column
+  means "a firing is owed here", and a net's moment recorded in it would have the catch-up ring
+  the reminder rather than whisper about it. Inexact (`setAndAllowWhileIdle`), because a word a
+  quarter of an hour late is the same word and the exact kind would announce the quietest thing
+  the app does in the loudest surface the phone has. Everything is asked again at fire time
+  (`ReminderFiring.nudge`): a day is long, and dealt with, paused, put off and rung again all
+  happen inside it. The three numbers live in Settings, under their own group, which is also
+  where the rule is written down. A card carrying one wears a filled disc in the theme's error
+  red (`SafetyNetMark`) — amber is spoken for, and red is what a thing that catches you is
+  painted in; contrast is 6.2:1 dark and 4.6:1 light against the card, and the same again for
+  the glyph on the disc.
 - `AlertPresenter` decides *where* a firing shows itself: an app open in front of somebody gets
   the banner, and the home screen, a dark screen or the lock screen get the whole screen. The
   noise follows that decision, not the tile: a full-screen alert rings for itself, but one

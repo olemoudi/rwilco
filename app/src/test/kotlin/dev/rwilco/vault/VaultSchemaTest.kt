@@ -51,10 +51,17 @@ class VaultSchemaTest {
     companion object {
         const val TEST_PASSPHRASE = "rwilco-test-passphrase"
 
-        /** Data version 1: the columns of Room schema 5, in declaration order. */
+        /**
+         * Data version 1: the columns of Room schema 5, in declaration order — plus the ones
+         * added since by a Room migration that only ADDS, with a default that reads as what
+         * every older row already meant. An additive column needs no vault version of its own:
+         * a v1 snapshot restores into it as the default, which is exactly what the row was.
+         */
         val FROZEN_COLUMNS = listOf(
             "id", "text", "tags", "triggers", "actions", "status", "createdAt", "updatedAt", "doneAt",
             "snoozedUntil", "lastFiredAt", "armedFor", "ruleMatch", "armedRule", "firedRules", "recurrence", "lastDealtAt",
+            // Room v6: the safety net, off for everything written before it existed.
+            "safetyNet", "nudgedAt",
         )
     }
 }

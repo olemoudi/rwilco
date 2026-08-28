@@ -126,6 +126,7 @@ class EditorViewModel(
                 allTexts = visibleTexts(suggestedTexts(past, now, limit = 100), current.hiddenTexts),
                 defaultTime = current.defaultTime,
                 dayShape = current.dayShape,
+                safetyNetSettings = current.safetyNet,
                 defaultKind = if (current.popularTriggersFirst) null else current.defaultTriggerKind,
                 // The "when"s used before, ready to be used again, and the order the tiles
                 // come up in when Settings asks for the popular ones first.
@@ -153,6 +154,7 @@ class EditorViewModel(
     fun toggleTag(tag: String) = _state.update { it.toggleTag(tag) }
     fun addTag(raw: String) = _state.update { it.addTag(raw) }
     fun toggleAction(action: Action) = _state.update { it.toggleAction(action) }
+    fun setSafetyNet(on: Boolean) = _state.update { it.setSafetyNet(on) }
     fun setRuleMatch(match: RuleMatch) = _state.update { it.setRuleMatch(match) }
     fun setRecurrence(recurrence: Recurrence) = _state.update { it.setRecurrence(recurrence) }
 

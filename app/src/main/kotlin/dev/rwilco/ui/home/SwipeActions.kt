@@ -1,6 +1,7 @@
 package dev.rwilco.ui.home
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -26,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -34,6 +36,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -61,6 +65,15 @@ private val GLASS = 48.dp
  * The box is never allowed to settle at its dismissed end. The row is leaving the list anyway,
  * so the snap back is not seen — and a box left resting there outlives the row, which is what
  * once handed a reminder back from "undo" frozen halfway across the screen.
+ *
+ * **And nothing moves until the hand leaves.** The glass fills under a thumb that is still on
+ * the screen, so acting there and then pulled the next card up into the space this one was
+ * still being held in — and whatever was underneath arrived under a finger that had not let go
+ * of the last thing it touched. A reminder that comes back is worse: it is dealt with, sorted,
+ * and lands back in the same place, so the card under the thumb changes into a different
+ * reading of itself. So the row goes blank at once (the action HAS taken: the glass is full and
+ * the phone has said so) and keeps its height, leaving the hole it made; the list closes up on
+ * the release, when there is no finger left for it to move anything under.
  */
 @Composable
 fun SwipeableCard(
@@ -79,6 +92,13 @@ fun SwipeableCard(
     // Set when this opening has already acted (or has been called off), so the box asking again
     // while it refuses to settle cannot act twice.
     var spent by remember { mutableStateOf(false) }
+    // Whether a finger is still on this card. Watched on the Initial pass and consumed nowhere,
+    // so the swipe itself never notices it is being read.
+    var pressed by remember { mutableStateOf(false) }
+    // The action the full glass earned, waiting for the hand to leave: true is "hecho", false is
+    // "borrar". Held rather than read off the box at release time, because by then the box has
+    // begun sliding back and its direction says Settled — which would delete what was ticked.
+    var takenAsDone by remember { mutableStateOf<Boolean?>(null) }
 
     val armed = state.targetValue != SwipeToDismissBoxValue.Settled
     val toDone = state.dismissDirection == SwipeToDismissBoxValue.StartToEnd
@@ -90,6 +110,10 @@ fun SwipeableCard(
             // Only a box that is open: spending one at rest would swallow the first swipe
             // on every card after every alert, screen-off or app switch.
             if (event == Lifecycle.Event.ON_PAUSE && state.targetValue != SwipeToDismissBoxValue.Settled) spent = true
+            // An app that has left the screen takes the hand with it: no pointer is going to
+            // report a release now, and an action already earned must not be lost waiting for
+            // one that cannot come.
+            if (event == Lifecycle.Event.ON_PAUSE) pressed = false
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -108,13 +132,37 @@ fun SwipeableCard(
         fill.animateTo(1f, tween(SWIPE_HOLD_MILLIS, easing = LinearEasing))
         spent = true
         haptics.perform(HapticFeedbackType.Confirm)
-        if (toDone) onDone() else onDelete()
+        takenAsDone = toDone
+    }
+
+    // The row leaves the list only once the finger has: see the note above.
+    LaunchedEffect(takenAsDone, pressed) {
+        val done = takenAsDone ?: return@LaunchedEffect
+        if (pressed) return@LaunchedEffect
+        if (done) onDone() else onDelete()
     }
 
     val doneColor = familyColor(TriggerFamily.PLACE, LocalDarkTheme.current)
+    // Blank the instant it takes, and keep the height until the row itself goes: what is left is
+    // the hole the card made, which is the one thing that can be under a thumb without being
+    // something the thumb might have meant to press.
+    val shown by animateFloatAsState(
+        targetValue = if (takenAsDone != null) 0f else 1f,
+        animationSpec = tween(motion.fast),
+        label = "swipeTaken",
+    )
     SwipeToDismissBox(
         state = state,
-        modifier = modifier,
+        modifier = modifier
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        pressed = event.changes.any { it.pressed }
+                    }
+                }
+            }
+            .alpha(shown),
         backgroundContent = {
             val color = if (toDone) doneColor else MaterialTheme.colorScheme.error
             Box(

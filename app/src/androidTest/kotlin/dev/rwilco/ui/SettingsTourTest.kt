@@ -144,6 +144,7 @@ class SettingsTourTest {
         s(R.string.settings_alerts),
         s(R.string.settings_sound_title),
         s(R.string.settings_vibration_strength),
+        s(R.string.settings_net_title),
         s(R.string.settings_group_new),
         s(R.string.settings_group_day),
         s(R.string.settings_places),

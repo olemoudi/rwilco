@@ -18,7 +18,7 @@ abstract class RwilcoDatabase : RoomDatabase() {
 
     companion object {
         /** A named constant so MigrationChainTest can assert the chain reaches it. */
-        const val VERSION = 5
+        const val VERSION = 6
         private const val NAME = "rwilco.db"
 
         /** One entry per version step; `// vN: what it added` on each. */
@@ -80,6 +80,15 @@ abstract class RwilcoDatabase : RoomDatabase() {
                     db.execSQL("DROP TABLE reminder")
                     db.execSQL("ALTER TABLE reminder_v5 RENAME TO reminder")
                     db.execSQL("CREATE INDEX IF NOT EXISTS index_reminder_status ON reminder (status)")
+                }
+            },
+            // v6: the safety net — whether a firing nobody answers gets one quiet word about it,
+            // and when that word was last said. Two columns added, nothing rewritten: off is
+            // what every reminder already written meant, since nobody asked for it.
+            object : Migration(5, 6) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE reminder ADD COLUMN safetyNet INTEGER NOT NULL DEFAULT 0")
+                    db.execSQL("ALTER TABLE reminder ADD COLUMN nudgedAt INTEGER")
                 }
             },
         )

@@ -321,6 +321,20 @@
     <string name="notif_channel_missed">Missed reminders</string>
     <string name="notif_channel_missed_description">Reminders whose moment passed while the phone was off.</string>
     <string name="alert_missed_subtext">Did not ring on time</string>
+    <string name="notif_channel_net">Safety net</string>
+    <string name="notif_channel_net_description">A quiet word about a reminder that rang and was never answered.</string>
+    <string name="notif_net_subtext">You may have let this one go</string>
+    <string name="settings_net_title">Safety net</string>
+    <string name="settings_net_about">A reminder can be asked to keep one eye on you: if it rings and you never answer it, you get one quiet word about it — no sound, no screen, once. The switch is on each reminder, under «what happens»; these are what it means by «later».</string>
+    <string name="settings_net_after">At most it waits</string>
+    <string name="settings_net_after_hint">And this is the whole wait when the reminder has nothing left to ring: a date that has been, a countdown that ran out. Nothing else is coming, so there is no hurry.</string>
+    <string name="settings_net_after_value">%1$d h</string>
+    <string name="settings_net_fraction">Or this much of the gap</string>
+    <string name="settings_net_fraction_hint">When the reminder does come back, the word arrives after this share of the time until the next ring — whichever is sooner. The point is to catch it before the next one buries it: a tenth is 2 h 24 min on something daily, and a quarter of an hour on something six-hourly.</string>
+    <string name="settings_net_fraction_value">1/%1$d</string>
+    <string name="settings_net_floor">Never when it comes back sooner than</string>
+    <string name="settings_net_floor_hint">Below this the net cannot be switched on at all. A reminder that comes back every twenty minutes needs no net: the next ring is already one, and a second notification between two of them is noise.</string>
+    <string name="settings_net_floor_value">%1$d min</string>
 
     <!-- Permissions for alerts -->
     <string name="settings_alerts">Alerts</string>
@@ -455,6 +469,7 @@
     <string name="editor_match_all_hint">All of them have to happen; the last one rings it.</string>
     <string name="card_match_all">all of them</string>
     <string name="card_recurrence">Repeats</string>
+    <string name="card_safety_net">Safety net on</string>
     <string name="card_snoozed">Put off</string>
     <string name="card_recurrence_from_done">from when you mark it done</string>
     <string name="card_rule_happened">Already happened</string>
@@ -467,6 +482,9 @@
     <string name="home_section_no_trigger">Kept, not timed</string>
     <string name="editor_when_optional">optional</string>
     <string name="editor_what_optional">optional</string>
+    <string name="editor_net_title">Safety net</string>
+    <string name="editor_net_hint">If it rings and you let it go, one quiet word about it %1$s later.</string>
+    <string name="editor_net_too_fast">It comes back every %1$s — too often for a net, since the next ring gets there first.</string>
     <string name="editor_when_empty">Nothing rings it: it is simply kept, under its tags.</string>
     <string name="editor_what_empty">The moment passes in silence.</string>
     <string-array name="whats_new_0_3_0">

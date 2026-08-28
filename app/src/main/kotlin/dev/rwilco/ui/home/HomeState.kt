@@ -69,6 +69,8 @@ data class ReminderCardUi(
     val triggers: List<TriggerRowUi>,
     val actions: Set<Action>,
     val paused: Boolean,
+    /** Whether this one is being watched by the safety net; the card wears a mark for it. */
+    val safetyNet: Boolean = false,
     /**
      * How this card's rules are read together, or null when there is only one of them and
      * there is no set to read.
@@ -185,6 +187,7 @@ fun buildHomeState(
             tags = reminder.tags,
             triggers = rows,
             actions = reminder.actions,
+            safetyNet = reminder.safetyNet,
             railTag = reminder.tags.firstOrNull(),
             paused = reminder.status == Status.PAUSED,
             // A paused reminder rings at no moment at all, so a snooze on it is not news.

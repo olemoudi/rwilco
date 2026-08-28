@@ -19,10 +19,15 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The guard on the swipes. A card used to act the instant a thumb crossed a line, which is a
- * card that gets dealt with while somebody is scrolling; now it has to be held open. Only a
- * device runs a real gesture against a real animation, and only a hand-driven clock can say
- * "let go after a fifth of a second" and mean it.
+ * The guard on the swipes, and the wait after it.
+ *
+ * A card used to act the instant a thumb crossed a line, which is a card that gets dealt with
+ * while somebody is scrolling; now it has to be held open. And what it earns by being held is
+ * not spent until the hand leaves: the row keeps its place while a finger is still on it, so
+ * nothing is ever pulled up into the space under a thumb that has not let go.
+ *
+ * Only a device runs a real gesture against a real animation, and only a hand-driven clock can
+ * say "let go after a fifth of a second" and mean it.
  */
 @RunWith(AndroidJUnit4::class)
 class SwipeableCardTest {
@@ -75,16 +80,20 @@ class SwipeableCardTest {
     }
 
     @Test
-    fun heldOpenLongEnoughItActsOnceAndOnlyOnce() {
+    fun heldOpenLongEnoughItActsOnLettingGoOnceAndOnlyOnce() {
         setUp()
         openRight()
         rule.mainClock.advanceTimeBy(600)
-        assertEquals(1, done)
-        // Still held a second later: the same opening does not act twice.
+        // The glass is full and the phone has said so, but the finger is still down: the row
+        // stays where it is, or whatever is under it arrives under a thumb mid-gesture.
+        assertEquals("a card acted on while it was still being held", 0, done)
         rule.mainClock.advanceTimeBy(1_000)
-        assertEquals(1, done)
+        assertEquals(0, done)
         card().performTouchInput { up() }
         rule.mainClock.advanceTimeBy(500)
+        assertEquals(1, done)
+        // And once: the box refuses to settle at its dismissed end and asks again on the way back.
+        rule.mainClock.advanceTimeBy(2_000)
         assertEquals(1, done)
         assertEquals(0, deleted)
     }
@@ -94,9 +103,13 @@ class SwipeableCardTest {
         setUp()
         openLeft()
         rule.mainClock.advanceTimeBy(600)
+        assertEquals(0, deleted)
+        card().performTouchInput { up() }
+        rule.mainClock.advanceTimeBy(500)
+        // Which way it went is decided when the glass fills, not when the hand leaves: by then
+        // the box is already sliding back and would answer "neither".
         assertEquals(1, deleted)
         assertEquals(0, done)
-        card().performTouchInput { up() }
     }
 
     @Test

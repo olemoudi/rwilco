@@ -20,6 +20,7 @@ import dev.rwilco.model.Status
 import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.Wake
 import dev.rwilco.model.missedFire
+import dev.rwilco.model.nudgeAt
 import dev.rwilco.model.nextWake
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
@@ -50,6 +51,9 @@ class ReminderScheduler(
 
     /** Ids this process has armed, so a reminder that leaves the list gets its alarm cancelled. */
     private val armed = Collections.synchronizedSet(mutableSetOf<String>())
+
+    /** The same, for the safety net's own alarm — a second one, on its own PendingIntent. */
+    private val nudging = Collections.synchronizedSet(mutableSetOf<String>())
 
     /**
      * One pass at a time. A pass is a read of every row, a decision each, and a write of the
@@ -86,6 +90,11 @@ class ReminderScheduler(
         for (reminder in open) {
             seen += reminder.id
             if (missedFire(reminder, now) != null) missed += reminder
+            // The safety net keeps an alarm of its own, and deliberately does not touch
+            // [Reminder.armedFor]: that column means "a firing is owed at this moment", and a
+            // net's moment recorded there would have the catch-up RING the reminder rather than
+            // whisper about it (missedFire), and spend the moment while it was at it.
+            armNudge(reminder, reminder.nudgeAt(now, zone, defaultTime, settings.safetyNet, dayStart, settings.dayShape))
             val wake = nextWake(reminder, now, zone, defaultTime, dayStart, settings.dayShape)
             if (wake == null) {
                 cancel(reminder.id)
@@ -105,6 +114,7 @@ class ReminderScheduler(
         // restart empties this set, so a stale alarm can still be delivered once; what stops it
         // ringing is the armed-moment check in ReminderFiring.fire, not this list.
         for (id in armed.toList() - seen) cancel(id)
+        for (id in nudging.toList() - seen) cancelNudge(id)
         Log.i(TAG, "armed ${seen.size} reminders, ${missed.size} missed")
         Diag.note("arm", "armed=${seen.size} missed=${missed.size} exact=${if (canScheduleExact()) "y" else "n"}")
         for (reminder in missed) Diag.note("arm", "r=${reminder.id.take(8)} missed its moment ${reminder.armedFor} (rule ${reminder.armedRule})")
@@ -114,6 +124,31 @@ class ReminderScheduler(
     fun cancel(id: String) {
         runCatching { alarms.cancel(alarmIntent(id)) }
         armed -= id
+        cancelNudge(id)
+    }
+
+    private fun cancelNudge(id: String) {
+        runCatching { alarms.cancel(nudgeIntent(id)) }
+        nudging -= id
+    }
+
+    /**
+     * The safety net's own alarm, [at] or nothing.
+     *
+     * **Inexact on purpose** (`setAndAllowWhileIdle`): a word said a quarter of an hour late is
+     * the same word, and the exact kind is `setAlarmClock`, which puts an alarm icon in the
+     * status bar and a time in the system's "next alarm" — announcing, in the loudest surface
+     * the phone has, the quietest thing this app does.
+     */
+    private fun armNudge(reminder: Reminder, at: Instant?) {
+        if (at == null) {
+            cancelNudge(reminder.id)
+            return
+        }
+        runCatching {
+            alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.toEpochMilli(), nudgeIntent(reminder.id))
+            nudging += reminder.id
+        }.onFailure { Log.e(TAG, "could not arm the safety net of ${reminder.id}", it) }
     }
 
     private fun arm(id: String, wake: Wake) {
@@ -164,6 +199,18 @@ class ReminderScheduler(
         )
     }
 
+    /**
+     * The net's own, told apart by its own URI so the two can be armed at once: a reminder that
+     * rang and was ignored is often waiting for both — the next ring, and the word about the
+     * one that went unanswered.
+     */
+    private fun nudgeIntent(id: String): PendingIntent = PendingIntent.getBroadcast(
+        context,
+        0,
+        Intent(context, AlarmReceiver::class.java).setData(nudgeUri(id)),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+
     companion object {
         private const val TAG = "RwilcoAlarms"
 
@@ -172,7 +219,13 @@ class ReminderScheduler(
 
         fun reminderUri(id: String) = "rwilco://reminder/$id".toUri()
 
+        /** The safety net's own alarm, so it never replaces the one that actually rings. */
+        fun nudgeUri(id: String) = "rwilco://nudge/$id".toUri()
+
         fun reminderIdOf(intent: Intent): String? = intent.data?.lastPathSegment
+
+        /** Whether this alarm is the net's quiet word rather than the reminder's own moment. */
+        fun isNudge(intent: Intent): Boolean = intent.data?.host == "nudge"
 
         fun ruleIndexOf(intent: Intent): Int? = intent.getIntExtra(EXTRA_RULE, -1).takeIf { it >= 0 }
 
@@ -186,6 +239,7 @@ class ReminderScheduler(
             reminder.snoozedUntil,
             reminder.recurrence,
             reminder.lastDealtAt,
+            reminder.safetyNet,
         )
     }
 
@@ -209,5 +263,14 @@ class ReminderScheduler(
          * moves — so the alarm would still be set for the round that was just taken back.
          */
         val lastDealtAt: Instant?,
+        /**
+         * Whether the safety net is asked for. Only the switch, and deliberately not the two
+         * moments it is worked out from ([Reminder.lastFiredAt], [Reminder.nudgedAt]): those are
+         * written by a firing, and everything that writes one — the ring, the "hecho", the
+         * snooze, the net's own word — calls the scheduler on its way out already. Putting them
+         * here would put every ring through a second full pass to arrive at the same answer,
+         * which is the rule this key exists to keep.
+         */
+        val safetyNet: Boolean,
     )
 }

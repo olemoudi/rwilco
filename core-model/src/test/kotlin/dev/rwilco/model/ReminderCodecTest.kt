@@ -190,7 +190,7 @@ class ReminderCodecTest {
                 """{"id":"builtin-week","recurrence":{"type":"after","amount":1,"unit":"WEEKS","from":"DEALT"},"name":"","uses":0,"lastUsedAt":null},""" +
                 """{"id":"builtin-month","recurrence":{"type":"after","amount":1,"unit":"MONTHS","from":"DEALT"},"name":"","uses":0,"lastUsedAt":null}],""" +
                 """"busyWatchNotice":false,"vibration":{"strength":"STRONG","rhythm":"PULSED"},""" +
-                """"alertSound":{"type":"system"},"insistentSound":null,"soundPlays":5,"soundGapMinutes":5,"alertStacking":"SEQUENTIAL","updatesWifiOnly":false,"alertToHeadphones":true}""",
+                """"alertSound":{"type":"system"},"insistentSound":null,"soundPlays":5,"soundGapMinutes":5,"alertStacking":"SEQUENTIAL","updatesWifiOnly":false,"alertToHeadphones":true,"safetyNet":{"afterHours":24,"minCadenceMinutes":60,"fraction":10}}""",
             encoded,
         )
     }

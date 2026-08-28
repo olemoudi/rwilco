@@ -12,6 +12,7 @@ import dev.rwilco.model.Action
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.SoundLimits
 import dev.rwilco.model.AlertSound
+import dev.rwilco.model.SafetyNetSettings
 import dev.rwilco.model.AlertStacking
 import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.toggling
@@ -123,6 +124,9 @@ class SettingsViewModel(
 
     /** Null puts the two back together: the insistent reminders go back to the one above. */
     fun setInsistentSound(sound: AlertSound?) = update { it.copy(insistentSound = sound) }
+
+    /** The three numbers the safety net is made of; the switch itself is per reminder. */
+    fun setSafetyNet(net: SafetyNetSettings) = update { it.copy(safetyNet = net) }
     fun setSoundPlays(plays: Int) = update { it.copy(soundPlays = plays.coerceIn(SoundLimits.PLAYS)) }
     fun setSoundGap(minutes: Int) = update { it.copy(soundGapMinutes = minutes.coerceIn(SoundLimits.GAP_MINUTES)) }
 

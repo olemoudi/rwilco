@@ -10,6 +10,7 @@ import dev.rwilco.model.MAX_PRESET_NAME
 import dev.rwilco.model.MAX_TEXT_LENGTH
 import dev.rwilco.model.Preset
 import dev.rwilco.model.Recurrence
+import dev.rwilco.model.SafetyNetSettings
 import dev.rwilco.model.RecurrencePreset
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.nextPresetColor
@@ -44,9 +45,11 @@ data class Draft(
     /** How it comes back after being dealt with. Asked for, never assumed. */
     val recurrence: Recurrence = Recurrence.None,
     val actions: Set<Action> = DEFAULT_ACTIONS,
+    /** Whether a firing nobody answers gets one quiet word about it. See `SafetyNetSettings`. */
+    val safetyNet: Boolean = false,
 )
 
-fun Reminder.toDraft() = Draft(text = text, tags = tags, rules = rules, ruleMatch = ruleMatch, actions = actions, recurrence = recurrence)
+fun Reminder.toDraft() = Draft(text = text, tags = tags, rules = rules, ruleMatch = ruleMatch, actions = actions, recurrence = recurrence, safetyNet = safetyNet)
 
 /**
  * Note what is NOT carried over: a snooze and the armed moment. Editing a reminder re-decides
@@ -84,6 +87,7 @@ fun Draft.toReminder(
     ruleMatch = ruleMatch,
     actions = actions,
     recurrence = recurrence,
+    safetyNet = safetyNet,
     status = status,
     createdAt = createdAt,
     updatedAt = now,
@@ -131,6 +135,8 @@ data class EditorUiState(
     val defaultTime: LocalTime = LocalTime.of(9, 0),
     /** The hours this person is up: what "at random during the day" is drawn from. */
     val dayShape: DayShape = DayShape.DEFAULT,
+    /** What the safety net waits for, so the card can say it in this reminder's own numbers. */
+    val safetyNetSettings: SafetyNetSettings = SafetyNetSettings(),
     /** The kind the picker offers first, from the settings; null when there is no favourite. */
     val defaultKind: TriggerKind? = null,
     /** The order the six tiles come up in: their usual one, or what gets used most. */
@@ -195,6 +201,7 @@ fun EditorUiState.toPreset(id: String, now: Instant, existing: Preset?, others: 
     ruleMatch = draft.ruleMatch,
     actions = draft.actions,
     recurrence = draft.recurrence,
+    safetyNet = draft.safetyNet,
     // A preset keeps the colour it was given: it is how it is recognised, and a colour that
     // moves is worse than no colour at all.
     colorIndex = existing?.colorIndex ?: nextPresetColor(others),
@@ -278,6 +285,8 @@ fun EditorUiState.setRuleMatch(match: RuleMatch): EditorUiState =
  */
 fun EditorUiState.toggleAction(action: Action): EditorUiState =
     copy(draft = draft.copy(actions = draft.actions.toggling(action)))
+
+fun EditorUiState.setSafetyNet(on: Boolean): EditorUiState = copy(draft = draft.copy(safetyNet = on))
 
 fun EditorUiState.openKindPicker(): EditorUiState = copy(sheet = EditorSheet.PickKind)
 

@@ -71,6 +71,23 @@ class ReminderEntityMappingTest {
     }
 
     @Test
+    fun `the safety net survives the trip, and a row written before it reads as off`() {
+        val watched = reminder.copy(
+            safetyNet = true,
+            lastFiredAt = Instant.ofEpochMilli(1_700_000_000_000),
+            nudgedAt = Instant.ofEpochMilli(1_700_086_400_000),
+        )
+        val row = watched.toEntity()
+        assertEquals(true, row.safetyNet)
+        assertEquals(1_700_086_400_000, row.nudgedAt)
+        assertEquals(watched, row.toDomain())
+        // Room v6 added both columns with a default that says what every older row meant: the
+        // net is a thing you ask for, and nothing written before it existed ever did.
+        assertEquals(false, row.copy(safetyNet = false, nudgedAt = null).toDomain().safetyNet)
+        assertEquals(null, row.copy(safetyNet = false, nudgedAt = null).toDomain().nudgedAt)
+    }
+
+    @Test
     fun `a row written before the firing columns existed reads as never fired`() {
         val old = reminder.toEntity().copy(snoozedUntil = null, lastFiredAt = null, armedFor = null)
         val domain = old.toDomain()

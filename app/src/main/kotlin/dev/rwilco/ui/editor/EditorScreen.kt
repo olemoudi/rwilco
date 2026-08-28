@@ -81,6 +81,8 @@ import dev.rwilco.ui.editor.sheets.IntervalSheet
 import dev.rwilco.ui.editor.sheets.LocationSheet
 import dev.rwilco.ui.editor.sheets.RandomSheet
 import dev.rwilco.ui.editor.sheets.CalendarSheet
+import dev.rwilco.model.Status
+import dev.rwilco.model.ringCadence
 import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.theme.Tokens
 import java.time.LocalDate
@@ -143,6 +145,14 @@ fun EditorScreen(
             worst.putIfAbsent(index, message)
         }
         worst
+    }
+    // How often this shape comes back, which is what the safety net stretches under. Walking
+    // two of its moments is not work for a recomposition, so it is remembered like the warnings
+    // above — and asked of the draft as it would be saved, which is what the net will see.
+    val netCadence = remember(state.draft.rules, state.draft.ruleMatch, state.draft.recurrence, state.defaultTime, state.dayShape) {
+        state.draft
+            .toReminder("draft", now, now, Status.ACTIVE, zone = zone, shape = state.dayShape)
+            .ringCadence(now, zone, state.defaultTime, shape = state.dayShape)
     }
     // The same question for the calendar in "Vuelve", which has fences of its own and no rule
     // index to hang a message on. Remembered for the same reason: it walks moments.
@@ -314,6 +324,13 @@ fun EditorScreen(
                     ActionsSection(
                         selected = state.draft.actions,
                         onToggle = viewModel::toggleAction,
+                    )
+                    Spacer(Modifier.height(spacing.lg))
+                    SafetyNetRow(
+                        on = state.draft.safetyNet,
+                        cadence = netCadence,
+                        settings = state.safetyNetSettings,
+                        onToggle = viewModel::setSafetyNet,
                     )
                 }
                 Spacer(Modifier.height(spacing.xxl))

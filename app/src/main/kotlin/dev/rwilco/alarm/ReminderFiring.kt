@@ -25,6 +25,7 @@ import dev.rwilco.model.nextSoundIn
 import dev.rwilco.model.soundFor
 import dev.rwilco.model.firingPlan
 import dev.rwilco.model.missedFire
+import dev.rwilco.model.nudgeAt
 import dev.rwilco.model.momentRungFor
 import dev.rwilco.model.outcomeOfFiring
 import dev.rwilco.model.owedUnderAll
@@ -317,6 +318,45 @@ class ReminderFiring(
         // happened to go off. Four writes could be cut in two by a process dying, and a round
         // closed with its anchor unmoved is a reminder that never comes back.
         repository.dealtWith(id, now, status)
+        scheduler.rearmAll()
+    }
+
+    /**
+     * The safety net's word: one quiet notification about a firing nobody ever answered.
+     *
+     * Everything is asked again here rather than trusted from when the alarm was armed, because
+     * the net waits a long time by design — a day, on something that is not coming back — and
+     * every answer there is happens inside that wait: dealt with, paused, put off, or rung
+     * again, which starts a fresh net rather than this one. `nudgeAt` is the single place all
+     * of that is decided, so the scheduler and this agree by construction.
+     *
+     * The row is written before the notification goes out, which is the same order every other
+     * door here uses: a word said twice about one firing is the nagging this exists not to be,
+     * and a word that failed to post is quieter than the app intended rather than louder.
+     */
+    suspend fun nudge(id: String) = lock.withLock {
+        val reminder = repository.get(id) ?: return@withLock Diag.note(TAG_DIAG, "r=${short(id)} gone")
+        val now = clock.instant()
+        val settings = settings()
+        val due = reminder.nudgeAt(now, clock.zone, settings.defaultTime, settings.safetyNet, settings.dayStart, settings.dayShape)
+        if (due == null || due > now.plusSeconds(EARLY_GRACE_SECONDS)) {
+            Log.i(TAG, "$id: the safety net has nothing to say (due=$due)")
+            Diag.note(TAG_DIAG, "r=${short(id)} net dropped (due=$due now=$now)")
+            scheduler.rearmAll()
+            return@withLock
+        }
+        Log.i(TAG, "safety net for $id, about the firing at ${reminder.lastFiredAt}")
+        Diag.note(TAG_DIAG, "r=${short(id)} NET said, about the firing at ${reminder.lastFiredAt}")
+        repository.setNudgedAt(id, now)
+        AlertNotifications.post(
+            context = context,
+            reminder = reminder,
+            // Nothing it was asked to do when it rings applies here: this is not the ring.
+            plan = FiringPlan(fullScreen = false, notification = true, sound = false, vibrate = false),
+            late = null,
+            fullScreen = false,
+            nudge = true,
+        )
         scheduler.rearmAll()
     }
 

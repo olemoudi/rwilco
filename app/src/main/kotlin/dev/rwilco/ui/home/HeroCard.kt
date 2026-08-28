@@ -156,7 +156,12 @@ fun HeroCard(
             }
             if (hero.card.tags.isNotEmpty() || hero.card.actions.isNotEmpty()) {
                 Spacer(Modifier.height(spacing.sm))
-                CardFooter(tags = hero.card.tags, actions = hero.card.actions, modifier = Modifier.fillMaxWidth())
+                CardFooter(
+                    tags = hero.card.tags,
+                    actions = hero.card.actions,
+                    safetyNet = hero.card.safetyNet,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }
@@ -183,6 +188,8 @@ fun CardFooter(
     tags: List<String>,
     actions: Set<dev.rwilco.model.Action>,
     modifier: Modifier = Modifier,
+    /** Under the safety net: a mark of its own, ahead of the read-only glyphs. */
+    safetyNet: Boolean = false,
     trailing: @Composable () -> Unit = {},
 ) {
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
@@ -193,6 +200,7 @@ fun CardFooter(
             for (tag in tags.take(3)) dev.rwilco.ui.components.TagLabel(tag)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm), verticalAlignment = Alignment.CenterVertically) {
+            if (safetyNet) dev.rwilco.ui.components.SafetyNetMark()
             for (action in dev.rwilco.model.Action.entries) {
                 if (action in actions) {
                     dev.rwilco.ui.components.ActionGlyph(icon = action.icon, contentDescription = stringResource(action.labelRes))

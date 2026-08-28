@@ -56,6 +56,17 @@ data class Reminder(
      * happen again next week, and half of it having happened last week is not a head start.
      */
     val firedRules: Set<Int> = emptySet(),
+    /**
+     * Whether a firing nobody answers is followed, once and quietly, by "puede que se te haya
+     * pasado". Off by default: it is a second notification, and nobody gets one they did not
+     * ask for. See [SafetyNetSettings].
+     */
+    val safetyNet: Boolean = false,
+    /**
+     * When the net last said something. Paired with [lastFiredAt] it is what makes the word
+     * once per firing: nudged at or after the ring it is about, there is nothing left owed.
+     */
+    val nudgedAt: Instant? = null,
 )
 
 /**

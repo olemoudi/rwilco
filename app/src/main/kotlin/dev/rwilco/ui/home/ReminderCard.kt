@@ -128,6 +128,7 @@ fun ReminderCard(
             CardFooter(
                 tags = card.tags,
                 actions = card.actions,
+                safetyNet = card.safetyNet,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 // The card's one pressable thing, at the end of the row of read-only glyphs that

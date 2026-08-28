@@ -47,6 +47,10 @@ data class ReminderEntity(
     val recurrence: String = NO_RECURRENCE,
     /** When a firing was last dealt with: what every recurrence counts from. */
     val lastDealtAt: Long? = null,
+    /** Whether a firing nobody answers gets one quiet word about it. See `SafetyNetSettings`. */
+    val safetyNet: Boolean = false,
+    /** When that word was last said, so it is said once per firing and not once an hour. */
+    val nudgedAt: Long? = null,
 )
 
 /** The stored form of no recurrence, and what every row written before v5 gets. */
@@ -82,6 +86,8 @@ fun ReminderEntity.toDomain(zone: ZoneId = ZoneId.systemDefault()): Reminder = R
     firedRules = decodeIndices(firedRules),
     recurrence = ReminderCodec.decodeRecurrence(recurrence),
     lastDealtAt = lastDealtAt?.let(Instant::ofEpochMilli),
+    safetyNet = safetyNet,
+    nudgedAt = nudgedAt?.let(Instant::ofEpochMilli),
 ).foldRepeats(zone)
 
 fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
@@ -102,6 +108,8 @@ fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
     firedRules = encodeIndices(firedRules),
     recurrence = ReminderCodec.encodeRecurrence(recurrence),
     lastDealtAt = lastDealtAt?.toEpochMilli(),
+    safetyNet = safetyNet,
+    nudgedAt = nudgedAt?.toEpochMilli(),
 )
 
 /**

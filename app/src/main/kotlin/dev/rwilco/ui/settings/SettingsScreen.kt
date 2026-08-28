@@ -36,6 +36,7 @@ import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.SettingsBrightness
 import androidx.compose.material.icons.outlined.SystemUpdate
+import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -91,7 +92,7 @@ import dev.rwilco.ui.theme.Tokens
  * arrives at all, then what it sounds and feels like, then what a new one starts as, then the
  * shape of the day, then the standing things — places, looks, the copy, updates, the app.
  */
-private enum class Group { ALERTS, SOUND, VIBRATION, NEW, DAY, PLACES, LOOK, UPDATES, ABOUT }
+private enum class Group { ALERTS, SOUND, VIBRATION, NET, NEW, DAY, PLACES, LOOK, UPDATES, ABOUT }
 
 /** Which groups are open, kept across a rotation. Enums are not Bundle-able; their names are. */
 private val OpenGroups = listSaver<Set<Group>, String>(
@@ -225,6 +226,19 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
                     onGap = viewModel::setSoundGap,
                     onToHeadphones = viewModel::setAlertToHeadphones,
                 )
+            }
+
+            SettingsGroup(
+                icon = Icons.Outlined.HealthAndSafety,
+                title = stringResource(R.string.settings_net_title),
+                summary = join(
+                    stringResource(R.string.settings_net_after_value, current.safetyNet.afterHours),
+                    stringResource(R.string.settings_net_fraction_value, current.safetyNet.fraction),
+                ),
+                expanded = Group.NET in open,
+                onToggle = { toggle(Group.NET) },
+            ) {
+                SafetyNetCard(settings = current.safetyNet, onChange = viewModel::setSafetyNet)
             }
 
             SettingsGroup(

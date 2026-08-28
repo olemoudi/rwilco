@@ -75,6 +75,13 @@ object AlertNotifications {
     private const val VERSION = "v2"
     const val CHANNEL_MISSED = "missed_$VERSION"
 
+    /**
+     * The safety net's channel: the quietest thing the app has. IMPORTANCE_LOW, so it does not
+     * peek over what somebody is doing — it is a word about something that already happened,
+     * and if it interrupted anything it would be the alarm it is trying not to be.
+     */
+    const val CHANNEL_NET = "net_$VERSION"
+
     fun ensureChannels(context: Context, vibration: VibrationPattern = VibrationPattern(), chosen: AlertSound = AlertSound.System) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         // A channel's tone is played by the system, and one of our own copies lives where the
@@ -100,6 +107,14 @@ object AlertNotifications {
                 enableVibration(false)
             },
         )
+        manager.createNotificationChannel(
+            NotificationChannel(CHANNEL_NET, context.getString(R.string.notif_channel_net), NotificationManager.IMPORTANCE_LOW).apply {
+                group = GROUP
+                description = context.getString(R.string.notif_channel_net_description)
+                setSound(null, null)
+                enableVibration(false)
+            },
+        )
     }
 
     fun post(
@@ -111,6 +126,12 @@ object AlertNotifications {
         vibration: VibrationPattern = VibrationPattern(),
         chosen: AlertSound = AlertSound.System,
         ruleIndex: Int? = null,
+        /**
+         * The safety net's word about a firing nobody answered: the same card, on the quietest
+         * channel there is, saying so in its own line. Never a screen, never a sound, never
+         * pinned — everything that makes an alarm an alarm is exactly what this is not.
+         */
+        nudge: Boolean = false,
     ) {
         // A file that will not open right now plays as the system tone (Sounds.uri), and the
         // channel has to be NAMED for the tone it will actually carry: a channel's sound is
@@ -125,7 +146,11 @@ object AlertNotifications {
         val soundHere = plan.sound && !fullScreen
         val vibrateHere = plan.vibrate && !fullScreen
         val bypass = context.getSystemService(NotificationManager::class.java)?.isNotificationPolicyAccessGranted == true
-        val channel = if (late != null) CHANNEL_MISSED else channelId(soundHere, vibrateHere, vibration, effective, bypass)
+        val channel = when {
+            nudge -> CHANNEL_NET
+            late != null -> CHANNEL_MISSED
+            else -> channelId(soundHere, vibrateHere, vibration, effective, bypass)
+        }
         val open = activityIntent(context, reminder.id, ruleIndex)
         val builder = NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_notification)
@@ -146,12 +171,20 @@ object AlertNotifications {
             // have reached you an hour and ten minutes ago" is the whole point of the missed
             // notification, and a bare timestamp makes somebody work it out.
             .setShowWhen(true)
-            .setWhen((late ?: Instant.now()).toEpochMilli())
-            .setUsesChronometer(late != null)
+            // A net's word counts up from the ring it is about — "hace un día" is the whole of
+            // what it has to say, and a bare timestamp makes somebody work it out.
+            .setWhen((late ?: reminder.lastFiredAt.takeIf { nudge } ?: Instant.now()).toEpochMilli())
+            .setUsesChronometer(late != null || nudge)
             // An alarm to the system, not a reminder: Do Not Disturb lets alarms through by
             // default and holds reminders back by default, and this is the one that must arrive.
-            .setCategory(if (late != null) NotificationCompat.CATEGORY_REMINDER else NotificationCompat.CATEGORY_ALARM)
-            .setPriority(if (late != null) NotificationCompat.PRIORITY_DEFAULT else NotificationCompat.PRIORITY_HIGH)
+            .setCategory(if (late != null || nudge) NotificationCompat.CATEGORY_REMINDER else NotificationCompat.CATEGORY_ALARM)
+            .setPriority(
+                when {
+                    nudge -> NotificationCompat.PRIORITY_LOW
+                    late != null -> NotificationCompat.PRIORITY_DEFAULT
+                    else -> NotificationCompat.PRIORITY_HIGH
+                },
+            )
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .addAction(0, context.getString(R.string.alert_done), actionIntent(context, reminder.id, AlertActionReceiver.ACTION_DONE, null))
             .addAction(
@@ -167,17 +200,18 @@ object AlertNotifications {
                 actionIntent(context, reminder.id, AlertActionReceiver.ACTION_SNOOZE, Snooze.TWO_HOURS),
             )
         if (reminder.tags.isNotEmpty()) builder.setContentText(reminder.tags.joinToString(" · "))
-        if (late != null) builder.setSubText(context.getString(R.string.alert_missed_subtext))
+        if (nudge) builder.setSubText(context.getString(R.string.notif_net_subtext))
+        else if (late != null) builder.setSubText(context.getString(R.string.alert_missed_subtext))
         // A full-screen alert is a request, not a promise: the system may refuse it (since
         // Android 14 it is for calls and alarms unless the person says otherwise), and then this
         // is simply a heads-up notification with the same buttons. [fullScreen] is the caller's
         // own decision on top of that — see AlertPresenter: an app open in front of somebody
         // gets the banner and nothing else.
-        if (fullScreen && late == null) builder.setFullScreenIntent(open, true)
+        if (fullScreen && late == null && !nudge) builder.setFullScreenIntent(open, true)
         // "Hasta que reciba caso" means what it says: this one cannot be flicked away in the
         // half-asleep swipe that clears the shade. Everything else stays swipeable, because
         // most reminders are read and let go and pinning those would be nagging.
-        if (plan.insistent && late == null) builder.setOngoing(true)
+        if (plan.insistent && late == null && !nudge) builder.setOngoing(true)
         runCatching {
             NotificationManagerCompat.from(context).notify(notificationId(reminder.id), builder.build())
             syncSummary(context, posted = notificationId(reminder.id))
