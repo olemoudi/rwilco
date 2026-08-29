@@ -52,12 +52,39 @@ class AlertReadinessTest {
 
     @Test
     fun `the strip on Home shows for a problem nobody has waved off, and again for a new one`() {
-        val muted = AlertReadiness(channels = false)
+        val muted = AlertReadiness(channels = false, read = true)
         assertEquals(setOf("channels"), muted.problemNames())
         assertTrue(stripShows(muted, dismissed = emptySet()))
         assertFalse(stripShows(muted, dismissed = setOf("channels")))
-        val worse = AlertReadiness(channels = false, exactAlarms = false)
+        val worse = AlertReadiness(channels = false, exactAlarms = false, read = true)
         assertTrue(stripShows(worse, dismissed = setOf("channels")))
-        assertFalse(stripShows(AlertReadiness(), dismissed = emptySet()))
+        assertFalse(stripShows(AlertReadiness(read = true), dismissed = emptySet()))
+    }
+
+    @Test
+    fun `nothing is said, and nothing forgotten, before anything has been looked at`() {
+        // The default is a guess (everything granted) so a fresh screen never flashes red. Acting
+        // on it threw away the "ahora no" that had just been given, every time Home recomposed.
+        val guess = AlertReadiness()
+        assertFalse(stripShows(guess, dismissed = emptySet()))
+        assertEquals(setOf("channels"), liveDismissals(guess, dismissed = setOf("channels")))
+    }
+
+    @Test
+    fun `a problem that has been fixed stops being remembered, so it is news if it comes back`() {
+        val both = AlertReadiness(channels = false, battery = false, read = true)
+        assertEquals(setOf("channels", "battery"), liveDismissals(both, setOf("channels", "battery")))
+        // The channel is un-muted; the battery is still in the way, so "all good" never arrives.
+        val fixed = AlertReadiness(battery = false, read = true)
+        assertEquals(setOf("battery"), liveDismissals(fixed, setOf("channels", "battery")))
+        // And when it is muted again, the strip says so instead of staying quiet for ever.
+        assertTrue(stripShows(both, dismissed = liveDismissals(fixed, setOf("channels", "battery"))))
+    }
+
+    @Test
+    fun `the do-not-disturb grant is an offer, not one of the ten`() {
+        val noPolicy = AlertReadiness(policyAccess = false, read = true)
+        assertEquals(0, noPolicy.problems)
+        assertTrue(noPolicy.allGood)
     }
 }

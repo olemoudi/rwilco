@@ -45,6 +45,7 @@ import dev.rwilco.model.Snooze
 import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
 import java.time.Instant
 import dev.rwilco.ui.settings.AlertReadiness
+import dev.rwilco.ui.settings.liveDismissals
 
 /** What Home reports back that is not state: things to say in a snackbar. */
 sealed interface HomeEvent {
@@ -104,10 +105,17 @@ class HomeViewModel(
         viewModelScope.launch { store.update { it.copy(dismissedAlertProblems = it.dismissedAlertProblems + problems) } }
     }
 
-    /** Everything granted: forget what was waved off, so a phone broken again is told again. */
+    /**
+     * What is still waved off, after a real reading: a problem that has been fixed is forgotten,
+     * so it is news again if it comes back. Never acted on before the first read — the optimistic
+     * default says nothing is wrong, and taking it at its word threw away the "ahora no" that had
+     * just been given.
+     */
     fun noteAlertReadiness(readiness: AlertReadiness) {
-        if (!readiness.allGood || dismissedAlertProblems.value.isEmpty()) return
-        viewModelScope.launch { store.update { it.copy(dismissedAlertProblems = emptySet()) } }
+        val dismissed = dismissedAlertProblems.value
+        val live = liveDismissals(readiness, dismissed)
+        if (live == dismissed) return
+        viewModelScope.launch { store.update { it.copy(dismissedAlertProblems = live) } }
     }
 
     /** How long the custom snooze is, for the menu's offers to read the way the alert's do. */

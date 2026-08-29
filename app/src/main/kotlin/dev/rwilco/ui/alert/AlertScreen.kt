@@ -1,12 +1,10 @@
 package dev.rwilco.ui.alert
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,7 +22,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -107,22 +104,35 @@ fun AlertScreen(
                     color = scheme.onSurfaceVariant,
                 )
             }
-            Spacer(Modifier.weight(1f))
-            BasicText(
-                text = content.text.ifBlank { stringResource(R.string.alert_empty_text) },
-                style = MaterialTheme.typography.displayMedium.copy(color = scheme.onBackground),
-                autoSize = TextAutoSize.StepBased(minFontSize = 28.sp, maxFontSize = 56.sp, stepSize = 2.sp),
-                maxLines = 6,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            if (content.tags.isNotEmpty()) {
-                Spacer(Modifier.height(spacing.lg))
-                Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
-                    for (tag in content.tags.take(3)) TagLabel(tag)
+            // **The words are what gives.** They used to sit between two weighted spacers,
+            // which centres them beautifully and lets everything below overflow: seven snooze
+            // offers (five, once) plus a six-line reminder at a large font scale pushed "Hecho"
+            // — the one answer this screen exists to take — off the bottom of a ringing alarm,
+            // with no scroll to reach it. Weighted, this block is measured with whatever is
+            // left once the buttons have had theirs, and the auto-sizing text steps down into
+            // it; the centring is kept by the arrangement rather than by the spacers.
+            Column(
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+            ) {
+                BasicText(
+                    text = content.text.ifBlank { stringResource(R.string.alert_empty_text) },
+                    style = MaterialTheme.typography.displayMedium.copy(color = scheme.onBackground),
+                    autoSize = TextAutoSize.StepBased(minFontSize = 28.sp, maxFontSize = 56.sp, stepSize = 2.sp),
+                    maxLines = 6,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (content.tags.isNotEmpty()) {
+                    Spacer(Modifier.height(spacing.lg))
+                    Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
+                        for (tag in content.tags.take(3)) TagLabel(tag)
+                    }
                 }
             }
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(spacing.lg))
             Text(
                 text = stringResource(R.string.alert_snooze),
                 style = MaterialTheme.typography.labelMedium,

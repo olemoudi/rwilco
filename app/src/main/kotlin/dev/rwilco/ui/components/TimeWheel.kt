@@ -74,9 +74,11 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import dev.rwilco.model.MAX_TIME_DIGITS
+import dev.rwilco.model.afternoonAfterTyping
 import dev.rwilco.model.parseTypedTime
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.currentLocale
+import dev.rwilco.ui.LocalClock
 
 private val ITEM_HEIGHT = 56.dp
 private const val VISIBLE_ITEMS = 5
@@ -109,11 +111,18 @@ fun TimePickerDialog(initial: LocalTime, onDismiss: () -> Unit, onConfirm: (Loca
     var minute by rememberSaveable { mutableIntStateOf(initial.minute) }
     var typing by rememberSaveable { mutableStateOf(false) }
     var digits by rememberSaveable { mutableStateOf("") }
-    val afternoon = hour >= 12
+    // Which half of the day the typed hour belongs to, and its own state on purpose: read off
+    // `hour` it moved with every keystroke, so on a 12-hour phone typing 1-3-0 for half past
+    // one passed through "13", which reads as the afternoon — and 01:30 came out as 13:30 with
+    // the PM button lit that nobody had pressed.
+    var afternoon by rememberSaveable { mutableStateOf(initial.hour >= 12) }
+    // While digits are being typed they are the answer; hour/minute are what the wheels hold.
     val typed = parseTypedTime(digits, is24h, afternoon)
+    val chosen = typed ?: LocalTime.of(hour, minute)
     fun pick(time: LocalTime) {
         hour = time.hour
         minute = time.minute
+        afternoon = time.hour >= 12
         digits = ""
     }
 
@@ -145,12 +154,13 @@ fun TimePickerDialog(initial: LocalTime, onDismiss: () -> Unit, onConfirm: (Loca
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Text(
-                            text = TimeText.time(LocalTime.of(hour, minute), is24h, locale),
+                            text = TimeText.time(chosen, is24h, locale),
                             style = MonoStyles.time,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f),
                         )
-                        IconButton(onClick = { typing = !typing; digits = "" }) {
+                        // Leaving the keypad keeps what was typed: the wheels open on it.
+                        IconButton(onClick = { if (typing) pick(chosen); typing = !typing; digits = "" }) {
                             Icon(
                                 imageVector = if (typing) Icons.Outlined.Schedule else Icons.Outlined.Keyboard,
                                 contentDescription = stringResource(if (typing) R.string.time_wheels else R.string.time_type),
@@ -163,25 +173,25 @@ fun TimePickerDialog(initial: LocalTime, onDismiss: () -> Unit, onConfirm: (Loca
                             digits = digits,
                             onDigits = { new ->
                                 digits = new
-                                parseTypedTime(new, is24h, afternoon)?.let { hour = it.hour; minute = it.minute }
+                                afternoon = afternoonAfterTyping(new, is24h, afternoon)
                             },
                             valid = digits.isEmpty() || typed != null,
                             is24h = is24h,
                             afternoon = afternoon,
-                            onAfternoon = { pm -> hour = to24Hour(if (is24h) hour else ((hour + 11) % 12) + 1, pm) },
-                            onDone = { onConfirm(LocalTime.of(hour, minute)) },
+                            onAfternoon = { pm -> afternoon = pm },
+                            onDone = { onConfirm(chosen) },
                         )
                     } else {
                         Wheels(
                             hour = hour,
                             minute = minute,
                             is24h = is24h,
-                            onHour = { hour = it },
+                            onHour = { hour = it; afternoon = it >= 12 },
                             onMinute = { minute = it },
                         )
                     }
                     Spacer(Modifier.height(Tokens.spacing.lg))
-                    QuickMinutes(minute = minute, onPick = { pick(LocalTime.of(hour, it)) })
+                    QuickMinutes(minute = chosen.minute, onPick = { pick(LocalTime.of(chosen.hour, it)) })
                     Spacer(Modifier.height(Tokens.spacing.sm))
                     QuickTimes(onPick = ::pick)
                     Spacer(Modifier.height(Tokens.spacing.lg))
@@ -194,7 +204,7 @@ fun TimePickerDialog(initial: LocalTime, onDismiss: () -> Unit, onConfirm: (Loca
                             Text(stringResource(R.string.sheet_cancel))
                         }
                         Button(
-                            onClick = { onConfirm(LocalTime.of(hour, minute)) },
+                            onClick = { onConfirm(chosen) },
                             // Digits that make no time cannot be confirmed as one.
                             enabled = digits.isEmpty() || typed != null,
                             shape = MaterialTheme.shapes.medium,
@@ -479,21 +489,23 @@ private const val HINT_ALPHA = 0.5f
 const val TYPED_TIME_TAG = "typed-time"
 
 /**
- * The two times set from the clock rather than chosen: now, and a quarter of an hour on. Read
- * off the phone's clock here rather than threaded in — this is a moment of the screen, not of
- * the model, and the seven fields that open this picker have no clock of their own to hand over.
+ * The two times set from the clock rather than chosen: now, and a quarter of an hour on. The
+ * app's own clock ([LocalClock]) rather than `LocalTime.now()`, so the zone is the one every
+ * other screen answers in — the seven fields that open this picker have no clock to hand over,
+ * which is what the composition local is for.
  */
 @Composable
 private fun QuickTimes(onPick: (LocalTime) -> Unit) {
+    val clock = LocalClock.current
     Row(horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm), modifier = Modifier.fillMaxWidth()) {
         PresetChip(
             label = stringResource(R.string.time_now),
-            onClick = { onPick(LocalTime.now().withSecond(0).withNano(0)) },
+            onClick = { onPick(LocalTime.now(clock).withSecond(0).withNano(0)) },
             modifier = Modifier.weight(1f),
         )
         PresetChip(
             label = stringResource(R.string.time_in_15),
-            onClick = { onPick(LocalTime.now().plusMinutes(15).withSecond(0).withNano(0)) },
+            onClick = { onPick(LocalTime.now(clock).plusMinutes(15).withSecond(0).withNano(0)) },
             modifier = Modifier.weight(1f),
         )
     }

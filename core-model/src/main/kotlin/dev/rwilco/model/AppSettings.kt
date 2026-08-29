@@ -142,8 +142,13 @@ data class AppSettings(
     /**
      * The two offers on the notification, which has room for no more (three actions, and
      * "hecho" is one). The alert screen offers every [Snooze] regardless.
+     *
+     * **Names, not the enum.** A settings blob is decoded all at once, so an unreadable member
+     * here — a vault taken to an older build, a name that changes one day — would not cost a
+     * snooze offer, it would reset every setting there is. Read back through
+     * [notificationSnoozeOffers], which drops what it does not recognise.
      */
-    val notificationSnoozes: List<Snooze> = listOf(Snooze.TEN_MINUTES, Snooze.TWO_HOURS),
+    val notificationSnoozes: List<String> = DEFAULT_NOTIFICATION_SNOOZES.map { it.name },
     /**
      * The alert problems Home's strip has been told "not now" about, by name. Cleared whenever
      * everything is granted, so a phone fixed and then broken again is told again.

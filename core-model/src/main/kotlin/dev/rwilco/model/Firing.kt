@@ -270,8 +270,12 @@ object SnoozeLimits {
  * por la mañana" lands on the hour the day starts at, because a 23:40 alarm put off to
  * "tomorrow" was coming back at 23:40. [CUSTOM] is the one length that is the person's own.
  *
- * Declaration order is the order the alert screen offers them in. Never persisted — it travels
- * as a name in an intent extra — so a member can be added without a migration.
+ * Declaration order is the order the alert screen offers them in. It travels as a *name*
+ * everywhere it is stored or sent — an intent extra, and the two offers in the settings
+ * ([AppSettings.notificationSnoozes]) — and never as the enum itself, so a name this build has
+ * no member for is dropped ([notificationSnoozeOffers]) rather than failing the read. Decoding
+ * the settings is all-or-nothing: an exception there does not lose a snooze offer, it loses the
+ * theme, the sound, the presets and the saved places with it.
  */
 enum class Snooze {
     TEN_MINUTES,
@@ -318,6 +322,18 @@ enum class Snooze {
 
 /** How many snooze offers a notification has room for: three actions, and "hecho" is one. */
 const val NOTIFICATION_SNOOZES = 2
+
+/** What the notification carries until somebody says otherwise. */
+val DEFAULT_NOTIFICATION_SNOOZES: List<Snooze> = listOf(Snooze.TEN_MINUTES, Snooze.TWO_HOURS)
+
+/**
+ * The stored names read back as offers, dropping any this build has no member for — and falling
+ * back to the defaults if that leaves nothing, because a notification with no way to postpone is
+ * worse than one offering the wrong two.
+ */
+val AppSettings.notificationSnoozeOffers: List<Snooze>
+    get() = notificationSnoozes.mapNotNull { name -> Snooze.entries.firstOrNull { it.name == name } }
+        .ifEmpty { DEFAULT_NOTIFICATION_SNOOZES }
 
 /**
  * The notification's two offers after [tapped] is chosen in the settings: always exactly two,

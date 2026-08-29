@@ -52,6 +52,7 @@ import dev.rwilco.model.AppSettings
 import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
 import dev.rwilco.model.NOTIFICATION_SNOOZES
 import dev.rwilco.ui.format.snoozeLabel
+import dev.rwilco.model.notificationSnoozeOffers
 
 /** One reminder on the alert screen: its id, for the answer, and what it shows. */
 data class AlertItem(val id: String, val content: AlertContent)
@@ -69,7 +70,7 @@ fun AlertStackScreen(
     onSnooze: (String, Snooze) -> Unit,
     onView: (String) -> Unit,
     /** The two offers a strip has room for — the notification's own — and the custom one's length. */
-    snoozes: List<Snooze> = AppSettings().notificationSnoozes,
+    snoozes: List<Snooze> = AppSettings().notificationSnoozeOffers,
     customMinutes: Int = DEFAULT_SNOOZE_MINUTES,
 ) {
     val scheme = MaterialTheme.colorScheme

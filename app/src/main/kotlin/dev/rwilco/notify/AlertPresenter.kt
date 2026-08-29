@@ -25,6 +25,7 @@ import java.time.LocalTime
 import java.time.Instant
 import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
 import dev.rwilco.model.Snooze
+import dev.rwilco.model.notificationSnoozeOffers
 
 /** Where a firing shows itself. */
 enum class AlertPresentation { FULL_SCREEN, BANNER }
@@ -99,7 +100,7 @@ object AlertPresenter {
         /** Passed straight through to the notification's reason line. */
         defaultTime: LocalTime = AppSettings().defaultTime,
         /** Passed straight through to the notification's buttons. */
-        snoozes: List<Snooze> = AppSettings().notificationSnoozes,
+        snoozes: List<Snooze> = AppSettings().notificationSnoozeOffers,
         customMinutes: Int = DEFAULT_SNOOZE_MINUTES,
     ) {
         // Every action turned off is an answer too: the moment passes without a word, and the

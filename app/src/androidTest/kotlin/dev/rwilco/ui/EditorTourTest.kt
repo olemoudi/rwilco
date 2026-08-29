@@ -381,24 +381,29 @@ class EditorTourTest {
 
         rule.onNodeWithContentDescription(s(R.string.home_settings)).performClick()
         rule.waitUntilShown(s(R.string.settings_title))
+        // The ten grant reads are off the main thread (see rememberAlertReadiness), so the
+        // group in trouble opens itself a beat after the screen arrives. Waited for, or the
+        // next tap lands on a list that is still moving — and on this emulator, which never
+        // has the overlay or usage access, that group always opens.
+        rule.waitUntilShown(s(R.string.settings_test_alert))
         // The folded index is the screen now: ten rows, each carrying its own current value.
         shot("settings")
         // Everything below lives inside a group, so the group is opened before it is reached
         // for. Scrolled to the last thing in each card, so the whole of it is in the frame:
         // the two insistent numbers only appear when something asks for that sound.
-        openGroup(s(R.string.settings_sound_title))
+        openGroup(s(R.string.settings_sound_title), s(R.string.settings_sound_gap))
         text(s(R.string.settings_sound_gap)).performScrollTo()
         shot("settings-sound")
-        openGroup(s(R.string.settings_vibration_strength))
+        openGroup(s(R.string.settings_vibration_strength), s(R.string.settings_vibration_try))
         text(s(R.string.settings_vibration_try)).performScrollTo()
         shot("settings-vibration")
         // Dark mode only, by the owner's rule: the light scheme shares every token and layout,
         // and each extra pass through the emulator costs minutes.
-        openGroup(s(R.string.settings_places))
+        openGroup(s(R.string.settings_places), s(R.string.watch_log_open))
         text(s(R.string.watch_log_open)).performScrollTo()
         shot("settings-location")
         // The change log lives at the very bottom, which is the last thing the tour scrolls to.
-        openGroup(s(R.string.settings_about))
+        openGroup(s(R.string.settings_about), s(R.string.settings_release_notes))
         text(s(R.string.settings_release_notes)).performScrollTo().performClick()
         rule.waitUntilDisplayed(s(R.string.whats_new_ok))
         shot("settings-release-notes")
@@ -429,11 +434,16 @@ class EditorTourTest {
     }
 
     /**
-     * Opens one of Settings' folded groups by its title. Idempotent by way of being called
-     * once per group: a second call would close it again, which is exactly the trap a helper
-     * called "open" should not set, so each group is opened where it is first needed.
+     * Opens one of Settings' folded groups by its title, unless [marker] — something inside it —
+     * is already on screen.
+     *
+     * The check is the whole point: a group in trouble opens itself on arrival (the alerts, and
+     * the places when a place reminder has no background permission, which is every emulator),
+     * and a helper called "open" that toggles would close exactly the group whose contents the
+     * next line reaches for. That is what it did.
      */
-    private fun openGroup(title: String) {
+    private fun openGroup(title: String, marker: String) {
+        if (rule.onAllNodesWithText(marker, ignoreCase = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()) return
         text(title).performScrollTo().performClick()
         rule.waitForIdle()
     }

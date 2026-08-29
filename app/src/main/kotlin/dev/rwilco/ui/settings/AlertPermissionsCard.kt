@@ -54,6 +54,10 @@ import dev.rwilco.ui.theme.LocalDarkTheme
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.familyColor
 import dev.rwilco.notify.hasNotificationPolicyAccess
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * The ten states that decide whether a reminder actually arrives: the five grants that say how
@@ -77,6 +81,18 @@ data class AlertReadiness(
     val battery: Boolean = true,
     val overlay: Boolean = true,
     val usageAccess: Boolean = true,
+    /**
+     * Whether the app may cross Do Not Disturb on total silence. Not one of the ten: alarms get
+     * through every other mode, so this is an offer rather than a fault — but it is read here
+     * with the rest, so the card stays a pure function of one snapshot.
+     */
+    val policyAccess: Boolean = true,
+    /**
+     * Whether this is an answer at all. Everything above starts granted so a fresh screen never
+     * flashes red before the first read — which means the default is a *guess*, and anything
+     * that acts on "all good" (Home's strip and what it remembers) must wait for a real one.
+     */
+    val read: Boolean = false,
 ) {
     /** How many of the ten are in the way; zero is a phone that will ring. */
     val problems: Int
@@ -104,37 +120,45 @@ data class AlertReadiness(
 
 /**
  * Whether Home shows its "this phone may not ring" strip: something is in the way that has not
- * been waved off. "Not now" remembers the problems as they were, so a phone that breaks in a
- * *new* way is told again, and the set is cleared once everything is granted — fixed and then
- * broken again is news too.
+ * been waved off. Never on the optimistic default ([AlertReadiness.read]) — that one says
+ * nothing is wrong before anything has been looked at.
+ *
+ * "Ahora no" remembers the problems by name, so a phone that breaks in a *new* way is told
+ * again; what keeps that promise is the pruning on the other side ([liveDismissals]).
  */
-fun stripShows(readiness: AlertReadiness, dismissed: Set<String>): Boolean = (readiness.problemNames() - dismissed).isNotEmpty()
+fun stripShows(readiness: AlertReadiness, dismissed: Set<String>): Boolean =
+    readiness.read && (readiness.problemNames() - dismissed).isNotEmpty()
+
+/**
+ * What is still worth remembering as waved off: only the problems that are still there.
+ *
+ * A problem fixed drops out, so if it comes back it is news again — which is the promise, and
+ * which emptying the set at "all good" alone does not keep: with one other thing still in the
+ * way, "all good" never arrives and a channel muted for the second time was never mentioned.
+ */
+fun liveDismissals(readiness: AlertReadiness, dismissed: Set<String>): Set<String> =
+    if (!readiness.read) dismissed else dismissed intersect readiness.problemNames()
 
 /**
  * Read again every time the screen comes back: the person may have gone to system settings and
  * changed any of them. Everything starts granted so a fresh screen never flashes red before the
- * first read.
+ * first read, and [AlertReadiness.read] says which of the two it is.
+ *
+ * **Off the main thread.** Twelve of these are binder calls — usage access, app-ops, the
+ * notification channels, battery optimisation — and Home asks for them on every resume, on the
+ * frame it is being drawn in. In Settings it was a screen somebody opens on purpose; on Home it
+ * is the hot path, and this app's rule is that the UI reads state that is already in memory.
  */
 @Composable
 fun rememberAlertReadiness(): AlertReadiness {
     val context = LocalContext.current
     var readiness by remember { mutableStateOf(AlertReadiness()) }
     val lifecycleOwner = LocalLifecycleOwner.current
+    val scope = rememberCoroutineScope()
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                readiness = AlertReadiness(
-                    notifications = NotificationManagerCompat.from(context).areNotificationsEnabled(),
-                    channels = !context.anyAlertChannelMuted(),
-                    fullScreen = context.canUseFullScreenIntent(),
-                    exactAlarms = context.canScheduleExactAlarms(),
-                    alarmVolume = context.alarmVolumeIsUp(),
-                    throughDnd = context.canGetThroughDnd(),
-                    unrestricted = !context.isBackgroundRestricted(),
-                    battery = context.ignoresBatteryOptimisations(),
-                    overlay = context.canDrawOverlays(),
-                    usageAccess = context.hasUsageAccess(),
-                )
+                scope.launch { readiness = withContext(Dispatchers.IO) { context.readAlertReadiness() } }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -142,6 +166,22 @@ fun rememberAlertReadiness(): AlertReadiness {
     }
     return readiness
 }
+
+/** The twelve reads themselves, in one place and off the main thread. */
+fun Context.readAlertReadiness(): AlertReadiness = AlertReadiness(
+    notifications = NotificationManagerCompat.from(this).areNotificationsEnabled(),
+    channels = !anyAlertChannelMuted(),
+    fullScreen = canUseFullScreenIntent(),
+    exactAlarms = canScheduleExactAlarms(),
+    alarmVolume = alarmVolumeIsUp(),
+    throughDnd = canGetThroughDnd(),
+    unrestricted = !isBackgroundRestricted(),
+    battery = ignoresBatteryOptimisations(),
+    overlay = canDrawOverlays(),
+    usageAccess = hasUsageAccess(),
+    policyAccess = hasNotificationPolicyAccess(),
+    read = true,
+)
 
 /**
  * What is in the way of a reminder arriving, and the way to fix each one. Location has a card
@@ -276,7 +316,7 @@ fun AlertPermissionsCard(readiness: AlertReadiness) {
             // given in advance, and total silence is the mode people put on for the night —
             // which is when a morning alarm matters. Under total silence the red row above
             // already asks for the same grant, so this one steps aside.
-            if (readiness.throughDnd && !context.hasNotificationPolicyAccess()) {
+            if (readiness.throughDnd && !readiness.policyAccess) {
                 SettingsLinkRow(
                     title = stringResource(R.string.perm_dnd_optin),
                     summary = stringResource(R.string.perm_dnd_optin_hint),

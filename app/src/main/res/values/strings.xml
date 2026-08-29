@@ -921,7 +921,6 @@
     <string name="settings_test_alert_text">Test alert</string>
     <string name="settings_test_alert_started">It rings in 10 s</string>
     <string name="settings_language">Language</string>
-    <string name="settings_language_hint">English or Spanish, for this app alone</string>
     <string name="settings_snooze_notification_hint">A notification has room for three buttons and "Done" is one, so it carries two snoozes. The full-screen alert offers all of them.</string>
     <plurals name="alert_waiting">
         <item quantity="one">%1$d more waiting</item>

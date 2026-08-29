@@ -139,6 +139,7 @@ class EditorViewModel(
                 // Shared from another app: the words are the one thing already answered.
                 else -> Draft(text = sharedText?.trim()?.take(MAX_TEXT_LENGTH).orEmpty(), actions = current.defaultActions)
             }
+            val presetWording = editedPreset?.text ?: cloned?.text?.takeIf { newPreset }.orEmpty()
             // Everything ever written, done included: the point is to hand back what has been
             // said before rather than ask for it again.
             val past = repository.allNow()
@@ -153,6 +154,7 @@ class EditorViewModel(
                 allTexts = visibleTexts(suggestedTexts(past, now, limit = 100), current.hiddenTexts),
                 defaultTime = current.defaultTime,
                 snoozeCustomMinutes = current.snoozeCustomMinutes,
+                dayStart = current.dayStart,
                 dayShape = current.dayShape,
                 safetyNetSettings = current.safetyNet,
                 defaultKind = if (current.popularTriggersFirst) null else current.defaultTriggerKind,
@@ -169,8 +171,10 @@ class EditorViewModel(
                 // Which shape this started from, so the screen says so, and the cue to open
                 // the keyboard: everything but the words is already answered.
                 fromPresetName = if (editedPreset == null) source?.name else null,
-                presetText = editedPreset?.text ?: cloned?.text?.takeIf { newPreset }.orEmpty(),
-                initialPresetText = editedPreset?.text.orEmpty(),
+                presetText = presetWording,
+                // The same value, or the form is dirty before it is touched and Back asks
+                // to discard changes nobody made.
+                initialPresetText = presetWording,
                 // Only when the preset left the words open: with default wording there is
                 // nothing to type, and a keyboard would be covering a finished form.
                 focusText = editedPreset == null && ((cloned != null && !newPreset) || (source != null && source.text.isBlank())),

@@ -37,6 +37,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.LocalTime
 import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
+import dev.rwilco.model.DEFAULT_DAY_START
 
 /** What the editor is editing: the reminder minus its identity and bookkeeping. */
 data class Draft(
@@ -140,6 +141,12 @@ data class EditorUiState(
     val dayShape: DayShape = DayShape.DEFAULT,
     /** How long the custom snooze is, for the preview's buttons to read the way the real screen will. */
     val snoozeCustomMinutes: Int = DEFAULT_SNOOZE_MINUTES,
+    /**
+     * Where "the next day" lands. Every other caller of nextFire passes it; without it the
+     * editor's "Suena…" line answered 09:00 for a recurrence that rings at whatever hour the
+     * settings say the day starts at.
+     */
+    val dayStart: LocalTime = DEFAULT_DAY_START,
     /** What the safety net waits for, so the card can say it in this reminder's own numbers. */
     val safetyNetSettings: SafetyNetSettings = SafetyNetSettings(),
     /** The kind the picker offers first, from the settings; null when there is no favourite. */

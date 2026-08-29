@@ -101,7 +101,7 @@ fun RwilcoApp(
         }
     }
 
-    CompositionLocalProvider(LocalSnackbar provides snackbar, LocalHoldOverlay provides holdOverlay) {
+    CompositionLocalProvider(LocalSnackbar provides snackbar, LocalHoldOverlay provides holdOverlay, LocalClock provides app.clock) {
         Box(Modifier.fillMaxSize()) {
             NavHost(
                 navController = navController,

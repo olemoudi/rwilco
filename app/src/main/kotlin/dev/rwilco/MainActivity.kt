@@ -34,7 +34,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        requestedDestination.value = intent?.let(::destinationOf)
+        // Only on a fresh start: getIntent() survives a rotation and a process-death
+        // restore, and reading it again would push the shared text (or the shortcut's
+        // blank form) back on top of whatever the person was doing.
+        if (savedInstanceState == null) requestedDestination.value = intent?.let(::destinationOf)
         val app = application as RwilcoApplication
         setContent {
             val settings by app.settings.collectAsStateWithLifecycle()
@@ -56,7 +59,12 @@ class MainActivity : ComponentActivity() {
                     RwilcoApp(
                         app = app,
                         requestedDestination = requestedDestination.value,
-                        onDestinationConsumed = { requestedDestination.value = null },
+                        onDestinationConsumed = {
+                            requestedDestination.value = null
+                            // And the intent it came from, so a later recreation finds nothing
+                            // left to answer.
+                            intent = Intent(this, MainActivity::class.java)
+                        },
                     )
                 }
             }

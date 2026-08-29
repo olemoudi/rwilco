@@ -359,8 +359,12 @@ overdue. `Snooze` offers ten minutes, a length of the person's own (`CUSTOM`,
 time, the weekend (a setting: Friday at 20:30 by default) and next week — the wall-clock ones
 keeping the time rather than adding hours. The notification has room for two of them
 (`AppSettings.notificationSnoozes`, chosen in Settings → Alertas; `pickNotificationSnoozes` keeps
-it at exactly two); the alert screen offers them all. Never persisted — a name in an intent
-extra — so a member can be added without a migration.
+it at exactly two); the alert screen offers them all. It travels as a **name** everywhere it is
+kept or sent — the intent extra, and those two in the settings — and never as the enum: a
+settings blob is decoded all at once, so a member an older build has no word for would not cost a
+snooze offer, it would reset the theme, the sound, the presets and the saved places with it.
+`notificationSnoozeOffers` drops what it does not recognise and falls back to the two defaults
+rather than leaving a notification with no way to postpone.
 
 `Search.kt` answers the magnifier: one query over the open reminders and the tags they use,
 returning `SearchHit.OfReminder`/`OfTag` so the screen can say which is which. Matching is
@@ -411,7 +415,10 @@ strict is asking somebody to remember how they spelled it.
   intent's parts: holding the launcher icon offers "Nuevo" (`res/xml/shortcuts.xml`, action
   `dev.rwilco.action.NEW`) straight into a blank form, and a line of text shared from another
   app (`ACTION_SEND` `text/plain`) opens the form with that line as the words
-  (`Routes.Editor(sharedText)`). Settings → Aspecto has a language row on API 33+ that opens the
+  (`Routes.Editor(sharedText)`). **An intent is answered once**: `getIntent()` survives a rotation
+  and a process-death restore, so it is read only on a fresh start and cleared once consumed —
+  otherwise every rotation pushed the shared text back on top of whatever the person was doing.
+  Settings → Aspecto has a language row on API 33+ that opens the
   system's per-app page (`locales_config.xml` names the two).
 - **Settings is an index, not a scroll** (`SettingsScreen.kt`, `SettingsGroup.kt`). Thirty-odd
   controls in one column is past every published ceiling for a settings screen, so they fold
@@ -430,14 +437,27 @@ strict is asking somebody to remember how they spelled it.
   re-read on every resume, puts a strip at the top of Home (`ReadinessStrip`, error colour,
   never amber) with "Arreglar" into Settings and "Ahora no", which remembers *these* problems by
   name (`AppSettings.dismissedAlertProblems`, `stripShows`, pure and tested) — a phone that
-  breaks in a new way is told again, and the set is cleared once everything is granted so fixed-
-  then-broken is news too. The Do Not Disturb row is two rows now: the red one only under total
+  breaks in a new way is told again. **What keeps that promise is pruning, not emptying**
+  (`liveDismissals`, 0.48.1): a problem that has been fixed drops out of the set, so it is news
+  if it comes back; emptying only at "todo en orden" meant that with one other thing still in the
+  way, a channel muted a second time was never mentioned again. And **the default reading is a
+  guess** (`AlertReadiness.read`): everything starts granted so no screen flashes red before it
+  has looked, which means nothing may act on "all good" until a real read has landed — done
+  blindly, every recomposition of Home threw away the "ahora no" that had just been given.
+  The reads themselves are **off the main thread** (`readAlertReadiness`, on `Dispatchers.IO`):
+  twelve binder calls on every resume of the screen somebody actually looks at. One consequence
+  worth knowing: the groups in trouble now open themselves a beat *after* Settings arrives, and a
+  test that toggles a group has to check whether it is already open (`EditorTourTest.openGroup`).
+  The Do Not Disturb row is two rows now: the red one only under total
   silence (the one mode that blocks an alarm), and otherwise a plain offer to grant policy
   access in advance — total silence is what people put on for the night, and the grant cannot
-  be given from inside it. The channels that carry the grant in their id are re-made the moment
+  be given from inside it. That grant is read with the other ten (`AlertReadiness.policyAccess`)
+  and deliberately not counted among them: it is an offer, not a fault. The channels that carry the grant in their id are re-made the moment
   it changes (`Grants.policyAccess` in `resyncIfGrantsChanged`).
 - **"Probar una alerta"** (`TestAlert`, 0.48.0) is a real row ten seconds out with every action
-  on: saved and nothing else, so the scheduling watcher arms it, `AlarmReceiver` fires it and
+  on, and **only ever one at a time** (0.48.1: a rehearsal nobody answers stays a row, and three
+  taps while testing left three overdue cards, each with a net of its own a day later): saved and
+  nothing else, so the scheduling watcher arms it, `AlarmReceiver` fires it and
   `AlertPresenter` shows it — the whole path the ten rows above are about, lock screen included.
   A synthetic reminder handed to the presenter would prove nothing (`AlertActivity` re-reads the
   row and drops one it cannot find). Its id is marked, and `ReminderFiring.dismiss` deletes it
@@ -696,6 +716,19 @@ strict is asking somebody to remember how they spelled it.
   close in at every bucket: 800 metres of circle in 476 metres of view, with the thing the sheet
   is *for* running off the top and the bottom. The alert preview is `AlertScreen`,
   the same composable `AlertActivity` hosts under a full-screen intent.
+- **On the alert screen the words are what gives** (0.48.1). They sat between two weighted
+  spacers, which centres them and lets everything below overflow: seven snooze offers and a
+  six-line reminder at a large font scale pushed "Hecho" — the one answer the screen is asking
+  for — off the bottom of a ringing alarm, with no scroll to reach it. The words and tags are one
+  weighted, centred block now, so they are measured with whatever is left once the buttons have
+  had theirs, and the auto-sizing text steps down into it.
+- **The time picker's AM/PM is its own state** (0.48.1, `afternoonAfterTyping` in `core-model`):
+  read off the hour, it moved with every keystroke, so typing 1-3-0 for half past one passed
+  through "13" — which reads as the afternoon, and 01:30 came out as 13:30 with a PM button
+  nobody had pressed. A keystroke is not a press; only once the minutes are being typed is the
+  hour settled enough to speak for itself, and then "1730" is the evening whichever button was
+  lit. "Ahora" and "En 15 min" read the app's own clock (`LocalClock`) rather than the system
+  default zone.
 - Six ways into the editor (`EditorViewModel.init`): an existing reminder, a preset being edited,
   a new reminder wearing a preset's shape, a copy of another reminder, that copy kept as a
   preset, and a blank one.

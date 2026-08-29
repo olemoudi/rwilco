@@ -42,6 +42,7 @@ import dev.rwilco.model.Snooze
 import dev.rwilco.model.SnoozeLimits
 import dev.rwilco.model.pickNotificationSnoozes
 import dev.rwilco.alarm.TestAlert
+import dev.rwilco.model.notificationSnoozeOffers
 
 class SettingsViewModel(
     private val store: SettingsStore,
@@ -97,7 +98,13 @@ class SettingsViewModel(
      * nothing else: the scheduling watcher arms it, the alarm fires it, and "hecho" deletes it.
      */
     fun testAlert(text: String) {
-        viewModelScope.launch { repository.save(TestAlert.reminder(clock.instant(), clock.zone, text)) }
+        viewModelScope.launch {
+            // One at a time: a rehearsal nobody answers stays as a row (only "hecho" removes
+            // one), and three taps while testing left three overdue cards on Home, each with a
+            // safety net of its own a day later.
+            repository.allNow().filter { TestAlert.isTest(it.id) }.forEach { repository.delete(it.id) }
+            repository.save(TestAlert.reminder(clock.instant(), clock.zone, text))
+        }
     }
 
     fun clearWatchLog() {
@@ -152,7 +159,10 @@ class SettingsViewModel(
     /** The three numbers the safety net is made of; the switch itself is per reminder. */
     fun setSafetyNet(net: SafetyNetSettings) = update { it.copy(safetyNet = net) }
     fun setSnoozeCustomMinutes(minutes: Int) = update { it.copy(snoozeCustomMinutes = minutes.coerceIn(SnoozeLimits.CUSTOM_MINUTES)) }
-    fun pickNotificationSnooze(snooze: Snooze) = update { it.copy(notificationSnoozes = pickNotificationSnoozes(it.notificationSnoozes, snooze)) }
+    fun pickNotificationSnooze(snooze: Snooze) = update {
+        // Kept as names: see AppSettings.notificationSnoozes.
+        it.copy(notificationSnoozes = pickNotificationSnoozes(it.notificationSnoozeOffers, snooze).map { offer -> offer.name })
+    }
     fun setSoundPlays(plays: Int) = update { it.copy(soundPlays = plays.coerceIn(SoundLimits.PLAYS)) }
     fun setSoundGap(minutes: Int) = update { it.copy(soundGapMinutes = minutes.coerceIn(SoundLimits.GAP_MINUTES)) }
 

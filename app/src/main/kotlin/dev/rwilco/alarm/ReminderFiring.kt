@@ -48,6 +48,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import dev.rwilco.model.notificationSnoozeOffers
 
 /**
  * What happens when a reminder rings, and what the two answers to it do. One place, so the
@@ -192,7 +193,7 @@ class ReminderFiring(
                 // A moment the phone slept through by a minute or two is still that moment, and
                 // rings like it; only one it slept through by a good while arrives as the quiet
                 // "did not ring on time" note (lateForPresentation).
-                AlertPresenter.show(context, reminder, plan, lateForPresentation(late, now), settings.vibration, settings.soundFor(plan), ruleIndex = ruleIndex, defaultTime = settings.defaultTime, snoozes = settings.notificationSnoozes, customMinutes = settings.snoozeCustomMinutes)
+                AlertPresenter.show(context, reminder, plan, lateForPresentation(late, now), settings.vibration, settings.soundFor(plan), ruleIndex = ruleIndex, defaultTime = settings.defaultTime, snoozes = settings.notificationSnoozeOffers, customMinutes = settings.snoozeCustomMinutes)
                 // "Hasta que reciba caso": the first play has gone out, so line up the second.
                 if (plan.insistent) {
                     nextSoundIn(played = 1, plays = settings.soundPlays, gapMinutes = settings.soundGapMinutes)
@@ -231,7 +232,7 @@ class ReminderFiring(
         val plan = firingPlan(reminder.actions)
         if (!plan.insistent) return@withLock
         Log.i(TAG, "$id has not been dealt with; play ${played + 1} of ${settings.soundPlays}")
-        AlertPresenter.show(context, reminder, plan, late = null, vibration = settings.vibration, sound = settings.soundFor(plan), takeScreen = false, ruleIndex = ruleIndex, defaultTime = settings.defaultTime, snoozes = settings.notificationSnoozes, customMinutes = settings.snoozeCustomMinutes)
+        AlertPresenter.show(context, reminder, plan, late = null, vibration = settings.vibration, sound = settings.soundFor(plan), takeScreen = false, ruleIndex = ruleIndex, defaultTime = settings.defaultTime, snoozes = settings.notificationSnoozeOffers, customMinutes = settings.snoozeCustomMinutes)
         nextSoundIn(played + 1, settings.soundPlays, settings.soundGapMinutes)
             ?.let { gap -> repeater.schedule(id, played + 1, rangAt, now + gap, ruleIndex) }
     }
@@ -399,7 +400,7 @@ class ReminderFiring(
             nudge = due.word,
             nudgeAbout = due.about,
             defaultTime = settings.defaultTime,
-            snoozes = settings.notificationSnoozes,
+            snoozes = settings.notificationSnoozeOffers,
             customMinutes = settings.snoozeCustomMinutes,
         )
         scheduler.rearmAll()

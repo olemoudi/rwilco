@@ -58,7 +58,7 @@ fun SnoozeCard(settings: AppSettings, onCustomMinutes: (Int) -> Unit, onPick: (S
                     for (snooze in Snooze.entries) {
                         PresetChip(
                             label = snoozeLabel(snooze, settings.snoozeCustomMinutes),
-                            selected = snooze in settings.notificationSnoozes,
+                            selected = snooze.name in settings.notificationSnoozes,
                             onClick = { onPick(snooze) },
                         )
                     }

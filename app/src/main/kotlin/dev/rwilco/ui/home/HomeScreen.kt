@@ -307,7 +307,9 @@ fun HomeScreen(
             if (!search.open && stripShows(readiness, dismissedProblems)) {
                 item(key = "readiness") {
                     ReadinessStrip(
-                        problems = readiness.problems,
+                        // What is left to say, not the total: naming a problem somebody has
+                        // already waved off is the strip arguing with them.
+                        problems = (readiness.problemNames() - dismissedProblems).size,
                         onFix = onSettings,
                         onDismiss = { viewModel.dismissAlertStrip(readiness.problemNames()) },
                         modifier = Modifier.padding(bottom = spacing.sm),

@@ -187,19 +187,19 @@ fun EditorScreen(
     // How often this shape comes back, which is what the safety net stretches under. Walking
     // two of its moments is not work for a recomposition, so it is remembered like the warnings
     // above — and asked of the draft as it would be saved, which is what the net will see.
-    val netCadence = remember(state.draft.rules, state.draft.ruleMatch, state.draft.recurrence, state.defaultTime, state.dayShape) {
+    val netCadence = remember(state.draft.rules, state.draft.ruleMatch, state.draft.recurrence, state.defaultTime, state.dayStart, state.dayShape) {
         state.draft
             .toReminder(viewModel.draftId, now, now, Status.ACTIVE, zone = zone, shape = state.dayShape)
-            .ringCadence(now, zone, state.defaultTime, shape = state.dayShape)
+            .ringCadence(now, zone, state.defaultTime, state.dayStart, state.dayShape)
     }
     // What the draft will actually do, read back beside the sentence that says what was asked
     // for. Remembered like the cadence above: it walks up to three moments. Not for a preset,
     // which is a shape and rings nothing.
-    val upcoming = remember(state.draft.rules, state.draft.ruleMatch, state.draft.recurrence, state.defaultTime, state.dayShape, state.asPreset) {
+    val upcoming = remember(state.draft.rules, state.draft.ruleMatch, state.draft.recurrence, state.defaultTime, state.dayStart, state.dayShape, state.asPreset) {
         if (state.asPreset) emptyList()
         else upcomingMoments(
             state.draft.toReminder(viewModel.draftId, now, now, Status.ACTIVE, zone = zone, shape = state.dayShape),
-            now, zone, state.defaultTime, shape = state.dayShape,
+            now, zone, state.defaultTime, state.dayStart, state.dayShape,
         )
     }
     // The same question for the calendar in "Vuelve", which has fences of its own and no rule

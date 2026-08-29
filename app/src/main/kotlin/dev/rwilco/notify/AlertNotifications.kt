@@ -31,6 +31,7 @@ import java.time.Instant
 import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
 import dev.rwilco.model.NOTIFICATION_SNOOZES
 import dev.rwilco.ui.format.snoozeLabel
+import dev.rwilco.model.notificationSnoozeOffers
 
 /**
  * How many alerts the bundle actually has: what the system lists, plus or minus the one this
@@ -136,7 +137,7 @@ object AlertNotifications {
         /** The hour a bare date rings at, which is the one thing the reason line cannot read off the rule. */
         defaultTime: LocalTime = AppSettings().defaultTime,
         /** The two snooze offers the buttons carry (three actions is the cap, and "hecho" is one), and how long the custom one is. */
-        snoozes: List<Snooze> = AppSettings().notificationSnoozes,
+        snoozes: List<Snooze> = AppSettings().notificationSnoozeOffers,
         customMinutes: Int = DEFAULT_SNOOZE_MINUTES,
         /**
          * The safety net's word about a reminder that got away, and which way it got away: the

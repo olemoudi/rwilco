@@ -176,6 +176,20 @@ class ReminderCodecTest {
     }
 
     @Test
+    fun `a snooze offer from another build is dropped, not fatal to every setting`() {
+        val blob = """{"theme":"DARK","notificationSnoozes":["TEN_MINUTES","SOMETHING_ELSE"]}"""
+        val settings = ReminderCodec.decodeSettings(blob)
+        // The whole blob is decoded at once, so a name this build has no member for used to
+        // take the theme, the sound, the presets and the saved places down with it.
+        assertEquals(ThemeMode.DARK, settings.theme)
+        assertEquals(listOf(Snooze.TEN_MINUTES), settings.notificationSnoozeOffers)
+        // And nothing recognisable at all falls back rather than leaving a notification with
+        // no way to postpone.
+        val none = ReminderCodec.decodeSettings("""{"notificationSnoozes":["SOMETHING_ELSE"]}""")
+        assertEquals(DEFAULT_NOTIFICATION_SNOOZES, none.notificationSnoozeOffers)
+    }
+
+    @Test
     fun `settings encode every field so a reader can rely on presence`() {
         val encoded = ReminderCodec.encodeSettings(AppSettings())
         assertEquals(

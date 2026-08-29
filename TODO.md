@@ -165,6 +165,36 @@ Two follow-ups to the report above, both asked for directly.
   `DemoData` never had one of these either, which is why nobody saw the hole; it does now, and
   the tour captures it (`home-recurrence.png`).
 
+## The review round, 0.48.1 (2026-08-29)
+A read of everything 0.45.0–0.48.0 added, looking for what a day of use would find. Fifteen
+things; the ones worth not re-deriving:
+
+- **Home's readiness strip could not be dismissed.** `rememberAlertReadiness()` starts optimistic
+  (everything granted, so no screen flashes red before it has looked) and Home acted on that
+  first value: "all good" → forget what was waved off. Every recomposition threw away the "ahora
+  no" that had just been given. The default is a guess now and says so (`read`), and what is
+  remembered is *pruned* to the problems still present rather than emptied at zero — which also
+  fixes the other half: with one thing still broken "todo en orden" never arrives, and a channel
+  muted a second time was never mentioned again.
+- **The strip counted problems already waved off** ("3 cosas por arreglar" for the one that was
+  new). It counts what is left to say.
+- **Typing a time flipped AM/PM.** See `afternoonAfterTyping`; the rule has a test of its own,
+  because the bug lived in a lambda and no assertion could have caught it.
+- **The notification's two snooze offers were persisted as an enum.** A settings blob decodes all
+  at once, so a name an older build has no member for (a vault taken back to 0.47) would have
+  reset every setting there is. Names on disk, unknown ones dropped.
+- **Keeping a reminder as a preset opened the form already dirty** (`presetText` filled,
+  `initialPresetText` empty), so Back asked to discard changes nobody had made.
+- **A shared line came back on every rotation**: `getIntent()` outlives the activity.
+- **Test alerts piled up**: only "hecho" removes one, and three taps left three overdue cards.
+- **"Hecho" could be pushed off the alert screen** by seven snooze offers and a long reminder.
+- The editor's "Suena…" line used the default day start rather than the setting, so it could name
+  an hour the reminder would not ring at.
+- Two consequences of moving the readiness reads off the main thread, both wanted: the groups in
+  trouble open themselves a beat later (so `openGroup` in the tour has to check first), and the
+  places group now *does* open itself on a phone with no background permission — it was losing a
+  race with the database read before.
+
 ## Still to prove on the real phone (Pixel 8 Pro)
 - Settings → Alertas → "Probar una alerta" is the way to prove most of the below now: lock the
   phone, wait ten seconds, and see what arrives.

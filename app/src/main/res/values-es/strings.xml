@@ -919,7 +919,6 @@
     <string name="settings_test_alert_text">Alerta de prueba</string>
     <string name="settings_test_alert_started">Suena en 10 s</string>
     <string name="settings_language">Idioma</string>
-    <string name="settings_language_hint">Inglés o español, sólo para esta app</string>
     <string name="settings_snooze_notification_hint">En una notificación caben tres botones y "Hecho" es uno, así que lleva dos posponer. La alerta a pantalla completa los ofrece todos.</string>
     <plurals name="alert_waiting">
         <item quantity="one">%1$d más esperando</item>

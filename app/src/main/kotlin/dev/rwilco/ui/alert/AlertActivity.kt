@@ -32,6 +32,7 @@ import dev.rwilco.ui.theme.resolvesToDark
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import dev.rwilco.model.notificationSnoozeOffers
 
 /**
  * The reminder — or reminders — taking over the screen.
@@ -132,7 +133,7 @@ class AlertActivity : ComponentActivity() {
                         onDone = { id -> answer(id) { app.firing.dismiss(id) } },
                         onSnooze = { id, snooze -> answer(id) { app.firing.snooze(id, snooze) } },
                         onView = ::view,
-                        snoozes = current.notificationSnoozes,
+                        snoozes = current.notificationSnoozeOffers,
                         customMinutes = current.snoozeCustomMinutes,
                     )
                 } else {
