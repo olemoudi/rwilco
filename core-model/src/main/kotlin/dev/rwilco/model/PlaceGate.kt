@@ -120,7 +120,7 @@ fun Reminder.watchedCircles(
         // under "a la vez" it is folded into every other rule as a state, and those rules are
         // not spent — a window beside it can ring again, and it is this map that answers where
         // the phone was when it did.
-        if (place != null && !place.onCrossing && rules.size == 1 && presenceAlreadyRang(place)) {
+        if (place != null && !place.onCrossing && rules.size == 1 && presenceAlreadyRang(place, index)) {
             return@flatMapIndexed emptyList()
         }
         val fold = folded[index]

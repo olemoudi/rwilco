@@ -260,16 +260,25 @@ class DayWithNoHourTest {
     }
 
     @Test
-    fun `a day is left alone when it has not opened, when it has closed, and when the clock is past midnight`() {
+    fun `a day written in its own small hours starts from the next minute, on the day it is now`() {
+        // Friday's waking window runs to half past one on Saturday. Written at half past
+        // midnight, the day is still open — the same stretch reads as open when asked as a
+        // state — but a window laid on the Friday cannot start on the Saturday, and left as
+        // written the reminder was born overdue and never rang. So it is laid on the Saturday.
+        val settled = settleDays(bare(28), local(2026, 8, 29, 0, 30), zone, shape)
+        assertEquals(bare(29, DayWindow(LocalTime.of(0, 31), LocalTime.of(1, 30))), settled)
+        val next = nextFireOfRule(settled.single(), "r1", local(2026, 8, 29, 0, 30), zone, defaultTime, shape) as NextFire.Scheduled
+        assertEquals(local(2026, 8, 29, 0, 31), next.at)
+    }
+
+    @Test
+    fun `a day is left alone when it has not opened and when it has closed`() {
         // Not yet up: nothing to narrow.
         assertEquals(bare(27), settleDays(bare(27), local(2026, 8, 27, 6, 0), zone, shape))
         // Already in bed: the "ya ha pasado" word is the right one, and the window says so.
         assertEquals(bare(27), settleDays(bare(27), local(2026, 8, 27, 23, 45), zone, shape))
         val lunch = DayWindow(LocalTime.of(14, 0), LocalTime.of(16, 0))
         assertEquals(bare(27, lunch), settleDays(bare(27, lunch), local(2026, 8, 27, 17, 0), zone, shape))
-        // The small hours of Saturday belong to Friday's waking window, but a window laid on the
-        // Friday cannot start on the Saturday: left as written.
-        assertEquals(bare(28), settleDays(bare(28), local(2026, 8, 29, 0, 30), zone, shape))
         // Another day altogether, and every other kind of trigger, untouched.
         assertEquals(bare(29), settleDays(bare(29), local(2026, 8, 27, 15, 0), zone, shape))
         val others = listOf(

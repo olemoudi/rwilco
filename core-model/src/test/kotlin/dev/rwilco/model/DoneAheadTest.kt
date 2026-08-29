@@ -93,6 +93,55 @@ class DoneAheadTest {
     }
 
     @Test
+    fun `with nothing to come back on, a hecho does the moment that is coming`() {
+        // No "Vuelve": the only round is the one coming, however far off it is.
+        val tomorrow = Trigger.AtDateTime(LocalDate.of(2026, 12, 31).atTime(20, 0))
+        val once = Reminder(id = "r1", text = "x", rules = listOf(TriggerRule(tomorrow)), createdAt = now, updatedAt = now)
+        assertEquals(local(2026, 12, 31, 20, 0), once.spends())
+    }
+
+    @Test
+    fun `a hecho does not do a moment a whole season away`() {
+        // "Al llegar a casa, o el 31 de diciembre a las ocho", coming back every day. Swiped
+        // done on Home in August: the round that is coming is tomorrow's, not December's. It
+        // used to spend the 31st, and the place was neither watched nor armed until January.
+        val home = Trigger.Location(40.4169, -3.7035, 200, Presence.INSIDE, "Casa")
+        val newYearsEve = Trigger.AtDateTime(LocalDate.of(2026, 12, 31).atTime(20, 0))
+        val reminder = Reminder(
+            id = "r1",
+            text = "Llamar a la abuela",
+            rules = listOf(TriggerRule(home), TriggerRule(newYearsEve)),
+            recurrence = Recurrence.After(1, RecurrenceUnit.DAYS),
+            createdAt = now.minusSeconds(86_400),
+            updatedAt = now.minusSeconds(86_400),
+        )
+        assertEquals(local(2026, 12, 31, 20, 0), reminder.next(), "the date is what Home shows")
+        assertNull(reminder.spends(), "and a hecho now does not do December")
+        val dealt = reminder.dealtWith()
+        assertNull(dealt.dealtThrough)
+        assertEquals(local(2026, 8, 28, 0, 0), dealt.restUntil(zone, LocalTime.of(9, 0)), "the rest ends with the day")
+        assertEquals(local(2026, 12, 31, 20, 0), nextWake(dealt, local(2026, 8, 28, 12, 0), zone, defaultTime)?.at, "December is still armed")
+    }
+
+    @Test
+    fun `done ahead on a date inside the calendar's next step is still done ahead`() {
+        // "El 26 a las 20:00, y vuelve cada mes", ticked off on the 27th of August: the 26th of
+        // September is the round that is coming, and doing it now sends it on to October.
+        val twentySixth = Trigger.AtDateTime(LocalDate.of(2026, 9, 26).atTime(20, 0))
+        val monthly = Trigger.Repeat(startsOn = LocalDate.of(2026, 9, 26), unit = RepeatUnit.MONTH, time = LocalTime.of(20, 0))
+        val reminder = Reminder(
+            id = "r1",
+            text = "Pagar el alquiler",
+            rules = listOf(TriggerRule(twentySixth)),
+            recurrence = Recurrence.Calendar(monthly),
+            createdAt = now.minusSeconds(86_400),
+            updatedAt = now.minusSeconds(86_400),
+        )
+        assertEquals(local(2026, 9, 26, 20, 0), reminder.spends())
+        assertEquals(local(2026, 10, 26, 20, 0), reminder.dealtWith().next())
+    }
+
+    @Test
     fun `a series dealt through its last date is finished`() {
         // Two dates only: the 28th and the 29th.
         var reminder = daily(ends = RepeatEnd.After(2))

@@ -260,12 +260,17 @@ fun warnings(
         // hour opens at the first minute they allow, so "el jueves, sólo de 16 a 17" is judged on
         // the 16:00 it will actually ring at rather than on breakfast time.
         val onItsOwn = nextFireOf(rule.trigger, reminderId, now, zone, defaultTime, shape, rule.windows())
-        val oneShot = rule.trigger is Trigger.AtDateTime || rule.trigger is Trigger.OnDate ||
-            rule.trigger is Trigger.DayRandom || rule.trigger is Trigger.DateRange
+        val oneShot = rule.trigger.isOneShot
         when {
             // Nothing left of the trigger itself: a date that has been and gone.
             onItsOwn == null && oneShot -> {
                 found += ValidationWarning.InPast(index)
+                doomed += index
+            }
+            // A shape that comes round on its own and has no moment at all: a random window
+            // whose own hour fences leave it no minute to draw (the draw is made inside them).
+            onItsOwn == null -> {
+                found += ValidationWarning.NeverFires(index)
                 doomed += index
             }
             // The trigger still has moments, but never one its own conditions allow. This is

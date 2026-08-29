@@ -302,7 +302,9 @@ fun nextFireOf(
             .future(now)
             ?.let { NextFire.Scheduled(it, trigger) }
         is Trigger.Location -> NextFire.WhenAt(trigger)
-        is Trigger.Random -> nextRandom(trigger, reminderId, now, zone)
+        // Drawn inside the rule's hour fences, like the two shapes above that leave the hour
+        // to the day (see RandomDraw.draws).
+        is Trigger.Random -> nextRandom(trigger, reminderId, now, zone, fences)
     }
 
 private fun Instant.future(now: Instant): Instant? = takeIf { it > now }
@@ -345,13 +347,30 @@ private fun nextAtTime(trigger: Trigger.AtTime, now: Instant, zone: ZoneId): Ins
     return null
 }
 
-/** Scans the current period and a few ahead: enough to cross any gap the day filter can make. */
-private fun nextRandom(trigger: Trigger.Random, reminderId: String, now: Instant, zone: ZoneId): NextFire.Sometime? {
+/**
+ * Scans the current period and a few ahead: enough to cross any gap the day filter can make —
+ * or, with fences, any gap the fences can make, which is a year of days or of weeks. A fence
+ * with a date on it (a dated sibling folded in under "a la vez") names the one period worth
+ * drawing; two that disagree name none.
+ */
+private fun nextRandom(
+    trigger: Trigger.Random,
+    reminderId: String,
+    now: Instant,
+    zone: ZoneId,
+    fences: List<Condition.TimeWindow> = emptyList(),
+): NextFire.Sometime? {
     val today = now.atZone(zone).toLocalDate()
     val first = RandomDraw.periodIndex(today, trigger.period)
-    val horizon = if (trigger.period == Period.DAY) 8 else 2
-    for (step in 0 until horizon) {
-        val draws = RandomDraw.draws(trigger, reminderId, first + step, zone)
+    val dates = fences.mapNotNull { it.date }.distinct()
+    if (dates.size > 1) return null
+    val periods = when {
+        dates.isNotEmpty() -> listOf(RandomDraw.periodIndex(dates.single(), trigger.period))
+        fences.isEmpty() -> first until first + (if (trigger.period == Period.DAY) 8 else 2)
+        else -> first until first + (if (trigger.period == Period.DAY) 400 else 60)
+    }
+    for (index in periods) {
+        val draws = RandomDraw.draws(trigger, reminderId, index, zone, fences)
         val at = draws.firstOrNull { it > now } ?: continue
         // A window that crosses midnight puts its small-hours draws on the next calendar day;
         // the window they were drawn from is the one that opened the evening before.

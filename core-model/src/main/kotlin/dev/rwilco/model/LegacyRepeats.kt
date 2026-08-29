@@ -65,6 +65,7 @@ fun Reminder.foldRepeats(zone: ZoneId): Reminder {
         armedRule = armedRule?.shiftedBy(folded.removed),
         armedFor = if (armedRule in folded.removed) null else armedFor,
         firedRules = firedRules.mapNotNull { it.shiftedBy(folded.removed) }.toSet(),
+        lastFiredRule = lastFiredRule?.shiftedBy(folded.removed),
     )
 }
 
@@ -93,6 +94,8 @@ private val Trigger.isLegacyRepeat: Boolean get() = this is Trigger.Repeat || th
  */
 private fun Trigger.asCalendarShape(writtenOn: LocalDate): Trigger.Repeat? = when (this) {
     is Trigger.Repeat -> this
-    is Trigger.AtTime -> Trigger.Repeat(startsOn = writtenOn, unit = RepeatUnit.WEEK, time = time, days = days)
+    // No days on it is every day, as it is on every other shape: read as "never" by the old
+    // trigger and as the weekday it was written on by the calendar, it was wrong both ways.
+    is Trigger.AtTime -> Trigger.Repeat(startsOn = writtenOn, unit = RepeatUnit.WEEK, time = time, days = days.ifEmpty { java.time.DayOfWeek.entries.toSet() })
     else -> null
 }

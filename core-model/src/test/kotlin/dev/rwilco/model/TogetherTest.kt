@@ -204,6 +204,21 @@ class TogetherTest {
     }
 
     @Test
+    fun `a random beside a day with no hour is drawn inside that day`() {
+        // "El sábado, me da igual la hora, y a la vez tres veces al día al azar": three draws
+        // on the Saturday, inside its waking hours — not the day's three draws thrown away
+        // because they landed on the Thursday.
+        val saturday = Trigger.DayRandom(LocalDate.of(2026, 8, 29))
+        val thrice = Trigger.Random(3, Period.DAY, LocalTime.of(0, 0), LocalTime.of(23, 59))
+        val set = reminder(RuleMatch.TOGETHER, saturday, thrice)
+        val next = nextFire(set, Fixtures.now, zone, defaultTime) as NextFire.Sometime
+        val at = next.at.atZone(zone)
+        assertEquals(LocalDate.of(2026, 8, 29), at.toLocalDate())
+        val awake = DayShape.DEFAULT.awakeOn(LocalDate.of(2026, 8, 29))
+        assertTrue(at.toLocalDateTime() >= awake.from && at.toLocalDateTime() < awake.to, "inside the waking hours: $at")
+    }
+
+    @Test
     fun `two windows that only meet on a later opening open there, not never`() {
         // "Los sábados de 10 a 12" and "viernes y sábados de 11 a 13", from a Thursday. The first
         // window's next opening is Saturday at ten, where the second is shut; the second's next

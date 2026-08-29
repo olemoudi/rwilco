@@ -29,6 +29,8 @@ class LegacyRepeatsTest {
         armedFor = local(2026, 8, 28, 9, 0),
         armedRule = armedRule,
         firedRules = firedRules,
+        lastFiredAt = local(2026, 8, 27, 9, 0),
+        lastFiredRule = armedRule,
     )
 
     @Test
@@ -40,6 +42,7 @@ class LegacyRepeatsTest {
         assertEquals(Recurrence.Calendar(Trigger.Repeat(startsOn = LocalDate.of(2026, 8, 27), unit = RepeatUnit.WEEK, time = LocalTime.of(9, 0), days = setOf(DayOfWeek.MONDAY))), folded.recurrence)
         assertEquals(0, folded.armedRule, "the place, two places further left")
         assertEquals(setOf(0), folded.firedRules, "the repeat's tick is gone, the place's moved")
+        assertEquals(0, folded.lastFiredRule, "and so is the rule the last ring was for")
     }
 
     @Test
@@ -62,10 +65,29 @@ class LegacyRepeatsTest {
     }
 
     @Test
+    fun `a repeat written as a rule is the calendar as it stands, fences and all`() {
+        val monthly = Trigger.Repeat(startsOn = LocalDate.of(2026, 8, 1), unit = RepeatUnit.MONTH, time = LocalTime.of(9, 0), monthly = MonthlyOn.Day(1))
+        val fence = Condition.TimeWindow(LocalTime.of(8, 0), LocalTime.of(10, 0))
+        val folded = stored(home, armedRule = null, firedRules = emptySet())
+            .copy(rules = listOf(TriggerRule(monthly, listOf(fence)), TriggerRule(home)))
+            .foldRepeats(zone)
+        assertEquals(Recurrence.Calendar(monthly, listOf(fence)), folded.recurrence)
+        assertEquals(listOf(TriggerRule(home)), folded.rules)
+    }
+
+    @Test
+    fun `a weekly hour with no days folds to every day, not to the day it was written on`() {
+        val bare = stored(Trigger.AtTime(LocalTime.of(9, 0), emptySet()), armedRule = null, firedRules = emptySet()).foldRepeats(zone)
+        val calendar = (bare.recurrence as Recurrence.Calendar).repeat
+        assertEquals(DayOfWeek.entries.toSet(), calendar.days)
+    }
+
+    @Test
     fun `an alarm armed for a repeat belongs to no rule once it is the calendar`() {
         val folded = stored(home, nine, armedRule = 1, firedRules = emptySet()).foldRepeats(zone)
         assertNull(folded.armedRule)
         assertNull(folded.armedFor, "the recurrence has its own moment; the old one is not it")
+        assertNull(folded.lastFiredRule, "a ring of the repeat's is the calendar's now, and has no index")
         assertEquals(listOf(TriggerRule(home)), folded.rules)
     }
 }

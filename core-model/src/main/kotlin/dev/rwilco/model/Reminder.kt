@@ -73,6 +73,16 @@ data class Reminder(
      * once per firing: nudged at or after the ring it is about, there is nothing left owed.
      */
     val nudgedAt: Instant? = null,
+    /**
+     * Which rule [lastFiredAt] rang for; null when the ring had no rule behind it (a snooze, a
+     * recurrence's own moment) — and for every row written before the column existed.
+     *
+     * What lets a place read as a *state* know whether the ring it is being held to was its
+     * own ([presenceAlreadyRang]). Under "cualquiera" a clock rule ringing at nine and going
+     * unanswered used to count as the place having had its say, and the arrival at six was
+     * dropped for a ring that belonged to a different rule.
+     */
+    val lastFiredRule: Int? = null,
 )
 
 /**

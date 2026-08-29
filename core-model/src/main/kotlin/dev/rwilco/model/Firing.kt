@@ -60,6 +60,13 @@ fun statusAfterDismissal(
  *
  * A place has no moment to spend and answers null, which is right: nothing about arriving
  * somewhere can be done in advance.
+ *
+ * **And only the round that is coming.** With a recurrence on the reminder a "hecho" is one
+ * step of it, so the moment it may spend is one inside the next step — counted from now, or
+ * from what has already been done ahead, which is what makes a second "hecho" do the next
+ * round. "Al llegar a casa, o el 31 de diciembre" with "cada día", swiped done in March, used to
+ * spend the 31st of December: the anchor then counted a day from *that*, and the place was not
+ * watched, armed or rung for nine months.
  */
 fun Reminder.momentDealtWith(
     now: Instant,
@@ -69,7 +76,11 @@ fun Reminder.momentDealtWith(
     shape: DayShape = DayShape.DEFAULT,
 ): Instant? {
     if (awaitingAnswer(now)) return null
-    return nextFire(this, now, zone, defaultTime, dayStart, shape)?.moment
+    val moment = nextFire(this, now, zone, defaultTime, dayStart, shape)?.moment ?: return null
+    val base = maxOf(now, dealtThrough ?: now)
+    val step = calendarMoment(base, zone, shape) ?: nextRecurrence(recurrence, base, zone, dayStart) ?: return moment
+    val within = if (recurrence.countsInDays) moment.atZone(zone).toLocalDate() <= step.atZone(zone).toLocalDate() else moment <= step
+    return moment.takeIf { within }
 }
 
 /**
@@ -83,11 +94,17 @@ fun Reminder.momentDealtWith(
  * A *crossing* is the exception it exists to be: "al llegar a casa" that rang and was ignored
  * rings again when somebody leaves and comes back, because a second doorway is a second thing
  * that happened. So it is never spent here, only by being dealt with.
+ *
+ * And the ring has to have been *this rule's* ([Reminder.lastFiredRule]): under "cualquiera"
+ * a clock sibling ringing at nine and going unanswered is not the place having had its say. A
+ * row that does not know which rule rang (written before the column) is read as it always
+ * was — one round of the old silence, and then the column is populated.
  */
-fun Reminder.presenceAlreadyRang(place: Trigger.Location): Boolean {
+fun Reminder.presenceAlreadyRang(place: Trigger.Location, ruleIndex: Int): Boolean {
     if (place.onCrossing) return false
     val fired = lastFiredAt ?: return false
-    return fired > (lastDealtAt ?: Instant.MIN)
+    if (fired <= (lastDealtAt ?: Instant.MIN)) return false
+    return lastFiredRule == null || lastFiredRule == ruleIndex
 }
 
 /**
@@ -174,9 +191,7 @@ fun owedUnderAll(
     return reminder.pendingRules()
         .mapNotNull { index ->
             val rule = reminder.rules[index]
-            val oneShot = rule.trigger is Trigger.AtDateTime || rule.trigger is Trigger.OnDate ||
-                rule.trigger is Trigger.DayRandom || rule.trigger is Trigger.Countdown
-            if (!oneShot) return@mapNotNull null
+            if (!rule.trigger.isOneShot) return@mapNotNull null
             val at = (nextFireOfRule(rule, reminder.id, missed, zone, defaultTime, shape) as? NextFire.Scheduled)?.at ?: return@mapNotNull null
             if (at > now) null else Wake(at, index)
         }

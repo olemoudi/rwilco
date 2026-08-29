@@ -129,9 +129,13 @@ cualquier hora, y sólo si es entre las 16 y las 17" opens at 16:00, and "el pri
 cada mes, sólo de 16 a 17" with no hour rings that Friday rather than about once a year. When no
 minute of the stretch clears the fences the plain opening comes back for the walk to reject,
 which is what a fence naming *other days* ("sólo los lunes") has to do to a daily calendar. The
-random tile (`Trigger.Random`) is deliberately not fenced this way: its own `from`/`to` is its
-hour fence, a `days` fence works through the walk, and an hour fence narrower than its window is
-a duplicate the sheet already expresses — a known limitation. Its window may end before it
+random tile (`Trigger.Random`) is drawn inside them too (`RandomDraw.draws` takes the rule's
+windows): the minutes each day allows are listed first and the draw is one of those, so "una
+vez a la semana al azar, y sólo los sábados" is drawn on a Saturday rather than drawn over the
+week and thrown away six times in seven — which waited seven weeks on average and could be
+called *never* by the walk. A dated window folded in under "a la vez" names the one period
+worth drawing. With no fence every call on the generator is the one it always was, so nothing
+without a fence moved. Its window may end before it
 starts, and then it crosses midnight like every other window in the model (`windowMinutes`):
 "de 22 a 2" is an evening, and its small-hours draws belong to the day the window opened on,
 which is the day its `days` are judged by.
@@ -142,7 +146,10 @@ the afternoon has an opening — eight in the morning — that has already gone,
 born overdue and never rang. The window is narrowed to the next whole minute → the day's end, so
 it opens at 17:04 and rings within the minute, which is what "en cuanto estemos en ese día" says.
 `warnings` runs the same narrowing, so what the editor says and what is saved agree. Both
-`toReminder`s take a `zone` for it — required, so no save can bypass it.
+`toReminder`s take a `zone` for it — required, so no save can bypass it. A day still open past
+midnight — the small hours of a Saturday belong to a Friday's waking window — is laid on the
+day it is now: a window on the Friday cannot start on the Saturday, and left as written the
+reminder was born overdue for a stretch the same trigger read as *open* when asked as a state.
 
 **Three answers to "when in the day", not two** (`DayWindow`). Between an hour somebody picked
 and the whole of the day they are up for sits a stretch they named: "a la hora de comer". Both
@@ -362,7 +369,9 @@ strict is asking somebody to remember how they spelled it.
   one of them (`Folded.removed`). The row itself is rewritten the next time anything saves it.
   A *second* repeating rule on one reminder is dropped: two calendars is a thing the app can no
   longer say, and a rule nothing can edit is worse than one that is gone. `SettingsStore` folds the presets the same way on the way out of
-  DataStore, because a preset written then holds a repeating rule too.
+  DataStore, because a preset written then holds a repeating rule too. Room v8 adds
+  `lastFiredRule` (see the place watch below): additive, null on every older row, and one more
+  name on the vault's frozen column list.
   `RwilcoDatabase.VERSION` + `MIGRATIONS` are guarded by `MigrationChainTest` (JVM) and
   `DatabaseMigrationTest` (device). Schemas are exported to `app/schemas`.
 - `ReminderRepository`: reactive `open`/`done` flows for the screens, suspend writes.
@@ -693,7 +702,12 @@ strict is asking somebody to remember how they spelled it.
   26 a las 20:00, y vuelve cada mes" was filed DONE by the first "hecho" it ever got. The
   mirror holds too (`statusAfterDismissal`): a calendar with no date left finishes the rules
   with it, because a series that has ended has no rest to hand them and, left ACTIVE, a daily
-  window beside it spoke again on its own, every day, unfenced.
+  window beside it spoke again on its own, every day, unfenced. **And a "hecho" only does the
+  round that is coming**: with a recurrence on the reminder the moment it may spend is one
+  inside the next step, counted from now or from what was already done ahead (which is what
+  makes a second "hecho" do the next round). "Al llegar a casa, o el 31 de diciembre" with
+  "cada día", swiped done in August, used to spend the 31st of December — the anchor then
+  counted a day from *that*, and the place was neither watched nor armed until January.
 - `ReminderFiring` is the single place that decides what a firing, a "Hecho" and a snooze do, so
   the alarm, the notification buttons, the alert screen **and Home's swipe** cannot drift apart.
   Every answer it gives is written down before the notification comes down, and its settings read
@@ -760,7 +774,8 @@ strict is asking somebody to remember how they spelled it.
   reminder has nothing left to ring, and otherwise a **tenth** (`fraction`) of the gap to its
   next ring, whichever is shorter — the point being to catch it before the next one buries it.
   Under `minCadenceMinutes` (an hour) it cannot be armed at all: there the next ring already is
-  the net. The gap is `ringCadence`, asked of the *shape* rather than of the row — a six-hourly
+  the net. The gap is `ringCadence`, asked of the *shape* rather than of the row (nothing
+  rung, dealt with or done ahead) — a six-hourly
   reminder that rang and was ignored has no next moment of its own (an anchored recurrence
   counts from the "hecho") and its rhythm is six hours all the same. It keeps **its own alarm**,
   on its own `PendingIntent` (`nudgeUri`), deliberately not touching `armedFor`: that column
@@ -1041,6 +1056,11 @@ strict is asking somebody to remember how they spelled it.
   reason above — because an answer left standing from before the window closed would have a card
   say "no se cumple ahora mismo" about a circle nothing has looked at since last night. `sync()` always did this; `look()`
   did not, and the mark a person saw then depended on whether the process happened to restart.
+  **A state has had its say only if the ring was its own** (`Reminder.lastFiredRule`, Room
+  v8): under "cualquiera" a clock sibling ringing at nine and going unanswered used to count as
+  the place having spoken, and the arrival at six was dropped for a ring that belonged to a
+  different rule. The column is which rule `lastFiredAt` rang for; null — a snooze, a
+  recurrence's own moment, every row written before it — is read as it always was.
   **A state that has already had its say is not watched at all.** "Mientras esté en casa" rings
   once a round (`presenceAlreadyRang`), so once it has rung every firing of that rule is dropped
   until somebody deals with it — and a circle that can only produce dropped firings is a radio

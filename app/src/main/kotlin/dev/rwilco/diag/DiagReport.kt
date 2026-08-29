@@ -184,7 +184,7 @@ private fun Reminder.identityLine(): String = buildString {
 /** `armed=… fired=… dealt=… next=…` — every stamp the firing path decides from. */
 private fun Reminder.stateLine(now: Instant, zone: ZoneId, settings: AppSettings, stampOf: (Instant?) -> String): String = buildString {
     append("armed=${stampOf(armedFor)}${armedRule?.let { "/r$it" } ?: ""}")
-    append(" fired=${stampOf(lastFiredAt)} dealt=${stampOf(lastDealtAt)} snooze=${stampOf(snoozedUntil)}")
+    append(" fired=${stampOf(lastFiredAt)}${lastFiredRule?.let { "/r$it" } ?: ""} dealt=${stampOf(lastDealtAt)} snooze=${stampOf(snoozedUntil)}")
     if (firedRules.isNotEmpty()) append(" fr=${firedRules.sorted()}")
     if (status == Status.ACTIVE) {
         val next = nextFire(this@stateLine, now, zone, settings.defaultTime, settings.dayStart, settings.dayShape)

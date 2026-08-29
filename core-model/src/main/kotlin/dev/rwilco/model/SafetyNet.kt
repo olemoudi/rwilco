@@ -111,6 +111,7 @@ fun Reminder.ringCadence(
         firedRules = emptySet(),
         lastFiredAt = null,
         lastDealtAt = null,
+        dealtThrough = null,
     )
     val first = nextWake(fresh, now, zone, defaultTime, dayStart, shape)?.at ?: return null
     val second = nextWake(fresh, first, zone, defaultTime, dayStart, shape)?.at ?: return null

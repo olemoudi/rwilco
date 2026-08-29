@@ -451,6 +451,19 @@ val Trigger.namesAnHour: Boolean
 /** Whether this trigger is true only at an instant. See [asState]. */
 val Trigger.isMoment: Boolean get() = asState() == null
 
+/**
+ * Whether this trigger has a bounded run of moments and then nothing: a date, a day, a
+ * countdown, a stretch of the calendar. Everything else comes round again on its own.
+ *
+ * One list, read by the catch-up (`owedUnderAll`: what a phone switched off across it still
+ * owes) and by the editor (`warnings`: "ya ha pasado"). They used to keep two, and a countdown
+ * that had run out was on one and not the other — legal to save, warned about by nothing, and
+ * silent for ever.
+ */
+val Trigger.isOneShot: Boolean
+    get() = this is Trigger.AtDateTime || this is Trigger.OnDate || this is Trigger.DayRandom ||
+        this is Trigger.Countdown || this is Trigger.DateRange
+
 /** The tile that edits an existing trigger (a countdown re-opens as a countdown). */
 val Trigger.kind: TriggerKind
     get() = when (this) {
@@ -488,18 +501,18 @@ fun startCountdowns(rules: List<TriggerRule>, now: Instant): List<TriggerRule> =
  * happen — "hoy entre las 17:04 y las 23:30" — and [warnings] runs the same narrowing, so what
  * it says and what is saved agree without either knowing the id.
  *
- * Left alone when the window has not opened yet (nothing to narrow), when it has closed (the
- * "ya ha pasado" word is then the right one), and when the next minute is not on the day at
- * all — the small hours of a Saturday belong to a Friday's waking window, and a window laid on
- * the Friday cannot start on the Saturday.
+ * Left alone when the window has not opened yet (nothing to narrow) and when it has closed (the
+ * "ya ha pasado" word is then the right one). A day still open past midnight — the small hours
+ * of a Saturday belong to a Friday's waking window — is laid on the day it is now: a window on
+ * the Friday cannot start on the Saturday, and left as written it was born overdue and never
+ * rang, for a stretch the same trigger read as *open* when asked as a state.
  */
 fun settleDays(rules: List<TriggerRule>, now: Instant, zone: ZoneId, shape: DayShape): List<TriggerRule> = rules.map { rule ->
     val day = rule.trigger as? Trigger.DayRandom ?: return@map rule
     val window = day.stretchOf(shape)
     val nextMinute = now.atZone(zone).toLocalDateTime().truncatedTo(ChronoUnit.MINUTES).plusMinutes(1)
-    if (nextMinute.toLocalDate() != day.date) return@map rule
     if (nextMinute <= window.from || nextMinute >= window.to) return@map rule
-    rule.copy(trigger = day.copy(window = DayWindow(nextMinute.toLocalTime(), window.to.toLocalTime())))
+    rule.copy(trigger = day.copy(date = nextMinute.toLocalDate(), window = DayWindow(nextMinute.toLocalTime(), window.to.toLocalTime())))
 }
 
 /**

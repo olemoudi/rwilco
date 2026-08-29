@@ -18,7 +18,7 @@ abstract class RwilcoDatabase : RoomDatabase() {
 
     companion object {
         /** A named constant so MigrationChainTest can assert the chain reaches it. */
-        const val VERSION = 7
+        const val VERSION = 8
         private const val NAME = "rwilco.db"
 
         /** One entry per version step; `// vN: what it added` on each. */
@@ -97,6 +97,13 @@ abstract class RwilcoDatabase : RoomDatabase() {
             object : Migration(6, 7) {
                 override fun migrate(db: SupportSQLiteDatabase) {
                     db.execSQL("ALTER TABLE reminder ADD COLUMN dealtThrough INTEGER")
+                }
+            },
+            // Which rule the last ring was for. Null on every existing row, which reads as "not
+            // known" — a place held to a ring it cannot attribute is read as it always was.
+            object : Migration(7, 8) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE reminder ADD COLUMN lastFiredRule INTEGER")
                 }
             },
         )

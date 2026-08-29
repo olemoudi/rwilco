@@ -149,7 +149,7 @@ class ReminderFiring(
             return@withLock
         }
         // A state rings once a round; a crossing rings for every doorway. See presenceAlreadyRang.
-        if (place != null && reminder.presenceAlreadyRang(place)) {
+        if (place != null && ruleIndex != null && reminder.presenceAlreadyRang(place, ruleIndex)) {
             Log.i(TAG, "$id already rang for being there; waiting for the round to start again")
             Diag.note(TAG_DIAG, "r=${short(id)} dropped: state place already rang at $lastFired")
             return@withLock
@@ -184,7 +184,7 @@ class ReminderFiring(
         // a cancellation landing between markFired and show spent a moment nothing ever showed
         // — one missedFire could never see again, because the row said it had rung.
         withContext(NonCancellable) {
-            repository.markFired(id, rangFor)
+            repository.markFired(id, rangFor, ruleIndex)
             if (reminder.ruleMatch == RuleMatch.ALL && reminder.rulesCombine) {
                 repository.setFiredRules(id, reminder.rules.indices.toSet())
             }

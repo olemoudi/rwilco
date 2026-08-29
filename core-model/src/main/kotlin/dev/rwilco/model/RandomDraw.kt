@@ -26,32 +26,64 @@ object RandomDraw {
     /** The Monday of a WEEK period. */
     fun weekStart(periodIndex: Long): LocalDate = LocalDate.ofEpochDay(periodIndex * 7 - 3)
 
-    /** The instants for one period, sorted, all inside the trigger's window on eligible days. */
-    fun draws(trigger: Trigger.Random, reminderId: String, periodIndex: Long, zone: ZoneId): List<Instant> {
+    /**
+     * The instants for one period, sorted, all inside the trigger's window on eligible days —
+     * and, given [fences], all on minutes the fences allow.
+     *
+     * **Drawn inside the fences, never judged against them afterwards** — the same rule
+     * [inDay] follows, and for the same reason. A weekly draw made over the whole week and then
+     * asked "is it a Saturday?" was a reminder that waited seven weeks on average and could be
+     * called *never* by the walk; under "a la vez" a window folded in as a fence did the same
+     * to a daily one. So the minutes each day allows are listed first and the draw is one of
+     * those. With no fences this is, to the bit, the draw it has always been: the same calls on
+     * the generator with the same bounds, so nothing without a fence moves.
+     */
+    fun draws(
+        trigger: Trigger.Random,
+        reminderId: String,
+        periodIndex: Long,
+        zone: ZoneId,
+        fences: List<Condition.TimeWindow> = emptyList(),
+    ): List<Instant> {
         val windowMinutes = windowMinutes(trigger)
         if (windowMinutes <= 0 || trigger.timesPer <= 0) return emptyList()
         val rng = SplitMix64(seed(reminderId, periodIndex, trigger.period))
+        // The minutes of the window on [day] that every fence allows: all of them with none.
+        fun allowed(day: LocalDate): List<Int> =
+            if (fences.isEmpty()) {
+                (0 until windowMinutes).toList()
+            } else {
+                (0 until windowMinutes).filter { minute ->
+                    val at = day.atTime(trigger.from).plusMinutes(minute.toLong())
+                    fences.all { it.holdsAt(at) }
+                }
+            }
+        fun moment(day: LocalDate, minute: Int): Instant =
+            day.atTime(trigger.from).plusMinutes(minute.toLong()).atZone(zone).toInstant()
         return when (trigger.period) {
             Period.DAY -> {
                 val date = LocalDate.ofEpochDay(periodIndex)
                 if (!eligible(date, trigger.days)) return emptyList()
-                val offsets = List(drawCount(trigger, windowMinutes)) { rng.nextInt(windowMinutes) }.sorted()
-                spreadApart(offsets, windowMinutes).map { minutes ->
-                    date.atTime(trigger.from).plusMinutes(minutes.toLong()).atZone(zone).toInstant()
-                }
+                val minutes = allowed(date)
+                if (minutes.isEmpty()) return emptyList()
+                val offsets = List(drawCount(trigger, minutes.size)) { rng.nextInt(minutes.size) }.sorted()
+                spreadApart(offsets, minutes.size).map { moment(date, minutes[it]) }
             }
             Period.WEEK -> {
                 val monday = weekStart(periodIndex)
-                val eligibleDays = (0L..6L).map { monday.plusDays(it) }.filter { eligible(it, trigger.days) }
+                val eligibleDays = (0L..6L).map { monday.plusDays(it) }
+                    .filter { eligible(it, trigger.days) }
+                    .associateWith { allowed(it) }
+                    .filterValues { it.isNotEmpty() }
                 if (eligibleDays.isEmpty()) return emptyList()
+                val days = eligibleDays.keys.toList()
                 val pairs = List(drawCount(trigger, windowMinutes)) {
-                    val day = eligibleDays[rng.nextInt(eligibleDays.size)]
-                    val minute = rng.nextInt(windowMinutes)
+                    val day = days[rng.nextInt(days.size)]
+                    val minute = rng.nextInt(eligibleDays.getValue(day).size)
                     day to minute
                 }
-                spreadApartInDays(pairs.sortedWith(compareBy({ it.first }, { it.second })), windowMinutes).map { (day, minutes) ->
-                    day.atTime(trigger.from).plusMinutes(minutes.toLong()).atZone(zone).toInstant()
-                }
+                spreadApartInDays(pairs.sortedWith(compareBy({ it.first }, { it.second }))) { eligibleDays.getValue(it).size }
+                    .map { (day, index) -> moment(day, eligibleDays.getValue(day)[index]) }
             }
         }
     }
@@ -139,11 +171,11 @@ object RandomDraw {
      * The same, a week at a time: only draws that landed on the same day can collide, and the
      * ceiling counts how many of those are still to come rather than the whole week's.
      */
-    private fun spreadApartInDays(sortedPairs: List<Pair<LocalDate, Int>>, windowMinutes: Int): List<Pair<LocalDate, Int>> {
+    private fun spreadApartInDays(sortedPairs: List<Pair<LocalDate, Int>>, minutesOn: (LocalDate) -> Int): List<Pair<LocalDate, Int>> {
         val result = ArrayList<Pair<LocalDate, Int>>(sortedPairs.size)
         for ((index, pair) in sortedPairs.withIndex()) {
             val stillToCome = sortedPairs.drop(index).count { it.first == pair.first }
-            val ceiling = windowMinutes - stillToCome
+            val ceiling = minutesOn(pair.first) - stillToCome
             val previous = result.lastOrNull()
             val at = if (previous != null && pair.first == previous.first && pair.second <= previous.second) {
                 previous.second + 1

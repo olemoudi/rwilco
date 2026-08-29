@@ -39,7 +39,7 @@ class ReminderRepository(private val dao: ReminderDao, private val clock: Clock)
 
     suspend fun snooze(id: String, until: Instant?) = dao.setSnooze(id, until?.toEpochMilli())
 
-    suspend fun markFired(id: String, at: Instant) = dao.markFired(id, at.toEpochMilli())
+    suspend fun markFired(id: String, at: Instant, ruleIndex: Int?) = dao.markFired(id, at.toEpochMilli(), ruleIndex)
 
     suspend fun setNudgedAt(id: String, at: Instant) = dao.setNudgedAt(id, at.toEpochMilli())
 

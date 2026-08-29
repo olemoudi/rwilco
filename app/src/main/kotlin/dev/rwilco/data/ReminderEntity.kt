@@ -62,6 +62,8 @@ data class ReminderEntity(
     val nudgedAt: Long? = null,
     /** The last moment dealt with before it could ring; every moment up to it is spent. */
     val dealtThrough: Long? = null,
+    /** Which rule [lastFiredAt] rang for; null for a ring with no rule, and for every older row. */
+    val lastFiredRule: Int? = null,
 )
 
 /** The stored form of no recurrence, and what every row written before v5 gets. */
@@ -99,6 +101,7 @@ fun ReminderEntity.toDomain(zone: ZoneId = ZoneId.systemDefault()): Reminder = R
     lastDealtAt = lastDealtAt?.let(Instant::ofEpochMilli),
     nudgedAt = nudgedAt?.let(Instant::ofEpochMilli),
     dealtThrough = dealtThrough?.let(Instant::ofEpochMilli),
+    lastFiredRule = lastFiredRule,
 ).foldRepeats(zone)
 
 fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
@@ -121,6 +124,7 @@ fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
     lastDealtAt = lastDealtAt?.toEpochMilli(),
     nudgedAt = nudgedAt?.toEpochMilli(),
     dealtThrough = dealtThrough?.toEpochMilli(),
+    lastFiredRule = lastFiredRule,
 )
 
 /**

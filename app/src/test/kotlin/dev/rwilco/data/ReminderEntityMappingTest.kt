@@ -92,6 +92,14 @@ class ReminderEntityMappingTest {
     }
 
     @Test
+    fun `which rule rang survives the trip, and an older row does not know`() {
+        val rang = reminder.copy(lastFiredAt = Instant.ofEpochMilli(1_700_000_700_000), lastFiredRule = 1)
+        assertEquals(1, rang.toEntity().lastFiredRule)
+        assertEquals(1, rang.toEntity().toDomain().lastFiredRule)
+        assertEquals(null, rang.toEntity().copy(lastFiredRule = null).toDomain().lastFiredRule)
+    }
+
+    @Test
     fun `a row written before the firing columns existed reads as never fired`() {
         val old = reminder.toEntity().copy(snoozedUntil = null, lastFiredAt = null, armedFor = null)
         val domain = old.toDomain()

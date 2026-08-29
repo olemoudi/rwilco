@@ -64,6 +64,8 @@ class VaultSchemaTest {
             "safetyNet", "nudgedAt",
             // Room v7: a moment dealt with before it rang; nothing older has one.
             "dealtThrough",
+            // Room v8: which rule the last ring was for; older rows do not know.
+            "lastFiredRule",
         )
     }
 }

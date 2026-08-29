@@ -152,7 +152,7 @@ class Simulation(
             FiringOutcome.Ring -> Unit
         }
         val rangFor = momentRungFor(now, row.armedFor, late, eventDriven)
-        reminder = row.copy(lastFiredAt = rangFor, snoozedUntil = null)
+        reminder = row.copy(lastFiredAt = rangFor, lastFiredRule = ruleIndex, snoozedUntil = null)
         if (row.ruleMatch == RuleMatch.ALL && row.rulesCombine) reminder = reminder.copy(firedRules = row.rules.indices.toSet())
         val ring = Ring(now, rangFor, ruleIndex, late)
         rings += ring

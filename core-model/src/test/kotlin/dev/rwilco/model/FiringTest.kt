@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 
@@ -170,6 +171,19 @@ class FiringTest {
     }
 
     @Test
+    fun `under all, a stretch of the calendar that opened while the phone was off is owed too`() {
+        // 21:00 armed, then a stretch from the 28th: its first morning came and went with the
+        // phone off, and a set waiting on a day already gone would never complete.
+        val first = Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 21, 0))
+        val stretch = Trigger.DateRange(LocalDate.of(2026, 8, 28), LocalDate.of(2026, 8, 30))
+        val both = reminder(first, stretch).copy(ruleMatch = RuleMatch.ALL)
+        assertEquals(
+            listOf(Wake(local(2026, 8, 28, 9, 0), 1)),
+            owedUnderAll(both, missed = local(2026, 8, 27, 21, 0), now = local(2026, 8, 28, 10, 0), zone = zone, defaultTime = defaultTime),
+        )
+    }
+
+    @Test
     fun `a full-screen alert keeps its notification but hands the noise to the screen`() {
         val plan = firingPlan(setOf(Action.FULL_SCREEN, Action.SOUND, Action.VIBRATE))
         assertTrue(plan.fullScreen)
@@ -199,18 +213,31 @@ class FiringTest {
     fun `a state has its say once a round, and a doorway at every doorway`() {
         val rang = local(2026, 8, 27, 19, 0)
         val fresh = reminder(casa)
-        assertFalse(fresh.presenceAlreadyRang(casa), "it has never rung")
+        assertFalse(fresh.presenceAlreadyRang(casa, 0), "it has never rung")
 
-        val ignored = fresh.copy(lastFiredAt = rang)
-        assertTrue(ignored.presenceAlreadyRang(casa), "still at home is not a second thing happening")
+        val ignored = fresh.copy(lastFiredAt = rang, lastFiredRule = 0)
+        assertTrue(ignored.presenceAlreadyRang(casa, 0), "still at home is not a second thing happening")
         // A doorway is never spent this way: leaving and coming back is a second arrival.
         val doorway = casa.copy(onCrossing = true)
-        assertFalse(ignored.presenceAlreadyRang(doorway))
+        assertFalse(ignored.presenceAlreadyRang(doorway, 0))
 
         // Dealing with it starts the next round for both.
         val dealt = ignored.copy(lastDealtAt = rang.plusSeconds(60))
-        assertFalse(dealt.presenceAlreadyRang(casa))
-        assertFalse(dealt.presenceAlreadyRang(doorway))
+        assertFalse(dealt.presenceAlreadyRang(casa, 0))
+        assertFalse(dealt.presenceAlreadyRang(doorway, 0))
+    }
+
+    @Test
+    fun `a sibling clock ringing does not spend a state place under any`() {
+        // "En casa, o a las nueve." Nine rings and is swiped away without a hecho; at six the
+        // person walks in. The ring being held against the place was a different rule's, and
+        // under "cualquiera" nothing accumulates: the place has not had its say.
+        val nine = local(2026, 8, 27, 9, 0)
+        val either = reminder(casa, Trigger.TimeOfDay(LocalTime.of(9, 0))).copy(lastFiredAt = nine, lastFiredRule = 1)
+        assertFalse(either.presenceAlreadyRang(casa, 0), "the clock rang, not the place")
+        assertTrue(either.copy(lastFiredRule = 0).presenceAlreadyRang(casa, 0), "whereas its own ring is its say")
+        // A row from before the column knows nothing, and is read as it always was.
+        assertTrue(either.copy(lastFiredRule = null).presenceAlreadyRang(casa, 0))
     }
 
     @Test

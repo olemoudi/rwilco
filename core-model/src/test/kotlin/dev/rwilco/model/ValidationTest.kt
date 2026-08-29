@@ -77,19 +77,19 @@ class ValidationTest {
     /**
      * The warning is only worth anything if it is about *this* reminder. A random window's
      * moments are drawn from (id, period), so the same rules under two ids are two different
-     * sets of moments — and a warning read off an id nobody will save is a coin flip: it said
-     * "nunca sonará" of reminders that ring, and said nothing about ones that never will.
+     * moments — and the editor has to judge the moment the scheduler is going to arm, not one
+     * drawn from an id nobody will save.
      */
     @Test
     fun `a warning about a random window is judged with the id the reminder will have`() {
         // "El sábado 29, a cualquier hora, y a la vez una vez a la semana al azar": the draw is
-        // made on its own and then filtered, so most ids miss that one Saturday altogether.
+        // made inside the Saturday, so every id rings that day — at a minute of its own.
         val saturday = TriggerRule(Trigger.DayRandom(LocalDate.of(2026, 8, 29)))
         val onceAWeek = TriggerRule(Trigger.Random(1, Period.WEEK, LocalTime.of(9, 0), LocalTime.of(21, 0)))
         val rules = listOf(saturday, onceAWeek)
         val ids = (0..15).map { "id-$it" }
 
-        val disagreed = ids.filter { id ->
+        val moments = ids.map { id ->
             val reminder = Reminder(
                 id = id,
                 text = "Llamar al taller",
@@ -98,20 +98,14 @@ class ValidationTest {
                 createdAt = now,
                 updatedAt = now,
             )
-            val silent = nextFire(reminder, now, zone, defaultTime) == null
+            val next = nextFire(reminder, now, zone, defaultTime)
             val warned = warnings(rules, now, zone, defaultTime, RuleMatch.TOGETHER, reminderId = id)
                 .any { it is ValidationWarning.NeverFires }
-            silent != warned
+            assertEquals(next == null, warned, "the editor and the scheduler disagreed about $id")
+            assertTrue(next != null && next.moment?.atZone(zone)?.toLocalDate() == LocalDate.of(2026, 8, 29), "$id: $next")
+            next!!.moment
         }
-        assertTrue(disagreed.isEmpty(), "the editor and the scheduler disagreed about: $disagreed")
-
-        // And the seed is what makes the difference: these rules are not all one answer, so a
-        // warning that ignored the id could only ever be right by luck.
-        val outcomes = ids.map { id ->
-            warnings(rules, now, zone, defaultTime, RuleMatch.TOGETHER, reminderId = id)
-                .any { it is ValidationWarning.NeverFires }
-        }
-        assertTrue(outcomes.contains(true) && outcomes.contains(false), "the case has to cut both ways to prove anything")
+        assertTrue(moments.distinct().size > 1, "the moment is the id's own; the verdict is not")
     }
 
     @Test
@@ -126,6 +120,24 @@ class ValidationTest {
         // And one whose stretch is already behind it is called never at once, not after a walk.
         val september = local(2026, 9, 1, 12, 0)
         assertTrue(warnings(listOf(rule), september, zone, defaultTime).any { it is ValidationWarning.NeverFires })
+    }
+
+    @Test
+    fun `a countdown that ran out is a warning like any other moment behind us`() {
+        // Half an hour, started an hour ago. It was on the catch-up's list of one-shot shapes
+        // and not on the editor's, so it saved without a word and never rang.
+        val ranOut = TriggerRule(Trigger.Countdown(30, startedAt = now.minusSeconds(3600)))
+        assertEquals(listOf(ValidationWarning.InPast(0)), warnings(listOf(ranOut), now, zone, defaultTime))
+        assertTrue(warnings(listOf(TriggerRule(Trigger.Countdown(30, startedAt = now))), now, zone, defaultTime).isEmpty())
+    }
+
+    @Test
+    fun `a random whose fences allow no minute is called never`() {
+        // Drawn inside its fences, a window with no minute inside them has no draw at all —
+        // and no draw is not "in the past", it is never.
+        val mornings = Trigger.Random(3, Period.DAY, LocalTime.of(10, 0), LocalTime.of(12, 0))
+        val evenings = Condition.TimeWindow(LocalTime.of(18, 0), LocalTime.of(22, 0))
+        assertEquals(listOf(ValidationWarning.NeverFires(0)), warnings(listOf(TriggerRule(mornings, listOf(evenings))), now, zone, defaultTime))
     }
 
     @Test

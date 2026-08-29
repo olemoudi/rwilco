@@ -156,6 +156,22 @@ class RuleNextFireTest {
     }
 
     @Test
+    fun `a weekly random fenced to saturdays rings the first saturday, not seven weeks on`() {
+        // Thursday the 27th; Saturday the 29th is two days off. Drawn over the week and then
+        // asked "is it a Saturday?", one id in seven said yes; the rest waited weeks.
+        val once = Trigger.Random(1, Period.WEEK, LocalTime.of(9, 0), LocalTime.of(21, 0))
+        val saturdays = Condition.TimeWindow(LocalTime.of(0, 0), LocalTime.of(23, 59), setOf(DayOfWeek.SATURDAY))
+        for (id in (0..11).map { "id-$it" }) {
+            val next = nextFireOfRule(TriggerRule(once, listOf(saturdays)), id, now, zone, defaultTime) as NextFire.Sometime
+            assertEquals(Fixtures.local(2026, 8, 29, 0, 0).atZone(zone).toLocalDate(), next.at.atZone(zone).toLocalDate(), id)
+        }
+        // Two dated fences that name different days: no day is both, and the answer is never.
+        val friday = Condition.TimeWindow(LocalTime.of(0, 0), LocalTime.of(23, 59), date = Fixtures.local(2026, 8, 28, 0, 0).atZone(zone).toLocalDate())
+        val saturday = friday.copy(date = friday.date!!.plusDays(1))
+        assertNull(nextFireOfRule(TriggerRule(once, listOf(friday, saturday)), "r1", now, zone, defaultTime))
+    }
+
+    @Test
     fun `a random window whose fences never meet it runs out of candidates, not of patience`() {
         // Five a day from ten to twelve, and only between six and ten in the evening: two
         // thousand draws are four hundred days, well inside the horizon, and the walk stops on

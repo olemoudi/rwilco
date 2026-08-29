@@ -59,6 +59,16 @@ class SafetyNetTest {
     }
 
     @Test
+    fun `the cadence is asked of the shape, whatever has been done ahead`() {
+        // A stretch of three mornings, the middle one already ticked off ahead of time: its
+        // rhythm is a day. Measured from what was done ahead it had one morning left and no
+        // rhythm at all, and the net waited its longest instead of a tenth of a day.
+        val stretch = TriggerRule(Trigger.DateRange(LocalDate.of(2026, 8, 28), LocalDate.of(2026, 8, 30)))
+        val ahead = reminder(stretch).copy(dealtThrough = local(2026, 8, 29, 9, 0))
+        assertEquals(Duration.ofDays(1), ahead.cadence())
+    }
+
+    @Test
     fun `a calendar answers with the gap between two of its own dates`() {
         val daily = Recurrence.Calendar(Trigger.Repeat(startsOn = LocalDate.of(2026, 8, 1), unit = RepeatUnit.DAY, time = LocalTime.of(9, 0)))
         assertEquals(Duration.ofDays(1), reminder(recurrence = daily).cadence())

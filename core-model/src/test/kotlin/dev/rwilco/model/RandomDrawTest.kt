@@ -87,6 +87,33 @@ class RandomDrawTest {
     }
 
     @Test
+    fun `a fenced weekly draw lands on a fenced day, and an unfenced one is the draw it always was`() {
+        // "Una vez a la semana al azar, y sólo los sábados": drawn on a Saturday, at a minute
+        // of its own, week after week — not drawn over the week and thrown away six times in
+        // seven. And with no fence the golden draw above is untouched, to the minute.
+        val saturdays = Condition.TimeWindow(LocalTime.of(0, 0), LocalTime.of(23, 59), setOf(DayOfWeek.SATURDAY))
+        val once = weekly.copy(timesPer = 1, days = emptySet())
+        for (week in 2956L until 2956L + 20) {
+            val draws = RandomDraw.draws(once, "x", week, zone, listOf(saturdays))
+            assertEquals(1, draws.size, "week $week")
+            assertEquals(DayOfWeek.SATURDAY, draws.single().atZone(zone).dayOfWeek)
+        }
+        assertEquals(RandomDraw.draws(weekly, "golden", 2956L, zone), RandomDraw.draws(weekly, "golden", 2956L, zone, emptyList()))
+        // A fence the window's own days never meet leaves nothing to draw from.
+        assertTrue(RandomDraw.draws(weekly, "x", 2956L, zone, listOf(saturdays)).isEmpty(), "Mon/Wed/Fri, and only Saturdays")
+        // Hours narrower than the window: every draw inside them, and the day's count kept.
+        val lunch = Condition.TimeWindow(LocalTime.of(13, 0), LocalTime.of(14, 0))
+        for (index in 20692L until 20692L + 30) {
+            val draws = RandomDraw.draws(daily, "x", index, zone, listOf(lunch))
+            assertEquals(3, draws.size)
+            for (at in draws) {
+                val time = at.atZone(zone).toLocalTime()
+                assertTrue(time >= LocalTime.of(13, 0) && time < LocalTime.of(14, 0), "$time outside lunch")
+            }
+        }
+    }
+
+    @Test
     fun `a window that ends where it starts draws nothing`() {
         assertTrue(RandomDraw.draws(daily.copy(from = LocalTime.of(12, 0), to = LocalTime.of(12, 0)), "x", 20692L, zone).isEmpty())
     }

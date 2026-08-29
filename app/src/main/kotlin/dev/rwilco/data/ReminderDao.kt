@@ -57,8 +57,8 @@ interface ReminderDao {
     suspend fun setSnooze(id: String, until: Long?)
 
     /** Deliberately does not touch updatedAt: ringing is not editing. */
-    @Query("UPDATE reminder SET lastFiredAt = :at, snoozedUntil = NULL WHERE id = :id")
-    suspend fun markFired(id: String, at: Long)
+    @Query("UPDATE reminder SET lastFiredAt = :at, lastFiredRule = :ruleIndex, snoozedUntil = NULL WHERE id = :id")
+    suspend fun markFired(id: String, at: Long, ruleIndex: Int?)
 
     /**
      * "Hecho", in one write: the snooze and the half-finished round go, the anchor every
