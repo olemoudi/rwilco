@@ -5,6 +5,8 @@ import android.graphics.Bitmap
 import android.os.LocaleList
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
@@ -186,6 +188,13 @@ class EditorTourTest {
                 text(s(R.string.place_needs_crossing)).performScrollTo().performClick()
                 rule.waitUntilDisplayed(s(R.string.place_side_outside))
                 shot("sheet-place-presence")
+                // The radius, which lives under the map and so is off the bottom of both shots
+                // above: its own, because the slider's inset from the sheet margin is a thing to
+                // look at rather than a thing to assert.
+                // The slider itself, not its label: the label is the top of the row and scrolling
+                // to it leaves the control under the sheet's action bar.
+                rule.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)).performScrollTo().assertIsDisplayed()
+                shot("sheet-place-radius")
             }
             // The date tile carries all three answers to "when in the day", and it opens on the
             // one that asks for nothing: the hint under it is the day's own waking hours, which

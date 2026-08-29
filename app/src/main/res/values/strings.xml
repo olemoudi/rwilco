@@ -445,7 +445,7 @@
     <string name="place_kilometres">%1$s km</string>
 
     <!-- The place watch -->
-    <string name="place_watch_how">Rwilco also looks for itself: every couple of minutes walking up to a place, every hour standing still across town. GPS only near a place and moving.</string>
+    <string name="place_watch_how">Rwilco also looks for itself: every couple of minutes walking up to a place, every half hour sitting inside one, every hour standing still across town. GPS only near a place and moving; the cell towers alone when everything is far off; and nothing at all when the fix it already has still answers.</string>
     <string name="place_watch_waiting">Has not looked yet; the first look is moments away.</string>
     <string name="place_watch_status">Last look %1$s · %2$s from %3$s · next look %4$s</string>
 
@@ -617,7 +617,21 @@
         <item quantity="other">%1$d location reads in the last hour</item>
     </plurals>
     <string name="watch_log_clear">Clear the log</string>
+    <!-- The roll-up above the lines: what the last day came to, and which circle set the pace. -->
+    <string name="watch_tally_title">Last 24 hours</string>
+    <plurals name="watch_tally_looks">
+        <item quantity="one">%1$d look</item>
+        <item quantity="other">%1$d looks</item>
+    </plurals>
+    <string name="watch_tally_network">%1$d wifi/cell</string>
+    <string name="watch_tally_gps">%1$d GPS</string>
+    <string name="watch_tally_coarse">%1$d cell only</string>
+    <string name="watch_tally_cached">%1$d free</string>
+    <string name="watch_tally_rested">%1$d skipped</string>
+    <string name="watch_tally_blind">%1$d without a fix</string>
+    <string name="watch_tally_paced">Paced by %1$s, %2$d of them</string>
     <string name="watch_kind_fix">read</string>
+    <string name="watch_kind_cache">free</string>
     <string name="watch_kind_rest">skipped</string>
     <string name="watch_kind_blind">no fix</string>
     <string name="watch_kind_stir">stirred</string>
@@ -625,6 +639,7 @@
     <string name="watch_kind_echo">echo</string>
     <string name="watch_field_gps">GPS</string>
     <string name="watch_field_network">wifi/cell</string>
+    <string name="watch_field_coarse">cell only</string>
     <string name="watch_field_next">next %1$s</string>
     <string name="watch_field_from">%1$s from %2$s</string>
     <string name="watch_field_inside">inside</string>

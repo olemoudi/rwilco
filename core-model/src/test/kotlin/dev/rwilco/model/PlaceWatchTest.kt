@@ -65,7 +65,7 @@ class PlaceWatchTest {
         // fifteen minutes. (Home is the nearer of the two; work is north of it.)
         val plan = planNextCheck(north(-60_000.0), Movement(), listOf(home, work))!!
         assertEquals(Duration.ofSeconds(1790), plan.wait, "59.79 km at 120 km/h")
-        assertFalse(plan.precise)
+        assertFalse(plan.tier == FixTier.PRECISE)
         assertEquals(home, plan.nearest)
     }
 
@@ -97,7 +97,7 @@ class PlaceWatchTest {
         val plan = planNextCheck(north(0.0), Movement(speedMps = 0.0, movedM = 0.0, stillStreak = 10), listOf(far))!!
         assertTrue(plan.wait > Duration.ofHours(2), "${plan.wait}")
         assertEquals(reachCeiling(plan.gapM), plan.wait)
-        assertFalse(plan.precise)
+        assertFalse(plan.tier == FixTier.PRECISE)
     }
 
     @Test
@@ -115,7 +115,7 @@ class PlaceWatchTest {
         // 1.79 km to the line, walking at 1.4 m/s: planned at 2.1 m/s, ~14 minutes.
         val walking = planNextCheck(north(2000.0), Movement(speedMps = 1.4, stillStreak = 0), listOf(home))!!
         assertEquals(Duration.ofSeconds(852), walking.wait)
-        assertFalse(walking.precise)
+        assertFalse(walking.tier == FixTier.PRECISE)
         // Driving at 20 m/s, 1.8 km out: a minute at 30 m/s, so the floor.
         val driving = planNextCheck(north(2000.0), Movement(speedMps = 20.0, stillStreak = 0), listOf(home))!!
         assertEquals(PlaceWatchPolicy.MIN_WAIT, driving.wait)
@@ -125,7 +125,7 @@ class PlaceWatchTest {
     fun `moving near a line means GPS and the fastest cadence`() {
         val plan = planNextCheck(north(400.0), Movement(speedMps = 1.4, stillStreak = 0), listOf(home))!!
         assertEquals(PlaceWatchPolicy.MIN_WAIT, plan.wait)
-        assertTrue(plan.precise)
+        assertTrue(plan.tier == FixTier.PRECISE)
     }
 
     @Test
@@ -133,7 +133,7 @@ class PlaceWatchTest {
         // The first look of a session at home: a phone on a bedside table, most nights.
         val plan = planNextCheck(north(400.0), Movement(speedMps = null, stillStreak = 0), listOf(home))!!
         assertEquals(PlaceWatchPolicy.MIN_WAIT, plan.wait)
-        assertFalse(plan.precise)
+        assertFalse(plan.tier == FixTier.PRECISE)
     }
 
     @Test
@@ -141,7 +141,7 @@ class PlaceWatchTest {
         val outside = home.copy(radiusM = 20)
         val waits = (0..5).map { streak -> planNextCheck(north(50.0), Movement(speedMps = 0.0, stillStreak = streak), listOf(outside))!! }
         assertEquals(listOf(2L, 4L, 8L, 15L, 15L, 15L), waits.map { it.wait.toMinutes() })
-        assertTrue(waits.none { it.precise }, "a phone that is not moving does not need the GPS")
+        assertTrue(waits.none { it.tier == FixTier.PRECISE }, "a phone that is not moving does not need the GPS")
     }
 
     @Test
@@ -152,7 +152,7 @@ class PlaceWatchTest {
         // the back-off it had been earning is gone.
         val stirred = planNextCheck(fix, Movement(speedMps = 0.0, sensed = true, stillStreak = 5), listOf(outside))!!
         assertEquals(PlaceWatchPolicy.MIN_WAIT, stirred.wait)
-        assertFalse(stirred.precise, "and still not a reason to wake the GPS")
+        assertFalse(stirred.tier == FixTier.PRECISE, "and still not a reason to wake the GPS")
         // It felt nothing, and the fixes agree: now the near-a-line cap comes off, because a
         // phone that has neither moved nor been jostled is a phone on a table.
         val settled = planNextCheck(fix, Movement(speedMps = 0.0, sensed = false, stillStreak = 5), listOf(outside))!!
@@ -172,7 +172,7 @@ class PlaceWatchTest {
         assertEquals(4, rest.state.stillStreak)
         assertTrue(rest.events.isEmpty(), "a rested step invented a crossing")
         assertEquals(later + rest.plan!!.wait, rest.state.nextCheckAt)
-        assertFalse(rest.plan!!.precise)
+        assertFalse(rest.plan!!.tier == FixTier.PRECISE)
     }
 
     @Test
@@ -217,15 +217,15 @@ class PlaceWatchTest {
         val atTheDoor = north(400.0)
         val healthy = planNextCheck(atTheDoor, walkingUp, listOf(home))!!
         assertEquals(PlaceWatchPolicy.MIN_WAIT, healthy.wait)
-        assertTrue(healthy.precise, "the last few hundred metres are what the GPS is for")
+        assertTrue(healthy.tier == FixTier.PRECISE, "the last few hundred metres are what the GPS is for")
         // A third of a battery left: the same approach, watched five times less often.
         val sparing = planNextCheck(atTheDoor, walkingUp, listOf(home), charge = 0.35)!!
         assertEquals(batteryFloor(0.35), sparing.wait)
-        assertTrue(sparing.precise, "still an approach, still the last few hundred metres")
+        assertTrue(sparing.tier == FixTier.PRECISE, "still an approach, still the last few hundred metres")
         // A quarter left: the hour, and no GPS — an hourly look is not an approach.
         val bottom = planNextCheck(atTheDoor, walkingUp, listOf(home), charge = 0.20)!!
         assertEquals(PlaceWatchPolicy.MAX_WAIT, bottom.wait)
-        assertFalse(bottom.precise)
+        assertFalse(bottom.tier == FixTier.PRECISE)
     }
 
     @Test
@@ -247,6 +247,69 @@ class PlaceWatchTest {
         // which is the right answer there.
         assertEquals(batteryFloor(0.30), stirredWait(0.30))
         assertEquals(PlaceWatchPolicy.MAX_WAIT, stirredWait(0.20))
+    }
+
+    @Test
+    fun `stirs that keep coming to nothing are worth less each time`() {
+        // Inside a place, significant motion is a kitchen as often as it is a departure, and
+        // every one of them used to buy a look at five minutes' notice. Each stir a look then
+        // finds on the same side of the same line doubles the next one's notice.
+        assertEquals(listOf(5L, 10L, 20L, 30L, 30L), (0..4).map { stirredWait(null, it).toMinutes() })
+        assertEquals(PlaceWatchPolicy.LEAVING_MAX_WAIT, stirredWait(null, 9), "and never past where the case started")
+        assertEquals(PlaceWatchPolicy.LEAVING_MIN_WAIT, stirredWait(null, -1), "a streak that cannot be")
+        // The battery floor still has the last word, in both directions.
+        assertEquals(batteryFloor(0.30), stirredWait(0.30, 0))
+        assertEquals(PlaceWatchPolicy.MAX_WAIT, stirredWait(0.20, 3))
+    }
+
+    @Test
+    fun `closing is measured against the line, not the ground covered`() {
+        // Two hundred metres of walking, from one side of the kitchen to the other: both fixes
+        // are a hundred metres from the middle, so the line is exactly as far away as it was and
+        // nothing has been closed. This is what the old rule read as a radius' worth of progress.
+        val across = closingM(home, north(100.0, accuracy = 10.0), north(-100.0, accuracy = 10.0))!!
+        assertEquals(0.0, across, 1.0)
+        // A hundred metres of it *towards* the line closes a hundred metres of gap.
+        assertEquals(100.0, closingM(home, north(0.0, accuracy = 0.0), north(100.0, accuracy = 0.0))!!, 1.0)
+        // Under the two fixes' own doubt is not a step, in either direction.
+        assertEquals(0.0, closingM(home, north(100.0, accuracy = 10.0), north(115.0, accuracy = 10.0)))
+        // Deeper in is a negative: the door is further away than it was.
+        assertTrue(closingM(home, north(150.0, accuracy = 0.0), north(50.0, accuracy = 0.0))!! < 0.0)
+        assertNull(closingM(home, null, north(100.0)))
+    }
+
+    @Test
+    fun `the towers alone answer a line ten kilometres off, and never one nearby`() {
+        val far = WatchedPlace("far", homeLat + 0.5, homeLng, radiusM = 200, transition = Transition.ENTER, label = "Lejos")
+        val driving = Movement(speedMps = 25.0, stillStreak = 0)
+        assertEquals(FixTier.COARSE, planNextCheck(north(0.0), driving, listOf(far))!!.tier)
+        // Five kilometres out is inside the threshold, and the ordinary blend answers it.
+        val nearer = WatchedPlace("near", homeLat + 0.045, homeLng, radiusM = 200, transition = Transition.ENTER, label = "Cerca")
+        assertEquals(FixTier.BALANCED, planNextCheck(north(0.0), driving, listOf(nearer))!!.tier)
+        // Inside a place it is the blend whatever else is true: a fix vaguer than the circle has
+        // nothing to say about which side of it you are on. (The tier is the winning circle's,
+        // like the cadence — a far errand setting the pace brings its own answer with it.)
+        val inside = planNextCheck(north(0.0), driving, listOf(home), mapOf(home.id to true))!!
+        assertEquals(FixTier.BALANCED, inside.tier)
+        // And a low battery takes the satellites away without reaching for the towers instead.
+        val approach = planNextCheck(north(400.0), Movement(speedMps = 1.4, stillStreak = 0), listOf(home), charge = 0.20)!!
+        assertEquals(FixTier.BALANCED, approach.tier)
+    }
+
+    @Test
+    fun `a fix already in hand answers a look it is fresh and sharp enough for`() {
+        val hour = Duration.ofMinutes(60)
+        // An hourly watch is asking an hour-wide question; five minutes old is fresh for it.
+        assertTrue(north(0.0, accuracy = 20.0, at = now.minusSeconds(240)).answersFor(now, hour, gapM = 900.0))
+        // But never more than the cache's own ceiling, however long the wait.
+        assertFalse(north(0.0, accuracy = 20.0, at = now.minusSeconds(600)).answersFor(now, hour, gapM = 900.0))
+        // A two-minute watch is walking up to a door, and nothing but now will do.
+        assertFalse(north(0.0, accuracy = 20.0, at = now.minusSeconds(240)).answersFor(now, PlaceWatchPolicy.MIN_WAIT, gapM = 900.0))
+        // Doubt that reaches the line is not an answer about the line, at any age.
+        assertFalse(north(0.0, accuracy = 200.0, at = now).answersFor(now, hour, gapM = 100.0))
+        assertFalse(north(0.0, accuracy = 20.0, at = now).answersFor(now, hour, gapM = null))
+        // A fix from the future is a clock that moved, not an answer.
+        assertFalse(north(0.0, accuracy = 20.0, at = now.plusSeconds(60)).answersFor(now, hour, gapM = 900.0))
     }
 
     @Test

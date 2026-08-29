@@ -41,7 +41,7 @@ class PlaceWatchJourneyTest {
         while (clock < now.plus(Duration.ofHours(maxHours))) {
             val step = stepPlaceWatch(state, south(distance, clock), places, clock)
             checks++
-            if (state.precise) gps++
+            if (state.tier == FixTier.PRECISE) gps++
             events += step.events
             if (step.events.isNotEmpty() && seenAt == null) seenAt = clock
             state = step.state
@@ -93,7 +93,7 @@ class PlaceWatchJourneyTest {
             // The same reading every time, give or take a few metres of wifi noise.
             val step = stepPlaceWatch(state, south(30.0 + (checks % 3) * 2.0, clock, accuracy = 25.0), listOf(leavingHome), clock)
             checks++
-            if (state.precise) gps++
+            if (state.tier == FixTier.PRECISE) gps++
             assertTrue(step.events.isEmpty(), "a phone that never left rang for leaving")
             state = step.state
             lastWait = step.plan!!.wait
@@ -102,6 +102,32 @@ class PlaceWatchJourneyTest {
         assertTrue(checks <= 8 * 2 + 2, "$checks checks in eight still hours")
         assertEquals(0, gps, "the GPS woke for a phone on a bedside table")
         assertEquals(PlaceWatchPolicy.LEAVING_MAX_WAIT, lastWait, "a phone that has not moved is not about to leave")
+    }
+
+    @Test
+    fun `an evening lived inside a place with a leaving rule costs two looks an hour`() {
+        // The budget this release is about. Not a phone on a bedside table — that one rests and
+        // takes no fix at all — but a phone in a pocket, being carried about a flat all evening:
+        // the sensor fires, so nothing rests, and every look is a real one. What must not happen
+        // is the old answer, where a radius' worth of pacing an hour pinned the wait to its
+        // five-minute floor and cost twelve fixes an hour until bedtime.
+        var state = PlaceWatchState()
+        var clock = now
+        var checks = 0
+        var gps = 0
+        val hours = 6L
+        val end = now.plus(Duration.ofHours(hours))
+        val kitchen = listOf(60.0, -40.0, 20.0, -70.0, 50.0, -30.0)
+        while (clock < end) {
+            val step = stepPlaceWatch(state, south(kitchen[checks % kitchen.size], clock, accuracy = 20.0), listOf(leavingHome), clock, sensed = true)
+            assertTrue(step.events.isEmpty(), "it rang for a leaving nobody made")
+            if (state.tier == FixTier.PRECISE) gps++
+            state = step.state
+            clock += step.plan!!.wait
+            checks++
+        }
+        assertTrue(checks <= hours * 2 + 1, "$checks looks in $hours hours of being at home")
+        assertEquals(0, gps, "the GPS, for somebody making dinner")
     }
 
     @Test
@@ -188,8 +214,8 @@ class PlaceWatchJourneyTest {
                 plan.wait <= maxOf(PlaceWatchPolicy.MAX_WAIT, reachCeiling(plan.gapM)),
                 "${plan.wait} over the ceiling ${plan.gapM} m out",
             )
-            if (plan.precise) assertTrue(plan.gapM < PlaceWatchPolicy.NEAR_M, "GPS ${plan.gapM} m from the line")
-            if (speed != null && speed <= PlaceWatchPolicy.STILL_MPS) assertFalse(plan.precise, "GPS for a still phone")
+            if (plan.tier == FixTier.PRECISE) assertTrue(plan.gapM < PlaceWatchPolicy.NEAR_M, "GPS ${plan.gapM} m from the line")
+            if (speed != null && speed <= PlaceWatchPolicy.STILL_MPS) assertFalse(plan.tier == FixTier.PRECISE, "GPS for a still phone")
         }
     }
 

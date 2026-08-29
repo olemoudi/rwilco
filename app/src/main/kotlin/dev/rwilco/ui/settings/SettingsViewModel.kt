@@ -23,6 +23,8 @@ import dev.rwilco.model.ThemeMode
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.VibrationPattern
 import dev.rwilco.model.WatchLog
+import dev.rwilco.model.WatchTally
+import dev.rwilco.model.tally
 import dev.rwilco.model.pollsSince
 import dev.rwilco.model.TriggerKind
 import kotlinx.coroutines.flow.Flow
@@ -33,6 +35,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Clock
+import java.time.Duration
 import java.time.DayOfWeek
 import java.time.LocalTime
 
@@ -75,6 +78,15 @@ class SettingsViewModel(
     val pollsThisHour: StateFlow<Int> = placeLog.log
         .map { it.notes.pollsSince(clock.instant() - PlaceWatchPolicy.BUSY_WINDOW) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    /**
+     * What the last day of looking came to: how many looks, what each cost, and which circle set
+     * the pace. The lines underneath are the argument; this is the answer, and it is the only
+     * form of it anybody can compare with yesterday's.
+     */
+    val watchTally: StateFlow<WatchTally> = placeLog.log
+        .map { it.notes.tally(clock.instant() - TALLY_WINDOW) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WatchTally())
 
     fun clearWatchLog() {
         viewModelScope.launch { placeLog.clear() }
@@ -156,6 +168,11 @@ class SettingsViewModel(
 
     private fun update(transform: (AppSettings) -> AppSettings) {
         viewModelScope.launch { store.update(transform) }
+    }
+
+    private companion object {
+        /** A day, because that is the unit anybody compares a battery against. */
+        val TALLY_WINDOW: Duration = Duration.ofHours(24)
     }
 
     class Factory(private val app: RwilcoApplication) : ViewModelProvider.Factory {

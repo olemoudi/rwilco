@@ -443,7 +443,7 @@
     <string name="place_kilometres">%1$s km</string>
 
     <!-- The place watch -->
-    <string name="place_watch_how">Rwilco también mira por su cuenta: cada par de minutos al acercarte andando a un lugar, cada hora parado al otro lado de la ciudad. GPS sólo cerca de un lugar y en movimiento.</string>
+    <string name="place_watch_how">Rwilco también mira por su cuenta: cada par de minutos al acercarte andando a un lugar, cada media hora estando dentro de uno, cada hora parado al otro lado de la ciudad. GPS sólo cerca de un lugar y en movimiento; sólo las antenas cuando todo queda lejos; y nada en absoluto cuando la lectura que ya tiene sigue valiendo.</string>
     <string name="place_watch_waiting">Todavía no ha mirado; la primera mirada llega en un momento.</string>
     <string name="place_watch_status">Última mirada %1$s · a %2$s de %3$s · próxima %4$s</string>
 
@@ -615,7 +615,21 @@
         <item quantity="other">%1$d lecturas de ubicación en la última hora</item>
     </plurals>
     <string name="watch_log_clear">Vaciar el registro</string>
+    <!-- The roll-up above the lines: what the last day came to, and which circle set the pace. -->
+    <string name="watch_tally_title">Últimas 24 horas</string>
+    <plurals name="watch_tally_looks">
+        <item quantity="one">%1$d mirada</item>
+        <item quantity="other">%1$d miradas</item>
+    </plurals>
+    <string name="watch_tally_network">%1$d wifi/red</string>
+    <string name="watch_tally_gps">%1$d GPS</string>
+    <string name="watch_tally_coarse">%1$d sólo antenas</string>
+    <string name="watch_tally_cached">%1$d gratis</string>
+    <string name="watch_tally_rested">%1$d ahorradas</string>
+    <string name="watch_tally_blind">%1$d sin señal</string>
+    <string name="watch_tally_paced">Al ritmo de %1$s, %2$d de ellas</string>
     <string name="watch_kind_fix">lectura</string>
+    <string name="watch_kind_cache">gratis</string>
     <string name="watch_kind_rest">ahorrada</string>
     <string name="watch_kind_blind">sin señal</string>
     <string name="watch_kind_stir">movimiento</string>
@@ -623,6 +637,7 @@
     <string name="watch_kind_echo">eco</string>
     <string name="watch_field_gps">GPS</string>
     <string name="watch_field_network">wifi/red</string>
+    <string name="watch_field_coarse">sólo antenas</string>
     <string name="watch_field_next">siguiente %1$s</string>
     <string name="watch_field_from">%1$s de %2$s</string>
     <string name="watch_field_inside">dentro</string>

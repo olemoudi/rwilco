@@ -22,6 +22,34 @@ class WatchLogTest {
     }
 
     @Test
+    fun `the day's account names only what actually happened`() {
+        val day = now - Duration.ofHours(24)
+        val notes = listOf(
+            WatchNote(at = now, kind = NoteKind.FIX, tier = FixTier.PRECISE, place = "Casa"),
+            WatchNote(at = now, kind = NoteKind.FIX, tier = FixTier.BALANCED, place = "Casa"),
+            WatchNote(at = now, kind = NoteKind.FIX, tier = FixTier.COARSE, place = "Oficina"),
+            WatchNote(at = now, kind = NoteKind.CACHE, tier = FixTier.BALANCED, place = "Casa"),
+            WatchNote(at = now, kind = NoteKind.REST, place = "Casa"),
+            // Not looks: things that happened to the watch, at nobody's expense.
+            WatchNote(at = now, kind = NoteKind.FENCE, place = "Casa"),
+            WatchNote(at = now, kind = NoteKind.STIR),
+            // And a look from the week before last, which this day knows nothing about.
+            WatchNote(at = day - Duration.ofDays(3), kind = NoteKind.FIX, tier = FixTier.PRECISE, place = "Lejos"),
+        )
+        val tally = notes.tally(day)
+        assertEquals(5, tally.looks)
+        assertEquals(1, tally.gps)
+        assertEquals(1, tally.network)
+        assertEquals(1, tally.coarse)
+        assertEquals(1, tally.cached)
+        assertEquals(1, tally.rested)
+        assertEquals(0, tally.blind)
+        assertEquals("Casa", tally.pacedBy)
+        assertEquals(4, tally.pacedByLooks)
+        assertEquals(WatchTally(), emptyList<WatchNote>().tally(day), "a watch that has not looked has nothing to say")
+    }
+
+    @Test
     fun `the newest line is first and the oldest fall off the end`() {
         var built = WatchLog()
         for (i in 0 until WATCH_LOG_KEEP + 50) built = built.noting(note(NoteKind.FIX, now.plusSeconds(i.toLong())))
@@ -33,7 +61,7 @@ class WatchLogTest {
     @Test
     fun `only the looks that spent radio count as polls`() {
         val spent = listOf(NoteKind.FIX, NoteKind.BLIND)
-        val saved = listOf(NoteKind.REST, NoteKind.STIR, NoteKind.FENCE, NoteKind.ECHO)
+        val saved = listOf(NoteKind.CACHE, NoteKind.REST, NoteKind.STIR, NoteKind.FENCE, NoteKind.ECHO)
         assertTrue(spent.all { note(it, now).isPoll })
         assertFalse(saved.any { note(it, now).isPoll }, "a look the watch talked itself out of is not a poll")
     }
@@ -76,7 +104,7 @@ class WatchLogTest {
                 sensed = true,
                 stillStreak = 3,
                 charge = 41,
-                precise = true,
+                tier = FixTier.PRECISE,
             ),
         )
         assertEquals(written, ReminderCodec.decodeWatchLog(ReminderCodec.encodeWatchLog(written)))

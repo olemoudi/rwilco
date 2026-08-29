@@ -20,8 +20,15 @@ import java.time.Instant
 /** What one look came to. */
 @Serializable
 enum class NoteKind {
-    /** A fix was read. The expensive one. `precise` says whether it woke the GPS. */
+    /** A fix was read. The expensive one. `tier` says how much radio it woke. */
     FIX,
+
+    /**
+     * A look answered out of the fix the phone already had: no radio at all. Deliberately its
+     * own kind and not a cheaper [FIX], because the whole point of it is that it did not poll,
+     * and a log that called it one would hide the saving inside the number it saves.
+     */
+    CACHE,
 
     /** A look skipped: the sensor and the last two fixes agreed there was nothing to see. */
     REST,
@@ -85,8 +92,8 @@ data class WatchNote(
      * is exactly where an evening went once.
      */
     val accuracyM: Int? = null,
-    /** Whether the GPS was asked for. */
-    val precise: Boolean = false,
+    /** How much radio was asked for. A note written before there were three reads back as balanced. */
+    val tier: FixTier = FixTier.BALANCED,
 ) {
     /** Whether this look actually spent radio. The whole point of the other kinds is that they did not. */
     val isPoll: Boolean get() = kind == NoteKind.FIX || kind == NoteKind.BLIND
@@ -111,6 +118,54 @@ fun WatchLog.noting(note: WatchNote): WatchLog = copy(notes = (listOf(note) + no
 
 /** Looks that actually spent radio since [since]. */
 fun List<WatchNote>.pollsSince(since: Instant): Int = count { it.isPoll && it.at >= since }
+
+/**
+ * What a stretch of the log came to, in one line: how many looks, what each kind of them cost,
+ * and which circle was setting the pace.
+ *
+ * The account underneath is one line per look and reads like one — honest, and unreadable as an
+ * answer to "is this thing costing me anything?". That question has a shape: a handful of numbers
+ * that can be compared with yesterday's. [pacedBy] is the one that says *why*, because the
+ * cadence is always some single circle's ask and knowing which one is the difference between a
+ * watch that is busy and a watch that is busy for a reason.
+ */
+data class WatchTally(
+    val looks: Int = 0,
+    /** Fixes bought with the wifi/cell blend. */
+    val network: Int = 0,
+    /** Fixes that woke the satellites. */
+    val gps: Int = 0,
+    /** Fixes bought from the towers alone. */
+    val coarse: Int = 0,
+    /** Looks answered out of a fix already in hand. */
+    val cached: Int = 0,
+    /** Looks skipped: the sensor and the last two fixes agreed there was nothing to see. */
+    val rested: Int = 0,
+    /** Looks that got nothing worth having. */
+    val blind: Int = 0,
+    /** The circle that set the cadence most often, and on how many of these looks. */
+    val pacedBy: String? = null,
+    val pacedByLooks: Int = 0,
+)
+
+fun List<WatchNote>.tally(since: Instant): WatchTally {
+    // Crossings and stirs are things that happened to the watch, not looks it took.
+    val looks = filter { it.at >= since && it.kind != NoteKind.FENCE && it.kind != NoteKind.ECHO && it.kind != NoteKind.STIR }
+    if (looks.isEmpty()) return WatchTally()
+    val fixes = looks.filter { it.kind == NoteKind.FIX }
+    val paced = looks.mapNotNull { it.place }.groupingBy { it }.eachCount().maxByOrNull { it.value }
+    return WatchTally(
+        looks = looks.size,
+        network = fixes.count { it.tier == FixTier.BALANCED },
+        gps = fixes.count { it.tier == FixTier.PRECISE },
+        coarse = fixes.count { it.tier == FixTier.COARSE },
+        cached = looks.count { it.kind == NoteKind.CACHE },
+        rested = looks.count { it.kind == NoteKind.REST },
+        blind = looks.count { it.kind == NoteKind.BLIND },
+        pacedBy = paced?.key,
+        pacedByLooks = paced?.value ?: 0,
+    )
+}
 
 /**
  * Whether the watch has been looking too often, and nobody has been told yet.

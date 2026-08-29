@@ -88,6 +88,43 @@ which these fences do not ask for — the comment now says what actually damps a
 (`setNotificationResponsiveness`). Adding DWELL would change when a place fires and wants a
 real phone to judge it.
 
+## "19 location reads in the last hour", reported from the phone (2026-08-29, 0.43.0)
+The busy notice fired — which is the notice working, not a bug: it is off by default, it was
+turned on to watch exactly this, and 18 polls an hour is the line it was set at. Some of the
+hour was testing place reminders. The mechanism underneath was real, and there were three of
+them compounding, all in the one case the design already called its worst.
+
+- **`leavingWait` measured the wrong thing.** Inside a place with an "al salir" rule it took the
+  fraction of the *radius the phone had moved* off the half hour. Ground covered is not progress
+  towards a door: a phone carried about a 200 m flat covers a radius between two looks without
+  once nearing the line, so the wait pinned at its five-minute floor all evening — twelve fixes
+  an hour for a crossing nobody was going to make. It is now `closingM`, the change in that
+  circle's own gap, deadbanded by the two fixes' doubt, and the plan is time-to-the-line at the
+  rate the line is actually being closed. Pacing about closes nothing and buys nothing.
+- **The motion sensor came back through the other door.** `stirred()` pulled the next look to
+  five minutes on any significant motion within 400 m of a line — and standing *inside* a circle
+  is being within 400 m of its line, so a trip to the kitchen bought a look, all evening, back
+  to the same twelve an hour. Stirs from inside are now counted and back off 5/10/20/30 while
+  the looks that follow keep finding the phone on the same side. From outside nothing is
+  counted: settled-then-set-off is what the sensor is for.
+- **Every look spent radio at the same price.** One tier for everything but the GPS, so the
+  hourly look from the sofa at an errand across town paid for a wifi scan to learn it was still
+  across town. Three tiers now (`FixTier`), and before any of them the provider's own last fix
+  is tried against the question this look was going to ask (`Fix.answersFor`).
+
+Also here, because they were the same afternoon: an exact allow-while-idle alarm for every look
+(exactness above a quarter of an hour buys nothing Doze honours, and an exact alarm is one the
+system may not batch), and `sync()` pulling a look to five seconds for every unjudged circle —
+which, since a circle's id carries its geometry, means one fix per drag of a pin. Doorways are
+now baselined from the fix in hand; a *state* still buys its look, because its first judgement
+is a ring.
+
+Not moved: `BUSY_POLLS`. It did its job.
+
+To prove on the phone: Settings → Ubicación → the day's tally reading two to four looks an hour
+through an evening at home with an "al salir" rule, "gratis" and "ahorradas" lines appearing at
+all, and GPS only around real arrivals.
+
 ## The medicine routine, reported from the phone (2026-08-25, 0.7.6)
 "Cada 1 h" fired, "hecho" opened the edit form, saving it put a card on Home reading *"Lo
 siguiente · hace 47 minutos"*. Three separate faults in one minute of use:

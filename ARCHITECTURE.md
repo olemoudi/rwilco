@@ -1112,8 +1112,23 @@ strict is asking somebody to remember how they spelled it.
   then subtracted from a fresh one invents a crossing nobody made — and a rule ticked off under
   "todos" by a crossing nobody made is the one mistake here that cannot be seen from the card.
   On each check (an allow-while-idle alarm to `PlaceCheckReceiver`,
-  exact when the phone allows it) it reads one fix from the fused provider — GPS only when the
-  nearest line is close and the phone moving, the wifi/cell blend otherwise — and hands it to
+  exact only for a look under a quarter of an hour away — above that the exactness buys nothing
+  Doze was going to honour anyway, and an inexact alarm is one the system may batch with
+  everybody else's) it reads one fix from the fused provider at one of three tiers (`FixTier`):
+  the satellites only when the nearest line is close and the phone moving, the towers alone when
+  the line is still ten kilometres off and the only question is "am I still far?", and the
+  wifi/cell blend — which is a wifi scan, and the ordinary cost of a look — for everything
+  between, and always from inside a place. A coarse fix cannot invent a crossing, which is what
+  makes it safe to spend so little on: `insideAfter` refuses a fix sloppier than the circle on
+  the way in and keeps the phone where it was on the way out, and `gapToLine` eats the doubt
+  before any of it reaches a cadence, so a vague fix asks to be looked at sooner, never later.
+  **The cheapest fix is the one already taken.** Before any radio is spent the provider's own
+  last position is read — kept warm by whatever else on the phone asks for one, at no cost here —
+  and when it answers the question this look was going to ask (`Fix.answersFor`: young next to
+  how long the watch has been away from a fresh reading, and its doubt stopping short of the line
+  it has to judge) that is the look, and it cost nothing. It is its own kind in the log
+  (`NoteKind.CACHE`) and deliberately not a poll, because a saving counted as a poll is a saving
+  nobody can see. It hands the fix to
   `stepPlaceWatch` (`core-model`, `PlaceWatch.kt`), which judges every place with hysteresis
   (in takes a fix inside and no sloppier than the place; out takes a fix clearly beyond the
   line), reports the crossings that match a rule, and plans the next look: the time to reach the
@@ -1149,14 +1164,36 @@ strict is asking somebody to remember how they spelled it.
   a *leaving* from inside is the case the plain answer gets worst — standing inside a place is
   standing next to its line, so "time to the line" would ask for the fastest cadence in the app,
   all evening, for a door nobody walks through — so it starts at half an hour too and buys its
-  way down only with evidence (`leavingWait`): the fraction of the place's radius the phone
-  actually crossed since the last look takes that fraction off the half hour, down to a floor of
-  five minutes. Never GPS either way. What would otherwise be the price of that rest — a leaving
-  noticed up to half an hour late — is bought back by the sensor below: it fires as somebody
-  actually walks out, and the look moves to five minutes from now (`stirredWait`). Only ever
-  earlier, only within `NEAR_M` of a line (a stir three provinces from the only place being
-  watched means nothing), and the sensor's one-shot re-arming caps it at one early look per
-  check — so the cadence can never beat the five minutes that case was already allowed.
+  way down only with evidence (`leavingWait`).
+  **The evidence is how much nearer the line the phone got, and for a while it was how much
+  ground the phone covered, which is not the same thing and is the more expensive mistake of the
+  two.** A life being lived inside a place covers a radius' worth of floor in half an hour
+  without once approaching the door, and the old rule read that as most of the way to leaving:
+  the wait sat on its five-minute floor from tea time until bed, twelve fixes an hour for a line
+  nobody crossed. It is the one thing in this app that ever announced itself on a battery page —
+  by way of the app's own busy notice, which is what it is there for. So the measure is
+  `closingM`: the change in *this circle's* gap between the last two fixes, deadbanded by their
+  own doubt the way `speedBetween` is, and the plan is the ordinary one after all — time to the
+  line, at the rate the line is actually being approached, with the usual headroom, clamped
+  between five minutes and the half hour. Walking about closes nothing and costs nothing; walking
+  to the door shortens the wait on its own. Never GPS either way, and never the towers either:
+  inside is exactly where a fix vaguer than the circle has nothing to say.
+  What would otherwise be the price of that rest — a leaving noticed up to half an hour late — is
+  bought back by the sensor below: it fires as somebody actually walks out, and the look moves to
+  five minutes from now (`stirredWait`). Only ever earlier, only within `NEAR_M` of a line (a
+  stir three provinces from the only place being watched means nothing), and the sensor's
+  one-shot re-arming caps it at one early look per check.
+  **And from inside, a stir has to be going somewhere.** Significant motion means the phone's
+  location changed, and a kitchen is a change of location, so a phone being carried about its own
+  place stirs every few minutes all evening — every one of which used to buy a look at five
+  minutes' notice, which is the same twelve fixes an hour coming back through the other door. So
+  stirs from inside a circle are counted, and each one that the following look finds on the same
+  side of the same line doubles the next one's notice, 5 to 10 to 20 to the half hour the case
+  started at; a look that finds a crossing, or any circle changing sides, starts the count again.
+  From *outside* nothing is counted: a phone that has settled near a line and then sets off is
+  precisely what the sensor is for. The streak lives in the watcher's memory rather than its
+  store, for the same reason the planned moment does — the sensor speaks only for the process
+  that armed it.
   Each place plans its own look and the soonest one wins, so an errand across town still sets
   the pace for a phone sitting at home.
   `MotionSensor` is the third witness and the free one: `TYPE_SIGNIFICANT_MOTION`, a one-shot
@@ -1187,10 +1224,19 @@ strict is asking somebody to remember how they spelled it.
   is no reason to go and look sooner than that.
   All of that argues in the dark, so the watch keeps its own account of it: `PlaceLogStore` (a
   third DataStore, the one thing in the app that is fine to lose) holds two hundred lines,
-  one per look — what it came to (a fix and whether it woke the GPS, a rest, no fix at all, a
-  stir, a crossing, an echo) and every number it decided from. `WatchLogScreen`, behind a button
-  in the Location section of Settings, is that list; it is a diagnostic screen and reads as one,
-  every figure in the mono face so the rows can be compared down the column. A look that spent
+  one per look — what it came to (a fix and which tier of radio it woke, a look answered out of
+  the cache, a rest, no fix at all, a stir, a crossing, an echo) and every number it decided
+  from. `WatchLogScreen`, behind a button in the Location section of Settings, is that list; it
+  is a diagnostic screen and reads as one, every figure in the mono face so the rows can be
+  compared down the column.
+  **Above the lines is the answer they add up to** (`WatchTally`, `List<WatchNote>.tally`): the
+  last day in three lines — how many looks, what each kind of them cost, and which circle was
+  setting the pace and on how many of them. The lines are the argument and a page of argument is
+  not an answer to "is this costing me anything?"; that question wants a handful of numbers that
+  can be held against yesterday's, and the pacing circle is the one that says *why*, because the
+  cadence is always some single circle's ask. Only the kinds that actually happened are named: a
+  zero in a list of costs reads as a cost, and the point of the block is that most of what it
+  could say is usually nothing. A look that spent
   radio counts as a *poll* and a rest does not, which is the whole point of the distinction: with
   `AppSettings.busyWatchNotice` on — off by default — more than `BUSY_POLLS` polls in an hour
   posts one quiet notification (`WatchNotices`), at most one an hour because the window it is

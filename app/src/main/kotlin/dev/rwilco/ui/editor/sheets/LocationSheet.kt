@@ -343,15 +343,24 @@ fun LocationSheet(
                 onValueChange = { radius = (it / 50).roundToInt() * 50 },
                 // Inset from the sheet's own margin: at either end the thumb sat within a
                 // thumb's width of the edge of the screen, where a finger arrives half on the
-                // bezel and the gesture is as likely to be read as a back swipe. The track
-                // gives up twelve dp on each side and both ends become grabbable.
-                modifier = Modifier.padding(horizontal = Tokens.spacing.md),
+                // bezel and the gesture is as likely to be read as a back swipe. Twelve dp
+                // cleared the bezel; twenty-four clears the *gesture* inset as well, which is
+                // what the system actually reserves at each side, and leaves the track visibly
+                // narrower than the text above it — a control sitting inside its row rather
+                // than spanning it.
+                modifier = Modifier.padding(horizontal = Tokens.spacing.xl),
                 valueRange = MIN_RADIUS_M.toFloat()..MAX_RADIUS_M.toFloat(),
                 steps = (MAX_RADIUS_M - MIN_RADIUS_M) / 50 - 1,
+                // The ticks as well as the tracks. Left to the defaults they come out amber, and
+                // amber in this app means one thing — what fires next — so a row of it under a
+                // radius control is the colour saying something it does not mean. Each tick is
+                // the mark of the track it sits on, and nothing else.
                 colors = SliderDefaults.colors(
                     thumbColor = MaterialTheme.colorScheme.onSurface,
                     activeTrackColor = MaterialTheme.colorScheme.onSurface,
+                    activeTickColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    inactiveTickColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 ),
             )
         }

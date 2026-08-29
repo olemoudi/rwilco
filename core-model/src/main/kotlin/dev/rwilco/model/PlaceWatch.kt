@@ -148,6 +148,28 @@ object PlaceWatchPolicy {
     /** Inside this of a line the check goes to GPS and the cadence to its ceiling. */
     const val NEAR_M = 400.0
 
+    /**
+     * Beyond this the question stops being "which side of the line am I on?" and becomes "am I
+     * still far?", and a fix from the cell towers alone answers it — no wifi scan, which is what
+     * the ordinary blend spends on every hourly look from the sofa. Ten kilometres is a quarter
+     * of an hour by road even unobstructed, so a fix that could be a kilometre or two out still
+     * settles it, and the doubt cannot invent a crossing: a fix sloppier than the circle is
+     * refused by [insideAfter] on the way in and keeps the phone where it was on the way out.
+     */
+    const val COARSE_FROM_M = 10_000.0
+
+    /**
+     * The oldest a fix already in hand may be and still answer the look about to be taken.
+     *
+     * A fix costs radios and the fused provider's cache does not: other apps, and the system
+     * itself, keep it warm at nobody's expense here. What makes it usable is that this watch
+     * knows what it was going to ask — see [Fix.answersFor] — so it can tell a reading that
+     * settles the question from one that merely exists. Five minutes because that is the shortest
+     * wait any of the inside cases plan for, so a cache older than this is older than the whole
+     * of what the next look was about to decide.
+     */
+    val CACHE_MAX_AGE: Duration = Duration.ofMinutes(5)
+
     /** Under this the phone is taken to be still. */
     const val STILL_MPS = 0.5
 
@@ -187,6 +209,9 @@ object PlaceWatchPolicy {
 
     /** Longest the still back-off doubles for: 2 · 2⁶ min is already past MAX_WAIT. */
     const val MAX_STILL_DOUBLINGS = 6
+
+    /** Longest the stir back-off doubles for: 5 · 2³ min is already past LEAVING_MAX_WAIT. */
+    const val MAX_STIR_DOUBLINGS = 3
 
     /**
      * How long before a clock rule's moment the circles it only *asks about* are watched.
@@ -311,20 +336,74 @@ data class Movement(
  * never cost more than that case was already allowed to cost. A low battery raises it like it
  * raises everything else, and at the bottom this stops buying anything at all, which is the
  * right answer there.
+ *
+ * [streak] is what the sensor cannot tell on its own: whether the stirring is going anywhere.
+ * Significant motion means the phone's *location* changed, and a kitchen is a change of location
+ * — so a phone being lived with inside its own place stirs every few minutes all evening, and
+ * every one of those used to buy a look. Each stir that a look then finds still on the same side
+ * of the same line doubles the next one's wait, 5 to 10 to 20 to half an hour, which is where the
+ * case started; a look that finds a crossing, or any circle changing sides, starts the count
+ * again. The caller only counts stirs from *inside* a circle: from outside, a phone that has
+ * settled and then sets off is exactly what this is for, and it keeps its five minutes.
  */
-fun stirredWait(charge: Double?): Duration = maxOf(PlaceWatchPolicy.LEAVING_MIN_WAIT, batteryFloor(charge))
+fun stirredWait(charge: Double?, streak: Int = 0): Duration {
+    val doublings = min(max(streak, 0), PlaceWatchPolicy.MAX_STIR_DOUBLINGS)
+    val backoff = PlaceWatchPolicy.LEAVING_MIN_WAIT.multipliedBy(1L shl doublings)
+    return maxOf(minOf(backoff, PlaceWatchPolicy.LEAVING_MAX_WAIT), batteryFloor(charge))
+}
 
-/** What the next check should be: how long to wait, and whether it is worth waking the GPS. */
-data class WatchPlan(val wait: Duration, val precise: Boolean, val gapM: Double, val nearest: WatchedPlace)
+/**
+ * How much radio the next look is worth. Three, because there are three questions a look can be
+ * asked, and they do not cost the same to answer.
+ *
+ * [PRECISE] is the satellites, and it is for one thing only: a line that is close and a phone
+ * known to be moving, where metres decide. [BALANCED] is the wifi/cell blend, the ordinary
+ * answer, accurate to tens of metres and paid for with a wifi scan. [COARSE] is the towers
+ * alone: it cannot tell you which side of a fifty-metre circle you are on, and is never asked
+ * to — it is what answers "am I still an hour away?", which is the question a phone at home with
+ * an errand across the province asks all afternoon.
+ *
+ * A coarse fix cannot invent a crossing, which is what makes it safe to spend so little on.
+ * [insideAfter] refuses a fix sloppier than the circle on the way in and keeps the phone where
+ * it was on the way out, and [gapToLine] eats the doubt before any of it reaches a cadence: a
+ * vague fix asks to be looked at sooner, never later.
+ */
+@Serializable
+enum class FixTier { COARSE, BALANCED, PRECISE }
+
+/** What the next check should be: how long to wait, and how much radio it is worth. */
+data class WatchPlan(val wait: Duration, val tier: FixTier, val gapM: Double, val nearest: WatchedPlace)
 
 /**
  * Distance from the fix to a place's line, whichever side it is on, less the fix's own
  * uncertainty: a fix that could be on either side is a fix at the line.
  */
-fun gapToLine(place: WatchedPlace, fix: Fix): Double {
-    val distance = distanceMeters(fix.lat, fix.lng, place.lat, place.lng)
-    val raw = kotlin.math.abs(distance - place.radiusM)
-    return max(0.0, raw - fix.accuracyM)
+fun gapToLine(place: WatchedPlace, fix: Fix): Double = max(0.0, rawGapToLine(place, fix) - fix.accuracyM)
+
+/** The same distance before any doubt is taken off it. See [closingM] for why that matters. */
+private fun rawGapToLine(place: WatchedPlace, fix: Fix): Double =
+    kotlin.math.abs(distanceMeters(fix.lat, fix.lng, place.lat, place.lng) - place.radiusM)
+
+/**
+ * Metres of this circle's gap closed since [previous] — how much *nearer its line* the phone
+ * got, not how much ground it covered. Negative when it moved away from the line, null when
+ * there is no earlier fix to measure against.
+ *
+ * The difference between those two is the whole of the "when I leave" case. Somebody living
+ * inside their own place covers a radius' worth of ground in half an hour without once getting
+ * nearer the door, and reading that as progress towards leaving is how a phone on a sofa talked
+ * the watch into the fastest cadence it has, all evening, for a line nobody was walking through.
+ *
+ * Measured from [rawGapToLine] and not [gapToLine], because differencing two gaps that have each
+ * already had their own doubt taken off counts that doubt twice — and it is the wrong sign both
+ * times when the accuracy changes between two readings, which is what an indoor fix does. The
+ * doubt is applied once, here, as a deadband: a change smaller than what the two fixes together
+ * could be wrong by is not a step, exactly as in [speedBetween].
+ */
+fun closingM(place: WatchedPlace, previous: Fix?, fix: Fix): Double? {
+    if (previous == null) return null
+    val closed = rawGapToLine(place, previous) - rawGapToLine(place, fix)
+    return if (kotlin.math.abs(closed) <= previous.accuracyM + fix.accuracyM) 0.0 else closed
 }
 
 /**
@@ -352,10 +431,16 @@ fun reachCeiling(gapM: Double): Duration =
  * waiting for an arrival, [leavingWait] waiting for a leaving. Null when there is nothing to
  * watch.
  *
+ * It also says how much radio that look is worth ([FixTier]), which is the other half of the
+ * cost: the satellites for the last stretch of an approach, the towers alone for a line still
+ * ten kilometres off, and the ordinary blend for everything between.
+ *
  * Then [charge] has the last word, because a watch that runs the battery down to nothing stops
  * being a watch: a low one raises the floor under whatever came out of all of the above
  * ([batteryFloor]), and at the bottom of it takes the GPS away as well — an hourly look is not
  * the last few hundred metres of an approach, which is the only thing the GPS was ever for.
+ * [previous] is the fix before this one, which is what tells a phone walking towards a door from
+ * one merely walking about inside its own place; see [leavingWait].
  */
 fun planNextCheck(
     fix: Fix,
@@ -363,17 +448,19 @@ fun planNextCheck(
     places: List<WatchedPlace>,
     inside: Map<String, Boolean> = emptyMap(),
     charge: Double? = null,
+    previous: Fix? = null,
 ): WatchPlan? = places
-    .map { place -> planFor(place, fix, movement, inside[place.id]) }
+    .map { place -> planFor(place, fix, previous, movement, inside[place.id]) }
     // The soonest look any one place asks for; on a tie, the one that is closest. A phone
     // sitting at home with an errand across town is planned by the errand, not by the sofa.
     .minWithOrNull(compareBy({ it.wait }, { it.gapM }))
     ?.let { plan ->
         val floor = batteryFloor(charge)
-        plan.copy(wait = maxOf(plan.wait, floor), precise = plan.precise && floor < PlaceWatchPolicy.MAX_WAIT)
+        val tier = if (floor < PlaceWatchPolicy.MAX_WAIT) plan.tier else minOf(plan.tier, FixTier.BALANCED)
+        plan.copy(wait = maxOf(plan.wait, floor), tier = tier)
     }
 
-private fun planFor(place: WatchedPlace, fix: Fix, movement: Movement, inside: Boolean?): WatchPlan {
+private fun planFor(place: WatchedPlace, fix: Fix, previous: Fix?, movement: Movement, inside: Boolean?): WatchPlan {
     val gap = gapToLine(place, fix)
     val floor = place.floor
     val near = gap < PlaceWatchPolicy.NEAR_M
@@ -395,14 +482,22 @@ private fun planFor(place: WatchedPlace, fix: Fix, movement: Movement, inside: B
     if (inside == true) {
         // Inside, only one of the two crossings is still ahead, and neither is urgent. Never
         // GPS: being close to the line is what being inside means, and that is not a reason.
-        val inFloor = if (place.transition == Transition.ENTER) PlaceWatchPolicy.INSIDE_MIN_WAIT else leavingWait(place, movement)
-        return WatchPlan(maxOf(wait, maxOf(inFloor, floor)), precise = false, gapM = gap, nearest = place)
+        // Never the towers either — inside is precisely where a fix vaguer than the circle has
+        // nothing to say, and the blend is what keeps the answer worth having.
+        val inFloor = if (place.transition == Transition.ENTER) PlaceWatchPolicy.INSIDE_MIN_WAIT else leavingWait(place, previous, fix, gap)
+        return WatchPlan(maxOf(wait, maxOf(inFloor, floor)), tier = FixTier.BALANCED, gapM = gap, nearest = place)
     }
     // GPS is for a line that is close and a phone KNOWN to be moving. Not "may be": the first
     // look of a session at home would wake it for a phone on a bedside table. A circle held to
-    // its own floor is not being approached in any sense the GPS is for, either.
+    // its own floor is not being approached in any sense the GPS is for, either. And past
+    // COARSE_FROM_M the towers alone settle the only question there is at that distance.
     val waited = maxOf(wait, floor)
-    return WatchPlan(wait = waited, precise = waited <= wait && near && movement.movingByFix, gapM = gap, nearest = place)
+    val tier = when {
+        waited <= wait && near && movement.movingByFix -> FixTier.PRECISE
+        gap > PlaceWatchPolicy.COARSE_FROM_M -> FixTier.COARSE
+        else -> FixTier.BALANCED
+    }
+    return WatchPlan(wait = waited, tier = tier, gapM = gap, nearest = place)
 }
 
 /**
@@ -412,19 +507,34 @@ private fun planFor(place: WatchedPlace, fix: Fix, movement: Movement, inside: B
  * line, and "time to the line at your speed" therefore asks for the fastest cadence in the app,
  * all evening, for a door nobody is walking through — with the GPS on, if pacing the kitchen
  * reads as movement. So the watch starts at half an hour instead, and buys its way down only
- * with evidence: how much of the place the phone actually crossed since the last look, as a
- * fraction of its radius — the tolerance the rule was written with — takes that fraction off
- * the half hour, and sixty per cent of the way across takes sixty per cent off it. The floor is
- * five minutes, which is the point: a phone circling inside its own front garden all night
- * never costs more than twelve looks an hour's worth of the cheapest fix there is.
+ * with evidence.
+ *
+ * **The evidence is [closingM], and it used to be the wrong thing.** It was how much ground the
+ * phone had covered since the last look, as a fraction of the radius, taken off the half hour —
+ * which reads a life being lived inside a place as progress towards leaving it. Somebody at home
+ * covers two hundred metres between two looks without once getting nearer the door, so the wait
+ * sat on its five-minute floor from tea time until bed: twelve fixes an hour for a line nobody
+ * crossed, and the one thing in this app that ever showed up on a battery page. What matters is
+ * not how far the phone went but how much *nearer the line* it got, and the honest plan is the
+ * old one all along — time to the line, at the rate the line is actually being approached, with
+ * the same headroom everything else here gets. Not closing on it at all is half an hour, however
+ * busy the phone has been.
+ *
+ * The floor stays five minutes, and now means what it says: it is reached by walking towards the
+ * door, not by walking about. The ceiling is half an hour because that is what the case is worth
+ * when nothing is happening — and because the leaving that matters is the geofence's to report,
+ * within a minute of the line. This is the second opinion under it: cheap first, prompt second.
  *
  * The wait this returns is a floor under the ordinary plan, never a cap on it: deep inside a
  * place kilometres wide, "time to the line" is the better answer and it wins.
  */
-private fun leavingWait(place: WatchedPlace, movement: Movement): Duration {
-    val crossed = movement.movedM?.let { (it / place.radiusM).coerceIn(0.0, 1.0) } ?: 0.0
-    val scaled = PlaceWatchPolicy.LEAVING_MAX_WAIT.toMillis() * (1.0 - crossed)
-    return Duration.ofMillis(scaled.toLong())
+private fun leavingWait(place: WatchedPlace, previous: Fix?, fix: Fix, gap: Double): Duration {
+    val closed = closingM(place, previous, fix) ?: return PlaceWatchPolicy.LEAVING_MAX_WAIT
+    if (closed <= 0.0) return PlaceWatchPolicy.LEAVING_MAX_WAIT
+    val elapsed = Duration.between(previous!!.at, fix.at).seconds
+    if (elapsed <= 0L) return PlaceWatchPolicy.LEAVING_MAX_WAIT
+    val closingMps = (closed / elapsed) * PlaceWatchPolicy.HEADROOM
+    return Duration.ofSeconds((gap / closingMps).toLong())
         .clamp(PlaceWatchPolicy.LEAVING_MIN_WAIT, PlaceWatchPolicy.LEAVING_MAX_WAIT)
 }
 
@@ -475,8 +585,12 @@ data class PlaceWatchState(
     val nextCheckAt: Instant? = null,
     val lastGapM: Double? = null,
     val nearestLabel: String? = null,
-    /** Whether the next check should use GPS; decided by the last plan. */
-    val precise: Boolean = false,
+    /**
+     * How much radio the next check is worth; decided by the last plan. A blob written before
+     * there were three of these reads back as [FixTier.BALANCED], which costs one look at the
+     * tier it would have chosen and nothing after that.
+     */
+    val tier: FixTier = FixTier.BALANCED,
     /** Consecutive checks that got no fix worth having. See [blindRetry]. */
     val blindStreak: Int = 0,
 )
@@ -494,6 +608,32 @@ fun blindRetry(streak: Int, first: Duration): Duration {
     val doublings = min(max(streak, 0), PlaceWatchPolicy.MAX_STILL_DOUBLINGS)
     val backoff = first.multipliedBy(1L shl doublings)
     return if (backoff > PlaceWatchPolicy.MAX_WAIT) PlaceWatchPolicy.MAX_WAIT else backoff
+}
+
+/**
+ * Whether a fix the phone already has answers the look about to be taken — in which case that
+ * look costs no radio at all.
+ *
+ * The fused provider keeps a last position, and keeps it warm at nobody's expense here: a map,
+ * a weather app, the system itself. What makes it usable rather than merely available is that
+ * this watch knows what it was going to ask, and can therefore say when a reading settles the
+ * question. Two conditions, and they are the two ways a cached fix can lie.
+ *
+ * It must be **young next to the wait that was planned** — a third of it, and never more than
+ * [PlaceWatchPolicy.CACHE_MAX_AGE]. A watch that planned an hour is asking a question an hour
+ * wide and a five-minute-old answer is fresh; a watch that planned two minutes is walking up to
+ * a door and nothing but now will do. And its **doubt must stop short of the line it has to
+ * judge** ([gapM], measured the way the cadence measures it): a fix that could be on either side
+ * of the line is not an answer to which side, whatever its age.
+ *
+ * A cached fix is not a poll ([WatchNote.isPoll]) and must never be counted as one, or the
+ * saving would show up in the log as the very thing it saves.
+ */
+fun Fix.answersFor(now: Instant, plannedWait: Duration, gapM: Double?): Boolean {
+    if (gapM == null || accuracyM >= gapM) return false
+    val age = Duration.between(at, now)
+    if (age.isNegative) return false
+    return age <= minOf(plannedWait.dividedBy(3), PlaceWatchPolicy.CACHE_MAX_AGE)
 }
 
 /** The phone crossed a line some rule was waiting on. */
@@ -547,7 +687,7 @@ fun stepPlaceWatch(
         if (before == wantsInside || inside.getValue(place.id) != wantsInside) return@mapNotNull null
         PlaceEvent(place.id, place.transition)
     }
-    val plan = planNextCheck(fix, movement, places, inside, charge)
+    val plan = planNextCheck(fix, movement, places, inside, charge, previous = state.lastFix)
     val next = PlaceWatchState(
         lastFix = fix,
         inside = inside,
@@ -555,7 +695,7 @@ fun stepPlaceWatch(
         nextCheckAt = plan?.let { now + it.wait },
         lastGapM = plan?.gapM,
         nearestLabel = plan?.nearest?.label,
-        precise = plan?.precise ?: false,
+        tier = plan?.tier ?: FixTier.BALANCED,
     )
     return WatchStep(next, events, plan, movement)
 }

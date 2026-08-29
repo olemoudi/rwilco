@@ -91,7 +91,7 @@ class PlaceArrivalTest {
         while (clock < now.plus(Duration.ofHours(6))) {
             val step = stepPlaceWatch(state, south(0.0, clock), listOf(home), clock)
             assertTrue(step.events.isEmpty(), "it rang while nobody moved")
-            assertFalse(step.plan!!.precise, "it woke the gps to watch a phone on a table")
+            assertFalse(step.plan!!.tier == FixTier.PRECISE, "it woke the gps to watch a phone on a table")
             assertTrue(
                 step.plan!!.wait >= PlaceWatchPolicy.INSIDE_MIN_WAIT,
                 "a look every ${step.plan!!.wait.toMinutes()} min while sitting at home",
@@ -119,23 +119,49 @@ class PlaceArrivalTest {
     }
 
     @Test
-    fun `a rule waiting for the leaving starts at half an hour and buys its way down by moving`() {
+    fun `a rule waiting for the leaving starts at half an hour and buys its way down by nearing the line`() {
         // Standing inside a place IS standing next to its line, so "time to the line" would ask
         // for the fastest cadence in the app, all evening, for a door nobody walks through.
         val standing = stepPlaceWatch(PlaceWatchState(), south(0.0, now), listOf(leavingHome), now)
         assertEquals(PlaceWatchPolicy.LEAVING_MAX_WAIT, standing.plan!!.wait)
-        assertFalse(standing.plan!!.precise, "the GPS, for a phone sitting inside its own place")
-        // Sixty per cent of the radius crossed since the last look takes sixty per cent off the
-        // half hour. (150 m of ground, less the 30 m the two fixes' own doubt eats: 120 of 200.)
+        assertFalse(standing.plan!!.tier == FixTier.PRECISE, "the GPS, for a phone sitting inside its own place")
+        // Half an hour later, 150 m nearer the line: 50 m of gap left, closed at 0.083 m/s, which
+        // with headroom is ten minutes of walking away — under the floor, so the floor.
         val later = now.plusSeconds(1800)
-        val stirring = stepPlaceWatch(standing.state, south(150.0, later), listOf(leavingHome), later)
-        assertEquals(Duration.ofMinutes(12), stirring.plan!!.wait)
-        assertTrue(stirring.events.isEmpty(), "still inside")
-        // And a whole radius' worth of it lands on the floor, which is as fast as this ever goes.
-        val sooner = later.plusSeconds(720)
-        val leaving = stepPlaceWatch(standing.state, south(200.0, sooner), listOf(leavingHome), sooner)
+        val leaving = stepPlaceWatch(standing.state, south(150.0, later), listOf(leavingHome), later)
         assertEquals(PlaceWatchPolicy.LEAVING_MIN_WAIT, leaving.plan!!.wait)
-        assertFalse(leaving.plan!!.precise)
+        assertTrue(leaving.events.isEmpty(), "still inside")
+        assertFalse(leaving.plan!!.tier == FixTier.PRECISE)
+        // A drift rather than a walk: 40 m nearer over the same half hour leaves 145 m of gap
+        // being closed at 0.022 m/s, which is over an hour away — so the ceiling stands, and
+        // barely moving towards the door buys nothing.
+        val drifting = stepPlaceWatch(standing.state, south(40.0, later), listOf(leavingHome), later)
+        assertEquals(PlaceWatchPolicy.LEAVING_MAX_WAIT, drifting.plan!!.wait)
+    }
+
+    @Test
+    fun `moving about inside a place buys nothing, however much ground it covers`() {
+        // The case this was rebuilt for. The old rule took the fraction of the radius the phone
+        // had *moved* off the half hour, and a life being lived inside a place covers a radius
+        // an hour without once nearing the door: the wait sat on its five-minute floor from tea
+        // time to bed, twelve fixes an hour for a line nobody crossed. Ground covered is not
+        // progress towards leaving; nearing the line is.
+        var state = stepPlaceWatch(PlaceWatchState(), south(0.0, now), listOf(leavingHome), now).state
+        var clock = now
+        var checks = 0
+        val end = now.plus(Duration.ofHours(6))
+        // Round and round the kitchen: 100 m from the middle every time, on a different bearing,
+        // so every step between two looks is a couple of hundred metres of real walking.
+        val bearings = listOf(100.0, -100.0, 100.0, -100.0)
+        while (clock < end) {
+            val plan = stepPlaceWatch(state, south(bearings[checks % 4], clock), listOf(leavingHome), clock)
+            assertTrue(plan.events.isEmpty(), "it rang for a leaving nobody made")
+            assertEquals(PlaceWatchPolicy.LEAVING_MAX_WAIT, plan.plan!!.wait, "$checks: pacing about bought a faster look")
+            state = plan.state
+            clock += plan.plan!!.wait
+            checks++
+        }
+        assertTrue(checks <= 6 * 2, "six hours of pottering cost $checks looks")
     }
 
     @Test

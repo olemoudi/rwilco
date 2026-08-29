@@ -167,7 +167,7 @@ fun Diagnostics.report(): String = buildString {
                     (note.speedMps?.let { " v=${fixed(it, 1)}" } ?: "") +
                     (note.waitS?.let { " next=${it / 60}m" } ?: "") +
                     (note.charge?.let { " bat=$it" } ?: "") +
-                    (if (note.precise) " gps" else ""),
+                    (if (note.isPoll) " ${note.tier.name.lowercase()}" else ""),
             )
         }
     }

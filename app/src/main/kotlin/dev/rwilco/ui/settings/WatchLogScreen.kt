@@ -34,8 +34,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.rwilco.R
+import dev.rwilco.model.FixTier
 import dev.rwilco.model.NoteKind
 import dev.rwilco.model.WatchNote
+import dev.rwilco.model.WatchTally
 import dev.rwilco.ui.components.EmptyState
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.format.TimeText
@@ -59,6 +61,7 @@ import java.util.Locale
 fun WatchLogScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
     val log by viewModel.watchLog.collectAsStateWithLifecycle()
     val polls by viewModel.pollsThisHour.collectAsStateWithLifecycle()
+    val tally by viewModel.watchTally.collectAsStateWithLifecycle()
     val spacing = Tokens.spacing
 
     Scaffold(
@@ -116,7 +119,9 @@ fun WatchLogScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                             style = MonoStyles.label,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
-                        Spacer(Modifier.height(spacing.xs))
+                        Spacer(Modifier.height(spacing.md))
+                        TallyBlock(tally)
+                        Spacer(Modifier.height(spacing.md))
                         Text(
                             text = stringResource(R.string.watch_log_hint),
                             style = MaterialTheme.typography.bodySmall,
@@ -127,6 +132,57 @@ fun WatchLogScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
             }
             itemsIndexed(log.notes, key = { index, note -> "${note.at.toEpochMilli()}-${note.kind}-$index" }) { _, note -> NoteRow(note) }
         }
+    }
+}
+
+/**
+ * The last day in three lines: how many looks, what they cost, and whose line set the pace.
+ *
+ * Only the kinds that actually happened are named. A watch that never went blind should not have
+ * to say "0 without a fix" — a zero in a list of costs reads as a cost, and the point of this
+ * block is that most of what it could say is usually nothing.
+ */
+@Composable
+private fun TallyBlock(tally: WatchTally) {
+    if (tally.looks == 0) return
+    val spacing = Tokens.spacing
+    val costs = buildList {
+        if (tally.network > 0) add(stringResource(R.string.watch_tally_network, tally.network))
+        if (tally.gps > 0) add(stringResource(R.string.watch_tally_gps, tally.gps))
+        if (tally.coarse > 0) add(stringResource(R.string.watch_tally_coarse, tally.coarse))
+        if (tally.cached > 0) add(stringResource(R.string.watch_tally_cached, tally.cached))
+        if (tally.rested > 0) add(stringResource(R.string.watch_tally_rested, tally.rested))
+        if (tally.blind > 0) add(stringResource(R.string.watch_tally_blind, tally.blind))
+    }
+    Text(
+        text = stringResource(R.string.watch_tally_title),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(spacing.xs))
+    // The count on its own line and the breakdown under it, in the smaller face the rows below
+    // use for their own detail: six costs and a total on one line of the larger one wrapped to
+    // three and read as a wall, which is the opposite of what a roll-up is for.
+    Text(
+        text = pluralStringResource(R.plurals.watch_tally_looks, tally.looks, tally.looks),
+        style = MonoStyles.label,
+        color = MaterialTheme.colorScheme.onSurface,
+    )
+    if (costs.isNotEmpty()) {
+        Text(
+            text = costs.joinToString(" · "),
+            style = MonoStyles.date,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    val paced = tally.pacedBy
+    if (paced != null) {
+        Spacer(Modifier.height(spacing.xs))
+        Text(
+            text = stringResource(R.string.watch_tally_paced, paced, tally.pacedByLooks),
+            style = MonoStyles.date,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -169,6 +225,7 @@ private fun kindLabel(note: WatchNote): String {
     val kind = stringResource(
         when (note.kind) {
             NoteKind.FIX -> R.string.watch_kind_fix
+            NoteKind.CACHE -> R.string.watch_kind_cache
             NoteKind.REST -> R.string.watch_kind_rest
             NoteKind.BLIND -> R.string.watch_kind_blind
             NoteKind.STIR -> R.string.watch_kind_stir
@@ -177,7 +234,13 @@ private fun kindLabel(note: WatchNote): String {
         },
     )
     if (note.kind != NoteKind.FIX) return kind
-    val how = stringResource(if (note.precise) R.string.watch_field_gps else R.string.watch_field_network)
+    val how = stringResource(
+        when (note.tier) {
+            FixTier.PRECISE -> R.string.watch_field_gps
+            FixTier.BALANCED -> R.string.watch_field_network
+            FixTier.COARSE -> R.string.watch_field_coarse
+        },
+    )
     return "$kind · $how"
 }
 

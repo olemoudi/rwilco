@@ -21,6 +21,7 @@ import dev.rwilco.model.dayShape
 import dev.rwilco.model.watchedCircles
 import dev.rwilco.model.Crossing
 import dev.rwilco.model.Fix
+import dev.rwilco.model.FixTier
 import dev.rwilco.model.Movement
 import dev.rwilco.model.NoteKind
 import dev.rwilco.model.PlaceWatchPolicy
@@ -29,7 +30,9 @@ import dev.rwilco.model.Transition
 import dev.rwilco.model.WatchPlan
 import dev.rwilco.model.WatchNote
 import dev.rwilco.model.WatchedPlace
+import dev.rwilco.model.answersFor
 import dev.rwilco.model.blindRetry
+import dev.rwilco.model.insideAfter
 import dev.rwilco.model.busyNotice
 import dev.rwilco.model.crossingIsNews
 import dev.rwilco.model.pollsSince
@@ -37,6 +40,7 @@ import dev.rwilco.model.remembering
 import dev.rwilco.model.stepPlaceWatch
 import dev.rwilco.model.stepWithoutLooking
 import dev.rwilco.model.stirredWait
+import dev.rwilco.model.speaksFor
 import dev.rwilco.notify.WatchNotices
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -112,6 +116,18 @@ class PlaceWatcher(
 
     @Volatile
     private var plannedGapM: Double? = null
+
+    /**
+     * Whether the last look had the phone inside the circle that set the cadence, and how many
+     * stirs since have come to nothing. In memory for the same reason as the two above: the
+     * sensor speaks only for the process that armed it, so a streak counted against its stirs
+     * is valid exactly as long as the registration behind them.
+     */
+    @Volatile
+    private var plannedInside: Boolean = false
+
+    @Volatile
+    private var stirStreak: Int = 0
 
     init {
         motion.onMotion = ::stirred
@@ -227,14 +243,40 @@ class PlaceWatcher(
         // them, so `remembered` has nothing to add here.) Only the circles that asked for a fix
         // decide whether one is worth taking now.
         val known = (watch.asking + watch.listening).mapTo(HashSet()) { it.id }
-        val judged = current.inside.filterKeys { it in known }
         val now = clock.instant()
+        val judged = current.inside.filterKeys { it in known } + baselined(watch, current.inside, current.lastFix, now)
         // Whichever comes first: what the store remembers, and what a stir already pulled
         // forward in this process (which the store will not have caught up with yet).
         val pending = listOfNotNull(current.nextCheckAt, plannedAt).filter { it > now }.minOrNull()
         val at = if (pending != null && ids.all { it in judged }) pending else now + SOON
         store.write(current.copy(inside = judged, nextCheckAt = at))
         scheduleAt(at)
+    }
+
+    /**
+     * Doorway circles nobody has judged yet, judged against the fix already in hand.
+     *
+     * A circle with no entry in `inside` pulls the next look to five seconds from now, because
+     * an unjudged circle is one the watch cannot say anything about. That is right the first
+     * time and wasteful every time after: a circle's id carries its own geometry
+     * ([GeofenceIds]), so dragging a pin or a radius makes a new circle and buys another fix —
+     * and writing place reminders is exactly when somebody does that, over and over, which is
+     * how an afternoon of editing reads as a watch that will not stop looking.
+     *
+     * The fix in hand answers it, when there is one recent enough to speak for now
+     * ([Fix.speaksFor]): baselining is what that first look was *for*, and [insideAfter] with no
+     * history is the same arithmetic whether the fix is a second old or ten minutes.
+     *
+     * **Doorways only.** A place read as a state — "mientras esté en casa" — rings on its first
+     * judgement if it finds itself true, and that ring is the point of it (ARCHITECTURE.md, "a
+     * place is a state, and the doorway is the exception"). Only a look may ring, so a state
+     * still buys its own; what is saved here is the case that was silent anyway.
+     */
+    private fun baselined(watch: Watching, judged: Map<String, Boolean>, fix: Fix?, now: Instant): Map<String, Boolean> {
+        if (fix == null || !fix.speaksFor(now)) return emptyMap()
+        return (watch.asking + watch.listening)
+            .filter { it.onCrossing && it.id !in judged }
+            .associate { place -> place.id to insideAfter(null, place, fix) }
     }
 
     /**
@@ -326,7 +368,7 @@ class PlaceWatcher(
                 cancel()
             } else {
                 Log.i(TAG, "nothing worth a fix until the hours open")
-                store.write(current.copy(inside = forgotten, nextCheckAt = gate, precise = false))
+                store.write(current.copy(inside = forgotten, nextCheckAt = gate, tier = FixTier.BALANCED))
                 scheduleAt(gate)
             }
             return
@@ -342,12 +384,21 @@ class PlaceWatcher(
             // Never past the moment another circle's hours open, for the same reason as below.
             val at = watch.opensAt?.coerceAtMost(now + rested.wait) ?: (now + rested.wait)
             store.write(rest.state.copy(nextCheckAt = at))
-            scheduleAt(at, rested.gapM)
+            scheduleAt(at, rested.gapM, inside = rest.state.inside[rested.nearest.id] == true)
             Log.i(TAG, "nothing has moved; no fix taken, next look in ${Duration.between(now, at).toMinutes()} min")
             write(NoteKind.REST, now, rest.state, rested, rest.movement, charge)
             return
         }
-        val fix = readFix(precise = before.precise)
+        // How wide the question this look is asking is: from the fix the last plan was drawn on
+        // to the moment that plan chose to look again. Not "time left until now", which by the
+        // time the alarm has fired is zero — and not the plan's own wait, which nothing stores;
+        // this is the span the watch has actually been away from a fresh reading, which is the
+        // same number for an approach and larger for a watch that has been resting, both right.
+        val plannedWait = before.lastFix?.let { last -> before.nextCheckAt?.let { Duration.between(last.at, it) } }
+            ?.takeIf { !it.isNegative }
+        val reading = readFix(before.tier, plannedWait, before.lastGapM)
+        val fix = reading?.fix
+        val cached = reading?.cached == true
         // A fix the watch would not vouch for is a fix it must not judge by.
         //
         // When nothing fresh answers — location switched off, the provider cold — the fallback
@@ -370,6 +421,9 @@ class PlaceWatcher(
         }
         // A fix resets the blind streak: PlaceWatchState is rebuilt from scratch by the step.
         val step = stepPlaceWatch(before, fix, places, now, sensed, charge, listening = watch.listening)
+        // A look that found something is a look the stirring was right about; one that found the
+        // phone where it left it is not, and the next stir is worth less. See [stirredWait].
+        if (step.events.isNotEmpty() || step.state.inside != before.inside) stirStreak = 0
         val plan = step.plan
         if (plan == null) {
             store.write(step.state)
@@ -385,9 +439,9 @@ class PlaceWatcher(
         // A resting circle's memory needs no merging back in any more: it is one of the
         // listeners the step was handed, so this judgement is its own and up to date.
         store.write(step.state.copy(nextCheckAt = at))
-        scheduleAt(at, plan.gapM)
-        Log.i(TAG, "${plan.gapM.toInt()} m from ${plan.nearest.label}; next look in ${Duration.between(now, at).toMinutes()} min${if (plan.precise) " (gps)" else ""}")
-        write(NoteKind.FIX, now, step.state, plan, step.movement, charge)
+        scheduleAt(at, plan.gapM, inside = step.state.inside[plan.nearest.id] == true)
+        Log.i(TAG, "${plan.gapM.toInt()} m from ${plan.nearest.label}; next look in ${Duration.between(now, at).toMinutes()} min (${plan.tier})")
+        write(if (cached) NoteKind.CACHE else NoteKind.FIX, now, step.state, plan, step.movement, charge)
         val what = places.associate { it.id to it.crossing }
         for (event in step.events) {
             val reminderId = GeofenceIds.reminderIdOf(event.placeId)
@@ -433,7 +487,7 @@ class PlaceWatcher(
                 stillStreak = state.stillStreak,
                 charge = charge?.let { (it * 100).roundToInt() },
                 accuracyM = state.lastFix?.accuracyM?.roundToInt(),
-                precise = plan?.precise ?: false,
+                tier = plan?.tier ?: FixTier.BALANCED,
             ),
         )
         if (!written.busyNotice(now)) return
@@ -452,6 +506,15 @@ class PlaceWatcher(
      * everywhere, or three provinces from the only place being watched, a stir means nothing and
      * the plan stands), and the sensor's one-shot re-arming caps it at one early look per check.
      *
+     * **From inside a circle it also has to be going somewhere.** Significant motion means the
+     * phone's location changed, and a kitchen is a change of location — so a phone being lived
+     * with inside its own place stirs every few minutes all evening, and every one of those used
+     * to buy a look at five minutes' notice: twelve fixes an hour, which is what this whole case
+     * was rebuilt to stop costing. So stirs from inside are counted, and each one a look then
+     * finds on the same side of the same line doubles the next one's notice ([stirredWait]),
+     * back up to the half hour the case started at. From *outside* a line nothing is counted: a
+     * phone that has settled and then sets off is precisely what this is for.
+     *
      * Runs off the sensor's delivery thread ([MotionSensor] hands it to a coroutine), so the
      * two binder calls and the log line it writes are nowhere near the main looper.
      */
@@ -460,8 +523,10 @@ class PlaceWatcher(
         val gap = plannedGapM ?: return@withLock
         if (gap >= PlaceWatchPolicy.NEAR_M) return@withLock
         val now = clock.instant()
-        val at = now + stirredWait(battery.remaining())
+        val streak = if (plannedInside) stirStreak else 0
+        val at = now + stirredWait(battery.remaining(), streak)
         if (planned <= at) return@withLock
+        if (plannedInside) stirStreak++
         Log.i(TAG, "the phone stirred ${gap.toInt()} m from a line; looking sooner")
         scheduleAt(at, gap)
         // Its own line in the log, but not through `write`: moving an alarm is not a poll, and
@@ -470,12 +535,28 @@ class PlaceWatcher(
     }
 
     /**
-     * One fix from the fused provider, GPS when [precise] and the cheaper blend otherwise, or
-     * whatever it had lying around if nothing fresh comes in time. The receiver that runs
-     * this has ten seconds in all, so the wait is short and the fallback is the point.
+     * One fix from the fused provider at the tier the last plan decided on, or whatever it had
+     * lying around if nothing fresh comes in time. The receiver that runs this has ten seconds
+     * in all, so the wait is short and the fallback is the point.
+     *
+     * The cheapest reading is the one already taken. Before any radio is spent the provider's
+     * own last position is read — it is kept warm by whatever else on the phone asks for a
+     * position, at no cost to this app — and if it answers the question this look was going to
+     * ask ([Fix.answersFor]: young next to the planned wait, and its doubt short of the line it
+     * has to judge) then that is the look, and it cost nothing. [cached] is handed back so the
+     * caller can say so in the log, because a saving counted as a poll is a saving nobody sees.
      */
-    private suspend fun readFix(precise: Boolean): Fix? {
-        val priority = if (precise) Priority.PRIORITY_HIGH_ACCURACY else Priority.PRIORITY_BALANCED_POWER_ACCURACY
+    private suspend fun readFix(tier: FixTier, plannedWait: Duration?, gapM: Double?): Reading? {
+        val now = clock.instant()
+        val held = runCatching { fused.lastLocation.await() }.getOrNull()?.toFix()
+        if (held != null && plannedWait != null && held.answersFor(now, plannedWait, gapM)) {
+            return Reading(held, cached = true)
+        }
+        val priority = when (tier) {
+            FixTier.PRECISE -> Priority.PRIORITY_HIGH_ACCURACY
+            FixTier.BALANCED -> Priority.PRIORITY_BALANCED_POWER_ACCURACY
+            FixTier.COARSE -> Priority.PRIORITY_LOW_POWER
+        }
         val fresh = withTimeoutOrNull(FIX_TIMEOUT_MS) {
             val cancel = CancellationTokenSource()
             try {
@@ -486,9 +567,12 @@ class PlaceWatcher(
                 cancel.cancel()
             }
         }
-        val location = fresh ?: runCatching { fused.lastLocation.await() }.getOrNull() ?: return null
-        return location.toFix()
+        val location = fresh?.toFix() ?: held ?: return null
+        return Reading(location, cached = false)
     }
+
+    /** A fix, and whether getting it cost any radio. */
+    private data class Reading(val fix: Fix, val cached: Boolean)
 
     private fun Location.toFix() = Fix(
         lat = latitude,
@@ -498,9 +582,22 @@ class PlaceWatcher(
         at = Instant.ofEpochMilli(time),
     )
 
-    private fun scheduleAt(at: Instant, gapM: Double? = null) {
+    /**
+     * Arm the next look. [inside] is whether the plan behind it had the phone inside the circle
+     * that set the cadence, which is what decides whether a stir counts against a streak.
+     *
+     * **Exact only where exactness is real.** Every look used to be an exact allow-while-idle
+     * alarm, including the hourly one, and an exact alarm is one the system may not batch with
+     * anybody else's: a wake-up of its own, every time. Doze already holds allow-while-idle
+     * alarms to one per nine minutes, so above a quarter of an hour the exactness was buying
+     * nothing that the phone was going to honour anyway — while below it, walking up to a door,
+     * a two-minute look arriving three minutes late is a place reminder that missed the door.
+     * So: exact under [EXACT_UNDER], batchable above it.
+     */
+    private fun scheduleAt(at: Instant, gapM: Double? = null, inside: Boolean = false) {
         val intent = pendingIntent()
-        val exact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms.canScheduleExactAlarms()
+        val soon = Duration.between(clock.instant(), at) < EXACT_UNDER
+        val exact = soon && (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms.canScheduleExactAlarms())
         runCatching {
             if (exact) {
                 alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.toEpochMilli(), intent)
@@ -515,9 +612,11 @@ class PlaceWatcher(
             // A schedule with no plan behind it (a sync, a blind retry) knows of no line to be
             // near, and a stir has nothing to judge itself against until the next real look.
             plannedGapM = gapM
+            plannedInside = inside
         }.onFailure {
             plannedAt = null
             plannedGapM = null
+            plannedInside = false
             Log.w(TAG, "could not set the next look", it)
             Diag.note("geo", "could not set the next look: ${it::class.simpleName}")
         }
@@ -528,6 +627,8 @@ class PlaceWatcher(
         motion.stop()
         plannedAt = null
         plannedGapM = null
+        plannedInside = false
+        stirStreak = 0
     }
 
     private fun pendingIntent(): PendingIntent = PendingIntent.getBroadcast(
@@ -543,5 +644,8 @@ class PlaceWatcher(
         const val UNKNOWN_ACCURACY_M = 500.0
         val SOON: Duration = Duration.ofSeconds(5)
         val NO_FIX_RETRY: Duration = Duration.ofMinutes(10)
+
+        /** Under this a look is armed exactly; above it, batchably. See [scheduleAt]. */
+        val EXACT_UNDER: Duration = Duration.ofMinutes(15)
     }
 }

@@ -12,6 +12,7 @@ import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
 import dev.rwilco.model.Presence
+import dev.rwilco.model.FixTier
 import dev.rwilco.model.NoteKind
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.WatchNote
@@ -32,7 +33,9 @@ object DemoData {
     /**
      * A morning of the place watch, for the tour's capture of the location log: a rested night,
      * the sensor catching somebody leaving, the walk out with the GPS on for the last stretch,
-     * and the geofence saying the same thing a moment later.
+     * the geofence saying the same thing a moment later, and then the cheap end of the day —
+     * an errand across the province answered by the towers alone, and a look that spent nothing
+     * because the fix in hand still stood.
      */
     fun watchNotes(clock: Clock): List<WatchNote> {
         val now = clock.instant()
@@ -43,10 +46,12 @@ object DemoData {
             WatchNote(ago(124), NoteKind.REST, waitS = 1800, gapM = 24.0, place = "Casa", inside = true, speedMps = 0.0, movedM = 0.0, sensed = false, stillStreak = 8, charge = 69),
             WatchNote(ago(96), NoteKind.STIR, waitS = 300, gapM = 24.0, sensed = true),
             WatchNote(ago(91), NoteKind.FIX, waitS = 300, gapM = 61.0, place = "Casa", inside = true, speedMps = 1.3, movedM = 118.0, sensed = true, charge = 68),
-            WatchNote(ago(86), NoteKind.FIX, waitS = 120, gapM = 210.0, place = "Casa", speedMps = 1.4, movedM = 271.0, sensed = true, precise = true, charge = 67),
+            WatchNote(ago(86), NoteKind.FIX, waitS = 120, gapM = 210.0, place = "Casa", speedMps = 1.4, movedM = 271.0, sensed = true, tier = FixTier.PRECISE, charge = 67),
             WatchNote(ago(84), NoteKind.FENCE, place = "Casa", inside = false),
             WatchNote(ago(84), NoteKind.ECHO, place = "Casa", inside = false),
             WatchNote(ago(60), NoteKind.FIX, waitS = 3600, gapM = 4_180.0, place = "Oficina", speedMps = 8.6, movedM = 12_400.0, sensed = true, charge = 64),
+            WatchNote(ago(48), NoteKind.FIX, waitS = 2_400, gapM = 61_500.0, place = "Cuenca", speedMps = 24.0, movedM = 41_000.0, sensed = true, tier = FixTier.COARSE, charge = 63),
+            WatchNote(ago(30), NoteKind.CACHE, waitS = 2_100, gapM = 48_200.0, place = "Cuenca", speedMps = 21.0, movedM = 13_300.0, sensed = true, tier = FixTier.COARSE, charge = 62),
             WatchNote(ago(12), NoteKind.BLIND, waitS = 600, sensed = false, charge = 61),
         )
     }

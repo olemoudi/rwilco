@@ -20,6 +20,7 @@ import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
+import dev.rwilco.model.FixTier
 import dev.rwilco.model.Presence
 import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
@@ -135,20 +136,20 @@ class PlaceWatchDeviceTest {
         assertEquals(mapOf(key(arriving, Presence.INSIDE, true) to false, key(leaving, Presence.OUTSIDE, true) to false), state.inside)
         assertNull(app.repository.get(arriving)!!.lastFiredAt)
         assertNotNull(state.nextCheckAt)
-        assertFalse("GPS five kilometres out", state.precise)
+        assertEquals("GPS five kilometres out", FixTier.BALANCED, state.tier)
 
         // Closing in fast: the next look is soon, but still no GPS at 1.3 km from the line.
         moveTo(south = 1_500.0, at = t0 + 120_000)
         watcher.check()
         state = store.read()
-        assertFalse(state.precise)
+        assertEquals(FixTier.BALANCED, state.tier)
         assertTrue(state.lastGapM!! in 1_200.0..1_400.0)
 
         // Three hundred metres out and moving: GPS for the last stretch.
         moveTo(south = 300.0, at = t0 + 240_000)
         watcher.check()
         state = store.read()
-        assertTrue("GPS should be on ${state.lastGapM} m from the line", state.precise)
+        assertEquals("GPS should be on ${state.lastGapM} m from the line", FixTier.PRECISE, state.tier)
         assertNull(app.repository.get(arriving)!!.lastFiredAt)
 
         // Inside: the arriving rule rings, the leaving one does not.
