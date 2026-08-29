@@ -205,4 +205,14 @@ class HomeStateTest {
         val state = buildHomeState(listOf(reminder), LocalTime.of(9, 0), now, zone, selectedTag = null)
         return state.hero?.card ?: state.sections.first().cards.first()
     }
+
+    @Test
+    fun `before the first emission the screen is neither loaded nor empty`() {
+        val blank = HomeUiState()
+        assertFalse(blank.loaded)
+        assertFalse(blank.empty)
+        val nothing = buildHomeState(emptyList(), defaultTime, now, zone, selectedTag = null)
+        assertTrue(nothing.loaded)
+        assertTrue(nothing.empty)
+    }
 }

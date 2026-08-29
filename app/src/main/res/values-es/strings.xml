@@ -4,6 +4,7 @@
     <string name="common_save">Guardar</string>
     <string name="common_back">Atrás</string>
     <string name="common_undo">Deshacer</string>
+    <string name="common_loading">Cargando</string>
     <string name="common_what_is_this">¿Qué es esto?</string>
     <string name="common_done">Listo</string>
 
@@ -61,8 +62,11 @@
     <string name="home_all_tags">Todo</string>
     <string name="home_empty_title">Nada que recordar todavía</string>
     <string name="home_empty_body">Escribe qué quieres recordar y luego di cuándo y cómo.</string>
+    <string name="home_empty_action">Escribe uno</string>
     <string name="home_marked_done">Hecho</string>
     <string name="home_deleted">Eliminado</string>
+    <string name="home_paused">En pausa</string>
+    <string name="home_resumed">Reanudado</string>
     <string name="home_section_overdue">Vencidos</string>
     <string name="home_section_today">Hoy</string>
     <string name="home_section_tomorrow">Mañana</string>
@@ -83,6 +87,7 @@
     <string name="relative_yesterday">ayer</string>
     <string name="countdown_in">en %1$s</string>
     <string name="countdown_ago">hace %1$s</string>
+    <string name="countdown_just_now">ahora mismo</string>
     <string name="countdown_days">%1$d d</string>
     <string name="countdown_hours">%1$d h</string>
     <string name="countdown_minutes">%1$d min</string>
@@ -246,7 +251,6 @@
     <string name="alert_fired_by">Disparado por %1$s</string>
     <string name="alert_empty_text">(Todavía sin texto)</string>
     <string name="alert_snooze">Posponer</string>
-    <string name="alert_snooze_tomorrow">Mañana</string>
     <string name="alert_done">Hecho</string>
     <string name="alert_view">Ver</string>
     <string name="alert_close_preview">Cerrar la vista previa</string>

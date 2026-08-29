@@ -20,7 +20,8 @@ import dev.rwilco.R
 object WatchNotices {
 
     private const val CHANNEL = "rwilco_watch"
-    private const val NOTIF_ID = 44
+    // 43 is the update's and 44 the vault's: three notices, three slots, or one replaces another.
+    private const val NOTIF_ID = 45
 
     fun notifyBusy(context: Context, polls: Int) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return

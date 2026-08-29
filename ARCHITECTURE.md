@@ -540,11 +540,19 @@ strict is asking somebody to remember how they spelled it.
   At the bottom it landed squarely on "Nuevo" — the one button every screen puts in the thumb's
   way on purpose — so the price of being told a reminder was deleted was not being able to write
   the next one for five seconds. An undo is a thing to read; the reaching is the button under it.
+  Pause and resume get one too (0.45.0): a paused card goes grey and slides to the bottom of
+  the list, which from the middle of a scroll is a card that vanished, and the hold that did it
+  was the same gesture as a pause on a different card.
 - Home: `HomeViewModel` combines the open reminders, settings, the tag filter and a minute pulse
   into `HomeUiState` (`buildHomeState`, pure and tested). The hero card's countdown ticks in its
   own composable (`rememberNow`) so nothing else recomposes. The magnifier has a flow of its own
   (`buildSearchState`, also pure): a keystroke must not put Home through grouping and next-fire
   again. Results replace the list while it is open; a reminder opens, a tag becomes the filter.
+  **Before the first emission Home draws card shapes** (`ListPlaceholder`, static — nothing on
+  Home moves on its own), never the empty state: `HomeUiState.loaded` is what separates "nothing
+  to remember" from "not read yet", and a blank screen for the two seconds a cold start takes
+  said the first. The empty state carries the invitation as a button ("Escribe uno"), the same
+  door as "Nuevo". "Hechos" wears the same placeholder before its list arrives.
 - **"Hechos" opens with a number and a fortnight**, not with a list: how many were dealt with in
   the last seven days in `displayLarge` — the one Material role this app sets in JetBrains Mono,
   the size a number is read at when it is the only thing being said — over `DayBars`, one bar per

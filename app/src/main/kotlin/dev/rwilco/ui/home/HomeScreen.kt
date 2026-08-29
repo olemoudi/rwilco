@@ -56,6 +56,7 @@ import dev.rwilco.R
 import dev.rwilco.model.Section
 import dev.rwilco.model.TagFilter
 import dev.rwilco.ui.components.EmptyState
+import dev.rwilco.ui.components.ListPlaceholder
 import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.ui.components.SectionHeader
 import dev.rwilco.ui.components.TagChip
@@ -102,6 +103,8 @@ fun HomeScreen(
     val swipeDoneLabel = stringResource(R.string.card_swipe_done)
     val swipeDeleteLabel = stringResource(R.string.card_swipe_delete)
     val createdMessage = stringResource(R.string.home_created)
+    val pausedMessage = stringResource(R.string.home_paused)
+    val resumedMessage = stringResource(R.string.home_resumed)
 
     LaunchedEffect(viewModel) {
         viewModel.eventFlow.collect { event ->
@@ -115,6 +118,11 @@ fun HomeScreen(
                     message = createdMessage,
                     undoLabel = undoLabel,
                     onUndo = { viewModel.undoCreated(event.reminder, event.preset) },
+                )
+                is HomeEvent.Paused -> snackbar.show(
+                    message = if (event.paused) pausedMessage else resumedMessage,
+                    undoLabel = undoLabel,
+                    onUndo = { viewModel.undoPause(event) },
                 )
                 // Something it carries has already passed: the form, not a silent overdue.
                 is HomeEvent.NeedsEditor -> onNewFromPreset(event.presetId)
@@ -276,6 +284,11 @@ fun HomeScreen(
                     }
                 }
             } else {
+                // Before the first emission the list is unknown, not empty: card shapes, so the
+                // screen never says "nothing to remember" about reminders it has not read yet.
+                if (!state.loaded) {
+                    item(key = "loading") { ListPlaceholder() }
+                }
                 if (state.tags.isNotEmpty()) {
                     item(key = "tags") {
                         TagFilterRow(tags = state.tags, selected = state.selectedTag, onSelect = viewModel::selectTag)
@@ -342,6 +355,9 @@ fun HomeScreen(
                             title = stringResource(R.string.home_empty_title),
                             body = stringResource(R.string.home_empty_body),
                             icon = Icons.Outlined.Lightbulb,
+                            actionLabel = stringResource(R.string.home_empty_action),
+                            // The same door as "Nuevo": with nothing kept under a name, the form.
+                            onAction = { if (presets.isEmpty()) onNew() else choosing = true },
                         )
                     }
                 }

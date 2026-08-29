@@ -54,6 +54,12 @@ sealed interface HomeEvent {
     data class Created(val reminder: Reminder, val preset: Preset) : HomeEvent
 
     /**
+     * A reminder was paused or resumed ([paused] is where it ended up); [reminder] is the row
+     * as it was, so the undo puts the status it had back.
+     */
+    data class Paused(val reminder: Reminder, val paused: Boolean) : HomeEvent
+
+    /**
      * A preset could not be written blind — a moment it carries has already passed — so the
      * form is opened on it instead of quietly making something overdue.
      */
@@ -269,10 +275,20 @@ class HomeViewModel(
         viewModelScope.launch { repository.restore(removed.reminder) }
     }
 
+    /**
+     * Said in a snackbar with an undo, like "hecho" and "borrar": a paused card goes grey and
+     * slides to the bottom of the list, which from the middle of a scroll is a card that vanished.
+     */
     fun togglePause(id: String, paused: Boolean) {
         viewModelScope.launch {
+            val reminder = repository.get(id) ?: return@launch
             repository.setStatus(id, if (paused) Status.ACTIVE else Status.PAUSED)
+            events.send(HomeEvent.Paused(reminder, paused = !paused))
         }
+    }
+
+    fun undoPause(event: HomeEvent.Paused) {
+        viewModelScope.launch { repository.setStatus(event.reminder.id, event.reminder.status) }
     }
 
     class Factory(private val app: RwilcoApplication) : ViewModelProvider.Factory {

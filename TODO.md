@@ -8,8 +8,8 @@ Running notes: what is next, what cost time, what must not be re-derived.
   silently fails on this image). Even then, `input tap` on Compose buttons landed maybe one time
   in three and a missed tap cascades (a stray BACK on Home closes the app). The instrumented tour
   test replaced the whole approach. Cost: an hour on 2026-08-24.
-- Cold start on the emulator shows an empty Home for ~2–3 s before the first DB emission
-  (debug build, swiftshader). Not seen as a product problem yet; watch it on a real phone.
+- Cold start on the emulator shows a blank Home for ~2–3 s before the first DB emission (debug
+  build, swiftshader). Since 0.45.0 that gap draws card-shaped placeholders rather than nothing.
 
 ## Shipped a wrong version.json in v0.1.0 and v0.2.0
 `release.yml` greps `versionName = "..."` out of `app/build.gradle.kts`, and the comment right
@@ -180,7 +180,8 @@ Two follow-ups to the report above, both asked for directly.
 ## Next
 - ~~A place condition ("y sólo si estás en el trabajo")~~ — shipped: read at fire time from the
   watch's own memory, and what nobody can vouch for holds (fail open). See `conditionsHold`.
-- Snooze from the alert screen is wired; snooze from the notification only offers ten minutes.
+- Snooze from the alert screen is wired; the notification offers ten minutes and two hours (three
+  actions is the platform's cap; the rest of the offers live on the alert screen).
 - Background location is a permission, not a service. Two eyes on every place now: the
   geofences (the phone's) and `PlaceWatcher` (the app's own, 2026-08-25), which reads one fix
   per look and sets its own next look from distance and speed — never a foreground service,

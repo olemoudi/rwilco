@@ -46,6 +46,7 @@ import dev.rwilco.model.Reminder
 import dev.rwilco.model.doneByDay
 import dev.rwilco.ui.components.DayBars
 import dev.rwilco.ui.components.EmptyState
+import dev.rwilco.ui.components.ListPlaceholder
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.TagLabel
 import dev.rwilco.ui.format.rememberWords
@@ -112,6 +113,9 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
             ),
             verticalArrangement = Arrangement.spacedBy(spacing.md),
         ) {
+            if (list == null) {
+                item { ListPlaceholder() }
+            }
             if (list != null && list.isEmpty()) {
                 item {
                     EmptyState(

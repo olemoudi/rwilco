@@ -25,5 +25,14 @@ class CountdownPartsTest {
         assertTrue(parts.overdue)
         assertEquals(5, parts.minutes)
         assertEquals(0, parts.seconds)
+        assertFalse(parts.justNow)
+    }
+
+    @Test
+    fun `the first minute behind us is just now, not zero minutes ago`() {
+        assertTrue(partsBetween(now, now.minusSeconds(1)).justNow)
+        assertTrue(partsBetween(now, now.minusSeconds(59)).justNow)
+        assertFalse(partsBetween(now, now.minusSeconds(60)).justNow)
+        assertFalse(partsBetween(now, now.plusSeconds(1)).justNow)
     }
 }

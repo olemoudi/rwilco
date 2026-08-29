@@ -8,8 +8,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,10 +25,18 @@ import dev.rwilco.ui.theme.Tokens
 
 /**
  * An empty screen is an invitation, not a mood. The [icon], when there is one, sits in a big
- * keycap above the words, so the screen has a shape before it has a sentence.
+ * keycap above the words, so the screen has a shape before it has a sentence. An [actionLabel]
+ * puts the invitation on a button under the words, so it can be taken from where it is read.
  */
 @Composable
-fun EmptyState(title: String, body: String, modifier: Modifier = Modifier, icon: ImageVector? = null) {
+fun EmptyState(
+    title: String,
+    body: String,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
+) {
     val sizes = Tokens.sizes
     Column(
         modifier = modifier
@@ -51,5 +62,19 @@ fun EmptyState(title: String, body: String, modifier: Modifier = Modifier, icon:
         }
         Text(title, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Start)
         Text(body, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (actionLabel != null && onAction != null) {
+            Spacer(Modifier.height(Tokens.spacing.md))
+            Button(
+                onClick = onAction,
+                shape = MaterialTheme.shapes.medium,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.onSurface,
+                    contentColor = MaterialTheme.colorScheme.surface,
+                ),
+                modifier = Modifier.heightIn(min = sizes.control),
+            ) {
+                Text(actionLabel, style = MaterialTheme.typography.titleMedium)
+            }
+        }
     }
 }

@@ -74,9 +74,10 @@ fun dayWord(words: Words, date: LocalDate, today: LocalDate): String = when (dat
     else -> TimeText.dayDate(date, words.locale)
 }
 
-/** "en 3 d 4 h" · "en 2 h 14 min" · "en 14 min 05 s" (ticking, under an hour) · "hace 5 min". */
+/** "en 3 d 4 h" · "en 2 h 14 min" · "en 14 min 05 s" (ticking, under an hour) · "hace 5 min" · "ahora mismo". */
 @Composable
 fun countdownText(parts: CountdownParts): String {
+    if (parts.justNow) return stringResource(R.string.countdown_just_now)
     val days = stringResource(R.string.countdown_days, parts.days)
     val hours = stringResource(R.string.countdown_hours, parts.hours)
     val minutes = stringResource(R.string.countdown_minutes, parts.minutes)

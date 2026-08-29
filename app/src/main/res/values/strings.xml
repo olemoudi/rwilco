@@ -6,6 +6,7 @@
     <string name="common_save">Save</string>
     <string name="common_back">Back</string>
     <string name="common_undo">Undo</string>
+    <string name="common_loading">Loading</string>
     <string name="common_what_is_this">What is this?</string>
     <string name="common_done">Done</string>
 
@@ -63,8 +64,11 @@
     <string name="home_all_tags">All</string>
     <string name="home_empty_title">Nothing to remember yet</string>
     <string name="home_empty_body">Write what you want to remember, then say when and how.</string>
+    <string name="home_empty_action">Write one</string>
     <string name="home_marked_done">Done</string>
     <string name="home_deleted">Deleted</string>
+    <string name="home_paused">Paused</string>
+    <string name="home_resumed">Resumed</string>
     <string name="home_section_overdue">Overdue</string>
     <string name="home_section_today">Today</string>
     <string name="home_section_tomorrow">Tomorrow</string>
@@ -85,6 +89,7 @@
     <string name="relative_yesterday">yesterday</string>
     <string name="countdown_in">in %1$s</string>
     <string name="countdown_ago">%1$s ago</string>
+    <string name="countdown_just_now">just now</string>
     <string name="countdown_days">%1$d d</string>
     <string name="countdown_hours">%1$d h</string>
     <string name="countdown_minutes">%1$d min</string>
@@ -248,7 +253,6 @@
     <string name="alert_fired_by">Fired by %1$s</string>
     <string name="alert_empty_text">(No text yet)</string>
     <string name="alert_snooze">Snooze</string>
-    <string name="alert_snooze_tomorrow">Tomorrow</string>
     <string name="alert_done">Done</string>
     <string name="alert_view">View</string>
     <string name="alert_close_preview">Close preview</string>

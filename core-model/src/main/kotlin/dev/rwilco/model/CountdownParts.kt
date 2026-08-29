@@ -13,6 +13,8 @@ data class CountdownParts(
 ) {
     val totalMinutes: Long get() = days * 24 * 60 + hours * 60 + minutes
     val underAnHour: Boolean get() = days == 0L && hours == 0L
+    /** Behind us by less than a minute: "just now", never "0 min ago". */
+    val justNow: Boolean get() = overdue && totalMinutes == 0L
 }
 
 fun partsBetween(now: Instant, at: Instant): CountdownParts {
