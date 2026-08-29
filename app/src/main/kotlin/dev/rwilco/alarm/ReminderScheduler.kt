@@ -11,6 +11,8 @@ import dev.rwilco.MainActivity
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.diag.Diag
+import dev.rwilco.model.DayShape
+import dev.rwilco.model.SafetyNetSettings
 import dev.rwilco.model.dayShape
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.AppSettings
@@ -27,6 +29,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalTime
 import java.util.Collections
 
 /**
@@ -54,6 +57,9 @@ class ReminderScheduler(
 
     /** The same, for the safety net's own alarm — a second one, on its own PendingIntent. */
     private val nudging = Collections.synchronizedSet(mutableSetOf<String>())
+
+    /** The ids whose net alarm this process holds; for a test to see the net survive a pass. */
+    internal val nudgingNow: Set<String> get() = nudging.toSet()
 
     /**
      * One pass at a time. A pass is a read of every row, a decision each, and a write of the
@@ -97,7 +103,11 @@ class ReminderScheduler(
             armNudge(reminder, reminder.nudgeAt(now, zone, defaultTime, settings.safetyNet, dayStart, settings.dayShape))
             val wake = nextWake(reminder, now, zone, defaultTime, dayStart, settings.dayShape)
             if (wake == null) {
-                cancel(reminder.id)
+                // The ring alone. A reminder with nothing left to ring is exactly the one the
+                // net has a word for — it rang and was let go, or its moment came while a fence
+                // was shut — and cancelling both here threw that word away the line after it
+                // was armed. The net's alarm answers to nudgeAt and to nothing else.
+                cancelRing(reminder.id)
                 if (reminder.armedFor != null) repository.setArmedFor(reminder.id, null, null)
             } else {
                 // The row first, the alarm second: an alarm for a moment already past arrives at
@@ -113,7 +123,7 @@ class ReminderScheduler(
         // Whatever was armed and is no longer open (done, deleted) loses its alarm. A process
         // restart empties this set, so a stale alarm can still be delivered once; what stops it
         // ringing is the armed-moment check in ReminderFiring.fire, not this list.
-        for (id in armed.toList() - seen) cancel(id)
+        for (id in armed.toList() - seen) cancelRing(id)
         for (id in nudging.toList() - seen) cancelNudge(id)
         Log.i(TAG, "armed ${seen.size} reminders, ${missed.size} missed")
         Diag.note("arm", "armed=${seen.size} missed=${missed.size} exact=${if (canScheduleExact()) "y" else "n"}")
@@ -121,10 +131,9 @@ class ReminderScheduler(
         missed
     }
 
-    fun cancel(id: String) {
+    private fun cancelRing(id: String) {
         runCatching { alarms.cancel(alarmIntent(id)) }
         armed -= id
-        cancelNudge(id)
     }
 
     private fun cancelNudge(id: String) {
@@ -229,6 +238,15 @@ class ReminderScheduler(
 
         fun ruleIndexOf(intent: Intent): Int? = intent.getIntExtra(EXTRA_RULE, -1).takeIf { it >= 0 }
 
+        /**
+         * What the scheduling of a list depends on in the settings; anything else changing must
+         * not re-arm it. The net's numbers are here because the nudge is an alarm ([armNudge]):
+         * "avísame 36 h después" moved to 12 used to leave every net armed on the old numbers
+         * until something else re-armed.
+         */
+        fun settingsKey(settings: AppSettings): SettingsKey =
+            SettingsKey(settings.defaultTime, settings.dayStart, settings.dayShape, settings.safetyNet)
+
         /** What the scheduling of a list depends on; anything else changing must not re-arm it. */
         fun schedulingKey(reminder: Reminder): SchedulingKey = SchedulingKey(
             reminder.id,
@@ -241,6 +259,14 @@ class ReminderScheduler(
             reminder.lastDealtAt,
         )
     }
+
+    /** See [settingsKey]. */
+    data class SettingsKey(
+        val defaultTime: LocalTime,
+        val dayStart: LocalTime,
+        val dayShape: DayShape,
+        val safetyNet: SafetyNetSettings,
+    )
 
     data class SchedulingKey(
         val id: String,

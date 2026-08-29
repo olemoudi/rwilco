@@ -179,8 +179,11 @@ fun Reminder.lastMomentGone(
     return last
 }
 
-/** Enough to walk out of anything that gets here; a shape with more than this has a next moment. */
-private const val MOMENTS_WALKED = 64
+/**
+ * Enough to walk out of anything that gets here; a shape with more than this has a next moment.
+ * A stretch of the calendar fenced daily has a moment per day, so this is a few years of them.
+ */
+private const val MOMENTS_WALKED = 1024
 
 /**
  * The word this reminder is owed, or null when it is owed none: the net is off, it is paused or

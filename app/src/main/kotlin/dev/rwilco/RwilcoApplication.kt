@@ -146,12 +146,13 @@ class RwilcoApplication : Application() {
         }
         appScope.launch {
             // Everything the settings hold that decides when something rings: the hour a
-            // date-only reminder goes off at, the one "el día siguiente" means, and the hours
+            // date-only reminder goes off at, the one "el día siguiente" means, the hours
             // somebody is up — which is the window every "al azar durante el día" is drawn
-            // from, so moving a bedtime moves real armed moments. A scheduling input changed
-            // without a re-arm is one that only takes effect at the next reboot.
+            // from, so moving a bedtime moves real armed moments — and the safety net's
+            // numbers, which are an alarm too. A scheduling input changed without a re-arm is
+            // one that only takes effect at the next reboot.
             settingsStore.settings
-                .map { Triple(it.defaultTime, it.dayStart, it.dayShape) }
+                .map(ReminderScheduler::settingsKey)
                 .distinctUntilChanged()
                 .drop(1)
                 .collect { runCatching { scheduler.rearmAll() }.onFailure { Log.e(TAG, "re-arm after a settings change failed", it) } }

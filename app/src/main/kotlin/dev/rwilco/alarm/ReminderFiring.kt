@@ -42,6 +42,8 @@ import dev.rwilco.notify.AlertPresenter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Clock
 import java.time.Duration
@@ -178,20 +180,34 @@ class ReminderFiring(
         // because that moment belongs to whatever else the reminder is still waiting for.
         val rangFor = momentRungFor(now, reminder.armedFor, late, eventDriven)
         Diag.note(TAG_DIAG, "r=${short(id)} RANG for $rangFor rule=$ruleIndex${if (late != null) " (late for $late)" else ""} plan=${plan.summary()}")
-        repository.markFired(id, rangFor)
-        if (reminder.ruleMatch == RuleMatch.ALL && reminder.rulesCombine) {
-            repository.setFiredRules(id, reminder.rules.indices.toSet())
+        // From the sello to the screen in one piece: the receiver runs this under a timeout, and
+        // a cancellation landing between markFired and show spent a moment nothing ever showed
+        // — one missedFire could never see again, because the row said it had rung.
+        withContext(NonCancellable) {
+            repository.markFired(id, rangFor)
+            if (reminder.ruleMatch == RuleMatch.ALL && reminder.rulesCombine) {
+                repository.setFiredRules(id, reminder.rules.indices.toSet())
+            }
+            try {
+                // A moment the phone slept through by a minute or two is still that moment, and
+                // rings like it; only one it slept through by a good while arrives as the quiet
+                // "did not ring on time" note (lateForPresentation).
+                AlertPresenter.show(context, reminder, plan, lateForPresentation(late, now), settings.vibration, settings.soundFor(plan), ruleIndex = ruleIndex)
+                // "Hasta que reciba caso": the first play has gone out, so line up the second.
+                if (plan.insistent) {
+                    nextSoundIn(played = 1, plays = settings.soundPlays, gapMinutes = settings.soundGapMinutes)
+                        ?.let { gap -> repeater.schedule(id, played = 1, rangAt = rangFor, at = now + gap, ruleIndex = ruleIndex) }
+                }
+            } catch (t: Throwable) {
+                // The moment is spent whatever happened on the way to the screen; what must not
+                // be lost with it is the NEXT one, which the re-arm below is the only thing
+                // that sets. Every other exit from here re-arms before it leaves.
+                Log.e(TAG, "showing $id failed", t)
+                Diag.note(TAG_DIAG, "r=${short(id)} show FAILED ${t::class.simpleName}")
+            } finally {
+                scheduler.rearmAll()
+            }
         }
-        // A moment the phone slept through by a minute or two is still that moment, and rings
-        // like it; only one it slept through by a good while arrives as the quiet "did not ring
-        // on time" note (lateForPresentation).
-        AlertPresenter.show(context, reminder, plan, lateForPresentation(late, now), settings.vibration, settings.soundFor(plan), ruleIndex = ruleIndex)
-        // "Hasta que reciba caso": the first play has gone out, so line up the second.
-        if (plan.insistent) {
-            nextSoundIn(played = 1, plays = settings.soundPlays, gapMinutes = settings.soundGapMinutes)
-                ?.let { gap -> repeater.schedule(id, played = 1, rangAt = rangFor, at = now + gap, ruleIndex = ruleIndex) }
-        }
-        scheduler.rearmAll()
     }
 
     /**
@@ -320,10 +336,13 @@ class ReminderFiring(
         // of what somebody means by doing it twice. Only when nothing is waiting: after it rings,
         // the ring IS what is being answered, and taking tomorrow's with it would skip a day.
         val consumed = reminder.momentDealtWith(now, clock.zone, settings.defaultTime, settings.dayStart, settings.dayShape)
-        // Asked of the reminder as this "hecho" leaves it, so the last date of a series that has
-        // been dealt with ahead of time finishes it rather than waiting for a moment nobody is
-        // going to be told about.
-        val dealt = reminder.copy(dealtThrough = consumed ?: reminder.dealtThrough)
+        // Asked of the reminder as this "hecho" leaves it — the anchor stamped too, not only the
+        // moment spent. Without the anchor a calendar in "Vuelve" beside a date already gone
+        // had no rest to come back from (restUntil reads lastDealtAt), so "el 26 a las 20:00,
+        // y vuelve cada mes" was finished by the first "hecho" it ever got. And the last date
+        // of a series dealt with ahead of time still finishes it rather than waiting for a
+        // moment nobody is going to be told about.
+        val dealt = reminder.copy(lastDealtAt = now, dealtThrough = consumed ?: reminder.dealtThrough)
         val status = statusAfterDismissal(dealt, now, clock.zone, settings.defaultTime, settings.dayShape)
         // One write: the snooze goes, a round dealt with is a round over (what had already
         // happened stops counting), and the moment every recurrence counts from is stamped —

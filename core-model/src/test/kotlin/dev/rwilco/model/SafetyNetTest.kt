@@ -144,6 +144,29 @@ class SafetyNetTest {
     }
 
     @Test
+    fun `a let-go reminder is owed its word while nothing is armed`() {
+        // The pair the scheduler has to keep apart. A one-shot that rang and was let go has no
+        // next ring — and that is exactly when the net has something to say. Cancelling "the
+        // alarms" of a reminder with nothing armed used to take the net's alarm with it, three
+        // lines after arming it, so the word was never said about the reminders it was for.
+        val rang = local(2026, 8, 27, 9, 0)
+        val letGo = reminder(TriggerRule(Trigger.AtDateTime(rang.atZone(zone).toLocalDateTime())), lastFiredAt = rang)
+        assertNull(nextWake(letGo, now, zone, defaultTime), "nothing left to ring")
+        assertEquals(rang.plus(Duration.ofHours(24)), letGo.nudgeAt(now, zone, defaultTime, settings), "and still owed its word")
+    }
+
+    @Test
+    fun `the last moment gone of a long stretch is its last day`() {
+        // A stretch of the calendar four months long, never rung, now over: the moment that got
+        // away is its last day, not the sixty-fourth of its hundred and twenty.
+        val stretch = Trigger.DateRange(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 4, 30))
+        val written = local(2025, 12, 31, 12, 0)
+        val over = reminder(TriggerRule(stretch)).copy(createdAt = written, updatedAt = written)
+        assertNull(nextFire(over, now, zone, defaultTime))
+        assertEquals(local(2026, 4, 30, 9, 0), over.lastMomentGone(now, zone, defaultTime))
+    }
+
+    @Test
     fun `a moment still ahead is not something that got away`() {
         val friday = LocalDate.of(2026, 8, 28)
         val ahead = reminder(TriggerRule(Trigger.AtDateTime(friday.atTime(9, 0))))

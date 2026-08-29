@@ -53,7 +53,7 @@ class DoneAheadTest {
             firedRules = emptySet(),
             lastDealtAt = at,
             dealtThrough = consumed ?: dealtThrough,
-            status = statusAfterDismissal(copy(dealtThrough = consumed ?: dealtThrough), at, zone, defaultTime),
+            status = statusAfterDismissal(copy(lastDealtAt = at, dealtThrough = consumed ?: dealtThrough), at, zone, defaultTime),
         )
     }
 

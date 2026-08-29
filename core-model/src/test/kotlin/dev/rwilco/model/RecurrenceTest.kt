@@ -365,6 +365,25 @@ class RecurrenceTest {
     }
 
     @Test
+    fun `counted from the ringing, rules rest from the ring before anybody answers`() {
+        // "A las ocho, y luego cada 6 h desde que suena." It rings at eight and is ignored. The
+        // whole point of that anchor is that the two o'clock dose comes whether or not anybody
+        // answered — and read off lastDealtAt alone, it never came until somebody did.
+        val rang = local(2026, 8, 27, 8, 0)
+        val pills = reminder(
+            Recurrence.After(6, RecurrenceUnit.HOURS, RecurrenceFrom.RANG),
+            Trigger.AtDateTime(rang.atZone(zone).toLocalDateTime()),
+        ).copy(lastFiredAt = rang)
+        val later = local(2026, 8, 27, 9, 30)
+        assertEquals(local(2026, 8, 27, 14, 0), pills.restUntil(zone, dayStart), "the rules rest from the ring")
+        assertEquals(local(2026, 8, 27, 14, 0), nextWake(pills, later, zone, defaultTime, dayStart)?.at, "and the next dose is armed")
+        // The one counted from dealing with it still waits to be dealt with: that is the
+        // difference between the two, and the thing to know before choosing.
+        val waits = pills.copy(recurrence = Recurrence.After(6, RecurrenceUnit.HOURS))
+        assertNull(nextWake(waits, later, zone, defaultTime, dayStart))
+    }
+
+    @Test
     fun `counted from the ringing still works for one that never rang`() {
         // Swiped done on Home without ever ringing: there is no firing to count from, and
         // "cada 6 h desde que suena" must still come back.

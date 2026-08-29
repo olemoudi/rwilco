@@ -177,12 +177,15 @@ class EditorTourTest {
                 rule.waitUntilDisplayed(s(R.string.sheet_cancel))
             }
             if (kind == R.string.kind_place) {
-                text(s(R.string.place_side_inside)).performScrollTo().assertIsDisplayed()
-                text(s(R.string.place_needs_crossing)).performScrollTo().performClick()
-                rule.waitUntilDisplayed(s(R.string.place_side_arriving))
-                shot("sheet-place-crossing")
+                // A place being added opens on the doorway — "al llegar" is the sentence people
+                // write — so the sheet's own shot above is already the crossing reading. The
+                // second shot is the other half of the switch: the place as a state.
+                text(s(R.string.place_side_arriving)).performScrollTo().assertIsDisplayed()
                 text(s(R.string.place_side_leaving)).performScrollTo().performClick()
                 rule.waitUntilDisplayed(s(R.string.place_means_leaving))
+                text(s(R.string.place_needs_crossing)).performScrollTo().performClick()
+                rule.waitUntilDisplayed(s(R.string.place_side_outside))
+                shot("sheet-place-presence")
             }
             // The date tile carries all three answers to "when in the day", and it opens on the
             // one that asks for nothing: the hint under it is the day's own waking hours, which

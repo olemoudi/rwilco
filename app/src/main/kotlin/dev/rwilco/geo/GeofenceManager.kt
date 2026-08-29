@@ -128,8 +128,16 @@ class GeofenceManager(
         } ?: GeofenceState.UNAVAILABLE.also { Log.w(TAG, "Play Services did not answer in time") }
     }
 
-    private fun removeAll() {
-        runCatching { client.removeGeofences(pendingIntent()) }
+    /**
+     * Awaited, because the add that follows registers on the same PendingIntent: a remove that
+     * completed after it would take every fence just registered with it, and nothing would ring
+     * until the next sync. Bounded like the add, so a Play Services that never answers cannot
+     * hold the chain behind it.
+     */
+    private suspend fun removeAll() {
+        withTimeoutOrNull(REMOVE_TIMEOUT_MS) {
+            runCatching { client.removeGeofences(pendingIntent()).await() }
+        }
     }
 
     /** Background location is what makes a place reminder work when the app is not open. */
@@ -149,5 +157,6 @@ class GeofenceManager(
         const val LOITERING_MS = 30_000
         const val RESPONSIVENESS_MS = 60_000
         const val REGISTER_TIMEOUT_MS = 15_000L
+        const val REMOVE_TIMEOUT_MS = 5_000L
     }
 }

@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -39,6 +38,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -92,7 +92,11 @@ fun LocationSheet(
 ) {
     var label by rememberSaveable { mutableStateOf(initial?.label ?: "") }
     var presence by rememberSaveable { mutableStateOf((initial?.presence ?: Presence.INSIDE).name) }
-    var onCrossing by rememberSaveable { mutableStateOf(initial?.onCrossing ?: false) }
+    // A place being *added* is asked for as a doorway: "al llegar a casa" is the sentence people
+    // write, and the state reading — "mientras esté en casa" — is a tap away on the same switch.
+    // The editor's opening answer, not the model's: [Trigger.Location.onCrossing] stays false on
+    // disk, where it is what every place trigger written before the field existed decodes to.
+    var onCrossing by rememberSaveable { mutableStateOf(initial?.onCrossing ?: true) }
     var radius by rememberSaveable { mutableIntStateOf(initial?.radiusM ?: 200) }
     var lat by rememberSaveable { mutableStateOf(initial?.lat) }
     var lng by rememberSaveable { mutableStateOf(initial?.lng) }
@@ -123,21 +127,41 @@ fun LocationSheet(
         }
     }
 
-    fun locate() {
+    /**
+     * [asked] is somebody pressing the crosshair; the sheet also asks on its own when it opens
+     * ([initial] null and the permission already given), and that one has to be quieter. It
+     * loses to a pin chosen while it was in flight — a saved place, a search result — and it
+     * says nothing when it fails: an error in red under a map nobody has asked anything of is
+     * noise, and the crosshair is still there to ask properly.
+     */
+    fun locate(asked: Boolean = true) {
         locating = true
         failure = null
         scope.launch {
-            when (val fix = currentLocation(context)) {
+            val fix = currentLocation(context)
+            if (!asked && lat != null) {
+                locating = false
+                return@launch
+            }
+            when (fix) {
                 is LocationFix.Found -> {
                     lat = fix.location.latitude
                     lng = fix.location.longitude
-                    haptics.perform(HapticFeedbackType.Confirm)
+                    if (asked) haptics.perform(HapticFeedbackType.Confirm)
                 }
-                LocationFix.NoPermission -> failure = FAILURE_PERMISSION
-                LocationFix.NoFix -> failure = FAILURE_NO_FIX
+                LocationFix.NoPermission -> if (asked) failure = FAILURE_PERMISSION
+                LocationFix.NoFix -> if (asked) failure = FAILURE_NO_FIX
             }
             locating = false
         }
+    }
+
+    // A place being added is nearly always the one the phone is standing in, so it opens on it
+    // rather than on the whole of Spain waiting for a long-press. Only when the permission is
+    // already given: a sheet that opens with a system dialog on top of it is a worse first
+    // second than a map you have to press the crosshair on.
+    LaunchedEffect(Unit) {
+        if (initial == null && lat == null && hasAnyLocationPermission(context)) locate(asked = false)
     }
     // Both, not just the precise one: a person who answers "approximate" has said yes, and the
     // old code read that as a refusal and gave up with the phone perfectly able to answer.
@@ -266,9 +290,7 @@ fun LocationSheet(
                         failure = null
                         haptics.perform(HapticFeedbackType.Confirm)
                     },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(260.dp),
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 FilledIconButton(
                     onClick = {
@@ -319,6 +341,11 @@ fun LocationSheet(
                 // Rounded, not truncated: a tick the slider snaps to can arrive a hair under
                 // its own value, and truncation then lands fifty metres short of it.
                 onValueChange = { radius = (it / 50).roundToInt() * 50 },
+                // Inset from the sheet's own margin: at either end the thumb sat within a
+                // thumb's width of the edge of the screen, where a finger arrives half on the
+                // bezel and the gesture is as likely to be read as a back swipe. The track
+                // gives up twelve dp on each side and both ends become grabbable.
+                modifier = Modifier.padding(horizontal = Tokens.spacing.md),
                 valueRange = MIN_RADIUS_M.toFloat()..MAX_RADIUS_M.toFloat(),
                 steps = (MAX_RADIUS_M - MIN_RADIUS_M) / 50 - 1,
                 colors = SliderDefaults.colors(

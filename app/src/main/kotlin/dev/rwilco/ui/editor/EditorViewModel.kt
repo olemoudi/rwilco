@@ -86,6 +86,20 @@ class EditorViewModel(
 
     private var existing: Reminder? = null
 
+    /**
+     * The id this draft will be saved under, minted when the editor opens rather than at the
+     * save.
+     *
+     * Everything drawn is drawn from it ([dev.rwilco.model.RandomDraw]), so an editor that does
+     * not know it is judging a different reminder: "nunca sonará" on a random window, and the
+     * cadence the safety net is offered for, both came off a seed the saved row would never
+     * have. The same reason a countdown is stamped and a day left to the day is narrowed where
+     * the reminder is written — what the screen says and what is written have to agree.
+     *
+     * Nothing is reserved by holding one: an abandoned draft leaves a UUID nobody ever uses.
+     */
+    val draftId: String = reminderId ?: UUID.randomUUID().toString()
+
     init {
         viewModelScope.launch {
             val current = settings.filterNotNull().first()
@@ -300,7 +314,7 @@ class EditorViewModel(
             // snapshot would hand back the status and the anchor from before that.
             val before = existing?.let { repository.get(it.id) ?: it }
             val reminder = current.draft.toReminder(
-                id = before?.id ?: UUID.randomUUID().toString(),
+                id = before?.id ?: draftId,
                 createdAt = before?.createdAt ?: now,
                 now = now,
                 // Editing something already done brings it back; otherwise the status is not

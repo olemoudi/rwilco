@@ -87,9 +87,29 @@ class RandomDrawTest {
     }
 
     @Test
-    fun `an empty or inverted window draws nothing`() {
+    fun `a window that ends where it starts draws nothing`() {
         assertTrue(RandomDraw.draws(daily.copy(from = LocalTime.of(12, 0), to = LocalTime.of(12, 0)), "x", 20692L, zone).isEmpty())
-        assertTrue(RandomDraw.draws(daily.copy(from = LocalTime.of(13, 0), to = LocalTime.of(12, 0)), "x", 20692L, zone).isEmpty())
+    }
+
+    @Test
+    fun `a window that ends before it starts crosses midnight and draws into the small hours`() {
+        // Every other window in the model reads "22:00 to 02:00" as an evening that runs past
+        // midnight; this one read it as minus twenty hours and drew nothing, for ever.
+        val evening = daily.copy(from = LocalTime.of(22, 0), to = LocalTime.of(2, 0))
+        assertEquals(240, RandomDraw.windowMinutes(evening))
+        for (index in 20692L until 20692L + 60) {
+            val draws = RandomDraw.draws(evening, "x", index, zone)
+            assertEquals(3, draws.size)
+            val opened = LocalDate.ofEpochDay(index).atTime(22, 0).atZone(zone).toInstant()
+            val closes = LocalDate.ofEpochDay(index).plusDays(1).atTime(2, 0).atZone(zone).toInstant()
+            for (at in draws) assertTrue(at >= opened && at < closes, "$at outside the evening that opened on ${LocalDate.ofEpochDay(index)}")
+        }
+        // The days are judged by the evening the window opened on: a Friday-only window draws
+        // on Friday nights, small hours of Saturday included.
+        val fridays = evening.copy(days = setOf(DayOfWeek.FRIDAY))
+        val friday = LocalDate.of(2026, 8, 28)
+        assertTrue(RandomDraw.draws(fridays, "x", friday.toEpochDay(), zone).isNotEmpty())
+        assertTrue(RandomDraw.draws(fridays, "x", friday.plusDays(1).toEpochDay(), zone).isEmpty())
     }
 
 

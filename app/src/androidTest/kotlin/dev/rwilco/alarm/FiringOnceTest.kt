@@ -97,6 +97,21 @@ class FiringOnceTest {
     }
 
     @Test
+    fun a_spent_timer_keeps_the_safety_net_armed() = runBlocking {
+        // A timer that rang and was let go has nothing left to ring — and that is exactly the
+        // reminder the net has a word for. Cancelling "the alarms" of a reminder with nothing
+        // armed used to take the net's alarm with it, three lines after arming it.
+        saveAndArm()
+        app.firing.fire(id)
+        app.scheduler.rearmAll()
+        assertNull("nothing left to ring", app.repository.get(id)!!.armedFor)
+        assertTrue("the net's own alarm must survive the pass", id in app.scheduler.nudgingNow)
+        // And once dealt with, the word is not owed: the net goes with the reminder.
+        app.firing.dismiss(id)
+        assertTrue("dealt with is an answer", id !in app.scheduler.nudgingNow)
+    }
+
+    @Test
     fun dealing_with_a_timer_finishes_it_and_it_stays_finished() = runBlocking {
         saveAndArm()
         app.firing.fire(id)

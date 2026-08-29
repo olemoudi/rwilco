@@ -1,5 +1,6 @@
 package dev.rwilco.system
 
+import android.app.AlarmManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -13,7 +14,8 @@ import dev.rwilco.update.UpdateWorker
  *
  * A reboot clears every alarm the app had armed, and so does installing over itself; a change of
  * time or time zone moves every wall-clock moment the app promised ("half past nine" is not an
- * instant until a zone says so). All four mean the same thing here: work out again when
+ * instant until a zone says so); and the exact-alarm grant coming or going is the alarms
+ * themselves coming or going. All of them mean the same thing here: work out again when
  * everything should ring, and check nothing was missed in between.
  */
 class SystemEventsReceiver : BroadcastReceiver() {
@@ -23,6 +25,9 @@ class SystemEventsReceiver : BroadcastReceiver() {
             Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_TIME_CHANGED,
             Intent.ACTION_TIMEZONE_CHANGED,
+            // On Android 12 and 13 "Alarms & reminders" can be taken away, and taking it away
+            // cancels every exact alarm the app had; given back, nothing re-arms them but this.
+            AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED,
             -> Unit
             else -> return
         }

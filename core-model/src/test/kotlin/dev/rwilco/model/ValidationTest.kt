@@ -1,6 +1,7 @@
 package dev.rwilco.model
 
 import dev.rwilco.model.Fixtures.defaultTime
+import dev.rwilco.model.Fixtures.local
 import dev.rwilco.model.Fixtures.now
 import dev.rwilco.model.Fixtures.zone
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -42,7 +43,9 @@ class ValidationTest {
             Trigger.Location(40.0, -3.0, 200, Presence.OUTSIDE, "y".repeat(MAX_LABEL_LENGTH + 1)),
             Trigger.Random(0, Period.DAY, LocalTime.of(10, 0), LocalTime.of(20, 0), emptySet()),
             Trigger.Random(3, Period.DAY, LocalTime.of(10, 0), LocalTime.of(10, 2), emptySet()),
-            Trigger.Random(1, Period.WEEK, LocalTime.of(10, 0), LocalTime.of(9, 0), emptySet()),
+            Trigger.Random(1, Period.WEEK, LocalTime.of(10, 0), LocalTime.of(10, 0), emptySet()),
+            // Ends before it starts: an evening that runs past midnight, and nothing wrong with it.
+            Trigger.Random(1, Period.WEEK, LocalTime.of(22, 0), LocalTime.of(2, 0), emptySet()),
         )
         assertEquals(
             listOf(
@@ -69,6 +72,60 @@ class ValidationTest {
             validate("ok", rules),
             "crossing midnight is a window; starting where it ends is not",
         )
+    }
+
+    /**
+     * The warning is only worth anything if it is about *this* reminder. A random window's
+     * moments are drawn from (id, period), so the same rules under two ids are two different
+     * sets of moments — and a warning read off an id nobody will save is a coin flip: it said
+     * "nunca sonará" of reminders that ring, and said nothing about ones that never will.
+     */
+    @Test
+    fun `a warning about a random window is judged with the id the reminder will have`() {
+        // "El sábado 29, a cualquier hora, y a la vez una vez a la semana al azar": the draw is
+        // made on its own and then filtered, so most ids miss that one Saturday altogether.
+        val saturday = TriggerRule(Trigger.DayRandom(LocalDate.of(2026, 8, 29)))
+        val onceAWeek = TriggerRule(Trigger.Random(1, Period.WEEK, LocalTime.of(9, 0), LocalTime.of(21, 0)))
+        val rules = listOf(saturday, onceAWeek)
+        val ids = (0..15).map { "id-$it" }
+
+        val disagreed = ids.filter { id ->
+            val reminder = Reminder(
+                id = id,
+                text = "Llamar al taller",
+                rules = rules,
+                ruleMatch = RuleMatch.TOGETHER,
+                createdAt = now,
+                updatedAt = now,
+            )
+            val silent = nextFire(reminder, now, zone, defaultTime) == null
+            val warned = warnings(rules, now, zone, defaultTime, RuleMatch.TOGETHER, reminderId = id)
+                .any { it is ValidationWarning.NeverFires }
+            silent != warned
+        }
+        assertTrue(disagreed.isEmpty(), "the editor and the scheduler disagreed about: $disagreed")
+
+        // And the seed is what makes the difference: these rules are not all one answer, so a
+        // warning that ignored the id could only ever be right by luck.
+        val outcomes = ids.map { id ->
+            warnings(rules, now, zone, defaultTime, RuleMatch.TOGETHER, reminderId = id)
+                .any { it is ValidationWarning.NeverFires }
+        }
+        assertTrue(outcomes.contains(true) && outcomes.contains(false), "the case has to cut both ways to prove anything")
+    }
+
+    @Test
+    fun `a stretch months away is not called never`() {
+        // "A las nueve, sólo del 1 al 15 de agosto", written in April. The walk used to give up
+        // after sixty-four daily moments — nine weeks, well short of August — and the editor
+        // said "nunca sonará" of a reminder that was going to ring on the first of the month.
+        val april = local(2026, 4, 15, 12, 0)
+        val august = Condition.DateRange(LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 15))
+        val rule = TriggerRule(Trigger.TimeOfDay(LocalTime.of(9, 0)), listOf(august))
+        assertTrue(warnings(listOf(rule), april, zone, defaultTime).none { it is ValidationWarning.NeverFires })
+        // And one whose stretch is already behind it is called never at once, not after a walk.
+        val september = local(2026, 9, 1, 12, 0)
+        assertTrue(warnings(listOf(rule), september, zone, defaultTime).any { it is ValidationWarning.NeverFires })
     }
 
     @Test

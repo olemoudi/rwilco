@@ -14,9 +14,11 @@ import java.util.concurrent.TimeUnit
 /**
  * The safety net under the alarms: every few hours, re-arm everything and say what was missed.
  *
- * Alarms do get lost — a force-stop, a battery optimiser, a system update — and the cost of
- * finding out is a reminder that never arrives. WorkManager survives reboots and app updates,
- * so this is the one thing in the app that keeps checking.
+ * Alarms do get lost — a battery optimiser, a system update, a Play Services that dropped the
+ * fences — and the cost of finding out is a reminder that never arrives. WorkManager survives
+ * reboots and app updates, so this is the one thing in the app that keeps checking. Not a
+ * force-stop, though: a force-stopped app runs no work and receives no broadcast until somebody
+ * opens it, and nothing here can reach past that.
  */
 class RearmWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 

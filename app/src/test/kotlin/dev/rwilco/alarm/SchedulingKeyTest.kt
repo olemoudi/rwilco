@@ -1,11 +1,13 @@
 package dev.rwilco.alarm
 
 import dev.rwilco.model.Action
+import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
+import dev.rwilco.model.ThemeMode
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -70,6 +72,20 @@ class SchedulingKeyTest {
         assertNotEquals(key(every6h), key(dealt))
         assertNotEquals(key(dealt), key(dealt.copy(lastDealtAt = written.plusSeconds(3600))))
         assertEquals(key(every6h), key(every6h.copy(lastDealtAt = null)))
+    }
+
+    @Test
+    fun `the net's numbers are a scheduling input, because the nudge is an alarm`() {
+        // Every setting that decides when something rings is in the settings key; the safety
+        // net's are among them because its word is an alarm too, and "avísame 12 h después"
+        // moved to 36 left every net armed on the old numbers until something else re-armed.
+        val settings = AppSettings()
+        val key = ReminderScheduler.settingsKey(settings)
+        assertNotEquals(key, ReminderScheduler.settingsKey(settings.copy(safetyNet = settings.safetyNet.copy(afterHours = settings.safetyNet.afterHours + 1))))
+        assertNotEquals(key, ReminderScheduler.settingsKey(settings.copy(defaultTime = settings.defaultTime.plusHours(1))))
+        assertNotEquals(key, ReminderScheduler.settingsKey(settings.copy(dayStart = settings.dayStart.plusHours(1))))
+        // And what only changes how the app looks does not re-arm anything.
+        assertEquals(key, ReminderScheduler.settingsKey(settings.copy(haptics = !settings.haptics, theme = ThemeMode.DARK)))
     }
 
     @Test

@@ -101,6 +101,31 @@ class NextFireTest {
     }
 }
 
+/** The window a random moment is shown as, when the window runs past midnight. */
+class MidnightRandomTest {
+
+    @Test
+    fun `a draw past midnight shows the window it was drawn from`() {
+        // Three times an evening, from ten to two. Every draw's window starts at ten on the day
+        // it opened and ends at two the next morning — the small-hours draws included, which
+        // used to have no window at all because the window itself was read as empty.
+        val evening = Trigger.Random(3, Period.DAY, LocalTime.of(22, 0), LocalTime.of(2, 0))
+        val reminder = Fixtures.reminder(evening)
+        var at = Fixtures.now
+        var seenSmallHours = false
+        repeat(90) {
+            val next = nextFire(reminder, at, Fixtures.zone, Fixtures.defaultTime) as NextFire.Sometime
+            val opened = next.windowStart.atZone(Fixtures.zone)
+            assertEquals(LocalTime.of(22, 0), opened.toLocalTime())
+            assertEquals(next.windowStart.plus(java.time.Duration.ofHours(4)), next.windowEnd)
+            assertTrue(next.at >= next.windowStart && next.at < next.windowEnd, "${next.at} outside ${next.windowStart}..${next.windowEnd}")
+            if (next.at.atZone(Fixtures.zone).toLocalTime() < LocalTime.of(22, 0)) seenSmallHours = true
+            at = next.at
+        }
+        assertTrue(seenSmallHours, "ninety draws of a four-hour window that is half past midnight, none past midnight")
+    }
+}
+
 /** What conditions do to the moment a rule picks. */
 class RuleNextFireTest {
 
@@ -128,6 +153,16 @@ class RuleNextFireTest {
     fun `a rule that can never hold answers never instead of looping`() {
         val impossible = TriggerRule(everyDayAtNine, listOf(Condition.TimeWindow(LocalTime.of(18, 0), LocalTime.of(22, 0))))
         assertNull(at(impossible))
+    }
+
+    @Test
+    fun `a random window whose fences never meet it runs out of candidates, not of patience`() {
+        // Five a day from ten to twelve, and only between six and ten in the evening: two
+        // thousand draws are four hundred days, well inside the horizon, and the walk stops on
+        // its belt rather than on the clock.
+        val mornings = Trigger.Random(5, Period.DAY, LocalTime.of(10, 0), LocalTime.of(12, 0))
+        val evenings = Condition.TimeWindow(LocalTime.of(18, 0), LocalTime.of(22, 0))
+        assertNull(nextFireOfRule(TriggerRule(mornings, listOf(evenings)), "r1", now, zone, defaultTime))
     }
 
     @Test

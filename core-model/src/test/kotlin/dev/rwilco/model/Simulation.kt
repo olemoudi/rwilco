@@ -104,7 +104,7 @@ class Simulation(
                 // The same two questions ReminderFiring.dismiss asks, in the same order: what
                 // this "hecho" spends, and what the reminder is once it has.
                 val consumed = reminder.momentDealtWith(now, zone, defaultTime, dayStart, shape)
-                val dealt = reminder.copy(dealtThrough = consumed ?: reminder.dealtThrough)
+                val dealt = reminder.copy(lastDealtAt = now, dealtThrough = consumed ?: reminder.dealtThrough)
                 val status = statusAfterDismissal(dealt, now, zone, defaultTime, shape)
                 reminder = reminder.copy(
                     snoozedUntil = null,

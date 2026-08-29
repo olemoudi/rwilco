@@ -216,6 +216,14 @@ fun problemOf(trigger: Trigger): TriggerProblem? = when (trigger) {
  * under [RuleMatch.ANY] a rule that can never ring is one dud among several and the reminder
  * still works, while under [RuleMatch.ALL] it is the whole reminder, because a set that never
  * completes never rings.
+ *
+ * [reminderId] is the seed everything drawn is drawn from ([RandomDraw]), so it is the
+ * difference between judging this reminder and judging a different one. A random window's
+ * moments come from (id, period): asked with the wrong id, "nunca sonará" is a coin flip — it
+ * was said of reminders that ring and left unsaid of ones that never will. Empty is the honest
+ * answer for a shape with no identity yet (a preset), and the editor mints the draft's id when
+ * it opens rather than at the save, so what it says and what gets written agree. Last in the
+ * list because every caller predates it.
  */
 fun warnings(
     rules: List<TriggerRule>,
@@ -224,6 +232,7 @@ fun warnings(
     defaultTime: LocalTime,
     match: RuleMatch = RuleMatch.ANY,
     shape: DayShape = DayShape.DEFAULT,
+    reminderId: String = "",
 ): List<ValidationWarning> {
     // Judged as they will be saved: a day left to the day is narrowed to what is left of it at
     // the save (settleDays), and a warning read off the unnarrowed window said "ya ha pasado" of
@@ -250,7 +259,7 @@ fun warnings(
         // With the rule's own hour fences, exactly as nextFireOfRule reaches them: a day with no
         // hour opens at the first minute they allow, so "el jueves, sólo de 16 a 17" is judged on
         // the 16:00 it will actually ring at rather than on breakfast time.
-        val onItsOwn = nextFireOf(rule.trigger, "", now, zone, defaultTime, shape, rule.windows())
+        val onItsOwn = nextFireOf(rule.trigger, reminderId, now, zone, defaultTime, shape, rule.windows())
         val oneShot = rule.trigger is Trigger.AtDateTime || rule.trigger is Trigger.OnDate ||
             rule.trigger is Trigger.DayRandom || rule.trigger is Trigger.DateRange
         when {
@@ -262,7 +271,7 @@ fun warnings(
             // The trigger still has moments, but never one its own conditions allow. This is
             // nextFireOfRule giving up after MAX_CANDIDATES, which is the same search the
             // scheduler does — so what it cannot find, nothing will.
-            onItsOwn != null && nextFireOfRule(rule, "", now, zone, defaultTime, shape) == null -> {
+            onItsOwn != null && nextFireOfRule(rule, reminderId, now, zone, defaultTime, shape) == null -> {
                 found += ValidationWarning.NeverFires(index)
                 doomed += index
             }

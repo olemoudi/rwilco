@@ -141,9 +141,8 @@ Two follow-ups to the report above, both asked for directly.
 - Haptics: the emulator has no vibrator, so every buzz in the app is unverified.
 
 ## Next
-- A place condition ("y sólo si estás en el trabajo") — the `Condition` interface is ready for
-  it; it needs a location read at fire time and a decision about what to do when it is unknown
-  (fail open, presumably).
+- ~~A place condition ("y sólo si estás en el trabajo")~~ — shipped: read at fire time from the
+  watch's own memory, and what nobody can vouch for holds (fail open). See `conditionsHold`.
 - Snooze from the alert screen is wired; snooze from the notification only offers ten minutes.
 - Background location is a permission, not a service. Two eyes on every place now: the
   geofences (the phone's) and `PlaceWatcher` (the app's own, 2026-08-25), which reads one fix

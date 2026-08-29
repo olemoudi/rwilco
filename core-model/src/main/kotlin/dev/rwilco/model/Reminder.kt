@@ -199,8 +199,28 @@ fun List<Condition.TimeWindow>.openFrom(now: Instant, zone: ZoneId): Instant? {
     if (isEmpty() || allHoldAt(now, zone)) return now
     // A conjunction of windows can only begin where one of them begins, so those are the only
     // candidates worth trying — and one that does not satisfy the others is not the beginning.
-    return mapNotNull { window -> window.opensAfter(now, zone)?.takeIf { allHoldAt(it, zone) } }.minOrNull()
+    // Not only the NEXT opening of each: with days on the windows the first opening the
+    // conjunction has can be nobody's next one ("los lunes de 10 a 11" and "de 10:30 a 12"
+    // meet on Monday at half past ten, which is the second window's opening on a Monday, and
+    // its next opening is tomorrow), and a null here is a circle never watched at all.
+    var best: Instant? = null
+    for (window in this) {
+        var cursor = now
+        var left = OPENINGS_PROBED
+        while (left-- > 0) {
+            val at = window.opensAfter(cursor, zone) ?: break
+            if (allHoldAt(at, zone)) {
+                best = best?.let { minOf(it, at) } ?: at
+                break
+            }
+            cursor = at
+        }
+    }
+    return best
 }
+
+/** A fortnight of a daily window's openings: enough to meet any set of days a week names. */
+private const val OPENINGS_PROBED = 16
 
 /**
  * When this window next opens, or null when it never will again.

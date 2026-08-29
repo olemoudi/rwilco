@@ -34,6 +34,11 @@ fun statusAfterDismissal(
     // stays. A calendar is asked like the triggers are, because a calendar can run out
     // ([RepeatEnd]) and a series that has rung its last time is finished.
     if (reminder.recurrence.isAnchored && !reminder.recurrence.isCalendar) return Status.ACTIVE
+    // A calendar with no date left finishes the rules with it. It has no rest to hand them
+    // (restUntil is null once the series is over), so asked below they would speak again on
+    // their own, unfenced — "al llegar a casa, y vuelve cada lunes hasta junio" ringing on
+    // every arrival after June. The same walk recurrenceWarning does, from the same place.
+    if (reminder.recurrence.isCalendar && reminder.calendarMoment(reminder.searchFrom(now), zone, shape) == null) return Status.DONE
     // Dealt with means the round is over: what had already happened under ALL stops counting,
     // and the question is whether the reminder can come round again from scratch.
     val cleared = reminder.copy(status = Status.ACTIVE, snoozedUntil = null, firedRules = emptySet())

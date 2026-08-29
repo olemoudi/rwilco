@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.LocalTime
 
 /**
@@ -200,6 +201,21 @@ class TogetherTest {
         )
         val morning = Condition.TimeWindow(LocalTime.of(9, 0), LocalTime.of(11, 0))
         assertNull(listOf(evening, morning).openFrom(threeAm, zone), "a circle to leave alone entirely")
+    }
+
+    @Test
+    fun `two windows that only meet on a later opening open there, not never`() {
+        // "Los sábados de 10 a 12" and "viernes y sábados de 11 a 13", from a Thursday. The first
+        // window's next opening is Saturday at ten, where the second is shut; the second's next
+        // opening is Friday at eleven, where the first is shut. Neither NEXT opening is the
+        // conjunction's — Saturday at eleven is — and a null here was a circle never watched.
+        val thursday = Fixtures.now
+        val saturdays = Condition.TimeWindow(LocalTime.of(10, 0), LocalTime.of(12, 0), setOf(DayOfWeek.SATURDAY))
+        val lateMornings = Condition.TimeWindow(LocalTime.of(11, 0), LocalTime.of(13, 0), setOf(DayOfWeek.FRIDAY, DayOfWeek.SATURDAY))
+        assertEquals(Fixtures.local(2026, 8, 29, 11, 0), listOf(saturdays, lateMornings).openFrom(thursday, zone))
+        // A window with a date of its own opens once; gone, it has no later opening to probe.
+        val lastSunday = Condition.TimeWindow(LocalTime.of(10, 0), LocalTime.of(12, 0), date = LocalDate.of(2026, 8, 23))
+        assertNull(listOf(lastSunday, lateMornings).openFrom(thursday, zone))
     }
 
     @Test

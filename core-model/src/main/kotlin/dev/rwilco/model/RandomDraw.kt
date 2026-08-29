@@ -14,6 +14,7 @@ import kotlin.math.min
 object RandomDraw {
 
     private const val GOLDEN_GAMMA = 0x9E3779B97F4A7C15uL
+    private const val SECONDS_PER_DAY = 24 * 60 * 60
 
     /** DAY: the epoch day. WEEK: Monday-start weeks, independent of locale on purpose. */
     fun periodIndex(date: LocalDate, period: Period): Long = when (period) {
@@ -94,8 +95,15 @@ object RandomDraw {
         return from.plusSeconds(offset * 60L)
     }
 
+    /**
+     * A window that ends before it starts crosses midnight, as every other window in the model
+     * does ([Condition.TimeWindow], [Trigger.Interval]); one that ends where it starts is empty.
+     * Read as negative it drew nothing at all, and the editor called a four-hour evening window
+     * "empty". The draws themselves need no more: a minute past the day's end lands on the next
+     * one (`atTime(from).plusMinutes`), and a draw belongs to the day its window opened.
+     */
     fun windowMinutes(trigger: Trigger.Random): Int =
-        (trigger.to.toSecondOfDay() - trigger.from.toSecondOfDay()) / 60
+        Math.floorMod(trigger.to.toSecondOfDay() - trigger.from.toSecondOfDay(), SECONDS_PER_DAY) / 60
 
     private fun eligible(date: LocalDate, days: Set<java.time.DayOfWeek>): Boolean =
         days.isEmpty() || date.dayOfWeek in days

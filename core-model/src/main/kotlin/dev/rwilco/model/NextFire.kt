@@ -1,6 +1,7 @@
 package dev.rwilco.model
 
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
@@ -152,10 +153,16 @@ fun nextWake(
  * A rule's next fire: the first moment its trigger produces that all of its conditions hold at.
  *
  * Walks candidate moments rather than solving for them, because "every day at nine, and only in
- * June" is a search either way — and it stops after [MAX_CANDIDATES] so a rule that can never
- * be satisfied ("at 09:00, and only between 18:00 and 22:00") answers "never" instead of
- * looping — which is also how [warnings] knows to say so. A place is judged when it happens,
- * not now, so it comes back untouched.
+ * June" is a search either way. A walk that keeps failing stops at [SEARCH_HORIZON] — so a rule
+ * that can never be satisfied ("at 09:00, and only between 18:00 and 22:00") answers "never"
+ * instead of looping, which is also how [warnings] knows to say so — and a candidate that holds
+ * is the answer wherever it is. It used to stop after sixty-four *candidates*, which for a daily
+ * moment is nine weeks: "a las nueve, sólo del 1 al 15 de agosto" written in April was called
+ * never, by the editor and the scheduler alike, and the net could not catch it either. A
+ * stretch of the calendar still ahead is not walked up to a day at a time: nothing before its
+ * first day can clear it, so the walk goes straight there ([skipTo]), and one already behind
+ * never holds again and is not walked at all. A place is judged when it happens, not now, so it
+ * comes back untouched.
  *
  * Only the conditions that can be asked about a future moment are asked ([knownInAdvance]).
  * Nothing knows where somebody will be next Tuesday, so a place condition is left out here and
@@ -169,7 +176,10 @@ fun nextFireOfRule(
     defaultTime: LocalTime,
     shape: DayShape = DayShape.DEFAULT,
 ): NextFire? {
+    val fences = rule.conditions.filter { it.knownInAdvance }
+    if (fences.overFor(now, zone)) return null
     var after = now
+    val horizon = now + SEARCH_HORIZON
     // The rule's own hour fences reach the opening, so a day with no hour opens at the first
     // minute they allow instead of being rejected below (see openingOf).
     val windows = rule.windows()
@@ -180,14 +190,43 @@ fun nextFireOfRule(
             is NextFire.Sometime -> candidate.at
             is NextFire.WhenAt -> return candidate
         }
-        if (rule.conditions.filter { it.knownInAdvance }.allHoldAt(at, zone)) return candidate
-        after = at
+        if (fences.allHoldAt(at, zone)) return candidate
+        if (at > horizon) return null
+        after = fences.skipTo(at, zone)
     }
     return null
 }
 
-/** Enough to walk two months of daily moments, or a fortnight of a five-a-day random window. */
-private const val MAX_CANDIDATES = 64
+/**
+ * How far a walk that keeps failing is allowed to go before it answers "never". Only a
+ * *failing* walk: a candidate that holds is returned wherever it lies. Five years is past any
+ * calendar somebody writes and cheap to walk a day at a time.
+ */
+private val SEARCH_HORIZON: Duration = Duration.ofDays(5 * 366)
+
+/** A belt under [SEARCH_HORIZON], for a trigger whose moments are closer together than days. */
+private const val MAX_CANDIDATES = 2000
+
+/**
+ * Whether a stretch of the calendar among these fences is already behind [now]: it will never
+ * hold again, and there is nothing to walk.
+ */
+internal fun List<Condition>.overFor(now: Instant, zone: ZoneId): Boolean {
+    val today = now.atZone(zone).toLocalDate()
+    return any { it is Condition.DateRange && it.to < today }
+}
+
+/**
+ * Where the walk goes on from once [at] has failed: just past it, or — when a stretch of the
+ * calendar still ahead is among the fences — to the eve of that stretch, because no moment
+ * before its first day can clear it and walking there a day at a time is what ran the old walk
+ * out of candidates. The latest first day of them, since every fence has to hold at once.
+ */
+internal fun List<Condition>.skipTo(at: Instant, zone: ZoneId): Instant {
+    val day = at.atZone(zone).toLocalDate()
+    val ahead = filterIsInstance<Condition.DateRange>().filter { it.from > day }.maxOfOrNull { it.from } ?: return at
+    return ahead.atStartOfDay(zone).toInstant().minusMillis(1)
+}
 
 /**
  * One trigger's next fire, or null when it has nothing left to do.
@@ -314,11 +353,15 @@ private fun nextRandom(trigger: Trigger.Random, reminderId: String, now: Instant
     for (step in 0 until horizon) {
         val draws = RandomDraw.draws(trigger, reminderId, first + step, zone)
         val at = draws.firstOrNull { it > now } ?: continue
-        val day = at.atZone(zone).toLocalDate()
+        // A window that crosses midnight puts its small-hours draws on the next calendar day;
+        // the window they were drawn from is the one that opened the evening before.
+        val local = at.atZone(zone)
+        val crosses = trigger.to <= trigger.from
+        val day = if (crosses && local.toLocalTime() < trigger.from) local.toLocalDate().minusDays(1) else local.toLocalDate()
         return NextFire.Sometime(
             at = at,
             windowStart = day.atTime(trigger.from).atZone(zone).toInstant(),
-            windowEnd = day.atTime(trigger.to).atZone(zone).toInstant(),
+            windowEnd = (if (crosses) day.plusDays(1) else day).atTime(trigger.to).atZone(zone).toInstant(),
             trigger = trigger,
         )
     }
@@ -330,8 +373,8 @@ private fun nextRandom(trigger: Trigger.Random, reminderId: String, now: Instant
  * recurrence is not a calendar, or when the series has run out ([RepeatEnd]).
  *
  * The same walk [nextFireOfRule] does for a rule, and for the same reason: "el día 1, y sólo si
- * estoy en casa" is a search, and it has to stop after [MAX_CANDIDATES] so a calendar that can
- * never clear its fences answers *never* instead of looping.
+ * estoy en casa" is a search, and a failing one has to stop ([SEARCH_HORIZON]) so a calendar
+ * that can never clear its fences answers *never* instead of looping.
  */
 fun Reminder.calendarMoment(after: Instant, zone: ZoneId, shape: DayShape): Instant? =
     (recurrence as? Recurrence.Calendar)?.nextMoment(id, after, zone, shape)
@@ -343,13 +386,17 @@ fun Recurrence.Calendar.nextMoment(reminderId: String, after: Instant, zone: Zon
     // de 16 a 17" with no hour opens at 16:00, instead of opening at breakfast and being
     // rejected every month.
     val windows = conditions.filterIsInstance<Condition.TimeWindow>()
+    if (fences.overFor(after, zone)) return null
     var from = after
-    repeat(MAX_CANDIDATES) {
+    val horizon = after + SEARCH_HORIZON
+    // No belt under the horizon here: a calendar's moments are a day apart at the least, and
+    // nextRepeat only ever answers strictly after [from], so the horizon alone ends the walk.
+    while (true) {
         val at = nextRepeat(repeat, reminderId, from, zone, shape, windows) ?: return null
         if (fences.allHoldAt(at, zone)) return at
-        from = at
+        if (at > horizon) return null
+        from = fences.skipTo(at, zone)
     }
-    return null
 }
 
 /** The calendar's next date with no fences applied: whether the series itself has anything left. */
@@ -378,9 +425,11 @@ internal fun Recurrence.Calendar.nextDateMoment(reminderId: String, after: Insta
  */
 fun Reminder.restUntil(zone: ZoneId, dayStart: LocalTime, shape: DayShape = DayShape.DEFAULT): Instant? {
     if (!recurrence.isAnchored || rules.isEmpty()) return null
-    // Nothing rests until it has been dealt with, whichever moment the span is counted from:
-    // a reminder still waiting for an answer is overdue, not resting.
-    val dealt = lastDealtAt ?: return null
+    // Nothing rests until it has been dealt with — or, for a span counted from the ringing,
+    // until it has rung: that is the anchor somebody picks because they are not going to
+    // answer, and read off lastDealtAt alone it never spoke until they did. Otherwise a
+    // reminder still waiting for an answer is overdue, not resting.
+    val dealt = lastDealtAt ?: lastFiredAt.takeIf { recurrence.countsFromRinging } ?: return null
     // A calendar names the day it comes back on; a span counts one out from what happened.
     val back = calendarMoment(recurrenceAnchor(dealt), zone, shape)
         ?: nextRecurrence(recurrence, recurrenceAnchor(dealt), zone, dayStart)
@@ -424,7 +473,9 @@ fun Reminder.recurrenceMoment(
     if (recurrence.isCalendar) return calendarMoment(searchFrom(now), zone, shape)
     // Not restUntil: when the recurrence is the thing that rings, the hour the day starts at is
     // exactly the hour it should ring at — there are no rules here with an hour to defer to.
-    val dealt = if (rules.isEmpty()) lastDealtAt ?: createdAt else lastDealtAt ?: return null
+    // With rules, only once it has been dealt with — or has rung, for a span that counts from
+    // the ringing (see restUntil).
+    val dealt = if (rules.isEmpty()) lastDealtAt ?: createdAt else (lastDealtAt ?: lastFiredAt.takeIf { recurrence.countsFromRinging }) ?: return null
     val at = nextRecurrence(recurrence, recurrenceAnchor(dealt), zone, dayStart)
     if (at == null) return null
     // Spent, the same way a rule's moment is (see [searchFrom]) — and here it matters more.
@@ -449,7 +500,7 @@ fun Reminder.recurrenceMoment(
  * The millisecond is inclusive because that is the grain everything is stored at: a moment
  * inside the millisecond that rang is the moment that rang.
  */
-private fun Reminder.searchFrom(now: Instant): Instant {
+internal fun Reminder.searchFrom(now: Instant): Instant {
     // Two ways a moment is spent: it rang, or it was dealt with before it could ([dealtThrough]).
     val spent = listOfNotNull(lastFiredAt, dealtThrough).maxOrNull()?.plusMillis(1) ?: return now
     return if (spent > now) spent else now

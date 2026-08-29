@@ -58,6 +58,22 @@ class TimeOfDayTest {
     }
 
     @Test
+    fun `a daily hour fenced to a stretch three months out rings on its first day`() {
+        // Written in April for the first fortnight of August. A walk of sixty-four daily
+        // candidates stopped in June and answered never; the walk goes straight to the stretch.
+        val april = local(2026, 4, 15, 12, 0)
+        val august = Condition.DateRange(LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 15))
+        val next = nextFireOfRule(TriggerRule(nine, listOf(august)), "r1", april, zone, defaultTime) as NextFire.Scheduled
+        assertEquals(local(2026, 8, 1, 9, 0), next.at)
+        // Two stretches at once: the later first day is where both can hold.
+        val late = Condition.DateRange(LocalDate.of(2026, 8, 10), LocalDate.of(2026, 9, 10))
+        val both = nextFireOfRule(TriggerRule(nine, listOf(august, late)), "r1", april, zone, defaultTime) as NextFire.Scheduled
+        assertEquals(local(2026, 8, 10, 9, 0), both.at)
+        // And one already behind is never, at once.
+        assertNull(nextFireOfRule(TriggerRule(nine, listOf(august)), "r1", local(2026, 8, 16, 12, 0), zone, defaultTime))
+    }
+
+    @Test
     fun `combined with a stretch of the calendar it is the moment inside it`() {
         // The sentence this tile was asked for: "a las 09:00, y a la vez entre el 1 y el 15".
         val hour = TriggerRule(nine)
@@ -125,7 +141,7 @@ class TimeOfDayTest {
         // The thing it deliberately is not: an AtTime rule is folded away into the calendar it
         // always was, and a tile writing one would resurrect every repeat that move retired.
         val kept = foldRepeats(listOf(TriggerRule(weekdayNine)), Recurrence.None, LocalDate.of(2026, 8, 27))
-        assertNull(kept.index, "a time of day is not a legacy repeat: ${kept.rules}")
+        assertTrue(kept.removed.isEmpty(), "a time of day is not a legacy repeat: ${kept.rules}")
         assertEquals(listOf(TriggerRule(weekdayNine)), kept.rules)
         val folded = foldRepeats(listOf(TriggerRule(Trigger.AtTime(LocalTime.of(9, 0), WEEKDAYS))), Recurrence.None, LocalDate.of(2026, 8, 27))
         assertTrue(folded.recurrence is Recurrence.Calendar, "whereas AtTime still is")

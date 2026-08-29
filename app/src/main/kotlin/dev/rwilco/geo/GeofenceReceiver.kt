@@ -8,6 +8,8 @@ import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofenceStatusCodes
 import com.google.android.gms.location.GeofencingEvent
 import dev.rwilco.RwilcoApplication
+import dev.rwilco.alarm.RearmWorker
+import dev.rwilco.diag.Diag
 import dev.rwilco.model.Crossing
 import dev.rwilco.model.GeofenceIds
 import dev.rwilco.model.Transition
@@ -18,7 +20,15 @@ class GeofenceReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val event = GeofencingEvent.fromIntent(intent) ?: return
         if (event.hasError()) {
-            Log.w(TAG, "geofence event error: ${GeofenceStatusCodes.getStatusCodeString(event.errorCode)}")
+            // Play Services says so when it has DROPPED the app's fences — location switched
+            // off, the network provider gone — and until now that news went to the log and
+            // nowhere else: the places were blind until the six-hourly re-arm came round. The
+            // one code that means "they are gone" asks for them back at once; the ones that
+            // mean "asking too often" or "too many" would only loop.
+            val code = GeofenceStatusCodes.getStatusCodeString(event.errorCode)
+            Log.w(TAG, "geofence event error: $code")
+            Diag.note("geo", "geofence error $code")
+            if (event.errorCode == GeofenceStatusCodes.GEOFENCE_NOT_AVAILABLE) RearmWorker.runNow(context)
             return
         }
         val transition = when (event.geofenceTransition) {

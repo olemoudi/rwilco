@@ -92,6 +92,48 @@ class CalendarRecurrenceTest {
     }
 
     @Test
+    fun `a calendar beside a date that has been is not finished by the first hecho`() {
+        // "El viernes a las dos, y vuelve cada lunes." It rings on Friday; "hecho" a minute
+        // later. The status is decided from the row as the "hecho" leaves it — anchor stamped —
+        // because without the anchor the calendar has no rest to hand the rules, the date is
+        // spent, and the reminder was filed DONE on the first "hecho" it ever got.
+        val friday = local(2026, 8, 28, 14, 0)
+        val rang = reminder(
+            Recurrence.Calendar(mondays),
+            Trigger.AtDateTime(friday.atZone(zone).toLocalDateTime()),
+            lastFiredAt = friday,
+        )
+        val dealtAt = friday.plusSeconds(60)
+        val dealt = rang.copy(lastDealtAt = dealtAt, dealtThrough = rang.momentDealtWith(dealtAt, zone, defaultTime, dayStart) ?: rang.dealtThrough)
+        assertEquals(Status.ACTIVE, statusAfterDismissal(dealt, dealtAt, zone, defaultTime))
+        val next = nextFire(dealt, dealtAt, zone, defaultTime, dayStart) as NextFire.Scheduled
+        assertEquals(local(2026, 8, 31, 9, 0), next.at, "Monday, from the calendar")
+    }
+
+    @Test
+    fun `a calendar with nothing left finishes the rules with it`() {
+        // A daily window beside a series that ended yesterday. The series has no rest to hand
+        // the window, so left ACTIVE the window would speak again on its own, every day, with
+        // the calendar that was supposed to bound it gone.
+        val over = Recurrence.Calendar(mondays.copy(ends = RepeatEnd.On(LocalDate.of(2026, 8, 24))))
+        val evenings = reminder(over, Trigger.Interval(LocalTime.of(18, 0), LocalTime.of(20, 0)), lastFiredAt = local(2026, 8, 27, 18, 0))
+        val dealtAt = local(2026, 8, 27, 18, 5)
+        assertEquals(Status.DONE, statusAfterDismissal(evenings.copy(lastDealtAt = dealtAt), dealtAt, zone, defaultTime))
+    }
+
+    @Test
+    fun `a calendar fenced to a stretch months away waits for it`() {
+        // Every day at nine, and only in August — written in April. Sixty-four daily candidates
+        // reached June and the calendar was called never.
+        val daily = Trigger.Repeat(startsOn = LocalDate.of(2026, 4, 1), unit = RepeatUnit.DAY, time = LocalTime.of(9, 0))
+        val august = Condition.DateRange(LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 15))
+        val bins = reminder(Recurrence.Calendar(daily, listOf(august)), createdAt = local(2026, 4, 15, 12, 0))
+        val next = nextFire(bins, local(2026, 4, 15, 12, 0), zone, defaultTime, dayStart) as NextFire.Scheduled
+        assertEquals(local(2026, 8, 1, 9, 0), next.at)
+        assertNull(recurrenceWarning(bins.recurrence, local(2026, 4, 15, 12, 0), zone))
+    }
+
+    @Test
     fun `a fence the calendar cannot clear moves it to the next date that can`() {
         // Every day at nine, and only in the first three days of a week: Thursday's nine is out,
         // and the walk lands on the following Monday.

@@ -7,7 +7,7 @@ import dev.rwilco.ui.editor.Draft
 import java.time.LocalDate
 import java.time.LocalTime
 
-/** What the full-screen alert shows; built from a saved reminder (phase 2) or the editor's draft. */
+/** What the full-screen alert shows; built from a saved reminder that rang, or from the editor's draft. */
 data class AlertContent(
     val text: String,
     val tags: List<String>,

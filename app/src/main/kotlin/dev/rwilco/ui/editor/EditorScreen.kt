@@ -129,10 +129,13 @@ fun EditorScreen(
     val spacing = Tokens.spacing
     // One line per rule, the worst thing there is to say about it. Remembered rather than
     // recomputed: working out that a rule can never fire means walking its next sixty-four
-    // moments (nextFireOfRule), and that is not work for a recomposition.
+    // moments (nextFireOfRule), and that is not work for a recomposition. Asked with the id the
+    // draft will be saved under, because a random window's moments are drawn from it: the same
+    // question asked of another seed answers about another reminder. Not a remember() key —
+    // it is minted once, when the editor opens, and cannot change under it.
     val ruleWarnings = remember(state.draft.rules, state.draft.ruleMatch, state.defaultTime) {
         val worst = HashMap<Int, Int>()
-        for (warning in warnings(state.draft.rules, now, zone, state.defaultTime, state.draft.ruleMatch, state.dayShape).sortedBy(::severityOf)) {
+        for (warning in warnings(state.draft.rules, now, zone, state.defaultTime, state.draft.ruleMatch, state.dayShape, viewModel.draftId).sortedBy(::severityOf)) {
             val (index, message) = when (warning) {
                 // The strongest thing that can be said: under "todos" one dud rule is the
                 // whole reminder, so it is said on the rule that causes it.
@@ -154,7 +157,7 @@ fun EditorScreen(
     // above — and asked of the draft as it would be saved, which is what the net will see.
     val netCadence = remember(state.draft.rules, state.draft.ruleMatch, state.draft.recurrence, state.defaultTime, state.dayShape) {
         state.draft
-            .toReminder("draft", now, now, Status.ACTIVE, zone = zone, shape = state.dayShape)
+            .toReminder(viewModel.draftId, now, now, Status.ACTIVE, zone = zone, shape = state.dayShape)
             .ringCadence(now, zone, state.defaultTime, shape = state.dayShape)
     }
     // The same question for the calendar in "Vuelve", which has fences of its own and no rule

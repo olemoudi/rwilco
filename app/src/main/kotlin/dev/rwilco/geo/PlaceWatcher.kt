@@ -14,6 +14,7 @@ import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.android.gms.tasks.Task
 import dev.rwilco.alarm.ReminderFiring
 import dev.rwilco.data.ReminderRepository
+import dev.rwilco.diag.Diag
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.GeofenceIds
 import dev.rwilco.model.dayShape
@@ -498,10 +499,6 @@ class PlaceWatcher(
     )
 
     private fun scheduleAt(at: Instant, gapM: Double? = null) {
-        plannedAt = at
-        // A schedule with no plan behind it (a sync, a blind retry) knows of no line to be near,
-        // and a stir has nothing to judge itself against until the next real look.
-        plannedGapM = gapM
         val intent = pendingIntent()
         val exact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms.canScheduleExactAlarms()
         runCatching {
@@ -510,7 +507,20 @@ class PlaceWatcher(
             } else {
                 alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.toEpochMilli(), intent)
             }
-        }.onFailure { Log.w(TAG, "could not set the next look", it) }
+        }.onSuccess {
+            // Planned only once the alarm exists. Written first, a set that threw left a plan
+            // with nothing behind it, and recover() — the one thing that keeps the chain alive
+            // — stood down because a look was "coming".
+            plannedAt = at
+            // A schedule with no plan behind it (a sync, a blind retry) knows of no line to be
+            // near, and a stir has nothing to judge itself against until the next real look.
+            plannedGapM = gapM
+        }.onFailure {
+            plannedAt = null
+            plannedGapM = null
+            Log.w(TAG, "could not set the next look", it)
+            Diag.note("geo", "could not set the next look: ${it::class.simpleName}")
+        }
     }
 
     private fun cancel() {
@@ -533,13 +543,5 @@ class PlaceWatcher(
         const val UNKNOWN_ACCURACY_M = 500.0
         val SOON: Duration = Duration.ofSeconds(5)
         val NO_FIX_RETRY: Duration = Duration.ofMinutes(10)
-    }
-}
-
-/** A Play Services task as a suspension; failure is a null result, the caller logs it. */
-private suspend fun <T> Task<T>.await(): T? = suspendCancellableCoroutine { continuation ->
-    addOnCompleteListener { task ->
-        if (!continuation.isActive) return@addOnCompleteListener
-        if (task.isSuccessful) continuation.resume(task.result) else continuation.resume(null)
     }
 }

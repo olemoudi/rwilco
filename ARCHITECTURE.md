@@ -51,7 +51,11 @@ that is only "mientras esté en casa", written at home, rings at once. `onCrossi
 doorway back — "al llegar", "al salir" — and means exactly one thing: **a side nobody has seen
 yet does not count as the other side**, which is a single line in `stepPlaceWatch` and was
 already there. Four readings, two questions, and the same four words on every screen
-(`placeReading`).
+(`placeReading`). **A place being added opens on the doorway** (`LocationSheet`): "al llegar a
+casa" is the sentence somebody writes at the moment they reach for a place, and the state
+reading is the same switch, one tap away. That is the editor's opening answer and nothing else:
+`onCrossing` keeps its `false` on disk, where it is what every place written before the field
+existed decodes to.
 
 The on-disk shape did not move: `Presence.INSIDE` is `@SerialName("ENTER")` under the frozen key
 `transition`, and `onCrossing` is a new field with a default. **The default is the migration** —
@@ -127,7 +131,10 @@ minute of the stretch clears the fences the plain opening comes back for the wal
 which is what a fence naming *other days* ("sólo los lunes") has to do to a daily calendar. The
 random tile (`Trigger.Random`) is deliberately not fenced this way: its own `from`/`to` is its
 hour fence, a `days` fence works through the walk, and an hour fence narrower than its window is
-a duplicate the sheet already expresses — a known limitation.
+a duplicate the sheet already expresses — a known limitation. Its window may end before it
+starts, and then it crosses midnight like every other window in the model (`windowMinutes`):
+"de 22 a 2" is an evening, and its small-hours draws belong to the day the window opened on,
+which is the day its `days` are judged by.
 
 **A day written while it is under way starts from what is left of it** (`settleDays`, beside
 `startCountdowns` and applied at the same two saves). "Hoy, me da igual la hora" saved at five in
@@ -219,9 +226,15 @@ half hour. Null reads as "from now", which is what the editor shows while one is
 Reminders written before this hold their countdown as the `AtDateTime` it once produced, which
 is what it always was.
 
-`nextFireOfRule` walks a rule's candidate moments until its conditions hold, stopping after 64
-so a rule that can never be satisfied ("a las 09:00, y sólo si es entre las 18:00 y las 22:00")
-answers *never* instead of looping. `Simulation` (a test harness beside `Fixtures`) is a phone
+`nextFireOfRule` walks a rule's candidate moments until its conditions hold. A walk that keeps
+failing stops at a **horizon** (`SEARCH_HORIZON`, five years) so a rule that can never be
+satisfied ("a las 09:00, y sólo si es entre las 18:00 y las 22:00") answers *never* instead of
+looping; a candidate that holds is the answer wherever it lies. It used to stop after
+sixty-four *candidates*, which for a daily moment is nine weeks: "a las nueve, sólo del 1 al 15
+de agosto" written in April was called never — by the editor, the scheduler and the net alike.
+A stretch of the calendar (`Condition.DateRange`) still ahead is not walked up to a day at a
+time either: nothing before its first day can clear it, so the walk jumps to its eve
+(`skipTo`), and one already behind never holds again and is not walked at all (`overFor`). `Simulation` (a test harness beside `Fixtures`) is a phone
 in memory — the row, the alarm, the person answering, a phone switched off — driven exactly as
 `ReminderScheduler`/`ReminderFiring` drive the real one, so `FiringAuditTest` and
 `SnoozeJourneyTest` can wind a shape through a year of alarms and say of every ring when and
@@ -293,9 +306,10 @@ so old JSON reads as itself. `recurrenceAnchor` picks the instant and falls back
 when there is no firing to count from — a reminder swiped done on Home never rang, and "cada 6 h
 desde que suena" must still come back. A `Calendar` is never asked: its dates are its own, and it
 answers `null` to `nextRecurrence` (the span question) on purpose. `Reminder.calendarMoment`
-walks its dates instead, applying its fences the same way `nextFireOfRule` applies a rule's, and
-stopping after 64 candidates so a calendar that can never clear them answers *never* rather than
-looping — which is what `recurrenceWarning` says out loud in the editor.
+walks its dates instead, applying its fences the same way `nextFireOfRule` applies a rule's —
+the same horizon and the same jump to a stretch still ahead — so a calendar that can never
+clear them answers *never* rather than looping, which is what `recurrenceWarning` says out loud
+in the editor.
 
 The triggers say when it rings the FIRST time and the recurrence when it comes back, so
 `recurrenceMoment` takes over once it has been dealt with once — or straight away when there
@@ -307,7 +321,10 @@ would otherwise be handed the same past moment for ever — armed for ever, and 
 in the past arrives at once. Spent, it answers *nothing*, which Home reads as overdue. Under
 `RANG` the anchor moves with the firing instead, so an unanswered one comes back on its rhythm
 rather than waiting to be acknowledged — which is the whole difference between the two, and the
-thing to know before choosing it.
+thing to know before choosing it. **With rules on the reminder, the rest counts from the ring
+too** (`restUntil`, `recurrenceMoment`): "a las ocho, y luego cada 6 h desde que suena" rings at
+eight, is ignored, and comes back at two — read off `lastDealtAt` alone it never spoke until
+somebody answered, which is the one thing that anchor was chosen not to need.
 `RecurrencePreset`s (in the settings, four built in unnamed) put the usual **spans** on buttons;
 a calendar is not one of them, because a calendar carries a `startsOn` that is that reminder's
 own. Room v4 added the boolean this replaced; v5 turns it into a shape (`by_trigger` for whatever
@@ -341,10 +358,10 @@ strict is asking somebody to remember how they spelled it.
   time needed no Room version: `foldRepeats` (`LegacyRepeats.kt`, pure and idempotent) lifts a
   stored `Repeat`/`AtTime` **rule** into `Recurrence.Calendar` in `ReminderEntity.toDomain` —
   keeping the shape byte for byte and carrying the rule's conditions across as the calendar's
-  fences — and moves `armedRule`/`firedRules` with the rule it removes. The row itself is
-  rewritten the next time anything saves it. A *second* repeating rule on one reminder is
-  dropped: two calendars is a thing the app can no longer say, and a rule nothing can edit is
-  worse than one that is gone. `SettingsStore` folds the presets the same way on the way out of
+  fences — and moves `armedRule`/`firedRules` with the rules it removes, one place for every
+  one of them (`Folded.removed`). The row itself is rewritten the next time anything saves it.
+  A *second* repeating rule on one reminder is dropped: two calendars is a thing the app can no
+  longer say, and a rule nothing can edit is worse than one that is gone. `SettingsStore` folds the presets the same way on the way out of
   DataStore, because a preset written then holds a repeating rule too.
   `RwilcoDatabase.VERSION` + `MIGRATIONS` are guarded by `MigrationChainTest` (JVM) and
   `DatabaseMigrationTest` (device). Schemas are exported to `app/schemas`.
@@ -605,8 +622,16 @@ strict is asking somebody to remember how they spelled it.
   to say indoors) and shows an
   osmdroid map (`OsmMap.kt`: pin by long-press, by search result or from one `LocationManager`
   fix, a crosshair button to centre on where you are, radius circle, inverted tiles on the dark
-  scheme, tile cache in `cacheDir`). The alert preview is `AlertScreen`,
-  the same composable phase 2 will host in a full-screen-intent activity.
+  scheme, tile cache in `cacheDir`). **A new place asks the phone where it is as it opens** —
+  only when the permission is already given, because a sheet that arrives under a system dialog
+  is a worse first second than a map with a crosshair on it, and that quiet fix loses to any pin
+  chosen while it was in flight and says nothing when it fails. **And the map opens on a circle
+  that fits in it** (`zoomFittingCircle`): the zoom is worked out from the 260dp the map is tall
+  and the circle it has to hold — never tighter than a 300-metre one, because the radius starts
+  at 200 and the first thing anybody does is drag it. The four-bucket table it replaces was too
+  close in at every bucket: 800 metres of circle in 476 metres of view, with the thing the sheet
+  is *for* running off the top and the bottom. The alert preview is `AlertScreen`,
+  the same composable `AlertActivity` hosts under a full-screen intent.
 - **The draft reads itself back over the button that saves it** (`ReminderSentence`, and
   `sentenceParts` beside it — pure, so the shape of the sentence is JVM-tested and the wording is
   the composable's job). The form is five cards down a scrolling column: by the time somebody
@@ -645,7 +670,10 @@ strict is asking somebody to remember how they spelled it.
   scheduler itself writes back, or every re-arm would come round as a change and arm everything
   again. `lastDealtAt` is in it for the undo: taking a "hecho" back puts the whole row as it
   was, and on a reminder that stayed ACTIVE either side of it nothing else in the key moves.
-  Under ALL only the earliest pending moment is armed, so a phone off across two of them wakes
+  The settings have a key of their own (`settingsKey`): the default hour, the day's start, the
+  shape of the day and the safety net's numbers — the last because the net's word is an alarm
+  too, and a net re-tuned in Settings used to stay armed on the old numbers until something
+  else re-armed. Under ALL only the earliest pending moment is armed, so a phone off across two of them wakes
   owing both and only one is detectably missed; `owedUnderAll` (pure) lists the one-shot
   moments after the missed one that have since passed, and `rearmAndCatchUp` fires them in
   turn, so the set completes late rather than never.
@@ -659,6 +687,13 @@ strict is asking somebody to remember how they spelled it.
   kept apart from `lastFiredAt` on purpose: that one means "it rang", which is what tells a
   firing the phone slept through from one that was answered, and a moment that never rang has no
   business in it. A place answers null: nothing about arriving somewhere can be done in advance.
+  **What the reminder becomes is asked of the row as the "hecho" leaves it** — the anchor
+  stamped, the moment spent — and not of the row one write behind: without the anchor a
+  calendar beside a date already gone had no rest to hand its rule, the date was spent, and "el
+  26 a las 20:00, y vuelve cada mes" was filed DONE by the first "hecho" it ever got. The
+  mirror holds too (`statusAfterDismissal`): a calendar with no date left finishes the rules
+  with it, because a series that has ended has no rest to hand them and, left ACTIVE, a daily
+  window beside it spoke again on its own, every day, unfenced.
 - `ReminderFiring` is the single place that decides what a firing, a "Hecho" and a snooze do, so
   the alarm, the notification buttons, the alert screen **and Home's swipe** cannot drift apart.
   Every answer it gives is written down before the notification comes down, and its settings read
@@ -730,7 +765,13 @@ strict is asking somebody to remember how they spelled it.
   counts from the "hecho") and its rhythm is six hours all the same. It keeps **its own alarm**,
   on its own `PendingIntent` (`nudgeUri`), deliberately not touching `armedFor`: that column
   means "a firing is owed here", and a net's moment recorded in it would have the catch-up ring
-  the reminder rather than whisper about it. Inexact (`setAndAllowWhileIdle`), because a word a
+  the reminder rather than whisper about it. And that alarm answers to `nudgeAt` and to nothing
+  else: a reminder with nothing left to ring loses its *ring* alarm (`cancelRing`) and keeps the
+  net's, because "nothing left to ring" is exactly the reminder the net has a word for — it rang
+  and was let go, or its moment came while a fence was shut. Until 0.41.0 the two were cancelled
+  together, three lines after the net was armed, so the word was never said about the reminders
+  it existed for and only survived on the ones with a next ring — where the next ring already
+  is the net. Inexact (`setAndAllowWhileIdle`), because a word a
   quarter of an hour late is the same word and the exact kind would announce the quietest thing
   the app does in the loudest surface the phone has. Everything is asked again at fire time
   (`ReminderFiring.nudge`): a day is long, and dealt with, paused, put off and rung again all
@@ -892,7 +933,12 @@ strict is asking somebody to remember how they spelled it.
   "Hecho" from the shade takes it down here too — and the ring's minute starts
   over for each arrival.
 - `GeofenceManager` registers the place rules with Play Services, wholesale, and re-registers on
-  boot and from `RearmWorker` (a reboot or a Play Services update drops them all). That is the
+  boot and from `RearmWorker` (a reboot or a Play Services update drops them all) — and on the
+  spot when Play Services says it has dropped them (`GeofenceReceiver`, an event with
+  `GEOFENCE_NOT_AVAILABLE`: location switched off, the network provider gone), which used to go
+  to the log and nowhere else, leaving the places blind until the six-hourly pass. The remove
+  before each registration is awaited: both go through the same `PendingIntent`, and a remove
+  completing after the add took every fence just registered with it. That is the
   net: free, always on, the system's own word on where the phone is. Settings says where that
   grant stands, whether or not a place reminder exists yet (`LocationPermissionCard`), because
   a refusal discovered later is a reminder that never arrives. A place is judged against its
@@ -941,6 +987,13 @@ strict is asking somebody to remember how they spelled it.
   (`PlacesConflict`), either of those under ALL taking the whole reminder down with it
   (`NeverCompletes`), and a bare place rule beside a bare clock rule under ALL, which is legal
   and usually meant as one conditioned rule (`BetterAsCondition`). None of it blocks saving.
+  **It is asked with the id the draft will be saved under**, which is minted when the editor
+  opens (`EditorViewModel.draftId`) rather than at the save: a random window's moments are drawn
+  from that id, so read off any other seed `NeverFires` is a coin flip about a different
+  reminder — said of one that rings, unsaid of one that never will. The same reason a countdown
+  is stamped and a day left to the day is narrowed where the reminder is written. (The
+  calendar's own `recurrenceWarning` needs no id: a calendar with no hour draws *inside* its
+  fences, so whether any minute clears them is the same answer on every seed.)
 - `PlaceWatcher` is the second opinion, and the one that decides its own cost. However many
   places are being waited on there is **one** alarm, **one** fix and **one** decision: no rule
   polls on its own account. The cadence is the most impatient circle's (`planNextCheck` takes
@@ -972,7 +1025,11 @@ strict is asking somebody to remember how they spelled it.
   And **a circle is left alone entirely while the
   hours the rest of its set needs cannot hold** (`List<Condition.TimeWindow>.openFrom`): "en la
   oficina, entre las cinco y las siete" cannot ring at three in the morning however far anybody
-  walks, so the watch spends nothing on it and sleeps instead of cancelling. It wakes
+  walks, so the watch spends nothing on it and sleeps instead of cancelling. The conjunction of
+  windows begins where one of them begins, but not necessarily at its *next* beginning: with
+  days on the windows ("los sábados de 10 a 12" and "viernes y sábados de 11 a 13") the first
+  opening both allow is Saturday at eleven, which is neither window's next opening — so each
+  window's next sixteen openings are probed, and a null is a set whose hours never meet at all. It wakes
   `PlaceWatchPolicy.WINDOW_LEAD` (two hours) *before* the window, not at it: a watch that began
   at the stroke of five would spend its first fix learning which side of the line the phone was
   on, so somebody who walked in at one minute past would have arrived nowhere — and a circle
@@ -1176,8 +1233,11 @@ strict is asking somebody to remember how they spelled it.
   reminder text, no tag or place names and no token: a bug lives in the moments, not in the
   words, and a circle rounded to two decimals still tells two of them apart. Behind the last row
   in Settings.
-- `SystemEventsReceiver` re-arms after a reboot, an install over ourselves, or the clock moving:
-  a wall-clock promise is not an instant until a zone says so.
+- `SystemEventsReceiver` re-arms after a reboot, an install over ourselves, the clock moving — a
+  wall-clock promise is not an instant until a zone says so — and the exact-alarm grant changing
+  hands (`ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED`): on Android 12 and 13 taking
+  "Alarms & reminders" away cancels every exact alarm the app had, and given back, nothing else
+  would set them again until the app was opened.
 - **Nothing on the way to the person is allowed to fail quietly.** Every way `fire` has of
   *not* ringing re-arms before it leaves (the alarm that brought it is spent; a drop that left
   nothing behind was a reminder silent until the six-hourly net); `rearmAll` writes the armed
@@ -1189,7 +1249,12 @@ strict is asking somebody to remember how they spelled it.
   replaces a corrupt file instead of throwing on every read; `AlarmReceiver` bounds itself
   under the broadcast budget; `MainActivity.onResume` catches up (guarded to once every few
   minutes), so a timer the phone slept through is said when the app is opened. A catch-up under
-  `LATE_IS_MISSED` (15 min) rings as the moment itself; past it, it is the quiet note.
+  `LATE_IS_MISSED` (15 min) rings as the moment itself; past it, it is the quiet note. From the
+  moment a ring is written down to the screen it shows on, `fire` runs `NonCancellable` — the
+  receiver's timeout cannot land between `markFired` and the showing and spend a moment nothing
+  showed — and whatever the showing throws, the re-arm at the end still runs. The place watch
+  counts a look as planned only once its alarm exists (`scheduleAt`): planned first, a set that
+  threw left `recover()` standing down for a look that was never coming.
   On the showing side: every alert channel carries **alarm** audio attributes, silent ones
   included, and the live notification is `CATEGORY_ALARM` — which is what lets Do Not Disturb
   tell it from a chat and the ringer switch keep its buzz; with notification-policy access
@@ -1198,8 +1263,8 @@ strict is asking somebody to remember how they spelled it.
   BANNER on a dark screen when it will not, so the notification makes the noise a screen that
   never came would have made; with the screen on the alert is started *before* the notification
   is posted, and the channel follows whether it took. Notifications switched off make the
-  post a no-op, so the screen is tried from anywhere. `AlertRinger` asks for exclusive audio
-  focus and buzzes with alarm usage. `AlertPermissionsCard` reads ten states, the five grants
+  post a no-op, so the screen is tried from anywhere. `AlertRinger` asks for transient audio
+  focus that may duck (see the sound bullet above) and buzzes with alarm usage. `AlertPermissionsCard` reads ten states, the five grants
   and the five ways the phone holds a reminder back — battery optimisation, a restricted
   background, total-silence DND, the alarm volume at zero, a muted channel.
 

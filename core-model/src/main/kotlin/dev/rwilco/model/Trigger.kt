@@ -233,8 +233,8 @@ sealed interface Trigger {
 
     /**
      * [timesPer] random moments per [period], each inside the [from]..[to] window, on [days]
-     * (empty = every day). The moments are drawn deterministically (see RandomDraw) so the app
-     * and the phase-2 scheduler agree without storing them.
+     * (empty = every day). The moments are drawn deterministically (see RandomDraw) so the
+     * screen and the scheduler agree without storing them.
      */
     @Serializable
     @SerialName("random")

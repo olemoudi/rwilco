@@ -199,8 +199,9 @@ These are standing rules for this repository. Follow them without being re-asked
   calendar, or a span from the ring or the "hecho") + **actions** when it fires (full screen,
   notification, sound, vibration). See `ARCHITECTURE.md` for the model and the
   next-fire semantics; keep that file current when they change.
-- Phase 1 (this repo today) is the UI, local persistence and distribution. Actually firing
-  reminders (AlarmManager, full-screen intents, geofencing, sounds) is phase 2.
+- The whole of it ships: the UI, local persistence, distribution, and the firing itself
+  (AlarmManager, full-screen intents, geofencing, the place watch, sounds). The place triggers
+  are the part only a real phone in a real street can prove; everything else has a test.
 
 ### Language
 - **All code and comments are in English.** No Spanish (or any non-English) in identifiers,

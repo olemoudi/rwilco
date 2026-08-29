@@ -28,54 +28,56 @@ import java.time.ZoneId
 data class Folded(
     val rules: List<TriggerRule>,
     val recurrence: Recurrence,
-    /** Which rule was folded away, so whatever indexed the list can be moved with it. */
-    val index: Int?,
+    /**
+     * Which rules were folded away — the first is the calendar, the rest are dropped — so
+     * whatever indexed the list can be moved with it. Empty when nothing was.
+     */
+    val removed: List<Int>,
 )
 
 fun foldRepeats(rules: List<TriggerRule>, recurrence: Recurrence, writtenOn: LocalDate): Folded {
     // Already answered by a calendar: a store where both exist is hand-edited, and guessing
     // which of the two somebody meant is exactly the thing this is trying to stop.
-    if (recurrence is Recurrence.Calendar) return Folded(rules, recurrence, null)
-    val index = rules.indexOfFirst { it.trigger.isLegacyRepeat }
-    if (index < 0) return Folded(rules, recurrence, null)
+    if (recurrence is Recurrence.Calendar) return Folded(rules, recurrence, emptyList())
+    val removed = rules.indices.filter { rules[it].trigger.isLegacyRepeat }
+    val index = removed.firstOrNull() ?: return Folded(rules, recurrence, emptyList())
     val rule = rules[index]
-    val repeat = rule.trigger.asCalendarShape(writtenOn) ?: return Folded(rules, recurrence, null)
+    val repeat = rule.trigger.asCalendarShape(writtenOn) ?: return Folded(rules, recurrence, emptyList())
     return Folded(
-        rules = rules.filterNot { it.trigger.isLegacyRepeat },
+        rules = rules.filterIndexed { at, _ -> at !in removed },
         recurrence = Recurrence.Calendar(repeat, rule.conditions),
-        index = index,
+        removed = removed,
     )
 }
 
 /** See [foldRepeats]. The zone only ever gives a legacy weekly the day it was written on. */
 fun Reminder.foldRepeats(zone: ZoneId): Reminder {
     val folded = foldRepeats(rules, recurrence, createdAt.dateIn(zone))
-    val index = folded.index ?: return this
+    if (folded.removed.isEmpty()) return this
     return copy(
         rules = folded.rules,
         recurrence = folded.recurrence,
-        // The indices moved with the rules. An alarm armed for the repeat itself belongs to no
-        // rule any more (the recurrence's moment is the ring, and has no index), and one armed
-        // for a later rule is one place further left than it was.
-        armedRule = armedRule?.shiftedBy(index),
-        armedFor = if (armedRule == index) null else armedFor,
-        firedRules = firedRules.mapNotNull { it.shiftedBy(index) }.toSet(),
+        // The indices moved with the rules. An alarm armed for a repeat belongs to no rule any
+        // more (the recurrence's moment is the ring, and has no index), and one armed for a
+        // later rule is as many places further left as there were repeats before it — one
+        // place for every one removed, not one place for all of them, or a reminder with two
+        // legacy repeats came out pointing at rules it no longer had.
+        armedRule = armedRule?.shiftedBy(folded.removed),
+        armedFor = if (armedRule in folded.removed) null else armedFor,
+        firedRules = firedRules.mapNotNull { it.shiftedBy(folded.removed) }.toSet(),
     )
 }
 
 /** The same, for a shape kept under a name. A preset has no armed moment to move. */
 fun Preset.foldRepeats(zone: ZoneId): Preset {
     val folded = foldRepeats(rules, recurrence, createdAt.dateIn(zone))
-    if (folded.index == null) return this
+    if (folded.removed.isEmpty()) return this
     return copy(rules = folded.rules, recurrence = folded.recurrence)
 }
 
-/** Null for the rule that went, and one place left for everything that followed it. */
-private fun Int.shiftedBy(removed: Int): Int? = when {
-    this == removed -> null
-    this > removed -> this - 1
-    else -> this
-}
+/** Null for a rule that went, and one place left for every removed rule that came before it. */
+private fun Int.shiftedBy(removed: List<Int>): Int? =
+    if (this in removed) null else this - removed.count { it < this }
 
 private fun Instant.dateIn(zone: ZoneId): LocalDate = atZone(zone).toLocalDate()
 
