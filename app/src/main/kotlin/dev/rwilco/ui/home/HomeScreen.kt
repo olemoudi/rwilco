@@ -70,6 +70,8 @@ import dev.rwilco.ui.theme.tagColor
 import dev.rwilco.ui.format.rememberWords
 import dev.rwilco.ui.format.dayWord
 import dev.rwilco.ui.format.TimeText
+import dev.rwilco.ui.settings.rememberAlertReadiness
+import dev.rwilco.ui.settings.stripShows
 
 /** So a test can scroll the list itself; a lazy list does not compose what is off screen. */
 const val HOME_LIST_TAG = "homeList"
@@ -95,6 +97,10 @@ fun HomeScreen(
     val presets by viewModel.presets.collectAsStateWithLifecycle()
     val pinned by viewModel.pinnedPresets.collectAsStateWithLifecycle()
     val snoozeCustomMinutes by viewModel.snoozeCustomMinutes.collectAsStateWithLifecycle()
+    // Whether this phone can ring at all, re-read on every resume; Settings has the detail.
+    val readiness = rememberAlertReadiness()
+    val dismissedProblems by viewModel.dismissedAlertProblems.collectAsStateWithLifecycle()
+    LaunchedEffect(readiness) { viewModel.noteAlertReadiness(readiness) }
     var choosing by rememberSaveable { mutableStateOf(false) }
     var managingPins by rememberSaveable { mutableStateOf(false) }
     // The preset whose words are being asked for before it can be written.
@@ -293,6 +299,18 @@ fun HomeScreen(
                         onDoneList = onDoneList,
                         onSettings = onSettings,
                         onDiagnostics = onDiagnostics,
+                    )
+                }
+            }
+            // A fold in Settings may never hide a phone that will not ring, and neither may
+            // Home: the one screen somebody actually looks at says so, once, until waved off.
+            if (!search.open && stripShows(readiness, dismissedProblems)) {
+                item(key = "readiness") {
+                    ReadinessStrip(
+                        problems = readiness.problems,
+                        onFix = onSettings,
+                        onDismiss = { viewModel.dismissAlertStrip(readiness.problemNames()) },
+                        modifier = Modifier.padding(bottom = spacing.sm),
                     )
                 }
             }

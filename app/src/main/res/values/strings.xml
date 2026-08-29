@@ -51,6 +51,11 @@
     <string name="home_snooze_cancelled">Snooze cancelled</string>
     <string name="home_keep_preset">Keep as a preset</string>
     <string name="home_keep_preset_hint">Its shape under a name, for next time</string>
+    <string name="home_readiness_title">This phone may not ring</string>
+    <string name="home_readiness_fix">Fix</string>
+    <string name="home_readiness_dismiss">Not now</string>
+    <string name="shortcut_new_short">New</string>
+    <string name="shortcut_new_long">New reminder</string>
     <string name="home_pin_manage">Add a preset button</string>
     <string name="home_pin_title">Buttons on the main screen</string>
     <string name="home_pin_hint">One tap writes the reminder. If the preset has no words of its own, it asks for them and nothing else.</string>
@@ -911,6 +916,12 @@
     <string name="settings_snooze_custom">A snooze of your own</string>
     <string name="settings_snooze_custom_hint">One of the snooze buttons is a length you choose. Ten minutes and two hours are always there beside it.</string>
     <string name="settings_snooze_notification">The two on the notification</string>
+    <string name="settings_test_alert">Test an alert</string>
+    <string name="settings_test_alert_hint">Rings in ten seconds through the real path — lock the phone to see the full screen.</string>
+    <string name="settings_test_alert_text">Test alert</string>
+    <string name="settings_test_alert_started">It rings in 10 s</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_hint">English or Spanish, for this app alone</string>
     <string name="settings_snooze_notification_hint">A notification has room for three buttons and "Done" is one, so it carries two snoozes. The full-screen alert offers all of them.</string>
     <plurals name="alert_waiting">
         <item quantity="one">%1$d more waiting</item>
@@ -928,6 +939,8 @@
     <string name="perm_volume_fix">Turn up</string>
     <string name="perm_dnd_missing">Do Not Disturb is on total silence right now. Reminders only get through it if Rwilco is allowed to.</string>
     <string name="perm_dnd_fix">Allow</string>
+    <string name="perm_dnd_optin">Ring even on total silence</string>
+    <string name="perm_dnd_optin_hint">Alarms already get through every other Do Not Disturb mode; total silence needs Rwilco to be allowed through, and that can only be granted in advance.</string>
     <string name="perm_restricted_missing">Background use is restricted for Rwilco, so nothing re-arms reminders while it is closed.</string>
     <string name="perm_restricted_fix">Allow</string>
     <string name="perm_battery_missing">Battery optimisation can stop Rwilco in the background. The alarms still ring; the net that re-arms them may not run.</string>

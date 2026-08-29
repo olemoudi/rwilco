@@ -34,7 +34,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        requestedDestination.value = intent?.getStringExtra(EXTRA_DESTINATION)
+        requestedDestination.value = intent?.let(::destinationOf)
         val app = application as RwilcoApplication
         setContent {
             val settings by app.settings.collectAsStateWithLifecycle()
@@ -65,8 +65,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        requestedDestination.value = intent.getStringExtra(EXTRA_DESTINATION)
+        requestedDestination.value = destinationOf(intent)
     }
+
+    /** A notification's extra, the launcher shortcut, or a shared line of text (see [Destinations]). */
+    private fun destinationOf(intent: Intent): String? =
+        Destinations.of(intent.action, intent.type, intent.getStringExtra(EXTRA_DESTINATION), intent.getStringExtra(Intent.EXTRA_TEXT))
 
     override fun onResume() {
         super.onResume()

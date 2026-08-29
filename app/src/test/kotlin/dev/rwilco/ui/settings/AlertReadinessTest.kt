@@ -49,4 +49,15 @@ class AlertReadinessTest {
     fun `the count is of what is missing, not of what is granted`() {
         assertEquals(2, AlertReadiness(notifications = false, battery = false).problems)
     }
+
+    @Test
+    fun `the strip on Home shows for a problem nobody has waved off, and again for a new one`() {
+        val muted = AlertReadiness(channels = false)
+        assertEquals(setOf("channels"), muted.problemNames())
+        assertTrue(stripShows(muted, dismissed = emptySet()))
+        assertFalse(stripShows(muted, dismissed = setOf("channels")))
+        val worse = AlertReadiness(channels = false, exactAlarms = false)
+        assertTrue(stripShows(worse, dismissed = setOf("channels")))
+        assertFalse(stripShows(AlertReadiness(), dismissed = emptySet()))
+    }
 }

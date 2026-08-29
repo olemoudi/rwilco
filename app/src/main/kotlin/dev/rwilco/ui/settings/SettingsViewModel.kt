@@ -41,11 +41,12 @@ import java.time.LocalTime
 import dev.rwilco.model.Snooze
 import dev.rwilco.model.SnoozeLimits
 import dev.rwilco.model.pickNotificationSnoozes
+import dev.rwilco.alarm.TestAlert
 
 class SettingsViewModel(
     private val store: SettingsStore,
     val settings: StateFlow<AppSettings?>,
-    repository: ReminderRepository,
+    private val repository: ReminderRepository,
     placeWatch: Flow<PlaceWatchState>,
     private val placeLog: PlaceLogStore,
     private val clock: Clock,
@@ -90,6 +91,14 @@ class SettingsViewModel(
     val watchTally: StateFlow<WatchTally> = placeLog.log
         .map { it.notes.tally(clock.instant() - TALLY_WINDOW) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WatchTally())
+
+    /**
+     * A real reminder ten seconds out, through the real path (see [TestAlert]). Saved and
+     * nothing else: the scheduling watcher arms it, the alarm fires it, and "hecho" deletes it.
+     */
+    fun testAlert(text: String) {
+        viewModelScope.launch { repository.save(TestAlert.reminder(clock.instant(), clock.zone, text)) }
+    }
 
     fun clearWatchLog() {
         viewModelScope.launch { placeLog.clear() }

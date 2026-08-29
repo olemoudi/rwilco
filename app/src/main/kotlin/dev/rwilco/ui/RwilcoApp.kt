@@ -53,6 +53,7 @@ import dev.rwilco.ui.settings.WatchLogScreen
 import dev.rwilco.ui.settings.WhatsNewSheet
 import dev.rwilco.ui.theme.Tokens
 import kotlinx.coroutines.launch
+import dev.rwilco.Destinations
 
 @Composable
 fun RwilcoApp(
@@ -73,7 +74,16 @@ fun RwilcoApp(
 
     LaunchedEffect(requestedDestination) {
         val reminderId = MainActivity.reminderIdIn(requestedDestination)
+        val sharedText = Destinations.sharedTextIn(requestedDestination)
         when {
+            requestedDestination == Destinations.NEW -> {
+                navController.navigate(Routes.Editor()) { launchSingleTop = true }
+                onDestinationConsumed()
+            }
+            sharedText != null -> {
+                navController.navigate(Routes.Editor(sharedText = sharedText)) { launchSingleTop = true }
+                onDestinationConsumed()
+            }
             requestedDestination == MainActivity.DESTINATION_SETTINGS -> {
                 navController.navigate(Routes.Settings) { launchSingleTop = true }
                 onDestinationConsumed()
@@ -138,8 +148,8 @@ fun RwilcoApp(
                     val undoLabel = stringResource(R.string.common_undo)
                     EditorScreen(
                         viewModel = viewModel(
-                            key = "editor/${route.reminderId}/${route.fromPresetId}/${route.cloneOfId}/${route.editPresetId}/${route.newPreset}",
-                            factory = EditorViewModel.Factory(app, route.reminderId, route.fromPresetId, route.cloneOfId, route.editPresetId, route.newPreset),
+                            key = "editor/${route.reminderId}/${route.fromPresetId}/${route.cloneOfId}/${route.editPresetId}/${route.newPreset}/${route.sharedText}",
+                            factory = EditorViewModel.Factory(app, route.reminderId, route.fromPresetId, route.cloneOfId, route.editPresetId, route.newPreset, route.sharedText),
                         ),
                         onClose = { navController.popBackStack() },
                         onDeleted = { reminder ->

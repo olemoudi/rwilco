@@ -49,6 +49,11 @@
     <string name="home_snooze_cancelled">Posponer quitado</string>
     <string name="home_keep_preset">Guardar como preset</string>
     <string name="home_keep_preset_hint">Su forma con nombre, para la próxima</string>
+    <string name="home_readiness_title">Puede que este móvil no suene</string>
+    <string name="home_readiness_fix">Arreglar</string>
+    <string name="home_readiness_dismiss">Ahora no</string>
+    <string name="shortcut_new_short">Nuevo</string>
+    <string name="shortcut_new_long">Nuevo recordatorio</string>
     <string name="home_pin_manage">Añadir un botón de preset</string>
     <string name="home_pin_title">Botones en la pantalla principal</string>
     <string name="home_pin_hint">Un toque escribe el recordatorio. Si el preset no trae texto propio, te lo pide y nada más.</string>
@@ -909,6 +914,12 @@
     <string name="settings_snooze_custom">Un posponer a tu medida</string>
     <string name="settings_snooze_custom_hint">Uno de los botones de posponer dura lo que tú digas. Diez minutos y dos horas siguen ahí al lado.</string>
     <string name="settings_snooze_notification">Los dos de la notificación</string>
+    <string name="settings_test_alert">Probar una alerta</string>
+    <string name="settings_test_alert_hint">Suena en diez segundos por el camino real: bloquea el móvil para ver la pantalla completa.</string>
+    <string name="settings_test_alert_text">Alerta de prueba</string>
+    <string name="settings_test_alert_started">Suena en 10 s</string>
+    <string name="settings_language">Idioma</string>
+    <string name="settings_language_hint">Inglés o español, sólo para esta app</string>
     <string name="settings_snooze_notification_hint">En una notificación caben tres botones y "Hecho" es uno, así que lleva dos posponer. La alerta a pantalla completa los ofrece todos.</string>
     <plurals name="alert_waiting">
         <item quantity="one">%1$d más esperando</item>
@@ -926,6 +937,8 @@
     <string name="perm_volume_fix">Subir</string>
     <string name="perm_dnd_missing">No molestar está en silencio total ahora mismo. Los avisos solo lo atraviesan si Rwilco tiene permiso.</string>
     <string name="perm_dnd_fix">Permitir</string>
+    <string name="perm_dnd_optin">Sonar incluso en silencio total</string>
+    <string name="perm_dnd_optin_hint">Las alarmas ya pasan en los demás modos de No molestar; el silencio total necesita que Rwilco tenga permiso, y sólo se puede dar por adelantado.</string>
     <string name="perm_restricted_missing">El uso en segundo plano está restringido para Rwilco, así que nada rearma los avisos con la app cerrada.</string>
     <string name="perm_restricted_fix">Permitir</string>
     <string name="perm_battery_missing">La optimización de batería puede detener Rwilco en segundo plano. Las alarmas suenan igual; la red que las rearma puede no correr.</string>

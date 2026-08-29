@@ -144,6 +144,11 @@ data class AppSettings(
      * "hecho" is one). The alert screen offers every [Snooze] regardless.
      */
     val notificationSnoozes: List<Snooze> = listOf(Snooze.TEN_MINUTES, Snooze.TWO_HOURS),
+    /**
+     * The alert problems Home's strip has been told "not now" about, by name. Cleared whenever
+     * everything is granted, so a phone fixed and then broken again is told again.
+     */
+    val dismissedAlertProblems: Set<String> = emptySet(),
 )
 
 /** How the alert screen holds more than one reminder. See [AppSettings.alertStacking]. */

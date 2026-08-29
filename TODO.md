@@ -166,6 +166,8 @@ Two follow-ups to the report above, both asked for directly.
   the tour captures it (`home-recurrence.png`).
 
 ## Still to prove on the real phone (Pixel 8 Pro)
+- Settings → Alertas → "Probar una alerta" is the way to prove most of the below now: lock the
+  phone, wait ten seconds, and see what arrives.
 - The overlay rule end to end: an alert while another app is open (banner), on the home screen
   (full screen), and with either special permission missing (banner, and Settings says which).
   The emulator can be made to show it but not to be convincing about it.

@@ -327,6 +327,13 @@ class ReminderFiring(
         repeater.cancel(id)
         AlertNotifications.cancel(context, id)
         val reminder = repository.get(id) ?: return@withLock
+        // A rehearsal ("probar una alerta") is not a thing that got done: it goes, rather than
+        // landing in "Hechos" where the week is counted.
+        if (TestAlert.isTest(id)) {
+            repository.delete(id)
+            scheduler.rearmAll()
+            return@withLock
+        }
         val now = clock.instant()
         val settings = settings()
         // **A "hecho" deals with whatever is owed.** Usually that is the firing waiting for an

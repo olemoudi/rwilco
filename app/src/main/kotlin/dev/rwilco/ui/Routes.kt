@@ -22,6 +22,8 @@ object Routes {
         val editPresetId: String? = null,
         /** A blank form that starts as a preset: the way in from "add a preset button". */
         val newPreset: Boolean = false,
+        /** Words a new reminder starts with: a line shared from another app. */
+        val sharedText: String? = null,
     )
 
     @Serializable

@@ -44,6 +44,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import dev.rwilco.system.SystemZoneClock
 import java.time.Clock
+import dev.rwilco.notify.hasNotificationPolicyAccess
 
 /** Process-wide dependency container (manual DI — no frameworks). */
 class RwilcoApplication : Application() {
@@ -265,15 +266,21 @@ class RwilcoApplication : Application() {
                 geofences.sync()
                 placeWatcher.sync()
             }
+            // The channels that cross total silence carry the grant in their id, so the ones
+            // the grant allows exist the moment it is given rather than at the next ring.
+            if (now.policyAccess != before.policyAccess) {
+                val current = settings.value ?: AppSettings()
+                AlertNotifications.ensureChannels(this@RwilcoApplication, current.vibration, current.alertSound)
+            }
         }
     }
 
-    private data class Grants(val background: Boolean, val exact: Boolean) {
+    private data class Grants(val background: Boolean, val exact: Boolean, val policyAccess: Boolean = false) {
         companion object {
             fun read(context: android.content.Context): Grants {
                 val alarms = context.getSystemService(AlarmManager::class.java)
                 val exact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms?.canScheduleExactAlarms() == true
-                return Grants(background = context.hasBackgroundLocation(), exact = exact)
+                return Grants(background = context.hasBackgroundLocation(), exact = exact, policyAccess = context.hasNotificationPolicyAccess())
             }
         }
     }

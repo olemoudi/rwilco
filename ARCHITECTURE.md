@@ -406,7 +406,13 @@ strict is asking somebody to remember how they spelled it.
 ## UI
 
 - Single activity, `navigation-compose` type-safe routes (`Routes.kt`): Home, Editor(id?),
-  Done, Settings. Sheets, the place picker and the alert preview are ViewModel state.
+  Done, Settings. Sheets, the place picker and the alert preview are ViewModel state. Two more
+  doors in from outside (0.48.0), both worked out by `Destinations` (pure, tested) from the
+  intent's parts: holding the launcher icon offers "Nuevo" (`res/xml/shortcuts.xml`, action
+  `dev.rwilco.action.NEW`) straight into a blank form, and a line of text shared from another
+  app (`ACTION_SEND` `text/plain`) opens the form with that line as the words
+  (`Routes.Editor(sharedText)`). Settings → Aspecto has a language row on API 33+ that opens the
+  system's per-app page (`locales_config.xml` names the two).
 - **Settings is an index, not a scroll** (`SettingsScreen.kt`, `SettingsGroup.kt`). Thirty-odd
   controls in one column is past every published ceiling for a settings screen, so they fold
   into ten rows, each carrying its own current value — the sound's name, "08:00–23:30", "3
@@ -420,7 +426,23 @@ strict is asking somebody to remember how they spelled it.
   blocks) and `PlaceReadiness` are held outside their cards so a closed row can say "3 cosas
   por arreglar" in the error colour with the badge to match, and the groups in trouble open
   themselves once on arrival. It is the only automatic thing on the screen, and the reason is
-  that every one of those states fails silently. **"Vibración al tocar" is the same shape of
+  that every one of those states fails silently. **Nor may Home** (0.48.0): the same readiness,
+  re-read on every resume, puts a strip at the top of Home (`ReadinessStrip`, error colour,
+  never amber) with "Arreglar" into Settings and "Ahora no", which remembers *these* problems by
+  name (`AppSettings.dismissedAlertProblems`, `stripShows`, pure and tested) — a phone that
+  breaks in a new way is told again, and the set is cleared once everything is granted so fixed-
+  then-broken is news too. The Do Not Disturb row is two rows now: the red one only under total
+  silence (the one mode that blocks an alarm), and otherwise a plain offer to grant policy
+  access in advance — total silence is what people put on for the night, and the grant cannot
+  be given from inside it. The channels that carry the grant in their id are re-made the moment
+  it changes (`Grants.policyAccess` in `resyncIfGrantsChanged`).
+- **"Probar una alerta"** (`TestAlert`, 0.48.0) is a real row ten seconds out with every action
+  on: saved and nothing else, so the scheduling watcher arms it, `AlarmReceiver` fires it and
+  `AlertPresenter` shows it — the whole path the ten rows above are about, lock screen included.
+  A synthetic reminder handed to the presenter would prove nothing (`AlertActivity` re-reads the
+  row and drops one it cannot find). Its id is marked, and `ReminderFiring.dismiss` deletes it
+  instead of finishing it: a rehearsal is not a thing that got done, and "Hechos" counts the
+  week. `ReadinessAndRehearsalTest` (device) watches the notification arrive and go. **"Vibración al tocar" is the same shape of
   problem in one row**: Android gates every app's touch feedback behind its own switch and there
   is no asking it nicely, so with that off ours can only ever turn the tick *off* — somebody
   turns it on, nothing happens, and the app looks broken. It gets the same red row and the same

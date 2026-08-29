@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The launcher shortcut's glyph: a plus, the same stroke the status-bar lamp uses. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF1C1B1F"
+        android:pathData="M0,0h24v24h-24z" />
+    <path
+        android:strokeColor="#FFF2B84B"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M12,6.5L12,17.5M6.5,12L17.5,12" />
+</vector>

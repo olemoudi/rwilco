@@ -30,6 +30,10 @@ fun Context.isBackgroundRestricted(): Boolean =
  * to it (see [AlertNotifications]). Total silence is the one mode only policy access gets past —
  * and it is the mode people put on for the night, which is when a morning timer matters.
  */
+/** Whether the app may cross total silence at all — the grant behind [canGetThroughDnd]'s worst case. */
+fun Context.hasNotificationPolicyAccess(): Boolean =
+    getSystemService(NotificationManager::class.java)?.isNotificationPolicyAccessGranted == true
+
 fun Context.canGetThroughDnd(): Boolean {
     val manager = getSystemService(NotificationManager::class.java) ?: return true
     return manager.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_NONE || manager.isNotificationPolicyAccessGranted

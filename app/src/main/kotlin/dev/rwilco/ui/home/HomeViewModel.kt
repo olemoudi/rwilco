@@ -44,6 +44,7 @@ import java.time.Clock
 import dev.rwilco.model.Snooze
 import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
 import java.time.Instant
+import dev.rwilco.ui.settings.AlertReadiness
 
 /** What Home reports back that is not state: things to say in a snackbar. */
 sealed interface HomeEvent {
@@ -91,6 +92,23 @@ class HomeViewModel(
         .filterNotNull()
         .map { presetsByPopularity(it.presets) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** The alert problems somebody has waved off from Home's strip; see [stripShows]. */
+    val dismissedAlertProblems: StateFlow<Set<String>> = settings
+        .filterNotNull()
+        .map { it.dismissedAlertProblems }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
+    /** "Ahora no" on the strip: these problems, as they are, until the phone is fixed. */
+    fun dismissAlertStrip(problems: Set<String>) {
+        viewModelScope.launch { store.update { it.copy(dismissedAlertProblems = it.dismissedAlertProblems + problems) } }
+    }
+
+    /** Everything granted: forget what was waved off, so a phone broken again is told again. */
+    fun noteAlertReadiness(readiness: AlertReadiness) {
+        if (!readiness.allGood || dismissedAlertProblems.value.isEmpty()) return
+        viewModelScope.launch { store.update { it.copy(dismissedAlertProblems = emptySet()) } }
+    }
 
     /** How long the custom snooze is, for the menu's offers to read the way the alert's do. */
     val snoozeCustomMinutes: StateFlow<Int> = settings

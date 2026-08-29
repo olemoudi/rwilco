@@ -46,6 +46,7 @@ import kotlinx.coroutines.launch
 import java.time.Clock
 import java.util.UUID
 import dev.rwilco.model.ValidationError
+import dev.rwilco.model.MAX_TEXT_LENGTH
 
 sealed interface EditorEvent {
     data object Saved : EditorEvent
@@ -67,6 +68,8 @@ class EditorViewModel(
     private val cloneOfId: String?,
     private val editPresetId: String?,
     private val newPreset: Boolean,
+    /** Words a blank reminder starts with — a line shared from another app. */
+    private val sharedText: String?,
     private val repository: ReminderRepository,
     private val store: SettingsStore,
     private val settings: Flow<AppSettings?>,
@@ -133,7 +136,8 @@ class EditorViewModel(
                 // not — the name labels the shape, and the words are what is still missing.
                 editedPreset != null -> Draft(text = editedPreset.name, tags = editedPreset.tags, rules = editedPreset.rules, ruleMatch = editedPreset.ruleMatch, actions = editedPreset.actions, recurrence = editedPreset.recurrence)
                 source != null -> Draft(text = source.text, tags = source.tags, rules = source.rules, ruleMatch = source.ruleMatch, actions = source.actions, recurrence = source.recurrence)
-                else -> Draft(actions = current.defaultActions)
+                // Shared from another app: the words are the one thing already answered.
+                else -> Draft(text = sharedText?.trim()?.take(MAX_TEXT_LENGTH).orEmpty(), actions = current.defaultActions)
             }
             // Everything ever written, done included: the point is to hand back what has been
             // said before rather than ask for it again.
@@ -402,6 +406,7 @@ class EditorViewModel(
         private val cloneOfId: String? = null,
         private val editPresetId: String? = null,
         private val newPreset: Boolean = false,
+        private val sharedText: String? = null,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
@@ -411,6 +416,7 @@ class EditorViewModel(
                 cloneOfId,
                 editPresetId,
                 newPreset,
+                sharedText,
                 app.repository,
                 app.settingsStore,
                 app.settings,

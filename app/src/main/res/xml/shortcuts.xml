@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hold the launcher icon: one shortcut, straight into a blank reminder. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="new"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_new"
+        android:shortcutShortLabel="@string/shortcut_new_short"
+        android:shortcutLongLabel="@string/shortcut_new_long">
+        <intent
+            android:action="dev.rwilco.action.NEW"
+            android:targetPackage="dev.rwilco"
+            android:targetClass="dev.rwilco.MainActivity" />
+    </shortcut>
+</shortcuts>

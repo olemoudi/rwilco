@@ -53,6 +53,7 @@ import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.theme.LocalDarkTheme
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.familyColor
+import dev.rwilco.notify.hasNotificationPolicyAccess
 
 /**
  * The ten states that decide whether a reminder actually arrives: the five grants that say how
@@ -85,7 +86,29 @@ data class AlertReadiness(
         ).count { !it }
 
     val allGood: Boolean get() = problems == 0
+
+    /** The names of the ones in the way, for remembering which of them somebody has already waved off. */
+    fun problemNames(): Set<String> = buildSet {
+        if (!notifications) add("notifications")
+        if (!channels) add("channels")
+        if (!fullScreen) add("fullScreen")
+        if (!exactAlarms) add("exactAlarms")
+        if (!alarmVolume) add("alarmVolume")
+        if (!throughDnd) add("throughDnd")
+        if (!unrestricted) add("unrestricted")
+        if (!battery) add("battery")
+        if (!overlay) add("overlay")
+        if (!usageAccess) add("usageAccess")
+    }
 }
+
+/**
+ * Whether Home shows its "this phone may not ring" strip: something is in the way that has not
+ * been waved off. "Not now" remembers the problems as they were, so a phone that breaks in a
+ * *new* way is told again, and the set is cleared once everything is granted — fixed and then
+ * broken again is news too.
+ */
+fun stripShows(readiness: AlertReadiness, dismissed: Set<String>): Boolean = (readiness.problemNames() - dismissed).isNotEmpty()
 
 /**
  * Read again every time the screen comes back: the person may have gone to system settings and
@@ -246,6 +269,18 @@ fun AlertPermissionsCard(readiness: AlertReadiness) {
                     text = stringResource(R.string.perm_usage_missing),
                     action = stringResource(R.string.perm_usage_fix),
                     onFix = { context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) },
+                )
+            }
+            // After the red rows, because it is not one: alarms get through every mode but
+            // total silence, so this is an offer rather than a fault. The grant can only be
+            // given in advance, and total silence is the mode people put on for the night —
+            // which is when a morning alarm matters. Under total silence the red row above
+            // already asks for the same grant, so this one steps aside.
+            if (readiness.throughDnd && !context.hasNotificationPolicyAccess()) {
+                SettingsLinkRow(
+                    title = stringResource(R.string.perm_dnd_optin),
+                    summary = stringResource(R.string.perm_dnd_optin_hint),
+                    onClick = { runCatching { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) } },
                 )
             }
         }

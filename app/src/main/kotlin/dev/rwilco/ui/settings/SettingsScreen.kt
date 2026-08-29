@@ -86,6 +86,11 @@ import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.format.rememberIs24h
 import dev.rwilco.ui.theme.Tokens
+import dev.rwilco.ui.components.LocalSnackbar
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Language
+import android.os.Build
+import android.net.Uri
 
 /**
  * The groups the screen folds into, in the order they are worth a look: whether a reminder
@@ -114,6 +119,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val spacing = Tokens.spacing
     val context = LocalContext.current
+    val snackbar = LocalSnackbar.current
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -207,6 +213,20 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
                     settings = current,
                     onCustomMinutes = viewModel::setSnoozeCustomMinutes,
                     onPick = viewModel::pickNotificationSnooze,
+                )
+                // The proof: a real alert in ten seconds, through everything the rows above
+                // are about. The tone and the buzz have previews of their own further down;
+                // this is the whole thing, lock screen included.
+                val testAlertText = stringResource(R.string.settings_test_alert_text)
+                val testAlertStarted = stringResource(R.string.settings_test_alert_started)
+                SettingsLinkRow(
+                    title = stringResource(R.string.settings_test_alert),
+                    summary = stringResource(R.string.settings_test_alert_hint),
+                    icon = Icons.Outlined.PlayArrow,
+                    onClick = {
+                        viewModel.testAlert(testAlertText)
+                        snackbar.show(testAlertStarted)
+                    },
                 )
             }
 
@@ -539,6 +559,22 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
                             }
                         }
                     }
+                }
+                // The per-app language is the system's to keep (locales_config.xml says which
+                // two), and the system's page is the one place to change it — it only exists
+                // from API 33, and below that the phone's own language is the whole answer.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    val locale = currentLocale()
+                    SettingsLinkRow(
+                        title = stringResource(R.string.settings_language),
+                        summary = locale.getDisplayLanguage(locale).replaceFirstChar { it.titlecase(locale) },
+                        icon = Icons.Outlined.Language,
+                        onClick = {
+                            runCatching {
+                                context.startActivity(Intent(Settings.ACTION_APP_LOCALE_SETTINGS, Uri.parse("package:${context.packageName}")))
+                            }
+                        },
+                    )
                 }
             }
 
