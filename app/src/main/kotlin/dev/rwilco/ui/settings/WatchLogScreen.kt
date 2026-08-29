@@ -38,6 +38,7 @@ import dev.rwilco.model.FixTier
 import dev.rwilco.model.NoteKind
 import dev.rwilco.model.WatchNote
 import dev.rwilco.model.WatchTally
+import dev.rwilco.model.asEvents
 import dev.rwilco.ui.components.EmptyState
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.format.TimeText
@@ -114,13 +115,19 @@ fun WatchLogScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
             item {
                 RwilcoCard(modifier = Modifier.padding(top = spacing.md, bottom = spacing.sm)) {
                     Column(Modifier.padding(spacing.lg)) {
-                        Text(
-                            text = pluralStringResource(R.plurals.watch_log_summary, polls, polls),
-                            style = MonoStyles.label,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Spacer(Modifier.height(spacing.md))
+                        // The day first, because it is the answer; the hour after it, because it
+                        // is the number the "looking too often" notice is about and somebody who
+                        // arrived here from that notification is looking for it. It said zero on
+                        // a quiet screen and read as the headline, which it is not.
                         TallyBlock(tally)
+                        if (polls > 0) {
+                            Spacer(Modifier.height(spacing.sm))
+                            Text(
+                                text = pluralStringResource(R.plurals.watch_log_summary, polls, polls),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                         Spacer(Modifier.height(spacing.md))
                         Text(
                             text = stringResource(R.string.watch_log_hint),
@@ -130,62 +137,80 @@ fun WatchLogScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                     }
                 }
             }
-            itemsIndexed(log.notes, key = { index, note -> "${note.at.toEpochMilli()}-${note.kind}-$index" }) { _, note -> NoteRow(note) }
+            itemsIndexed(log.notes.asEvents(), key = { index, note -> "${note.at.toEpochMilli()}-${note.kind}-$index" }) { _, note -> NoteRow(note) }
         }
     }
 }
 
 /**
- * The last day in three lines: how many looks, what they cost, and whose line set the pace.
+ * The last day, said the way somebody would say it.
  *
- * Only the kinds that actually happened are named. A watch that never went blind should not have
- * to say "0 without a fix" — a zero in a list of costs reads as a cost, and the point of this
- * block is that most of what it could say is usually nothing.
+ * It was a row of counts by radio tier — "39 wifi/red · 2 gratis · 15 ahorradas" — which is the
+ * account the watch keeps of itself and not an answer to the only question a person actually has
+ * here: *is this thing following me around, and is it costing me anything?* So it says the two
+ * numbers that answer it — how often it looked, and how often it decided not to — and then what
+ * set the pace, because the cadence is always the nearest place's ask and knowing which one that
+ * was is the difference between a watch that is busy and a watch that is busy for a reason.
+ *
+ * The tiers are gone from here. They are still in the diagnostics report, which is where a
+ * number that only means something to somebody reading this code belongs.
  */
 @Composable
 private fun TallyBlock(tally: WatchTally) {
     if (tally.looks == 0) return
     val spacing = Tokens.spacing
-    val costs = buildList {
-        if (tally.network > 0) add(stringResource(R.string.watch_tally_network, tally.network))
-        if (tally.gps > 0) add(stringResource(R.string.watch_tally_gps, tally.gps))
-        if (tally.coarse > 0) add(stringResource(R.string.watch_tally_coarse, tally.coarse))
-        if (tally.cached > 0) add(stringResource(R.string.watch_tally_cached, tally.cached))
-        if (tally.rested > 0) add(stringResource(R.string.watch_tally_rested, tally.rested))
-        if (tally.blind > 0) add(stringResource(R.string.watch_tally_blind, tally.blind))
-    }
+    val looked = tally.network + tally.gps + tally.coarse + tally.blind
+    val saved = tally.cached + tally.rested
     Text(
         text = stringResource(R.string.watch_tally_title),
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Spacer(Modifier.height(spacing.xs))
-    // The count on its own line and the breakdown under it, in the smaller face the rows below
-    // use for their own detail: six costs and a total on one line of the larger one wrapped to
-    // three and read as a wall, which is the opposite of what a roll-up is for.
     Text(
-        text = pluralStringResource(R.plurals.watch_tally_looks, tally.looks, tally.looks),
-        style = MonoStyles.label,
+        text = pluralStringResource(R.plurals.watch_tally_looked, looked, looked),
+        style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onSurface,
     )
-    if (costs.isNotEmpty()) {
+    if (saved > 0) {
         Text(
-            text = costs.joinToString(" · "),
-            style = MonoStyles.date,
+            text = pluralStringResource(R.plurals.watch_tally_saved, saved, saved),
+            style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
     val paced = tally.pacedBy
     if (paced != null) {
-        Spacer(Modifier.height(spacing.xs))
+        Spacer(Modifier.height(spacing.sm))
         Text(
-            text = stringResource(R.string.watch_tally_paced, paced, tally.pacedByLooks),
-            style = MonoStyles.date,
+            text = stringResource(R.string.watch_tally_paced_by, paced),
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+    Spacer(Modifier.height(spacing.sm))
+    Text(
+        text = stringResource(R.string.watch_tally_explain),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
+/**
+ * One line of the account, in words.
+ *
+ * This screen used to be the log itself: a kind ("lectura", "eco"), then every number the
+ * cadence was argued from — metres to the line, speed, what the sensor felt, the still streak,
+ * the battery, the radio tier. All of that is real and all of it is in the diagnostics report
+ * (`DiagReport`, "-- place watch --"), which is where somebody debugging this goes. What was
+ * left here was a diagnostic trace on a screen somebody opens to find out whether their phone is
+ * watching them, written in words only its author could read — and, when a crossing arrived for
+ * a circle the watch was no longer spending anything on, a raw geofence id: a UUID and a pin,
+ * on screen, instead of "Club".
+ *
+ * So each line now says what happened and, under it, the little that helps: where you were, and
+ * when it will look again. Nothing that needs the code open to be understood.
+ */
 @Composable
 private fun NoteRow(note: WatchNote) {
     val spacing = Tokens.spacing
@@ -203,15 +228,15 @@ private fun NoteRow(note: WatchNote) {
         Spacer(Modifier.width(spacing.md))
         Column(Modifier.weight(1f)) {
             Text(
-                text = kindLabel(note),
-                style = MaterialTheme.typography.labelLarge,
+                text = saidOf(note),
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            val factors = factorsOf(note, locale)
-            if (factors.isNotEmpty()) {
+            val under = detailOf(note, locale)
+            if (under.isNotEmpty()) {
                 Text(
-                    text = factors.joinToString(" · "),
-                    style = MonoStyles.date,
+                    text = under.joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -219,53 +244,54 @@ private fun NoteRow(note: WatchNote) {
     }
 }
 
-/** "read · GPS", "skipped", "no fix" — what the look came to, and what it cost. */
+/** What happened, in one sentence. */
 @Composable
-private fun kindLabel(note: WatchNote): String {
-    val kind = stringResource(
-        when (note.kind) {
-            NoteKind.FIX -> R.string.watch_kind_fix
-            NoteKind.CACHE -> R.string.watch_kind_cache
-            NoteKind.REST -> R.string.watch_kind_rest
-            NoteKind.BLIND -> R.string.watch_kind_blind
-            NoteKind.STIR -> R.string.watch_kind_stir
-            NoteKind.FENCE -> R.string.watch_kind_fence
-            NoteKind.ECHO -> R.string.watch_kind_echo
-        },
-    )
-    if (note.kind != NoteKind.FIX) return kind
-    val how = stringResource(
-        when (note.tier) {
-            FixTier.PRECISE -> R.string.watch_field_gps
-            FixTier.BALANCED -> R.string.watch_field_network
-            FixTier.COARSE -> R.string.watch_field_coarse
-        },
-    )
-    return "$kind · $how"
+private fun saidOf(note: WatchNote): String = when (note.kind) {
+    NoteKind.FIX -> stringResource(R.string.watch_said_look)
+    // The two cheap ones say the same thing and differ in why, which is the line underneath.
+    NoteKind.CACHE, NoteKind.REST -> stringResource(R.string.watch_said_free)
+    NoteKind.BLIND -> stringResource(R.string.watch_said_blind)
+    NoteKind.STIR -> stringResource(R.string.watch_said_stir)
+    // The system re-reading a line the phone never crossed. It is on this screen because it is
+    // the answer to "why did nothing ring when I got home?" — the app decided it already knew.
+    NoteKind.ECHO -> note.place?.let { stringResource(R.string.watch_said_echo_at, it) }
+        ?: stringResource(R.string.watch_said_echo)
+    // A crossing is the only line here about something *you* did, and it is said that way. The
+    // place may have no name left — its rule dealt with, its hours shut — and then it is said
+    // without one rather than with an id.
+    NoteKind.FENCE -> {
+        val arrived = note.inside == true
+        val place = note.place
+        when {
+            place != null && arrived -> stringResource(R.string.watch_said_arrived, place)
+            place != null -> stringResource(R.string.watch_said_left, place)
+            arrived -> stringResource(R.string.watch_said_arrived_somewhere)
+            else -> stringResource(R.string.watch_said_left_somewhere)
+        }
+    }
 }
 
-/**
- * Everything the cadence was decided from, in the order it is argued in: where the line is, how
- * fast the phone was going, what the sensor made of it, how long it had been still, what was
- * left in the battery — and then the wait all of that came to.
- */
+/** The little under it that helps: why it was free, where you were, when it looks again. */
 @Composable
-private fun factorsOf(note: WatchNote, locale: Locale): List<String> = buildList {
-    val gap = note.gapM?.let { spanOf(it, locale) }
-    val place = note.place
-    when {
-        // A crossing knows the place and no distance; a stir knows the distance and no place.
-        gap != null && place != null -> add(stringResource(R.string.watch_field_from, gap, place))
-        gap != null -> add(gap)
-        place != null -> add(place)
+private fun detailOf(note: WatchNote, locale: Locale): List<String> = buildList {
+    when (note.kind) {
+        NoteKind.CACHE -> add(stringResource(R.string.watch_why_known))
+        NoteKind.REST -> add(stringResource(R.string.watch_why_still))
+        NoteKind.BLIND -> add(stringResource(R.string.watch_why_no_signal))
+        else -> Unit
     }
-    if (note.inside == true) add(stringResource(R.string.watch_field_inside))
-    note.speedMps?.let { add(stringResource(R.string.watch_field_speed, String.format(locale, "%.1f", it))) }
-    note.movedM?.let { if (it >= 1.0) add(stringResource(R.string.watch_field_moved, spanOf(it, locale))) }
-    note.sensed?.let { add(stringResource(if (it) R.string.watch_field_sensed_yes else R.string.watch_field_sensed_no)) }
-    if (note.stillStreak > 0) add(stringResource(R.string.watch_field_still, note.stillStreak))
-    note.charge?.let { add(stringResource(R.string.watch_field_charge, it)) }
-    note.waitS?.let { if (it > 0) add(stringResource(R.string.watch_field_next, spanOf(Duration.ofSeconds(it)))) }
+    // Where, said as a person would: inside the place, or a distance from it. A crossing has
+    // already said both in its own line and adds nothing here.
+    if (note.kind != NoteKind.FENCE && note.kind != NoteKind.ECHO) {
+        val place = note.place
+        val gap = note.gapM
+        when {
+            place != null && note.inside == true -> add(stringResource(R.string.watch_where_inside, place))
+            place != null && gap != null -> add(stringResource(R.string.watch_where_near, spanOf(gap, locale), place))
+            place != null -> add(place)
+        }
+    }
+    note.waitS?.let { if (it > 0) add(stringResource(R.string.watch_next_look, spanOf(Duration.ofSeconds(it)))) }
 }
 
 /** "340 m", "4,2 km" — the same shape the Location card uses for the same numbers. */

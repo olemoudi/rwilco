@@ -22,6 +22,25 @@ class WatchLogTest {
     }
 
     @Test
+    fun `a place named by six rules is one thing that happened, not six`() {
+        // Six geofences on the same circle, one walk through the door. The log is right to hold
+        // six; the screen a person reads is not.
+        val crossings = List(6) {
+            WatchNote(at = now.minusSeconds(it.toLong()), kind = NoteKind.FENCE, place = "Club", inside = true, lat = 40.43, lng = -3.666, radiusM = 50)
+        }
+        assertEquals(1, crossings.asEvents().size)
+        // The other way through the same door, a minute later, is a second thing that happened.
+        val andOut = listOf(crossings.first().copy(at = now.plusSeconds(90), inside = false)) + crossings
+        assertEquals(2, andOut.asEvents().size)
+        // A different circle crossed in the same second is not the same event.
+        val elsewhere = listOf(crossings.first().copy(lat = 41.0, place = "Casa")) + crossings
+        assertEquals(2, elsewhere.asEvents().size)
+        // And a run of looks is never collapsed, however alike two of them are.
+        val looks = List(4) { WatchNote(at = now.minusSeconds(it.toLong()), kind = NoteKind.FIX, place = "Club") }
+        assertEquals(4, looks.asEvents().size)
+    }
+
+    @Test
     fun `the day's account names only what actually happened`() {
         val day = now - Duration.ofHours(24)
         val notes = listOf(

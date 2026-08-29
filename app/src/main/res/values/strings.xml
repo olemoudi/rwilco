@@ -610,7 +610,7 @@
     <!-- The place watch's own log, behind a button in Settings. -->
     <string name="watch_log_open">See the location log</string>
     <string name="watch_log_title">Location log</string>
-    <string name="watch_log_hint">Every look the place watch took, and the numbers it decided the next one from. Kept for the last 200 looks; nothing leaves the phone.</string>
+    <string name="watch_log_hint">The last 200; nothing leaves the phone. The numbers behind each one are in Settings → Diagnostics.</string>
     <string name="watch_log_empty">Nothing yet. The watch writes a line every time it looks.</string>
     <plurals name="watch_log_summary">
         <item quantity="one">%1$d location read in the last hour</item>
@@ -618,37 +618,33 @@
     </plurals>
     <string name="watch_log_clear">Clear the log</string>
     <!-- The roll-up above the lines: what the last day came to, and which circle set the pace. -->
-    <string name="watch_tally_title">Last 24 hours</string>
-    <plurals name="watch_tally_looks">
-        <item quantity="one">%1$d look</item>
-        <item quantity="other">%1$d looks</item>
+    <string name="watch_said_look">Looked where you were</string>
+    <string name="watch_said_free">No need to look</string>
+    <string name="watch_said_blind">Could not tell where you were</string>
+    <string name="watch_said_stir">You moved, so it looked sooner</string>
+    <string name="watch_said_arrived">You got to %1$s</string>
+    <string name="watch_said_left">You left %1$s</string>
+    <string name="watch_said_arrived_somewhere">You got to a place it watches</string>
+    <string name="watch_said_left_somewhere">You left a place it watches</string>
+    <string name="watch_said_echo_at">The phone repeated an alert about %1$s</string>
+    <string name="watch_said_echo">The phone repeated an alert it already knew about</string>
+    <string name="watch_why_known">it already knew where you were</string>
+    <string name="watch_why_still">nothing had moved</string>
+    <string name="watch_why_no_signal">no location to be had</string>
+    <string name="watch_where_inside">you were at %1$s</string>
+    <string name="watch_where_near">%1$s from %2$s</string>
+    <string name="watch_next_look">looks again in %1$s</string>
+    <plurals name="watch_tally_looked">
+        <item quantity="one">Looked where you were %1$d time</item>
+        <item quantity="other">Looked where you were %1$d times</item>
     </plurals>
-    <string name="watch_tally_network">%1$d wifi/cell</string>
-    <string name="watch_tally_gps">%1$d GPS</string>
-    <string name="watch_tally_coarse">%1$d cell only</string>
-    <string name="watch_tally_cached">%1$d free</string>
-    <string name="watch_tally_rested">%1$d skipped</string>
-    <string name="watch_tally_blind">%1$d without a fix</string>
-    <string name="watch_tally_paced">Paced by %1$s, %2$d of them</string>
-    <string name="watch_kind_fix">read</string>
-    <string name="watch_kind_cache">free</string>
-    <string name="watch_kind_rest">skipped</string>
-    <string name="watch_kind_blind">no fix</string>
-    <string name="watch_kind_stir">stirred</string>
-    <string name="watch_kind_fence">crossing</string>
-    <string name="watch_kind_echo">echo</string>
-    <string name="watch_field_gps">GPS</string>
-    <string name="watch_field_network">wifi/cell</string>
-    <string name="watch_field_coarse">cell only</string>
-    <string name="watch_field_next">next %1$s</string>
-    <string name="watch_field_from">%1$s from %2$s</string>
-    <string name="watch_field_inside">inside</string>
-    <string name="watch_field_speed">%1$s m/s</string>
-    <string name="watch_field_moved">moved %1$s</string>
-    <string name="watch_field_sensed_yes">sensor: moved</string>
-    <string name="watch_field_sensed_no">sensor: still</string>
-    <string name="watch_field_still">still \u00d7%1$d</string>
-    <string name="watch_field_charge">battery %1$d%%</string>
+    <plurals name="watch_tally_saved">
+        <item quantity="one">and saved itself %1$d more</item>
+        <item quantity="other">and saved itself %1$d more</item>
+    </plurals>
+    <string name="watch_tally_paced_by">%1$s was the nearest place, so it set the pace</string>
+    <string name="watch_tally_explain">Rwilco only looks when looking could change something: the further away your nearest place is, the less it looks. A saved look costs nothing at all.</string>
+    <string name="watch_tally_title">Last 24 hours</string>
     <!-- The optional notice about the watch looking too often. -->
     <string name="watch_notice_title">Warn me if it looks too often</string>
     <string name="watch_notice_body">A quiet notification when the place watch reads your location more than 18 times in an hour. Off by default. Its fastest cadence is one look every two minutes, so 18 means over half the hour spent walking up to a place \u2014 or something going wrong, which is what this is for.</string>

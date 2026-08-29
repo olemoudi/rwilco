@@ -1249,14 +1249,26 @@ strict is asking somebody to remember how they spelled it.
   from. `WatchLogScreen`, behind a button in the Location section of Settings, is that list; it
   is a diagnostic screen and reads as one, every figure in the mono face so the rows can be
   compared down the column.
-  **Above the lines is the answer they add up to** (`WatchTally`, `List<WatchNote>.tally`): the
-  last day in three lines — how many looks, what each kind of them cost, and which circle was
-  setting the pace and on how many of them. The lines are the argument and a page of argument is
-  not an answer to "is this costing me anything?"; that question wants a handful of numbers that
-  can be held against yesterday's, and the pacing circle is the one that says *why*, because the
-  cadence is always some single circle's ask. Only the kinds that actually happened are named: a
-  zero in a list of costs reads as a cost, and the point of the block is that most of what it
-  could say is usually nothing. A look that spent
+  **And it is written for the person who opens it, not for the person who wrote it.** It was the
+  log itself for a while: a kind ("lectura", "eco") and then every number the cadence was argued
+  from — metres to the line, speed, what the sensor felt, the still streak, the battery, the
+  radio tier — which is a diagnostic trace on the one screen somebody opens to find out whether
+  their phone is following them about. All of that is real and all of it is in the diagnostics
+  report already (`DiagReport`, "-- place watch --"), which is where a number that needs this
+  code open to be understood belongs. So each line here says what happened, in a sentence: *Miró
+  dónde estabas · a 210 m de Casa · vuelve a mirar en 2 min*, *No hizo falta mirar · ya sabía
+  dónde estabas*, *Saliste de Casa*. Above them, the day in the two numbers that answer the
+  question actually being asked (`WatchTally`) — how often it looked, how often it decided not
+  to — and which place was nearest, because the cadence is always the nearest circle's ask.
+  Two things the raw log was getting wrong on a real phone. A crossing that arrives for a circle
+  the watch is no longer spending anything on — one ticked off, one whose hours are shut — has no
+  live `WatchedPlace` to read a label from, and fell back to **the geofence id**: a UUID and a
+  pin, printed on screen instead of "Club". It now finds the name on the rule itself, and says
+  nothing rather than an id when even that is gone. And a place named by six rules is six
+  geofences, so walking through its door wrote six identical lines; `asEvents` folds a run of
+  crossings of the same circle, the same way, inside a minute into the one thing that happened.
+  Neither touches the store: the report still has all six, which is where the fact that there
+  were six is worth having. A look that spent
   radio counts as a *poll* and a rest does not, which is the whole point of the distinction: with
   `AppSettings.busyWatchNotice` on — off by default — more than `BUSY_POLLS` polls in an hour
   posts one quiet notification (`WatchNotices`), at most one an hour because the window it is

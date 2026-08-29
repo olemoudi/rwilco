@@ -27,6 +27,7 @@ import dev.rwilco.model.NoteKind
 import dev.rwilco.model.PlaceWatchPolicy
 import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.Transition
+import dev.rwilco.model.Trigger
 import dev.rwilco.model.WatchPlan
 import dev.rwilco.model.WatchNote
 import dev.rwilco.model.WatchedPlace
@@ -289,13 +290,20 @@ class PlaceWatcher(
         val state = store.read()
         val now = clock.instant()
         val live = runCatching { places().firstOrNull { it.id == placeId } }.getOrNull()
-        val label = live?.label ?: placeId
         // A circle that asks for the doorway and has already rung is owed the other side before
         // it rings again: the crossing has to be one the app has seen the far side of, and what
         // it cannot vouch for is not news. The first ring keeps the benefit of the doubt. A
         // circle read as a state needs none of this — what stops it ringing twice is the round
         // it has already rung in (`ReminderFiring`), not the geometry.
         val reminder = repository.get(GeofenceIds.reminderIdOf(placeId))
+        // What this circle is called. A crossing can arrive for a circle the watch is not
+        // spending anything on — one ticked off, one whose hours are shut, one whose reminder
+        // has just been dealt with — and `live` is null for all of them, so the label used to
+        // fall back to the id itself: a UUID and a pin, printed on a screen a person reads, in
+        // place of "Club". Null is the honest answer when even the rule is gone; a line with no
+        // name says less and lies about nothing.
+        val label = live?.label ?: reminder?.rules?.getOrNull(GeofenceIds.triggerIndexOf(placeId) ?: -1)
+            ?.let { (it.trigger as? Trigger.Location)?.label }
         val strict = live?.onCrossing == true && reminder?.lastFiredAt != null
         if (!crossingIsNews(state, placeId, transition, now, strict = strict)) {
             Log.i(TAG, "geofence says $transition at $placeId, but we were already there")

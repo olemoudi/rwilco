@@ -608,45 +608,41 @@
     <!-- The place watch's own log, behind a button in Settings. -->
     <string name="watch_log_open">Ver el registro de ubicación</string>
     <string name="watch_log_title">Registro de ubicación</string>
-    <string name="watch_log_hint">Cada mirada del vigilante de lugares y los números con los que decidió la siguiente. Se guardan las últimas 200; nada sale del teléfono.</string>
+    <string name="watch_log_hint">Las últimas 200; nada sale del teléfono. Los números con los que decidió cada mirada están en Ajustes → Diagnóstico.</string>
     <string name="watch_log_empty">Nada todavía. El vigilante escribe una línea cada vez que mira.</string>
     <plurals name="watch_log_summary">
-        <item quantity="one">%1$d lectura de ubicación en la última hora</item>
-        <item quantity="other">%1$d lecturas de ubicación en la última hora</item>
+        <item quantity="one">%1$d lectura en la última hora</item>
+        <item quantity="other">%1$d lecturas en la última hora</item>
     </plurals>
     <string name="watch_log_clear">Vaciar el registro</string>
     <!-- The roll-up above the lines: what the last day came to, and which circle set the pace. -->
-    <string name="watch_tally_title">Últimas 24 horas</string>
-    <plurals name="watch_tally_looks">
-        <item quantity="one">%1$d mirada</item>
-        <item quantity="other">%1$d miradas</item>
+    <string name="watch_said_look">Mir\u00f3 d\u00f3nde estabas</string>
+    <string name="watch_said_free">No hizo falta mirar</string>
+    <string name="watch_said_blind">No pudo saber d\u00f3nde estabas</string>
+    <string name="watch_said_stir">Te moviste, as\u00ed que mir\u00f3 antes</string>
+    <string name="watch_said_arrived">Llegaste a %1$s</string>
+    <string name="watch_said_left">Saliste de %1$s</string>
+    <string name="watch_said_arrived_somewhere">Llegaste a un lugar que vigila</string>
+    <string name="watch_said_left_somewhere">Saliste de un lugar que vigila</string>
+    <string name="watch_said_echo_at">El teléfono repitió un aviso de %1$s</string>
+    <string name="watch_said_echo">El teléfono repitió un aviso que ya conocía</string>
+    <string name="watch_why_known">ya sab\u00eda d\u00f3nde estabas</string>
+    <string name="watch_why_still">nada se hab\u00eda movido</string>
+    <string name="watch_why_no_signal">no hab\u00eda ubicaci\u00f3n que leer</string>
+    <string name="watch_where_inside">estabas en %1$s</string>
+    <string name="watch_where_near">%1$s de %2$s</string>
+    <string name="watch_next_look">vuelve a mirar en %1$s</string>
+    <plurals name="watch_tally_looked">
+        <item quantity="one">Mir\u00f3 d\u00f3nde estabas %1$d vez</item>
+        <item quantity="other">Mir\u00f3 d\u00f3nde estabas %1$d veces</item>
     </plurals>
-    <string name="watch_tally_network">%1$d wifi/red</string>
-    <string name="watch_tally_gps">%1$d GPS</string>
-    <string name="watch_tally_coarse">%1$d sólo antenas</string>
-    <string name="watch_tally_cached">%1$d gratis</string>
-    <string name="watch_tally_rested">%1$d ahorradas</string>
-    <string name="watch_tally_blind">%1$d sin señal</string>
-    <string name="watch_tally_paced">Al ritmo de %1$s, %2$d de ellas</string>
-    <string name="watch_kind_fix">lectura</string>
-    <string name="watch_kind_cache">gratis</string>
-    <string name="watch_kind_rest">ahorrada</string>
-    <string name="watch_kind_blind">sin señal</string>
-    <string name="watch_kind_stir">movimiento</string>
-    <string name="watch_kind_fence">cruce</string>
-    <string name="watch_kind_echo">eco</string>
-    <string name="watch_field_gps">GPS</string>
-    <string name="watch_field_network">wifi/red</string>
-    <string name="watch_field_coarse">sólo antenas</string>
-    <string name="watch_field_next">siguiente %1$s</string>
-    <string name="watch_field_from">%1$s de %2$s</string>
-    <string name="watch_field_inside">dentro</string>
-    <string name="watch_field_speed">%1$s m/s</string>
-    <string name="watch_field_moved">%1$s recorridos</string>
-    <string name="watch_field_sensed_yes">sensor: movido</string>
-    <string name="watch_field_sensed_no">sensor: quieto</string>
-    <string name="watch_field_still">quieto \u00d7%1$d</string>
-    <string name="watch_field_charge">batería %1$d%%</string>
+    <plurals name="watch_tally_saved">
+        <item quantity="one">y se ahorr\u00f3 %1$d m\u00e1s</item>
+        <item quantity="other">y se ahorr\u00f3 otras %1$d</item>
+    </plurals>
+    <string name="watch_tally_paced_by">%1$s era el lugar m\u00e1s cercano, as\u00ed que marcaba el ritmo</string>
+    <string name="watch_tally_explain">Rwilco s\u00f3lo mira cuando mirar puede cambiar algo: cuanto m\u00e1s lejos est\u00e1 tu lugar m\u00e1s cercano, menos mira. Una mirada ahorrada no cuesta nada.</string>
+    <string name="watch_tally_title">\u00daltimas 24 horas</string>
     <!-- The optional notice about the watch looking too often. -->
     <string name="watch_notice_title">Avisarme si mira demasiado</string>
     <string name="watch_notice_body">Una notificación discreta cuando el vigilante de lugares lea tu ubicación más de 18 veces en una hora. Desactivado por defecto. Su cadencia más rápida es una mirada cada dos minutos, así que 18 significa más de media hora acercándote andando a un lugar \u2014 o algo que va mal, que es para lo que está esto.</string>

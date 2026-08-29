@@ -116,6 +116,32 @@ const val WATCH_LOG_KEEP = 200
 /** The newest line, and the oldest ones dropped. Newest first, which is how it is read. */
 fun WatchLog.noting(note: WatchNote): WatchLog = copy(notes = (listOf(note) + notes).take(WATCH_LOG_KEEP))
 
+/**
+ * The same account with one line per *thing that happened*, for the screen a person reads.
+ *
+ * A place named by six rules is six geofences, and walking through it is six crossings inside
+ * the same second — six identical lines saying "Llegaste a Club", which is the log telling the
+ * truth and saying nothing. They are one event to whoever walked through the door, so runs of
+ * crossings of the same circle, the same way, within [within] collapse to the first of them.
+ *
+ * Only crossings, and only the same circle: two different places crossed at once is two things
+ * that happened, and a look is never the same event as the look before it. Nothing is dropped
+ * from the store — the diagnostics report still has all six, which is where the fact that there
+ * were six is worth having.
+ */
+fun List<WatchNote>.asEvents(within: Duration = Duration.ofMinutes(1)): List<WatchNote> =
+    filterIndexed { index, note ->
+        if (note.kind != NoteKind.FENCE && note.kind != NoteKind.ECHO) return@filterIndexed true
+        // Newest first, so the one kept is the first of the run and the rest fall in behind it.
+        val previous = getOrNull(index - 1) ?: return@filterIndexed true
+        !(previous.kind == note.kind &&
+            previous.inside == note.inside &&
+            previous.lat == note.lat &&
+            previous.lng == note.lng &&
+            previous.radiusM == note.radiusM &&
+            Duration.between(note.at, previous.at).abs() <= within)
+    }
+
 /** Looks that actually spent radio since [since]. */
 fun List<WatchNote>.pollsSince(since: Instant): Int = count { it.isPoll && it.at >= since }
 
