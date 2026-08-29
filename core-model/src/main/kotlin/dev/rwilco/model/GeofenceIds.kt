@@ -59,4 +59,21 @@ object GeofenceIds {
 
     private fun circle(lat: Double, lng: Double, radiusM: Int, way: Char): String =
         circleKey(lat, lng, radiusM) + "," + way
+
+    /**
+     * Whether a string is one of these ids rather than somebody's word for a place.
+     *
+     * A guard at the reading end, and it is here because this is the only file that knows what
+     * one of these looks like. Ids leaked into the place watch's log for a while — a crossing
+     * that arrives for a circle the watch is no longer spending anything on has no live place to
+     * take a label from, and the fallback was the id — and a log is written once and read for
+     * days afterwards, so fixing the writing does nothing for the two hundred lines already on
+     * somebody's phone. This is what stops one reaching a screen whatever wrote it.
+     *
+     * Matched on the tail rather than on the '#' and the '@', because a person may well call a
+     * place "Café #1 @ Sol". Nobody calls one "@40.50074,-3.66413,150,E".
+     */
+    fun looksLikeId(value: String): Boolean = ID_TAIL.containsMatchIn(value)
+
+    private val ID_TAIL = Regex("""@-?\d+\.\d{5},-?\d+\.\d{5},\d+,[EXIO]!?$""")
 }

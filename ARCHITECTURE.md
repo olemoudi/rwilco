@@ -1264,7 +1264,13 @@ strict is asking somebody to remember how they spelled it.
   the watch is no longer spending anything on — one ticked off, one whose hours are shut — has no
   live `WatchedPlace` to read a label from, and fell back to **the geofence id**: a UUID and a
   pin, printed on screen instead of "Club". It now finds the name on the rule itself, and says
-  nothing rather than an id when even that is gone. And a place named by six rules is six
+  nothing rather than an id when even that is gone.
+  Fixing the writing does nothing for a log already written, though, and this one keeps two
+  hundred lines — days of somebody's afternoons, ids and all. So there is a guard at the reading
+  end too: `GeofenceIds.looksLikeId` knows the shape of one (matched on the `@lat,lng,radius,side`
+  tail, because a person may well call a place "Café #1 @ Sol" and nobody calls one
+  "@40.50074,-3.66413,150,E"), and `WatchNote.placeName` is what everything that shows a name
+  reads. A line whose name is an id has no name, which is what it always meant. And a place named by six rules is six
   geofences, so walking through its door wrote six identical lines; `asEvents` folds a run of
   crossings of the same circle, the same way, inside a minute into the one thing that happened.
   Neither touches the store: the report still has all six, which is where the fact that there

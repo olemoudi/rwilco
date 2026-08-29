@@ -47,6 +47,11 @@ object DemoData {
             WatchNote(ago(96), NoteKind.STIR, waitS = 300, gapM = 24.0, sensed = true),
             WatchNote(ago(91), NoteKind.FIX, waitS = 300, gapM = 61.0, place = "Casa", inside = true, speedMps = 1.3, movedM = 118.0, sensed = true, charge = 68),
             WatchNote(ago(86), NoteKind.FIX, waitS = 120, gapM = 210.0, place = "Casa", speedMps = 1.4, movedM = 271.0, sensed = true, tier = FixTier.PRECISE, charge = 67),
+            // A crossing with no name to be had: the reminder behind it has been dealt with and
+            // deleted since, so there is no rule left to read a label off. (An old line whose
+            // `place` is a geofence id reads the same way — `WatchNote.placeName` refuses to
+            // print one as a name, and a log outlives the build that wrote it.)
+            WatchNote(ago(85), NoteKind.FENCE, place = "8f2c1b04-51ad-4e3c-9b77-2ad19c4e77f1#0@40.50074,-3.66413,150,E", inside = true),
             WatchNote(ago(84), NoteKind.FENCE, place = "Casa", inside = false),
             WatchNote(ago(84), NoteKind.ECHO, place = "Casa", inside = false),
             WatchNote(ago(60), NoteKind.FIX, waitS = 3600, gapM = 4_180.0, place = "Oficina", speedMps = 8.6, movedM = 12_400.0, sensed = true, charge = 64),

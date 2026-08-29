@@ -254,14 +254,14 @@ private fun saidOf(note: WatchNote): String = when (note.kind) {
     NoteKind.STIR -> stringResource(R.string.watch_said_stir)
     // The system re-reading a line the phone never crossed. It is on this screen because it is
     // the answer to "why did nothing ring when I got home?" — the app decided it already knew.
-    NoteKind.ECHO -> note.place?.let { stringResource(R.string.watch_said_echo_at, it) }
+    NoteKind.ECHO -> note.placeName?.let { stringResource(R.string.watch_said_echo_at, it) }
         ?: stringResource(R.string.watch_said_echo)
     // A crossing is the only line here about something *you* did, and it is said that way. The
     // place may have no name left — its rule dealt with, its hours shut — and then it is said
     // without one rather than with an id.
     NoteKind.FENCE -> {
         val arrived = note.inside == true
-        val place = note.place
+        val place = note.placeName
         when {
             place != null && arrived -> stringResource(R.string.watch_said_arrived, place)
             place != null -> stringResource(R.string.watch_said_left, place)
@@ -283,7 +283,7 @@ private fun detailOf(note: WatchNote, locale: Locale): List<String> = buildList 
     // Where, said as a person would: inside the place, or a distance from it. A crossing has
     // already said both in its own line and adds nothing here.
     if (note.kind != NoteKind.FENCE && note.kind != NoteKind.ECHO) {
-        val place = note.place
+        val place = note.placeName
         val gap = note.gapM
         when {
             place != null && note.inside == true -> add(stringResource(R.string.watch_where_inside, place))

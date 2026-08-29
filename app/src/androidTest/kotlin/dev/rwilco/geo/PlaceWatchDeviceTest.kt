@@ -620,6 +620,47 @@ class PlaceWatchDeviceTest {
         return "watch-$id"
     }
 
+    /**
+     * A crossing for a circle the watch is no longer paying for still names the place.
+     *
+     * `places()` answers with what is worth a fix *now*, and a crossing can arrive for a circle
+     * that is not: a rule dealt with, a set outside its hours, a place ticked off. There is no
+     * live `WatchedPlace` to take a label from then, and the fallback used to be the geofence id
+     * — so a UUID and a pin were written into the log and printed, on screen, where "Casa"
+     * belongs. It is read off the rule now, and the rule is still there.
+     */
+    @Test
+    fun aCrossingForACircleNotBeingWatchedIsStillNamed() = runBlocking {
+        moveTo(south = 5_000.0, at = t0)
+        val id = "watch-unwatched"
+        val now = app.clock.instant()
+        app.repository.save(
+            Reminder(
+                id = id,
+                text = "Recoger el paquete",
+                rules = listOf(TriggerRule(Trigger.Location(homeLat, homeLng, radius, Presence.INSIDE, "Casa", onCrossing = true))),
+                // Dealt with: `watchedCircles` returns nothing for it, so `places()` cannot name it.
+                status = Status.DONE,
+                createdAt = now,
+                updatedAt = now,
+            ),
+        )
+        Thread.sleep(1_000)
+        cancelWatchAlarm()
+        val key = key(id, Presence.INSIDE, true)
+        assertTrue("the circle should not be worth a fix", watcher.places().none { it.id == key })
+        watcher.accept(key, Transition.ENTER)
+        val note = app.placeLog.read().notes.first()
+        assertEquals("Casa", note.place)
+        assertFalse("a geofence id reached the log: ${note.place}", GeofenceIds.looksLikeId(note.place!!))
+
+        // And with the reminder gone there is no name to be had, which is said by saying nothing.
+        app.repository.delete(id)
+        Thread.sleep(500)
+        watcher.accept(key, Transition.EXIT)
+        assertNull(app.placeLog.read().notes.first().place)
+    }
+
     /** The phone is now [south] metres south of home (north when negative). */
     private fun moveTo(south: Double, at: Long, accuracy: Float = 10f) {
         val location = Location("mock").apply {

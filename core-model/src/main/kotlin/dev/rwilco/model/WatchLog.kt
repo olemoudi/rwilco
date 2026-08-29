@@ -97,6 +97,16 @@ data class WatchNote(
 ) {
     /** Whether this look actually spent radio. The whole point of the other kinds is that they did not. */
     val isPoll: Boolean get() = kind == NoteKind.FIX || kind == NoteKind.BLIND
+
+    /**
+     * The place's name, and nothing that is not one.
+     *
+     * [place] was a geofence id for a while whenever a crossing arrived for a circle the watch
+     * had stopped spending on, and a log outlives the build that wrote it: two hundred lines of
+     * somebody's afternoon still hold those ids. Everything that reads a name reads this one, so
+     * a line whose name is an id has no name — which is what it always meant.
+     */
+    val placeName: String? get() = place?.takeUnless { GeofenceIds.looksLikeId(it) }
 }
 
 /**
@@ -179,7 +189,7 @@ fun List<WatchNote>.tally(since: Instant): WatchTally {
     val looks = filter { it.at >= since && it.kind != NoteKind.FENCE && it.kind != NoteKind.ECHO && it.kind != NoteKind.STIR }
     if (looks.isEmpty()) return WatchTally()
     val fixes = looks.filter { it.kind == NoteKind.FIX }
-    val paced = looks.mapNotNull { it.place }.groupingBy { it }.eachCount().maxByOrNull { it.value }
+    val paced = looks.mapNotNull { it.placeName }.groupingBy { it }.eachCount().maxByOrNull { it.value }
     return WatchTally(
         looks = looks.size,
         network = fixes.count { it.tier == FixTier.BALANCED },

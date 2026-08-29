@@ -1,6 +1,8 @@
 package dev.rwilco.model
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
@@ -42,5 +44,20 @@ class GeofenceIdsTest {
         assertEquals("stray", GeofenceIds.reminderIdOf("stray"))
         assertNull(GeofenceIds.triggerIndexOf("stray"))
         assertNull(GeofenceIds.triggerIndexOf("$uuid#x"))
+    }
+
+    @Test
+    fun `an id is told from somebody's word for a place`() {
+        val place = Trigger.Location(40.50074, -3.66413, 150, Presence.INSIDE, "club", onCrossing = true)
+        assertTrue(GeofenceIds.looksLikeId(GeofenceIds.encode("7f1225fa-26c1-4100-9d5e-5185757a7996", 0, place)))
+        assertTrue(GeofenceIds.looksLikeId(GeofenceIds.encode("r", 1, place.copy(presence = Presence.OUTSIDE, onCrossing = false))))
+        assertTrue(GeofenceIds.looksLikeId(GeofenceIds.encodeCondition("r", 0, 1, Condition.AtPlace(40.5, -3.6, 150, "casa"))))
+        // The two that used to reach a screen, verbatim.
+        assertTrue(GeofenceIds.looksLikeId("7db1f491-3c2b-48e7-afc6-e800f8755d51#1@40.43000,-3.66601,50,E"))
+        assertTrue(GeofenceIds.looksLikeId("7f1225fa-26c1-4100-9d5e-5185757a7996#0@40.50074,-3.66413,150,E"))
+        // And what a person actually calls a place, including the awkward ones.
+        for (name in listOf("club", "Casa", "Café #1 @ Sol", "C/ Mayor, 3", "40.5, -3.6", "@casa", "Oficina#2")) {
+            assertFalse(GeofenceIds.looksLikeId(name), name)
+        }
     }
 }
