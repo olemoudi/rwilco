@@ -47,8 +47,13 @@ class Simulation(
     /** Under ALL: moments written down without ringing (FiringOutcome.Wait). */
     val noted = mutableListOf<Wake>()
 
-    /** rearmAll: what the row says the alarm is set for. */
+    /**
+     * rearmAll: what the row says the alarm is set for. A moment armed, come and not answered is
+     * held rather than moved on — the delivery in flight rings it — exactly as the scheduler does.
+     */
     fun arm(): Wake? {
+        val missed = missedFire(reminder, now)
+        if (missed != null) return Wake(missed, reminder.armedRule)
         val wake = nextWake(reminder, now, zone, defaultTime, dayStart, shape)
         reminder = reminder.copy(armedFor = wake?.at, armedRule = wake?.ruleIndex)
         return wake
@@ -57,7 +62,7 @@ class Simulation(
     /** The next alarm arrives: the clock jumps to it and the row transitions. Null when nothing is armed. */
     fun step(deal: (Ring) -> Deal = { Deal.Ignore }): Ring? {
         val wake = arm() ?: return null
-        now = wake.at
+        now = maxOf(now, wake.at)
         return fire(wake.ruleIndex, late = null, deal)
     }
 
@@ -67,7 +72,7 @@ class Simulation(
         repeat(maxSteps) {
             val wake = arm() ?: return rings.drop(before)
             if (wake.at > until) return rings.drop(before)
-            now = wake.at
+            now = maxOf(now, wake.at)
             fire(wake.ruleIndex, late = null, deal)
         }
         error("still ringing after $maxSteps alarms")
@@ -127,12 +132,18 @@ class Simulation(
         val fired = row.lastFiredAt
         if (late != null && fired != null && !fired.isBefore(late)) return null
         val judged = ruleIndex?.let { row.ruleInSet(it, shape) }
+        val armed = row.armedFor
+        val eventDriven = ruleIndex?.let { row.rules.getOrNull(it) }?.trigger is Trigger.Location
+        // ReminderFiring.spendArmed: a moment judged and dropped is written off before the
+        // re-arm, or the hold in arm() would keep it for ever.
+        fun spendArmed() {
+            if (!eventDriven && armed != null && armed <= now.plusSeconds(5)) reminder = reminder.copy(armedFor = null, armedRule = null)
+        }
         if (ruleIndex != null && judged == null) {
+            spendArmed()
             arm()
             return null
         }
-        val armed = row.armedFor
-        val eventDriven = ruleIndex?.let { row.rules.getOrNull(it) }?.trigger is Trigger.Location
         if (!eventDriven && late == null && (armed == null || armed > now.plusSeconds(5))) {
             arm()
             return null
@@ -146,6 +157,7 @@ class Simulation(
             is FiringOutcome.Wait -> {
                 reminder = row.copy(firedRules = outcome.fired)
                 noted += Wake(now, ruleIndex)
+                spendArmed()
                 arm()
                 return null
             }

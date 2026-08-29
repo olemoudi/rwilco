@@ -287,4 +287,21 @@ class EditorStateTest {
         val tomorrow = draft.copy(rules = listOf(TriggerRule(Trigger.DayRandom(today.plusDays(1)))))
         assertNull((tomorrow.toReminder("r2", at, at, Status.ACTIVE, zone = zone).rules.single().trigger as Trigger.DayRandom).window)
     }
+
+    @Test
+    fun `saving keeps the round under way and the net's word, when asked to`() {
+        // "Al llegar a casa, y a las 21:00" under ALL: the arrival ticked off, a typo fixed in
+        // the words. A save that rebuilt the row from the draft alone put the arrival back on
+        // the list, forgot which rule the last ring was, and let the net say its word twice.
+        val at = Instant.parse("2026-08-27T13:00:00Z")
+        val draft = Draft(text = "Llamar a Marta", ruleMatch = RuleMatch.ALL)
+        val saved = draft.toReminder("r1", at, at, Status.ACTIVE, firedRules = setOf(0), lastFiredRule = 1, nudgedAt = at, zone = zone)
+        assertEquals(setOf(0), saved.firedRules)
+        assertEquals(1, saved.lastFiredRule)
+        assertEquals(at, saved.nudgedAt)
+        val fresh = draft.toReminder("r1", at, at, Status.ACTIVE, zone = zone)
+        assertEquals(emptySet<Int>(), fresh.firedRules)
+        assertEquals(null, fresh.lastFiredRule)
+        assertEquals(null, fresh.nudgedAt)
+    }
 }

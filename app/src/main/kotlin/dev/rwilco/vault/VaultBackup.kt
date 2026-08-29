@@ -67,14 +67,17 @@ class VaultBackup(
         try {
             val bytes = VaultCrypto.seal(encodeSnapshot(snapshot), state.keyBytes(), state.saltBytes(), state.iterations)
             val sha = VaultCrypto.gitBlobSha(bytes)
+            // The previous run's attempt, kept for the conflict below: overwritten before it was
+            // ever compared, a PUT whose reply was lost read as somebody else's write next time.
+            val earlier = state.lastAttemptSha
             store.update { if (it.enabled) it.copy(lastAttemptSha = sha) else it }
-            return upload(transportFor(state), bytes, sha, state.remoteSha, print, settingsHash(settings))
+            return upload(transportFor(state), bytes, sha, state.remoteSha, print, settingsHash(settings), earlier)
         } finally {
             VaultCenter.report(working = false)
         }
     }
 
-    private suspend fun upload(transport: VaultTransport, bytes: ByteArray, sha: String, replacing: String?, print: String, settingsHash: String): VaultRunResult {
+    private suspend fun upload(transport: VaultTransport, bytes: ByteArray, sha: String, replacing: String?, print: String, settingsHash: String, earlier: String?): VaultRunResult {
         try {
             val stored = transport.write(bytes, replacing)
             if (stored != sha) {
@@ -89,7 +92,7 @@ class VaultBackup(
         } catch (e: VaultTransportException) {
             log("upload refused: ${e.failure} (${e.message})")
             return when (e.failure) {
-                TransportFailure.CONFLICT -> conflict(transport, sha, print, bytes.size.toLong(), settingsHash)
+                TransportFailure.CONFLICT -> conflict(transport, bytes, sha, earlier, print, settingsHash)
                 TransportFailure.AUTH -> attention(VaultOutcome.AUTH)
                 TransportFailure.REPO_MISSING -> attention(VaultOutcome.REPO_MISSING)
                 TransportFailure.TRANSIENT -> {
@@ -101,7 +104,7 @@ class VaultBackup(
     }
 
     /** The file moved under us. Ours after all, or somebody else's — the sha says which. */
-    private suspend fun conflict(transport: VaultTransport, sha: String, print: String, bytes: Long, settingsHash: String): VaultRunResult {
+    private suspend fun conflict(transport: VaultTransport, bytes: ByteArray, sha: String, earlier: String?, print: String, settingsHash: String): VaultRunResult {
         val remote = try {
             transport.read()
         } catch (e: VaultTransportException) {
@@ -109,11 +112,20 @@ class VaultBackup(
             record(VaultOutcome.TRANSIENT)
             return VaultRunResult.RETRY
         }
-        return when (judgeConflict(remote?.sha, sha)) {
+        return when (judgeConflict(remote?.sha, sha, earlier)) {
             ConflictVerdict.OURS_LANDED -> {
                 log("conflict was our own earlier upload landing; adopting it")
-                uploaded(print, remote!!.sha, bytes, settingsHash)
+                uploaded(print, remote!!.sha, bytes.size.toLong(), settingsHash)
                 VaultRunResult.DONE
+            }
+            ConflictVerdict.EARLIER_LANDED -> {
+                // The previous run's bytes are up there, not these: the file is ours to write
+                // over, once, with the sha it actually has. Written down first, so a reply lost
+                // on THIS attempt is still judged against the right remote next time.
+                log("conflict was the previous run's upload landing after its reply was lost; writing over it")
+                val remoteSha = remote!!.sha
+                store.update { if (it.enabled) it.copy(remoteSha = remoteSha) else it }
+                upload(transport, bytes, sha, remoteSha, print, settingsHash, earlier = null)
             }
             ConflictVerdict.OTHER_WRITER -> attention(VaultOutcome.CONFLICT)
         }

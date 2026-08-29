@@ -168,24 +168,19 @@ object RandomDraw {
     }
 
     /**
-     * The same, a week at a time: only draws that landed on the same day can collide, and the
-     * ceiling counts how many of those are still to come rather than the whole week's.
+     * The same, a week at a time: only draws that landed on the same day can collide, so each
+     * day is spread on its own, against its own minutes.
+     *
+     * A day the fences leave fewer minutes on than draws landed there keeps the ones that fit —
+     * the week's count is sized from the whole window, and a fence naming a two-minute stretch
+     * of one day (a day with no hour, settled at bedtime, folded in under "a la vez") can land
+     * every draw on it. Spread against a ceiling below zero, that was an index below zero.
      */
-    private fun spreadApartInDays(sortedPairs: List<Pair<LocalDate, Int>>, minutesOn: (LocalDate) -> Int): List<Pair<LocalDate, Int>> {
-        val result = ArrayList<Pair<LocalDate, Int>>(sortedPairs.size)
-        for ((index, pair) in sortedPairs.withIndex()) {
-            val stillToCome = sortedPairs.drop(index).count { it.first == pair.first }
-            val ceiling = minutesOn(pair.first) - stillToCome
-            val previous = result.lastOrNull()
-            val at = if (previous != null && pair.first == previous.first && pair.second <= previous.second) {
-                previous.second + 1
-            } else {
-                pair.second
-            }
-            result += pair.first to min(at, ceiling)
+    private fun spreadApartInDays(sortedPairs: List<Pair<LocalDate, Int>>, minutesOn: (LocalDate) -> Int): List<Pair<LocalDate, Int>> =
+        sortedPairs.groupBy({ it.first }, { it.second }).flatMap { (day, minutes) ->
+            val room = minutesOn(day)
+            spreadApart(minutes.take(room), room).map { day to it }
         }
-        return result
-    }
 
     internal fun seed(reminderId: String, periodIndex: Long, period: Period): Long =
         fnv1a64(reminderId) xor (periodIndex * GOLDEN_GAMMA.toLong()) xor period.ordinal.toLong()

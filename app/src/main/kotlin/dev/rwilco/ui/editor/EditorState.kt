@@ -77,6 +77,16 @@ fun Draft.toReminder(
     lastFiredAt: Instant? = null,
     /** A moment already dealt with ahead of time stays dealt with across an edit. */
     dealtThrough: Instant? = null,
+    /**
+     * The round under way, and which rule the last ring was. Both are indices into the rules,
+     * so the caller hands them over only while the rules are the ones they were counted
+     * against; a text fixed on "al llegar a casa, y a las 21:00" after the arrival must not
+     * put the arrival back on the list, and a place that rang must not read as a sibling's ring.
+     */
+    firedRules: Set<Int> = emptySet(),
+    lastFiredRule: Int? = null,
+    /** The net's one word about the firing at hand was said; an edit does not make it say it twice. */
+    nudgedAt: Instant? = null,
     /** Where and how the day is shaped, for a date left to the day: see [settleDays]. */
     zone: ZoneId,
     shape: DayShape = DayShape.DEFAULT,
@@ -98,6 +108,9 @@ fun Draft.toReminder(
     lastDealtAt = lastDealtAt,
     lastFiredAt = lastFiredAt,
     dealtThrough = dealtThrough,
+    firedRules = firedRules,
+    lastFiredRule = lastFiredRule,
+    nudgedAt = nudgedAt,
 )
 
 /** Which of the two lists the editor offers back is being mended. */

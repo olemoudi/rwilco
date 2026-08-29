@@ -56,7 +56,10 @@ class VaultRestore(private val app: RwilcoApplication) {
         val before = app.repository.allRows()
         if (before.isNotEmpty()) {
             val snapshot = buildSnapshot(before, app.settingsStore.rawJson().orEmpty(), app.clock.instant(), app.vaultStore.read().deviceId, BuildConfig.VERSION_CODE, RwilcoDatabase.VERSION)
-            writeUndoCopy(VaultCrypto.seal(encodeSnapshot(snapshot), opened.key, opened.salt, opened.iterations))
+            // Off the main thread, as sealNow is: this runs from the screen's own scope, and
+            // gzip plus AES over the whole table is a visible stall on a full phone.
+            val sealed = withContext(Dispatchers.Default) { VaultCrypto.seal(encodeSnapshot(snapshot), opened.key, opened.salt, opened.iterations) }
+            writeUndoCopy(sealed)
         }
         app.repository.replaceAll(opened.snapshot.reminders)
         app.settingsStore.replaceRaw(opened.snapshot.settingsJson)

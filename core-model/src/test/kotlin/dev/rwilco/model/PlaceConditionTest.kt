@@ -204,4 +204,25 @@ class PlaceConditionTest {
         assertFalse(fix.speaksFor(now.minus(PlaceWatchPolicy.SPEED_MEMORY).minusSeconds(1)))
         assertFalse(fix.speaksFor(now.minusSeconds(3 * 3600)), "a fix from noon does not answer for nine")
     }
+
+    @Test
+    fun `asked for a side, the watch answers with the entry judged for that side first`() {
+        // A house without wifi, cell fixes half a kilometre wide, a hundred-metre circle. The
+        // "al salir de casa" doorway leans its doubt towards OUTSIDE; the "y sólo si estoy en
+        // casa" condition leans the same fix towards INSIDE. Asked whether the phone is at home,
+        // the condition's own judgement is the one made with the right lean — and the doorway's,
+        // taken first because it came first in the map, kept "a las 9, sólo si estoy en casa"
+        // silent at home.
+        val leaving = Trigger.Location(40.4169, -3.7035, 100, Presence.OUTSIDE, "Casa", onCrossing = true)
+        val atHome = Condition.AtPlace(40.4169, -3.7035, 100, "Casa", inside = true)
+        val state = PlaceWatchState(
+            inside = mapOf(
+                GeofenceIds.encode("rA", 0, leaving) to false,
+                GeofenceIds.encodeCondition("rB", 0, 0, atHome) to true,
+            ),
+        )
+        assertEquals(true, state.sideOf(atHome.lat, atHome.lng, atHome.radiusM, inside = true))
+        assertEquals(false, state.sideOf(atHome.lat, atHome.lng, atHome.radiusM, inside = false), "no entry of that side: whichever there is")
+        assertEquals(false, state.sideOf(atHome.lat, atHome.lng, atHome.radiusM), "asked for no side in particular: as before")
+    }
 }

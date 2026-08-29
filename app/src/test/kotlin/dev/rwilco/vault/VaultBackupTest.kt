@@ -188,4 +188,34 @@ class VaultBackupTest {
         assertEquals(VaultRunResult.DONE, backup(store, transport).run())
         assertEquals(VaultState(), store.state)
     }
+
+    @Test
+    fun `a PUT whose reply was lost is recognised on the next run and written over`() = runBlocking {
+        // Run 1: GitHub commits the bytes, the reply never arrives. Every seal is fresh bytes,
+        // so run 2 cannot match the remote against its own attempt — only against run 1's.
+        val store = MemoryStore(enabled.copy(remoteSha = "0ld"))
+        val landed = mutableListOf<String>()
+        val transport = FakeTransport(onWrite = { bytes, _ ->
+            landed += VaultCrypto.gitBlobSha(bytes)
+            throw refusal(TransportFailure.TRANSIENT)
+        })
+        assertEquals(VaultRunResult.RETRY, backup(store, transport).run())
+        val firstAttempt = landed.single()
+        assertEquals(firstAttempt, store.state.lastAttemptSha)
+        assertEquals("0ld", store.state.remoteSha, "nothing adopted from a reply that never came")
+
+        // Run 2: the PUT against "0ld" is refused, the remote turns out to be run 1's bytes,
+        // and the copy goes up over them with the sha the file actually has.
+        transport.onWrite = { bytes, replacing ->
+            if (replacing == firstAttempt) VaultCrypto.gitBlobSha(bytes) else throw refusal(TransportFailure.CONFLICT)
+        }
+        transport.onRead = { RemoteVault(ByteArray(0), firstAttempt) }
+        assertEquals(VaultRunResult.DONE, backup(store, transport).run())
+
+        assertEquals(1, transport.reads)
+        assertEquals(listOf("0ld", "0ld", firstAttempt), transport.writes.map { it.second })
+        assertEquals(VaultOutcome.UPLOADED, store.state.lastOutcome)
+        assertEquals(VaultCrypto.gitBlobSha(transport.writes.last().first), store.state.remoteSha)
+        assertTrue(attention.isEmpty(), "not somebody else's write")
+    }
 }

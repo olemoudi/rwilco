@@ -18,6 +18,7 @@ import dev.rwilco.ui.alert.AlertActivity
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.FiringPlan
 import dev.rwilco.ui.format.summaryLine
+import dev.rwilco.MainActivity
 import dev.rwilco.model.NetWord
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.AlertSound
@@ -167,7 +168,11 @@ object AlertNotifications {
             late != null -> CHANNEL_MISSED
             else -> channelId(soundHere, vibrateHere, vibration, effective, bypass)
         }
-        val open = activityIntent(context, reminder.id, ruleIndex)
+        // The alert screen is for a ring somebody can still answer. The net's word about a
+        // moment that never rang has no ring behind it, and that screen drops a reminder that
+        // is not awaiting an answer the moment it opens: a tap that flashed and did nothing.
+        // That word opens the reminder itself, where the fence that shut it can be changed.
+        val open = if (nudge == NetWord.NEVER_RANG) editorIntent(context, reminder.id) else activityIntent(context, reminder.id, ruleIndex)
         // **Why it rang**, in the words the form used when it was written — not the reminder's
         // own text again, which the title already carries and which said nothing twice. The
         // sentence is the editor's own, minus the words themselves (`reminderSummary`).
@@ -334,6 +339,17 @@ object AlertNotifications {
         Intent(context, AlertActivity::class.java)
             .setData(ReminderScheduler.reminderUri(reminderId))
             .apply { if (ruleIndex != null) putExtra(ReminderScheduler.EXTRA_RULE, ruleIndex) }
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+
+    /** The reminder in its own form, by way of Home; told apart from the alert's by its target. */
+    private fun editorIntent(context: Context, reminderId: String): PendingIntent = PendingIntent.getActivity(
+        context,
+        0,
+        Intent(context, MainActivity::class.java)
+            .setData(ReminderScheduler.reminderUri(reminderId))
+            .putExtra(MainActivity.EXTRA_DESTINATION, MainActivity.reminderDestination(reminderId))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )

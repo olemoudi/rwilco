@@ -149,7 +149,9 @@ object AlertPresenter {
         // Notifications switched off make post() a silent no-op, and the moment is already
         // spent. The one thing left that can reach the person is the screen itself, which knows
         // how to show over the lock and turn the display on; it is worth a try from anywhere.
-        if (!fullScreen && wanted && !NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+        // From a screen that is off or locked too: the notification's full-screen intent is
+        // what would have launched it, and a notification that never posted launches nothing.
+        if (!screenTaken && wanted && !NotificationManagerCompat.from(context).areNotificationsEnabled()) {
             Log.w(TAG, "notifications are off; trying the screen for ${reminder.id}")
             startAlert(context, reminder, ruleIndex)
         }

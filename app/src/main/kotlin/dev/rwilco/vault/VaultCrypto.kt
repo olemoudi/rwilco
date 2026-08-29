@@ -104,8 +104,8 @@ object VaultCrypto {
     fun seal(plain: ByteArray, key: ByteArray, salt: ByteArray, iterations: Int, random: SecureRandom = SecureRandom()): ByteArray {
         val envelope = Envelope(
             kdf = Kdf(iterations = iterations, salt = b64(salt)),
-            check = encrypt(CHECK_PLAINTEXT.toByteArray(Charsets.UTF_8), key, random),
-            payload = encrypt(gzip(plain), key, random),
+            check = encrypt(CHECK_PLAINTEXT.toByteArray(Charsets.UTF_8), key, random, VAULT_FORMAT),
+            payload = encrypt(gzip(plain), key, random, VAULT_FORMAT),
         )
         return vaultJson.encodeToString(Envelope.serializer(), envelope).toByteArray(Charsets.UTF_8)
     }
@@ -116,9 +116,9 @@ object VaultCrypto {
     /** The snapshot bytes inside [envelope], or a [VaultException] that says exactly why not. */
     fun open(envelope: ByteArray, key: ByteArray): ByteArray {
         val parsed = parse(envelope)
-        val check = runCatching { decrypt(parsed.check, key) }.getOrNull()
+        val check = runCatching { decrypt(parsed.check, key, parsed.format) }.getOrNull()
         if (check == null || !check.contentEquals(CHECK_PLAINTEXT.toByteArray(Charsets.UTF_8))) throw VaultException.WrongPassphrase()
-        val packed = runCatching { decrypt(parsed.payload, key) }.getOrElse { throw VaultException.Corrupt("payload does not open") }
+        val packed = runCatching { decrypt(parsed.payload, key, parsed.format) }.getOrElse { throw VaultException.Corrupt("payload does not open") }
         return runCatching { gunzip(packed) }.getOrElse { throw VaultException.Corrupt("payload does not unpack") }
     }
 
@@ -141,21 +141,25 @@ object VaultCrypto {
         return parsed
     }
 
-    /** Bound to the container version, so a header cannot be swapped under a payload. */
-    private fun aad(): ByteArray = "rwilco.vault:$VAULT_FORMAT".toByteArray(Charsets.UTF_8)
+    /**
+     * Bound to the container version, so a header cannot be swapped under a payload. The version
+     * the FILE says, on the way in: [parse] accepts every format up to this build's, and a vault
+     * sealed as format 1 has to keep opening after the constant moves on.
+     */
+    private fun aad(format: Int): ByteArray = "rwilco.vault:$format".toByteArray(Charsets.UTF_8)
 
-    private fun encrypt(plain: ByteArray, key: ByteArray, random: SecureRandom): Box {
+    private fun encrypt(plain: ByteArray, key: ByteArray, random: SecureRandom, format: Int): Box {
         val nonce = ByteArray(NONCE_BYTES).also(random::nextBytes)
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(TAG_BITS, nonce))
-        cipher.updateAAD(aad())
+        cipher.updateAAD(aad(format))
         return Box(nonce = b64(nonce), data = b64(cipher.doFinal(plain)))
     }
 
-    private fun decrypt(box: Box, key: ByteArray): ByteArray {
+    private fun decrypt(box: Box, key: ByteArray, format: Int): ByteArray {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(TAG_BITS, unb64(box.nonce)))
-        cipher.updateAAD(aad())
+        cipher.updateAAD(aad(format))
         return cipher.doFinal(unb64(box.data))
     }
 

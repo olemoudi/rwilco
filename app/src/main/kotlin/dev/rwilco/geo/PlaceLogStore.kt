@@ -2,8 +2,10 @@ package dev.rwilco.geo
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dev.rwilco.model.ReminderCodec
@@ -15,7 +17,12 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.time.Instant
 
-private val Context.placeLogDataStore: DataStore<Preferences> by preferencesDataStore("rwilco_place_log")
+// A file that will not parse is replaced by an empty one: this is the one thing in the app
+// that is fine to lose, and it must not take the watch down with it.
+private val Context.placeLogDataStore: DataStore<Preferences> by preferencesDataStore(
+    "rwilco_place_log",
+    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+)
 
 /**
  * What the place watch did and why, written down: one line a look, two hundred lines kept.

@@ -15,6 +15,7 @@ import dev.rwilco.RwilcoApplication
 import dev.rwilco.diag.Diag
 import dev.rwilco.model.backupDelay
 import java.time.Clock
+import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 /**
@@ -40,8 +41,15 @@ class VaultWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
         Log.i(TAG, "backup run: $result${if (forced) " (forced)" else ""}")
         Diag.note("vault", "run=$result${if (forced) " (asked for)" else ""} outcome=${app.vaultStore.read().lastOutcome}")
         // A run that has to come back keeps its own place in the queue; anything else has
-        // finished this round, so the next one is booked from what it just wrote down.
-        if (!(result == VaultRunResult.RETRY && !forced)) schedule(applicationContext, app.vaultStore.read(), replace = true)
+        // finished this round, so the next one is booked from what it just wrote down. A run
+        // that failed for good — a refused token, a repository gone, somebody else's copy —
+        // has said so in a notification and is worth another look one cadence from NOW: booked
+        // from the last copy that worked, as the others are, it was due already, and it ran
+        // again at once, and again, one refused call after another until GitHub rate-limited it.
+        if (!(result == VaultRunResult.RETRY && !forced)) {
+            val state = app.vaultStore.read()
+            schedule(applicationContext, state, replace = true, from = if (result == VaultRunResult.FAILED) Clock.systemUTC().instant() else state.lastRunAt)
+        }
         return when (result) {
             // Unbounded on purpose: "it failed" is not "give up", it is "come back later". The
             // failures nobody can retry their way out of — a refused token, a repository that
@@ -63,12 +71,12 @@ class VaultWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
          * — after a run, or when the cadence changes; without it an existing one is left alone,
          * which is what a boot or a launch wants (a retry in flight must keep its place).
          */
-        fun schedule(context: Context, state: VaultState, replace: Boolean = false, clock: Clock = Clock.systemUTC()) {
+        fun schedule(context: Context, state: VaultState, replace: Boolean = false, clock: Clock = Clock.systemUTC(), from: Instant? = state.lastRunAt) {
             if (!state.enabled) {
                 cancel(context)
                 return
             }
-            val wait = backupDelay(state.lastRunAt, state.cadence, clock.instant())
+            val wait = backupDelay(from, state.cadence, clock.instant())
             val request = OneTimeWorkRequestBuilder<VaultWorker>()
                 .setConstraints(constraints(state.wifiOnly))
                 .setInitialDelay(wait.toMinutes().coerceAtLeast(0), TimeUnit.MINUTES)

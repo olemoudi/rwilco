@@ -113,13 +113,24 @@ fun Reminder.presenceAlreadyRang(place: Trigger.Location, ruleIndex: Int): Boole
  *
  * Deliberately "armed and not fired" rather than "in the past": a reminder that rang and was
  * ignored is already visible as overdue, and telling somebody about it twice is noise.
+ *
+ * And "not answered" rather than "not fired": a "hecho" or a "posponer" given after the moment
+ * — from the card, before the alarm got through — is an answer to it, and a moment somebody has
+ * answered is not owed a ring. That is what lets a re-arm pass *hold* a missed moment (leave
+ * the row as it is, for the delivery in flight or the next catch-up to ring) without holding
+ * one the person has already dealt with.
  */
 fun missedFire(reminder: Reminder, now: Instant): Instant? {
     if (reminder.status != Status.ACTIVE) return null
     val armed = reminder.armedFor ?: return null
     if (armed > now) return null
     val fired = reminder.lastFiredAt
-    return if (fired == null || fired < armed) armed else null
+    if (fired != null && fired >= armed) return null
+    val dealt = reminder.lastDealtAt
+    if (dealt != null && dealt >= armed) return null
+    val snoozed = reminder.snoozedUntil
+    if (snoozed != null && snoozed > now) return null
+    return armed
 }
 
 /** How the person is told about a firing, given what they asked for. */

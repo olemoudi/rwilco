@@ -75,6 +75,17 @@ class ReminderScheduler(
     /**
      * Re-arms everything and returns the reminders whose moment came and went unheard, for the
      * caller to deal with (only boot and the safety-net worker do; a plain edit does not).
+     *
+     * **A missed moment is held, not moved on.** [nextWake] only ever answers with a moment still
+     * ahead, so a pass that wrote it back over a moment that had come and not yet rung was
+     * spending that moment: two reminders due at nine, the first one's ring re-arming the
+     * second while its broadcast was on its way, and the second arriving to a row that said
+     * "nothing armed" and being dropped as a stray — a day skipped in silence, or a one-shot
+     * that never rang. Passes come from six doors and a delivery is in flight for seconds, so
+     * the race was ordinary. The row and its alarm are left exactly as they are: the delivery
+     * rings it, or the next catch-up does ([missedFire]). What spends a moment is the ring, a
+     * judgement that dropped it (`ReminderFiring.fire`), a "hecho", a "posponer" or an edit —
+     * never a pass that merely looked.
      */
     suspend fun rearmAll(): List<Reminder> = lock.withLock {
         // The defaults are a fine way to arm; an exception here was the one thing that could
@@ -95,12 +106,16 @@ class ReminderScheduler(
         val seen = HashSet<String>(open.size)
         for (reminder in open) {
             seen += reminder.id
-            if (missedFire(reminder, now) != null) missed += reminder
             // The safety net keeps an alarm of its own, and deliberately does not touch
             // [Reminder.armedFor]: that column means "a firing is owed at this moment", and a
             // net's moment recorded there would have the catch-up RING the reminder rather than
             // whisper about it (missedFire), and spend the moment while it was at it.
             armNudge(reminder, reminder.nudgeAt(now, zone, defaultTime, settings.safetyNet, dayStart, settings.dayShape))
+            if (missedFire(reminder, now) != null) {
+                // Owed and unanswered: held as it stands, alarm included (see the class doc).
+                missed += reminder
+                continue
+            }
             val wake = nextWake(reminder, now, zone, defaultTime, dayStart, settings.dayShape)
             if (wake == null) {
                 // The ring alone. A reminder with nothing left to ring is exactly the one the

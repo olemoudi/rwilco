@@ -346,6 +346,11 @@ class EditorViewModel(
                 lastDealtAt = before?.lastDealtAt,
                 lastFiredAt = before?.lastFiredAt,
                 dealtThrough = before?.dealtThrough,
+                // The round under way survives a typo; a change to the rules themselves is
+                // the one edit that starts it again (the indices would name other rules).
+                firedRules = if (before != null && before.rules == current.draft.rules) before.firedRules else emptySet(),
+                lastFiredRule = if (before != null && before.rules == current.draft.rules) before.lastFiredRule else null,
+                nudgedAt = before?.nudgedAt,
                 zone = clock.zone,
                 shape = current.dayShape,
             )

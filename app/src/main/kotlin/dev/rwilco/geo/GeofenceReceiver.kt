@@ -57,7 +57,8 @@ class GeofenceReceiver : BroadcastReceiver() {
             } catch (t: Throwable) {
                 Log.e(TAG, "firing a place reminder failed", t)
             } finally {
-                pending.finish()
+                // Past the broadcast's budget the system has finished the receiver itself.
+                runCatching { pending.finish() }
             }
         }
     }

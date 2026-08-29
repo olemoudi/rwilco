@@ -57,6 +57,7 @@ import dev.rwilco.R
 import dev.rwilco.model.Condition
 import dev.rwilco.model.LAST_ORDINAL
 import dev.rwilco.model.MAX_RECURRENCE_AMOUNT
+import dev.rwilco.model.withSpanOf
 import dev.rwilco.model.MIN_RECURRENCE_AMOUNT
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RecurrencePreset
@@ -328,7 +329,9 @@ internal fun RecurrenceSection(
             today = today,
             onConfirm = { built, name ->
                 editing = null
-                onCustom(built)
+                // The dialog says the span; the anchor and the hour already chosen on the card
+                // stay, the same way picking a preset keeps them (pickRecurrencePreset).
+                onCustom(recurrence.withSpanOf(built))
                 // A preset being edited is saved whatever its name says — the built-in ones
                 // have none, and an edit that changes nothing on the list is not an edit.
                 if (existing != null || name.isNotBlank()) onSavePreset(existing?.id, name.trim(), built)
@@ -560,7 +563,7 @@ private fun CustomRecurrenceDialog(
     var amount by rememberSaveable { mutableStateOf(initial.amount) }
     var unit by rememberSaveable { mutableStateOf(initial.unit.name) }
 
-    val built = Recurrence.After(amount, RecurrenceUnit.valueOf(unit), initial.from)
+    val built = Recurrence.After(amount, RecurrenceUnit.valueOf(unit), initial.from, initial.hour)
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(

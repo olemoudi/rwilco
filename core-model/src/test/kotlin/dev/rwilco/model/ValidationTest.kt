@@ -153,4 +153,12 @@ class ValidationTest {
             warnings(triggers.asRules(), now, zone, defaultTime),
         )
     }
+
+    @Test
+    fun `a span below one is nonsense, whatever wrote it`() {
+        assertEquals(TriggerProblem.EVERY_OUT_OF_RANGE, problemOf(Recurrence.After(0, RecurrenceUnit.HOURS)))
+        assertEquals(TriggerProblem.EVERY_OUT_OF_RANGE, problemOf(Recurrence.After(-2, RecurrenceUnit.DAYS)))
+        assertEquals(null, problemOf(Recurrence.After(1, RecurrenceUnit.HOURS)))
+        assertEquals(null, problemOf(Recurrence.None))
+    }
 }

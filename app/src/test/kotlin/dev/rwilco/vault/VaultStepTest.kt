@@ -59,4 +59,12 @@ class VaultStepTest {
         assertFalse(isRepoName("a b"))
         assertFalse(isRepoName("ñu"))
     }
+
+    @Test
+    fun `a conflict whose remote is the previous run's attempt is ours to write over`() {
+        assertEquals(ConflictVerdict.EARLIER_LANDED, judgeConflict(remoteSha = "old", lastAttemptSha = "new", earlierAttemptSha = "old"))
+        assertEquals(ConflictVerdict.OURS_LANDED, judgeConflict(remoteSha = "new", lastAttemptSha = "new", earlierAttemptSha = "old"))
+        assertEquals(ConflictVerdict.OTHER_WRITER, judgeConflict(remoteSha = "theirs", lastAttemptSha = "new", earlierAttemptSha = "old"))
+        assertEquals(ConflictVerdict.OTHER_WRITER, judgeConflict(remoteSha = null, lastAttemptSha = "new", earlierAttemptSha = "old"))
+    }
 }

@@ -41,7 +41,6 @@ import dev.rwilco.model.remembering
 import dev.rwilco.model.stepPlaceWatch
 import dev.rwilco.model.stepWithoutLooking
 import dev.rwilco.model.stirredWait
-import dev.rwilco.model.speaksFor
 import dev.rwilco.notify.WatchNotices
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -264,9 +263,13 @@ class PlaceWatcher(
      * and writing place reminders is exactly when somebody does that, over and over, which is
      * how an afternoon of editing reads as a watch that will not stop looking.
      *
-     * The fix in hand answers it, when there is one recent enough to speak for now
-     * ([Fix.speaksFor]): baselining is what that first look was *for*, and [insideAfter] with no
-     * history is the same arithmetic whether the fix is a second old or ten minutes.
+     * The fix in hand answers it, when there is one recent enough to have been taken for this
+     * look ([PlaceWatchPolicy.CACHE_MAX_AGE]): baselining is what that first look was *for*,
+     * and [insideAfter] with no history is the same arithmetic whether the fix is a second old
+     * or four minutes. Not the ninety minutes a fix goes on speaking for a *moment*
+     * ([Fix.speaksFor]): "al llegar a casa", written on the sofa at seven with the last fix
+     * taken at the office at six, was baselined *outside* — and the look five seconds later
+     * found the phone inside and rang for an arrival that happened before the reminder did.
      *
      * **Doorways only.** A place read as a state — "mientras esté en casa" — rings on its first
      * judgement if it finds itself true, and that ring is the point of it (ARCHITECTURE.md, "a
@@ -274,7 +277,7 @@ class PlaceWatcher(
      * still buys its own; what is saved here is the case that was silent anyway.
      */
     private fun baselined(watch: Watching, judged: Map<String, Boolean>, fix: Fix?, now: Instant): Map<String, Boolean> {
-        if (fix == null || !fix.speaksFor(now)) return emptyMap()
+        if (fix == null || Duration.between(fix.at, now).abs() > PlaceWatchPolicy.CACHE_MAX_AGE) return emptyMap()
         return (watch.asking + watch.listening)
             .filter { it.onCrossing && it.id !in judged }
             .associate { place -> place.id to insideAfter(null, place, fix) }

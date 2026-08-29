@@ -126,6 +126,9 @@ class RwilcoApplication : Application() {
                 geofences.sync()
                 placeWatcher.sync()
                 repository.sweepOldDone()
+                // A chosen tone that has stopped being playable goes back to the phone's own
+                // alarm here rather than at the ring; see settleSounds.
+                settleSounds()
             }.onFailure { Log.e(TAG, "the launch re-arm failed", it) }
         }
         appScope.launch {

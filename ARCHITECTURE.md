@@ -323,7 +323,12 @@ answers `null` to `nextRecurrence` (the span question) on purpose. `Reminder.cal
 walks its dates instead, applying its fences the same way `nextFireOfRule` applies a rule's —
 the same horizon and the same jump to a stretch still ahead — so a calendar that can never
 clear them answers *never* rather than looping, which is what `recurrenceWarning` says out loud
-in the editor.
+in the editor. Its *place* fences ("todos los lunes a las 9, y sólo si estoy en casa") are the
+ones nothing can ask in advance, and `ReminderFiring.fire` asks them at the calendar's moment
+the way it asks a rule's — a moment with no rule behind it and no snooze pending is the
+calendar's. The place watch does not yet spend a fix on a calendar's circle (`watchedCircles`
+lists rules only), so the answer is whatever fix the watch has that still speaks for the moment,
+and with none it holds — the house rule.
 
 The triggers say when it rings the FIRST time and the recurrence when it comes back, so
 `recurrenceMoment` takes over once it has been dealt with once — or straight away when there
@@ -833,7 +838,17 @@ strict is asking somebody to remember how they spelled it.
   watch keeps alive for days re-armed every wall-clock moment in the zone it started in, after a
   `TIMEZONE_CHANGED` that had already reached it.
   That, next to `lastFiredAt`, is what makes a firing the phone slept through detectable:
-  an armed moment in the past with no ring to match it. What a change has to touch before the
+  an armed moment in the past with no ring to match it (`missedFire` — and no answer either: a
+  "hecho" or a "posponer" given after the moment, from the card, is an answer to it). **A pass
+  holds a missed moment; it never moves it on.** `nextWake` only answers with a moment still
+  ahead, so a pass that wrote it back over one that had come and not yet rung was spending
+  that moment: two reminders due at nine, the first one's ring re-arming everything while the
+  second's broadcast was on its way, and the second arriving to a row saying "nothing armed" and
+  dropped as a stray — a day skipped in silence, or a one-shot that never rang. The row and its
+  alarm are left as they stand for the delivery in flight, or the next catch-up, to ring. What
+  spends a moment is the ring, a judgement in `fire` that dropped it (which writes `armedFor` off
+  itself, `spendArmed`, or it would be held and re-judged for ever), a "hecho", a "posponer" or an
+  edit. `Simulation.arm` holds the same way, and `HeldMomentTest` pins it. What a change has to touch before the
   whole list is worked out again is `schedulingKey` — the rules, the match, what is ticked off,
   the snooze, the recurrence and the moment it counts from — and deliberately not what the
   scheduler itself writes back, or every re-arm would come round as a change and arm everything
@@ -1512,7 +1527,8 @@ strict is asking somebody to remember how they spelled it.
   *before* `markFired`, so no moment is spent by an exception nothing showed for; the app scope
   has an exception handler and every collector survives a bad pass, because the collector on
   `repository.open` is the only thing that arms a reminder just saved; the settings DataStore
-  replaces a corrupt file instead of throwing on every read; `AlarmReceiver` bounds itself
+  replaces a corrupt file instead of throwing on every read (so do the place watch's, the
+  watch log's and the vault's); `AlarmReceiver` and `AlertActionReceiver` bound themselves
   under the broadcast budget; `MainActivity.onResume` catches up (guarded to once every few
   minutes), so a timer the phone slept through is said when the app is opened. A catch-up under
   `LATE_IS_MISSED` (15 min) rings as the moment itself; past it, it is the quiet note. From the

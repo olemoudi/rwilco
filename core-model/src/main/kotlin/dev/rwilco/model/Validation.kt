@@ -156,6 +156,10 @@ fun recurrenceWarning(
  * they were written.
  */
 fun problemOf(recurrence: Recurrence): TriggerProblem? {
+    // The stepper cannot write a span below one; a vault, a preset or a hand-edited store
+    // can, and "cada 0 horas" is a moment that is always already behind — armed, rung, rung
+    // again the instant it is dealt with.
+    if (recurrence is Recurrence.After && recurrence.amount !in MIN_RECURRENCE_AMOUNT..MAX_RECURRENCE_AMOUNT) return TriggerProblem.EVERY_OUT_OF_RANGE
     val calendar = recurrence as? Recurrence.Calendar ?: return null
     return problemOf(calendar.repeat) ?: calendar.conditions.firstNotNullOfOrNull { problemOf(it) }
 }

@@ -16,13 +16,19 @@ fun nextVaultStep(enabled: Boolean, fingerprint: String, lastUploaded: String?):
 
 /**
  * What a refused upload means. The remote's blob sha is `git hash-object` of the bytes, which the
- * phone computed before sending them: equal means the earlier PUT landed after its reply was
- * lost, and anything else means somebody else wrote the file.
+ * phone computed before sending them: equal to this attempt's means the PUT landed after its
+ * reply was lost (OkHttp sent it twice); equal to the *previous run's* attempt means that run's
+ * PUT landed after its reply was lost — every seal is fresh bytes, so the two never agree — and
+ * the file is ours to write over; anything else means somebody else wrote the file.
  */
-enum class ConflictVerdict { OURS_LANDED, OTHER_WRITER }
+enum class ConflictVerdict { OURS_LANDED, EARLIER_LANDED, OTHER_WRITER }
 
-fun judgeConflict(remoteSha: String?, lastAttemptSha: String?): ConflictVerdict =
-    if (remoteSha != null && remoteSha == lastAttemptSha) ConflictVerdict.OURS_LANDED else ConflictVerdict.OTHER_WRITER
+fun judgeConflict(remoteSha: String?, lastAttemptSha: String?, earlierAttemptSha: String? = null): ConflictVerdict = when {
+    remoteSha == null -> ConflictVerdict.OTHER_WRITER
+    remoteSha == lastAttemptSha -> ConflictVerdict.OURS_LANDED
+    remoteSha == earlierAttemptSha -> ConflictVerdict.EARLIER_LANDED
+    else -> ConflictVerdict.OTHER_WRITER
+}
 
 /** How a GitHub reply that is not a success is to be taken. */
 enum class TransportFailure {

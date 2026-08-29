@@ -9,6 +9,7 @@ import dev.rwilco.model.dayShape
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.FiringOutcome
 import dev.rwilco.model.FiringPlan
+import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Snooze
 import dev.rwilco.model.Status
@@ -16,7 +17,6 @@ import dev.rwilco.model.Trigger
 import dev.rwilco.geo.PlaceWatchStore
 import dev.rwilco.model.Condition
 import dev.rwilco.model.PlaceWatchPolicy
-import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.allHoldAt
 import dev.rwilco.model.awaitingAnswer
 import dev.rwilco.model.ruleInSet
@@ -111,15 +111,43 @@ class ReminderFiring(
         // Every way of NOT ringing below re-arms before it leaves. The alarm that brought us
         // here is spent, and a drop that left nothing behind was a reminder silent until the
         // six-hourly net came round — or for ever, if the process died first.
+        //
+        // Spent HERE, in so many words: a re-arm pass holds a moment that is armed and has not
+        // been answered (ReminderScheduler.rearmAll), so a moment judged and found wanting has
+        // to be written off before the pass, or it would be held — and re-judged, and dropped —
+        // for ever, with the next one never armed. Only the moment this delivery is about, and
+        // never for a place: a place has no armed moment of its own, and the one on the row
+        // belongs to whatever else the reminder is waiting for.
+        val eventDriven = rule?.trigger is Trigger.Location
+        suspend fun spendArmed() {
+            val armedNow = reminder.armedFor ?: return
+            if (!eventDriven && armedNow <= now.plusSeconds(EARLY_GRACE_SECONDS)) repository.setArmedFor(id, null, null)
+        }
         if (ruleIndex != null && judged == null) {
             Log.i(TAG, "$id asks for two moments at once, which never happens")
             Diag.note(TAG_DIAG, "r=${short(id)} dropped: two moments at once (rule $ruleIndex)")
+            spendArmed()
             scheduler.rearmAll()
             return@withLock
         }
-        if (judged != null && !conditionsHold(judged, now, moment = late ?: now)) {
+        if (judged != null && !conditionsHold(judged.conditions, askAll = judged.trigger is Trigger.Location, now, moment = late ?: now)) {
             Log.i(TAG, "$id came round outside what its rule asks for")
             Diag.note(TAG_DIAG, "r=${short(id)} dropped: conditions of rule $ruleIndex do not hold")
+            spendArmed()
+            scheduler.rearmAll()
+            return@withLock
+        }
+        // A calendar's own "y sólo si" ("todos los lunes a las 9, y sólo si estoy en casa") is
+        // a moment with no rule behind it, and its place fences — the ones nothing could ask
+        // in advance — were asked by nobody: the calendar rang wherever the phone was. A snooze
+        // has no rule behind it either, and is not asked: it is the person's own "not now,
+        // then" about a ring that already happened.
+        val calendarFences = (reminder.recurrence as? Recurrence.Calendar)?.conditions.orEmpty()
+            .takeIf { ruleIndex == null && reminder.snoozedUntil == null }.orEmpty()
+        if (calendarFences.isNotEmpty() && !conditionsHold(calendarFences, askAll = false, now, moment = late ?: now)) {
+            Log.i(TAG, "$id came round outside what its calendar asks for")
+            Diag.note(TAG_DIAG, "r=${short(id)} dropped: the calendar's conditions do not hold")
+            spendArmed()
             scheduler.rearmAll()
             return@withLock
         }
@@ -131,7 +159,6 @@ class ReminderFiring(
         // broadcast twice — and a timer somebody has not got round to dealing with sits there
         // going off. A catch-up says [late] and is the app itself asking on purpose.
         val armed = reminder.armedFor
-        val eventDriven = rule?.trigger is Trigger.Location
         if (!eventDriven && late == null && (armed == null || armed > now.plusSeconds(EARLY_GRACE_SECONDS))) {
             Log.i(TAG, "$id has nothing armed for now (armed=$armed); ignoring a stray firing")
             Diag.note(TAG_DIAG, "r=${short(id)} dropped: nothing armed (armed=$armed now=$now rule=$ruleIndex)")
@@ -168,7 +195,11 @@ class ReminderFiring(
             is FiringOutcome.Wait -> {
                 Log.i(TAG, "$id noted rule $ruleIndex; still waiting for the rest")
                 Diag.note(TAG_DIAG, "r=${short(id)} rule $ruleIndex happened; waiting for ${outcome.fired}")
+                // The note first, the spend second: a process dying between the two leaves a
+                // moment still owed, which the catch-up notes again (harmless) — the other
+                // order left one spent and never noted, a set waiting for a moment gone by.
                 repository.setFiredRules(id, outcome.fired)
+                spendArmed()
                 scheduler.rearmAll()
                 return@withLock
             }
@@ -259,8 +290,8 @@ class ReminderFiring(
      * at noon does not answer it. Asked of now, it said no, and a moment nobody could vouch for
      * was dropped for good.
      */
-    private suspend fun conditionsHold(rule: TriggerRule, now: Instant, moment: Instant): Boolean {
-        val asked = if (rule.trigger is Trigger.Location) rule.conditions else rule.conditions.filterNot { it.knownInAdvance }
+    private suspend fun conditionsHold(conditions: List<Condition>, askAll: Boolean, now: Instant, moment: Instant): Boolean {
+        val asked = if (askAll) conditions else conditions.filterNot { it.knownInAdvance }
         if (asked.isEmpty()) return true
         // Where the phone is comes LAST, and only if everything a clock can settle has already
         // said yes. An hour that has passed costs nothing to check; a position costs a store
@@ -285,7 +316,7 @@ class ReminderFiring(
         // because the failure somebody notices is the one that never arrives.
         return places.all { condition ->
             val circle = condition as Condition.AtPlace
-            val remembered = if (where != null) watch.sideOf(circle.lat, circle.lng, circle.radiusM) else null
+            val remembered = if (where != null) watch.sideOf(circle.lat, circle.lng, circle.radiusM, circle.inside) else null
             if (remembered != null) remembered == circle.inside else condition.holdsAt(now, clock.zone, where)
         }
     }

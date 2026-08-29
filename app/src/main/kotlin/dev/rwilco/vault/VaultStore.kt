@@ -2,15 +2,23 @@ package dev.rwilco.vault
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
-private val Context.vaultDataStore: DataStore<Preferences> by preferencesDataStore("rwilco_vault")
+// A file that will not parse is replaced by an empty one: the backup reads as off and says
+// so on its screen, which is a loss — the token and the key go with it — where a read that
+// threw on every attempt crashed that screen and stopped the copies without a word.
+private val Context.vaultDataStore: DataStore<Preferences> by preferencesDataStore(
+    "rwilco_vault",
+    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+)
 
 /**
  * The vault's own store: its credentials, its key and its cursors, as one JSON blob. Its own

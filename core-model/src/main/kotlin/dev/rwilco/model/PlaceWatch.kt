@@ -791,10 +791,20 @@ fun crossingIsNews(
  *
  * Matched on the geometry, because the same circle is watched under a different id by every
  * rule that names it, and by both sides: they are all the same question about the same place.
+ *
+ * Not quite the same answer, though. The first judgement of a circle leans by what its id is
+ * waiting for ([insideAfter]): an "al salir" doorway reads a sloppy fix as *outside*, a "sólo si
+ * estoy en casa" condition reads the same fix as *inside*, and on a circle smaller than the
+ * fixes are accurate the two never agree again. Asked for [inside], the entry a condition of
+ * that side wrote (`,I` / `,O`, [GeofenceIds.encodeCondition]) is the one judged with that
+ * lean, and it answers first; taking whichever came first in the map had "a las 9, y sólo si
+ * estoy en casa" read the doorway's doubt and go silent at home.
  */
-fun PlaceWatchState.sideOf(lat: Double, lng: Double, radiusM: Int): Boolean? {
+fun PlaceWatchState.sideOf(lat: Double, lng: Double, radiusM: Int, inside: Boolean? = null): Boolean? {
     val key = GeofenceIds.circleKey(lat, lng, radiusM)
-    return inside.entries.firstOrNull { it.key.contains(key) }?.value
+    val matching = this.inside.entries.filter { it.key.contains(key) }
+    if (inside != null) matching.firstOrNull { it.key.endsWith(",${if (inside) 'I' else 'O'}") }?.let { return it.value }
+    return matching.firstOrNull()?.value
 }
 
 /** The same crossing written down, so the eye that saw it second knows it is old news. */

@@ -2,8 +2,10 @@ package dev.rwilco.geo
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dev.rwilco.model.PlaceWatchState
@@ -12,7 +14,13 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
-private val Context.placeWatchDataStore: DataStore<Preferences> by preferencesDataStore("rwilco_place_watch")
+// A file that will not parse is replaced by an empty one, as the settings' is: the watch
+// starts from nothing, where a read that threw on every attempt — from every look, from
+// every firing with a place condition, from Home — was every place reminder gone quiet.
+private val Context.placeWatchDataStore: DataStore<Preferences> by preferencesDataStore(
+    "rwilco_place_watch",
+    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+)
 
 /**
  * What the place watch remembers between two checks — its last fix, which places it was

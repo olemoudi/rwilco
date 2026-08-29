@@ -193,4 +193,24 @@ class RandomDrawTest {
         val minute = AwakeWindow(thursday.atTime(16, 0), thursday.atTime(16, 1))
         assertEquals(thursday.atTime(16, 0).atZone(zone).toInstant(), RandomDraw.inDay("a", thursday, minute, zone, teatime))
     }
+
+    @Test
+    fun `a week's draws crowding a day with fewer minutes than draws keep the ones that fit`() {
+        // "Cinco veces a la semana, los sábados de nueve a nueve" fenced to three minutes of one
+        // morning: every draw lands on that Saturday, and there is room for three. This used to
+        // spread them against a ceiling below zero and throw.
+        val weekly = Trigger.Random(5, Period.WEEK, LocalTime.of(9, 0), LocalTime.of(21, 0), setOf(DayOfWeek.SATURDAY))
+        val threeMinutes = listOf(Condition.TimeWindow(LocalTime.of(10, 0), LocalTime.of(10, 3)))
+        val draws = RandomDraw.draws(weekly, "crowded", 2956L, zone, threeMinutes)
+        assertEquals(3, draws.size)
+        assertEquals(draws.toSet().size, draws.size, "no two on the same minute")
+        for (at in draws) {
+            val local = at.atZone(zone).toLocalDateTime()
+            assertEquals(DayOfWeek.SATURDAY, local.dayOfWeek)
+            assertTrue(local.toLocalTime() >= LocalTime.of(10, 0) && local.toLocalTime() < LocalTime.of(10, 3), "$local inside the fence")
+        }
+        // Two minutes, three draws asked for that day: two.
+        val twoMinutes = listOf(Condition.TimeWindow(LocalTime.of(10, 0), LocalTime.of(10, 2)))
+        assertEquals(2, RandomDraw.draws(weekly, "crowded", 2956L, zone, twoMinutes).size)
+    }
 }
