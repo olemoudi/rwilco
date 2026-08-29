@@ -66,6 +66,12 @@ fun MonthCalendar(
     val month = MonthGrid.monthAt(pager.currentPage, base)
 
     LaunchedEffect(pager.currentPage) { haptics.perform(HapticFeedbackType.SegmentTick) }
+    // A day picked from outside the grid (a shortcut chip) may be on another page: turn to it.
+    // A tap on the grid itself is on the page already, so this never fights a swipe.
+    LaunchedEffect(selected) {
+        val page = MonthGrid.pageOf(YearMonth.from(selected ?: today), base)
+        if (page != pager.currentPage && !pager.isScrollInProgress) pager.animateScrollToPage(page)
+    }
 
     Column(modifier = modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {

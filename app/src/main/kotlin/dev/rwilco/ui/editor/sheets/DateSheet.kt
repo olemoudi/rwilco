@@ -34,6 +34,9 @@ import dev.rwilco.ui.theme.Tokens
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZonedDateTime
+import dev.rwilco.model.DateShortcut
+import androidx.compose.foundation.layout.padding
+import java.time.LocalDate
 
 /**
  * A day, and then the question of when in it.
@@ -47,10 +50,11 @@ import java.time.ZonedDateTime
  * day is a thing you know, an hour is a thing you have to decide, and a sheet that opens on the
  * decision makes you take it before you have picked the day. Narrowing from there is one tap.
  *
- * There are no chips over the calendar any more. Three guesses at a date ("mañana a las 9",
- * "el sábado a las 10") sat above a control that answers the same question completely, and each
- * of them also quietly picked the hour — so tapping one undid the choice below it and the two
- * halves of the sheet disagreed about what you had said.
+ * The chips over the calendar name a day and nothing else ([DateShortcut]). The first set of
+ * chips was taken out because each of them ("mañana a las 9", "el sábado a las 10") also
+ * quietly picked the hour, so tapping one undid the choice below it and the two halves of the
+ * sheet disagreed about what you had said. These four touch only the date: the calendar turns
+ * to the day they picked, and "when in the day" stays whatever it was.
  */
 @Composable
 fun DateSheet(
@@ -112,6 +116,7 @@ fun DateSheet(
         // A stretch with no width has no moment in it.
         confirmEnabled = kind != WhenKind.IN_WINDOW || windowFrom != windowTo,
     ) {
+        DateShortcuts(today = today, selected = date, onPick = { date = it })
         MonthCalendar(selected = date, today = today, onSelect = { date = it }, minDate = today)
         WhenInTheDay(
             kind = kind,
@@ -124,6 +129,34 @@ fun DateSheet(
             shape = shape,
             savedWindows = savedWindows,
         )
+    }
+}
+
+/** The four days people name without looking: one tap each, date only. */
+@Composable
+private fun DateShortcuts(today: LocalDate, selected: LocalDate, onPick: (LocalDate) -> Unit) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(bottom = Tokens.spacing.md),
+    ) {
+        for (shortcut in DateShortcut.entries) {
+            val day = shortcut.on(today)
+            PresetChip(
+                label = stringResource(
+                    when (shortcut) {
+                        DateShortcut.TODAY -> R.string.relative_today
+                        DateShortcut.TOMORROW -> R.string.relative_tomorrow
+                        DateShortcut.NEXT_MONDAY -> R.string.date_shortcut_next_monday
+                        DateShortcut.WEEKEND -> R.string.date_shortcut_weekend
+                    },
+                ).replaceFirstChar { it.titlecase() },
+                selected = selected == day,
+                onClick = { onPick(day) },
+            )
+        }
     }
 }
 

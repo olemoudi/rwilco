@@ -90,6 +90,13 @@ import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.theme.Tokens
 import java.time.LocalDate
 import java.time.LocalTime
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableIntStateOf
+import dev.rwilco.ui.components.LocalSnackbar
+import dev.rwilco.model.upcomingMoments
+import dev.rwilco.model.NextFire
+import kotlinx.coroutines.launch
+import java.time.ZoneId
 
 @Composable
 fun EditorScreen(
@@ -100,6 +107,15 @@ fun EditorScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
     val haptics = Tokens.haptics
+    val snackbar = LocalSnackbar.current
+    val scope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
+    // Bumped when a refused save wants the words: TextSection takes it as a key to focus on.
+    var focusNonce by remember { mutableIntStateOf(0) }
+    val textBlankMessage = stringResource(R.string.editor_error_text)
+    val textLongMessage = stringResource(R.string.editor_error_text_long)
+    val triggerMessage = stringResource(R.string.editor_error_trigger)
+    val recurrenceMessage = stringResource(R.string.editor_error_recurrence)
     LaunchedEffect(viewModel) {
         viewModel.eventFlow.collect { event ->
             when (event) {
@@ -109,6 +125,22 @@ fun EditorScreen(
                     onClose()
                 }
                 EditorEvent.Close -> onClose()
+                is EditorEvent.Invalid -> {
+                    haptics.perform(HapticFeedbackType.Reject)
+                    snackbar.show(
+                        when (event.error) {
+                            ValidationError.TextBlank -> textBlankMessage
+                            ValidationError.TextTooLong -> textLongMessage
+                            is ValidationError.BadTrigger -> triggerMessage
+                            is ValidationError.BadRecurrence -> recurrenceMessage
+                        },
+                    )
+                    // The words are the top card: go there and put the cursor in them.
+                    if (event.error == ValidationError.TextBlank || event.error == ValidationError.TextTooLong) {
+                        scope.launch { scrollState.animateScrollTo(0) }
+                        if (event.error == ValidationError.TextBlank) focusNonce++
+                    }
+                }
             }
         }
     }
@@ -159,6 +191,16 @@ fun EditorScreen(
         state.draft
             .toReminder(viewModel.draftId, now, now, Status.ACTIVE, zone = zone, shape = state.dayShape)
             .ringCadence(now, zone, state.defaultTime, shape = state.dayShape)
+    }
+    // What the draft will actually do, read back beside the sentence that says what was asked
+    // for. Remembered like the cadence above: it walks up to three moments. Not for a preset,
+    // which is a shape and rings nothing.
+    val upcoming = remember(state.draft.rules, state.draft.ruleMatch, state.draft.recurrence, state.defaultTime, state.dayShape, state.asPreset) {
+        if (state.asPreset) emptyList()
+        else upcomingMoments(
+            state.draft.toReminder(viewModel.draftId, now, now, Status.ACTIVE, zone = zone, shape = state.dayShape),
+            now, zone, state.defaultTime, shape = state.dayShape,
+        )
     }
     // The same question for the calendar in "Vuelve", which has fences of its own and no rule
     // index to hang a message on. Remembered for the same reason: it walks moments.
@@ -215,6 +257,8 @@ fun EditorScreen(
                     ),
                     today = today,
                     defaultTime = state.defaultTime,
+                    upcoming = upcoming,
+                    zone = zone,
                     onSave = {
                         haptics.perform(HapticFeedbackType.Confirm)
                         focusManager.clearFocus()
@@ -227,7 +271,7 @@ fun EditorScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scrollState)
                     .padding(horizontal = spacing.screen),
             ) {
                 EditorSection(
@@ -253,6 +297,7 @@ fun EditorScreen(
                         writeRes = if (state.asPreset) R.string.editor_name_preset else R.string.editor_write,
                         onCurate = { viewModel.curate(CurateKind.TEXTS) },
                         autoFocus = state.focusText,
+                        focusKey = focusNonce,
                     )
                     // A preset carries optional wording; a reminder is its wording.
                     if (state.asPreset) {
@@ -527,6 +572,8 @@ private fun SaveBar(
     today: LocalDate,
     defaultTime: LocalTime,
     onSave: () -> Unit,
+    upcoming: List<NextFire> = emptyList(),
+    zone: ZoneId = ZoneId.systemDefault(),
 ) {
     Surface(color = MaterialTheme.colorScheme.background) {
         Column(
@@ -547,6 +594,8 @@ private fun SaveBar(
                     modifier = Modifier.padding(bottom = Tokens.spacing.sm),
                 )
             }
+            // What the arrangement above comes to: the next moments it will actually ring at.
+            UpcomingLine(upcoming = upcoming, today = today, zone = zone, modifier = Modifier.padding(bottom = Tokens.spacing.sm))
             Button(
                 onClick = onSave,
                 enabled = enabled,

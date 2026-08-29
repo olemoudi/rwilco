@@ -45,11 +45,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
 import java.util.UUID
+import dev.rwilco.model.ValidationError
 
 sealed interface EditorEvent {
     data object Saved : EditorEvent
     data class Deleted(val reminder: Reminder) : EditorEvent
     data object Close : EditorEvent
+
+    /** "Guardar" was pressed on a draft that cannot be saved; [error] is the first reason why. */
+    data class Invalid(val error: ValidationError) : EditorEvent
 }
 
 /**
@@ -300,7 +304,10 @@ class EditorViewModel(
     fun save() {
         val current = _state.value
         if (!current.canSave) {
+            // Said out loud as well as marked: the red line is under a field that may be three
+            // cards up, and a button that does nothing looks broken rather than refused.
             _state.update { it.copy(showErrors = true) }
+            events.trySend(EditorEvent.Invalid(current.errors.first()))
             return
         }
         if (current.asPreset) {

@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.os.LocaleList
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.captureToImage
@@ -18,6 +19,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -34,6 +36,7 @@ import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.SavedWindow
 import dev.rwilco.debug.DemoData
 import dev.rwilco.ui.components.TIME_FIELD_TAG
+import dev.rwilco.ui.components.TYPED_TIME_TAG
 import dev.rwilco.ui.editor.EDITOR_TEXT_TAG
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
@@ -136,13 +139,16 @@ class EditorTourTest {
         shot("editor-empty")
 
         // Saving an empty form names what is missing instead of doing nothing — which is only
-        // the words now: a reminder with neither trigger nor action is a note, and saves.
+        // the words now: a reminder with neither trigger nor action is a note, and saves. Said
+        // twice since 0.46.0: the line under the field, and a snackbar for the button that was
+        // pressed three cards below it.
         text(s(R.string.common_save)).performClick()
-        text(s(R.string.editor_error_text)).assertIsDisplayed()
+        rule.onAllNodesWithText(s(R.string.editor_error_text), useUnmergedTree = true).onFirst().assertIsDisplayed()
 
-        // Nothing is auto-focused any more: the button is the way to the keyboard, and what has
-        // been written before is offered under it.
-        text(s(R.string.editor_write)).performClick()
+        // Nothing is auto-focused on opening: the button is the way to the keyboard, and what
+        // has been written before is offered under it. A refused save is the exception — it
+        // wanted the words, so the cursor is already in them and the button has stepped aside.
+        rule.onNodeWithTag(EDITOR_TEXT_TAG).assertIsFocused()
         rule.onNodeWithTag(EDITOR_TEXT_TAG).performTextInput(reminderText)
         text(s(R.string.editor_add_trigger)).performScrollTo().performClick()
         rule.waitUntilShown(s(R.string.kind_date))
@@ -202,20 +208,34 @@ class EditorTourTest {
             if (kind == R.string.kind_date) {
                 rule.waitUntilDisplayed(s(R.string.sheet_any_time))
                 shot("sheet-date-any-time")
+                // A day named without looking: the chip picks the date and nothing else, and
+                // the grid turns to it (next Monday may be on the next page).
+                text(s(R.string.date_shortcut_next_monday).replaceFirstChar { it.titlecase() }).performScrollTo().performClick()
+                rule.waitForIdle()
                 // The middle one: a stretch, by the name somebody gave it. The two fields under
                 // the chips are the way out of needing a name at all.
                 text(s(R.string.sheet_in_window)).performScrollTo().performClick()
+                rule.waitUntilShown(s(R.string.sheet_in_window_hint))
+                text(s(R.string.sheet_in_window_hint)).performScrollTo()
                 rule.waitUntilDisplayed(s(R.string.sheet_in_window_hint))
                 shot("sheet-date-window")
                 // And the narrowest, which is the only one with an hour to pick.
                 text(s(R.string.sheet_at_this_time)).performScrollTo().performClick()
+                rule.waitUntilShown(s(R.string.sheet_time))
+                text(s(R.string.sheet_time)).performScrollTo()
                 rule.waitUntilDisplayed(s(R.string.sheet_time))
                 // The wheels, which replaced a dial nobody could hit one-handed.
                 rule.onAllNodesWithTag(TIME_FIELD_TAG, useUnmergedTree = true)[0].performClick()
                 rule.waitUntilShown(s(R.string.sheet_done))
                 shot("time-wheels")
+                // And the keypad behind the toggle: "930" reads as half past nine before "Done".
+                rule.onNodeWithContentDescription(s(R.string.time_type)).performClick()
+                rule.onNodeWithTag(TYPED_TIME_TAG, useUnmergedTree = true).performTextInput("930")
+                rule.waitUntilDisplayed("09:30")
+                shot("time-typed")
                 text(s(R.string.sheet_done)).performClick()
                 rule.waitUntilGone(s(R.string.sheet_done))
+                rule.waitUntilDisplayed("09:30")
             }
             // An hour and the days it counts on, and no date anywhere: the point a window is a
             // stretch of, and the moment a set is built around.
@@ -250,6 +270,9 @@ class EditorTourTest {
         text(s(R.string.sheet_add)).performClick()
         rule.waitUntilGone(s(R.string.sheet_add))
         rule.onNodeWithContentDescription(s(R.string.editor_edit_trigger)).assertIsDisplayed()
+        // What the draft will do, read back over the button: a countdown of three minutes rings
+        // today, and the line says so in the first amber words of the bar.
+        rule.onNode(hasText(s(R.string.editor_will_ring, ""), substring = true), useUnmergedTree = true).assertIsDisplayed()
 
         // "Vuelve" asks the whole question: the span on the buttons, and which moment it is
         // counted from underneath. Choosing an anchor must not clear the span, which is the

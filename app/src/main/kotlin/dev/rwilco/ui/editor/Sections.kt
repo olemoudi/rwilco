@@ -208,6 +208,8 @@ internal fun TextSection(
     writeRes: Int = R.string.editor_write,
     onCurate: () -> Unit = {},
     autoFocus: Boolean = false,
+    /** Bumped by whoever wants the cursor here now — a refused save, asking for the words. */
+    focusKey: Int = 0,
 ) {
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -218,8 +220,8 @@ internal fun TextSection(
     // The one place in this app where the keyboard opens by itself. Everywhere else it would
     // cover the list that saves the typing; arriving from a preset there is nothing else left
     // to answer, so the cursor is already where the hand was going.
-    LaunchedEffect(autoFocus) {
-        if (autoFocus) {
+    LaunchedEffect(autoFocus, focusKey) {
+        if (autoFocus || focusKey > 0) {
             focusRequester.requestFocus()
             keyboard?.show()
         }

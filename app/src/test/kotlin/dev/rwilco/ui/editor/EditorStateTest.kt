@@ -35,6 +35,14 @@ class EditorStateTest {
     private val zone = ZoneId.of("Europe/Madrid")
 
     @Test
+    fun `the first error is the one the snackbar says, the words before a rule`() {
+        val zeroCountdown = Trigger.Countdown(0)
+        assertEquals(ValidationError.TextBlank, blank.commitTrigger(null, zeroCountdown).errors.first())
+        val worded = blank.withText("water").commitTrigger(null, zeroCountdown)
+        assertTrue(worded.errors.first() is ValidationError.BadTrigger)
+    }
+
+    @Test
     fun `a blank editor is clean, invalid and quiet about it`() {
         assertFalse(blank.dirty)
         assertFalse(blank.canSave)

@@ -675,6 +675,34 @@ strict is asking somebody to remember how they spelled it.
   ever caught "Casa mientras no estoy". It stays off the screen until there is
   something to say beyond the words themselves (`saysMoreThanWords`), which is also what keeps it
   from sitting under the keyboard while somebody types into a blank draft.
+- **And under the sentence, what it comes to** (`UpcomingLine`, 0.46.0): "Suena mañana 09:00 ·
+  luego vie 09:00 · luego sáb 09:00", worked out by `upcomingMoments` (`core-model/Upcoming.kt`,
+  tested) — `nextFire`, then the same question again with that moment spent the way the firing
+  spends it (`lastFiredAt`), up to three times. The sentence says what was asked for; this says
+  what will happen, which for a rule with fences and a recurrence behind it is the only way to
+  check the arrangement without saving it and waiting. The walk stops where the next moment is
+  not the model's to know: after a random draw (the window is shown, never the draw), after a
+  snooze, after the ring of an "all of them" set, and a span from the "hecho" stops on its own
+  because nothing has been dealt with. A place is no moment at all and a list starting with one
+  says nothing. The first moment is amber, because that is exactly what amber means.
+- **A refused save says so** (0.46.0): "Guardar" on a draft that cannot be saved used to set
+  `showErrors` and stop, and the only sign was a red line under a field three cards up — a button
+  that does nothing looks broken, not refused. `EditorEvent.Invalid` carries the first error to a
+  snackbar (the words, too long, a rule, the calendar), and for the words it also scrolls to the
+  top and puts the cursor in the field (`focusKey` on `TextSection`, the one other thing besides
+  a preset that opens the keyboard by itself).
+- **The date sheet has chips again** (`DateShortcut`, 0.46.0): hoy, mañana, el lunes que viene,
+  este finde. The first set was taken out because each also picked the hour; these touch the date
+  alone (`WhenInTheDay` is untouched) and the grid turns to the day they name
+  (`MonthCalendar` follows `selected` across pages). The weekend is the calendar's Saturday, on
+  purpose not `Snooze.WEEKEND`'s Friday evening: that one answers an alarm, this one is a day.
+- **The time wheel has a keypad behind a toggle** (`TypedTime` in `TimeWheel.kt`, 0.46.0): a time
+  somebody knows to the minute is two flicks and a correction on a wheel and four digits on a
+  keypad. The digits are read the way the time is said (`parseTypedTime`, `core-model`: "7",
+  "930", "1730"; on a 12-hour phone AM/PM decides and an hour past twelve is taken at its
+  word), the reading follows them live, a typo leaves the last good time where it was and
+  disables "Hecho". "Ahora" and "En 15 min" sit under both, read off the phone's clock in the
+  dialog — a moment of the screen, not of the model.
 
 ## Firing
 

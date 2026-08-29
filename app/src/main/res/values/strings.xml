@@ -190,6 +190,14 @@
     <string name="editor_repeats_on">Marking it done waits for the next moment.</string>
     <string name="editor_repeats_off">Marking it done finishes it.</string>
     <string name="editor_error_text">Write what you want to remember.</string>
+    <string name="editor_error_text_long">The reminder is too long.</string>
+    <string name="editor_error_trigger">One of the "when" rules is not right.</string>
+    <string name="editor_error_recurrence">The way it comes back is not right.</string>
+    <string name="editor_will_ring">Rings %1$s</string>
+    <string name="editor_will_ring_then">then %1$s</string>
+    <string name="editor_will_ring_sometime">sometime %1$s, %2$s</string>
+    <string name="date_shortcut_next_monday">next Monday</string>
+    <string name="date_shortcut_weekend">this weekend</string>
     <string name="editor_warning_past">This moment has already passed.</string>
     <string name="editor_warning_recurrence_over">This series has already ended, so it will not ring again.</string>
     <string name="editor_discard_title">Discard changes?</string>
@@ -405,6 +413,11 @@
     </string-array>
     <string name="time_hours">Hours</string>
     <string name="time_minutes">Minutes</string>
+    <string name="time_type">Type the time</string>
+    <string name="time_wheels">Use the wheels</string>
+    <string name="time_typed_hint">hhmm</string>
+    <string name="time_now">Now</string>
+    <string name="time_in_15">In 15 min</string>
     <string name="editor_reuse_tag">Or reuse one</string>
     <string-array name="whats_new_0_2_2">
         <item>Times are picked on wheels now: flick and it snaps, no aiming at a dial with one hand.</item>

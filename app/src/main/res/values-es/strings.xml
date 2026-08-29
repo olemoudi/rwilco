@@ -188,6 +188,14 @@
     <string name="editor_repeats_on">Marcarlo hecho lo deja esperando al siguiente momento.</string>
     <string name="editor_repeats_off">Marcarlo hecho lo da por terminado.</string>
     <string name="editor_error_text">Escribe qué quieres recordar.</string>
+    <string name="editor_error_text_long">El recordatorio es demasiado largo.</string>
+    <string name="editor_error_trigger">Una de las reglas de cuándo no está bien.</string>
+    <string name="editor_error_recurrence">La forma de volver no está bien.</string>
+    <string name="editor_will_ring">Suena %1$s</string>
+    <string name="editor_will_ring_then">luego %1$s</string>
+    <string name="editor_will_ring_sometime">en algún momento %1$s, %2$s</string>
+    <string name="date_shortcut_next_monday">el lunes que viene</string>
+    <string name="date_shortcut_weekend">este finde</string>
     <string name="editor_warning_past">Ese momento ya ha pasado.</string>
     <string name="editor_warning_recurrence_over">Esta serie ya ha terminado, así que no volverá a sonar.</string>
     <string name="editor_discard_title">¿Descartar los cambios?</string>
@@ -403,6 +411,11 @@
     </string-array>
     <string name="time_hours">Horas</string>
     <string name="time_minutes">Minutos</string>
+    <string name="time_type">Escribir la hora</string>
+    <string name="time_wheels">Usar las ruedas</string>
+    <string name="time_typed_hint">hhmm</string>
+    <string name="time_now">Ahora</string>
+    <string name="time_in_15">En 15 min</string>
     <string name="editor_reuse_tag">O reutilizar una</string>
     <string-array name="whats_new_0_2_2">
         <item>Las horas se eligen con ruedas: un gesto y encaja, sin apuntar a un reloj con una mano.</item>
