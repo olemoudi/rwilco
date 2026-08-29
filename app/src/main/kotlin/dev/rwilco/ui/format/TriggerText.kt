@@ -26,6 +26,8 @@ import java.time.ZoneId
 import java.time.format.TextStyle
 import java.time.temporal.WeekFields
 import java.util.Locale
+import dev.rwilco.model.RelativeDay
+import dev.rwilco.model.RelativeUnit
 
 @Composable
 fun currentLocale(): Locale = LocalConfiguration.current.locales[0]
@@ -196,6 +198,14 @@ fun triggerLine(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): Tri
             secondary = repeatSummary(words, trigger, today),
             primaryMono = trigger.time != null,
         )
+        // A day nobody has counted yet: the day it names, and the fact that it is counted
+        // afresh every time — without which "Mañana" on a preset reads exactly like a fixed
+        // date that happens to fall tomorrow, which is the thing it is not.
+        is Trigger.RelativeDate -> TriggerLine(
+            primary = relativeDayText(words, trigger.day).replaceFirstChar { it.titlecase(locale) },
+            secondary = relativeHourText(words, trigger, defaultTime) + " · " + words.get(R.string.trigger_relative_from_use),
+            primaryMono = false,
+        )
         is Trigger.Countdown -> {
             val startedAt = trigger.startedAt
             if (startedAt == null) {
@@ -285,6 +295,10 @@ fun triggerPhrase(words: Words, trigger: Trigger, today: LocalDate, defaultTime:
             R.string.editor_sentence_repeat,
             trigger.time?.let { TimeText.time(it, is24h, locale) } ?: words.get(R.string.trigger_when_day_starts),
             repeatSummary(words, trigger, today),
+        )
+        is Trigger.RelativeDate -> words.get(
+            R.string.editor_sentence_relative,
+            relativeDayText(words, trigger.day) + " " + relativeHourText(words, trigger, defaultTime),
         )
         is Trigger.Countdown -> {
             val startedAt = trigger.startedAt
@@ -432,6 +446,38 @@ fun ordinalRes(ordinal: Int): Int = when (ordinal) {
     3 -> R.string.repeat_ordinal_third
     4 -> R.string.repeat_ordinal_fourth
     else -> R.string.repeat_ordinal_last
+}
+
+/**
+ * The day a relative trigger names, in the words somebody would use: "mañana", "pasado mañana",
+ * "la semana que viene", "dentro de 3 días", "el próximo lunes". The near ones have names of
+ * their own and the rest count, which is how people talk about days.
+ */
+fun relativeDayText(words: Words, day: RelativeDay): String = when (day) {
+    is RelativeDay.NextWeekday -> words.get(
+        R.string.relative_next_weekday,
+        day.day.getDisplayName(TextStyle.FULL, words.locale),
+    )
+    is RelativeDay.In -> when {
+        day.unit == RelativeUnit.DAYS && day.amount == 1 -> words.get(R.string.relative_tomorrow)
+        day.unit == RelativeUnit.DAYS && day.amount == 2 -> words.get(R.string.relative_day_after_tomorrow)
+        day.unit == RelativeUnit.WEEKS && day.amount == 1 -> words.get(R.string.relative_next_week)
+        day.unit == RelativeUnit.MONTHS && day.amount == 1 -> words.get(R.string.relative_next_month)
+        day.unit == RelativeUnit.DAYS -> words.plural(R.plurals.relative_in_days, day.amount)
+        day.unit == RelativeUnit.WEEKS -> words.plural(R.plurals.relative_in_weeks, day.amount)
+        else -> words.plural(R.plurals.relative_in_months, day.amount)
+    }
+}
+
+/** And when in that day: an hour somebody chose, a stretch to draw from, or the day itself. */
+fun relativeHourText(words: Words, trigger: Trigger.RelativeDate, defaultTime: LocalTime): String {
+    val time = trigger.time
+    val window = trigger.window
+    return when {
+        time != null -> words.get(R.string.trigger_rings_at, TimeText.time(time, words.is24h, words.locale))
+        window != null -> words.get(R.string.editor_sentence_window_of, TimeText.window(window.from, window.to, words.is24h, words.locale))
+        else -> words.get(R.string.trigger_when_day_starts)
+    }
 }
 
 /** "45 min" · "2 h" · "2 h 30 min" · "3 d": the coarsest way to say a length that stays true. */

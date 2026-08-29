@@ -18,6 +18,7 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
+import java.time.temporal.TemporalAdjusters
 
 /**
  * What makes a reminder fire. The `@SerialName`s are the on-disk discriminators and are frozen:
@@ -202,6 +203,33 @@ sealed interface Trigger {
     data class Countdown(val minutes: Int, val startedAt: Instant? = null) : Trigger
 
     /**
+     * A day counted from the one the reminder is written on: "mañana", "dentro de tres días",
+     * "el próximo lunes" — with the same three answers about the hour a date has.
+     *
+     * **It exists for presets.** A preset carrying "mañana a las nueve" as a date carries the
+     * 30th of August for ever: used on the 30th it is already today, and after that Home will
+     * not write it blind at all (`ValidationWarning.InPast` → the form opens instead). What
+     * somebody means by that shape is "the day after I press this", which is a thing the app
+     * could say about a *span* ("Vuelve": cada semana desde el hecho) and about minutes
+     * ([Countdown]) but not about a day with an hour on it.
+     *
+     * **A shape, and never a moment.** Like a countdown's length it is resolved where the
+     * reminder is written ([settleRelativeDates]) into the plain date it means, so nothing
+     * downstream — the alarm, the card, the catch-up — has to know a second way of saying "a
+     * date". A draft and a preset carry it; a saved reminder never does.
+     *
+     * [time] is an hour somebody chose; with none, [window] is the stretch to draw from, and
+     * with neither it is the day's own waking hours — exactly what a date with no hour means.
+     */
+    @Serializable
+    @SerialName("relative_date")
+    data class RelativeDate(
+        val day: RelativeDay = RelativeDay.In(1, RelativeUnit.DAYS),
+        val time: LocalTime? = null,
+        val window: DayWindow? = null,
+    ) : Trigger
+
+    /**
      * Being inside a circle around a place, or being outside it.
      *
      * **A place is a state, and [onCrossing] is the exception.** It used to be an event and
@@ -339,6 +367,49 @@ enum class TriggerFamily { TIME, PLACE, CHANCE }
  * somebody's favourite kind is written down by name, and an enum that loses a name loses the
  * whole settings file with it.
  */
+/**
+ * How a [Trigger.RelativeDate] names its day: so many days, weeks or months on, or the next
+ * Monday there is. Two shapes because they are two different questions — "dentro de una semana"
+ * is seven days, "el próximo lunes" is however many days that happens to be.
+ */
+@Serializable
+sealed interface RelativeDay {
+    @Serializable
+    @SerialName("in")
+    data class In(val amount: Int, val unit: RelativeUnit) : RelativeDay
+
+    /** The next one strictly after today: asked on a Monday, "el próximo lunes" is a week away. */
+    @Serializable
+    @SerialName("weekday")
+    data class NextWeekday(val day: DayOfWeek) : RelativeDay
+}
+
+/** What a relative day counts in. Hours are a countdown's job, and years nobody's. */
+@Serializable
+enum class RelativeUnit { DAYS, WEEKS, MONTHS }
+
+/** How far the count may reach: the same bounds a recurrence uses, for the same reason. */
+val RELATIVE_AMOUNT: IntRange = MIN_RECURRENCE_AMOUNT..MAX_RECURRENCE_AMOUNT
+
+/** The day itself, worked out from the day being asked on. */
+fun RelativeDay.on(today: LocalDate): LocalDate = when (this) {
+    is RelativeDay.In -> when (unit) {
+        RelativeUnit.DAYS -> today.plusDays(amount.toLong())
+        RelativeUnit.WEEKS -> today.plusWeeks(amount.toLong())
+        RelativeUnit.MONTHS -> today.plusMonths(amount.toLong())
+    }
+    is RelativeDay.NextWeekday -> today.with(TemporalAdjusters.next(day))
+}
+
+/**
+ * The plain date this means, asked on [today]: an hour if one was chosen, and otherwise the day
+ * left to itself — the same two triggers the date sheet has always produced.
+ */
+fun Trigger.RelativeDate.on(today: LocalDate): Trigger {
+    val date = day.on(today)
+    return if (time != null) Trigger.AtDateTime(LocalDateTime.of(date, time)) else Trigger.DayRandom(date, window)
+}
+
 enum class TriggerKind(val family: TriggerFamily) {
     DATE_TIME(TriggerFamily.TIME),
     DATE(TriggerFamily.TIME),
@@ -390,6 +461,7 @@ val Trigger.family: TriggerFamily
     get() = when (this) {
         is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.AtTime, is Trigger.Interval -> TriggerFamily.TIME
         is Trigger.DayRandom, is Trigger.Repeat, is Trigger.DateRange, is Trigger.TimeOfDay -> TriggerFamily.TIME
+        is Trigger.RelativeDate -> TriggerFamily.TIME
         is Trigger.Location -> TriggerFamily.PLACE
         is Trigger.Countdown -> TriggerFamily.TIME
         is Trigger.Random -> TriggerFamily.CHANCE
@@ -415,6 +487,10 @@ val Trigger.family: TriggerFamily
  * ([openingOf]), so the state and the moment are two readings of the same window.
  */
 fun Trigger.asState(shape: DayShape = DayShape.DEFAULT): Condition? = when (this) {
+    // Whatever the day it names would be as a state. Only a draft or a preset ever holds one,
+    // and a set being read there ("el próximo lunes, y a la vez en la oficina") deserves the
+    // same answer it will give once it is written.
+    is Trigger.RelativeDate -> null
     // A doorway is a moment; a side of a line is a state. See above.
     is Trigger.Location -> if (onCrossing) null else Condition.AtPlace(lat, lng, radiusM, label, inside = presence == Presence.INSIDE)
     is Trigger.Interval -> Condition.TimeWindow(from, to, days)
@@ -447,6 +523,8 @@ val Trigger.namesAnHour: Boolean
     get() = when (this) {
         is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.DayRandom -> true
         is Trigger.AtTime, is Trigger.Repeat, is Trigger.Interval, is Trigger.Random -> true
+        // Its resolved self names one, chosen or left to the day.
+        is Trigger.RelativeDate -> true
         is Trigger.TimeOfDay -> true
         // The default one, which is still an hour a rest must not be standing in front of.
         is Trigger.DateRange -> true
@@ -467,13 +545,14 @@ val Trigger.isMoment: Boolean get() = asState() == null
  */
 val Trigger.isOneShot: Boolean
     get() = this is Trigger.AtDateTime || this is Trigger.OnDate || this is Trigger.DayRandom ||
-        this is Trigger.Countdown || this is Trigger.DateRange
+        this is Trigger.Countdown || this is Trigger.DateRange || this is Trigger.RelativeDate
 
 /** The tile that edits an existing trigger (a countdown re-opens as a countdown). */
 val Trigger.kind: TriggerKind
     get() = when (this) {
-        // One tile edits all three: a date, with an hour or without one.
-        is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.DayRandom -> TriggerKind.DATE
+        // One tile edits all four: a date, with an hour or without one, fixed or counted
+        // from the day it is used on.
+        is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.DayRandom, is Trigger.RelativeDate -> TriggerKind.DATE
         is Trigger.AtTime, is Trigger.Repeat -> TriggerKind.REPEAT_TIME
         is Trigger.Interval -> TriggerKind.INTERVAL
         is Trigger.TimeOfDay -> TriggerKind.TIME_OF_DAY
@@ -518,6 +597,21 @@ fun settleDays(rules: List<TriggerRule>, now: Instant, zone: ZoneId, shape: DayS
     val nextMinute = now.atZone(zone).toLocalDateTime().truncatedTo(ChronoUnit.MINUTES).plusMinutes(1)
     if (nextMinute <= window.from || nextMinute >= window.to) return@map rule
     rule.copy(trigger = day.copy(date = nextMinute.toLocalDate(), window = DayWindow(nextMinute.toLocalTime(), window.to.toLocalTime())))
+}
+
+/**
+ * A relative day becomes the day it means, here, where a countdown is stamped and a day is
+ * narrowed — and for the same reason: the moment it is written is the moment it counts from.
+ *
+ * After this nothing downstream has to know the shape existed. A preset keeps it (it is never
+ * resolved in place), which is the whole point: the same button means tomorrow every time.
+ */
+fun settleRelativeDates(rules: List<TriggerRule>, now: Instant, zone: ZoneId): List<TriggerRule> {
+    val today = now.atZone(zone).toLocalDate()
+    return rules.map { rule ->
+        val relative = rule.trigger as? Trigger.RelativeDate ?: return@map rule
+        rule.copy(trigger = relative.on(today))
+    }
 }
 
 /**

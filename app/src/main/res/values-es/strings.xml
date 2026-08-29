@@ -100,6 +100,32 @@
     <string name="relative_today">hoy</string>
     <string name="relative_tomorrow">mañana</string>
     <string name="relative_yesterday">ayer</string>
+    <string name="relative_day_after_tomorrow">pasado mañana</string>
+    <string name="relative_next_week">la semana que viene</string>
+    <string name="relative_next_month">el mes que viene</string>
+    <string name="relative_next_weekday">el próximo %1$s</string>
+    <plurals name="relative_in_days">
+        <item quantity="one">dentro de %d día</item>
+        <item quantity="other">dentro de %d días</item>
+    </plurals>
+    <plurals name="relative_in_weeks">
+        <item quantity="one">dentro de %d semana</item>
+        <item quantity="other">dentro de %d semanas</item>
+    </plurals>
+    <plurals name="relative_in_months">
+        <item quantity="one">dentro de %d mes</item>
+        <item quantity="other">dentro de %d meses</item>
+    </plurals>
+    <string name="trigger_relative_from_use">contado desde el día que lo uses</string>
+    <string name="sheet_date_fixed">Un día concreto</string>
+    <string name="sheet_date_relative">Contado desde el uso</string>
+    <string name="sheet_relative_hint">El día se calcula cada vez. Un preset de «mañana» significa mañana el día que lo pulses, no el día que lo creaste.</string>
+    <string name="sheet_relative_in">Dentro de</string>
+    <string name="sheet_relative_next">El próximo</string>
+    <string name="sheet_relative_days">días</string>
+    <string name="sheet_relative_weeks">semanas</string>
+    <string name="sheet_relative_months">meses</string>
+    <string name="editor_sentence_relative">%1$s, contado desde el día que lo uses</string>
     <string name="countdown_in">en %1$s</string>
     <string name="countdown_ago">hace %1$s</string>
     <string name="countdown_just_now">ahora mismo</string>
@@ -915,7 +941,8 @@
     <string name="settings_snooze_custom_hint">Uno de los botones de posponer dura lo que tú digas. Diez minutos y dos horas siguen ahí al lado.</string>
     <string name="settings_snooze_notification">Los dos de la notificación</string>
     <string name="settings_test_alert">Probar una alerta</string>
-    <string name="settings_test_alert_hint">Suena en diez segundos por el camino real: bloquea el móvil para ver la pantalla completa.</string>
+    <string name="settings_test_alert_hint">Suena en diez segundos por el camino real: bloquea el móvil para ver la pantalla completa. Elige qué probar: sólo el sonido, sólo la vibración, o todo.</string>
+    <string name="settings_test_alert_go">Probar</string>
     <string name="settings_test_alert_text">Alerta de prueba</string>
     <string name="settings_test_alert_started">Suena en 10 s</string>
     <string name="settings_language">Idioma</string>

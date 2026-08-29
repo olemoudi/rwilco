@@ -211,6 +211,7 @@ private fun Trigger.describe(): String = when (this) {
     is Trigger.OnDate -> "on $date"
     is Trigger.AtTime -> "time $time ${days.describe()}"
     is Trigger.DayRandom -> "on $date at random"
+    is Trigger.RelativeDate -> "relative $day" + (time?.let { " at $it" } ?: window?.let { " in $it" } ?: " left to the day")
     is Trigger.Repeat -> "repeat every $every ${unit.name.lowercase()}" +
         (time?.let { " at $it" } ?: " at random") +
         (if (unit == RepeatUnit.WEEK) " ${weekDays().describe()}" else "") +

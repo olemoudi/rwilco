@@ -109,6 +109,9 @@ import java.util.Locale
 /** Lets the instrumented tour find the text field; a BasicTextField has no other handle. */
 const val EDITOR_TEXT_TAG = "editorText"
 
+/** The field a new tag is typed into, for the instrumented tests. */
+const val EDITOR_TAG_FIELD_TAG = "editorTagField"
+
 /**
  * What this screen is writing: a reminder, or the shape of one kept under a name. The words
  * become the preset's name, and everything under here — the tags, the when, the what happens —
@@ -319,6 +322,17 @@ internal fun TagsSection(
     onToggle: (String) -> Unit,
     onAdd: (String) -> Unit,
     onCurate: () -> Unit = {},
+    /**
+     * The tag being typed, held by the screen rather than by this field.
+     *
+     * Because "Guardar" has to be able to see it. The field committed on losing the focus and
+     * the save cleared the focus on its way in, which reads like it should work and does not:
+     * the commit lands in a later snapshot than the read, so a reminder saved straight from a
+     * half-typed tag was saved without it — the word typed, the button pressed, and the tag
+     * gone. Now the screen holds the word and commits it itself before saving.
+     */
+    pendingTag: String = "",
+    onPendingTagChange: (String) -> Unit = {},
 ) {
     var adding by rememberSaveable { mutableStateOf(false) }
     var newTag by rememberSaveable { mutableStateOf("") }
@@ -342,6 +356,7 @@ internal fun TagsSection(
     fun commit() {
         val raw = newTag
         newTag = ""
+        onPendingTagChange("")
         adding = false
         if (raw.isNotBlank()) {
             haptics.perform(HapticFeedbackType.Confirm)
@@ -358,9 +373,11 @@ internal fun TagsSection(
             // below fires before the way in does, and the field shuts as it opens.
             var everFocused by remember { mutableStateOf(false) }
             LaunchedEffect(Unit) { focusRequester.requestFocus() }
+            // Committed from outside (the save button did it): the field lets it go too.
+            LaunchedEffect(pendingTag) { if (pendingTag.isEmpty() && newTag.isNotEmpty()) newTag = "" }
             OutlinedTextField(
                 value = newTag,
-                onValueChange = { newTag = it },
+                onValueChange = { newTag = it; onPendingTagChange(it) },
                 placeholder = { Text(stringResource(R.string.editor_new_tag_hint)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -379,6 +396,7 @@ internal fun TagsSection(
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
+                    .testTag(EDITOR_TAG_FIELD_TAG)
                     .focusRequester(focusRequester)
                     // The way out. Opening this field used to be a one-way door: nothing but
                     // its own + closed it again, so anybody who opened it and went back to the

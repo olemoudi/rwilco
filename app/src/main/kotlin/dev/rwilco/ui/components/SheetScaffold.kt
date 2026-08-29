@@ -27,10 +27,21 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
 import dev.rwilco.R
 import dev.rwilco.ui.theme.Tokens
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.BoxWithConstraints
 
 /**
  * Every configurator sheet: a title, scrollable content, and the one confirm button kept out
  * of the scroll so it can never sink below the fold.
+ *
+ * **And the height is capped, or that last part is a wish.** A bottom sheet measures its content
+ * with no height limit — that is how a sheet taller than the screen can be dragged — so a
+ * `weight(1f, fill = false)` inside it does nothing at all: the content took whatever it wanted
+ * and the button row was placed after it, off the bottom of the screen. It held only while every
+ * sheet happened to be short enough, and the day the date sheet grew a row it stopped holding.
+ * Bounded here to most of the window, the weight means what it says: the row is measured first
+ * and the content scrolls in what is left.
  *
  * **A fling may not throw the form away.** The content scrolls inside the sheet, and when a
  * scroll back up to the top ran out of list with speed to spare, the nested-scroll contract
@@ -65,7 +76,19 @@ fun SheetScaffold(
         contentColor = MaterialTheme.colorScheme.onSurface,
         shape = MaterialTheme.shapes.extraLarge,
     ) {
-        Column(modifier = Modifier.padding(horizontal = spacing.screen)) {
+        // The budget is what this slot is actually given, when it is given one; a bottom sheet
+        // usually measures its content unbounded (that is how a sheet taller than the screen can
+        // be dragged), and then the window minus the sheet's own furniture — the drag handle
+        // above this, and the gap it leaves under the status bar — is the honest guess. Capping
+        // against the whole window instead asked for more room than the sheet has and clipped
+        // the confirm row all the same, only by less.
+        BoxWithConstraints {
+            val budget = if (constraints.hasBoundedHeight) maxHeight else LocalConfiguration.current.screenHeightDp.dp - SHEET_CHROME
+            Column(
+                modifier = Modifier
+                    .heightIn(max = budget)
+                    .padding(horizontal = spacing.screen),
+            ) {
             Text(title, style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(spacing.lg))
             Column(
@@ -108,8 +131,12 @@ fun SheetScaffold(
                         .heightIn(min = Tokens.sizes.control),
                 ) {
                     Text(confirmLabel, style = MaterialTheme.typography.titleMedium)
+                    }
                 }
             }
         }
     }
 }
+
+/** The drag handle above the content, plus the gap the sheet leaves under the status bar. */
+private val SHEET_CHROME = 96.dp

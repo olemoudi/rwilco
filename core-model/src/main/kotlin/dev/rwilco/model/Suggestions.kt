@@ -114,6 +114,8 @@ fun triggerKindsByUse(reminders: List<Reminder>, now: Instant): List<TriggerKind
 /** What makes two uses the same "when". Null for a trigger with nothing to reuse. */
 private fun shapeOf(trigger: Trigger): String? = when (trigger) {
     is Trigger.Countdown -> "countdown:${trigger.minutes}"
+    // A shape by definition: it says a day without naming one, so it comes back whole.
+    is Trigger.RelativeDate -> "relative:${trigger.day}:${trigger.time}:${trigger.window}"
     is Trigger.Interval -> "interval:${trigger.from}-${trigger.to}:" + trigger.days.map { it.value }.sorted().joinToString(",")
     // "A las nueve los laborables" is a standing arrangement, and comes back as itself.
     is Trigger.TimeOfDay -> "time_of_day:${trigger.time}:" + trigger.days.map { it.value }.sorted().joinToString(",")

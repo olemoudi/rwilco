@@ -47,6 +47,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
 import java.time.LocalTime
+import androidx.compose.ui.test.isHeading
 
 /**
  * Walks the whole first-phase UI the way a thumb would — create, configure every trigger kind,
@@ -236,6 +237,18 @@ class EditorTourTest {
                 text(s(R.string.sheet_done)).performClick()
                 rule.waitUntilGone(s(R.string.sheet_done))
                 rule.waitUntilDisplayed("09:30")
+                // And the other way of saying which day: counted from the day it is used, which
+                // is what makes a preset for "mañana" mean tomorrow every time.
+                text(s(R.string.sheet_date_relative)).performScrollTo().performClick()
+                rule.waitUntilShown(s(R.string.sheet_relative_in))
+                text(s(R.string.relative_tomorrow).replaceFirstChar { it.titlecase() }).performScrollTo().performClick()
+                rule.waitForIdle()
+                text(s(R.string.sheet_relative_hint)).performScrollTo()
+                rule.waitUntilDisplayed(s(R.string.sheet_relative_hint))
+                shot("sheet-date-relative")
+                // Back to a day on the calendar, so the rest of the tour reads as it always did.
+                text(s(R.string.sheet_date_fixed)).performScrollTo().performClick()
+                rule.waitForIdle()
             }
             // An hour and the days it counts on, and no date anywhere: the point a window is a
             // stretch of, and the moment a set is built around.
@@ -444,7 +457,11 @@ class EditorTourTest {
      */
     private fun openGroup(title: String, marker: String) {
         if (rule.onAllNodesWithText(marker, ignoreCase = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()) return
-        text(title).performScrollTo().performClick()
+        // The heading, not merely the words: a group's name can also be the label of a chip
+        // inside another group ("Sonido" is both), and a plain text match then finds two.
+        rule.onNode(hasText(title, ignoreCase = true) and isHeading(), useUnmergedTree = true)
+            .performScrollTo()
+            .performClick()
         rule.waitForIdle()
     }
 

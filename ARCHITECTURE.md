@@ -350,6 +350,23 @@ series told to stop before it starts), reusing the checks the trigger already ha
 `recurrenceWarning` says — without blocking — that a series has run out or can never clear its
 own fences.
 
+**A day can be counted instead of pointed at** (`Trigger.RelativeDate`, 0.49.0): "mañana",
+"dentro de tres días", "el próximo lunes", with the same three answers about the hour a date has
+(`RelativeDay.In(amount, unit)` / `NextWeekday`). It exists for presets. A preset carrying
+"mañana a las nueve" as a date carries one particular morning for ever: used on that day it is
+already today, and after it Home refuses to write the preset blind at all
+(`ValidationWarning.InPast` → the form opens instead). What somebody means by that shape is "the
+day after I press this", which the app could say about a span ("Vuelve") and about minutes
+(`Countdown`) and not about a day with an hour on it. It is **a shape and never a moment**:
+`settleRelativeDates` turns it into the plain `AtDateTime`/`DayRandom` it means where the
+reminder is written — beside `startCountdowns` and `settleDays`, and for the same reason — so no
+alarm, card or catch-up has to know a second way of saying "a date". A draft and a preset carry
+it; a saved reminder never does. Asked before it is written (the editor's "Suena…", the preset
+list) it answers for the day it would be written on, and `warnings` settles it first for the same
+reason it settles a day (`settleRelativeDates` beside `settleDays`): left as a shape, the walk
+that looks for a moment re-reads it from wherever it has reached and it behaves like something
+that comes round again — stepping over a fence the saved date can never pass, and saying nothing.
+
 `Validation.kt` decides what blocks a save, which is only the words and a trigger that is
 nonsense in itself: a reminder needs **neither a trigger nor an action**. One with neither is a
 note kept under its tags, and Home files it under "kept, not timed" rather than calling it
@@ -420,6 +437,27 @@ strict is asking somebody to remember how they spelled it.
   otherwise every rotation pushed the shared text back on top of whatever the person was doing.
   Settings → Aspecto has a language row on API 33+ that opens the
   system's per-app page (`locales_config.xml` names the two).
+- **A sheet's height is capped** (`SheetScaffold`, 0.49.0). The confirm row is outside the
+  scrolling content so it can never sink below the fold — which was a wish, not a fact: a bottom
+  sheet measures its content with no height limit (that is how a sheet taller than the screen can
+  be dragged), so the `weight(1f, fill = false)` did nothing and the row was simply placed after
+  however tall the content wanted to be. It held while every sheet happened to be short enough,
+  and stopped the day the date sheet grew a row. It is bounded now to the height the slot is
+  actually given, and — when it is given none — to the window less the sheet's own furniture (the
+  drag handle above the content and the gap under the status bar); capping against the whole
+  window instead asks for more room than the sheet has and clips the row all the same, only by
+  less. With a real bound the weight means what it says.
+- **A tag still being typed belongs to the reminder** (0.49.0). The field committed on losing the
+  focus and "Guardar" cleared the focus on its way in — which reads like it should work and does
+  not: the commit lands one snapshot after the save has read the draft, so a reminder saved
+  straight from a half-typed tag was saved without it. The word is held by the screen now
+  (`pendingTag`) and the save adds it before saving. `TagReuseTest` types one and presses
+  Guardar.
+- The backup is the one row in the settings index that is not a fold (a group whose whole
+  content is one link costs a tap and hides a row), so it is set like the headings it stands
+  among — `SettingsLinkRow(topLevel = true)`, `titleMedium`, and `heading()` in the semantics so
+  a screen reader walking the index by its headings does not step over it. In the same face as
+  its neighbours, because the same word in a lighter one looks like a mistake.
 - **Settings is an index, not a scroll** (`SettingsScreen.kt`, `SettingsGroup.kt`). Thirty-odd
   controls in one column is past every published ceiling for a settings screen, so they fold
   into ten rows, each carrying its own current value — the sound's name, "08:00–23:30", "3
@@ -462,7 +500,10 @@ strict is asking somebody to remember how they spelled it.
   A synthetic reminder handed to the presenter would prove nothing (`AlertActivity` re-reads the
   row and drops one it cannot find). Its id is marked, and `ReminderFiring.dismiss` deletes it
   instead of finishing it: a rehearsal is not a thing that got done, and "Hechos" counts the
-  week. `ReadinessAndRehearsalTest` (device) watches the notification arrive and go. **"Vibración al tocar" is the same shape of
+  week. **And it asks what to try** (`TestAlertCard`, 0.49.0): everything at once answers "does
+  anything arrive", but the questions people have are narrower — the full screen over the lock,
+  the alarm sound at alarm volume, the buzz in a pocket — and each wants the others out of the
+  way, so the rehearsal takes the reminder's own action tiles. `ReadinessAndRehearsalTest` (device) watches the notification arrive and go. **"Vibración al tocar" is the same shape of
   problem in one row**: Android gates every app's touch feedback behind its own switch and there
   is no asking it nicely, so with that off ours can only ever turn the tick *off* — somebody
   turns it on, nothing happens, and the app looks broken. It gets the same red row and the same
@@ -1542,6 +1583,14 @@ history is the backup's history for free — with a fine-grained token scoped to
   version, so a change that would make old vaults unreadable fails in CI (the rule is in
   `CLAUDE.md`). A vault written by a newer *build* under the same schema is warned about in the
   preview: the rows keep what this build cannot read, but the editor's next save would not.
+  The **settings blob** is the one part with no element-by-element tolerance of its own — it is
+  decoded whole — so anything inside it that an older build cannot name is a reset of every
+  setting rather than a loss of one. From 0.49.0 the two places where that can happen are read
+  leniently (`TolerantRules`, `TolerantRecurrence`: a preset drops the rule or the recurrence it
+  cannot read and keeps the rest), which protects every build from here on; a vault carrying a
+  0.49 preset restored on an *older* build than that still costs the settings, and the schema is
+  deliberately not bumped for it — a bump would make those builds refuse a vault whose reminders
+  they can read perfectly well, which is the worse trade for a phone that only moves forward.
 
 ## Self-update
 

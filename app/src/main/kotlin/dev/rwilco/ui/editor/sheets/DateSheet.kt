@@ -37,6 +37,16 @@ import java.time.ZonedDateTime
 import dev.rwilco.model.DateShortcut
 import androidx.compose.foundation.layout.padding
 import java.time.LocalDate
+import androidx.compose.runtime.mutableIntStateOf
+import dev.rwilco.model.RELATIVE_AMOUNT
+import dev.rwilco.model.RelativeDay
+import dev.rwilco.model.RelativeUnit
+import dev.rwilco.ui.components.DayToggles
+import dev.rwilco.ui.components.Stepper
+import dev.rwilco.ui.format.relativeDayText
+import dev.rwilco.ui.format.rememberWords
+import java.time.DayOfWeek
+import dev.rwilco.model.on
 
 /**
  * A day, and then the question of when in it.
@@ -77,15 +87,32 @@ fun DateSheet(
     var time by rememberTime(
         when (initial) {
             is Trigger.AtDateTime -> initial.at.toLocalTime()
+            is Trigger.RelativeDate -> initial.time ?: defaultTime
             // What the old date-only trigger always meant, now written down where it can be seen.
             else -> defaultTime
         },
     )
-    val startingWindow = (initial as? Trigger.DayRandom)?.window
+    // Counted from the day it is used rather than pointed at on a calendar. It is the same
+    // question — which day, and when in it — so it lives here rather than on a tile of its own;
+    // what changes is only how the day is said.
+    val startingRelative = initial as? Trigger.RelativeDate
+    var relative by rememberSaveable { mutableStateOf(startingRelative != null) }
+    var amount by rememberSaveable { mutableIntStateOf((startingRelative?.day as? RelativeDay.In)?.amount ?: 1) }
+    var unitName by rememberSaveable {
+        mutableStateOf(((startingRelative?.day as? RelativeDay.In)?.unit ?: RelativeUnit.DAYS).name)
+    }
+    val unit = RelativeUnit.valueOf(unitName)
+    var weekdayName by rememberSaveable {
+        mutableStateOf((startingRelative?.day as? RelativeDay.NextWeekday)?.day?.name)
+    }
+    val relativeDay: RelativeDay = weekdayName?.let { RelativeDay.NextWeekday(DayOfWeek.valueOf(it)) }
+        ?: RelativeDay.In(amount, unit)
+    val startingWindow = (initial as? Trigger.DayRandom)?.window ?: startingRelative?.window
     var kindName by rememberSaveable {
         mutableStateOf(
             when {
                 startingWindow != null -> WhenKind.IN_WINDOW
+                startingRelative != null -> if (startingRelative.time != null) WhenKind.AT_TIME else WhenKind.ANY_TIME
                 initial is Trigger.DayRandom -> WhenKind.ANY_TIME
                 // An hour on disk is one somebody typed (or, for the old date-only shape, the
                 // one it has always meant); a sheet with nothing behind it opens on the answer
@@ -105,10 +132,15 @@ fun DateSheet(
         onDismiss = onDismiss,
         onConfirm = {
             onConfirm(
-                when (kind) {
-                    WhenKind.AT_TIME -> Trigger.AtDateTime(LocalDateTime.of(date, time))
-                    WhenKind.IN_WINDOW -> Trigger.DayRandom(date, window)
-                    WhenKind.ANY_TIME -> Trigger.DayRandom(date)
+                when {
+                    relative -> Trigger.RelativeDate(
+                        day = relativeDay,
+                        time = time.takeIf { kind == WhenKind.AT_TIME },
+                        window = window.takeIf { kind == WhenKind.IN_WINDOW },
+                    )
+                    kind == WhenKind.AT_TIME -> Trigger.AtDateTime(LocalDateTime.of(date, time))
+                    kind == WhenKind.IN_WINDOW -> Trigger.DayRandom(date, window)
+                    else -> Trigger.DayRandom(date)
                 },
             )
         },
@@ -116,8 +148,28 @@ fun DateSheet(
         // A stretch with no width has no moment in it.
         confirmEnabled = kind != WhenKind.IN_WINDOW || windowFrom != windowTo,
     ) {
-        DateShortcuts(today = today, selected = date, onPick = { date = it })
-        MonthCalendar(selected = date, today = today, onSelect = { date = it }, minDate = today)
+        SegmentedChoice(
+            options = listOf(stringResource(R.string.sheet_date_fixed), stringResource(R.string.sheet_date_relative)),
+            selectedIndex = if (relative) 1 else 0,
+            onSelect = { relative = it == 1 },
+            modifier = Modifier.padding(bottom = Tokens.spacing.md),
+        )
+        if (relative) {
+            RelativeDayPicker(
+                amount = amount,
+                unit = unit,
+                weekday = weekdayName?.let { DayOfWeek.valueOf(it) },
+                onIn = { newAmount, newUnit ->
+                    amount = newAmount
+                    unitName = newUnit.name
+                    weekdayName = null
+                },
+                onWeekday = { weekdayName = it.name },
+            )
+        } else {
+            DateShortcuts(today = today, selected = date, onPick = { date = it })
+            MonthCalendar(selected = date, today = today, onSelect = { date = it }, minDate = today)
+        }
         WhenInTheDay(
             kind = kind,
             onKind = { kindName = it.name },
@@ -125,12 +177,91 @@ fun DateSheet(
             onTime = { time = it },
             window = window,
             onWindow = { windowFrom = it.from; windowTo = it.to },
-            date = date,
+            // The day this sheet is about, which in the relative mode is not the one on the
+            // calendar behind it: "a cualquier hora" quotes that day's waking hours, and a
+            // leftover Saturday would quote the weekend's for a reminder landing on a Friday.
+            date = if (relative) relativeDay.on(today) else date,
             shape = shape,
             savedWindows = savedWindows,
         )
     }
 }
+
+/**
+ * How a day is said when it is counted rather than pointed at: the four everybody names, a
+ * span to count, or the next Monday there is.
+ *
+ * The two ways are one segmented control because they are two different questions — "dentro de
+ * una semana" is seven days, "el próximo lunes" is however many days that turns out to be — and
+ * a person means one or the other, never both.
+ */
+@Composable
+private fun RelativeDayPicker(
+    amount: Int,
+    unit: RelativeUnit,
+    weekday: DayOfWeek?,
+    onIn: (Int, RelativeUnit) -> Unit,
+    onWeekday: (DayOfWeek) -> Unit,
+) {
+    val spacing = Tokens.spacing
+    val words = rememberWords()
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.md), modifier = Modifier.padding(bottom = spacing.md)) {
+        Text(
+            text = stringResource(R.string.sheet_relative_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+        ) {
+            for (shortcut in RELATIVE_SHORTCUTS) {
+                PresetChip(
+                    label = relativeDayText(words, shortcut).replaceFirstChar { it.titlecase(words.locale) },
+                    selected = weekday == null && shortcut == RelativeDay.In(amount, unit),
+                    onClick = { onIn(shortcut.amount, shortcut.unit) },
+                )
+            }
+        }
+        SegmentedChoice(
+            options = listOf(stringResource(R.string.sheet_relative_in), stringResource(R.string.sheet_relative_next)),
+            selectedIndex = if (weekday == null) 0 else 1,
+            onSelect = { index -> if (index == 0) onIn(amount, unit) else onWeekday(weekday ?: DayOfWeek.MONDAY) },
+        )
+        if (weekday == null) {
+            // The unit on its own line: beside the stepper the three words had a third of a
+            // phone between them and "semanas" broke in half.
+            Stepper(
+                valueLabel = amount.toString(),
+                onDecrement = { onIn(amount - 1, unit) },
+                onIncrement = { onIn(amount + 1, unit) },
+                decrementEnabled = amount > RELATIVE_AMOUNT.first,
+                incrementEnabled = amount < RELATIVE_AMOUNT.last,
+            )
+            SegmentedChoice(
+                options = listOf(
+                    stringResource(R.string.sheet_relative_days),
+                    stringResource(R.string.sheet_relative_weeks),
+                    stringResource(R.string.sheet_relative_months),
+                ),
+                selectedIndex = RelativeUnit.entries.indexOf(unit),
+                onSelect = { onIn(amount, RelativeUnit.entries[it]) },
+            )
+        } else {
+            DayToggles(selected = setOf(weekday), onToggle = onWeekday)
+        }
+    }
+}
+
+/** The four everybody names, in the order they come. */
+private val RELATIVE_SHORTCUTS = listOf(
+    RelativeDay.In(1, RelativeUnit.DAYS),
+    RelativeDay.In(2, RelativeUnit.DAYS),
+    RelativeDay.In(1, RelativeUnit.WEEKS),
+    RelativeDay.In(1, RelativeUnit.MONTHS),
+)
 
 /** The four days people name without looking: one tap each, date only. */
 @Composable

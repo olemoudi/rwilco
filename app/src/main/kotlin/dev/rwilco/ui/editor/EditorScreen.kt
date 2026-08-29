@@ -112,6 +112,8 @@ fun EditorScreen(
     val scrollState = rememberScrollState()
     // Bumped when a refused save wants the words: TextSection takes it as a key to focus on.
     var focusNonce by remember { mutableIntStateOf(0) }
+    // A tag being typed right now. Held here so "Guardar" can put it on the reminder first.
+    var pendingTag by rememberSaveable { mutableStateOf("") }
     val textBlankMessage = stringResource(R.string.editor_error_text)
     val textLongMessage = stringResource(R.string.editor_error_text_long)
     val triggerMessage = stringResource(R.string.editor_error_trigger)
@@ -261,6 +263,13 @@ fun EditorScreen(
                     zone = zone,
                     onSave = {
                         haptics.perform(HapticFeedbackType.Confirm)
+                        // A tag typed but not yet added goes on the reminder: pressing "Guardar"
+                        // with a word in that field means the word, not the empty list. The
+                        // blur would commit it too, one snapshot too late to be saved.
+                        if (pendingTag.isNotBlank()) {
+                            viewModel.addTag(pendingTag)
+                            pendingTag = ""
+                        }
                         focusManager.clearFocus()
                         viewModel.save()
                     },
@@ -316,6 +325,8 @@ fun EditorScreen(
                         onToggle = viewModel::toggleTag,
                         onAdd = viewModel::addTag,
                         onCurate = { viewModel.curate(CurateKind.TAGS) },
+                        pendingTag = pendingTag,
+                        onPendingTagChange = { pendingTag = it },
                     )
                 }
                 EditorSection(

@@ -321,6 +321,8 @@ private const val MONTHS_TO_TRY = 3
 @Serializable
 data class RecurrencePreset(
     val id: String,
+    // Kept in the settings, where one unreadable shape would cost every setting there is.
+    @Serializable(with = TolerantRecurrence::class)
     val recurrence: Recurrence,
     val name: String = "",
     val uses: Int = 0,

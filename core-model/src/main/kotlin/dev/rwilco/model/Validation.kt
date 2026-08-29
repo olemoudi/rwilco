@@ -194,6 +194,13 @@ fun problemOf(trigger: Trigger): TriggerProblem? = when (trigger) {
     // Both days count, so a single-day range is fine; one that ends before it starts is not.
     is Trigger.DateRange -> TriggerProblem.ENDS_BEFORE_START.takeIf { trigger.to < trigger.from }
     is Trigger.Countdown -> TriggerProblem.COUNTDOWN_OUT_OF_RANGE.takeIf { trigger.minutes !in MIN_COUNTDOWN_MINUTES..MAX_COUNTDOWN_MINUTES }
+    // The day it names is worked out, so the only thing that can be wrong is how far it counts
+    // — and a stretch of the day with no width in it, the same as everywhere else.
+    is Trigger.RelativeDate -> when {
+        (trigger.day as? RelativeDay.In)?.let { it.amount !in RELATIVE_AMOUNT } == true -> TriggerProblem.EVERY_OUT_OF_RANGE
+        trigger.window?.let { it.from == it.to } == true -> TriggerProblem.WINDOW_EMPTY
+        else -> null
+    }
     is Trigger.Location -> when {
         trigger.lat !in -90.0..90.0 || trigger.lng !in -180.0..180.0 -> TriggerProblem.COORDINATES_INVALID
         trigger.radiusM !in MIN_RADIUS_M..MAX_RADIUS_M -> TriggerProblem.RADIUS_OUT_OF_RANGE
@@ -237,7 +244,11 @@ fun warnings(
     // Judged as they will be saved: a day left to the day is narrowed to what is left of it at
     // the save (settleDays), and a warning read off the unnarrowed window said "ya ha pasado" of
     // a reminder that was going to ring tonight.
-    val rules = settleDays(rules, now, zone, shape)
+    // Both the way a save settles them: a day narrowed to what is left of it, and a relative
+    // day resolved to the date it means. Without the second, the walk below re-resolves the
+    // shape from wherever it has reached — so it looks like something that comes round again,
+    // and a rule that will never fire once written was reported as fine.
+    val rules = settleDays(settleRelativeDates(rules, now, zone), now, zone, shape)
     val found = ArrayList<ValidationWarning>()
     val doomed = ArrayList<Int>()
     // Under "a la vez" every rule is judged with the others folded into it as conditions, which

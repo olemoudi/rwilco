@@ -301,6 +301,10 @@ fun nextFireOf(
         is Trigger.Countdown -> (trigger.startedAt ?: now).plusSeconds(trigger.minutes * 60L)
             .future(now)
             ?.let { NextFire.Scheduled(it, trigger) }
+        // Never stamped and never stored on a reminder (see settleRelativeDates): asked
+        // before it is written, it answers for the day it would be written on — which is what
+        // the editor and the preset list should show, and what the reminder will actually get.
+        is Trigger.RelativeDate -> nextFireOf(trigger.on(now.atZone(zone).toLocalDate()), reminderId, now, zone, defaultTime, shape, fences)
         is Trigger.Location -> NextFire.WhenAt(trigger)
         // Drawn inside the rule's hour fences, like the two shapes above that leave the hour
         // to the day (see RandomDraw.draws).

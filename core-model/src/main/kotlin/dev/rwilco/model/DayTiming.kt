@@ -38,6 +38,8 @@ fun Trigger.dayTiming(): DayTiming? = when (this) {
     is Trigger.Interval -> DayTiming.In(DayWindow(from, to))
     is Trigger.DayRandom -> window?.let { DayTiming.In(it) } ?: DayTiming.Whenever
     is Trigger.Repeat -> time?.let { DayTiming.At(it) } ?: window?.let { DayTiming.In(it) } ?: DayTiming.Whenever
+    // The same three answers a date gives, which is what it is: a day, and when in it.
+    is Trigger.RelativeDate -> time?.let { DayTiming.At(it) } ?: window?.let { DayTiming.In(it) } ?: DayTiming.Whenever
     is Trigger.OnDate, is Trigger.Countdown, is Trigger.Location, is Trigger.Random, is Trigger.DateRange -> null
 }
 

@@ -87,7 +87,6 @@ import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.format.rememberIs24h
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.components.LocalSnackbar
-import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Language
 import android.os.Build
 import android.net.Uri
@@ -219,12 +218,9 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
                 // this is the whole thing, lock screen included.
                 val testAlertText = stringResource(R.string.settings_test_alert_text)
                 val testAlertStarted = stringResource(R.string.settings_test_alert_started)
-                SettingsLinkRow(
-                    title = stringResource(R.string.settings_test_alert),
-                    summary = stringResource(R.string.settings_test_alert_hint),
-                    icon = Icons.Outlined.PlayArrow,
-                    onClick = {
-                        viewModel.testAlert(testAlertText)
+                TestAlertCard(
+                    onTest = { actions ->
+                        viewModel.testAlert(testAlertText, actions)
                         snackbar.show(testAlertStarted)
                     },
                 )

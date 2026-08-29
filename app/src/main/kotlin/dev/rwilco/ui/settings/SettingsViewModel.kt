@@ -97,13 +97,13 @@ class SettingsViewModel(
      * A real reminder ten seconds out, through the real path (see [TestAlert]). Saved and
      * nothing else: the scheduling watcher arms it, the alarm fires it, and "hecho" deletes it.
      */
-    fun testAlert(text: String) {
+    fun testAlert(text: String, actions: Set<Action> = TestAlert.EVERYTHING) {
         viewModelScope.launch {
             // One at a time: a rehearsal nobody answers stays as a row (only "hecho" removes
             // one), and three taps while testing left three overdue cards on Home, each with a
             // safety net of its own a day later.
             repository.allNow().filter { TestAlert.isTest(it.id) }.forEach { repository.delete(it.id) }
-            repository.save(TestAlert.reminder(clock.instant(), clock.zone, text))
+            repository.save(TestAlert.reminder(clock.instant(), clock.zone, text, actions))
         }
     }
 

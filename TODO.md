@@ -195,6 +195,18 @@ things; the ones worth not re-deriving:
   places group now *does* open itself on a phone with no background permission — it was losing a
   race with the database read before.
 
+## Traps found on 2026-08-29, worth not re-deriving
+- **`weight()` does nothing inside a bottom sheet.** M3 measures the sheet's content with an
+  unbounded height, so `weight(1f, fill = false)` on the scrolling part and a button row after it
+  puts the row wherever the content ends — off the screen once the content is tall. Every sheet
+  looked fine only because none of them was tall enough yet. `SheetScaffold` caps the height now.
+- **A blur commits one snapshot late.** The new-tag field committed `onFocusChanged` and the save
+  called `clearFocus()` first; the save still read the draft without the tag. Anything a button
+  needs has to be state the button can see, not a side effect of losing focus.
+- **A group title can be a chip's label somewhere else.** The tour's `openGroup` matched "Sonido"
+  by text and found two once the alert rehearsal grew a "Sonido" action chip; it matches the
+  heading now.
+
 ## Still to prove on the real phone (Pixel 8 Pro)
 - Settings → Alertas → "Probar una alerta" is the way to prove most of the below now: lock the
   phone, wait ten seconds, and see what arrives.

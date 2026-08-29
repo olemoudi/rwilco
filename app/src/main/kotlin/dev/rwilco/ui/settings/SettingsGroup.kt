@@ -141,12 +141,27 @@ fun SettingsLinkRow(
     summary: String = "",
     icon: ImageVector? = null,
     attention: Boolean = false,
+    /**
+     * Whether this row stands in the index itself rather than inside a group.
+     *
+     * The index is a list of headings and one of them — the backup — is a row instead of a fold,
+     * because a group whose whole content is a single link is a fold that costs a tap. It has to
+     * *read* like the headings it stands among all the same, and it did not: the same word in a
+     * lighter face, which looks like a mistake because it is one.
+     */
+    topLevel: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
     RwilcoCard(onClick = onClick, modifier = modifier) {
         SettingsRow(icon = icon, attention = attention) {
             Column(Modifier.weight(1f)) {
-                Text(text = title, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text = title,
+                    style = if (topLevel) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
+                    // Set like a heading and announced as one: a screen reader walks the index
+                    // by its headings, and this row stands in that list.
+                    modifier = if (topLevel) Modifier.semantics { heading() } else Modifier,
+                )
                 if (summary.isNotEmpty()) {
                     Text(
                         text = summary,

@@ -102,6 +102,32 @@
     <string name="relative_today">today</string>
     <string name="relative_tomorrow">tomorrow</string>
     <string name="relative_yesterday">yesterday</string>
+    <string name="relative_day_after_tomorrow">the day after tomorrow</string>
+    <string name="relative_next_week">next week</string>
+    <string name="relative_next_month">next month</string>
+    <string name="relative_next_weekday">next %1$s</string>
+    <plurals name="relative_in_days">
+        <item quantity="one">in %d day</item>
+        <item quantity="other">in %d days</item>
+    </plurals>
+    <plurals name="relative_in_weeks">
+        <item quantity="one">in %d week</item>
+        <item quantity="other">in %d weeks</item>
+    </plurals>
+    <plurals name="relative_in_months">
+        <item quantity="one">in %d month</item>
+        <item quantity="other">in %d months</item>
+    </plurals>
+    <string name="trigger_relative_from_use">counted from the day you use it</string>
+    <string name="sheet_date_fixed">A set day</string>
+    <string name="sheet_date_relative">Counted from use</string>
+    <string name="sheet_relative_hint">The day is worked out each time. A preset for "tomorrow" means tomorrow whenever you press it, not the day you made it.</string>
+    <string name="sheet_relative_in">In</string>
+    <string name="sheet_relative_next">The next</string>
+    <string name="sheet_relative_days">days</string>
+    <string name="sheet_relative_weeks">weeks</string>
+    <string name="sheet_relative_months">months</string>
+    <string name="editor_sentence_relative">%1$s, counted from the day you use it</string>
     <string name="countdown_in">in %1$s</string>
     <string name="countdown_ago">%1$s ago</string>
     <string name="countdown_just_now">just now</string>
@@ -917,7 +943,8 @@
     <string name="settings_snooze_custom_hint">One of the snooze buttons is a length you choose. Ten minutes and two hours are always there beside it.</string>
     <string name="settings_snooze_notification">The two on the notification</string>
     <string name="settings_test_alert">Test an alert</string>
-    <string name="settings_test_alert_hint">Rings in ten seconds through the real path — lock the phone to see the full screen.</string>
+    <string name="settings_test_alert_hint">Rings in ten seconds through the real path — lock the phone to see the full screen. Pick what to try: only the sound, only the buzz, the lot.</string>
+    <string name="settings_test_alert_go">Try it</string>
     <string name="settings_test_alert_text">Test alert</string>
     <string name="settings_test_alert_started">It rings in 10 s</string>
     <string name="settings_language">Language</string>

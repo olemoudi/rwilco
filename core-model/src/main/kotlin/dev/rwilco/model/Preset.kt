@@ -40,10 +40,14 @@ data class Preset(
      */
     val text: String = "",
     val tags: List<String> = emptyList(),
+    // Element by element on the way in: an unreadable rule costs this preset a rule, and
+    // not the whole settings blob. See TolerantRules.
+    @Serializable(with = TolerantRules::class)
     val rules: List<TriggerRule> = emptyList(),
     val ruleMatch: RuleMatch = RuleMatch.ANY,
     val actions: Set<Action> = DEFAULT_ACTIONS,
     /** How the reminders made from it come back after they are dealt with. */
+    @Serializable(with = TolerantRecurrence::class)
     val recurrence: Recurrence = Recurrence.None,
     /** Which of the [PRESET_COLORS] this one wears. */
     val colorIndex: Int = 0,
@@ -117,7 +121,7 @@ fun Preset.toReminder(
     tags = tags,
     // Any countdown it carries starts ticking now: that is the whole reason a preset stores a
     // length rather than a moment. And a date left to the day is drawn from what is left of it.
-    rules = settleDays(startCountdowns(rules, now), now, zone, shape),
+    rules = settleDays(startCountdowns(settleRelativeDates(rules, now, zone), now), now, zone, shape),
     ruleMatch = ruleMatch,
     actions = actions,
     recurrence = recurrence,

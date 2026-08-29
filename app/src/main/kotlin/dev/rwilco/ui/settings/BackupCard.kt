@@ -35,6 +35,8 @@ fun BackupCard(onOpen: () -> Unit, modifier: Modifier = Modifier) {
         summary = if (current == null) "" else vaultStatusText(current, activity.working),
         icon = Icons.Outlined.Lock,
         attention = current?.needsAttention == true,
+        // It sits in the index beside the folding groups, so it is set like one of them.
+        topLevel = true,
         onClick = onOpen,
         modifier = modifier,
     )

@@ -22,6 +22,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.time.LocalDateTime
 import java.util.UUID
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performTextInput
+import dev.rwilco.ui.editor.EDITOR_TAG_FIELD_TAG
+import dev.rwilco.ui.editor.EDITOR_TEXT_TAG
 
 /**
  * A tag used once has to come back on its own the next time.
@@ -79,5 +83,38 @@ class TagReuseTest {
             rule.onAllNodesWithText(reuseLabel, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithText(tag, useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+    }
+
+    /**
+     * A tag typed but not yet added is part of the reminder: pressing "Guardar" with a word in
+     * that field means the word. The field committed on losing the focus and the save cleared
+     * the focus on its way in, which lands one snapshot too late — the reminder was saved with
+     * no tag at all, and the word typed just vanished.
+     */
+    @Test
+    fun aTagStillBeingTypedIsSavedWithTheReminder() {
+        val words = "Cambiar el filtro"
+        val typed = "coche"
+        rule.waitUntilShown(rule.activity.getString(R.string.home_new))
+        rule.onNodeWithText(rule.activity.getString(R.string.home_new), useUnmergedTree = true).performClick()
+        rule.waitUntilShown(rule.activity.getString(R.string.editor_write))
+
+        rule.onNodeWithText(rule.activity.getString(R.string.editor_write), useUnmergedTree = true).performClick()
+        rule.onNodeWithTag(EDITOR_TEXT_TAG).performTextInput(words)
+        rule.onNodeWithText(rule.activity.getString(R.string.editor_new_tag), useUnmergedTree = true).performScrollTo().performClick()
+        rule.waitUntilShown(rule.activity.getString(R.string.editor_new_tag_hint))
+        rule.onNodeWithTag(EDITOR_TAG_FIELD_TAG).performTextInput(typed)
+        // Straight to "Guardar", without pressing the + or leaving the field.
+        rule.onNodeWithText(rule.activity.getString(R.string.common_save), useUnmergedTree = true).performClick()
+
+        rule.waitUntil(timeoutMillis = 10_000) {
+            runBlocking { app.repository.allNow().any { it.text == words } }
+        }
+        val saved = runBlocking { app.repository.allNow().first { it.text == words } }
+        check(saved.tags == listOf(typed)) { "the tag being typed should have been saved: ${saved.tags}" }
+    }
+
+    private fun androidx.compose.ui.test.junit4.ComposeTestRule.waitUntilShown(text: String) {
+        waitUntil(timeoutMillis = 10_000) { onAllNodesWithText(text, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
     }
 }

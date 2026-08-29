@@ -190,6 +190,22 @@ class ReminderCodecTest {
     }
 
     @Test
+    fun `a preset shaped by a newer build costs a rule, never every setting`() {
+        // The settings are decoded in one go, so an unreadable trigger inside a preset used to
+        // throw in the middle of the object and hand back the defaults — theme, sound, saved
+        // places and all. A vault restored on an older build is exactly that path.
+        val blob = """{"theme":"DARK","presets":[{"id":"p1","name":"Ma\u00f1ana","createdAt":"2026-08-27T13:00:00Z",""" +
+            """"rules":[{"trigger":{"type":"from_the_future","whatever":3}},{"trigger":{"type":"countdown","minutes":30}}],""" +
+            """"recurrence":{"type":"a_shape_from_2030"}}]}"""
+        val settings = ReminderCodec.decodeSettings(blob)
+        assertEquals(ThemeMode.DARK, settings.theme)
+        val preset = settings.presets.single()
+        assertEquals("Mañana", preset.name)
+        assertEquals(listOf(Trigger.Countdown(30)), preset.rules.map { it.trigger })
+        assertEquals(Recurrence.None, preset.recurrence)
+    }
+
+    @Test
     fun `settings encode every field so a reader can rely on presence`() {
         val encoded = ReminderCodec.encodeSettings(AppSettings())
         assertEquals(
