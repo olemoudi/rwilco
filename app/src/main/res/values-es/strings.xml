@@ -39,6 +39,16 @@
     <string name="home_card_actions">Acciones del recordatorio</string>
     <string name="home_clone">Clonar recordatorio</string>
     <string name="home_clone_hint">Lo mismo otra vez, con las palabras en blanco</string>
+    <string name="home_menu_done">Hecho</string>
+    <string name="home_menu_delete">Borrar</string>
+    <string name="home_snooze">Posponer</string>
+    <string name="home_snooze_hint">Vuelve a sonar entonces, no antes</string>
+    <string name="home_cancel_snooze">Quitar el posponer</string>
+    <string name="home_cancel_snooze_hint">Vuelve a su propio momento</string>
+    <string name="home_snoozed_until">Pospuesto hasta %1$s</string>
+    <string name="home_snooze_cancelled">Posponer quitado</string>
+    <string name="home_keep_preset">Guardar como preset</string>
+    <string name="home_keep_preset_hint">Su forma con nombre, para la próxima</string>
     <string name="home_pin_manage">Añadir un botón de preset</string>
     <string name="home_pin_title">Botones en la pantalla principal</string>
     <string name="home_pin_hint">Un toque escribe el recordatorio. Si el preset no trae texto propio, te lo pide y nada más.</string>
@@ -490,6 +500,7 @@
     <string name="snooze_tomorrow">Mañana a la misma hora</string>
     <string name="snooze_weekend">El finde</string>
     <string name="snooze_next_week">La semana que viene</string>
+    <string name="snooze_tomorrow_morning">Mañana por la mañana</string>
     <string name="settings_weekend">Cuándo empieza «el finde»</string>
     <string name="settings_weekend_hint">Dónde cae un recordatorio cuando lo pospones al finde.</string>
 
@@ -895,6 +906,10 @@
     <string name="settings_alert_stacking_hint">Cuando dos avisos a pantalla completa suenan con segundos de diferencia: uno tras otro — el siguiente aparece en cuanto contestas al primero — o todos a la vez, con la pantalla dividida en una tira por aviso. En ambos casos cada uno conserva su notificación.</string>
     <string name="settings_stacking_sequential">Uno tras otro</string>
     <string name="settings_stacking_strips">Todos a la vez</string>
+    <string name="settings_snooze_custom">Un posponer a tu medida</string>
+    <string name="settings_snooze_custom_hint">Uno de los botones de posponer dura lo que tú digas. Diez minutos y dos horas siguen ahí al lado.</string>
+    <string name="settings_snooze_notification">Los dos de la notificación</string>
+    <string name="settings_snooze_notification_hint">En una notificación caben tres botones y "Hecho" es uno, así que lleva dos posponer. La alerta a pantalla completa los ofrece todos.</string>
     <plurals name="alert_waiting">
         <item quantity="one">%1$d más esperando</item>
         <item quantity="other">%1$d más esperando</item>

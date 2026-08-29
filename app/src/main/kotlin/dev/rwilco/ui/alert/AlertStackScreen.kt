@@ -48,6 +48,10 @@ import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.format.triggerLine
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.icon
+import dev.rwilco.model.AppSettings
+import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
+import dev.rwilco.model.NOTIFICATION_SNOOZES
+import dev.rwilco.ui.format.snoozeLabel
 
 /** One reminder on the alert screen: its id, for the answer, and what it shows. */
 data class AlertItem(val id: String, val content: AlertContent)
@@ -64,6 +68,9 @@ fun AlertStackScreen(
     onDone: (String) -> Unit,
     onSnooze: (String, Snooze) -> Unit,
     onView: (String) -> Unit,
+    /** The two offers a strip has room for — the notification's own — and the custom one's length. */
+    snoozes: List<Snooze> = AppSettings().notificationSnoozes,
+    customMinutes: Int = DEFAULT_SNOOZE_MINUTES,
 ) {
     val scheme = MaterialTheme.colorScheme
     val spacing = Tokens.spacing
@@ -94,14 +101,14 @@ fun AlertStackScreen(
                 Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
                     for (item in items) {
                         key(item.id) {
-                            Strip(item, onDone, onSnooze, onView, Modifier.weight(1f))
+                            Strip(item, onDone, onSnooze, onView, snoozes, customMinutes, Modifier.weight(1f))
                         }
                     }
                 }
             } else {
                 LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
                     items(items, key = { it.id }) { item ->
-                        Strip(item, onDone, onSnooze, onView, Modifier.heightIn(min = STRIP_MIN_HEIGHT))
+                        Strip(item, onDone, onSnooze, onView, snoozes, customMinutes, Modifier.heightIn(min = STRIP_MIN_HEIGHT))
                     }
                 }
             }
@@ -115,6 +122,8 @@ private fun Strip(
     onDone: (String) -> Unit,
     onSnooze: (String, Snooze) -> Unit,
     onView: (String) -> Unit,
+    snoozes: List<Snooze>,
+    customMinutes: Int,
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -166,7 +175,7 @@ private fun Strip(
                     colors = ButtonDefaults.textButtonColors(contentColor = scheme.onSurfaceVariant),
                 ) { Text(stringResource(R.string.alert_view)) }
                 Spacer(Modifier.weight(1f))
-                for (snooze in listOf(Snooze.TEN_MINUTES, Snooze.TWO_HOURS)) {
+                for (snooze in snoozes.take(NOTIFICATION_SNOOZES)) {
                     Surface(
                         onClick = {
                             haptics.perform(HapticFeedbackType.ContextClick)
@@ -180,7 +189,7 @@ private fun Strip(
                             modifier = Modifier.heightIn(min = Tokens.sizes.touch).padding(horizontal = spacing.md),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text(text = stringResource(snooze.labelRes), style = MaterialTheme.typography.labelLarge, color = scheme.onSurface)
+                            Text(text = snoozeLabel(snooze, customMinutes), style = MaterialTheme.typography.labelLarge, color = scheme.onSurface)
                         }
                     }
                 }

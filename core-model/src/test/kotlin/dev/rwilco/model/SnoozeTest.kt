@@ -52,6 +52,30 @@ class SnoozeTest {
     }
 
     @Test
+    fun `tomorrow morning is the hour the day starts at, whatever the hour now`() {
+        assertEquals(local(2026, 8, 28, 9, 0), until(Snooze.TOMORROW_MORNING))
+        val lateNight = local(2026, 8, 27, 23, 40)
+        assertEquals(local(2026, 8, 28, 9, 0), until(Snooze.TOMORROW_MORNING, from = lateNight))
+        assertEquals(local(2026, 8, 28, 7, 30), Snooze.TOMORROW_MORNING.until(now, zone, friday, halfPastEight, dayStart = LocalTime.of(7, 30)))
+    }
+
+    @Test
+    fun `the custom length is whatever it was set to, within its bounds`() {
+        assertEquals(local(2026, 8, 27, 15, 30), until(Snooze.CUSTOM))
+        assertEquals(local(2026, 8, 27, 15, 45), Snooze.CUSTOM.until(now, zone, friday, halfPastEight, customMinutes = 45))
+        assertEquals(local(2026, 8, 27, 15, 5), Snooze.CUSTOM.until(now, zone, friday, halfPastEight, customMinutes = 0))
+    }
+
+    @Test
+    fun `the notification keeps exactly two offers, the newest replacing the older`() {
+        val start = listOf(Snooze.TEN_MINUTES, Snooze.TWO_HOURS)
+        assertEquals(listOf(Snooze.TWO_HOURS, Snooze.TOMORROW_MORNING), pickNotificationSnoozes(start, Snooze.TOMORROW_MORNING))
+        assertEquals(start, pickNotificationSnoozes(start, Snooze.TWO_HOURS))
+        assertEquals(listOf(Snooze.CUSTOM, Snooze.WEEKEND), pickNotificationSnoozes(listOf(Snooze.CUSTOM), Snooze.WEEKEND))
+        assertEquals(listOf(Snooze.CUSTOM, Snooze.TWO_HOURS), pickNotificationSnoozes(listOf(Snooze.TEN_MINUTES, Snooze.TEN_MINUTES, Snooze.CUSTOM), Snooze.TWO_HOURS))
+    }
+
+    @Test
     fun `a wall-clock snooze keeps its hour across a clock change`() {
         // Sunday 25 October 2026 is when Madrid goes back an hour; 24 hours later is not the
         // same time of day, and "tomorrow" has to mean the time of day.

@@ -41,6 +41,16 @@
     <string name="home_card_actions">Reminder actions</string>
     <string name="home_clone">Clone reminder</string>
     <string name="home_clone_hint">The same again, with the words blank</string>
+    <string name="home_menu_done">Done</string>
+    <string name="home_menu_delete">Delete</string>
+    <string name="home_snooze">Snooze</string>
+    <string name="home_snooze_hint">It rings again then, not before</string>
+    <string name="home_cancel_snooze">Cancel the snooze</string>
+    <string name="home_cancel_snooze_hint">Back to its own moment</string>
+    <string name="home_snoozed_until">Snoozed until %1$s</string>
+    <string name="home_snooze_cancelled">Snooze cancelled</string>
+    <string name="home_keep_preset">Keep as a preset</string>
+    <string name="home_keep_preset_hint">Its shape under a name, for next time</string>
     <string name="home_pin_manage">Add a preset button</string>
     <string name="home_pin_title">Buttons on the main screen</string>
     <string name="home_pin_hint">One tap writes the reminder. If the preset has no words of its own, it asks for them and nothing else.</string>
@@ -492,6 +502,7 @@
     <string name="snooze_tomorrow">Tomorrow, same time</string>
     <string name="snooze_weekend">The weekend</string>
     <string name="snooze_next_week">Next week</string>
+    <string name="snooze_tomorrow_morning">Tomorrow morning</string>
     <string name="settings_weekend">When "the weekend" starts</string>
     <string name="settings_weekend_hint">Where a reminder lands when you put it off to the weekend.</string>
 
@@ -897,6 +908,10 @@
     <string name="settings_alert_stacking_hint">When two full-screen reminders ring within moments of each other: one after the other — the next appears the instant you answer the first — or all at once, the screen split into a strip per reminder. Each keeps its own notification either way.</string>
     <string name="settings_stacking_sequential">One after the other</string>
     <string name="settings_stacking_strips">All at once</string>
+    <string name="settings_snooze_custom">A snooze of your own</string>
+    <string name="settings_snooze_custom_hint">One of the snooze buttons is a length you choose. Ten minutes and two hours are always there beside it.</string>
+    <string name="settings_snooze_notification">The two on the notification</string>
+    <string name="settings_snooze_notification_hint">A notification has room for three buttons and "Done" is one, so it carries two snoozes. The full-screen alert offers all of them.</string>
     <plurals name="alert_waiting">
         <item quantity="one">%1$d more waiting</item>
         <item quantity="other">%1$d more waiting</item>

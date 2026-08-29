@@ -109,8 +109,9 @@ class EditorViewModel(
             val current = settings.filterNotNull().first()
             val loaded = reminderId?.let { repository.get(it) }
             existing = loaded
-            // One of five openings: an existing reminder, a preset being edited, a new reminder
-            // wearing a preset's shape, a copy of another reminder, or a blank one.
+            // One of six openings: an existing reminder, a preset being edited, a new reminder
+            // wearing a preset's shape, a copy of another reminder, that copy kept as a preset,
+            // or a blank one.
             val editedPreset = editPresetId?.let { id -> current.presets.firstOrNull { it.id == id } }
             val source = editedPreset ?: fromPresetId?.let { id -> current.presets.firstOrNull { it.id == id } }
             val cloned = cloneOfId?.let { repository.get(it) }
@@ -123,6 +124,10 @@ class EditorViewModel(
                 // hour" copied at noon means half an hour from the save, not from noon
                 // yesterday. Nothing that happened to the original comes with it either — no
                 // snooze, no ring, no anchor — because toDraft carries the shape alone.
+                // Kept as a preset instead: the same shape, and the words stay — they are the
+                // name the shape will be filed under, and the wording a reminder made from it
+                // starts with. Nothing is written until Guardar, same as a clone.
+                cloned != null && newPreset -> cloned.toDraft().copy(rules = clearCountdowns(cloned.rules))
                 cloned != null -> cloned.toDraft().copy(text = "", rules = clearCountdowns(cloned.rules))
                 // Editing the preset itself starts from its name; STARTING one from it does
                 // not — the name labels the shape, and the words are what is still missing.
@@ -143,6 +148,7 @@ class EditorViewModel(
                 suggestedTexts = visibleTexts(suggestedTexts(past, now, limit = 8, exclude = draft.text), current.hiddenTexts),
                 allTexts = visibleTexts(suggestedTexts(past, now, limit = 100), current.hiddenTexts),
                 defaultTime = current.defaultTime,
+                snoozeCustomMinutes = current.snoozeCustomMinutes,
                 dayShape = current.dayShape,
                 safetyNetSettings = current.safetyNet,
                 defaultKind = if (current.popularTriggersFirst) null else current.defaultTriggerKind,
@@ -159,11 +165,11 @@ class EditorViewModel(
                 // Which shape this started from, so the screen says so, and the cue to open
                 // the keyboard: everything but the words is already answered.
                 fromPresetName = if (editedPreset == null) source?.name else null,
-                presetText = editedPreset?.text.orEmpty(),
+                presetText = editedPreset?.text ?: cloned?.text?.takeIf { newPreset }.orEmpty(),
                 initialPresetText = editedPreset?.text.orEmpty(),
                 // Only when the preset left the words open: with default wording there is
                 // nothing to type, and a keyboard would be covering a finished form.
-                focusText = editedPreset == null && (cloned != null || (source != null && source.text.isBlank())),
+                focusText = editedPreset == null && ((cloned != null && !newPreset) || (source != null && source.text.isBlank())),
             )
         }
     }

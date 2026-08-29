@@ -203,6 +203,11 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
                         )
                     }
                 }
+                SnoozeCard(
+                    settings = current,
+                    onCustomMinutes = viewModel::setSnoozeCustomMinutes,
+                    onPick = viewModel::pickNotificationSnooze,
+                )
             }
 
             val insistent by viewModel.insistentInUse.collectAsStateWithLifecycle()

@@ -23,6 +23,8 @@ import dev.rwilco.model.VibrationPattern
 import dev.rwilco.ui.alert.AlertActivity
 import java.time.LocalTime
 import java.time.Instant
+import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
+import dev.rwilco.model.Snooze
 
 /** Where a firing shows itself. */
 enum class AlertPresentation { FULL_SCREEN, BANNER }
@@ -96,6 +98,9 @@ object AlertPresenter {
         ruleIndex: Int? = null,
         /** Passed straight through to the notification's reason line. */
         defaultTime: LocalTime = AppSettings().defaultTime,
+        /** Passed straight through to the notification's buttons. */
+        snoozes: List<Snooze> = AppSettings().notificationSnoozes,
+        customMinutes: Int = DEFAULT_SNOOZE_MINUTES,
     ) {
         // Every action turned off is an answer too: the moment passes without a word, and the
         // reminder is simply overdue on Home afterwards.
@@ -137,6 +142,8 @@ object AlertPresenter {
             chosen = sound,
             ruleIndex = ruleIndex,
             defaultTime = defaultTime,
+            snoozes = snoozes,
+            customMinutes = customMinutes,
         )
         // Notifications switched off make post() a silent no-op, and the moment is already
         // spent. The one thing left that can reach the person is the screen itself, which knows

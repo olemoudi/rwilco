@@ -137,6 +137,13 @@ data class AppSettings(
      * armed on at all. See [SafetyNetSettings], which holds the whole of the reasoning.
      */
     val safetyNet: SafetyNetSettings = SafetyNetSettings(),
+    /** How long [Snooze.CUSTOM] is: the one snooze length that is the person's own. */
+    val snoozeCustomMinutes: Int = DEFAULT_SNOOZE_MINUTES,
+    /**
+     * The two offers on the notification, which has room for no more (three actions, and
+     * "hecho" is one). The alert screen offers every [Snooze] regardless.
+     */
+    val notificationSnoozes: List<Snooze> = listOf(Snooze.TEN_MINUTES, Snooze.TWO_HOURS),
 )
 
 /** How the alert screen holds more than one reminder. See [AppSettings.alertStacking]. */

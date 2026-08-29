@@ -37,6 +37,21 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.rwilco.R
 import dev.rwilco.ui.theme.Tokens
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.outlined.AlarmOff
+import androidx.compose.material.icons.outlined.Bookmarks
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Snooze
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import dev.rwilco.model.Snooze
+import dev.rwilco.ui.components.SnoozeOffers
 
 /**
  * What can be done to one reminder, asked by holding its card.
@@ -49,15 +64,32 @@ import dev.rwilco.ui.theme.Tokens
  *
  * The words of the reminder are the title: a long press does not say which card it caught, and
  * on a list of five the answer matters before anything is chosen.
+ *
+ * The three answers a swipe or a hold already gives — hecho, pausar, borrar — sit in one row of
+ * tiles under the title, because they are the ones somebody reaches for and a menu of seven
+ * full rows does not fit under a title. Under them, the things only this menu can do: put it
+ * off (only where that is an answer, see `ReminderCardUi.snoozeOffered`), take a snooze back,
+ * clone it, keep its shape as a preset.
  */
 @Composable
 fun ReminderActionsMenu(
     words: String,
+    paused: Boolean,
+    snoozeOffered: Boolean,
+    snoozed: Boolean,
+    customMinutes: Int,
+    onDone: () -> Unit,
+    onPause: () -> Unit,
+    onDelete: () -> Unit,
+    onSnooze: (Snooze) -> Unit,
+    onCancelSnooze: () -> Unit,
     onClone: () -> Unit,
+    onKeepAsPreset: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
+    var choosingSnooze by rememberSaveable { mutableStateOf(false) }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         // The dialog's own window covers the screen, so "outside" has to be made by hand: the
         // box takes the taps that miss the menu and answers them with a dismissal.
@@ -83,7 +115,12 @@ fun ReminderActionsMenu(
                     .fillMaxWidth(0.92f)
                     .pointerInput(Unit) { detectTapGestures { } },
             ) {
-                Column(Modifier.padding(spacing.lg)) {
+                Column(
+                    modifier = Modifier
+                        .padding(spacing.lg)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(spacing.sm),
+                ) {
                     Text(
                         text = words,
                         style = MaterialTheme.typography.titleMedium,
@@ -91,15 +128,84 @@ fun ReminderActionsMenu(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Spacer(Modifier.height(spacing.lg))
+                    Spacer(Modifier.height(spacing.sm))
+                    Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm), modifier = Modifier.fillMaxWidth()) {
+                        ActionTile(Icons.Outlined.Check, stringResource(R.string.home_menu_done), onDone, Modifier.weight(1f))
+                        ActionTile(
+                            icon = if (paused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause,
+                            label = stringResource(if (paused) R.string.card_resume else R.string.card_pause),
+                            onClick = onPause,
+                            modifier = Modifier.weight(1f),
+                        )
+                        ActionTile(Icons.Outlined.Delete, stringResource(R.string.home_menu_delete), onDelete, Modifier.weight(1f))
+                    }
+                    if (snoozeOffered) {
+                        if (choosingSnooze) {
+                            Text(
+                                text = stringResource(R.string.home_snooze),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = scheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = spacing.sm),
+                            )
+                            SnoozeOffers(offers = Snooze.entries, customMinutes = customMinutes, onPick = onSnooze)
+                        } else {
+                            ActionRow(
+                                icon = Icons.Outlined.Snooze,
+                                label = stringResource(R.string.home_snooze),
+                                hint = stringResource(R.string.home_snooze_hint),
+                                onClick = { choosingSnooze = true },
+                            )
+                        }
+                    }
+                    if (snoozed) {
+                        ActionRow(
+                            icon = Icons.Outlined.AlarmOff,
+                            label = stringResource(R.string.home_cancel_snooze),
+                            hint = stringResource(R.string.home_cancel_snooze_hint),
+                            onClick = onCancelSnooze,
+                        )
+                    }
                     ActionRow(
                         icon = Icons.Outlined.ContentCopy,
                         label = stringResource(R.string.home_clone),
                         hint = stringResource(R.string.home_clone_hint),
                         onClick = onClone,
                     )
+                    ActionRow(
+                        icon = Icons.Outlined.Bookmarks,
+                        label = stringResource(R.string.home_keep_preset),
+                        hint = stringResource(R.string.home_keep_preset_hint),
+                        onClick = onKeepAsPreset,
+                    )
                 }
             }
+        }
+    }
+}
+
+/** One of the three quick answers: a glyph over its verb, a third of the row wide. */
+@Composable
+private fun ActionTile(icon: ImageVector, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val haptics = Tokens.haptics
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        onClick = {
+            haptics.perform(HapticFeedbackType.Confirm)
+            onClick()
+        },
+        shape = MaterialTheme.shapes.medium,
+        color = scheme.surfaceContainerHigh,
+        border = BorderStroke(Tokens.strokes.control, scheme.outline),
+        modifier = modifier.heightIn(min = 72.dp),
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(Tokens.spacing.sm),
+        ) {
+            Icon(icon, contentDescription = null, tint = scheme.onSurface, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.height(Tokens.spacing.xs))
+            Text(text = label, style = MaterialTheme.typography.labelLarge, color = scheme.onSurface)
         }
     }
 }

@@ -67,6 +67,9 @@ import dev.rwilco.ui.theme.LocalDarkTheme
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.familyColor
 import dev.rwilco.ui.theme.tagColor
+import dev.rwilco.ui.format.rememberWords
+import dev.rwilco.ui.format.dayWord
+import dev.rwilco.ui.format.TimeText
 
 /** So a test can scroll the list itself; a lazy list does not compose what is off screen. */
 const val HOME_LIST_TAG = "homeList"
@@ -81,6 +84,8 @@ fun HomeScreen(
     onOpen: (String) -> Unit,
     /** A new reminder shaped like this one, waiting for its own words. */
     onClone: (String) -> Unit,
+    /** This reminder's shape, kept under a name: the preset form, already filled in. */
+    onKeepAsPreset: (String) -> Unit,
     onDoneList: () -> Unit,
     onSettings: () -> Unit,
     onDiagnostics: () -> Unit,
@@ -89,6 +94,7 @@ fun HomeScreen(
     val search by viewModel.search.collectAsStateWithLifecycle()
     val presets by viewModel.presets.collectAsStateWithLifecycle()
     val pinned by viewModel.pinnedPresets.collectAsStateWithLifecycle()
+    val snoozeCustomMinutes by viewModel.snoozeCustomMinutes.collectAsStateWithLifecycle()
     var choosing by rememberSaveable { mutableStateOf(false) }
     var managingPins by rememberSaveable { mutableStateOf(false) }
     // The preset whose words are being asked for before it can be written.
@@ -105,6 +111,9 @@ fun HomeScreen(
     val createdMessage = stringResource(R.string.home_created)
     val pausedMessage = stringResource(R.string.home_paused)
     val resumedMessage = stringResource(R.string.home_resumed)
+    val snoozeCancelledMessage = stringResource(R.string.home_snooze_cancelled)
+    val words = rememberWords()
+    val zone = viewModel.clock.zone
 
     LaunchedEffect(viewModel) {
         viewModel.eventFlow.collect { event ->
@@ -123,6 +132,15 @@ fun HomeScreen(
                     message = if (event.paused) pausedMessage else resumedMessage,
                     undoLabel = undoLabel,
                     onUndo = { viewModel.undoPause(event) },
+                )
+                is HomeEvent.Snoozed -> snackbar.show(
+                    message = event.until?.let { until ->
+                        val here = until.atZone(zone)
+                        val todayHere = viewModel.clock.instant().atZone(zone).toLocalDate()
+                        words.get(R.string.home_snoozed_until, dayWord(words, here.toLocalDate(), todayHere) + " " + TimeText.time(here.toLocalTime(), words.is24h, words.locale))
+                    } ?: snoozeCancelledMessage,
+                    undoLabel = undoLabel,
+                    onUndo = { viewModel.undoSnooze(event) },
                 )
                 // Something it carries has already passed: the form, not a silent overdue.
                 is HomeEvent.NeedsEditor -> onNewFromPreset(event.presetId)
@@ -186,9 +204,37 @@ fun HomeScreen(
         } else {
             ReminderActionsMenu(
                 words = held.text,
+                paused = held.paused,
+                snoozeOffered = held.snoozeOffered,
+                snoozed = held.snoozedUntil != null,
+                customMinutes = snoozeCustomMinutes,
+                onDone = {
+                    actingOn = null
+                    viewModel.markDone(held.id)
+                },
+                onPause = {
+                    actingOn = null
+                    viewModel.togglePause(held.id, held.paused)
+                },
+                onDelete = {
+                    actingOn = null
+                    viewModel.delete(held.id)
+                },
+                onSnooze = { snooze ->
+                    actingOn = null
+                    viewModel.snooze(held.id, snooze)
+                },
+                onCancelSnooze = {
+                    actingOn = null
+                    viewModel.cancelSnooze(held.id)
+                },
                 onClone = {
                     actingOn = null
                     onClone(held.id)
+                },
+                onKeepAsPreset = {
+                    actingOn = null
+                    onKeepAsPreset(held.id)
                 },
                 onDismiss = { actingOn = null },
             )

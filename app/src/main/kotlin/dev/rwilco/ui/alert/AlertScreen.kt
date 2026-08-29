@@ -46,6 +46,8 @@ import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.format.triggerLine
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.icon
+import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
+import dev.rwilco.ui.components.SnoozeOffers
 
 /**
  * The lamp at full brightness. The reminder's words as big as they fit, and one button the
@@ -62,6 +64,8 @@ fun AlertScreen(
     waiting: Int = 0,
     onSnooze: (Snooze) -> Unit,
     onView: () -> Unit,
+    /** How long the custom offer is, for its label. */
+    customMinutes: Int = DEFAULT_SNOOZE_MINUTES,
 ) {
     val scheme = MaterialTheme.colorScheme
     val spacing = Tokens.spacing
@@ -125,18 +129,10 @@ fun AlertScreen(
                 color = scheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(spacing.sm))
-            // Five answers, each its own tap target and none of them a chip a thumb has to aim
+            // Every answer, each its own tap target and none of them a chip a thumb has to aim
             // at. They sit clear of the Done button, because the two mean opposite things and a
             // half-awake hand should not be able to confuse them.
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(spacing.sm),
-                verticalArrangement = Arrangement.spacedBy(spacing.sm),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                for (snooze in Snooze.entries) {
-                    SnoozeButton(label = stringResource(snooze.labelRes), onClick = { onSnooze(snooze) })
-                }
-            }
+            SnoozeOffers(offers = Snooze.entries, customMinutes = customMinutes, onPick = onSnooze)
             Spacer(Modifier.height(spacing.lg))
             // "Ver" goes ABOVE "Hecho", not under it. The bottom of the screen is where the
             // thumb lands, and it belongs to the one answer this screen is asking for — an
@@ -169,38 +165,3 @@ fun AlertScreen(
         }
     }
 }
-
-/** A snooze offer: a real button, thumb-sized, quiet enough not to compete with Done. */
-@Composable
-private fun SnoozeButton(label: String, onClick: () -> Unit) {
-    val haptics = Tokens.haptics
-    val scheme = MaterialTheme.colorScheme
-    Surface(
-        onClick = {
-            haptics.perform(HapticFeedbackType.ContextClick)
-            onClick()
-        },
-        shape = MaterialTheme.shapes.medium,
-        color = scheme.surfaceContainerHigh,
-        border = BorderStroke(Tokens.strokes.control, scheme.outline),
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.titleSmall,
-            color = scheme.onSurface,
-            modifier = Modifier
-                .heightIn(min = Tokens.sizes.touch)
-                .padding(horizontal = Tokens.spacing.lg, vertical = Tokens.spacing.md),
-        )
-    }
-}
-
-/** What each offer is called. The words are the person's, not the duration's. */
-val Snooze.labelRes: Int
-    get() = when (this) {
-        Snooze.TEN_MINUTES -> R.string.snooze_ten_minutes
-        Snooze.TWO_HOURS -> R.string.snooze_two_hours
-        Snooze.TOMORROW -> R.string.snooze_tomorrow
-        Snooze.WEEKEND -> R.string.snooze_weekend
-        Snooze.NEXT_WEEK -> R.string.snooze_next_week
-    }

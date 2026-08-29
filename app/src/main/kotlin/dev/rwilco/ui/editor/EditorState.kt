@@ -36,6 +36,7 @@ import dev.rwilco.model.validate
 import java.time.Instant
 import java.time.ZoneId
 import java.time.LocalTime
+import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
 
 /** What the editor is editing: the reminder minus its identity and bookkeeping. */
 data class Draft(
@@ -137,6 +138,8 @@ data class EditorUiState(
     val defaultTime: LocalTime = LocalTime.of(9, 0),
     /** The hours this person is up: what "at random during the day" is drawn from. */
     val dayShape: DayShape = DayShape.DEFAULT,
+    /** How long the custom snooze is, for the preview's buttons to read the way the real screen will. */
+    val snoozeCustomMinutes: Int = DEFAULT_SNOOZE_MINUTES,
     /** What the safety net waits for, so the card can say it in this reminder's own numbers. */
     val safetyNetSettings: SafetyNetSettings = SafetyNetSettings(),
     /** The kind the picker offers first, from the settings; null when there is no favourite. */

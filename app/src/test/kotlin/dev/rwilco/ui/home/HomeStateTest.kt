@@ -215,4 +215,18 @@ class HomeStateTest {
         assertTrue(nothing.loaded)
         assertTrue(nothing.empty)
     }
+
+    @Test
+    fun `posponer is offered only where it is an answer`() {
+        val rang = soon.copy(id = "rang", lastFiredAt = now.minusSeconds(600))
+        val putOff = soon.copy(id = "putOff", snoozedUntil = now.plusSeconds(3600))
+        val spentSnooze = soon.copy(id = "spentSnooze", lastFiredAt = now.minusSeconds(600), lastDealtAt = now.minusSeconds(300))
+        val state = buildHomeState(listOf(soon, rang, putOff, spentSnooze, paused), defaultTime, now, zone, selectedTag = null)
+        val cards = (listOfNotNull(state.hero?.card) + state.sections.flatMap { it.cards }).associateBy { it.id }
+        assertFalse(cards.getValue("soon").snoozeOffered, "a moment still ahead is edited, not put off")
+        assertTrue(cards.getValue("rang").snoozeOffered, "rang and unanswered: posponer is the answer")
+        assertTrue(cards.getValue("putOff").snoozeOffered, "already put off: until when, then")
+        assertFalse(cards.getValue("spentSnooze").snoozeOffered, "dealt with since it rang")
+        assertFalse(cards.getValue("paused").snoozeOffered)
+    }
 }

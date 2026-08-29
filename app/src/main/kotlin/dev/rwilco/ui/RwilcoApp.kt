@@ -111,6 +111,7 @@ fun RwilcoApp(
                         onNewPreset = { navController.navigate(Routes.Editor(newPreset = true)) },
                         onOpen = { id -> navController.navigate(Routes.Editor(id)) },
                         onClone = { id -> navController.navigate(Routes.Editor(cloneOfId = id)) },
+                        onKeepAsPreset = { id -> navController.navigate(Routes.Editor(cloneOfId = id, newPreset = true)) },
                         onDoneList = { navController.navigate(Routes.Done) },
                         onSettings = { navController.navigate(Routes.Settings) },
                         // Built here rather than in the ViewModel: a report is a snapshot of the

@@ -132,6 +132,8 @@ class AlertActivity : ComponentActivity() {
                         onDone = { id -> answer(id) { app.firing.dismiss(id) } },
                         onSnooze = { id, snooze -> answer(id) { app.firing.snooze(id, snooze) } },
                         onView = ::view,
+                        snoozes = current.notificationSnoozes,
+                        customMinutes = current.snoozeCustomMinutes,
                     )
                 } else {
                     val first = items.first()
@@ -142,6 +144,7 @@ class AlertActivity : ComponentActivity() {
                         onDone = { answer(first.id) { app.firing.dismiss(first.id) } },
                         onSnooze = { snooze: Snooze -> answer(first.id) { app.firing.snooze(first.id, snooze) } },
                         onView = { view(first.id) },
+                        customMinutes = current.snoozeCustomMinutes,
                     )
                 }
             }

@@ -516,6 +516,7 @@ fun EditorScreen(
                 onDone = { viewModel.setPreviewing(false) },
                 onSnooze = { _ -> viewModel.setPreviewing(false) },
                 onView = { viewModel.setPreviewing(false) },
+                customMinutes = state.snoozeCustomMinutes,
             )
         }
     }

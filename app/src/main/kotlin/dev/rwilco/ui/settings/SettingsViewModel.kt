@@ -38,6 +38,9 @@ import java.time.Clock
 import java.time.Duration
 import java.time.DayOfWeek
 import java.time.LocalTime
+import dev.rwilco.model.Snooze
+import dev.rwilco.model.SnoozeLimits
+import dev.rwilco.model.pickNotificationSnoozes
 
 class SettingsViewModel(
     private val store: SettingsStore,
@@ -139,6 +142,8 @@ class SettingsViewModel(
 
     /** The three numbers the safety net is made of; the switch itself is per reminder. */
     fun setSafetyNet(net: SafetyNetSettings) = update { it.copy(safetyNet = net) }
+    fun setSnoozeCustomMinutes(minutes: Int) = update { it.copy(snoozeCustomMinutes = minutes.coerceIn(SnoozeLimits.CUSTOM_MINUTES)) }
+    fun pickNotificationSnooze(snooze: Snooze) = update { it.copy(notificationSnoozes = pickNotificationSnoozes(it.notificationSnoozes, snooze)) }
     fun setSoundPlays(plays: Int) = update { it.copy(soundPlays = plays.coerceIn(SoundLimits.PLAYS)) }
     fun setSoundGap(minutes: Int) = update { it.copy(soundGapMinutes = minutes.coerceIn(SoundLimits.GAP_MINUTES)) }
 

@@ -28,6 +28,9 @@ import dev.rwilco.model.notificationPattern
 import dev.rwilco.ui.theme.AMBER_ARGB
 import java.time.LocalTime
 import java.time.Instant
+import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
+import dev.rwilco.model.NOTIFICATION_SNOOZES
+import dev.rwilco.ui.format.snoozeLabel
 
 /**
  * How many alerts the bundle actually has: what the system lists, plus or minus the one this
@@ -132,6 +135,9 @@ object AlertNotifications {
         ruleIndex: Int? = null,
         /** The hour a bare date rings at, which is the one thing the reason line cannot read off the rule. */
         defaultTime: LocalTime = AppSettings().defaultTime,
+        /** The two snooze offers the buttons carry (three actions is the cap, and "hecho" is one), and how long the custom one is. */
+        snoozes: List<Snooze> = AppSettings().notificationSnoozes,
+        customMinutes: Int = DEFAULT_SNOOZE_MINUTES,
         /**
          * The safety net's word about a reminder that got away, and which way it got away: the
          * same card, on the quietest channel there is, saying so in its own line. Never a
@@ -200,18 +206,15 @@ object AlertNotifications {
             )
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .addAction(0, context.getString(R.string.alert_done), actionIntent(context, reminder.id, AlertActionReceiver.ACTION_DONE, null))
-            .addAction(
+        // Three is what a notification shows, so two snoozes — which two is a setting; the rest
+        // of the offers are on the alert screen, which the banner opens.
+        for (snooze in snoozes.take(NOTIFICATION_SNOOZES)) {
+            builder.addAction(
                 0,
-                context.getString(R.string.snooze_ten_minutes),
-                actionIntent(context, reminder.id, AlertActionReceiver.ACTION_SNOOZE, Snooze.TEN_MINUTES),
+                snoozeLabel(context, snooze, customMinutes),
+                actionIntent(context, reminder.id, AlertActionReceiver.ACTION_SNOOZE, snooze),
             )
-            // Three is what a notification shows; the rest of the offers are on the alert screen,
-            // which the banner opens.
-            .addAction(
-                0,
-                context.getString(R.string.snooze_two_hours),
-                actionIntent(context, reminder.id, AlertActionReceiver.ACTION_SNOOZE, Snooze.TWO_HOURS),
-            )
+        }
         // Collapsed, a notification shows one line under the title, and the reason is what that
         // line is for. The tags are the reminder's own filing and go beside the app's name, where
         // a label belongs — and give it up to a word the net or a missed ring has to say, which

@@ -180,8 +180,9 @@ Two follow-ups to the report above, both asked for directly.
 ## Next
 - ~~A place condition ("y sólo si estás en el trabajo")~~ — shipped: read at fire time from the
   watch's own memory, and what nobody can vouch for holds (fail open). See `conditionsHold`.
-- Snooze from the alert screen is wired; the notification offers ten minutes and two hours (three
-  actions is the platform's cap; the rest of the offers live on the alert screen).
+- ~~Snooze from the alert screen is wired; the notification offers ten minutes and two hours~~ —
+  since 0.47.0 the notification's two are chosen in Settings, there is a custom length and a
+  "mañana por la mañana", and a card on Home can be put off (only once it has rung) or let back.
 - Background location is a permission, not a service. Two eyes on every place now: the
   geofences (the phone's) and `PlaceWatcher` (the app's own, 2026-08-25), which reads one fix
   per look and sets its own next look from distance and speed — never a foreground service,

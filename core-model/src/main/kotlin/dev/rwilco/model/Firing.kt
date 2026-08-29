@@ -252,16 +252,32 @@ fun momentRungFor(now: Instant, armedFor: Instant?, late: Instant?, eventDriven:
     if (late != null) maxOf(now, late)
     else listOfNotNull(now, armedFor.takeUnless { eventDriven }).max()
 
+/** How long "a little later" is when nobody has said ([AppSettings.snoozeCustomMinutes]). */
+const val DEFAULT_SNOOZE_MINUTES = 30
+
+/** What the custom snooze may be set to, in minutes, and the step it moves by. */
+object SnoozeLimits {
+    val CUSTOM_MINUTES = 5..720
+    const val STEP = 5
+}
+
 /**
  * The snooze offers on the alert screen and in the notification.
  *
- * They are the answers a person actually gives an alarm: not yet, later today, tomorrow, at the
- * weekend, next week. Everything but the first two keeps the wall-clock time rather than adding
- * hours, because "mañana a la misma hora" is what somebody means.
+ * They are the answers a person actually gives an alarm: not yet, a little later, later today,
+ * tomorrow morning, tomorrow, at the weekend, next week. The wall-clock ones keep the time
+ * rather than adding hours, because "mañana a la misma hora" is what somebody means; "mañana
+ * por la mañana" lands on the hour the day starts at, because a 23:40 alarm put off to
+ * "tomorrow" was coming back at 23:40. [CUSTOM] is the one length that is the person's own.
+ *
+ * Declaration order is the order the alert screen offers them in. Never persisted — it travels
+ * as a name in an intent extra — so a member can be added without a migration.
  */
 enum class Snooze {
     TEN_MINUTES,
+    CUSTOM,
     TWO_HOURS,
+    TOMORROW_MORNING,
     TOMORROW,
     WEEKEND,
     NEXT_WEEK,
@@ -269,13 +285,23 @@ enum class Snooze {
 
     /**
      * When it comes back. [weekendDay]/[weekendTime] are a setting (Friday at 20:30 by default)
-     * because "el finde" starts at different hours for different people.
+     * because "el finde" starts at different hours for different people; [dayStart] is where
+     * "tomorrow morning" lands, and [customMinutes] is how long [CUSTOM] is.
      */
-    fun until(now: Instant, zone: ZoneId, weekendDay: DayOfWeek, weekendTime: LocalTime): Instant {
+    fun until(
+        now: Instant,
+        zone: ZoneId,
+        weekendDay: DayOfWeek,
+        weekendTime: LocalTime,
+        dayStart: LocalTime = DEFAULT_DAY_START,
+        customMinutes: Int = DEFAULT_SNOOZE_MINUTES,
+    ): Instant {
         val here = now.atZone(zone)
         return when (this) {
             TEN_MINUTES -> now.plusSeconds(10 * 60)
+            CUSTOM -> now.plusSeconds(customMinutes.coerceIn(SnoozeLimits.CUSTOM_MINUTES) * 60L)
             TWO_HOURS -> now.plusSeconds(2 * 60 * 60)
+            TOMORROW_MORNING -> here.toLocalDate().plusDays(1).atTime(dayStart).atZone(zone).toInstant()
             // Same wall-clock time, so a clock change in between does not move it an hour.
             TOMORROW -> here.plusDays(1).toInstant()
             NEXT_WEEK -> here.plusWeeks(1).toInstant()
@@ -288,6 +314,20 @@ enum class Snooze {
             }
         }
     }
+}
+
+/** How many snooze offers a notification has room for: three actions, and "hecho" is one. */
+const val NOTIFICATION_SNOOZES = 2
+
+/**
+ * The notification's two offers after [tapped] is chosen in the settings: always exactly two,
+ * the newest choice replacing the older of the pair, and tapping one already there changing
+ * nothing — a notification with one offer, or none, is not a choice anybody makes on purpose.
+ */
+fun pickNotificationSnoozes(current: List<Snooze>, tapped: Snooze): List<Snooze> {
+    val pair = current.distinct().take(NOTIFICATION_SNOOZES)
+    if (tapped in pair) return pair
+    return (pair + tapped).takeLast(NOTIFICATION_SNOOZES)
 }
 
 /**

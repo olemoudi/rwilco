@@ -161,6 +161,7 @@ class ReminderCodecTest {
         assertEquals(defaults, ReminderCodec.decodeSettings("{}"))
         assertEquals(defaults, ReminderCodec.decodeSettings(""))
         assertEquals(defaults, ReminderCodec.decodeSettings("not json"))
+        // No snooze keys at all (a blob from before 0.47.0): the defaults, not a failure.
         val newer = """{"theme":"DARK","defaultTime":"08:15","haptics":false,"defaultTriggerKind":"COUNTDOWN","lastSeenVersionCode":7,"futureKnob":true}"""
         assertEquals(
             AppSettings(
@@ -190,7 +191,8 @@ class ReminderCodecTest {
                 """{"id":"builtin-week","recurrence":{"type":"after","amount":1,"unit":"WEEKS","from":"DEALT","hour":{"type":"day_start"}},"name":"","uses":0,"lastUsedAt":null},""" +
                 """{"id":"builtin-month","recurrence":{"type":"after","amount":1,"unit":"MONTHS","from":"DEALT","hour":{"type":"day_start"}},"name":"","uses":0,"lastUsedAt":null}],""" +
                 """"busyWatchNotice":false,"vibration":{"strength":"STRONG","rhythm":"PULSED"},""" +
-                """"alertSound":{"type":"system"},"insistentSound":null,"soundPlays":5,"soundGapMinutes":5,"alertStacking":"SEQUENTIAL","updatesWifiOnly":false,"alertToHeadphones":true,"safetyNet":{"afterHours":24,"minCadenceMinutes":60,"fraction":10}}""",
+                """"alertSound":{"type":"system"},"insistentSound":null,"soundPlays":5,"soundGapMinutes":5,"alertStacking":"SEQUENTIAL","updatesWifiOnly":false,"alertToHeadphones":true,"safetyNet":{"afterHours":24,"minCadenceMinutes":60,"fraction":10},""" +
+                """"snoozeCustomMinutes":30,"notificationSnoozes":["TEN_MINUTES","TWO_HOURS"]}""",
             encoded,
         )
     }

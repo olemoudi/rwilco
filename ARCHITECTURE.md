@@ -353,9 +353,14 @@ own fences.
 `Validation.kt` decides what blocks a save, which is only the words and a trigger that is
 nonsense in itself: a reminder needs **neither a trigger nor an action**. One with neither is a
 note kept under its tags, and Home files it under "kept, not timed" rather than calling it
-overdue. `Snooze` offers ten minutes, two hours, tomorrow at the same time, the weekend (a
-setting: Friday at 20:30 by default) and next week — all but the first two keeping the
-wall-clock time rather than adding hours.
+overdue. `Snooze` offers ten minutes, a length of the person's own (`CUSTOM`,
+`AppSettings.snoozeCustomMinutes`, half an hour by default), two hours, tomorrow morning (at
+`dayStart` — a 23:40 alarm put off to "tomorrow" was coming back at 23:40), tomorrow at the same
+time, the weekend (a setting: Friday at 20:30 by default) and next week — the wall-clock ones
+keeping the time rather than adding hours. The notification has room for two of them
+(`AppSettings.notificationSnoozes`, chosen in Settings → Alertas; `pickNotificationSnoozes` keeps
+it at exactly two); the alert screen offers them all. Never persisted — a name in an intent
+extra — so a member can be added without a migration.
 
 `Search.kt` answers the magnifier: one query over the open reminders and the tags they use,
 returning `SearchHit.OfReminder`/`OfTag` so the screen can say which is which. Matching is
@@ -491,7 +496,20 @@ strict is asking somebody to remember how they spelled it.
   countdown is cleared on the way (`clearCountdowns`), so "dentro de media hora" copied at noon
   is half an hour from the save; nothing that *happened* to the original comes with it, because
   `toDraft` carries the shape alone. Nothing is written until Guardar. `HomeCloneTest` walks the
-  hold → menu → editor on the real screen.
+  hold → menu → editor on the real screen. **Since 0.47.0 the menu does the rest too**: hecho,
+  pausar/reanudar and borrar as a row of three tiles under the title (the three answers a swipe
+  or a hold already gives, here for the hero — which has no pause control of its own — and for
+  a hand that would rather not swipe), then **posponer**, **quitar el posponer**, clonar, and
+  **guardar como preset** (`Routes.Editor(cloneOfId, newPreset = true)`: the clone path with the
+  words kept, because they are the name the shape is filed under). Posponer goes through
+  `ReminderFiring.snooze`, the same door as the notification, and is offered **only where it is
+  an answer** (`ReminderCardUi.snoozeOffered`, pure and tested): the reminder rang and nobody
+  dealt with it since (`awaitingAnswer`), or it is already put off. A card whose moment is still
+  ahead gets no offer — a snooze outranks every rule and is spent on its own, so putting a future
+  reminder off to before its moment would ring it twice; moving a moment that has not come is
+  editing. Every one of these says what it did in the snackbar at the top with an undo, the
+  snooze's undo restoring whatever snooze the row had before. `HomeMenuTest` walks put off →
+  let back → keep as preset on the real screen.
 - **Each rule of a set carries a mark** (`RuleStanding`, pure): under ALL, ticked off or still
   to happen (`firedRules`); under TOGETHER, true at this moment or not — a window against the
   clock, a place against the watch's own memory of which circles the phone is inside, and a
@@ -656,6 +674,9 @@ strict is asking somebody to remember how they spelled it.
   close in at every bucket: 800 metres of circle in 476 metres of view, with the thing the sheet
   is *for* running off the top and the bottom. The alert preview is `AlertScreen`,
   the same composable `AlertActivity` hosts under a full-screen intent.
+- Six ways into the editor (`EditorViewModel.init`): an existing reminder, a preset being edited,
+  a new reminder wearing a preset's shape, a copy of another reminder, that copy kept as a
+  preset, and a blank one.
 - **The draft reads itself back over the button that saves it** (`ReminderSentence`, and
   `sentenceParts` beside it — pure, so the shape of the sentence is JVM-tested and the wording is
   the composable's job). The form is five cards down a scrolling column: by the time somebody
@@ -812,7 +833,8 @@ strict is asking somebody to remember how they spelled it.
   holding it back until morning would only make it later without making it quieter — quietly:
   `CHANNEL_NET` is
   `IMPORTANCE_LOW`, silent, still, never a screen and never pinned — the same card with the same
-  three buttons, on a line that says *puede que se te haya pasado* and a clock counting up from
+  three buttons — "hecho" and the two snoozes the settings chose — on a line that says *puede
+  que se te haya pasado* and a clock counting up from
   the ring. What it waits for is `nudgeAt`: the whole wait (`afterHours`, a day) when the
   reminder has nothing left to ring, and otherwise a **tenth** (`fraction`) of the gap to its
   next ring, whichever is shorter — the point being to catch it before the next one buries it.

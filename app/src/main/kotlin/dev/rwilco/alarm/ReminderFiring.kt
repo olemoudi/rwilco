@@ -192,7 +192,7 @@ class ReminderFiring(
                 // A moment the phone slept through by a minute or two is still that moment, and
                 // rings like it; only one it slept through by a good while arrives as the quiet
                 // "did not ring on time" note (lateForPresentation).
-                AlertPresenter.show(context, reminder, plan, lateForPresentation(late, now), settings.vibration, settings.soundFor(plan), ruleIndex = ruleIndex, defaultTime = settings.defaultTime)
+                AlertPresenter.show(context, reminder, plan, lateForPresentation(late, now), settings.vibration, settings.soundFor(plan), ruleIndex = ruleIndex, defaultTime = settings.defaultTime, snoozes = settings.notificationSnoozes, customMinutes = settings.snoozeCustomMinutes)
                 // "Hasta que reciba caso": the first play has gone out, so line up the second.
                 if (plan.insistent) {
                     nextSoundIn(played = 1, plays = settings.soundPlays, gapMinutes = settings.soundGapMinutes)
@@ -231,7 +231,7 @@ class ReminderFiring(
         val plan = firingPlan(reminder.actions)
         if (!plan.insistent) return@withLock
         Log.i(TAG, "$id has not been dealt with; play ${played + 1} of ${settings.soundPlays}")
-        AlertPresenter.show(context, reminder, plan, late = null, vibration = settings.vibration, sound = settings.soundFor(plan), takeScreen = false, ruleIndex = ruleIndex, defaultTime = settings.defaultTime)
+        AlertPresenter.show(context, reminder, plan, late = null, vibration = settings.vibration, sound = settings.soundFor(plan), takeScreen = false, ruleIndex = ruleIndex, defaultTime = settings.defaultTime, snoozes = settings.notificationSnoozes, customMinutes = settings.snoozeCustomMinutes)
         nextSoundIn(played + 1, settings.soundPlays, settings.soundGapMinutes)
             ?.let { gap -> repeater.schedule(id, played + 1, rangAt, now + gap, ruleIndex) }
     }
@@ -392,6 +392,8 @@ class ReminderFiring(
             nudge = due.word,
             nudgeAbout = due.about,
             defaultTime = settings.defaultTime,
+            snoozes = settings.notificationSnoozes,
+            customMinutes = settings.snoozeCustomMinutes,
         )
         scheduler.rearmAll()
     }
@@ -416,11 +418,23 @@ class ReminderFiring(
         }
         val now = clock.instant()
         val settings = settings()
-        val until = snooze.until(now, clock.zone, settings.weekendDay, settings.weekendTime)
+        val until = snooze.until(now, clock.zone, settings.weekendDay, settings.weekendTime, settings.dayStart, settings.snoozeCustomMinutes)
         repository.snooze(id, until)
         Diag.note(TAG_DIAG, "r=${short(id)} snoozed ($snooze) until $until")
         repeater.cancel(id)
         AlertNotifications.cancel(context, id)
+        scheduler.rearmAll()
+    }
+
+    /**
+     * "Quitar el posponer": back to its own moment, as if the answer had never been given.
+     * Nothing to take down — a snooze already took the notification with it — so this is the
+     * row and the alarm, under the same lock as everything else that writes them.
+     */
+    suspend fun unsnooze(id: String) = lock.withLock {
+        if (repository.get(id) == null) return@withLock
+        repository.snooze(id, null)
+        Diag.note(TAG_DIAG, "r=${short(id)} snooze cancelled")
         scheduler.rearmAll()
     }
 

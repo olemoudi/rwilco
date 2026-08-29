@@ -28,6 +28,7 @@ import dev.rwilco.model.tagFilters
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
+import dev.rwilco.model.awaitingAnswer
 
 data class HomeUiState(
     val loaded: Boolean = false,
@@ -110,6 +111,16 @@ data class ReminderCardUi(
      * and saying it twice is noise.
      */
     val recurrence: Recurrence? = null,
+    /**
+     * Whether "posponer" is an answer this card can give from Home.
+     *
+     * Only where it *is* an answer: the reminder rang and nobody has dealt with it since
+     * ([awaitingAnswer]), or it is already put off and the question is "until when, then". A
+     * card whose moment is still ahead gets no offer — a snooze outranks every rule and is spent
+     * on its own, so putting a future reminder off to before its moment rings it twice; moving
+     * a moment that has not come is editing, and the card opens the editor.
+     */
+    val snoozeOffered: Boolean = false,
 )
 
 /** One trigger row: the strings are formatted in the composable, which has the locale. */
@@ -191,6 +202,7 @@ fun buildHomeState(
             snoozedUntil = reminder.snoozedUntil?.takeIf { it > now && reminder.status == Status.ACTIVE },
             match = reminder.ruleMatch.takeIf { reminder.rules.size > 1 },
             recurrence = reminder.recurrence.takeIf { it.isAnchored },
+            snoozeOffered = reminder.awaitingAnswer(now) || (reminder.status == Status.ACTIVE && reminder.snoozedUntil?.let { it > now } == true),
         )
     }
     return HomeUiState(

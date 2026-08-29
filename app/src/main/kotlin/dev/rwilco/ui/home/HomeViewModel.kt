@@ -41,6 +41,9 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Clock
+import dev.rwilco.model.Snooze
+import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
+import java.time.Instant
 
 /** What Home reports back that is not state: things to say in a snackbar. */
 sealed interface HomeEvent {
@@ -58,6 +61,12 @@ sealed interface HomeEvent {
      * as it was, so the undo puts the status it had back.
      */
     data class Paused(val reminder: Reminder, val paused: Boolean) : HomeEvent
+
+    /**
+     * A reminder was put off from Home until [until], or ([until] null) its snooze was taken
+     * back; [reminder] is the row as it was, so the undo restores the snooze it had.
+     */
+    data class Snoozed(val reminder: Reminder, val until: Instant?) : HomeEvent
 
     /**
      * A preset could not be written blind — a moment it carries has already passed — so the
@@ -82,6 +91,12 @@ class HomeViewModel(
         .filterNotNull()
         .map { presetsByPopularity(it.presets) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** How long the custom snooze is, for the menu's offers to read the way the alert's do. */
+    val snoozeCustomMinutes: StateFlow<Int> = settings
+        .filterNotNull()
+        .map { it.snoozeCustomMinutes }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DEFAULT_SNOOZE_MINUTES)
 
     /** The ones with a button on Home, in the same order: most reached for, first. */
     val pinnedPresets: StateFlow<List<Preset>> = presets
@@ -289,6 +304,33 @@ class HomeViewModel(
 
     fun undoPause(event: HomeEvent.Paused) {
         viewModelScope.launch { repository.setStatus(event.reminder.id, event.reminder.status) }
+    }
+
+    /**
+     * "Posponer" from a held card: the same door the notification and the alert screen use
+     * ([ReminderFiring.snooze]), so it takes the notification down and re-arms the same way.
+     * Offered only where the card says it is an answer (`ReminderCardUi.snoozeOffered`).
+     */
+    fun snooze(id: String, snooze: Snooze) {
+        viewModelScope.launch {
+            val reminder = repository.get(id) ?: return@launch
+            firing.snooze(id, snooze)
+            val until = repository.get(id)?.snoozedUntil
+            events.send(HomeEvent.Snoozed(reminder, until))
+        }
+    }
+
+    fun cancelSnooze(id: String) {
+        viewModelScope.launch {
+            val reminder = repository.get(id) ?: return@launch
+            firing.unsnooze(id)
+            events.send(HomeEvent.Snoozed(reminder, until = null))
+        }
+    }
+
+    /** The snooze the row had before — none, usually — and the alarm follows the row. */
+    fun undoSnooze(event: HomeEvent.Snoozed) {
+        viewModelScope.launch { repository.snooze(event.reminder.id, event.reminder.snoozedUntil) }
     }
 
     class Factory(private val app: RwilcoApplication) : ViewModelProvider.Factory {
