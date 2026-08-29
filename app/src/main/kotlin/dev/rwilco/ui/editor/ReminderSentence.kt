@@ -16,6 +16,8 @@ import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.TriggerFamily
 import dev.rwilco.model.family
 import dev.rwilco.ui.format.conditionPhrase
+import dev.rwilco.ui.format.recurrenceLabel
+import dev.rwilco.ui.format.rememberWords
 import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.format.triggerPhrase
 import dev.rwilco.ui.theme.color
@@ -60,8 +62,9 @@ fun ReminderSentence(
 /** The parts, in words and colours. Separate so the wording can be read in one place. */
 @Composable
 private fun sentenceText(parts: List<SentencePart>, today: LocalDate, defaultTime: LocalTime): AnnotatedString {
-    val locale = currentLocale()
-    val words = MaterialTheme.colorScheme.onSurface
+    val words = rememberWords()
+    val locale = words.locale
+    val wordsInk = MaterialTheme.colorScheme.onSurface
     val timeInk = TriggerFamily.TIME.color()
     return buildAnnotatedString {
         parts.forEachIndexed { index, part ->
@@ -75,20 +78,20 @@ private fun sentenceText(parts: List<SentencePart>, today: LocalDate, defaultTim
             }
             when (part) {
                 is SentencePart.Words ->
-                    withStyle(SpanStyle(color = words, fontWeight = FontWeight.SemiBold)) { append(part.text) }
+                    withStyle(SpanStyle(color = wordsInk, fontWeight = FontWeight.SemiBold)) { append(part.text) }
 
                 is SentencePart.Join -> append(stringResource(part.match.joinRes))
 
                 is SentencePart.Rule -> {
                     withStyle(SpanStyle(color = part.rule.trigger.family.color(), fontWeight = FontWeight.SemiBold)) {
-                        append(triggerPhrase(part.rule.trigger, today, defaultTime))
+                        append(triggerPhrase(words, part.rule.trigger, today, defaultTime))
                     }
                     if (part.rule.conditions.isNotEmpty()) {
                         // A plain loop: conditionPhrase reads string resources, and a composable
                         // cannot be called from joinToString's lambda. Joined with the same "y"
                         // the rules use, and the "sólo" said once in front of all of them.
                         val fences = mutableListOf<String>()
-                        for (condition in part.rule.conditions) fences += conditionPhrase(condition)
+                        for (condition in part.rule.conditions) fences += conditionPhrase(words, condition)
                         val joined = fences.joinToString(" " + stringResource(R.string.editor_sentence_and) + " ")
                         append(" " + stringResource(R.string.editor_sentence_only, joined))
                     }
@@ -97,7 +100,7 @@ private fun sentenceText(parts: List<SentencePart>, today: LocalDate, defaultTim
                 is SentencePart.Returns -> {
                     // A recurrence is a clock's business, and wears the clock's colour — the
                     // same one its keycap wears on the card.
-                    val label = recurrenceLabel(part.recurrence, today).replaceFirstChar { it.lowercase(locale) }
+                    val label = recurrenceLabel(words, part.recurrence, today).replaceFirstChar { it.lowercase(locale) }
                     append(stringResource(R.string.editor_sentence_returns) + " ")
                     withStyle(SpanStyle(color = timeInk, fontWeight = FontWeight.SemiBold)) { append(label) }
                 }

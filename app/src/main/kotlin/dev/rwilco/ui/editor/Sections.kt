@@ -85,6 +85,7 @@ import dev.rwilco.ui.components.VISIBLE_SUGGESTIONS
 import dev.rwilco.model.SafetyNetSettings
 import dev.rwilco.model.netWait
 import dev.rwilco.model.tooFastForNet
+import dev.rwilco.ui.format.rememberWords
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.durationText
 import dev.rwilco.ui.format.conditionLabel
@@ -702,9 +703,9 @@ internal fun SafetyNetNote(cadence: java.time.Duration?, settings: SafetyNetSett
     val tooFast = tooFastForNet(cadence, settings)
     Text(
         text = if (tooFast && cadence != null) {
-            stringResource(R.string.editor_net_too_fast, durationText(cadence.toMinutes().toInt()))
+            stringResource(R.string.editor_net_too_fast, durationText(rememberWords(), cadence.toMinutes().toInt()))
         } else {
-            stringResource(R.string.editor_net_note, durationText(netWait(cadence, settings).toMinutes().toInt()))
+            stringResource(R.string.editor_net_note, durationText(rememberWords(), netWait(cadence, settings).toMinutes().toInt()))
         },
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,

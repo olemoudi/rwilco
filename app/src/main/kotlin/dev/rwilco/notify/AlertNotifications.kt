@@ -15,7 +15,9 @@ import dev.rwilco.R
 import dev.rwilco.alarm.AlertActionReceiver
 import dev.rwilco.alarm.ReminderScheduler
 import dev.rwilco.ui.alert.AlertActivity
+import dev.rwilco.model.AppSettings
 import dev.rwilco.model.FiringPlan
+import dev.rwilco.ui.format.summaryLine
 import dev.rwilco.model.NetWord
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.AlertSound
@@ -24,6 +26,7 @@ import dev.rwilco.model.VibrationPattern
 import dev.rwilco.model.key
 import dev.rwilco.model.notificationPattern
 import dev.rwilco.ui.theme.AMBER_ARGB
+import java.time.LocalTime
 import java.time.Instant
 
 /**
@@ -127,6 +130,8 @@ object AlertNotifications {
         vibration: VibrationPattern = VibrationPattern(),
         chosen: AlertSound = AlertSound.System,
         ruleIndex: Int? = null,
+        /** The hour a bare date rings at, which is the one thing the reason line cannot read off the rule. */
+        defaultTime: LocalTime = AppSettings().defaultTime,
         /**
          * The safety net's word about a reminder that got away, and which way it got away: the
          * same card, on the quietest channel there is, saying so in its own line. Never a
@@ -156,10 +161,14 @@ object AlertNotifications {
             else -> channelId(soundHere, vibrateHere, vibration, effective, bypass)
         }
         val open = activityIntent(context, reminder.id, ruleIndex)
+        // **Why it rang**, in the words the form used when it was written — not the reminder's
+        // own text again, which the title already carries and which said nothing twice. The
+        // sentence is the editor's own, minus the words themselves (`reminderSummary`).
+        val reason = reminder.summaryLine(context, defaultTime)
         val builder = NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(reminder.text)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(reminder.text))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(reason.ifBlank { reminder.text }))
             .setContentIntent(open)
             .setAutoCancel(false)
             .setOnlyAlertOnce(false)
@@ -203,7 +212,12 @@ object AlertNotifications {
                 context.getString(R.string.snooze_two_hours),
                 actionIntent(context, reminder.id, AlertActionReceiver.ACTION_SNOOZE, Snooze.TWO_HOURS),
             )
-        if (reminder.tags.isNotEmpty()) builder.setContentText(reminder.tags.joinToString(" · "))
+        // Collapsed, a notification shows one line under the title, and the reason is what that
+        // line is for. The tags are the reminder's own filing and go beside the app's name, where
+        // a label belongs — and give it up to a word the net or a missed ring has to say, which
+        // is about this arrival rather than about the reminder.
+        if (reason.isNotBlank()) builder.setContentText(reason)
+        if (reminder.tags.isNotEmpty()) builder.setSubText(reminder.tags.joinToString(" · "))
         when {
             nudge == NetWord.LET_GO -> builder.setSubText(context.getString(R.string.notif_net_subtext))
             // The other way one gets away, and a different thing to be told: this one never

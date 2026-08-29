@@ -1,5 +1,6 @@
 package dev.rwilco.ui.format
 
+import android.content.Context
 import android.text.format.DateFormat
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -35,13 +36,42 @@ fun rememberIs24h(): Boolean {
     return remember(context) { DateFormat.is24HourFormat(context) }
 }
 
-/** "hoy", "mañana", "ayer", or the short date. */
+/**
+ * What it takes to write a phrase down: the strings, the language they are written in, and
+ * whether this person's clock has twelve hours on it or twenty-four.
+ *
+ * It exists so that the wording is not a Compose thing. Everything below used to read its
+ * strings out of the composition, which is fine while the only reader is a screen — and then a
+ * notification has to say *why* it rang, from a receiver with no composition within a mile of
+ * it, in the same words the form used when the rule was written. Two functions saying the same
+ * sentence drift; one function does not. So the three things composition was being asked for
+ * are carried here instead, and a screen fills them from composition ([rememberWords]) while
+ * anything else fills them from a [Context] ([Context.words]).
+ */
+class Words(private val context: Context, val locale: Locale, val is24h: Boolean) {
+    fun get(id: Int): String = context.getString(id)
+    fun get(id: Int, vararg args: Any): String = context.getString(id, *args)
+    fun plural(id: Int, count: Int): String = context.resources.getQuantityString(id, count, count)
+    fun ordinals(id: Int): Array<String> = context.resources.getStringArray(id)
+}
+
 @Composable
-fun dayWord(date: LocalDate, today: LocalDate, locale: Locale): String = when (date) {
-    today -> stringResource(R.string.relative_today)
-    today.plusDays(1) -> stringResource(R.string.relative_tomorrow)
-    today.minusDays(1) -> stringResource(R.string.relative_yesterday)
-    else -> TimeText.dayDate(date, locale)
+fun rememberWords(): Words {
+    val context = LocalContext.current
+    val locale = currentLocale()
+    val is24h = rememberIs24h()
+    return remember(context, locale, is24h) { Words(context, locale, is24h) }
+}
+
+/** The same three, off a plain context: the configuration already holds all of them. */
+fun Context.words(): Words = Words(this, resources.configuration.locales[0], DateFormat.is24HourFormat(this))
+
+/** "hoy", "mañana", "ayer", or the short date. */
+fun dayWord(words: Words, date: LocalDate, today: LocalDate): String = when (date) {
+    today -> words.get(R.string.relative_today)
+    today.plusDays(1) -> words.get(R.string.relative_tomorrow)
+    today.minusDays(1) -> words.get(R.string.relative_yesterday)
+    else -> TimeText.dayDate(date, words.locale)
 }
 
 /** "en 3 d 4 h" · "en 2 h 14 min" · "en 14 min 05 s" (ticking, under an hour) · "hace 5 min". */
@@ -80,12 +110,13 @@ fun placeReading(presence: Presence, onCrossing: Boolean): Int = when {
 /** A condition in a few words: "18:00–22:00 · L M X J V". */
 @Composable
 fun conditionLabel(condition: Condition): String {
-    val locale = currentLocale()
-    val is24h = rememberIs24h()
+    val words = rememberWords()
+    val locale = words.locale
+    val is24h = words.is24h
     return when (condition) {
         is Condition.TimeWindow -> {
             val window = TimeText.window(condition.from, condition.to, is24h, locale)
-            if (condition.days.isEmpty() || condition.days.size == 7) window else "$window · " + daysSummary(condition.days, locale)
+            if (condition.days.isEmpty() || condition.days.size == 7) window else "$window · " + daysSummary(words, condition.days)
         }
         is Condition.DateRange -> stringResource(
             R.string.condition_date_range,
@@ -104,16 +135,17 @@ data class TriggerLine(val primary: String, val secondary: String, val primaryMo
 
 @Composable
 fun triggerLine(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): TriggerLine {
-    val locale = currentLocale()
-    val is24h = rememberIs24h()
+    val words = rememberWords()
+    val locale = words.locale
+    val is24h = words.is24h
     return when (trigger) {
         is Trigger.AtDateTime -> TriggerLine(
             primary = TimeText.time(trigger.at.toLocalTime(), is24h, locale),
-            secondary = dayWord(trigger.at.toLocalDate(), today, locale),
+            secondary = dayWord(words, trigger.at.toLocalDate(), today),
             primaryMono = true,
         )
         is Trigger.OnDate -> TriggerLine(
-            primary = dayWord(trigger.date, today, locale),
+            primary = dayWord(words, trigger.date, today),
             secondary = stringResource(R.string.trigger_rings_at, TimeText.time(defaultTime, is24h, locale)),
             primaryMono = true,
         )
@@ -126,13 +158,13 @@ fun triggerLine(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): Tri
             secondary = if (trigger.days.isEmpty() || trigger.days.size == 7) {
                 stringResource(R.string.trigger_any_day_of_week)
             } else {
-                daysSummary(trigger.days, locale)
+                daysSummary(words, trigger.days)
             },
             primaryMono = true,
         )
         is Trigger.AtTime -> TriggerLine(
             primary = TimeText.time(trigger.time, is24h, locale),
-            secondary = daysSummary(trigger.days, locale),
+            secondary = daysSummary(words, trigger.days),
             primaryMono = true,
         )
         // No days is every day here, as it is on a window: it says which days are allowed, never
@@ -142,12 +174,12 @@ fun triggerLine(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): Tri
             secondary = if (trigger.days.isEmpty() || trigger.days.size == 7) {
                 stringResource(R.string.trigger_any_day_of_week)
             } else {
-                daysSummary(trigger.days, locale)
+                daysSummary(words, trigger.days)
             },
             primaryMono = true,
         )
         is Trigger.DayRandom -> TriggerLine(
-            primary = dayWord(trigger.date, today, locale),
+            primary = dayWord(words, trigger.date, today),
             // Which stretch of the day, when it was given one: "al azar durante el día" and
             // "a la hora de comer" are the same shape and a very different arrangement.
             secondary = trigger.window
@@ -160,7 +192,7 @@ fun triggerLine(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): Tri
             // no hour says so in its place, because the shape is what is left to say.
             primary = trigger.time?.let { TimeText.time(it, is24h, locale) }
                 ?: stringResource(R.string.trigger_when_day_starts),
-            secondary = repeatSummary(trigger, today, locale),
+            secondary = repeatSummary(words, trigger, today),
             primaryMono = trigger.time != null,
         )
         is Trigger.Countdown -> {
@@ -168,7 +200,7 @@ fun triggerLine(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): Tri
             if (startedAt == null) {
                 // A shape, not yet a reminder: it says how long, and when that will start.
                 TriggerLine(
-                    primary = durationText(trigger.minutes),
+                    primary = durationText(words, trigger.minutes),
                     secondary = stringResource(R.string.trigger_countdown_from_start),
                     primaryMono = false,
                 )
@@ -176,7 +208,7 @@ fun triggerLine(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): Tri
                 val at = startedAt.plusSeconds(trigger.minutes * 60L).atZone(java.time.ZoneId.systemDefault())
                 TriggerLine(
                     primary = TimeText.time(at.toLocalTime(), is24h, locale),
-                    secondary = dayWord(at.toLocalDate(), today, locale) + " · " + durationText(trigger.minutes),
+                    secondary = dayWord(words, at.toLocalDate(), today) + " · " + durationText(words, trigger.minutes),
                     primaryMono = true,
                 )
             }
@@ -193,7 +225,7 @@ fun triggerLine(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): Tri
         )
         is Trigger.Random -> TriggerLine(
             primary = TimeText.window(trigger.from, trigger.to, is24h, locale),
-            secondary = randomSummary(trigger, locale),
+            secondary = randomSummary(words, trigger),
             primaryMono = true,
         )
     }
@@ -213,77 +245,73 @@ fun triggerLine(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): Tri
  * patched around it. The two crossing readings need no strings of their own: "al llegar a %s"
  * and "al salir de %s" were already written.
  */
-@Composable
-fun triggerPhrase(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): String {
-    val locale = currentLocale()
-    val is24h = rememberIs24h()
+fun triggerPhrase(words: Words, trigger: Trigger, today: LocalDate, defaultTime: LocalTime): String {
+    val locale = words.locale
+    val is24h = words.is24h
     return when (trigger) {
-        is Trigger.AtDateTime -> atDayAndTime(trigger.at.toLocalDate(), trigger.at.toLocalTime(), today)
+        is Trigger.AtDateTime -> atDayAndTime(words, trigger.at.toLocalDate(), trigger.at.toLocalTime(), today)
         // The hour it will actually ring at, which for a bare date is the one from the settings.
-        is Trigger.OnDate -> atDayAndTime(trigger.date, defaultTime, today)
+        is Trigger.OnDate -> atDayAndTime(words, trigger.date, defaultTime, today)
         is Trigger.DayRandom -> trigger.window?.let {
-            stringResource(
+            words.get(
                 R.string.editor_sentence_interval,
                 TimeText.window(it.from, it.to, is24h, locale),
-                dayWord(trigger.date, today, locale),
+                dayWord(words, trigger.date, today),
             )
-        } ?: (dayWord(trigger.date, today, locale) + ", " + stringResource(R.string.trigger_when_day_starts))
+        } ?: (dayWord(words, trigger.date, today) + ", " + words.get(R.string.trigger_when_day_starts))
         // The same words as the fence it folds into siblings as, because it is the same stretch.
-        is Trigger.DateRange -> stringResource(
+        is Trigger.DateRange -> words.get(
             R.string.editor_sentence_date_range,
             TimeText.dayDate(trigger.from, locale),
             TimeText.dayDate(trigger.to, locale),
         )
-        is Trigger.AtTime -> stringResource(
+        is Trigger.AtTime -> words.get(
             R.string.editor_sentence_at_time,
             TimeText.time(trigger.time, is24h, locale),
-            daysSummary(trigger.days, locale),
+            daysSummary(words, trigger.days),
         )
-        is Trigger.TimeOfDay -> stringResource(
+        is Trigger.TimeOfDay -> words.get(
             R.string.editor_sentence_at_time,
             TimeText.time(trigger.time, is24h, locale),
-            everyDayOr(trigger.days, locale),
+            everyDayOr(words, trigger.days),
         )
-        is Trigger.Interval -> stringResource(
+        is Trigger.Interval -> words.get(
             R.string.editor_sentence_interval,
             TimeText.window(trigger.from, trigger.to, is24h, locale),
-            everyDayOr(trigger.days, locale),
+            everyDayOr(words, trigger.days),
         )
-        is Trigger.Repeat -> stringResource(
+        is Trigger.Repeat -> words.get(
             R.string.editor_sentence_repeat,
-            trigger.time?.let { TimeText.time(it, is24h, locale) } ?: stringResource(R.string.trigger_when_day_starts),
-            repeatSummary(trigger, today, locale),
+            trigger.time?.let { TimeText.time(it, is24h, locale) } ?: words.get(R.string.trigger_when_day_starts),
+            repeatSummary(words, trigger, today),
         )
         is Trigger.Countdown -> {
             val startedAt = trigger.startedAt
             // Not started: it is a length, and what it is counted from. Started: it is a moment
             // like any other, and the row above still says how long it was.
             if (startedAt == null) {
-                durationText(trigger.minutes) + " " + stringResource(R.string.trigger_countdown_from_start)
+                durationText(words, trigger.minutes) + " " + words.get(R.string.trigger_countdown_from_start)
             } else {
                 val fires = startedAt.plusSeconds(trigger.minutes * 60L).atZone(ZoneId.systemDefault())
-                atDayAndTime(fires.toLocalDate(), fires.toLocalTime(), today)
+                atDayAndTime(words, fires.toLocalDate(), fires.toLocalTime(), today)
             }
         }
-        is Trigger.Location -> stringResource(placePhrase(trigger.presence, trigger.onCrossing), trigger.label)
-        is Trigger.Random -> stringResource(
+        is Trigger.Location -> words.get(placePhrase(trigger.presence, trigger.onCrossing), trigger.label)
+        is Trigger.Random -> words.get(
             R.string.editor_sentence_random,
-            randomSummary(trigger, locale),
+            randomSummary(words, trigger),
             TimeText.window(trigger.from, trigger.to, is24h, locale),
         )
     }
 }
 
 /** "hoy a las 09:00": the one shape three of the triggers come down to. */
-@Composable
-private fun atDayAndTime(date: LocalDate, time: LocalTime, today: LocalDate): String {
-    val locale = currentLocale()
-    return stringResource(
+private fun atDayAndTime(words: Words, date: LocalDate, time: LocalTime, today: LocalDate): String =
+    words.get(
         R.string.editor_sentence_at_datetime,
-        dayWord(date, today, locale),
-        TimeText.time(time, rememberIs24h(), locale),
+        dayWord(words, date, today),
+        TimeText.time(time, words.is24h, words.locale),
     )
-}
 
 /** The four readings of a circle, said the way they are said in a sentence. */
 fun placePhrase(presence: Presence, onCrossing: Boolean): Int = when {
@@ -297,19 +325,18 @@ fun placePhrase(presence: Presence, onCrossing: Boolean): Int = when {
  * A fence as the rest of the sentence "sólo …", so that two of them join with an "y" and
  * neither repeats the word.
  */
-@Composable
-fun conditionPhrase(condition: Condition): String = when (condition) {
-    is Condition.TimeWindow -> stringResource(
+fun conditionPhrase(words: Words, condition: Condition): String = when (condition) {
+    is Condition.TimeWindow -> words.get(
         R.string.editor_sentence_window_of,
-        TimeText.window(condition.from, condition.to, is24h = rememberIs24h(), locale = currentLocale()) +
-            everyDaySuffix(condition.days, currentLocale()),
+        TimeText.window(condition.from, condition.to, words.is24h, words.locale) +
+            everyDaySuffix(words, condition.days),
     )
-    is Condition.DateRange -> stringResource(
+    is Condition.DateRange -> words.get(
         R.string.editor_sentence_date_range,
-        TimeText.dayDate(condition.from, currentLocale()),
-        TimeText.dayDate(condition.to, currentLocale()),
+        TimeText.dayDate(condition.from, words.locale),
+        TimeText.dayDate(condition.to, words.locale),
     )
-    is Condition.AtPlace -> stringResource(
+    is Condition.AtPlace -> words.get(
         if (condition.inside) R.string.editor_sentence_if_at else R.string.editor_sentence_if_away,
         condition.label,
     )
@@ -322,22 +349,19 @@ fun conditionPhrase(condition: Condition): String = when (condition) {
  * on a window: it says which days are *allowed*, never how often the reminder comes back. That
  * one is "Vuelve"'s answer and nobody else's.
  */
-@Composable
-private fun everyDayOr(days: Set<DayOfWeek>, locale: Locale): String =
-    if (days.isEmpty() || days.size == 7) stringResource(R.string.trigger_any_day_of_week) else daysSummary(days, locale)
+private fun everyDayOr(words: Words, days: Set<DayOfWeek>): String =
+    if (days.isEmpty() || days.size == 7) words.get(R.string.trigger_any_day_of_week) else daysSummary(words, days)
 
 /** The same, said only when it narrows anything: a fence on every day says nothing extra. */
-@Composable
-private fun everyDaySuffix(days: Set<DayOfWeek>, locale: Locale): String =
-    if (days.isEmpty() || days.size == 7) "" else " " + daysSummary(days, locale)
+private fun everyDaySuffix(words: Words, days: Set<DayOfWeek>): String =
+    if (days.isEmpty() || days.size == 7) "" else " " + daysSummary(words, days)
 
-@Composable
-private fun randomSummary(trigger: Trigger.Random, locale: Locale): String {
+private fun randomSummary(words: Words, trigger: Trigger.Random): String {
     val times = when (trigger.period) {
-        Period.DAY -> pluralStringResource(R.plurals.trigger_times_a_day, trigger.timesPer, trigger.timesPer)
-        Period.WEEK -> pluralStringResource(R.plurals.trigger_times_a_week, trigger.timesPer, trigger.timesPer)
+        Period.DAY -> words.plural(R.plurals.trigger_times_a_day, trigger.timesPer)
+        Period.WEEK -> words.plural(R.plurals.trigger_times_a_week, trigger.timesPer)
     }
-    val days = if (trigger.days.isEmpty() || trigger.days.size == 7) null else daysSummary(trigger.days, locale)
+    val days = if (trigger.days.isEmpty() || trigger.days.size == 7) null else daysSummary(words, trigger.days)
     return if (days == null) times else "$times · $days"
 }
 
@@ -345,16 +369,15 @@ private val weekdays = setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDN
 private val weekend = setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
 
 /** "cada día" · "laborables" · "fines de semana" · "L · X · V" (in the locale's week order). */
-@Composable
-fun daysSummary(days: Set<DayOfWeek>, locale: Locale): String = when (days) {
-    DayOfWeek.entries.toSet() -> stringResource(R.string.trigger_every_day)
-    weekdays -> stringResource(R.string.trigger_weekdays)
-    weekend -> stringResource(R.string.trigger_weekends)
+fun daysSummary(words: Words, days: Set<DayOfWeek>): String = when (days) {
+    DayOfWeek.entries.toSet() -> words.get(R.string.trigger_every_day)
+    weekdays -> words.get(R.string.trigger_weekdays)
+    weekend -> words.get(R.string.trigger_weekends)
     else -> {
-        val first = WeekFields.of(locale).firstDayOfWeek
+        val first = WeekFields.of(words.locale).firstDayOfWeek
         List(7) { first.plus(it.toLong()) }
             .filter { it in days }
-            .joinToString(" · ") { TimeText.dayInitial(it, locale) }
+            .joinToString(" · ") { TimeText.dayInitial(it, words.locale) }
     }
 }
 
@@ -363,43 +386,41 @@ fun daysSummary(days: Set<DayOfWeek>, locale: Locale): String = when (days) {
  * "cada día · 30 veces". The unit always, what it picks out of the unit where that is a
  * question, and where it stops when it stops.
  */
-@Composable
-fun repeatSummary(trigger: Trigger.Repeat, today: LocalDate, locale: Locale): String {
+fun repeatSummary(words: Words, trigger: Trigger.Repeat, today: LocalDate): String {
     val parts = ArrayList<String>(3)
     parts += when (trigger.unit) {
-        RepeatUnit.DAY -> pluralStringResource(R.plurals.trigger_repeat_days, trigger.every, trigger.every)
-        RepeatUnit.WEEK -> pluralStringResource(R.plurals.trigger_repeat_weeks, trigger.every, trigger.every)
-        RepeatUnit.MONTH -> pluralStringResource(R.plurals.trigger_repeat_months, trigger.every, trigger.every)
-        RepeatUnit.YEAR -> pluralStringResource(R.plurals.trigger_repeat_years, trigger.every, trigger.every)
+        RepeatUnit.DAY -> words.plural(R.plurals.trigger_repeat_days, trigger.every)
+        RepeatUnit.WEEK -> words.plural(R.plurals.trigger_repeat_weeks, trigger.every)
+        RepeatUnit.MONTH -> words.plural(R.plurals.trigger_repeat_months, trigger.every)
+        RepeatUnit.YEAR -> words.plural(R.plurals.trigger_repeat_years, trigger.every)
     }
     when (trigger.unit) {
         // A week, a month and a year each have a choice inside them; a day does not. A year's
         // is a month's plus the month, because "el primer miércoles" alone names no date.
-        RepeatUnit.WEEK -> parts += daysSummary(trigger.weekDays(), locale)
-        RepeatUnit.MONTH -> parts += monthlyLabel(trigger.monthlyRule(), locale)
-        RepeatUnit.YEAR -> parts += stringResource(
+        RepeatUnit.WEEK -> parts += daysSummary(words, trigger.weekDays())
+        RepeatUnit.MONTH -> parts += monthlyLabel(words, trigger.monthlyRule())
+        RepeatUnit.YEAR -> parts += words.get(
             R.string.trigger_yearly_of_month,
-            monthlyLabel(trigger.monthlyRule(), locale),
-            trigger.startsOn.month.getDisplayName(TextStyle.FULL, locale),
+            monthlyLabel(words, trigger.monthlyRule()),
+            trigger.startsOn.month.getDisplayName(TextStyle.FULL, words.locale),
         )
         RepeatUnit.DAY -> Unit
     }
     when (val ends = trigger.ends) {
-        is RepeatEnd.On -> parts += stringResource(R.string.trigger_repeat_until, dayWord(ends.date, today, locale))
-        is RepeatEnd.After -> parts += pluralStringResource(R.plurals.trigger_repeat_times, ends.times, ends.times)
+        is RepeatEnd.On -> parts += words.get(R.string.trigger_repeat_until, dayWord(words, ends.date, today))
+        is RepeatEnd.After -> parts += words.plural(R.plurals.trigger_repeat_times, ends.times)
         RepeatEnd.Never -> Unit
     }
     return parts.joinToString(" · ")
 }
 
 /** "el día 26" · "el cuarto miércoles" · "el último lunes". */
-@Composable
-fun monthlyLabel(rule: MonthlyOn, locale: Locale): String = when (rule) {
-    is MonthlyOn.Day -> stringResource(R.string.trigger_monthly_day, rule.day)
-    is MonthlyOn.Nth -> stringResource(
+fun monthlyLabel(words: Words, rule: MonthlyOn): String = when (rule) {
+    is MonthlyOn.Day -> words.get(R.string.trigger_monthly_day, rule.day)
+    is MonthlyOn.Nth -> words.get(
         R.string.trigger_monthly_nth,
-        stringResource(ordinalRes(rule.ordinal)),
-        rule.day.getDisplayName(java.time.format.TextStyle.FULL, locale),
+        words.get(ordinalRes(rule.ordinal)),
+        rule.day.getDisplayName(java.time.format.TextStyle.FULL, words.locale),
     )
 }
 
@@ -413,16 +434,15 @@ fun ordinalRes(ordinal: Int): Int = when (ordinal) {
 }
 
 /** "45 min" · "2 h" · "2 h 30 min" · "3 d": the coarsest way to say a length that stays true. */
-@Composable
-fun durationText(minutes: Int): String {
+fun durationText(words: Words, minutes: Int): String {
     val days = minutes / (24 * 60)
     val hours = (minutes % (24 * 60)) / 60
     val rest = minutes % 60
     return when {
-        days > 0 && hours > 0 -> stringResource(R.string.countdown_days, days) + " " + stringResource(R.string.countdown_hours, hours)
-        days > 0 -> stringResource(R.string.countdown_days, days)
-        hours > 0 && rest > 0 -> stringResource(R.string.countdown_hours, hours) + " " + stringResource(R.string.countdown_minutes, rest)
-        hours > 0 -> stringResource(R.string.countdown_hours, hours)
-        else -> stringResource(R.string.countdown_minutes, rest)
+        days > 0 && hours > 0 -> words.get(R.string.countdown_days, days) + " " + words.get(R.string.countdown_hours, hours)
+        days > 0 -> words.get(R.string.countdown_days, days)
+        hours > 0 && rest > 0 -> words.get(R.string.countdown_hours, hours) + " " + words.get(R.string.countdown_minutes, rest)
+        hours > 0 -> words.get(R.string.countdown_hours, hours)
+        else -> words.get(R.string.countdown_minutes, rest)
     }
 }

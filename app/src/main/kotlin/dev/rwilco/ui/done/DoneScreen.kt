@@ -48,6 +48,7 @@ import dev.rwilco.ui.components.DayBars
 import dev.rwilco.ui.components.EmptyState
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.TagLabel
+import dev.rwilco.ui.format.rememberWords
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.format.dayWord
@@ -141,7 +142,7 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
                         reminder = reminder,
                         doneLabel = reminder.doneAt?.let { doneAt ->
                             val at = doneAt.atZone(clock.zone)
-                            dayWord(at.toLocalDate(), today, locale) + " · " + TimeText.time(at.toLocalTime(), is24h, locale)
+                            dayWord(rememberWords(), at.toLocalDate(), today) + " · " + TimeText.time(at.toLocalTime(), is24h, locale)
                         },
                         onOpen = { onOpen(reminder.id) },
                         onRestore = { viewModel.restore(reminder.id) },

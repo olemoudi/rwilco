@@ -192,7 +192,7 @@ class ReminderFiring(
                 // A moment the phone slept through by a minute or two is still that moment, and
                 // rings like it; only one it slept through by a good while arrives as the quiet
                 // "did not ring on time" note (lateForPresentation).
-                AlertPresenter.show(context, reminder, plan, lateForPresentation(late, now), settings.vibration, settings.soundFor(plan), ruleIndex = ruleIndex)
+                AlertPresenter.show(context, reminder, plan, lateForPresentation(late, now), settings.vibration, settings.soundFor(plan), ruleIndex = ruleIndex, defaultTime = settings.defaultTime)
                 // "Hasta que reciba caso": the first play has gone out, so line up the second.
                 if (plan.insistent) {
                     nextSoundIn(played = 1, plays = settings.soundPlays, gapMinutes = settings.soundGapMinutes)
@@ -231,7 +231,7 @@ class ReminderFiring(
         val plan = firingPlan(reminder.actions)
         if (!plan.insistent) return@withLock
         Log.i(TAG, "$id has not been dealt with; play ${played + 1} of ${settings.soundPlays}")
-        AlertPresenter.show(context, reminder, plan, late = null, vibration = settings.vibration, sound = settings.soundFor(plan), takeScreen = false, ruleIndex = ruleIndex)
+        AlertPresenter.show(context, reminder, plan, late = null, vibration = settings.vibration, sound = settings.soundFor(plan), takeScreen = false, ruleIndex = ruleIndex, defaultTime = settings.defaultTime)
         nextSoundIn(played + 1, settings.soundPlays, settings.soundGapMinutes)
             ?.let { gap -> repeater.schedule(id, played + 1, rangAt, now + gap, ruleIndex) }
     }
@@ -391,6 +391,7 @@ class ReminderFiring(
             // is about is what the clock on it counts up from.
             nudge = due.word,
             nudgeAbout = due.about,
+            defaultTime = settings.defaultTime,
         )
         scheduler.rearmAll()
     }

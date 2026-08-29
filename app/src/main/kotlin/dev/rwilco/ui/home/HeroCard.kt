@@ -32,6 +32,7 @@ import dev.rwilco.ui.components.TriggerKeycap
 import dev.rwilco.ui.components.lampGlow
 import dev.rwilco.ui.components.rememberNow
 import dev.rwilco.ui.editor.titleRes
+import dev.rwilco.ui.format.rememberWords
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.countdownText
 import dev.rwilco.ui.format.currentLocale
@@ -123,7 +124,7 @@ fun HeroCard(
             Spacer(Modifier.height(spacing.sm))
             LiveCountdown(at = hero.at, clock = clock, style = MonoStyles.countdown, color = amber)
             Text(
-                text = dayWord(at.toLocalDate(), today, locale) + " · " + TimeText.time(at.toLocalTime(), is24h, locale) +
+                text = dayWord(rememberWords(), at.toLocalDate(), today) + " · " + TimeText.time(at.toLocalTime(), is24h, locale) +
                     if (hero.atEarliest) " · " + stringResource(R.string.home_next_up_earliest_hint) else "",
                 style = MonoStyles.date,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

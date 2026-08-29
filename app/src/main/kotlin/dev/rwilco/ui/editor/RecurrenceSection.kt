@@ -68,6 +68,7 @@ import dev.rwilco.model.sameSpanAs
 import dev.rwilco.model.countsFromRinging
 import dev.rwilco.model.RecurrenceFrom
 import dev.rwilco.ui.components.SegmentedChoice
+import dev.rwilco.ui.format.recurrenceLabel
 import dev.rwilco.ui.format.repeatSummary
 import dev.rwilco.ui.format.conditionLabel
 import dev.rwilco.ui.components.Stepper
@@ -77,6 +78,8 @@ import java.time.LocalDate
 import java.time.format.TextStyle
 import java.time.LocalTime
 import dev.rwilco.ui.format.rememberIs24h
+import dev.rwilco.ui.format.Words
+import dev.rwilco.ui.format.rememberWords
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.components.TimeField
 
@@ -273,7 +276,7 @@ internal fun RecurrenceSection(
             if (spans.none { recurrence.sameSpanAs(it.recurrence) }) {
                 Spacer(Modifier.height(spacing.sm))
                 Text(
-                    text = recurrenceLabel(recurrence, today),
+                    text = recurrenceLabel(rememberWords(), recurrence, today),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -284,7 +287,7 @@ internal fun RecurrenceSection(
         if (calendar != null) {
             Spacer(Modifier.height(spacing.md))
             Text(
-                text = repeatSummary(calendar, today, currentLocale()),
+                text = repeatSummary(rememberWords(), calendar, today),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -619,7 +622,7 @@ private fun CustomRecurrenceDialog(
                 )
                 Spacer(Modifier.height(spacing.lg))
                 Text(
-                    text = recurrenceLabel(built, today),
+                    text = recurrenceLabel(rememberWords(), built, today),
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Spacer(Modifier.height(spacing.md))
@@ -645,65 +648,8 @@ private fun CustomRecurrenceDialog(
 
 /** A preset's own name, or the shape's own words when it has none. */
 @Composable
-private fun presetLabel(preset: RecurrencePreset, today: LocalDate): String =
-    preset.name.ifEmpty { recurrenceLabel(preset.recurrence, today) }
-
-/**
- * A recurrence in as few words as it can be said in.
- *
- * [today] is only ever used by a calendar, whose ending is read as a day word ("hasta el
- * martes") rather than a date nobody has to count from.
- */
-@Composable
-fun recurrenceLabel(recurrence: Recurrence, today: LocalDate): String {
-    val locale = currentLocale()
-    return when (recurrence) {
-        Recurrence.None -> stringResource(R.string.recur_none)
-        Recurrence.ByTrigger -> stringResource(R.string.recur_by_trigger)
-        is Recurrence.Calendar -> repeatSummary(recurrence.repeat, today, locale)
-        is Recurrence.After -> recurrenceSpanLabel(recurrence) + hourSuffix(recurrence)
-        // Nothing writes one any more; it is still what somebody's saved preset says.
-        is Recurrence.MonthlyWeekday -> {
-            val ordinals = stringArrayResource(R.array.recur_ordinals)
-            val ordinal = if (recurrence.ordinal >= LAST_ORDINAL) ordinals.last() else ordinals[(recurrence.ordinal - 1).coerceIn(ordinals.indices)]
-            stringResource(R.string.recur_monthly_weekday, ordinal, recurrence.day.getDisplayName(TextStyle.FULL, locale))
-        }
-    }
+private fun presetLabel(preset: RecurrencePreset, today: LocalDate): String {
+    val words = rememberWords()
+    return preset.name.ifEmpty { recurrenceLabel(words, preset.recurrence, today) }
 }
 
-/** The span itself, without the hour it lands on. */
-@Composable
-private fun recurrenceSpanLabel(recurrence: Recurrence.After): String =
-    when (recurrence.unit) {
-            RecurrenceUnit.HOURS -> stringResource(R.string.recur_hours, recurrence.amount)
-            RecurrenceUnit.DAYS ->
-                if (recurrence.amount == 1) stringResource(R.string.recur_next_day)
-                else stringResource(R.string.recur_days, recurrence.amount)
-            RecurrenceUnit.WEEKS ->
-                if (recurrence.amount == 1) stringResource(R.string.recur_week)
-                else stringResource(R.string.recur_weeks, recurrence.amount)
-            RecurrenceUnit.MONTHS ->
-                if (recurrence.amount == 1) stringResource(R.string.recur_month)
-                else stringResource(R.string.recur_months, recurrence.amount)
-            RecurrenceUnit.YEARS ->
-                if (recurrence.amount == 1) stringResource(R.string.recur_year)
-                else stringResource(R.string.recur_years, recurrence.amount)
-    }
-
-/**
- * The hour a span lands on, said only when it is not the one the app would have chosen anyway:
- * every reminder written before the question existed means [RecurrenceHour.DayStart], and a
- * line that suddenly grew three words would read as something having changed.
- */
-@Composable
-private fun hourSuffix(recurrence: Recurrence.After): String {
-    if (recurrence.unit == RecurrenceUnit.HOURS) return ""
-    return when (val hour = recurrence.hour) {
-        RecurrenceHour.DayStart -> ""
-        RecurrenceHour.Same -> " · " + stringResource(R.string.recur_hour_same_short)
-        is RecurrenceHour.At -> " · " + stringResource(
-            R.string.recur_hour_at,
-            TimeText.time(hour.time, rememberIs24h(), currentLocale()),
-        )
-    }
-}

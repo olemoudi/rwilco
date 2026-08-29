@@ -15,11 +15,13 @@ import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import dev.rwilco.alarm.ReminderScheduler
 import dev.rwilco.diag.Diag
+import dev.rwilco.model.AppSettings
 import dev.rwilco.model.FiringPlan
 import dev.rwilco.model.AlertSound
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.VibrationPattern
 import dev.rwilco.ui.alert.AlertActivity
+import java.time.LocalTime
 import java.time.Instant
 
 /** Where a firing shows itself. */
@@ -92,6 +94,8 @@ object AlertPresenter {
         takeScreen: Boolean = true,
         /** The rule whose moment rang, so the screen can say which; null for a snooze or a recurrence. */
         ruleIndex: Int? = null,
+        /** Passed straight through to the notification's reason line. */
+        defaultTime: LocalTime = AppSettings().defaultTime,
     ) {
         // Every action turned off is an answer too: the moment passes without a word, and the
         // reminder is simply overdue on Home afterwards.
@@ -132,6 +136,7 @@ object AlertPresenter {
             vibration = vibration,
             chosen = sound,
             ruleIndex = ruleIndex,
+            defaultTime = defaultTime,
         )
         // Notifications switched off make post() a silent no-op, and the moment is already
         // spent. The one thing left that can reach the person is the screen itself, which knows

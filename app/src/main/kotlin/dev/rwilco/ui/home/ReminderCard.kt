@@ -50,8 +50,9 @@ import dev.rwilco.ui.components.RuleTree
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.TriggerKeycap
 import dev.rwilco.model.conditions
-import dev.rwilco.ui.editor.recurrenceLabel
 import dev.rwilco.ui.editor.titleRes
+import dev.rwilco.ui.format.recurrenceLabel
+import dev.rwilco.ui.format.rememberWords
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.conditionLabel
 import dev.rwilco.ui.format.currentLocale
@@ -164,7 +165,7 @@ fun RecurrenceRow(recurrence: Recurrence, today: LocalDate, muted: Boolean = fal
         Spacer(Modifier.width(Tokens.spacing.sm))
         Column(modifier = Modifier.weight(1f, fill = false)) {
             Text(
-                text = recurrenceLabel(recurrence, today),
+                text = recurrenceLabel(rememberWords(), recurrence, today),
                 style = MaterialTheme.typography.titleSmall,
                 color = if (muted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
@@ -233,7 +234,7 @@ fun SnoozedRow(until: Instant, today: LocalDate, zone: ZoneId, muted: Boolean = 
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = stringResource(R.string.card_snoozed) + " · " + dayWord(at.toLocalDate(), today, locale),
+                text = stringResource(R.string.card_snoozed) + " · " + dayWord(rememberWords(), at.toLocalDate(), today),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,

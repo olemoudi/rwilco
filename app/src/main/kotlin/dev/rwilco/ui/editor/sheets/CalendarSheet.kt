@@ -36,6 +36,7 @@ import dev.rwilco.ui.components.SegmentedChoice
 import dev.rwilco.ui.components.SheetScaffold
 import dev.rwilco.ui.components.Stepper
 import dev.rwilco.ui.components.calendar.MonthCalendar
+import dev.rwilco.ui.format.rememberWords
 import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.format.ordinalRes
 import dev.rwilco.ui.format.repeatSummary
@@ -266,7 +267,7 @@ fun CalendarSheet(
 
         // The whole thing read back, in the words the card will use.
         Text(
-            text = repeatSummary(built, today, currentLocale()),
+            text = repeatSummary(rememberWords(), built, today),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.fillMaxWidth(),

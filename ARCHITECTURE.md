@@ -814,8 +814,8 @@ strict is asking somebody to remember how they spelled it.
   either falls back to the banner, which is what the system does on its own, and Settings says
   so. The decision itself is a pure function with JVM tests. "Hecho" finishes
   a one-shot and leaves anything that can come round again.
-- **What the shade actually shows** (`AlertNotifications`): the reminder's words as the title and
-  again as `BigTextStyle` so nothing is cut when it opens, the tags under it, three actions
+- **What the shade actually shows** (`AlertNotifications`): the reminder's words as the title,
+  **why it rang** on the line under them, the tags beside the app's name, three actions
   ("Hecho", ten minutes, two hours — three is what a notification shows), the amber on the glyph
   and the app-name line (`AMBER_ARGB`, the one place that cannot ask a Compose theme for a colour
   because it is built in a receiver), and the time. A missed one counts *up* from the moment it
@@ -823,6 +823,26 @@ strict is asking somebody to remember how they spelled it.
   point of that notification, and a bare timestamp makes somebody work it out. One asked to
   insist (`SOUND_UNTIL_ANSWERED`) is `setOngoing`, so the half-asleep swipe that clears the shade
   cannot take it; everything else stays swipeable, because most reminders are read and let go.
+- **The line under the title is why it arrived, not the title again.** It was the reminder's own
+  words in the title and the same words underneath — one sentence twice, and the second one
+  carrying nothing at the moment somebody most needs telling *why their phone just went off*. It
+  is now the sentence the editor shows over its save button, minus the words themselves
+  (`reminderSummary`): "al llegar a Casa", "a las 18:30 cualquier día, y vuelve cada semana",
+  the rules joined by the word their reading joins them with and the fences said as "sólo …".
+  The tags move to the sub-text, beside the app's name, which is where a label belongs — and
+  give that place up to the net's word or a missed ring's, which is about *this* arrival rather
+  than about the reminder. A reminder with no rules at all leaves the line off rather than
+  printing a blank one.
+  **Which is why the phrasing stopped being a Compose thing.** `triggerPhrase`, `conditionPhrase`
+  and `recurrenceLabel` read their strings out of the composition, which is fine while the only
+  reader is a screen and impossible from a receiver — and two functions saying the same sentence
+  drift, which on a notification means the shade quietly disagreeing with the form about what a
+  rule means. So the three things composition was being asked for (the strings, the language, the
+  clock's shape) are carried in `Words` instead: a screen fills it from composition
+  (`rememberWords`), anything else from a `Context` (`Context.words()`), and there is one
+  function per sentence. `recurrenceLabel` and its two helpers moved out of `RecurrenceSection`
+  into `ui/format` at the same time, beside the trigger wording they belong with.
+
   All of them join one bundle with a summary line, and **the summary comes down only when there
   is nothing left**: cancelling a group's summary cancels its surviving children too, so pulling
   it at "fewer than two" — the reading that sounds right — cleared the shade of an alert somebody
