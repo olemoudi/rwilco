@@ -180,4 +180,34 @@ class RuleMatchTest {
         val cleared = half.copy(firedRules = emptySet())
         assertEquals(Wake(local(2026, 8, 27, 18, 0), 0), nextWake(cleared, now, zone, defaultTime))
     }
+
+    @Test
+    fun `under all, a doorway and an hour complete in either order`() {
+        // The other reminder in the same report: "al salir del club" and "a las 14:25" under
+        // "todos". Nothing has to coincide — each is written down when it happens and the last
+        // of them rings, whichever way round they come.
+        val leavingClub = Trigger.Location(40.4369, -3.7035, 150, Presence.OUTSIDE, "Club", onCrossing = true)
+        val quarterPast = Trigger.TimeOfDay(LocalTime.of(14, 25))
+        val set = Reminder(
+            id = "r1",
+            text = "Esto debería sonar a las 14:25",
+            rules = listOf(TriggerRule(leavingClub), TriggerRule(quarterPast)),
+            ruleMatch = RuleMatch.ALL,
+            createdAt = Fixtures.now,
+            updatedAt = Fixtures.now,
+        )
+        // Nothing is folded under "todos": both rules stand as written.
+        assertEquals(TriggerRule(leavingClub), set.ruleInSet(0))
+        assertEquals(TriggerRule(quarterPast), set.ruleInSet(1))
+        // The hour is what gets armed; the crossing arrives on its own.
+        assertEquals(Wake(Fixtures.local(2026, 8, 28, 14, 25), 1), nextWake(set, Fixtures.now, zone, defaultTime))
+        assertEquals(NextFire.WhenAt(leavingClub), nextFire(set, Fixtures.now, zone, defaultTime), "and the place is the honest answer")
+
+        // Leaving first: written down, and the hour completes the set.
+        assertEquals(FiringOutcome.Wait(setOf(0)), outcomeOfFiring(set, 0))
+        assertEquals(FiringOutcome.Ring, outcomeOfFiring(set.copy(firedRules = setOf(0)), 1))
+        // The hour first: written down, and the crossing completes it.
+        assertEquals(FiringOutcome.Wait(setOf(1)), outcomeOfFiring(set, 1))
+        assertEquals(FiringOutcome.Ring, outcomeOfFiring(set.copy(firedRules = setOf(1)), 0))
+    }
 }

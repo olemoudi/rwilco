@@ -398,12 +398,16 @@ val Trigger.family: TriggerFamily
 /**
  * The same trigger read as a *state* — "is this true right now?" — or null when it has none.
  *
- * This is what [RuleMatch.TOGETHER] is built on. A place is a state as much as an event: the
- * crossing is what wakes the app, but being inside the circle is true for as long as you are
- * there, and which of the two a rule means is decided by what it is asked. An interval is a
- * state and nothing else. Everything else is a *moment*: true at one instant and false either
- * side of it, which is exactly why two of them together can never both be true, and why a set
- * with none of them has nothing to start it.
+ * This is what [RuleMatch.TOGETHER] is built on. A place is a state as much as an event, and
+ * **which of the two it is, is decided by what the rule asked for**: "mientras esté en casa"
+ * is being inside the circle, true for as long as you are there, and a state; "al salir de
+ * casa" ([Trigger.Location.onCrossing]) is the doorway, one instant, and a **moment**. Folding
+ * a doorway in as a state is how "al salir del club, y a la vez a las 13:30" came to ring at
+ * 13:30 for the mere fact of being elsewhere — the crossing quietly dropped, and the reminder
+ * announcing itself as next while it was at it. An interval is a state and nothing else.
+ * Everything else is a *moment*: true at one instant and false either side of it, which is
+ * exactly why two of them together can never both be true, and why a set with none of them has
+ * nothing to start it.
  *
  * A day with no hour is a state too — for the hours this person is up on it, which is what
  * [shape] is for — and not a moment: "el jueves a cualquier hora, y a la vez en la oficina" is
@@ -411,7 +415,8 @@ val Trigger.family: TriggerFamily
  * ([openingOf]), so the state and the moment are two readings of the same window.
  */
 fun Trigger.asState(shape: DayShape = DayShape.DEFAULT): Condition? = when (this) {
-    is Trigger.Location -> Condition.AtPlace(lat, lng, radiusM, label, inside = presence == Presence.INSIDE)
+    // A doorway is a moment; a side of a line is a state. See above.
+    is Trigger.Location -> if (onCrossing) null else Condition.AtPlace(lat, lng, radiusM, label, inside = presence == Presence.INSIDE)
     is Trigger.Interval -> Condition.TimeWindow(from, to, days)
     // A stretch of the calendar, true on every one of its days. The same shape one unit up.
     is Trigger.DateRange -> Condition.DateRange(from, to)

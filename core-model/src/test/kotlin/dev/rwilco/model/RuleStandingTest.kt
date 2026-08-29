@@ -71,6 +71,15 @@ class RuleStandingTest {
     }
 
     @Test
+    fun `a doorway has no standing either, because it is a moment too`() {
+        // "Al salir de la oficina, y a la vez de dos a seis": the window says whether it holds,
+        // and the doorway is the thing that would ring — not a state anybody is in.
+        val doorway = leavingOffice.copy(onCrossing = true)
+        val set = reminder(RuleMatch.TOGETHER, doorway, afternoon)
+        assertEquals(listOf(null, RuleStanding.HOLDING), set.ruleStandings(now, zone, inside = { false }))
+    }
+
+    @Test
     fun `a moment has no standing under a la vez, because it is what rings`() {
         val set = reminder(RuleMatch.TOGETHER, nineAm, afternoon)
         assertEquals(listOf(null, RuleStanding.HOLDING), set.ruleStandings(now, zone))

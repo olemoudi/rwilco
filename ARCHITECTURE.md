@@ -50,7 +50,14 @@ holds whenever the phone is on that side, whether or not anybody watched it get 
 that is only "mientras esté en casa", written at home, rings at once. `onCrossing` asks for the
 doorway back — "al llegar", "al salir" — and means exactly one thing: **a side nobody has seen
 yet does not count as the other side**, which is a single line in `stepPlaceWatch` and was
-already there. Four readings, two questions, and the same four words on every screen
+already there. It also decides which of the two a set folds in (`Trigger.asState`): **a doorway
+is a moment, a side of a line is a state.** Read as a state, "al salir del club, y a la vez a
+las 13:30" became "estando fuera del club, a las 13:30" — the crossing quietly dropped, the
+reminder announcing itself as next, and ringing at half past one for the mere fact of being
+somewhere else. As a moment it is two moments beside an hour, which never coincide: nothing is
+armed, no circle is watched, and the editor says so. Beside a *window* it is the shape that
+sentence was reaching for — the crossing is the moment, the window the state it has to land
+in — and the window's own opening rings nothing. Four readings, two questions, and the same four words on every screen
 (`placeReading`). **A place being added opens on the doorway** (`LocationSheet`): "al llegar a
 casa" is the sentence somebody writes at the moment they reach for a place, and the state
 reading is the same switch, one tap away. That is the editor's opening answer and nothing else:
@@ -967,8 +974,9 @@ strict is asking somebody to remember how they spelled it.
   that has passed has passed;
   `TOGETHER` is the conjunction, every rule true at the same moment, ringing the instant the
   last one becomes true. That last one needs each trigger read as a *state* (`Trigger.asState`):
-  a place is being inside its circle, a `Trigger.Interval` ("de 17 a 19") is being in its
-  window, and everything else is a **moment**, true at an instant and false either side. So it
+  a place asked for as a side of a line is being on it, a `Trigger.Interval` ("de 17 a 19") is
+  being in its window, and everything else — a place asked for as a **doorway** included — is a
+  **moment**, true at an instant and false either side. So it
   is implemented by folding: `Reminder.togetherRule(i)` hands back rule *i* with every other
   rule's state as one of its conditions, and firing, scheduling (`nextFire`/`nextWake`, which
   once armed the bare rule's moment and rang "a las nueve, y de ocho a diez los lunes" every

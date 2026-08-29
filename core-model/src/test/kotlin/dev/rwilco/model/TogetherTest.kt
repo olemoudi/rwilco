@@ -204,6 +204,56 @@ class TogetherTest {
     }
 
     @Test
+    fun `a doorway and an hour are two moments, and two moments never coincide`() {
+        // Reported from a phone: "al salir del club, y a la vez a las 13:30" sat on Home as
+        // LO SIGUIENTE, nine minutes off, and would have rung at 13:30 for the mere fact of
+        // being somewhere else. Folded as a state, the doorway had quietly become "estando
+        // fuera del club"; asked for, it is one instant, and two instants are not one.
+        val leavingClub = Trigger.Location(40.4369, -3.7035, 150, Presence.OUTSIDE, "Club", onCrossing = true)
+        val halfPast = Trigger.TimeOfDay(LocalTime.of(13, 30))
+        val set = reminder(RuleMatch.TOGETHER, leavingClub, halfPast)
+
+        assertTrue(set.momentsCannotCoincide(), "a doorway is a moment, like the hour beside it")
+        assertNull(set.ruleInSet(0), "neither rule can ring")
+        assertNull(set.ruleInSet(1))
+        assertNull(nextFire(set, Fixtures.now, zone, defaultTime), "and nothing is offered as next")
+        assertNull(nextWake(set, Fixtures.now, zone, defaultTime), "nor armed")
+        assertTrue(
+            warnings(set.rules, Fixtures.now, zone, defaultTime, RuleMatch.TOGETHER).count { it is ValidationWarning.MomentsCannotCoincide } == 2,
+            "and the editor says so, on both of them",
+        )
+        // A set that cannot ring is not worth a radio either.
+        assertTrue(set.watchedCircles(Fixtures.now, zone, defaultTime).isEmpty())
+        // The same place asked for as a side of the line is a state, and that set does ring.
+        val beingOut = reminder(RuleMatch.TOGETHER, leavingClub.copy(onCrossing = false), halfPast)
+        assertFalse(beingOut.momentsCannotCoincide())
+        assertEquals(
+            Fixtures.local(2026, 8, 28, 13, 30),
+            (nextFire(beingOut, Fixtures.now, zone, defaultTime) as NextFire.Scheduled).at,
+            "tomorrow at half past one, if the phone is out then",
+        )
+    }
+
+    @Test
+    fun `a doorway inside a window rings on the crossing, and the window alone rings nothing`() {
+        // The shape the reported one was reaching for: leaving, but only inside a stretch. The
+        // crossing is the moment and the window is the state it has to land in — so the
+        // window's own opening rings nothing, which is what it used to do at 13:00 sharp to
+        // somebody who had not moved.
+        val leavingClub = Trigger.Location(40.4369, -3.7035, 150, Presence.OUTSIDE, "Club", onCrossing = true)
+        val lunch = Trigger.Interval(LocalTime.of(13, 0), LocalTime.of(14, 0))
+        val set = reminder(RuleMatch.TOGETHER, leavingClub, lunch)
+
+        assertFalse(set.momentsCannotCoincide(), "one moment and one state")
+        val crossing = set.ruleInSet(0)!!
+        assertEquals(listOf(Condition.TimeWindow(LocalTime.of(13, 0), LocalTime.of(14, 0))), crossing.conditions)
+        assertNull(set.ruleInSet(1), "the window is not a second way of ringing this")
+        assertEquals(NextFire.WhenAt(leavingClub), nextFire(set, Fixtures.now, zone, defaultTime))
+        // And the circle is watched, gated by the hours the set needs.
+        assertTrue(set.watchedCircles(Fixtures.now, zone, defaultTime).any { it.ruleIndex == 0 })
+    }
+
+    @Test
     fun `a random beside a day with no hour is drawn inside that day`() {
         // "El sábado, me da igual la hora, y a la vez tres veces al día al azar": three draws
         // on the Saturday, inside its waking hours — not the day's three draws thrown away

@@ -686,7 +686,7 @@
     <string name="editor_match_together">At once</string>
     <string name="editor_match_together_hint">All of them true at the same moment; rings the instant the last one becomes true.</string>
     <string name="card_match_together">at once</string>
-    <string name="editor_warning_moments_apart">Two moments cannot be the same moment, so «at once» never rings here. Leave one moment and make the rest places or time ranges.</string>
+    <string name="editor_warning_moments_apart">Two moments cannot be the same moment, so «at once» never rings here. Leave one moment and make the rest time ranges, or places you only have to be at («while I\'m at…», not «when I leave»).</string>
     <string-array name="whats_new_0_9_0">
         <item>A new kind of trigger: a time range. «From 17:00 to 19:00» — on its own it rings when the range opens, and it is what the two below are worth writing for.</item>
         <item>«And only if» can now be a place as well as an hour: «at nine, and only if I am at home», or only if you are not. Pick from the places you keep in Settings.</item>
