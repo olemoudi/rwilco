@@ -320,6 +320,14 @@
     <string name="alert_done">Hecho</string>
     <string name="alert_view">Ver</string>
     <string name="alert_done_all">Hecho con todos</string>
+    <string name="widget_next_label">Lo siguiente</string>
+    <string name="widget_next_description">Qué suena ahora, cuántos hoy, y una forma de escribir uno.</string>
+    <string name="widget_nothing">Nada previsto</string>
+    <string name="widget_nothing_hint">Toca para escribir uno</string>
+    <plurals name="widget_today">
+        <item quantity="one">%1$d hoy</item>
+        <item quantity="other">%1$d hoy</item>
+    </plurals>
     <string name="history_title">Historial</string>
     <string name="history_note">Las últimas veces que sonó o se contestó. Se va con el recordatorio, y no sale de este teléfono.</string>
     <string name="history_rang">sonó</string>
@@ -1133,6 +1141,9 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_55_0">
+        <item>Un widget para la pantalla de inicio: qué suena ahora y cuándo, cuántos tocan hoy, y «Nuevo». A dos celdas dice las palabras y el momento; a cuatro, la cuenta y el botón al lado. Tocar las palabras abre ese recordatorio. Es la tarjeta oscura de la app sobre el launcher que sea, y dice «a las 18:30» en vez de una cuenta atrás, porque un widget se redibuja cuando se le dice, no cada segundo.</item>
+    </string-array>
     <string-array name="whats_new_0_54_0">
         <item>Un recordatorio guarda su historial: las últimas veces que sonó, se contestó, se pospuso, se saltó o lo recogió la red de seguridad, en una tarjeta propia dentro del formulario. «¿Sonó ayer?» no tenía respuesta en ningún sitio a mano — la fila guarda una sola marca de cada cosa y el diagnóstico una semana de todo. Se va con el recordatorio y no sale de este teléfono; la copia no lo lleva.</item>
         <item>El informe de diagnóstico dice lo mismo, cinco líneas por recordatorio, para que una pregunta sobre un toque no necesite el registro entero.</item>

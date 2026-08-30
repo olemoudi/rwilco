@@ -231,6 +231,10 @@ A read of every screen after 0.50.0, asking what a day of use would find. Worth 
   still ring after a day of that.
 - The launcher shortcuts (0.53.0): hold the icon with a preset pinned; the disc and initial,
   and one tap writing the reminder with the app closed.
+- The widget (0.55.0): place it at two and four cells, watch it redraw on a "hecho" and turn
+  "hoy" into "mañana" past midnight, and tap the words into the editor. The emulator has no
+  launcher worth placing a widget on, so this one is the phone's alone.
+- The history card (0.54.0): after a ring and a "hecho", the two lines under the form.
 - Settings → Alertas → "Probar una alerta" is the way to prove most of the below now: lock the
   phone, wait ten seconds, and see what arrives.
 - The overlay rule end to end: an alert while another app is open (banner), on the home screen

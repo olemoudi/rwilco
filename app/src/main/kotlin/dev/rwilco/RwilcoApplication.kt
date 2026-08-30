@@ -9,6 +9,7 @@ import dev.rwilco.alarm.ReminderFiring
 import dev.rwilco.alarm.ReminderScheduler
 import android.app.AlarmManager
 import android.os.Build
+import dev.rwilco.widget.NextWidget
 import dev.rwilco.shortcuts.PresetShortcuts
 import dev.rwilco.geo.GeofenceStore
 import dev.rwilco.geo.GeofenceManager
@@ -36,6 +37,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectIndexed
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.drop
@@ -178,6 +180,13 @@ class RwilcoApplication : Application() {
                     if (state.enabled) VaultWorker.schedule(this@RwilcoApplication, state, replace = index > 0)
                     else VaultWorker.cancel(this@RwilcoApplication)
                 }
+        }
+        appScope.launch {
+            // The widget says what Home says first, so it is redrawn whenever that can have
+            // changed: a reminder written, dealt with, rung, or a setting that moves a moment.
+            combine(repository.open, settingsStore.settings.map(ReminderScheduler::settingsKey)) { open, key -> open.map(ReminderScheduler::schedulingKey) to key }
+                .distinctUntilChanged()
+                .collect { NextWidget.refresh(this@RwilcoApplication) }
         }
         appScope.launch {
             // The pinned presets, on the launcher icon. Republished only when what a shortcut

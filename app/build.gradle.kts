@@ -24,8 +24,8 @@ android {
         // v0.1.0 and v0.2.0: the published versionName came out as the comment's placeholder
         // with the real one stuck on the end. Updates kept working (the version CODE never
         // matched the comment), so nothing complained — it just offered a nonsense version.
-        versionCode = 99
-        versionName = "0.54.0-alpha"
+        versionCode = 100
+        versionName = "0.55.0-alpha"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -105,6 +105,9 @@ dependencies {
     implementation(libs.work.runtime)
     implementation(libs.okhttp)
     implementation(libs.osmdroid.android)
+    // The home-screen widget. Glance draws with RemoteViews and reads none of the Compose
+    // theme, so the widget carries the dark tokens' values itself (see widget/NextWidget.kt).
+    implementation(libs.glance.appwidget)
     // Geofencing. The platform's own addProximityAlert is unreliable and battery-hungry; this is
     // the API the phone's location stack actually optimises for. The app degrades to "place
     // reminders do not fire" where Play Services is missing, and says so.

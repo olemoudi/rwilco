@@ -455,7 +455,18 @@ because that is what its chip would show.
 - Single activity, `navigation-compose` type-safe routes (`Routes.kt`): Home, Editor(id?),
   Done, Settings. Sheets, the place picker and the alert preview are ViewModel state. Two more
   doors in from outside (0.48.0), both worked out by `Destinations` (pure, tested) from the
-  intent's parts: holding the launcher icon offers "Nuevo" — **and, since 0.53.0, the pinned
+  intent's parts. **A home-screen widget (0.55.0, `widget/NextWidget.kt`, Glance)** says what
+  Home says first: the next reminder and when, how many are due today, and "Nuevo" — two cells
+  wide the words and the moment, four the count and the button beside them; the words open that
+  reminder. It reads the same grouping Home does (`groupForHome`, its hero) and is redrawn by
+  the Application whenever the scheduling key of the open reminders or the settings changes,
+  plus every half hour by the system (`updatePeriodMillis`), which is how "hoy" becomes "mañana"
+  at midnight with no worker of its own. No live countdown: Glance draws with RemoteViews and
+  redraws when told, so it says *a las 18:30*. **Always the dark scheme**, reading
+  `RwilcoDarkColors` directly rather than copying values — Glance reads none of the Compose
+  theme — and in the launcher's own typeface, since a widget cannot carry a font; both are the
+  compromises of the surface, said here so nobody goes looking for the tokens in it.
+  Holding the launcher icon offers "Nuevo" — **and, since 0.53.0, the pinned
   presets** (`PresetShortcuts`: dynamic shortcuts republished whenever what one is made of
   changes — a pin, a name, a colour — each a disc in the preset's colour with its initial, and
   an intent with `ACTION_PRESET` that `Destinations` turns into `preset:<id>`; Home writes it

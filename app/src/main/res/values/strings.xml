@@ -322,6 +322,14 @@
     <string name="alert_done">Done</string>
     <string name="alert_view">View</string>
     <string name="alert_done_all">Done with all</string>
+    <string name="widget_next_label">Next up</string>
+    <string name="widget_next_description">What fires next, how many today, and a way to write one.</string>
+    <string name="widget_nothing">Nothing next</string>
+    <string name="widget_nothing_hint">Tap to write one</string>
+    <plurals name="widget_today">
+        <item quantity="one">%1$d today</item>
+        <item quantity="other">%1$d today</item>
+    </plurals>
     <string name="history_title">History</string>
     <string name="history_note">The last few times it rang or was answered. It goes with the reminder, and stays on this phone.</string>
     <string name="history_rang">rang</string>
@@ -1135,6 +1143,9 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_55_0">
+        <item>A home-screen widget: what fires next and when, how many are due today, and «Nuevo». Two cells wide it says the words and the moment; four, the count and the button beside them. Tapping the words opens that reminder. It is the app\'s dark card on whatever the launcher is, and it says «a las 18:30» rather than a countdown, because a widget redraws when it is told to, not every second.</item>
+    </string-array>
     <string-array name="whats_new_0_54_0">
         <item>A reminder keeps its history: the last few times it rang, was answered, put off, skipped or caught by the safety net, on a card of its own in the form. «¿Sonó ayer?» had no answer anywhere a person could find — the row keeps one of each stamp and the diagnostics ring keeps a week of everything. It goes with the reminder and stays on this phone; the backup does not carry it.</item>
         <item>The diagnostics report says the same, five deep per reminder, so a question about one ring no longer needs the whole log.</item>

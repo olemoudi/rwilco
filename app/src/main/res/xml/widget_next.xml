@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  What fires next, on the home screen. Two cells wide by one tall at the smallest; the system
+  asks for a refresh every half hour, which is how "hoy" becomes "mañana" at midnight without
+  the app keeping a worker for it — every change to a reminder refreshes it on the spot.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="140dp"
+    android:minHeight="60dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="1"
+    android:maxResizeWidth="360dp"
+    android:maxResizeHeight="140dp"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen"
+    android:description="@string/widget_next_description"
+    android:initialLayout="@layout/glance_default_loading_layout" />
