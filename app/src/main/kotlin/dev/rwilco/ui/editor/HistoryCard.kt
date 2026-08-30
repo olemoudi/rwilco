@@ -23,6 +23,8 @@ import dev.rwilco.ui.theme.Tokens
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import dev.rwilco.model.Presence
+import dev.rwilco.model.snoozeDetailOf
 
 /**
  * What has happened to this reminder, newest first, in the words the app uses for it: *ayer
@@ -70,11 +72,15 @@ private fun eventWords(event: FiringEvent, today: LocalDate, zone: ZoneId): Stri
         FiringKind.UNTICKED -> stringResource(R.string.history_unticked)
         FiringKind.SNOOZED -> {
             // "Until" is the part worth saying: which offer it was matters less than when it came back.
+            val place = event.detail?.let(::snoozeDetailOf)
             val until = event.detail?.let { runCatching { Instant.parse(it) }.getOrNull() }?.atZone(zone)
-            if (until == null) {
-                stringResource(R.string.history_snoozed)
-            } else {
-                stringResource(R.string.history_snoozed_until, dayWord(words, until.toLocalDate(), today) + " " + TimeText.time(until.toLocalTime(), words.is24h, words.locale))
+            when {
+                place != null -> stringResource(
+                    R.string.history_snoozed_until,
+                    stringResource(if (place.first == Presence.INSIDE) R.string.snooze_until_arrive else R.string.snooze_until_leave, place.second),
+                )
+                until == null -> stringResource(R.string.history_snoozed)
+                else -> stringResource(R.string.history_snoozed_until, dayWord(words, until.toLocalDate(), today) + " " + TimeText.time(until.toLocalTime(), words.is24h, words.locale))
             }
         }
     }

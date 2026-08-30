@@ -28,8 +28,11 @@ sealed interface NextFire {
         override val trigger: Trigger.Random,
     ) : NextFire
 
-    /** When the phone gets somewhere; no moment to show. */
-    data class WhenAt(override val trigger: Trigger.Location) : NextFire
+    /**
+     * When the phone gets somewhere; no moment to show. [snoozed] means the place is where a
+     * "remind me when I get there" is waiting, not a rule of the reminder's own.
+     */
+    data class WhenAt(override val trigger: Trigger.Location, val snoozed: Boolean = false) : NextFire
 }
 
 /**
@@ -49,7 +52,8 @@ fun nextFire(
     shape: DayShape = DayShape.DEFAULT,
 ): NextFire? {
     if (reminder.status != Status.ACTIVE) return null
-    // A snooze outranks every rule: it is the person saying "not now, then".
+    // A snooze outranks every rule: it is the person saying "not now, then" — or "not here".
+    reminder.snoozedToPlace?.let { return NextFire.WhenAt(it, snoozed = true) }
     val snoozedUntil = reminder.snoozedUntil
     if (snoozedUntil != null && snoozedUntil > now) {
         return NextFire.Scheduled(snoozedUntil, reminder.rules.firstOrNull()?.trigger, snoozed = true)
@@ -131,6 +135,8 @@ fun nextWake(
     shape: DayShape = DayShape.DEFAULT,
 ): Wake? {
     if (reminder.status != Status.ACTIVE) return null
+    // Put off until a place: the circle is the alarm, and there is nothing on the clock.
+    if (reminder.snoozedToPlace != null) return null
     val snoozedUntil = reminder.snoozedUntil
     if (snoozedUntil != null && snoozedUntil > now) return Wake(snoozedUntil, null)
     // A recurrence's moment is the ring itself: there is no rule behind it to tick off. It is

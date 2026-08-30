@@ -62,6 +62,9 @@ class GeofenceManager(
         val places = repository.openNow()
             .filter { it.status == Status.ACTIVE }
             .flatMap { reminder ->
+                // Put off until a place: that circle is the reminder's only one until it rings,
+                // and the rules' own are outranked exactly as they are by a clock snooze.
+                reminder.snoozedToPlace?.let { door -> return@flatMap listOf(GeofenceIds.encodeSnooze(reminder.id, door) to door) }
                 // Only the rules still waiting to happen. Under "todos" a place that has
                 // already been ticked off has nothing left to report, and a geofence is not
                 // free: a hundred is the app's whole allowance and Play Services watches every

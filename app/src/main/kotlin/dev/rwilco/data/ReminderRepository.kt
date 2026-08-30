@@ -6,6 +6,8 @@ import dev.rwilco.model.expiredDone
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.Clock
+import dev.rwilco.model.Trigger
+import dev.rwilco.model.ReminderCodec
 import java.time.Instant
 
 /**
@@ -41,7 +43,9 @@ class ReminderRepository(
     /** A restore: the table becomes [rows] in one transaction. */
     suspend fun replaceAll(rows: List<ReminderEntity>) = dao.replaceAll(rows)
 
-    suspend fun snooze(id: String, until: Instant?) = dao.setSnooze(id, until?.toEpochMilli())
+    /** Put off until [until] or until [place] — one or the other; both null takes a snooze back. */
+    suspend fun snooze(id: String, until: Instant?, place: Trigger.Location? = null) =
+        dao.setSnooze(id, until?.toEpochMilli(), place?.let(ReminderCodec::encodeTrigger))
 
     suspend fun markFired(id: String, at: Instant, ruleIndex: Int?) = dao.markFired(id, at.toEpochMilli(), ruleIndex)
 

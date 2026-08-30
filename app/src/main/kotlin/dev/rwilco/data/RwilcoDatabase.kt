@@ -20,7 +20,7 @@ abstract class RwilcoDatabase : RoomDatabase() {
 
     companion object {
         /** A named constant so MigrationChainTest can assert the chain reaches it. */
-        const val VERSION = 9
+        const val VERSION = 10
         private const val NAME = "rwilco.db"
 
         /** One entry per version step; `// vN: what it added` on each. */
@@ -119,6 +119,13 @@ abstract class RwilcoDatabase : RoomDatabase() {
                             "FOREIGN KEY(`reminderId`) REFERENCES `reminder`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
                     )
                     db.execSQL("CREATE INDEX IF NOT EXISTS `index_firing_event_reminderId_at` ON `firing_event` (`reminderId`, `at`)")
+                }
+            },
+            // v10: the place a snooze waits at ("cuando llegue a casa"), a trigger's JSON. Null
+            // on every existing row, which reads as no such snooze.
+            object : Migration(9, 10) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE reminder ADD COLUMN snoozedToPlace TEXT")
                 }
             },
         )

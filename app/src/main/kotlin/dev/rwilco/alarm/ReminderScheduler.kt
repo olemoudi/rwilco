@@ -13,6 +13,7 @@ import dev.rwilco.data.SettingsStore
 import dev.rwilco.diag.Diag
 import dev.rwilco.model.DayShape
 import dev.rwilco.model.SafetyNetSettings
+import dev.rwilco.model.Trigger
 import dev.rwilco.model.dayShape
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.AppSettings
@@ -272,6 +273,7 @@ class ReminderScheduler(
             reminder.snoozedUntil,
             reminder.recurrence,
             reminder.lastDealtAt,
+            reminder.snoozedToPlace,
         )
     }
 
@@ -303,5 +305,11 @@ class ReminderScheduler(
          * moves — so the alarm would still be set for the round that was just taken back.
          */
         val lastDealtAt: Instant?,
+        /**
+         * The place a snooze waits at. Arming nothing on the clock is only half of it: the
+         * fences and the watch re-read the open list on this key, and that circle has to reach
+         * them the moment it is written.
+         */
+        val snoozedToPlace: Trigger.Location? = null,
     )
 }

@@ -15,6 +15,11 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import dev.rwilco.model.Snooze
 import dev.rwilco.ui.format.snoozeLabel
 import dev.rwilco.ui.theme.Tokens
+import androidx.compose.ui.graphics.Color
+import dev.rwilco.model.SnoozePlace
+import dev.rwilco.model.TriggerFamily
+import dev.rwilco.ui.format.placeOfferLabel
+import dev.rwilco.ui.theme.color
 
 /**
  * The snooze offers as a row of real buttons — thumb-sized, each its own target, none of them
@@ -27,6 +32,9 @@ fun SnoozeOffers(
     customMinutes: Int,
     onPick: (Snooze) -> Unit,
     modifier: Modifier = Modifier,
+    /** The place answers, after the clock ones: "al llegar a casa", "al salir de aquí". */
+    places: List<SnoozePlace> = emptyList(),
+    onPickPlace: (SnoozePlace) -> Unit = {},
 ) {
     val spacing = Tokens.spacing
     FlowRow(
@@ -37,12 +45,17 @@ fun SnoozeOffers(
         for (snooze in offers) {
             SnoozeButton(label = snoozeLabel(snooze, customMinutes), onClick = { onPick(snooze) })
         }
+        // In the place family's colour, because they are places: the one thing on this row
+        // that is not a clock, said the way every place in the app is said.
+        for (place in places) {
+            SnoozeButton(label = placeOfferLabel(place), onClick = { onPickPlace(place) }, accent = TriggerFamily.PLACE.color())
+        }
     }
 }
 
 /** A snooze offer: a real button, thumb-sized, quiet enough not to compete with Done. */
 @Composable
-fun SnoozeButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun SnoozeButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, accent: Color? = null) {
     val haptics = Tokens.haptics
     val scheme = MaterialTheme.colorScheme
     Surface(
@@ -52,13 +65,13 @@ fun SnoozeButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifi
         },
         shape = MaterialTheme.shapes.medium,
         color = scheme.surfaceContainerHigh,
-        border = BorderStroke(Tokens.strokes.control, scheme.outline),
+        border = BorderStroke(Tokens.strokes.control, accent ?: scheme.outline),
         modifier = modifier,
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.titleSmall,
-            color = scheme.onSurface,
+            color = accent ?: scheme.onSurface,
             modifier = Modifier
                 .heightIn(min = Tokens.sizes.touch)
                 .padding(horizontal = Tokens.spacing.lg, vertical = Tokens.spacing.md),

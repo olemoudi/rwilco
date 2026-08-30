@@ -28,6 +28,13 @@ data class Reminder(
     val doneAt: Instant? = null,
     /** While this is in the future the reminder rings then, instead of at its trigger's moment. */
     val snoozedUntil: Instant? = null,
+    /**
+     * Put off until the phone crosses this line — "cuando llegue a casa", "al salir de aquí" —
+     * with no clock at all: the circle is the alarm. Outranks every rule the way [snoozedUntil]
+     * does, and the two are never set together; whichever is written clears the other. Always a
+     * doorway (`onCrossing`), because "when I get there" is said from somewhere else.
+     */
+    val snoozedToPlace: Trigger.Location? = null,
     /** When it last actually rang. Paired with [armedFor] it is how a missed firing is spotted. */
     val lastFiredAt: Instant? = null,
     /**

@@ -100,6 +100,16 @@ class ReminderEntityMappingTest {
     }
 
     @Test
+    fun `the place a snooze waits at survives the trip, and rubbish in the column is no snooze`() {
+        val door = Trigger.Location(40.4169, -3.7035, 200, Presence.INSIDE, "Casa", onCrossing = true)
+        val waiting = reminder.copy(snoozedToPlace = door)
+        assertEquals(door, waiting.toEntity().toDomain().snoozedToPlace)
+        assertEquals(null, reminder.toEntity().snoozedToPlace)
+        assertEquals(null, waiting.toEntity().copy(snoozedToPlace = "{\"type\":\"from_the_future\"}").toDomain().snoozedToPlace)
+        assertEquals(null, waiting.toEntity().copy(snoozedToPlace = "{\"type\":\"countdown\",\"minutes\":5}").toDomain().snoozedToPlace, "only a place can be waited at")
+    }
+
+    @Test
     fun `a row written before the firing columns existed reads as never fired`() {
         val old = reminder.toEntity().copy(snoozedUntil = null, lastFiredAt = null, armedFor = null)
         val domain = old.toDomain()

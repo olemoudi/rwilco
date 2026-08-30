@@ -108,6 +108,7 @@ fun Reminder.ringCadence(
     val fresh = copy(
         status = Status.ACTIVE,
         snoozedUntil = null,
+        snoozedToPlace = null,
         firedRules = emptySet(),
         lastFiredAt = null,
         lastDealtAt = null,
@@ -164,6 +165,7 @@ fun Reminder.lastMomentGone(
     val fresh = copy(
         status = Status.ACTIVE,
         snoozedUntil = null,
+        snoozedToPlace = null,
         firedRules = emptySet(),
         lastFiredAt = null,
         lastDealtAt = null,
@@ -220,8 +222,9 @@ fun Reminder.netDue(
         }
         else -> return null
     }
-    // Put off is an answer, whichever way it got away.
+    // Put off is an answer, whichever way it got away — to a clock or to a place.
     snoozedUntil?.let { if (it > now) return null }
+    if (snoozedToPlace != null) return null
     // One word per moment. A second one about the same moment is the nagging this is not.
     nudgedAt?.let { if (!it.isBefore(about)) return null }
     val cadence = ringCadence(now, zone, defaultTime, dayStart, shape)

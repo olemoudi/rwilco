@@ -224,6 +224,15 @@ A read of every screen after 0.50.0, asking what a day of use would find. Worth 
   five made three impossible); the seventeen-tap problem is answered by a stepper that repeats
   when held, which every stepper in the app now does.
 
+## Found on the way to 0.57.0, left for the review round
+- `GeofenceIds.encode` writes the side as `place.presence.asTransition.name.first()`, and
+  `Transition.EXIT` starts with an E too: an "al salir" circle carries the same letter as an
+  "al llegar" one, while the doc, `ID_TAIL` and `sideOf` all speak of `E`/`X`. Harmless in
+  practice — the rule index is in the id, so two rules never collide, and `sideOf` matches on the
+  geometry alone — but a lie in a frozen format. Fixing it changes every "al salir" id on the
+  phone: one re-registration of the fences and one lost baseline per such circle. The snooze id
+  (`encodeSnooze`) already writes the honest letter.
+
 ## Still to prove on the real phone (Pixel 8 Pro)
 - The idempotent geofence sync (0.53.0): the diagnostics `-- log --` should read
   `geo fences=n unchanged` on successive process starts and `registered` only after a
@@ -231,6 +240,11 @@ A read of every screen after 0.50.0, asking what a day of use would find. Worth 
   still ring after a day of that.
 - The launcher shortcuts (0.53.0): hold the icon with a preset pinned; the disc and initial,
   and one tap writing the reminder with the app closed.
+- Put off until a place (0.57.0): from the ringing screen, "al llegar a casa" and then the
+  real doorway in the street — once, not twice (the fence and the watch both see it) — and
+  "al salir de aquí" walking out of the building. Settings → Ubicación → the log should show a
+  single circle while it waits, and none once it has rung. And the offer should be absent while
+  standing at home.
 - The words-reading chip (0.56.0): share a line from WhatsApp ("Cita dentista jueves 17:30")
   and see the chip first under "Cuándo"; type a few real sentences and note any reading that is
   wrong or missing — the table in `WhenInTextTest` is where they go.

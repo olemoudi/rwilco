@@ -5,6 +5,7 @@ import dev.rwilco.model.Fixtures.local
 import dev.rwilco.model.Fixtures.now
 import dev.rwilco.model.Fixtures.zone
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -130,5 +131,92 @@ class SnoozeJourneyTest {
         assertEquals(local(2026, 8, 28, 11, 0), rings.single().late, "for the snooze's own moment")
         assertEquals(local(2026, 8, 28, 12, 0), rings.single().rangFor, "recorded as rung now")
         assertNull(rings.single().ruleIndex)
+    }
+
+    // --- put off until a place ---
+
+    private val home = Trigger.Location(40.4169, -3.7035, 200, Presence.INSIDE, "Casa", onCrossing = true)
+    private val here = hereCircle(Fix(40.45, -3.69, 20.0, now), "aquí")
+
+    @Test
+    fun `put off until home, a one-shot arms nothing, rings on the doorway, and is then owed an answer`() {
+        val phone = Simulation(reminder(at(2026, 8, 27, 21, 30)), now)
+        val first = phone.step { Simulation.Deal.Elsewhere(home) }!!
+        assertEquals(local(2026, 8, 27, 21, 30), first.at)
+        assertEquals(home, phone.reminder.snoozedToPlace)
+        assertNull(phone.reminder.snoozedUntil, "a place and a clock are never both set")
+        assertNull(phone.arm(), "nothing on the clock: the circle is the alarm")
+        assertNull(phone.reminder.armedFor)
+        assertNull(phone.step(), "and so no alarm ever arrives")
+        assertEquals(NextFire.WhenAt(home, snoozed = true), nextFire(phone.reminder, phone.now, zone, defaultTime))
+        assertFalse(phone.reminder.awaitingAnswer(phone.now), "put off is an answer")
+
+        phone.now = local(2026, 8, 27, 23, 10)
+        assertNull(phone.cross(Transition.EXIT), "leaving is not the crossing it waits for")
+        val again = phone.cross(Transition.ENTER)!!
+        assertEquals(local(2026, 8, 27, 23, 10), again.at)
+        assertEquals(local(2026, 8, 27, 23, 10), again.rangFor, "an arrival rings for the moment it happened")
+        assertNull(again.ruleIndex, "no rule behind it")
+        assertNull(phone.reminder.snoozedToPlace, "the place is spent")
+        assertTrue(phone.reminder.awaitingAnswer(phone.now))
+        assertNull(phone.cross(Transition.ENTER), "and a second arrival is nothing")
+        phone.deal(Simulation.Deal.Done)
+        assertEquals(Status.DONE, phone.reminder.status)
+    }
+
+    @Test
+    fun `put off until leaving here, only the leaving rings it`() {
+        val phone = Simulation(reminder(at(2026, 8, 27, 21, 30)), now)
+        phone.step { Simulation.Deal.Elsewhere(here) }
+        assertNull(phone.cross(Transition.ENTER), "still here")
+        phone.now = local(2026, 8, 27, 22, 0)
+        val rang = phone.cross(Transition.EXIT)!!
+        assertEquals(local(2026, 8, 27, 22, 0), rang.at)
+        assertNull(phone.reminder.snoozedToPlace)
+    }
+
+    @Test
+    fun `on a daily calendar the arrival rings, and the hecho hands back tomorrow's nine`() {
+        val daily = Recurrence.Calendar(Trigger.Repeat(startsOn = LocalDate.of(2026, 8, 28), unit = RepeatUnit.DAY, time = LocalTime.of(9, 0)))
+        val phone = Simulation(reminder(recurrence = daily), now)
+        phone.step { Simulation.Deal.Elsewhere(home) }
+        assertNull(phone.arm(), "the calendar's next moment is outranked while it waits at the door")
+        phone.now = local(2026, 8, 28, 18, 30)
+        val rang = phone.cross(Transition.ENTER) { Simulation.Deal.Done }!!
+        assertEquals(local(2026, 8, 28, 18, 30), rang.at)
+        assertEquals(Wake(local(2026, 8, 29, 9, 0), null), phone.arm(), "and the series goes on from its own dates")
+        assertEquals(Status.ACTIVE, phone.reminder.status)
+    }
+
+    @Test
+    fun `a phone off for two days owes nothing, and the arrival after it still rings`() {
+        val phone = Simulation(reminder(at(2026, 8, 27, 21, 30)), now)
+        phone.step { Simulation.Deal.Elsewhere(home) }
+        val late = phone.sleepUntil(local(2026, 8, 29, 22, 0))
+        assertEquals(emptyList<Simulation.Ring>(), late, "no moment was missed: there was none on the clock")
+        assertNull(missedFire(phone.reminder, phone.now))
+        assertEquals(home, phone.reminder.snoozedToPlace, "still waiting at the door")
+        assertEquals(local(2026, 8, 29, 22, 0), phone.cross(Transition.ENTER)!!.at)
+    }
+
+    @Test
+    fun `the net and the missed-firing pass both read a place snooze as an answer`() {
+        val phone = Simulation(reminder(at(2026, 8, 27, 21, 30)), now)
+        phone.step { Simulation.Deal.Elsewhere(home) }
+        phone.now = local(2026, 8, 30, 12, 0)
+        assertNull(missedFire(phone.reminder, phone.now))
+        assertNull(phone.reminder.netDue(phone.now, zone, defaultTime, SafetyNetSettings()), "put off is an answer, to a place as to a clock")
+    }
+
+    @Test
+    fun `a clock snooze given after a place snooze replaces it, and the other way round`() {
+        val phone = Simulation(reminder(at(2026, 8, 27, 21, 30)), now)
+        phone.step { Simulation.Deal.Elsewhere(home) }
+        phone.deal(Simulation.Deal.Later(Snooze.TEN_MINUTES))
+        assertNull(phone.reminder.snoozedToPlace)
+        assertEquals(local(2026, 8, 27, 21, 40), phone.reminder.snoozedUntil)
+        phone.deal(Simulation.Deal.Elsewhere(here))
+        assertNull(phone.reminder.snoozedUntil)
+        assertEquals(here, phone.reminder.snoozedToPlace)
     }
 }

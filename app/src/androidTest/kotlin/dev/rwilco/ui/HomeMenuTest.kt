@@ -18,6 +18,7 @@ import dev.rwilco.model.Action
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.Status
 import dev.rwilco.model.ThemeMode
 import dev.rwilco.model.Trigger
@@ -43,7 +44,13 @@ import java.util.UUID
 class HomeMenuTest {
 
     @get:Rule(order = 0)
-    val notifications: GrantPermissionRule = GrantPermissionRule.grant(android.Manifest.permission.POST_NOTIFICATIONS)
+    val notifications: GrantPermissionRule = GrantPermissionRule.grant(
+        android.Manifest.permission.POST_NOTIFICATIONS,
+        // The place answers are only offered on a phone that could keep one.
+        android.Manifest.permission.ACCESS_FINE_LOCATION,
+        android.Manifest.permission.ACCESS_COARSE_LOCATION,
+        android.Manifest.permission.ACCESS_BACKGROUND_LOCATION,
+    )
 
     @get:Rule(order = 1)
     val rule = createAndroidComposeRule<MainActivity>()
@@ -118,6 +125,34 @@ class HomeMenuTest {
         runBlocking {
             check(app.settingsStore.settings.first().presets.isEmpty()) { "keeping as a preset must not write until Guardar" }
         }
+    }
+
+    /**
+     * The same card, put off until a place: "al llegar a Casa" is offered beside the clock
+     * answers because a place is saved and the phone may keep one, the card then says where
+     * it waits, and "quitar el posponer" takes it back like any snooze.
+     */
+    @Test
+    fun aHeldCardCanBePutOffUntilAPlace() {
+        runBlocking { app.settingsStore.update { it.copy(savedPlaces = listOf(SavedPlace("Casa", 40.4169, -3.7035, 200))) } }
+        holdTheCard()
+        rule.waitUntilShown(s(R.string.home_snooze))
+        rule.onNodeWithText(s(R.string.home_snooze), useUnmergedTree = true).performClick()
+        val arrive = rule.activity.getString(R.string.snooze_arrive_at, "Casa")
+        rule.waitUntilShown(arrive)
+        rule.onNodeWithText(s(R.string.snooze_leave_here), useUnmergedTree = true).assertIsDisplayed()
+        shot("home-menu-snooze-place")
+        rule.onNodeWithText(arrive, useUnmergedTree = true).performClick()
+        rule.waitUntil(timeoutMillis = 10_000) { runBlocking { app.repository.get(id)?.snoozedToPlace != null } }
+        // The snackbar says where, and so does the card.
+        rule.waitUntilShown(rule.activity.getString(R.string.snooze_until_arrive, "Casa"))
+        rule.waitUntilShown(rule.activity.getString(R.string.trigger_arrive_at, "Casa"))
+
+        holdTheCard()
+        rule.waitUntilShown(s(R.string.home_cancel_snooze))
+        rule.onNodeWithText(s(R.string.home_cancel_snooze), useUnmergedTree = true).performClick()
+        rule.waitUntil(timeoutMillis = 10_000) { runBlocking { app.repository.get(id)?.snoozedToPlace == null } }
+        runBlocking { app.settingsStore.update { it.copy(savedPlaces = emptyList()) } }
     }
 
     /**

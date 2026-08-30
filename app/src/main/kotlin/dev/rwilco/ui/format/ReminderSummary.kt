@@ -46,6 +46,12 @@ fun reminderSummary(words: Words, reminder: Reminder, today: LocalDate, defaultT
             append(", " + words.get(R.string.editor_sentence_returns) + " ")
             append(recurrenceLabel(words, reminder.recurrence, today).replaceFirstChar { it.lowercase(words.locale) })
         }
+        // Waiting at a place: the one thing that says when it rings next, and the reason the
+        // notification gives when it does.
+        reminder.snoozedToPlace?.let { door ->
+            if (isNotEmpty()) append(", ")
+            append(words.get(R.string.history_snoozed_until, snoozePlacePhrase(words, door)))
+        }
     }
 
 /** The word between two rules: the whole difference between the three readings, in one word. */

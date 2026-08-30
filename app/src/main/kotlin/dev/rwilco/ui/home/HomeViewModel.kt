@@ -17,6 +17,7 @@ import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
 import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.TagFilter
+import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.ValidationWarning
 import dev.rwilco.model.presetsByPopularity
@@ -46,6 +47,15 @@ import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
 import java.time.Instant
 import dev.rwilco.ui.settings.AlertReadiness
 import dev.rwilco.ui.settings.liveDismissals
+import dev.rwilco.geo.hereFix
+import dev.rwilco.model.Fix
+import dev.rwilco.model.SnoozePlace
+import dev.rwilco.model.circle
+import dev.rwilco.model.hereCircle
+import dev.rwilco.model.snoozePlaceOffers
+import dev.rwilco.model.speaksForHere
+import dev.rwilco.geo.hasBackgroundLocation
+import kotlinx.coroutines.flow.first
 
 /** What Home reports back that is not state: things to say in a snackbar. */
 sealed interface HomeEvent {
@@ -69,7 +79,10 @@ sealed interface HomeEvent {
      * A reminder was put off from Home until [until], or ([until] null) its snooze was taken
      * back; [reminder] is the row as it was, so the undo restores the snooze it had.
      */
-    data class Snoozed(val reminder: Reminder, val until: Instant?) : HomeEvent
+    data class Snoozed(val reminder: Reminder, val until: Instant?, val place: Trigger.Location? = null) : HomeEvent
+
+    /** "Al salir de aquí" asked where here is, and nothing could say. Nothing was written. */
+    data object NoFix : HomeEvent
 
     /**
      * A preset could not be written blind — a moment it carries has already passed — so the
@@ -87,7 +100,22 @@ class HomeViewModel(
     /** Which circles the phone is inside, as the place watch last saw it. */
     private val placeWatch: Flow<PlaceWatchState>,
     val clock: Clock,
+    /** Where the phone is now, for "al salir de aquí"; null when nothing can say. */
+    private val hereFix: suspend () -> Fix? = { null },
+    /** Whether a place answer can be kept at all: without "all the time" location neither the fences nor the watch run. */
+    private val locationAllowed: () -> Boolean = { false },
+    /** The watch's door for which side of a line the phone starts on; see [ReminderFiring.snoozeToPlace]. */
+    private val rememberSide: suspend (String, Transition) -> Unit = { _, _ -> },
 ) : ViewModel() {
+
+    /** The place answers a held card can give: the most-used saved place as a doorway in, and "aquí". */
+    val placeOffers: StateFlow<List<SnoozePlace>> = combine(
+        settings.filterNotNull(),
+        repository.open,
+        repository.done,
+        placeWatch,
+    ) { current, open, done, watch -> snoozePlaceOffers(current.savedPlaces, open + done, watch, locationAllowed()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** The shapes kept under a name, the ones actually used at the top. */
     val presets: StateFlow<List<Preset>> = settings
@@ -358,6 +386,26 @@ class HomeViewModel(
         }
     }
 
+    /**
+     * "Al llegar a casa" / "al salir de aquí" from a held card. The second first has to know
+     * where here is; with nothing to draw the circle around it says so and writes nothing.
+     */
+    fun snoozeToPlace(id: String, offer: SnoozePlace, hereLabel: String) {
+        viewModelScope.launch {
+            val reminder = repository.get(id) ?: return@launch
+            val now = clock.instant()
+            val (place, fix) = when (offer) {
+                is SnoozePlace.Arrive -> offer.circle() to placeWatch.first().lastFix?.takeIf { it.speaksForHere(now) }
+                SnoozePlace.LeaveHere -> {
+                    val fix = hereFix() ?: run { events.send(HomeEvent.NoFix); return@launch }
+                    hereCircle(fix, hereLabel) to fix
+                }
+            }
+            firing.snoozeToPlace(id, place, fix, rememberSide)
+            events.send(HomeEvent.Snoozed(reminder, until = null, place = place))
+        }
+    }
+
     fun cancelSnooze(id: String) {
         viewModelScope.launch {
             val reminder = repository.get(id) ?: return@launch
@@ -368,12 +416,22 @@ class HomeViewModel(
 
     /** The snooze the row had before — none, usually — and the alarm follows the row. */
     fun undoSnooze(event: HomeEvent.Snoozed) {
-        viewModelScope.launch { repository.snooze(event.reminder.id, event.reminder.snoozedUntil) }
+        viewModelScope.launch { repository.snooze(event.reminder.id, event.reminder.snoozedUntil, event.reminder.snoozedToPlace) }
     }
 
     class Factory(private val app: RwilcoApplication) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            HomeViewModel(app.repository, app.settingsStore, app.firing, app.settings, app.placeWatch.state, app.clock) as T
+            HomeViewModel(
+                app.repository,
+                app.settingsStore,
+                app.firing,
+                app.settings,
+                app.placeWatch.state,
+                app.clock,
+                hereFix = { hereFix(app, app.placeWatch, app.clock.instant()) },
+                locationAllowed = { app.hasBackgroundLocation() },
+                rememberSide = app.placeWatcher::remember,
+            ) as T
     }
 }

@@ -41,7 +41,7 @@ fun statusAfterDismissal(
     if (reminder.recurrence.isCalendar && reminder.calendarMoment(reminder.searchFrom(now), zone, shape) == null) return Status.DONE
     // Dealt with means the round is over: what had already happened under ALL stops counting,
     // and the question is whether the reminder can come round again from scratch.
-    val cleared = reminder.copy(status = Status.ACTIVE, snoozedUntil = null, firedRules = emptySet())
+    val cleared = reminder.copy(status = Status.ACTIVE, snoozedUntil = null, snoozedToPlace = null, firedRules = emptySet())
     return if (nextFire(cleared, now, zone, defaultTime, shape = shape) == null) Status.DONE else Status.ACTIVE
 }
 
@@ -130,6 +130,7 @@ fun missedFire(reminder: Reminder, now: Instant): Instant? {
     if (dealt != null && dealt >= armed) return null
     val snoozed = reminder.snoozedUntil
     if (snoozed != null && snoozed > now) return null
+    if (reminder.snoozedToPlace != null) return null
     return armed
 }
 
@@ -367,6 +368,7 @@ fun Reminder.awaitingAnswer(now: Instant): Boolean {
     val rang = lastFiredAt ?: return false
     val dealt = lastDealtAt
     if (dealt != null && !dealt.isBefore(rang)) return false
+    if (snoozedToPlace != null) return false
     val snoozed = snoozedUntil
     return snoozed == null || snoozed <= now
 }

@@ -3,7 +3,10 @@ package dev.rwilco.ui.format
 import android.content.Context
 import androidx.compose.runtime.Composable
 import dev.rwilco.R
+import dev.rwilco.model.Presence
 import dev.rwilco.model.Snooze
+import dev.rwilco.model.SnoozePlace
+import dev.rwilco.model.Trigger
 
 /**
  * What each snooze offer is called. The words are the person's, not the duration's — "mañana
@@ -23,3 +26,16 @@ fun snoozeLabel(context: Context, snooze: Snooze, customMinutes: Int): String = 
 
 @Composable
 fun snoozeLabel(snooze: Snooze, customMinutes: Int): String = snoozeLabel(rememberWords(), snooze, customMinutes)
+
+/** "Al llegar a Casa" · "Al salir de aquí": the two place offers, as buttons say them. */
+fun placeOfferLabel(words: Words, offer: SnoozePlace): String = when (offer) {
+    is SnoozePlace.Arrive -> words.get(R.string.snooze_arrive_at, offer.place.label)
+    SnoozePlace.LeaveHere -> words.get(R.string.snooze_leave_here)
+}
+
+@Composable
+fun placeOfferLabel(offer: SnoozePlace): String = placeOfferLabel(rememberWords(), offer)
+
+/** "llegar a Casa" · "salir de aquí": what follows "pospuesto hasta" on a card, a line of history, a snackbar. */
+fun snoozePlacePhrase(words: Words, place: Trigger.Location): String =
+    words.get(if (place.presence == Presence.INSIDE) R.string.snooze_until_arrive else R.string.snooze_until_leave, place.label)

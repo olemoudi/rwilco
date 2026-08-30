@@ -49,7 +49,9 @@ class GeofenceReceiver : BroadcastReceiver() {
                     val reminderId = GeofenceIds.reminderIdOf(placeId)
                     val ruleIndex = GeofenceIds.triggerIndexOf(placeId)
                     when (app.placeWatcher.accept(placeId, transition)) {
-                        Crossing.RINGS -> app.firing.fire(reminderId, ruleIndex = ruleIndex)
+                        Crossing.RINGS ->
+                            if (GeofenceIds.isSnooze(placeId)) app.firing.fire(reminderId, viaSnoozePlace = true)
+                            else app.firing.fire(reminderId, ruleIndex = ruleIndex)
                         Crossing.TAKES_BACK -> ruleIndex?.let { app.firing.untick(reminderId, it) }
                         Crossing.NOTHING -> Unit
                     }

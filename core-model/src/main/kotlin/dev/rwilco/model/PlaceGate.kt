@@ -26,10 +26,14 @@ import java.time.ZoneId
  */
 data class Gated(
     val place: WatchedPlace,
+    /** Which rule the circle belongs to, or [SNOOZE_RULE] for the place a snooze waits for. */
     val ruleIndex: Int,
     val opensAt: Instant? = null,
     val resting: Boolean = false,
 )
+
+/** The rule index of the circle a "remind me when I get there" is waiting for: none of them. */
+const val SNOOZE_RULE = -1
 
 /**
  * Every circle this reminder needs an eye on, gated.
@@ -71,6 +75,26 @@ fun Reminder.watchedCircles(
     dayStart: LocalTime = DEFAULT_DAY_START,
 ): List<Gated> {
     if (status != Status.ACTIVE) return emptyList()
+    // Put off until a place: that circle is the only one worth anything, always a doorway and
+    // never gated. The rules are outranked exactly as a clock snooze outranks them, so their
+    // circles would only ever buy positions for firings the guards drop.
+    snoozedToPlace?.let { place ->
+        return listOf(
+            Gated(
+                place = WatchedPlace(
+                    id = GeofenceIds.encodeSnooze(id, place),
+                    lat = place.lat,
+                    lng = place.lng,
+                    radiusM = place.radiusM,
+                    transition = place.presence.asTransition,
+                    label = place.label,
+                    crossing = Crossing.RINGS,
+                    onCrossing = true,
+                ),
+                ruleIndex = SNOOZE_RULE,
+            ),
+        )
+    }
     val pending = pendingRules().toSet()
     val folded = rules.indices.map { ruleInSet(it, shape) }
     // A rule's moment cannot be asked before a snooze is over: the snooze rings instead, with

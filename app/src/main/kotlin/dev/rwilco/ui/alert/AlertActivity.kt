@@ -33,6 +33,16 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import dev.rwilco.model.notificationSnoozeOffers
+import android.widget.Toast
+import androidx.compose.runtime.produceState
+import dev.rwilco.geo.hereFix
+import dev.rwilco.model.SnoozePlace
+import dev.rwilco.model.circle
+import dev.rwilco.model.hereCircle
+import dev.rwilco.model.snoozePlaceOffers
+import dev.rwilco.model.speaksForHere
+import dev.rwilco.geo.hasBackgroundLocation
+import dev.rwilco.R
 
 /**
  * The reminder — or reminders — taking over the screen.
@@ -125,6 +135,12 @@ class AlertActivity : ComponentActivity() {
                 window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
 
+            // The place answers: the saved place this phone's reminders use most, as a doorway
+            // in, and "al salir de aquí". Read once per screen; neither the saved places nor
+            // where the watch last saw the phone change while an alarm is being answered.
+            val places by produceState(initialValue = emptyList<SnoozePlace>(), current.savedPlaces) {
+                value = snoozePlaceOffers(current.savedPlaces, app.repository.allNow(), app.placeWatch.read(), hasBackgroundLocation())
+            }
             RwilcoTheme(darkTheme = current.theme.resolvesToDark(), haptics = current.haptics) {
                 val items = reminders.map { AlertItem(it.id, AlertContent.fromReminder(it, today, current.defaultTime, rules[it.id])) }
                 if (items.size > 1 && current.alertStacking == AlertStacking.STRIPS) {
@@ -148,6 +164,8 @@ class AlertActivity : ComponentActivity() {
                         onSnooze = { snooze: Snooze -> answer(first.id) { app.firing.snooze(first.id, snooze) } },
                         onView = { view(first.id) },
                         customMinutes = current.snoozeCustomMinutes,
+                        places = places,
+                        onSnoozeToPlace = { offer -> snoozeToPlace(first.id, offer) },
                     )
                 }
             }
@@ -189,6 +207,36 @@ class AlertActivity : ComponentActivity() {
     private fun answer(id: String, work: suspend () -> Unit) {
         drop(id)
         app.appScope.launch { work() }
+    }
+
+    /** One "al salir de aquí" at a time: the position takes a few seconds, and a second tap must not ask twice. */
+    private var seekingHere = false
+
+    /**
+     * "Al llegar a casa" is answered like any snooze. "Al salir de aquí" first has to know where
+     * here is, and the screen stays up while it asks: with nothing to draw the circle around
+     * there is nothing to write, and the reminder is still owed an answer.
+     */
+    private fun snoozeToPlace(id: String, offer: SnoozePlace) {
+        when (offer) {
+            is SnoozePlace.Arrive -> answer(id) {
+                val now = app.clock.instant()
+                app.firing.snoozeToPlace(id, offer.circle(), app.placeWatch.read().lastFix?.takeIf { it.speaksForHere(now) }, app.placeWatcher::remember)
+            }
+            SnoozePlace.LeaveHere -> {
+                if (seekingHere) return
+                seekingHere = true
+                lifecycleScope.launch {
+                    val fix = try { hereFix(this@AlertActivity, app.placeWatch, app.clock.instant()) } finally { seekingHere = false }
+                    if (fix == null) {
+                        Toast.makeText(this@AlertActivity, R.string.snooze_no_fix, Toast.LENGTH_SHORT).show()
+                    } else {
+                        val here = hereCircle(fix, getString(R.string.snooze_here_label))
+                        answer(id) { app.firing.snoozeToPlace(id, here, fix, app.placeWatcher::remember) }
+                    }
+                }
+            }
+        }
     }
 
     /** The same, for all of them at once: the screen empties first, then each is answered in turn. */

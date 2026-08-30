@@ -74,6 +74,7 @@ import dev.rwilco.ui.format.dayWord
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.settings.rememberAlertReadiness
 import dev.rwilco.ui.settings.stripShows
+import dev.rwilco.ui.format.snoozePlacePhrase
 
 /** So a test can scroll the list itself; a lazy list does not compose what is off screen. */
 const val HOME_LIST_TAG = "homeList"
@@ -102,6 +103,9 @@ fun HomeScreen(
     val presets by viewModel.presets.collectAsStateWithLifecycle()
     val pinned by viewModel.pinnedPresets.collectAsStateWithLifecycle()
     val snoozeCustomMinutes by viewModel.snoozeCustomMinutes.collectAsStateWithLifecycle()
+    val placeOffers by viewModel.placeOffers.collectAsStateWithLifecycle()
+    val hereLabel = stringResource(R.string.snooze_here_label)
+    val noFixMessage = stringResource(R.string.snooze_no_fix)
     // Whether this phone can ring at all, re-read on every resume; Settings has the detail.
     val readiness = rememberAlertReadiness()
     val dismissedProblems by viewModel.dismissedAlertProblems.collectAsStateWithLifecycle()
@@ -150,14 +154,17 @@ fun HomeScreen(
                     onUndo = { viewModel.undoPause(event) },
                 )
                 is HomeEvent.Snoozed -> snackbar.show(
-                    message = event.until?.let { until ->
-                        val here = until.atZone(zone)
-                        val todayHere = viewModel.clock.instant().atZone(zone).toLocalDate()
-                        words.get(R.string.home_snoozed_until, dayWord(words, here.toLocalDate(), todayHere) + " " + TimeText.time(here.toLocalTime(), words.is24h, words.locale))
-                    } ?: snoozeCancelledMessage,
+                    message = event.place?.let { words.get(R.string.home_snoozed_until, snoozePlacePhrase(words, it)) }
+                        ?: event.until?.let { until ->
+                            val here = until.atZone(zone)
+                            val todayHere = viewModel.clock.instant().atZone(zone).toLocalDate()
+                            words.get(R.string.home_snoozed_until, dayWord(words, here.toLocalDate(), todayHere) + " " + TimeText.time(here.toLocalTime(), words.is24h, words.locale))
+                        }
+                        ?: snoozeCancelledMessage,
                     undoLabel = undoLabel,
                     onUndo = { viewModel.undoSnooze(event) },
                 )
+                HomeEvent.NoFix -> snackbar.show(message = noFixMessage)
                 // Something it carries has already passed: the form, not a silent overdue.
                 is HomeEvent.NeedsEditor -> onNewFromPreset(event.presetId)
             }
@@ -238,8 +245,13 @@ fun HomeScreen(
                 words = held.text,
                 paused = held.paused,
                 snoozeOffered = held.snoozeOffered,
-                snoozed = held.snoozedUntil != null,
+                snoozed = held.snoozedUntil != null || held.snoozedToPlace != null,
                 customMinutes = snoozeCustomMinutes,
+                places = placeOffers,
+                onSnoozeToPlace = { offer ->
+                    actingOn = null
+                    viewModel.snoozeToPlace(held.id, offer, hereLabel)
+                },
                 // The moment that would be let pass, said the way the card says a moment.
                 skipHint = held.skipsMoment?.let { moment ->
                     val here = moment.atZone(zone)

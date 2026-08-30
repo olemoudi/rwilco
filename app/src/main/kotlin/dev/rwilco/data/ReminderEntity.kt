@@ -5,6 +5,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.ReminderCodec
+import dev.rwilco.model.Trigger
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
 import dev.rwilco.model.foldRepeats
@@ -64,6 +65,8 @@ data class ReminderEntity(
     val dealtThrough: Long? = null,
     /** Which rule [lastFiredAt] rang for; null for a ring with no rule, and for every older row. */
     val lastFiredRule: Int? = null,
+    /** The place a snooze waits at, as a trigger's JSON; null (every older row) is no such snooze. */
+    val snoozedToPlace: String? = null,
 )
 
 /** The stored form of no recurrence, and what every row written before v5 gets. */
@@ -102,6 +105,9 @@ fun ReminderEntity.toDomain(zone: ZoneId = ZoneId.systemDefault()): Reminder = R
     nudgedAt = nudgedAt?.let(Instant::ofEpochMilli),
     dealtThrough = dealtThrough?.let(Instant::ofEpochMilli),
     lastFiredRule = lastFiredRule,
+    // Anything but a place reads as no snooze: a shape this build cannot read must not hold a
+    // reminder silent for ever, and erring towards ringing is the house rule.
+    snoozedToPlace = ReminderCodec.decodeTrigger(snoozedToPlace) as? Trigger.Location,
 ).foldRepeats(zone)
 
 fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
@@ -125,6 +131,7 @@ fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
     nudgedAt = nudgedAt?.toEpochMilli(),
     dealtThrough = dealtThrough?.toEpochMilli(),
     lastFiredRule = lastFiredRule,
+    snoozedToPlace = snoozedToPlace?.let(ReminderCodec::encodeTrigger),
 )
 
 /**

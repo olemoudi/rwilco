@@ -66,6 +66,8 @@ class VaultSchemaTest {
             "dealtThrough",
             // Room v8: which rule the last ring was for; older rows do not know.
             "lastFiredRule",
+            // Room v10: the place a snooze waits at; older rows wait at none.
+            "snoozedToPlace",
         )
     }
 }

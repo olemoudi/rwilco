@@ -69,6 +69,8 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
+import dev.rwilco.ui.format.placePhrase
+import dev.rwilco.model.Trigger
 
 /**
  * One reminder at a glance. [modifier] is where Home hangs the accessibility actions for the
@@ -112,6 +114,7 @@ fun ReminderCard(
                 // First, because it is what happens next: a snooze outranks every rule under it
                 // until it has rung.
                 card.snoozedUntil?.let { SnoozedRow(it, today, zone, muted = card.paused) }
+                card.snoozedToPlace?.let { SnoozedPlaceRow(it, muted = card.paused) }
                 // More than one rule is an arrangement, and the tree is what says which one.
                 // A single rule is just itself, and hangs off nothing.
                 if (card.match != null && card.triggers.size > 1) {
@@ -394,3 +397,36 @@ private val RuleStanding.labelRes: Int
         RuleStanding.NOT_HOLDING -> R.string.card_rule_not_holding
         RuleStanding.UNKNOWN -> R.string.card_rule_unknown
     }
+
+/**
+ * The same row for a reminder waiting at a place: "Al llegar a Casa" where the clock row has
+ * the hour, in the place family's keycap, because that is what rings it next.
+ */
+@Composable
+fun SnoozedPlaceRow(place: Trigger.Location, muted: Boolean = false) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        TriggerKeycap(
+            family = TriggerFamily.PLACE,
+            icon = Icons.Outlined.Snooze,
+            contentDescription = stringResource(R.string.card_snoozed),
+            size = Tokens.sizes.badge,
+        )
+        Spacer(Modifier.width(Tokens.spacing.sm))
+        Column(modifier = Modifier.weight(1f, fill = false)) {
+            Text(
+                text = stringResource(placePhrase(place.presence, place.onCrossing), place.label),
+                style = MaterialTheme.typography.titleSmall,
+                color = if (muted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = stringResource(R.string.card_snoozed),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}

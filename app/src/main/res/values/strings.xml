@@ -573,6 +573,12 @@
     <string name="snooze_weekend">The weekend</string>
     <string name="snooze_next_week">Next week</string>
     <string name="snooze_tomorrow_morning">Tomorrow morning</string>
+    <string name="snooze_arrive_at">When I get to %1$s</string>
+    <string name="snooze_leave_here">When I leave here</string>
+    <string name="snooze_here_label">here</string>
+    <string name="snooze_no_fix">Couldn\'t tell where you are just now; try again in a moment</string>
+    <string name="snooze_until_arrive">you get to %1$s</string>
+    <string name="snooze_until_leave">you leave %1$s</string>
     <string name="settings_weekend">When "the weekend" starts</string>
     <string name="settings_weekend_hint">Where a reminder lands when you put it off to the weekend.</string>
 
@@ -1144,6 +1150,10 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_57_0">
+        <item>Put off until a place. A ring can now be answered with «al llegar a Casa» — the saved place your reminders name most — or «al salir de aquí», a circle drawn around wherever you are at the tap. No clock is set: the place is the alarm, and it rings the moment you cross the line. On the ringing screen and in a held card\'s menu, in the place family\'s colour; only with location «all the time», since that is what keeps it.</item>
+        <item>«Al llegar a Casa» is not offered while you are already at home, and «al salir de aquí» says so when the phone cannot tell where here is, and writes nothing.</item>
+    </string-array>
     <string-array name="whats_new_0_56_0">
         <item>The words say when. Write «sacar la basura mañana a las 9», «dentista el jueves 17:30», «en 20 min» or «pastillas cada martes a las 8» — in Spanish or English — and the first chip under «Cuándo» offers exactly that, with a quote mark on it so it reads as the sentence\'s own answer. One tap and it is set; the words stay as you typed them, and nothing is ever set without the tap. A line shared from another app gets the same reading.</item>
     </string-array>

@@ -23,6 +23,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import dev.rwilco.model.snoozeDetail
 
 /** The phone, the build, and the clock everything else is measured against. */
 data class DiagEnv(
@@ -199,7 +200,7 @@ private fun Reminder.identityLine(): String = buildString {
 /** `armed=… fired=… dealt=… next=…` — every stamp the firing path decides from. */
 private fun Reminder.stateLine(now: Instant, zone: ZoneId, settings: AppSettings, stampOf: (Instant?) -> String): String = buildString {
     append("armed=${stampOf(armedFor)}${armedRule?.let { "/r$it" } ?: ""}")
-    append(" fired=${stampOf(lastFiredAt)}${lastFiredRule?.let { "/r$it" } ?: ""} dealt=${stampOf(lastDealtAt)} snooze=${stampOf(snoozedUntil)}")
+    append(" fired=${stampOf(lastFiredAt)}${lastFiredRule?.let { "/r$it" } ?: ""} dealt=${stampOf(lastDealtAt)} snooze=${stampOf(snoozedUntil)}${snoozedToPlace?.let { "/" + it.snoozeDetail().substringBefore(':') } ?: ""}")
     if (firedRules.isNotEmpty()) append(" fr=${firedRules.sorted()}")
     if (status == Status.ACTIVE) {
         val next = nextFire(this@stateLine, now, zone, settings.defaultTime, settings.dayStart, settings.dayShape)

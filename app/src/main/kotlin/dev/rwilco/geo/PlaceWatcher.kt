@@ -284,6 +284,16 @@ class PlaceWatcher(
     }
 
     /**
+     * Which side of [placeId]'s line the phone is on, said by somebody who knows: the snooze
+     * that has just drawn a circle around the phone, or read its position against a saved
+     * place. Under the lock, so a `sync` in flight cannot write its pruned memory over it —
+     * and called only once the row carries the circle, so every sync after this one keeps it.
+     */
+    suspend fun remember(placeId: String, transition: Transition) = lock.withLock {
+        store.write(store.read().remembering(placeId, transition))
+    }
+
+    /**
      * A crossing the phone's geofences report, judged against what this watch knows and written
      * down if it stands. False means the app's own last fix already had the phone on that side
      * of the line: Play Services re-reading a line nobody crossed, which is what makes a place
@@ -466,6 +476,8 @@ class PlaceWatcher(
             Log.i(TAG, "watch saw ${event.transition} at ${event.placeId}")
             if (what[event.placeId] == Crossing.TAKES_BACK && ruleIndex != null) {
                 firing.untick(reminderId, ruleIndex)
+            } else if (GeofenceIds.isSnooze(event.placeId)) {
+                firing.fire(reminderId, viaSnoozePlace = true)
             } else {
                 firing.fire(reminderId, ruleIndex = ruleIndex)
             }

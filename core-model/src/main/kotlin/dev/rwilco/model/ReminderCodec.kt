@@ -31,6 +31,13 @@ object ReminderCodec {
 
     fun encodeRules(value: List<TriggerRule>): String = json.encodeToString(rules, value)
 
+    /** One trigger on its own: the place a snooze waits for. */
+    fun encodeTrigger(trigger: Trigger): String = json.encodeToString(Trigger.serializer(), trigger)
+
+    /** Null for anything this build cannot read, which for a snooze means "not put off": it rings. */
+    fun decodeTrigger(raw: String?): Trigger? =
+        raw?.let { runCatching { json.decodeFromString(Trigger.serializer(), it) }.getOrNull() }
+
     /**
      * Element by element, so a rule of a kind this build does not know (or a corrupt one) is
      * skipped and the reminder survives with the rules it can still honour.

@@ -8,7 +8,7 @@ tag it if you like, say *when* — a date, a date and time, a stretch of the day
 place, or a random moment; or just write it, "mañana a las 9", and take the chip that reads it
 back — say whether it *comes back* (on a calendar of its own, or so long
 after you deal with it), and say *what should happen*: take over the screen, notify, sound,
-vibrate.
+vibrate. When it rings, put it off until later — or until you get home, or leave here.
 
 Dark-first, built for one hand, no account, no server, nothing leaves the device.
 

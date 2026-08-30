@@ -45,6 +45,7 @@ import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.icon
 import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
 import dev.rwilco.ui.components.SnoozeOffers
+import dev.rwilco.model.SnoozePlace
 
 /**
  * The lamp at full brightness. The reminder's words as big as they fit, and one button the
@@ -63,6 +64,9 @@ fun AlertScreen(
     onView: () -> Unit,
     /** How long the custom offer is, for its label. */
     customMinutes: Int = DEFAULT_SNOOZE_MINUTES,
+    /** The place answers this phone can give: "al llegar a casa", "al salir de aquí". */
+    places: List<SnoozePlace> = emptyList(),
+    onSnoozeToPlace: (SnoozePlace) -> Unit = {},
 ) {
     val scheme = MaterialTheme.colorScheme
     val spacing = Tokens.spacing
@@ -142,7 +146,7 @@ fun AlertScreen(
             // Every answer, each its own tap target and none of them a chip a thumb has to aim
             // at. They sit clear of the Done button, because the two mean opposite things and a
             // half-awake hand should not be able to confuse them.
-            SnoozeOffers(offers = Snooze.entries, customMinutes = customMinutes, onPick = onSnooze)
+            SnoozeOffers(offers = Snooze.entries, customMinutes = customMinutes, onPick = onSnooze, places = places, onPickPlace = onSnoozeToPlace)
             Spacer(Modifier.height(spacing.lg))
             // "Ver" goes ABOVE "Hecho", not under it. The bottom of the screen is where the
             // thumb lands, and it belongs to the one answer this screen is asking for — an

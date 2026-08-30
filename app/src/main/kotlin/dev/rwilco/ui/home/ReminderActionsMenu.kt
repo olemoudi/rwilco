@@ -53,6 +53,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import dev.rwilco.model.Snooze
 import dev.rwilco.ui.components.SnoozeOffers
+import dev.rwilco.model.SnoozePlace
 
 /**
  * What can be done to one reminder, asked by holding its card.
@@ -87,6 +88,9 @@ fun ReminderActionsMenu(
     onDelete: () -> Unit,
     onSnooze: (Snooze) -> Unit,
     onCancelSnooze: () -> Unit,
+    /** The place answers, after the clock ones; empty on a phone that cannot give them. */
+    places: List<SnoozePlace> = emptyList(),
+    onSnoozeToPlace: (SnoozePlace) -> Unit = {},
     onClone: () -> Unit,
     onKeepAsPreset: () -> Unit,
     onDismiss: () -> Unit,
@@ -151,7 +155,7 @@ fun ReminderActionsMenu(
                                 color = scheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = spacing.sm),
                             )
-                            SnoozeOffers(offers = Snooze.entries, customMinutes = customMinutes, onPick = onSnooze)
+                            SnoozeOffers(offers = Snooze.entries, customMinutes = customMinutes, onPick = onSnooze, places = places, onPickPlace = onSnoozeToPlace)
                         } else {
                             ActionRow(
                                 icon = Icons.Outlined.Snooze,

@@ -52,12 +52,15 @@ interface ReminderDao {
     @Query("UPDATE reminder SET status = :status, updatedAt = :at, doneAt = :doneAt WHERE id = :id")
     suspend fun setStatus(id: String, status: String, at: Long, doneAt: Long?)
 
-    /** A snooze is the person's word, so it also clears whatever was armed for the old moment. */
-    @Query("UPDATE reminder SET snoozedUntil = :until WHERE id = :id")
-    suspend fun setSnooze(id: String, until: Long?)
+    /**
+     * A snooze is the person's word: to a clock or to a place, never both, and the two are
+     * written together so whichever is given clears the other.
+     */
+    @Query("UPDATE reminder SET snoozedUntil = :until, snoozedToPlace = :place WHERE id = :id")
+    suspend fun setSnooze(id: String, until: Long?, place: String?)
 
     /** Deliberately does not touch updatedAt: ringing is not editing. */
-    @Query("UPDATE reminder SET lastFiredAt = :at, lastFiredRule = :ruleIndex, snoozedUntil = NULL WHERE id = :id")
+    @Query("UPDATE reminder SET lastFiredAt = :at, lastFiredRule = :ruleIndex, snoozedUntil = NULL, snoozedToPlace = NULL WHERE id = :id")
     suspend fun markFired(id: String, at: Long, ruleIndex: Int?)
 
     /**
@@ -66,7 +69,7 @@ interface ReminderDao {
      * process that dies in the middle cannot leave a round closed and its anchor unmoved.
      */
     @Query(
-        "UPDATE reminder SET snoozedUntil = NULL, firedRules = '', lastDealtAt = :at, " +
+        "UPDATE reminder SET snoozedUntil = NULL, snoozedToPlace = NULL, firedRules = '', lastDealtAt = :at, " +
             "status = :status, updatedAt = :at, doneAt = :doneAt, dealtThrough = :through WHERE id = :id",
     )
     suspend fun dealtWith(id: String, at: Long, status: String, doneAt: Long?, through: Long?)

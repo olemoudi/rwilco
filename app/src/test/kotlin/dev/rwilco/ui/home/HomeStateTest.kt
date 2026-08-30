@@ -79,6 +79,21 @@ class HomeStateTest {
     }
 
     @Test
+    fun `a card put off until a place says so, and offers to change its mind`() {
+        val door = Trigger.Location(40.4169, -3.7035, 200, Presence.INSIDE, "Casa", onCrossing = true)
+        val waiting = soon.copy(snoozedToPlace = door)
+        val state = buildHomeState(listOf(waiting, place), defaultTime, now, zone, selectedTag = null)
+        assertNull(state.hero, "a place with no floor is never the hero")
+        val card = state.sections.flatMap { it.cards }.first { it.id == "soon" }
+        assertEquals(door, card.snoozedToPlace)
+        assertNull(card.snoozedUntil)
+        assertTrue(card.snoozeOffered, "already put off: the question is where to, then")
+        // Paused, it waits at no door the card need mention.
+        val held = buildHomeState(listOf(waiting.copy(status = Status.PAUSED)), defaultTime, now, zone, selectedTag = null)
+        assertNull(held.sections.flatMap { it.cards }.single().snoozedToPlace)
+    }
+
+    @Test
     fun `a snooze that has come and gone is not on the card any more`() {
         val past = reminder("past", Trigger.AtDateTime(LocalDateTime.of(2026, 8, 29, 16, 0)))
             .copy(snoozedUntil = now.minusSeconds(60))

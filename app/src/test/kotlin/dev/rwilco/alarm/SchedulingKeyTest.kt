@@ -8,6 +8,7 @@ import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
 import dev.rwilco.model.ThemeMode
+import dev.rwilco.model.Presence
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -59,6 +60,9 @@ class SchedulingKeyTest {
         assertNotEquals(key(timed), key(timed.copy(ruleMatch = RuleMatch.ALL)))
         assertNotEquals(key(timed), key(timed.copy(firedRules = setOf(0))))
         assertNotEquals(key(timed), key(timed.copy(snoozedUntil = written.plusSeconds(600))))
+        // Put off until a place: nothing on the clock, but the fences and the watch read this key.
+        val door = Trigger.Location(40.4169, -3.7035, 200, Presence.INSIDE, "Casa", onCrossing = true)
+        assertNotEquals(key(timed), key(timed.copy(snoozedToPlace = door)))
     }
 
     @Test

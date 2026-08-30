@@ -90,6 +90,8 @@ data class ReminderCardUi(
      * it in its own words (it is what fires next); every other card says it here.
      */
     val snoozedUntil: Instant? = null,
+    /** Or the place it was pushed away to: "cuando llegue a casa". The two are never both set. */
+    val snoozedToPlace: Trigger.Location? = null,
     /**
      * The tag whose colour runs down the card's edge, or null for a reminder with no tags.
      *
@@ -211,9 +213,11 @@ fun buildHomeState(
             paused = reminder.status == Status.PAUSED,
             // A paused reminder rings at no moment at all, so a snooze on it is not news.
             snoozedUntil = reminder.snoozedUntil?.takeIf { it > now && reminder.status == Status.ACTIVE },
+            snoozedToPlace = reminder.snoozedToPlace?.takeIf { reminder.status == Status.ACTIVE },
             match = reminder.ruleMatch.takeIf { reminder.rules.size > 1 },
             recurrence = reminder.recurrence.takeIf { it.isAnchored },
-            snoozeOffered = reminder.awaitingAnswer(now) || (reminder.status == Status.ACTIVE && reminder.snoozedUntil?.let { it > now } == true),
+            snoozeOffered = reminder.awaitingAnswer(now) ||
+                (reminder.status == Status.ACTIVE && (reminder.snoozedUntil?.let { it > now } == true || reminder.snoozedToPlace != null)),
             skipsMoment = if (reminder.status == Status.ACTIVE && reminder.recurrence != Recurrence.None) {
                 reminder.momentDealtWith(now, zone, defaultTime, dayStart, shape)
             } else {

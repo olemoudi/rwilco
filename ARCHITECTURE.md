@@ -388,6 +388,42 @@ snooze offer, it would reset the theme, the sound, the presets and the saved pla
 `notificationSnoozeOffers` drops what it does not recognise and falls back to the two defaults
 rather than leaving a notification with no way to postpone.
 
+**Put off until a place (0.57.0, `Reminder.snoozedToPlace`, `SnoozePlaces.kt`).** The answers to a
+ring were clock-shaped only, and on a phone whose reminders are mostly places the honest answer
+to "comprar filtros" ringing on the metro is "cuando llegue a casa". Two offers and no more, on
+the alert screen and in a held card's menu (never the notification, which has three buttons, nor
+the strips): **"al llegar a ‹the saved place this person's reminders name most›"**
+(`mostUsedPlace`, counted over rules and fences, open and done, within eleven metres; hidden when
+the watch knows the phone is already inside it, `arriveOffered`) and **"al salir de aquí"**, a
+150 m circle drawn around wherever the phone is at the tap (`hereCircle`; the watch's own last
+fix when it is two minutes fresh and tight enough, else one asked of the platform the way the
+place picker asks — `hereFix` — and with nothing to draw around, the screen says so and writes
+nothing). Neither is offered without the background location grant: the fences and the watch that
+would keep either do not run without it, and the watch prunes its memory on every sync. The
+reminder carries the circle as a
+`Trigger.Location` that is **always a doorway** (`onCrossing`): "when I get there" is said from
+somewhere else. It is the same field of meaning as `snoozedUntil` and **the two are never both
+set** — `ReminderDao.setSnooze` writes them together, `markFired` and `dealtWith` clear both.
+What it changes, in one sentence: **the circle is the alarm.** `nextWake` answers null (nothing
+on the clock), `nextFire` answers `WhenAt(place, snoozed = true)` (Home files it under "cuando
+ocurra", never the hero, and the card wears a `SnoozedPlaceRow`), `awaitingAnswer`, `missedFire`
+and `netDue` read it as an answer like a clock snooze, `watchedCircles` hands the watch **that
+circle and nothing else** (`SNOOZE_RULE`, ungated, `Crossing.RINGS`) and `GeofenceManager.sync`
+registers the same one — under an id of its own shape, `‹id›#s@…!` (`GeofenceIds.encodeSnooze`,
+`isSnooze`; `triggerIndexOf` answers null for it as for a condition). The scheduling key carries
+the field, which is what puts the circle in front of the fences and the watch the moment it is
+written. `ReminderFiring.snoozeToPlace` also tells the watch which side of the line the phone
+starts on (`remembering`) when a fix says, so the first crossing it sees is a crossing and not a
+first look; the receiver and the watch's own look route a crossing for such an id to
+`fire(viaSnoozePlace = true)`, which skips the guards that are about rules and armed moments,
+refuses a crossing for a snooze no longer waiting, and rings through the ordinary plan with the
+reason line saying "pospuesto hasta llegar a casa". A clock alarm arriving meanwhile is a stray
+and is dropped. Room v10 adds the column; the vault carries it as one more frozen name; a history
+line keeps `arrive:‹label›`/`leave:‹label›` in its detail. `SnoozeJourneyTest` winds the
+journeys through `Simulation` (which grew `Deal.Elsewhere` and `cross()`), `SnoozeToPlaceTest`
+pins the rest of the model, and `SnoozePlaceFiringTest`, `AlertSnoozePlaceTest` and
+`HomeMenuTest` walk the phone.
+
 `Search.kt` answers the magnifier: one query over the reminders and the tags the open ones use,
 returning `SearchHit.OfReminder`/`OfTag` so the screen can say which is which. Matching is
 folded (case and accents dropped) and banded — whole, prefix, word start, anywhere, then letters

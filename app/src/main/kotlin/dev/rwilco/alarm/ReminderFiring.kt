@@ -50,6 +50,11 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import dev.rwilco.model.notificationSnoozeOffers
+import dev.rwilco.model.Fix
+import dev.rwilco.model.GeofenceIds
+import dev.rwilco.model.Transition
+import dev.rwilco.model.distanceMeters
+import dev.rwilco.model.snoozeDetail
 
 /**
  * What happens when a reminder rings, and what the two answers to it do. One place, so the
@@ -83,9 +88,12 @@ class ReminderFiring(
      * conditions on it ("al llegar a casa, y sólo si es por la tarde"). An alarm needs no such
      * check: the moment it was armed for already satisfied them.
      */
-    suspend fun fire(id: String, late: Instant? = null, ruleIndex: Int? = null) = lock.withLock {
+    suspend fun fire(id: String, late: Instant? = null, ruleIndex: Int? = null, viaSnoozePlace: Boolean = false) = lock.withLock {
         val reminder = repository.get(id) ?: return@withLock Diag.note(TAG_DIAG, "r=${short(id)} gone")
         if (reminder.status != Status.ACTIVE) return@withLock Diag.note(TAG_DIAG, "r=${short(id)} not active (${reminder.status})")
+        // The crossing a "cuando llegue a…" waits for. A fence outlives the snooze it was set
+        // for by as long as a sync takes, so a crossing for a snooze no longer waiting is nothing.
+        if (viaSnoozePlace && reminder.snoozedToPlace == null) return@withLock Diag.note(TAG_DIAG, "r=${short(id)} dropped: a place crossing for a snooze no longer waiting")
         val now = clock.instant()
         // A catch-up is decided from a row read before the re-arm; by the time it gets here the
         // moment it is about may have rung on its own — the alarm for a past moment arrives at
@@ -119,7 +127,7 @@ class ReminderFiring(
         // for ever, with the next one never armed. Only the moment this delivery is about, and
         // never for a place: a place has no armed moment of its own, and the one on the row
         // belongs to whatever else the reminder is waiting for.
-        val eventDriven = rule?.trigger is Trigger.Location
+        val eventDriven = rule?.trigger is Trigger.Location || viaSnoozePlace
         suspend fun spendArmed() {
             val armedNow = reminder.armedFor ?: return
             if (!eventDriven && armedNow <= now.plusSeconds(EARLY_GRACE_SECONDS)) repository.setArmedFor(id, null, null)
@@ -144,7 +152,7 @@ class ReminderFiring(
         // has no rule behind it either, and is not asked: it is the person's own "not now,
         // then" about a ring that already happened.
         val calendarFences = (reminder.recurrence as? Recurrence.Calendar)?.conditions.orEmpty()
-            .takeIf { ruleIndex == null && reminder.snoozedUntil == null }.orEmpty()
+            .takeIf { ruleIndex == null && reminder.snoozedUntil == null && !viaSnoozePlace }.orEmpty()
         if (calendarFences.isNotEmpty() && !conditionsHold(calendarFences, askAll = false, now, moment = late ?: now)) {
             Log.i(TAG, "$id came round outside what its calendar asks for")
             Diag.note(TAG_DIAG, "r=${short(id)} dropped: the calendar's conditions do not hold")
@@ -190,6 +198,13 @@ class ReminderFiring(
             scheduler.rearmAll()
             return@withLock
         }
+        // Waiting at a place outranks every rule the same way: nothing but that crossing rings
+        // it. Nothing on the clock is armed while it waits, so this is a stray delivery.
+        if (!viaSnoozePlace && reminder.snoozedToPlace != null) {
+            Diag.note(TAG_DIAG, "r=${short(id)} dropped: waiting at a place")
+            scheduler.rearmAll()
+            return@withLock
+        }
         // Under ALL a moment is first of all something that happened: only the one that
         // completes the set rings, and the rest are written down and waited on.
         when (val outcome = outcomeOfFiring(reminder, ruleIndex)) {
@@ -212,7 +227,7 @@ class ReminderFiring(
         // momentRungFor: a place is the one firing that must not reach for the armed moment,
         // because that moment belongs to whatever else the reminder is still waiting for.
         val rangFor = momentRungFor(now, reminder.armedFor, late, eventDriven)
-        Diag.note(TAG_DIAG, "r=${short(id)} RANG for $rangFor rule=$ruleIndex${if (late != null) " (late for $late)" else ""} plan=${plan.summary()}")
+        Diag.note(TAG_DIAG, "r=${short(id)} RANG for $rangFor rule=$ruleIndex${if (late != null) " (late for $late)" else ""}${if (viaSnoozePlace) " (place snooze)" else ""} plan=${plan.summary()}")
         // From the sello to the screen in one piece: the receiver runs this under a timeout, and
         // a cancellation landing between markFired and show spent a moment nothing ever showed
         // — one missedFire could never see again, because the row said it had rung.
@@ -262,6 +277,7 @@ class ReminderFiring(
         if (dealt != null && !dealt.isBefore(rangAt)) return@withLock
         val snoozed = reminder.snoozedUntil
         if (snoozed != null && snoozed > now) return@withLock
+        if (reminder.snoozedToPlace != null) return@withLock
         val settings = settings()
         val plan = firingPlan(reminder.actions)
         if (!plan.insistent) return@withLock
@@ -472,6 +488,43 @@ class ReminderFiring(
         repository.record(id, FiringKind.SNOOZED, now, detail = until.toString())
         repeater.cancel(id)
         AlertNotifications.cancel(context, id)
+        scheduler.rearmAll()
+    }
+
+    /**
+     * "Cuando llegue a…" / "al salir de aquí": put off until the phone crosses [place]'s line.
+     *
+     * Nothing on the clock is armed — the circle is the alarm — and it reaches the fences and
+     * the watch through the scheduling key, which carries the place. [fix] is where the phone is
+     * now, when anything knows: the watch is told which side of the line it starts on, so the
+     * first crossing it sees is a crossing and not a first look. "Al salir de aquí" always
+     * knows, since the circle was drawn around that very position; "al llegar a casa" knows
+     * when the watch has looked lately, and is baselined by its next look otherwise. [remember]
+     * is the watch's own door for that memory (`PlaceWatcher.remember`), handed in rather than
+     * held, because the watch is built after this and calls back into it.
+     */
+    suspend fun snoozeToPlace(id: String, place: Trigger.Location, fix: Fix?, remember: suspend (String, Transition) -> Unit) {
+        val written = lock.withLock {
+            if (repository.get(id) == null) {
+                repeater.cancel(id)
+                AlertNotifications.cancel(context, id)
+                return@withLock false
+            }
+            val now = clock.instant()
+            repository.snooze(id, null, place)
+            Diag.note(TAG_DIAG, "r=${short(id)} snoozed to a place (${place.snoozeDetail().substringBefore(':')}, side ${if (fix == null) "unknown" else "known"})")
+            repository.record(id, FiringKind.SNOOZED, now, detail = place.snoozeDetail())
+            repeater.cancel(id)
+            AlertNotifications.cancel(context, id)
+            true
+        }
+        if (!written) return
+        // After the row and outside this lock: the watch takes its own to write it, and the
+        // watch's look takes that lock before it reaches `fire`, which takes this one.
+        if (fix != null) {
+            val inside = distanceMeters(fix.lat, fix.lng, place.lat, place.lng) <= place.radiusM
+            remember(GeofenceIds.encodeSnooze(id, place), if (inside) Transition.ENTER else Transition.EXIT)
+        }
         scheduler.rearmAll()
     }
 

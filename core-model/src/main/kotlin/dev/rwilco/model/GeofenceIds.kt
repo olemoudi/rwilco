@@ -25,6 +25,9 @@ object GeofenceIds {
     private const val CIRCLE = '@'
     private const val CROSSING = "!"
 
+    /** In place of a rule index: the circle a snooze waits for belongs to no rule. */
+    private const val SNOOZE = 's'
+
     /**
      * The side keeps the letter the crossing had (`E`/`X`), so no id already registered on a
      * phone changes shape; a rule that asks for the doorway ([Trigger.Location.onCrossing])
@@ -39,6 +42,17 @@ object GeofenceIds {
     /** The [conditionIndex]th circle named by rule [ruleIndex]'s conditions. Never a trigger. */
     fun encodeCondition(reminderId: String, ruleIndex: Int, conditionIndex: Int, place: Condition.AtPlace): String =
         "$reminderId$SEPARATOR$ruleIndex$CONDITION$conditionIndex$CIRCLE" + circle(place.lat, place.lng, place.radiusM, if (place.inside) 'I' else 'O')
+
+    /**
+     * The circle a "remind me when I get there" waits for. Always a doorway, and a rule index
+     * of [SNOOZE] where a trigger's would be, so [triggerIndexOf] answers null for it the way
+     * it does for a condition — and [isSnooze] is what tells the two apart.
+     */
+    fun encodeSnooze(reminderId: String, place: Trigger.Location): String =
+        "$reminderId$SEPARATOR$SNOOZE$CIRCLE" + circle(place.lat, place.lng, place.radiusM, if (place.presence == Presence.INSIDE) 'E' else 'X') + CROSSING
+
+    fun isSnooze(geofenceId: String): Boolean =
+        geofenceId.substringAfter(SEPARATOR, missingDelimiterValue = "").startsWith("$SNOOZE$CIRCLE")
 
     fun reminderIdOf(geofenceId: String): String = geofenceId.substringBefore(SEPARATOR)
 
