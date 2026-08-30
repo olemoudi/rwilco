@@ -22,6 +22,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.MyLocation
+import androidx.compose.material.icons.outlined.OpenInFull
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
@@ -49,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
@@ -89,6 +91,11 @@ fun LocationSheet(
     title: String = stringResource(R.string.kind_place),
     pickTransition: Boolean = true,
     savedPlaces: List<SavedPlace> = emptyList(),
+    /**
+     * Where a place made here can be kept by name. Null where that makes no sense (Settings,
+     * which *is* the list); given, the sheet offers a switch once there is a pin and a name.
+     */
+    onKeepPlace: ((SavedPlace) -> Unit)? = null,
 ) {
     var label by rememberSaveable { mutableStateOf(initial?.label ?: "") }
     var presence by rememberSaveable { mutableStateOf((initial?.presence ?: Presence.INSIDE).name) }
@@ -100,6 +107,8 @@ fun LocationSheet(
     var radius by rememberSaveable { mutableIntStateOf(initial?.radiusM ?: 200) }
     var lat by rememberSaveable { mutableStateOf(initial?.lat) }
     var lng by rememberSaveable { mutableStateOf(initial?.lng) }
+    var keep by rememberSaveable { mutableStateOf(false) }
+    var expanded by rememberSaveable { mutableStateOf(false) }
     // Plain remember, on purpose: the work behind these runs in the sheet's own scope, which a
     // rotation cancels, so a saved "busy" would be a spinner with nothing behind it for ever.
     var locating by remember { mutableStateOf(false) }
@@ -170,10 +179,35 @@ fun LocationSheet(
     }
 
     val known = lat != null && lng != null
+    // A share of the window, never less than the old fixed height: on a tall phone 260dp was a
+    // letterbox the circle had to be aimed through.
+    val sizes = Tokens.sizes
+    val mapHeightDp = maxOf(LocalConfiguration.current.screenHeightDp * sizes.mapShare, sizes.mapMinHeight.value)
+    // Nothing to keep when the pin and the name are already a saved place: the switch would be
+    // offering to write down what is written.
+    val keepOffered = onKeepPlace != null && known && label.isNotBlank() &&
+        savedPlaces.none { it.label.equals(label.trim(), ignoreCase = true) && it.lat == lat && it.lng == lng }
+    if (expanded) {
+        FullScreenMap(
+            center = if (known) GeoPoint(lat!!, lng!!) else null,
+            radiusM = radius,
+            onLongPress = { point ->
+                lat = point.latitude
+                lng = point.longitude
+                failure = null
+                haptics.perform(HapticFeedbackType.Confirm)
+            },
+            onRadius = { radius = it },
+            onDismiss = { expanded = false },
+        )
+    }
     SheetScaffold(
         title = title,
         onDismiss = onDismiss,
-        onConfirm = { onConfirm(Trigger.Location(lat!!, lng!!, radius, Presence.valueOf(presence), label.trim(), onCrossing)) },
+        onConfirm = {
+            if (keep && keepOffered) onKeepPlace?.invoke(SavedPlace(label.trim(), lat!!, lng!!, radius))
+            onConfirm(Trigger.Location(lat!!, lng!!, radius, Presence.valueOf(presence), label.trim(), onCrossing))
+        },
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
         confirmEnabled = known && label.isNotBlank(),
     ) {
@@ -290,8 +324,25 @@ fun LocationSheet(
                         failure = null
                         haptics.perform(HapticFeedbackType.Confirm)
                     },
+                    heightDp = mapHeightDp,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                // The whole window, for looking rather than aiming: panning out along a street
+                // to find the corner is what a map this size cannot do.
+                FilledIconButton(
+                    onClick = { expanded = true },
+                    shape = CircleShape,
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(Tokens.spacing.md)
+                        .size(Tokens.sizes.touch),
+                ) {
+                    Icon(Icons.Outlined.OpenInFull, contentDescription = stringResource(R.string.place_expand))
+                }
                 FilledIconButton(
                     onClick = {
                         if (hasAnyLocationPermission(context)) {
@@ -331,6 +382,16 @@ fun LocationSheet(
                 color = if (failure != null && !known) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        RadiusControl(radius = radius, onChange = { radius = it })
+        if (keepOffered) {
+            KeepPlaceRow(keep = keep, onChange = { keep = it })
+        }
+    }
+}
+
+/** The radius, read in metres and dragged in fifty-metre ticks: the sheet's and the full map's. */
+@Composable
+internal fun RadiusControl(radius: Int, onChange: (Int) -> Unit) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.place_radius), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
@@ -340,7 +401,7 @@ fun LocationSheet(
                 value = radius.toFloat(),
                 // Rounded, not truncated: a tick the slider snaps to can arrive a hair under
                 // its own value, and truncation then lands fifty metres short of it.
-                onValueChange = { radius = (it / 50).roundToInt() * 50 },
+                onValueChange = { onChange((it / 50).roundToInt() * 50) },
                 // Inset from the sheet's own margin: at either end the thumb sat within a
                 // thumb's width of the edge of the screen, where a finger arrives half on the
                 // bezel and the gesture is as likely to be read as a back swipe. Twelve dp
@@ -364,6 +425,45 @@ fun LocationSheet(
                 ),
             )
         }
+}
+
+/**
+ * "Guardar como lugar": the place made for this rule kept by name, so the next rule that means
+ * it picks it off a chip. A saved place could only ever be made in Settings, and the condition
+ * sheet — which offers nothing but saved places — was unreachable until somebody went there.
+ */
+@Composable
+private fun KeepPlaceRow(keep: Boolean, onChange: (Boolean) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val haptics = Tokens.haptics
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(
+                value = keep,
+                role = Role.Switch,
+                onValueChange = { on ->
+                    haptics.perform(if (on) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff)
+                    onChange(on)
+                },
+            )
+            .heightIn(min = Tokens.sizes.touch),
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(text = stringResource(R.string.place_keep), style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = stringResource(R.string.place_keep_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.width(Tokens.spacing.md))
+        Switch(
+            checked = keep,
+            onCheckedChange = null,
+            colors = SwitchDefaults.colors(checkedThumbColor = scheme.surface, checkedTrackColor = scheme.onSurface),
+        )
     }
 }
 

@@ -135,6 +135,8 @@ class AlertActivity : ComponentActivity() {
                         onView = ::view,
                         snoozes = current.notificationSnoozeOffers,
                         customMinutes = current.snoozeCustomMinutes,
+                        onDoneAll = { answerAll(items.map { it.id }) { id -> app.firing.dismiss(id) } },
+                        onSnoozeAll = { snooze -> answerAll(items.map { it.id }) { id -> app.firing.snooze(id, snooze) } },
                     )
                 } else {
                     val first = items.first()
@@ -187,6 +189,12 @@ class AlertActivity : ComponentActivity() {
     private fun answer(id: String, work: suspend () -> Unit) {
         drop(id)
         app.appScope.launch { work() }
+    }
+
+    /** The same, for all of them at once: the screen empties first, then each is answered in turn. */
+    private fun answerAll(ids: List<String>, work: suspend (String) -> Unit) {
+        ids.forEach(::drop)
+        app.appScope.launch { for (id in ids) work(id) }
     }
 
     private fun view(id: String) {

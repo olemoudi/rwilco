@@ -55,6 +55,16 @@ class MapZoomTest {
     }
 
     @Test
+    fun `a taller map stands closer, and the circle still fits`() {
+        // The full-screen map is the sheet's map given the window: more height is more zoom,
+        // not more county, and the circle is still inside it with the same air around.
+        val short = zoomFittingCircle(300, madrid, 260f)
+        val tall = zoomFittingCircle(300, madrid, 700f)
+        assertTrue(tall > short, "a taller map should zoom in further: $tall vs $short")
+        assertTrue(viewportMetres(tall, heightDp = 700f) > 600.0, "the circle must still fit the taller map")
+    }
+
+    @Test
     fun `nothing is asked for past the tiles that exist`() {
         assertTrue(zoomFittingCircle(1, madrid) <= 19.0, "MAPNIK has no tiles past 19")
     }

@@ -617,6 +617,10 @@ because that is what its chip would show.
   like the swipe and comes back in the snackbar as "saltada" with the same undo. Not offered for
   a ring waiting for an answer: that answer is "hecho". The hero got the pause pill every other
   card had in the same release; it was the one card that could only be paused through this menu.
+- **The month's name is a door (0.52.0).** `MonthCalendar` paged one month per swipe with
+  nothing between that and typing, so a date a year out was twelve swipes. Tapped, the grid
+  gives way to the year and its twelve months (`MonthJump`, stepped within `MonthGrid`'s pages)
+  and a month tapped there turns the pager to it.
 - **The three "cuándo" chips everybody starts with stay (0.51.0).** `QuickWhenRow` used to
   *replace* "en 30 min / esta noche / mañana por la mañana" with the shapes learnt from history
   the moment there was any, so "esta noche" was gone for good after the first reminder ever
@@ -800,8 +804,21 @@ because that is what its chip would show.
   and the circle it has to hold — never tighter than a 300-metre one, because the radius starts
   at 200 and the first thing anybody does is drag it. The four-bucket table it replaces was too
   close in at every bucket: 800 metres of circle in 476 metres of view, with the thing the sheet
-  is *for* running off the top and the bottom. The alert preview is `AlertScreen`,
-  the same composable `AlertActivity` hosts under a full-screen intent.
+  is *for* running off the top and the bottom. **The map is a share of the window now, and
+  opens full screen (0.52.0).** 260dp was a letterbox on a tall phone; it is `Sizes.mapShare` of
+  the window's height with 260dp as the floor, `OsmMap` takes its height from the caller and
+  `zoomFittingCircle` follows it, and a button in the map's corner opens `FullScreenMap` — the
+  same pin, the same long-press, the same radius (`RadiusControl`, shared) — for looking rather
+  than aiming: panning out along a street to find the corner is what a map in a sheet cannot
+  do. The dialog holds no state of its own; "Listo" only closes the door. **And a place made
+  here can be kept** ("Guardar como lugar", `onKeepPlace` → `EditorViewModel.keepPlace`, which
+  replaces a namesake because the chips are read by name): a saved place could only ever be
+  made in Settings, and the condition sheet — which offers nothing but saved places — was
+  unreachable until somebody had been there. `ConditionSheet` offers the place kind always now,
+  with "Nuevo lugar" opening the place sheet in its Settings shape over itself, and tracks its
+  choice by name rather than index so the chip that lights is the one just made. The countdown
+  sheet produces a `Trigger.Countdown` (the note above saying `AtDateTime` was stale). The alert
+  preview is `AlertScreen`, the same composable `AlertActivity` hosts under a full-screen intent.
 - **On the alert screen the words are what gives** (0.48.1). They sat between two weighted
   spacers, which centres them and lets everything below overflow: seven snooze offers and a
   six-line reminder at a large font scale pushed "Hecho" — the one answer the screen is asking
@@ -1179,7 +1196,12 @@ because that is what its chip would show.
   then read as "never rang"); the second arrives through `onNewIntent` and joins. What the
   screen does with it is `AppSettings.alertStacking`: one after the other (the next appears the
   instant the first is answered, with "N más esperando" over the words) or as strips
-  (`AlertStackScreen`, each with its own "Hecho"). Every reminder on the screen is watched in
+  (`AlertStackScreen`, each with its own "Hecho"). **Under the strips, one answer for all of
+  them (0.52.0)**: "Hecho con todos" is a `HoldButton` — it is three in the morning and five
+  reminders are gone on release — and "Posponer todos" unfolds the strip's two offers once for
+  everyone; `AlertActivity.answerAll` empties the screen first and answers each in turn through
+  the same `ReminderFiring` doors. The hold ring draws in the screen's own `HoldOverlay`, since
+  the app's host is not under an alert. Every reminder on the screen is watched in
   the database and leaves when it stops being `awaitingAnswer` (pure, `Firing.kt`) — so
   "Hecho" from the shade takes it down here too — and the ring's minute starts
   over for each arrival.
@@ -1652,7 +1674,12 @@ history is the backup's history for free — with a fine-grained token scoped to
   What the phone held first goes into `files/vault/before-restore.vault`, sealed under the
   incoming key, behind an "undo" row. Enabling against a repository that already holds a vault
   asks: restore it here, or replace it. The same envelope goes through the file picker as an
-  export/import, for any other cloud or none.
+  export/import, for any other cloud or none. **And a copy anybody can read (0.52.0)**:
+  `readableExport` writes everything as plain text in the app's own sentences
+  (`reminderSummary`, the line the notification and the save button say), open ones first and
+  done ones after, to a `.txt` or the share sheet. The vault is the copy that survives; this is
+  the copy that can be looked at, pasted, and opened in ten years by whatever is around then —
+  which a sealed envelope with a key derived on this phone is not. It says it is not sealed.
 - **What is waiting** (`pendingChanges`, pure): the reminders written or edited since the last
   copy, plus one if the settings moved — and at least one whenever the fingerprint says a copy
   is owed, because a deletion leaves nothing to count. It is the red disc in the corner of Home

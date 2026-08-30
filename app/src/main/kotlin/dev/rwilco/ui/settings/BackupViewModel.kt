@@ -30,11 +30,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import dev.rwilco.ui.format.words
+import java.time.LocalDate
 import java.util.UUID
 
 /** What the person typed on the setup form. Lives here so a rotation does not empty it. */
@@ -329,6 +332,24 @@ class BackupViewModel(private val app: RwilcoApplication) : ViewModel() {
             return
         }
         viewModelScope.launch { export(uri, state.keyBytes(), state.saltBytes(), state.iterations) }
+    }
+
+    /** The plain-text copy, built fresh: what the phone holds, in its own sentences. */
+    suspend fun readableExportText(): String {
+        val settings = app.settingsStore.settings.first()
+        val today = LocalDate.now(app.clock.zone)
+        return readableExport(app.words(), app.repository.allNow(), today, settings.defaultTime, app.clock.zone)
+    }
+
+    /** Written as text where the picker said; no key, no salt, nothing to remember. */
+    fun exportTextTo(uri: Uri) {
+        viewModelScope.launch {
+            val text = readableExportText()
+            val written = withContext(Dispatchers.IO) {
+                runCatching { app.contentResolver.openOutputStream(uri, "wt")?.use { it.write(text.toByteArray()) } != null }.getOrDefault(false)
+            }
+            if (written) done(R.string.vault_done_exported) else fail(R.string.vault_error_file)
+        }
     }
 
     /** From [BackupPhase.AskExportPassphrase]: a file of its own, under its own salt. */

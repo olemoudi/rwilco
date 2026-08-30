@@ -28,6 +28,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +47,10 @@ import androidx.compose.ui.unit.sp
 import dev.rwilco.R
 import dev.rwilco.model.Snooze
 import dev.rwilco.model.kind
+import dev.rwilco.ui.components.HoldButton
+import dev.rwilco.ui.components.HoldOverlay
+import dev.rwilco.ui.components.HoldOverlayState
+import dev.rwilco.ui.components.LocalHoldOverlay
 import dev.rwilco.ui.components.TagLabel
 import dev.rwilco.ui.components.TriggerKeycap
 import dev.rwilco.ui.components.lampGlow
@@ -72,10 +82,16 @@ fun AlertStackScreen(
     /** The two offers a strip has room for — the notification's own — and the custom one's length. */
     snoozes: List<Snooze> = AppSettings().notificationSnoozeOffers,
     customMinutes: Int = DEFAULT_SNOOZE_MINUTES,
+    /** One answer for all of them: five ringing at once used to be five taps down a scroll. */
+    onDoneAll: () -> Unit = {},
+    onSnoozeAll: (Snooze) -> Unit = {},
 ) {
     val scheme = MaterialTheme.colorScheme
     val spacing = Tokens.spacing
     val locale = currentLocale()
+    // The hold ring draws in this screen's own overlay: the app's host is not under an alert.
+    val holdOverlay = remember { HoldOverlayState() }
+    CompositionLocalProvider(LocalHoldOverlay provides holdOverlay) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -99,7 +115,7 @@ fun AlertStackScreen(
             }
             Spacer(Modifier.height(spacing.md))
             if (items.size <= SHARED_STRIPS) {
-                Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                Column(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
                     for (item in items) {
                         key(item.id) {
                             Strip(item, onDone, onSnooze, onView, snoozes, customMinutes, Modifier.weight(1f))
@@ -107,12 +123,70 @@ fun AlertStackScreen(
                     }
                 }
             } else {
-                LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                LazyColumn(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
                     items(items, key = { it.id }) { item ->
                         Strip(item, onDone, onSnooze, onView, snoozes, customMinutes, Modifier.heightIn(min = STRIP_MIN_HEIGHT))
                     }
                 }
             }
+            Spacer(Modifier.height(spacing.md))
+            AllRow(snoozes, customMinutes, onDoneAll, onSnoozeAll)
+        }
+        HoldOverlay(holdOverlay)
+    }
+    }
+}
+
+/**
+ * The answer given to all of them at once, in the thumb zone under the strips. "Hecho con
+ * todos" is a hold and not a tap — it is three in the morning and five reminders are gone on
+ * release — and "posponer todos" unfolds the same two offers a strip has, once, for everyone.
+ */
+@Composable
+private fun AllRow(snoozes: List<Snooze>, customMinutes: Int, onDoneAll: () -> Unit, onSnoozeAll: (Snooze) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val spacing = Tokens.spacing
+    val haptics = Tokens.haptics
+    var snoozingAll by rememberSaveable { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+        if (snoozingAll) {
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm), modifier = Modifier.fillMaxWidth()) {
+                for (snooze in snoozes.take(NOTIFICATION_SNOOZES)) {
+                    Surface(
+                        onClick = {
+                            haptics.perform(HapticFeedbackType.ContextClick)
+                            onSnoozeAll(snooze)
+                        },
+                        shape = MaterialTheme.shapes.medium,
+                        color = scheme.surfaceContainerHigh,
+                        border = BorderStroke(Tokens.strokes.control, scheme.outline),
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Box(modifier = Modifier.heightIn(min = Tokens.sizes.control), contentAlignment = Alignment.Center) {
+                            Text(text = snoozeLabel(snooze, customMinutes), style = MaterialTheme.typography.labelLarge, color = scheme.onSurface)
+                        }
+                    }
+                }
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Surface(
+                onClick = { snoozingAll = !snoozingAll },
+                shape = MaterialTheme.shapes.medium,
+                color = if (snoozingAll) scheme.surfaceContainerHighest else scheme.surfaceContainerHigh,
+                border = BorderStroke(Tokens.strokes.control, scheme.outline),
+                modifier = Modifier.weight(1f),
+            ) {
+                Box(modifier = Modifier.heightIn(min = Tokens.sizes.control), contentAlignment = Alignment.Center) {
+                    Text(text = stringResource(R.string.alert_snooze_all), style = MaterialTheme.typography.labelLarge, color = scheme.onSurface)
+                }
+            }
+            HoldButton(
+                icon = Icons.Filled.Check,
+                label = stringResource(R.string.alert_done_all),
+                onHoldComplete = onDoneAll,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }

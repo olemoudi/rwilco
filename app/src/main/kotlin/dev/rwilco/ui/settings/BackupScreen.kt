@@ -64,6 +64,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.text.format.Formatter
+import android.content.Intent
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
 import dev.rwilco.R
 import dev.rwilco.model.BackupCadence
 import dev.rwilco.model.MIN_PASSPHRASE_LENGTH
@@ -103,6 +107,18 @@ fun BackupScreen(viewModel: BackupViewModel, onBack: () -> Unit) {
 
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
         uri?.let(viewModel::exportTo)
+    }
+    val exportTextLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        uri?.let(viewModel::exportTextTo)
+    }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val shareText = {
+        scope.launch {
+            val text = viewModel.readableExportText()
+            context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), null))
+        }
+        Unit
     }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let(viewModel::importFrom)
@@ -165,6 +181,8 @@ fun BackupScreen(viewModel: BackupViewModel, onBack: () -> Unit) {
                     onImport = { importLauncher.launch(arrayOf("*/*")) },
                     onDryRun = { dryRunLauncher.launch(arrayOf("*/*")) },
                     onUndo = viewModel::undoRestore,
+                    onExportText = { exportTextLauncher.launch(exportName().replace(".vault", ".txt")) },
+                    onShareText = shareText,
                 )
             } else {
                 StatusCard(vault, working, viewModel)
@@ -175,6 +193,8 @@ fun BackupScreen(viewModel: BackupViewModel, onBack: () -> Unit) {
                     onImport = { importLauncher.launch(arrayOf("*/*")) },
                     onDryRun = { dryRunLauncher.launch(arrayOf("*/*")) },
                     onUndo = viewModel::undoRestore,
+                    onExportText = { exportTextLauncher.launch(exportName().replace(".vault", ".txt")) },
+                    onShareText = shareText,
                 )
                 OffCard(viewModel::disable)
             }
@@ -300,7 +320,16 @@ private fun StatusCard(vault: VaultState, working: Boolean, viewModel: BackupVie
 
 /** The file transport, on or off: the same envelope, carried by hand. */
 @Composable
-private fun FileRows(hasKey: Boolean, hasUndo: Boolean, onExport: () -> Unit, onImport: () -> Unit, onDryRun: () -> Unit, onUndo: () -> Unit) {
+private fun FileRows(
+    hasKey: Boolean,
+    hasUndo: Boolean,
+    onExport: () -> Unit,
+    onImport: () -> Unit,
+    onDryRun: () -> Unit,
+    onUndo: () -> Unit,
+    onExportText: () -> Unit,
+    onShareText: () -> Unit,
+) {
     val spacing = Tokens.spacing
     RwilcoCard {
         Column(Modifier.padding(horizontal = spacing.lg, vertical = spacing.sm)) {
@@ -308,6 +337,10 @@ private fun FileRows(hasKey: Boolean, hasUndo: Boolean, onExport: () -> Unit, on
             NavRow(stringResource(R.string.vault_import), onClick = onImport)
             NavRow(stringResource(R.string.vault_dry_run), subtitle = stringResource(R.string.vault_dry_run_hint), onClick = onDryRun)
             if (hasUndo) NavRow(stringResource(R.string.vault_undo), subtitle = stringResource(R.string.vault_undo_hint), onClick = onUndo)
+            // The copy anybody can read: the vault is the one that survives, this is the one
+            // that can be looked at, pasted, sent — and it says so, because it is not sealed.
+            NavRow(stringResource(R.string.vault_export_text), subtitle = stringResource(R.string.vault_export_text_hint), onClick = onExportText)
+            NavRow(stringResource(R.string.vault_share_text), onClick = onShareText)
         }
     }
 }

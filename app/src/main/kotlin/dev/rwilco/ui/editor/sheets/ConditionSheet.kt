@@ -36,9 +36,12 @@ import java.time.LocalTime
  * "a las nueve, y sólo si estoy en casa" expressible: two things true at once, which is what a
  * condition has always been for and what the "todos" of several triggers is not.
  *
- * A place condition picks from the places kept in Settings rather than opening the map. A
+ * A place condition picks from the places kept by name rather than dropping a pin here. A
  * circle you are going to refer to by name in a sentence is a circle worth naming once, and
- * every arbitrary pin dropped here would be one more unnamed place to recognise later.
+ * every arbitrary pin dropped here would be one more unnamed place to recognise later. So the
+ * way to a new one is to *name* one — "Nuevo lugar" opens the place sheet in its Settings
+ * shape and keeps what it makes — which is what made "y sólo si estoy en casa" reachable from
+ * the editor at all: the kind used to be hidden until somebody had been to Settings first.
  */
 @Composable
 fun ConditionSheet(
@@ -46,13 +49,13 @@ fun ConditionSheet(
     savedPlaces: List<SavedPlace>,
     onConfirm: (Condition) -> Unit,
     onDismiss: () -> Unit,
+    /** Where a place named here is kept, so it is on the chips the moment it is made. */
+    onKeepPlace: (SavedPlace) -> Unit = {},
 ) {
     val window = initial as? Condition.TimeWindow
     val atPlace = initial as? Condition.AtPlace
-    // A new condition on a reminder with nowhere saved cannot be a place one, so it does not
-    // pretend to offer it.
-    val placeOffered = savedPlaces.isNotEmpty() || atPlace != null
     var place by rememberSaveable { mutableStateOf(atPlace != null) }
+    var addingPlace by rememberSaveable { mutableStateOf(false) }
     var from by rememberTime(window?.from ?: LocalTime.of(18, 0))
     var to by rememberTime(window?.to ?: LocalTime.of(22, 0))
     var days by rememberSaveable { mutableStateOf(window?.days?.map { it.name }?.toSet() ?: emptySet()) }
@@ -65,11 +68,11 @@ fun ConditionSheet(
     } else {
         savedPlaces
     }
-    var chosen by rememberSaveable {
-        mutableStateOf(offered.indexOfFirst { it.label == atPlace?.label }.coerceAtLeast(0))
-    }
+    // By name and not by index: a place kept from here lands wherever the list puts it (a
+    // renamed one replaces its namesake), and the chip that should light is the one just made.
+    var chosenLabel by rememberSaveable { mutableStateOf(atPlace?.label ?: offered.firstOrNull()?.label) }
     val selected = days.map(DayOfWeek::valueOf).toSet()
-    val pickedPlace = offered.getOrNull(chosen)
+    val pickedPlace = offered.firstOrNull { it.label == chosenLabel } ?: offered.firstOrNull()
 
     SheetScaffold(
         title = stringResource(R.string.condition_title),
@@ -84,16 +87,14 @@ fun ConditionSheet(
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
         confirmEnabled = if (place) pickedPlace != null else from != to,
     ) {
-        if (placeOffered) {
-            SegmentedChoice(
-                options = listOf(stringResource(R.string.condition_kind_hours), stringResource(R.string.condition_kind_place)),
-                selectedIndex = if (place) 1 else 0,
-                onSelect = { place = it == 1 },
-            )
-        }
+        SegmentedChoice(
+            options = listOf(stringResource(R.string.condition_kind_hours), stringResource(R.string.condition_kind_place)),
+            selectedIndex = if (place) 1 else 0,
+            onSelect = { place = it == 1 },
+        )
         if (place) {
             Text(
-                text = stringResource(R.string.condition_place_hint),
+                text = stringResource(if (offered.isEmpty()) R.string.condition_place_none else R.string.condition_place_hint),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -106,9 +107,10 @@ fun ConditionSheet(
                 horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
             ) {
-                offered.forEachIndexed { index, saved ->
-                    PresetChip(saved.label, selected = index == chosen, onClick = { chosen = index })
+                for (saved in offered) {
+                    PresetChip(saved.label, selected = saved.label == pickedPlace?.label, onClick = { chosenLabel = saved.label })
                 }
+                PresetChip(stringResource(R.string.condition_new_place), selected = false, onClick = { addingPlace = true })
             }
             return@SheetScaffold
         }
@@ -144,5 +146,20 @@ fun ConditionSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+    if (addingPlace) {
+        // The same sheet Settings keeps a place with, over this one: a name, a pin, a radius,
+        // and no arriving/leaving — a condition is a side of the line, not a crossing of it.
+        LocationSheet(
+            initial = null,
+            title = stringResource(R.string.place_saved_title),
+            pickTransition = false,
+            onConfirm = { made ->
+                onKeepPlace(SavedPlace(made.label, made.lat, made.lng, made.radiusM))
+                chosenLabel = made.label
+                addingPlace = false
+            },
+            onDismiss = { addingPlace = false },
+        )
     }
 }

@@ -56,6 +56,13 @@ data class Sizes(
     val touch: Dp = 48.dp,
     val control: Dp = 56.dp,
     val primary: Dp = 64.dp,
+    /**
+     * The map in the place sheet: this share of the window's height, and never less than
+     * [mapMinHeight]. It was a fixed 260dp, which on a tall phone is a letterbox the circle
+     * has to be aimed through; a share of the screen is what "generous" means on every phone.
+     */
+    val mapShare: Float = 0.42f,
+    val mapMinHeight: Dp = 260.dp,
     val keycap: Dp = 36.dp,
     /** The small square that carries a section's icon. */
     val badge: Dp = 28.dp,

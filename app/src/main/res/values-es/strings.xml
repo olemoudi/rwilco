@@ -300,8 +300,15 @@
     <string name="place_radius">Radio</string>
     <string name="place_metres">%1$d m</string>
     <string name="place_map_hint">Mantén pulsado el mapa para mover el pin. Mapa © colaboradores de OpenStreetMap.</string>
+    <string name="place_expand">Abrir el mapa a pantalla completa</string>
+    <string name="place_collapse">Volver a la hoja</string>
+    <string name="place_keep">Guardar como lugar</string>
+    <string name="place_keep_hint">La próxima vez se ofrece por su nombre; queda en Ajustes → Lugares</string>
     <string name="calendar_previous_month">Mes anterior</string>
     <string name="calendar_next_month">Mes siguiente</string>
+    <string name="calendar_jump">Elegir mes</string>
+    <string name="calendar_previous_year">Año anterior</string>
+    <string name="calendar_next_year">Año siguiente</string>
     <string name="stepper_less">Menos</string>
     <string name="stepper_more">Más</string>
 
@@ -312,6 +319,8 @@
     <string name="alert_snooze">Posponer</string>
     <string name="alert_done">Hecho</string>
     <string name="alert_view">Ver</string>
+    <string name="alert_done_all">Hecho con todos</string>
+    <string name="alert_snooze_all">Posponer todos</string>
     <string name="alert_close_preview">Cerrar la vista previa</string>
     <!-- Done list -->
     <string name="done_title">Hechos</string>
@@ -759,6 +768,8 @@
     <string name="place_means_leaving">Tiene que verte salir. Si ya estás fuera, espera a que entres y vuelvas a salir.</string>
     <string name="condition_kind_place">Lugar</string>
     <string name="condition_place_hint">Sólo cuenta cuando el teléfono está allí — o cuando no lo está. Elige entre los lugares que guardas en Ajustes.</string>
+    <string name="condition_place_none">Aún no hay lugares guardados por su nombre. Crea uno aquí; queda en Ajustes → Lugares.</string>
+    <string name="condition_new_place">Nuevo lugar</string>
     <string name="condition_place_inside">Estoy allí</string>
     <string name="condition_place_outside">No estoy allí</string>
     <string name="condition_at_place">en %1$s</string>
@@ -1019,6 +1030,14 @@
     <string name="vault_wifi_only_hint">Una copia son unas decenas de kilobytes, así que rara vez va de datos. Está aquí porque son tus datos, no los de la app. Con esto activado las copias esperan al wifi; pedir una a mano sale por donde haya.</string>
     <string name="vault_dry_run">Probar un archivo</string>
     <string name="vault_dry_run_hint">Lo abre y dice qué contiene. En este teléfono no cambia nada.</string>
+    <string name="vault_export_text">Exportar en texto</string>
+    <string name="vault_export_text_hint">Legible por cualquier cosa, y por cualquiera: sin cifrar.</string>
+    <string name="vault_share_text">Compartir en texto</string>
+    <string name="export_text_title">Rwilco · %1$s</string>
+    <string name="export_text_open">Abiertos</string>
+    <string name="export_text_done">Hechos</string>
+    <string name="export_text_paused">en pausa</string>
+    <string name="export_text_done_on">hecho el %1$s</string>
     <string name="vault_dry_run_title">El archivo funciona</string>
     <string name="vault_dry_run_ok">En este teléfono no ha cambiado nada: esto era un ensayo.</string>
     <string name="vault_pass_not_yet">Todavía no: al menos %1$d caracteres, con letras y números.</string>
@@ -1104,6 +1123,14 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_52_0">
+        <item>El mapa de la hoja de lugar ocupa una parte de la pantalla en vez de una franja fija, y se abre a pantalla completa desde un botón en su esquina: sitio para recorrer una calle y encontrar la esquina, con el radio debajo y una sola vuelta.</item>
+        <item>«Guardar como lugar», en la hoja de lugar: el lugar hecho para una regla se guarda con su nombre, y la siguiente regla que lo quiera lo coge de un chip. Un lugar guardado sólo se podía crear en Ajustes.</item>
+        <item>«Y sólo si estoy en casa» se puede escribir sin pasar antes por Ajustes: la hoja de condición ofrece siempre la clase lugar, y «Nuevo lugar» nombra uno ahí mismo.</item>
+        <item>Varios sonando a la vez: «Hecho con todos» (manteniendo — cinco recordatorios se van al soltar) y «Posponer todos», bajo las tiras.</item>
+        <item>Toca el nombre del mes en cualquier calendario para elegir mes y año; una fecha a un año vista eran doce deslizamientos.</item>
+        <item>Exportar en texto, desde Copia: todo lo que guarda el teléfono, en sus propias frases, legible por cualquier cosa — y para compartir. La copia cifrada es la que sobrevive; esta es la que se puede leer.</item>
+    </string-array>
     <string-array name="whats_new_0_51_0">
         <item>Estas notas vuelven. La hoja llevaba callada desde la 0.20.0 —treinta versiones sin decir nada— y ahora no se puede cortar una versión sin su línea. Debajo de esta, lo que pasó entre medias.</item>
         <item>«Saltar la próxima», en el menú de una tarjeta que vuelve: dejar pasar una ronda sin pausar el recordatorio y acordarse de volver. Por debajo es un «hecho» dado antes de tiempo, que es lo que siempre fue; sólo que no tenía nombre.</item>

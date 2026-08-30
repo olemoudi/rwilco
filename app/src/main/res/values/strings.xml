@@ -302,8 +302,15 @@
     <string name="place_radius">Radius</string>
     <string name="place_metres">%1$d m</string>
     <string name="place_map_hint">Long-press the map to move the pin. Map © OpenStreetMap contributors.</string>
+    <string name="place_expand">Open the map full screen</string>
+    <string name="place_collapse">Back to the form</string>
+    <string name="place_keep">Keep as a place</string>
+    <string name="place_keep_hint">Offered by name next time, and kept in Settings → Places</string>
     <string name="calendar_previous_month">Previous month</string>
     <string name="calendar_next_month">Next month</string>
+    <string name="calendar_jump">Pick a month</string>
+    <string name="calendar_previous_year">Previous year</string>
+    <string name="calendar_next_year">Next year</string>
     <string name="stepper_less">Less</string>
     <string name="stepper_more">More</string>
 
@@ -314,6 +321,8 @@
     <string name="alert_snooze">Snooze</string>
     <string name="alert_done">Done</string>
     <string name="alert_view">View</string>
+    <string name="alert_done_all">Done with all</string>
+    <string name="alert_snooze_all">Snooze all</string>
     <string name="alert_close_preview">Close preview</string>
     <!-- Done list -->
     <string name="done_title">Done</string>
@@ -761,6 +770,8 @@
     <string name="place_means_leaving">It has to see you leave. If you are already away, it waits until you go there and leave again.</string>
     <string name="condition_kind_place">Place</string>
     <string name="condition_place_hint">Only counts when the phone is there — or when it is not. Pick from the places you keep in Settings.</string>
+    <string name="condition_place_none">No place kept by name yet. Make one here; it is kept in Settings → Places.</string>
+    <string name="condition_new_place">New place</string>
     <string name="condition_place_inside">I am there</string>
     <string name="condition_place_outside">I am not there</string>
     <string name="condition_at_place">at %1$s</string>
@@ -1021,6 +1032,14 @@
     <string name="vault_wifi_only_hint">A copy is a few tens of kilobytes, so this is rarely about the data. It is here because it is your data plan, not the app\'s. With it on, copies wait for wifi; asking for one by hand goes over whatever there is.</string>
     <string name="vault_dry_run">Test a file</string>
     <string name="vault_dry_run_hint">Opens it and says what is in it. Nothing on this phone changes.</string>
+    <string name="vault_export_text">Export as text</string>
+    <string name="vault_export_text_hint">Readable by anything, and by anyone: not sealed.</string>
+    <string name="vault_share_text">Share as text</string>
+    <string name="export_text_title">Rwilco · %1$s</string>
+    <string name="export_text_open">Open</string>
+    <string name="export_text_done">Done</string>
+    <string name="export_text_paused">paused</string>
+    <string name="export_text_done_on">done %1$s</string>
     <string name="vault_dry_run_title">The file works</string>
     <string name="vault_dry_run_ok">Nothing on this phone has changed: this was a rehearsal.</string>
     <string name="vault_pass_not_yet">Not yet: at least %1$d characters, with letters and digits.</string>
@@ -1106,6 +1125,14 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_52_0">
+        <item>The map in the place sheet takes a share of the screen instead of a fixed strip, and opens full screen from a button in its corner: room to pan out along a street and find the corner, with the radius under it and one way back.</item>
+        <item>«Guardar como lugar», on the place sheet: the place made for a rule kept by name, so the next rule that means it picks it off a chip. Saved places could only ever be made in Settings.</item>
+        <item>«Y sólo si estoy en casa» can be written without going to Settings first: the condition sheet offers the place kind always, and «Nuevo lugar» names one on the spot.</item>
+        <item>Several ringing at once: «Hecho con todos» (a hold — five reminders go on release) and «Posponer todos», under the strips.</item>
+        <item>Tap the month\'s name in any calendar to pick a month and a year; a date a year out was twelve swipes.</item>
+        <item>Export as text, from Backup: everything the phone holds, in its own sentences, readable by anything — and shareable. The vault is the copy that survives; this is the copy that can be looked at.</item>
+    </string-array>
     <string-array name="whats_new_0_51_0">
         <item>These notes are back. The sheet had been silent since 0.20.0 — thirty versions with nothing said — and now a build cannot be cut without its line. Below this one, what happened in between.</item>
         <item>«Saltar la próxima», in the menu of a card that comes back: one round let pass without pausing the reminder and remembering to come back. Underneath it is a «hecho» given early, which is what it always was; it just had no name.</item>

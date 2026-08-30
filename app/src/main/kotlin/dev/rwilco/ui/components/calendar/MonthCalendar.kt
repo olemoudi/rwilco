@@ -1,5 +1,6 @@
 package dev.rwilco.ui.components.calendar
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
@@ -14,6 +16,8 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowDropDown
+import androidx.compose.material.icons.outlined.ArrowDropUp
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material3.Icon
@@ -22,6 +26,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -39,6 +48,8 @@ import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
 import java.time.LocalDate
+import java.time.format.TextStyle
+import java.util.Locale
 import java.time.YearMonth
 import java.time.temporal.WeekFields
 import kotlinx.coroutines.launch
@@ -73,19 +84,57 @@ fun MonthCalendar(
         if (page != pager.currentPage && !pager.isScrollInProgress) pager.animateScrollToPage(page)
     }
 
+    // The month's name is a door: a date a year out was twelve swipes, one per month, with
+    // nothing between that and typing. Tapped, the grid gives way to the year and its twelve
+    // months; a month tapped there turns the pager to it and the grid comes back.
+    var jumping by rememberSaveable { mutableStateOf(false) }
+    var jumpYear by rememberSaveable(month.year) { mutableIntStateOf(month.year) }
+    val jumpRange = remember(base) { MonthGrid.monthAt(0, base).year..MonthGrid.monthAt(MonthGrid.PAGE_COUNT - 1, base).year }
     Column(modifier = modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = TimeText.monthYear(month, locale),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.weight(1f),
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(MaterialTheme.shapes.small)
+                    .clickable(
+                        role = Role.Button,
+                        onClickLabel = stringResource(R.string.calendar_jump),
+                        onClick = {
+                            haptics.perform(HapticFeedbackType.SegmentTick)
+                            jumpYear = month.year
+                            jumping = !jumping
+                        },
+                    )
+                    .heightIn(min = Tokens.sizes.touch),
+            ) {
+                Text(text = TimeText.monthYear(month, locale), style = MaterialTheme.typography.titleMedium)
+                Icon(
+                    imageVector = if (jumping) Icons.Outlined.ArrowDropUp else Icons.Outlined.ArrowDropDown,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             IconButton(onClick = { scope.launch { pager.animateScrollToPage(pager.currentPage - 1) } }) {
                 Icon(Icons.AutoMirrored.Outlined.KeyboardArrowLeft, contentDescription = stringResource(R.string.calendar_previous_month))
             }
             IconButton(onClick = { scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } }) {
                 Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = stringResource(R.string.calendar_next_month))
             }
+        }
+        if (jumping) {
+            MonthJump(
+                year = jumpYear,
+                yearRange = jumpRange,
+                current = month,
+                locale = locale,
+                onYear = { jumpYear = it },
+                onMonth = { picked ->
+                    jumping = false
+                    scope.launch { pager.animateScrollToPage(MonthGrid.pageOf(picked, base)) }
+                },
+            )
+            return@Column
         }
         Row(modifier = Modifier.fillMaxWidth()) {
             for (day in MonthGrid.weekdays(firstDayOfWeek)) {
@@ -115,6 +164,70 @@ fun MonthCalendar(
                                 modifier = Modifier.weight(1f),
                             )
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The year with its twelve months, in the grid's place: three rows of four, the month on
+ * screen inverted, the year stepped with the same arrows the months use.
+ */
+@Composable
+private fun MonthJump(
+    year: Int,
+    yearRange: IntRange,
+    current: YearMonth,
+    locale: Locale,
+    onYear: (Int) -> Unit,
+    onMonth: (YearMonth) -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val haptics = Tokens.haptics
+    val spacing = Tokens.spacing
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { onYear(year - 1) }, enabled = year - 1 >= yearRange.first) {
+                Icon(Icons.AutoMirrored.Outlined.KeyboardArrowLeft, contentDescription = stringResource(R.string.calendar_previous_year))
+            }
+            Text(
+                text = year.toString(),
+                style = MonoStyles.time,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(onClick = { onYear(year + 1) }, enabled = year + 1 <= yearRange.last) {
+                Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = stringResource(R.string.calendar_next_year))
+            }
+        }
+        for (row in 0 until 3) {
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs), modifier = Modifier.fillMaxWidth()) {
+                for (column in 0 until 4) {
+                    val ym = YearMonth.of(year, row * 4 + column + 1)
+                    val selected = ym == current
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = Tokens.sizes.touch)
+                            .clip(MaterialTheme.shapes.small)
+                            .background(if (selected) scheme.onSurface else scheme.surfaceContainerHigh)
+                            .selectable(
+                                selected = selected,
+                                role = Role.RadioButton,
+                                onClick = {
+                                    haptics.perform(HapticFeedbackType.SegmentTick)
+                                    onMonth(ym)
+                                },
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = ym.month.getDisplayName(TextStyle.SHORT, locale).replace(".", "").replaceFirstChar { it.titlecase(locale) },
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (selected) scheme.surface else scheme.onSurface,
+                        )
                     }
                 }
             }

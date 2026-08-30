@@ -433,12 +433,14 @@ fun EditorScreen(
                 savedPlaces = state.savedPlaces,
                 onConfirm = { condition -> viewModel.commitRecurrenceCondition(sheet.index, condition) },
                 onDismiss = viewModel::closeSheet,
+                onKeepPlace = viewModel::keepPlace,
             )
             is EditorSheet.ConfigureCondition -> ConditionSheet(
                 initial = sheet.initial,
                 savedPlaces = state.savedPlaces,
                 onConfirm = { condition -> viewModel.commitCondition(sheet.ruleIndex, sheet.conditionIndex, condition) },
                 onDismiss = viewModel::closeSheet,
+                onKeepPlace = viewModel::keepPlace,
             )
             is EditorSheet.Configure -> {
                 val commit = { trigger: dev.rwilco.model.Trigger -> viewModel.commitTrigger(sheet.index, trigger) }
@@ -503,6 +505,7 @@ fun EditorScreen(
                         onConfirm = commit,
                         onDismiss = viewModel::closeSheet,
                         savedPlaces = state.savedPlaces,
+                        onKeepPlace = viewModel::keepPlace,
                     )
                 }
             }

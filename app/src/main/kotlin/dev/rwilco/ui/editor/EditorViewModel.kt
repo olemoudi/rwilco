@@ -12,6 +12,7 @@ import dev.rwilco.model.Action
 import dev.rwilco.model.clearCountdowns
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Recurrence
+import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.RecurrencePreset
 import dev.rwilco.model.withSpanOf
 import dev.rwilco.model.keeping
@@ -236,6 +237,21 @@ class EditorViewModel(
                 settings.copy(recurrencePresets = settings.recurrencePresets.keeping(preset))
             }
             refreshRecurrencePresets()
+        }
+    }
+
+    /**
+     * A place kept by name from the sheet that made it. Replaces a namesake rather than sitting
+     * beside it — the chips are read by name — and the sheet's own list of chips is refreshed
+     * from the store, because the condition sheet is open on this state while it happens.
+     */
+    fun keepPlace(place: SavedPlace) {
+        viewModelScope.launch {
+            store.update { settings ->
+                settings.copy(savedPlaces = settings.savedPlaces.filterNot { it.label.equals(place.label, ignoreCase = true) } + place)
+            }
+            val kept = store.settings.first().savedPlaces
+            _state.update { it.copy(savedPlaces = kept) }
         }
     }
 

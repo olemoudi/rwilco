@@ -51,6 +51,8 @@ fun OsmMap(
     radiusM: Int,
     onLongPress: (GeoPoint) -> Unit,
     modifier: Modifier = Modifier,
+    /** How tall the map is, in dp: the zoom that fits a circle is worked out from it. */
+    heightDp: Float = MAP_HEIGHT_DP,
 ) {
     val context = LocalContext.current
     val dark = LocalDarkTheme.current
@@ -82,12 +84,12 @@ fun OsmMap(
         color = scheme.surfaceContainerHigh,
         border = BorderStroke(1.dp, scheme.outlineVariant),
         // Its own height, because the zoom is worked out from it: a viewport whose size only
-        // the caller knows cannot be asked to fit anything.
-        modifier = modifier.height(MAP_HEIGHT_DP.dp),
+        // the caller knows cannot be asked to fit anything — so the caller says the height.
+        modifier = modifier.height(heightDp.dp),
     ) {
         AndroidView(
             factory = { holder.wrapper },
-            update = { holder.show(center, radiusM) },
+            update = { holder.show(center, radiusM, heightDp) },
         )
     }
 }
@@ -167,7 +169,7 @@ private class MapHolder(
         }
     }
 
-    fun show(center: GeoPoint?, radiusM: Int) {
+    fun show(center: GeoPoint?, radiusM: Int, heightDp: Float) {
         if (center == null) {
             map.overlays.remove(marker)
             map.overlays.remove(circle)
@@ -188,7 +190,7 @@ private class MapHolder(
             // fifty-metre doorway worth aiming at.
             val fitted = if (shownCenter == null) maxOf(radiusM, OPENING_RADIUS_M) else radiusM
             shownCenter = center
-            map.controller.setZoom(zoomFittingCircle(fitted, center.latitude))
+            map.controller.setZoom(zoomFittingCircle(fitted, center.latitude, heightDp))
             map.controller.animateTo(center)
         }
         map.invalidate()
@@ -197,8 +199,8 @@ private class MapHolder(
     private fun inverted(argb: Int): Int = (argb and 0xFF000000.toInt()) or (argb.inv() and 0x00FFFFFF)
 }
 
-/** The map is this tall, in dp, and the zoom below is worked out from it. */
-private const val MAP_HEIGHT_DP = 260f
+/** The map's height when nobody says otherwise, in dp; the zoom below is worked out from it. */
+internal const val MAP_HEIGHT_DP = 260f
 
 /** The circle the map opens wide enough for, whatever the radius starts at. */
 private const val OPENING_RADIUS_M = 300
