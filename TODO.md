@@ -8,6 +8,11 @@ Running notes: what is next, what cost time, what must not be re-derived.
   silently fails on this image). Even then, `input tap` on Compose buttons landed maybe one time
   in three and a missed tap cascades (a stray BACK on Home closes the app). The instrumented tour
   test replaced the whole approach. Cost: an hour on 2026-08-24.
+- **The keyboard comes up a beat after `performTextInput`**, resizes the window (`adjustResize`)
+  and the editor's lower sections leave the composition under it: a chip node found before that
+  is stale, `performClick` lands on a key, and `performScrollTo` cannot reach what is not
+  composed. Hide it first through `InputMethodManager` (see `WhenChipTest.hideKeyboard`); there
+  is no Espresso here to `closeSoftKeyboard()` with. Cost: four emulator runs on 2026-08-30.
 - Cold start on the emulator shows a blank Home for ~2–3 s before the first DB emission (debug
   build, swiftshader). Since 0.45.0 that gap draws card-shaped placeholders rather than nothing.
 
