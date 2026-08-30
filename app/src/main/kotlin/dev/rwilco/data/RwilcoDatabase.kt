@@ -8,7 +8,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [ReminderEntity::class],
+    entities = [ReminderEntity::class, FiringEventEntity::class],
     version = RwilcoDatabase.VERSION,
     exportSchema = true,
 )
@@ -16,9 +16,11 @@ abstract class RwilcoDatabase : RoomDatabase() {
 
     abstract fun reminders(): ReminderDao
 
+    abstract fun events(): FiringEventDao
+
     companion object {
         /** A named constant so MigrationChainTest can assert the chain reaches it. */
-        const val VERSION = 8
+        const val VERSION = 9
         private const val NAME = "rwilco.db"
 
         /** One entry per version step; `// vN: what it added` on each. */
@@ -104,6 +106,19 @@ abstract class RwilcoDatabase : RoomDatabase() {
             object : Migration(7, 8) {
                 override fun migrate(db: SupportSQLiteDatabase) {
                     db.execSQL("ALTER TABLE reminder ADD COLUMN lastFiredRule INTEGER")
+                }
+            },
+            // v9: what happened to a reminder, per reminder (FiringEventEntity). A new table
+            // and nothing on the old one: every existing row simply has no history yet.
+            object : Migration(8, 9) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        "CREATE TABLE IF NOT EXISTS `firing_event` (" +
+                            "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `reminderId` TEXT NOT NULL, `at` INTEGER NOT NULL, " +
+                            "`kind` TEXT NOT NULL, `ruleIndex` INTEGER, `detail` TEXT, " +
+                            "FOREIGN KEY(`reminderId`) REFERENCES `reminder`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+                    )
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_firing_event_reminderId_at` ON `firing_event` (`reminderId`, `at`)")
                 }
             },
         )

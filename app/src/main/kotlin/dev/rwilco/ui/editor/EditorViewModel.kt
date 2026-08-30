@@ -50,6 +50,9 @@ import java.util.UUID
 import dev.rwilco.model.ValidationError
 import dev.rwilco.model.MAX_TEXT_LENGTH
 
+/** How many lines of history the form shows: a fortnight of a daily, which is what "¿sonó ayer?" needs. */
+private const val HISTORY_SHOWN = 14
+
 sealed interface EditorEvent {
     data object Saved : EditorEvent
     data class Deleted(val reminder: Reminder) : EditorEvent
@@ -170,6 +173,7 @@ class EditorViewModel(
                 kindOrder = if (current.popularTriggersFirst) triggerKindsByUse(past, now) else OFFERED_KINDS,
                 savedPlaces = current.savedPlaces,
                 savedWindows = current.savedWindows,
+                history = loaded?.let { repository.history(it.id, HISTORY_SHOWN) }.orEmpty(),
                 recurrencePresets = recurrencePresetsByPopularity(current.recurrencePresets),
                 asPreset = editedPreset != null || newPreset,
                 initialAsPreset = editedPreset != null || newPreset,

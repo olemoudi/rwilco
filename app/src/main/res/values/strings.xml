@@ -322,6 +322,16 @@
     <string name="alert_done">Done</string>
     <string name="alert_view">View</string>
     <string name="alert_done_all">Done with all</string>
+    <string name="history_title">History</string>
+    <string name="history_note">The last few times it rang or was answered. It goes with the reminder, and stays on this phone.</string>
+    <string name="history_rang">rang</string>
+    <string name="history_missed">did not ring on time; said quietly</string>
+    <string name="history_net">the safety net spoke up</string>
+    <string name="history_dealt">done</string>
+    <string name="history_skipped">next round skipped</string>
+    <string name="history_snoozed">put off</string>
+    <string name="history_snoozed_until">put off until %1$s</string>
+    <string name="history_unticked">came undone</string>
     <string name="alert_snooze_all">Snooze all</string>
     <string name="alert_close_preview">Close preview</string>
     <!-- Done list -->
@@ -1125,6 +1135,10 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_54_0">
+        <item>A reminder keeps its history: the last few times it rang, was answered, put off, skipped or caught by the safety net, on a card of its own in the form. «¿Sonó ayer?» had no answer anywhere a person could find — the row keeps one of each stamp and the diagnostics ring keeps a week of everything. It goes with the reminder and stays on this phone; the backup does not carry it.</item>
+        <item>The diagnostics report says the same, five deep per reminder, so a question about one ring no longer needs the whole log.</item>
+    </string-array>
     <string-array name="whats_new_0_53_0">
         <item>The pinned presets are on the launcher icon. Hold it, «Comprar pan», and the reminder is written without the app in between — or its words are asked for, when the shape left them open, the same two doors the button on Home has.</item>
         <item>The places\' geofences are no longer torn down and put back on every start of the process. The place watch\'s own alarm starts it every few minutes to an hour on a phone that kills it, and a crossing in the gap between the remove and the add was a crossing nobody saw. A sync now compares what it would register with what it last did and leaves Play Services alone when nothing changed; a reboot, an update or the six-hourly net still register afresh.</item>

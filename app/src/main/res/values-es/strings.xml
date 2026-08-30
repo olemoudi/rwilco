@@ -320,6 +320,16 @@
     <string name="alert_done">Hecho</string>
     <string name="alert_view">Ver</string>
     <string name="alert_done_all">Hecho con todos</string>
+    <string name="history_title">Historial</string>
+    <string name="history_note">Las últimas veces que sonó o se contestó. Se va con el recordatorio, y no sale de este teléfono.</string>
+    <string name="history_rang">sonó</string>
+    <string name="history_missed">no sonó a tiempo; se dijo bajito</string>
+    <string name="history_net">avisó la red de seguridad</string>
+    <string name="history_dealt">hecho</string>
+    <string name="history_skipped">saltada la siguiente</string>
+    <string name="history_snoozed">pospuesto</string>
+    <string name="history_snoozed_until">pospuesto hasta %1$s</string>
+    <string name="history_unticked">se deshizo</string>
     <string name="alert_snooze_all">Posponer todos</string>
     <string name="alert_close_preview">Cerrar la vista previa</string>
     <!-- Done list -->
@@ -1123,6 +1133,10 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_54_0">
+        <item>Un recordatorio guarda su historial: las últimas veces que sonó, se contestó, se pospuso, se saltó o lo recogió la red de seguridad, en una tarjeta propia dentro del formulario. «¿Sonó ayer?» no tenía respuesta en ningún sitio a mano — la fila guarda una sola marca de cada cosa y el diagnóstico una semana de todo. Se va con el recordatorio y no sale de este teléfono; la copia no lo lleva.</item>
+        <item>El informe de diagnóstico dice lo mismo, cinco líneas por recordatorio, para que una pregunta sobre un toque no necesite el registro entero.</item>
+    </string-array>
     <string-array name="whats_new_0_53_0">
         <item>Los presets fijados están en el icono del launcher. Mantenlo, «Comprar pan», y el recordatorio queda escrito sin pasar por la app — o te pide las palabras, cuando la forma las dejó abiertas, las mismas dos puertas que tiene el botón del inicio.</item>
         <item>Las geovallas de los lugares ya no se quitan y se vuelven a poner en cada arranque del proceso. La propia alarma del vigilante lo arranca cada pocos minutos o cada hora en un teléfono que lo mata, y un cruce en el hueco entre quitar y poner era un cruce que nadie vio. Ahora una sincronización compara lo que registraría con lo último que registró y deja en paz a Play Services si nada cambió; un reinicio, una actualización o la red de cada seis horas siguen registrando de nuevo.</item>

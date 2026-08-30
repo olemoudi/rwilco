@@ -12,7 +12,11 @@ import java.time.Instant
  * The domain's view of persistence. Reactive for the screens, suspend for one-shot writes; Room
  * already runs both off the main thread.
  */
-class ReminderRepository(private val dao: ReminderDao, private val clock: Clock) {
+class ReminderRepository(
+    private val dao: ReminderDao,
+    private val clock: Clock,
+    private val events: FiringEventDao,
+) {
 
     val open: Flow<List<Reminder>> = dao.observeOpen().map { rows -> rows.map(ReminderEntity::toDomain) }
 
@@ -95,4 +99,26 @@ class ReminderRepository(private val dao: ReminderDao, private val clock: Clock)
     }
 
     suspend fun deleteAll() = dao.deleteAll()
+
+    /**
+     * One thing that happened to a reminder, written down. Capped at [HISTORY_KEEP] per
+     * reminder on the way in; a row that is gone by the time this runs (a notification's
+     * button outliving its reminder) is nothing to write about, not a failure.
+     */
+    suspend fun record(reminderId: String, kind: FiringKind, at: Instant = clock.instant(), ruleIndex: Int? = null, detail: String? = null) {
+        runCatching {
+            events.insert(FiringEventEntity(reminderId = reminderId, at = at.toEpochMilli(), kind = kind.name, ruleIndex = ruleIndex, detail = detail))
+            events.trim(reminderId, HISTORY_KEEP)
+        }
+    }
+
+    /** What happened to one reminder, newest first. */
+    suspend fun history(reminderId: String, limit: Int = HISTORY_KEEP): List<FiringEvent> =
+        events.history(reminderId, limit).mapNotNull(FiringEventEntity::toDomain)
+
+    /** The newest [perReminder] happenings of every reminder, for the diagnostics report. */
+    suspend fun recentHistory(perReminder: Int): Map<String, List<FiringEvent>> =
+        events.newest(HISTORY_KEEP * 8)
+            .groupBy { it.reminderId }
+            .mapValues { (_, rows) -> rows.take(perReminder).mapNotNull(FiringEventEntity::toDomain) }
 }

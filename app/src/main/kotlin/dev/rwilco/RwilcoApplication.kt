@@ -98,7 +98,8 @@ class RwilcoApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         settingsStore = SettingsStore(this)
-        repository = ReminderRepository(RwilcoDatabase.get(this).reminders(), clock)
+        val database = RwilcoDatabase.get(this)
+        repository = ReminderRepository(database.reminders(), clock, database.events())
         settings = settingsStore.settings
             .map<AppSettings, AppSettings?> { it }
             .stateIn(appScope, SharingStarted.Eagerly, null)

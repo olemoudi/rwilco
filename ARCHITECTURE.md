@@ -413,6 +413,17 @@ because that is what its chip would show.
   A *second* repeating rule on one reminder is dropped: two calendars is a thing the app can no
   longer say, and a rule nothing can edit is worse than one that is gone. `SettingsStore` folds the presets the same way on the way out of
   DataStore, because a preset written then holds a repeating rule too. Room v8 adds
+  **Room v9 adds a second table, `firing_event` (0.54.0)**: what happened to a reminder, one row
+  per happening — rang, rang late, the net spoke, dealt with, a round skipped, put off (until
+  when), a place rule come undone — capped at `HISTORY_KEEP` per reminder and gone with it
+  (a foreign key cascade; a restore replaces the reminders and takes the history with them).
+  The row keeps one of each stamp and `DiagLog` keeps a week of everything, so "¿sonó ayer?" —
+  the question under half the reports from the phone — had no answer anywhere a person could
+  find; `ReminderFiring` writes these where it writes its diagnostic notes, the editor shows the
+  last fortnight of them on a card of their own (`HistoryList`), and the report carries five
+  per reminder (`hist=`). Not in the vault: it is diagnostic, like the place watch's log — what
+  the row *is* is what the backup copies, and what happened to it stays on the phone it
+  happened on.
   `lastFiredRule` (see the place watch below): additive, null on every older row, and one more
   name on the vault's frozen column list.
   `RwilcoDatabase.VERSION` + `MIGRATIONS` are guarded by `MigrationChainTest` (JVM) and

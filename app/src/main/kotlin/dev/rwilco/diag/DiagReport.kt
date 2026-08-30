@@ -1,6 +1,7 @@
 package dev.rwilco.diag
 
 import dev.rwilco.model.dayShape
+import dev.rwilco.data.FiringEvent
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Condition
 import dev.rwilco.model.DiagNote
@@ -75,7 +76,12 @@ data class Diagnostics(
     val vault: DiagVault?,
     val notes: List<DiagNote>,
     val watch: List<WatchNote>,
+    /** The newest few happenings of each reminder, by id: what rang, what was answered, when. */
+    val events: Map<String, List<FiringEvent>> = emptyMap(),
 )
+
+/** How many happenings per reminder the report carries: the last few days of a daily one. */
+const val DIAG_EVENTS_PER_REMINDER = 5
 
 /** As many reminders as anybody will read; the rest are counted and named as missing. */
 const val DIAG_REMINDERS = 30
@@ -144,6 +150,10 @@ fun Diagnostics.report(): String = buildString {
     for (reminder in shown) {
         appendLine(reminder.identityLine())
         appendLine("    " + reminder.stateLine(env.now, zone, settings, stampOf = ::stamp))
+        // One firing deep was all the row could say; this is the few before it.
+        events[reminder.id]?.takeIf { it.isNotEmpty() }?.let { history ->
+            appendLine("    hist=" + history.joinToString(" ") { "${it.at.atZone(zone).format(short)}:${it.kind.name.lowercase()}${it.ruleIndex?.let { r -> "/r$r" } ?: ""}" })
+        }
     }
     if (reminders.size > shown.size) appendLine("... ${reminders.size - shown.size} more not listed (oldest by last edit)")
     appendLine()

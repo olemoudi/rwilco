@@ -26,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Notes
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.LocalOffer
@@ -401,6 +402,15 @@ fun EditorScreen(
                         selected = state.draft.actions,
                         onToggle = viewModel::toggleAction,
                     )
+                }
+                if (state.history.isNotEmpty()) {
+                    EditorSection(
+                        title = stringResource(R.string.history_title),
+                        icon = Icons.Outlined.History,
+                        note = stringResource(R.string.history_note),
+                    ) {
+                        HistoryList(history = state.history, today = today, zone = zone)
+                    }
                 }
                 // What happens if none of the four cards above it lands: the last word on the
                 // form, and the only one the person did not have to answer.

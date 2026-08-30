@@ -2,6 +2,7 @@ package dev.rwilco.alarm
 
 import android.content.Context
 import android.util.Log
+import dev.rwilco.data.FiringKind
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.diag.Diag
 import dev.rwilco.data.SettingsStore
@@ -220,11 +221,13 @@ class ReminderFiring(
             if (reminder.ruleMatch == RuleMatch.ALL && reminder.rulesCombine) {
                 repository.setFiredRules(id, reminder.rules.indices.toSet())
             }
+            // A moment the phone slept through by a minute or two is still that moment, and
+            // rings like it; only one it slept through by a good while arrives as the quiet
+            // "did not ring on time" note (lateForPresentation).
+            val presentedLate = lateForPresentation(late, now)
+            repository.record(id, if (presentedLate != null) FiringKind.MISSED else FiringKind.RANG, now, ruleIndex)
             try {
-                // A moment the phone slept through by a minute or two is still that moment, and
-                // rings like it; only one it slept through by a good while arrives as the quiet
-                // "did not ring on time" note (lateForPresentation).
-                AlertPresenter.show(context, reminder, plan, lateForPresentation(late, now), settings.vibration, settings.soundFor(plan), ruleIndex = ruleIndex, defaultTime = settings.defaultTime, snoozes = settings.notificationSnoozeOffers, customMinutes = settings.snoozeCustomMinutes)
+                AlertPresenter.show(context, reminder, plan, presentedLate, settings.vibration, settings.soundFor(plan), ruleIndex = ruleIndex, defaultTime = settings.defaultTime, snoozes = settings.notificationSnoozeOffers, customMinutes = settings.snoozeCustomMinutes)
                 // "Hasta que reciba caso": the first play has gone out, so line up the second.
                 if (plan.insistent) {
                     nextSoundIn(played = 1, plays = settings.soundPlays, gapMinutes = settings.soundGapMinutes)
@@ -343,6 +346,7 @@ class ReminderFiring(
         Diag.note(TAG_DIAG, "r=${short(id)} rule $ruleIndex is not met any more")
         Log.i(TAG, "$id rule $ruleIndex came undone")
         repository.setFiredRules(id, reminder.firedRules - ruleIndex)
+        repository.record(id, FiringKind.UNTICKED, ruleIndex = ruleIndex)
         scheduler.rearmAll()
     }
 
@@ -389,6 +393,10 @@ class ReminderFiring(
         // happened to go off. Four writes could be cut in two by a process dying, and a round
         // closed with its anchor unmoved is a reminder that never comes back.
         repository.dealtWith(id, now, status, consumed)
+        // The word for what this was: an answer to a ring, or a round of something that comes
+        // back let pass ahead of it. A one-off finished ahead of its moment is still "hecho".
+        val skipped = consumed != null && reminder.recurrence != Recurrence.None && !reminder.awaitingAnswer(now)
+        repository.record(id, if (skipped) FiringKind.SKIPPED else FiringKind.DEALT, now)
         scheduler.rearmAll()
     }
 
@@ -419,6 +427,7 @@ class ReminderFiring(
         Log.i(TAG, "safety net for $id, about the moment at ${due.about} (${due.word})")
         Diag.note(TAG_DIAG, "r=${short(id)} NET said (${due.word}), about the moment at ${due.about}")
         repository.setNudgedAt(id, now)
+        repository.record(id, FiringKind.NET, now, detail = due.word.name)
         AlertNotifications.post(
             context = context,
             reminder = reminder,
@@ -460,6 +469,7 @@ class ReminderFiring(
         val until = snooze.until(now, clock.zone, settings.weekendDay, settings.weekendTime, settings.dayStart, settings.snoozeCustomMinutes)
         repository.snooze(id, until)
         Diag.note(TAG_DIAG, "r=${short(id)} snoozed ($snooze) until $until")
+        repository.record(id, FiringKind.SNOOZED, now, detail = until.toString())
         repeater.cancel(id)
         AlertNotifications.cancel(context, id)
         scheduler.rearmAll()

@@ -66,6 +66,7 @@ suspend fun RwilcoApplication.collectDiagnostics(): Diagnostics = withContext(Di
         ).takeIf { vault.enabled },
         notes = diagStore.read().notes,
         watch = placeLog.read().notes,
+        events = repository.recentHistory(DIAG_EVENTS_PER_REMINDER),
     )
 }
 

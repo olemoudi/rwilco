@@ -17,6 +17,7 @@ import dev.rwilco.model.RecurrencePreset
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.nextPresetColor
 import dev.rwilco.model.RuleMatch
+import dev.rwilco.data.FiringEvent
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.SavedWindow
 import dev.rwilco.model.Status
@@ -171,6 +172,8 @@ data class EditorUiState(
     val suggestedTriggers: List<Trigger> = emptyList(),
     /** The places kept by name in Settings, offered whole in the place sheet. */
     val savedPlaces: List<SavedPlace> = emptyList(),
+    /** What has happened to this reminder, newest first; empty for a new one or a preset. */
+    val history: List<FiringEvent> = emptyList(),
     /** The stretches of the day kept by name, offered wherever one is asked for. */
     val savedWindows: List<SavedWindow> = emptyList(),
     /**

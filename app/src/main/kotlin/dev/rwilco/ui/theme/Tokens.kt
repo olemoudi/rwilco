@@ -63,6 +63,8 @@ data class Sizes(
      */
     val mapShare: Float = 0.42f,
     val mapMinHeight: Dp = 260.dp,
+    /** The stamp column of a history line ("ayer 09:04"), so the verbs line up down the card. */
+    val historyStamp: Dp = 112.dp,
     val keycap: Dp = 36.dp,
     /** The small square that carries a section's icon. */
     val badge: Dp = 28.dp,
