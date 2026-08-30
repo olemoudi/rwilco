@@ -80,6 +80,8 @@ import dev.rwilco.vault.VaultOutcome
 import dev.rwilco.vault.VaultState
 import dev.rwilco.vault.VaultSummary
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 /**
  * The encrypted backup, off by default. Off, it is a form and one button; on, it is a status
@@ -182,7 +184,8 @@ fun BackupScreen(viewModel: BackupViewModel, onBack: () -> Unit) {
     PhaseDialogs(phase, localCount, viewModel)
 }
 
-private fun exportName(): String = "rwilco-${LocalDate.now()}.vault"
+// With the hour: two exports on the same afternoon used to collide in the picker.
+private fun exportName(): String = "rwilco-${LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmm"))}.vault"
 
 /** Off: what it is, what the remote sees, the three things it needs, one button. */
 @Composable

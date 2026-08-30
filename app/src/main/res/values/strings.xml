@@ -18,6 +18,11 @@
     <string name="curate_rename_confirm">Save the new name</string>
     <string name="curate_text_remove">Stop offering this one</string>
     <string name="curate_tag_remove">Remove this tag everywhere</string>
+    <string name="curate_tag_remove_title">Remove «%1$s» from everything?</string>
+    <string name="curate_tag_remove_body">It goes from every reminder that carries it. There is no undo.</string>
+    <string name="curate_text_remove_title">Stop offering «%1$s»?</string>
+    <string name="curate_text_remove_body">The reminders that use it do not change; it just stops being suggested.</string>
+    <string name="curate_remove_confirm">Remove</string>
     <string name="common_got_it">Got it</string>
 
     <!-- Presets -->
@@ -81,6 +86,11 @@
     <string name="home_empty_body">Write what you want to remember, then say when and how.</string>
     <string name="home_empty_action">Write one</string>
     <string name="home_marked_done">Done</string>
+    <string name="home_skipped">Next one skipped</string>
+    <string name="home_skip">Skip the next one</string>
+    <string name="home_skip_hint">The one %1$s; the one after stays</string>
+    <string name="preset_deleted">Preset deleted</string>
+    <string name="recur_preset_deleted">Recurrence preset deleted</string>
     <string name="home_deleted">Deleted</string>
     <string name="home_paused">Paused</string>
     <string name="home_resumed">Resumed</string>
@@ -319,6 +329,7 @@
     <string name="done_empty_title">Nothing done yet</string>
     <string name="done_empty_body">Swipe a reminder to the right on the main screen when it is done; it lands here.</string>
     <string name="done_restore">Bring back</string>
+    <string name="done_restored">Brought back</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
@@ -474,6 +485,7 @@
     <string name="home_search_clear">Clear</string>
     <string name="home_search_kind_reminder">Reminder</string>
     <string name="home_search_kind_tag">Tag</string>
+    <string name="home_search_kind_done">Done</string>
     <plurals name="home_search_tag_count">
         <item quantity="one">%1$d reminder</item>
         <item quantity="other">%1$d reminders</item>
@@ -676,6 +688,10 @@
         <item quantity="other">%1$d location reads in the last hour</item>
     </plurals>
     <string name="watch_log_clear">Clear the log</string>
+    <string name="watch_log_clear_title">Clear the location log?</string>
+    <string name="watch_log_clear_body">Days of lines go with it; the watch writes again from its next look.</string>
+    <string name="settings_place_removed">Place removed</string>
+    <string name="settings_window_removed">Window removed</string>
     <string name="watch_log_today">Today</string>
     <string name="watch_log_yesterday">Yesterday</string>
     <!-- The roll-up above the lines: what the last day came to, and which circle set the pace. -->
@@ -1045,6 +1061,8 @@
     <string name="diag_copy">Copy</string>
     <string name="diag_share">Send…</string>
     <string name="diag_clear">Clear the log</string>
+    <string name="diag_clear_title">Clear the diagnostics?</string>
+    <string name="diag_clear_body">What it says about the last week goes with it.</string>
     <string name="diag_copied">Copied</string>
     <string name="diag_cleared">Log cleared</string>
     <string name="diag_building">Reading…</string>
@@ -1088,6 +1106,28 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_51_0">
+        <item>These notes are back. The sheet had been silent since 0.20.0 — thirty versions with nothing said — and now a build cannot be cut without its line. Below this one, what happened in between.</item>
+        <item>«Saltar la próxima», in the menu of a card that comes back: one round let pass without pausing the reminder and remembering to come back. Underneath it is a «hecho» given early, which is what it always was; it just had no name.</item>
+        <item>Everything that can be deleted has a way back now: a preset, a saved place or window, a recurrence preset, a reminder brought back from the done list — each says so with an undo. Emptying a log asks first, and so does removing a tag from everything.</item>
+        <item>Search finds what was done too, after everything that is open and saying which it is. The history kept three months of it and the only way through was scrolling.</item>
+        <item>A filter that matches nothing says so, instead of a blank list under a lit chip.</item>
+        <item>A held stepper keeps counting, quicker as it goes. The step stays one minute — three minutes has to be sayable — and the long way round is no longer seventeen taps.</item>
+        <item>The three «when» chips everybody starts with — in half an hour, tonight, tomorrow morning — stay beside the ones learnt from your history instead of being replaced by them.</item>
+        <item>The card that glows has its own pause pill, like every other card.</item>
+    </string-array>
+    <string-array name="whats_new_0_21_to_0_50">
+        <item>A place is a state, not only a doorway. «Mientras esté en casa» holds for as long as you are there; «al llegar» is the moment you cross the line. Under «todos», a place you have since left comes undone again, and a place that has rung is owed a leaving before it rings twice.</item>
+        <item>«A la vez»: every rule true at the same moment. «En casa, y de siete a nueve y media» rings the instant the last of them becomes true, and a doorway is a moment, so «al salir, y a la vez a las 13:30» no longer rings at 13:30.</item>
+        <item>«Vuelve» is the one place anything repeats: a calendar of its own, or a span counted from the ring or from the «hecho». A «hecho» does one round, and the next is the next. A calendar survives its first «hecho».</item>
+        <item>The safety net. A reminder that got away — the phone asleep, the alarm dropped — is caught within the hour and said quietly, with the word for what happened. Nothing to switch on; it is a tag nobody types.</item>
+        <item>«Posponer» from a held card, a snooze of your own length, «mañana por la mañana», and the two offers the notification shows are yours to choose in Settings.</item>
+        <item>The place watch: two eyes on every place — the phone\'s own geofences and the app\'s looks, paced by distance and speed, never a foreground service. Settings → Ubicación says what it last saw and when it looks again; the location log says it in sentences, and no longer prints an id where a name belongs.</item>
+        <item>The vault: an encrypted copy of everything in a private GitHub repository of yours, refreshed after every change, with export, import, a dry run and an undo.</item>
+        <item>The editor reads the reminder back in a sentence and says what will ring next; a refused save says why; an hour can be typed and stays in its half of the day.</item>
+        <item>A day without an hour is a stretch of it, not a lottery; a day can be counted instead of pointed at («en 3 días»); a preset for «mañana» means mañana every time; the calendar is a trigger too; a window says which days it allows.</item>
+        <item>Several ringing together stack in strips; the shade says why it went off; Home says when the phone may not ring, offers a rehearsal, and can be told «ahora no».</item>
+    </string-array>
     <string-array name="whats_new_0_20_0">
         <item>«Vuelve» asks the whole question now. «Cada semana» was only ever half a sentence — the other half is which moment the week is counted from — and the app used to decide it silently: from dealing with it if you set a span, from the calendar if you happened to add a repeating trigger, and nothing on either screen said which one you had. Three answers, one row: the calendar, the ringing, or dealing with it.</item>
         <item>«When it rings» is new, and it is the one people kept meaning. If the eight o\'clock dose is marked done at half nine, the next one used to be half three and the rhythm drifted later every day; counted from the ringing it stays at two. Worth knowing before you pick it: one left unanswered comes back on its rhythm rather than waiting to be acknowledged.</item>

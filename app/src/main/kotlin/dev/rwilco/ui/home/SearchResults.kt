@@ -131,7 +131,7 @@ fun SearchResultRow(
             icon = { Icon(Icons.AutoMirrored.Outlined.Notes, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp)) },
             title = hit.text,
             subtitle = hit.tags.take(3).joinToString(" · ").takeIf { it.isNotEmpty() },
-            kind = stringResource(R.string.home_search_kind_reminder),
+            kind = stringResource(if (hit.done) R.string.home_search_kind_done else R.string.home_search_kind_reminder),
             onClick = { onOpen(hit.id) },
             modifier = modifier,
         )

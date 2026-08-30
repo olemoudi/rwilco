@@ -112,7 +112,12 @@ fun triggerKindsByUse(reminders: List<Reminder>, now: Instant): List<TriggerKind
 }
 
 /** What makes two uses the same "when". Null for a trigger with nothing to reuse. */
-private fun shapeOf(trigger: Trigger): String? = when (trigger) {
+/**
+ * The shape of a trigger, as a key: what two triggers have in common once the day they were hung
+ * on is taken away. Public because the editor's quick chips need it too — a starter chip is only
+ * worth offering beside the suggestions when none of them is already the same shape.
+ */
+fun shapeOf(trigger: Trigger): String? = when (trigger) {
     is Trigger.Countdown -> "countdown:${trigger.minutes}"
     // A shape by definition: it says a day without naming one, so it comes back whole.
     is Trigger.RelativeDate -> "relative:${trigger.day}:${trigger.time}:${trigger.window}"

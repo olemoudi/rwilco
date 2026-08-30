@@ -15,7 +15,10 @@ import dev.rwilco.MainActivity
 import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.model.Action
+import dev.rwilco.model.Recurrence
+import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.Status
 import dev.rwilco.model.ThemeMode
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
@@ -115,6 +118,45 @@ class HomeMenuTest {
         runBlocking {
             check(app.settingsStore.settings.first().presets.isEmpty()) { "keeping as a preset must not write until Guardar" }
         }
+    }
+
+    /**
+     * A reminder that comes back, held before it rings, offers to let one round pass — and the
+     * next round is the one after. The card stays: nothing was finished, one Tuesday was skipped.
+     */
+    @Test
+    fun aRecurringCardOffersToSkipItsNextRound() {
+        val daily = "Regar las plantas"
+        val dailyId = UUID.randomUUID().toString()
+        runBlocking {
+            val now = app.clock.instant()
+            val zone = app.clock.zone
+            val tonight = LocalDateTime.ofInstant(now, zone).toLocalDate().atTime(23, 59)
+            app.repository.save(
+                Reminder(
+                    id = dailyId,
+                    text = daily,
+                    rules = listOf(TriggerRule(Trigger.AtDateTime(tonight))),
+                    recurrence = Recurrence.After(1, RecurrenceUnit.DAYS),
+                    actions = setOf(Action.NOTIFICATION),
+                    createdAt = now,
+                    updatedAt = now,
+                ),
+            )
+        }
+        rule.waitUntilShown(daily)
+        rule.onAllNodesWithText(daily, useUnmergedTree = true)[0].performTouchInput { longClick() }
+        rule.waitUntilShown(s(R.string.home_skip))
+        shot("home-menu-skip")
+        rule.onNodeWithText(s(R.string.home_skip), useUnmergedTree = true).performClick()
+        // Dealt with ahead of the ring: the anchor moves, the row stays active.
+        rule.waitUntil(timeoutMillis = 10_000) { runBlocking { app.repository.get(dailyId)?.lastDealtAt != null } }
+        rule.waitUntilShown(s(R.string.home_skipped))
+        check(runBlocking { app.repository.get(dailyId)?.status } == Status.ACTIVE) { "skipping a round must not finish the reminder" }
+        // The overdue one from the fixture rang and is owed an answer: no skip for it.
+        holdTheCard()
+        rule.waitUntilShown(s(R.string.home_snooze))
+        check(rule.onAllNodesWithText(s(R.string.home_skip), useUnmergedTree = true).fetchSemanticsNodes().isEmpty()) { "a ring waiting for an answer is answered, not skipped" }
     }
 
     private fun shot(name: String) {

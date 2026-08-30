@@ -48,6 +48,8 @@ import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.diag.collectDiagnostics
 import dev.rwilco.diag.report
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.theme.MonoStyles
@@ -72,6 +74,24 @@ fun DiagnosticsScreen(app: RwilcoApplication, onBack: () -> Unit) {
     var reload by remember { mutableIntStateOf(0) }
     val copied = stringResource(R.string.diag_copied)
     val cleared = stringResource(R.string.diag_cleared)
+    // The bin sits one slip from Back on the screen somebody came to copy a report off.
+    var confirmingClear by rememberSaveable { mutableStateOf(false) }
+    if (confirmingClear) {
+        ClearDialog(
+            titleRes = R.string.diag_clear_title,
+            bodyRes = R.string.diag_clear_body,
+            confirmRes = R.string.diag_clear,
+            onConfirm = {
+                confirmingClear = false
+                scope.launch {
+                    app.diagStore.clear()
+                    reload++
+                    snackbar.show(cleared)
+                }
+            },
+            onDismiss = { confirmingClear = false },
+        )
+    }
 
     // What the log says right now, watched rather than sampled: a report built the moment the
     // screen opened is a report that goes stale while somebody is reading it, and the reason to
@@ -106,13 +126,7 @@ fun DiagnosticsScreen(app: RwilcoApplication, onBack: () -> Unit) {
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.weight(1f).padding(horizontal = spacing.sm),
                     )
-                    IconButton(onClick = {
-                        scope.launch {
-                            app.diagStore.clear()
-                            reload++
-                            snackbar.show(cleared)
-                        }
-                    }) {
+                    IconButton(onClick = { confirmingClear = true }) {
                         Icon(Icons.Outlined.DeleteOutline, contentDescription = stringResource(R.string.diag_clear))
                     }
                 }

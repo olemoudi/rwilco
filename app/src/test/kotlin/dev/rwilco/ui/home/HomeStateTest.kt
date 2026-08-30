@@ -229,4 +229,17 @@ class HomeStateTest {
         assertFalse(cards.getValue("spentSnooze").snoozeOffered, "dealt with since it rang")
         assertFalse(cards.getValue("paused").snoozeOffered)
     }
+
+    @Test
+    fun `only a reminder that comes back, and is not ringing, has a next one to skip`() {
+        val daily = reminder("daily", Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 20, 0))).copy(recurrence = Recurrence.After(1, RecurrenceUnit.DAYS))
+        val once = reminder("once", Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 20, 0)))
+        // Rang an hour ago and nobody answered: the answer owed is "hecho", not a skip.
+        val ringing = daily.copy(id = "ringing", lastFiredAt = now.minusSeconds(3_600), armedFor = now.minusSeconds(3_600))
+        val state = buildHomeState(listOf(daily, once, ringing), defaultTime, now, zone, selectedTag = null)
+        val cards = (listOfNotNull(state.hero?.card) + state.sections.flatMap { it.cards }).associateBy { it.id }
+        assertEquals(LocalDateTime.of(2026, 8, 27, 20, 0).atZone(zone).toInstant(), cards.getValue("daily").skipsMoment)
+        assertNull(cards.getValue("once").skipsMoment, "a one-off has no next one")
+        assertNull(cards.getValue("ringing").skipsMoment, "a ring waiting for an answer is not skipped, it is answered")
+    }
 }

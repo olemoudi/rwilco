@@ -145,6 +145,7 @@ fun RwilcoApp(
                 composable<Routes.Editor> { entry ->
                     val route = entry.toRoute<Routes.Editor>()
                     val deletedMessage = stringResource(R.string.home_deleted)
+                    val presetDeletedMessage = stringResource(R.string.preset_deleted)
                     val undoLabel = stringResource(R.string.common_undo)
                     EditorScreen(
                         viewModel = viewModel(
@@ -156,6 +157,11 @@ fun RwilcoApp(
                             // The editor's scope dies with the screen; the undo outlives it.
                             snackbar.show(deletedMessage, undoLabel) {
                                 app.appScope.launch { app.repository.restore(reminder) }
+                            }
+                        },
+                        onPresetDeleted = { preset ->
+                            snackbar.show(presetDeletedMessage, undoLabel) {
+                                app.appScope.launch { app.settingsStore.update { it.copy(presets = it.presets + preset) } }
                             }
                         },
                     )

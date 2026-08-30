@@ -16,6 +16,11 @@
     <string name="curate_rename_confirm">Guardar el nombre nuevo</string>
     <string name="curate_text_remove">Dejar de ofrecer este</string>
     <string name="curate_tag_remove">Quitar esta etiqueta de todo</string>
+    <string name="curate_tag_remove_title">¿Quitar «%1$s» de todo?</string>
+    <string name="curate_tag_remove_body">Desaparece de cada recordatorio que la lleva. No se puede deshacer.</string>
+    <string name="curate_text_remove_title">¿Dejar de ofrecer «%1$s»?</string>
+    <string name="curate_text_remove_body">Los recordatorios que lo usan no cambian; sólo deja de sugerirse.</string>
+    <string name="curate_remove_confirm">Quitar</string>
     <string name="common_got_it">Entendido</string>
 
     <!-- Presets -->
@@ -79,6 +84,11 @@
     <string name="home_empty_body">Escribe qué quieres recordar y luego di cuándo y cómo.</string>
     <string name="home_empty_action">Escribe uno</string>
     <string name="home_marked_done">Hecho</string>
+    <string name="home_skipped">Saltada la próxima</string>
+    <string name="home_skip">Saltar la próxima</string>
+    <string name="home_skip_hint">La de %1$s; la siguiente se queda</string>
+    <string name="preset_deleted">Preset borrado</string>
+    <string name="recur_preset_deleted">Preset de recurrencia borrado</string>
     <string name="home_deleted">Eliminado</string>
     <string name="home_paused">En pausa</string>
     <string name="home_resumed">Reanudado</string>
@@ -317,6 +327,7 @@
     <string name="done_empty_title">Nada hecho todavía</string>
     <string name="done_empty_body">Desliza un recordatorio hacia la derecha en la pantalla principal cuando esté hecho; aparecerá aquí.</string>
     <string name="done_restore">Recuperar</string>
+    <string name="done_restored">Recuperado</string>
 
     <!-- Settings -->
     <string name="settings_title">Ajustes</string>
@@ -472,6 +483,7 @@
     <string name="home_search_clear">Borrar</string>
     <string name="home_search_kind_reminder">Recordatorio</string>
     <string name="home_search_kind_tag">Etiqueta</string>
+    <string name="home_search_kind_done">Hecho</string>
     <plurals name="home_search_tag_count">
         <item quantity="one">%1$d recordatorio</item>
         <item quantity="other">%1$d recordatorios</item>
@@ -674,6 +686,10 @@
         <item quantity="other">%1$d lecturas en la última hora</item>
     </plurals>
     <string name="watch_log_clear">Vaciar el registro</string>
+    <string name="watch_log_clear_title">¿Vaciar el registro de ubicación?</string>
+    <string name="watch_log_clear_body">Se van días de líneas; el vigilante vuelve a escribir desde la próxima mirada.</string>
+    <string name="settings_place_removed">Lugar quitado</string>
+    <string name="settings_window_removed">Franja quitada</string>
     <string name="watch_log_today">Hoy</string>
     <string name="watch_log_yesterday">Ayer</string>
     <!-- The roll-up above the lines: what the last day came to, and which circle set the pace. -->
@@ -1043,6 +1059,8 @@
     <string name="diag_copy">Copiar</string>
     <string name="diag_share">Enviar…</string>
     <string name="diag_clear">Vaciar el registro</string>
+    <string name="diag_clear_title">¿Vaciar el diagnóstico?</string>
+    <string name="diag_clear_body">Se pierde lo que cuenta de la última semana.</string>
     <string name="diag_copied">Copiado</string>
     <string name="diag_cleared">Registro vaciado</string>
     <string name="diag_building">Leyendo…</string>
@@ -1086,6 +1104,28 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_51_0">
+        <item>Estas notas vuelven. La hoja llevaba callada desde la 0.20.0 —treinta versiones sin decir nada— y ahora no se puede cortar una versión sin su línea. Debajo de esta, lo que pasó entre medias.</item>
+        <item>«Saltar la próxima», en el menú de una tarjeta que vuelve: dejar pasar una ronda sin pausar el recordatorio y acordarse de volver. Por debajo es un «hecho» dado antes de tiempo, que es lo que siempre fue; sólo que no tenía nombre.</item>
+        <item>Todo lo que se borra tiene vuelta: un preset, un lugar o una franja guardados, un preset de recurrencia, un recordatorio recuperado desde Hechos — cada uno lo dice con un Deshacer. Vaciar un registro pregunta antes, y quitar una etiqueta de todo también.</item>
+        <item>Buscar encuentra también los hechos, detrás de todo lo abierto y diciendo que lo son. El historial guardaba tres meses y la única forma de recorrerlos era a mano.</item>
+        <item>Un filtro que no encuentra nada lo dice, en vez de una lista en blanco bajo un chip encendido.</item>
+        <item>Un stepper mantenido sigue contando, cada vez más rápido. El paso sigue siendo un minuto —tres minutos tiene que poder decirse— y el camino largo ya no son diecisiete toques.</item>
+        <item>Los tres chips de «cuándo» con los que empieza todo el mundo —en media hora, esta noche, mañana por la mañana— se quedan junto a los aprendidos de tu historial en vez de desaparecer bajo ellos.</item>
+        <item>La tarjeta que brilla tiene su propia pausa, como todas las demás.</item>
+    </string-array>
+    <string-array name="whats_new_0_21_to_0_50">
+        <item>Un lugar es un estado, no sólo una puerta. «Mientras esté en casa» se cumple mientras estés ahí; «al llegar» es el momento de cruzar la línea. Bajo «todos», un lugar del que te has ido se deshace, y un lugar que ya sonó debe una salida antes de sonar dos veces.</item>
+        <item>«A la vez»: todas las reglas ciertas en el mismo momento. «En casa, y de siete a nueve y media» suena en el instante en que la última se cumple, y una puerta es un momento, así que «al salir, y a la vez a las 13:30» ya no suena a las 13:30.</item>
+        <item>«Vuelve» es el único sitio donde algo se repite: un calendario propio, o un plazo contado desde que suena o desde el «hecho». Un «hecho» hace una ronda, y la siguiente es la siguiente. Un calendario sobrevive a su primer «hecho».</item>
+        <item>La red de seguridad. Un recordatorio que se escapó —el teléfono dormido, la alarma perdida— se recoge dentro de la hora y se dice bajito, con la palabra de lo que pasó. Nada que encender; es una etiqueta que nadie escribe.</item>
+        <item>«Posponer» desde una tarjeta mantenida, un posponer con tu propia duración, «mañana por la mañana», y las dos ofertas que enseña la notificación se eligen en Ajustes.</item>
+        <item>El vigilante de lugares: dos ojos en cada lugar —las geovallas del teléfono y las miradas de la app, al ritmo de la distancia y la velocidad, nunca un servicio en primer plano. Ajustes → Ubicación dice qué vio y cuándo vuelve a mirar; el registro de ubicación lo cuenta en frases, y ya no imprime un identificador donde va un nombre.</item>
+        <item>La copia: una copia cifrada de todo en un repositorio privado de GitHub tuyo, renovada tras cada cambio, con exportar, importar, un ensayo y un deshacer.</item>
+        <item>El editor lee el recordatorio en una frase y dice qué sonará; un guardado rechazado dice por qué; una hora se puede teclear y se queda en su mitad del día.</item>
+        <item>Un día sin hora es un tramo del día, no una lotería; un día se puede contar en vez de señalar («en 3 días»); un preset para «mañana» significa mañana cada vez; el calendario también es un disparador; una franja dice qué días permite.</item>
+        <item>Varios sonando a la vez se apilan en tiras; la bandeja dice por qué saltó; el inicio avisa cuando el teléfono puede no sonar, ofrece un ensayo, y se le puede decir «ahora no».</item>
+    </string-array>
     <string-array name="whats_new_0_20_0">
         <item>«Vuelve» hace ahora la pregunta entera. «Cada semana» siempre fue media frase —la otra mitad es desde qué momento se cuenta esa semana— y la app lo decidía en silencio: desde que lo hacías si ponías un plazo, desde el calendario si resultaba que habías añadido un disparador que se repite, y ninguna de las dos pantallas decía cuál tenías. Tres respuestas, una fila: el calendario, que suena, o que lo hago.</item>
         <item>«Que suena» es nuevo, y es el que la gente quería decir. Si la dosis de las ocho la marcas hecha a las nueve y media, la siguiente era a las tres y media y el ritmo se iba desplazando cada día; contada desde que suena se queda en las dos. Conviene saberlo antes de elegirlo: uno sin contestar vuelve a su ritmo en vez de esperar a que lo atiendas.</item>

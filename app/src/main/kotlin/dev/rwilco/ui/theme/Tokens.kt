@@ -28,6 +28,12 @@ data class Motion(
     val fast: Int = 140,
     val medium: Int = 220,
     val emphasized: Easing = CubicBezierEasing(0.2f, 0f, 0f, 1f),
+    /** A held stepper waits this long before it starts repeating: long enough that a tap is a tap. */
+    val holdRepeatDelay: Int = 400,
+    /** The first repeat's interval; every one after is [holdRepeatQuicken] of the last, to [holdRepeatFloor]. */
+    val holdRepeatStart: Int = 220,
+    val holdRepeatFloor: Int = 60,
+    val holdRepeatQuicken: Float = 0.82f,
 )
 
 /**

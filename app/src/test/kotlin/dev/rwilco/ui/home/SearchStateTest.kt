@@ -70,9 +70,10 @@ class SearchStateTest {
     }
 
     @Test
-    fun `what is done is not searched`() {
+    fun `what is done is found after what is open, and the row knows`() {
         val done = reminders.map { if (it.id == "milk") it.copy(status = Status.DONE) else it }
-        val hits = buildSearchState(done, "comprar", open = true).hits
-        assertEquals(listOf("bread"), hits.filterIsInstance<SearchHitUi.OfReminder>().map { it.id })
+        val hits = buildSearchState(done, "comprar", open = true).hits.filterIsInstance<SearchHitUi.OfReminder>()
+        assertEquals(listOf("bread", "milk"), hits.map { it.id })
+        assertEquals(listOf(false, true), hits.map { it.done })
     }
 }

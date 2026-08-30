@@ -23,6 +23,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.annotation.StringRes
 import dev.rwilco.R
 import dev.rwilco.ui.theme.Tokens
 
@@ -57,6 +59,9 @@ fun CuratePanel(
     title: String,
     items: List<String>,
     removeLabel: String,
+    /** The question asked before a removal, with the item in it, and the sentence under it. */
+    @StringRes removeTitleRes: Int,
+    @StringRes removeBodyRes: Int,
     onRename: (String, String) -> Unit,
     onRemove: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -64,6 +69,9 @@ fun CuratePanel(
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
+    // Removing rewrites every reminder that carries a tag, and a phrase hidden has no door back
+    // through: neither has an undo, so both ask. A rename does not — rename it back.
+    var removing by rememberSaveable { mutableStateOf<String?>(null) }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
@@ -96,7 +104,7 @@ fun CuratePanel(
                                 item = item,
                                 removeLabel = removeLabel,
                                 onEdit = { editing = item },
-                                onRemove = { onRemove(item) },
+                                onRemove = { removing = item },
                             )
                         }
                     }
@@ -111,6 +119,24 @@ fun CuratePanel(
                 ) { Text(stringResource(R.string.common_done)) }
             }
         }
+    }
+    removing?.let { item ->
+        AlertDialog(
+            onDismissRequest = { removing = null },
+            title = { Text(stringResource(removeTitleRes, item)) },
+            text = { Text(stringResource(removeBodyRes)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    removing = null
+                    onRemove(item)
+                }) { Text(stringResource(R.string.curate_remove_confirm), color = scheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { removing = null }) { Text(stringResource(R.string.sheet_cancel)) }
+            },
+            containerColor = scheme.surfaceContainerHigh,
+            shape = MaterialTheme.shapes.extraLarge,
+        )
     }
 }
 

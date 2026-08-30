@@ -27,11 +27,16 @@ sealed interface SearchHit {
 }
 
 /**
- * Everything [query] matches among the open reminders and the tags they use, best first.
+ * Everything [query] matches among the reminders and the tags the open ones use, best first.
  * A blank query matches nothing: an empty list is what "not searching" looks like.
  *
  * A reminder is matched on its own words only. Its tags are matched as tags — one row for
  * "compra" beats five identical-looking reminder rows that all happen to carry it.
+ *
+ * What was done is found too, after everything that is open: the history kept three months of
+ * it and the only way through was scrolling, so "¿cambié el filtro?" had no answer here. It
+ * comes last whatever its score — somebody typing on Home is looking for something to do
+ * before something they did — and the hit says which it is.
  */
 fun search(reminders: List<Reminder>, query: String, limit: Int = 20): List<SearchHit> {
     val needle = fold(query)
@@ -39,7 +44,6 @@ fun search(reminders: List<Reminder>, query: String, limit: Int = 20): List<Sear
 
     val hits = ArrayList<SearchHit>()
     for (reminder in reminders) {
-        if (reminder.status == Status.DONE) continue
         val score = fuzzyScore(needle, fold(reminder.text)) ?: continue
         hits += SearchHit.OfReminder(reminder, score)
     }
@@ -49,7 +53,8 @@ fun search(reminders: List<Reminder>, query: String, limit: Int = 20): List<Sear
     }
     return hits
         .sortedWith(
-            compareByDescending<SearchHit> { it.score }
+            compareBy<SearchHit> { it.done }
+                .thenByDescending { it.score }
                 // A tag ahead of a reminder on the same score: it is the broader answer, and
                 // the reminders under it are one tap away.
                 .thenBy { if (it is SearchHit.OfTag) 0 else 1 }
@@ -62,6 +67,9 @@ private fun SearchHit.label(): String = when (this) {
     is SearchHit.OfReminder -> reminder.text
     is SearchHit.OfTag -> tag
 }
+
+/** Whether this is a reminder already dealt with; a tag is only ever counted over the open ones. */
+val SearchHit.done: Boolean get() = this is SearchHit.OfReminder && reminder.status == Status.DONE
 
 /** Open tags with how many reminders use them; the first spelling of each wins, as everywhere. */
 private fun tagCounts(reminders: List<Reminder>): List<Pair<String, Int>> {

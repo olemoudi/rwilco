@@ -125,6 +125,13 @@ class SettingsViewModel(
         settings.copy(savedPlaces = settings.savedPlaces.filterIndexed { i, _ -> i != index })
     }
 
+    /** The undo of [removePlace]: back where it was, or at the end if the list has shrunk since. */
+    fun restorePlace(index: Int, place: SavedPlace) = update { settings ->
+        val places = settings.savedPlaces.toMutableList()
+        places.add(index.coerceIn(0, places.size), place)
+        settings.copy(savedPlaces = places)
+    }
+
     /** The same two, for a stretch of the day kept under a name. */
     fun saveWindow(index: Int?, window: SavedWindow) = update { settings ->
         val windows = settings.savedWindows.toMutableList()
@@ -134,6 +141,12 @@ class SettingsViewModel(
 
     fun removeWindow(index: Int) = update { settings ->
         settings.copy(savedWindows = settings.savedWindows.filterIndexed { i, _ -> i != index })
+    }
+
+    fun restoreWindow(index: Int, window: SavedWindow) = update { settings ->
+        val windows = settings.savedWindows.toMutableList()
+        windows.add(index.coerceIn(0, windows.size), window)
+        settings.copy(savedWindows = windows)
     }
 
 

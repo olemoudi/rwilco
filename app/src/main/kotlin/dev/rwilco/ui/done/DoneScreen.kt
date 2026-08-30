@@ -45,6 +45,7 @@ import dev.rwilco.model.DoneSection
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.doneByDay
 import dev.rwilco.ui.components.DayBars
+import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.ui.components.EmptyState
 import dev.rwilco.ui.components.ListPlaceholder
 import dev.rwilco.ui.components.RwilcoCard
@@ -69,6 +70,9 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
     val today = clock.instant().atZone(clock.zone).toLocalDate()
     val locale = currentLocale()
     val is24h = rememberIs24h()
+    val snackbar = LocalSnackbar.current
+    val restoredMessage = stringResource(R.string.done_restored)
+    val undoLabel = stringResource(R.string.common_undo)
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -149,7 +153,11 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
                             dayWord(rememberWords(), at.toLocalDate(), today) + " · " + TimeText.time(at.toLocalTime(), is24h, locale)
                         },
                         onOpen = { onOpen(reminder.id) },
-                        onRestore = { viewModel.restore(reminder.id) },
+                        onRestore = {
+                            viewModel.restore(reminder.id)
+                            // Said, and undoable: a mis-tap put a reminder back on Home without a word.
+                            snackbar.show(restoredMessage, undoLabel) { viewModel.undoRestore(reminder) }
+                        },
                     )
                 }
             }

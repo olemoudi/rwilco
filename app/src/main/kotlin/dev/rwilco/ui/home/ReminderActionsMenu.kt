@@ -45,6 +45,7 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.Snooze
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -78,7 +79,10 @@ fun ReminderActionsMenu(
     snoozeOffered: Boolean,
     snoozed: Boolean,
     customMinutes: Int,
+    /** The moment "saltar la próxima" would let pass, already in words; null where there is none. */
+    skipHint: String? = null,
     onDone: () -> Unit,
+    onSkip: () -> Unit = {},
     onPause: () -> Unit,
     onDelete: () -> Unit,
     onSnooze: (Snooze) -> Unit,
@@ -156,6 +160,17 @@ fun ReminderActionsMenu(
                                 onClick = { choosingSnooze = true },
                             )
                         }
+                    }
+                    // A round let pass on purpose. It is a "hecho" underneath, and the tile above
+                    // does the same thing to the same reminder — but "hecho" on something that has
+                    // not rung reads as a lie, and the one honest word for it was nowhere.
+                    if (skipHint != null) {
+                        ActionRow(
+                            icon = Icons.Outlined.SkipNext,
+                            label = stringResource(R.string.home_skip),
+                            hint = skipHint,
+                            onClick = onSkip,
+                        )
                     }
                     if (snoozed) {
                         ActionRow(

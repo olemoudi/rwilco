@@ -65,6 +65,7 @@ import dev.rwilco.R
 import dev.rwilco.model.RecurrenceWarning
 import dev.rwilco.model.decidesItsOwnDates
 import dev.rwilco.model.recurrenceWarning
+import dev.rwilco.model.Preset
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.TriggerKind
 import dev.rwilco.model.ValidationError
@@ -103,6 +104,8 @@ fun EditorScreen(
     viewModel: EditorViewModel,
     onClose: () -> Unit,
     onDeleted: (Reminder) -> Unit,
+    /** A preset was deleted from here; the caller's snackbar outlives this screen and offers it back. */
+    onPresetDeleted: (Preset) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
@@ -118,6 +121,8 @@ fun EditorScreen(
     val textLongMessage = stringResource(R.string.editor_error_text_long)
     val triggerMessage = stringResource(R.string.editor_error_trigger)
     val recurrenceMessage = stringResource(R.string.editor_error_recurrence)
+    val recurrencePresetDeletedMessage = stringResource(R.string.recur_preset_deleted)
+    val undoLabel = stringResource(R.string.common_undo)
     LaunchedEffect(viewModel) {
         viewModel.eventFlow.collect { event ->
             when (event) {
@@ -125,6 +130,13 @@ fun EditorScreen(
                 is EditorEvent.Deleted -> {
                     onDeleted(event.reminder)
                     onClose()
+                }
+                is EditorEvent.PresetDeleted -> {
+                    onPresetDeleted(event.preset)
+                    onClose()
+                }
+                is EditorEvent.RecurrencePresetDeleted -> snackbar.show(recurrencePresetDeletedMessage, undoLabel) {
+                    viewModel.restoreRecurrencePreset(event.preset)
                 }
                 EditorEvent.Close -> onClose()
                 is EditorEvent.Invalid -> {
@@ -503,6 +515,8 @@ fun EditorScreen(
         when (state.curating) {
             null -> Unit
             CurateKind.TEXTS -> CuratePanel(
+                removeTitleRes = R.string.curate_text_remove_title,
+                removeBodyRes = R.string.curate_text_remove_body,
                 title = stringResource(R.string.curate_texts_title),
                 items = state.allTexts,
                 removeLabel = stringResource(R.string.curate_text_remove),
@@ -511,6 +525,8 @@ fun EditorScreen(
                 onDismiss = { viewModel.curate(null) },
             )
             CurateKind.TAGS -> CuratePanel(
+                removeTitleRes = R.string.curate_tag_remove_title,
+                removeBodyRes = R.string.curate_tag_remove_body,
                 title = stringResource(R.string.curate_tags_title),
                 items = state.existingTags,
                 removeLabel = stringResource(R.string.curate_tag_remove),

@@ -207,6 +207,23 @@ things; the ones worth not re-deriving:
   by text and found two once the alert rehearsal grew a "Sonido" action chip; it matches the
   heading now.
 
+## The review round, 0.51.0 (2026-08-30)
+A read of every screen after 0.50.0, asking what a day of use would find. Worth not re-deriving:
+
+- **"Novedades" had been silent since 0.20.0** — forty-five releases — because `RELEASES` is a
+  hand-kept list and nothing checked it against the build. `WhatsNewTest` does now; a release
+  without its line fails `./gradlew test`. The gap is one summary entry keyed to code 95.
+- **A Home tag filter that matches nothing cannot happen.** The inventory flagged "a filter that
+  matches nothing shows a blank list", and it is true of the composable alone — but a chip is only
+  offered for a tag or state present among the open reminders, and the filter is normalised
+  against the chips (`buildHomeState`), so the state is unreachable. Dropped rather than built.
+- **Search read `repository.open`**, so letting `search()` see done reminders did nothing until
+  `HomeViewModel` fed it `open + done`. A model change is not a feature until the screen's
+  source carries it.
+- **The countdown step of one minute is deliberate** (the comment in `CountdownSheet` says why:
+  five made three impossible); the seventeen-tap problem is answered by a stepper that repeats
+  when held, which every stepper in the app now does.
+
 ## Still to prove on the real phone (Pixel 8 Pro)
 - Settings → Alertas → "Probar una alerta" is the way to prove most of the below now: lock the
   phone, wait ten seconds, and see what arrives.

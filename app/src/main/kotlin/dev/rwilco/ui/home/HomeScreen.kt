@@ -110,6 +110,7 @@ fun HomeScreen(
     val snackbar = LocalSnackbar.current
     val doneMessage = stringResource(R.string.home_marked_done)
     val deletedMessage = stringResource(R.string.home_deleted)
+    val skippedMessage = stringResource(R.string.home_skipped)
     val undoLabel = stringResource(R.string.common_undo)
     val cardActionsLabel = stringResource(R.string.home_card_actions)
     val swipeDoneLabel = stringResource(R.string.card_swipe_done)
@@ -125,7 +126,11 @@ fun HomeScreen(
         viewModel.eventFlow.collect { event ->
             when (event) {
                 is HomeEvent.Removed -> snackbar.show(
-                    message = if (event.kind == HomeEvent.Removed.Kind.DONE) doneMessage else deletedMessage,
+                    message = when (event.kind) {
+                        HomeEvent.Removed.Kind.DONE -> doneMessage
+                        HomeEvent.Removed.Kind.DELETED -> deletedMessage
+                        HomeEvent.Removed.Kind.SKIPPED -> skippedMessage
+                    },
                     undoLabel = undoLabel,
                     onUndo = { viewModel.undo(event) },
                 )
@@ -214,9 +219,19 @@ fun HomeScreen(
                 snoozeOffered = held.snoozeOffered,
                 snoozed = held.snoozedUntil != null,
                 customMinutes = snoozeCustomMinutes,
+                // The moment that would be let pass, said the way the card says a moment.
+                skipHint = held.skipsMoment?.let { moment ->
+                    val here = moment.atZone(zone)
+                    val todayHere = viewModel.clock.instant().atZone(zone).toLocalDate()
+                    words.get(R.string.home_skip_hint, dayWord(words, here.toLocalDate(), todayHere) + " " + TimeText.time(here.toLocalTime(), words.is24h, words.locale))
+                },
                 onDone = {
                     actingOn = null
                     viewModel.markDone(held.id)
+                },
+                onSkip = {
+                    actingOn = null
+                    viewModel.skipNext(held.id)
                 },
                 onPause = {
                     actingOn = null
@@ -377,6 +392,7 @@ fun HomeScreen(
                                 onClick = { onOpen(hero.card.id) },
                                 onLongClick = { actingOn = hero.card.id },
                                 longClickLabel = cardActionsLabel,
+                                onTogglePause = { viewModel.togglePause(hero.card.id, hero.card.paused) },
                             )
                         }
                     }

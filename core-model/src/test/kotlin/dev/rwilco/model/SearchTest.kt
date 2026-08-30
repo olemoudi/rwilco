@@ -60,13 +60,17 @@ class SearchTest {
     }
 
     @Test
-    fun `what was done is not what is being looked for`() {
+    fun `what was done is found too, after what is open, and says so`() {
         val reminders = listOf(
             reminder("Comprar pan", tags = listOf("compra"), id = "open"),
-            reminder("Comprar leche", tags = listOf("compra"), id = "done", status = Status.DONE),
+            // A better match than the open one, and still behind it: the person typing on Home
+            // is after something to do before something they did.
+            reminder("Compra", tags = listOf("compra"), id = "done", status = Status.DONE),
         )
         val hits = search(reminders, "compra")
-        assertEquals(listOf("Comprar pan"), texts(hits))
+        assertEquals(listOf("Comprar pan", "Compra"), texts(hits))
+        assertEquals(listOf(false, true), hits.filterIsInstance<SearchHit.OfReminder>().map { it.done })
+        // The tag counts the open ones alone: it is what the filter would show.
         assertEquals(1, hits.filterIsInstance<SearchHit.OfTag>().single().count)
     }
 

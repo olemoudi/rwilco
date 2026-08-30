@@ -21,6 +21,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
+import dev.rwilco.ui.components.HoldButton
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.foundation.layout.width
 import dev.rwilco.R
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerFamily
@@ -62,6 +65,8 @@ fun HeroCard(
     /** Held: the menu of what can be done to this reminder, the same as any other card. */
     onLongClick: () -> Unit = {},
     longClickLabel: String? = null,
+    /** The pause pill, the same one every other card has; it was the one card without it. */
+    onTogglePause: () -> Unit = {},
 ) {
     val spacing = Tokens.spacing
     val amber = MaterialTheme.colorScheme.primary
@@ -155,9 +160,17 @@ fun HeroCard(
                     hero.card.recurrence?.let { RecurrenceRow(it, today) }
                 }
             }
-            if (hero.card.tags.isNotEmpty() || hero.card.actions.isNotEmpty()) {
-                Spacer(Modifier.height(spacing.sm))
-                CardFooter(tags = hero.card.tags, actions = hero.card.actions, modifier = Modifier.fillMaxWidth())
+            // Always, because the pause pill lives here: the one card that matters most was the
+            // one that could only be paused by holding it and reading a menu.
+            Spacer(Modifier.height(spacing.sm))
+            CardFooter(tags = hero.card.tags, actions = hero.card.actions, modifier = Modifier.fillMaxWidth()) {
+                Spacer(Modifier.width(spacing.sm))
+                HoldButton(
+                    icon = Icons.Outlined.Pause,
+                    label = stringResource(R.string.card_pause),
+                    onHoldComplete = onTogglePause,
+                    compact = true,
+                )
             }
         }
     }

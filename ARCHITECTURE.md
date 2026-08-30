@@ -388,11 +388,16 @@ snooze offer, it would reset the theme, the sound, the presets and the saved pla
 `notificationSnoozeOffers` drops what it does not recognise and falls back to the two defaults
 rather than leaving a notification with no way to postpone.
 
-`Search.kt` answers the magnifier: one query over the open reminders and the tags they use,
+`Search.kt` answers the magnifier: one query over the reminders and the tags the open ones use,
 returning `SearchHit.OfReminder`/`OfTag` so the screen can say which is which. Matching is
 folded (case and accents dropped) and banded — whole, prefix, word start, anywhere, then letters
 in order — because the cost of being forgiving is nil on a list this size, and the cost of being
-strict is asking somebody to remember how they spelled it.
+strict is asking somebody to remember how they spelled it. **What was done is found too**
+(0.51.0), after everything open whatever its score — somebody typing on Home is after something
+to do before something they did — and the row says "hecho" where it said "recordatorio". The
+history kept three months and the only way through it was scrolling; `HomeViewModel` feeds the
+search `open + done` for that reason, while a tag is still counted over the open ones alone,
+because that is what its chip would show.
 
 ## Persistence
 
@@ -416,6 +421,11 @@ strict is asking somebody to remember how they spelled it.
 - `SettingsStore`: Preferences DataStore with one JSON blob (`AppSettings`: theme, default time
   for date-only reminders, the trigger kind offered first, when "the weekend" starts, haptics,
   last-seen version for What's New, the saved places). Additive changes need no migration.
+  **What's New is guarded (0.51.0):** `RELEASES` went silent at 0.20.0 and nobody noticed for
+  forty-five builds, because a sheet with nothing to say says nothing. `WhatsNewTest` now
+  refuses a build whose code is not the head of the list, so a release cannot be cut without its
+  line; the thirty unannounced versions are one entry keyed to the build that brought the notes
+  back, so a phone that last saw 0.20.0 is told once what happened since.
   `PlaceWatchStore` is a second DataStore for the place watch's memory (last fix, which places
   it is inside, its still streak, the next look) — its own file because it is written on every
   check.
@@ -598,6 +608,25 @@ strict is asking somebody to remember how they spelled it.
   editing. Every one of these says what it did in the snackbar at the top with an undo, the
   snooze's undo restoring whatever snooze the row had before. `HomeMenuTest` walks put off →
   let back → keep as preset on the real screen.
+  **And "saltar la próxima" (0.51.0)**, for a reminder that comes back and is not ringing: the
+  act is not new — a "hecho" given to such a reminder already spends its next round
+  (`momentDealtWith`) — but "hecho" on something that has not rung reads as a lie, and the one
+  honest word for it was nowhere, so the only way to miss one Tuesday of "cada martes" was to
+  pause it and remember to come back. `ReminderCardUi.skipsMoment` (pure, tested) is the moment
+  that would be let pass, said on the row as a hint; the act goes through `ReminderFiring.dismiss`
+  like the swipe and comes back in the snackbar as "saltada" with the same undo. Not offered for
+  a ring waiting for an answer: that answer is "hecho". The hero got the pause pill every other
+  card had in the same release; it was the one card that could only be paused through this menu.
+- **The three "cuándo" chips everybody starts with stay (0.51.0).** `QuickWhenRow` used to
+  *replace* "en 30 min / esta noche / mañana por la mañana" with the shapes learnt from history
+  the moment there was any, so "esta noche" was gone for good after the first reminder ever
+  saved. They are merged now — suggestions first, then whichever starters none of them already
+  amounts to (`shapeOf`, made public for it), six at most.
+- **A held stepper keeps counting (0.51.0).** A step is one unit on purpose (three minutes has
+  to be sayable, and the countdown sheet says why), and the price was seventeen taps from thirty
+  to forty-seven. `Stepper` repeats after `Motion.holdRepeatDelay`, quickening to
+  `holdRepeatFloor`, and swallows the click Material fires on release when the hold has already
+  stepped; every repeat ticks like a tap so the thumb can count.
 - **Each rule of a set carries a mark** (`RuleStanding`, pure): under ALL, ticked off or still
   to happen (`firedRules`); under TOGETHER, true at this moment or not — a window against the
   clock, a place against the watch's own memory of which circles the phone is inside, and a
@@ -649,6 +678,17 @@ strict is asking somebody to remember how they spelled it.
   Pause and resume get one too (0.45.0): a paused card goes grey and slides to the bottom of
   the list, which from the middle of a scroll is a card that vanished, and the hold that did it
   was the same gesture as a pause on a different card.
+  **Everything that can be deleted has one now (0.51.0).** Four rules governed the app's
+  destructive acts — hold-to-confirm, snackbar-undo, a dialog, and nothing at all — and the
+  last covered a preset, a saved place or window, a recurrence preset, a restore from the done
+  list, the two logs and the curation panel. The rule is one: **an undo where there is an
+  inverse, a question where there is not.** A preset comes back through
+  `EditorEvent.PresetDeleted` and `RwilcoApp`'s host, because the editor's scope dies with the
+  screen; a place or window goes back at the index it left (`restorePlace`/`restoreWindow`); a
+  restored done reminder goes back *as the row it was* (`repository.restore`), not as one done
+  now. Emptying a log asks (`ClearDialog`), and so does removing a tag from every reminder or
+  hiding a phrase — there is no row to put back from a rewrite of forty rows, and a hidden
+  phrase has no door back through. A rename asks nothing: rename it back.
 - Home: `HomeViewModel` combines the open reminders, settings, the tag filter and a minute pulse
   into `HomeUiState` (`buildHomeState`, pure and tested). The hero card's countdown ticks in its
   own composable (`rememberNow`) so nothing else recomposes. The magnifier has a flow of its own

@@ -22,6 +22,14 @@ class DoneViewModel(private val repository: ReminderRepository) : ViewModel() {
         viewModelScope.launch { repository.setStatus(id, Status.ACTIVE) }
     }
 
+    /**
+     * The undo of a restore: the row exactly as it was, done stamp and all. `setStatus(DONE)`
+     * would stamp it done *now* and move it to the top of today's band, which is not where it was.
+     */
+    fun undoRestore(reminder: Reminder) {
+        viewModelScope.launch { repository.restore(reminder) }
+    }
+
     fun purge() {
         viewModelScope.launch { repository.purgeDone() }
     }

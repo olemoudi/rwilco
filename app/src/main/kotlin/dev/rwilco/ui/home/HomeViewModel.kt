@@ -51,7 +51,8 @@ import dev.rwilco.ui.settings.liveDismissals
 sealed interface HomeEvent {
     /** A reminder left the list; the snackbar offers to bring it back. */
     data class Removed(val kind: Kind, val reminder: Reminder) : HomeEvent {
-        enum class Kind { DONE, DELETED }
+        /** [SKIPPED] is a "hecho" given ahead of the ring, said with the word for that. */
+        enum class Kind { DONE, DELETED, SKIPPED }
     }
 
 
@@ -253,8 +254,10 @@ class HomeViewModel(
      * The magnifier's own state, kept apart from [state]: a keystroke must not send Home
      * through grouping and next-fire again, and what search shows does not depend on the clock.
      */
-    val search: StateFlow<SearchUiState> = combine(repository.open, searching, query) { reminders, open, text ->
-        buildSearchState(reminders, text, open)
+    // Over what is open *and* what was done: the history kept three months and the only way
+    // through it was scrolling. `search` puts the done ones last and says which they are.
+    val search: StateFlow<SearchUiState> = combine(repository.open, repository.done, searching, query) { reminders, done, open, text ->
+        buildSearchState(reminders + done, text, open)
     }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchUiState())
@@ -296,11 +299,20 @@ class HomeViewModel(
 
     fun delete(id: String) = removeAs(id, HomeEvent.Removed.Kind.DELETED)
 
+    /**
+     * "Saltar la próxima": the same door as "hecho", because it *is* one — a dismissal given to
+     * a recurring reminder that is not ringing spends its next round (`momentDealtWith`) and
+     * the round after is next. The card still leaves and comes back on its own; only the word
+     * differs, and the word is the whole point: pausing and remembering to come back was the
+     * only way to miss one Tuesday of "cada martes".
+     */
+    fun skipNext(id: String) = removeAs(id, HomeEvent.Removed.Kind.SKIPPED)
+
     private fun removeAs(id: String, kind: HomeEvent.Removed.Kind) {
         viewModelScope.launch {
             val reminder = repository.get(id) ?: return@launch
             when (kind) {
-                HomeEvent.Removed.Kind.DONE -> firing.dismiss(id)
+                HomeEvent.Removed.Kind.DONE, HomeEvent.Removed.Kind.SKIPPED -> firing.dismiss(id)
                 HomeEvent.Removed.Kind.DELETED -> repository.delete(id)
             }
             events.send(HomeEvent.Removed(kind, reminder))

@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.R
 import dev.rwilco.model.SavedWindow
 import dev.rwilco.model.TriggerFamily
@@ -65,9 +66,14 @@ fun SavedWindowsCard(
     windows: List<SavedWindow>,
     onSave: (Int?, SavedWindow) -> Unit,
     onRemove: (Int) -> Unit,
+    /** The undo: the window back at the index it was removed from. */
+    onRestore: (Int, SavedWindow) -> Unit,
 ) {
     val spacing = Tokens.spacing
     val family = TriggerFamily.TIME
+    val snackbar = LocalSnackbar.current
+    val removedMessage = stringResource(R.string.settings_window_removed)
+    val undoLabel = stringResource(R.string.common_undo)
     val is24h = rememberIs24h()
     val locale = currentLocale()
     var editing by rememberSaveable { mutableStateOf<Int?>(null) }
@@ -118,7 +124,10 @@ fun SavedWindowsCard(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                            IconButton(onClick = { onRemove(index) }) {
+                            IconButton(onClick = {
+                                onRemove(index)
+                                snackbar.show(removedMessage, undoLabel) { onRestore(index, saved) }
+                            }) {
                                 Icon(
                                     imageVector = Icons.Outlined.Delete,
                                     contentDescription = stringResource(R.string.settings_remove_window),

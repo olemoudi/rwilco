@@ -72,6 +72,7 @@ import dev.rwilco.R
 import dev.rwilco.model.Action
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Trigger
+import dev.rwilco.model.shapeOf
 import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.family
 import dev.rwilco.model.kind
@@ -567,14 +568,18 @@ private fun QuickWhenRow(clock: Clock, suggestions: List<Trigger>, defaultTime: 
     val tonight = LocalTime.of(20, 0)
     val morning = LocalTime.of(9, 0)
     val offered = remember(suggestions, today) {
-        suggestions.ifEmpty {
-            listOfNotNull(
-                // A length, so it starts when the reminder does rather than at some fixed minute.
-                Trigger.Countdown(QUICK_MINUTES),
-                Trigger.AtDateTime(LocalDateTime.of(today, tonight)).takeIf { now.toLocalTime().isBefore(tonight) },
-                Trigger.AtDateTime(LocalDateTime.of(today.plusDays(1), morning)),
-            )
-        }
+        val starters = listOfNotNull(
+            // A length, so it starts when the reminder does rather than at some fixed minute.
+            Trigger.Countdown(QUICK_MINUTES),
+            Trigger.AtDateTime(LocalDateTime.of(today, tonight)).takeIf { now.toLocalTime().isBefore(tonight) },
+            Trigger.AtDateTime(LocalDateTime.of(today.plusDays(1), morning)),
+        )
+        // The suggestions first, and then whichever starters they do not already amount to:
+        // the three used to be *replaced* by the history the moment there was any, so "esta
+        // noche" was gone for good after the first reminder ever saved, which is the opposite
+        // of what a chip that everybody starts with is for.
+        val shapes = suggestions.mapNotNull(::shapeOf).toSet()
+        (suggestions + starters.filter { shapeOf(it) !in shapes }).take(QUICK_CHIPS)
     }
 
     Row(
@@ -609,6 +614,9 @@ private fun quickLabel(trigger: Trigger, today: LocalDate, defaultTime: LocalTim
 }
 
 private const val QUICK_MINUTES = 30
+
+/** How many quick "when" chips the row shows: the suggestions and the starters they leave room for. */
+private const val QUICK_CHIPS = 6
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

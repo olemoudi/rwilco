@@ -15,6 +15,7 @@ import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RecurrencePreset
 import dev.rwilco.model.withSpanOf
 import dev.rwilco.model.keeping
+import dev.rwilco.model.Preset
 import dev.rwilco.model.recurrencePresetsByPopularity
 import dev.rwilco.model.used
 import dev.rwilco.model.Reminder
@@ -51,6 +52,10 @@ import dev.rwilco.model.MAX_TEXT_LENGTH
 sealed interface EditorEvent {
     data object Saved : EditorEvent
     data class Deleted(val reminder: Reminder) : EditorEvent
+    /** A preset left the list; the screen closes and the snackbar offers it back. */
+    data class PresetDeleted(val preset: Preset) : EditorEvent
+    /** A recurrence preset left the "Vuelve" card; the snackbar offers it back. */
+    data class RecurrencePresetDeleted(val preset: RecurrencePreset) : EditorEvent
     data object Close : EditorEvent
 
     /** "Guardar" was pressed on a draft that cannot be saved; [error] is the first reason why. */
@@ -236,7 +241,17 @@ class EditorViewModel(
 
     fun deleteRecurrencePreset(id: String) {
         viewModelScope.launch {
+            val preset = store.settings.first().recurrencePresets.firstOrNull { it.id == id } ?: return@launch
             store.update { settings -> settings.copy(recurrencePresets = settings.recurrencePresets.filterNot { it.id == id }) }
+            refreshRecurrencePresets()
+            events.send(EditorEvent.RecurrencePresetDeleted(preset))
+        }
+    }
+
+    /** The undo of [deleteRecurrencePreset]: the preset back, its uses with it. */
+    fun restoreRecurrencePreset(preset: RecurrencePreset) {
+        viewModelScope.launch {
+            store.update { settings -> settings.copy(recurrencePresets = settings.recurrencePresets.keeping(preset)) }
             refreshRecurrencePresets()
         }
     }
@@ -385,7 +400,8 @@ class EditorViewModel(
         if (preset != null) {
             viewModelScope.launch {
                 store.update { settings -> settings.copy(presets = settings.presets.filterNot { it.id == preset.id }) }
-                events.send(EditorEvent.Close)
+                // The same bin as a reminder's, and it used to be the one without an undo.
+                events.send(EditorEvent.PresetDeleted(preset))
             }
             return
         }

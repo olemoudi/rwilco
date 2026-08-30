@@ -30,8 +30,18 @@ import dev.rwilco.ui.theme.Tokens
 /** One release worth announcing: its code, its name, and its bullets (a string-array resource). */
 data class Release(val versionCode: Int, val name: String, @ArrayRes val bulletsRes: Int)
 
-/** Newest first. Empty until there is a release worth a word; the sheet then never appears. */
+/**
+ * Newest first. Empty until there is a release worth a word; the sheet then never appears.
+ *
+ * **The head of this list is the build.** It stopped at 0.20.0 once and nobody noticed for
+ * forty-five releases, because a sheet with nothing to say says nothing; `WhatsNewTest` now
+ * refuses a build whose code is not the first entry here, so a release cannot be cut without
+ * its line. The thirty versions that went unannounced are one entry, keyed to the build that
+ * brought the notes back, so a phone that last saw 0.20.0 is told once what happened since.
+ */
 val RELEASES: List<Release> = listOf(
+    Release(versionCode = 96, name = "0.51.0", bulletsRes = R.array.whats_new_0_51_0),
+    Release(versionCode = 95, name = "0.21 – 0.50", bulletsRes = R.array.whats_new_0_21_to_0_50),
     Release(versionCode = 50, name = "0.20.0", bulletsRes = R.array.whats_new_0_20_0),
     Release(versionCode = 49, name = "0.19.3", bulletsRes = R.array.whats_new_0_19_3),
     Release(versionCode = 48, name = "0.19.2", bulletsRes = R.array.whats_new_0_19_2),

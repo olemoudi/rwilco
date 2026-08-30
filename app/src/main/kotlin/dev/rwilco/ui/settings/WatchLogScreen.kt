@@ -26,6 +26,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -69,6 +72,20 @@ fun WatchLogScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
     val spacing = Tokens.spacing
     val zone = remember { ZoneId.systemDefault() }
     val today = remember(zone) { LocalDate.now(zone) }
+    // One tap next to Back used to empty days of somebody's afternoons, with no way back.
+    var confirmingClear by rememberSaveable { mutableStateOf(false) }
+    if (confirmingClear) {
+        ClearDialog(
+            titleRes = R.string.watch_log_clear_title,
+            bodyRes = R.string.watch_log_clear_body,
+            confirmRes = R.string.watch_log_clear,
+            onConfirm = {
+                confirmingClear = false
+                viewModel.clearWatchLog()
+            },
+            onDismiss = { confirmingClear = false },
+        )
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -94,7 +111,7 @@ fun WatchLogScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                             .padding(horizontal = spacing.sm),
                     )
                     if (log.notes.isNotEmpty()) {
-                        IconButton(onClick = viewModel::clearWatchLog) {
+                        IconButton(onClick = { confirmingClear = true }) {
                             Icon(Icons.Outlined.DeleteOutline, contentDescription = stringResource(R.string.watch_log_clear))
                         }
                     }

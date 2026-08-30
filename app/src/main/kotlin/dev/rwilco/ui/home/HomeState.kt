@@ -29,6 +29,7 @@ import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
 import dev.rwilco.model.awaitingAnswer
+import dev.rwilco.model.momentDealtWith
 
 data class HomeUiState(
     val loaded: Boolean = false,
@@ -111,6 +112,16 @@ data class ReminderCardUi(
      * and saying it twice is noise.
      */
     val recurrence: Recurrence? = null,
+    /**
+     * The moment "saltar la próxima" would let pass, or null where there is nothing to skip.
+     *
+     * The act itself is not new: a "hecho" given to a recurring reminder that is not waiting
+     * for an answer already spends its next round ([momentDealtWith]). What was missing was
+     * the name — the only way to miss one round of "cada día" was to pause it and remember to
+     * come back. Only a reminder that comes back has a next one to skip; one that is ringing
+     * has an answer owed first, and that answer is "hecho".
+     */
+    val skipsMoment: Instant? = null,
     /**
      * Whether "posponer" is an answer this card can give from Home.
      *
@@ -203,6 +214,11 @@ fun buildHomeState(
             match = reminder.ruleMatch.takeIf { reminder.rules.size > 1 },
             recurrence = reminder.recurrence.takeIf { it.isAnchored },
             snoozeOffered = reminder.awaitingAnswer(now) || (reminder.status == Status.ACTIVE && reminder.snoozedUntil?.let { it > now } == true),
+            skipsMoment = if (reminder.status == Status.ACTIVE && reminder.recurrence != Recurrence.None) {
+                reminder.momentDealtWith(now, zone, defaultTime, dayStart, shape)
+            } else {
+                null
+            },
         )
     }
     return HomeUiState(
@@ -238,7 +254,8 @@ sealed interface SearchHitUi {
     /** Stable across queries so the list animates rows instead of rebuilding them. */
     val key: String
 
-    data class OfReminder(val id: String, val text: String, val tags: List<String>) : SearchHitUi {
+    /** [done] when it is one already dealt with: found all the same, and said so on the row. */
+    data class OfReminder(val id: String, val text: String, val tags: List<String>, val done: Boolean = false) : SearchHitUi {
         override val key: String get() = "reminder-$id"
     }
 
@@ -254,7 +271,7 @@ fun buildSearchState(reminders: List<Reminder>, query: String, open: Boolean): S
     query = query,
     hits = if (!open) emptyList() else search(reminders, query).map { hit ->
         when (hit) {
-            is SearchHit.OfReminder -> SearchHitUi.OfReminder(hit.reminder.id, hit.reminder.text, hit.reminder.tags)
+            is SearchHit.OfReminder -> SearchHitUi.OfReminder(hit.reminder.id, hit.reminder.text, hit.reminder.tags, done = hit.reminder.status == Status.DONE)
             is SearchHit.OfTag -> SearchHitUi.OfTag(hit.tag, hit.count)
         }
     },

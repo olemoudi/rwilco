@@ -446,6 +446,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
                                 windows = current.savedWindows,
                                 onSave = viewModel::saveWindow,
                                 onRemove = viewModel::removeWindow,
+                                onRestore = viewModel::restoreWindow,
                             )
                         }
                     }
@@ -478,6 +479,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
                     onAdd = { editingPlace = -1 },
                     onEdit = { editingPlace = it },
                     onRemove = viewModel::removePlace,
+                    onRestore = viewModel::restorePlace,
                 )
                 RwilcoCard {
                     Column(Modifier.padding(spacing.lg)) {
