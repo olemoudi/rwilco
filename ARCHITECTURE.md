@@ -816,6 +816,20 @@ because that is what its chip would show.
   to remember" from "not read yet", and a blank screen for the two seconds a cold start takes
   said the first. The empty state carries the invitation as a button ("Escribe uno"), the same
   door as "Nuevo". "Hechos" wears the same placeholder before its list arrives.
+- **The top row goes away going down and comes back going up** (0.60.0, `HeaderScroll.kt`). The
+  wordmark, the cog and the three icons were the list's first item, so wanting Settings from
+  three screens down meant scrolling all the way back to a button that had not moved — the
+  reach was the length of the list rather than the length of a flick. It is the Scaffold's own
+  `topBar` now, moved by a `NestedScrollConnection`: **it travels by what the list actually
+  consumed, and consumes nothing itself.** Both halves of that are the point — a list too short
+  to scroll cannot have its row dragged off it, and while the row is leaving it moves exactly as
+  far as the cards under it, so its bottom edge stays on the first card and no gap can open. A
+  Material top bar would eat the scroll and shrink its own height instead, re-measuring the
+  screen every frame of a drag; here the list's top padding never changes and a drag costs one
+  layer offset. Let go of half way it finishes the journey it was on (`headerSettleTarget`), and
+  while the magnifier is open the row is **pinned** — the field up there is what the thumb is
+  aiming at, and it no longer scrolls away mid-search either. The arithmetic is pure and tested
+  (`HeaderScrollTest`); `HomeScrollTest` walks it on the real screen.
 - **"Hechos" opens with a number and a fortnight**, not with a list: how many were dealt with in
   the last seven days in `displayLarge` — the one Material role this app sets in JetBrains Mono,
   the size a number is read at when it is the only thing being said — over `DayBars`, one bar per

@@ -1152,6 +1152,9 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_60_0">
+        <item>The top row gets out of the way. The wordmark, the cog and the icons slide away as you go down the list and come back the moment you go up — so Settings is a flick away from wherever you are reading, instead of a scroll back to the top. While you are searching the row stays put: the field is what your thumb is aiming at.</item>
+    </string-array>
     <string-array name="whats_new_0_59_0">
         <item>The firing audit. Every way a reminder could stay quiet when it should have rung was hunted down, and the real ones were all at the places: an arrival minutes after another rule\'s ring now rings; a crossing reported in a busy moment can no longer be swallowed halfway; «al llegar a casa» said while the phone cannot tell where it stands now starts on the right side of the line; and the fences ask to be put back whenever Play Services left a doubt.</item>
         <item>A ring put off until a place has a backstop now: if the crossing has not come in two days, one quiet note says it is still waiting — the safety net\'s own channel, once, opening Home where the wait can be taken back.</item>

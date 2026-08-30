@@ -3,6 +3,11 @@ package dev.rwilco.ui
 import android.app.LocaleManager
 import android.os.LocaleList
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -115,6 +120,39 @@ class HomeScrollTest {
         rule.onNodeWithText(last, substring = true, useUnmergedTree = true).assertIsDisplayed()
         rule.onAllNodesWithText(words.first(), useUnmergedTree = true).fetchSemanticsNodes().let {
             assertTrue("the list jumped back to the top", it.isEmpty())
+        }
+    }
+
+    @Test
+    fun theTopRowLeavesGoingDownAndComesBackGoingUp() {
+        // The complaint this answers: reading well down the list and wanting Settings meant
+        // scrolling all the way back to the top for a button that had not moved.
+        waitFor(words.first())
+        val settings = s(R.string.home_settings)
+        rule.onNodeWithContentDescription(settings).assertIsDisplayed()
+
+        // Down the list: the row goes with it.
+        repeat(3) { rule.onNodeWithTag(HOME_LIST_TAG).performTouchInput { swipeUp() } }
+        rule.waitForIdle()
+        rule.onNodeWithContentDescription(settings).assertIsNotDisplayed()
+        rule.onAllNodesWithText(words.first(), useUnmergedTree = true).fetchSemanticsNodes().let {
+            assertTrue("the list did not go anywhere, so there is nothing to test", it.isEmpty())
+        }
+
+        // And back at the first sign of up. A short drag that rests before it lifts, so no
+        // fling carries the list home: the row has to come back for the scroll itself, which
+        // is the whole complaint — Settings a flick away from where you are reading.
+        rule.onNodeWithTag(HOME_LIST_TAG).performTouchInput {
+            down(center)
+            moveBy(Offset(0f, 120f))
+            moveBy(Offset(0f, 120f))
+            advanceEventTime(400)
+            up()
+        }
+        rule.waitForIdle()
+        rule.onNodeWithContentDescription(settings).assertIsDisplayed()
+        rule.onAllNodesWithText(words.first(), useUnmergedTree = true).fetchSemanticsNodes().let {
+            assertTrue("the row came back only because the list went to the top", it.isEmpty())
         }
     }
 

@@ -1150,6 +1150,9 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_60_0">
+        <item>La fila de arriba se aparta. El nombre, la rueda y los iconos se van al bajar por la lista y vuelven en cuanto subes — así los ajustes quedan a un gesto de donde estés leyendo, en vez de a un scroll hasta el principio. Mientras buscas la fila se queda quieta: el campo es lo que busca el pulgar.</item>
+    </string-array>
     <string-array name="whats_new_0_59_0">
         <item>La auditoría del sonar. Se persiguió cada manera en que un recordatorio podía callar cuando debía sonar, y las reales estaban todas en los lugares: una llegada minutos después del aviso de otra regla ahora suena; un cruce comunicado en un momento atareado ya no puede tragarse a medias; «al llegar a casa» dicho cuando el móvil no sabe dónde está arranca en el lado correcto de la línea; y las vallas piden volver a ponerse cuando Play Services dejó una duda.</item>
         <item>Un aviso pospuesto hasta un lugar tiene ahora un respaldo: si el cruce no ha llegado en dos días, una nota silenciosa dice que sigue esperando — el propio canal de la red de seguridad, una vez, abriendo Inicio donde se puede quitar la espera.</item>

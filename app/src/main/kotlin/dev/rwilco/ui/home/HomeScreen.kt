@@ -1,21 +1,26 @@
 package dev.rwilco.ui.home
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -42,6 +47,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
@@ -297,9 +305,46 @@ fun HomeScreen(
     }
 
     val spacing = Tokens.spacing
+    // The row with the wordmark, the cog and the three icons is the screen's own, not the
+    // list's first item: it leaves going down and comes back going up, so the way into
+    // Settings is one flick away from anywhere in the list rather than a scroll to the top.
+    // Pinned while searching — the field up there is what the thumb is aiming at.
+    val headerScroll = rememberHeaderScroll(pinned = search.open)
     Scaffold(
+        modifier = Modifier.nestedScroll(headerScroll.connection),
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing,
+        topBar = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    // Moved, not re-laid-out: the height the Scaffold hands the list below
+                    // stays what it was, so a drag costs one layer offset and no measuring.
+                    .graphicsLayer { translationY = headerScroll.offsetPx }
+                    // Opaque, because the cards travel under it rather than beside it.
+                    .background(MaterialTheme.colorScheme.background)
+                    .onSizeChanged { headerScroll.measured(it.height.toFloat()) }
+                    // A top bar owes the status bar its own room; what the Scaffold hands the
+                    // content below is this whole row, inset and all.
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                    .padding(start = spacing.screen, end = spacing.screen, top = spacing.md),
+            ) {
+                if (search.open) {
+                    SearchField(
+                        query = search.query,
+                        onQueryChange = viewModel::setQuery,
+                        onClose = { viewModel.setSearching(false) },
+                    )
+                } else {
+                    Header(
+                        onSearch = { viewModel.setSearching(true) },
+                        onDoneList = onDoneList,
+                        onSettings = onSettings,
+                        onDiagnostics = onDiagnostics,
+                    )
+                }
+            }
+        },
         floatingActionButton = {
             // While searching the thumb is on the keyboard, not on "New": the button would only
             // be covering a result.
@@ -335,22 +380,6 @@ fun HomeScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(spacing.md),
         ) {
-            item(key = "header") {
-                if (search.open) {
-                    SearchField(
-                        query = search.query,
-                        onQueryChange = viewModel::setQuery,
-                        onClose = { viewModel.setSearching(false) },
-                    )
-                } else {
-                    Header(
-                        onSearch = { viewModel.setSearching(true) },
-                        onDoneList = onDoneList,
-                        onSettings = onSettings,
-                        onDiagnostics = onDiagnostics,
-                    )
-                }
-            }
             // A fold in Settings may never hide a phone that will not ring, and neither may
             // Home: the one screen somebody actually looks at says so, once, until waved off.
             if (!search.open && stripShows(readiness, dismissedProblems)) {
