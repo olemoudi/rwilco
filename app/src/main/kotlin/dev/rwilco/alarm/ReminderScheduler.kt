@@ -184,13 +184,28 @@ class ReminderScheduler(
                 // setAlarmClock, not setExactAndAllowWhileIdle: it is the only kind of alarm Doze
                 // never defers and the rate limiter never holds back, and the system's "next
                 // alarm" then tells the truth about what this phone is going to do next.
-                alarms.setAlarmClock(AlarmManager.AlarmClockInfo(at.toEpochMilli(), showIntent()), operation)
+                //
+                // And when it refuses — the grant taken away between the check above and this
+                // call is a real window on Android 12/13 — the inexact kind goes in instead of
+                // nothing: armedFor is already written, and an alarm that arrives late is a
+                // missed moment the catch-up can see, while one never set is silence until
+                // another door happens to open.
+                runCatching {
+                    alarms.setAlarmClock(AlarmManager.AlarmClockInfo(at.toEpochMilli(), showIntent()), operation)
+                }.getOrElse {
+                    Log.w(TAG, "exact refused for $id; arming inexactly", it)
+                    Diag.note("arm", "r=${id.take(8)} exact refused (${it::class.simpleName}); armed inexactly")
+                    alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.toEpochMilli(), operation)
+                }
             } else {
                 // Exact alarms refused: late is better than never, and the Settings card says so.
                 alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.toEpochMilli(), operation)
             }
             armed += id
-        }.onFailure { Log.e(TAG, "could not arm $id", it) }
+        }.onFailure {
+            Log.e(TAG, "could not arm $id", it)
+            Diag.note("arm", "r=${id.take(8)} could NOT be armed (${it::class.simpleName})")
+        }
     }
 
     private fun canScheduleExact(): Boolean =

@@ -256,4 +256,27 @@ class FiringTest {
         assertFalse(loopsOnScreen(listOf(once, firingPlan(setOf(Action.VIBRATE)))))
         assertFalse(loopsOnScreen(emptyList()))
     }
+
+    @Test
+    fun `an arrival minutes after a sibling rule's ring is not an echo of it`() {
+        // "Al llegar a casa, o a las 21:00": the nine o'clock rang, and the doorway three
+        // minutes later is a different thing that happened, not the same arrival seen twice.
+        assertFalse(isPlaceEcho(lastFiredAt = now.minusSeconds(180), lastFiredRule = 1, ruleIndex = 0, now = now))
+    }
+
+    @Test
+    fun `the same arrival seen by the second eye is an echo, and only for a while`() {
+        // The geofence rang this circle; the watch's own look reports the same doorway.
+        assertTrue(isPlaceEcho(now.minusSeconds(299), lastFiredRule = 0, ruleIndex = 0, now = now))
+        assertFalse(isPlaceEcho(now.minusSeconds(300), lastFiredRule = 0, ruleIndex = 0, now = now), "five minutes on, it may ring again")
+        assertFalse(isPlaceEcho(null, lastFiredRule = null, ruleIndex = 0, now = now), "never rang, nothing to echo")
+    }
+
+    @Test
+    fun `a ring with no rule behind it holds every circle of its own pin briefly`() {
+        // A snooze's crossing rings with no rule behind it (the row records null); the same
+        // pin registered as a rule circle hands over its own ENTER seconds later — one
+        // doorway, one ring.
+        assertTrue(isPlaceEcho(now.minusSeconds(5), lastFiredRule = null, ruleIndex = 0, now = now))
+    }
 }

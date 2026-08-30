@@ -200,12 +200,17 @@ class SnoozeJourneyTest {
     }
 
     @Test
-    fun `the net and the missed-firing pass both read a place snooze as an answer`() {
+    fun `the missed-firing pass reads a place snooze as an answer, and the net gives it two days`() {
         val phone = Simulation(reminder(at(2026, 8, 27, 21, 30)), now)
         phone.step { Simulation.Deal.Elsewhere(home) }
         phone.now = local(2026, 8, 30, 12, 0)
-        assertNull(missedFire(phone.reminder, phone.now))
-        assertNull(phone.reminder.netDue(phone.now, zone, defaultTime, SafetyNetSettings()), "put off is an answer, to a place as to a clock")
+        assertNull(missedFire(phone.reminder, phone.now), "put off is an answer: nothing was missed")
+        // Two of the net's longest waits after the ring the snooze answered, one quiet word
+        // that it is still waiting — the only backstop a wait with nothing on the clock has.
+        val due = phone.reminder.netDue(phone.now, zone, defaultTime, SafetyNetSettings())
+        assertEquals(NetWord.WAITING, due?.word)
+        assertEquals(phone.rings.single().rangFor, due?.about)
+        assertEquals(phone.rings.single().rangFor.plus(Duration.ofHours(48)), due?.at)
     }
 
     @Test

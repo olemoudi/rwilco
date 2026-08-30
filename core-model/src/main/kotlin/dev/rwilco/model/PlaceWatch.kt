@@ -564,7 +564,19 @@ private fun Duration.clamp(floor: Duration, ceiling: Duration): Duration = when 
 fun insideAfter(wasInside: Boolean?, place: WatchedPlace, fix: Fix): Boolean {
     val distance = distanceMeters(fix.lat, fix.lng, place.lat, place.lng)
     return when (wasInside) {
-        null -> if (place.transition == Transition.ENTER) distance <= place.radiusM + fix.accuracyM else distance + fix.accuracyM <= place.radiusM
+        null -> when {
+            // A snooze circle's first side is the person's own word, not a measurement: "al
+            // llegar a…" starts outside, "al salir de aquí" starts inside — the awaited
+            // crossing is still ahead. Geometry leaning the other way off a doubtful fix (an
+            // unknown accuracy reads as 500 m) baselined the wait as already over, and a
+            // snooze has no clock and no net behind it: that silence was for good. At worst
+            // the phone already stood on the awaited side, and the next honest fix or the
+            // fence says so — one early ring, which is the right way round. The honest side
+            // remember() wrote, when the snooze knew it, never reaches this branch at all.
+            GeofenceIds.isSnooze(place.id) -> place.transition == Transition.EXIT
+            place.transition == Transition.ENTER -> distance <= place.radiusM + fix.accuracyM
+            else -> distance + fix.accuracyM <= place.radiusM
+        }
         false -> distance <= place.radiusM && fix.accuracyM <= place.radiusM
         true -> distance <= place.radiusM + fix.accuracyM
     }

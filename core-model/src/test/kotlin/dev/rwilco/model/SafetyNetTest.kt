@@ -252,4 +252,32 @@ class SafetyNetTest {
         assertTrue(tooFastForNet(cadence, settings))
         assertNull(fast.due(), "so the net is never armed")
     }
+
+    @Test
+    fun `a snooze waiting at a place is owed one quiet word after two of the longest waits`() {
+        // "Cuando llegue a casa" — and the fence was dropped, or location is off, and the
+        // crossing never came. Nothing on the clock, so this word is the only backstop there is.
+        val rang = local(2026, 8, 27, 9, 0)
+        val door = Trigger.Location(40.4169, -3.7035, 200, Presence.INSIDE, "Casa", onCrossing = true)
+        val waiting = reminder(TriggerRule(Trigger.AtDateTime(LocalDate.of(2026, 8, 27).atTime(9, 0))), lastFiredAt = rang)
+            .copy(snoozedToPlace = door)
+        val due = waiting.netDue(now, zone, defaultTime, settings)
+        assertEquals(NetWord.WAITING, due?.word)
+        assertEquals(rang, due?.about, "counted from the ring the snooze answered")
+        assertEquals(rang.plus(Duration.ofHours(48)), due?.at, "twice the whole wait")
+        assertEquals(Duration.ofHours(48), placeSnoozeWait(settings))
+    }
+
+    @Test
+    fun `the waiting word is said once, and never without a ring behind it`() {
+        val rang = local(2026, 8, 27, 9, 0)
+        val door = Trigger.Location(40.4169, -3.7035, 200, Presence.INSIDE, "Casa", onCrossing = true)
+        val waiting = reminder(TriggerRule(Trigger.AtDateTime(LocalDate.of(2026, 8, 27).atTime(9, 0))), lastFiredAt = rang)
+            .copy(snoozedToPlace = door)
+        assertNull(waiting.copy(nudgedAt = rang.plus(Duration.ofHours(48))).netDue(now, zone, defaultTime, settings), "said once is said")
+        assertNull(waiting.copy(lastFiredAt = null).netDue(now, zone, defaultTime, settings), "no ring to count from, no word")
+        assertNull(waiting.copy(status = Status.PAUSED).netDue(now, zone, defaultTime, settings))
+        // The crossing rings and clears the wait; back to the ordinary words.
+        assertEquals(NetWord.LET_GO, waiting.copy(snoozedToPlace = null).netDue(now, zone, defaultTime, settings)?.word, "without the wait the ring is owed the ordinary word")
+    }
 }

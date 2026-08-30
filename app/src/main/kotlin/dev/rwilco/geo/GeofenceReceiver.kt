@@ -13,7 +13,11 @@ import dev.rwilco.diag.Diag
 import dev.rwilco.model.Crossing
 import dev.rwilco.model.GeofenceIds
 import dev.rwilco.model.Transition
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 /** The phone arrived somewhere, or left it. */
@@ -46,20 +50,35 @@ class GeofenceReceiver : BroadcastReceiver() {
                 // The broadcast's own budget, as every other receiver here keeps it: past it the
                 // system has finished the receiver, and the watch's lock may be held by a look.
                 withTimeoutOrNull(BUDGET_MS) {
-                for (placeId in fenced) {
-                    // Its own watch has the last word on whether this is an arrival at all, and
-                    // on what an arrival is worth: under "todos" a place that has been ticked
-                    // off is waiting for the crossing that takes the tick back.
-                    val reminderId = GeofenceIds.reminderIdOf(placeId)
-                    val ruleIndex = GeofenceIds.triggerIndexOf(placeId)
-                    when (app.placeWatcher.accept(placeId, transition)) {
-                        Crossing.RINGS ->
-                            if (GeofenceIds.isSnooze(placeId)) app.firing.fire(reminderId, viaSnoozePlace = true)
-                            else app.firing.fire(reminderId, ruleIndex = ruleIndex)
-                        Crossing.TAKES_BACK -> ruleIndex?.let { app.firing.untick(reminderId, it) }
-                        Crossing.NOTHING -> Unit
+                    for ((index, placeId) in fenced.withIndex()) {
+                        // Each crossing whole or not at all. accept() writes the side into the
+                        // watch's memory before its answer says whether to ring, and a
+                        // cancellation landing between the two consumed the crossing for good:
+                        // the memory said "already there", so no later look could report it
+                        // again. The same hardening look() got in 0.58.0 — the timeout may
+                        // land between places, never inside one.
+                        if (!currentCoroutineContext().isActive) {
+                            Log.e(TAG, "place crossings ran out of time; ${fenced.size - index} left unjudged")
+                            break
+                        }
+                        withContext(NonCancellable) {
+                            runCatching {
+                                // Its own watch has the last word on whether this is an arrival
+                                // at all, and on what an arrival is worth: under "todos" a place
+                                // that has been ticked off is waiting for the crossing that
+                                // takes the tick back.
+                                val reminderId = GeofenceIds.reminderIdOf(placeId)
+                                val ruleIndex = GeofenceIds.triggerIndexOf(placeId)
+                                when (app.placeWatcher.accept(placeId, transition)) {
+                                    Crossing.RINGS ->
+                                        if (GeofenceIds.isSnooze(placeId)) app.firing.fire(reminderId, viaSnoozePlace = true)
+                                        else app.firing.fire(reminderId, ruleIndex = ruleIndex)
+                                    Crossing.TAKES_BACK -> ruleIndex?.let { app.firing.untick(reminderId, it) }
+                                    Crossing.NOTHING -> Unit
+                                }
+                            }.onFailure { Log.e(TAG, "handing on a crossing at $placeId failed", it) }
+                        }
                     }
-                }
                 }
             } catch (t: Throwable) {
                 Log.e(TAG, "firing a place reminder failed", t)

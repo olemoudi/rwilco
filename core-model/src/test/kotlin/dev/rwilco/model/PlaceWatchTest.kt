@@ -473,4 +473,27 @@ class PlaceWatchTest {
         val settings = AppSettings(savedPlaces = listOf(SavedPlace("Casa", homeLat, homeLng, 200)))
         assertEquals(settings, ReminderCodec.decodeSettings(ReminderCodec.encodeSettings(settings)))
     }
+
+    @Test
+    fun `a snooze circle's first side is the person's word, not the fix`() {
+        // "Al llegar a casa" said from the metro: the wait starts OUTSIDE whatever a doubtful
+        // fix reads, because geometry leaning "could be inside, so inside" baselined the wait
+        // as already over — and a snooze has no clock and no net behind that silence.
+        val arriveId = GeofenceIds.encodeSnooze("r1", Trigger.Location(homeLat, homeLng, 200, Presence.INSIDE, "Casa", onCrossing = true))
+        val arrive = WatchedPlace(arriveId, homeLat, homeLng, radiusM = 200, transition = Transition.ENTER, label = "Casa", onCrossing = true)
+        assertFalse(insideAfter(null, arrive, north(100.0, accuracy = 500.0)), "waiting to arrive starts outside, however sloppy the fix")
+        assertFalse(insideAfter(null, arrive, north(50.0)), "even a good fix does not outrank the person's word")
+        // "Al salir de aquí": the wait starts INSIDE — the leaving is still ahead.
+        val leaveId = GeofenceIds.encodeSnooze("r1", Trigger.Location(homeLat, homeLng, 150, Presence.OUTSIDE, "aquí", onCrossing = true))
+        val leave = WatchedPlace(leaveId, homeLat, homeLng, radiusM = 150, transition = Transition.EXIT, label = "aquí", onCrossing = true)
+        assertTrue(insideAfter(null, leave, north(5000.0)), "waiting to leave starts inside")
+    }
+
+    @Test
+    fun `with a side already seen a snooze circle is judged like any other`() {
+        val arriveId = GeofenceIds.encodeSnooze("r1", Trigger.Location(homeLat, homeLng, 200, Presence.INSIDE, "Casa", onCrossing = true))
+        val arrive = WatchedPlace(arriveId, homeLat, homeLng, radiusM = 200, transition = Transition.ENTER, label = "Casa", onCrossing = true)
+        assertTrue(insideAfter(false, arrive, north(50.0, accuracy = 30.0)), "a clear arrival flips it, and that flip is the ring")
+        assertFalse(insideAfter(false, arrive, north(100.0, accuracy = 500.0)), "and doubt still changes nothing")
+    }
 }

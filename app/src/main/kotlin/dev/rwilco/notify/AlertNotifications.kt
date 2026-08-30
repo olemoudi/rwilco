@@ -20,6 +20,7 @@ import dev.rwilco.model.FiringPlan
 import dev.rwilco.ui.format.summaryLine
 import dev.rwilco.MainActivity
 import dev.rwilco.model.NetWord
+import dev.rwilco.model.Presence
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.AlertSound
 import dev.rwilco.model.Snooze
@@ -172,7 +173,14 @@ object AlertNotifications {
         // moment that never rang has no ring behind it, and that screen drops a reminder that
         // is not awaiting an answer the moment it opens: a tap that flashed and did nothing.
         // That word opens the reminder itself, where the fence that shut it can be changed.
-        val open = if (nudge == NetWord.NEVER_RANG) editorIntent(context, reminder.id) else activityIntent(context, reminder.id, ruleIndex)
+        // "Still waiting at a place" is not awaiting an answer either — and the editor drops
+        // the wait on save — so that one opens Home, where the wait is seen and can be taken
+        // back.
+        val open = when (nudge) {
+            NetWord.NEVER_RANG -> editorIntent(context, reminder.id)
+            NetWord.WAITING -> homeIntent(context, reminder.id)
+            else -> activityIntent(context, reminder.id, ruleIndex)
+        }
         // **Why it rang**, in the words the form used when it was written — not the reminder's
         // own text again, which the title already carries and which said nothing twice. The
         // sentence is the editor's own, minus the words themselves (`reminderSummary`).
@@ -232,6 +240,14 @@ object AlertNotifications {
             // The other way one gets away, and a different thing to be told: this one never
             // reached you at all, because its moment came while something was shut.
             nudge == NetWord.NEVER_RANG -> builder.setSubText(context.getString(R.string.notif_net_subtext_never))
+            // Not away at all: put off until a place whose crossing has been a long time
+            // coming. Which way it waits decides the sentence, and the label is the person's
+            // own word for the place ("here" included).
+            nudge == NetWord.WAITING -> {
+                val door = reminder.snoozedToPlace
+                val waitingRes = if (door?.presence == Presence.INSIDE) R.string.notif_net_subtext_waiting_arrive else R.string.notif_net_subtext_waiting_leave
+                builder.setSubText(context.getString(waitingRes, door?.label.orEmpty()))
+            }
             late != null -> builder.setSubText(context.getString(R.string.alert_missed_subtext))
         }
         // A full-screen alert is a request, not a promise: the system may refuse it (since
@@ -350,6 +366,16 @@ object AlertNotifications {
         Intent(context, AlertActivity::class.java)
             .setData(ReminderScheduler.reminderUri(reminderId))
             .apply { if (ruleIndex != null) putExtra(ReminderScheduler.EXTRA_RULE, ruleIndex) }
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+
+    /** Home itself, where a wait at a place is seen and can be taken back; no form, no alert. */
+    private fun homeIntent(context: Context, reminderId: String): PendingIntent = PendingIntent.getActivity(
+        context,
+        0,
+        Intent(context, MainActivity::class.java)
+            .setData(ReminderScheduler.reminderUri(reminderId))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )

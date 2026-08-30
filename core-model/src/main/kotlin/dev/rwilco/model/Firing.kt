@@ -107,6 +107,27 @@ fun Reminder.presenceAlreadyRang(place: Trigger.Location, ruleIndex: Int): Boole
     return lastFiredRule == null || lastFiredRule == ruleIndex
 }
 
+/** Inside this of the last ring, a second sighting of the same place is the same arrival. */
+val PLACE_ECHO: Duration = Duration.ofMinutes(5)
+
+/**
+ * Whether a place firing is an echo of a ring just given rather than a new arrival.
+ *
+ * Two eyes watch every place — the phone's geofence and the app's own watch — and one arrival
+ * can reach the firing twice within a few minutes; the second sighting must not ring. But an
+ * echo is only an echo of *this* circle's ring: a sibling rule's nine o'clock ring must not
+ * silence a genuine arrival three minutes later ("al llegar a casa, o a las 21:00" — the same
+ * class of bug the per-circle `strict` in the watch was fixed for). [lastFiredRule] null still
+ * reads as an echo, because a ring with no rule behind it is the reminder itself having just
+ * rung — a snooze's own crossing, a recurrence — and the same pin registered as both a snooze
+ * circle and a rule circle delivers both crossings from one doorway.
+ */
+fun isPlaceEcho(lastFiredAt: Instant?, lastFiredRule: Int?, ruleIndex: Int?, now: Instant, echo: Duration = PLACE_ECHO): Boolean {
+    if (lastFiredAt == null) return false
+    if (Duration.between(lastFiredAt, now) >= echo) return false
+    return lastFiredRule == null || lastFiredRule == ruleIndex
+}
+
 /**
  * The moment an alarm was set for and never rang — the phone was off, or the app was killed
  * before the receiver ran — or null when nothing was missed.

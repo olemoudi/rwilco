@@ -126,6 +126,15 @@ fun Reminder.ringCadence(
 fun tooFastForNet(cadence: Duration?, settings: SafetyNetSettings): Boolean =
     cadence != null && cadence < Duration.ofMinutes(settings.minCadenceMinutes.toLong())
 
+/**
+ * How long a snooze may wait at a place before the net says it is still waiting: twice the
+ * longest ordinary wait (about two days on the defaults). A crossing may rightly take a day —
+ * that is what "cuando llegue a…" means — so the word comes only once the silence has outlasted
+ * anything a person plausibly meant, which is when a dropped fence and a blind watch start to
+ * look exactly like patience.
+ */
+fun placeSnoozeWait(settings: SafetyNetSettings): Duration = Duration.ofHours(settings.afterHours.toLong() * 2)
+
 /** How long the net waits, given the rhythm it is stretched under. See [SafetyNetSettings]. */
 fun netWait(cadence: Duration?, settings: SafetyNetSettings): Duration {
     val longest = Duration.ofHours(settings.afterHours.toLong())
@@ -141,6 +150,9 @@ enum class NetWord {
 
     /** Its moment came while something was shut, and there is none left for it to ring at. */
     NEVER_RANG,
+
+    /** It was put off until a place, and the crossing has been a long time coming. */
+    WAITING,
 }
 
 /** A word owed: when it is due, the moment it is about, and which of the two it is. */
@@ -190,7 +202,8 @@ private const val MOMENTS_WALKED = 1024
 
 /**
  * The word this reminder is owed, or null when it is owed none: the net is off, it is paused or
- * done, it has been dealt with or put off (which are answers), the word has already been said,
+ * done, it has been dealt with or put off to a clock (which are answers), the word has
+ * already been said,
  * or it comes back too fast to be worth catching.
  *
  * Only the moment and the reason. Whether it still holds when that moment arrives is asked again
@@ -208,6 +221,14 @@ fun Reminder.netDue(
     val about: Instant
     val word: NetWord
     when {
+        // Put off until a place that has not come. Not a moment that got away — the person
+        // answered — but a wait with nothing on the clock and, if the fence is dropped and the
+        // watch blind, nothing behind it at all: the one silence in the app no other door can
+        // end. Long after the longest ordinary wait, one quiet word that it is still waiting.
+        snoozedToPlace != null -> {
+            about = lastFiredAt ?: return null
+            word = NetWord.WAITING
+        }
         // It rang and nobody has answered it since.
         awaitingAnswer(now) -> {
             about = lastFiredAt ?: return null
@@ -222,11 +243,13 @@ fun Reminder.netDue(
         }
         else -> return null
     }
-    // Put off is an answer, whichever way it got away — to a clock or to a place.
+    // Put off to a clock is an answer: the snooze rings, and the net has nothing to add.
     snoozedUntil?.let { if (it > now) return null }
-    if (snoozedToPlace != null) return null
     // One word per moment. A second one about the same moment is the nagging this is not.
     nudgedAt?.let { if (!it.isBefore(about)) return null }
+    // A wait at a place has no rhythm to be measured against: the cadence machinery below is
+    // about rings that are coming, and this one is deliberately not.
+    if (word == NetWord.WAITING) return NetDue(about.plus(placeSnoozeWait(settings)), about, word)
     val cadence = ringCadence(now, zone, defaultTime, dayStart, shape)
     if (tooFastForNet(cadence, settings)) return null
     return NetDue(about.plus(netWait(cadence, settings)), about, word)

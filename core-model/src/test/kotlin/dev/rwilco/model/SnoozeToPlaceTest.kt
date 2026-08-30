@@ -54,11 +54,16 @@ class SnoozeToPlaceTest {
     }
 
     @Test
-    fun `put off is an answer to the ring, the net and the missed-firing pass`() {
+    fun `put off is an answer to the ring and the missed-firing pass, and the net waits two days`() {
         val rang = waiting(nine).copy(lastFiredAt = now.minusSeconds(600), armedFor = now.minusSeconds(600))
         assertFalse(rang.awaitingAnswer(now))
         assertNull(missedFire(rang, now))
-        assertNull(rang.netDue(now.plus(Duration.ofDays(2)), zone, defaultTime, SafetyNetSettings()))
+        // The net's one word about a wait: not "it got away" but "it is still waiting", due
+        // two of the longest waits after the ring the snooze answered (SafetyNetTest).
+        assertEquals(
+            NetWord.WAITING,
+            rang.netDue(now.plus(Duration.ofDays(2)), zone, defaultTime, SafetyNetSettings())?.word,
+        )
         assertTrue(rang.copy(snoozedToPlace = null).awaitingAnswer(now), "and without it the ring is still owed one")
     }
 

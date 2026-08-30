@@ -304,7 +304,20 @@ class PlaceWatcher(
     suspend fun accept(placeId: String, transition: Transition): Crossing = lock.withLock {
         val state = store.read()
         val now = clock.instant()
-        val live = runCatching { places().firstOrNull { it.id == placeId } }.getOrNull()
+        // A crossing must not be judged — and above all not WRITTEN DOWN — off a read that
+        // failed. live == null has a meaning of its own ("this circle is not worth anything
+        // right now"), and a database or settings read that threw used to wear it: the side
+        // went into the memory, NOTHING came back, and a real arrival was consumed for good.
+        // Left unwritten instead, the next look re-derives the crossing from fix-versus-memory
+        // and rings late rather than never.
+        val lively = runCatching { places().firstOrNull { it.id == placeId } }
+        val failed = lively.exceptionOrNull()
+        if (failed != null) {
+            Log.e(TAG, "could not judge a crossing at $placeId", failed)
+            Diag.note("geo", "crossing unjudged (${failed::class.simpleName}); left for the next look")
+            return@withLock Crossing.NOTHING
+        }
+        val live = lively.getOrNull()
         // A circle that asks for the doorway and has already rung is owed the other side before
         // it rings again: the crossing has to be one the app has seen the far side of, and what
         // it cannot vouch for is not news. The first ring keeps the benefit of the doubt. A

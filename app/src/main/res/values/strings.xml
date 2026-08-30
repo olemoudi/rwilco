@@ -431,6 +431,8 @@
     <string name="notif_channel_net_description">A quiet word about a reminder that rang and was never answered.</string>
     <string name="notif_net_subtext">You may have let this one go</string>
     <string name="notif_net_subtext_never">This never reached you</string>
+    <string name="notif_net_subtext_waiting_arrive">Still waiting for you to reach %1$s</string>
+    <string name="notif_net_subtext_waiting_leave">Still waiting for you to leave %1$s</string>
     <string name="settings_net_title">Safety net</string>
     <string name="settings_net_about">A reminder can be asked to keep one eye on you. There are two ways one gets away — it rings and you never answer it, or its moment comes while a fence is shut and there is none left for it to ring at — and one switch for both, since nobody knows in advance which way it will be. Either way you get one quiet word about it: no sound, no screen, once. The switch is on each reminder, under «what happens»; these are what it means by «later».</string>
     <string name="settings_net_after">At most it waits</string>
@@ -1150,6 +1152,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_59_0">
+        <item>The firing audit. Every way a reminder could stay quiet when it should have rung was hunted down, and the real ones were all at the places: an arrival minutes after another rule\'s ring now rings; a crossing reported in a busy moment can no longer be swallowed halfway; «al llegar a casa» said while the phone cannot tell where it stands now starts on the right side of the line; and the fences ask to be put back whenever Play Services left a doubt.</item>
+        <item>A ring put off until a place has a backstop now: if the crossing has not come in two days, one quiet note says it is still waiting — the safety net\'s own channel, once, opening Home where the wait can be taken back.</item>
+        <item>An exact alarm the system refuses at the last moment is set inexactly instead of not at all; and the clock is pinned further afield — put backwards with a snooze in flight, the southern hemisphere\'s daylight changes, a quarter-hour time zone.</item>
+    </string-array>
     <string-array name="whats_new_0_58_0">
         <item>The review round. A reminder put off until a place could go quiet for good: the watch held its circle to the rule for a place that has already rung, and dropped the first arrival home. It rings now. And a second arrival in the same look, or a place snooze whose undo forgot which side of the line you were on, no longer gets lost.</item>
         <item>A backup from a newer build restored here no longer wipes every setting over one word it does not know: the theme, the sound, the saved places and the presets each read what they can.</item>

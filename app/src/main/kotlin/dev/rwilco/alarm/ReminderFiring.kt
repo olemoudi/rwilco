@@ -26,6 +26,7 @@ import dev.rwilco.model.lateForPresentation
 import dev.rwilco.model.nextSoundIn
 import dev.rwilco.model.soundFor
 import dev.rwilco.model.firingPlan
+import dev.rwilco.model.isPlaceEcho
 import dev.rwilco.model.missedFire
 import dev.rwilco.model.netDue
 import dev.rwilco.model.momentDealtWith
@@ -177,12 +178,15 @@ class ReminderFiring(
             return@withLock
         }
         // Two eyes on every place — the phone's geofence and the app's own watch — and one
-        // arrival. Whichever sees it second is telling us what we already rang about.
+        // arrival. Whichever sees it second is telling us what we already rang about. But only
+        // an echo of THIS circle's ring, or of a ring with no rule behind it (the reminder
+        // itself: a snooze's crossing, a recurrence): a sibling rule's nine o'clock must not
+        // silence a genuine arrival three minutes later. See isPlaceEcho (core-model).
         val lastFired = reminder.lastFiredAt
         val place = rule?.trigger as? Trigger.Location
-        if (place != null && lastFired != null && Duration.between(lastFired, now) < PLACE_ECHO) {
+        if (place != null && isPlaceEcho(lastFired, reminder.lastFiredRule, ruleIndex, now)) {
             Log.i(TAG, "$id already rang for this place ${Duration.between(lastFired, now).seconds}s ago")
-            Diag.note(TAG_DIAG, "r=${short(id)} dropped: place echo ${Duration.between(lastFired, now).seconds}s after the last ring")
+            Diag.note(TAG_DIAG, "r=${short(id)} dropped: place echo ${Duration.between(lastFired, now).seconds}s after the last ring (rule ${reminder.lastFiredRule})")
             scheduler.rearmAll()
             return@withLock
         }
@@ -608,9 +612,6 @@ class ReminderFiring(
             if (sound) append(if (insistent) "S!+" else "S+")
             if (vibrate) append("V+")
         }.trimEnd('+').ifEmpty { "nothing" }
-
-        /** Inside this of the last ring, a second sighting of the same place is the same arrival. */
-        val PLACE_ECHO: Duration = Duration.ofMinutes(5)
 
         /** Alarms arrive late, never early — but a few seconds of slack costs nothing. */
         const val EARLY_GRACE_SECONDS = 5L

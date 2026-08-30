@@ -10,14 +10,8 @@ import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.diag.Diag
+import dev.rwilco.model.geofenceChoices
 import dev.rwilco.model.geofenceFingerprint
-import dev.rwilco.model.GeofenceIds
-import dev.rwilco.model.RuleMatch
-import dev.rwilco.model.Status
-import dev.rwilco.model.pendingRules
-import dev.rwilco.model.rulesCombine
-import dev.rwilco.model.Transition
-import dev.rwilco.model.Trigger
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
@@ -59,38 +53,10 @@ class GeofenceManager(
     private val client: GeofencingClient by lazy { LocationServices.getGeofencingClient(context) }
 
     suspend fun sync(force: Boolean = false): GeofenceState {
-        val places = repository.openNow()
-            .filter { it.status == Status.ACTIVE }
-            .flatMap { reminder ->
-                // Put off until a place: that circle is the reminder's only one until it rings,
-                // and the rules' own are outranked exactly as they are by a clock snooze.
-                reminder.snoozedToPlace?.let { door -> return@flatMap listOf(GeofenceIds.encodeSnooze(reminder.id, door) to door) }
-                // Only the rules still waiting to happen. Under "todos" a place that has
-                // already been ticked off has nothing left to report, and a geofence is not
-                // free: a hundred is the app's whole allowance and Play Services watches every
-                // one of them. The circles named by *conditions* are not here at all — a
-                // geofence reports a crossing and a condition has none; PlaceWatcher tracks
-                // their state instead.
-                val pending = reminder.pendingRules().toSet()
-                val accumulates = reminder.ruleMatch == RuleMatch.ALL && reminder.rulesCombine
-                reminder.rules.mapIndexedNotNull { index, rule ->
-                    val place = rule.trigger as? Trigger.Location ?: return@mapIndexedNotNull null
-                    // Except a place under "todos", which is a state: ticked off, it is still
-                    // watched for the crossing back, and the system is the eye that sees it
-                    // first.
-                    val ticked = accumulates && index in reminder.firedRules
-                    if (index !in pending && !ticked) return@mapIndexedNotNull null
-                    GeofenceIds.encode(reminder.id, index, place) to place
-                }
-            }
-            // A hard limit of 100 per app: past that Play Services refuses the whole batch, so
-            // the newest places are the ones that get watched rather than nothing at all — and
-            // the circle a snooze waits at is never among the ones cut, whatever the age of its
-            // reminder: it is the whole of that alarm, with nothing on the clock behind it.
-            .let { all ->
-                val (waited, rest) = all.partition { GeofenceIds.isSnooze(it.first) }
-                rest.takeLast((MAX_GEOFENCES - waited.size).coerceAtLeast(0)) + waited.takeLast(MAX_GEOFENCES)
-            }
+        // Which circles deserve one of the hundred fences is arithmetic on the rules, and
+        // lives with the rest of the arithmetic (geofenceChoices, core-model) where a JVM
+        // test can hold it still. This side keeps the radios.
+        val places = geofenceChoices(repository.openNow())
 
         val permitted = hasBackgroundLocation()
         val fingerprint = geofenceFingerprint(places.map { it.first }, permitted)
@@ -107,7 +73,7 @@ class GeofenceManager(
             Diag.note("geo", "fences=${places.size} not permitted${if (force) " (forced)" else ""}")
             return if (places.isEmpty()) GeofenceState.ARMED else GeofenceState.NO_PERMISSION
         }
-        removeAll()
+        val removed = removeAll()
         if (places.isEmpty()) {
             store.write(fingerprint)
             return GeofenceState.ARMED
@@ -161,7 +127,12 @@ class GeofenceManager(
                 }
             }
         } ?: GeofenceState.UNAVAILABLE.also { Log.w(TAG, "Play Services did not answer in time") }
-        if (state == GeofenceState.ARMED) store.write(fingerprint)
+        // Registered on top of a remove nobody answered is not "registered": the remove can
+        // still land late and take these fences with it, and a fingerprint written over that
+        // is six blind hours. The memory stays empty instead, and the next sync from any door
+        // does the whole thing again.
+        if (state == GeofenceState.ARMED && removed) store.write(fingerprint)
+        if (state == GeofenceState.ARMED && !removed) Diag.note("geo", "remove unanswered; fences up but not trusted")
         Diag.note("geo", "fences=${places.size} ${state.name.lowercase()}${if (force) " (forced)" else ""}")
         return state
     }
@@ -170,13 +141,13 @@ class GeofenceManager(
      * Awaited, because the add that follows registers on the same PendingIntent: a remove that
      * completed after it would take every fence just registered with it, and nothing would ring
      * until the next sync. Bounded like the add, so a Play Services that never answers cannot
-     * hold the chain behind it.
+     * hold the chain behind it — and whether it answered inside the bound is handed back, so
+     * the caller knows when the fences it is about to add cannot be trusted to stay.
      */
-    private suspend fun removeAll() {
+    private suspend fun removeAll(): Boolean =
         withTimeoutOrNull(REMOVE_TIMEOUT_MS) {
             runCatching { client.removeGeofences(pendingIntent()).await() }
-        }
-    }
+        } != null
 
     /** Background location is what makes a place reminder work when the app is not open. */
     fun hasBackgroundLocation(): Boolean = context.hasBackgroundLocation()
@@ -191,7 +162,6 @@ class GeofenceManager(
 
     private companion object {
         const val TAG = "RwilcoGeo"
-        const val MAX_GEOFENCES = 100
         const val LOITERING_MS = 30_000
         const val RESPONSIVENESS_MS = 60_000
         const val REGISTER_TIMEOUT_MS = 15_000L

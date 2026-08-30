@@ -276,7 +276,54 @@ strip is a screen of buttons); editing a reminder waiting at a place drops the w
 drops a clock snooze; "el viernes" is the next Friday strictly after today while "todos los
 viernes" may start today — two readings pinned by their tests.
 
+## The reliability round, 0.59.0 (2026-08-30)
+An audit with one question — can a reminder stay quiet when it should have rung? Three mapping
+passes, a line-by-line read of the six critical files, an adversarial check of every fix before
+it went in. The clock path held (0.7.5 and 0.58.0 did their work); everything real was in the
+place path, all of it the class 0.58.0 started closing. Each fix has a test that fails without it
+(the wiring-only ones lean on the pure half plus the device suite).
+
+- **The geofence door could consume a crossing without ringing it.** `accept` writes the side
+  into the watch's memory before `fire` runs, and the receiver's nine-second budget could cut
+  the coroutine between the two: the memory then said "already there", and no later look could
+  report the arrival again. Hardened the way `look()` was in 0.58.0 — per-place
+  `NonCancellable`, the timeout landing only between places.
+- **The place echo was measured per reminder, not per rule.** "Al llegar a casa, o a las
+  21:00": the nine o'clock ring silenced a genuine arrival three minutes later. `isPlaceEcho`
+  (core-model, tested) asks whether THIS circle rang — with a null rule still an echo, because
+  a ring with no rule behind it (a snooze's own crossing) holds every circle of its own pin.
+- **`accept` failed towards silence.** A repository or settings read that threw wore the same
+  null as "circle not watchable": the crossing was written down and dropped, unlogged. A failed
+  read now leaves the memory unwritten and the crossing to the next look — late, not never.
+- **A remove Play Services never answered poisoned the fingerprint.** The add went in, the
+  stale remove could land on top of it, and the store said "registered" for up to six blind
+  hours. The fingerprint is only written when the remove actually answered.
+- **An alarm refused at the last moment was an alarm never set.** `setAlarmClock` throwing (the
+  exact-alarm grant taken between check and call, Android 12/13) now falls back to
+  `setAndAllowWhileIdle`, and both failures reach the diagnostics.
+- **A place snooze without a trustworthy fix could be baselined "inside".** `insideAfter`'s
+  no-history lean read a doubtful fix (unknown accuracy counts as 500 m) towards the rule's own
+  side — for an Arrive snooze, "already there" — and the wait went silent with no clock and no
+  net behind it. A snooze circle's first side is now the person's word: waiting to arrive
+  starts outside, waiting to leave starts inside; the honest side `remember()` wrote still wins.
+- **And the wait got its backstop** (asked for, and approved): `NetWord.WAITING` — two of the
+  net's longest waits after the ring the snooze answered, one quiet note that it is still
+  waiting, opening Home where the wait can be taken back.
+
+Also: the fence list moved to core-model as `geofenceChoices` (the hundred-cap that never cuts
+a snooze circle finally has tests); the clock got backwards-with-a-snooze and no-re-owing
+tests; DST is pinned outside Madrid (Sydney both ways, Kathmandu's +05:45).
+
+Left alone, on purpose: a missed moment is held with no fresh OS alarm until a catch-up door
+(the two-at-nine race fix; the doors are frequent and the net stands under it); no direct-boot
+(Room lives in credential-encrypted storage, and BOOT_COMPLETED after unlock catches up);
+`conditionsHold` fails open for places; a past recurrence rings once immediately by design.
+
 ## Still to prove on the real phone (Pixel 8 Pro)
+- The reliability round (0.59.0): a real arrival three minutes after a clock ring must ring
+  (the echo is per rule now); «al llegar a casa» said from the metro with no good fix must
+  ring at the real doorway; and a place snooze left waiting two days should produce the one
+  quiet «sigue esperando» note, opening Home.
 - The idempotent geofence sync (0.53.0): the diagnostics `-- log --` should read
   `geo fences=n unchanged` on successive process starts and `registered` only after a
   reboot, an update, a saved place reminder or a `NOT_AVAILABLE`. And a place reminder must

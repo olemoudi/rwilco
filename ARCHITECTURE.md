@@ -400,6 +400,19 @@ writes `inside` before it rings, so a crossing cut off by the receiver's budget 
 later look could report. And the safety net's word has a notification id of its own
 (`nudgeNotificationId`): on the ring's id it replaced the alert it was about.
 
+**And the reliability round after it finished the job (0.59.0).** The geofence *door* now hands
+crossings on the way `look()` does — per-place `NonCancellable`, the receiver's timeout landing
+only between places — because `accept` writes the side before `fire` runs, and a budget cut
+between the two consumed the crossing for good. The place *echo* is per rule now (`isPlaceEcho`,
+core-model): a sibling's nine o'clock no longer silences a genuine arrival minutes later, while
+a ring with no rule behind it (a snooze's own crossing) still holds every circle of its own pin.
+`accept` no longer fails towards silence either: a repository or settings read that throws
+leaves the memory unwritten and the crossing to the next look, instead of writing it down and
+dropping it. And a snooze circle's *first* side is the person's word rather than a doubtful fix
+(`insideAfter`): waiting to arrive starts outside, waiting to leave starts inside — the lean
+that once read "al llegar a casa" said from the metro as already home, with no clock and no net
+behind the silence. The wait has a net of its own now too (`NetWord.WAITING`, below).
+
 **Put off until a place (0.57.0, `Reminder.snoozedToPlace`, `SnoozePlaces.kt`).** The answers to a
 ring were clock-shaped only, and on a phone whose reminders are mostly places the honest answer
 to "comprar filtros" ringing on the metro is "cuando llegue a casa". Two offers and no more, on
@@ -1084,14 +1097,19 @@ because that is what its chip would show.
   any other (`recurrenceMoment`). With no rules at all the recurrence is the whole arrangement
   and its moment is always the ring.
 - **The safety net** (`core-model/SafetyNet.kt`) is the one thing the app does about a reminder
-  that got away. **There are two ways one does** (`NetWord`), and one switch for both, because
-  nobody knows in advance which it will be: it **rang and was never answered** (`LET_GO`), or it
+  that got away. **There are three ways one does** (`NetWord`), and one switch for all of them, because
+  nobody knows in advance which it will be: it **rang and was never answered** (`LET_GO`), it
   **never rang at all** (`NEVER_RANG`) — the moment came while a fence was shut, or while the
   other half of an "a la vez" was false, and there is no moment left for it to ring at
   (`nextFire == null`, never rung, never dealt with). The second one is anchored on
   `lastMomentGone`: the last moment the shape named that came and went, walked forwards from the
   day it was written, because forwards is the only direction any of this arithmetic goes — and
-  only ever asked of a reminder with nothing left ahead, which is why the walk is short.
+  only ever asked of a reminder with nothing left ahead, which is why the walk is short. The
+  third is the wait with nothing under it: **put off until a place whose crossing has not come**
+  (`WAITING`, 0.59.0) — nothing on the clock, and if the fence is dropped and the watch blind,
+  nothing behind it at all — said two of the longest waits after the ring the snooze answered
+  (`placeSnoozeWait`, about two days), and opening Home, where the wait can be taken back (the
+  alert screen would drop it unanswered, and the editor drops the wait on save).
   **It is not asked for.** It began as a switch on each reminder, which was a switch about the
   one thing nobody can answer in advance — which of your reminders is going to be the one that
   gets away — and anybody who could answer it would not need a net. So it holds for every
@@ -1323,7 +1341,12 @@ because that is what its chip would show.
   caller that runs *because* the system's copy may be gone: boot, an update, `NOT_AVAILABLE`,
   the six-hourly net. The remove
   before each registration is awaited: both go through the same `PendingIntent`, and a remove
-  completing after the add took every fence just registered with it. That is the
+  completing after the add took every fence just registered with it. Whether that remove was
+  *answered* is part of the outcome too (0.59.0): unanswered, the fingerprint is not written
+  even when the add went in — the stale remove can still land on top of it — so the next sync
+  from any door registers again. The list itself, which circles deserve one of the hundred
+  fences with the snooze circle never among the ones cut, is `geofenceChoices` (core-model,
+  tested); the manager keeps the radios. That is the
   net: free, always on, the system's own word on where the phone is. Settings says where that
   grant stands, whether or not a place reminder exists yet (`LocationPermissionCard`), because
   a refusal discovered later is a reminder that never arrives. A place is judged against its
