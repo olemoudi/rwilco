@@ -164,6 +164,11 @@ fun Diagnostics.report(): String = buildString {
                     (note.gapM?.let { " gap=${it.toInt()}m" } ?: "") +
                     (note.accuracyM?.let { " acc=${it}m" } ?: "") +
                     (note.inside?.let { " inside=${yes(it)}" } ?: "") +
+                    // What the system claimed and what came of it: an `inside` on its own cannot
+                    // tell a crossing that rang the phone from one that fell on the floor, and on
+                    // a strictly-held echo there is no `inside` at all to read the claim off.
+                    (note.reported?.let { " said=${if (it) "in" else "out"}" } ?: "") +
+                    (note.acted?.let { " acted=${yes(it)}" } ?: "") +
                     (note.speedMps?.let { " v=${fixed(it, 1)}" } ?: "") +
                     (note.waitS?.let { " next=${it / 60}m" } ?: "") +
                     (note.charge?.let { " bat=$it" } ?: "") +

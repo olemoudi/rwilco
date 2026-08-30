@@ -6,6 +6,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 /*
  * The place watch's own account of itself.
@@ -75,6 +77,25 @@ data class WatchNote(
     val radiusM: Int? = null,
     /** Inside that place, at this look. */
     val inside: Boolean? = null,
+    /**
+     * What Play Services claimed, true for "at the place". Kept on a crossing and nothing else.
+     *
+     * [inside] on an echo is what the watch already believed, and the ordinary echo is exactly the
+     * case where the two agree — so on its own it cannot tell that echo from the other one this
+     * kind holds: a crossing dropped because the app never saw the far side
+     * ([crossingIsNews] with `strict`), where the belief is null and the claim is all there is.
+     * Null on a note written before it was kept.
+     */
+    val reported: Boolean? = null,
+    /**
+     * Whether anything came of a crossing — a ring, or a tick taken back.
+     *
+     * False is the line that says *nothing rang*: the circle was resting, its hours were shut, or
+     * its rule waits for the other way through the door. Without it "Saliste de Casa" reads the
+     * same whether it rang the phone or fell on the floor, which is the question somebody opens
+     * this screen with. Null on a look, and on a note written before it was kept.
+     */
+    val acted: Boolean? = null,
     val speedMps: Double? = null,
     /** Metres since the previous fix, less the doubt in both. */
     val movedM: Double? = null,
@@ -138,19 +159,59 @@ fun WatchLog.noting(note: WatchNote): WatchLog = copy(notes = (listOf(note) + no
  * that happened, and a look is never the same event as the look before it. Nothing is dropped
  * from the store — the diagnostics report still has all six, which is where the fact that there
  * were six is worth having.
+ *
+ * What folds with them is [WatchNote.acted]: the six share a circle and not an outcome, so the
+ * one line kept says what came of *any* of them ([actedOfRun]). Keeping the head's own answer
+ * would have the screen say "nothing rang" over a walk through a door that rang.
  */
-fun List<WatchNote>.asEvents(within: Duration = Duration.ofMinutes(1)): List<WatchNote> =
-    filterIndexed { index, note ->
-        if (note.kind != NoteKind.FENCE && note.kind != NoteKind.ECHO) return@filterIndexed true
-        // Newest first, so the one kept is the first of the run and the rest fall in behind it.
-        val previous = getOrNull(index - 1) ?: return@filterIndexed true
-        !(previous.kind == note.kind &&
-            previous.inside == note.inside &&
-            previous.lat == note.lat &&
-            previous.lng == note.lng &&
-            previous.radiusM == note.radiusM &&
-            Duration.between(note.at, previous.at).abs() <= within)
+fun List<WatchNote>.asEvents(within: Duration = Duration.ofMinutes(1)): List<WatchNote> {
+    val events = mutableListOf<WatchNote>()
+    var previous: WatchNote? = null
+    for (note in this) {
+        // Newest first, so the one kept is the first of the run and the rest fold into it. The run
+        // is judged line against the line above it, not against its head: a crossing that dribbles
+        // in over two minutes is still the one door.
+        val head = events.lastOrNull()
+        if (head != null && previous != null && previous.runsInto(note, within)) {
+            events[events.lastIndex] = head.copy(acted = actedOfRun(head.acted, note.acted))
+        } else {
+            events += note
+        }
+        previous = note
     }
+    return events
+}
+
+/** Whether [next], the line under this one, is more of the same crossing rather than another one. */
+private fun WatchNote.runsInto(next: WatchNote, within: Duration): Boolean =
+    (kind == NoteKind.FENCE || kind == NoteKind.ECHO) &&
+        kind == next.kind &&
+        inside == next.inside &&
+        lat == next.lat &&
+        lng == next.lng &&
+        radiusM == next.radiusM &&
+        Duration.between(next.at, at).abs() <= within
+
+/**
+ * What came of a folded run: what came of any of it.
+ *
+ * The six geofences of one place share a circle and not an outcome — one rule's hours are open and
+ * another's are shut — so a run that rang did not do nothing. Two unknowns stay unknown rather
+ * than becoming a "nothing rang" nobody wrote down.
+ */
+private fun actedOfRun(head: Boolean?, next: Boolean?): Boolean? =
+    if (head == null && next == null) null else head == true || next == true
+
+/**
+ * The same lines, in the days a person would read them as. Newest day first, like the lines in it.
+ *
+ * The screen shows an hour and no date, and this log keeps two hundred lines with no age on them
+ * at all — four to eight days of somebody's afternoons — so a line from last Tuesday at 06:44
+ * reads exactly like one from this morning. That is the whole of the confusion it caused once: an
+ * entry about a place seemed to predate the place.
+ */
+fun List<WatchNote>.byDay(zone: ZoneId): List<Pair<LocalDate, List<WatchNote>>> =
+    groupBy { it.at.atZone(zone).toLocalDate() }.toList()
 
 /** Looks that actually spent radio since [since]. */
 fun List<WatchNote>.pollsSince(since: Instant): Int = count { it.isPoll && it.at >= since }

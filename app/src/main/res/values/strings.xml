@@ -676,6 +676,8 @@
         <item quantity="other">%1$d location reads in the last hour</item>
     </plurals>
     <string name="watch_log_clear">Clear the log</string>
+    <string name="watch_log_today">Today</string>
+    <string name="watch_log_yesterday">Yesterday</string>
     <!-- The roll-up above the lines: what the last day came to, and which circle set the pace. -->
     <string name="watch_said_look">Looked where you were</string>
     <string name="watch_said_free">No need to look</string>
@@ -685,14 +687,20 @@
     <string name="watch_said_left">You left %1$s</string>
     <string name="watch_said_arrived_somewhere">You got to a place it watches</string>
     <string name="watch_said_left_somewhere">You left a place it watches</string>
-    <string name="watch_said_echo_at">The phone repeated an alert about %1$s</string>
-    <string name="watch_said_echo">The phone repeated an alert it already knew about</string>
+    <string name="watch_said_echo_in">The phone said you were at %1$s</string>
+    <string name="watch_said_echo_out">The phone said you were away from %1$s</string>
+    <string name="watch_said_echo">The phone repeated what it already knew</string>
     <string name="watch_why_known">it already knew where you were</string>
     <string name="watch_why_still">nothing had moved</string>
     <string name="watch_why_no_signal">no location to be had</string>
+    <string name="watch_why_already_inside">you were already there</string>
+    <string name="watch_why_already_outside">you were already away</string>
+    <string name="watch_why_nothing_changed">nothing changed</string>
+    <string name="watch_why_never_left">it had not seen you leave</string>
+    <string name="watch_why_no_ring">nothing rang</string>
     <string name="watch_where_inside">you were at %1$s</string>
     <string name="watch_where_near">%1$s from %2$s</string>
-    <string name="watch_next_look">looks again in %1$s</string>
+    <string name="watch_next_look">would look again in %1$s</string>
     <plurals name="watch_tally_looked">
         <item quantity="one">Looked where you were %1$d time</item>
         <item quantity="other">Looked where you were %1$d times</item>

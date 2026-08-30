@@ -40,7 +40,13 @@ object DemoData {
     fun watchNotes(clock: Clock): List<WatchNote> {
         val now = clock.instant()
         fun ago(minutes: Long) = now.minusSeconds(minutes * 60)
+        // Yesterday evening, so the list has two days in it and the day headers have something to
+        // separate: an hour on its own says nothing about which day it belongs to.
+        fun yesterday(hour: Int, minute: Int) =
+            now.atZone(clock.zone).toLocalDate().minusDays(1).atTime(hour, minute).atZone(clock.zone).toInstant()
         return listOf(
+            WatchNote(yesterday(21, 12), NoteKind.FIX, waitS = 900, gapM = 380.0, place = "Casa", speedMps = 1.2, movedM = 640.0, sensed = true, charge = 44),
+            WatchNote(yesterday(21, 26), NoteKind.FENCE, place = "Casa", inside = true, reported = true, acted = true),
             WatchNote(ago(184), NoteKind.FIX, waitS = 1800, gapM = 24.0, place = "Casa", inside = true, speedMps = 0.0, movedM = 0.0, sensed = false, stillStreak = 6, charge = 71),
             WatchNote(ago(154), NoteKind.REST, waitS = 1800, gapM = 24.0, place = "Casa", inside = true, speedMps = 0.0, movedM = 0.0, sensed = false, stillStreak = 7, charge = 70),
             WatchNote(ago(124), NoteKind.REST, waitS = 1800, gapM = 24.0, place = "Casa", inside = true, speedMps = 0.0, movedM = 0.0, sensed = false, stillStreak = 8, charge = 69),
@@ -51,9 +57,12 @@ object DemoData {
             // deleted since, so there is no rule left to read a label off. (An old line whose
             // `place` is a geofence id reads the same way — `WatchNote.placeName` refuses to
             // print one as a name, and a log outlives the build that wrote it.)
-            WatchNote(ago(85), NoteKind.FENCE, place = "8f2c1b04-51ad-4e3c-9b77-2ad19c4e77f1#0@40.50074,-3.66413,150,E", inside = true),
-            WatchNote(ago(84), NoteKind.FENCE, place = "Casa", inside = false),
-            WatchNote(ago(84), NoteKind.ECHO, place = "Casa", inside = false),
+            WatchNote(ago(85), NoteKind.FENCE, place = "8f2c1b04-51ad-4e3c-9b77-2ad19c4e77f1#0@40.50074,-3.66413,150,E", inside = true, reported = true, acted = false),
+            WatchNote(ago(84), NoteKind.FENCE, place = "Casa", inside = false, reported = false, acted = true),
+            // The two silences that wear the same kind: the system saying again what the watch
+            // already knew, and a crossing held back because the app never saw the far side of it.
+            WatchNote(ago(84), NoteKind.ECHO, place = "Casa", inside = false, reported = false),
+            WatchNote(ago(83), NoteKind.ECHO, place = "Oficina", reported = true),
             WatchNote(ago(60), NoteKind.FIX, waitS = 3600, gapM = 4_180.0, place = "Oficina", speedMps = 8.6, movedM = 12_400.0, sensed = true, charge = 64),
             WatchNote(ago(48), NoteKind.FIX, waitS = 2_400, gapM = 61_500.0, place = "Cuenca", speedMps = 24.0, movedM = 41_000.0, sensed = true, tier = FixTier.COARSE, charge = 63),
             WatchNote(ago(30), NoteKind.CACHE, waitS = 2_100, gapM = 48_200.0, place = "Cuenca", speedMps = 21.0, movedM = 13_300.0, sensed = true, tier = FixTier.COARSE, charge = 62),

@@ -3,10 +3,13 @@ package dev.rwilco.model
 import dev.rwilco.model.Fixtures.now
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 class WatchLogTest {
 
@@ -109,6 +112,45 @@ class WatchLogTest {
     }
 
     @Test
+    fun `what came of a folded run is what came of any of it`() {
+        // Six geofences on one circle, and their hours do not all agree: one rule's rang, the
+        // rest fell on the floor. The line the screen keeps must not say "nothing rang".
+        fun fence(seconds: Long, acted: Boolean?) = WatchNote(
+            at = now.minusSeconds(seconds), kind = NoteKind.FENCE, place = "Club",
+            inside = true, lat = 40.43, lng = -3.666, radiusM = 50, acted = acted,
+        )
+        val run = listOf(fence(0, false), fence(1, false), fence(2, true), fence(3, false))
+        assertEquals(1, run.asEvents().size)
+        assertEquals(true, run.asEvents().single().acted)
+        // The head keeps its own answer when nothing in the run did anything...
+        assertEquals(false, List(3) { fence(it.toLong(), false) }.asEvents().single().acted)
+        // ...and a run nobody wrote an outcome for stays unanswered rather than becoming a "no".
+        assertNull(List(3) { fence(it.toLong(), null) }.asEvents().single().acted)
+        // A run is judged line against the line above it, so a crossing that dribbles in over
+        // more than a minute in total is still the one door.
+        val dribble = List(4) { fence(it * 50L, false) }
+        assertEquals(1, dribble.asEvents().size)
+        // And a gap wider than that is a second thing that happened.
+        assertEquals(2, listOf(fence(0, false), fence(61, false)).asEvents().size)
+    }
+
+    @Test
+    fun `the lines fall into the days they were written in, newest day first`() {
+        val zone = ZoneId.of("Europe/Madrid")
+        val day = LocalDate.of(2026, 8, 30)
+        fun at(hour: Int, minute: Int, daysBack: Long = 0) =
+            note(NoteKind.FIX, day.minusDays(daysBack).atTime(hour, minute).atZone(zone).toInstant())
+        val notes = listOf(at(11, 30), at(6, 44), at(0, 10), at(23, 50, 1), at(6, 44, 1), at(9, 0, 3))
+        val days = notes.byDay(zone)
+        assertEquals(listOf(day, day.minusDays(1), day.minusDays(3)), days.map { it.first })
+        assertEquals(listOf(3, 2, 1), days.map { it.second.size })
+        // Two of them sit either side of midnight in Madrid but not in UTC, which is why the zone
+        // is asked for rather than assumed.
+        assertEquals(listOf(2, 3, 1), notes.byDay(ZoneId.of("UTC")).map { it.second.size })
+        assertEquals(emptyList<Pair<LocalDate, List<WatchNote>>>(), emptyList<WatchNote>().byDay(zone))
+    }
+
+    @Test
     fun `a log survives a round trip, and a broken one costs nothing but itself`() {
         val written = WatchLog(lastNoticeAt = now).noting(
             WatchNote(
@@ -124,6 +166,8 @@ class WatchLogTest {
                 stillStreak = 3,
                 charge = 41,
                 tier = FixTier.PRECISE,
+                reported = true,
+                acted = false,
             ),
         )
         assertEquals(written, ReminderCodec.decodeWatchLog(ReminderCodec.encodeWatchLog(written)))

@@ -1425,8 +1425,10 @@ strict is asking somebody to remember how they spelled it.
   their phone is following them about. All of that is real and all of it is in the diagnostics
   report already (`DiagReport`, "-- place watch --"), which is where a number that needs this
   code open to be understood belongs. So each line here says what happened, in a sentence: *Miró
-  dónde estabas · a 210 m de Casa · vuelve a mirar en 2 min*, *No hizo falta mirar · ya sabía
-  dónde estabas*, *Saliste de Casa*. Above them, the day in the two numbers that answer the
+  dónde estabas · a 210 m de Casa · volvería a mirar en 2 min*, *No hizo falta mirar · ya sabía
+  dónde estabas*, *Saliste de Casa*. The wait is said in the tense it is in — it is the plan that
+  line made, not a promise being kept now, and on a line from Tuesday the present tense was the
+  screen's only lie. Above them, the day in the two numbers that answer the
   question actually being asked (`WatchTally`) — how often it looked, how often it decided not
   to — and which place was nearest, because the cadence is always the nearest circle's ask.
   Two things the raw log was getting wrong on a real phone. A crossing that arrives for a circle
@@ -1443,7 +1445,29 @@ strict is asking somebody to remember how they spelled it.
   geofences, so walking through its door wrote six identical lines; `asEvents` folds a run of
   crossings of the same circle, the same way, inside a minute into the one thing that happened.
   Neither touches the store: the report still has all six, which is where the fact that there
-  were six is worth having. A look that spent
+  were six is worth having.
+  **Three more the phone found later, all of them the same fault: a line that is true and says
+  nothing.** *"El teléfono repitió un aviso de Santiago Bernabéu"* is an echo, and an echo is not
+  a crossing — it is Play Services saying again which side of a line the phone is on. So it is
+  written as a side and not as a movement (*El teléfono dijo que estabas fuera de Santiago
+  Bernabéu · ya estabas fuera antes · no cambió nada*), which needs the claim itself:
+  `WatchNote.reported`, because `inside` is what the watch *believed* and on the ordinary echo the
+  two agree by definition. They do not agree on the other silence this kind holds — a crossing
+  dropped because the app never saw the far side of it (`crossingIsNews(strict = true)`), where
+  there is no belief at all — and that one is exactly the answer to *"¿por qué no sonó cuando
+  llegué?"*, which is what the screen is for. It says so: *no se te vio salir antes · no sonó nada*.
+  **A crossing that came to nothing said so too.** `accept` writes the line either way but acts
+  only on a live circle asked for that way round, so *"Saliste de Casa"* read the same whether it
+  rang the phone or fell on the floor with the rule's hours shut. `WatchNote.acted` is what came
+  of it, decided before the line is written; and it is the one field `asEvents` has to *fold*
+  rather than drop, because the six geofences of a place share a circle and not an outcome —
+  keeping the head's own answer would print "no sonó nada" over a walk through a door that rang.
+  **And the list says which day it is looking at** (`byDay`, `WatchLogScreen`'s day headers: *Hoy*,
+  *Ayer*, then `TimeText.dayDate`). A row shows an hour and this log keeps two hundred lines with
+  no age on them — four to eight days of a quiet watch, where `DiagLog` expires at seven — so a
+  line from last Tuesday at 06:44 read exactly like one from this morning. That is not a small
+  thing on the one screen somebody opens to work out what their phone did: it had an entry looking
+  like it predated the place it named. A look that spent
   radio counts as a *poll* and a rest does not, which is the whole point of the distinction: with
   `AppSettings.busyWatchNotice` on — off by default — more than `BUSY_POLLS` polls in an hour
   posts one quiet notification (`WatchNotices`), at most one an hour because the window it is

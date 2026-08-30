@@ -674,6 +674,8 @@
         <item quantity="other">%1$d lecturas en la última hora</item>
     </plurals>
     <string name="watch_log_clear">Vaciar el registro</string>
+    <string name="watch_log_today">Hoy</string>
+    <string name="watch_log_yesterday">Ayer</string>
     <!-- The roll-up above the lines: what the last day came to, and which circle set the pace. -->
     <string name="watch_said_look">Mir\u00f3 d\u00f3nde estabas</string>
     <string name="watch_said_free">No hizo falta mirar</string>
@@ -683,14 +685,20 @@
     <string name="watch_said_left">Saliste de %1$s</string>
     <string name="watch_said_arrived_somewhere">Llegaste a un lugar que vigila</string>
     <string name="watch_said_left_somewhere">Saliste de un lugar que vigila</string>
-    <string name="watch_said_echo_at">El teléfono repitió un aviso de %1$s</string>
-    <string name="watch_said_echo">El teléfono repitió un aviso que ya conocía</string>
+    <string name="watch_said_echo_in">El teléfono dijo que estabas en %1$s</string>
+    <string name="watch_said_echo_out">El teléfono dijo que estabas fuera de %1$s</string>
+    <string name="watch_said_echo">El teléfono repitió algo que ya sabía</string>
     <string name="watch_why_known">ya sab\u00eda d\u00f3nde estabas</string>
     <string name="watch_why_still">nada se hab\u00eda movido</string>
     <string name="watch_why_no_signal">no hab\u00eda ubicaci\u00f3n que leer</string>
+    <string name="watch_why_already_inside">ya estabas ahí antes</string>
+    <string name="watch_why_already_outside">ya estabas fuera antes</string>
+    <string name="watch_why_nothing_changed">no cambió nada</string>
+    <string name="watch_why_never_left">no se te vio salir antes</string>
+    <string name="watch_why_no_ring">no sonó nada</string>
     <string name="watch_where_inside">estabas en %1$s</string>
     <string name="watch_where_near">%1$s de %2$s</string>
-    <string name="watch_next_look">vuelve a mirar en %1$s</string>
+    <string name="watch_next_look">volvería a mirar en %1$s</string>
     <plurals name="watch_tally_looked">
         <item quantity="one">Mir\u00f3 d\u00f3nde estabas %1$d vez</item>
         <item quantity="other">Mir\u00f3 d\u00f3nde estabas %1$d veces</item>

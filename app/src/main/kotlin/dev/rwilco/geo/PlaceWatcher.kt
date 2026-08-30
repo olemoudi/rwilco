@@ -308,18 +308,24 @@ class PlaceWatcher(
         val label = live?.label ?: reminder?.rules?.getOrNull(GeofenceIds.triggerIndexOf(placeId) ?: -1)
             ?.let { (it.trigger as? Trigger.Location)?.label }
         val strict = live?.onCrossing == true && reminder?.lastFiredAt != null
+        val arrived = transition == Transition.ENTER
         if (!crossingIsNews(state, placeId, transition, now, strict = strict)) {
             Log.i(TAG, "geofence says $transition at $placeId, but we were already there")
-            log.note(WatchNote(at = now, kind = NoteKind.ECHO, place = label, lat = live?.lat, lng = live?.lng, radiusM = live?.radiusM, inside = state.inside[placeId]))
+            // `inside` is what this watch already believed and `reported` is what the system said.
+            // Under `strict` the belief is null and the claim is the only thing the line can say.
+            log.note(WatchNote(at = now, kind = NoteKind.ECHO, place = label, lat = live?.lat, lng = live?.lng, radiusM = live?.radiusM, inside = state.inside[placeId], reported = arrived))
             return@withLock Crossing.NOTHING
         }
         store.write(state.remembering(placeId, transition))
-        log.note(WatchNote(at = now, kind = NoteKind.FENCE, place = label, lat = live?.lat, lng = live?.lng, radiusM = live?.radiusM, inside = transition == Transition.ENTER))
         // Written down either way; acted on only for the crossing the rule waits for, and only
         // while the circle is worth watching at all — not resting, not outside its hours. What
         // acting on it means is the circle's own to say: a place under "todos" that has already
-        // been ticked off is waiting for the crossing that takes that tick back.
-        if (live != null && live.transition == transition) live.crossing else Crossing.NOTHING
+        // been ticked off is waiting for the crossing that takes that tick back. Decided before
+        // the line is written, because the line is what says whether anything came of it: a
+        // crossing that fell on the floor and one that rang the phone read the same otherwise.
+        val crossing = if (live != null && live.transition == transition) live.crossing else Crossing.NOTHING
+        log.note(WatchNote(at = now, kind = NoteKind.FENCE, place = label, lat = live?.lat, lng = live?.lng, radiusM = live?.radiusM, inside = arrived, reported = arrived, acted = crossing != Crossing.NOTHING))
+        crossing
     }
 
     /**

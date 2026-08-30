@@ -27,6 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
@@ -39,6 +40,7 @@ import dev.rwilco.model.NoteKind
 import dev.rwilco.model.WatchNote
 import dev.rwilco.model.WatchTally
 import dev.rwilco.model.asEvents
+import dev.rwilco.model.byDay
 import dev.rwilco.ui.components.EmptyState
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.format.TimeText
@@ -47,6 +49,7 @@ import dev.rwilco.ui.format.rememberIs24h
 import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
 import java.time.Duration
+import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Locale
 
@@ -64,6 +67,8 @@ fun WatchLogScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
     val polls by viewModel.pollsThisHour.collectAsStateWithLifecycle()
     val tally by viewModel.watchTally.collectAsStateWithLifecycle()
     val spacing = Tokens.spacing
+    val zone = remember { ZoneId.systemDefault() }
+    val today = remember(zone) { LocalDate.now(zone) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -137,7 +142,10 @@ fun WatchLogScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                     }
                 }
             }
-            itemsIndexed(log.notes.asEvents(), key = { index, note -> "${note.at.toEpochMilli()}-${note.kind}-$index" }) { _, note -> NoteRow(note) }
+            for ((day, notes) in log.notes.asEvents().byDay(zone)) {
+                item(key = "day-$day") { DayHeader(day, today) }
+                itemsIndexed(notes, key = { index, note -> "${note.at.toEpochMilli()}-${note.kind}-$index" }) { _, note -> NoteRow(note) }
+            }
         }
     }
 }
@@ -193,6 +201,31 @@ private fun TallyBlock(tally: WatchTally) {
         text = stringResource(R.string.watch_tally_explain),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+/**
+ * Which day the lines under it belong to.
+ *
+ * A row shows an hour and no date, and this log keeps two hundred lines with no age on them at
+ * all — four to eight days of a quiet watch — so a line from last Tuesday at 06:44 read exactly
+ * like one from this morning. That is not a small thing on the one screen somebody opens to work
+ * out what their phone did: it once had an entry looking like it predated the place it named.
+ */
+@Composable
+private fun DayHeader(day: LocalDate, today: LocalDate) {
+    val spacing = Tokens.spacing
+    Text(
+        // "Hoy" and "Ayer" are how a person says the two days they are actually likely to be
+        // looking at; anything older is a date, in the same shape the rest of the app uses.
+        text = when (day) {
+            today -> stringResource(R.string.watch_log_today)
+            today.minusDays(1) -> stringResource(R.string.watch_log_yesterday)
+            else -> TimeText.dayDate(day, currentLocale())
+        },
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = spacing.md, bottom = spacing.xs),
     )
 }
 
@@ -254,8 +287,19 @@ private fun saidOf(note: WatchNote): String = when (note.kind) {
     NoteKind.STIR -> stringResource(R.string.watch_said_stir)
     // The system re-reading a line the phone never crossed. It is on this screen because it is
     // the answer to "why did nothing ring when I got home?" — the app decided it already knew.
-    NoteKind.ECHO -> note.placeName?.let { stringResource(R.string.watch_said_echo_at, it) }
-        ?: stringResource(R.string.watch_said_echo)
+    // Said as a side and not as a crossing, because no crossing happened: "repitió un aviso de
+    // Casa" left a person working out what the phone had claimed. `reported` is that claim; a
+    // line written before it was kept has the belief instead, which for an ordinary echo is the
+    // same side by definition.
+    NoteKind.ECHO -> {
+        val claimed = note.reported ?: note.inside
+        val place = note.placeName
+        when {
+            place == null || claimed == null -> stringResource(R.string.watch_said_echo)
+            claimed -> stringResource(R.string.watch_said_echo_in, place)
+            else -> stringResource(R.string.watch_said_echo_out, place)
+        }
+    }
     // A crossing is the only line here about something *you* did, and it is said that way. The
     // place may have no name left — its rule dealt with, its hours shut — and then it is said
     // without one rather than with an id.
@@ -271,13 +315,39 @@ private fun saidOf(note: WatchNote): String = when (note.kind) {
     }
 }
 
-/** The little under it that helps: why it was free, where you were, when it looks again. */
+/** The little under it that helps: why it was free or came to nothing, where you were, what it planned next. */
 @Composable
 private fun detailOf(note: WatchNote, locale: Locale): List<String> = buildList {
     when (note.kind) {
         NoteKind.CACHE -> add(stringResource(R.string.watch_why_known))
         NoteKind.REST -> add(stringResource(R.string.watch_why_still))
         NoteKind.BLIND -> add(stringResource(R.string.watch_why_no_signal))
+        // Why the echo came to nothing. Two different silences wear this kind, and until now the
+        // line said neither: the ordinary repeat, where the watch already had the phone on that
+        // side, and the crossing held back because the app never saw the far side of it
+        // (`crossingIsNews(strict = true)`, where there is no belief to compare with at all).
+        // The second is the one somebody is looking for when they ask why the door did not ring.
+        NoteKind.ECHO -> when (note.inside) {
+            null -> {
+                add(stringResource(R.string.watch_why_never_left))
+                add(stringResource(R.string.watch_why_no_ring))
+            }
+            true -> {
+                add(stringResource(R.string.watch_why_already_inside))
+                add(stringResource(R.string.watch_why_nothing_changed))
+            }
+            false -> {
+                add(stringResource(R.string.watch_why_already_outside))
+                add(stringResource(R.string.watch_why_nothing_changed))
+            }
+        }
+        // A crossing that fell on the floor: the circle was resting, its hours were shut, or its
+        // rule waits for the other way through the door. The line above is what the system
+        // reported and stays that way — this is the part that says nothing came of it, which is
+        // the difference between "Saliste de Casa" ringing the phone and "Saliste de Casa" while
+        // sitting on the sofa. Null is a line written before the outcome was kept: it says
+        // nothing rather than guessing.
+        NoteKind.FENCE -> if (note.acted == false) add(stringResource(R.string.watch_why_no_ring))
         else -> Unit
     }
     // Where, said as a person would: inside the place, or a distance from it. A crossing has
