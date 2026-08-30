@@ -72,6 +72,12 @@ import dev.rwilco.R
 import dev.rwilco.model.Action
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Trigger
+import dev.rwilco.model.Understood
+import dev.rwilco.model.Recurrence
+import dev.rwilco.ui.format.recurrenceLabel
+import dev.rwilco.ui.format.relativeDayText
+import dev.rwilco.ui.format.rememberWords
+import androidx.compose.material.icons.outlined.FormatQuote
 import dev.rwilco.model.shapeOf
 import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.family
@@ -479,6 +485,9 @@ internal fun TriggersSection(
     onQuickAdd: (Trigger) -> Unit,
     /** The "when"s used before, best first; empty on a phone with no history yet. */
     suggestions: List<Trigger> = emptyList(),
+    /** What the words themselves say, when they say anything; the first chip of the row. */
+    understood: Understood? = null,
+    onUnderstood: (Understood) -> Unit = {},
     onEdit: (Int) -> Unit,
     onRemove: (Int) -> Unit,
     onAddCondition: (Int) -> Unit,
@@ -511,7 +520,14 @@ internal fun TriggersSection(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = Tokens.spacing.sm),
             )
-            QuickWhenRow(clock = clock, suggestions = suggestions, defaultTime = defaultTime, onPick = onQuickAdd)
+            QuickWhenRow(
+                clock = clock,
+                suggestions = suggestions,
+                understood = understood,
+                defaultTime = defaultTime,
+                onPick = onQuickAdd,
+                onUnderstood = onUnderstood,
+            )
             Spacer(Modifier.height(Tokens.spacing.sm))
         }
         Column(verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm)) {
@@ -557,29 +573,44 @@ internal fun TriggersSection(
  * first, re-hung on today. Until there is a history to draw on they are the three answers
  * everybody starts with: in half an hour, tonight, tomorrow morning. Offered only while nothing
  * is set — once there is a trigger the section is about that one — and always followed by the
- * button that opens the whole choice.
+ * button that opens the whole choice. **What the words say comes first** ([understood]): a
+ * sentence with "mañana a las 9" in it has already answered the question, and that chip wears a
+ * glyph so it reads as a reading of the text and not one more habit.
  */
 @Composable
-private fun QuickWhenRow(clock: Clock, suggestions: List<Trigger>, defaultTime: LocalTime, onPick: (Trigger) -> Unit) {
+private fun QuickWhenRow(
+    clock: Clock,
+    suggestions: List<Trigger>,
+    understood: Understood?,
+    defaultTime: LocalTime,
+    onPick: (Trigger) -> Unit,
+    onUnderstood: (Understood) -> Unit,
+) {
     val locale = currentLocale()
     val is24h = rememberIs24h()
+    val words = rememberWords()
     val now = clock.instant().atZone(clock.zone)
     val today = now.toLocalDate()
     val tonight = LocalTime.of(20, 0)
     val morning = LocalTime.of(9, 0)
-    val offered = remember(suggestions, today) {
+    val offered = remember(suggestions, understood, today) {
         val starters = listOfNotNull(
             // A length, so it starts when the reminder does rather than at some fixed minute.
             Trigger.Countdown(QUICK_MINUTES),
             Trigger.AtDateTime(LocalDateTime.of(today, tonight)).takeIf { now.toLocalTime().isBefore(tonight) },
             Trigger.AtDateTime(LocalDateTime.of(today.plusDays(1), morning)),
         )
+        // What the words say goes first and is not said twice: a suggestion of the same shape
+        // steps aside for it, because the chip that came from this sentence is the one meant.
+        val read = (understood as? Understood.Once)?.trigger?.let(::shapeOf)
         // The suggestions first, and then whichever starters they do not already amount to:
         // the three used to be *replaced* by the history the moment there was any, so "esta
         // noche" was gone for good after the first reminder ever saved, which is the opposite
         // of what a chip that everybody starts with is for.
         val shapes = suggestions.mapNotNull(::shapeOf).toSet()
-        (suggestions + starters.filter { shapeOf(it) !in shapes }).take(QUICK_CHIPS)
+        (suggestions + starters.filter { shapeOf(it) !in shapes })
+            .filter { read == null || shapeOf(it) != read }
+            .take(QUICK_CHIPS)
     }
 
     Row(
@@ -588,6 +619,23 @@ private fun QuickWhenRow(clock: Clock, suggestions: List<Trigger>, defaultTime: 
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState()),
     ) {
+        if (understood != null) {
+            val label = when (understood) {
+                is Understood.Once -> quickLabel(understood.trigger, today, defaultTime, locale, is24h)
+                is Understood.Comes -> {
+                    val recurrence = understood.recurrence
+                    val time = (recurrence as? Recurrence.Calendar)?.repeat?.time
+                    val hour = time?.let { " · " + TimeText.time(it, is24h, locale) }.orEmpty()
+                    (recurrenceLabel(words, recurrence, today) + hour).replaceFirstChar { it.titlecase(locale) }
+                }
+            }
+            PresetChip(
+                label = label,
+                onClick = { onUnderstood(understood) },
+                leadingIcon = Icons.Outlined.FormatQuote,
+                leadingIconDescription = stringResource(R.string.editor_when_from_words),
+            )
+        }
         for (trigger in offered) {
             PresetChip(
                 label = quickLabel(trigger, today, defaultTime, locale, is24h),
@@ -608,6 +656,13 @@ private fun quickLabel(trigger: Trigger, today: LocalDate, defaultTime: LocalTim
         is Trigger.Countdown ->
             if (trigger.startedAt == null) stringResource(R.string.countdown_in, line.primary) else line.primary
         is Trigger.AtDateTime, is Trigger.Location -> line.secondary + " " + line.primary
+        // The day and the hour, nothing else: the row's second line says where the day is
+        // counted from, which is more than a chip has room to say.
+        is Trigger.RelativeDate -> {
+            val words = rememberWords()
+            val hour = trigger.time?.let { " " + TimeText.time(it, is24h, locale) }.orEmpty()
+            relativeDayText(words, trigger.day) + hour
+        }
         else -> line.primary + " · " + line.secondary
     }
     return text.replaceFirstChar { it.titlecase(locale) }

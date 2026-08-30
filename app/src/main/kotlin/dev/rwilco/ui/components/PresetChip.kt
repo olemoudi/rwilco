@@ -2,6 +2,8 @@ package dev.rwilco.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +33,9 @@ fun PresetChip(
     onHold: (() -> Unit)? = null,
     holdIcon: ImageVector = Icons.Outlined.Edit,
     holdLabel: String = "",
+    /** A glyph before the label, for a chip that is a different kind of thing from its neighbours. */
+    leadingIcon: ImageVector? = null,
+    leadingIconDescription: String? = null,
 ) {
     val haptics = Tokens.haptics
     val scheme = MaterialTheme.colorScheme
@@ -43,10 +48,14 @@ fun PresetChip(
         // The chip keeps its own click; a hold that has just completed stands it down.
         onClick = { if (!hold.held) tap() },
         label = { Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        leadingIcon = leadingIcon?.let {
+            { Icon(it, contentDescription = leadingIconDescription, modifier = Modifier.size(AssistChipDefaults.IconSize)) }
+        },
         shape = MaterialTheme.shapes.small,
         colors = AssistChipDefaults.assistChipColors(
             containerColor = if (selected) scheme.onSurface else scheme.surfaceContainerHigh,
             labelColor = if (selected) scheme.surface else scheme.onSurface,
+            leadingIconContentColor = if (selected) scheme.surface else scheme.onSurface,
         ),
         border = if (selected) null else BorderStroke(Tokens.strokes.control, scheme.outline),
         modifier = modifier

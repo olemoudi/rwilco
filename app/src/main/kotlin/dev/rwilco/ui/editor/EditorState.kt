@@ -40,6 +40,7 @@ import java.time.LocalTime
 import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
 import dev.rwilco.model.DEFAULT_DAY_START
 import dev.rwilco.model.settleRelativeDates
+import dev.rwilco.model.Understood
 
 /** What the editor is editing: the reminder minus its identity and bookkeeping. */
 data class Draft(
@@ -170,6 +171,8 @@ data class EditorUiState(
     val kindOrder: List<TriggerKind> = OFFERED_KINDS,
     /** The "when"s used before, best first, already re-hung on now. */
     val suggestedTriggers: List<Trigger> = emptyList(),
+    /** What the words themselves say about when, if anything; see [understoodOffer]. */
+    val understood: Understood? = null,
     /** The places kept by name in Settings, offered whole in the place sheet. */
     val savedPlaces: List<SavedPlace> = emptyList(),
     /** What has happened to this reminder, newest first; empty for a new one or a preset. */
@@ -240,6 +243,26 @@ fun EditorUiState.toPreset(id: String, now: Instant, existing: Preset?, others: 
 
 fun EditorUiState.withText(text: String): EditorUiState =
     copy(draft = draft.copy(text = text.take(MAX_TEXT_LENGTH)))
+
+/**
+ * The "when" read from the words, offered only while the form has not answered it another
+ * way: a moment while there is no rule, a repeat while "Vuelve" still says no. Once it has been
+ * taken — or answered through a sheet — the chip would be asking a question already answered.
+ */
+fun EditorUiState.understoodOffer(): Understood? = when (val read = understood) {
+    null -> null
+    is Understood.Once -> read.takeIf { draft.rules.isEmpty() }
+    is Understood.Comes -> read.takeIf { draft.recurrence == Recurrence.None }
+}
+
+/** The chip's tap goes through the same doors a sheet's result does. */
+fun EditorUiState.commitUnderstood(read: Understood): EditorUiState = when (read) {
+    is Understood.Once -> commitTrigger(null, read.trigger)
+    is Understood.Comes -> when (val recurrence = read.recurrence) {
+        is Recurrence.Calendar -> commitCalendar(recurrence.repeat)
+        else -> setRecurrence(recurrence)
+    }
+}
 
 /** A tag on the draft comes off; one off the draft (or brand new) goes on. */
 fun EditorUiState.toggleTag(tag: String): EditorUiState {

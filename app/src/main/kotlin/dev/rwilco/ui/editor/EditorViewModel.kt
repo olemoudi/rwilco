@@ -32,6 +32,8 @@ import dev.rwilco.model.renameTagIn
 import dev.rwilco.model.renameTextIn
 import dev.rwilco.model.suggestedTags
 import dev.rwilco.model.suggestedTriggers
+import dev.rwilco.model.Understood
+import dev.rwilco.model.whenInText
 import dev.rwilco.model.triggerKindsByUse
 import dev.rwilco.model.suggestedTexts
 import dev.rwilco.model.visibleTexts
@@ -170,6 +172,9 @@ class EditorViewModel(
                 // The "when"s used before, ready to be used again, and the order the tiles
                 // come up in when Settings asks for the popular ones first.
                 suggestedTriggers = suggestedTriggers(past, now, clock.zone),
+                // The words may already carry their own "when" (a line shared from another app
+                // does, often): read once here, and again on every keystroke.
+                understood = whenInText(draft.text, now, clock.zone),
                 kindOrder = if (current.popularTriggersFirst) triggerKindsByUse(past, now) else OFFERED_KINDS,
                 savedPlaces = current.savedPlaces,
                 savedWindows = current.savedWindows,
@@ -192,7 +197,14 @@ class EditorViewModel(
         }
     }
 
-    fun setText(text: String) = _state.update { it.withText(text) }
+    fun setText(text: String) = _state.update { readWords(it.withText(text)) }
+
+    /** The words re-read for the "when" they carry, wherever they change. */
+    private fun readWords(state: EditorUiState): EditorUiState =
+        state.copy(understood = whenInText(state.draft.text, clock.instant(), clock.zone))
+
+    /** The quick chip that says what the words say: taken through the same doors a sheet uses. */
+    fun commitUnderstood(read: Understood) = _state.update { it.commitUnderstood(read) }
     fun toggleTag(tag: String) = _state.update { it.toggleTag(tag) }
     fun addTag(raw: String) = _state.update { it.addTag(raw) }
     fun toggleAction(action: Action) = _state.update { it.toggleAction(action) }
@@ -325,7 +337,7 @@ class EditorViewModel(
     fun renameText(from: String, to: String) = curateWith {
         repository.saveAll(renameTextIn(repository.allNow(), from, to))
         _state.update { state ->
-            if (state.draft.text.trim().equals(from.trim(), ignoreCase = true)) state.withText(to.trim()) else state
+            if (state.draft.text.trim().equals(from.trim(), ignoreCase = true)) readWords(state.withText(to.trim())) else state
         }
     }
 

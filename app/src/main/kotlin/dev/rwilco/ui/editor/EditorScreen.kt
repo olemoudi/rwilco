@@ -364,6 +364,11 @@ fun EditorScreen(
                             viewModel.commitTrigger(null, trigger)
                         },
                         suggestions = state.suggestedTriggers,
+                        understood = state.understoodOffer(),
+                        onUnderstood = { read ->
+                            focusManager.clearFocus()
+                            viewModel.commitUnderstood(read)
+                        },
                         onEdit = viewModel::editTrigger,
                         onRemove = viewModel::removeTrigger,
                         onAddCondition = viewModel::addCondition,

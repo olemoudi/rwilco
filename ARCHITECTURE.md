@@ -653,6 +653,24 @@ because that is what its chip would show.
   the moment there was any, so "esta noche" was gone for good after the first reminder ever
   saved. They are merged now — suggestions first, then whichever starters none of them already
   amounts to (`shapeOf`, made public for it), six at most.
+- **The words say when (0.56.0, `WhenInText.kt`).** "Sacar la basura mañana a las 9" carries
+  its own trigger, and asking for it again through a tile and a sheet was asking somebody to
+  say the same thing twice. `whenInText(text, now, zone)` — pure, Spanish and English always
+  both, `fold`ed so accents and case do not matter — reads the sentence for a length ("en 20
+  min" → `Countdown`), a day counted ("mañana", "el jueves", "en 3 días" → `RelativeDate`), a
+  day pointed at ("el 26", "el 3 de septiembre" → `AtDateTime`/`DayRandom`), an hour alone (today
+  while it is ahead, else tomorrow: `reanchor`'s rule) or something that comes back ("cada
+  martes a las 8", "todos los días", "every other day" → `Recurrence.Calendar`; "cada 6 horas" →
+  `Recurrence.After`). A repeat outranks a moment in the same sentence and a length outranks an
+  hour beside it. **It is an offer and never an act**: `EditorUiState.understood` is re-read on
+  every keystroke and offered (`understoodOffer`) as the *first* chip of `QuickWhenRow`, wearing
+  a quote glyph so it reads as a reading of the text and not one more habit — a moment only
+  while there is no rule, a repeat only while "Vuelve" still says no — and the tap goes through
+  `commitTrigger`/`commitCalendar` like a sheet's result. The words are never rewritten. What it
+  refuses is a bare number: "las 3 bolsas" is not three in the morning, an hour needs "a las",
+  "at", a colon or an am/pm, because a false chip costs trust in every chip after it and a false
+  silence costs one tap on a tile. `WhenInTextTest` is the table; `WhenChipTest` walks the
+  screen.
 - **A held stepper keeps counting (0.51.0).** A step is one unit on purpose (three minutes has
   to be sayable, and the countdown sheet says why), and the price was seventeen taps from thirty
   to forty-seven. `Stepper` repeats after `Motion.holdRepeatDelay`, quickening to

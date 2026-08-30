@@ -598,6 +598,7 @@
     <string name="editor_net_note">If it rings and you let it go — or if its moment passes without it ringing at all — one quiet word about it %1$s later.</string>
     <string name="editor_net_too_fast">It comes back every %1$s — too often for a net, since the next ring gets there first.</string>
     <string name="editor_when_empty">Nothing rings it: it is simply kept, under its tags.</string>
+    <string name="editor_when_from_words">Read from the words</string>
     <string name="editor_what_empty">The moment passes in silence.</string>
     <string-array name="whats_new_0_3_0">
         <item>A reminder takes the whole screen only when nothing else is open: with an app in front of you it arrives as a banner instead, and the banner opens it.</item>
@@ -1143,6 +1144,9 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_56_0">
+        <item>The words say when. Write «sacar la basura mañana a las 9», «dentista el jueves 17:30», «en 20 min» or «pastillas cada martes a las 8» — in Spanish or English — and the first chip under «Cuándo» offers exactly that, with a quote mark on it so it reads as the sentence\'s own answer. One tap and it is set; the words stay as you typed them, and nothing is ever set without the tap. A line shared from another app gets the same reading.</item>
+    </string-array>
     <string-array name="whats_new_0_55_0">
         <item>A home-screen widget: what fires next and when, how many are due today, and «Nuevo». Two cells wide it says the words and the moment; four, the count and the button beside them. Tapping the words opens that reminder. It is the app\'s dark card on whatever the launcher is, and it says «a las 18:30» rather than a countdown, because a widget redraws when it is told to, not every second.</item>
     </string-array>

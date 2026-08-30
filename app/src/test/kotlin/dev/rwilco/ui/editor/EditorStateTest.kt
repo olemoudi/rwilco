@@ -7,6 +7,9 @@ import dev.rwilco.model.keeping
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.nextFire
 import dev.rwilco.model.RecurrenceUnit
+import dev.rwilco.model.RepeatUnit
+import dev.rwilco.model.Condition
+import dev.rwilco.model.Understood
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
@@ -303,5 +306,36 @@ class EditorStateTest {
         assertEquals(emptySet<Int>(), fresh.firedRules)
         assertEquals(null, fresh.lastFiredRule)
         assertEquals(null, fresh.nudgedAt)
+    }
+
+    @Test
+    fun `what the words say is offered until the form answers it`() {
+        val read = Understood.Once(Trigger.Countdown(20))
+        val state = blank.withText("sacar el pan en 20 min").copy(understood = read)
+        assertEquals(read, state.understoodOffer())
+        val taken = state.commitUnderstood(read)
+        assertEquals(listOf(TriggerRule(Trigger.Countdown(20))), taken.draft.rules)
+        assertNull(taken.understoodOffer(), "a moment already on the form is not offered twice")
+        // A rule added any other way answers the question just the same.
+        assertNull(state.commitTrigger(null, tonight).understoodOffer())
+
+        val comes = Understood.Comes(Recurrence.After(6, RecurrenceUnit.HOURS))
+        val repeating = blank.withText("pastillas cada 6 horas").copy(understood = comes)
+        assertEquals(comes, repeating.understoodOffer())
+        val kept = repeating.commitUnderstood(comes)
+        assertEquals(Recurrence.After(6, RecurrenceUnit.HOURS), kept.draft.recurrence)
+        assertNull(kept.understoodOffer(), "a repeat already in Vuelve is not offered twice")
+        assertEquals(comes, repeating.commitTrigger(null, tonight).understoodOffer(), "a rule does not answer a repeat")
+    }
+
+    @Test
+    fun `a calendar read from the words keeps the fences already on the draft`() {
+        val fence = Condition.TimeWindow(LocalTime.of(18, 0), LocalTime.of(22, 0))
+        val today = LocalDate.of(2026, 8, 27)
+        val old = Trigger.Repeat(today, 1, RepeatUnit.DAY)
+        val fenced = blank.setRecurrence(Recurrence.Calendar(old, listOf(fence)))
+        val weekly = Trigger.Repeat(today, 1, RepeatUnit.WEEK, LocalTime.of(8, 0), setOf(DayOfWeek.TUESDAY))
+        val taken = fenced.commitUnderstood(Understood.Comes(Recurrence.Calendar(weekly)))
+        assertEquals(Recurrence.Calendar(weekly, listOf(fence)), taken.draft.recurrence)
     }
 }

@@ -231,6 +231,9 @@ A read of every screen after 0.50.0, asking what a day of use would find. Worth 
   still ring after a day of that.
 - The launcher shortcuts (0.53.0): hold the icon with a preset pinned; the disc and initial,
   and one tap writing the reminder with the app closed.
+- The words-reading chip (0.56.0): share a line from WhatsApp ("Cita dentista jueves 17:30")
+  and see the chip first under "Cuándo"; type a few real sentences and note any reading that is
+  wrong or missing — the table in `WhenInTextTest` is where they go.
 - The widget (0.55.0): place it at two and four cells, watch it redraw on a "hecho" and turn
   "hoy" into "mañana" past midnight, and tap the words into the editor. The emulator has no
   launcher worth placing a widget on, so this one is the phone's alone.
