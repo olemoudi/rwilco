@@ -33,10 +33,16 @@ object GeofenceIds {
      * phone changes shape; a rule that asks for the doorway ([Trigger.Location.onCrossing])
      * gets a letter of its own, because it is a different thing to watch for and its memory of
      * which side the phone is on must not be inherited from the state reading.
+     *
+     * Spelled out rather than read off `Transition.name.first()`, which was `E` for both sides
+     * — `EXIT` starts with an E too — so an "al salir" circle shared its id, and the watch's
+     * memory of which side the phone was on, with the "al llegar" reading of the same pin.
+     * Every outside-facing id changes with the fix: one re-registration of the fences, and one
+     * fresh baseline per such circle.
      */
     fun encode(reminderId: String, triggerIndex: Int, place: Trigger.Location): String =
         "$reminderId$SEPARATOR$triggerIndex$CIRCLE" +
-            circle(place.lat, place.lng, place.radiusM, place.presence.asTransition.name.first()) +
+            circle(place.lat, place.lng, place.radiusM, if (place.presence == Presence.INSIDE) 'E' else 'X') +
             if (place.onCrossing) CROSSING else ""
 
     /** The [conditionIndex]th circle named by rule [ruleIndex]'s conditions. Never a trigger. */

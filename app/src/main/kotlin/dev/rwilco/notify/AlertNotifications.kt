@@ -244,16 +244,24 @@ object AlertNotifications {
         // half-asleep swipe that clears the shade. Everything else stays swipeable, because
         // most reminders are read and let go and pinning those would be nagging.
         if (plan.insistent && late == null && nudge == null) builder.setOngoing(true)
+        // The net's word is a card of its own: on the ring's id it REPLACED the alert it is
+        // about — a pinned, insistent alarm card turned into a low-priority note, with the sound
+        // still coming back for it.
+        val id = if (nudge != null) nudgeNotificationId(reminder.id) else notificationId(reminder.id)
         runCatching {
-            NotificationManagerCompat.from(context).notify(notificationId(reminder.id), builder.build())
-            syncSummary(context, posted = notificationId(reminder.id))
+            NotificationManagerCompat.from(context).notify(id, builder.build())
+            syncSummary(context, posted = id)
         }
     }
 
+    /** Both cards a reminder can have in the shade: the ring, and the net's word about it. */
     fun cancel(context: Context, reminderId: String) {
         runCatching {
-            NotificationManagerCompat.from(context).cancel(notificationId(reminderId))
+            val manager = NotificationManagerCompat.from(context)
+            manager.cancel(notificationId(reminderId))
+            manager.cancel(nudgeNotificationId(reminderId))
             syncSummary(context, cancelled = notificationId(reminderId))
+            syncSummary(context, cancelled = nudgeNotificationId(reminderId))
         }
     }
 
@@ -294,6 +302,9 @@ object AlertNotifications {
     }
 
     fun notificationId(reminderId: String): Int = reminderId.hashCode()
+
+    /** The safety net's card, beside the ring's rather than over it. */
+    fun nudgeNotificationId(reminderId: String): Int = ("net:$reminderId").hashCode()
 
     private fun channelId(sound: Boolean, vibrate: Boolean, vibration: VibrationPattern, chosen: AlertSound, bypass: Boolean): String {
         // Each part only belongs in the id of a channel it can actually change: a silent channel

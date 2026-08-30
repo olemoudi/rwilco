@@ -52,6 +52,8 @@ import java.time.Duration
 import java.time.Instant
 import kotlin.coroutines.resume
 import kotlin.math.roundToInt
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 
 /**
  * The app's own eye on its places, alongside the phone's geofences.
@@ -317,7 +319,12 @@ class PlaceWatcher(
         // name says less and lies about nothing.
         val label = live?.label ?: reminder?.rules?.getOrNull(GeofenceIds.triggerIndexOf(placeId) ?: -1)
             ?.let { (it.trigger as? Trigger.Location)?.label }
-        val strict = live?.onCrossing == true && reminder?.lastFiredAt != null
+        // Strict is about THIS circle having rung, not the reminder: a sibling's nine o'clock
+        // ring must not hold the office doorway to the second-ring rule, and the circle a
+        // snooze waits at has never rung at all — held strictly with no side yet seen, the
+        // first arrival home was dropped and the reminder went quiet for good.
+        val strict = live?.onCrossing == true && !GeofenceIds.isSnooze(placeId) &&
+            reminder?.lastFiredAt != null && reminder.lastFiredRule == GeofenceIds.triggerIndexOf(placeId)
         val arrived = transition == Transition.ENTER
         if (!crossingIsNews(state, placeId, transition, now, strict = strict)) {
             Log.i(TAG, "geofence says $transition at $placeId, but we were already there")
@@ -410,7 +417,9 @@ class PlaceWatcher(
         if (rest != null && rested != null) {
             // Never past the moment another circle's hours open, for the same reason as below.
             val at = watch.opensAt?.coerceAtMost(now + rested.wait) ?: (now + rested.wait)
-            store.write(rest.state.copy(nextCheckAt = at))
+            // A rest takes no fix, so it says nothing about the blind streak: kept, or a run of
+            // blind looks backing off 10/20/40 min was reset to ten by the sofa.
+            store.write(rest.state.copy(nextCheckAt = at, blindStreak = before.blindStreak))
             scheduleAt(at, rested.gapM, inside = rest.state.inside[rested.nearest.id] == true)
             Log.i(TAG, "nothing has moved; no fix taken, next look in ${Duration.between(now, at).toMinutes()} min")
             write(NoteKind.REST, now, rest.state, rested, rest.movement, charge)
@@ -470,16 +479,25 @@ class PlaceWatcher(
         Log.i(TAG, "${plan.gapM.toInt()} m from ${plan.nearest.label}; next look in ${Duration.between(now, at).toMinutes()} min (${plan.tier})")
         write(if (cached) NoteKind.CACHE else NoteKind.FIX, now, step.state, plan, step.movement, charge)
         val what = places.associate { it.id to it.crossing }
-        for (event in step.events) {
-            val reminderId = GeofenceIds.reminderIdOf(event.placeId)
-            val ruleIndex = GeofenceIds.triggerIndexOf(event.placeId)
-            Log.i(TAG, "watch saw ${event.transition} at ${event.placeId}")
-            if (what[event.placeId] == Crossing.TAKES_BACK && ruleIndex != null) {
-                firing.untick(reminderId, ruleIndex)
-            } else if (GeofenceIds.isSnooze(event.placeId)) {
-                firing.fire(reminderId, viaSnoozePlace = true)
-            } else {
-                firing.fire(reminderId, ruleIndex = ruleIndex)
+        // The crossings are the point of the look and the last thing in it, and `inside` above
+        // already says they happened: a crossing this coroutine is cut off before handing on —
+        // the receiver's budget runs out around the second ring of a look that took its full
+        // seven seconds on a fix — is one no later look can report again. So they go out
+        // whatever happens to the coroutine, and one that fails does not take the rest with it.
+        withContext(NonCancellable) {
+            for (event in step.events) {
+                val reminderId = GeofenceIds.reminderIdOf(event.placeId)
+                val ruleIndex = GeofenceIds.triggerIndexOf(event.placeId)
+                Log.i(TAG, "watch saw ${event.transition} at ${event.placeId}")
+                runCatching {
+                    if (what[event.placeId] == Crossing.TAKES_BACK && ruleIndex != null) {
+                        firing.untick(reminderId, ruleIndex)
+                    } else if (GeofenceIds.isSnooze(event.placeId)) {
+                        firing.fire(reminderId, viaSnoozePlace = true)
+                    } else {
+                        firing.fire(reminderId, ruleIndex = ruleIndex)
+                    }
+                }.onFailure { Log.e(TAG, "handing on a crossing at ${event.placeId} failed", it) }
             }
         }
     }

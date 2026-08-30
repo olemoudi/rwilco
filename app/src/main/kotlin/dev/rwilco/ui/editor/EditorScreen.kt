@@ -99,6 +99,7 @@ import dev.rwilco.model.upcomingMoments
 import dev.rwilco.model.NextFire
 import kotlinx.coroutines.launch
 import java.time.ZoneId
+import dev.rwilco.model.Understood
 
 @Composable
 fun EditorScreen(
@@ -106,7 +107,7 @@ fun EditorScreen(
     onClose: () -> Unit,
     onDeleted: (Reminder) -> Unit,
     /** A preset was deleted from here; the caller's snackbar outlives this screen and offers it back. */
-    onPresetDeleted: (Preset) -> Unit = {},
+    onPresetDeleted: (Preset, Int) -> Unit = { _, _ -> },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
@@ -133,7 +134,7 @@ fun EditorScreen(
                     onClose()
                 }
                 is EditorEvent.PresetDeleted -> {
-                    onPresetDeleted(event.preset)
+                    onPresetDeleted(event.preset, event.index)
                     onClose()
                 }
                 is EditorEvent.RecurrencePresetDeleted -> snackbar.show(recurrencePresetDeletedMessage, undoLabel) {
@@ -364,7 +365,8 @@ fun EditorScreen(
                             viewModel.commitTrigger(null, trigger)
                         },
                         suggestions = state.suggestedTriggers,
-                        understood = state.understoodOffer(),
+                        // A moment goes here; a repeat goes to "Vuelve", where the answer lives.
+                        understood = state.understoodOffer() as? Understood.Once,
                         onUnderstood = { read ->
                             focusManager.clearFocus()
                             viewModel.commitUnderstood(read)
@@ -384,6 +386,11 @@ fun EditorScreen(
                         recurrence = state.draft.recurrence,
                         presets = state.recurrencePresets,
                         today = today,
+                        understood = (state.understoodOffer() as? Understood.Comes)?.recurrence,
+                        onUnderstood = { read ->
+                            focusManager.clearFocus()
+                            viewModel.commitUnderstood(Understood.Comes(read))
+                        },
                         chanceDecides = state.draft.rules.any { it.trigger.decidesItsOwnDates },
                         defaultTime = state.defaultTime,
                         rulesNameAnHour = state.draft.rules.any { it.trigger.namesAnHour },

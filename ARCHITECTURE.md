@@ -388,6 +388,18 @@ snooze offer, it would reset the theme, the sound, the presets and the saved pla
 `notificationSnoozeOffers` drops what it does not recognise and falls back to the two defaults
 rather than leaving a notification with no way to postpone.
 
+**Three things the review round after 0.57.0 changed in the machinery (0.58.0).** `accept`'s
+*strict* reading — a doorway that has rung is owed the other side before it rings again — is
+keyed to the circle now (`lastFiredRule == triggerIndexOf(placeId)`) and never to a snooze
+circle: keyed to the reminder's `lastFiredAt`, a sibling's nine o'clock held the office
+doorway to the second-ring rule, and the circle a snooze waits at — which exists *because* the
+reminder rang — was strict from its first crossing, so with no side yet seen the arrival home
+was dropped and not written, the next look baselined *inside*, and the reminder went quiet for
+good. `look()`'s hand-off of the crossings is `NonCancellable` and per-event `runCatching`: it
+writes `inside` before it rings, so a crossing cut off by the receiver's budget was one no
+later look could report. And the safety net's word has a notification id of its own
+(`nudgeNotificationId`): on the ring's id it replaced the alert it was about.
+
 **Put off until a place (0.57.0, `Reminder.snoozedToPlace`, `SnoozePlaces.kt`).** The answers to a
 ring were clock-shaped only, and on a phone whose reminders are mostly places the honest answer
 to "comprar filtros" ringing on the metro is "cuando llegue a casa". Two offers and no more, on
@@ -473,6 +485,13 @@ because that is what its chip would show.
   refuses a build whose code is not the head of the list, so a release cannot be cut without its
   line; the thirty unannounced versions are one entry keyed to the build that brought the notes
   back, so a phone that last saw 0.20.0 is told once what happened since.
+  **The blob is decoded all at once, so every part of it reads what it can (0.58.0).** A theme, a
+  favourite tile, an action or a sound from a newer build used to throw in the middle of the
+  object and hand back `AppSettings()` — with the saved places, the presets and the sound gone,
+  and the next write making it permanent. `coerceInputValues` reads an unknown enum name as the
+  property's default; `TolerantActions`, `TolerantSound`/`TolerantSoundOrNull` (beside
+  `TolerantRules`/`TolerantRecurrence`) read what they can of a set and a sealed shape.
+  `SettingsToleranceTest` swaps real encoded values, never splices a duplicate key.
   `PlaceWatchStore` is a second DataStore for the place watch's memory (last fix, which places
   it is inside, its still streak, the next look) — its own file because it is written on every
   check.

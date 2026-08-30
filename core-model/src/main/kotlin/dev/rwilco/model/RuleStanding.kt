@@ -57,6 +57,8 @@ fun Reminder.ruleStandings(
     if (!rulesCombine) return rules.map { null }
     val rest = restUntil(zone, dayStart, shape)
     if (rest != null && rest > now) return rules.map { null }
+    // Waiting at a place, the rules are not being asked either: the circle is all there is.
+    if (snoozedToPlace != null) return rules.map { null }
     return rules.mapIndexed { index, rule ->
         when (ruleMatch) {
             RuleMatch.ALL -> if (index in firedRules) RuleStanding.DONE else RuleStanding.PENDING

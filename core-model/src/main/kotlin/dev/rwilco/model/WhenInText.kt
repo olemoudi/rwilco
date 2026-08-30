@@ -45,6 +45,8 @@ fun whenInText(text: String, now: Instant, zone: ZoneId): Understood? {
     val today = here.toLocalDate()
     val nowTime = here.toLocalTime().withSecond(0).withNano(0)
     val hour = hourIn(words)
+    // "Por la tarde" names a stretch the app has no hour for. Half an answer is a wrong chip.
+    if (hour.refused) return null
 
     recurrenceIn(words, today, nowTime, hour.time)?.let { return Understood.Comes(it) }
     countdownIn(words)?.let { return Understood.Once(Trigger.Countdown(it)) }
@@ -62,26 +64,36 @@ fun whenInText(text: String, now: Instant, zone: ZoneId): Understood? {
 
 // --- the hour ---
 
-/** An hour read from the words, and whether the words also said "today". */
-private class Hour(val time: LocalTime?, val today: Boolean)
+/**
+ * An hour read from the words, whether the words also said "today", and [refused]: a part of
+ * the day the app has no hour for ("por la tarde"), which is a sentence to leave alone rather
+ * than answer half of.
+ */
+private class Hour(val time: LocalTime?, val today: Boolean, val refused: Boolean = false)
 
 private fun hourIn(words: String): Hour {
     val today = TODAY.containsMatchIn(words) || TONIGHT.containsMatchIn(words)
+    // "Esta noche a las 9" is nine in the evening, "por la tarde a las 5" is five in the
+    // afternoon: a part of the day reaches an hour said with no am/pm.
+    val night = NIGHT.containsMatchIn(words)
+    val afternoon = AFTERNOON.containsMatchIn(words)
+    val late = night || afternoon
     ES_TIME.find(words)?.let { m ->
-        return Hour(timeOf(m.groupValues[1], m.groupValues[2], m.groupValues[3], m.groupValues[4]), today)
+        return Hour(timeOf(m.groupValues[1], m.groupValues[2], m.groupValues[3], m.groupValues[4], late), today)
     }
-    EN_AT.find(words)?.let { m -> return Hour(timeOf(m.groupValues[1], m.groupValues[2], "", m.groupValues[3]), today) }
-    EN_PM.find(words)?.let { m -> return Hour(timeOf(m.groupValues[1], m.groupValues[2], "", m.groupValues[3]), today) }
+    EN_AT.find(words)?.let { m -> return Hour(timeOf(m.groupValues[1], m.groupValues[2], "", m.groupValues[3], late), today) }
+    EN_PM.find(words)?.let { m -> return Hour(timeOf(m.groupValues[1], m.groupValues[2], "", m.groupValues[3], late), today) }
     if (NOON.containsMatchIn(words)) return Hour(LocalTime.NOON, today)
-    CLOCK.find(words)?.let { m -> return Hour(timeOf(m.groupValues[1], m.groupValues[2], "", ""), today) }
+    CLOCK.find(words)?.let { m -> return Hour(timeOf(m.groupValues[1], m.groupValues[2], "", "", late), today) }
+    if (afternoon) return Hour(null, today, refused = true)
     // A part of the day with no number in it: the two hours the quick chips already stand for.
     if (MORNING.containsMatchIn(words)) return Hour(MORNING_HOUR, today)
-    if (NIGHT.containsMatchIn(words)) return Hour(NIGHT_HOUR, today)
+    if (night) return Hour(NIGHT_HOUR, today)
     return Hour(null, today)
 }
 
 /** Null for an hour or a minute that does not exist: a typo is not an offer. */
-private fun timeOf(hourRaw: String, minuteRaw: String, fraction: String, qualifier: String): LocalTime? {
+private fun timeOf(hourRaw: String, minuteRaw: String, fraction: String, qualifier: String, late: Boolean): LocalTime? {
     var hour = hourRaw.toIntOrNull() ?: HOUR_WORDS[hourRaw] ?: return null
     val minute = when {
         minuteRaw.isNotEmpty() -> minuteRaw.toInt()
@@ -90,9 +102,16 @@ private fun timeOf(hourRaw: String, minuteRaw: String, fraction: String, qualifi
         else -> 0
     }
     when (qualifier) {
-        // "A la una" is lunchtime to anyone who says it; one in the morning gets said in full.
-        "" -> if (hourRaw == "una" && hour == 1) hour = 13
-        "tarde", "noche", "pm" -> if (hour in 1..11) hour += 12
+        // "A la una" is lunchtime to anyone who says it, however it is spelled; one in the
+        // morning gets said in full. And an hour said in the same breath as the afternoon or
+        // the night is that half of the day's.
+        "" -> when {
+            hour == 1 -> hour = 13
+            late && hour in 2..11 -> hour += 12
+        }
+        // "Las 12 de la noche" is midnight; the rest of the night is the afternoon's arithmetic.
+        "noche" -> if (hour == 12) hour = 0 else if (hour in 1..11) hour += 12
+        "tarde", "pm" -> if (hour in 1..11) hour += 12
         "am" -> if (hour == 12) hour = 0
     }
     if (hour !in 0..23 || minute !in 0..59) return null
@@ -142,12 +161,13 @@ private fun weekdaysIn(words: String): Set<DayOfWeek> =
 
 // --- a length, a day counted, a day pointed at ---
 
+/** A length the countdown sheet would accept; "en 200 horas" is not a chip worth offering. */
 private fun countdownIn(words: String): Int? {
     if (HALF_HOUR.containsMatchIn(words)) return 30
     if (QUARTER_HOUR.containsMatchIn(words)) return 15
-    IN_MINUTES.find(words)?.let { m -> return amountOf(m.groupValues[1]) }
-    IN_HOURS.find(words)?.let { m -> return amountOf(m.groupValues[1])?.times(60) }
-    return null
+    val minutes = IN_MINUTES.find(words)?.let { m -> amountOf(m.groupValues[1]) }
+        ?: IN_HOURS.find(words)?.let { m -> amountOf(m.groupValues[1])?.times(60) }
+    return minutes?.takeIf { it in MIN_COUNTDOWN_MINUTES..MAX_COUNTDOWN_MINUTES }
 }
 
 private fun relativeDayIn(words: String): RelativeDay? {
@@ -222,6 +242,7 @@ private val SPACES = Regex("\\s+")
 
 private const val MINUTES = "(?:[:.h](\\d{2}))?"
 
+private val ES_HOUR_WORDS = setOf("una", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez", "once", "doce")
 private val HOUR_WORDS: Map<String, Int> = mapOf(
     "una" to 1, "dos" to 2, "tres" to 3, "cuatro" to 4, "cinco" to 5, "seis" to 6,
     "siete" to 7, "ocho" to 8, "nueve" to 9, "diez" to 10, "once" to 11, "doce" to 12,
@@ -232,7 +253,9 @@ private val AMOUNT_WORDS: Map<String, Int> = HOUR_WORDS + mapOf(
     "un" to 1, "uno" to 1, "a" to 1, "an" to 1,
     "quince" to 15, "veinte" to 20, "treinta" to 30, "fifteen" to 15, "twenty" to 20, "thirty" to 30,
 )
-private val HOUR_PATTERN = "(\\d{1,2}|" + HOUR_WORDS.keys.joinToString("|") + ")"
+// Each language's own words for the hours: "at once" is not eleven o'clock.
+private val ES_HOUR_PATTERN = "(\\d{1,2}|" + HOUR_WORDS.keys.filter { it in ES_HOUR_WORDS }.joinToString("|") + ")"
+private val EN_HOUR_PATTERN = "(\\d{1,2}|" + HOUR_WORDS.keys.filter { it !in ES_HOUR_WORDS }.joinToString("|") + ")"
 private val AMOUNT_PATTERN = "(\\d{1,3}|" + AMOUNT_WORDS.keys.joinToString("|") + ")"
 
 private val WEEKDAYS: Map<String, DayOfWeek> = mapOf(
@@ -259,17 +282,19 @@ private val MONTH_EN = "(" + MONTHS_EN.keys.joinToString("|") + ")"
 
 private val TODAY = Regex("\\bhoy\\b|\\btoday\\b")
 private val TONIGHT = Regex("\\besta noche\\b|\\btonight\\b")
-private val ES_TIME = Regex("\\ba las? $HOUR_PATTERN${MINUTES}h?(?: y (media|cuarto))?(?: de la (manana|tarde|noche))?\\b")
-private val EN_AT = Regex("\\bat $HOUR_PATTERN$MINUTES ?(am|pm)?\\b")
+private val ES_TIME = Regex("\\ba las? $ES_HOUR_PATTERN${MINUTES}h?(?: y (media|cuarto))?(?: de la (manana|tarde|noche))?\\b")
+private val EN_AT = Regex("\\bat $EN_HOUR_PATTERN$MINUTES ?(am|pm)?\\b")
 private val EN_PM = Regex("\\b(\\d{1,2})$MINUTES ?(am|pm)\\b")
-private val CLOCK = Regex("\\b(\\d{1,2})[:.h](\\d{2})\\b")
+/** A bare clock needs the colon (or the h): "12.50" is a price. The dot only counts after "a las"/"at". */
+private val CLOCK = Regex("\\b(\\d{1,2})[:h](\\d{2})\\b")
 private val NOON = Regex("\\bat (?:noon|midday)\\b|\\ba(?:l)? mediodia\\b")
 private val MORNING = Regex("\\bpor la manana\\b|\\bmorning\\b")
+private val AFTERNOON = Regex("\\bpor la tarde\\b|\\besta tarde\\b|\\bafternoon\\b")
 private val NIGHT = Regex("\\bpor la noche\\b|\\besta noche\\b|\\btonight\\b|\\bnight\\b|\\bevening\\b")
 private val MORNING_HOUR: LocalTime = LocalTime.of(9, 0)
 private val NIGHT_HOUR: LocalTime = LocalTime.of(20, 0)
 
-private val EVERY_HOURS = Regex("\\b(?:cada|every) $AMOUNT_PATTERN (?:horas?|h|hours?|hrs?)\\b")
+private val EVERY_HOURS = Regex("\\b(?:cada|every) $AMOUNT_PATTERN ?(?:horas?|h|hours?|hrs?)\\b")
 private val HOURLY = Regex("\\bcada hora\\b|\\bevery hour\\b|\\bhourly\\b")
 private val EVERY_N = Regex("\\b(?:cada|every) $AMOUNT_PATTERN (dias?|days?|semanas?|weeks?|mes|meses|months?|anos?|years?)\\b")
 private val EVERY_OTHER = Regex("\\bevery other (day|week|month)\\b")
@@ -280,8 +305,8 @@ private val WEEKDAY_ONCE = Regex("\\b$WEEKDAY_PATTERN\\b(?!s)")
 
 private val HALF_HOUR = Regex("\\b(?:en|dentro de|in) (?:media hora|half an hour)\\b")
 private val QUARTER_HOUR = Regex("\\b(?:en|dentro de|in) (?:un cuarto de hora|a quarter of an hour)\\b")
-private val IN_MINUTES = Regex("\\b(?:en|dentro de|in) $AMOUNT_PATTERN (?:min|mins|minuto|minutos|minute|minutes)\\b")
-private val IN_HOURS = Regex("\\b(?:en|dentro de|in) $AMOUNT_PATTERN (?:h|hora|horas|hour|hours|hr|hrs)\\b")
+private val IN_MINUTES = Regex("\\b(?:en|dentro de|in) $AMOUNT_PATTERN ?(?:min|mins|minuto|minutos|minute|minutes)\\b")
+private val IN_HOURS = Regex("\\b(?:en|dentro de|in) $AMOUNT_PATTERN ?(?:h|hora|horas|hour|hours|hr|hrs)\\b")
 private val IN_DAYS = Regex("\\b(?:en|dentro de|in) $AMOUNT_PATTERN (dia|dias|day|days|semana|semanas|week|weeks|mes|meses|month|months)\\b")
 private val DAY_AFTER_TOMORROW = Regex("\\bpasado manana\\b|\\bday after tomorrow\\b")
 private val TOMORROW = Regex("(?<!pasado )(?<!por la )(?<!de la )(?<!en la )\\bmanana\\b|\\btomorrow\\b")
@@ -290,5 +315,5 @@ private val DATE_ES = Regex("\\b(\\d{1,2}) de $MONTH_ES\\b")
 private val DATE_EN_DAY_FIRST = Regex("\\b(\\d{1,2})(?:st|nd|rd|th)?(?: of)? $MONTH_EN\\b")
 private val DATE_EN_MONTH_FIRST = Regex("\\b$MONTH_EN (?:the )?(\\d{1,2})(?:st|nd|rd|th)?\\b")
 private val DATE_NUMERIC = Regex("\\b(\\d{1,2})/(\\d{1,2})(?:/(\\d{2}|\\d{4}))?\\b")
-private val DAY_ES = Regex("\\bel (\\d{1,2})\\b(?![./])")
+private val DAY_ES = Regex("\\bel (\\d{1,2})\\b(?![./]\\d)")
 private val DAY_EN = Regex("\\bon the (\\d{1,2})(?:st|nd|rd|th)\\b")

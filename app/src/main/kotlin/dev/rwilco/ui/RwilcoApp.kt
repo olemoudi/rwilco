@@ -173,9 +173,16 @@ fun RwilcoApp(
                                 app.appScope.launch { app.repository.restore(reminder) }
                             }
                         },
-                        onPresetDeleted = { preset ->
+                        onPresetDeleted = { preset, index ->
                             snackbar.show(presetDeletedMessage, undoLabel) {
-                                app.appScope.launch { app.settingsStore.update { it.copy(presets = it.presets + preset) } }
+                                // Back where it was, and never twice: the order is what the
+                                // popularity sort falls back on, and the launcher's shortcuts follow it.
+                                app.appScope.launch {
+                                    app.settingsStore.update {
+                                        if (it.presets.any { p -> p.id == preset.id }) it
+                                        else it.copy(presets = it.presets.toMutableList().apply { add(index.coerceIn(0, size), preset) })
+                                    }
+                                }
                             }
                         },
                     )

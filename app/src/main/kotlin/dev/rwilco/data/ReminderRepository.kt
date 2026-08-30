@@ -84,7 +84,23 @@ class ReminderRepository(
     suspend fun delete(id: String) = dao.delete(id)
 
     /** Undo of a delete: the reminder goes back exactly as it was. */
-    suspend fun restore(reminder: Reminder) = dao.upsert(reminder.toEntity())
+    /**
+     * The row as it was — and, after a delete, [history] with it: the cascade took every line of
+     * it, and a snackbar's undo that brings the reminder back without its fortnight of "sonó
+     * ayer" is not an undo. Oldest first on the way in, so the ids keep the order the screen
+     * sorts ties by.
+     */
+    suspend fun restore(reminder: Reminder, history: List<FiringEvent> = emptyList()) {
+        dao.upsert(reminder.toEntity())
+        if (history.isEmpty()) return
+        runCatching {
+            events.insertAll(
+                history.asReversed().map {
+                    FiringEventEntity(reminderId = reminder.id, at = it.at.toEpochMilli(), kind = it.kind.name, ruleIndex = it.ruleIndex, detail = it.detail)
+                },
+            )
+        }
+    }
 
     suspend fun purgeDone() = dao.purgeDone()
 

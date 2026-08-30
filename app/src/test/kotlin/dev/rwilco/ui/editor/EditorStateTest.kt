@@ -338,4 +338,21 @@ class EditorStateTest {
         val taken = fenced.commitUnderstood(Understood.Comes(Recurrence.Calendar(weekly)))
         assertEquals(Recurrence.Calendar(weekly, listOf(fence)), taken.draft.recurrence)
     }
+
+    @Test
+    fun `a random window answers Vuelve once, and takes the answer with it when it goes`() {
+        val window = Trigger.Random(2, dev.rwilco.model.Period.DAY, LocalTime.of(10, 0), LocalTime.of(20, 0))
+        val chosen = blank.withText("beber agua").commitTrigger(null, window)
+        assertEquals(Recurrence.ByTrigger, chosen.draft.recurrence)
+        // Answered "no repetir" on purpose, then the window widened: the answer stands.
+        val declined = chosen.setRecurrence(Recurrence.None).commitTrigger(0, window.copy(timesPer = 3))
+        assertEquals(Recurrence.None, declined.draft.recurrence)
+        // The window removed takes its own answer with it; a date added next starts clean.
+        val gone = chosen.removeTrigger(0)
+        assertEquals(Recurrence.None, gone.draft.recurrence)
+        assertEquals(Recurrence.None, gone.commitTrigger(null, tonight).draft.recurrence)
+        // A repeat chosen by hand is not the window's, and stays when the window goes.
+        val byHand = chosen.setRecurrence(Recurrence.After(6, RecurrenceUnit.HOURS)).removeTrigger(0)
+        assertEquals(Recurrence.After(6, RecurrenceUnit.HOURS), byHand.draft.recurrence)
+    }
 }

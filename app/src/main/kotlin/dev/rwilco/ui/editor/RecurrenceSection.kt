@@ -83,6 +83,7 @@ import dev.rwilco.ui.format.Words
 import dev.rwilco.ui.format.rememberWords
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.components.TimeField
+import androidx.compose.material.icons.outlined.FormatQuote
 
 /** How many recurrences get a button of their own before the rest go behind the dots. */
 private const val VISIBLE_PRESETS = 4
@@ -137,8 +138,12 @@ internal fun RecurrenceSection(
     onRemoveCondition: (Int) -> Unit,
     onSavePreset: (String?, String, Recurrence) -> Unit,
     onDeletePreset: (String) -> Unit,
+    /** The repeat the words themselves say ("cada martes a las 8"), while "Vuelve" is unanswered. */
+    understood: Recurrence? = null,
+    onUnderstood: (Recurrence) -> Unit = {},
 ) {
     var listing by rememberSaveable { mutableStateOf(false) }
+    val readWords = rememberWords()
     // The preset being built or edited: null closed, "" a new one, otherwise its id.
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
     val spacing = Tokens.spacing
@@ -155,6 +160,20 @@ internal fun RecurrenceSection(
                 selected = recurrence == Recurrence.None,
                 onClick = { onCustom(Recurrence.None) },
             )
+            // What the words say, first among the answers and wearing the quote glyph the
+            // "Cuándo" row uses for the same thing. Here and not there: once a rule is on the
+            // form the quick row is gone, and a repeat is this card's question anyway.
+            understood?.let { read ->
+                val hour = (read as? Recurrence.Calendar)?.repeat?.time
+                    ?.let { " · " + TimeText.time(it, readWords.is24h, readWords.locale) }.orEmpty()
+                RecurrenceButton(
+                    icon = Icons.Outlined.FormatQuote,
+                    label = (recurrenceLabel(readWords, read, today) + hour).replaceFirstChar { it.titlecase(readWords.locale) },
+                    selected = false,
+                    onClick = { onUnderstood(read) },
+                    contentDescription = stringResource(R.string.editor_when_from_words),
+                )
+            }
             for (preset in spans) {
                 RecurrenceButton(
                     label = presetLabel(preset, today),

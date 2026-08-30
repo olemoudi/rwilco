@@ -1,6 +1,7 @@
 package dev.rwilco
 
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.io.File
 
@@ -12,7 +13,8 @@ import java.io.File
  */
 class StringsParityTest {
 
-    private val keyPattern = Regex("<(string|plurals) name=\"([^\"]+)\"")
+    private val keyPattern = Regex("<(string|plurals|string-array) name=\"([^\"]+)\"")
+    private val arrayPattern = Regex("<string-array name=\"([^\"]+)\">(.*?)</string-array>", RegexOption.DOT_MATCHES_ALL)
 
     /** Deliberately untranslated keys (brand names fall back to the default locale). */
     private val untranslated = setOf("app_name")
@@ -42,5 +44,18 @@ class StringsParityTest {
         // Guards against the regex silently matching nothing and the parity test passing on
         // two empty sets.
         assertTrue(keysOf("src/main/res/values/strings.xml").size >= 4)
+    }
+
+    /** The release notes are arrays: a bullet added to one locale alone shipped a mixed changelog. */
+    @Test
+    fun `every string-array has the same number of items in both locales`() {
+        fun itemsOf(relativePath: String): Map<String, Int> {
+            val file = sequenceOf(File(relativePath), File("app/$relativePath")).first { it.exists() }
+            return arrayPattern.findAll(file.readText()).associate { it.groupValues[1] to Regex("<item>").findAll(it.groupValues[2]).count() }
+        }
+        val english = itemsOf("src/main/res/values/strings.xml")
+        val spanish = itemsOf("src/main/res/values-es/strings.xml")
+        val uneven = english.filter { (name, count) -> spanish[name] != count }
+        assertEquals(emptyMap<String, Int>(), uneven, "arrays with a different number of items in Spanish")
     }
 }

@@ -347,8 +347,13 @@ fun EditorUiState.editTrigger(index: Int): EditorUiState {
     return copy(sheet = EditorSheet.Configure(trigger.kind, index, trigger))
 }
 
-fun EditorUiState.removeTrigger(index: Int): EditorUiState =
-    copy(draft = draft.copy(rules = draft.rules.filterIndexed { i, _ -> i != index }))
+fun EditorUiState.removeTrigger(index: Int): EditorUiState {
+    val rules = draft.rules.filterIndexed { i, _ -> i != index }
+    // "Vuelve" was the random window's own answer; with the last window gone the answer goes
+    // too, or a date rule added next inherits a repeat nothing on the form asked for.
+    val recurrence = if (draft.recurrence == Recurrence.ByTrigger && rules.none { it.trigger is Trigger.Random }) Recurrence.None else draft.recurrence
+    return copy(draft = draft.copy(rules = rules, recurrence = recurrence))
+}
 
 /**
  * The configurator's result: replaces the trigger of the rule being edited — keeping whatever
@@ -364,9 +369,11 @@ fun EditorUiState.commitTrigger(index: Int?, trigger: Trigger): EditorUiState {
     // it says so in plain sight, right under the row, and changeable. Every other kind leaves
     // the answer alone: a place or a date is one-shot until somebody says otherwise, and a
     // calendar is asked for in "Vuelve" rather than arrived at from here.
+    // Only on CHOOSING the window: editing it later must not put back an answer somebody has
+    // since changed to "no repetir" on purpose.
     val recurrence = when {
         draft.recurrence != Recurrence.None -> draft.recurrence
-        trigger is Trigger.Random -> Recurrence.ByTrigger
+        index == null && trigger is Trigger.Random -> Recurrence.ByTrigger
         else -> draft.recurrence
     }
     return copy(draft = draft.copy(rules = rules, recurrence = recurrence), sheet = EditorSheet.None)

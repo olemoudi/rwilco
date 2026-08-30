@@ -59,7 +59,8 @@ sealed interface EditorEvent {
     data object Saved : EditorEvent
     data class Deleted(val reminder: Reminder) : EditorEvent
     /** A preset left the list; the screen closes and the snackbar offers it back. */
-    data class PresetDeleted(val preset: Preset) : EditorEvent
+    /** [index] is where it sat, so an undo puts it back there rather than at the end. */
+    data class PresetDeleted(val preset: Preset, val index: Int) : EditorEvent
     /** A recurrence preset left the "Vuelve" card; the snackbar offers it back. */
     data class RecurrencePresetDeleted(val preset: RecurrencePreset) : EditorEvent
     data object Close : EditorEvent
@@ -431,9 +432,13 @@ class EditorViewModel(
         val preset = _state.value.editingPreset
         if (preset != null) {
             viewModelScope.launch {
-                store.update { settings -> settings.copy(presets = settings.presets.filterNot { it.id == preset.id }) }
+                var index = 0
+                store.update { settings ->
+                    index = settings.presets.indexOfFirst { it.id == preset.id }.coerceAtLeast(0)
+                    settings.copy(presets = settings.presets.filterNot { it.id == preset.id })
+                }
                 // The same bin as a reminder's, and it used to be the one without an undo.
-                events.send(EditorEvent.PresetDeleted(preset))
+                events.send(EditorEvent.PresetDeleted(preset, index))
             }
             return
         }

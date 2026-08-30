@@ -154,7 +154,8 @@ fun HomeScreen(
                     onUndo = { viewModel.undoPause(event) },
                 )
                 is HomeEvent.Snoozed -> snackbar.show(
-                    message = event.place?.let { words.get(R.string.home_snoozed_until, snoozePlacePhrase(words, it)) }
+                    message = if (event.cancelled) snoozeCancelledMessage
+                    else event.place?.let { words.get(R.string.home_snoozed_until, snoozePlacePhrase(words, it)) }
                         ?: event.until?.let { until ->
                             val here = until.atZone(zone)
                             val todayHere = viewModel.clock.instant().atZone(zone).toLocalDate()
@@ -409,12 +410,15 @@ fun HomeScreen(
                     }
                 }
                 state.hero?.let { hero ->
-                    item(key = "hero") {
+                    // Keyed by the reminder and not by the slot: a swipe acts on release, and
+                    // a hero that changed under a held thumb was a different reminder marked done.
+                    val heroId = hero.card.id
+                    item(key = "hero-$heroId") {
                         // Swipeable like every other card: it is a reminder, and the one that
                         // matters most is the last one that should be impossible to deal with.
                         SwipeableCard(
-                            onDone = { viewModel.markDone(hero.card.id) },
-                            onDelete = { viewModel.delete(hero.card.id) },
+                            onDone = { viewModel.markDone(heroId) },
+                            onDelete = { viewModel.delete(heroId) },
                             modifier = Modifier.animateItem(),
                         ) {
                             HeroCard(

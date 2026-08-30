@@ -45,6 +45,7 @@ data class Preset(
     @Serializable(with = TolerantRules::class)
     val rules: List<TriggerRule> = emptyList(),
     val ruleMatch: RuleMatch = RuleMatch.ANY,
+    @Serializable(with = TolerantActions::class)
     val actions: Set<Action> = DEFAULT_ACTIONS,
     /** How the reminders made from it come back after they are dealt with. */
     @Serializable(with = TolerantRecurrence::class)

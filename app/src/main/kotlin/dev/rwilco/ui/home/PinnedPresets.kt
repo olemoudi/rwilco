@@ -67,6 +67,7 @@ import dev.rwilco.model.Preset
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.presetColor
 import dev.rwilco.ui.theme.presetWash
+import androidx.compose.runtime.saveable.rememberSaveable
 
 /**
  * The row of shapes kept within reach, under the date.
@@ -257,10 +258,13 @@ fun PinPresetsPanel(
  */
 @Composable
 fun PresetWordsDialog(preset: Preset, onConfirm: (String, Set<Action>) -> Unit, onDismiss: () -> Unit) {
-    var words by remember { mutableStateOf("") }
+    // Saveable, both: the dialog itself survives a rotation, and came back empty around it.
+    var words by rememberSaveable { mutableStateOf("") }
     // What the shape brings, until this reminder says otherwise. The preset is not touched:
     // "this one, also on the screen" is a thing to say once without editing the shape for good.
-    var actions by remember(preset.id) { mutableStateOf(preset.actions) }
+    // Kept by name, which is what a Bundle can hold.
+    var actionNames by rememberSaveable(preset.id) { mutableStateOf(preset.actions.joinToString(",") { it.name }) }
+    val actions = actionNames.split(',').mapNotNullTo(LinkedHashSet()) { name -> Action.entries.firstOrNull { it.name == name } }
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val spacing = Tokens.spacing
@@ -314,7 +318,7 @@ fun PresetWordsDialog(preset: Preset, onConfirm: (String, Set<Action>) -> Unit, 
                         .focusRequester(focusRequester),
                 )
                 Spacer(Modifier.height(spacing.md))
-                ActionPips(selected = actions, onToggle = { actions = actions.toggling(it) })
+                ActionPips(selected = actions, onToggle = { actionNames = actions.toggling(it).joinToString(",") { a -> a.name } })
                 Spacer(Modifier.height(spacing.md))
                 Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm), modifier = Modifier.fillMaxWidth()) {
                     TextButton(

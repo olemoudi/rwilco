@@ -183,17 +183,21 @@ class ReminderFiring(
         if (place != null && lastFired != null && Duration.between(lastFired, now) < PLACE_ECHO) {
             Log.i(TAG, "$id already rang for this place ${Duration.between(lastFired, now).seconds}s ago")
             Diag.note(TAG_DIAG, "r=${short(id)} dropped: place echo ${Duration.between(lastFired, now).seconds}s after the last ring")
+            scheduler.rearmAll()
             return@withLock
         }
         // A state rings once a round; a crossing rings for every doorway. See presenceAlreadyRang.
         if (place != null && ruleIndex != null && reminder.presenceAlreadyRang(place, ruleIndex)) {
             Log.i(TAG, "$id already rang for being there; waiting for the round to start again")
             Diag.note(TAG_DIAG, "r=${short(id)} dropped: state place already rang at $lastFired")
+            scheduler.rearmAll()
             return@withLock
         }
         // A snooze set after the alarm was armed (from the notification, a moment ago) wins.
+        // With the same few seconds of slack the armed-moment check above gives: the snooze's
+        // own alarm arriving a second early is not a snooze still ahead.
         val snoozed = reminder.snoozedUntil
-        if (snoozed != null && snoozed > now) {
+        if (snoozed != null && snoozed > now.plusSeconds(EARLY_GRACE_SECONDS)) {
             Diag.note(TAG_DIAG, "r=${short(id)} dropped: snoozed until $snoozed")
             scheduler.rearmAll()
             return@withLock
@@ -242,7 +246,9 @@ class ReminderFiring(
             val presentedLate = lateForPresentation(late, now)
             repository.record(id, if (presentedLate != null) FiringKind.MISSED else FiringKind.RANG, now, ruleIndex)
             try {
-                AlertPresenter.show(context, reminder, plan, presentedLate, settings.vibration, settings.soundFor(plan), ruleIndex = ruleIndex, defaultTime = settings.defaultTime, snoozes = settings.notificationSnoozeOffers, customMinutes = settings.snoozeCustomMinutes)
+                // The row read above still carries the place this ring is the end of; shown as
+                // is, the notification for the arrival read "pospuesto hasta llegar a casa".
+                AlertPresenter.show(context, if (viaSnoozePlace) reminder.copy(snoozedToPlace = null) else reminder, plan, presentedLate, settings.vibration, settings.soundFor(plan), ruleIndex = ruleIndex, defaultTime = settings.defaultTime, snoozes = settings.notificationSnoozeOffers, customMinutes = settings.snoozeCustomMinutes)
                 // "Hasta que reciba caso": the first play has gone out, so line up the second.
                 if (plan.insistent) {
                     nextSoundIn(played = 1, plays = settings.soundPlays, gapMinutes = settings.soundGapMinutes)
@@ -408,7 +414,9 @@ class ReminderFiring(
         // "six hours after the last one" is six hours after this, not after whenever the alarm
         // happened to go off. Four writes could be cut in two by a process dying, and a round
         // closed with its anchor unmoved is a reminder that never comes back.
-        repository.dealtWith(id, now, status, consumed)
+        // A "hecho" that spends no moment (an answer to a ring) keeps what was dealt with ahead:
+        // written as null it wiped the rounds already skipped, and they came back.
+        repository.dealtWith(id, now, status, consumed ?: reminder.dealtThrough)
         // The word for what this was: an answer to a ring, or a round of something that comes
         // back let pass ahead of it. A one-off finished ahead of its moment is still "hecho".
         val skipped = consumed != null && reminder.recurrence != Recurrence.None && !reminder.awaitingAnswer(now)

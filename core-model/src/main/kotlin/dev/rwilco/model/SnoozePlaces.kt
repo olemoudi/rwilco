@@ -68,8 +68,15 @@ fun mostUsedPlace(saved: List<SavedPlace>, reminders: List<Reminder>): SavedPlac
  * already inside it. A doorway in from inside is a leaving and a coming back, which is not what
  * anybody standing at home means by "when I get home".
  */
-fun arriveOffered(place: SavedPlace, watch: PlaceWatchState): Boolean =
-    watch.sideOf(place.lat, place.lng, place.radiusM, inside = true) != true
+fun arriveOffered(place: SavedPlace, watch: PlaceWatchState): Boolean {
+    // A doorway's first judgement leans towards the side it waits for, so a wide fix from the
+    // office can read as "inside home" on an "al llegar" circle; only a state's memory — a
+    // rule read as one, or a fence — is a word about where the phone is.
+    val key = GeofenceIds.circleKey(place.lat, place.lng, place.radiusM)
+    val states = watch.inside.entries.filter { it.key.contains(key) && !it.key.endsWith("!") }
+    val inside = states.firstOrNull { it.key.endsWith(",I") }?.value ?: states.firstOrNull()?.value
+    return inside != true
+}
 
 /**
  * The offers, in the order they are shown: the doorway into the most-used place (when there is

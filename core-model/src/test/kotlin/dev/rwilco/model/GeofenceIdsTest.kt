@@ -30,6 +30,9 @@ class GeofenceIdsTest {
         assertEquals(GeofenceIds.encode(uuid, 0, home), same, "the label is not the circle")
         assertEquals(3, setOf(moved, wider, leaving).size)
         assertNotEquals(GeofenceIds.encode(uuid, 0, home), moved)
+        // The other side of the same line is another circle to watch, with its own memory.
+        assertNotEquals(GeofenceIds.encode(uuid, 0, home), leaving)
+        assertTrue(leaving.endsWith(",X"))
     }
 
     @Test

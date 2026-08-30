@@ -3,8 +3,8 @@ package dev.rwilco.ui
 import android.app.LocaleManager
 import android.graphics.Bitmap
 import android.os.LocaleList
+import android.view.inputmethod.InputMethodManager
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -15,6 +15,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -76,35 +77,52 @@ class WhenChipTest {
     fun theWordsOfferTheirOwnWhenAndOneTapTakesIt() {
         openTheEditor()
         rule.onNodeWithTag(EDITOR_TEXT_TAG).performTextInput("Regar las plantas mañana a las 9")
+        hideKeyboard()
 
         // The chip: a reading of the words, wearing its glyph, first in the row.
         val fromWords = s(R.string.editor_when_from_words)
         rule.waitUntilShown(fromWords)
         shot("editor-when-chip")
-        rule.onNodeWithContentDescription(fromWords).performClick()
+        // Into view first: the keyboard is up, and a tap on a chip under it lands on a key.
+        rule.onNodeWithContentDescription(fromWords).performScrollTo().performClick()
 
-        // One tap and it is a rule: the sentence under the form now reads "mañana", and the
-        // chip has nothing left to offer.
+        // One tap and it is a rule: the chip has nothing left to offer, and the sentence under
+        // the form — always on screen, unlike the rule's row under the keyboard — names the hour.
+        rule.waitUntil(timeoutMillis = 10_000) { rule.onAllNodesWithContentDescription(fromWords).fetchSemanticsNodes().isEmpty() }
         rule.waitUntil(timeoutMillis = 10_000) {
-            rule.onAllNodesWithText(s(R.string.relative_tomorrow), substring = true, ignoreCase = true, useUnmergedTree = true)
-                .fetchSemanticsNodes().size >= 2
+            rule.onAllNodesWithText("09:00", substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onAllNodesWithContentDescription(fromWords).assertCountEquals(0)
     }
 
     @Test
     fun aRepeatInTheWordsFillsVuelve() {
         openTheEditor()
         rule.onNodeWithTag(EDITOR_TEXT_TAG).performTextInput("Pastillas cada martes a las 8")
+        hideKeyboard()
 
         val fromWords = s(R.string.editor_when_from_words)
         rule.waitUntilShown(fromWords)
-        rule.onNodeWithContentDescription(fromWords).performClick()
+        rule.onNodeWithContentDescription(fromWords).performScrollTo().performClick()
 
         // "Vuelve" now says the weekly calendar, and "No repetir" is no longer the answer.
         val weekly = rule.activity.resources.getQuantityString(R.plurals.trigger_repeat_weeks, 1)
         rule.waitUntilShown(weekly)
-        rule.onAllNodesWithContentDescription(fromWords).assertCountEquals(0)
+        rule.waitUntil(timeoutMillis = 10_000) { rule.onAllNodesWithContentDescription(fromWords).fetchSemanticsNodes().isEmpty() }
+    }
+
+    /**
+     * The keyboard comes up a beat after the typing, resizes the window, and the section with
+     * the chip in it leaves the composition under it — so the node found before is stale and
+     * the tap lands on a key. Put away first, deterministically.
+     */
+    private fun hideKeyboard() {
+        val activity = rule.activity
+        rule.runOnUiThread {
+            activity.getSystemService(InputMethodManager::class.java)
+                ?.hideSoftInputFromWindow(activity.window.decorView.windowToken, 0)
+        }
+        rule.waitForIdle()
+        Thread.sleep(500)
     }
 
     private fun openTheEditor() {

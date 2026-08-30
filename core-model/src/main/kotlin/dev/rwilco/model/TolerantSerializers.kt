@@ -6,6 +6,9 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.serializer
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonEncoder
 
@@ -59,5 +62,65 @@ object TolerantRecurrence : KSerializer<Recurrence> {
         val json = decoder as? JsonDecoder ?: return delegate.deserialize(decoder)
         val element = json.decodeJsonElement()
         return runCatching { json.json.decodeFromJsonElement(delegate, element) }.getOrDefault(Recurrence.None)
+    }
+}
+
+/**
+ * A set of actions, element by element: one a build has no word for is dropped, not the
+ * settings. Kept as names on the way in, because that is what the reminder's own column does
+ * (`ReminderCodec.decodeActions`) and what an enum this build lacks has to be read as.
+ */
+object TolerantActions : KSerializer<Set<Action>> {
+    private val delegate: KSerializer<Set<Action>> = serializer()
+    override val descriptor: SerialDescriptor = delegate.descriptor
+
+    override fun serialize(encoder: Encoder, value: Set<Action>) = delegate.serialize(encoder, value)
+
+    override fun deserialize(decoder: Decoder): Set<Action> {
+        val json = decoder as? JsonDecoder ?: return delegate.deserialize(decoder)
+        val array = json.decodeJsonElement() as? JsonArray ?: return emptySet()
+        return array.mapNotNullTo(LinkedHashSet()) { element ->
+            val name = runCatching { element.jsonPrimitive.content }.getOrNull()
+            Action.entries.firstOrNull { it.name == name }
+        }
+    }
+}
+
+/**
+ * A sound a build cannot read — a chime added later, a shape it never had — is the phone's
+ * own alarm tone, which is what the app rings when a chosen file is gone too. Never the
+ * whole settings.
+ */
+object TolerantSound : KSerializer<AlertSound> {
+    private val delegate = AlertSound.serializer()
+    override val descriptor: SerialDescriptor = delegate.descriptor
+
+    override fun serialize(encoder: Encoder, value: AlertSound) {
+        val json = encoder as? JsonEncoder ?: return delegate.serialize(encoder, value)
+        json.encodeJsonElement(json.json.encodeToJsonElement(delegate, value))
+    }
+
+    override fun deserialize(decoder: Decoder): AlertSound {
+        val json = decoder as? JsonDecoder ?: return delegate.deserialize(decoder)
+        val element = json.decodeJsonElement()
+        return runCatching { json.json.decodeFromJsonElement(delegate, element) }.getOrDefault(AlertSound.System)
+    }
+}
+
+/** The same for the tone that may be unset: unreadable reads as unset, which is "the same as the other". */
+object TolerantSoundOrNull : KSerializer<AlertSound?> {
+    private val delegate = AlertSound.serializer()
+    override val descriptor: SerialDescriptor = delegate.descriptor
+
+    override fun serialize(encoder: Encoder, value: AlertSound?) {
+        val json = encoder as? JsonEncoder ?: return if (value == null) encoder.encodeNull() else delegate.serialize(encoder, value)
+        json.encodeJsonElement(if (value == null) JsonNull else json.json.encodeToJsonElement(delegate, value))
+    }
+
+    override fun deserialize(decoder: Decoder): AlertSound? {
+        val json = decoder as? JsonDecoder ?: return delegate.deserialize(decoder)
+        val element = json.decodeJsonElement()
+        if (element is JsonNull) return null
+        return runCatching { json.json.decodeFromJsonElement(delegate, element) }.getOrNull()
     }
 }

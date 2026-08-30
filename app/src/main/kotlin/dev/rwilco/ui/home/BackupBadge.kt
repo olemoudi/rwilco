@@ -48,6 +48,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.withContext
+import androidx.compose.runtime.mutableIntStateOf
 
 /**
  * How much is waiting to be copied, in the corner of the screen — and the way to say "now".
@@ -78,8 +79,12 @@ fun BackupBadge(modifier: Modifier = Modifier) {
 
     // A copy that lands leaves a tick behind for a moment, so a tap has an answer.
     var justDone by remember { mutableStateOf(false) }
+    // Only a copy that lands while this is on the screen: the count is process-wide, and read
+    // at first composition it was a tick about something that happened before Home opened.
+    var seen by remember { mutableIntStateOf(activity.copies) }
     LaunchedEffect(activity.copies) {
-        if (activity.copies > 0) {
+        if (activity.copies > seen) {
+            seen = activity.copies
             justDone = true
             delay(TICK_MILLIS)
             justDone = false
@@ -98,7 +103,8 @@ fun BackupBadge(modifier: Modifier = Modifier) {
         // Nothing pending and still on the screen means this is the disc on its way out: the
         // copy landed and the number it was showing is gone. It leaves as the tick it became,
         // never as a red nought — which is what a person saw for the length of the fade.
-        val settled = justDone || pending == 0
+        // Never while a copy is going up: a run started with nothing pending is not done yet.
+        val settled = !activity.working && (justDone || pending == 0)
         val label = when {
             settled -> stringResource(R.string.home_backup_done)
             activity.working -> stringResource(R.string.home_backup_working)

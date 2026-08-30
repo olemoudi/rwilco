@@ -164,7 +164,12 @@ class RwilcoApplication : Application() {
                 .map(ReminderScheduler::settingsKey)
                 .distinctUntilChanged()
                 .drop(1)
-                .collect { runCatching { scheduler.rearmAll() }.onFailure { Log.e(TAG, "re-arm after a settings change failed", it) } }
+                .collect {
+                    runCatching { scheduler.rearmAll() }.onFailure { Log.e(TAG, "re-arm after a settings change failed", it) }
+                    // The watch's gates are computed from the same inputs (`watchedCircles`), and
+                    // a watch asleep on an alarm set for the old gate re-plans only when it fires.
+                    runCatching { placeWatcher.sync() }.onFailure { Log.e(TAG, "place watch sync after a settings change failed", it) }
+                }
         }
         appScope.launch {
             // The backup runs while it is on, at the cadence it was given, counted from the last

@@ -173,6 +173,9 @@ class SnoozeToPlaceTest {
         assertEquals(listOf(SnoozePlace.LeaveHere), snoozePlaceOffers(listOf(home), emptyList(), insideHome, locationAllowed = true))
         val outsideHome = PlaceWatchState(inside = mapOf(GeofenceIds.encode("x", 0, homeDoor.copy(onCrossing = false)) to false))
         assertTrue(arriveOffered(home, outsideHome))
+        // A doorway's own lean is not a word about where the phone is.
+        val doorwayLean = PlaceWatchState(inside = mapOf(GeofenceIds.encode("x", 0, homeDoor) to true))
+        assertTrue(arriveOffered(home, doorwayLean))
     }
 
     @Test

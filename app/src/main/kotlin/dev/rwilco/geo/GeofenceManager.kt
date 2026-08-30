@@ -84,8 +84,13 @@ class GeofenceManager(
                 }
             }
             // A hard limit of 100 per app: past that Play Services refuses the whole batch, so
-            // the newest places are the ones that get watched rather than nothing at all.
-            .takeLast(MAX_GEOFENCES)
+            // the newest places are the ones that get watched rather than nothing at all — and
+            // the circle a snooze waits at is never among the ones cut, whatever the age of its
+            // reminder: it is the whole of that alarm, with nothing on the clock behind it.
+            .let { all ->
+                val (waited, rest) = all.partition { GeofenceIds.isSnooze(it.first) }
+                rest.takeLast((MAX_GEOFENCES - waited.size).coerceAtLeast(0)) + waited.takeLast(MAX_GEOFENCES)
+            }
 
         val permitted = hasBackgroundLocation()
         val fingerprint = geofenceFingerprint(places.map { it.first }, permitted)

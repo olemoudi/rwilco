@@ -18,6 +18,10 @@ object ReminderCodec {
         classDiscriminator = "type"
         ignoreUnknownKeys = true
         encodeDefaults = true
+        // An enum name this build has no member for reads as the property's default rather
+        // than throwing: the settings are decoded all at once, and a theme or a stacking mode
+        // from a newer build must not cost the saved places and every preset with it.
+        coerceInputValues = true
     }
 
     private val strings = ListSerializer(String.serializer())

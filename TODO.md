@@ -224,14 +224,52 @@ A read of every screen after 0.50.0, asking what a day of use would find. Worth 
   five made three impossible); the seventeen-tap problem is answered by a stepper that repeats
   when held, which every stepper in the app now does.
 
-## Found on the way to 0.57.0, left for the review round
-- `GeofenceIds.encode` writes the side as `place.presence.asTransition.name.first()`, and
-  `Transition.EXIT` starts with an E too: an "al salir" circle carries the same letter as an
-  "al llegar" one, while the doc, `ID_TAIL` and `sideOf` all speak of `E`/`X`. Harmless in
-  practice — the rule index is in the id, so two rules never collide, and `sideOf` matches on the
-  geometry alone — but a lie in a frozen format. Fixing it changes every "al salir" id on the
-  phone: one re-registration of the fences and one lost baseline per such circle. The snooze id
-  (`encodeSnooze`) already writes the honest letter.
+## The review round, 0.58.0 (2026-08-30)
+A read of everything after 0.55.0 — the two features and the machinery under them — by three
+reviewers with different remits, asking what a day of use would find. Thirty-odd findings,
+twenty-six fixed; the ones worth not re-deriving:
+
+- **One unknown word in the settings blob reset every setting.** `decodeSettings` is all or
+  nothing, and only a preset's rules and recurrence had a tolerant serializer — a theme, a
+  favourite tile, an action or a sound from a newer build (a vault restored on an older one)
+  handed back `AppSettings()`, and the next write made it permanent. `coerceInputValues` for
+  the plain enums, `TolerantActions`/`TolerantSound` for the rest; `SettingsToleranceTest`
+  swaps real encoded values (splicing a duplicate key lets the base value win, and the first
+  version of the test was vacuous for exactly that reason).
+- **A place snooze could go silent for good.** `accept` judged its circle "strictly" because the
+  *reminder* had rung — strict is for a circle that rang — so with no side yet seen the first
+  arrival home was dropped and not written, and the next look baselined *inside*. Strict is
+  per circle now (`lastFiredRule == triggerIndexOf`), and never for a snooze circle.
+- **`look()` wrote `inside` before handing the crossings on**, with no guard against the
+  receiver's budget running out mid-ring: a second arrival in the same look was lost, and could
+  never be reported again. The hand-off is `NonCancellable` and per-event `runCatching`.
+- **"Hecho" on a ring wiped `dealtThrough`** (`consumed` was null while awaiting an answer, and
+  the DAO wrote it as given): rounds skipped ahead came back.
+- **The net's word replaced the alert it was about** — same notification id — turning a pinned
+  insistent card into a low-priority note. It has an id of its own now, and `cancel` takes both.
+- **Deleting a reminder and undoing it lost its history** (the cascade); the undo carries it.
+- **Undoing a place snooze never re-told the watch the side**, which `sync` had pruned; the
+  event carries the side it knew.
+- **`GeofenceIds.encode` wrote `E` for both sides** (`EXIT` starts with an E too). Fixed; every
+  "al salir" id changed once, which is one re-registration and one fresh baseline.
+- The parser: "esta noche a las 9" was 09:00, "a las 12 de la noche" was midday, "a la 1" was
+  one in the morning, "at once" was eleven o'clock, "12.50" was a clock, "en 200 horas" was a
+  chip the sheet then refused, "el 5." read nothing, and a repeat read from the words was
+  unreachable once any rule was on the form (it lives in "Vuelve" now).
+- Smaller: the random window promoted `ByTrigger` on every edit and left it behind when
+  removed; the preset-words dialog lost its words on rotation; `StringsParityTest` skipped
+  string-arrays; `PresetChip` was 44 dp and said nothing to a screen reader when selected; a
+  preset deleted from the editor came back at the end of the list; the hero's swipe was keyed
+  by the slot, not the reminder; the backup badge said "done" while a copy was going up; the
+  geofence receiver had no budget; a settings change re-armed alarms but not the watch's
+  gates; a rest reset the blind streak; a snooze alarm a second early was dropped; the
+  arrival's notification read "pospuesto hasta llegar a casa"; the snooze circle could be cut
+  by the hundred-fence cap; "al salir de aquí" could be drawn around a fix half an hour old.
+
+Left alone, on purpose: the strips (`AlertStackScreen`) offer no place answers (two per
+strip is a screen of buttons); editing a reminder waiting at a place drops the wait, as it
+drops a clock snooze; "el viernes" is the next Friday strictly after today while "todos los
+viernes" may start today — two readings pinned by their tests.
 
 ## Still to prove on the real phone (Pixel 8 Pro)
 - The idempotent geofence sync (0.53.0): the diagnostics `-- log --` should read
@@ -240,6 +278,10 @@ A read of every screen after 0.50.0, asking what a day of use would find. Worth 
   still ring after a day of that.
 - The launcher shortcuts (0.53.0): hold the icon with a preset pinned; the disc and initial,
   and one tap writing the reminder with the app closed.
+- The review round (0.58.0): a vault from this build restored on 0.57.0 keeps its saved places
+  (the tolerance is in the *reader*, so only a downgrade proves it); "al llegar a casa" from
+  the metro with the watch idle — the first arrival must ring; two place reminders arriving in
+  one look both ring.
 - Put off until a place (0.57.0): from the ringing screen, "al llegar a casa" and then the
   real doorway in the street — once, not twice (the fence and the watch both see it) — and
   "al salir de aquí" walking out of the building. Settings → Ubicación → the log should show a

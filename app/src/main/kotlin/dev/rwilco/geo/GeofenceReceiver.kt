@@ -14,6 +14,7 @@ import dev.rwilco.model.Crossing
 import dev.rwilco.model.GeofenceIds
 import dev.rwilco.model.Transition
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** The phone arrived somewhere, or left it. */
 class GeofenceReceiver : BroadcastReceiver() {
@@ -42,6 +43,9 @@ class GeofenceReceiver : BroadcastReceiver() {
         val pending = goAsync()
         app.appScope.launch {
             try {
+                // The broadcast's own budget, as every other receiver here keeps it: past it the
+                // system has finished the receiver, and the watch's lock may be held by a look.
+                withTimeoutOrNull(BUDGET_MS) {
                 for (placeId in fenced) {
                     // Its own watch has the last word on whether this is an arrival at all, and
                     // on what an arrival is worth: under "todos" a place that has been ticked
@@ -56,6 +60,7 @@ class GeofenceReceiver : BroadcastReceiver() {
                         Crossing.NOTHING -> Unit
                     }
                 }
+                }
             } catch (t: Throwable) {
                 Log.e(TAG, "firing a place reminder failed", t)
             } finally {
@@ -67,6 +72,8 @@ class GeofenceReceiver : BroadcastReceiver() {
 
     companion object {
         const val ACTION = "dev.rwilco.geo.TRANSITION"
+        /** Under the ten seconds a broadcast is given, with a margin for the finish itself. */
+        private const val BUDGET_MS = 9_000L
         private const val TAG = "RwilcoGeo"
     }
 }

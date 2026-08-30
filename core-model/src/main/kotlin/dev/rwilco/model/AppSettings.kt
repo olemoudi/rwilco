@@ -66,6 +66,7 @@ data class AppSettings(
      * What a blank reminder starts with. The old default is still the default; this is for
      * somebody who never wants a sound, or always wants the screen.
      */
+    @Serializable(with = TolerantActions::class)
     val defaultActions: Set<Action> = DEFAULT_ACTIONS,
     /** Reminders kept by shape, under a name: see [Preset]. */
     val presets: List<Preset> = emptyList(),
@@ -97,6 +98,7 @@ data class AppSettings(
      * tone, and changing what somebody's alarm sounds like without asking is how an alarm gets
      * slept through. They are one tap away in Settings.
      */
+    @Serializable(with = TolerantSound::class)
     val alertSound: AlertSound = AlertSound.System,
     /**
      * A second tone for the reminders that keep asking ([Action.SOUND_UNTIL_ANSWERED]), or null
@@ -107,6 +109,7 @@ data class AppSettings(
      * have quietly changed what half of everybody's reminders sound like on the update, which is
      * the one thing an alarm is never allowed to do. See [soundFor].
      */
+    @Serializable(with = TolerantSoundOrNull::class)
     val insistentSound: AlertSound? = null,
     /** For [Action.SOUND_UNTIL_ANSWERED]: how many plays in a round, and how far apart. */
     val soundPlays: Int = SoundLimits.DEFAULT_PLAYS,

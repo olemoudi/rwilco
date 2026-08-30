@@ -15,8 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import dev.rwilco.ui.theme.Tokens
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 
 /**
  * A shortcut that fills the form in one tap ("Mañana 09:00", "30 min", "Laborables"). When the
@@ -59,7 +60,9 @@ fun PresetChip(
         ),
         border = if (selected) null else BorderStroke(Tokens.strokes.control, scheme.outline),
         modifier = modifier
-            .heightIn(min = 44.dp)
+            .heightIn(min = Tokens.sizes.touch)
+            // The inverted colours are the whole of "on" for eyes; a screen reader gets the word.
+            .then(if (selected) Modifier.semantics { this.selected = true } else Modifier)
             .then(if (onHold == null) Modifier else Modifier.holdable(holdIcon, holdLabel, onHold, hold)),
     )
 }

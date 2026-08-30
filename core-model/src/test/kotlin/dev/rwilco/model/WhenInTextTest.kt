@@ -291,4 +291,60 @@ class WhenInTextTest {
     fun `the same words read the same twice`() {
         assertEquals(read("regar mañana a las 9"), read("regar mañana a las 9"))
     }
+
+    // --- what the review round found ---
+
+    @Test
+    fun `an hour said with the night is the evening's`() {
+        assertEquals(at(2026, 8, 27, 21), once("cena esta noche a las 9"))
+        assertEquals(at(2026, 8, 27, 21), once("tonight at 9"))
+        assertEquals(tomorrow(t(20)), once("mañana por la noche a las 8"))
+        assertEquals(at(2026, 8, 27, 22), once("esta noche a las 22"))
+    }
+
+    @Test
+    fun `twelve at night is midnight, and one is lunchtime however it is spelled`() {
+        assertEquals(at(2026, 8, 28, 0), once("sacar la basura a las 12 de la noche"))
+        assertEquals(at(2026, 8, 28, 12), once("a las 12 de la mañana"))
+        assertEquals(at(2026, 8, 28, 13), once("comer a la 1"))
+        assertEquals(at(2026, 8, 28, 13), once("lunch at one"))
+        assertEquals(at(2026, 8, 28, 1), once("a la 1 de la mañana"))
+    }
+
+    @Test
+    fun `an English adverb is not a Spanish eleven`() {
+        assertNull(read("call the plumber at once"))
+        assertNull(read("do it at once please"))
+    }
+
+    @Test
+    fun `a price is not a clock, and a bare clock needs its colon`() {
+        assertNull(read("pagar 12.50 al vecino"))
+        assertNull(read("cortar a 3.20 m"))
+        assertEquals(at(2026, 8, 27, 17, 30), once("17:30"))
+        assertEquals(at(2026, 8, 28, 9, 30), once("a las 9.30"))
+    }
+
+    @Test
+    fun `a length the sheet would refuse is not offered`() {
+        assertNull(read("avisar en 200 horas"))
+        assertNull(read("en 0 minutos"))
+        assertEquals(Trigger.Countdown(60), once("en 1h"))
+        assertEquals(Trigger.Countdown(60), once("in 1h"))
+        assertEquals(Recurrence.After(6, RecurrenceUnit.HOURS), comes("cada 6h"))
+    }
+
+    @Test
+    fun `the afternoon has no hour here, so the sentence is left alone`() {
+        assertNull(read("mañana por la tarde"))
+        assertNull(read("tomorrow afternoon"))
+        assertNull(read("todos los días por la tarde"))
+        assertEquals(tomorrow(t(17)), once("mañana por la tarde a las 5"), "unless it names one")
+    }
+
+    @Test
+    fun `a full stop after the day of the month is not a decimal`() {
+        assertEquals(Trigger.DayRandom(LocalDate.of(2026, 9, 5)), once("Llamar al fontanero el 5."))
+        assertEquals(Trigger.DayRandom(LocalDate.of(2026, 9, 5)), once("el 5, sin falta"))
+    }
 }

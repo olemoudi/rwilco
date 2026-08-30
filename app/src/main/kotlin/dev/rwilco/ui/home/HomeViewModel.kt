@@ -56,11 +56,15 @@ import dev.rwilco.model.snoozePlaceOffers
 import dev.rwilco.model.speaksForHere
 import dev.rwilco.geo.hasBackgroundLocation
 import kotlinx.coroutines.flow.first
+import dev.rwilco.data.FiringEvent
 
 /** What Home reports back that is not state: things to say in a snackbar. */
 sealed interface HomeEvent {
-    /** A reminder left the list; the snackbar offers to bring it back. */
-    data class Removed(val kind: Kind, val reminder: Reminder) : HomeEvent {
+    /**
+     * A reminder left the list; the snackbar offers to bring it back. [history] is what a
+     * delete takes with it (the cascade), so the undo can put it back too.
+     */
+    data class Removed(val kind: Kind, val reminder: Reminder, val history: List<FiringEvent> = emptyList()) : HomeEvent {
         /** [SKIPPED] is a "hecho" given ahead of the ring, said with the word for that. */
         enum class Kind { DONE, DELETED, SKIPPED }
     }
@@ -79,7 +83,20 @@ sealed interface HomeEvent {
      * A reminder was put off from Home until [until], or ([until] null) its snooze was taken
      * back; [reminder] is the row as it was, so the undo restores the snooze it had.
      */
-    data class Snoozed(val reminder: Reminder, val until: Instant?, val place: Trigger.Location? = null) : HomeEvent
+    data class Snoozed(
+        val reminder: Reminder,
+        val until: Instant?,
+        val place: Trigger.Location? = null,
+        /** "Quitar el posponer": said outright, rather than read off two nulls. */
+        val cancelled: Boolean = false,
+        /**
+         * Which side of its line the watch had the phone on for the place [reminder] was waiting
+         * at before this, if it was waiting at one. An undo puts the circle back on the row,
+         * and the watch — which prunes what it has no circle for — has to be told the side
+         * again, or the first crossing is not news to it.
+         */
+        val sideBefore: Boolean? = null,
+    ) : HomeEvent
 
     /** "Al salir de aquí" asked where here is, and nothing could say. Nothing was written. */
     data object NoFix : HomeEvent
@@ -339,11 +356,15 @@ class HomeViewModel(
     private fun removeAs(id: String, kind: HomeEvent.Removed.Kind) {
         viewModelScope.launch {
             val reminder = repository.get(id) ?: return@launch
+            var history: List<FiringEvent> = emptyList()
             when (kind) {
                 HomeEvent.Removed.Kind.DONE, HomeEvent.Removed.Kind.SKIPPED -> firing.dismiss(id)
-                HomeEvent.Removed.Kind.DELETED -> repository.delete(id)
+                HomeEvent.Removed.Kind.DELETED -> {
+                    history = repository.history(id)
+                    repository.delete(id)
+                }
             }
-            events.send(HomeEvent.Removed(kind, reminder))
+            events.send(HomeEvent.Removed(kind, reminder, history))
         }
     }
 
@@ -353,7 +374,7 @@ class HomeViewModel(
      * status back would leave the clock wound forward.
      */
     fun undo(removed: HomeEvent.Removed) {
-        viewModelScope.launch { repository.restore(removed.reminder) }
+        viewModelScope.launch { repository.restore(removed.reminder, removed.history) }
     }
 
     /**
@@ -380,11 +401,18 @@ class HomeViewModel(
     fun snooze(id: String, snooze: Snooze) {
         viewModelScope.launch {
             val reminder = repository.get(id) ?: return@launch
+            val sideBefore = sideOf(reminder)
             firing.snooze(id, snooze)
-            val until = repository.get(id)?.snoozedUntil
-            events.send(HomeEvent.Snoozed(reminder, until))
+            // Gone between the two reads (dealt with from the shade): nothing to say, and
+            // nothing an undo could put back.
+            val after = repository.get(id) ?: return@launch
+            events.send(HomeEvent.Snoozed(reminder, after.snoozedUntil, sideBefore = sideBefore))
         }
     }
+
+    /** The watch's word on the circle [reminder] waits at, before that changes. */
+    private suspend fun sideOf(reminder: Reminder): Boolean? =
+        reminder.snoozedToPlace?.let { placeWatch.first().inside[GeofenceIds.encodeSnooze(reminder.id, it)] }
 
     /**
      * "Al llegar a casa" / "al salir de aquí" from a held card. The second first has to know
@@ -393,6 +421,7 @@ class HomeViewModel(
     fun snoozeToPlace(id: String, offer: SnoozePlace, hereLabel: String) {
         viewModelScope.launch {
             val reminder = repository.get(id) ?: return@launch
+            val sideBefore = sideOf(reminder)
             val now = clock.instant()
             val (place, fix) = when (offer) {
                 is SnoozePlace.Arrive -> offer.circle() to placeWatch.first().lastFix?.takeIf { it.speaksForHere(now) }
@@ -402,21 +431,30 @@ class HomeViewModel(
                 }
             }
             firing.snoozeToPlace(id, place, fix, rememberSide)
-            events.send(HomeEvent.Snoozed(reminder, until = null, place = place))
+            events.send(HomeEvent.Snoozed(reminder, until = null, place = place, sideBefore = sideBefore))
         }
     }
 
     fun cancelSnooze(id: String) {
         viewModelScope.launch {
             val reminder = repository.get(id) ?: return@launch
+            val sideBefore = sideOf(reminder)
             firing.unsnooze(id)
-            events.send(HomeEvent.Snoozed(reminder, until = null))
+            events.send(HomeEvent.Snoozed(reminder, until = null, cancelled = true, sideBefore = sideBefore))
         }
     }
 
     /** The snooze the row had before — none, usually — and the alarm follows the row. */
     fun undoSnooze(event: HomeEvent.Snoozed) {
-        viewModelScope.launch { repository.snooze(event.reminder.id, event.reminder.snoozedUntil, event.reminder.snoozedToPlace) }
+        viewModelScope.launch {
+            val reminder = event.reminder
+            repository.snooze(reminder.id, reminder.snoozedUntil, reminder.snoozedToPlace)
+            // The circle is back on the row; the watch is told the side it knew, the way the
+            // snooze itself told it (see ReminderFiring.snoozeToPlace).
+            val place = reminder.snoozedToPlace ?: return@launch
+            val side = event.sideBefore ?: return@launch
+            rememberSide(GeofenceIds.encodeSnooze(reminder.id, place), if (side) Transition.ENTER else Transition.EXIT)
+        }
     }
 
     class Factory(private val app: RwilcoApplication) : ViewModelProvider.Factory {

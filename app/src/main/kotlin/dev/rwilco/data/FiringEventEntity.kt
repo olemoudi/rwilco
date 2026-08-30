@@ -76,6 +76,10 @@ interface FiringEventDao {
     @Insert
     suspend fun insert(event: FiringEventEntity)
 
+    /** A reminder's history put back with it, after an undone delete. */
+    @Insert
+    suspend fun insertAll(events: List<FiringEventEntity>)
+
     /** Newest first; the screen reads it that way and the cap below counts from the same end. */
     @Query("SELECT * FROM firing_event WHERE reminderId = :reminderId ORDER BY at DESC, id DESC LIMIT :limit")
     suspend fun history(reminderId: String, limit: Int): List<FiringEventEntity>
