@@ -1125,6 +1125,10 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_53_0">
+        <item>The pinned presets are on the launcher icon. Hold it, «Comprar pan», and the reminder is written without the app in between — or its words are asked for, when the shape left them open, the same two doors the button on Home has.</item>
+        <item>The places\' geofences are no longer torn down and put back on every start of the process. The place watch\'s own alarm starts it every few minutes to an hour on a phone that kills it, and a crossing in the gap between the remove and the add was a crossing nobody saw. A sync now compares what it would register with what it last did and leaves Play Services alone when nothing changed; a reboot, an update or the six-hourly net still register afresh.</item>
+    </string-array>
     <string-array name="whats_new_0_52_0">
         <item>The map in the place sheet takes a share of the screen instead of a fixed strip, and opens full screen from a button in its corner: room to pan out along a street and find the corner, with the radius under it and one way back.</item>
         <item>«Guardar como lugar», on the place sheet: the place made for a rule kept by name, so the next rule that means it picks it off a chip. Saved places could only ever be made in Settings.</item>

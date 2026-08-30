@@ -24,6 +24,15 @@ class DestinationsTest {
     }
 
     @Test
+    fun `a preset shortcut names its preset, and nothing without one`() {
+        val destination = Destinations.of(Destinations.ACTION_PRESET, null, null, null, presetId = "p1")
+        assertEquals("p1", Destinations.presetIdIn(destination))
+        assertNull(Destinations.sharedTextIn(destination))
+        assertNull(Destinations.of(Destinations.ACTION_PRESET, null, null, null, presetId = " "))
+        assertNull(Destinations.presetIdIn(Destinations.NEW))
+    }
+
+    @Test
     fun `anything else is nowhere in particular`() {
         assertNull(Destinations.of("android.intent.action.MAIN", null, null, null))
         assertNull(Destinations.of("android.intent.action.SEND", "image/png", null, null))

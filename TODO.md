@@ -225,6 +225,12 @@ A read of every screen after 0.50.0, asking what a day of use would find. Worth 
   when held, which every stepper in the app now does.
 
 ## Still to prove on the real phone (Pixel 8 Pro)
+- The idempotent geofence sync (0.53.0): the diagnostics `-- log --` should read
+  `geo fences=n unchanged` on successive process starts and `registered` only after a
+  reboot, an update, a saved place reminder or a `NOT_AVAILABLE`. And a place reminder must
+  still ring after a day of that.
+- The launcher shortcuts (0.53.0): hold the icon with a preset pinned; the disc and initial,
+  and one tap writing the reminder with the app closed.
 - Settings → Alertas → "Probar una alerta" is the way to prove most of the below now: lock the
   phone, wait ten seconds, and see what arrives.
 - The overlay rule end to end: an alert while another app is open (banner), on the home screen

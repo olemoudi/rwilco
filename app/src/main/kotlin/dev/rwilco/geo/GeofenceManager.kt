@@ -9,6 +9,8 @@ import com.google.android.gms.location.GeofencingClient
 import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
 import dev.rwilco.data.ReminderRepository
+import dev.rwilco.diag.Diag
+import dev.rwilco.model.geofenceFingerprint
 import dev.rwilco.model.GeofenceIds
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
@@ -37,15 +39,26 @@ enum class GeofenceState {
  * should be there — because the alternative is diffing against a list Play Services will not
  * show us, and geofences are cheap to re-add. The system drops them all on a reboot and on a
  * Play Services update, so [sync] runs from the same places the alarms are re-armed from.
+ *
+ * **But not on every process start any more.** Wholesale meant the fences were torn down and
+ * put back every time this ran, and it runs from `Application.onCreate` — which the place
+ * watch's own alarm reaches every few minutes to an hour on a phone that kills the process.
+ * A crossing in the gap between the remove and the add is a crossing nobody saw. So a sync
+ * first works out what it *would* register ([geofenceFingerprint]: the ids, which carry their
+ * circles, and whether it is allowed to watch at all) and compares it with what it last did
+ * ([GeofenceStore]); the same answer leaves Play Services alone. [force] is for the moments
+ * the system's copy is known to be gone — a reboot, an update, a `GEOFENCE_NOT_AVAILABLE`,
+ * the six-hourly net — all of which reach here through [dev.rwilco.alarm.RearmWorker].
  */
 class GeofenceManager(
     private val context: Context,
     private val repository: ReminderRepository,
+    private val store: GeofenceStore,
 ) {
 
     private val client: GeofencingClient by lazy { LocationServices.getGeofencingClient(context) }
 
-    suspend fun sync(): GeofenceState {
+    suspend fun sync(force: Boolean = false): GeofenceState {
         val places = repository.openNow()
             .filter { it.status == Status.ACTIVE }
             .flatMap { reminder ->
@@ -71,12 +84,26 @@ class GeofenceManager(
             // the newest places are the ones that get watched rather than nothing at all.
             .takeLast(MAX_GEOFENCES)
 
-        if (!hasBackgroundLocation()) {
+        val permitted = hasBackgroundLocation()
+        val fingerprint = geofenceFingerprint(places.map { it.first }, permitted)
+        if (!force && store.read() == fingerprint) {
+            Diag.note("geo", "fences=${places.size} unchanged")
+            return if (places.isEmpty() || permitted) GeofenceState.ARMED else GeofenceState.NO_PERMISSION
+        }
+        // Whatever happens below, the memory is of the *outcome*: written once the fences are
+        // known to be in, cleared when they are not, so a refusal is asked again next time.
+        store.write(null)
+        if (!permitted) {
             removeAll()
+            store.write(fingerprint)
+            Diag.note("geo", "fences=${places.size} not permitted${if (force) " (forced)" else ""}")
             return if (places.isEmpty()) GeofenceState.ARMED else GeofenceState.NO_PERMISSION
         }
         removeAll()
-        if (places.isEmpty()) return GeofenceState.ARMED
+        if (places.isEmpty()) {
+            store.write(fingerprint)
+            return GeofenceState.ARMED
+        }
 
         val geofences = places.map { (id, place) ->
             Geofence.Builder()
@@ -108,7 +135,7 @@ class GeofenceManager(
         // Bounded: this sits in the chain every process start runs (re-arm, geofences, place
         // watch), and a Play Services that never answers would otherwise hold the place watch's
         // own sync behind it for ever.
-        return withTimeoutOrNull(REGISTER_TIMEOUT_MS) {
+        val state = withTimeoutOrNull(REGISTER_TIMEOUT_MS) {
             suspendCancellableCoroutine { continuation ->
                 runCatching {
                     client.addGeofences(request, pendingIntent())
@@ -126,6 +153,9 @@ class GeofenceManager(
                 }
             }
         } ?: GeofenceState.UNAVAILABLE.also { Log.w(TAG, "Play Services did not answer in time") }
+        if (state == GeofenceState.ARMED) store.write(fingerprint)
+        Diag.note("geo", "fences=${places.size} ${state.name.lowercase()}${if (force) " (forced)" else ""}")
+        return state
     }
 
     /**

@@ -52,6 +52,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.platform.LocalContext
+import dev.rwilco.shortcuts.PresetShortcuts
 import dev.rwilco.R
 import dev.rwilco.model.Section
 import dev.rwilco.model.TagFilter
@@ -79,6 +81,9 @@ const val HOME_LIST_TAG = "homeList"
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
+    /** A pinned preset a launcher shortcut asked for: written here, the way its button is. */
+    requestedPreset: String? = null,
+    onPresetConsumed: () -> Unit = {},
     onNew: () -> Unit,
     onNewFromPreset: (String) -> Unit,
     onEditPreset: (String) -> Unit,
@@ -160,6 +165,22 @@ fun HomeScreen(
     }
 
     BackHandler(enabled = search.open) { viewModel.setSearching(false) }
+
+    // The same two doors the pinned button has: words of its own, written on the spot; none,
+    // asked for first. Waits for the presets to have arrived; a shortcut for a preset that no
+    // longer exists is consumed and does nothing (the launcher's list is republished anyway).
+    val context = LocalContext.current
+    LaunchedEffect(requestedPreset, presets, state.loaded) {
+        val id = requestedPreset ?: return@LaunchedEffect
+        if (!state.loaded || presets.isEmpty()) return@LaunchedEffect
+        val preset = presets.firstOrNull { it.id == id }
+        if (preset != null) {
+            PresetShortcuts.used(context, preset.id)
+            if (preset.text.isBlank()) askingWordsFor = preset.id
+            else viewModel.createFromPreset(preset, null, state.defaultTime, state.dayShape)
+        }
+        onPresetConsumed()
+    }
 
     if (choosing) {
         NewReminderChooser(

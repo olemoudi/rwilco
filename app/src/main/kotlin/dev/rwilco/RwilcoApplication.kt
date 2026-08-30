@@ -9,6 +9,8 @@ import dev.rwilco.alarm.ReminderFiring
 import dev.rwilco.alarm.ReminderScheduler
 import android.app.AlarmManager
 import android.os.Build
+import dev.rwilco.shortcuts.PresetShortcuts
+import dev.rwilco.geo.GeofenceStore
 import dev.rwilco.geo.GeofenceManager
 import dev.rwilco.geo.PlaceLogStore
 import dev.rwilco.geo.PlaceWatchStore
@@ -103,7 +105,7 @@ class RwilcoApplication : Application() {
         scheduler = ReminderScheduler(this, repository, settingsStore, clock)
         placeWatch = PlaceWatchStore(this)
         firing = ReminderFiring(this, repository, settingsStore, scheduler, placeWatch, clock)
-        geofences = GeofenceManager(this, repository)
+        geofences = GeofenceManager(this, repository, GeofenceStore(this))
         placeLog = PlaceLogStore(this)
         placeWatcher = PlaceWatcher(this, repository, firing, placeWatch, placeLog, settingsStore, clock)
         vaultStore = VaultStore(this)
@@ -175,6 +177,14 @@ class RwilcoApplication : Application() {
                     if (state.enabled) VaultWorker.schedule(this@RwilcoApplication, state, replace = index > 0)
                     else VaultWorker.cancel(this@RwilcoApplication)
                 }
+        }
+        appScope.launch {
+            // The pinned presets, on the launcher icon. Republished only when what a shortcut
+            // is made of changes — a pin, a name, a colour — not on every use counted.
+            settingsStore.settings
+                .map { PresetShortcuts.facesOf(it.presets) }
+                .distinctUntilChanged()
+                .collect { faces -> runCatching { PresetShortcuts.publish(this@RwilcoApplication, faces) }.onFailure { Log.w(TAG, "could not publish shortcuts", it) } }
         }
         appScope.launch {
             // The update check follows the same rule the person set for it: on any connection,

@@ -2,6 +2,7 @@ package dev.rwilco.ui.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.Color
 import dev.rwilco.model.PRESET_COLORS
 
@@ -38,6 +39,12 @@ private val PresetLight = listOf(
     Color(0xFF5F7B14),
     Color(0xFFA3238E),
 )
+
+/** The same colour off a plain thread, for a launcher icon drawn with no composition to ask. */
+fun presetColorArgb(index: Int, dark: Boolean): Int {
+    val palette = if (dark) PresetDark else PresetLight
+    return palette[Math.floorMod(index, PRESET_COLORS).coerceIn(palette.indices)].toArgb()
+}
 
 /** The colour itself, for a line or a glyph. Out-of-range indices wrap rather than crash. */
 @Composable

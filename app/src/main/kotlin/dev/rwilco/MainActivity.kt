@@ -1,6 +1,7 @@
 package dev.rwilco
 
 import android.Manifest
+import dev.rwilco.shortcuts.PresetShortcuts
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -78,7 +79,13 @@ class MainActivity : ComponentActivity() {
 
     /** A notification's extra, the launcher shortcut, or a shared line of text (see [Destinations]). */
     private fun destinationOf(intent: Intent): String? =
-        Destinations.of(intent.action, intent.type, intent.getStringExtra(EXTRA_DESTINATION), intent.getStringExtra(Intent.EXTRA_TEXT))
+        Destinations.of(
+            intent.action,
+            intent.type,
+            intent.getStringExtra(EXTRA_DESTINATION),
+            intent.getStringExtra(Intent.EXTRA_TEXT),
+            intent.getStringExtra(PresetShortcuts.EXTRA_PRESET_ID),
+        )
 
     override fun onResume() {
         super.onResume()

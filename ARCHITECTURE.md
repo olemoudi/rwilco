@@ -444,7 +444,12 @@ because that is what its chip would show.
 - Single activity, `navigation-compose` type-safe routes (`Routes.kt`): Home, Editor(id?),
   Done, Settings. Sheets, the place picker and the alert preview are ViewModel state. Two more
   doors in from outside (0.48.0), both worked out by `Destinations` (pure, tested) from the
-  intent's parts: holding the launcher icon offers "Nuevo" (`res/xml/shortcuts.xml`, action
+  intent's parts: holding the launcher icon offers "Nuevo" — **and, since 0.53.0, the pinned
+  presets** (`PresetShortcuts`: dynamic shortcuts republished whenever what one is made of
+  changes — a pin, a name, a colour — each a disc in the preset's colour with its initial, and
+  an intent with `ACTION_PRESET` that `Destinations` turns into `preset:<id>`; Home writes it
+  the way its own button does, or asks for the words when the shape left them open, and pops
+  back to itself first if the app was elsewhere) — (`res/xml/shortcuts.xml`, action
   `dev.rwilco.action.NEW`) straight into a blank form, and a line of text shared from another
   app (`ACTION_SEND` `text/plain`) opens the form with that line as the words
   (`Routes.Editor(sharedText)`). **An intent is answered once**: `getIntent()` survives a rotation
@@ -1209,7 +1214,19 @@ because that is what its chip would show.
   boot and from `RearmWorker` (a reboot or a Play Services update drops them all) — and on the
   spot when Play Services says it has dropped them (`GeofenceReceiver`, an event with
   `GEOFENCE_NOT_AVAILABLE`: location switched off, the network provider gone), which used to go
-  to the log and nowhere else, leaving the places blind until the six-hourly pass. The remove
+  to the log and nowhere else, leaving the places blind until the six-hourly pass.
+  **Wholesale, but no longer on every process start (0.53.0).** `sync()` runs from
+  `Application.onCreate`, and the place watch's own alarm starts the process every few minutes
+  to an hour on a phone that kills it — so the fences were torn down and put back at the
+  watch's cadence, and a crossing in the gap between the remove and the add was a crossing
+  nobody saw. A sync first works out what it *would* register (`geofenceFingerprint`, pure: the
+  ids, which carry their circles and which way they are waited on, plus whether the grant is
+  there) and compares it with what it last did (`GeofenceStore`, its own file); the same
+  answer leaves Play Services alone and says `fences=n unchanged` in the log. The memory is of
+  the *outcome* — written once the fences are known to be in, cleared when Play refused, so a
+  refusal is asked again. `RearmWorker` alone forces a fresh registration, because it is the one
+  caller that runs *because* the system's copy may be gone: boot, an update, `NOT_AVAILABLE`,
+  the six-hourly net. The remove
   before each registration is awaited: both go through the same `PendingIntent`, and a remove
   completing after the add took every fence just registered with it. That is the
   net: free, always on, the system's own word on where the phone is. Settings says where that

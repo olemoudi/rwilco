@@ -15,6 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -72,12 +75,21 @@ fun RwilcoApp(
     // What a held button dims the screen with. At the root because that is what it covers.
     val holdOverlay = remember { HoldOverlayState() }
 
+    // A launcher shortcut for a pinned preset: Home does the writing, so it is handed to Home
+    // rather than navigated to, and the stack is popped back to Home if the app was elsewhere.
+    var requestedPreset by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(requestedDestination) {
         val reminderId = MainActivity.reminderIdIn(requestedDestination)
         val sharedText = Destinations.sharedTextIn(requestedDestination)
+        val presetId = Destinations.presetIdIn(requestedDestination)
         when {
             requestedDestination == Destinations.NEW -> {
                 navController.navigate(Routes.Editor()) { launchSingleTop = true }
+                onDestinationConsumed()
+            }
+            presetId != null -> {
+                navController.popBackStack(Routes.Home, inclusive = false)
+                requestedPreset = presetId
                 onDestinationConsumed()
             }
             sharedText != null -> {
@@ -115,6 +127,8 @@ fun RwilcoApp(
                 composable<Routes.Home> {
                     HomeScreen(
                         viewModel = viewModel(factory = HomeViewModel.Factory(app)),
+                        requestedPreset = requestedPreset,
+                        onPresetConsumed = { requestedPreset = null },
                         onNew = { navController.navigate(Routes.Editor()) },
                         onNewFromPreset = { id -> navController.navigate(Routes.Editor(fromPresetId = id)) },
                         onEditPreset = { id -> navController.navigate(Routes.Editor(editPresetId = id)) },

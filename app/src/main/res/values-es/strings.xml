@@ -1123,6 +1123,10 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_53_0">
+        <item>Los presets fijados están en el icono del launcher. Mantenlo, «Comprar pan», y el recordatorio queda escrito sin pasar por la app — o te pide las palabras, cuando la forma las dejó abiertas, las mismas dos puertas que tiene el botón del inicio.</item>
+        <item>Las geovallas de los lugares ya no se quitan y se vuelven a poner en cada arranque del proceso. La propia alarma del vigilante lo arranca cada pocos minutos o cada hora en un teléfono que lo mata, y un cruce en el hueco entre quitar y poner era un cruce que nadie vio. Ahora una sincronización compara lo que registraría con lo último que registró y deja en paz a Play Services si nada cambió; un reinicio, una actualización o la red de cada seis horas siguen registrando de nuevo.</item>
+    </string-array>
     <string-array name="whats_new_0_52_0">
         <item>El mapa de la hoja de lugar ocupa una parte de la pantalla en vez de una franja fija, y se abre a pantalla completa desde un botón en su esquina: sitio para recorrer una calle y encontrar la esquina, con el radio debajo y una sola vuelta.</item>
         <item>«Guardar como lugar», en la hoja de lugar: el lugar hecho para una regla se guarda con su nombre, y la siguiente regla que lo quiera lo coge de un chip. Un lugar guardado sólo se podía crear en Ajustes.</item>
