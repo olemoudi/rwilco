@@ -42,10 +42,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -362,7 +360,7 @@ fun HomeScreen(
             // be covering a result.
             if (!search.open) {
                 ExtendedFloatingActionButton(
-                    // With nothing kept under a name there is no question to ask.
+                    // Straight to the form unless there is a question worth asking; see [asksWhichKind].
                     onClick = { if (asksWhichKind) choosing = true else onNew() },
                     icon = { Icon(Icons.Outlined.Add, contentDescription = null) },
                     text = { Text(stringResource(R.string.home_new), style = MaterialTheme.typography.titleMedium) },
@@ -388,11 +386,9 @@ fun HomeScreen(
         // the list without scrolling it does — a jump to an index, which is also how the tour
         // reaches Settings. The top of the list is where the row lives, so it is put back there.
         val listState = rememberLazyListState()
-        val atTop = remember {
-            derivedStateOf { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0 }
-        }
-        LaunchedEffect(Unit) {
-            snapshotFlow { atTop.value }.collect { if (it) headerScroll.show() }
+        LaunchedEffect(listState) {
+            snapshotFlow { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0 }
+                .collect { if (it) headerScroll.show() }
         }
         LazyColumn(
             state = listState,
@@ -531,7 +527,7 @@ fun HomeScreen(
                             body = stringResource(R.string.home_empty_body),
                             icon = Icons.Outlined.Lightbulb,
                             actionLabel = stringResource(R.string.home_empty_action),
-                            // The same door as "Nuevo": with nothing kept under a name, the form.
+                            // The same door as "Nuevo", asking the same question or not asking it.
                             onAction = { if (asksWhichKind) choosing = true else onNew() },
                         )
                     }
