@@ -1179,6 +1179,7 @@
         <item>«New» only asks whether you want a blank one or a preset while the answer is not already on the screen. It asked from the moment a single preset existed anywhere, so every blank reminder — most of them — paid a tap for ever. With presets pinned above the list they are one tap away already; with none pinned the question is still the only door to them, and it still opens.</item>
         <item>Removing a trigger from the form can be undone. It was the one destructive act here without a way back, and its bin sits next to the pencil that edits — so a slip cost a place with its radius dragged, or a calendar with its end date, and the only way back was to build it again.</item>
         <item>And «Comes back» says «optional», like the three cards around it. It was the only one that did not, which made it read as a question the form was waiting on.</item>
+        <item>The top row could get stuck off the screen. It travels by what the list scrolled — which is what keeps it glued to the cards — and a list already at the top scrolls nothing, so a row hidden up there had no gesture that could bring it back. Scrolling by hand never got you into that state; anything that jumped the list to the top did.</item>
     </string-array>
     <string-array name="whats_new_0_62_0">
         <item>The safety net is heard now. Its word — «you may have let this one go» — plays your ordinary, non-insistent tone at half the volume an alarm gets: enough to notice, and saying in the only unit a sound has that it is not the alarm.</item>

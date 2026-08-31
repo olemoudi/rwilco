@@ -4,6 +4,18 @@ Running notes: what is next, what cost time, what must not be re-derived.
 
 
 ## Emulator notes that cost time
+- **`performScrollToIndex` does not move the top row.** `HeaderScroll` travels by what the list
+  *consumed* through the nested-scroll connection, and a programmatic jump consumes nothing — so
+  the row stayed wherever it was, and at the top of the list no gesture can bring it back
+  (nothing left to consume). `EditorTourTest` had been failing at the tap on the Settings cog
+  since 0.60.0 for exactly this, which is also why the tour's screenshots had gone stale. Fixed
+  in the screen rather than in the test (0.63.0): at the top of the list the row is shown.
+  Cost: two emulator runs on 2026-08-31, one of them bisecting against the pre-change tree to
+  prove it was not the change under review.
+- **A device test may not have a backticked name with spaces.** The backticked-sentence
+  convention is the JVM suites'; `androidTest` is dexed, and dex refuses spaces in a SimpleName
+  prior to version 040 — it fails in `dexBuilderDebugAndroidTest`, not in the compiler, so the
+  error arrives a minute later and does not name the convention.
 - `adb shell uiautomator dump` must write to `/data/local/tmp/ui.xml` (the `/sdcard` path
   silently fails on this image). Even then, `input tap` on Compose buttons landed maybe one time
   in three and a missed tap cascades (a stray BACK on Home closes the app). The instrumented tour

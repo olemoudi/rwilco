@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.BugReport
@@ -41,10 +42,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -376,7 +380,22 @@ fun HomeScreen(
         val today = now.atZone(zone).toLocalDate()
         val defaultTime = state.defaultTime
 
+        // **At the top of the list, the row is there.** It travels by what the list consumed,
+        // which is what keeps it glued to the cards — and it means the list at rest at the very
+        // top can consume nothing, so a row hidden while the list is up there cannot be brought
+        // back by any gesture: the only way out is to scroll away and come back. Scrolling by
+        // hand never gets there (the two move 1:1 and arrive together), but anything that moves
+        // the list without scrolling it does — a jump to an index, which is also how the tour
+        // reaches Settings. The top of the list is where the row lives, so it is put back there.
+        val listState = rememberLazyListState()
+        val atTop = remember {
+            derivedStateOf { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0 }
+        }
+        LaunchedEffect(Unit) {
+            snapshotFlow { atTop.value }.collect { if (it) headerScroll.show() }
+        }
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .testTag(HOME_LIST_TAG),

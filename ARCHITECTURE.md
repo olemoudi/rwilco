@@ -895,6 +895,15 @@ because that is what its chip would show.
   while the magnifier is open the row is **pinned** — the field up there is what the thumb is
   aiming at, and it no longer scrolls away mid-search either. The arithmetic is pure and tested
   (`HeaderScrollTest`); `HomeScrollTest` walks it on the real screen.
+  **And the top of the list is where the row lives** (0.63.0). Travelling by what the list
+  consumed is what keeps the row glued to the cards, and it has one corollary: a list at rest at
+  the very top consumes nothing, so a row hidden *while* the list is up there cannot be brought
+  back by any gesture — the only way out is to scroll away and come back. Scrolling by hand
+  never reaches that state (the two move 1:1 and arrive together), but anything that moves the
+  list without scrolling it does, and `performScrollToIndex` in `EditorTourTest` is exactly
+  that: the tour had been unable to reach Settings from Home for some releases, tapping a cog
+  that was off the top of the screen. `show()` on
+  `firstVisibleItemIndex == 0 && firstVisibleItemScrollOffset == 0`.
 - **"Hechos" opens with a number and a fortnight**, not with a list: how many were dealt with in
   the last seven days in `displayLarge` — the one Material role this app sets in JetBrains Mono,
   the size a number is read at when it is the only thing being said — over `DayBars`, one bar per
