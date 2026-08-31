@@ -111,3 +111,21 @@ val RwilcoLightColors = lightColorScheme(
     surfaceContainerHigh = Color(0xFFE9EDF3),
     surfaceContainerHighest = Color(0xFFE1E6ED),
 )
+
+/**
+ * "You are here" on a map, and nowhere else in the app.
+ *
+ * Every other colour here means something in this app's own vocabulary — amber is what fires
+ * next, and the three family hues are what kind of "when" a rule is — so a fourth meaning is
+ * normally the wrong answer. A map is the exception, because on one the blue dot is not this
+ * app's word for anything: it is the whole world's word for where the phone is standing, and
+ * spending a family colour on it would put "me" in the same paint as "a place" — which is the
+ * one thing on that screen it must not be confused with, since the pin beside it is exactly
+ * that and is drawn in the place family's own green.
+ *
+ * It never appears on a card, a chip or a keycap; only on `OsmMap`.
+ */
+val HereBlueDark = Color(0xFF4C9AFF)
+val HereBlueLight = Color(0xFF1B6FE0)
+
+fun hereBlue(dark: Boolean): Color = if (dark) HereBlueDark else HereBlueLight

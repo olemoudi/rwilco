@@ -1,8 +1,12 @@
 package dev.rwilco.ui.editor.sheets
 
 import android.content.Context
+import android.graphics.Canvas
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
+import android.graphics.Point
+import android.os.SystemClock
 import android.view.MotionEvent
 import android.widget.FrameLayout
 import androidx.compose.foundation.BorderStroke
@@ -26,6 +30,7 @@ import dev.rwilco.R
 import dev.rwilco.model.TriggerFamily
 import dev.rwilco.ui.theme.LocalDarkTheme
 import dev.rwilco.ui.theme.familyColor
+import dev.rwilco.ui.theme.hereBlue
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -33,6 +38,7 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.MapEventsOverlay
+import org.osmdroid.views.overlay.Overlay
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polygon
 import java.io.File
@@ -44,6 +50,12 @@ import kotlin.math.ln
  * a wrapper that keeps the enclosing sheet from stealing its drags, and its tile cache lives in
  * the app's own cache dir (osmdroid's default is external storage, which scoped storage
  * refuses). Offline, the tiles simply stay on the theme's ground: the pin still works.
+ *
+ * **And it says where the phone is standing** ([here]): the blue dot everybody already knows,
+ * with a slow, faint wave going out of it. Aiming a circle at a doorway is a question about the
+ * distance between two things — the pin and you — and until now only one of them was on the
+ * map, so the answer had to be guessed from the street names. The fix has never been the pin
+ * (it is written into `lat`/`lng` and becomes the place); this is the other one, kept apart.
  */
 @Composable
 fun OsmMap(
@@ -51,6 +63,8 @@ fun OsmMap(
     radiusM: Int,
     onLongPress: (GeoPoint) -> Unit,
     modifier: Modifier = Modifier,
+    /** Where the phone last said it was, drawn as the blue dot; null while nothing has answered. */
+    here: GeoPoint? = null,
     /** How tall the map is, in dp: the zoom that fits a circle is worked out from it. */
     heightDp: Float = MAP_HEIGHT_DP,
 ) {
@@ -61,7 +75,16 @@ fun OsmMap(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val holder = remember {
-        MapHolder(context, dark, scheme.surfaceContainerHigh.toArgb(), scheme.outlineVariant.toArgb(), pinColor.toArgb(), onLongPress)
+        MapHolder(
+            context,
+            dark,
+            scheme.surfaceContainerHigh.toArgb(),
+            scheme.outlineVariant.toArgb(),
+            pinColor.toArgb(),
+            hereBlue(dark).toArgb(),
+            scheme.surfaceContainerLowest.toArgb(),
+            onLongPress,
+        )
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -89,7 +112,7 @@ fun OsmMap(
     ) {
         AndroidView(
             factory = { holder.wrapper },
-            update = { holder.show(center, radiusM, heightDp) },
+            update = { holder.show(center, here, radiusM, heightDp) },
         )
     }
 }
@@ -101,12 +124,15 @@ private class MapHolder(
     loadingColor: Int,
     loadingLineColor: Int,
     pinColor: Int,
+    hereColor: Int,
+    hereRimColor: Int,
     onLongPress: (GeoPoint) -> Unit,
 ) {
     val map: MapView
     val wrapper: FrameLayout
     private val marker: Marker
     private val circle: Polygon
+    private val here: HereOverlay
     private var shownCenter: GeoPoint? = null
 
     init {
@@ -164,12 +190,18 @@ private class MapHolder(
                 }
             }),
         )
+        // In the list from the start and never taken out, so it can never end up drawn *over*
+        // the pin: the thing being aimed at is what has to be on top. With no position it draws
+        // nothing at all, which is also what stops the pulse.
+        here = HereOverlay(hereColor, hereRimColor, context.resources.displayMetrics.density)
+        map.overlays.add(here)
         wrapper = TouchOwningFrame(context).apply {
             addView(map, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
         }
     }
 
-    fun show(center: GeoPoint?, radiusM: Int, heightDp: Float) {
+    fun show(center: GeoPoint?, here: GeoPoint?, radiusM: Int, heightDp: Float) {
+        this.here.position = here
         if (center == null) {
             map.overlays.remove(marker)
             map.overlays.remove(circle)
@@ -197,6 +229,75 @@ private class MapHolder(
     }
 
     private fun inverted(argb: Int): Int = (argb and 0xFF000000.toInt()) or (argb.inv() and 0x00FFFFFF)
+}
+
+/**
+ * The blue dot: where the phone is, and a slow wave going out of it.
+ *
+ * **It paces itself.** The obvious way to animate this is a Compose `rememberInfiniteTransition`
+ * read in the `AndroidView`'s `update` — and that runs the whole update lambda sixty times a
+ * second, which here means re-deciding the pin, rebuilding the radius circle
+ * (`Polygon.pointsAsCircle`) and re-asking whether to fly the camera, every frame, for a dot.
+ * So the phase is read off the clock inside [draw] and the next frame is asked for from there.
+ * The loop is self-terminating in both directions that matter: nothing is drawn and nothing is
+ * scheduled without a [position], and a view that has stopped drawing (the sheet gone, the map
+ * paused) never reaches this at all.
+ *
+ * The wave is deliberately faint and slow — this is a thing to notice out of the corner of the
+ * eye while aiming at something else, not a beacon. The rim is the lowest surface rather than
+ * white, because the dark scheme's map is an inverted tile and a white ring on it is a hole.
+ */
+private class HereOverlay(dotColor: Int, rimColor: Int, private val density: Float) : Overlay() {
+
+    /** Null until something has answered; drawing nothing is also what stops the pulse. */
+    var position: GeoPoint? = null
+
+    private val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = dotColor
+        style = Paint.Style.FILL
+    }
+    private val rim = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = rimColor
+        style = Paint.Style.STROKE
+        strokeWidth = RIM_DP * density
+    }
+    private val wave = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = dotColor
+        style = Paint.Style.FILL
+    }
+    private val at = Point()
+
+    override fun draw(canvas: Canvas, mapView: MapView, shadow: Boolean) {
+        if (shadow) return
+        val where = position ?: return
+        mapView.projection.toPixels(where, at)
+        val x = at.x.toFloat()
+        val y = at.y.toFloat()
+
+        // One beat: the wave grows from the dot's own edge outwards and fades as it goes, so
+        // what the eye catches is the movement rather than any one frame of it.
+        val phase = (SystemClock.uptimeMillis() % BEAT_MS) / BEAT_MS.toFloat()
+        val reach = DOT_DP + (WAVE_DP - DOT_DP) * phase
+        wave.alpha = (WAVE_ALPHA * (1f - phase)).toInt().coerceIn(0, 255)
+        canvas.drawCircle(x, y, reach * density, wave)
+
+        canvas.drawCircle(x, y, DOT_DP * density, dot)
+        canvas.drawCircle(x, y, DOT_DP * density, rim)
+
+        // The next frame, asked for only while there is something to draw.
+        mapView.postInvalidateOnAnimation()
+    }
+
+    private companion object {
+        /** Small: it is where you are, not what you are aiming at. */
+        const val DOT_DP = 5f
+        const val RIM_DP = 2f
+        const val WAVE_DP = 20f
+        /** Out of 255 at the start of a beat, gone by the end of it. */
+        const val WAVE_ALPHA = 70f
+        /** Slow enough to read as breathing rather than as something asking to be tapped. */
+        const val BEAT_MS = 2_400L
+    }
 }
 
 /** The map's height when nobody says otherwise, in dp; the zoom below is worked out from it. */

@@ -127,6 +127,7 @@ fun EditorScreen(
     val triggerMessage = stringResource(R.string.editor_error_trigger)
     val recurrenceMessage = stringResource(R.string.editor_error_recurrence)
     val recurrencePresetDeletedMessage = stringResource(R.string.recur_preset_deleted)
+    val triggerRemovedMessage = stringResource(R.string.editor_trigger_removed)
     val undoLabel = stringResource(R.string.common_undo)
     LaunchedEffect(viewModel) {
         viewModel.eventFlow.collect { event ->
@@ -142,6 +143,10 @@ fun EditorScreen(
                 }
                 is EditorEvent.RecurrencePresetDeleted -> snackbar.show(recurrencePresetDeletedMessage, undoLabel) {
                     viewModel.restoreRecurrencePreset(event.preset)
+                }
+                // The one destructive act on this form, and the bin sits beside the pencil.
+                is EditorEvent.TriggerRemoved -> snackbar.show(triggerRemovedMessage, undoLabel) {
+                    viewModel.restoreTrigger(event.index, event.rule, event.recurrence)
                 }
                 EditorEvent.Close -> onClose()
                 is EditorEvent.Invalid -> {
@@ -358,6 +363,7 @@ fun EditorScreen(
                         clock = viewModel.clock,
                         today = today,
                         defaultTime = state.defaultTime,
+                        dayStart = state.dayStart,
                         ruleWarnings = ruleWarnings,
                         onAdd = {
                             focusManager.clearFocus()
@@ -384,6 +390,9 @@ fun EditorScreen(
                 EditorSection(
                     title = stringResource(R.string.editor_recurrence_title),
                     icon = Icons.Outlined.Repeat,
+                    // The only one of the five that did not say so, which made it read as a
+                    // question the form was waiting on. Most reminders never come back.
+                    note = stringResource(R.string.editor_optional),
                 ) {
                     RecurrenceSection(
                         recurrence = state.draft.recurrence,

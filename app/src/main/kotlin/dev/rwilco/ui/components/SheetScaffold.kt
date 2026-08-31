@@ -21,7 +21,9 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
@@ -52,6 +54,15 @@ import androidx.compose.foundation.layout.BoxWithConstraints
  * finger on the handle and springs back, and every deliberate way out — the back gesture, the
  * scrim, "Cancelar" — is programmatic and untouched. It is the same rule as Home's swipes and
  * the hold buttons: the gestures that destroy something have to mean it.
+ *
+ * **And it does not bounce.** A sheet that is already as far up as it goes has two things that
+ * answer a swipe upwards with a spring — the content's own scroll and the sheet's drag — and
+ * neither of them has anywhere to go, so the gesture got two stretches and a rebound and said
+ * nothing at all. Overscroll is a way of telling somebody a list has ended; on a form whose
+ * end is a button in plain sight it is noise, and repeated (which is what a hand does when a
+ * screen answers a swipe with a bounce) it is a screen that looks broken. The factory is turned
+ * off for the whole sheet, drag included. Nothing else changes: the refusal to settle into
+ * hidden is untouched, and it is still what a downward fling meets.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +80,7 @@ fun SheetScaffold(
     )
     val haptics = Tokens.haptics
     val spacing = Tokens.spacing
+    NoBounce {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -136,7 +148,17 @@ fun SheetScaffold(
             }
         }
     }
+    }
 }
+
+/**
+ * A sheet that answers a swipe with nothing rather than with a spring; see [SheetScaffold]'s
+ * note on the bounce for why. Wrap the whole `ModalBottomSheet`, not its content: the sheet's
+ * own drag has an overscroll effect of its own, and it is the louder of the two.
+ */
+@Composable
+fun NoBounce(content: @Composable () -> Unit) =
+    CompositionLocalProvider(LocalOverscrollFactory provides null, content = content)
 
 /** The drag handle above the content, plus the gap the sheet leaves under the status bar. */
 private val SHEET_CHROME = 96.dp

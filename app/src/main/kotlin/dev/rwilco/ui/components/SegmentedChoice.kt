@@ -22,7 +22,7 @@ fun SegmentedChoice(
     modifier: Modifier = Modifier,
 ) {
     val haptics = Tokens.haptics
-    SingleChoiceSegmentedButtonRow(modifier = modifier.fillMaxWidth().heightIn(min = 44.dp)) {
+    SingleChoiceSegmentedButtonRow(modifier = modifier.fillMaxWidth().heightIn(min = Tokens.sizes.touch)) {
         options.forEachIndexed { index, label ->
             SegmentedButton(
                 selected = index == selectedIndex,

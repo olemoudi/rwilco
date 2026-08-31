@@ -83,7 +83,7 @@ fun TagChip(
         ),
         border = if (selected) null else BorderStroke(Tokens.strokes.control, tint ?: scheme.outline),
         modifier = modifier
-            .heightIn(min = 40.dp)
+            .heightIn(min = Tokens.sizes.touch)
             .then(if (onHold == null) Modifier else Modifier.holdable(holdIcon, holdLabel, onHold, hold)),
     )
 }

@@ -75,7 +75,7 @@ fun MoreChip(onClick: () -> Unit, modifier: Modifier = Modifier) {
             labelColor = scheme.onSurface,
         ),
         border = BorderStroke(Tokens.strokes.control, scheme.outline),
-        modifier = modifier.heightIn(min = 44.dp),
+        modifier = modifier.heightIn(min = Tokens.sizes.touch),
     )
 }
 
@@ -101,6 +101,7 @@ fun PickSheet(
         val needle = query.trim().lowercase(Locale.getDefault())
         if (needle.isEmpty()) items else items.filter { it.lowercase(Locale.getDefault()).contains(needle) }
     }
+    NoBounce {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -177,3 +178,4 @@ fun PickSheet(
         }
     }
 }
+    }

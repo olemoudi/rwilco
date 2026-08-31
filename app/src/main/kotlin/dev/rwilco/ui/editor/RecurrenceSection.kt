@@ -1,5 +1,7 @@
 package dev.rwilco.ui.editor
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -39,6 +41,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -77,6 +80,7 @@ import dev.rwilco.ui.format.repeatSummary
 import dev.rwilco.ui.format.conditionLabel
 import dev.rwilco.ui.components.Stepper
 import dev.rwilco.ui.format.currentLocale
+import dev.rwilco.ui.components.scrollFade
 import dev.rwilco.ui.theme.Tokens
 import java.time.LocalDate
 import java.time.format.TextStyle
@@ -460,12 +464,14 @@ private fun RecurrenceConditions(
                 label = { Text(conditionLabel(condition), style = MaterialTheme.typography.labelLarge) },
                 leadingIcon = { Icon(Icons.Outlined.FilterAlt, contentDescription = null, modifier = Modifier.size(18.dp)) },
                 trailingIcon = {
+                    // 48dp of thumb behind 20dp of glyph; see the same icon in Sections.kt.
                     Icon(
                         imageVector = Icons.Outlined.Close,
                         contentDescription = stringResource(R.string.editor_remove_condition),
                         modifier = Modifier
-                            .size(20.dp)
-                            .clickable { onRemove(index) },
+                            .minimumInteractiveComponentSize()
+                            .clickable { onRemove(index) }
+                            .size(20.dp),
                     )
                 },
                 shape = MaterialTheme.shapes.small,
@@ -512,7 +518,7 @@ private fun RecurrenceButton(
         // On is inverted, like every other "on" in the app.
         color = if (selected) scheme.onSurface else scheme.surfaceContainerHigh,
         border = if (selected) null else BorderStroke(Tokens.strokes.control, scheme.outline),
-        modifier = Modifier.heightIn(min = 44.dp),
+        modifier = Modifier.heightIn(min = Tokens.sizes.touch),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -565,9 +571,15 @@ private fun RecurrenceListDialog(
             Column(Modifier.padding(spacing.lg)) {
                 Text(stringResource(R.string.recur_list_title), style = MaterialTheme.typography.headlineSmall)
                 Spacer(Modifier.height(spacing.md))
+                // Kept ones pile up, and this list had neither a scroll nor a word about
+                // where it ended: past the dialog's cap the rows below were simply unreachable.
+                val scroll = rememberScrollState()
                 Column(
                     verticalArrangement = Arrangement.spacedBy(spacing.xs),
-                    modifier = Modifier.weight(1f, fill = false),
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .scrollFade(scroll, scheme.surfaceContainer)
+                        .verticalScroll(scroll),
                 ) {
                     for (preset in presets) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {

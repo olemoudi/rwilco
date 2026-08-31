@@ -357,6 +357,22 @@ fun EditorUiState.removeTrigger(index: Int): EditorUiState {
 }
 
 /**
+ * A removed rule, back where it was.
+ *
+ * Removing one is the editor's only destructive act with no inverse — every other one in the
+ * app has an undo or a question in front of it — and it sits one `IconButton` away from the
+ * pencil that edits it, so a slip costs a place with its radius dragged or a calendar with its
+ * end date, and the only way back is to build it again. The recurrence is put back too: taking
+ * the last random window out clears `ByTrigger`, and an undo that left that cleared would hand
+ * back a different arrangement from the one that was removed.
+ */
+fun EditorUiState.restoreTrigger(index: Int, rule: TriggerRule, recurrence: Recurrence): EditorUiState {
+    val rules = draft.rules.toMutableList()
+    rules.add(index.coerceIn(0, rules.size), rule)
+    return copy(draft = draft.copy(rules = rules, recurrence = recurrence))
+}
+
+/**
  * The configurator's result: replaces the trigger of the rule being edited — keeping whatever
  * conditions were put on it — or appends a rule with no conditions. Closes the sheet.
  */

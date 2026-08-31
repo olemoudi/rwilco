@@ -119,6 +119,14 @@ fun HomeScreen(
     val dismissedProblems by viewModel.dismissedAlertProblems.collectAsStateWithLifecycle()
     LaunchedEffect(readiness) { viewModel.noteAlertReadiness(readiness) }
     var choosing by rememberSaveable { mutableStateOf(false) }
+    // **"Nuevo" asks which kind only while the answer is not already on the screen.** The
+    // question ("en blanco" or "un preset") was asked the moment a single preset existed
+    // anywhere, so from then on every blank reminder — which is most of them — paid a tap for
+    // ever. A pinned preset is one tap away in the row above the list and one hold away on the
+    // launcher icon, so with a row up there the dialog is asking something the screen has
+    // already answered. With presets kept but none pinned it is still the only door to them,
+    // and it still opens.
+    val asksWhichKind = presets.isNotEmpty() && pinned.isEmpty()
     var managingPins by rememberSaveable { mutableStateOf(false) }
     // The preset whose words are being asked for before it can be written.
     var askingWordsFor by rememberSaveable { mutableStateOf<String?>(null) }
@@ -351,7 +359,7 @@ fun HomeScreen(
             if (!search.open) {
                 ExtendedFloatingActionButton(
                     // With nothing kept under a name there is no question to ask.
-                    onClick = { if (presets.isEmpty()) onNew() else choosing = true },
+                    onClick = { if (asksWhichKind) choosing = true else onNew() },
                     icon = { Icon(Icons.Outlined.Add, contentDescription = null) },
                     text = { Text(stringResource(R.string.home_new), style = MaterialTheme.typography.titleMedium) },
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -505,7 +513,7 @@ fun HomeScreen(
                             icon = Icons.Outlined.Lightbulb,
                             actionLabel = stringResource(R.string.home_empty_action),
                             // The same door as "Nuevo": with nothing kept under a name, the form.
-                            onAction = { if (presets.isEmpty()) onNew() else choosing = true },
+                            onAction = { if (asksWhichKind) choosing = true else onNew() },
                         )
                     }
                 }

@@ -40,7 +40,12 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import dev.rwilco.ui.theme.Tokens
 
-private val DISC = 44.dp
+/**
+ * The disc's own size, and it is the touch floor rather than the glyph's: a hold is a gesture
+ * that has to be *kept* on the control, so it is the one target it is least excusable to make
+ * hard to land on.
+ */
+private val DISC = 48.dp
 
 /**
  * A control that answers only to a finger that stays: press, and the screen dims around one

@@ -186,6 +186,7 @@
     <string name="editor_add_trigger">Add a trigger</string>
     <string name="editor_edit_trigger">Edit trigger</string>
     <string name="editor_remove_trigger">Remove trigger</string>
+    <string name="editor_trigger_removed">Trigger removed</string>
     <string name="editor_what_title">What happens</string>
     <string name="editor_recurrence_title">Comes back</string>
     <string name="recur_none">Don\'t repeat</string>
@@ -1170,6 +1171,14 @@
     <string-array name="whats_new_0_63_0">
         <item>The step that asks you to silence an alarm before it will take «Done» now only appears when there is still a noise going on: the buzzing, and the tone that keeps coming back. A plain «Sound» says its tone once and stops after a second or two, and the red button used to stand there for the rest of the minute holding «Done» out of reach in a silent room — a step you paid for and got nothing back from.</item>
         <item>Every card about a reminder opens the alert screen now, the safety net\'s two notes included. «It never rang» used to open the form and «still waiting somewhere» used to open Home, because that screen only holds a reminder it is owed an answer for — so those two would have flashed and done nothing. Now the note says so and the screen holds it anyway, silently: it is a note about something that already got away, not an alarm. Taking a wait at a place back without answering is still on the card, held down.</item>
+        <item>The list you get from «From a preset» says that it goes on. Its rows and the dialog\'s height divided neatly, so the last one you could see ended flush with the bottom edge — nothing cut, nothing to scroll towards — and every preset below it was invisible. The edge is faded now and the next row is half-shown. The same edge was lying in the pinning panel and in the list of kept «Comes back» shapes, which could not even be scrolled past its cap.</item>
+        <item>The map shows where you are standing: the blue dot everyone already knows, with a slow, faint wave going out of it. Aiming a circle at a doorway is a question about the distance between two things — the pin and you — and only one of them was ever on the map.</item>
+        <item>The trigger sheets no longer bounce. A sheet already as far up as it goes had two things answering a swipe upwards with a spring, and neither of them had anywhere to go, so the gesture got two stretches, a rebound, and no information at all.</item>
+        <item>Touch targets that were under the 48dp floor are on it: the tag chips, the segmented choices, the kept «Comes back» shapes, the pinned presets, the list rows behind «…», and the hold-to-pause disc. The «×» that takes a «only if» fence off a rule was the worst of them — a bare 18dp glyph, a third of the floor, on a control that destroys something, a few millimetres from the one that edits it. The glyph is the same size; the thumb now has 48. And a day in the calendar is the whole cell rather than the circle drawn inside it.</item>
+        <item>«Tomorrow morning» in the editor is the hour your day starts at, which is what the setting says and what postponing to «tomorrow morning» has always used. It was nine o\'clock written into the code, so the two disagreed the moment you moved your morning.</item>
+        <item>«New» only asks whether you want a blank one or a preset while the answer is not already on the screen. It asked from the moment a single preset existed anywhere, so every blank reminder — most of them — paid a tap for ever. With presets pinned above the list they are one tap away already; with none pinned the question is still the only door to them, and it still opens.</item>
+        <item>Removing a trigger from the form can be undone. It was the one destructive act here without a way back, and its bin sits next to the pencil that edits — so a slip cost a place with its radius dragged, or a calendar with its end date, and the only way back was to build it again.</item>
+        <item>And «Comes back» says «optional», like the three cards around it. It was the only one that did not, which made it read as a question the form was waiting on.</item>
     </string-array>
     <string-array name="whats_new_0_62_0">
         <item>The safety net is heard now. Its word — «you may have let this one go» — plays your ordinary, non-insistent tone at half the volume an alarm gets: enough to notice, and saying in the only unit a sound has that it is not the alarm.</item>

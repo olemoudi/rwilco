@@ -30,6 +30,7 @@ import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.TriggerKind
 import dev.rwilco.model.kindsOrdered
 import dev.rwilco.model.offered
+import dev.rwilco.ui.components.NoBounce
 import dev.rwilco.ui.components.TriggerKeycap
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.icon
@@ -54,6 +55,7 @@ fun TriggerKindSheet(
     kinds: List<TriggerKind> = OFFERED_KINDS,
 ) {
     val spacing = Tokens.spacing
+    NoBounce {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -85,6 +87,7 @@ fun TriggerKindSheet(
         }
     }
 }
+    }
 
 @Composable
 private fun KindRow(kind: TriggerKind, isDefault: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {

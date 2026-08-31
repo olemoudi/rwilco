@@ -25,6 +25,7 @@ import dev.rwilco.model.Status
 import dev.rwilco.model.Condition
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerKind
+import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.normalizeTag
 import dev.rwilco.model.normalizeTags
 import dev.rwilco.model.removeTagIn
@@ -63,6 +64,8 @@ sealed interface EditorEvent {
     data class PresetDeleted(val preset: Preset, val index: Int) : EditorEvent
     /** A recurrence preset left the "Vuelve" card; the snackbar offers it back. */
     data class RecurrencePresetDeleted(val preset: RecurrencePreset) : EditorEvent
+    /** A rule left the form; [index] and [recurrence] are what putting it back needs. */
+    data class TriggerRemoved(val index: Int, val rule: TriggerRule, val recurrence: Recurrence) : EditorEvent
     data object Close : EditorEvent
 
     /** "Guardar" was pressed on a draft that cannot be saved; [error] is the first reason why. */
@@ -298,7 +301,17 @@ class EditorViewModel(
     fun openKindPicker() = _state.update { it.openKindPicker() }
     fun pickKind(kind: TriggerKind) = _state.update { it.pickKind(kind) }
     fun editTrigger(index: Int) = _state.update { it.editTrigger(index) }
-    fun removeTrigger(index: Int) = _state.update { it.removeTrigger(index) }
+    fun removeTrigger(index: Int) {
+        // Read before the change and announced after it, so the undo carries the arrangement
+        // that was actually removed rather than the one left behind.
+        val was = _state.value.draft
+        val rule = was.rules.getOrNull(index) ?: return
+        _state.update { it.removeTrigger(index) }
+        events.trySend(EditorEvent.TriggerRemoved(index, rule, was.recurrence))
+    }
+
+    fun restoreTrigger(index: Int, rule: TriggerRule, recurrence: Recurrence) =
+        _state.update { it.restoreTrigger(index, rule, recurrence) }
     fun commitTrigger(index: Int?, trigger: Trigger) = _state.update { it.commitTrigger(index, trigger) }
     fun addCondition(ruleIndex: Int) = _state.update { it.addCondition(ruleIndex) }
     fun editCondition(ruleIndex: Int, conditionIndex: Int) = _state.update { it.editCondition(ruleIndex, conditionIndex) }

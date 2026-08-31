@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -43,6 +45,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.rwilco.R
 import dev.rwilco.model.Preset
+import dev.rwilco.ui.components.scrollFade
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.presetColor
 import dev.rwilco.ui.theme.presetWash
@@ -101,7 +104,20 @@ fun NewReminderChooser(
                 } else {
                     // The ones actually used, at the top: a list of shapes is only fast if the
                     // one you always reach for is where your thumb already is.
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                    //
+                    // **And it says that it goes on.** The rows are one height and the dialog is
+                    // capped at another, so with a few presets the last visible one ended flush
+                    // with the bottom edge — nothing cut, nothing to scroll towards, and every
+                    // preset below it invisible. The fade is the edge saying the rows carry on
+                    // under it; the bottom padding leaves the next one half-shown, which is the
+                    // same thing said in a way you can count.
+                    val listState = rememberLazyListState()
+                    LazyColumn(
+                        state = listState,
+                        verticalArrangement = Arrangement.spacedBy(spacing.sm),
+                        contentPadding = PaddingValues(bottom = spacing.xxl),
+                        modifier = Modifier.scrollFade(listState, scheme.surfaceContainer),
+                    ) {
                         items(presets, key = { it.id }) { preset ->
                             PresetButton(
                                 preset = preset,

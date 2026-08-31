@@ -112,6 +112,9 @@ fun LocationSheet(
     // Plain remember, on purpose: the work behind these runs in the sheet's own scope, which a
     // rotation cancels, so a saved "busy" would be a spinner with nothing behind it for ever.
     var locating by remember { mutableStateOf(false) }
+    // Where the phone said it was, for the map's own blue dot. Not saved across a rotation:
+    // a position is a fact about this second, and the sheet asks again when it needs one.
+    var here by remember { mutableStateOf<GeoPoint?>(null) }
     /** Null while nothing has gone wrong; otherwise which of the two things went wrong. */
     var failure by rememberSaveable { mutableStateOf<String?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
@@ -148,12 +151,19 @@ fun LocationSheet(
         failure = null
         scope.launch {
             val fix = currentLocation(context)
+            // The quiet fix on opening loses the *pin* to anything chosen while it was in
+            // flight — but not the dot: where the phone is standing is true either way.
             if (!asked && lat != null) {
+                if (fix is LocationFix.Found) here = GeoPoint(fix.location.latitude, fix.location.longitude)
                 locating = false
                 return@launch
             }
             when (fix) {
                 is LocationFix.Found -> {
+                    // Where the phone is, kept apart from where the pin is: the two are the
+                    // same only for the first second of a place that opens on you, and the
+                    // question the map is asked — how far is this circle from me — needs both.
+                    here = GeoPoint(fix.location.latitude, fix.location.longitude)
                     lat = fix.location.latitude
                     lng = fix.location.longitude
                     if (asked) haptics.perform(HapticFeedbackType.Confirm)
@@ -190,6 +200,7 @@ fun LocationSheet(
     if (expanded) {
         FullScreenMap(
             center = if (known) GeoPoint(lat!!, lng!!) else null,
+            here = here,
             radiusM = radius,
             onLongPress = { point ->
                 lat = point.latitude
@@ -317,6 +328,7 @@ fun LocationSheet(
             Box(modifier = Modifier.fillMaxWidth()) {
                 OsmMap(
                     center = if (known) GeoPoint(lat!!, lng!!) else null,
+                    here = here,
                     radiusM = radius,
                     onLongPress = { point ->
                         lat = point.latitude

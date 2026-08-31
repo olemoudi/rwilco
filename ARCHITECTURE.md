@@ -593,6 +593,25 @@ because that is what its chip would show.
   otherwise every rotation pushed the shared text back on top of whatever the person was doing.
   Settings → Aspecto has a language row on API 33+ that opens the
   system's per-app page (`locales_config.xml` names the two).
+- **A sheet answers a swipe with nothing rather than with a spring** (`NoBounce`, 0.63.0). A
+  sheet already as far up as it goes has two things that overscroll — the content's own scroll
+  and the sheet's own drag — and neither has anywhere to go, so a swipe upwards got two
+  stretches and a rebound and said nothing whatever. Overscroll is how a *list* says it has
+  ended; on a form whose end is a button in plain sight it is noise, and a screen that bounces
+  at a repeated gesture reads as broken. `LocalOverscrollFactory provides null` around the whole
+  `ModalBottomSheet` (the drag included, which is the louder of the two), for `SheetScaffold`,
+  `TriggerKindSheet` and `PickSheet`. The refusal to settle into `Hidden` is untouched: that is
+  a different mechanism and it is what a downward fling still meets.
+- **A list inside a box says that it goes on** (`Modifier.scrollFade`, 0.63.0). A capped list
+  whose rows divide neatly into the height it is given is the worst case there is: the last
+  visible row ends flush with the bottom, nothing is cut, and it reads as a list that finishes
+  there — the shorter the list the more convincing the lie, since there is no scrollbar to look
+  for either. The edge that has list behind it is faded into the *container's own colour*, so it
+  reads as the rows going under the edge rather than as a shadow, and only that edge: a fade at
+  an end that really is the end says the opposite of what this is for. Paired with a
+  `contentPadding` of about half a row — the fade says there is more, the half-row says how
+  much. `NewReminderChooser` (where it was reported), the pinning panel and
+  `RecurrenceListDialog`, which had no scroll at all past its cap.
 - **A sheet's height is capped** (`SheetScaffold`, 0.49.0). The confirm row is outside the
   scrolling content so it can never sink below the fold — which was a wish, not a fact: a bottom
   sheet measures its content with no height limit (that is how a sheet taller than the screen can
@@ -916,9 +935,25 @@ because that is what its chip would show.
   editor opens with the cursor in the words and the keyboard up (the one place in the app where
   it opens by itself, because a preset has already answered everything else), and set means the
   reminder arrives written. Home's "New" asks blank-or-preset
-  (`NewReminderChooser`) only once a preset exists; picking one opens the editor pre-filled
+  (`NewReminderChooser`) **only while the answer is not already on the screen** (0.63.0): a
+  preset exists somewhere *and* none is pinned. It used to ask from the moment a single preset
+  existed anywhere, so every blank reminder — which is most of them — paid a tap for ever, and
+  with a pinned row above the list the dialog was asking something the screen had already
+  answered (one tap there, one hold on the launcher icon). With presets kept but none pinned it
+  is still the only door to them and still opens. Picking one opens the editor pre-filled
   (`Routes.Editor(fromPresetId=…)`) rather than writing the reminder outright, because a preset
   can hold a date that has since passed and the form is where that gets seen.
+- **Removing a rule can be taken back** (`restoreTrigger`, `EditorEvent.TriggerRemoved`, 0.63.0).
+  It was the editor's one destructive act with no inverse, and its bin sits one `IconButton`
+  from the pencil that edits — so a slip cost a place with its radius dragged or a calendar with
+  its end date, and the only way back was to build it again. The undo carries the *index* and
+  the *recurrence*, because taking the last random window out clears `ByTrigger`: put back
+  without it, the arrangement handed back is not the one that was removed.
+- **"Mañana por la mañana" in the editor is `dayStart`** (0.63.0), which is what
+  `Snooze.TOMORROW_MORNING` has always landed on and what the setting says in the same three
+  words. It was nine o'clock written into `QuickWhenRow`, so the two controls disagreed the
+  moment anybody moved their morning. "Esta noche" has nothing to read — `awake`'s far end is
+  bedtime rather than the evening — and stays a named constant.
 - Editor: `EditorUiState` + pure reducers (`EditorState.kt`, tested). A save replaces the whole
   row and deliberately drops the snooze and the armed moment — editing re-decides when a
   reminder rings — but carries `lastDealtAt` and `lastFiredAt`. The first is the anchor a
@@ -972,7 +1007,23 @@ because that is what its chip would show.
   scheme, tile cache in `cacheDir`). **A new place asks the phone where it is as it opens** —
   only when the permission is already given, because a sheet that arrives under a system dialog
   is a worse first second than a map with a crosshair on it, and that quiet fix loses to any pin
-  chosen while it was in flight and says nothing when it fails. **And the map opens on a circle
+  chosen while it was in flight and says nothing when it fails — **it loses the pin, never the
+  dot** (see below): where the phone is standing is true either way.
+  **And the map says where the phone is** (0.63.0, `HereOverlay`): the blue dot, with a slow
+  faint wave going out of it. Aiming a circle at a doorway is a question about the distance
+  between *two* things and only one of them was ever drawn — the fix has never been a position
+  on the map, it is written straight into `lat`/`lng` and becomes the pin — so `LocationSheet`
+  now keeps it in a `here` of its own and hands it to `OsmMap` and `FullScreenMap` alike. The
+  blue is a token (`hereBlue`) and the one colour in the app that means nothing in the app's own
+  vocabulary: on a map it is the whole world's word for "you", and spending a family colour on
+  it would paint "me" the same as "a place" — which is exactly the pin beside it. **The pulse
+  paces itself**: the phase is read off `SystemClock.uptimeMillis()` inside `draw` and the next
+  frame asked for from there, because an infinite Compose transition read in the `AndroidView`'s
+  `update` re-runs the whole lambda — `Polygon.pointsAsCircle`, the camera decision — sixty times
+  a second for a dot. It is self-terminating both ways: nothing is drawn or scheduled without a
+  position, and a view that has stopped drawing never reaches it. The overlay is added once, in
+  `init`, before the circle and the pin, so it can never end up drawn over the thing being aimed
+  at. The one infinite animation in the app, and it is not on Home. **And the map opens on a circle
   that fits in it** (`zoomFittingCircle`): the zoom is worked out from the 260dp the map is tall
   and the circle it has to hold — never tighter than a 300-metre one, because the radius starts
   at 200 and the first thing anybody does is drag it. The four-bucket table it replaces was too

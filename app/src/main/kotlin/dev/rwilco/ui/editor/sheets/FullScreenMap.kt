@@ -44,6 +44,8 @@ import org.osmdroid.util.GeoPoint
 @Composable
 fun FullScreenMap(
     center: GeoPoint?,
+    /** Where the phone is, for the blue dot; the same one the sheet's own map shows. */
+    here: GeoPoint? = null,
     radiusM: Int,
     onLongPress: (GeoPoint) -> Unit,
     onRadius: (Int) -> Unit,
@@ -63,6 +65,7 @@ fun FullScreenMap(
                 BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
                     OsmMap(
                         center = center,
+                        here = here,
                         radiusM = radiusM,
                         onLongPress = onLongPress,
                         heightDp = maxHeight.value,

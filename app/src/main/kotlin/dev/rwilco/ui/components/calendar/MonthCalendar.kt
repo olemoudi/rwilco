@@ -246,13 +246,15 @@ private fun DayCell(
 ) {
     val scheme = MaterialTheme.colorScheme
     val haptics = Tokens.haptics
+    // **The whole cell is the target, and the disc inside it is only what you see.** Seven
+    // columns across a padded sheet leave about 46dp each on a 360dp phone — under the 48dp
+    // floor, and the one place in the app where that is arithmetic rather than an oversight —
+    // so every dp of it counts. The tap used to be taken *after* the 2dp inset, giving away
+    // four of them on the densest grid there is; the inset now only moves the paint.
     Box(
         modifier = modifier
             .aspectRatio(1f)
-            .padding(2.dp)
             .clip(CircleShape)
-            .then(if (selected) Modifier.background(scheme.primary) else Modifier)
-            .then(if (isToday && !selected) Modifier.border(1.dp, scheme.primary, CircleShape) else Modifier)
             .then(
                 if (date != null) {
                     Modifier.selectable(
@@ -267,7 +269,11 @@ private fun DayCell(
                 } else {
                     Modifier
                 },
-            ),
+            )
+            .padding(2.dp)
+            .clip(CircleShape)
+            .then(if (selected) Modifier.background(scheme.primary) else Modifier)
+            .then(if (isToday && !selected) Modifier.border(1.dp, scheme.primary, CircleShape) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
         if (date != null) {

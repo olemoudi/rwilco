@@ -44,6 +44,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -479,6 +480,8 @@ internal fun TriggersSection(
     clock: Clock,
     today: LocalDate,
     defaultTime: LocalTime,
+    /** The hour "the next day" starts at, which is what "mañana por la mañana" means. */
+    dayStart: LocalTime,
     /** What is worth saying about each rule, by index: one string resource, the worst one. */
     ruleWarnings: Map<Int, Int>,
     onAdd: () -> Unit,
@@ -525,6 +528,7 @@ internal fun TriggersSection(
                 suggestions = suggestions,
                 understood = understood,
                 defaultTime = defaultTime,
+                dayStart = dayStart,
                 onPick = onQuickAdd,
                 onUnderstood = onUnderstood,
             )
@@ -583,6 +587,7 @@ private fun QuickWhenRow(
     suggestions: List<Trigger>,
     understood: Understood?,
     defaultTime: LocalTime,
+    dayStart: LocalTime,
     onPick: (Trigger) -> Unit,
     onUnderstood: (Understood) -> Unit,
 ) {
@@ -591,9 +596,15 @@ private fun QuickWhenRow(
     val words = rememberWords()
     val now = clock.instant().atZone(clock.zone)
     val today = now.toLocalDate()
-    val tonight = LocalTime.of(20, 0)
-    val morning = LocalTime.of(9, 0)
-    val offered = remember(suggestions, understood, today) {
+    // **"Mañana por la mañana" is a setting, and it was a number.** `dayStart` is the hour
+    // this person's next day begins at — it is what `Snooze.TOMORROW_MORNING` lands on, said in
+    // the same three words — and this chip hardcoded nine o'clock, so the two controls
+    // disagreed the moment anybody moved their morning. `tonight` has nothing to read: there
+    // is no evening setting, `awake`'s far end is bedtime rather than the evening, and
+    // inventing one is a bigger question than this chip.
+    val tonight = EVENING
+    val morning = dayStart
+    val offered = remember(suggestions, understood, today, dayStart) {
         val starters = listOfNotNull(
             // A length, so it starts when the reminder does rather than at some fixed minute.
             Trigger.Countdown(QUICK_MINUTES),
@@ -670,6 +681,9 @@ private fun quickLabel(trigger: Trigger, today: LocalDate, defaultTime: LocalTim
 
 private const val QUICK_MINUTES = 30
 
+/** What "esta noche" means, until there is a setting that means it. */
+private val EVENING: LocalTime = LocalTime.of(20, 0)
+
 /** How many quick "when" chips the row shows: the suggestions and the starters they leave room for. */
 private const val QUICK_CHIPS = 6
 
@@ -742,15 +756,21 @@ private fun TriggerEditRow(
                         label = { Text(conditionLabel(condition), style = MaterialTheme.typography.labelMedium) },
                         leadingIcon = { Icon(Icons.Outlined.FilterAlt, contentDescription = null, modifier = Modifier.size(16.dp)) },
                         trailingIcon = {
+                            // The glyph stays 18dp — it is a chip's trailing icon and it has to
+                            // look like one — but what a thumb has to hit is 48. It was the bare
+                            // glyph, which is a third of the floor on a control that *destroys*
+                            // something, sitting a few millimetres from the chip that edits it.
                             Icon(
                                 imageVector = Icons.Outlined.Close,
                                 contentDescription = stringResource(R.string.editor_remove_condition),
                                 modifier = Modifier
-                                    .size(18.dp)
-                                    .clickable { onRemoveCondition(index) },
+                                    .minimumInteractiveComponentSize()
+                                    .clickable { onRemoveCondition(index) }
+                                    .size(18.dp),
                             )
                         },
                         shape = MaterialTheme.shapes.small,
+                        modifier = Modifier.heightIn(min = Tokens.sizes.touch),
                     )
                 }
                 TextButton(

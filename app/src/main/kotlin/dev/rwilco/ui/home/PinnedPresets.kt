@@ -23,6 +23,7 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.semantics.Role
 import dev.rwilco.model.Action
 import dev.rwilco.model.toggling
+import dev.rwilco.ui.components.scrollFade
 import dev.rwilco.ui.theme.icon
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
@@ -105,7 +106,7 @@ private fun PinnedPresetButton(preset: Preset, onPick: (Preset) -> Unit) {
         shape = MaterialTheme.shapes.small,
         color = presetWash(preset.colorIndex),
         border = BorderStroke(Tokens.strokes.control, color.copy(alpha = 0.55f)),
-        modifier = Modifier.heightIn(min = 44.dp),
+        modifier = Modifier.heightIn(min = Tokens.sizes.touch),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -137,8 +138,8 @@ private fun AddPinnedButton(onManage: () -> Unit) {
         color = scheme.surfaceContainerHigh,
         border = BorderStroke(Tokens.strokes.control, scheme.outline),
         modifier = Modifier
-            .heightIn(min = 44.dp)
-            .width(48.dp),
+            .heightIn(min = Tokens.sizes.touch)
+            .width(Tokens.sizes.touch),
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
@@ -190,11 +191,15 @@ fun PinPresetsPanel(
                     )
                     Spacer(Modifier.height(spacing.md))
                 }
+                // The same edge that lies on the preset chooser: a capped list whose rows end
+                // flush with the bottom reads as a list that finishes there.
+                val scroll = rememberScrollState()
                 Column(
                     verticalArrangement = Arrangement.spacedBy(spacing.sm),
                     modifier = Modifier
                         .weight(1f, fill = false)
-                        .verticalScroll(rememberScrollState()),
+                        .scrollFade(scroll, scheme.surfaceContainer)
+                        .verticalScroll(scroll),
                 ) {
                     for (preset in presets) {
                         val color = presetColor(preset.colorIndex)

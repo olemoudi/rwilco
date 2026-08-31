@@ -4,6 +4,7 @@ import dev.rwilco.model.Action
 import dev.rwilco.model.DEFAULT_ACTIONS
 import dev.rwilco.model.MAX_TEXT_LENGTH
 import dev.rwilco.model.keeping
+import dev.rwilco.model.Period
 import dev.rwilco.model.Presence
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.nextFire
@@ -180,6 +181,30 @@ class EditorStateTest {
         state = state.removeTrigger(0)
         assertEquals(listOf(changed), state.draft.rules.map { it.trigger })
         assertEquals(state, state.editTrigger(5), "editing a row that is not there is a no-op")
+    }
+
+    @Test
+    fun `a removed rule goes back where it was, with the recurrence it took with it`() {
+        // The bin sits one icon away from the pencil, and a place with its radius dragged is
+        // several minutes of work: the app's rule is an undo wherever there is an inverse.
+        val window = Trigger.Random(3, Period.DAY, LocalTime.of(9, 0), LocalTime.of(21, 0))
+        var state = blank.commitTrigger(null, tonight).commitTrigger(null, window)
+        state = state.copy(draft = state.draft.copy(recurrence = Recurrence.ByTrigger))
+        val removed = state.draft.rules[1]
+
+        // Taking the last random window out clears the answer it was: that has to come back too,
+        // or the undo hands back a different arrangement from the one that was removed.
+        val after = state.removeTrigger(1)
+        assertEquals(Recurrence.None, after.draft.recurrence)
+
+        val back = after.restoreTrigger(1, removed, Recurrence.ByTrigger)
+        assertEquals(listOf(tonight, window), back.draft.rules.map { it.trigger })
+        assertEquals(Recurrence.ByTrigger, back.draft.recurrence)
+        assertEquals(state.draft, back.draft, "the arrangement is the one that was removed")
+
+        // The first rule, put back at the front rather than at the end.
+        val front = state.removeTrigger(0).restoreTrigger(0, state.draft.rules[0], Recurrence.ByTrigger)
+        assertEquals(listOf(tonight, window), front.draft.rules.map { it.trigger })
     }
 
     @Test
