@@ -6,6 +6,7 @@ import android.media.AudioDeviceInfo
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
+import android.net.Uri
 import android.util.Log
 
 /**
@@ -102,6 +103,47 @@ object AlertAudio {
         val speaker = outputs?.firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
         runCatching { player.preferredDevice = speaker }
             .onFailure { Log.w(TAG, "could not move the sound to the speaker", it) }
+    }
+
+    /**
+     * A sound played **once**, at [gain] of the alarm volume, that lets go of itself.
+     *
+     * The other way of making a noise in this app. [AlertRinger] builds a player somebody
+     * holds — a screen is up, and it stops when the screen is answered — whereas this is
+     * reached from a broadcast with no screen behind it and nothing that will ever call stop:
+     * the safety net's word. So it releases the player and gives the audio back on its own,
+     * when the tone ends and when anything goes wrong, or the app would hold transient focus
+     * over somebody's music for ever the first time a file would not open.
+     *
+     * [gain] is amplitude, which is what a volume control is: 0.5 is half of the alarm, said in
+     * the only unit a sound has. The stream is the alarm's like everything else here, because
+     * "half of what is configured" only means anything against the slider the sound was chosen
+     * with — and being unheard is the one failure this is trying to prevent.
+     */
+    fun playOnce(context: Context, uri: Uri, gain: Float, toHeadphones: Boolean) {
+        val focus = duckOthers(context)
+        val give = { player: MediaPlayer ->
+            runCatching { player.release() }
+            release(context, focus)
+        }
+        runCatching {
+            MediaPlayer().apply {
+                setDataSource(context, uri)
+                setAudioAttributes(attributes())
+                routeTo(context, this, toHeadphones)
+                setVolume(gain, gain)
+                isLooping = false
+                setOnCompletionListener(give)
+                // A player that errors after start() never completes, and a listener that is
+                // not there is the difference between letting go and holding the focus for ever.
+                setOnErrorListener { player, _, _ -> give(player); true }
+                prepare()
+                start()
+            }
+        }.onFailure {
+            Log.w(TAG, "could not play the tone once", it)
+            release(context, focus)
+        }
     }
 
     /** The headphones, of whatever kind, if any are connected right now. */

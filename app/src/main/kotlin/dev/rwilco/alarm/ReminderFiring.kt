@@ -11,6 +11,10 @@ import dev.rwilco.model.AppSettings
 import dev.rwilco.model.FiringOutcome
 import dev.rwilco.model.FiringPlan
 import dev.rwilco.model.Recurrence
+import dev.rwilco.model.NET_GAIN
+import dev.rwilco.model.netSpeaksAloud
+import dev.rwilco.notify.AlertAudio
+import dev.rwilco.notify.Sounds
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.spanHasTakenOver
 import dev.rwilco.model.Snooze
@@ -485,6 +489,16 @@ class ReminderFiring(
             snoozes = settings.notificationSnoozeOffers,
             customMinutes = settings.snoozeCustomMinutes,
         )
+        // **And it says it out loud, quietly.** The card goes on the mutest channel there is
+        // and the app makes the noise itself, because a channel's tone plays at whatever the
+        // slider says and there is no such thing as half a notification. The ordinary,
+        // non-insistent tone — this is not the insistent kind of thing — at half an alarm, and
+        // only while somebody is up to hear it. See [netSpeaksAloud].
+        if (netSpeaksAloud(now, clock.zone, settings.dayShape)) {
+            Sounds.uri(context, settings.soundFor(insistent = false))?.let { tone ->
+                AlertAudio.playOnce(context, tone, NET_GAIN, settings.alertToHeadphones)
+            }
+        }
         scheduler.rearmAll()
     }
 

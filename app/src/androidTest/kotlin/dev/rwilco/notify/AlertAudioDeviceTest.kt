@@ -2,10 +2,12 @@ package dev.rwilco.notify
 
 import android.media.AudioManager
 import android.media.MediaPlayer
+import android.net.Uri
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.rwilco.model.AlertSound
 import dev.rwilco.model.Chime
+import dev.rwilco.model.NET_GAIN
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -74,6 +76,22 @@ class AlertAudioDeviceTest {
             player.release()
         }
         assertTrue("twenty seconds is inside the minute the noise may last", AlertAudio.HEADPHONES_GRACE_MS < 60_000L)
+    }
+
+    @Test
+    fun theNetsWordPlaysOnceAtHalfAndLetsGoOfItself() {
+        // The safety net makes a noise now — the ordinary tone at half an alarm — from a
+        // broadcast with no screen behind it and nothing that will ever call stop. So the
+        // player has to release itself, which is the half of this a JVM cannot check: what is
+        // pinned here is that every call on the way is one the platform accepts, and that the
+        // tone actually starts. There is nothing to *hear* on an emulator, as ever.
+        val uri = Sounds.uri(context, AlertSound.Bundled(Chime.SOFT))
+        assertNotNull(uri)
+        AlertAudio.playOnce(context, uri!!, NET_GAIN, toHeadphones = true)
+        // A file the phone cannot open must give the audio back rather than hold the focus for
+        // ever, which is the failure that would only ever show up as somebody's music staying
+        // ducked. It answers by not throwing.
+        AlertAudio.playOnce(context, Uri.parse("content://dev.rwilco.absent/nothing"), NET_GAIN, toHeadphones = false)
     }
 
     @Test

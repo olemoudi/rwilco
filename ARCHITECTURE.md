@@ -1175,9 +1175,7 @@ because that is what its chip would show.
   gets away — and anybody who could answer it would not need a net. So it holds for every
   reminder; the switch, the red mark on the card and the chip that filtered by it are all gone,
   and what is left to decide is only how long it waits. Said **once per moment**
-  (`Reminder.nudgedAt`) and **at any hour** — a silent word on a low channel wakes nobody, so
-  holding it back until morning would only make it later without making it quieter — quietly:
-  `CHANNEL_NET` is
+  (`Reminder.nudgedAt`) and **at any hour**, quietly: `CHANNEL_NET` is
   `IMPORTANCE_LOW`, silent, still, never a screen and never pinned — the same card with the same
   three buttons — "hecho" and the two snoozes the settings chose — on a line that says *puede
   que se te haya pasado* and a clock counting up from
@@ -1185,7 +1183,24 @@ because that is what its chip would show.
   reminder has nothing left to ring, and otherwise a **tenth** (`fraction`) of the gap to its
   next ring, whichever is shorter — the point being to catch it before the next one buries it.
   Under `minCadenceMinutes` (an hour) it cannot be armed at all: there the next ring already is
-  the net. The gap is `ringCadence`, asked of the *shape* rather than of the row (nothing
+  the net.
+
+  **It is heard, and that costs it the licence it had.** A word nobody notices is a word that
+  does not do its job, so the app plays the ordinary, non-insistent tone itself
+  (`AlertAudio.playOnce`) at **half** an alarm (`NET_GAIN`) — the channel stays mute, because a
+  channel's tone plays at whatever the slider says and there is no such thing as half a
+  notification. Half is amplitude, which is what a volume control is; a perceptual half would
+  be a quarter of it and inaudible in a room with anything else going on. The licence it loses
+  is "at any hour": that was built on being mute, and half of an alarm at three in the morning
+  is still an alarm at three in the morning. So the noise is kept to the hours this person is
+  up (`netSpeaksAloud` → `DayShape.awakeAt`, which asks *two* days because a bedtime past
+  midnight puts one in the morning inside the night before) and outside them the card is posted
+  exactly as mute as it always was. Nothing is lost: the word is in the shade either way, and
+  the net is by definition about something that has already got away. `playOnce` is the other
+  way of making a noise here — [AlertRinger] builds a player somebody holds and stops, this one
+  is reached from a broadcast with no screen behind it, so it releases the player and gives the
+  audio back on its own, on completion **and** on error, or a file that would not open would
+  leave the app holding transient focus over somebody's music for ever. The gap is `ringCadence`, asked of the *shape* rather than of the row (nothing
   rung, dealt with or done ahead) — a six-hourly
   reminder that rang and was ignored has no next moment of its own (an anchored recurrence
   counts from the "hecho") and its rhythm is six hours all the same. It keeps **its own alarm**,

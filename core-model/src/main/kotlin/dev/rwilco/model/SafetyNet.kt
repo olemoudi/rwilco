@@ -47,6 +47,30 @@ import java.time.ZoneId
  *
  * A place is treated as having nothing next, because nothing can say when somebody will be back.
  */
+/**
+ * How loud the net's word is, and when it is allowed to be loud at all.
+ *
+ * The net was mute, and its licence to speak **at any hour** was built on that: a silent card on
+ * a low channel wakes nobody, so holding it back until morning would have made it later without
+ * making it quieter. A word nobody hears is also a word that does not do its job, so it makes a
+ * noise now — the ordinary, non-insistent tone, at half the volume an alarm gets ([NET_GAIN]),
+ * which is the app saying "this is not the alarm" in the only unit a sound has.
+ *
+ * And the licence has to be paid for. Half of an alarm at three in the morning is still an alarm
+ * at three in the morning, so the noise is kept to the hours this person is up ([DayShape]) and
+ * outside them the card is posted exactly as mute as it always was. Nothing is lost by that: the
+ * word is in the shade either way, and the whole point of the net is that it is about something
+ * which has *already* got away.
+ */
+fun netSpeaksAloud(at: Instant, zone: ZoneId, shape: DayShape): Boolean = shape.awakeAt(at, zone)
+
+/**
+ * Half. Amplitude, which is what a volume control is: the net's word is exactly half of the
+ * alarm's, rather than half of how loud it *feels* — a perceptual half would be a quarter of
+ * this and inaudible in a room with anything else going on.
+ */
+const val NET_GAIN: Float = 0.5f
+
 @Serializable
 data class SafetyNetSettings(
     /** The longest it ever waits, and the whole wait when nothing is coming back. */

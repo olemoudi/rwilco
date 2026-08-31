@@ -1167,6 +1167,10 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_62_0">
+        <item>The safety net is heard now. Its word — «you may have let this one go» — plays your ordinary, non-insistent tone at half the volume an alarm gets: enough to notice, and saying in the only unit a sound has that it is not the alarm.</item>
+        <item>And it keeps to the hours you are up. Being mute was what let the net speak at any hour without anyone thinking about it; half an alarm at three in the morning is still an alarm at three in the morning, so outside your waking hours the card is posted exactly as silently as before. It is in the tray either way, and the net is about something that already got away.</item>
+    </string-array>
     <string-array name="whats_new_0_61_1">
         <item>The review round on yesterday\'s five. «Exactly the span» said the rules stop deciding, and for a place among them that was not true: the circle was still watched, still registered, and an arrival still rang it. Now the span really does take over — the watch drops the circle, the fence is given back, and the arrival rings nothing.</item>
         <item>And a rule nobody is asking any more no longer wears a mark saying it is not being met, which stated a promise as a fault.</item>

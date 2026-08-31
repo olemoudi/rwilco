@@ -5,9 +5,11 @@ package dev.rwilco.model
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
 
 /**
  * The hours somebody is up, which is the only honest answer to "at random during the day".
@@ -123,6 +125,26 @@ fun DayShape.awakeOn(date: LocalDate): AwakeWindow {
     // means, and a window of no width at all would be a day with no moment in it.
     val to = if (sleep > wake) date.atTime(sleep) else date.plusDays(1).atTime(sleep)
     return AwakeWindow(from, to)
+}
+
+/**
+ * Whether [at] falls inside the hours this person is up.
+ *
+ * Two days are asked, not one, and that is the whole of it: a bedtime past midnight puts the
+ * small hours of a Saturday inside *Friday's* window ([awakeOn]), so a moment judged against
+ * its own calendar day alone would call one in the morning "asleep" for somebody who is
+ * demonstrably still up. The same two-day reading `settleDays` needs, asked as a question.
+ *
+ * What it is for: the safety net's word, which is allowed to make a noise while somebody is
+ * there to hear it and must not be the thing that wakes them at three (see `netSpeaksAloud`).
+ */
+fun DayShape.awakeAt(at: Instant, zone: ZoneId): Boolean {
+    val local = at.atZone(zone).toLocalDateTime()
+    val today = local.toLocalDate()
+    return listOf(today.minusDays(1), today).any { date ->
+        val window = awakeOn(date)
+        local >= window.from && local < window.to
+    }
 }
 
 /**
