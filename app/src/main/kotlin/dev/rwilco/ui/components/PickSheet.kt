@@ -102,74 +102,75 @@ fun PickSheet(
         if (needle.isEmpty()) items else items.filter { it.lowercase(Locale.getDefault()).contains(needle) }
     }
     NoBounce {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        shape = MaterialTheme.shapes.extraLarge,
-    ) {
-        Column(
-            modifier = Modifier
-                .padding(horizontal = spacing.screen)
-                .navigationBarsPadding()
-                .padding(bottom = spacing.xl),
+        ModalBottomSheet(
+            onDismissRequest = onDismiss,
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            shape = MaterialTheme.shapes.extraLarge,
         ) {
-            Text(title, style = MaterialTheme.typography.headlineSmall)
-            Spacer(Modifier.height(spacing.md))
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                placeholder = { Text(stringResource(R.string.reuse_search)) },
-                leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
-                singleLine = true,
-                shape = MaterialTheme.shapes.small,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.outline,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                    cursorColor = MaterialTheme.colorScheme.primary,
-                ),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(spacing.md))
-            if (matching.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.reuse_none),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(vertical = spacing.lg),
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = spacing.screen)
+                    .navigationBarsPadding()
+                    .padding(bottom = spacing.xl),
+            ) {
+                Text(title, style = MaterialTheme.typography.headlineSmall)
+                Spacer(Modifier.height(spacing.md))
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    placeholder = { Text(stringResource(R.string.reuse_search)) },
+                    leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.small,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.outline,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
                 )
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(spacing.sm),
-                    // Tall enough to be a list, short enough that the search box stays put.
-                    modifier = Modifier.heightIn(max = 420.dp),
-                ) {
-                    items(matching, key = { it }) { item ->
-                        val on = item in selected
-                        Surface(
-                            onClick = {
-                                haptics.perform(HapticFeedbackType.Confirm)
-                                onPick(item)
-                            },
-                            shape = MaterialTheme.shapes.small,
-                            color = if (on) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = if (on) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface,
-                            border = if (on) null else BorderStroke(Tokens.strokes.control, MaterialTheme.colorScheme.outlineVariant),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Box(
-                                contentAlignment = Alignment.CenterStart,
-                                modifier = Modifier
-                                    .heightIn(min = Tokens.sizes.touch)
-                                    .padding(horizontal = spacing.lg, vertical = spacing.sm),
+                Spacer(Modifier.height(spacing.md))
+                if (matching.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.reuse_none),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = spacing.lg),
+                    )
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(spacing.sm),
+                        // Tall enough to be a list, short enough that the search box stays put.
+                        modifier = Modifier.heightIn(max = 420.dp),
+                    ) {
+                        items(matching, key = { it }) { item ->
+                            val on = item in selected
+                            Surface(
+                                onClick = {
+                                    haptics.perform(HapticFeedbackType.Confirm)
+                                    onPick(item)
+                                },
+                                shape = MaterialTheme.shapes.small,
+                                color = if (on) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentColor = if (on) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface,
+                                border = if (on) null else BorderStroke(Tokens.strokes.control, MaterialTheme.colorScheme.outlineVariant),
+                                modifier = Modifier.fillMaxWidth(),
                             ) {
-                                Text(
-                                    text = item,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
+                                Box(
+                                    contentAlignment = Alignment.CenterStart,
+                                    modifier = Modifier
+                                        .heightIn(min = Tokens.sizes.touch)
+                                        .padding(horizontal = spacing.lg, vertical = spacing.sm),
+                                ) {
+                                    Text(
+                                        text = item,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
                             }
                         }
                     }
@@ -178,4 +179,3 @@ fun PickSheet(
         }
     }
 }
-    }

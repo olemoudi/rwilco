@@ -151,19 +151,18 @@ fun LocationSheet(
         failure = null
         scope.launch {
             val fix = currentLocation(context)
-            // The quiet fix on opening loses the *pin* to anything chosen while it was in
-            // flight — but not the dot: where the phone is standing is true either way.
+            // **The dot first, and whatever happens to the pin afterwards.** Where the phone is
+            // standing is true either way — the quiet fix on opening loses the *pin* to
+            // anything chosen while it was in flight, and it should still be drawn — and the
+            // two are the same only for the first second of a place that opens on you. The
+            // question the map is asked, how far is this circle from me, needs both.
+            if (fix is LocationFix.Found) here = GeoPoint(fix.location.latitude, fix.location.longitude)
             if (!asked && lat != null) {
-                if (fix is LocationFix.Found) here = GeoPoint(fix.location.latitude, fix.location.longitude)
                 locating = false
                 return@launch
             }
             when (fix) {
                 is LocationFix.Found -> {
-                    // Where the phone is, kept apart from where the pin is: the two are the
-                    // same only for the first second of a place that opens on you, and the
-                    // question the map is asked — how far is this circle from me — needs both.
-                    here = GeoPoint(fix.location.latitude, fix.location.longitude)
                     lat = fix.location.latitude
                     lng = fix.location.longitude
                     if (asked) haptics.perform(HapticFeedbackType.Confirm)

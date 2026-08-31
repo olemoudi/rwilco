@@ -56,37 +56,37 @@ fun TriggerKindSheet(
 ) {
     val spacing = Tokens.spacing
     NoBounce {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        shape = MaterialTheme.shapes.extraLarge,
-    ) {
-        Column(
-            modifier = Modifier
-                .padding(horizontal = spacing.screen)
-                .navigationBarsPadding()
-                .padding(bottom = spacing.xl),
+        ModalBottomSheet(
+            onDismissRequest = onDismiss,
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            shape = MaterialTheme.shapes.extraLarge,
         ) {
-            Text(stringResource(R.string.editor_add_trigger), style = MaterialTheme.typography.headlineSmall)
-            Spacer(Modifier.height(spacing.lg))
-            // Through `offered`, so a favourite that is no longer a tile is the tile it turned
-            // into rather than a seventh row saying the same thing as the second.
-            val favourite = remember(preferred, kinds) { preferred?.offered()?.takeIf { it in kinds } }
-            val ordered = remember(favourite, kinds) { kindsOrdered(favourite, kinds) }
-            Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                for (kind in ordered) {
-                    KindRow(
-                        kind = kind,
-                        isDefault = kind == favourite,
-                        onClick = { onPick(kind) },
-                    )
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = spacing.screen)
+                    .navigationBarsPadding()
+                    .padding(bottom = spacing.xl),
+            ) {
+                Text(stringResource(R.string.editor_add_trigger), style = MaterialTheme.typography.headlineSmall)
+                Spacer(Modifier.height(spacing.lg))
+                // Through `offered`, so a favourite that is no longer a tile is the tile it turned
+                // into rather than a seventh row saying the same thing as the second.
+                val favourite = remember(preferred, kinds) { preferred?.offered()?.takeIf { it in kinds } }
+                val ordered = remember(favourite, kinds) { kindsOrdered(favourite, kinds) }
+                Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                    for (kind in ordered) {
+                        KindRow(
+                            kind = kind,
+                            isDefault = kind == favourite,
+                            onClick = { onPick(kind) },
+                        )
+                    }
                 }
             }
         }
     }
-}
     }
 
 @Composable

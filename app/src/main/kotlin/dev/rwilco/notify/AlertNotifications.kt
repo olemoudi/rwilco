@@ -356,8 +356,10 @@ object AlertNotifications {
     }
 
 
-    /** The rule rides as an extra: not part of the identity, refreshed by FLAG_UPDATE_CURRENT. */
     /**
+     * The alert screen, for the ring and for the net's word about it alike.
+     *
+     * The rule rides as an extra: not part of the identity, refreshed by FLAG_UPDATE_CURRENT.
      * [anyway] is the net's card saying that its reminder is not owed an answer and that the
      * screen should hold it regardless; see [ReminderScheduler.EXTRA_ANYWAY]. It is also what
      * tells the two cards' PendingIntents apart — extras are not part of a PendingIntent's

@@ -81,73 +81,73 @@ fun SheetScaffold(
     val haptics = Tokens.haptics
     val spacing = Tokens.spacing
     NoBounce {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        shape = MaterialTheme.shapes.extraLarge,
-    ) {
-        // The budget is what this slot is actually given, when it is given one; a bottom sheet
-        // usually measures its content unbounded (that is how a sheet taller than the screen can
-        // be dragged), and then the window minus the sheet's own furniture — the drag handle
-        // above this, and the gap it leaves under the status bar — is the honest guess. Capping
-        // against the whole window instead asked for more room than the sheet has and clipped
-        // the confirm row all the same, only by less.
-        BoxWithConstraints {
-            val budget = if (constraints.hasBoundedHeight) maxHeight else LocalConfiguration.current.screenHeightDp.dp - SHEET_CHROME
-            Column(
-                modifier = Modifier
-                    .heightIn(max = budget)
-                    .padding(horizontal = spacing.screen),
-            ) {
-            Text(title, style = MaterialTheme.typography.headlineSmall)
-            Spacer(Modifier.height(spacing.lg))
-            Column(
-                modifier = Modifier
-                    .weight(1f, fill = false)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(spacing.lg),
-            ) {
-                content()
-            }
-            Spacer(Modifier.height(spacing.lg))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .imePadding()
-                    .padding(bottom = spacing.md),
-                horizontalArrangement = Arrangement.spacedBy(spacing.sm),
-            ) {
-                TextButton(
-                    onClick = onDismiss,
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant),
-                    modifier = Modifier.heightIn(min = Tokens.sizes.control),
-                ) {
-                    Text(stringResource(R.string.sheet_cancel))
-                }
-                Button(
-                    onClick = {
-                        haptics.perform(HapticFeedbackType.Confirm)
-                        onConfirm()
-                    },
-                    enabled = confirmEnabled,
-                    shape = MaterialTheme.shapes.medium,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.onSurface,
-                        contentColor = MaterialTheme.colorScheme.surface,
-                    ),
+        ModalBottomSheet(
+            onDismissRequest = onDismiss,
+            sheetState = sheetState,
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            shape = MaterialTheme.shapes.extraLarge,
+        ) {
+            // The budget is what this slot is actually given, when it is given one; a bottom sheet
+            // usually measures its content unbounded (that is how a sheet taller than the screen can
+            // be dragged), and then the window minus the sheet's own furniture — the drag handle
+            // above this, and the gap it leaves under the status bar — is the honest guess. Capping
+            // against the whole window instead asked for more room than the sheet has and clipped
+            // the confirm row all the same, only by less.
+            BoxWithConstraints {
+                val budget = if (constraints.hasBoundedHeight) maxHeight else LocalConfiguration.current.screenHeightDp.dp - SHEET_CHROME
+                Column(
                     modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = Tokens.sizes.control),
+                        .heightIn(max = budget)
+                        .padding(horizontal = spacing.screen),
                 ) {
-                    Text(confirmLabel, style = MaterialTheme.typography.titleMedium)
+                Text(title, style = MaterialTheme.typography.headlineSmall)
+                Spacer(Modifier.height(spacing.lg))
+                Column(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(spacing.lg),
+                ) {
+                    content()
+                }
+                Spacer(Modifier.height(spacing.lg))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .imePadding()
+                        .padding(bottom = spacing.md),
+                    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant),
+                        modifier = Modifier.heightIn(min = Tokens.sizes.control),
+                    ) {
+                        Text(stringResource(R.string.sheet_cancel))
+                    }
+                    Button(
+                        onClick = {
+                            haptics.perform(HapticFeedbackType.Confirm)
+                            onConfirm()
+                        },
+                        enabled = confirmEnabled,
+                        shape = MaterialTheme.shapes.medium,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.onSurface,
+                            contentColor = MaterialTheme.colorScheme.surface,
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = Tokens.sizes.control),
+                    ) {
+                        Text(confirmLabel, style = MaterialTheme.typography.titleMedium)
+                        }
                     }
                 }
             }
         }
-    }
     }
 }
 
