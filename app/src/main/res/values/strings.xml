@@ -1167,6 +1167,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_61_1">
+        <item>The review round on yesterday\'s five. «Exactly the span» said the rules stop deciding, and for a place among them that was not true: the circle was still watched, still registered, and an arrival still rang it. Now the span really does take over — the watch drops the circle, the fence is given back, and the arrival rings nothing.</item>
+        <item>And a rule nobody is asking any more no longer wears a mark saying it is not being met, which stated a promise as a fault.</item>
+        <item>Adding two triggers, removing both and adding two moments back could leave you with «at once» — which for two moments never rings — inherited from a choice the app had made, not you. It is not inherited any more.</item>
+    </string-array>
     <string-array name="whats_new_0_61_0">
         <item>An alarm that is making a noise now asks to be silenced before it will take «Done». The big button turns red and says «Silence»: it stops the sound and the buzzing and nothing else, leaving the words, the snoozes and «View» exactly where they were to decide with — then it becomes the ordinary «Done». Half awake, «make it stop» and «I have done that» are the same reflex, and only one of them is true.</item>
         <item>A reminder sent to your headphones comes out of the phone twenty seconds later if nobody answers. Bluetooth earbuds routinely hold two devices, and while the other one has the channel there is nothing to hear — with no sign of it from here.</item>

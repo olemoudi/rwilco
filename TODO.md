@@ -46,6 +46,38 @@ once and the first answer wins, and the freshest last-known fix answers immediat
 as the fallback. "Could not get a fix" and "not allowed" are two different sentences now,
 because they need two different things from the person.
 
+## Review round, 0.61.1 (2026-08-31)
+The pass after the five features of 0.61.0. Four findings, all in the new work's blast radius,
+and the first one is the only serious one.
+
+- **"Justo el plazo" did not take the rules out of the loop for a place.** `SpanLanding.EXACT`
+  says the span alone decides, and `nextFire`/`nextWake` honoured it — which is enough for a
+  clock rule, because nothing arms one any more. A place has no armed moment by design, so its
+  circle stayed watched, stayed registered with Play Services, and an arrival rang the reminder
+  anyway: the button's own sentence was false, and the reminder rang twice a round. Now one
+  predicate, `Reminder.spanHasTakenOver` (said without a clock so the fences can ask it), and
+  the same question at all three doors — `watchedCircles`, `geofenceChoices` and
+  `ReminderFiring.fire`, mirrored in `Simulation`. A snooze waiting at a place outranks it, as
+  it outranks everything.
+- **A set the span had taken over still wore standing marks.** `ruleStandings` already answers
+  all-null for a resting set — "a mark there would be an answer to a question nobody put" — and
+  this is the same argument one step further: the place really is not being watched, and saying
+  so as "no se cumple" states a promise as a fault.
+- **A machine-written "a la vez" could be inherited.** Add two rules (the second now defaults to
+  `TOGETHER`), remove both, add two *moments* back: the leftover was a choice nobody could have
+  made — the control only exists with two rules on the form — and two moments under "a la vez"
+  never ring. `matchAfterAdding` now refuses to keep it. `ALL` over two moments means something
+  and is never touched.
+- One `!!` in the new landing button, removed.
+
+Checked and found sound: `owedUnderAll` (the catch-up's rules are dropped at the firing door),
+`SafetyNet` (reads `nextWake`), the sound previews in Settings (their own player, so the
+twenty-second handover to the speaker cannot cut a preview short), and the string-array parity
+of the release notes. Left alone deliberately: the editor's "luego… luego…" line shows the
+*rules'* cadence rather than the recurrence's for a span counted from the "hecho", because the
+walk models a moment that has rung and not one that has been dealt with — pre-existing, and
+each reading is a true future.
+
 ## Reliability pass, 0.7.5 (2026-08-25)
 A read of everything on the firing path, looking for the ways a reminder rings when it should
 not and stays silent when it should ring. Five real bugs, all in the same seam — what a moment

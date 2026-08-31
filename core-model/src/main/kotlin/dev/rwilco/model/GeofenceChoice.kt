@@ -16,6 +16,11 @@ fun geofenceChoices(reminders: List<Reminder>): List<Pair<String, Trigger.Locati
             // Put off until a place: that circle is the reminder's only one until it rings,
             // and the rules' own are outranked exactly as they are by a clock snooze.
             reminder.snoozedToPlace?.let { door -> return@flatMap listOf(GeofenceIds.encodeSnooze(reminder.id, door) to door) }
+            // A span that has taken the rules out of the loop leaves nothing to report: the
+            // reminder rings on its own moment now, and one of the hundred fences spent on a
+            // circle that cannot ring is one another reminder does not get. See
+            // [Reminder.spanHasTakenOver].
+            if (reminder.spanHasTakenOver) return@flatMap emptyList()
             // Only the rules still waiting to happen. Under "todos" a place that has already
             // been ticked off has nothing left to report, and a geofence is not free: a
             // hundred is the app's whole allowance and Play Services watches every one of

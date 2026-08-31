@@ -12,6 +12,7 @@ import dev.rwilco.model.FiringOutcome
 import dev.rwilco.model.FiringPlan
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RuleMatch
+import dev.rwilco.model.spanHasTakenOver
 import dev.rwilco.model.Snooze
 import dev.rwilco.model.Status
 import dev.rwilco.model.Trigger
@@ -136,6 +137,19 @@ class ReminderFiring(
         if (ruleIndex != null && judged == null) {
             Log.i(TAG, "$id asks for two moments at once, which never happens")
             Diag.note(TAG_DIAG, "r=${short(id)} dropped: two moments at once (rule $ruleIndex)")
+            spendArmed()
+            scheduler.rearmAll()
+            return@withLock
+        }
+        // "Justo el plazo" has taken the rules out of the loop: the reminder rings on the span's
+        // own moment now and nothing of theirs decides anything. A clock rule cannot reach here
+        // (nothing arms it any more), but a place has no armed moment by design — so a circle
+        // still registered with the system would go on ringing, once a round, for ever. The
+        // watch and the fences drop it too; this is the door they all come through. See
+        // [Reminder.spanHasTakenOver].
+        if (ruleIndex != null && reminder.spanHasTakenOver) {
+            Log.i(TAG, "$id comes back on its span now; rule $ruleIndex no longer decides")
+            Diag.note(TAG_DIAG, "r=${short(id)} dropped: the span has taken over (rule $ruleIndex)")
             spendArmed()
             scheduler.rearmAll()
             return@withLock

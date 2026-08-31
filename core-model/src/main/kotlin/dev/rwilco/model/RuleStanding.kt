@@ -57,6 +57,11 @@ fun Reminder.ruleStandings(
     if (!rulesCombine) return rules.map { null }
     val rest = restUntil(zone, dayStart, shape)
     if (rest != null && rest > now) return rules.map { null }
+    // And a set the span has taken over is not being asked anything ever again, which is the
+    // same argument one step further: a place among its rules is genuinely no longer watched,
+    // and a mark saying "no se cumple" would state that as a fault rather than as the thing
+    // "justo el plazo" said it would do. See [Reminder.spanHasTakenOver].
+    if (spanHasTakenOver) return rules.map { null }
     // Waiting at a place, the rules are not being asked either: the circle is all there is.
     if (snoozedToPlace != null) return rules.map { null }
     return rules.mapIndexed { index, rule ->

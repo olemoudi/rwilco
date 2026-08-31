@@ -1165,6 +1165,11 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_61_1">
+        <item>La ronda de revisión de las cinco de ayer. «Justo el plazo» decía que las reglas dejan de decidir, y para un lugar entre ellas no era verdad: el círculo se seguía vigilando, seguía registrado, y una llegada lo hacía sonar igual. Ahora el plazo toma el mando de verdad — la vigilancia suelta el círculo, la valla se devuelve y la llegada no suena.</item>
+        <item>Y una regla a la que ya no se pregunta nada deja de llevar una marca diciendo que no se cumple, que presentaba una promesa como un fallo.</item>
+        <item>Añadir dos disparadores, quitar los dos y volver a añadir dos momentos podía dejarte con «a la vez» — que con dos momentos no suena nunca — heredado de una elección que había hecho la app, no tú. Ya no se hereda.</item>
+    </string-array>
     <string-array name="whats_new_0_61_0">
         <item>Una alarma que está sonando pide silenciarse antes de aceptar un «Hecho». El botón grande se pone rojo y dice «Silenciar»: para el sonido y la vibración y nada más, dejando las palabras, los posponer y «Ver» donde estaban para poder decidir — y después pasa a ser el «Hecho» de siempre. Medio dormido, «que pare» y «ya lo he hecho» son el mismo gesto, y sólo uno de los dos es verdad.</item>
         <item>Un aviso enviado a los auriculares sale por el altavoz del móvil a los veinte segundos si nadie responde. Los auriculares bluetooth suelen tener dos dispositivos enlazados, y mientras el otro ocupa el canal no hay nada que oír — sin que se note desde aquí.</item>

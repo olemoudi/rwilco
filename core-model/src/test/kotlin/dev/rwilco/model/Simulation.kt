@@ -116,6 +116,13 @@ class Simulation(
         return fire(ruleIndex = null, late = null, deal = deal, viaSnoozePlace = true)
     }
 
+    /**
+     * The phone crosses the line of rule [ruleIndex]'s own circle — the geofence or the watch
+     * reporting it — which is `ReminderFiring.fire(ruleIndex)` with no armed moment behind it,
+     * because a place has none.
+     */
+    fun arrive(ruleIndex: Int, deal: (Ring) -> Deal = { Deal.Ignore }): Ring? = fire(ruleIndex, late = null, deal = deal)
+
     /** The person answers at [now], writing what `ReminderFiring.dismiss`/`snooze` write. */
     fun deal(deal: Deal) {
         when (deal) {
@@ -158,6 +165,13 @@ class Simulation(
             if (!eventDriven && armed != null && armed <= now.plusSeconds(5)) reminder = reminder.copy(armedFor = null, armedRule = null)
         }
         if (ruleIndex != null && judged == null) {
+            spendArmed()
+            arm()
+            return null
+        }
+        // The span has taken the rules out of the loop: a circle still registered with the
+        // system cannot ring what the rules no longer decide. See [Reminder.spanHasTakenOver].
+        if (ruleIndex != null && row.spanHasTakenOver) {
             spendArmed()
             arm()
             return null

@@ -95,6 +95,10 @@ fun Reminder.watchedCircles(
             ),
         )
     }
+    // "Justo el plazo" has taken the rules out of the loop, so none of their circles can ring
+    // and none is worth a position — for good, not only while the rest is on. See
+    // [Reminder.spanHasTakenOver]; the snooze circle above outranks it, as it outranks the rules.
+    if (spanHasTakenOver) return emptyList()
     val pending = pendingRules().toSet()
     val folded = rules.indices.map { ruleInSet(it, shape) }
     // A rule's moment cannot be asked before a snooze is over: the snooze rings instead, with

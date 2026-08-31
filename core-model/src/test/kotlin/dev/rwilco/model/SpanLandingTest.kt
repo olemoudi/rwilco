@@ -5,7 +5,9 @@ import dev.rwilco.model.Fixtures.local
 import dev.rwilco.model.Fixtures.zone
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -130,6 +132,70 @@ class SpanLandingTest {
         assertEquals(local(2026, 5, 31, 9, 0), nextFire(exact, now, zone, defaultTime, dayStart)?.moment)
         val next = withPlace.copy(recurrence = Recurrence.After(30, RecurrenceUnit.DAYS, landing = SpanLanding.NEXT))
         assert(nextFire(next, now, zone, defaultTime, dayStart) is NextFire.WhenAt) { "the circle is still the alarm" }
+    }
+
+    /**
+     * "Al llegar a casa, sólo los viernes de 9 a 10, y vuelve cada 30 días — justo el plazo."
+     *
+     * Reachable: the fence names days, so the landing question is asked, and "justo el plazo"
+     * says the rules stop deciding. What that has to mean is that the circle stops being
+     * watched, stops being registered, and — the one that matters — that an arrival reaching
+     * the firing anyway does not ring. A clock rule cannot leak here (nothing arms it), but a
+     * place has no armed moment to check by design, so it is the one door left open.
+     */
+    private fun placeUnderExact() = Fixtures.reminder(
+        Trigger.Location(40.4, -3.7, 150, Presence.INSIDE, "Casa", onCrossing = true),
+        conditions = listOf(Condition.TimeWindow(LocalTime.of(9, 0), LocalTime.of(10, 0), setOf(DayOfWeek.FRIDAY))),
+    ).copy(
+        recurrence = Recurrence.After(30, RecurrenceUnit.DAYS, landing = SpanLanding.EXACT),
+        lastFiredAt = rang,
+        lastDealtAt = dealt,
+    )
+
+    @Test
+    fun `once the span has taken over the rules are spent, rest or no rest`() {
+        val reminder = placeUnderExact()
+        assertTrue(reminder.spanHasTakenOver, "dealt with once, under «justo el plazo»")
+        // Before the first "hecho" the rules are the whole arrangement and must be untouched.
+        assertFalse(reminder.copy(lastDealtAt = null, lastFiredAt = null).spanHasTakenOver)
+        // And it is a fact about this reading only: the other two leave the rules deciding.
+        assertFalse(reminder.copy(recurrence = Recurrence.After(30, RecurrenceUnit.DAYS)).spanHasTakenOver)
+        // A recurrence with no rules to take over from is the ring already; nothing to spend.
+        assertFalse(
+            Fixtures.reminder().copy(
+                recurrence = Recurrence.After(30, RecurrenceUnit.DAYS, landing = SpanLanding.EXACT),
+                lastDealtAt = dealt,
+            ).spanHasTakenOver,
+        )
+    }
+
+    @Test
+    fun `a spent place is not watched, not registered, and does not ring`() {
+        val reminder = placeUnderExact()
+        // Long after the rest is up, which is when the gate on the rest alone stopped helping.
+        val later = local(2026, 6, 30, 12, 0)
+        assertEquals(emptyList<Gated>(), reminder.watchedCircles(later, zone, defaultTime, dayStart = dayStart))
+        assertEquals(emptyList<Pair<String, Trigger.Location>>(), geofenceChoices(listOf(reminder)))
+        // And the door itself: an arrival delivered anyway rings nothing.
+        val phone = Simulation(reminder, later)
+        assertEquals(null, phone.arrive(0), "the arrival rang under «justo el plazo»")
+        assertTrue(phone.rings.isEmpty())
+        // The same arrival on the same reminder under "el siguiente" is a ring, which is what
+        // says the guard is about the reading and not about the place.
+        val stillDeciding = Simulation(reminder.copy(recurrence = Recurrence.After(30, RecurrenceUnit.DAYS)), later)
+        assertEquals(1, stillDeciding.arrive(0)?.let { 1 } ?: 0, "the other readings still watch the door")
+    }
+
+    @Test
+    fun `a place waited at outranks even that`() {
+        // A snooze is the person's own "cuando llegue a casa" about a ring that has already
+        // happened, and it is the whole of the alarm: it is never what a recurrence spends.
+        val waiting = placeUnderExact().copy(
+            snoozedToPlace = Trigger.Location(40.4, -3.7, 150, Presence.INSIDE, "Casa", onCrossing = true),
+        )
+        val later = local(2026, 6, 30, 12, 0)
+        assertEquals(1, waiting.watchedCircles(later, zone, defaultTime, dayStart = dayStart).size)
+        assertEquals(1, geofenceChoices(listOf(waiting)).size)
     }
 
     @Test

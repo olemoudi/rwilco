@@ -279,15 +279,10 @@ internal fun RecurrenceSection(
                             // that hour here is the difference between "exactamente cada 30
                             // días a las 14:00" and one that quietly rings at breakfast.
                             onClick = {
-                                val adopt = landing == SpanLanding.EXACT &&
-                                    recurrence.hour == RecurrenceHour.DayStart &&
-                                    rulesHour != null
-                                onCustom(
-                                    recurrence.copy(
-                                        landing = landing,
-                                        hour = if (adopt) RecurrenceHour.At(rulesHour!!) else recurrence.hour,
-                                    ),
-                                )
+                                val adopt = rulesHour
+                                    ?.takeIf { landing == SpanLanding.EXACT && recurrence.hour == RecurrenceHour.DayStart }
+                                    ?.let { RecurrenceHour.At(it) }
+                                onCustom(recurrence.copy(landing = landing, hour = adopt ?: recurrence.hour))
                             },
                         )
                     }

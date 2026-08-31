@@ -329,7 +329,13 @@ anything repeats**:
   the only reading that can land a rest *earlier* than the span it counts — so it is applied in
   `restUntil` rather than left to the rules' own walk, which only ever looks forward. `EXACT`
   rings the span's own moment and takes the rules out of the loop entirely, place rules included;
-  `nextFire`/`nextWake` answer with `recurrenceMoment` the moment there is a rest. The days come
+  `nextFire`/`nextWake` answer with `recurrenceMoment` the moment there is a rest — and so do
+  the watch, the fences and the firing, through `Reminder.spanHasTakenOver`. That predicate is
+  said without a clock on purpose (`geofenceChoices` has none) and it is the whole of what
+  "takes the rules out of the loop" means: a clock rule is safe because nothing arms one again,
+  but a place has no armed moment by design, so without asking at all three doors its circle
+  went on ringing the reminder once a round for ever. A place a *snooze* is waiting at outranks
+  it, as it outranks the rules themselves. The days come
   from `Reminder.daysNamedByRules` — the union across the rules *and* their fences, because under
   "a la vez" the rule that carries the days is not the rule that rings. Asked in "Vuelve" only
   where it means anything (a span, not in hours, and rules that name days), and picking `EXACT`

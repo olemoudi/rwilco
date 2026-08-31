@@ -72,7 +72,7 @@ fun nextFire(
     // the rules stop deciding — that is what makes thirty days thirty days rather than the next
     // Friday after them. The rules still say when it goes off the FIRST time, which is why this
     // is asked of the rest and not of the reminder. See [SpanLanding.EXACT].
-    if (rest != null && reminder.recurrence.landsExactly) {
+    if (reminder.spanHasTakenOver) {
         return reminder.recurrenceMoment(now, zone, dayStart, shape)
             ?.let { NextFire.Scheduled(it, reminder.rules.firstOrNull()?.trigger) }
     }
@@ -154,7 +154,7 @@ fun nextWake(
     val rest = reminder.restUntil(zone, dayStart, shape)
     // The same as nextFire: under "exactamente cada N" the moment to arm is the span's own, and
     // it is the ring rather than a note to take (see [SpanLanding.EXACT]).
-    if (rest != null && reminder.recurrence.landsExactly) {
+    if (reminder.spanHasTakenOver) {
         return reminder.recurrenceMoment(now, zone, dayStart, shape)?.let { Wake(it, null) }
     }
     val from = maxOf(reminder.searchFrom(now), rest ?: now)
@@ -520,6 +520,27 @@ fun Reminder.restUntil(zone: ZoneId, dayStart: LocalTime, shape: DayShape = DayS
     if (rules.none { it.trigger.namesAnHour }) return moved
     return moved.atZone(zone).toLocalDate().atStartOfDay(zone).toInstant()
 }
+
+/**
+ * Whether an "exactly the span" recurrence has taken the rules out of the loop.
+ *
+ * [SpanLanding.EXACT] says thirty days means thirty days, and the price is that the rules stop
+ * deciding once there is a span to count — which is stated on the button. `nextFire`/`nextWake`
+ * honour it by answering with the recurrence's own moment, and that is enough for everything
+ * driven by an alarm: a clock rule is never armed again, so it can never ring.
+ *
+ * **A place is the door that stays open.** It has no armed moment to check by design — an
+ * arrival happens when it happens — so a circle still registered with the system would go on
+ * ringing a reminder whose rules no longer decide anything, once a round, for ever. So the same
+ * question is asked of the watch (`watchedCircles`), of the fences (`geofenceChoices`) and of
+ * the firing itself, which is the door they all come through.
+ *
+ * Said without a clock on purpose, so the fences can ask it too: it is exactly the condition
+ * under which [restUntil] has a rest to give, minus the arithmetic.
+ */
+val Reminder.spanHasTakenOver: Boolean
+    get() = recurrence.landsExactly && rules.isNotEmpty() &&
+        (lastDealtAt != null || (recurrence.countsFromRinging && lastFiredAt != null))
 
 /**
  * The days of the week the rules limit this reminder to; empty when they name none.

@@ -97,6 +97,24 @@ class EditorStateTest {
     }
 
     @Test
+    fun `a leftover "a la vez" is not inherited by a pair that could never ring`() {
+        val twoAt = Trigger.TimeOfDay(LocalTime.of(14, 0))
+        val fridays = Trigger.Weekday(setOf(DayOfWeek.FRIDAY))
+        // Two rules make "a la vez"; take both away and the answer is still on the draft, with
+        // no control on the screen to have chosen it — this function wrote it. Two moments
+        // added back must not inherit it, or the pair is silent by a machine's decision.
+        val reused = blank.commitTrigger(null, twoAt).commitTrigger(null, fridays)
+            .removeTrigger(1).removeTrigger(0)
+            .commitTrigger(null, tonight).commitTrigger(null, weekly)
+        assertEquals(RuleMatch.ANY, reused.draft.ruleMatch)
+        // "Todos" over two moments means something — both have happened — and is never touched.
+        val both = blank.commitTrigger(null, twoAt).setRuleMatch(RuleMatch.ALL)
+            .removeTrigger(0)
+            .commitTrigger(null, tonight).commitTrigger(null, weekly)
+        assertEquals(RuleMatch.ALL, both.draft.ruleMatch)
+    }
+
+    @Test
     fun `how the rules combine travels to the reminder and back`() {
         val state = blank.withText("Llamar a Marta")
             .commitTrigger(null, tonight)

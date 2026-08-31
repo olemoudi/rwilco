@@ -400,10 +400,22 @@ fun EditorUiState.commitTrigger(index: Int?, trigger: Trigger): EditorUiState {
  *
  * Only on the *second* rule, and only while the choice is still the untouched default: a third
  * rule, or one added after somebody has picked for themselves, changes nothing.
+ *
+ * With one exception, which is the same guard read the other way round. Take two rules away and
+ * add two moments back and the leftover would be a `TOGETHER` **this function wrote** — nobody
+ * can have chosen it, because the control only exists with two rules on the form — so the
+ * second half of the pair would inherit a machine's answer that guarantees silence. A
+ * `TOGETHER` over two moments is never worth keeping, whoever wrote it; `ALL` over two moments
+ * means something ("both have happened") and is never touched.
  */
 private fun EditorUiState.matchAfterAdding(rules: List<TriggerRule>, adding: Boolean): RuleMatch {
-    if (!adding || draft.ruleMatch != RuleMatch.ANY || rules.size != 2) return draft.ruleMatch
-    return if (rules.all { it.trigger.isMoment }) RuleMatch.ANY else RuleMatch.TOGETHER
+    if (!adding || rules.size != 2) return draft.ruleMatch
+    val moments = rules.all { it.trigger.isMoment }
+    return when {
+        moments -> if (draft.ruleMatch == RuleMatch.TOGETHER) RuleMatch.ANY else draft.ruleMatch
+        draft.ruleMatch == RuleMatch.ANY -> RuleMatch.TOGETHER
+        else -> draft.ruleMatch
+    }
 }
 
 fun EditorUiState.addCondition(ruleIndex: Int): EditorUiState =
