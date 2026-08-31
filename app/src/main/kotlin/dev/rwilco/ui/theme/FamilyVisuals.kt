@@ -3,6 +3,7 @@ package dev.rwilco.ui.theme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.CalendarViewWeek
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Casino
 import androidx.compose.material.icons.outlined.Event
@@ -75,6 +76,9 @@ val TriggerKind.icon: ImageVector
         TriggerKind.DATE_RANGE -> Icons.Outlined.CalendarMonth
         // A clock face: the one tile that is about an hour and no day in particular.
         TriggerKind.TIME_OF_DAY -> Icons.Outlined.Schedule
+        // A week laid out in columns: the one tile that is about days and no hour in particular,
+        // which is the clock face's exact opposite and reads as it at a glance.
+        TriggerKind.WEEKDAY -> Icons.Outlined.CalendarViewWeek
         TriggerKind.REPEAT_TIME -> Icons.Outlined.Repeat
         // A clock with a slice of it filled: a stretch OF the day, which is what a range is.
         // The hourglass this used to be said "time passing", and said it in almost the same

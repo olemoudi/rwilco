@@ -18,7 +18,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -85,6 +87,9 @@ fun AlertStackScreen(
     /** One answer for all of them: five ringing at once used to be five taps down a scroll. */
     onDoneAll: () -> Unit = {},
     onSnoozeAll: (Snooze) -> Unit = {},
+    /** Whether it is making a noise right this second; see [SilenceRow]. */
+    ringing: Boolean = false,
+    onSilence: () -> Unit = {},
 ) {
     val scheme = MaterialTheme.colorScheme
     val spacing = Tokens.spacing
@@ -130,10 +135,48 @@ fun AlertStackScreen(
                 }
             }
             Spacer(Modifier.height(spacing.md))
+            SilenceRow(ringing, onSilence)
             AllRow(snoozes, customMinutes, onDoneAll, onSnoozeAll)
         }
         HoldOverlay(holdOverlay)
     }
+    }
+}
+
+/**
+ * "Silenciar", across the width, while there is a noise to silence.
+ *
+ * A row of its own here rather than the swap the single alert does with its "Hecho". There is no
+ * one button on this screen to take over — every strip has its own, and each of them belongs to
+ * a reminder somebody has to have *read* to answer — so nothing is taken away: the loudest thing
+ * on the screen becomes the one that stops the noise, and everything else stays where it was.
+ * It leaves with the noise, and the strips take the height back.
+ */
+@Composable
+private fun SilenceRow(ringing: Boolean, onSilence: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val spacing = Tokens.spacing
+    val haptics = Tokens.haptics
+    AnimatedVisibility(visible = ringing) {
+        Column {
+            Button(
+                onClick = {
+                    haptics.perform(HapticFeedbackType.ContextClick)
+                    onSilence()
+                },
+                shape = MaterialTheme.shapes.medium,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = scheme.errorContainer,
+                    contentColor = scheme.onErrorContainer,
+                ),
+                modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.sizes.control),
+            ) {
+                Icon(Icons.AutoMirrored.Filled.VolumeOff, contentDescription = null)
+                Spacer(Modifier.width(spacing.sm))
+                Text(stringResource(R.string.alert_silence), style = MaterialTheme.typography.titleSmall)
+            }
+            Spacer(Modifier.height(spacing.sm))
+        }
     }
 }
 

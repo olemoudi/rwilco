@@ -84,8 +84,11 @@ import dev.rwilco.ui.editor.sheets.IntervalSheet
 import dev.rwilco.ui.editor.sheets.LocationSheet
 import dev.rwilco.ui.editor.sheets.RandomSheet
 import dev.rwilco.ui.editor.sheets.TimeOfDaySheet
+import dev.rwilco.ui.editor.sheets.WeekdaySheet
 import dev.rwilco.ui.editor.sheets.CalendarSheet
 import dev.rwilco.model.Status
+import dev.rwilco.model.hourNamed
+import dev.rwilco.model.namedDays
 import dev.rwilco.model.namesAnHour
 import dev.rwilco.model.ringCadence
 import dev.rwilco.ui.format.currentLocale
@@ -394,6 +397,12 @@ fun EditorScreen(
                         chanceDecides = state.draft.rules.any { it.trigger.decidesItsOwnDates },
                         defaultTime = state.defaultTime,
                         rulesNameAnHour = state.draft.rules.any { it.trigger.namesAnHour },
+                        // The same union the scheduler bends a span to (Reminder.daysNamedByRules),
+                        // asked of the draft: what the rules and their fences allow, together.
+                        rulesDays = state.draft.rules.flatMapTo(LinkedHashSet()) { rule ->
+                            rule.trigger.namedDays + rule.conditions.flatMap { it.namedDays }
+                        },
+                        rulesHour = state.draft.rules.firstNotNullOfOrNull { it.trigger.hourNamed },
                         warning = recurrenceWarning,
                         onPick = viewModel::pickRecurrencePreset,
                         onCustom = viewModel::setRecurrence,
@@ -488,6 +497,12 @@ fun EditorScreen(
                     TriggerKind.TIME_OF_DAY -> TimeOfDaySheet(
                         initial = sheet.initial as? dev.rwilco.model.Trigger.TimeOfDay,
                         defaultTime = state.defaultTime,
+                        combining = state.draft.ruleMatch == RuleMatch.TOGETHER && state.draft.rules.size > 1,
+                        onConfirm = commit,
+                        onDismiss = viewModel::closeSheet,
+                    )
+                    TriggerKind.WEEKDAY -> WeekdaySheet(
+                        initial = sheet.initial as? dev.rwilco.model.Trigger.Weekday,
                         combining = state.draft.ruleMatch == RuleMatch.TOGETHER && state.draft.rules.size > 1,
                         onConfirm = commit,
                         onDismiss = viewModel::closeSheet,

@@ -4,6 +4,7 @@ import dev.rwilco.model.Action
 import dev.rwilco.model.DEFAULT_ACTIONS
 import dev.rwilco.model.MAX_TEXT_LENGTH
 import dev.rwilco.model.keeping
+import dev.rwilco.model.Presence
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.nextFire
 import dev.rwilco.model.RecurrenceUnit
@@ -51,6 +52,48 @@ class EditorStateTest {
         assertFalse(blank.canSave)
         assertEquals(listOf(ValidationError.TextBlank), blank.errors)
         assertFalse(blank.showErrors)
+    }
+
+    @Test
+    fun `a second trigger means "a la vez", unless that would mean silence`() {
+        val twoAt = Trigger.TimeOfDay(LocalTime.of(14, 0))
+        val fridays = Trigger.Weekday(setOf(DayOfWeek.FRIDAY))
+        // The everyday case, and the reason the default moved: somebody writing "a las 14:00"
+        // and then "los viernes" means one arrangement with two halves, not two arrangements
+        // either of which rings. Under "cualquiera" that was a reminder going off twice.
+        val together = blank.commitTrigger(null, twoAt).commitTrigger(null, fridays)
+        assertEquals(RuleMatch.TOGETHER, together.draft.ruleMatch)
+        // And the exception. Two triggers that are each true at one instant never coincide, so
+        // "a la vez" there is a reminder that can never ring — quietly, at the moment somebody
+        // was least looking. The editor warns about it; a default that leans on its own warning
+        // is a bad default.
+        val moments = blank.commitTrigger(null, tonight).commitTrigger(null, weekly)
+        assertEquals(RuleMatch.ANY, moments.draft.ruleMatch)
+        // A place is a doorway when it is written as one, so it is a moment too.
+        val doorway = Trigger.Location(40.4, -3.7, 150, Presence.INSIDE, "Casa", onCrossing = true)
+        assertEquals(RuleMatch.ANY, blank.commitTrigger(null, twoAt).commitTrigger(null, doorway).draft.ruleMatch)
+        // Whereas "mientras esté en casa" is a state, and joins the hour the way it reads.
+        val standing = doorway.copy(onCrossing = false)
+        assertEquals(RuleMatch.TOGETHER, blank.commitTrigger(null, twoAt).commitTrigger(null, standing).draft.ruleMatch)
+    }
+
+    @Test
+    fun `only the second trigger, and only while nobody has chosen`() {
+        val twoAt = Trigger.TimeOfDay(LocalTime.of(14, 0))
+        val fridays = Trigger.Weekday(setOf(DayOfWeek.FRIDAY))
+        // A third rule leaves the answer alone: by then it is somebody's, whether they picked
+        // it or the second rule did.
+        val third = blank.commitTrigger(null, twoAt).commitTrigger(null, fridays)
+            .setRuleMatch(RuleMatch.ANY)
+            .commitTrigger(null, Trigger.DateRange(LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 31)))
+        assertEquals(RuleMatch.ANY, third.draft.ruleMatch)
+        // And a choice already made is not overwritten by the rule that arrives after it.
+        val chosen = blank.commitTrigger(null, twoAt).setRuleMatch(RuleMatch.ALL).commitTrigger(null, fridays)
+        assertEquals(RuleMatch.ALL, chosen.draft.ruleMatch)
+        // Editing a rule in place changes nothing either: there is no new rule to read.
+        val edited = blank.commitTrigger(null, twoAt).commitTrigger(0, Trigger.TimeOfDay(LocalTime.of(15, 0)))
+        assertEquals(RuleMatch.ANY, edited.draft.ruleMatch)
+        assertEquals(1, edited.draft.rules.size)
     }
 
     @Test

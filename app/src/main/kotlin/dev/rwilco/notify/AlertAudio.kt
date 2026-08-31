@@ -67,6 +67,43 @@ object AlertAudio {
             .onFailure { Log.w(TAG, "could not route to the headset", it) }
     }
 
+    /**
+     * How long a reminder sent to the headphones is given before it comes out of the phone
+     * instead.
+     *
+     * A pair of earbuds is not proof that anybody is listening to them. Bluetooth headphones
+     * routinely hold two devices at once, and while the *other* one has the channel — a laptop
+     * playing music, a second phone on a call — an alarm handed to the earbuds is played into a
+     * link that is not carrying it, or under something loud enough to bury it. Nothing about
+     * that is visible from here: the headset is connected, the routing is accepted, the player
+     * says it is playing, and the person hears nothing. The vibration is no help either; a phone
+     * on a desk is a phone nobody is touching.
+     *
+     * So the routing is a *first* answer rather than the only one. Twenty seconds is long enough
+     * for somebody actually wearing them to have heard it and reached for the screen, and short
+     * enough to be well inside the minute the noise is allowed to last at all
+     * ([VibrationLimits.LONGEST]) — the handover leaves forty seconds of alarm out loud, which is
+     * an alarm.
+     */
+    const val HEADPHONES_GRACE_MS: Long = 20_000L
+
+    /**
+     * Move a sound already playing to the phone's own speaker. See [HEADPHONES_GRACE_MS].
+     *
+     * The speaker is named outright rather than the preference simply being cleared. Clearing it
+     * hands the choice back to the platform, and the platform's answer for an alarm with A2DP
+     * connected is not the same on every phone — which is the exact uncertainty this exists to
+     * end. A phone with no speaker device to find falls back to clearing it, which is still
+     * better than staying where it was.
+     */
+    fun toSpeaker(context: Context, player: MediaPlayer) {
+        val audio = context.getSystemService(AudioManager::class.java)
+        val outputs = audio?.let { runCatching { it.getDevices(AudioManager.GET_DEVICES_OUTPUTS) }.getOrNull() }
+        val speaker = outputs?.firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
+        runCatching { player.preferredDevice = speaker }
+            .onFailure { Log.w(TAG, "could not move the sound to the speaker", it) }
+    }
+
     /** The headphones, of whatever kind, if any are connected right now. */
     fun headset(context: Context): AudioDeviceInfo? {
         val audio = context.getSystemService(AudioManager::class.java) ?: return null

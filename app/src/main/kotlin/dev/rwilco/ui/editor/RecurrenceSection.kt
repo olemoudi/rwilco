@@ -68,6 +68,9 @@ import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.sameSpanAs
 import dev.rwilco.model.countsFromRinging
 import dev.rwilco.model.RecurrenceFrom
+import dev.rwilco.model.SpanLanding
+import dev.rwilco.model.landing
+import dev.rwilco.model.landsExactly
 import dev.rwilco.ui.components.SegmentedChoice
 import dev.rwilco.ui.format.recurrenceLabel
 import dev.rwilco.ui.format.repeatSummary
@@ -128,6 +131,13 @@ internal fun RecurrenceSection(
      * a line rather than a control that quietly does nothing.
      */
     rulesNameAnHour: Boolean,
+    /**
+     * The days of the week the rules allow, empty when they name none. What makes the landing
+     * question worth asking at all: with no days named, a span lands where it lands.
+     */
+    rulesDays: Set<java.time.DayOfWeek>,
+    /** The hour the rules name, offered to "justo el plazo" — which takes the rules out of the loop. */
+    rulesHour: LocalTime?,
     /** The worst thing there is to say about the calendar, or null when there is nothing. */
     warning: Int?,
     onPick: (RecurrencePreset) -> Unit,
@@ -242,6 +252,53 @@ internal fun RecurrenceSection(
                     onClick = { onCustom(recurrence.copy(from = RecurrenceFrom.DEALT)) },
                 )
             }
+            // And which DAY, when the rules only allow some of them. "Los viernes a las 14:00,
+            // y vuelve cada 30 días" has three honest readings and the app used to pick one
+            // without saying so — see [SpanLanding]. Asked only where it means anything: a span
+            // in hours never bends to a weekday, and rules that name no days have nothing to
+            // bend to.
+            if (recurrence.unit != RecurrenceUnit.HOURS && rulesDays.isNotEmpty()) {
+                Spacer(Modifier.height(spacing.md))
+                Text(
+                    text = stringResource(R.string.recur_landing),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(spacing.xs))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                    verticalArrangement = Arrangement.spacedBy(spacing.sm),
+                ) {
+                    for (landing in SpanLanding.entries) {
+                        RecurrenceButton(
+                            label = stringResource(landing.labelRes),
+                            selected = recurrence.landing == landing,
+                            // "Justo el plazo" takes the rules out of the loop, so the hour they
+                            // were naming goes with them — and the row below, which said it
+                            // decided nothing, is suddenly the only thing that does. Adopting
+                            // that hour here is the difference between "exactamente cada 30
+                            // días a las 14:00" and one that quietly rings at breakfast.
+                            onClick = {
+                                val adopt = landing == SpanLanding.EXACT &&
+                                    recurrence.hour == RecurrenceHour.DayStart &&
+                                    rulesHour != null
+                                onCustom(
+                                    recurrence.copy(
+                                        landing = landing,
+                                        hour = if (adopt) RecurrenceHour.At(rulesHour!!) else recurrence.hour,
+                                    ),
+                                )
+                            },
+                        )
+                    }
+                }
+                Spacer(Modifier.height(spacing.xs))
+                Text(
+                    text = stringResource(recurrence.landing.hintRes),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             // And which hour it lands on, which "cada día" leaves open and the app used to
             // answer on its own. Not asked of a span counted in hours: that one is exact by
             // definition, and an hour of the day means nothing to it.
@@ -282,10 +339,17 @@ internal fun RecurrenceSection(
                         onChange = { onCustom(recurrence.copy(hour = RecurrenceHour.At(it))) },
                     )
                 }
-                if (rulesNameAnHour) {
+                // Under "justo el plazo" the rules have stopped deciding, so the note that says
+                // this control decides nothing would be exactly wrong: it decides everything.
+                val hourNote = when {
+                    recurrence.landsExactly -> R.string.recur_hour_exact_note
+                    rulesNameAnHour -> R.string.recur_hour_rules_note
+                    else -> null
+                }
+                if (hourNote != null) {
                     Spacer(Modifier.height(spacing.xs))
                     Text(
-                        text = stringResource(R.string.recur_hour_rules_note),
+                        text = stringResource(hourNote),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -675,3 +739,18 @@ private fun presetLabel(preset: RecurrencePreset, today: LocalDate): String {
     return preset.name.ifEmpty { recurrenceLabel(words, preset.recurrence, today) }
 }
 
+
+/** The three readings of where a span lands; see [SpanLanding]. */
+private val SpanLanding.labelRes: Int
+    get() = when (this) {
+        SpanLanding.NEXT -> R.string.recur_landing_next
+        SpanLanding.NEAREST -> R.string.recur_landing_nearest
+        SpanLanding.EXACT -> R.string.recur_landing_exact
+    }
+
+private val SpanLanding.hintRes: Int
+    get() = when (this) {
+        SpanLanding.NEXT -> R.string.recur_landing_next_hint
+        SpanLanding.NEAREST -> R.string.recur_landing_nearest_hint
+        SpanLanding.EXACT -> R.string.recur_landing_exact_hint
+    }

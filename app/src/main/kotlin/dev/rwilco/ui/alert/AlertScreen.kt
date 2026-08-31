@@ -16,7 +16,10 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -25,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -67,6 +71,12 @@ fun AlertScreen(
     /** The place answers this phone can give: "al llegar a casa", "al salir de aquí". */
     places: List<SnoozePlace> = emptyList(),
     onSnoozeToPlace: (SnoozePlace) -> Unit = {},
+    /**
+     * Whether it is making a noise right this second. While it is, the one big button silences
+     * instead of dismissing; see the button itself.
+     */
+    ringing: Boolean = false,
+    onSilence: () -> Unit = {},
 ) {
     val scheme = MaterialTheme.colorScheme
     val spacing = Tokens.spacing
@@ -160,20 +170,49 @@ fun AlertScreen(
                 Text(stringResource(if (preview) R.string.alert_close_preview else R.string.alert_view))
             }
             Spacer(Modifier.height(spacing.sm))
+            // **While it is ringing, the big button is "Silenciar" and not "Hecho".**
+            //
+            // The one place a thumb lands on a screen that woke somebody up should not be the
+            // one that files the reminder away. Half awake, with the phone buzzing, "make it
+            // stop" and "I have done that" are the same reflex and only one of them is true —
+            // and a reminder dismissed without being read is gone for good. So the noise is
+            // answered first, on its own button, and the screen stays exactly as it was: the
+            // words, the snoozes and "Ver" all still there to decide with.
+            //
+            // One button and not two, so nothing moves under the thumb: it changes colour,
+            // glyph and word in place — red container to the plain white "Hecho" — and that
+            // change is the whole of the feedback that the tap did something. Two buttons
+            // stacked would put "Hecho" where the eye already is and make the silence a step
+            // somebody skips.
+            val silencing = ringing
+            val fill by animateColorAsState(
+                targetValue = if (silencing) scheme.errorContainer else scheme.onBackground,
+                animationSpec = tween(Tokens.motion.medium),
+                label = "alertPrimaryFill",
+            )
+            val ink by animateColorAsState(
+                targetValue = if (silencing) scheme.onErrorContainer else scheme.background,
+                animationSpec = tween(Tokens.motion.medium),
+                label = "alertPrimaryInk",
+            )
             Button(
                 onClick = {
-                    haptics.perform(HapticFeedbackType.Confirm)
-                    onDone()
+                    // Silencing confirms nothing; the reminder is still owed an answer.
+                    haptics.perform(if (silencing) HapticFeedbackType.ContextClick else HapticFeedbackType.Confirm)
+                    if (silencing) onSilence() else onDone()
                 },
                 shape = MaterialTheme.shapes.large,
-                colors = ButtonDefaults.buttonColors(containerColor = scheme.onBackground, contentColor = scheme.background),
+                colors = ButtonDefaults.buttonColors(containerColor = fill, contentColor = ink),
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = Tokens.sizes.primary),
             ) {
-                Icon(Icons.Filled.Check, contentDescription = null)
+                Icon(if (silencing) Icons.AutoMirrored.Filled.VolumeOff else Icons.Filled.Check, contentDescription = null)
                 Spacer(Modifier.width(spacing.sm))
-                Text(stringResource(R.string.alert_done), style = MaterialTheme.typography.titleLarge)
+                Text(
+                    text = stringResource(if (silencing) R.string.alert_silence else R.string.alert_done),
+                    style = MaterialTheme.typography.titleLarge,
+                )
             }
             Spacer(Modifier.height(spacing.sm))
         }

@@ -217,6 +217,14 @@
     <string name="recur_hour_same_short">a la misma hora</string>
     <string name="recur_hour_at">a las %1$s</string>
     <string name="recur_hour_rules_note">Las reglas de arriba ya dicen la hora, así que esto sólo decide qué día vuelve.</string>
+    <string name="recur_landing">El día en que vuelve</string>
+    <string name="recur_landing_next">el siguiente que toque</string>
+    <string name="recur_landing_nearest">el más cercano</string>
+    <string name="recur_landing_exact">justo el plazo</string>
+    <string name="recur_landing_next_hint">Espera al primer día que permitan las reglas una vez cumplido el plazo. El plazo se estira: 30 días acaban siendo 35.</string>
+    <string name="recur_landing_nearest_hint">Coge el día permitido más cercano al plazo, antes o después. El plazo se respeta y el día se ajusta.</string>
+    <string name="recur_landing_exact_hint">Vuelve justo al cumplirse el plazo, caiga en el día que caiga: las reglas dejan de decidir, y un lugar entre ellas deja de vigilarse.</string>
+    <string name="recur_hour_exact_note">Con «justo el plazo» ésta es la hora a la que suena, porque las reglas ya no la dicen.</string>
     <string name="recur_from_ringing">Que suena</string>
     <string name="recur_from_dealt">Que lo hago</string>
     <string name="card_recurrence_from_ringing">desde que suena</string>
@@ -265,6 +273,11 @@
     <string name="kind_time_of_day_hint">A las 09:00, los días que digas</string>
     <string name="time_of_day_hint_alone">Sola, suena a esa hora el próximo día que cuente, y al siguiente si la dejas pasar.</string>
     <string name="time_of_day_hint_together">Con «a la vez» éste es el momento alrededor del que tienen que ser ciertos los demás: «a las 09:00, y en casa».</string>
+    <string name="kind_weekday">Un día de la semana</string>
+    <string name="kind_weekday_hint">Los viernes, los findes — sólo los días</string>
+    <string name="weekday_hint_alone">Solo, suena en cuanto empieza el próximo día que marques, y al siguiente si lo dejas pasar.</string>
+    <string name="weekday_hint_together">Con «a la vez» es el día dentro del que tiene que caer todo lo demás: «los viernes, y a las 14:00».</string>
+    <string name="weekday_days_hint">Marca al menos uno: aquí los días son todo el disparador.</string>
     <string name="kind_repeat_time">Se repite</string>
     <string name="kind_repeat_time_hint">Cada día, semana, mes o año</string>
     <string name="kind_countdown">Cuenta atrás</string>
@@ -318,6 +331,7 @@
     <string name="alert_empty_text">(Todavía sin texto)</string>
     <string name="alert_snooze">Posponer</string>
     <string name="alert_done">Hecho</string>
+    <string name="alert_silence">Silenciar</string>
     <string name="alert_view">Ver</string>
     <string name="alert_done_all">Hecho con todos</string>
     <string name="widget_next_label">Lo siguiente</string>
@@ -464,6 +478,7 @@
     <string name="editor_sentence_at_datetime">%1$s a las %2$s</string>
     <string name="editor_sentence_at_time">a las %1$s %2$s</string>
     <string name="editor_sentence_interval">durante la franja %1$s %2$s</string>
+    <string name="editor_sentence_on_days">los %1$s</string>
     <string name="editor_sentence_random">%1$s, en la franja %2$s</string>
     <string name="editor_sentence_repeat">a las %1$s, %2$s</string>
     <string name="editor_sentence_place_inside">mientras estoy en %1$s</string>
@@ -1150,6 +1165,13 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_61_0">
+        <item>Una alarma que está sonando pide silenciarse antes de aceptar un «Hecho». El botón grande se pone rojo y dice «Silenciar»: para el sonido y la vibración y nada más, dejando las palabras, los posponer y «Ver» donde estaban para poder decidir — y después pasa a ser el «Hecho» de siempre. Medio dormido, «que pare» y «ya lo he hecho» son el mismo gesto, y sólo uno de los dos es verdad.</item>
+        <item>Un aviso enviado a los auriculares sale por el altavoz del móvil a los veinte segundos si nadie responde. Los auriculares bluetooth suelen tener dos dispositivos enlazados, y mientras el otro ocupa el canal no hay nada que oír — sin que se note desde aquí.</item>
+        <item>«Un día de la semana» es ya un disparador propio. Los días iban soldados a «Hora concreta», así que decir sólo «los viernes» obligaba a inventarse una hora; escritos por separado se juntan con «a la vez» y se leen como lo que querías decir.</item>
+        <item>Un segundo disparador significa ahora «a la vez» y no «cualquiera» — una sola condición con dos mitades es casi siempre para lo que se añade un segundo «cuándo». Dos disparadores que nunca pueden coincidir se quedan en «cualquiera», porque «a la vez» ahí sería un recordatorio que no suena nunca.</item>
+        <item>«Los viernes a las 14:00, y vuelve cada 30 días» deja de ser una suposición. Treinta días después de un viernes es domingo, y «Vuelve» pregunta ahora cuál de las tres querías: el siguiente día que toque (lo de siempre, y convierte 30 días en 35), el más cercano por cualquier lado, o justo el plazo caiga donde caiga.</item>
+    </string-array>
     <string-array name="whats_new_0_60_0">
         <item>La fila de arriba se aparta. El nombre, la rueda y los iconos se van al bajar por la lista y vuelven en cuanto subes — así los ajustes quedan a un gesto de donde estés leyendo, en vez de a un scroll hasta el principio. Mientras buscas la fila se queda quieta: el campo es lo que busca el pulgar.</item>
     </string-array>

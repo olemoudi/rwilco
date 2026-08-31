@@ -124,6 +124,8 @@ fun shapeOf(trigger: Trigger): String? = when (trigger) {
     is Trigger.Interval -> "interval:${trigger.from}-${trigger.to}:" + trigger.days.map { it.value }.sorted().joinToString(",")
     // "A las nueve los laborables" is a standing arrangement, and comes back as itself.
     is Trigger.TimeOfDay -> "time_of_day:${trigger.time}:" + trigger.days.map { it.value }.sorted().joinToString(",")
+    // So are the days on their own: "los viernes" is the same answer whenever it is reused.
+    is Trigger.Weekday -> "weekday:" + trigger.days.map { it.value }.sorted().joinToString(",")
     // Only the hour survives; the day it fell on was that reminder's business.
     is Trigger.AtDateTime -> "at_date_time:${trigger.at.toLocalTime()}"
     // Four decimals is about eleven metres: the same door, however the pin was dropped.

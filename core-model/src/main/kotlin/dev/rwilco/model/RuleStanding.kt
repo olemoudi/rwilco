@@ -66,6 +66,8 @@ fun Reminder.ruleStandings(
                 is Condition.TimeWindow -> if (state.holdsAt(now, zone)) RuleStanding.HOLDING else RuleStanding.NOT_HOLDING
                 // A stretch of the calendar is the same question one unit up: are we in it?
                 is Condition.DateRange -> if (state.holdsAt(now, zone)) RuleStanding.HOLDING else RuleStanding.NOT_HOLDING
+                // And the days on their own: is today one of them?
+                is Condition.OnDays -> if (state.holdsAt(now, zone)) RuleStanding.HOLDING else RuleStanding.NOT_HOLDING
                 is Condition.AtPlace -> when (inside(index)) {
                     // A rule waiting to arrive holds while the phone is in; one waiting to leave
                     // holds while it is out. The circle is the same; what is asked of it is not.

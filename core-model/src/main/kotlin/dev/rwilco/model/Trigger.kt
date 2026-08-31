@@ -147,6 +147,31 @@ sealed interface Trigger {
     data class TimeOfDay(val time: LocalTime, val days: Set<DayOfWeek> = emptySet()) : Trigger
 
     /**
+     * The days themselves and nothing else: "los viernes".
+     *
+     * [TimeOfDay] welds an hour to the days it counts on, and that weld is the thing this
+     * undoes. "Los viernes a las 14:00" is two answers to two questions — *which days* and *what
+     * hour* — and having only one control for both meant a person who wanted to say just the
+     * first had to invent an hour to say it with, and one who later changed their mind about the
+     * hour had to find it inside the day picker. Two triggers, one each, joined by "a la vez",
+     * say it once and read back as what was actually meant.
+     *
+     * A **state**, like a stretch of the calendar one unit down: it is true for the whole of an
+     * allowed day, not at an instant. So in a set it is the day everything else has to land in
+     * ("los viernes, y a la vez a las 14:00" is exactly "los viernes a las 14:00"), and on its
+     * own it rings at the hour a date with no hour has always meant — the default time — because
+     * a trigger that never rings is not a trigger. Bounded by the rule's own fences and spent on
+     * the first "hecho", like every other rule: an unbounded "todos los viernes" is still
+     * "Vuelve"'s to say ([Recurrence.Calendar]).
+     *
+     * [days] empty is nonsense here rather than "every day", and is the one thing that can be
+     * wrong with it ([TriggerProblem.DAYS_EMPTY]): the days *are* the trigger.
+     */
+    @Serializable
+    @SerialName("weekday")
+    data class Weekday(val days: Set<DayOfWeek> = emptySet()) : Trigger
+
+    /**
      * A stretch of the day rather than a point in it: "de 17 a 19".
      *
      * The only trigger that is a *state* — it is true for two hours, not at one instant — and
@@ -416,6 +441,7 @@ enum class TriggerKind(val family: TriggerFamily) {
     DATE_RANGE(TriggerFamily.TIME),
     REPEAT_TIME(TriggerFamily.TIME),
     TIME_OF_DAY(TriggerFamily.TIME),
+    WEEKDAY(TriggerFamily.TIME),
     INTERVAL(TriggerFamily.TIME),
     COUNTDOWN(TriggerFamily.TIME),
     PLACE(TriggerFamily.PLACE),
@@ -461,6 +487,7 @@ val Trigger.family: TriggerFamily
     get() = when (this) {
         is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.AtTime, is Trigger.Interval -> TriggerFamily.TIME
         is Trigger.DayRandom, is Trigger.Repeat, is Trigger.DateRange, is Trigger.TimeOfDay -> TriggerFamily.TIME
+        is Trigger.Weekday -> TriggerFamily.TIME
         is Trigger.RelativeDate -> TriggerFamily.TIME
         is Trigger.Location -> TriggerFamily.PLACE
         is Trigger.Countdown -> TriggerFamily.TIME
@@ -504,6 +531,9 @@ fun Trigger.asState(shape: DayShape = DayShape.DEFAULT): Condition? = when (this
     is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.AtTime, is Trigger.Countdown, is Trigger.Random -> null
     // A time of day is an instant, which is the whole difference between it and an interval.
     is Trigger.TimeOfDay -> null
+    // The days themselves: true for the whole of an allowed day, which is what makes "los
+    // viernes, y a la vez a las 14:00" the sentence it reads as.
+    is Trigger.Weekday -> Condition.OnDays(days)
     is Trigger.Repeat -> null
 }
 
@@ -527,12 +557,49 @@ val Trigger.namesAnHour: Boolean
         is Trigger.RelativeDate -> true
         is Trigger.TimeOfDay -> true
         // The default one, which is still an hour a rest must not be standing in front of.
-        is Trigger.DateRange -> true
+        is Trigger.DateRange, is Trigger.Weekday -> true
         is Trigger.Countdown, is Trigger.Location -> false
     }
 
 /** Whether this trigger is true only at an instant. See [asState]. */
 val Trigger.isMoment: Boolean get() = asState() == null
+
+/**
+ * The days of the week this trigger is limited to; empty when it says nothing about days.
+ *
+ * Read by the one question a span recurrence cannot answer on its own: which day "cada 30 días"
+ * lands on when the rules only allow some of them (see [SpanLanding]).
+ */
+val Trigger.namedDays: Set<DayOfWeek>
+    get() = when (this) {
+        is Trigger.TimeOfDay -> days
+        is Trigger.Weekday -> days
+        is Trigger.Interval -> days
+        is Trigger.Random -> days
+        is Trigger.AtTime -> days
+        is Trigger.Repeat -> if (unit == RepeatUnit.WEEK) days else emptySet()
+        is Trigger.AtDateTime, is Trigger.OnDate, is Trigger.DayRandom, is Trigger.RelativeDate -> emptySet()
+        is Trigger.DateRange, is Trigger.Countdown, is Trigger.Location -> emptySet()
+    }
+
+/**
+ * The hour this trigger actually names, where it names one somebody typed; null otherwise.
+ *
+ * Not the same question as [namesAnHour], which is true of the shapes that leave the choosing to
+ * the day — a rest has to stand out of *their* way too. This is only the hour that could be
+ * offered back to somebody: what "exactamente cada 30 días" should ring at, when the days it
+ * used to ring on stop deciding ([SpanLanding.EXACT]).
+ */
+val Trigger.hourNamed: LocalTime?
+    get() = when (this) {
+        is Trigger.AtDateTime -> at.toLocalTime()
+        is Trigger.TimeOfDay -> time
+        is Trigger.Interval -> from
+        is Trigger.AtTime -> time
+        is Trigger.Repeat -> time
+        is Trigger.RelativeDate -> time
+        else -> null
+    }
 
 /**
  * Whether this trigger has a bounded run of moments and then nothing: a date, a day, a
@@ -556,6 +623,7 @@ val Trigger.kind: TriggerKind
         is Trigger.AtTime, is Trigger.Repeat -> TriggerKind.REPEAT_TIME
         is Trigger.Interval -> TriggerKind.INTERVAL
         is Trigger.TimeOfDay -> TriggerKind.TIME_OF_DAY
+        is Trigger.Weekday -> TriggerKind.WEEKDAY
         is Trigger.DateRange -> TriggerKind.DATE_RANGE
         is Trigger.Location -> TriggerKind.PLACE
         is Trigger.Countdown -> TriggerKind.COUNTDOWN

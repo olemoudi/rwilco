@@ -152,8 +152,8 @@ class TimeOfDayTest {
         assertEquals(TriggerKind.TIME_OF_DAY, nine.kind)
         assertEquals(TriggerFamily.TIME, nine.family)
         assertEquals(
-            listOf(TriggerKind.DATE, TriggerKind.DATE_RANGE, TriggerKind.TIME_OF_DAY, TriggerKind.INTERVAL),
-            OFFERED_KINDS.take(4),
+            listOf(TriggerKind.DATE, TriggerKind.DATE_RANGE, TriggerKind.TIME_OF_DAY, TriggerKind.WEEKDAY, TriggerKind.INTERVAL),
+            OFFERED_KINDS.take(5),
         )
     }
 }

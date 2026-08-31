@@ -40,6 +40,8 @@ fun Trigger.dayTiming(): DayTiming? = when (this) {
     is Trigger.Repeat -> time?.let { DayTiming.At(it) } ?: window?.let { DayTiming.In(it) } ?: DayTiming.Whenever
     // The same three answers a date gives, which is what it is: a day, and when in it.
     is Trigger.RelativeDate -> time?.let { DayTiming.At(it) } ?: window?.let { DayTiming.In(it) } ?: DayTiming.Whenever
+    // The days and no hour: the same silence a day with no hour keeps, and the same answer.
+    is Trigger.Weekday -> DayTiming.Whenever
     is Trigger.OnDate, is Trigger.Countdown, is Trigger.Location, is Trigger.Random, is Trigger.DateRange -> null
 }
 

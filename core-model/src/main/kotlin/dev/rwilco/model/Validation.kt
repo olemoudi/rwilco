@@ -165,6 +165,8 @@ fun problemOf(recurrence: Recurrence): TriggerProblem? {
 }
 
 fun problemOf(condition: Condition): TriggerProblem? = when (condition) {
+    // Empty is every day here on purpose: see [Condition.OnDays].
+    is Condition.OnDays -> null
     // A window that starts where it ends is not a window; one that crosses midnight is.
     is Condition.TimeWindow -> TriggerProblem.WINDOW_EMPTY.takeIf { condition.from == condition.to }
     // Both days count, so a range of one day is a range; one that ends before it starts is not.
@@ -195,6 +197,8 @@ fun problemOf(trigger: Trigger): TriggerProblem? = when (trigger) {
     is Trigger.Interval -> TriggerProblem.WINDOW_EMPTY.takeIf { trigger.from == trigger.to }
     // An hour is an hour; no days is every day, the same as a window and unlike AtTime.
     is Trigger.TimeOfDay -> null
+    // Here the days ARE the trigger, so none of them is nothing at all — not "every day".
+    is Trigger.Weekday -> TriggerProblem.DAYS_EMPTY.takeIf { trigger.days.isEmpty() }
     // Both days count, so a single-day range is fine; one that ends before it starts is not.
     is Trigger.DateRange -> TriggerProblem.ENDS_BEFORE_START.takeIf { trigger.to < trigger.from }
     is Trigger.Countdown -> TriggerProblem.COUNTDOWN_OUT_OF_RANGE.takeIf { trigger.minutes !in MIN_COUNTDOWN_MINUTES..MAX_COUNTDOWN_MINUTES }

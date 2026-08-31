@@ -64,6 +64,18 @@ sealed interface Condition {
     data class DateRange(val from: LocalDate, val to: LocalDate) : Condition
 
     /**
+     * The days of the week and nothing else: "y sólo si es viernes".
+     *
+     * What [Trigger.Weekday] reads as, and the one thing [TimeWindow] could not say without
+     * being given hours it was never asked for. Empty is every day — a fence that fences
+     * nothing — because this is only ever synthesised from a trigger that has already been
+     * checked, and a fence that silently never holds is the worse failure of the two.
+     */
+    @Serializable
+    @SerialName("on_days")
+    data class OnDays(val days: Set<DayOfWeek> = emptySet()) : Condition
+
+    /**
      * Being somewhere, or not being there: "a las nueve, y sólo si estoy en casa".
      *
      * The state that matches [Trigger.Location]'s event, and the reason it is a condition and
@@ -97,6 +109,7 @@ sealed interface Condition {
 fun Condition.holdsAt(at: Instant, zone: ZoneId, where: Fix? = null): Boolean = when (this) {
     is Condition.TimeWindow -> holdsAt(at.atZone(zone).toLocalDateTime())
     is Condition.DateRange -> at.atZone(zone).toLocalDate() in from..to
+    is Condition.OnDays -> days.isEmpty() || at.atZone(zone).toLocalDate().dayOfWeek in days
     is Condition.AtPlace -> {
         if (where == null || where.accuracyM > radiusM) true
         else (distanceMeters(where.lat, where.lng, lat, lng) <= radiusM) == inside
@@ -131,6 +144,14 @@ fun List<Condition>.allHoldAt(at: Instant, zone: ZoneId, where: Fix? = null): Bo
  * out and arms the alarm, and they are asked once, for real, when it goes off.
  */
 val Condition.knownInAdvance: Boolean get() = this !is Condition.AtPlace
+
+/** The days a condition is limited to; empty when it says nothing about days. See [Trigger.namedDays]. */
+val Condition.namedDays: Set<DayOfWeek>
+    get() = when (this) {
+        is Condition.TimeWindow -> days
+        is Condition.OnDays -> days
+        is Condition.DateRange, is Condition.AtPlace -> emptySet()
+    }
 
 /** The circle a condition is about, for the conflict checks and for the watch to keep an eye on. */
 val Condition.place: Condition.AtPlace? get() = this as? Condition.AtPlace

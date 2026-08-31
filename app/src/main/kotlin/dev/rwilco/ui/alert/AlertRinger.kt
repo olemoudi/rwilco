@@ -5,6 +5,8 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.MediaPlayer
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -37,6 +39,10 @@ class AlertRinger(private val context: Context) {
     private var vibrator: Vibrator? = null
     private var focus: AudioFocusRequest? = null
 
+    /** The handover to the speaker, waiting to happen; see [AlertAudio.HEADPHONES_GRACE_MS]. */
+    private val clock = Handler(Looper.getMainLooper())
+    private var handover: Runnable? = null
+
     /** [limit] is how long the buzz may last; the default is the only one an alarm ever gets. */
     fun start(
         sound: Boolean,
@@ -54,6 +60,8 @@ class AlertRinger(private val context: Context) {
     }
 
     fun stop() {
+        handover?.let(clock::removeCallbacks)
+        handover = null
         runCatching {
             player?.apply {
                 if (isPlaying) stop()
@@ -81,6 +89,25 @@ class AlertRinger(private val context: Context) {
                 start()
             }
         }.onFailure { Log.w(TAG, "could not ring", it) }
+        if (toHeadphones && AlertAudio.headsetConnected(context)) handOverToSpeaker()
+    }
+
+    /**
+     * Twenty seconds unanswered, and the sound comes out of the phone instead of the earbuds.
+     *
+     * Only where it was sent to earbuds in the first place, and only until something stops it:
+     * [stop] takes it off the queue, so answering the alert, silencing it, or the minute running
+     * out all cancel the handover rather than moving a sound that is no longer playing. The
+     * reason it exists at all is in [AlertAudio.HEADPHONES_GRACE_MS] — headphones connected are
+     * not headphones being listened through.
+     */
+    private fun handOverToSpeaker() {
+        val move = Runnable {
+            handover = null
+            player?.let { AlertAudio.toSpeaker(context, it) }
+        }
+        handover = move
+        clock.postDelayed(move, AlertAudio.HEADPHONES_GRACE_MS)
     }
 
     /**

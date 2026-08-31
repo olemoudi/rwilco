@@ -68,6 +68,14 @@ fun nextFire(
     // a countdown that ran out) does the recurrence's own moment ring, which is what "a las
     // ocho, y luego cada seis horas" means.
     val rest = reminder.restUntil(zone, dayStart, shape)
+    // "Exactamente cada N": once it has been dealt with, the span's own moment IS the ring and
+    // the rules stop deciding — that is what makes thirty days thirty days rather than the next
+    // Friday after them. The rules still say when it goes off the FIRST time, which is why this
+    // is asked of the rest and not of the reminder. See [SpanLanding.EXACT].
+    if (rest != null && reminder.recurrence.landsExactly) {
+        return reminder.recurrenceMoment(now, zone, dayStart, shape)
+            ?.let { NextFire.Scheduled(it, reminder.rules.firstOrNull()?.trigger) }
+    }
     val from = maxOf(reminder.searchFrom(now), rest ?: now)
     val pending = reminder.pendingRules()
     val candidates = pending.mapNotNull { index ->
@@ -144,6 +152,11 @@ fun nextWake(
     // say (see nextFire); a place among the rules is something left to say, and arms nothing.
     if (reminder.rules.isEmpty()) return reminder.recurrenceMoment(now, zone, dayStart, shape)?.let { Wake(it, null) }
     val rest = reminder.restUntil(zone, dayStart, shape)
+    // The same as nextFire: under "exactamente cada N" the moment to arm is the span's own, and
+    // it is the ring rather than a note to take (see [SpanLanding.EXACT]).
+    if (rest != null && reminder.recurrence.landsExactly) {
+        return reminder.recurrenceMoment(now, zone, dayStart, shape)?.let { Wake(it, null) }
+    }
     val from = maxOf(reminder.searchFrom(now), rest ?: now)
     val candidates = reminder.pendingRules().mapNotNull { index ->
         val rule = reminder.ruleInSet(index, shape) ?: return@mapNotNull null
@@ -276,6 +289,12 @@ fun nextFireOf(
             now,
             zone,
         )?.let { NextFire.Scheduled(it, trigger) }
+        // The third shape that leaves the hour to the day, and read exactly like the first: the
+        // stretch this person is up for on that day, opened at the first minute the rule's own
+        // hour fences allow. Its *state* is the whole day and not that stretch (see
+        // [Trigger.asState]) — "los viernes" means the whole of Friday to anybody who says it —
+        // but a ring has to land at an hour somebody is awake to hear it.
+        is Trigger.Weekday -> nextWeekday(trigger, now, zone, shape, fences)?.let { NextFire.Scheduled(it, trigger) }
         // The window opening is the moment it becomes true, and the only moment it produces.
         is Trigger.Interval -> nextAtTime(
             // No days on a window means every day; nextAtTime reads an empty set as "never",
@@ -344,6 +363,28 @@ private fun nextRepeat(
 
 /** Enough to step over the moments of the last day or two and find the next one still coming. */
 private const val REPEAT_PROBE = 8
+
+/**
+ * The next allowed day's opening, at most a fortnight out: a week reaches every weekday, and the
+ * day after covers an opening that today's has already gone past.
+ */
+private fun nextWeekday(
+    trigger: Trigger.Weekday,
+    now: Instant,
+    zone: ZoneId,
+    shape: DayShape,
+    fences: List<Condition.TimeWindow>,
+): Instant? {
+    if (trigger.days.isEmpty()) return null
+    val today = now.atZone(zone).toLocalDate()
+    for (offset in 0L..7L) {
+        val date = today.plusDays(offset)
+        if (date.dayOfWeek !in trigger.days) continue
+        val at = openingOf(shape.awakeOn(date), fences).atZone(zone).toInstant()
+        if (at > now) return at
+    }
+    return null
+}
 
 private fun nextAtTime(trigger: Trigger.AtTime, now: Instant, zone: ZoneId): Instant? {
     if (trigger.days.isEmpty()) return null
@@ -464,9 +505,31 @@ fun Reminder.restUntil(zone: ZoneId, dayStart: LocalTime, shape: DayShape = DayS
         ?: nextRecurrence(recurrence, recurrenceAnchor(dealt), zone, dayStart)
         ?: return null
     if (!recurrence.countsInDays) return back
-    if (rules.none { it.trigger.namesAnHour }) return back
-    return back.atZone(zone).toLocalDate().atStartOfDay(zone).toInstant()
+    // "El más cercano": the span's day bent to the nearest day the rules allow, which is the
+    // only reading of the three that can land the rest BEFORE the span is up. That is the whole
+    // point of it — thirty days to the nearest Friday is sometimes the Friday two days early —
+    // and it is why the day is moved here rather than left to the rules' own walk, which only
+    // ever looks forward. See [SpanLanding].
+    val moved = if (recurrence.landing == SpanLanding.NEAREST) {
+        val here = back.atZone(zone)
+        val nearest = nearestAllowedDay(here.toLocalDate(), daysNamedByRules())
+        if (nearest == here.toLocalDate()) back else nearest.atTime(here.toLocalTime()).atZone(zone).toInstant()
+    } else {
+        back
+    }
+    if (rules.none { it.trigger.namesAnHour }) return moved
+    return moved.atZone(zone).toLocalDate().atStartOfDay(zone).toInstant()
 }
+
+/**
+ * The days of the week the rules limit this reminder to; empty when they name none.
+ *
+ * The union across the rules and their fences, which is the reading "cualquiera" asks for and
+ * the harmless one everywhere else: under "a la vez" a set whose rules name *different* days
+ * cannot ring at all, and one that names days in only one of them has only those to union.
+ */
+fun Reminder.daysNamedByRules(): Set<DayOfWeek> =
+    rules.flatMapTo(LinkedHashSet()) { rule -> rule.trigger.namedDays + rule.conditions.flatMap { it.namedDays } }
 
 /**
  * The moment a recurrence counts its span from: the firing when it was asked to, and dealing

@@ -29,6 +29,7 @@ import dev.rwilco.model.asRepeat
 import dev.rwilco.model.clearCountdowns
 import dev.rwilco.model.conditions
 import dev.rwilco.model.withConditions
+import dev.rwilco.model.isMoment
 import dev.rwilco.model.kind
 import dev.rwilco.model.settleDays
 import dev.rwilco.model.startCountdowns
@@ -360,11 +361,13 @@ fun EditorUiState.removeTrigger(index: Int): EditorUiState {
  * conditions were put on it — or appends a rule with no conditions. Closes the sheet.
  */
 fun EditorUiState.commitTrigger(index: Int?, trigger: Trigger): EditorUiState {
-    val rules = if (index != null && index in draft.rules.indices) {
+    val adding = index == null || index !in draft.rules.indices
+    val rules = if (!adding) {
         draft.rules.mapIndexed { i, rule -> if (i == index) rule.copy(trigger = trigger) else rule }
     } else {
         draft.rules + TriggerRule(trigger)
     }
+    val match = matchAfterAdding(rules, adding)
     // Choosing "at random" IS choosing a recurrence — "tres veces al día" says so outright — so
     // it says so in plain sight, right under the row, and changeable. Every other kind leaves
     // the answer alone: a place or a date is one-shot until somebody says otherwise, and a
@@ -376,7 +379,31 @@ fun EditorUiState.commitTrigger(index: Int?, trigger: Trigger): EditorUiState {
         index == null && trigger is Trigger.Random -> Recurrence.ByTrigger
         else -> draft.recurrence
     }
-    return copy(draft = draft.copy(rules = rules, recurrence = recurrence), sheet = EditorSheet.None)
+    return copy(draft = draft.copy(rules = rules, ruleMatch = match, recurrence = recurrence), sheet = EditorSheet.None)
+}
+
+/**
+ * What a **second** rule means, when nobody has said: "a la vez".
+ *
+ * Somebody writing one "cuándo" and then another almost always means one arrangement with two
+ * halves — "los viernes" *and* "a las 14:00", "a las nueve" *and* "en casa" — and the old default
+ * read it as two arrangements either of which rings. So the reminder went off twice, on the two
+ * halves of a sentence that was only ever meant once, and the fix was a segmented control most
+ * people never noticed was there.
+ *
+ * **Except when "a la vez" would mean silence.** Two triggers that are each true at one instant
+ * never coincide ([Reminder.momentsCannotCoincide]) — "a las 09:00" beside "a las 21:00", or
+ * beside "al llegar a casa", which is a doorway and so a moment too. Defaulting those to "a la
+ * vez" would hand somebody a reminder that can never ring, quietly, at the moment they were
+ * least looking; the editor warns, but a default whose warning is load-bearing is a bad default.
+ * There "cualquiera" is both the old answer and the right one.
+ *
+ * Only on the *second* rule, and only while the choice is still the untouched default: a third
+ * rule, or one added after somebody has picked for themselves, changes nothing.
+ */
+private fun EditorUiState.matchAfterAdding(rules: List<TriggerRule>, adding: Boolean): RuleMatch {
+    if (!adding || draft.ruleMatch != RuleMatch.ANY || rules.size != 2) return draft.ruleMatch
+    return if (rules.all { it.trigger.isMoment }) RuleMatch.ANY else RuleMatch.TOGETHER
 }
 
 fun EditorUiState.addCondition(ruleIndex: Int): EditorUiState =

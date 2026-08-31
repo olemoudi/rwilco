@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -71,6 +72,21 @@ class AlertActivity : ComponentActivity() {
     /** Bumped when a reminder joins: the noise and the two-minute budget start over for it. */
     private var ringEpoch by mutableIntStateOf(0)
 
+    /**
+     * Whether there is a noise going on right now — which is a different question from whether
+     * this reminder asked for one, and the one the big button is about.
+     *
+     * It goes false three ways: somebody silenced it, the minute ran out, or the screen went
+     * away. All three run through [hush], so the button and the ringer can never disagree.
+     */
+    private var noise by mutableStateOf(false)
+
+    /** Stop the noise and say so. The alert stays up: the reminder is still owed an answer. */
+    private fun hush() {
+        ringer.stop()
+        noise = false
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // The manifest attributes cover the launch; these cover being re-shown while alive.
         setShowWhenLocked(true)
@@ -115,7 +131,8 @@ class AlertActivity : ComponentActivity() {
                     // reminders that asked to be insisted at.
                     looping = loopsOnScreen(plans),
                 )
-                onDispose { ringer.stop() }
+                noise = sound || vibrate
+                onDispose { hush() }
             }
             // An alarm that rings for ever is one nobody leaves the house with. The alert stays
             // up; the noise gives up, exactly as an alarm clock does — and so does the hold on
@@ -131,7 +148,7 @@ class AlertActivity : ComponentActivity() {
             // ring that has gone round for one has made the same point.
             LaunchedEffect(ringEpoch) {
                 delay(RING_TIMEOUT_MS)
-                ringer.stop()
+                hush()
                 window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
 
@@ -153,6 +170,8 @@ class AlertActivity : ComponentActivity() {
                         customMinutes = current.snoozeCustomMinutes,
                         onDoneAll = { answerAll(items.map { it.id }) { id -> app.firing.dismiss(id) } },
                         onSnoozeAll = { snooze -> answerAll(items.map { it.id }) { id -> app.firing.snooze(id, snooze) } },
+                        ringing = noise,
+                        onSilence = ::hush,
                     )
                 } else {
                     val first = items.first()
@@ -166,6 +185,8 @@ class AlertActivity : ComponentActivity() {
                         customMinutes = current.snoozeCustomMinutes,
                         places = places,
                         onSnoozeToPlace = { offer -> snoozeToPlace(first.id, offer) },
+                        ringing = noise,
+                        onSilence = ::hush,
                     )
                 }
             }
@@ -255,7 +276,7 @@ class AlertActivity : ComponentActivity() {
     }
 
     private fun close() {
-        ringer.stop()
+        hush()
         finish()
     }
 
@@ -276,12 +297,12 @@ class AlertActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         // Left the screen without answering: the notification is still there, so go quiet.
-        ringer.stop()
+        hush()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        ringer.stop()
+        hush()
     }
 
     private companion object {

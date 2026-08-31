@@ -80,6 +80,11 @@ sealed interface Recurrence {
          * parameters is its `copy` and everything that already builds one predates it.
          */
         val hour: RecurrenceHour = RecurrenceHour.DayStart,
+        /**
+         * Which day the span lands on when the rules only allow some days of the week. See
+         * [SpanLanding]; last in the list for the same reason [hour] is.
+         */
+        val landing: SpanLanding = SpanLanding.NEXT,
     ) : Recurrence
 
     /**
@@ -96,6 +101,52 @@ sealed interface Recurrence {
 }
 
 enum class RecurrenceUnit { HOURS, DAYS, WEEKS, MONTHS, YEARS }
+
+/**
+ * Where a span lands when the rules only allow some days of the week — the one question "los
+ * viernes a las 14:00, y vuelve cada 30 días" leaves open, and that the app used to answer on
+ * its own without saying so.
+ *
+ * Thirty days after a Friday is a Sunday, and there are three honest readings of what should
+ * happen then. All three are somebody's, which is exactly why it is asked:
+ *
+ * - [NEXT] — the first Friday **on or after** the span is up. What the app has always done, so
+ *   it stays the default and nothing already written changes. It is also the one that drifts:
+ *   thirty days becomes thirty-five, every time.
+ * - [NEAREST] — the Friday **closest to** the thirty days, before it or after it. "Cada mes,
+ *   más o menos, en viernes" — the series keeps its length and only the weekday is honoured.
+ * - [EXACT] — thirty days means thirty days. The span's own moment rings and the rules' days
+ *   stop deciding, which also means a place among them stops being watched: it is the one
+ *   answer that takes the rules out of the loop, and it is offered only where the rules name
+ *   days at all.
+ *
+ * A tie under [NEAREST] goes to the later day: a reminder that comes back a shade late is a
+ * smaller lie about "cada 30 días" than a series that quietly walks backwards.
+ */
+enum class SpanLanding { NEXT, NEAREST, EXACT }
+
+/** Whether the span itself is the ring, with the rules' days no longer deciding. See [SpanLanding.EXACT]. */
+val Recurrence.landsExactly: Boolean
+    get() = this is Recurrence.After && landing == SpanLanding.EXACT
+
+/** Which day a span lands on, or [SpanLanding.NEXT] for everything that is not a span. */
+val Recurrence.landing: SpanLanding
+    get() = (this as? Recurrence.After)?.landing ?: SpanLanding.NEXT
+
+/**
+ * The day in [days] nearest to [target] — [target] itself when it is one of them, and otherwise
+ * the closest either side, ties going forward. Empty [days] is every day, so [target] stands.
+ */
+fun nearestAllowedDay(target: java.time.LocalDate, days: Set<DayOfWeek>): java.time.LocalDate {
+    if (days.isEmpty() || target.dayOfWeek in days) return target
+    for (apart in 1L..7L) {
+        val after = target.plusDays(apart)
+        if (after.dayOfWeek in days) return after
+        val before = target.minusDays(apart)
+        if (before.dayOfWeek in days) return before
+    }
+    return target
+}
 
 /**
  * What hour a span measured in days or more comes back at — the question "cada día" leaves open
@@ -174,7 +225,7 @@ val Recurrence.landsOnAnHour: Boolean
 
 /** [other]'s span, kept counting from wherever this one was counting from. */
 fun Recurrence.withSpanOf(other: Recurrence): Recurrence =
-    if (this is Recurrence.After && other is Recurrence.After) other.copy(from = from, hour = hour) else other
+    if (this is Recurrence.After && other is Recurrence.After) other.copy(from = from, hour = hour, landing = landing) else other
 
 /** "The last Sunday of the month" rather than a numbered one. */
 const val LAST_ORDINAL = 5

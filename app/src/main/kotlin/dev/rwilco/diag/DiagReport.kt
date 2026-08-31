@@ -236,6 +236,7 @@ private fun Trigger.describe(): String = when (this) {
     is Trigger.Interval -> "window $from-$to ${days.describe()}"
     is Trigger.DateRange -> "dates $from..$to"
     is Trigger.TimeOfDay -> "hour $time ${days.describe()}"
+    is Trigger.Weekday -> "weekday ${days.describe()}"
     is Trigger.Countdown -> "countdown ${minutes}m started=${startedAt ?: "-"}"
     is Trigger.Location -> "place ${describeCircle()}"
     is Trigger.Random -> "random $timesPer/$period $from-$to ${days.describe()}"
@@ -248,6 +249,7 @@ private fun Trigger.Location.describeCircle(): String =
 private fun Condition.describe(): String = when (this) {
     is Condition.TimeWindow -> "win $from-$to ${days.describe()}"
     is Condition.DateRange -> "dates $from..$to"
+    is Condition.OnDays -> "days ${days.describe()}"
     is Condition.AtPlace -> "at ${radiusM}m @${fixed(lat, 2)},${fixed(lng, 2)} in=${yes(inside)}"
 }
 

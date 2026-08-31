@@ -31,7 +31,8 @@ turn to write it down (`nextWake`), and only the moment that completes the set r
 
 Conditions (`Condition.kt`) are states, asked "were you true at that moment?", which is what
 makes them safe to AND with anything: `time_window` (hours + days, crossing midnight allowed),
-`date_range` (two days of the calendar, both ends included) and `at_place`. A window also carries an optional **date**, which nobody ever types — the "y
+`date_range` (two days of the calendar, both ends included), `on_days` (the days of the week
+alone, which is what `Trigger.Weekday` reads as) and `at_place`. A window also carries an optional **date**, which nobody ever types — the "y
 sólo si" sheet offers hours and days — and which exists for one thing: a *dated* rule folded
 into its siblings as a state. "El domingo de 20:30 a 22:00, y a la vez en casa" is a state about
 one Sunday evening, and folded as hours alone it became every evening: the set rang on the
@@ -78,6 +79,7 @@ Triggers (`core-model/.../Trigger.kt`), with their frozen JSON discriminators:
 | Date (no hour chosen) | `DayRandom(date, window?)` — the stretch it opens with: the one it was given, or that day's waking hours | `day_random` |
 | Date range            | `DateRange(from, to)` — a stretch of the calendar, both ends included | `date_range` |
 | Time of day           | `TimeOfDay(time, days)` — an hour, on the days it counts | `time_of_day` |
+| Day of the week       | `Weekday(days)` — the days alone, a state for the whole of one | `weekday` |
 | Countdown             | `Countdown(minutes, startedAt?)`   | `countdown`    |
 | Interval              | `Interval(from, to, days)` — a stretch of the day | `interval` |
 | Place                 | `Location(lat, lng, radiusM, INSIDE/OUTSIDE, label, onCrossing)` | `location` |
@@ -205,6 +207,28 @@ the calendar it always was (`foldRepeats`), and reviving it would resurrect ever
 move retired. An unbounded "todos los días a las nueve" is still `Recurrence.Calendar`'s to say —
 a calendar names dates, carries a start and an end, and answers "¿y vuelve?".
 
+**And the days are the other half of that hour** (`Trigger.Weekday`). `TimeOfDay` welds an hour
+to the days it counts on, and the weld was the problem: "los viernes a las 14:00" is two answers
+to two questions, and one control for both meant somebody who only wanted the first had to invent
+an hour to say it with, and somebody changing their mind about the hour had to go looking for it
+inside a day picker. Two triggers joined by "a la vez" say it once and read back as what was
+meant. It is a **state** — true for the whole of an allowed day, `Condition.OnDays` — so in a set
+it is the day everything else has to land inside, and `SpanLandingJourneyTest` pins that the two
+spellings ring on the same dates, round for round. Alone it rings at the opening of that day's
+waking hours, exactly as a date with no hour does (`openingOf`, so an hour fence moves the
+opening rather than killing it). Empty days is `DAYS_EMPTY` and not "every day", unlike every
+other tile that carries days: here the days *are* the trigger, and the sheet's confirm button
+stays out of reach until one is marked.
+
+**A second trigger means "a la vez"** (`EditorUiState.commitTrigger`). Somebody writing one
+"cuándo" and then another almost always means one arrangement with two halves; read as
+"cualquiera" it was two arrangements, and the reminder went off twice. The exception is the one
+shape where "a la vez" means silence: two triggers that are each true at an instant never
+coincide (`momentsCannotCoincide`), so a pair of moments — "a las 09:00" beside "a las 21:00",
+or beside a doorway — keeps "cualquiera". The editor warns about that set, and a default whose
+warning is load-bearing is a bad default. Only on the *second* rule, and only while the choice
+is still the untouched `ANY`.
+
 **A favourite is always one of the tiles** (`kindsOrdered`). `AppSettings.defaultTriggerKind` is
 stored by name and outlives the tile it names, so it is read through `offered()` both in
 `SettingsStore`'s decode — the repo's usual place for a shape that moved — and in the ordering
@@ -286,7 +310,7 @@ anything repeats**:
   already holds on disk, its discriminators are frozen, and a second copy of the same seven
   fields is a second place for the arithmetic to disagree. `conditions` are the "y sólo si"
   fences the rule it used to be could carry.
-- `After(amount, unit, from, hour)` — a span counted from something that happened. Hours are
+- `After(amount, unit, from, hour, landing)` — a span counted from something that happened. Hours are
   exact; days, weeks, months and years land on an hour of the day and never before the span is
   up. **Which hour is a question too** (`RecurrenceHour`): the hour the day starts at
   (`AppSettings.dayStart`, the default and what every reminder written before the field means),
@@ -295,6 +319,22 @@ anything repeats**:
   recurrence's moment is the ring: with rules that name an hour the span says which *day* and
   they say when in it (`restUntil`), which the editor says out loud rather than offering a
   control that decides nothing.
+
+  **And which *day*, when the rules only allow some of them** (`SpanLanding`). "Los viernes a las
+  14:00, y vuelve cada 30 días": thirty days after a Friday is a Sunday, and there are three
+  honest readings of what happens then — the app used to pick one silently. `NEXT` waits for the
+  first Friday on or after the span, which is what it has always done, stays the default so
+  nothing already written moves, and turns thirty days into thirty-five every round. `NEAREST`
+  takes the allowed day closest to the span, before it or after it (ties go forward), which is
+  the only reading that can land a rest *earlier* than the span it counts — so it is applied in
+  `restUntil` rather than left to the rules' own walk, which only ever looks forward. `EXACT`
+  rings the span's own moment and takes the rules out of the loop entirely, place rules included;
+  `nextFire`/`nextWake` answer with `recurrenceMoment` the moment there is a rest. The days come
+  from `Reminder.daysNamedByRules` — the union across the rules *and* their fences, because under
+  "a la vez" the rule that carries the days is not the rule that rings. Asked in "Vuelve" only
+  where it means anything (a span, not in hours, and rules that name days), and picking `EXACT`
+  hands the recurrence the hour the rules were naming, or the reminder would quietly start
+  ringing at breakfast.
 - `ByTrigger` — hands the question back to a trigger that names its own dates, which is now only
   a random window ("tres veces al día" is its own answer to "¿y vuelve?").
 - `MonthlyWeekday(ordinal, day)` — read-only. It is `Calendar` of a month with a `MonthlyOn.Nth`
@@ -1271,7 +1311,17 @@ because that is what its chip would show.
   always, but routed to the headphones when a pair is connected (`setPreferredDevice`, looked up
   at the moment of playing so a pair unplugged a minute ago cannot swallow a reminder;
   `AppSettings.alertToHeadphones`, on, and off is the honest setting for earbuds that live in a
-  drawer). And the focus request is `TRANSIENT_MAY_DUCK`, not `EXCLUSIVE`: a ten-second chime
+  drawer). **And twenty seconds later it comes out of the phone anyway**
+  (`AlertAudio.HEADPHONES_GRACE_MS`, `toSpeaker`, scheduled by `AlertRinger` and cancelled by
+  its `stop`): a pair of earbuds is not proof that anybody is listening through them. Bluetooth
+  headphones routinely hold two devices, and while the other one has the channel the alarm is
+  played into a link that is not carrying it — with nothing visible from here, because the
+  headset is connected, the routing is accepted and the player says it is playing. Twenty
+  seconds is long enough for somebody actually wearing them to have reached for the screen and
+  leaves forty of the noise's own minute out loud. The speaker is named outright
+  (`TYPE_BUILTIN_SPEAKER`) rather than the preference simply cleared, because the platform's
+  answer for an alarm with A2DP connected is not the same on every phone, which is the exact
+  uncertainty this exists to end. And the focus request is `TRANSIENT_MAY_DUCK`, not `EXCLUSIVE`: a ten-second chime
   has no business ending somebody's podcast, so the music drops a few decibels underneath and
   comes back by itself. The previews in Settings use the same two, or they are previews of
   something else — one for the tone, one for the continuous ring a full-screen alert makes
@@ -1322,6 +1372,19 @@ because that is what its chip would show.
   the bottom-most control on it, because the bottom of the screen is where a half-awake thumb
   lands and it belongs to the one answer the screen is asking for; "Ver" (which opens the form)
   sits above it, having once sat below.
+  **While it is making a noise, that button is "Silenciar" instead.** Half awake with the phone
+  buzzing, "make it stop" and "I have done that" are the same reflex and only one of them is
+  true — and a reminder dismissed without being read is gone for good. So the noise gets its own
+  answer, in the `errorContainer` red nothing else on the screen wears, and the reminder is left
+  exactly as it was: the words, the snoozes and "Ver" all still there to decide with. One button
+  and not two, so nothing moves under the thumb — it changes colour, glyph and word in place
+  (animated), which is the whole of the feedback that the tap did something; two buttons stacked
+  would put "Hecho" where the eye already is and make the silence a step people skip. What it
+  asks about is whether there is a noise *now* (`AlertActivity.noise`, set with the ringer and
+  cleared by `hush`), so it goes back to "Hecho" when the minute runs out on its own as well as
+  when somebody presses it. `AlertStackScreen` gets the same answer as a full-width row above
+  the strips rather than a swap: there is no one button on that screen to take over, and every
+  strip's own "Hecho" belongs to a reminder somebody has to have read.
   **Two reminders within moments of each other both reach the screen.** It is `singleTask`
   and no start clears its task any more (every start once carried `CLEAR_TASK`, so the second
   alert destroyed the first — whose notification, posted on the silent full-screen channel,

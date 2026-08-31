@@ -126,6 +126,7 @@ fun conditionLabel(condition: Condition): String {
             TimeText.dayDate(condition.from, locale),
             TimeText.dayDate(condition.to, locale),
         )
+        is Condition.OnDays -> daysSummary(words, condition.days)
         is Condition.AtPlace -> stringResource(
             if (condition.inside) R.string.condition_at_place else R.string.condition_away_from_place,
             condition.label,
@@ -180,6 +181,14 @@ fun triggerLine(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): Tri
                 daysSummary(words, trigger.days)
             },
             primaryMono = true,
+        )
+        // The days read as the whole of it, so they take the line the hour usually has — and in
+        // words, not mono: it is a name, not a number. What is left to say is the hour nobody
+        // chose, which is the same sentence a date without one says.
+        is Trigger.Weekday -> TriggerLine(
+            primary = daysPhrase(words, trigger.days),
+            secondary = stringResource(R.string.trigger_when_day_starts),
+            primaryMono = false,
         )
         is Trigger.DayRandom -> TriggerLine(
             primary = dayWord(words, trigger.date, today),
@@ -286,6 +295,7 @@ fun triggerPhrase(words: Words, trigger: Trigger, today: LocalDate, defaultTime:
             TimeText.time(trigger.time, is24h, locale),
             everyDayOr(words, trigger.days),
         )
+        is Trigger.Weekday -> words.get(R.string.editor_sentence_on_days, daysPhrase(words, trigger.days))
         is Trigger.Interval -> words.get(
             R.string.editor_sentence_interval,
             TimeText.window(trigger.from, trigger.to, is24h, locale),
@@ -351,6 +361,7 @@ fun conditionPhrase(words: Words, condition: Condition): String = when (conditio
         TimeText.dayDate(condition.from, words.locale),
         TimeText.dayDate(condition.to, words.locale),
     )
+    is Condition.OnDays -> words.get(R.string.editor_sentence_on_days, daysPhrase(words, condition.days))
     is Condition.AtPlace -> words.get(
         if (condition.inside) R.string.editor_sentence_if_at else R.string.editor_sentence_if_away,
         condition.label,
@@ -395,6 +406,15 @@ fun daysSummary(words: Words, days: Set<DayOfWeek>): String = when (days) {
             .joinToString(" · ") { TimeText.dayInitial(it, words.locale) }
     }
 }
+
+/**
+ * The days as they read inside a sentence: one day gets its own name, several get [daysSummary].
+ *
+ * "Los V" is a line on a card read as prose, and it is not prose. A single day is the case that
+ * matters — it is what "un día de la semana" is for — and its name costs nothing to say in full.
+ */
+fun daysPhrase(words: Words, days: Set<DayOfWeek>): String =
+    days.singleOrNull()?.getDisplayName(TextStyle.FULL, words.locale) ?: daysSummary(words, days)
 
 /**
  * A recurrence in a few words: "cada 2 semanas · L · J", "cada mes · el cuarto miércoles",

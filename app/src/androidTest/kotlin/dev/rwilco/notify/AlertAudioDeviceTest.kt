@@ -53,6 +53,30 @@ class AlertAudioDeviceTest {
     }
 
     @Test
+    fun aSoundCanBeMovedToTheSpeakerMidPlay() {
+        // Twenty seconds unanswered and a reminder sent to the headphones comes out of the
+        // phone instead (AlertAudio.HEADPHONES_GRACE_MS) — because headphones connected are not
+        // headphones being listened through. There is nothing to hear on an emulator; what this
+        // pins is that the move itself is a call the platform takes, mid-playback, without
+        // stopping the sound, which is the only way this path can break silently.
+        val uri = Sounds.uri(context, AlertSound.Bundled(Chime.SOFT))
+        val player = MediaPlayer()
+        try {
+            player.setDataSource(context, uri!!)
+            player.setAudioAttributes(AlertAudio.attributes())
+            AlertAudio.routeTo(context, player, toHeadphones = true)
+            player.prepare()
+            player.start()
+            AlertAudio.toSpeaker(context, player)
+            assertTrue("the chime stopped when it was moved", player.isPlaying)
+        } finally {
+            runCatching { player.stop() }
+            player.release()
+        }
+        assertTrue("twenty seconds is inside the minute the noise may last", AlertAudio.HEADPHONES_GRACE_MS < 60_000L)
+    }
+
+    @Test
     fun theAlarmStreamIsTheOneThatGovernsIt() {
         val audio = context.getSystemService(AudioManager::class.java)!!
         assertTrue(audio.getStreamMaxVolume(AudioManager.STREAM_ALARM) > 0)

@@ -219,6 +219,14 @@
     <string name="recur_hour_same_short">at the same time</string>
     <string name="recur_hour_at">at %1$s</string>
     <string name="recur_hour_rules_note">The rules above already name an hour, so this only decides which day it comes back on.</string>
+    <string name="recur_landing">The day it comes back on</string>
+    <string name="recur_landing_next">the next allowed one</string>
+    <string name="recur_landing_nearest">the closest one</string>
+    <string name="recur_landing_exact">exactly the span</string>
+    <string name="recur_landing_next_hint">Waits for the first day your rules allow once the span is up. The span stretches: 30 days becomes 35.</string>
+    <string name="recur_landing_nearest_hint">Takes the day your rules allow that is closest to the span, before it or after it. The span holds and the day bends.</string>
+    <string name="recur_landing_exact_hint">Comes back the moment the span is up, whatever day that lands on: the rules stop deciding, and a place among them stops being watched.</string>
+    <string name="recur_hour_exact_note">With «exactly the span» this is the hour it rings at, because the rules no longer say.</string>
     <string name="recur_from_ringing">When it rings</string>
     <string name="recur_from_dealt">When you\'re done</string>
     <string name="card_recurrence_from_ringing">from when it rings</string>
@@ -267,6 +275,11 @@
     <string name="kind_time_of_day_hint">At 09:00, on the days you say</string>
     <string name="time_of_day_hint_alone">On its own it rings at that time on the next day it counts on, and on the one after that if you leave it.</string>
     <string name="time_of_day_hint_together">With «at once» this is the moment the others have to be true around: «at 09:00, and at home».</string>
+    <string name="kind_weekday">A day of the week</string>
+    <string name="kind_weekday_hint">Fridays, weekends — the days on their own</string>
+    <string name="weekday_hint_alone">On its own it rings when the next day you pick starts, and on the one after that if you leave it.</string>
+    <string name="weekday_hint_together">With «at once» it is the day everything else has to land inside: «Fridays, and at 14:00».</string>
+    <string name="weekday_days_hint">Pick at least one: here the days are the whole trigger.</string>
     <string name="kind_repeat_time">Repeats</string>
     <string name="kind_repeat_time_hint">Every day, week, month or year</string>
     <string name="kind_countdown">Countdown</string>
@@ -320,6 +333,7 @@
     <string name="alert_empty_text">(No text yet)</string>
     <string name="alert_snooze">Snooze</string>
     <string name="alert_done">Done</string>
+    <string name="alert_silence">Silence</string>
     <string name="alert_view">View</string>
     <string name="alert_done_all">Done with all</string>
     <string name="widget_next_label">Next up</string>
@@ -466,6 +480,7 @@
     <string name="editor_sentence_at_datetime">%1$s at %2$s</string>
     <string name="editor_sentence_at_time">at %1$s %2$s</string>
     <string name="editor_sentence_interval">during %1$s %2$s</string>
+    <string name="editor_sentence_on_days">on %1$s</string>
     <string name="editor_sentence_random">%1$s, in the %2$s window</string>
     <string name="editor_sentence_repeat">at %1$s, %2$s</string>
     <string name="editor_sentence_place_inside">while I am at %1$s</string>
@@ -1152,6 +1167,13 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_61_0">
+        <item>An alarm that is making a noise now asks to be silenced before it will take «Done». The big button turns red and says «Silence»: it stops the sound and the buzzing and nothing else, leaving the words, the snoozes and «View» exactly where they were to decide with — then it becomes the ordinary «Done». Half awake, «make it stop» and «I have done that» are the same reflex, and only one of them is true.</item>
+        <item>A reminder sent to your headphones comes out of the phone twenty seconds later if nobody answers. Bluetooth earbuds routinely hold two devices, and while the other one has the channel there is nothing to hear — with no sign of it from here.</item>
+        <item>«A day of the week» is its own trigger now. The days used to be welded to «Time of day», so saying just «Fridays» meant inventing an hour to say it with; write the two separately and they join with «at once», reading back as what you actually meant.</item>
+        <item>A second trigger now means «at once» rather than «either one» — one arrangement with two halves is almost always what a second «when» is for. Two triggers that can never coincide keep «either one», because «at once» there would be a reminder that never rings.</item>
+        <item>«Fridays at 14:00, and comes back every 30 days» stops being a guess. Thirty days after a Friday is a Sunday, and «Comes back» now asks which of the three you meant: the next allowed day (what it has always done, and it turns 30 days into 35), the closest one either side, or exactly the span whatever day that is.</item>
+    </string-array>
     <string-array name="whats_new_0_60_0">
         <item>The top row gets out of the way. The wordmark, the cog and the icons slide away as you go down the list and come back the moment you go up — so Settings is a flick away from wherever you are reading, instead of a scroll back to the top. While you are searching the row stays put: the field is what your thumb is aiming at.</item>
     </string-array>
