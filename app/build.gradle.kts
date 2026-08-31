@@ -24,8 +24,8 @@ android {
         // v0.1.0 and v0.2.0: the published versionName came out as the comment's placeholder
         // with the real one stuck on the end. Updates kept working (the version CODE never
         // matched the comment), so nothing complained — it just offered a nonsense version.
-        versionCode = 108
-        versionName = "0.62.0-alpha"
+        versionCode = 109
+        versionName = "0.63.0-alpha"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

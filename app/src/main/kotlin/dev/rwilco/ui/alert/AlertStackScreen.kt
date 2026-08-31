@@ -144,7 +144,10 @@ fun AlertStackScreen(
 }
 
 /**
- * "Silenciar", across the width, while there is a noise to silence.
+ * "Silenciar", across the width, while there is a noise that keeps going to silence.
+ *
+ * Which noises those are is [dev.rwilco.model.asksToBeSilenced]: the buzz and the insistent
+ * tone, never a single "sonido" that is over before a thumb could reach this.
  *
  * A row of its own here rather than the swap the single alert does with its "Hecho". There is no
  * one button on this screen to take over — every strip has its own, and each of them belongs to

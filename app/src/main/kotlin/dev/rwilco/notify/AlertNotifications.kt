@@ -18,7 +18,6 @@ import dev.rwilco.ui.alert.AlertActivity
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.FiringPlan
 import dev.rwilco.ui.format.summaryLine
-import dev.rwilco.MainActivity
 import dev.rwilco.model.NetWord
 import dev.rwilco.model.Presence
 import dev.rwilco.model.Reminder
@@ -169,18 +168,16 @@ object AlertNotifications {
             late != null -> CHANNEL_MISSED
             else -> channelId(soundHere, vibrateHere, vibration, effective, bypass)
         }
-        // The alert screen is for a ring somebody can still answer. The net's word about a
-        // moment that never rang has no ring behind it, and that screen drops a reminder that
-        // is not awaiting an answer the moment it opens: a tap that flashed and did nothing.
-        // That word opens the reminder itself, where the fence that shut it can be changed.
-        // "Still waiting at a place" is not awaiting an answer either — and the editor drops
-        // the wait on save — so that one opens Home, where the wait is seen and can be taken
-        // back.
-        val open = when (nudge) {
-            NetWord.NEVER_RANG -> editorIntent(context, reminder.id)
-            NetWord.WAITING -> homeIntent(context, reminder.id)
-            else -> activityIntent(context, reminder.id, ruleIndex)
-        }
+        // **Every card about a reminder opens the alert screen**, whichever of them it is.
+        // The net's two words used to go elsewhere — "never rang" to the form, "still waiting"
+        // to Home — for one good reason: that screen holds a reminder only while it is owed an
+        // answer, and neither of those is, so the tap would have flashed and done nothing.
+        // [ReminderScheduler.EXTRA_ANYWAY] is that reason answered rather than worked around:
+        // the note says out loud that its reminder is not owed an answer, the screen holds it
+        // until one is given here, and it arrives silent. What it costs is the one door Home
+        // was: taking a wait at a place *back* without answering is still Home's long-press
+        // menu ("quitar el posponer").
+        val open = activityIntent(context, reminder.id, ruleIndex, anyway = nudge != null)
         // **Why it rang**, in the words the form used when it was written — not the reminder's
         // own text again, which the title already carries and which said nothing twice. The
         // sentence is the editor's own, minus the words themselves (`reminderSummary`).
@@ -360,33 +357,22 @@ object AlertNotifications {
 
 
     /** The rule rides as an extra: not part of the identity, refreshed by FLAG_UPDATE_CURRENT. */
-    private fun activityIntent(context: Context, reminderId: String, ruleIndex: Int?): PendingIntent = PendingIntent.getActivity(
+    /**
+     * [anyway] is the net's card saying that its reminder is not owed an answer and that the
+     * screen should hold it regardless; see [ReminderScheduler.EXTRA_ANYWAY]. It is also what
+     * tells the two cards' PendingIntents apart — extras are not part of a PendingIntent's
+     * identity, but the request code is, and a ring and the net's word about it are two
+     * different taps on one reminder.
+     */
+    private fun activityIntent(context: Context, reminderId: String, ruleIndex: Int?, anyway: Boolean = false): PendingIntent = PendingIntent.getActivity(
         context,
-        0,
+        if (anyway) 1 else 0,
         Intent(context, AlertActivity::class.java)
             .setData(ReminderScheduler.reminderUri(reminderId))
-            .apply { if (ruleIndex != null) putExtra(ReminderScheduler.EXTRA_RULE, ruleIndex) }
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-    )
-
-    /** Home itself, where a wait at a place is seen and can be taken back; no form, no alert. */
-    private fun homeIntent(context: Context, reminderId: String): PendingIntent = PendingIntent.getActivity(
-        context,
-        0,
-        Intent(context, MainActivity::class.java)
-            .setData(ReminderScheduler.reminderUri(reminderId))
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-    )
-
-    /** The reminder in its own form, by way of Home; told apart from the alert's by its target. */
-    private fun editorIntent(context: Context, reminderId: String): PendingIntent = PendingIntent.getActivity(
-        context,
-        0,
-        Intent(context, MainActivity::class.java)
-            .setData(ReminderScheduler.reminderUri(reminderId))
-            .putExtra(MainActivity.EXTRA_DESTINATION, MainActivity.reminderDestination(reminderId))
+            .apply {
+                if (ruleIndex != null) putExtra(ReminderScheduler.EXTRA_RULE, ruleIndex)
+                if (anyway) putExtra(ReminderScheduler.EXTRA_ANYWAY, true)
+            }
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )

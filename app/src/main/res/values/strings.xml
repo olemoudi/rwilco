@@ -1167,6 +1167,10 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_63_0">
+        <item>The step that asks you to silence an alarm before it will take «Done» now only appears when there is still a noise going on: the buzzing, and the tone that keeps coming back. A plain «Sound» says its tone once and stops after a second or two, and the red button used to stand there for the rest of the minute holding «Done» out of reach in a silent room — a step you paid for and got nothing back from.</item>
+        <item>Every card about a reminder opens the alert screen now, the safety net\'s two notes included. «It never rang» used to open the form and «still waiting somewhere» used to open Home, because that screen only holds a reminder it is owed an answer for — so those two would have flashed and done nothing. Now the note says so and the screen holds it anyway, silently: it is a note about something that already got away, not an alarm. Taking a wait at a place back without answering is still on the card, held down.</item>
+    </string-array>
     <string-array name="whats_new_0_62_0">
         <item>The safety net is heard now. Its word — «you may have let this one go» — plays your ordinary, non-insistent tone at half the volume an alarm gets: enough to notice, and saying in the only unit a sound has that it is not the alarm.</item>
         <item>And it keeps to the hours you are up. Being mute was what let the net speak at any hour without anyone thinking about it; half an alarm at three in the morning is still an alarm at three in the morning, so outside your waking hours the card is posted exactly as silently as before. It is in the tray either way, and the net is about something that already got away.</item>

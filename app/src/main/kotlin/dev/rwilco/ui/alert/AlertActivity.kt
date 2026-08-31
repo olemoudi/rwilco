@@ -24,6 +24,7 @@ import dev.rwilco.model.AlertStacking
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Snooze
 import dev.rwilco.model.VibrationLimits
+import dev.rwilco.model.asksToBeSilenced
 import dev.rwilco.model.awaitingAnswer
 import dev.rwilco.model.firingPlan
 import dev.rwilco.model.loopsOnScreen
@@ -69,6 +70,14 @@ class AlertActivity : ComponentActivity() {
     private val rules = mutableStateMapOf<String, Int>()
     private val watches = mutableMapOf<String, Job>()
 
+    /**
+     * The ones being shown although nothing is owed: the safety net's notes about a reminder
+     * that never rang, or one still waiting at a place. See [ReminderScheduler.EXTRA_ANYWAY].
+     * They are held until they are answered here, and they make no noise — a note about
+     * something that already got away is not an alarm.
+     */
+    private val anyway = mutableStateListOf<String>()
+
     /** Bumped when a reminder joins: the noise and the two-minute budget start over for it. */
     private var ringEpoch by mutableIntStateOf(0)
 
@@ -95,9 +104,10 @@ class AlertActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
+        val wasHeld = savedInstanceState?.getStringArrayList(STATE_ANYWAY).orEmpty()
         savedInstanceState?.getStringArrayList(STATE_RINGING)?.forEachIndexed { index, id ->
             val rule = savedInstanceState.getIntArray(STATE_RULES)?.getOrNull(index)?.takeIf { it >= 0 }
-            track(id, rule)
+            track(id, rule, held = id in wasHeld)
         }
         intent?.let { arrived(it) }
         if (ringing.isEmpty()) {
@@ -112,7 +122,10 @@ class AlertActivity : ComponentActivity() {
             val today = remember { app.clock.instant().atZone(zone).toLocalDate() }
             val reminders = ringing.mapNotNull { loaded[it] }
             if (reminders.isEmpty()) return@setContent
-            val plans = reminders.map { firingPlan(it.actions) }
+            // What the screen is about to make a noise for, which is not everything on it: a
+            // reminder opened from one of the net's notes arrives silent, because the noise it
+            // was asked for belongs to a moment that has already been and gone.
+            val plans = reminders.filter { it.id !in anyway }.map { firingPlan(it.actions) }
             val sound = plans.any { it.sound }
             val vibrate = plans.any { it.vibrate }
             // One screen can carry several reminders; if any of them is the kind that keeps
@@ -129,9 +142,13 @@ class AlertActivity : ComponentActivity() {
                     toHeadphones = current.alertToHeadphones,
                     // "Sonido" is once, here too: the screen only goes round and round for the
                     // reminders that asked to be insisted at.
-                    looping = loopsOnScreen(plans),
+                    looping = looping,
                 )
-                noise = sound || vibrate
+                // **Only a noise that outlives the tap is one there is anything to answer.**
+                // A single tone is over in a second or two and nothing ever cleared this, so
+                // the red button sat on top of "hecho" for the rest of the minute, protecting
+                // somebody from a silence. See [asksToBeSilenced].
+                noise = asksToBeSilenced(plans)
                 onDispose { hush() }
             }
             // An alarm that rings for ever is one nobody leaves the house with. The alert stays
@@ -196,22 +213,28 @@ class AlertActivity : ComponentActivity() {
     /** A reminder id carried by an intent: the launch, or a later start reaching the live screen. */
     private fun arrived(intent: Intent) {
         val id = ReminderScheduler.reminderIdOf(intent) ?: return
-        track(id, ReminderScheduler.ruleIndexOf(intent))
+        track(id, ReminderScheduler.ruleIndexOf(intent), ReminderScheduler.anywayIn(intent))
     }
 
     /**
      * Put a reminder on the screen and keep it there only while it is still owed an answer: the
      * row is watched, so "Hecho" from the notification takes it down here too.
      */
-    private fun track(id: String, ruleIndex: Int?) {
+    private fun track(id: String, ruleIndex: Int?, held: Boolean = false) {
         if (id in ringing) return
         ringing += id
         if (ruleIndex != null) rules[id] = ruleIndex
+        if (held) anyway += id
         ringEpoch++
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         watches[id] = lifecycleScope.launch {
             app.repository.observe(id).collect { reminder ->
-                if (reminder == null || !reminder.awaitingAnswer(app.clock.instant())) drop(id) else loaded[id] = reminder
+                // One opened from a note is held until it is answered here: it was never owed
+                // an answer, so the usual test would take it off the screen on the very first
+                // emission and the tap would have flashed and done nothing. The explicit
+                // answers still call [drop] themselves, and a deleted row still leaves.
+                val owed = reminder != null && reminder.awaitingAnswer(app.clock.instant())
+                if (reminder == null || !(owed || id in anyway)) drop(id) else loaded[id] = reminder
             }
         }
     }
@@ -221,6 +244,7 @@ class AlertActivity : ComponentActivity() {
         ringing.remove(id)
         loaded.remove(id)
         rules.remove(id)
+        anyway.remove(id)
         if (ringing.isEmpty()) close()
     }
 
@@ -292,6 +316,7 @@ class AlertActivity : ComponentActivity() {
         super.onSaveInstanceState(outState)
         outState.putStringArrayList(STATE_RINGING, ArrayList(ringing))
         outState.putIntArray(STATE_RULES, IntArray(ringing.size) { rules[ringing[it]] ?: -1 })
+        outState.putStringArrayList(STATE_ANYWAY, ArrayList(anyway))
     }
 
     override fun onStop() {
@@ -310,5 +335,6 @@ class AlertActivity : ComponentActivity() {
         val RING_TIMEOUT_MS = VibrationLimits.LONGEST.toMillis()
         const val STATE_RINGING = "ringing"
         const val STATE_RULES = "rules"
+        const val STATE_ANYWAY = "anyway"
     }
 }

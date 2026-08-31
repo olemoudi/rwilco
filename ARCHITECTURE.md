@@ -1168,8 +1168,19 @@ because that is what its chip would show.
   third is the wait with nothing under it: **put off until a place whose crossing has not come**
   (`WAITING`, 0.59.0) — nothing on the clock, and if the fence is dropped and the watch blind,
   nothing behind it at all — said two of the longest waits after the ring the snooze answered
-  (`placeSnoozeWait`, about two days), and opening Home, where the wait can be taken back (the
-  alert screen would drop it unanswered, and the editor drops the wait on save).
+  (`placeSnoozeWait`, about two days).
+  **Every card about a reminder opens the alert screen, the net's two words included** (0.63.0).
+  They used to go elsewhere — `NEVER_RANG` to the form, `WAITING` to Home — for one good reason:
+  that screen holds a reminder only while it is owed an answer (`awaitingAnswer`), and neither of
+  those is, so the tap would have flashed and done nothing. `ReminderScheduler.EXTRA_ANYWAY` is
+  that reason answered instead of worked around: the note's own PendingIntent says the reminder
+  is not owed an answer, `AlertActivity` holds it until one is given there, and it **arrives
+  silent** — the ringer's plans are built from the reminders *not* opened that way, because a
+  note about a moment that already got away is not an alarm whatever its tiles say. The extra is
+  also what tells the two cards' PendingIntents apart (a request code; extras are not part of a
+  PendingIntent's identity). What it costs is the one door Home was: from the alert screen
+  "hecho" ends a wait at a place and a snooze replaces it, but taking that wait *back* without
+  answering is still Home's long-press menu.
   **It is not asked for.** It began as a switch on each reminder, which was a switch about the
   one thing nobody can answer in advance — which of your reminders is going to be the one that
   gets away — and anybody who could answer it would not need a net. So it holds for every
@@ -1403,7 +1414,13 @@ because that is what its chip would show.
   would put "Hecho" where the eye already is and make the silence a step people skip. What it
   asks about is whether there is a noise *now* (`AlertActivity.noise`, set with the ringer and
   cleared by `hush`), so it goes back to "Hecho" when the minute runs out on its own as well as
-  when somebody presses it. `AlertStackScreen` gets the same answer as a full-width row above
+  when somebody presses it. **And only a noise that outlives the tap counts** (`asksToBeSilenced`,
+  `core-model`): the buzz, which is built as a whole minute of waveform whatever its rhythm, and
+  the insistent tone, which loops for as long. A plain "sonido" says its tone once and stops
+  after a second or two, and nothing ever cleared the flag — so the red button stood over "Hecho"
+  for the remaining fifty-eight seconds of a silent room, which is a step somebody pays for and
+  gets nothing back from. The argument for the step is about answering a *noise* by mistake; with
+  no noise there is no mistake to make. `AlertStackScreen` gets the same answer as a full-width row above
   the strips rather than a swap: there is no one button on that screen to take over, and every
   strip's own "Hecho" belongs to a reminder somebody has to have read.
   **Two reminders within moments of each other both reach the screen.** It is `singleTask`

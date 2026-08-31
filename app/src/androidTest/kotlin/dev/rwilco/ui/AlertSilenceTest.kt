@@ -48,10 +48,15 @@ class AlertSilenceTest {
 
     private val loudId = "silence-loud"
     private val quietId = "silence-quiet"
+    private val onceId = "silence-once"
+    private val noteId = "silence-note"
     private val loud = "Sacar el pan del horno (prueba ruidosa)"
     private val quiet = "Bajar la basura (prueba silenciosa)"
+    private val once = "Regar las plantas (prueba de un solo tono)"
+    private val note = "Renovar el abono (prueba de la red)"
 
-    private fun seed(id: String, text: String, actions: Set<Action>) = runBlocking {
+    /** [rang] false is a reminder that never went off — what the safety net's first word is about. */
+    private fun seed(id: String, text: String, actions: Set<Action>, rang: Boolean = true) = runBlocking {
         val now = app.clock.instant()
         app.repository.save(
             Reminder(
@@ -61,7 +66,7 @@ class AlertSilenceTest {
                 actions = actions,
                 createdAt = now,
                 updatedAt = now,
-                lastFiredAt = now,
+                lastFiredAt = if (rang) now else null,
             ),
         )
     }
@@ -72,6 +77,8 @@ class AlertSilenceTest {
         runCatching { scenario?.close() }
         app.repository.delete(loudId)
         app.repository.delete(quietId)
+        app.repository.delete(onceId)
+        app.repository.delete(noteId)
     }
 
     @Test
@@ -119,6 +126,47 @@ class AlertSilenceTest {
 
         rule.onNodeWithText(string { it.getString(R.string.alert_done) }).assertIsDisplayed()
         check(rule.onAllNodesWithText(string { it.getString(R.string.alert_silence) }).fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test
+    fun `an alert that says its tone once goes straight to hecho`() {
+        // "Sonido" is one tone and then silence. The silence step is there to stop a hand from
+        // answering a NOISE instead of a reminder, and two seconds later there is no noise to
+        // answer — so the step stood in a silent room, holding "hecho" out of reach for the
+        // rest of the minute.
+        seed(onceId, once, setOf(Action.FULL_SCREEN, Action.SOUND))
+        scenario = ActivityScenario.launch(alert(onceId))
+        rule.waitUntilShown(once)
+
+        rule.onNodeWithText(string { it.getString(R.string.alert_done) }).assertIsDisplayed()
+        check(rule.onAllNodesWithText(string { it.getString(R.string.alert_silence) }).fetchSemanticsNodes().isEmpty()) {
+            "a tone said once asked to be silenced"
+        }
+    }
+
+    @Test
+    fun `a reminder opened from the safety net's note stays on the screen and stays quiet`() {
+        // The net's word is about a reminder that is owed nothing — this one never rang at all
+        // — and the screen's usual rule would take it off on the first emission, so the tap
+        // would flash and do nothing. It is held, and it arrives silent: a note about a moment
+        // that already got away is not an alarm, whatever the reminder was asked to do.
+        seed(noteId, note, setOf(Action.FULL_SCREEN, Action.VIBRATE), rang = false)
+        scenario = ActivityScenario.launch(
+            alert(noteId).putExtra(ReminderScheduler.EXTRA_ANYWAY, true),
+        )
+        rule.waitUntilShown(note)
+
+        rule.onNodeWithText(string { it.getString(R.string.alert_done) }).assertIsDisplayed()
+        check(rule.onAllNodesWithText(string { it.getString(R.string.alert_silence) }).fetchSemanticsNodes().isEmpty()) {
+            "the note's alert made a noise"
+        }
+        shot("alert-from-note")
+
+        // And the ordinary answer still works, which is the whole reason it is on the screen.
+        rule.onNodeWithText(string { it.getString(R.string.alert_done) }).performClick()
+        rule.waitUntil(timeoutMillis = 10_000) {
+            runBlocking { app.repository.get(noteId)?.lastDealtAt != null }
+        }
     }
 
     private fun shot(name: String) {

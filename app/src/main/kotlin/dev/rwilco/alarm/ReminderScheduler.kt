@@ -270,6 +270,20 @@ class ReminderScheduler(
         fun ruleIndexOf(intent: Intent): Int? = intent.getIntExtra(EXTRA_RULE, -1).takeIf { it >= 0 }
 
         /**
+         * Show this reminder on the alert screen even though it is not awaiting an answer.
+         *
+         * The screen's rule is that a reminder stays on it only while it is owed an answer
+         * ([Reminder.awaitingAnswer]) — that is what takes it down when "hecho" comes from the
+         * shade. The safety net's notes are about reminders that are not owed one: one that
+         * never rang at all, and one waiting at a place. Opening the screen for those without
+         * this would be a tap that flashed and did nothing, so the note says out loud that it
+         * knows, and the screen holds the reminder until it is answered here.
+         */
+        const val EXTRA_ANYWAY = "anyway"
+
+        fun anywayIn(intent: Intent): Boolean = intent.getBooleanExtra(EXTRA_ANYWAY, false)
+
+        /**
          * What the scheduling of a list depends on in the settings; anything else changing must
          * not re-arm it. The net's numbers are here because the nudge is an alarm ([armNudge]):
          * "avísame 36 h después" moved to 12 used to leave every net armed on the old numbers

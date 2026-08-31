@@ -1165,6 +1165,10 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_63_0">
+        <item>El paso que te pide silenciar una alarma antes de aceptar un «Hecho» sale ahora sólo cuando queda ruido: la vibración y el tono que vuelve. Un «Sonido» a secas suena una vez y para a los dos segundos, y el botón rojo se quedaba ahí el resto del minuto dejando el «Hecho» fuera de tu alcance en una habitación en silencio — un paso que pagabas sin que te devolviera nada.</item>
+        <item>Cualquier aviso de un recordatorio abre ya la pantalla de la alerta, incluidas las dos notas de la red de seguridad. «No llegó a sonar» abría el formulario y «sigue esperando» abría Inicio, porque esa pantalla sólo sostiene un recordatorio al que se le debe una respuesta — así que esas dos habrían dado un fogonazo y nada más. Ahora la nota lo dice y la pantalla lo sostiene igualmente, en silencio: es una nota sobre algo que ya se te escapó, no una alarma. Quitar una espera en un lugar sin responderla sigue estando en la tarjeta, manteniéndola pulsada.</item>
+    </string-array>
     <string-array name="whats_new_0_62_0">
         <item>La red de seguridad ahora se oye. Su aviso — «puede que se te haya pasado» — suena con tu tono normal, el no insistente, a la mitad del volumen que tiene una alarma: suficiente para enterarte, y diciendo en la única unidad que tiene un sonido que no es la alarma.</item>
         <item>Y se queda en tus horas despierto. Ser muda era lo que le permitía hablar a cualquier hora sin que nadie lo pensara; media alarma a las tres de la madrugada sigue siendo una alarma a las tres de la madrugada, así que fuera de tus horas la tarjeta se posa tan en silencio como antes. Está en la bandeja igualmente, y la red va de algo que ya se te escapó.</item>

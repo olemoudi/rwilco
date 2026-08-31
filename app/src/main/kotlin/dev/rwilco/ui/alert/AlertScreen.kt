@@ -72,8 +72,10 @@ fun AlertScreen(
     places: List<SnoozePlace> = emptyList(),
     onSnoozeToPlace: (SnoozePlace) -> Unit = {},
     /**
-     * Whether it is making a noise right this second. While it is, the one big button silences
-     * instead of dismissing; see the button itself.
+     * Whether there is a noise going on that will still be going when a thumb arrives — a buzz
+     * or the insistent tone, never a single one that has already stopped. While there is, the
+     * one big button silences instead of dismissing; see the button itself, and
+     * [dev.rwilco.model.asksToBeSilenced] for which noises count.
      */
     ringing: Boolean = false,
     onSilence: () -> Unit = {},
@@ -178,6 +180,11 @@ fun AlertScreen(
             // and a reminder dismissed without being read is gone for good. So the noise is
             // answered first, on its own button, and the screen stays exactly as it was: the
             // words, the snoozes and "Ver" all still there to decide with.
+            //
+            // **Only where there is still a noise to make that mistake with.** A plain "sonido"
+            // says its tone once and stops after a second or two; the step used to stand for
+            // the whole minute after it, holding "hecho" out of reach in a silent room, which
+            // is a step somebody pays for and gets nothing back from. See [asksToBeSilenced].
             //
             // One button and not two, so nothing moves under the thumb: it changes colour,
             // glyph and word in place — red container to the plain white "Hecho" — and that

@@ -258,6 +258,29 @@ class FiringTest {
     }
 
     @Test
+    fun `only a noise that keeps going asks to be silenced first`() {
+        // The red button holds "hecho" out of reach to protect somebody half awake from
+        // answering a noise instead of a reminder. That argument only holds while there is
+        // still a noise when the thumb arrives.
+        val once = firingPlan(setOf(Action.FULL_SCREEN, Action.SOUND))
+        val insisting = firingPlan(setOf(Action.FULL_SCREEN, Action.SOUND_UNTIL_ANSWERED))
+        val buzz = firingPlan(setOf(Action.FULL_SCREEN, Action.VIBRATE))
+        val silent = firingPlan(setOf(Action.FULL_SCREEN, Action.NOTIFICATION))
+        // A single tone is over in a second or two; the screen went on wearing the red button
+        // for the rest of the minute.
+        assertTrue(once.sound, "it does make a noise")
+        assertFalse(asksToBeSilenced(listOf(once)), "but not one that is still going")
+        // The buzz is built as a whole minute of waveform, whatever its rhythm, and the
+        // insistent tone loops for as long.
+        assertTrue(asksToBeSilenced(listOf(buzz)))
+        assertTrue(asksToBeSilenced(listOf(insisting)))
+        // One tone once, beside a buzz: there is a noise to answer, and it is the buzz.
+        assertTrue(asksToBeSilenced(listOf(once, buzz)))
+        assertFalse(asksToBeSilenced(listOf(silent)))
+        assertFalse(asksToBeSilenced(emptyList()))
+    }
+
+    @Test
     fun `an arrival minutes after a sibling rule's ring is not an echo of it`() {
         // "Al llegar a casa, o a las 21:00": the nine o'clock rang, and the doorway three
         // minutes later is a different thing that happened, not the same arrival seen twice.

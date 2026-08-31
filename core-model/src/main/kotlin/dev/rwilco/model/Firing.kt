@@ -186,6 +186,23 @@ data class FiringPlan(
  */
 fun loopsOnScreen(plans: List<FiringPlan>): Boolean = plans.any { it.insistent }
 
+/**
+ * Whether the alert screen has a noise to answer before it will take "hecho".
+ *
+ * Half awake, "make it stop" and "I have done that" are the same reflex and only one of them is
+ * true — so a screen that is making a noise asks to be silenced first. But that argument is
+ * about a noise that is *still going when the thumb arrives*, and only two of the three make
+ * one: the buzz, which is built as a whole minute of waveform ([waveformFor]), and the
+ * insistent tone, which loops for as long ([loopsOnScreen]). Plain "sonido" says the tone once
+ * and stops after a second or two — and the screen went on wearing the red button over the
+ * fifty-eight seconds of silence that followed, holding "hecho" out of reach to protect
+ * somebody from a noise that had already ended.
+ *
+ * Asked of the whole screen, like everything else here: one reminder that keeps making a noise
+ * is a noise to answer, whoever else is on it.
+ */
+fun asksToBeSilenced(plans: List<FiringPlan>): Boolean = plans.any { it.vibrate || it.insistent }
+
 fun firingPlan(actions: Set<Action>): FiringPlan = FiringPlan(
     fullScreen = Action.FULL_SCREEN in actions,
     // A full-screen alert always leaves a notification behind: it is what the person finds if
