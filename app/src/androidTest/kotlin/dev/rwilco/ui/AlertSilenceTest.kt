@@ -129,7 +129,7 @@ class AlertSilenceTest {
     }
 
     @Test
-    fun `an alert that says its tone once goes straight to hecho`() {
+    fun anAlertThatSaysItsToneOnceGoesStraightToHecho() {
         // "Sonido" is one tone and then silence. The silence step is there to stop a hand from
         // answering a NOISE instead of a reminder, and two seconds later there is no noise to
         // answer — so the step stood in a silent room, holding "hecho" out of reach for the
@@ -145,7 +145,7 @@ class AlertSilenceTest {
     }
 
     @Test
-    fun `a reminder opened from the safety net's note stays on the screen and stays quiet`() {
+    fun aReminderOpenedFromTheNetsNoteStaysOnScreenAndStaysQuiet() {
         // The net's word is about a reminder that is owed nothing — this one never rang at all
         // — and the screen's usual rule would take it off on the first emission, so the tap
         // would flash and do nothing. It is held, and it arrives silent: a note about a moment
