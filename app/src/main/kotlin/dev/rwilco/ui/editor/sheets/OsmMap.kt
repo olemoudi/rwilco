@@ -6,15 +6,16 @@ import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 import android.graphics.Point
-import android.os.SystemClock
 import android.view.MotionEvent
 import android.widget.FrameLayout
+import androidx.compose.animation.core.withInfiniteAnimationFrameNanos
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
@@ -85,6 +86,29 @@ fun OsmMap(
             scheme.surfaceContainerLowest.toArgb(),
             onLongPress,
         )
+    }
+
+    // **The beat is driven from here, not from inside the overlay's own draw.**
+    // Asking the view for another frame from `draw` is the obvious way to animate a View, and
+    // it has two costs that only showed up on a device: the main looper then has a Choreographer
+    // callback pending for ever, so it never idles — which no Espresso-driven test can
+    // synchronise with (`EditorTourTest` hung on exactly this once the emulator had a fix) — and
+    // the whole MapView, tiles and all, redraws sixty times a second for a dot that breathes
+    // once every two and a half. `withInfiniteAnimationFrameNanos` is the frame clock the test
+    // framework deliberately leaves out of idleness, and the throttle is what keeps the map from
+    // being redrawn far more often than a slow, faint wave can show.
+    if (here != null) {
+        LaunchedEffect(holder) {
+            var last = 0L
+            while (true) {
+                withInfiniteAnimationFrameNanos { nanos ->
+                    if (nanos - last >= PULSE_FRAME_NANOS) {
+                        last = nanos
+                        holder.pulse(nanos)
+                    }
+                }
+            }
+        }
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -200,6 +224,13 @@ private class MapHolder(
         }
     }
 
+    /** One frame of the beat: the phase in, and the one redraw it is worth. */
+    fun pulse(nanos: Long) {
+        if (here.position == null) return
+        here.phase = ((nanos % BEAT_NANOS).toFloat() / BEAT_NANOS)
+        map.invalidate()
+    }
+
     fun show(center: GeoPoint?, here: GeoPoint?, radiusM: Int, heightDp: Float) {
         this.here.position = here
         if (center == null) {
@@ -234,14 +265,11 @@ private class MapHolder(
 /**
  * The blue dot: where the phone is, and a slow wave going out of it.
  *
- * **It paces itself.** The obvious way to animate this is a Compose `rememberInfiniteTransition`
- * read in the `AndroidView`'s `update` — and that runs the whole update lambda sixty times a
- * second, which here means re-deciding the pin, rebuilding the radius circle
- * (`Polygon.pointsAsCircle`) and re-asking whether to fly the camera, every frame, for a dot.
- * So the phase is read off the clock inside [draw] and the next frame is asked for from there.
- * The loop is self-terminating in both directions that matter: nothing is drawn and nothing is
- * scheduled without a [position], and a view that has stopped drawing (the sheet gone, the map
- * paused) never reaches this at all.
+ * **It draws what it is given and schedules nothing.** [phase] is pushed in by the caller, one
+ * throttled frame at a time (see the `LaunchedEffect` in [OsmMap]): reading the clock here and
+ * asking the view for the next frame from inside `draw` is what a View animation usually does,
+ * and it leaves a Choreographer callback pending for ever — a main looper that never idles, and
+ * the whole map redrawn sixty times a second for a dot that breathes once every two and a half.
  *
  * The wave is deliberately faint and slow — this is a thing to notice out of the corner of the
  * eye while aiming at something else, not a beacon. The rim is the lowest surface rather than
@@ -251,6 +279,9 @@ private class HereOverlay(dotColor: Int, rimColor: Int, private val density: Flo
 
     /** Null until something has answered; drawing nothing is also what stops the pulse. */
     var position: GeoPoint? = null
+
+    /** Where in the beat, 0..1, pushed in by the caller. */
+    var phase: Float = 0f
 
     private val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = dotColor
@@ -276,16 +307,12 @@ private class HereOverlay(dotColor: Int, rimColor: Int, private val density: Flo
 
         // One beat: the wave grows from the dot's own edge outwards and fades as it goes, so
         // what the eye catches is the movement rather than any one frame of it.
-        val phase = (SystemClock.uptimeMillis() % BEAT_MS) / BEAT_MS.toFloat()
         val reach = DOT_DP + (WAVE_DP - DOT_DP) * phase
         wave.alpha = (WAVE_ALPHA * (1f - phase)).toInt().coerceIn(0, 255)
         canvas.drawCircle(x, y, reach * density, wave)
 
         canvas.drawCircle(x, y, DOT_DP * density, dot)
         canvas.drawCircle(x, y, DOT_DP * density, rim)
-
-        // The next frame, asked for only while there is something to draw.
-        mapView.postInvalidateOnAnimation()
     }
 
     private companion object {
@@ -295,10 +322,18 @@ private class HereOverlay(dotColor: Int, rimColor: Int, private val density: Flo
         const val WAVE_DP = 20f
         /** Out of 255 at the start of a beat, gone by the end of it. */
         const val WAVE_ALPHA = 70f
-        /** Slow enough to read as breathing rather than as something asking to be tapped. */
-        const val BEAT_MS = 2_400L
     }
 }
+
+/** Slow enough to read as breathing rather than as something asking to be tapped. */
+private const val BEAT_NANOS = 2_400_000_000L
+
+/**
+ * How often the map is actually redrawn for the beat: twenty-five a second, not sixty. A wave
+ * that takes two and a half seconds to cross twenty dp moves a third of a pixel per frame at
+ * 60fps, so the other thirty-five redraws of a whole MapView buy nothing anybody can see.
+ */
+private const val PULSE_FRAME_NANOS = 40_000_000L
 
 /** The map's height when nobody says otherwise, in dp; the zoom below is worked out from it. */
 internal const val MAP_HEIGHT_DP = 260f

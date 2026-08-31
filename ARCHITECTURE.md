@@ -1025,12 +1025,18 @@ because that is what its chip would show.
   now keeps it in a `here` of its own and hands it to `OsmMap` and `FullScreenMap` alike. The
   blue is a token (`hereBlue`) and the one colour in the app that means nothing in the app's own
   vocabulary: on a map it is the whole world's word for "you", and spending a family colour on
-  it would paint "me" the same as "a place" — which is exactly the pin beside it. **The pulse
-  paces itself**: the phase is read off `SystemClock.uptimeMillis()` inside `draw` and the next
-  frame asked for from there, because an infinite Compose transition read in the `AndroidView`'s
-  `update` re-runs the whole lambda — `Polygon.pointsAsCircle`, the camera decision — sixty times
-  a second for a dot. It is self-terminating both ways: nothing is drawn or scheduled without a
-  position, and a view that has stopped drawing never reaches it. The overlay is added once, in
+  it would paint "me" the same as "a place" — which is exactly the pin beside it. **The beat is driven from
+  the composable and throttled**, and both halves were paid for. Reading an infinite Compose
+  transition inside the `AndroidView`'s `update` re-runs that whole lambda — `pointsAsCircle`,
+  the camera decision — every frame, for a dot; and the View-shaped answer, asking the map for
+  another frame from inside `draw`, leaves a Choreographer callback pending for ever, which is a
+  main looper that never idles. That one is not only a battery cost: no Espresso-driven test can
+  synchronise with it, and `EditorTourTest` hung outright the first time the emulator had a fix
+  to draw. So the frames come from `withInfiniteAnimationFrameNanos` — the clock the test
+  framework deliberately leaves out of idleness — in a `LaunchedEffect` that exists only while
+  there is a position, throttled to twenty-five a second, which is more than a wave crossing
+  twenty dp in two and a half seconds can show. The overlay draws the phase it is handed and
+  schedules nothing. The overlay is added once, in
   `init`, before the circle and the pin, so it can never end up drawn over the thing being aimed
   at. The one infinite animation in the app, and it is not on Home. **And the map opens on a circle
   that fits in it** (`zoomFittingCircle`): the zoom is worked out from the 260dp the map is tall

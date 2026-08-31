@@ -4,6 +4,13 @@ Running notes: what is next, what cost time, what must not be re-derived.
 
 
 ## Emulator notes that cost time
+- **A View animation that asks for its own next frame hangs every Espresso test.**
+  `postInvalidateOnAnimation()` from inside `Overlay.draw` is the ordinary way to animate a
+  View, and it leaves a Choreographer callback pending for ever: `AppNotIdleException ...
+  MAIN_LOOPER_HAS_IDLED`, and the tour times out at whatever it was doing. It only appeared once
+  the emulator had a location fix for the blue dot to draw, so the first two tour runs were
+  green. Drive that kind of loop from `withInfiniteAnimationFrameNanos` (the frame clock
+  `createAndroidComposeRule` excludes from idleness) and throttle it. 2026-08-31.
 - **`performScrollToIndex` does not move the top row.** `HeaderScroll` travels by what the list
   *consumed* through the nested-scroll connection, and a programmatic jump consumes nothing — so
   the row stayed wherever it was, and at the top of the list no gesture can bring it back
