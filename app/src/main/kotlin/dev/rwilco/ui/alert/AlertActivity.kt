@@ -218,10 +218,19 @@ class AlertActivity : ComponentActivity() {
 
     /**
      * Put a reminder on the screen and keep it there only while it is still owed an answer: the
-     * row is watched, so "Hecho" from the notification takes it down here too.
+     * row is watched, so "Hecho" from the notification takes it down here too. [held] is the
+     * exception and the whole of it — a reminder shown because one of the net's notes was
+     * tapped, which is owed nothing and stays until it is answered here.
      */
     private fun track(id: String, ruleIndex: Int?, held: Boolean = false) {
-        if (id in ringing) return
+        if (id in ringing) {
+            // Already on the screen — but one being shown *silently* because a note was tapped
+            // stops being that the moment its own alarm arrives (a wait at a place, and the
+            // door opened while the screen was up). It gets the noise it was asked for, and the
+            // epoch is what starts it.
+            if (!held && anyway.remove(id)) ringEpoch++
+            return
+        }
         ringing += id
         if (ruleIndex != null) rules[id] = ruleIndex
         if (held) anyway += id
