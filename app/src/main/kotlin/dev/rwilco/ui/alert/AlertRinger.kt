@@ -60,6 +60,20 @@ class AlertRinger(private val context: Context) {
     }
 
     fun stop() {
+        soundOver()
+        runCatching { vibrator?.cancel() }
+        vibrator = null
+    }
+
+    /**
+     * The sound is over — it finished, it failed, or it is being stopped. The player goes, the
+     * audio is handed back, and the handover to the speaker is called off.
+     *
+     * **The buzz is not this.** A vibration has its own minute to run ([VibrationLimits.LONGEST])
+     * and outlives a two-second tone by fifty-eight of them, so ending one must not end the
+     * other; only [stop] ends both.
+     */
+    private fun soundOver() {
         handover?.let(clock::removeCallbacks)
         handover = null
         runCatching {
@@ -71,8 +85,6 @@ class AlertRinger(private val context: Context) {
         player = null
         AlertAudio.release(context, focus)
         focus = null
-        runCatching { vibrator?.cancel() }
-        vibrator = null
     }
 
     private fun startSound(tone: AlertSound, toHeadphones: Boolean, looping: Boolean) {
@@ -85,11 +97,32 @@ class AlertRinger(private val context: Context) {
                 setAudioAttributes(AlertAudio.attributes())
                 AlertAudio.routeTo(context, this, toHeadphones)
                 isLooping = looping
+                // **A tone said once hands the audio back the moment it ends.**
+                //
+                // Ducking is not a volume this app sets: it is every other app being asked to
+                // drop a few decibels and stay there until we let go of the focus
+                // ([AlertAudio.duckOthers]). Nothing here ever watched a one-shot tone finish,
+                // so the letting go waited for [stop] — the alert answered, or the minute
+                // running out — and two seconds of chime kept somebody's music down for the
+                // rest of that minute. The same seam as the silence step: a sound that says
+                // itself once has an end nobody was looking at. A looping tone has no
+                // completion to listen for and rightly holds the focus until it is silenced.
+                if (!looping) {
+                    setOnCompletionListener { done -> if (player === done) soundOver() }
+                    setOnErrorListener { failed, _, _ -> if (player === failed) soundOver(); true }
+                }
                 prepare()
                 start()
             }
-        }.onFailure { Log.w(TAG, "could not ring", it) }
-        if (toHeadphones && AlertAudio.headsetConnected(context)) handOverToSpeaker()
+        }.onFailure {
+            Log.w(TAG, "could not ring", it)
+            // Asked for the audio and never got a sound out of it: give it straight back, or
+            // the podcast stays ducked until something else happens to call stop().
+            soundOver()
+        }
+        // Only where there is a sound to hand over: a player that never started has already
+        // given the audio back, and this would put the handover it just cancelled back on the queue.
+        if (player != null && toHeadphones && AlertAudio.headsetConnected(context)) handOverToSpeaker()
     }
 
     /**

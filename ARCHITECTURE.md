@@ -1433,6 +1433,16 @@ because that is what its chip would show.
   a minute because nobody is there, and a display lit at full brightness until somebody comes
   home costs more battery than everything else in this app together. The alert is still on the
   screen when they do, and the notification is still in the shade either way.
+- **The audio is handed back when the sound ends, not when the screen is answered** (0.63.0).
+  Ducking is not a volume this app sets: `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK` asks every other
+  app to drop a few decibels and stay there until the focus is abandoned. `AlertRinger` only ever
+  abandoned it in `stop()` — the alert answered, or the minute running out — and nothing watched a
+  *one-shot* tone finish, so two seconds of chime held somebody's music down for the rest of that
+  minute. It is the same seam as the silence step and `AlertAudio.playOnce`'s own listener: a
+  sound that says itself once has an end nobody was looking at. `soundOver()` is that end — the
+  player, the focus and the pending handover to the speaker — and it is deliberately **not** the
+  buzz, which has its own minute to run and outlives the tone by fifty-eight seconds. A looping
+  tone has no completion to listen for and rightly holds the focus until it is silenced.
 - **Where the sound comes out, and what it does to the rest** (`AlertAudio`): the alarm stream
   always, but routed to the headphones when a pair is connected (`setPreferredDevice`, looked up
   at the moment of playing so a pair unplugged a minute ago cannot swallow a reminder;
