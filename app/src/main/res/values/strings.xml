@@ -1172,6 +1172,9 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_65_1">
+        <item>Opening a reminder\'s notification no longer sets the alarm off again. The sound belongs to the moment it rang — the alert screen made it, or the notification did — and pulling the shade down half an hour later is you reading the card, not the moment coming round a second time. It was loudest on the cards that were meant to be quiet: one that never rang on time, or one that arrived silent because it was the middle of the night, would start buzzing the instant you touched it. The screen still opens, with the same answers on it; it just says nothing now.</item>
+    </string-array>
     <string-array name="whats_new_0_65_0">
         <item>Home takes you to the card you just saved. Editing the words leaves a reminder where it was and the list rightly stays put; editing *when* it rings moves it — to another section, sometimes to the very bottom under «whenever» — and then keeping your place means looking at where it used to be. Now the list goes to it, and the card is lit for a moment so you can see which one moved. Only when it is not already on screen: a list that jumps when nothing has moved is worse than one that does not move at all.</item>
     </string-array>

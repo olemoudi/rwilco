@@ -284,6 +284,24 @@ class ReminderScheduler(
         fun anywayIn(intent: Intent): Boolean = intent.getBooleanExtra(EXTRA_ANYWAY, false)
 
         /**
+         * This start is a card being tapped, not a moment arriving: show the reminder, make no
+         * noise.
+         *
+         * The alert screen builds its own plan from the row, so without this a card read half an
+         * hour later started the whole alarm again — and the sound had already been made once
+         * when it rang, by that screen or by the notification's own channel. A second one is the
+         * app shouting at somebody who is already looking at it.
+         *
+         * It rides on the card's content intent and nothing else. The full-screen intent IS the
+         * moment arriving — the system bringing the screen up on a phone that is asleep or
+         * locked — so it carries none of this and rings, which is why the two are separate
+         * PendingIntents now (see AlertNotifications.activityIntent).
+         */
+        const val EXTRA_TAPPED = "tapped"
+
+        fun tappedIn(intent: Intent): Boolean = intent.getBooleanExtra(EXTRA_TAPPED, false)
+
+        /**
          * What the scheduling of a list depends on in the settings; anything else changing must
          * not re-arm it. The net's numbers are here because the nudge is an alarm ([armNudge]):
          * "avísame 36 h después" moved to 12 used to leave every net armed on the old numbers

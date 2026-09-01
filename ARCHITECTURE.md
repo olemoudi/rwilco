@@ -1468,6 +1468,21 @@ because that is what its chip would show.
   a minute because nobody is there, and a display lit at full brightness until somebody comes
   home costs more battery than everything else in this app together. The alert is still on the
   screen when they do, and the notification is still in the shade either way.
+- **A card that is tapped opens the alert screen without ringing it again** (0.65.1,
+  `ReminderScheduler.EXTRA_TAPPED`). `AlertActivity` builds its own plan from the row and rings
+  for it, which is right while the moment is arriving and wrong every other time: the noise had
+  already been made once — by that screen, or by the notification's own channel when the screen
+  was never taken (`soundHere`) — so pulling the shade down half an hour later started the whole
+  alarm over, and a card that was deliberately quiet (the missed one on `CHANNEL_MISSED`, or an
+  hour somebody is asleep at) made the noise it had just been careful not to make. The extra
+  rides on the card's **content** intent and nothing else. The full-screen intent is the same
+  reminder and used to be the same `PendingIntent`, and it is the one start that must still ring
+  — it *is* the moment arriving, the system bringing the screen up on a phone that is asleep or
+  locked — so the two are built apart now and told apart by request code (extras are not part of
+  a PendingIntent's identity). `AlertActivity` holds the ids in `silenced`, saved across a
+  rotation like the rest of the screen, and takes one out — starting the noise, `ringEpoch` — the
+  moment its own alarm does arrive for a card already open: a wait at a place whose door opens
+  while somebody is looking at it. `EXTRA_ANYWAY` implies it; what it adds on top is the holding.
 - **The audio is handed back when the sound ends, not when the screen is answered** (0.63.0).
   Ducking is not a volume this app sets: `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK` asks every other
   app to drop a few decibels and stay there until the focus is abandoned. `AlertRinger` only ever

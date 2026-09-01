@@ -53,10 +53,12 @@ class AlertSilenceTest {
     private val quietId = "silence-quiet"
     private val onceId = "silence-once"
     private val noteId = "silence-note"
+    private val cardId = "silence-card"
     private val loud = "Sacar el pan del horno (prueba ruidosa)"
     private val quiet = "Bajar la basura (prueba silenciosa)"
     private val once = "Regar las plantas (prueba de un solo tono)"
     private val note = "Renovar el abono (prueba de la red)"
+    private val card = "Recoger el paquete (prueba de tarjeta pulsada)"
     private val asleepId = "silence-asleep"
     private val asleep = "Cerrar el gas (prueba de madrugada)"
 
@@ -103,6 +105,7 @@ class AlertSilenceTest {
         app.repository.delete(asleepId)
         hoursBefore?.let { hours -> app.settingsStore.update { it.copy(awake = hours) } }
         app.repository.delete(noteId)
+        app.repository.delete(cardId)
     }
 
     @Test
@@ -190,6 +193,30 @@ class AlertSilenceTest {
         rule.onNodeWithText(string { it.getString(R.string.alert_done) }).performClick()
         rule.waitUntil(timeoutMillis = 10_000) {
             runBlocking { app.repository.get(noteId)?.lastDealtAt != null }
+        }
+    }
+
+    @Test
+    fun aReminderOpenedByTappingItsCardArrivesQuiet() {
+        // The very same reminder the loud test uses, opened the other way. The card is what the
+        // ring left behind, and the ring is where the noise was: pulling the shade down half an
+        // hour later is somebody reading it, not the moment coming round again. So the screen
+        // opens on the reminder and says nothing, and "Hecho" is in reach at once.
+        seed(cardId, card, setOf(Action.FULL_SCREEN, Action.VIBRATE))
+        scenario = ActivityScenario.launch(
+            alert(cardId).putExtra(ReminderScheduler.EXTRA_TAPPED, true),
+        )
+        rule.waitUntilShown(card)
+
+        rule.onNodeWithText(string { it.getString(R.string.alert_done) }).assertIsDisplayed()
+        check(rule.onAllNodesWithText(string { it.getString(R.string.alert_silence) }).fetchSemanticsNodes().isEmpty()) {
+            "tapping the card started the alarm all over again"
+        }
+
+        // And it is still a reminder owed an answer, which is why the tap opens it at all.
+        rule.onNodeWithText(string { it.getString(R.string.alert_done) }).performClick()
+        rule.waitUntil(timeoutMillis = 10_000) {
+            runBlocking { app.repository.get(cardId)?.lastDealtAt != null }
         }
     }
 

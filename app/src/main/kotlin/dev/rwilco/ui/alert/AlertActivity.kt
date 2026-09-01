@@ -75,10 +75,22 @@ class AlertActivity : ComponentActivity() {
     /**
      * The ones being shown although nothing is owed: the safety net's notes about a reminder
      * that never rang, or one still waiting at a place. See [ReminderScheduler.EXTRA_ANYWAY].
-     * They are held until they are answered here, and they make no noise — a note about
+     * They are held until they are answered here, and they arrive [silenced] — a note about
      * something that already got away is not an alarm.
      */
     private val anyway = mutableStateListOf<String>()
+
+    /**
+     * The ones that must make no noise: on the screen because a card was tapped, not because
+     * their moment arrived. See [ReminderScheduler.EXTRA_TAPPED].
+     *
+     * The sound was made once already, when it rang — by this screen, or by the notification's
+     * own channel when the screen was never taken. Making it again because somebody got round
+     * to reading the card is the app shouting at a person who is already looking at it. The
+     * reminder is still owed an answer and the screen is still the place to give it; it is only
+     * the alarm that has been and gone.
+     */
+    private val silenced = mutableStateListOf<String>()
 
     /** Bumped when a reminder joins: the noise and the two-minute budget start over for it. */
     private var ringEpoch by mutableIntStateOf(0)
@@ -106,9 +118,13 @@ class AlertActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val wasHeld = savedInstanceState?.getStringArrayList(STATE_ANYWAY).orEmpty()
+        // Carried across a rotation like the rest of the screen: every start bumps the epoch,
+        // so an alert opened from a card and then turned sideways would have rung the alarm it
+        // was careful not to ring in the first place.
+        val wasQuiet = savedInstanceState?.getStringArrayList(STATE_SILENT).orEmpty()
         savedInstanceState?.getStringArrayList(STATE_RINGING)?.forEachIndexed { index, id ->
             val rule = savedInstanceState.getIntArray(STATE_RULES)?.getOrNull(index)?.takeIf { it >= 0 }
-            track(id, rule, held = id in wasHeld)
+            track(id, rule, held = id in wasHeld, quiet = id in wasQuiet)
         }
         intent?.let { arrived(it) }
         if (ringing.isEmpty()) {
@@ -124,14 +140,15 @@ class AlertActivity : ComponentActivity() {
             val reminders = ringing.mapNotNull { loaded[it] }
             if (reminders.isEmpty()) return@setContent
             // What the screen is about to make a noise for, which is not everything on it. A
-            // reminder opened from one of the net's notes arrives silent, because the noise it
-            // was asked for belongs to a moment that has already been and gone — and so does
-            // one whose hour is one somebody is asleep at, which this screen has to ask for
-            // itself: it builds its own plan from the row, so without this, tapping the card at
-            // three in the morning would start the alarm the firing had just been careful not
-            // to make ([hushedByTheHour]).
+            // reminder opened by a tap on a card — the ring's own notification, or one of the
+            // net's notes — arrives silent, because the noise it was asked for belongs to a
+            // moment that has already been and gone ([silenced]) — and so does one whose hour is
+            // one somebody is asleep at, which this screen has to ask for itself: it builds its
+            // own plan from the row, so without this, being started at three in the morning
+            // would begin the alarm the firing had just been careful not to make
+            // ([hushedByTheHour]).
             val plans = reminders
-                .filter { it.id !in anyway }
+                .filter { it.id !in silenced }
                 .map { reminder ->
                     val plan = firingPlan(reminder.actions)
                     val momentFor = reminder.lastFiredAt ?: app.clock.instant()
@@ -229,7 +246,13 @@ class AlertActivity : ComponentActivity() {
     /** A reminder id carried by an intent: the launch, or a later start reaching the live screen. */
     private fun arrived(intent: Intent) {
         val id = ReminderScheduler.reminderIdOf(intent) ?: return
-        track(id, ReminderScheduler.ruleIndexOf(intent), ReminderScheduler.anywayIn(intent))
+        val held = ReminderScheduler.anywayIn(intent)
+        track(
+            id,
+            ReminderScheduler.ruleIndexOf(intent),
+            held = held,
+            quiet = held || ReminderScheduler.tappedIn(intent),
+        )
     }
 
     /**
@@ -238,18 +261,22 @@ class AlertActivity : ComponentActivity() {
      * exception and the whole of it — a reminder shown because one of the net's notes was
      * tapped, which is owed nothing and stays until it is answered here.
      */
-    private fun track(id: String, ruleIndex: Int?, held: Boolean = false) {
+    private fun track(id: String, ruleIndex: Int?, held: Boolean = false, quiet: Boolean = held) {
         if (id in ringing) {
-            // Already on the screen — but one being shown *silently* because a note was tapped
+            // Already on the screen — but one being shown *silently* because a card was tapped
             // stops being that the moment its own alarm arrives (a wait at a place, and the
             // door opened while the screen was up). It gets the noise it was asked for, and the
-            // epoch is what starts it.
-            if (!held && anyway.remove(id)) ringEpoch++
+            // epoch is what starts it. A second tap on the same card is not that moment.
+            if (!quiet) {
+                anyway.remove(id)
+                if (silenced.remove(id)) ringEpoch++
+            }
             return
         }
         ringing += id
         if (ruleIndex != null) rules[id] = ruleIndex
         if (held) anyway += id
+        if (quiet) silenced += id
         ringEpoch++
         watches[id] = lifecycleScope.launch {
             app.repository.observe(id).collect { reminder ->
@@ -269,6 +296,7 @@ class AlertActivity : ComponentActivity() {
         loaded.remove(id)
         rules.remove(id)
         anyway.remove(id)
+        silenced.remove(id)
         if (ringing.isEmpty()) close()
     }
 
@@ -341,6 +369,7 @@ class AlertActivity : ComponentActivity() {
         outState.putStringArrayList(STATE_RINGING, ArrayList(ringing))
         outState.putIntArray(STATE_RULES, IntArray(ringing.size) { rules[ringing[it]] ?: -1 })
         outState.putStringArrayList(STATE_ANYWAY, ArrayList(anyway))
+        outState.putStringArrayList(STATE_SILENT, ArrayList(silenced))
     }
 
     override fun onStop() {
@@ -360,5 +389,6 @@ class AlertActivity : ComponentActivity() {
         const val STATE_RINGING = "ringing"
         const val STATE_RULES = "rules"
         const val STATE_ANYWAY = "anyway"
+        const val STATE_SILENT = "silenced"
     }
 }

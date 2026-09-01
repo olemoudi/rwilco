@@ -1170,6 +1170,9 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_65_1">
+        <item>Abrir la notificación de un recordatorio ya no vuelve a lanzar la alarma. El sonido es del momento en que sonó —lo hizo la pantalla de la alerta, o lo hizo la notificación— y bajar la persiana media hora después eres tú leyendo el aviso, no el momento volviendo por segunda vez. Se notaba más en los avisos que debían estar callados: uno que no llegó a sonar a su hora, o uno que llegó en silencio por ser de madrugada, se ponían a vibrar en cuanto los tocabas. La pantalla se sigue abriendo, con las mismas respuestas; ahora simplemente no dice nada.</item>
+    </string-array>
     <string-array name="whats_new_0_65_0">
         <item>Inicio te lleva a la tarjeta que acabas de guardar. Editar las palabras deja el recordatorio donde estaba y la lista se queda quieta, que es lo correcto; editar *cuándo* suena lo mueve —a otra sección, a veces al final del todo bajo «cuando ocurra»— y entonces conservar tu sitio es mirar donde ya no está. Ahora la lista va hasta ella, y la tarjeta se ilumina un momento para que veas cuál se ha movido. Sólo cuando no está ya en pantalla: una lista que salta sin que nada se haya movido es peor que una que no se mueve.</item>
     </string-array>

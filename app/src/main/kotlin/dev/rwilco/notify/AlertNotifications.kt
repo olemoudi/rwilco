@@ -177,7 +177,10 @@ object AlertNotifications {
         // until one is given here, and it arrives silent. What it costs is the one door Home
         // was: taking a wait at a place *back* without answering is still Home's long-press
         // menu ("quitar el posponer").
-        val open = activityIntent(context, reminder.id, ruleIndex, anyway = nudge != null)
+        // A tap, never a ring: whichever card it is, the noise it was about is already spent —
+        // see [ReminderScheduler.EXTRA_TAPPED]. The full-screen intent below is the other half
+        // of that, and the only start left that still rings.
+        val tap = activityIntent(context, reminder.id, ruleIndex, anyway = nudge != null, tapped = true)
         // **Why it rang**, in the words the form used when it was written — not the reminder's
         // own text again, which the title already carries and which said nothing twice. The
         // sentence is the editor's own, minus the words themselves (`reminderSummary`).
@@ -186,7 +189,7 @@ object AlertNotifications {
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(reminder.text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(reason.ifBlank { reminder.text }))
-            .setContentIntent(open)
+            .setContentIntent(tap)
             .setAutoCancel(false)
             .setOnlyAlertOnce(false)
             // The amber, which is the app's one word for "this is what fires next" — said here
@@ -252,7 +255,9 @@ object AlertNotifications {
         // is simply a heads-up notification with the same buttons. [fullScreen] is the caller's
         // own decision on top of that — see AlertPresenter: an app open in front of somebody
         // gets the banner and nothing else.
-        if (fullScreen && late == null && nudge == null) builder.setFullScreenIntent(open, true)
+        if (fullScreen && late == null && nudge == null) {
+            builder.setFullScreenIntent(activityIntent(context, reminder.id, ruleIndex), true)
+        }
         // "Hasta que reciba caso" means what it says: this one cannot be flicked away in the
         // half-asleep swipe that clears the shade. Everything else stays swipeable, because
         // most reminders are read and let go and pinning those would be nagging.
@@ -361,19 +366,31 @@ object AlertNotifications {
      *
      * The rule rides as an extra: not part of the identity, refreshed by FLAG_UPDATE_CURRENT.
      * [anyway] is the net's card saying that its reminder is not owed an answer and that the
-     * screen should hold it regardless; see [ReminderScheduler.EXTRA_ANYWAY]. It is also what
-     * tells the two cards' PendingIntents apart — extras are not part of a PendingIntent's
-     * identity, but the request code is, and a ring and the net's word about it are two
-     * different taps on one reminder.
+     * screen should hold it regardless; see [ReminderScheduler.EXTRA_ANYWAY]. [tapped] is a
+     * person opening the card rather than the moment arriving, and the whole of what it buys is
+     * silence; see [ReminderScheduler.EXTRA_TAPPED].
+     *
+     * Both are in the request code as well as in the extras, because extras are not part of a
+     * PendingIntent's identity and the request code is. The content intent and the full-screen
+     * intent of one card are two different starts — one is read, the other rings — and built
+     * under the same code they would have been one PendingIntent, with FLAG_UPDATE_CURRENT
+     * quietly making both of them the last one built.
      */
-    private fun activityIntent(context: Context, reminderId: String, ruleIndex: Int?, anyway: Boolean = false): PendingIntent = PendingIntent.getActivity(
+    private fun activityIntent(
+        context: Context,
+        reminderId: String,
+        ruleIndex: Int?,
+        anyway: Boolean = false,
+        tapped: Boolean = false,
+    ): PendingIntent = PendingIntent.getActivity(
         context,
-        if (anyway) 1 else 0,
+        (if (anyway) 1 else 0) or (if (tapped) 2 else 0),
         Intent(context, AlertActivity::class.java)
             .setData(ReminderScheduler.reminderUri(reminderId))
             .apply {
                 if (ruleIndex != null) putExtra(ReminderScheduler.EXTRA_RULE, ruleIndex)
                 if (anyway) putExtra(ReminderScheduler.EXTRA_ANYWAY, true)
+                if (tapped) putExtra(ReminderScheduler.EXTRA_TAPPED, true)
             }
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
