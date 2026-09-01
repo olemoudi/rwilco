@@ -267,7 +267,20 @@ fun Reminder.netDue(
         }
         else -> return null
     }
-    // Put off to a clock is an answer: the snooze rings, and the net has nothing to add.
+    // **A reminder that has been put off never wakes the net, with one named exception.**
+    // Put off to a clock is an answer, and a complete one: the snooze rings by itself, so
+    // there is nothing here to add and nothing that could go quiet. (What used to break this
+    // was not the rule but the editor, which dropped the snooze on every save — a typo fixed
+    // on a reminder put off until tomorrow made it read as rung-and-ignored again, and the net
+    // duly went off in the morning about an alert that had been answered. See
+    // `Draft.toReminder`.)
+    //
+    // The exception is [NetWord.WAITING] above, and it is the opposite case rather than the
+    // same one: a wait at a *place* has no clock behind it at all, so if the fence is dropped
+    // and the watch blind there is nothing left to ring, no overdue card to show for it and no
+    // other door that could ever say so. That word does not say the reminder was let go — it
+    // says it is still waiting — and it comes once, two days late, on the mutest channel there
+    // is.
     snoozedUntil?.let { if (it > now) return null }
     // One word per moment. A second one about the same moment is the nagging this is not.
     nudgedAt?.let { if (!it.isBefore(about)) return null }

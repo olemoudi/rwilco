@@ -395,6 +395,11 @@ class EditorViewModel(
             // been dealt with from the notification in between, and a save built on the
             // snapshot would hand back the status and the anchor from before that.
             val before = existing?.let { repository.get(it.id) ?: it }
+            // What "the when" means here: the rules, how they combine, and the recurrence.
+            val whenUntouched = before != null &&
+                before.rules == current.draft.rules &&
+                before.ruleMatch == current.draft.ruleMatch &&
+                before.recurrence == current.draft.recurrence
             val reminder = current.draft.toReminder(
                 id = before?.id ?: draftId,
                 createdAt = before?.createdAt ?: now,
@@ -402,8 +407,8 @@ class EditorViewModel(
                 // Editing something already done brings it back; otherwise the status is not
                 // the editor's business.
                 status = if (before == null || before.status == Status.DONE) Status.ACTIVE else before.status,
-                // The recurrence's anchor and the last ring survive an edit; the snooze and
-                // the armed moment do not. See Draft.toReminder.
+                // The recurrence's anchor and the last ring survive an edit; the armed moment
+                // does not. See Draft.toReminder.
                 lastDealtAt = before?.lastDealtAt,
                 lastFiredAt = before?.lastFiredAt,
                 dealtThrough = before?.dealtThrough,
@@ -412,6 +417,15 @@ class EditorViewModel(
                 firedRules = if (before != null && before.rules == current.draft.rules) before.firedRules else emptySet(),
                 lastFiredRule = if (before != null && before.rules == current.draft.rules) before.lastFiredRule else null,
                 nudgedAt = before?.nudgedAt,
+                // **Only a change to the "when" un-answers a snooze.** Somebody who put a ring
+                // off until tomorrow has answered it; fixing a word in the text does not take
+                // that back, and dropping it did two visible things — the card left the section
+                // the snooze put it in for the bottom of Home, and the reminder read as
+                // rung-and-ignored again, which is a safety net going off about an alert that
+                // was answered. A change to the rules, the reading or the recurrence IS a
+                // re-decision of when it rings, and there the old answer really is meaningless.
+                snoozedUntil = if (whenUntouched) before?.snoozedUntil else null,
+                snoozedToPlace = if (whenUntouched) before?.snoozedToPlace else null,
                 zone = clock.zone,
                 shape = current.dayShape,
             )

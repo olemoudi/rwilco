@@ -7,6 +7,7 @@ import dev.rwilco.model.keeping
 import dev.rwilco.model.Period
 import dev.rwilco.model.Presence
 import dev.rwilco.model.Recurrence
+import dev.rwilco.model.awaitingAnswer
 import dev.rwilco.model.nextFire
 import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.RepeatUnit
@@ -38,6 +39,7 @@ class EditorStateTest {
     private val weekly = Trigger.AtTime(LocalTime.of(7, 30), setOf(DayOfWeek.MONDAY))
     private val blank = EditorUiState(loaded = true, existingTags = listOf("Compra", "casa"))
     private val zone = ZoneId.of("Europe/Madrid")
+    private val now: Instant = LocalDateTime.of(2026, 8, 27, 22, 0).atZone(zone).toInstant()
 
     @Test
     fun `the first error is the one the snackbar says, the words before a rule`() {
@@ -205,6 +207,34 @@ class EditorStateTest {
         // The first rule, put back at the front rather than at the end.
         val front = state.removeTrigger(0).restoreTrigger(0, state.draft.rules[0], Recurrence.ByTrigger)
         assertEquals(listOf(tonight, window), front.draft.rules.map { it.trigger })
+    }
+
+    @Test
+    fun `saving keeps a snooze, unless the edit re-decided when it rings`() {
+        // Reported from a phone: a reminder put off until tomorrow night, then edited, lost the
+        // snooze — so it left the section the snooze put it in for the bottom of Home, and it
+        // read as rung-and-ignored again, which woke the safety net at ten to seven about an
+        // alert that had been answered the night before.
+        val rang = now.minusSeconds(3600)
+        val until = now.plusSeconds(24 * 3600)
+        val saved = blank.withText("Licencia teclado").commitTrigger(null, tonight)
+
+        // A word changed and nothing else: the answer stands.
+        val typo = saved.withText("Licencia del teclado")
+        val kept = typo.draft.toReminder(
+            id = "r", createdAt = now, now = now, status = Status.ACTIVE,
+            lastFiredAt = rang, snoozedUntil = until, zone = zone,
+        )
+        assertEquals(until, kept.snoozedUntil)
+        assertFalse(kept.awaitingAnswer(now), "an answered ring is not owed another")
+
+        // The rules themselves: "en diez minutos" from the old shape really is meaningless.
+        val rerules = saved.commitTrigger(0, weekly)
+        val dropped = rerules.draft.toReminder(
+            id = "r", createdAt = now, now = now, status = Status.ACTIVE,
+            lastFiredAt = rang, snoozedUntil = null, zone = zone,
+        )
+        assertNull(dropped.snoozedUntil)
     }
 
     @Test

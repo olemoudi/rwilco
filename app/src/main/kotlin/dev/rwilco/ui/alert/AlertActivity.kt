@@ -2,7 +2,6 @@ package dev.rwilco.ui.alert
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -27,6 +26,9 @@ import dev.rwilco.model.VibrationLimits
 import dev.rwilco.model.asksToBeSilenced
 import dev.rwilco.model.awaitingAnswer
 import dev.rwilco.model.firingPlan
+import dev.rwilco.model.dayShape
+import dev.rwilco.model.hushedByTheHour
+import dev.rwilco.model.hushed
 import dev.rwilco.model.loopsOnScreen
 import dev.rwilco.model.soundFor
 import dev.rwilco.ui.theme.RwilcoTheme
@@ -100,7 +102,6 @@ class AlertActivity : ComponentActivity() {
         // The manifest attributes cover the launch; these cover being re-shown while alive.
         setShowWhenLocked(true)
         setTurnScreenOn(true)
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
@@ -122,10 +123,20 @@ class AlertActivity : ComponentActivity() {
             val today = remember { app.clock.instant().atZone(zone).toLocalDate() }
             val reminders = ringing.mapNotNull { loaded[it] }
             if (reminders.isEmpty()) return@setContent
-            // What the screen is about to make a noise for, which is not everything on it: a
+            // What the screen is about to make a noise for, which is not everything on it. A
             // reminder opened from one of the net's notes arrives silent, because the noise it
-            // was asked for belongs to a moment that has already been and gone.
-            val plans = reminders.filter { it.id !in anyway }.map { firingPlan(it.actions) }
+            // was asked for belongs to a moment that has already been and gone — and so does
+            // one whose hour is one somebody is asleep at, which this screen has to ask for
+            // itself: it builds its own plan from the row, so without this, tapping the card at
+            // three in the morning would start the alarm the firing had just been careful not
+            // to make ([hushedByTheHour]).
+            val plans = reminders
+                .filter { it.id !in anyway }
+                .map { reminder ->
+                    val plan = firingPlan(reminder.actions)
+                    val momentFor = reminder.lastFiredAt ?: app.clock.instant()
+                    if (hushedByTheHour(momentFor, app.clock.instant(), zone, current.dayShape)) plan.hushed() else plan
+                }
             val sound = plans.any { it.sound }
             val vibrate = plans.any { it.vibrate }
             // One screen can carry several reminders; if any of them is the kind that keeps
@@ -152,11 +163,17 @@ class AlertActivity : ComponentActivity() {
                 onDispose { hush() }
             }
             // An alarm that rings for ever is one nobody leaves the house with. The alert stays
-            // up; the noise gives up, exactly as an alarm clock does — and so does the hold on
-            // the screen. Nobody answered in a minute because nobody is here, and a screen lit
-            // at full brightness until somebody comes home costs more battery than everything
-            // else in this app put together. The alert is still on it when they do, and the
-            // notification is still in the shade either way.
+            // up; the noise gives up, exactly as an alarm clock does. The alert is still on the
+            // screen when somebody comes back to it, and the notification is still in the shade
+            // either way.
+            //
+            // **The screen is not held on at all** (0.63.0). It used to be pinned awake for the
+            // minute the noise lasted, on the reasoning that an alarm you cannot see is not an
+            // alarm — but a takeover that keeps a phone lit is a decision about somebody's
+            // battery and their bedroom that the phone's own screen timeout has already made,
+            // and the alert is not more entitled to override it than anything else here.
+            // [setTurnScreenOn] still brings the screen up so the alert is seen; from there it
+            // goes off when the system says so.
             //
             // **The noise stops when the buzz does** ([VibrationLimits.LONGEST]). The two are
             // one alarm and they used to end at different times — the motor at its minute, the
@@ -166,7 +183,6 @@ class AlertActivity : ComponentActivity() {
             LaunchedEffect(ringEpoch) {
                 delay(RING_TIMEOUT_MS)
                 hush()
-                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
 
             // The place answers: the saved place this phone's reminders use most, as a doorway
@@ -235,7 +251,6 @@ class AlertActivity : ComponentActivity() {
         if (ruleIndex != null) rules[id] = ruleIndex
         if (held) anyway += id
         ringEpoch++
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         watches[id] = lifecycleScope.launch {
             app.repository.observe(id).collect { reminder ->
                 // One opened from a note is held until it is answered here: it was never owed

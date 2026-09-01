@@ -281,6 +281,32 @@ class FiringTest {
     }
 
     @Test
+    fun `the hours somebody is asleep take the noise out of a firing`() {
+        // Up from 08:00 to 23:30 on a weekday, which is the default.
+        val shape = DayShape.DEFAULT
+        fun at(h: Int, m: Int = 0) = LocalDateTime.of(2026, 8, 27, h, m).atZone(zone).toInstant()
+
+        // Rung at four in the morning, seen at four in the morning: silent.
+        assertTrue(hushedByTheHour(at(4), at(4), zone, shape))
+        // Rung at four, and the phone came back at nine: the moment is four o'clock's, and
+        // ringing it over breakfast is the three-in-the-morning alarm arriving late.
+        assertTrue(hushedByTheHour(at(4), at(9), zone, shape), "a night moment stays quiet when it is seen")
+        // A moment from the middle of the day, shown in the middle of the night: also silent —
+        // being awake is asked of the hour it arrives as well.
+        assertTrue(hushedByTheHour(at(12), at(3), zone, shape))
+        // The ordinary case, and the only one that keeps its noise.
+        assertFalse(hushedByTheHour(at(12), at(12), zone, shape))
+
+        // What "silent" is: the card, the screen and every answer stay; the noise goes, and so
+        // does the coming back for more of it.
+        val loud = firingPlan(setOf(Action.FULL_SCREEN, Action.NOTIFICATION, Action.SOUND_UNTIL_ANSWERED, Action.VIBRATE))
+        val quiet = loud.hushed()
+        assertTrue(quiet.fullScreen && quiet.notification, "it is still shown")
+        assertFalse(quiet.sound || quiet.vibrate || quiet.insistent)
+        assertFalse(asksToBeSilenced(listOf(quiet)), "and there is nothing left to silence")
+    }
+
+    @Test
     fun `an arrival minutes after a sibling rule's ring is not an echo of it`() {
         // "Al llegar a casa, o a las 21:00": the nine o'clock rang, and the doorway three
         // minutes later is a different thing that happened, not the same arrival seen twice.

@@ -203,6 +203,41 @@ fun loopsOnScreen(plans: List<FiringPlan>): Boolean = plans.any { it.insistent }
  */
 fun asksToBeSilenced(plans: List<FiringPlan>): Boolean = plans.any { it.vibrate || it.insistent }
 
+/**
+ * The same firing with the noise taken out of it: the card, the screen and every answer on it
+ * stay exactly where they were, and nothing is heard or felt.
+ *
+ * [FiringPlan.insistent] goes with the other two on purpose. It is not a second kind of
+ * loudness to be turned down separately — it is *the sound, again in a few minutes* — so
+ * leaving it on would schedule a chain of silent re-posts through the night, each one an alarm
+ * and a wake-up for the app, to play nothing. What goes with it is the pinning that "hasta que
+ * reciba caso" also buys ([FiringPlan.insistent] is what keeps the card from being swiped
+ * away): overnight that card is an ordinary one, in the tray, on Home as overdue, with the
+ * safety net still standing under it.
+ */
+fun FiringPlan.hushed(): FiringPlan = copy(sound = false, vibrate = false, insistent = false)
+
+/**
+ * Whether a firing has to arrive silent because of the hour.
+ *
+ * **Two questions, and either one is enough.** Asleep *now* is the obvious one: nothing this
+ * app has to say is worth being woken by, and that holds whatever the reminder's own tiles say
+ * — an alarm asked for at three in the morning is still an alarm at three in the morning, which
+ * is the argument the safety net's own voice was already held to (`netSpeaksAloud`).
+ *
+ * Asleep at the moment it is *for* is the other, and it is what makes a night moment stay quiet
+ * when it is finally seen. A countdown that runs out at four and a phone that was off until
+ * eight meet at a catch-up: the moment is four o'clock's, and ringing it over breakfast is the
+ * three-in-the-morning alarm arriving late rather than not arriving. It is shown, on the card
+ * and on Home, which is what "you see it when you get up" means — and it is shown without a
+ * sound.
+ *
+ * The hours are the person's own ([DayShape]), so the way out of a reminder that will not ring
+ * at seven is to say that seven is a time they are up.
+ */
+fun hushedByTheHour(momentFor: Instant, now: Instant, zone: ZoneId, shape: DayShape): Boolean =
+    !shape.awakeAt(now, zone) || !shape.awakeAt(momentFor, zone)
+
 fun firingPlan(actions: Set<Action>): FiringPlan = FiringPlan(
     fullScreen = Action.FULL_SCREEN in actions,
     // A full-screen alert always leaves a notification behind: it is what the person finds if

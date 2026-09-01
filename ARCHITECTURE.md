@@ -952,6 +952,17 @@ because that is what its chip would show.
   is still the only door to them and still opens. Picking one opens the editor pre-filled
   (`Routes.Editor(fromPresetId=…)`) rather than writing the reminder outright, because a preset
   can hold a date that has since passed and the form is where that gets seen.
+- **A save keeps the snooze, unless the edit re-decided the "when"** (0.63.0). It used to drop it
+  every time, and the argument — editing re-decides when a reminder rings, so "recuérdamelo en
+  diez minutos" from the old shape means nothing — is true of a change to the rules and false of
+  every other edit: a snooze is an *instant somebody chose*, and it outranks the rules anyway.
+  What it cost, reported from a phone: a reminder put off until the next evening was edited, lost
+  the snooze, left the section the snooze had put it in for the bottom of Home under "cuando
+  ocurra", and read as rung-and-ignored again — so the safety net went off at ten to seven about
+  an alert answered the night before. `EditorViewModel` decides ("the when" is the rules, the
+  match and the recurrence, the same shape of test `firedRules` already used) and `toReminder`
+  only says what it is given. `snoozedToPlace` travels with it, which also retires the note in
+  TODO.md about a wait at a place being dropped by an edit.
 - **Removing a rule can be taken back** (`restoreTrigger`, `EditorEvent.TriggerRemoved`, 0.63.0).
   It was the editor's one destructive act with no inverse, and its bin sits one `IconButton`
   from the pencil that edits — so a slip cost a place with its radius dragged or a calendar with
@@ -1222,6 +1233,23 @@ because that is what its chip would show.
   "a las ocho, y luego cada seis horas" means; and rung and ignored, that moment is spent like
   any other (`recurrenceMoment`). With no rules at all the recurrence is the whole arrangement
   and its moment is always the ring.
+- **Nothing makes a noise while somebody is asleep** (0.63.0, `hushedByTheHour`,
+  `FiringPlan.hushed`). Between bedtime and getting up (`DayShape`, the person's own hours) every
+  firing arrives silent and still, whatever its tiles say — the argument the net's own voice was
+  already held to (`netSpeaksAloud`), applied to the alarm it was an argument about: a reminder
+  asked for at three in the morning is still an alarm at three in the morning. **Two questions,
+  either one enough**: asleep *now*, and asleep at the moment the firing is *for*. The second is
+  what makes a night moment stay quiet when it is finally seen — a countdown that ran out at four
+  on a phone that was off until nine is four o'clock's moment, and ringing it over breakfast is
+  that alarm arriving late rather than not arriving. It is still shown, on the card and on Home;
+  it is shown without a sound. `hushed()` drops `insistent` with the other two on purpose: a
+  repeat *is* the sound again in a few minutes, so leaving it on would schedule a chain of silent
+  re-posts through the night, and `playAgain` ends the chain outright rather than posting one.
+  Asked at three doors — `ReminderFiring.fire`, `ReminderFiring.playAgain`, and `AlertActivity`,
+  which builds its own plan from the row and would otherwise start the alarm for anybody tapping
+  the card at three in the morning. **The rehearsal is the one exemption** (`TestAlert.isTest`):
+  somebody pressing "probar una alerta" is asking whether the noise works, and silence is the one
+  answer that must never be given to that question.
 - **The safety net** (`core-model/SafetyNet.kt`) is the one thing the app does about a reminder
   that got away. **There are three ways one does** (`NetWord`), and one switch for all of them, because
   nobody knows in advance which it will be: it **rang and was never answered** (`LET_GO`), it
@@ -1465,6 +1493,12 @@ because that is what its chip would show.
   with the coil unpowered. Cheap insurance; the honest protection is still the minute itself.
   Amplitude needs a motor that can do it (`hasAmplitudeControl`); where it cannot, gentle and
   strong are the same vibration and Settings says so.
+- **The alert does not hold the screen awake** (0.63.0). It used to pin the phone lit for the
+  minute the noise lasted, on the reasoning that an alarm nobody can see is not an alarm. But a
+  takeover that keeps a phone lit is a decision about somebody's battery and their bedroom that
+  the phone's own screen timeout has already made, and this screen is not more entitled to
+  override it than anything else here. `setTurnScreenOn` still brings the display up so the alert
+  is seen; from there it goes off when the system says so.
 - `AlertActivity` shows over the lock screen and turns it on; it is its own task so dismissing
   an alarm at three in the morning does not drop anybody into the app's back stack. "Hecho" is
   the bottom-most control on it, because the bottom of the screen is where a half-awake thumb

@@ -1178,6 +1178,10 @@
         <item>Quitar un disparador del formulario se puede deshacer. Era el único acto destructivo de aquí sin vuelta atrás, y su papelera está pegada al lápiz que edita — así que un resbalón costaba un lugar con su radio ya ajustado, o un calendario con su fecha de fin, y la única vuelta era volver a construirlo.</item>
         <item>Y «Vuelve» dice «opcional», como las tres tarjetas de alrededor. Era la única que no lo decía, y eso la hacía leerse como una pregunta que el formulario estaba esperando.</item>
         <item>La fila de arriba podía quedarse fuera de la pantalla. Se mueve con lo que la lista se desplaza — que es lo que la mantiene pegada a las tarjetas — y una lista que ya está arriba no se desplaza nada, así que una fila escondida allí no tenía gesto que la trajera de vuelta. Desplazándote a mano nunca llegabas a ese estado; cualquier cosa que saltara al principio de la lista, sí.</item>
+        <item>Nada suena mientras duermes. Entre que te acuestas y te levantas —tus horas, en Ajustes → El día— cualquier recordatorio y cualquier palabra de la red de seguridad llegan mudos y quietos, diga lo que diga su propia configuración: un aviso pedido para las tres de la madrugada sigue siendo una alarma a las tres de la madrugada. La tarjeta, la pantalla y todas sus respuestas se quedan donde estaban; lo único que desaparece es el sonido, la vibración y el volver a insistir con ellos.</item>
+        <item>Y un momento que cayó mientras dormías sigue callado cuando por fin lo ves. Una cuenta atrás que vencía a las cuatro, en un móvil apagado hasta las nueve, sonaba durante el desayuno — que es la alarma de las tres de la madrugada llegando tarde, no dejando de llegar. Se muestra, en la tarjeta y en Inicio; se muestra sin sonido. «Probar una alerta» es la única excepción: si preguntas si el ruido funciona, la respuesta no puede ser el silencio.</item>
+        <item>Un aviso a pantalla completa ya no mantiene la pantalla encendida. Antes dejaba el móvil iluminado el minuto que duraba el ruido; ahora la pantalla se enciende para que veas el aviso y se apaga cuando lo dice tu propio tiempo de espera.</item>
+        <item>Editar un recordatorio conserva el aplazamiento que le habías dado. Se tiraba en cada guardado, con el razonamiento de que editar vuelve a decidir cuándo suena — cierto si cambias las reglas, falso si arreglas una palabra. Lo que costaba, visto en un teléfono de verdad: un recordatorio pospuesto hasta la tarde siguiente se editó, perdió el aplazamiento, se fue de su sección al final del todo de la lista bajo «cuando ocurra», y volvió a contar como sonado-e-ignorado — así que la red de seguridad saltó a las siete menos diez por un aviso que se había contestado la noche anterior. Cambiar las reglas, la lectura o «Vuelve» sigue tirándolo, porque ahí la respuesta vieja sí que no significa nada.</item>
     </string-array>
     <string-array name="whats_new_0_62_0">
         <item>La red de seguridad ahora se oye. Su aviso — «puede que se te haya pasado» — suena con tu tono normal, el no insistente, a la mitad del volumen que tiene una alarma: suficiente para enterarte, y diciendo en la única unidad que tiene un sonido que no es la alarma.</item>
@@ -1357,7 +1361,7 @@
     <string name="sheet_repeat_yearly_day">El día %1$d de %2$s</string>
     <string name="sheet_repeat_monthly_nth">Un día de la semana</string>
     <string name="sheet_repeat_every_value">%1$d</string>
-    <string name="settings_awake">Tus horas de vigilia</string>
+    <string name="settings_awake">Tus horas despierto</string>
     <string name="settings_awake_hint">De aquí sale la hora cuando un disparador dice «al azar durante el día». Un disparador con hora propia ignora todo esto.</string>
     <string name="settings_awake_weekday">Entre semana</string>
     <string name="settings_awake_weekend">Fines de semana</string>

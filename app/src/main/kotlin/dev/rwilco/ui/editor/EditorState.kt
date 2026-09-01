@@ -58,9 +58,18 @@ data class Draft(
 fun Reminder.toDraft() = Draft(text = text, tags = tags, rules = rules, ruleMatch = ruleMatch, actions = actions, recurrence = recurrence)
 
 /**
- * Note what is NOT carried over: a snooze and the armed moment. Editing a reminder re-decides
- * when it rings, so a "remind me in ten minutes" from the old shape has no meaning, and the
- * scheduler writes the armed moment again the instant this is saved.
+ * Note what is NOT carried over: the armed moment, which the scheduler writes again the instant
+ * this is saved.
+ *
+ * **A snooze is carried, and only a change to the "when" drops it.** It used to go on every
+ * save, and the argument was that editing re-decides when a reminder rings, so a "remind me in
+ * ten minutes" from the old shape means nothing. That is true of an edit to the rules and false
+ * of every other edit — a snooze is an *instant somebody chose* and it outranks the rules
+ * anyway, so a typo fixed on a reminder put off until tomorrow silently un-answered it. What
+ * that cost, from a real phone: the card left the section its snooze put it in and went to the
+ * end of Home under "cuando ocurra", and the reminder went back to counting as rung-and-ignored,
+ * so the safety net woke somebody at ten to seven about an alert they had answered the night
+ * before. The caller decides ([EditorViewModel]); this only says what it is given.
  *
  * Two things are carried, and both have to be passed in because a save replaces the whole row.
  * [lastDealtAt] is not a firing's leftovers but the anchor every recurrence is measured from,
@@ -90,6 +99,9 @@ fun Draft.toReminder(
     lastFiredRule: Int? = null,
     /** The net's one word about the firing at hand was said; an edit does not make it say it twice. */
     nudgedAt: Instant? = null,
+    /** The answer somebody already gave to a ring: kept unless this edit re-decided the "when". */
+    snoozedUntil: Instant? = null,
+    snoozedToPlace: Trigger.Location? = null,
     /** Where and how the day is shaped, for a date left to the day: see [settleDays]. */
     zone: ZoneId,
     shape: DayShape = DayShape.DEFAULT,
@@ -114,6 +126,8 @@ fun Draft.toReminder(
     firedRules = firedRules,
     lastFiredRule = lastFiredRule,
     nudgedAt = nudgedAt,
+    snoozedUntil = snoozedUntil,
+    snoozedToPlace = snoozedToPlace,
 )
 
 /** Which of the two lists the editor offers back is being mended. */

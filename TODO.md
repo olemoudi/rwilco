@@ -323,8 +323,8 @@ twenty-six fixed; the ones worth not re-deriving:
   by the hundred-fence cap; "al salir de aquí" could be drawn around a fix half an hour old.
 
 Left alone, on purpose: the strips (`AlertStackScreen`) offer no place answers (two per
-strip is a screen of buttons); editing a reminder waiting at a place drops the wait, as it
-drops a clock snooze; "el viernes" is the next Friday strictly after today while "todos los
+strip is a screen of buttons); ~~editing a reminder waiting at a place drops the wait, as it
+drops a clock snooze~~ — fixed in 0.63.0, a save keeps both unless the edit changed the "when"; "el viernes" is the next Friday strictly after today while "todos los
 viernes" may start today — two readings pinned by their tests.
 
 ## The reliability round, 0.59.0 (2026-08-30)

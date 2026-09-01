@@ -7,6 +7,8 @@ import dev.rwilco.data.ReminderRepository
 import dev.rwilco.diag.Diag
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.dayShape
+import dev.rwilco.model.hushedByTheHour
+import dev.rwilco.model.hushed
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.FiringOutcome
 import dev.rwilco.model.FiringPlan
@@ -248,11 +250,18 @@ class ReminderFiring(
             FiringOutcome.Ring -> Unit
         }
         Log.i(TAG, "firing $id${if (late != null) " (late)" else ""}")
-        val plan = firingPlan(reminder.actions)
         // Recorded against the moment it rang FOR, not the millisecond the alarm arrived. See
         // momentRungFor: a place is the one firing that must not reach for the armed moment,
         // because that moment belongs to whatever else the reminder is still waiting for.
         val rangFor = momentRungFor(now, reminder.armedFor, late, eventDriven)
+        // **The hours somebody is asleep take the noise out of everything**, whatever its tiles
+        // say, and they do it by the moment the firing is *for* as well as by the hour it
+        // arrives — see [hushedByTheHour]. The rehearsal is the one exemption there can be:
+        // somebody pressing "probar una alerta" is asking whether the noise works, and the one
+        // answer that must never be silence is that one.
+        val asleep = !TestAlert.isTest(id) &&
+            hushedByTheHour(rangFor, now, clock.zone, settings.dayShape)
+        val plan = firingPlan(reminder.actions).let { if (asleep) it.hushed() else it }
         Diag.note(TAG_DIAG, "r=${short(id)} RANG for $rangFor rule=$ruleIndex${if (late != null) " (late for $late)" else ""}${if (viaSnoozePlace) " (place snooze)" else ""} plan=${plan.summary()}")
         // From the sello to the screen in one piece: the receiver runs this under a timeout, and
         // a cancellation landing between markFired and show spent a moment nothing ever showed
@@ -309,6 +318,14 @@ class ReminderFiring(
         val settings = settings()
         val plan = firingPlan(reminder.actions)
         if (!plan.insistent) return@withLock
+        // A round of "hasta que reciba caso" started in the evening can still be going at two
+        // in the morning, and the whole of a repeat is the sound: hushed, there is nothing left
+        // for it to do. So the chain simply ends — the card the first firing left is still in
+        // the tray, and the reminder is still owed an answer in the morning.
+        if (!TestAlert.isTest(id) && hushedByTheHour(rangAt, now, clock.zone, settings.dayShape)) {
+            Diag.note(TAG_DIAG, "r=${short(id)} repeat dropped (asleep)")
+            return@withLock
+        }
         Log.i(TAG, "$id has not been dealt with; play ${played + 1} of ${settings.soundPlays}")
         AlertPresenter.show(context, reminder, plan, late = null, vibration = settings.vibration, sound = settings.soundFor(plan), takeScreen = false, ruleIndex = ruleIndex, defaultTime = settings.defaultTime, snoozes = settings.notificationSnoozeOffers, customMinutes = settings.snoozeCustomMinutes)
         nextSoundIn(played + 1, settings.soundPlays, settings.soundGapMinutes)
