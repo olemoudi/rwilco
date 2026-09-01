@@ -78,6 +78,8 @@ fun RwilcoApp(
     // A launcher shortcut for a pinned preset: Home does the writing, so it is handed to Home
     // rather than navigated to, and the stack is popped back to Home if the app was elsewhere.
     var requestedPreset by remember { mutableStateOf<String?>(null) }
+    /** The reminder a save just wrote, until Home has taken somebody to it. */
+    var justSaved by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(requestedDestination) {
         val reminderId = MainActivity.reminderIdIn(requestedDestination)
         val sharedText = Destinations.sharedTextIn(requestedDestination)
@@ -127,6 +129,8 @@ fun RwilcoApp(
                 composable<Routes.Home> {
                     HomeScreen(
                         viewModel = viewModel(factory = HomeViewModel.Factory(app)),
+                        justSaved = justSaved,
+                        onJustSavedShown = { justSaved = null },
                         requestedPreset = requestedPreset,
                         onPresetConsumed = { requestedPreset = null },
                         onNew = { navController.navigate(Routes.Editor()) },
@@ -167,6 +171,9 @@ fun RwilcoApp(
                             factory = EditorViewModel.Factory(app, route.reminderId, route.fromPresetId, route.cloneOfId, route.editPresetId, route.newPreset, route.sharedText),
                         ),
                         onClose = { navController.popBackStack() },
+                        // Held here rather than in either screen's ViewModel: the editor's dies
+                        // with it, and Home's is a different scope that the editor cannot reach.
+                        onSaved = { id -> justSaved = id },
                         onDeleted = { reminder ->
                             // The editor's scope dies with the screen; the undo outlives it.
                             snackbar.show(deletedMessage, undoLabel) {

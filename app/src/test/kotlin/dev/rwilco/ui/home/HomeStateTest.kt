@@ -257,4 +257,51 @@ class HomeStateTest {
         assertNull(cards.getValue("once").skipsMoment, "a one-off has no next one")
         assertNull(cards.getValue("ringing").skipsMoment, "a ring waiting for an answer is not skipped, it is answered")
     }
+    /** A card is only an id here: nothing else takes part in where it sits. */
+    private fun card(id: String) = ReminderCardUi(
+        id = id,
+        text = id,
+        tags = emptyList(),
+        triggers = emptyList(),
+        actions = emptySet(),
+        paused = false,
+    )
+
+    @Test
+    fun `the index of a card mirrors the order the list is built in`() {
+        // This is the one function in Home that is a copy of something else — the order of the
+        // LazyColumn — so it is the one worth pinning. A drift here is a save that scrolls to
+        // the wrong reminder, which is worse than not scrolling at all.
+        val a = card("a")
+        val b = card("b")
+        val c = card("c")
+        val state = HomeUiState(
+            loaded = true,
+            hero = null,
+            sections = listOf(
+                SectionUi(Section.TODAY, listOf(a, b)),
+                SectionUi(Section.LATER, listOf(c)),
+            ),
+            tags = emptyList(),
+        )
+        // Nothing above the list: heading, a, b, heading, c.
+        assertEquals(1, homeCardIndex(state, "a", strip = false, pinned = false))
+        assertEquals(2, homeCardIndex(state, "b", strip = false, pinned = false))
+        assertEquals(4, homeCardIndex(state, "c", strip = false, pinned = false))
+        assertNull(homeCardIndex(state, "nobody", strip = false, pinned = false))
+
+        // Each thing above the list pushes everything down by exactly one.
+        assertEquals(2, homeCardIndex(state, "a", strip = true, pinned = false))
+        assertEquals(2, homeCardIndex(state, "a", strip = false, pinned = true))
+        assertEquals(3, homeCardIndex(state, "a", strip = true, pinned = true))
+        val withTags = state.copy(tags = listOf(TagFilter.Untagged))
+        assertEquals(2, homeCardIndex(withTags, "a", strip = false, pinned = false))
+        // The hero is lifted out of its section but it is still a row in the same column, and a
+        // list scrolled well down has it off the top — which is where an edit that gives a
+        // reminder the soonest moment on the phone sends it.
+        val withHero = withTags.copy(hero = HeroUi(card("hero"), Instant.EPOCH))
+        assertEquals(1, homeCardIndex(withHero, "hero", strip = false, pinned = false))
+        assertEquals(3, homeCardIndex(withHero, "a", strip = false, pinned = false))
+    }
+
 }

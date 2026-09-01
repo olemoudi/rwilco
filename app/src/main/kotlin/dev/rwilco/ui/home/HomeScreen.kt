@@ -48,6 +48,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -89,6 +90,7 @@ import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.settings.rememberAlertReadiness
 import dev.rwilco.ui.settings.stripShows
 import dev.rwilco.ui.format.snoozePlacePhrase
+import kotlinx.coroutines.delay
 
 /** So a test can scroll the list itself; a lazy list does not compose what is off screen. */
 const val HOME_LIST_TAG = "homeList"
@@ -99,6 +101,9 @@ fun HomeScreen(
     /** A pinned preset a launcher shortcut asked for: written here, the way its button is. */
     requestedPreset: String? = null,
     onPresetConsumed: () -> Unit = {},
+    /** A reminder a save has just written, to be gone to and marked; see the effect below. */
+    justSaved: String? = null,
+    onJustSavedShown: () -> Unit = {},
     onNew: () -> Unit,
     onNewFromPreset: (String) -> Unit,
     onEditPreset: (String) -> Unit,
@@ -409,7 +414,38 @@ fun HomeScreen(
         // hand never gets there (the two move 1:1 and arrive together), but anything that moves
         // the list without scrolling it does — a jump to an index, which is also how the tour
         // reaches Settings. The top of the list is where the row lives, so it is put back there.
+        // **After a save, the card is found rather than looked for.** Editing the words leaves a
+        // card where it was, and Home keeping the scroll is exactly right there. Editing *when*
+        // it rings moves it — to another section, and sometimes to the very bottom under "cuando
+        // ocurra" — and then keeping the scroll means looking at the place it used to be. So the
+        // list goes to it, and it is marked for a moment so the eye knows which of them moved.
+        //
+        // Only when it is not already on screen: a list that jumps when nothing has moved is
+        // worse than one that does not move at all. Re-run on the state as well as on the id,
+        // because the save reaches the screen a beat after it reaches the database, and until it
+        // does there is no row to go to.
+        var marked by remember { mutableStateOf<String?>(null) }
+        // Asked once and read twice — by the list that draws it and by the arithmetic that
+        // counts past it — because the two disagreeing is a scroll to the wrong card.
+        val stripShown = !search.open && stripShows(readiness, dismissedProblems)
         val listState = rememberLazyListState()
+        LaunchedEffect(justSaved, state.sections, state.hero) {
+            val id = justSaved ?: return@LaunchedEffect
+            val index = homeCardIndex(state, id, strip = stripShown, pinned = presets.isNotEmpty())
+                ?: return@LaunchedEffect
+            if (listState.layoutInfo.visibleItemsInfo.none { it.key == id }) {
+                listState.animateScrollToItem(index)
+            }
+            marked = id
+            onJustSavedShown()
+        }
+        // The mark is a moment, not a state: long enough to be seen from across a scroll,
+        // short enough that it is gone before it becomes a thing the card wears.
+        LaunchedEffect(marked) {
+            if (marked == null) return@LaunchedEffect
+            delay(MARK_MS)
+            marked = null
+        }
         LaunchedEffect(listState) {
             snapshotFlow { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0 }
                 .collect { if (it) headerScroll.show() }
@@ -429,7 +465,7 @@ fun HomeScreen(
         ) {
             // A fold in Settings may never hide a phone that will not ring, and neither may
             // Home: the one screen somebody actually looks at says so, once, until waved off.
-            if (!search.open && stripShows(readiness, dismissedProblems)) {
+            if (stripShown) {
                 item(key = "readiness") {
                     ReadinessStrip(
                         // What is left to say, not the total: naming a problem somebody has
@@ -542,6 +578,7 @@ fun HomeScreen(
                                 longClickLabel = cardActionsLabel,
                                 compact = cardCompact,
                                 onToggleCompact = { viewModel.flipCard(card.id) },
+                                marked = card.id == marked,
                                 // What the swipes do, for whoever cannot swipe.
                                 modifier = Modifier.semantics {
                                     customActions = listOf(
@@ -700,3 +737,6 @@ private fun TagFilter.label(): String = when (this) {
     TagFilter.Paused -> stringResource(R.string.home_tag_paused)
     TagFilter.Place -> stringResource(R.string.home_tag_place)
 }
+
+/** How long a just-saved card stays lit: long enough to be caught, short enough not to be worn. */
+private const val MARK_MS = 1_400L

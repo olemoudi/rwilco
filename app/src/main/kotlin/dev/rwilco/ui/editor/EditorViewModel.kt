@@ -57,7 +57,11 @@ import dev.rwilco.model.MAX_TEXT_LENGTH
 private const val HISTORY_SHOWN = 14
 
 sealed interface EditorEvent {
-    data object Saved : EditorEvent
+    /**
+     * [reminderId] is the row that was written, so Home can go and find it; null for a preset,
+     * which has no card to go to.
+     */
+    data class Saved(val reminderId: String?) : EditorEvent
     data class Deleted(val reminder: Reminder) : EditorEvent
     /** A preset left the list; the screen closes and the snackbar offers it back. */
     /** [index] is where it sat, so an undo puts it back there rather than at the end. */
@@ -431,7 +435,7 @@ class EditorViewModel(
             )
             repository.save(reminder)
             rearm()
-            events.send(EditorEvent.Saved)
+            events.send(EditorEvent.Saved(reminder.id))
         }
     }
 
@@ -451,7 +455,7 @@ class EditorViewModel(
                 val preset = current.toPreset(id, now, current.editingPreset, others)
                 settings.copy(presets = settings.presets.keeping(preset))
             }
-            events.send(EditorEvent.Saved)
+            events.send(EditorEvent.Saved(null))
         }
     }
 

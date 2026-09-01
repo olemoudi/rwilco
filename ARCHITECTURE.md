@@ -891,6 +891,21 @@ because that is what its chip would show.
   never folded — it is the one card the screen is about. The tags use `FittingRow`, which places
   what fits and marks the rest, because a `Row` that clips draws half a chip and "the first two"
   says the same nothing whether there are two or five.
+- **A save is taken to its card** (0.64.0, `homeCardIndex`). Editing the words leaves a card
+  where it was, and Home keeping the scroll is exactly right there — that is what
+  `HomeScrollTest` has pinned since the ordering was fixed. Editing *when* it rings moves it, to
+  another section and sometimes to the bottom under "cuando ocurra", and then keeping the scroll
+  means looking at where it used to be. The id travels on `EditorEvent.Saved` and is held in
+  `RwilcoApp` (the editor's ViewModel dies with it, and Home's is a scope the editor cannot
+  reach); Home scrolls to it **only when it is not already on screen**, because a list that
+  jumps when nothing has moved is worse than one that does not move, and marks it for
+  [MARK_MS] — a step brighter, not amber, since "the one you were editing" is not "what fires
+  next". `homeCardIndex` is a **mirror of the order the LazyColumn is built in** — a column only
+  knows the keys it has composed, and scrolling wants an index — so it is pure and pinned by a
+  test rather than counted out at the call site where nothing would notice it drifting. The hero
+  counts as a row: it is lifted out of its *section*, not out of the column, and a list scrolled
+  well down has it off the top — which is exactly where an edit that gives a reminder the
+  soonest moment on the phone sends it.
 - Home: `HomeViewModel` combines the open reminders, settings, the tag filter and a minute pulse
   into `HomeUiState` (`buildHomeState`, pure and tested). The hero card's countdown ticks in its
   own composable (`rememberNow`) so nothing else recomposes. The magnifier has a flow of its own

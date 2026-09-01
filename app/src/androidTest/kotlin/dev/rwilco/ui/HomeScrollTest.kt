@@ -15,6 +15,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -121,6 +122,27 @@ class HomeScrollTest {
         rule.onAllNodesWithText(words.first(), useUnmergedTree = true).fetchSemanticsNodes().let {
             assertTrue("the list jumped back to the top", it.isEmpty())
         }
+    }
+
+    @Test
+    fun savingAnEditThatMovesTheCardGoesToWhereItWent() {
+        // The other half of the test above, and the one reported from a phone: editing the
+        // *words* leaves a card where it was, and keeping the scroll is right. Editing when it
+        // rings moves it — here from the bottom of the list to the top of it — and then keeping
+        // the scroll means looking at the place it used to be.
+        val last = words.last()
+        scrollTo(last)
+        rule.onNodeWithText(last, useUnmergedTree = true).performClick()
+        waitFor(s(R.string.editor_title_edit))
+
+        // "En 30 min" is the first of the quick answers, and it puts the card at the top.
+        rule.onNodeWithText(s(R.string.editor_add_trigger), useUnmergedTree = true).performScrollTo()
+        rule.onNodeWithText("30 min", substring = true, useUnmergedTree = true).performScrollTo().performClick()
+        rule.onNodeWithText(s(R.string.common_save), useUnmergedTree = true).performClick()
+
+        // Back on Home, at the card, wherever it went — not at the bottom where it was.
+        waitFor(last)
+        rule.onNodeWithText(last, substring = true, useUnmergedTree = true).assertIsDisplayed()
     }
 
     @Test

@@ -47,6 +47,42 @@ data class HomeUiState(
 }
 
 /**
+ * Where a reminder's card sits in Home's list, or null when it has no row to go to — a filter is
+ * hiding it, or the save has not reached the screen yet.
+ *
+ * The hero counts: it is lifted out of its *section* but it is still a row in the same column,
+ * and a list scrolled well down is a list with the hero off the top of it — which is exactly
+ * where a reminder goes when an edit gives it the soonest moment on the phone.
+ *
+ * It exists because "take me to the card I just saved" needs an *index* and a `LazyColumn` only
+ * ever knows about the keys it has composed. So this is a **mirror of the order that column is
+ * built in**, and the two have to be changed together — which is why it is here, pure, and
+ * pinned by a test, rather than counted out at the call site where nothing would ever notice it
+ * drifting.
+ *
+ * [strip] and [pinned] are the two items above the list that come and go; searching and the
+ * loading placeholder are not asked about, because neither is on screen when somebody arrives
+ * back from a save.
+ */
+fun homeCardIndex(state: HomeUiState, id: String, strip: Boolean, pinned: Boolean): Int? {
+    var index = 0
+    if (strip) index++
+    if (pinned) index++
+    if (state.tags.isNotEmpty()) index++
+    if (state.hero != null) {
+        if (state.hero.card.id == id) return index
+        index++
+    }
+    for (section in state.sections) {
+        index++ // the section's own heading
+        val at = section.cards.indexOfFirst { it.id == id }
+        if (at >= 0) return index + at
+        index += section.cards.size
+    }
+    return null
+}
+
+/**
  * The one card that glows. [snoozed] when the moment shown is a "remind me later" rather than
  * the reminder's own: without it a postponed reminder comes back as "next up" with a countdown
  * and no hint that it is there because somebody pushed it away.

@@ -1,5 +1,7 @@
 package dev.rwilco.ui.home
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.material.icons.outlined.UnfoldLess
 import androidx.compose.material3.IconButton
@@ -32,6 +34,7 @@ import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -105,10 +108,12 @@ fun ReminderCard(
     compact: Boolean = false,
     /** The icon in the corner of an open card, and the only thing on it that is not the tap. */
     onToggleCompact: () -> Unit = {},
+    /** Just saved and just arrived at: lit for a moment so the eye knows which card moved. */
+    marked: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     if (compact) {
-        CompactCard(card, onClick, onLongClick, longClickLabel, modifier)
+        CompactCard(card, onClick, onLongClick, longClickLabel, marked, modifier)
         return
     }
     val spacing = Tokens.spacing
@@ -117,7 +122,7 @@ fun ReminderCard(
     // A paused reminder is not going to ring at all, so its band drops the colour with the rest
     // of the card and goes the same grey.
     val rail = card.railTag?.let { if (card.paused) scheme.onSurfaceVariant else tagColor(it) }
-    RwilcoCard(onClick = onClick, onLongClick = onLongClick, longClickLabel = longClickLabel, modifier = modifier, rail = rail) {
+    RwilcoCard(onClick = onClick, onLongClick = onLongClick, longClickLabel = longClickLabel, modifier = modifier, rail = rail, color = markedColour(marked)) {
         // A card is a glance, not a page — but the words are the glance, so they get the width
         // and the size, and the one control goes down to the footer with the rest of the
         // furniture. Under the title: the rules, then the read-only footer.
@@ -204,13 +209,14 @@ private fun CompactCard(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     longClickLabel: String?,
+    marked: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
     val muted = scheme.onSurfaceVariant
     val rail = card.railTag?.let { if (card.paused) muted else tagColor(it) }
-    RwilcoCard(onClick = onClick, onLongClick = onLongClick, longClickLabel = longClickLabel, modifier = modifier, rail = rail) {
+    RwilcoCard(onClick = onClick, onLongClick = onLongClick, longClickLabel = longClickLabel, modifier = modifier, rail = rail, color = markedColour(marked)) {
         Column(modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.md)) {
             Text(
                 text = card.text,
@@ -261,6 +267,24 @@ private fun CompactCard(
             }
         }
     }
+}
+
+/**
+ * The card's own colour, a step brighter while it is the one just saved.
+ *
+ * A step and not the amber: amber is what fires next, and "this is the one you were editing" is
+ * not that. It fades rather than switching, because what the eye is being asked to catch is the
+ * *change*, and a card that simply is a different colour says nothing about which of them moved.
+ */
+@Composable
+private fun markedColour(marked: Boolean): Color {
+    val scheme = MaterialTheme.colorScheme
+    val colour by animateColorAsState(
+        targetValue = if (marked) scheme.surfaceContainerHighest else scheme.surfaceContainer,
+        animationSpec = tween(Tokens.motion.medium),
+        label = "cardMarked",
+    )
+    return colour
 }
 
 /** One mark on a compact card: read-only, muted, and the same size as an action glyph. */

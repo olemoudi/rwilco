@@ -108,6 +108,8 @@ import dev.rwilco.model.Understood
 fun EditorScreen(
     viewModel: EditorViewModel,
     onClose: () -> Unit,
+    /** The row that was just written, so Home can go and find it; never called for a preset. */
+    onSaved: (String) -> Unit = {},
     onDeleted: (Reminder) -> Unit,
     /** A preset was deleted from here; the caller's snackbar outlives this screen and offers it back. */
     onPresetDeleted: (Preset, Int) -> Unit = { _, _ -> },
@@ -132,7 +134,10 @@ fun EditorScreen(
     LaunchedEffect(viewModel) {
         viewModel.eventFlow.collect { event ->
             when (event) {
-                EditorEvent.Saved -> onClose()
+                is EditorEvent.Saved -> {
+                    event.reminderId?.let(onSaved)
+                    onClose()
+                }
                 is EditorEvent.Deleted -> {
                     onDeleted(event.reminder)
                     onClose()
