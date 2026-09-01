@@ -19,6 +19,9 @@ import dev.rwilco.model.TriggerRule
 import dev.rwilco.ui.alert.AlertActivity
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Before
+import kotlinx.coroutines.flow.first
+import dev.rwilco.model.AwakeHours
 import org.junit.Test
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -54,6 +57,25 @@ class AlertSilenceTest {
     private val quiet = "Bajar la basura (prueba silenciosa)"
     private val once = "Regar las plantas (prueba de un solo tono)"
     private val note = "Renovar el abono (prueba de la red)"
+    private val asleepId = "silence-asleep"
+    private val asleep = "Cerrar el gas (prueba de madrugada)"
+
+    private var hoursBefore: AwakeHours? = null
+
+    /**
+     * **The hours are pinned, or this whole class answers differently after bedtime.**
+     *
+     * Since 0.63.0 a firing outside the hours somebody is up arrives with no sound and no buzz
+     * at all, which is exactly what the silence step is about — so a suite run at midnight
+     * would watch every "it asks to be silenced" case turn into "it does not", and the failure
+     * would be the feature working. Up all day here; the one test that wants the other answer
+     * says so for itself.
+     */
+    @Before
+    fun pinTheHours() = runBlocking {
+        hoursBefore = app.settingsStore.settings.first().awake
+        app.settingsStore.update { it.copy(awake = AwakeHours(LocalTime.MIDNIGHT, LocalTime.of(23, 59), LocalTime.MIDNIGHT, LocalTime.of(23, 59))) }
+    }
 
     /** [rang] false is a reminder that never went off — what the safety net's first word is about. */
     private fun seed(id: String, text: String, actions: Set<Action>, rang: Boolean = true) = runBlocking {
@@ -78,6 +100,8 @@ class AlertSilenceTest {
         app.repository.delete(loudId)
         app.repository.delete(quietId)
         app.repository.delete(onceId)
+        app.repository.delete(asleepId)
+        hoursBefore?.let { hours -> app.settingsStore.update { it.copy(awake = hours) } }
         app.repository.delete(noteId)
     }
 
@@ -166,6 +190,25 @@ class AlertSilenceTest {
         rule.onNodeWithText(string { it.getString(R.string.alert_done) }).performClick()
         rule.waitUntil(timeoutMillis = 10_000) {
             runBlocking { app.repository.get(noteId)?.lastDealtAt != null }
+        }
+    }
+
+    @Test
+    fun anAlertOutsideTheHoursYouAreUpArrivesSilent() {
+        // Awake for one minute a day, and it is not this one: the buzz and the insistent tone
+        // are both taken out, so the screen has nothing to ask about and offers "Hecho" at
+        // once. A reminder asked for at three in the morning is still an alarm at three in the
+        // morning, whatever its tiles say.
+        runBlocking {
+            app.settingsStore.update { it.copy(awake = AwakeHours(LocalTime.of(4, 0), LocalTime.of(4, 1), LocalTime.of(4, 0), LocalTime.of(4, 1))) }
+        }
+        seed(asleepId, asleep, setOf(Action.FULL_SCREEN, Action.VIBRATE, Action.SOUND_UNTIL_ANSWERED))
+        scenario = ActivityScenario.launch(alert(asleepId))
+        rule.waitUntilShown(asleep)
+
+        rule.onNodeWithText(string { it.getString(R.string.alert_done) }).assertIsDisplayed()
+        check(rule.onAllNodesWithText(string { it.getString(R.string.alert_silence) }).fetchSemanticsNodes().isEmpty()) {
+            "an alert in the small hours asked to be silenced, so it must have made a noise"
         }
     }
 
