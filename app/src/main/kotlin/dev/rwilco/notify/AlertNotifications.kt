@@ -35,19 +35,26 @@ import dev.rwilco.ui.format.snoozeLabel
 import dev.rwilco.model.notificationSnoozeOffers
 
 /**
- * How many alerts the bundle actually has: what the system lists, plus or minus the one this
- * call has just posted or cancelled.
+ * How many alerts the bundle actually has: what the system lists, plus or minus what this call
+ * has just posted or cancelled.
  *
  * The system's list is what it has got round to. A cancel is handed to a thread of its own and
  * is not done when the call returns, so asking straight afterwards can still be told about the
  * notification on its way out — and the summary posted for it then stayed in the shade on its
- * own, an empty line reading "1 recordatorio" over nothing, to be swiped away by hand. The id
- * this call is about is therefore counted from what we did, never from what the list says
- * about it.
+ * own, an empty line reading "1 recordatorio" over nothing. The ids this call is about are
+ * therefore counted from what we did, never from what the list says about them.
+ *
+ * **[cancelled] is every id the call took down, not one of them** (0.65.2). [cancel] takes down
+ * both of a reminder's cards and used to declare them one at a time, in two passes over a list
+ * the system had not caught up with: the pass for the note subtracted the note from a list that
+ * still had the ring in it, counted one, and put the summary back over a bundle that was by then
+ * empty. Nothing counts the bundle again until the next reminder rings, so the line stayed there
+ * — which is exactly the leftover this function was written to prevent, arriving through the
+ * other door.
  */
-internal fun bundleChildren(listed: List<Int>, posted: Int?, cancelled: Int?): Int {
+internal fun bundleChildren(listed: List<Int>, posted: Int? = null, cancelled: Set<Int> = emptySet()): Int {
     val ids = listed.toMutableSet()
-    if (cancelled != null) ids -= cancelled
+    ids -= cancelled
     if (posted != null) ids += posted
     return ids.size
 }
@@ -272,15 +279,31 @@ object AlertNotifications {
         }
     }
 
-    /** Both cards a reminder can have in the shade: the ring, and the net's word about it. */
+    /**
+     * Both cards a reminder can have in the shade: the ring, and the net's word about it.
+     *
+     * **Both are declared to one pass over the bundle**, never one pass each: see
+     * [bundleChildren] for what the second pass used to leave behind.
+     */
     fun cancel(context: Context, reminderId: String) {
         runCatching {
             val manager = NotificationManagerCompat.from(context)
-            manager.cancel(notificationId(reminderId))
-            manager.cancel(nudgeNotificationId(reminderId))
-            syncSummary(context, cancelled = notificationId(reminderId))
-            syncSummary(context, cancelled = nudgeNotificationId(reminderId))
+            val ids = setOf(notificationId(reminderId), nudgeNotificationId(reminderId))
+            ids.forEach(manager::cancel)
+            syncSummary(context, cancelled = ids)
         }
+    }
+
+    /**
+     * The bundle counted against nothing of our own: whatever the system says is there now.
+     *
+     * For the line already stuck in somebody's shade. [syncSummary] takes an empty bundle's
+     * summary down, but only something posting or cancelling calls it — so a leftover sat there
+     * until the next reminder rang, which on a quiet week is days. Run at launch, off the main
+     * thread; with real alerts under it the summary is simply re-posted saying the truth.
+     */
+    fun sweepSummary(context: Context) {
+        runCatching { syncSummary(context) }
     }
 
     /**
@@ -295,10 +318,14 @@ object AlertNotifications {
      * A single child under a summary is not a problem to solve either: Android draws that group
      * as the child alone. So the rule is the simple one — say how many there are while there are
      * any — and the count comes from what is actually posted, since a notification can go by
-     * being swiped as well as by [cancel], corrected for the one this call has just changed
+     * being swiped as well as by [cancel], corrected for what this call has just changed
      * ([bundleChildren]).
+     *
+     * Which makes a summary standing over an empty bundle the one state that is *visible* and
+     * wrong: while a child is there the group is drawn as the child, so the line is only ever
+     * seen when it has nothing to stand for.
      */
-    private fun syncSummary(context: Context, posted: Int? = null, cancelled: Int? = null) {
+    private fun syncSummary(context: Context, posted: Int? = null, cancelled: Set<Int> = emptySet()) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         val listed = manager.activeNotifications.filter { it.id != SUMMARY_ID && it.notification.group == BUNDLE }.map { it.id }
         val children = bundleChildren(listed, posted, cancelled)

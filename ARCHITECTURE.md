@@ -1468,6 +1468,21 @@ because that is what its chip would show.
   a minute because nobody is there, and a display lit at full brightness until somebody comes
   home costs more battery than everything else in this app together. The alert is still on the
   screen when they do, and the notification is still in the shade either way.
+- **The bundle is counted once per change, knowing everything that changed** (0.65.2). Cancelling
+  a notification is handed to a thread of the system's own and is not done when the call returns,
+  which is why `bundleChildren` counts the summary from what the app *did* rather than from what
+  `activeNotifications` says. `AlertNotifications.cancel` takes down both of a reminder's cards —
+  the ring and the net's word about it — and used to declare them one at a time, in two passes:
+  the second subtracted the note from a list that still had the ring in it, counted one, and put
+  the summary back over a bundle that was by then empty. So `cancelled` is a **set** now and
+  there is one pass. The leftover is the one state that is visible and wrong — while a child is
+  there the shade draws the group as the child, so the line is only ever seen when it has nothing
+  to stand for — and it is what somebody finds reading "1 recordatorio" and nothing else. The
+  platform does not clean it up (checked on API 35, `NotificationBundleTest`) and it is not
+  pinned by anything of ours: the line reports itself clearable, and what makes it feel stuck is
+  that a swipe on a summary is a dismissal of the *group*. `sweepSummary` — the count against
+  nothing of our own — runs at launch beside the other sweeps, because otherwise nothing counts
+  the bundle again until the next reminder rings, which on a quiet week is days.
 - **A card that is tapped opens the alert screen without ringing it again** (0.65.1,
   `ReminderScheduler.EXTRA_TAPPED`). `AlertActivity` builds its own plan from the row and rings
   for it, which is right while the moment is arriving and wrong every other time: the noise had

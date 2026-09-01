@@ -131,6 +131,9 @@ class RwilcoApplication : Application() {
                 geofences.sync()
                 placeWatcher.sync()
                 repository.sweepOldDone()
+                // And the shade's own leftover: a summary line standing over a bundle with
+                // nothing in it. See AlertNotifications.sweepSummary.
+                AlertNotifications.sweepSummary(this@RwilcoApplication)
                 // A chosen tone that has stopped being playable goes back to the phone's own
                 // alarm here rather than at the ring; see settleSounds.
                 settleSounds()

@@ -91,4 +91,45 @@ class NotificationBundleTest {
         assertEquals(0, alerts())
         assertEquals("nothing left to stand for", 0, summaries())
     }
+
+    /**
+     * The line left standing over an empty bundle — "1 recordatorio" and nothing else — and the
+     * sweep that is rid of it.
+     *
+     * Built here the way the bug built it: a count taken against a list the system has not
+     * caught up with. The cards are taken down and the bundle is counted in the same breath, so
+     * the count is answered about two cards that are already on their way out, and the summary
+     * goes back up over what is by then nothing. Nothing counts the bundle again until the next
+     * reminder rings, which is why it sat there for days.
+     */
+    @Test
+    fun aSummaryLeftStandingOverNothingIsSweptAway() {
+        post("ghost-a", "Sacar la basura")
+        post("ghost-b", "Llamar al dentista para la revisión")
+        Thread.sleep(500)
+        assertEquals(2, alerts())
+
+        // Behind the summary's back, and then a count that knows nothing about it.
+        manager.cancel(AlertNotifications.notificationId("ghost-a"))
+        manager.cancel(AlertNotifications.notificationId("ghost-b"))
+        AlertNotifications.cancel(context, "ghost-never-posted")
+        Thread.sleep(900)
+
+        assertEquals("the alerts went", 0, alerts())
+        // **The platform does not clean this up for us** (checked on API 35): a group summary
+        // whose children have all gone stays exactly where it is, which is the whole reason the
+        // sweep below has to exist.
+        val orphan = manager.activeNotifications.firstOrNull { it.id == 1 }
+        check(orphan != null) { "the leftover this test is about never formed" }
+        // And it is not us pinning it: the line carries no ongoing flag of its own and the
+        // platform calls it clearable. A swipe on a summary is a dismissal of the GROUP, and a
+        // group with no children left is the state the shade handles worst — so the answer is
+        // never to leave one, not to make it easier to swipe.
+        check(orphan.isClearable) { "the leftover summary was flagged non-clearable" }
+
+        AlertNotifications.sweepSummary(context)
+        Thread.sleep(700)
+        assertEquals("the line stayed over nothing", 0, summaries())
+        assertEquals(0, alerts())
+    }
 }
