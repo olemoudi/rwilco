@@ -871,6 +871,26 @@ because that is what its chip would show.
   now. Emptying a log asks (`ClearDialog`), and so does removing a tag from every reminder or
   hiding a phrase — there is no row to put back from a rewrite of forty rows, and a hidden
   phrase has no door back through. A rename asks nothing: rename it back.
+- **Home folds away** (0.64.0, `AppSettings.compactHome`). A small button over "Nuevo" takes
+  every card down to a line: the words, one row of 16dp glyphs for what rings it and what it
+  does, and the tags against the right edge. It is a way of reading the *list* — thirty cards at
+  full height is a lot of scrolling to answer "what have I got on" — so it is a setting rather
+  than anything per reminder, and deliberately **not amber**: amber is what fires next, and this
+  button is about reading rather than about ringing.
+  **The mode is the answer and the flipped cards are the exceptions to it**
+  (`HomeViewModel.flippedCards`, `compact = compactHome != (id in flipped)`). Kept that way
+  round because a reminder nobody has touched then never has to be listed at all, and because
+  the toggle can empty the set — a mode that left yesterday's exceptions behind is one that does
+  not quite do what it says. Screen state, in the ViewModel so it survives a rotation.
+  **On a folded card the tap opens it out rather than the form**: what somebody wants from a
+  line they cannot read all of is to see it, and the form is one tap further from the card that
+  is now open. An open card carries the way back in its corner, at the size every icon that
+  *acts* is drawn rather than the 16dp of the read-only marks under it.
+  What it costs is stated rather than hidden: a rule keeps its kind and loses its words, the
+  standing marks go with them, and the pause pill goes (the held menu still has it). The hero is
+  never folded — it is the one card the screen is about. The tags use `FittingRow`, which places
+  what fits and marks the rest, because a `Row` that clips draws half a chip and "the first two"
+  says the same nothing whether there are two or five.
 - Home: `HomeViewModel` combines the open reminders, settings, the tag filter and a minute pulse
   into `HomeUiState` (`buildHomeState`, pure and tested). The hero card's countdown ticks in its
   own composable (`rememberNow`) so nothing else recomposes. The magnifier has a flow of its own

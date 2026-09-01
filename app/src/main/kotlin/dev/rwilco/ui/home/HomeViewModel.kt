@@ -164,6 +164,37 @@ class HomeViewModel(
         viewModelScope.launch { store.update { it.copy(dismissedAlertProblems = live) } }
     }
 
+    /** Home's cards down to a line each; see [AppSettings.compactHome]. */
+    val compactHome: StateFlow<Boolean> = settings
+        .filterNotNull()
+        .map { it.compactHome }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    /**
+     * The cards showing the *opposite* of the mode: expanded ones while the list is compact,
+     * and compacted ones while it is not.
+     *
+     * Kept as what has been flipped rather than as a state per card, because that is what it
+     * is — the mode is the answer and these are the exceptions to it — and because it means a
+     * reminder nobody has touched never has to be listed at all. Screen state, not settings: a
+     * card opened out to read it is a thing somebody is doing now, not a preference. It lives
+     * here rather than in the composable so it survives a rotation, and [setCompactHome]
+     * empties it, because a toggle that left yesterday's exceptions behind would be a mode that
+     * does not quite do what it says.
+     */
+    private val flipped = MutableStateFlow(emptySet<String>())
+    val flippedCards: StateFlow<Set<String>> = flipped
+
+    fun setCompactHome(compact: Boolean) {
+        flipped.value = emptySet()
+        viewModelScope.launch { store.update { it.copy(compactHome = compact) } }
+    }
+
+    /** One card in or out of step with the mode. */
+    fun flipCard(id: String) {
+        flipped.value = if (id in flipped.value) flipped.value - id else flipped.value + id
+    }
+
     /** How long the custom snooze is, for the menu's offers to read the way the alert's do. */
     val snoozeCustomMinutes: StateFlow<Int> = settings
         .filterNotNull()

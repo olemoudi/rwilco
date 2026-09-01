@@ -1,6 +1,8 @@
 package dev.rwilco.ui.home
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.material.icons.outlined.UnfoldLess
+import androidx.compose.material3.IconButton
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -34,20 +36,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.rwilco.R
+import dev.rwilco.model.Action
 import dev.rwilco.model.countsFromRinging
 import dev.rwilco.model.RuleStanding
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.TriggerFamily
 import dev.rwilco.model.kind
+import dev.rwilco.ui.components.FittingRow
 import dev.rwilco.ui.components.HoldButton
 import dev.rwilco.ui.components.RuleTree
 import dev.rwilco.ui.components.RwilcoCard
+import dev.rwilco.ui.components.TagLabel
 import dev.rwilco.ui.components.TriggerKeycap
 import dev.rwilco.model.conditions
 import dev.rwilco.ui.editor.titleRes
@@ -76,6 +82,14 @@ import dev.rwilco.model.Trigger
  * One reminder at a glance. [modifier] is where Home hangs the accessibility actions for the
  * swipes: a gesture is not a thing a screen reader can do, so Done and Delete are offered as
  * actions on the card itself.
+ *
+ * **[compact] is the same reminder as one line** — the words, then a row of small glyphs for
+ * what rings it and what it does, and its tags on the right. It is a way of reading the *list*
+ * rather than the reminder: thirty cards at full height is a lot of scrolling to answer "what
+ * have I got on". What it costs is said plainly — the rules lose their words and keep only
+ * their kind, the standing marks go with them, and the pause control goes (the held menu still
+ * has it). [onToggleCompact] is the way back, and on a compact card the tap is the way back
+ * too: opening it out is what somebody wants first, and the form is one tap further.
  */
 @Composable
 fun ReminderCard(
@@ -88,8 +102,15 @@ fun ReminderCard(
     /** Held: the menu of what can be done to this reminder. */
     onLongClick: () -> Unit = {},
     longClickLabel: String? = null,
+    compact: Boolean = false,
+    /** The icon in the corner of an open card, and the only thing on it that is not the tap. */
+    onToggleCompact: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    if (compact) {
+        CompactCard(card, onClick, onLongClick, longClickLabel, modifier)
+        return
+    }
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
     val textColor = if (card.paused) scheme.onSurfaceVariant else scheme.onSurface
@@ -101,14 +122,29 @@ fun ReminderCard(
         // and the size, and the one control goes down to the footer with the rest of the
         // furniture. Under the title: the rules, then the read-only footer.
         Column(modifier = Modifier.padding(spacing.lg)) {
-            Text(
-                text = card.text,
-                style = MaterialTheme.typography.titleLarge,
-                color = textColor,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = card.text,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = textColor,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                // The one thing on an open card that is not the tap. In the corner, quiet, and
+                // the same glyph the button over "Nuevo" wears, because it does the same thing
+                // to one card that that one does to the list.
+                // At the size every other icon that *acts* is drawn, not the 16dp of the
+                // read-only marks below it: muted enough to stay out of the way of the words,
+                // legible enough to be seen as a thing to press.
+                IconButton(onClick = onToggleCompact) {
+                    Icon(
+                        imageVector = Icons.Outlined.UnfoldLess,
+                        contentDescription = stringResource(R.string.card_compact),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             Spacer(Modifier.height(spacing.md))
             Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
                 // First, because it is what happens next: a snooze outranks every rule under it
@@ -147,6 +183,95 @@ fun ReminderCard(
             }
         }
     }
+}
+
+/**
+ * The same reminder, one line tall.
+ *
+ * The words get the line and nothing else does — a reminder is its words, and a list is read by
+ * them. Under them the one row that is left: what rings it and what it does, as small glyphs in
+ * the muted ink, and the tags against the right edge with a mark when they do not all fit
+ * ([FittingRow]).
+ *
+ * The glyphs are in the order the card says things in when it is open — what it is waiting for
+ * first (a snooze outranks every rule under it), then the rules, then the recurrence, then what
+ * happens when it fires — separated by a gap rather than a line, because a rule at this size
+ * cannot say anything except which kind it is, and a divider would be claiming more.
+ */
+@Composable
+private fun CompactCard(
+    card: ReminderCardUi,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    longClickLabel: String?,
+    modifier: Modifier = Modifier,
+) {
+    val spacing = Tokens.spacing
+    val scheme = MaterialTheme.colorScheme
+    val muted = scheme.onSurfaceVariant
+    val rail = card.railTag?.let { if (card.paused) muted else tagColor(it) }
+    RwilcoCard(onClick = onClick, onLongClick = onLongClick, longClickLabel = longClickLabel, modifier = modifier, rail = rail) {
+        Column(modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.md)) {
+            Text(
+                text = card.text,
+                style = MaterialTheme.typography.titleMedium,
+                color = if (card.paused) muted else scheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(spacing.xs))
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs), verticalAlignment = Alignment.CenterVertically) {
+                    if (card.snoozedUntil != null || card.snoozedToPlace != null) {
+                        CompactGlyph(Icons.Outlined.Snooze, stringResource(R.string.card_snoozed))
+                    }
+                    for (row in card.triggers) {
+                        CompactGlyph(row.trigger.kind.icon, stringResource(row.trigger.kind.titleRes))
+                    }
+                    if (card.recurrence != null) {
+                        CompactGlyph(Icons.Outlined.Autorenew, stringResource(R.string.card_recurrence))
+                    }
+                    // What it does when it fires, a step quieter than what rings it: the same
+                    // glyphs the open card's footer wears, after a gap that says they are a
+                    // different answer.
+                    if (card.actions.isNotEmpty()) Spacer(Modifier.width(spacing.sm))
+                    for (action in Action.entries) {
+                        if (action in card.actions) {
+                            CompactGlyph(action.icon, stringResource(action.labelRes))
+                        }
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                if (card.tags.isNotEmpty()) {
+                    Spacer(Modifier.width(spacing.sm))
+                    FittingRow(
+                        gap = spacing.xs,
+                        more = {
+                            Text(
+                                text = stringResource(R.string.card_tags_more),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = muted,
+                            )
+                        },
+                    ) {
+                        for (tag in card.tags) TagLabel(tag)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** One mark on a compact card: read-only, muted, and the same size as an action glyph. */
+@Composable
+private fun CompactGlyph(icon: ImageVector, contentDescription: String) {
+    Icon(
+        imageVector = icon,
+        contentDescription = contentDescription,
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.size(Tokens.sizes.glyph),
+    )
 }
 
 /**

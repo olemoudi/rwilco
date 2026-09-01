@@ -68,6 +68,8 @@ data class Sizes(
     val keycap: Dp = 36.dp,
     /** The small square that carries a section's icon. */
     val badge: Dp = 28.dp,
+    /** A read-only mark: an action glyph, a compact card's row of them, the fold-away icon. */
+    val glyph: Dp = 16.dp,
     /**
      * The cog beside the wordmark on Home: the one glyph on the screen drawn larger than the
      * ordinary 24dp, because it and the name are a single control and it has to look like the

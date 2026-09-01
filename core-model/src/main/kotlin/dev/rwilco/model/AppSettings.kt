@@ -157,6 +157,14 @@ data class AppSettings(
      * everything is granted, so a phone fixed and then broken again is told again.
      */
     val dismissedAlertProblems: Set<String> = emptySet(),
+    /**
+     * Home's cards down to a line each: the words, a row of small glyphs for what rings them
+     * and what they do, and the tags. It is a way of *reading the list* rather than a way of
+     * reading a reminder — thirty cards at full height is a lot of scrolling to answer "what
+     * have I got on" — so it is a preference and not a per-reminder anything, and either card
+     * can still be opened out on its own where the list is not the question.
+     */
+    val compactHome: Boolean = false,
 )
 
 /** How the alert screen holds more than one reminder. See [AppSettings.alertStacking]. */

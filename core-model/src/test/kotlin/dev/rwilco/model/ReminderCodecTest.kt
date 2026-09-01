@@ -222,7 +222,7 @@ class ReminderCodecTest {
                 """{"id":"builtin-month","recurrence":{"type":"after","amount":1,"unit":"MONTHS","from":"DEALT","hour":{"type":"day_start"},"landing":"NEXT"},"name":"","uses":0,"lastUsedAt":null}],""" +
                 """"busyWatchNotice":false,"vibration":{"strength":"STRONG","rhythm":"PULSED"},""" +
                 """"alertSound":{"type":"system"},"insistentSound":null,"soundPlays":5,"soundGapMinutes":5,"alertStacking":"SEQUENTIAL","updatesWifiOnly":false,"alertToHeadphones":true,"safetyNet":{"afterHours":24,"minCadenceMinutes":60,"fraction":10},""" +
-                """"snoozeCustomMinutes":30,"notificationSnoozes":["TEN_MINUTES","TWO_HOURS"],"dismissedAlertProblems":[]}""",
+                """"snoozeCustomMinutes":30,"notificationSnoozes":["TEN_MINUTES","TWO_HOURS"],"dismissedAlertProblems":[],"compactHome":false}""",
             encoded,
         )
     }

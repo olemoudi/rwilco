@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -34,11 +35,14 @@ import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.UnfoldLess
+import androidx.compose.material.icons.outlined.UnfoldMore
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -112,6 +116,8 @@ fun HomeScreen(
     val search by viewModel.search.collectAsStateWithLifecycle()
     val presets by viewModel.presets.collectAsStateWithLifecycle()
     val pinned by viewModel.pinnedPresets.collectAsStateWithLifecycle()
+    val compactHome by viewModel.compactHome.collectAsStateWithLifecycle()
+    val flippedCards by viewModel.flippedCards.collectAsStateWithLifecycle()
     val snoozeCustomMinutes by viewModel.snoozeCustomMinutes.collectAsStateWithLifecycle()
     val placeOffers by viewModel.placeOffers.collectAsStateWithLifecycle()
     val hereLabel = stringResource(R.string.snooze_here_label)
@@ -359,6 +365,23 @@ fun HomeScreen(
             // While searching the thumb is on the keyboard, not on "New": the button would only
             // be covering a result.
             if (!search.open) {
+              Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                // **Above "Nuevo", and deliberately not amber.** Amber is what fires next and
+                // nothing else, so the one button on this screen that is about *reading* the
+                // list wears the neutral surface — and being the smaller of the two says which
+                // of them the screen is for. Material's small FAB is 40dp; the floor here is 48.
+                SmallFloatingActionButton(
+                    onClick = { viewModel.setCompactHome(!compactHome) },
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.sizeIn(minWidth = Tokens.sizes.touch, minHeight = Tokens.sizes.touch),
+                ) {
+                    Icon(
+                        imageVector = if (compactHome) Icons.Outlined.UnfoldMore else Icons.Outlined.UnfoldLess,
+                        contentDescription = stringResource(if (compactHome) R.string.home_compact_off else R.string.home_compact_on),
+                    )
+                }
                 ExtendedFloatingActionButton(
                     // Straight to the form unless there is a question worth asking; see [asksWhichKind].
                     onClick = { if (asksWhichKind) choosing = true else onNew() },
@@ -369,6 +392,7 @@ fun HomeScreen(
                     shape = MaterialTheme.shapes.large,
                     modifier = Modifier.heightIn(min = Tokens.sizes.primary),
                 )
+              }
             }
         },
     ) { padding ->
@@ -500,15 +524,24 @@ fun HomeScreen(
                             onDelete = { viewModel.delete(card.id) },
                             modifier = Modifier.animateItem(),
                         ) {
+                            // The mode is the answer and the flipped ones are the exceptions
+                            // to it; see HomeViewModel.flippedCards.
+                            val cardCompact = compactHome != (card.id in flippedCards)
                             ReminderCard(
                                 card = card,
                                 today = today,
                                 defaultTime = defaultTime,
                                 zone = zone,
-                                onClick = { onOpen(card.id) },
+                                // **On a folded card the tap opens it out, not the form.** What
+                                // somebody wants from a line they cannot read the whole of is to
+                                // see it; the form is one tap further, from the card that is now
+                                // open, exactly as it always was.
+                                onClick = { if (cardCompact) viewModel.flipCard(card.id) else onOpen(card.id) },
                                 onTogglePause = { viewModel.togglePause(card.id, card.paused) },
                                 onLongClick = { actingOn = card.id },
                                 longClickLabel = cardActionsLabel,
+                                compact = cardCompact,
+                                onToggleCompact = { viewModel.flipCard(card.id) },
                                 // What the swipes do, for whoever cannot swipe.
                                 modifier = Modifier.semantics {
                                     customActions = listOf(

@@ -607,6 +607,10 @@
     <string name="editor_match_all_hint">All of them have to happen; the last one rings it.</string>
     <string name="card_match_all">all of them</string>
     <string name="card_recurrence">Repeats</string>
+    <string name="card_compact">Fold this one away</string>
+    <string name="card_tags_more">…</string>
+    <string name="home_compact_on">Fold the list away</string>
+    <string name="home_compact_off">Open the list out</string>
     <string name="card_snoozed">Put off</string>
     <string name="card_recurrence_from_done">from when you mark it done</string>
     <string name="card_rule_happened">Already happened</string>
@@ -1168,6 +1172,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_64_0">
+        <item>Home has a folded-away mode. The small button over «New» takes every card down to a line: the words, a row of small glyphs for what rings it and what it does, and the tags on the right with a mark when they do not all fit. Thirty cards at full height is a lot of scrolling to answer «what have I got on», and that question is about the list rather than about any one reminder.</item>
+        <item>Either card can still be opened out on its own. A tap on a folded card opens that one — the form is one tap further, from the card that is now open — and an open card has an icon in its corner that folds it back. The button over «New» is a clean sweep either way: it does not leave yesterday\'s exceptions behind.</item>
+        <item>What folding costs, said plainly: the rules keep their kind and lose their words, the marks that say where a rule stands go with them, and the pause control goes (holding the card still offers it). «Next up» is never folded — it is the one card the screen is about.</item>
+    </string-array>
     <string-array name="whats_new_0_63_0">
         <item>The step that asks you to silence an alarm before it will take «Done» now only appears when there is still a noise going on: the buzzing, and the tone that keeps coming back. A plain «Sound» says its tone once and stops after a second or two, and the red button used to stand there for the rest of the minute holding «Done» out of reach in a silent room — a step you paid for and got nothing back from.</item>
         <item>Every card about a reminder opens the alert screen now, the safety net\'s two notes included. «It never rang» used to open the form and «still waiting somewhere» used to open Home, because that screen only holds a reminder it is owed an answer for — so those two would have flashed and done nothing. Now the note says so and the screen holds it anyway, silently: it is a note about something that already got away, not an alarm. Taking a wait at a place back without answering is still on the card, held down.</item>
