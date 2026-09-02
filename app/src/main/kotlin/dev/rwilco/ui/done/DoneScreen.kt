@@ -35,6 +35,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -257,7 +258,8 @@ private fun DoneCard(reminder: Reminder, doneLabel: String?, onOpen: () -> Unit,
                     }
                 }
             }
-            IconButton(onClick = onRestore) {
+            val restoreHaptics = Tokens.haptics
+            IconButton(onClick = { restoreHaptics.perform(HapticFeedbackType.Confirm); onRestore() }) {
                 Icon(Icons.AutoMirrored.Outlined.Undo, contentDescription = stringResource(R.string.done_restore), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }

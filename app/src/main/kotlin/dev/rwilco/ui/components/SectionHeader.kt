@@ -13,6 +13,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.rwilco.ui.theme.Tokens
+import dev.rwilco.ui.theme.MonoStyles
 
 /**
  * A quiet label above a group of cards; [accent] when the group is a state (overdue). A heading
@@ -43,14 +44,15 @@ fun SectionHeader(
                 .weight(1f)
                 .semantics { heading() },
         )
-        if (info != null) InfoBadge(info)
+        if (info != null) InfoBadge(info, title = title)
         if (trailing != null) {
             // The count in a pill of its own, so it reads as a tally rather than as a word that
             // got left at the end of the heading.
             Surface(shape = MaterialTheme.shapes.extraSmall, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
                 Text(
                     text = trailing,
-                    style = MaterialTheme.typography.labelMedium,
+                    // A number, so mono: it is a tally somebody scans down the screen.
+                    style = MonoStyles.tally,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = Tokens.spacing.sm, vertical = 2.dp),
                 )

@@ -101,8 +101,16 @@ val RwilcoTypography = Typography(
 
 /** The instrument readings: not Material roles, so they never get restyled by a component. */
 object MonoStyles {
+    /** A tally: the count in a section's pill, the badge on the backup. A number, so mono, small. */
+    val tally = monoStyle(size = 11, lineHeight = 14)
     val date = monoStyle(size = 14, lineHeight = 20)
     val label = monoStyle(size = 16, lineHeight = 22)
     val time = monoStyle(size = 20, lineHeight = 24)
     val countdown = monoStyle(size = 32, lineHeight = 36)
+}
+
+/** The two letter-spacings the app sets by hand: the wordmark, and the small caps eyebrow over a card. */
+object Tracking {
+    val wordmark = 1.sp
+    val eyebrow = 1.5.sp
 }

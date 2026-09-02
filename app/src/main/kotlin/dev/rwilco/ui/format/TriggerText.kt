@@ -22,6 +22,7 @@ import dev.rwilco.model.Trigger
 import java.time.DayOfWeek
 import java.time.LocalDate
 import dev.rwilco.ui.localToday
+import dev.rwilco.ui.LocalClock
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.TextStyle
@@ -229,7 +230,8 @@ fun triggerLine(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): Tri
                     primaryMono = false,
                 )
             } else {
-                val at = startedAt.plusSeconds(trigger.minutes * 60L).atZone(java.time.ZoneId.systemDefault())
+                // The app's clock, not the system default: they agree today and disagree under a test clock.
+                val at = startedAt.plusSeconds(trigger.minutes * 60L).atZone(LocalClock.current.zone)
                 TriggerLine(
                     primary = TimeText.time(at.toLocalTime(), is24h, locale),
                     secondary = dayWord(words, at.toLocalDate(), today) + " · " + durationText(words, trigger.minutes),

@@ -206,6 +206,14 @@ fun LocationSheet(
             center = if (known) GeoPoint(lat!!, lng!!) else null,
             here = here,
             radiusM = radius,
+            locating = locating,
+            onLocate = {
+                if (hasAnyLocationPermission(context)) {
+                    locate()
+                } else {
+                    permission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                }
+            },
             onLongPress = { point ->
                 lat = point.latitude
                 lng = point.longitude

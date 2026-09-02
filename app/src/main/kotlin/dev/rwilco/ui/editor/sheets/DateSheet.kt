@@ -288,6 +288,15 @@ private fun DateShortcuts(today: LocalDate, selected: LocalDate, onPick: (LocalD
                 onClick = { onPick(day) },
             )
         }
+        // "El viernes" — the second most common thing anybody says — had no one-tap route: the
+        // week ahead, by name, after the four (0.69.0). The row already scrolls.
+        val named = DateShortcut.entries.map { it.on(today) }
+        val locale = currentLocale()
+        for (offset in 2L..7L) {
+            val day = today.plusDays(offset)
+            if (day in named) continue
+            PresetChip(label = TimeText.dayDate(day, locale), selected = selected == day, onClick = { onPick(day) })
+        }
     }
 }
 

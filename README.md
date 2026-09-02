@@ -20,7 +20,8 @@ Dark-first, built for one hand, no account, no server, nothing leaves the device
     <td><img src="docs/screenshots/editor-when-chip.png" width="170" alt="The words say when: a chip reads «mañana a las 9» back as tomorrow 09:00, one tap to take"></td>
     <td><img src="docs/screenshots/editor-kinds.png" width="170" alt="Adding a trigger: five tiles — date, a stretch of the day, countdown, place, random"></td>
     <td><img src="docs/screenshots/sheet-date.png" width="170" alt="Date: shortcuts, a month calendar, and an hour or none"></td>
-    <td><img src="docs/screenshots/alert-preview.png" width="170" alt="The full-screen alert: the words as big as they fit, snooze chips and one Done button"></td>
+    <td><img src="docs/screenshots/alert-preview.png" width="170" alt="The full-screen alert: the words as big as they fit, snooze buttons and one Done button, all of them held rather than tapped"></td>
+    <td><img src="docs/screenshots/alert-hold.png" width="170" alt="Holding Done on the alert: the ring at the top has filled and the tick is up, waiting for the finger to lift"></td>
   </tr>
 </table>
 

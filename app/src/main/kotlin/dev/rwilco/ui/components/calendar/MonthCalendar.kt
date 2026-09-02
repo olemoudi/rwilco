@@ -35,6 +35,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import java.time.format.DateTimeFormatter
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
@@ -246,6 +249,13 @@ private fun DayCell(
 ) {
     val scheme = MaterialTheme.colorScheme
     val haptics = Tokens.haptics
+    // "martes 14 de octubre, hoy" to a screen reader, not a bare "14" (0.69.0): the grid read
+    // as a run of numbers with no month, and "today" was a ring nobody hears.
+    val locale = currentLocale()
+    val todayWord = stringResource(R.string.relative_today)
+    val spoken = date?.let { day ->
+        day.format(DateTimeFormatter.ofPattern("EEEE d MMMM", locale)) + if (isToday) ", $todayWord" else ""
+    }
     // **The whole cell is the target, and the disc inside it is only what you see.** Seven
     // columns across a padded sheet leave about 46dp each on a 360dp phone — under the 48dp
     // floor, and the one place in the app where that is arithmetic rather than an oversight —
@@ -257,15 +267,17 @@ private fun DayCell(
             .clip(CircleShape)
             .then(
                 if (date != null) {
-                    Modifier.selectable(
-                        selected = selected,
-                        enabled = enabled,
-                        role = Role.RadioButton,
-                        onClick = {
-                            haptics.perform(HapticFeedbackType.SegmentTick)
-                            onSelect()
-                        },
-                    )
+                    Modifier
+                        .selectable(
+                            selected = selected,
+                            enabled = enabled,
+                            role = Role.RadioButton,
+                            onClick = {
+                                haptics.perform(HapticFeedbackType.SegmentTick)
+                                onSelect()
+                            },
+                        )
+                        .semantics { if (spoken != null) contentDescription = spoken }
                 } else {
                     Modifier
                 },

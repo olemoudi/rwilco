@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import dev.rwilco.ui.components.scrollFade
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
@@ -83,14 +86,20 @@ fun CuratePanel(
             border = BorderStroke(Tokens.strokes.edge, scheme.outlineVariant),
             modifier = Modifier
                 .fillMaxWidth(0.92f)
-                .heightIn(max = 560.dp),
+                .heightIn(max = Tokens.sizes.dialogMax),
         ) {
             Column(modifier = Modifier.padding(spacing.lg)) {
                 Text(title, style = MaterialTheme.typography.headlineSmall)
                 Spacer(Modifier.height(spacing.md))
+                // The edge says the rows carry on under it; see Modifier.scrollFade.
+                val listState = rememberLazyListState()
                 LazyColumn(
+                    state = listState,
                     verticalArrangement = Arrangement.spacedBy(spacing.xs),
-                    modifier = Modifier.weight(1f, fill = false),
+                    contentPadding = PaddingValues(bottom = spacing.xxl),
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .scrollFade(listState, scheme.surfaceContainer),
                 ) {
                     items(items, key = { it }) { item ->
                         if (editing == item) {
@@ -119,7 +128,7 @@ fun CuratePanel(
                     modifier = Modifier
                         .align(Alignment.End)
                         .heightIn(min = Tokens.sizes.touch),
-                ) { Text(stringResource(R.string.common_done)) }
+                ) { Text(stringResource(R.string.common_close)) }
             }
         }
     }

@@ -128,7 +128,7 @@ fun LocationPermissionCard(readiness: PlaceReadiness, needsPlaces: Boolean, watc
                         Icons.Outlined.CheckCircle,
                         contentDescription = null,
                         tint = familyColor(TriggerFamily.PLACE, LocalDarkTheme.current),
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(Tokens.sizes.glyphMedium),
                     )
                     Spacer(Modifier.width(Tokens.spacing.sm))
                 }

@@ -402,8 +402,13 @@ the thirteen that lose data, crash or dead-end fixed first. Worth not re-derivin
   waiting for idle (see `AlertGuardTest`); the emulator's SystemUI ANR dialog sits over every
   capture once it appears and "Close app" restarts SystemUI — between runs only.
 
-The "should-fix" third of the round shipped as 0.68.0 (see ARCHITECTURE.md's 0.68.0 entries).
-Still open, for the polish release: the copy pass (Borrar/Eliminar/Vaciar, "En pausa" as an
+The "should-fix" third of the round shipped as 0.68.0 and the polish as 0.69.0 (see
+ARCHITECTURE.md's entries for both). Still open, deliberately, after 0.69.0: the time wheel's
+semantics, `RuleTree` in the editor, the search rows' "when" line, solo/sólo, and the dead code
+below — which is listed to be asked about, not deleted: `HoldButton`'s disc variant
+(`HoldButton.kt:151-174`, only `HoldButtonTest` uses it), `TimeText.dateLong`,
+`RuleRoot(muted)` unread, `nextRoundHour`, `EVERY_DAY`, the `editor_repeats*` strings,
+`RuleMatch.joinRes` defined twice. What the polish release was meant to cover, for the record: the copy pass (Borrar/Eliminar/Vaciar, "En pausa" as an
 event, English "Done" that closes a dialog, the widget's description, solo/sólo, «», recordatorio
 vs aviso in the channel names, "Disparado por", `watch_busy_title`, the "Vuelve" chips), the
 token pass (loose dp/sp, numbers in Manrope, `TimeField`'s stroke, glyph sizes), haptics on the

@@ -47,6 +47,6 @@ fun ActionGlyph(icon: ImageVector, contentDescription: String, modifier: Modifie
         imageVector = icon,
         contentDescription = contentDescription,
         tint = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier.size(16.dp),
+        modifier = modifier.size(Tokens.sizes.glyph),
     )
 }

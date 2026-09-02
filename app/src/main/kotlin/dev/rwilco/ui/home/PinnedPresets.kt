@@ -36,9 +36,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -147,7 +149,7 @@ private fun AddPinnedButton(onManage: () -> Unit) {
                 imageVector = Icons.Outlined.Add,
                 contentDescription = stringResource(R.string.home_pin_manage),
                 tint = scheme.onSurface,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(Tokens.sizes.glyphMedium),
             )
         }
     }
@@ -163,6 +165,8 @@ fun PinPresetsPanel(
     onTogglePin: (Preset) -> Unit,
     onCreate: () -> Unit,
     onDismiss: () -> Unit,
+    /** The pencil on a row: this list is the one place every preset is, so it edits too (0.69.0). */
+    onEdit: (Preset) -> Unit = {},
 ) {
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
@@ -173,7 +177,7 @@ fun PinPresetsPanel(
             border = BorderStroke(Tokens.strokes.edge, scheme.outlineVariant),
             modifier = Modifier
                 .fillMaxWidth(0.92f)
-                .heightIn(max = 560.dp),
+                .heightIn(max = Tokens.sizes.dialogMax),
         ) {
             Column(modifier = Modifier.padding(spacing.lg)) {
                 Text(stringResource(R.string.home_pin_title), style = MaterialTheme.typography.headlineSmall)
@@ -248,6 +252,13 @@ fun PinPresetsPanel(
                                         modifier = Modifier.size(Tokens.sizes.glyph),
                                     )
                                 }
+                                IconButton(onClick = { onEdit(preset) }) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Edit,
+                                        contentDescription = stringResource(R.string.home_preset_edit),
+                                        tint = if (preset.pinned) scheme.surface else scheme.onSurfaceVariant,
+                                    )
+                                }
                             }
                         }
                     }
@@ -259,7 +270,7 @@ fun PinPresetsPanel(
                         colors = ButtonDefaults.textButtonColors(contentColor = scheme.onSurface),
                         modifier = Modifier.heightIn(min = Tokens.sizes.touch),
                     ) {
-                        Icon(Icons.Outlined.Bookmarks, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Outlined.Bookmarks, contentDescription = null, modifier = Modifier.size(Tokens.sizes.glyphSmall))
                         Spacer(Modifier.width(spacing.sm))
                         Text(stringResource(R.string.home_pin_create))
                     }
@@ -268,7 +279,7 @@ fun PinPresetsPanel(
                         onClick = onDismiss,
                         colors = ButtonDefaults.textButtonColors(contentColor = scheme.onSurface),
                         modifier = Modifier.heightIn(min = Tokens.sizes.touch),
-                    ) { Text(stringResource(R.string.common_done)) }
+                    ) { Text(stringResource(R.string.common_close)) }
                 }
             }
         }

@@ -9,6 +9,8 @@
     <string name="common_loading">Loading</string>
     <string name="common_what_is_this">What is this?</string>
     <string name="common_done">Done</string>
+    <string name="common_close">Close</string>
+    <string name="common_what_is_this_named">What is “%1$s”?</string>
 
     <!-- Mending the lists the editor offers back -->
     <string name="curate_hold">Edit the list</string>
@@ -74,7 +76,7 @@
     <string name="shortcut_new_long">New reminder</string>
     <string name="home_pin_manage">Add a preset button</string>
     <string name="home_pin_title">Buttons on the main screen</string>
-    <string name="home_pin_hint">One tap writes the reminder. If the preset has no words of its own, it asks for them and nothing else.</string>
+    <string name="home_pin_hint">One tap writes the reminder. If the preset has no words of its own, it asks for them and nothing else. A pinned preset is on the launcher icon too: hold it.</string>
     <string name="home_pin_none">No presets yet.</string>
     <string name="home_pin_create">New preset</string>
     <string name="home_pin_create_now">Create</string>
@@ -94,7 +96,7 @@
     <string name="home_settings">Settings</string>
     <string name="home_all_tags">All</string>
     <string name="home_empty_title">Nothing to remember yet</string>
-    <string name="home_empty_body">Write what you want to remember, then say when and how.</string>
+    <string name="home_empty_body">Write what you want to remember, then say when and how. On a card: swipe right and hold to mark it done, left to delete it, and hold it for everything else.</string>
     <string name="home_empty_action">Write one</string>
     <string name="home_marked_done">Done</string>
     <string name="home_skipped">Next one skipped</string>
@@ -236,9 +238,9 @@
     <string name="recur_hour_at">at %1$s</string>
     <string name="recur_hour_rules_note">The rules above already name an hour, so this only decides which day it comes back on.</string>
     <string name="recur_landing">The day it comes back on</string>
-    <string name="recur_landing_next">the next allowed one</string>
-    <string name="recur_landing_nearest">the closest one</string>
-    <string name="recur_landing_exact">exactly the span</string>
+    <string name="recur_landing_next">The next allowed one</string>
+    <string name="recur_landing_nearest">The closest one</string>
+    <string name="recur_landing_exact">Exactly the span</string>
     <string name="recur_landing_next_hint">Waits for the first day your rules allow once the span is up. The span stretches: 30 days becomes 35.</string>
     <string name="recur_landing_nearest_hint">Takes the day your rules allow that is closest to the span, before it or after it. The span holds and the day bends.</string>
     <string name="recur_landing_exact_hint">Comes back the moment the span is up, whatever day that lands on: the rules stop deciding, and a place among them stops being watched.</string>
@@ -563,6 +565,7 @@
     <string name="home_search">Search</string>
     <string name="home_search_hint">Search reminders and tags</string>
     <string name="home_search_clear">Clear</string>
+    <string name="home_search_more">Showing the first %1$d; narrow the search to see the rest.</string>
     <string name="home_search_kind_reminder">Reminder</string>
     <string name="home_search_kind_tag">Tag</string>
     <string name="home_search_kind_done">Done</string>
@@ -645,6 +648,7 @@
     <string name="card_recurrence">Repeats</string>
     <string name="card_compact">Fold this one away</string>
     <string name="card_tags_more">…</string>
+    <string name="card_tags_more_description">more tags</string>
     <string name="home_compact_on">Fold the list away</string>
     <string name="home_compact_off">Open the list out</string>
     <string name="card_missed">Was due %1$s</string>
@@ -827,7 +831,7 @@
     <string name="watch_notice_body">A quiet notification when the place watch reads your location more than 18 times in an hour. Off by default. Its fastest cadence is one look every two minutes, so 18 means over half the hour spent walking up to a place \u2014 or something going wrong, which is what this is for.</string>
     <string name="watch_channel_name">Location watch</string>
     <string name="watch_channel_description">Says so when the place watch is reading your location more often than it should.</string>
-    <string name="watch_busy_title">Rwilco is looking too often</string>
+    <string name="watch_busy_title">Rwilco has looked a lot this hour</string>
     <string name="watch_busy_text">%1$d location reads in the last hour</string>
     <string name="watch_busy_body">%1$d location reads in the last hour, which takes over half of it at the fastest cadence the watch has. A very long walk up to a place can do it; anything else should not. Tap to see what it was deciding from.</string>
     <string-array name="whats_new_0_8_0">
@@ -1092,6 +1096,7 @@
     <string name="perm_battery_missing">Battery optimisation can stop Rwilco in the background. The alarms still ring; the net that re-arms them may not run.</string>
     <string name="settings_page_unavailable">This phone has no such settings page; the app\'s own page opened instead.</string>
     <string name="perm_battery_fix">Exclude</string>
+    <string name="perm_volume_raised">Alarm volume raised</string>
 
     <string-array name="whats_new_0_12_0">
         <item>Your reminders can now live somewhere other than this phone. In Settings, «Backup»: an encrypted copy of everything — reminders, presets, places — in a private GitHub repository of yours, refreshed a quarter of an hour after any change. It is sealed with a passphrase of yours before it leaves the phone, so GitHub sees a file and its size and never a word of what is in it; every copy is a commit, so the repository\'s history is the copy\'s history. Off by default, and the app works exactly as before without it. Lose the passphrase and the copy is a locked box: nobody can open it, this app included.</item>
@@ -1211,6 +1216,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_69_0">
+        <item>The polish round. The chip that reads a «when» out of your words now sits right under the words as you type them, not two cards down; the date sheet offers the next seven days by name beside «Today» and «Tomorrow»; the pinned-presets panel edits a preset too, so one list does it all; the big map has its own «my location» button.</item>
+        <item>Words settled: one verb for deleting a reminder, «Paused» as what just happened, «Close» on the dialogs that only close, «Cuando suena / Cuando lo marco hecho» on the «Vuelve» card, and the widget\'s description says what the widget does.</item>
+        <item>Smaller things you may notice: the header buttons and the two floating buttons buzz like everything else; section counts and the backup badge are set in the numbers\' typeface; the empty Home says how the swipes and the hold work; a search that hits its cap says so; the glowing card shows as many tags as fit and a mark for the rest; «Raise» for the alarm volume raises it itself; every (i) says which setting it is about; the calendar reads whole dates to a screen reader; two lists that ended flush now say they go on.</item>
+    </string-array>
     <string-array name="whats_new_0_68_0">
         <item>The alert screen\'s two quiet seconds are only for a screen that took you by surprise. A reminder you opened yourself — from a card or a note — and the strips left after you answer one of several are ready to hold at once; «Close preview» in the editor is a plain tap again. While the count runs, the screen says «One moment…» and then, once, «Hold to answer», rather than a bare number.</item>
         <item>«New» is no longer amber: amber means what fires next, and the hero\'s glow is the only amber left to look for. The card you just saved is marked even when it is the one at the top, and a screen reader gets «done» and «delete» on that card too.</item>

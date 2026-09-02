@@ -39,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
@@ -147,7 +148,8 @@ fun ReminderCard(
                 // At the size every other icon that *acts* is drawn, not the 16dp of the
                 // read-only marks below it: muted enough to stay out of the way of the words,
                 // legible enough to be seen as a thing to press.
-                IconButton(onClick = onToggleCompact) {
+                val foldHaptics = Tokens.haptics
+                IconButton(onClick = { foldHaptics.perform(HapticFeedbackType.ContextClick); onToggleCompact() }) {
                     Icon(
                         imageVector = Icons.Outlined.UnfoldLess,
                         contentDescription = stringResource(R.string.card_compact),
@@ -262,10 +264,12 @@ private fun CompactCard(
                     FittingRow(
                         gap = spacing.xs,
                         more = {
+                            val moreTags = stringResource(R.string.card_tags_more_description)
                             Text(
                                 text = stringResource(R.string.card_tags_more),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = muted,
+                                modifier = Modifier.semantics { contentDescription = moreTags },
                             )
                         },
                     ) {

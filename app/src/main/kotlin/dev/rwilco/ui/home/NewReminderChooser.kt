@@ -85,7 +85,7 @@ fun NewReminderChooser(
             border = BorderStroke(Tokens.strokes.edge, scheme.outlineVariant),
             modifier = Modifier
                 .fillMaxWidth(0.92f)
-                .heightIn(max = 560.dp),
+                .heightIn(max = Tokens.sizes.dialogMax),
         ) {
             Column(modifier = Modifier.padding(spacing.lg)) {
                 Text(

@@ -150,7 +150,7 @@ fun SavedWindowsCard(
                 contentPadding = PaddingValues(horizontal = spacing.lg),
                 modifier = Modifier.heightIn(min = Tokens.sizes.touch),
             ) {
-                Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(Tokens.sizes.glyphSmall))
                 Spacer(Modifier.width(spacing.sm))
                 Text(stringResource(R.string.settings_add_window), style = MaterialTheme.typography.labelLarge)
             }

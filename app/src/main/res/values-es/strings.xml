@@ -7,6 +7,8 @@
     <string name="common_loading">Cargando</string>
     <string name="common_what_is_this">¿Qué es esto?</string>
     <string name="common_done">Listo</string>
+    <string name="common_close">Cerrar</string>
+    <string name="common_what_is_this_named">¿Qué es «%1$s»?</string>
 
     <!-- Mending the lists the editor offers back -->
     <string name="curate_hold">Editar la lista</string>
@@ -45,7 +47,7 @@
     <string name="home_clone">Clonar recordatorio</string>
     <string name="home_clone_hint">Lo mismo otra vez, con las palabras en blanco</string>
     <string name="home_menu_done">Hecho</string>
-    <string name="home_menu_delete">Borrar</string>
+    <string name="home_menu_delete">Eliminar</string>
     <string name="home_snooze">Posponer</string>
     <string name="home_snooze_hint">Vuelve a sonar entonces, no antes</string>
     <string name="home_cancel_snooze">Quitar el posponer</string>
@@ -72,7 +74,7 @@
     <string name="shortcut_new_long">Nuevo recordatorio</string>
     <string name="home_pin_manage">Añadir un botón de preset</string>
     <string name="home_pin_title">Botones en la pantalla principal</string>
-    <string name="home_pin_hint">Un toque escribe el recordatorio. Si el preset no trae texto propio, te lo pide y nada más.</string>
+    <string name="home_pin_hint">Un toque escribe el recordatorio. Si el preset no trae texto propio, te lo pide y nada más. Un preset fijado está también en el icono del lanzador: mantenlo pulsado.</string>
     <string name="home_pin_none">Todavía no hay presets.</string>
     <string name="home_pin_create">Nuevo preset</string>
     <string name="home_pin_create_now">Crear</string>
@@ -92,7 +94,7 @@
     <string name="home_settings">Ajustes</string>
     <string name="home_all_tags">Todo</string>
     <string name="home_empty_title">Nada que recordar todavía</string>
-    <string name="home_empty_body">Escribe qué quieres recordar y luego di cuándo y cómo.</string>
+    <string name="home_empty_body">Escribe qué quieres recordar y luego di cuándo y cómo. En una tarjeta: deslízala a la derecha y mantén para darla por hecha, a la izquierda para eliminarla, y mantenla pulsada para lo demás.</string>
     <string name="home_empty_action">Escribe uno</string>
     <string name="home_marked_done">Hecho</string>
     <string name="home_skipped">Saltada la próxima</string>
@@ -105,7 +107,7 @@
     <string name="home_failed_body">Algo ha fallado al leer el almacén del móvil. El informe de diagnóstico dice qué; lo primero que probar es reiniciar la app.</string>
     <string name="home_deleted_row">Eliminado: %1$s</string>
     <string name="home_deleted">Eliminado</string>
-    <string name="home_paused">En pausa</string>
+    <string name="home_paused">Pausado</string>
     <string name="home_resumed">Reanudado</string>
     <string name="home_section_overdue">Vencidos</string>
     <string name="home_section_today">Hoy</string>
@@ -234,15 +236,15 @@
     <string name="recur_hour_at">a las %1$s</string>
     <string name="recur_hour_rules_note">Las reglas de arriba ya dicen la hora, así que esto sólo decide qué día vuelve.</string>
     <string name="recur_landing">El día en que vuelve</string>
-    <string name="recur_landing_next">el siguiente que toque</string>
-    <string name="recur_landing_nearest">el más cercano</string>
-    <string name="recur_landing_exact">justo el plazo</string>
+    <string name="recur_landing_next">El siguiente que toque</string>
+    <string name="recur_landing_nearest">El más cercano</string>
+    <string name="recur_landing_exact">Justo el plazo</string>
     <string name="recur_landing_next_hint">Espera al primer día que permitan las reglas una vez cumplido el plazo. El plazo se estira: 30 días acaban siendo 35.</string>
     <string name="recur_landing_nearest_hint">Coge el día permitido más cercano al plazo, antes o después. El plazo se respeta y el día se ajusta.</string>
     <string name="recur_landing_exact_hint">Vuelve justo al cumplirse el plazo, caiga en el día que caiga: las reglas dejan de decidir, y un lugar entre ellas deja de vigilarse.</string>
     <string name="recur_hour_exact_note">Con «justo el plazo» ésta es la hora a la que suena, porque las reglas ya no la dicen.</string>
-    <string name="recur_from_ringing">Que suena</string>
-    <string name="recur_from_dealt">Que lo hago</string>
+    <string name="recur_from_ringing">Cuando suena</string>
+    <string name="recur_from_dealt">Cuando lo marco hecho</string>
     <string name="card_recurrence_from_ringing">desde que suena</string>
     <string name="card_recurrence_from_calendar">en sus propias fechas</string>
     <string name="recur_after_done">Se cuenta desde que lo marcas hecho, no desde el reloj.</string>
@@ -345,7 +347,7 @@
 
     <!-- Alert -->
     <string name="alert_preview_label">Vista previa</string>
-    <string name="alert_fired_by">Disparado por %1$s</string>
+    <string name="alert_fired_by">Suena por %1$s</string>
     <string name="alert_empty_text">(Todavía sin texto)</string>
     <string name="alert_snooze">Posponer</string>
     <string name="alert_done">Hecho</string>
@@ -363,7 +365,7 @@
     <string name="alert_guard_wait">Un momento…</string>
     <string name="alert_hold_hint">Mantén pulsado para contestar</string>
     <string name="widget_next_label">Lo siguiente</string>
-    <string name="widget_next_description">Qué suena ahora, cuántos hoy, y una forma de escribir uno.</string>
+    <string name="widget_next_description">Lo siguiente, cuántos hoy, y una forma de escribir uno.</string>
     <string name="widget_nothing">Nada previsto</string>
     <string name="widget_nothing_hint">Toca para escribir uno</string>
     <plurals name="widget_overdue">
@@ -560,7 +562,8 @@
     <string name="home_diagnostics_copied">Diagnóstico copiado — pégalo donde quieras</string>
     <string name="home_search">Buscar</string>
     <string name="home_search_hint">Buscar recordatorios y etiquetas</string>
-    <string name="home_search_clear">Borrar</string>
+    <string name="home_search_clear">Limpiar</string>
+    <string name="home_search_more">Se muestran los %1$d primeros; afina la búsqueda para ver el resto.</string>
     <string name="home_search_kind_reminder">Recordatorio</string>
     <string name="home_search_kind_tag">Etiqueta</string>
     <string name="home_search_kind_done">Hecho</string>
@@ -643,6 +646,7 @@
     <string name="card_recurrence">Repetición</string>
     <string name="card_compact">Plegar este</string>
     <string name="card_tags_more">…</string>
+    <string name="card_tags_more_description">más etiquetas</string>
     <string name="home_compact_on">Plegar la lista</string>
     <string name="home_compact_off">Desplegar la lista</string>
     <string name="card_missed">Debía sonar %1$s</string>
@@ -825,7 +829,7 @@
     <string name="watch_notice_body">Una notificación discreta cuando el vigilante de lugares lea tu ubicación más de 18 veces en una hora. Desactivado por defecto. Su cadencia más rápida es una mirada cada dos minutos, así que 18 significa más de media hora acercándote andando a un lugar \u2014 o algo que va mal, que es para lo que está esto.</string>
     <string name="watch_channel_name">Vigilante de ubicación</string>
     <string name="watch_channel_description">Avisa cuando el vigilante de lugares está leyendo tu ubicación más a menudo de lo que debería.</string>
-    <string name="watch_busy_title">Rwilco está mirando demasiado</string>
+    <string name="watch_busy_title">Rwilco ha mirado mucho esta hora</string>
     <string name="watch_busy_text">%1$d lecturas de ubicación en la última hora</string>
     <string name="watch_busy_body">%1$d lecturas de ubicación en la última hora, que ocupan más de media a la cadencia más rápida que tiene el vigilante. Una caminata muy larga hasta un lugar puede lograrlo; cualquier otra cosa no debería. Toca para ver con qué estaba decidiendo.</string>
     <string-array name="whats_new_0_8_0">
@@ -1090,6 +1094,7 @@
     <string name="perm_battery_missing">La optimización de batería puede detener Rwilco en segundo plano. Las alarmas suenan igual; la red que las rearma puede no correr.</string>
     <string name="settings_page_unavailable">Este móvil no tiene esa página de ajustes; se ha abierto la de la app.</string>
     <string name="perm_battery_fix">Excluir</string>
+    <string name="perm_volume_raised">Volumen de alarma subido</string>
 
     <string-array name="whats_new_0_12_0">
         <item>Tus recordatorios ya pueden vivir en otro sitio además de en este teléfono. En Ajustes, «Copia de seguridad»: una copia cifrada de todo — recordatorios, preajustes, lugares — en un repositorio privado tuyo de GitHub, renovada un cuarto de hora después de cualquier cambio. Se cifra con una contraseña tuya antes de salir del teléfono, así que GitHub ve un archivo y su tamaño y nunca una palabra de lo que contiene; cada copia es un commit, así que el historial del repositorio es el historial de la copia. Desactivada por defecto, y sin ella la app funciona exactamente como antes. Si pierdes la contraseña la copia es una caja cerrada: no la abre nadie, esta app incluida.</item>
@@ -1209,6 +1214,11 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_69_0">
+        <item>La ronda de pulido. El chip que lee un «cuándo» en tus palabras aparece ahora justo debajo de ellas mientras escribes, no dos tarjetas más abajo; la hoja de fecha ofrece los siete días siguientes por su nombre junto a «Hoy» y «Mañana»; el panel de presets fijados también los edita, así que una sola lista lo hace todo; el mapa grande tiene su propio botón de «mi ubicación».</item>
+        <item>Palabras asentadas: un solo verbo para eliminar un recordatorio, «Pausado» como lo que acaba de pasar, «Cerrar» en los diálogos que sólo cierran, «Cuando suena / Cuando lo marco hecho» en la tarjeta «Vuelve», y la descripción del widget dice lo que hace el widget.</item>
+        <item>Cosas más pequeñas que quizá notes: los botones de la cabecera y los dos botones flotantes vibran como todo lo demás; los contadores de sección y el distintivo de la copia van en la tipografía de los números; el inicio vacío explica los deslizamientos y el mantener; una búsqueda que llega a su tope lo dice; la tarjeta que brilla muestra las etiquetas que caben y una marca para el resto; «Subir» el volumen de alarma lo sube por sí mismo; cada (i) dice de qué ajuste habla; el calendario lee fechas enteras a un lector de pantalla; dos listas que acababan a ras ahora dicen que siguen.</item>
+    </string-array>
     <string-array name="whats_new_0_68_0">
         <item>Los dos segundos de calma de la alerta son sólo para una pantalla que te pilla por sorpresa. Un recordatorio que abres tú — desde una tarjeta o una nota — y las tiras que quedan tras contestar una de varias están listas para mantener pulsado desde el principio; «Cerrar la vista previa» en el editor vuelve a ser un toque normal. Mientras corre la cuenta la pantalla dice «Un momento…» y después, una vez, «Mantén pulsado para contestar», en vez de un número a secas.</item>
         <item>«Nuevo» ya no es ámbar: el ámbar significa lo siguiente que suena, y el brillo de la tarjeta principal es el único ámbar que buscar. La tarjeta que acabas de guardar se marca también cuando es la de arriba, y un lector de pantalla tiene «hecho» y «eliminar» en esa tarjeta igual que en las demás.</item>
@@ -1406,7 +1416,7 @@
     <string name="trigger_when_day_starts">en cuanto empieza el día</string>
     <string name="trigger_until">hasta el %1$s</string>
     <string name="condition_date_range">%1$s – %2$s</string>
-    <string name="editor_sentence_date_range">entre el %1$s y el %2$s</string>
+    <string name="editor_sentence_date_range">del %1$s al %2$s</string>
     <string name="date_range_from">Desde</string>
     <string name="date_range_to">Hasta</string>
     <string name="date_range_hint_alone">Solo, suena a tu hora de siempre el primer día, y cada día que siga abierto hasta que lo despaches.</string>

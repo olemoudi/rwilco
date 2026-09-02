@@ -15,6 +15,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -43,6 +45,7 @@ import dev.rwilco.ui.format.dayWord
 import dev.rwilco.ui.format.rememberIs24h
 import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
+import dev.rwilco.ui.theme.Tracking
 import dev.rwilco.ui.theme.icon
 import java.time.Clock
 import java.time.Duration
@@ -108,7 +111,7 @@ fun HeroCard(
                             else -> R.string.home_next_up
                         },
                     ).uppercase(locale),
-                    style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.5.sp, fontWeight = FontWeight.SemiBold),
+                    style = MaterialTheme.typography.labelMedium.copy(letterSpacing = Tracking.eyebrow, fontWeight = FontWeight.SemiBold),
                     color = amber,
                     modifier = Modifier.weight(1f),
                 )
@@ -202,11 +205,21 @@ fun CardFooter(
     trailing: @Composable () -> Unit = {},
 ) {
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        Row(
+        // As many as fit, and a mark that there are more — not a silent take(3) (0.69.0).
+        val moreTags = stringResource(R.string.card_tags_more_description)
+        dev.rwilco.ui.components.FittingRow(
+            gap = Tokens.spacing.xs,
             modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.xs),
+            more = {
+                Text(
+                    text = stringResource(R.string.card_tags_more),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.semantics { contentDescription = moreTags },
+                )
+            },
         ) {
-            for (tag in tags.take(3)) dev.rwilco.ui.components.TagLabel(tag)
+            for (tag in tags) dev.rwilco.ui.components.TagLabel(tag)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm), verticalAlignment = Alignment.CenterVertically) {
             for (action in dev.rwilco.model.Action.entries) {

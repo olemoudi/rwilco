@@ -710,7 +710,7 @@ private fun AwakePair(
 internal fun SettingTitle(title: String, modifier: Modifier = Modifier, info: String? = null) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
         Text(title, style = MaterialTheme.typography.bodyLarge)
-        if (info != null) InfoBadge(info)
+        if (info != null) InfoBadge(info, title = title)
     }
 }
 
@@ -751,7 +751,7 @@ private fun ThemeButton(
                 imageVector = icon,
                 contentDescription = stringResource(labelRes),
                 tint = if (selected) scheme.surface else scheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(Tokens.sizes.glyphMedium),
             )
         }
     }

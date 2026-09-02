@@ -67,7 +67,8 @@ class HomeMenuTest {
     @Before
     fun oneOverdueReminder() = runBlocking {
         app.repository.replaceAll(emptyList())
-        app.settingsStore.update { it.copy(lastSeenVersionCode = BuildConfig.VERSION_CODE, theme = ThemeMode.DARK) }
+        // No presets: the last test asserts none was written, and PresetFlowTest leaves its own behind.
+        app.settingsStore.update { it.copy(lastSeenVersionCode = BuildConfig.VERSION_CODE, theme = ThemeMode.DARK, presets = emptyList()) }
         val now = app.clock.instant()
         val zone = app.clock.zone
         val anHourAgo = now.minusSeconds(3_600)

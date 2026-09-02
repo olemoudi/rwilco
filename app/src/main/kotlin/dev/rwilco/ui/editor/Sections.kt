@@ -258,7 +258,7 @@ internal fun TextSection(
                 contentPadding = PaddingValues(horizontal = Tokens.spacing.lg),
                 modifier = Modifier.heightIn(min = Tokens.sizes.touch),
             ) {
-                Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(Tokens.sizes.glyphSmall))
                 Spacer(Modifier.width(Tokens.spacing.sm))
                 Text(stringResource(writeRes), style = MaterialTheme.typography.labelLarge)
             }
@@ -433,7 +433,7 @@ internal fun TagsSection(
                 contentPadding = PaddingValues(horizontal = Tokens.spacing.lg),
                 modifier = Modifier.heightIn(min = Tokens.sizes.touch),
             ) {
-                Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(Tokens.sizes.glyphSmall))
                 Spacer(Modifier.width(Tokens.spacing.sm))
                 Text(stringResource(R.string.editor_new_tag), style = MaterialTheme.typography.labelLarge)
             }
@@ -657,23 +657,7 @@ private fun QuickWhenRow(
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState()),
     ) {
-        if (understood != null) {
-            val label = when (understood) {
-                is Understood.Once -> quickLabel(understood.trigger, today, defaultTime, locale, is24h)
-                is Understood.Comes -> {
-                    val recurrence = understood.recurrence
-                    val time = (recurrence as? Recurrence.Calendar)?.repeat?.time
-                    val hour = time?.let { " · " + TimeText.time(it, is24h, locale) }.orEmpty()
-                    (recurrenceLabel(words, recurrence, today) + hour).replaceFirstChar { it.titlecase(locale) }
-                }
-            }
-            PresetChip(
-                label = label,
-                onClick = { onUnderstood(understood) },
-                leadingIcon = Icons.Outlined.FormatQuote,
-                leadingIconDescription = stringResource(R.string.editor_when_from_words),
-            )
-        }
+        if (understood != null) UnderstoodChip(understood, today, defaultTime, onUnderstood)
         for (trigger in offered) {
             PresetChip(
                 label = quickLabel(trigger, today, defaultTime, locale, is24h),
@@ -681,6 +665,34 @@ private fun QuickWhenRow(
             )
         }
     }
+}
+
+/**
+ * What the words themselves say, as one chip to take: "Mañana 09:00", "Cada semana · 09:00".
+ * Under the words while they are typed as well as in the "Cuándo" card (0.69.0): it sat two
+ * cards and a keyboard below the field, where the person who had just written the sentence
+ * could not see it, and went the long way round through a sheet to say it again.
+ */
+@Composable
+internal fun UnderstoodChip(understood: Understood, today: LocalDate, defaultTime: LocalTime, onUnderstood: (Understood) -> Unit) {
+    val words = rememberWords()
+    val locale = words.locale
+    val is24h = words.is24h
+    val label = when (understood) {
+        is Understood.Once -> quickLabel(understood.trigger, today, defaultTime, locale, is24h)
+        is Understood.Comes -> {
+            val recurrence = understood.recurrence
+            val time = (recurrence as? Recurrence.Calendar)?.repeat?.time
+            val hour = time?.let { " · " + TimeText.time(it, is24h, locale) }.orEmpty()
+            (recurrenceLabel(words, recurrence, today) + hour).replaceFirstChar { it.titlecase(locale) }
+        }
+    }
+    PresetChip(
+        label = label,
+        onClick = { onUnderstood(understood) },
+        leadingIcon = Icons.Outlined.FormatQuote,
+        leadingIconDescription = stringResource(R.string.editor_when_from_words),
+    )
 }
 
 /**
@@ -783,7 +795,7 @@ private fun TriggerEditRow(
                         ),
                         border = BorderStroke(Tokens.strokes.edge, family.edge()),
                         label = { Text(conditionLabel(condition), style = MaterialTheme.typography.labelMedium) },
-                        leadingIcon = { Icon(Icons.Outlined.FilterAlt, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                        leadingIcon = { Icon(Icons.Outlined.FilterAlt, contentDescription = null, modifier = Modifier.size(Tokens.sizes.glyph)) },
                         trailingIcon = {
                             // The glyph stays 18dp — it is a chip's trailing icon and it has to
                             // look like one — but what a thumb has to hit is 48. It was the bare
@@ -795,7 +807,7 @@ private fun TriggerEditRow(
                                 modifier = Modifier
                                     .minimumInteractiveComponentSize()
                                     .clickable { onRemoveCondition(index) }
-                                    .size(18.dp),
+                                    .size(Tokens.sizes.glyphSmall),
                             )
                         },
                         shape = MaterialTheme.shapes.small,

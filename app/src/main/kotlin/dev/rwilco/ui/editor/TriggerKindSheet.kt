@@ -102,7 +102,7 @@ private fun KindRow(kind: TriggerKind, isDefault: Boolean, onClick: () -> Unit, 
         shape = MaterialTheme.shapes.medium,
         color = if (isDefault) scheme.surfaceContainerHighest else scheme.surfaceContainerHigh,
         // A firmer line, not amber: amber says "this is what fires next" and nothing else.
-        border = BorderStroke(1.dp, if (isDefault) scheme.outline else scheme.outlineVariant),
+        border = BorderStroke(Tokens.strokes.edge, if (isDefault) scheme.outline else scheme.outlineVariant),
         modifier = modifier.fillMaxWidth(),
     ) {
         Row(

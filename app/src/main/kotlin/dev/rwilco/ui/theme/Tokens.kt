@@ -80,6 +80,12 @@ data class Sizes(
     val badge: Dp = 28.dp,
     /** A read-only mark: an action glyph, a compact card's row of them, the fold-away icon. */
     val glyph: Dp = 16.dp,
+    /** A glyph beside a word in a control: the (i), a chip's leading icon, a row's pencil. */
+    val glyphSmall: Dp = 18.dp,
+    /** A glyph that stands for a state at the head of a card: the check of "all good". */
+    val glyphMedium: Dp = 20.dp,
+    /** The most a dialog in the middle of the screen grows to before its list scrolls. */
+    val dialogMax: Dp = 560.dp,
     /**
      * The cog beside the wordmark on Home: the one glyph on the screen drawn larger than the
      * ordinary 24dp, because it and the name are a single control and it has to look like the

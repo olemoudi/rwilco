@@ -47,7 +47,7 @@ fun RwilcoCard(
     rail: Color? = null,
     content: @Composable () -> Unit,
 ) {
-    val border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    val border = BorderStroke(Tokens.strokes.edge, MaterialTheme.colorScheme.outlineVariant)
     // Wrapped INSIDE the surface rather than drawn behind it, for two reasons that are really
     // one: the surface paints its own colour over anything behind it, and it clips its content
     // to the shape — so from in here the band is visible and the corner curves it, instead of a

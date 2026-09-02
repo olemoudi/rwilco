@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.MoreHoriz
@@ -140,10 +142,16 @@ fun PickSheet(
                         modifier = Modifier.padding(vertical = spacing.lg),
                     )
                 } else {
+                    // The edge says the rows carry on under it; see Modifier.scrollFade.
+                    val listState = rememberLazyListState()
                     LazyColumn(
+                        state = listState,
                         verticalArrangement = Arrangement.spacedBy(spacing.sm),
+                        contentPadding = PaddingValues(bottom = spacing.xxl),
                         // Tall enough to be a list, short enough that the search box stays put.
-                        modifier = Modifier.heightIn(max = 420.dp),
+                        modifier = Modifier
+                            .heightIn(max = 420.dp)
+                            .scrollFade(listState, MaterialTheme.colorScheme.surfaceContainer),
                     ) {
                         items(matching, key = { it }) { item ->
                             val on = item in selected

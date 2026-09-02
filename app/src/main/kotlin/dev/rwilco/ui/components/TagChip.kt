@@ -70,11 +70,11 @@ fun TagChip(
             if (icon == null) {
                 Text(label, style = MaterialTheme.typography.labelLarge)
             } else {
-                Icon(icon, contentDescription = label, modifier = Modifier.size(18.dp))
+                Icon(icon, contentDescription = label, modifier = Modifier.size(Tokens.sizes.glyphSmall))
             }
         },
         enabled = enabled,
-        trailingIcon = trailingIcon?.let { glyph -> { Icon(glyph, contentDescription = null, modifier = Modifier.size(18.dp)) } },
+        trailingIcon = trailingIcon?.let { glyph -> { Icon(glyph, contentDescription = null, modifier = Modifier.size(Tokens.sizes.glyphSmall)) } },
         shape = MaterialTheme.shapes.small,
         colors = FilterChipDefaults.filterChipColors(
             containerColor = scheme.surfaceContainerLow,

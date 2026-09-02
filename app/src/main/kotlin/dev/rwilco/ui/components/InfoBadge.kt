@@ -28,7 +28,7 @@ import dev.rwilco.ui.theme.Tokens
  * from anybody who wants it and invisible to everybody who does not.
  */
 @Composable
-fun InfoBadge(text: String, modifier: Modifier = Modifier) {
+fun InfoBadge(text: String, modifier: Modifier = Modifier, title: String? = null) {
     var open by rememberSaveable { mutableStateOf(false) }
     IconButton(
         onClick = { open = true },
@@ -36,14 +36,16 @@ fun InfoBadge(text: String, modifier: Modifier = Modifier) {
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
-            contentDescription = stringResource(R.string.common_what_is_this),
+            // "¿Qué es «Vibración»?", not the same "¿Qué es esto?" on every row of the screen.
+            contentDescription = if (title != null) stringResource(R.string.common_what_is_this_named, title) else stringResource(R.string.common_what_is_this),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier.size(Tokens.sizes.glyphSmall),
         )
     }
     if (open) {
         AlertDialog(
             onDismissRequest = { open = false },
+            title = title?.let { { Text(it) } },
             text = { Text(text, style = MaterialTheme.typography.bodyMedium) },
             confirmButton = {
                 TextButton(onClick = { open = false }) { Text(stringResource(R.string.common_got_it)) }

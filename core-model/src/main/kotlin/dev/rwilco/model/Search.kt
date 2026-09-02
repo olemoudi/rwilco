@@ -38,7 +38,10 @@ sealed interface SearchHit {
  * comes last whatever its score — somebody typing on Home is looking for something to do
  * before something they did — and the hit says which it is.
  */
-fun search(reminders: List<Reminder>, query: String, limit: Int = 20): List<SearchHit> {
+/** How many hits a search hands back; Home says so when it reaches it. */
+const val SEARCH_LIMIT = 20
+
+fun search(reminders: List<Reminder>, query: String, limit: Int = SEARCH_LIMIT): List<SearchHit> {
     val needle = fold(query)
     if (needle.isEmpty()) return emptyList()
 

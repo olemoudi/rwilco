@@ -43,7 +43,7 @@ fun TimeField(
         onClick = { picking = true },
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        border = BorderStroke(Tokens.strokes.control, MaterialTheme.colorScheme.outlineVariant),
         modifier = modifier
             // The frame is the reading plus its padding, no taller: a control-height box around
             // a single line leaves the number sitting up against the top edge, which is what a

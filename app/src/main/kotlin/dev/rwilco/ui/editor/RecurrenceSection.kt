@@ -466,7 +466,7 @@ private fun RecurrenceConditions(
                 ),
                 border = BorderStroke(Tokens.strokes.control, scheme.outline),
                 label = { Text(conditionLabel(condition), style = MaterialTheme.typography.labelLarge) },
-                leadingIcon = { Icon(Icons.Outlined.FilterAlt, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                leadingIcon = { Icon(Icons.Outlined.FilterAlt, contentDescription = null, modifier = Modifier.size(Tokens.sizes.glyphSmall)) },
                 trailingIcon = {
                     // 48dp of thumb behind 20dp of glyph; see the same icon in Sections.kt.
                     Icon(
@@ -475,7 +475,7 @@ private fun RecurrenceConditions(
                         modifier = Modifier
                             .minimumInteractiveComponentSize()
                             .clickable { onRemove(index) }
-                            .size(20.dp),
+                            .size(Tokens.sizes.glyphMedium),
                     )
                 },
                 shape = MaterialTheme.shapes.small,
@@ -493,7 +493,7 @@ private fun RecurrenceConditions(
             contentPadding = PaddingValues(horizontal = Tokens.spacing.md),
             modifier = Modifier.heightIn(min = Tokens.sizes.touch),
         ) {
-            Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(Tokens.sizes.glyphSmall))
             Spacer(Modifier.width(Tokens.spacing.sm))
             Text(
                 text = stringResource(if (conditions.isEmpty()) R.string.editor_add_condition else R.string.editor_add_another_condition),
@@ -573,7 +573,7 @@ private fun RecurrenceListDialog(
             border = BorderStroke(Tokens.strokes.edge, scheme.outlineVariant),
             modifier = Modifier
                 .fillMaxWidth(0.92f)
-                .heightIn(max = 560.dp),
+                .heightIn(max = Tokens.sizes.dialogMax),
         ) {
             Column(Modifier.padding(spacing.lg)) {
                 Text(stringResource(R.string.recur_list_title), style = MaterialTheme.typography.headlineSmall)
@@ -631,7 +631,7 @@ private fun RecurrenceListDialog(
                     modifier = Modifier
                         .align(Alignment.End)
                         .heightIn(min = Tokens.sizes.touch),
-                ) { Text(stringResource(R.string.common_done)) }
+                ) { Text(stringResource(R.string.common_close)) }
             }
         }
     }

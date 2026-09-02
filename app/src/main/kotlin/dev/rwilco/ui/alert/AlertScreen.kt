@@ -53,6 +53,7 @@ import dev.rwilco.ui.components.rememberPressGuard
 import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.format.triggerLine
 import dev.rwilco.ui.theme.Tokens
+import dev.rwilco.ui.theme.Tracking
 import dev.rwilco.ui.theme.icon
 import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
 import dev.rwilco.ui.components.SnoozeOffers
@@ -117,7 +118,7 @@ fun AlertScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = stringResource(if (preview) R.string.alert_preview_label else R.string.app_name).uppercase(locale),
-                    style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.5.sp, fontWeight = FontWeight.SemiBold),
+                    style = MaterialTheme.typography.labelMedium.copy(letterSpacing = Tracking.eyebrow, fontWeight = FontWeight.SemiBold),
                     color = scheme.primary,
                     modifier = Modifier.weight(1f),
                 )

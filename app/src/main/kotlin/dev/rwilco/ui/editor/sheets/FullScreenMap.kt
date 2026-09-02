@@ -13,6 +13,9 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledIconButton
@@ -50,6 +53,9 @@ fun FullScreenMap(
     onLongPress: (GeoPoint) -> Unit,
     onRadius: (Int) -> Unit,
     onDismiss: () -> Unit,
+    /** The crosshair the sheet's own map has; here too, since this is the view somebody pans away in (0.69.0). */
+    onLocate: (() -> Unit)? = null,
+    locating: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
     val spacing = Tokens.spacing
@@ -84,6 +90,27 @@ fun FullScreenMap(
                             .heightIn(min = Tokens.sizes.touch),
                     ) {
                         Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.place_collapse))
+                    }
+                    if (onLocate != null) {
+                        FilledIconButton(
+                            onClick = onLocate,
+                            enabled = !locating,
+                            shape = CircleShape,
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = scheme.surfaceContainerHighest,
+                                contentColor = scheme.onSurface,
+                            ),
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(spacing.md)
+                                .size(Tokens.sizes.control),
+                        ) {
+                            if (locating) {
+                                CircularProgressIndicator(strokeWidth = Tokens.strokes.strong, modifier = Modifier.size(Tokens.sizes.glyphMedium))
+                            } else {
+                                Icon(Icons.Outlined.MyLocation, contentDescription = stringResource(R.string.place_my_location))
+                            }
+                        }
                     }
                 }
                 Column(Modifier.padding(horizontal = spacing.screen)) {

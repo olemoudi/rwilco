@@ -39,6 +39,7 @@ import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.ui.theme.LocalDarkTheme
 import dev.rwilco.ui.theme.Tokens
+import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.familyColor
 import dev.rwilco.model.TriggerFamily
 import dev.rwilco.vault.VaultCenter
@@ -141,7 +142,7 @@ fun BackupBadge(modifier: Modifier = Modifier) {
                     )
                     else -> Text(
                         text = if (pending > MOST) "$MOST+" else "$pending",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        style = MonoStyles.tally.copy(fontWeight = FontWeight.SemiBold),
                         color = scheme.onError,
                     )
                 }

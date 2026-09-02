@@ -58,6 +58,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
@@ -73,6 +74,7 @@ import androidx.compose.ui.platform.LocalContext
 import dev.rwilco.shortcuts.PresetShortcuts
 import dev.rwilco.R
 import dev.rwilco.model.Section
+import dev.rwilco.model.SEARCH_LIMIT
 import dev.rwilco.model.TagFilter
 import dev.rwilco.ui.components.EmptyState
 import dev.rwilco.ui.components.ListPlaceholder
@@ -84,6 +86,7 @@ import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.model.TriggerFamily
 import dev.rwilco.ui.theme.LocalDarkTheme
 import dev.rwilco.ui.theme.Tokens
+import dev.rwilco.ui.theme.Tracking
 import dev.rwilco.ui.theme.familyColor
 import dev.rwilco.ui.theme.tagColor
 import dev.rwilco.ui.format.rememberWords
@@ -250,6 +253,10 @@ fun HomeScreen(
                 onNewPreset()
             },
             onDismiss = { managingPins = false },
+            onEdit = { preset ->
+                managingPins = false
+                onEditPreset(preset.id)
+            },
         )
     }
     askingWordsFor?.let { id ->
@@ -371,6 +378,7 @@ fun HomeScreen(
             }
         },
         floatingActionButton = {
+            val fabHaptics = Tokens.haptics
             // While searching the thumb is on the keyboard, not on "New": the button would only
             // be covering a result.
             if (!search.open) {
@@ -380,7 +388,7 @@ fun HomeScreen(
                 // list wears the neutral surface — and being the smaller of the two says which
                 // of them the screen is for. Material's small FAB is 40dp; the floor here is 48.
                 SmallFloatingActionButton(
-                    onClick = { viewModel.setCompactHome(!compactHome) },
+                    onClick = { fabHaptics.perform(HapticFeedbackType.ContextClick); viewModel.setCompactHome(!compactHome) },
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     contentColor = MaterialTheme.colorScheme.onSurface,
                     shape = MaterialTheme.shapes.medium,
@@ -397,7 +405,7 @@ fun HomeScreen(
                 // hero's glow is the only amber left to look for.
                 ExtendedFloatingActionButton(
                     // Straight to the form unless there is a question worth asking; see [asksWhichKind].
-                    onClick = { if (asksWhichKind) choosing = true else onNew() },
+                    onClick = { fabHaptics.perform(HapticFeedbackType.Confirm); if (asksWhichKind) choosing = true else onNew() },
                     icon = { Icon(Icons.Outlined.Add, contentDescription = null) },
                     text = { Text(stringResource(R.string.home_new), style = MaterialTheme.typography.titleMedium) },
                     containerColor = MaterialTheme.colorScheme.onSurface,
@@ -519,6 +527,18 @@ fun HomeScreen(
                         onFilterByTag = viewModel::filterByTag,
                         modifier = Modifier.animateItem(),
                     )
+                }
+                // Capped at twenty with nothing to say so: a search that found more read as a
+                // search that found twenty (0.69.0).
+                if (search.hits.size >= SEARCH_LIMIT) {
+                    item(key = "search-more") {
+                        Text(
+                            text = stringResource(R.string.home_search_more, SEARCH_LIMIT),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = spacing.sm),
+                        )
+                    }
                 }
                 if (search.nothingFound) {
                     item(key = "search-empty") {
@@ -683,6 +703,10 @@ private fun Header(
     onClearFilter: () -> Unit = {},
 ) {
     val locale = currentLocale()
+    // Material's own buttons do not buzz; the hand-rolled controls on this screen do, and the
+    // same tap felt different by component (0.69.0).
+    val haptics = Tokens.haptics
+    val tap: (() -> Unit) -> () -> Unit = { act -> { haptics.perform(HapticFeedbackType.ContextClick); act() } }
     // **The controls on the right keep their width; the wordmark gives.** A Row measures its
     // unweighted children first, so the name at 28sp plus the cog took what they needed and at
     // a large font scale the four controls beside them were measured into what was left —
@@ -700,7 +724,7 @@ private fun Header(
             modifier = Modifier
                 .weight(1f, fill = false)
                 .clip(MaterialTheme.shapes.small)
-                .clickable(role = Role.Button, onClick = onSettings)
+                .clickable(role = Role.Button, onClick = tap(onSettings))
                 .heightIn(min = Tokens.sizes.touch)
                 .padding(end = Tokens.spacing.sm),
         ) {
@@ -708,7 +732,7 @@ private fun Header(
                 // The launcher's own name, said the way a wordmark is said. Uppercased here
                 // rather than stored twice, so there is one place the app is called anything.
                 text = stringResource(R.string.app_name).uppercase(locale),
-                style = MaterialTheme.typography.headlineMedium.copy(letterSpacing = 1.sp),
+                style = MaterialTheme.typography.headlineMedium.copy(letterSpacing = Tracking.wordmark),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false),
@@ -738,17 +762,17 @@ private fun Header(
             }
             // Only while the encrypted copy has something waiting; see BackupBadge.
             BackupBadge()
-            IconButton(onClick = onSearch) {
+            IconButton(onClick = tap(onSearch)) {
                 Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.home_search))
             }
-            IconButton(onClick = onDoneList) {
+            IconButton(onClick = tap(onDoneList)) {
                 Icon(Icons.Outlined.History, contentDescription = stringResource(R.string.home_done_list))
             }
             // One tap, and the report is on the clipboard. It has always been three screens
             // deep in the settings, which is the wrong depth for the thing somebody reaches for
             // at the exact moment the app has just done something inexplicable — by the time
             // they have found it, the log has moved on.
-            IconButton(onClick = onDiagnostics) {
+            IconButton(onClick = tap(onDiagnostics)) {
                 // The same size as the two beside it: it is a way out of trouble, not a
                 // feature, and it should sit quietly until somebody needs it.
                 Icon(Icons.Outlined.BugReport, contentDescription = stringResource(R.string.home_diagnostics))

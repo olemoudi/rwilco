@@ -97,6 +97,7 @@ import dev.rwilco.model.namesAnHour
 import dev.rwilco.model.ringCadence
 import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.theme.Tokens
+import dev.rwilco.ui.theme.Tracking
 import java.time.LocalDate
 import java.time.LocalTime
 import androidx.compose.runtime.rememberCoroutineScope
@@ -356,6 +357,16 @@ fun EditorScreen(
                         autoFocus = state.focusText,
                         focusKey = focusNonce,
                     )
+                    // What the words say about when, one tap away from where they are being
+                    // typed; the same chip the "Cuándo" card offers.
+                    val read = if (state.asPreset) null else state.understoodOffer()
+                    if (read != null) {
+                        Spacer(Modifier.height(spacing.sm))
+                        UnderstoodChip(read, today, state.defaultTime) {
+                            focusManager.clearFocus()
+                            viewModel.commitUnderstood(it)
+                        }
+                    }
                     // A preset carries optional wording; a reminder is its wording.
                     if (state.asPreset) {
                         Spacer(Modifier.height(spacing.lg))
@@ -773,7 +784,7 @@ private fun EditorSection(
                 Spacer(Modifier.width(spacing.sm))
                 Text(
                     text = title.uppercase(currentLocale()),
-                    style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.5.sp, fontWeight = FontWeight.SemiBold),
+                    style = MaterialTheme.typography.labelMedium.copy(letterSpacing = Tracking.eyebrow, fontWeight = FontWeight.SemiBold),
                     color = scheme.onSurfaceVariant,
                     modifier = Modifier.semantics { heading() },
                 )

@@ -250,7 +250,7 @@ private fun GroupBadge(icon: ImageVector, attention: Boolean) {
                 imageVector = icon,
                 contentDescription = null,
                 tint = if (attention) scheme.onErrorContainer else scheme.onSurfaceVariant,
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(Tokens.sizes.glyph),
             )
         }
     }

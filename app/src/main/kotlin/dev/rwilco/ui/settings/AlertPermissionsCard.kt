@@ -4,6 +4,8 @@ import android.Manifest
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import kotlin.math.roundToInt
+import android.media.AudioManager
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -211,6 +213,7 @@ fun AlertPermissionsCard(readiness: AlertReadiness) {
     val context = LocalContext.current
     val snackbar = LocalSnackbar.current
     val pageUnavailable = stringResource(R.string.settings_page_unavailable)
+    val volumeRaised = stringResource(R.string.perm_volume_raised)
     // Every fix button goes through this: a page this phone does not have is the app's own
     // page and a word about it, not a crash (see openSettingsPage).
     val open: (Intent) -> Unit = { intent -> if (!context.openSettingsPage(intent)) snackbar.show(pageUnavailable) }
@@ -228,7 +231,7 @@ fun AlertPermissionsCard(readiness: AlertReadiness) {
                         Icons.Outlined.CheckCircle,
                         contentDescription = null,
                         tint = familyColor(TriggerFamily.PLACE, LocalDarkTheme.current),
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(Tokens.sizes.glyphMedium),
                     )
                     Spacer(Modifier.width(Tokens.spacing.sm))
                     Text(stringResource(R.string.perm_all_good), style = MaterialTheme.typography.bodyMedium)
@@ -275,7 +278,15 @@ fun AlertPermissionsCard(readiness: AlertReadiness) {
                 PermissionFixRow(
                     text = stringResource(R.string.perm_volume_missing),
                     action = stringResource(R.string.perm_volume_fix),
-                    onFix = { open(Intent(Settings.ACTION_SOUND_SETTINGS)) },
+                    // The one problem on this list the app can fix by itself: the alarm stream
+                    // needs no permission, and the sound card next door has the same slider.
+                    onFix = {
+                        val audio = context.getSystemService(AudioManager::class.java)
+                        val raised = audio != null && runCatching {
+                            audio.setStreamVolume(AudioManager.STREAM_ALARM, (audio.getStreamMaxVolume(AudioManager.STREAM_ALARM) * 0.6f).roundToInt().coerceAtLeast(1), 0)
+                        }.isSuccess
+                        if (raised) snackbar.show(volumeRaised) else open(Intent(Settings.ACTION_SOUND_SETTINGS))
+                    },
                 )
             }
             if (!readiness.throughDnd) {

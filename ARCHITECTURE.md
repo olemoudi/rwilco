@@ -724,7 +724,7 @@ because that is what its chip would show.
   expressive theme internal.
 - A card's one control is `HoldButton` (`ui/components/`): a control's own line and the verb
   ("Pausar"/"Reanudar", never a bare glyph, which reads as the state rather than the action), in
-  one of two shapes — a 44dp disc with the verb underneath where the control is the point, and a
+  one of two shapes — a 48dp disc with the verb underneath where the control is the point, and a
   `compact` pill with the verb beside the glyph on a card, at the end of the footer's read-only
   action glyphs. The pill is what it wears on Home: as a disc in the top row it took a column
   ~96dp wide out of the one line of the card anybody actually reads, and the reminder's own words
@@ -1150,6 +1150,22 @@ because that is what its chip would show.
   choice by name rather than index so the chip that lights is the one just made. The countdown
   sheet produces a `Trigger.Countdown` (the note above saying `AtDateTime` was stale). The alert
   preview is `AlertScreen`, the same composable `AlertActivity` hosts under a full-screen intent.
+- **The polish round** (0.69.0), the last third of the review: `UnderstoodChip` under the words
+  as they are typed (the same chip the "Cuándo" card offers); the date sheet's next seven days
+  by name after the four shortcuts; the pin panel's pencil (`PinPresetsPanel(onEdit)`) so one
+  list pins and edits; `FullScreenMap(onLocate)`; the calendar's cells read "martes 14 de
+  octubre, hoy"; `scrollFade` on `CuratePanel` and `PickSheet`; `SEARCH_LIMIT` said on Home when
+  reached; the hero's tags through `FittingRow`; "Subir" raising the alarm stream itself;
+  `InfoBadge(title)` naming its setting; `Trigger.Countdown` read in the app's zone; haptics on
+  the header buttons, the FABs, the fold and the restore; `MonoStyles.tally` for the counts;
+  `Sizes.glyphSmall/glyphMedium/dialogMax` and `Tracking` for the loose dp/sp; and the copy:
+  "Eliminar" everywhere a reminder is deleted and "Limpiar" for the field, "Pausado" as the
+  event, `common_close` for the dialogs that only close, "Cuando suena / Cuando lo marco hecho",
+  the landings capitalised, "del 1 sept al 15 sept", "Suena por", the widget's description.
+  Deliberately left: the time wheel's semantics (the keypad is the labelled route), `RuleTree`
+  in the editor (the segmented control already says the reading, and a root word would say it
+  twice), the search rows' "when" line, and solo/sólo (the app writes "sólo" more often than
+  not, and an adverb is not safe to accent by script).
 - **The guard's two seconds are for a screen that took somebody by surprise** (0.68.0).
   `rememberPressGuard(key, openedOnPurpose)` skips the countdown — never the hold — for a
   reminder opened from a card or a note (`AlertActivity` passes `id in silenced`), and for a
