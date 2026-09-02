@@ -102,6 +102,13 @@ fun CountdownSheet(
                 )
             }
         }
+        if (minutes < MIN_COUNTDOWN_MINUTES) {
+            Text(
+                text = stringResource(R.string.countdown_zero_error),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = stringResource(R.string.sheet_rings_at_default, ""),

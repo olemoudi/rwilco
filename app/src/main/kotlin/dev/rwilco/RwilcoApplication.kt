@@ -114,7 +114,14 @@ class RwilcoApplication : Application() {
         vaultStore = VaultStore(this)
         diagStore = DiagStore(this)
         Diag.install(diagStore, appScope, clock)
-        AlertNotifications.ensureChannels(this)
+        // With the chosen tone and rhythm, once they are known: the channels of any other are
+        // swept away by ensureChannels, so making them with the defaults first would delete the
+        // chosen ones on every start and remake them at the next ring. A ring before the
+        // settings arrive makes its own (see post).
+        appScope.launch {
+            val current = settings.filterNotNull().first()
+            AlertNotifications.ensureChannels(this@RwilcoApplication, current.vibration, current.alertSound)
+        }
 
         // The periodic checks only. The one-off check at launch is MainActivity's, because "the
         // app was started" is not "somebody opened the app": the place watch's own alarm starts

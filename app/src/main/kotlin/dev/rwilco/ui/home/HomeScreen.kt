@@ -65,6 +65,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.LocalContext
@@ -120,6 +121,7 @@ fun HomeScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val search by viewModel.search.collectAsStateWithLifecycle()
     val presets by viewModel.presets.collectAsStateWithLifecycle()
+    val pendingDelete by viewModel.pendingDelete.collectAsStateWithLifecycle()
     val pinned by viewModel.pinnedPresets.collectAsStateWithLifecycle()
     val compactHome by viewModel.compactHome.collectAsStateWithLifecycle()
     val flippedCards by viewModel.flippedCards.collectAsStateWithLifecycle()
@@ -430,7 +432,7 @@ fun HomeScreen(
         val listState = rememberLazyListState()
         LaunchedEffect(justSaved, state.sections, state.hero) {
             val id = justSaved ?: return@LaunchedEffect
-            val index = homeCardIndex(state, id, strip = stripShown, pinned = presets.isNotEmpty())
+            val index = homeCardIndex(state, id, strip = stripShown, pinned = presets.isNotEmpty(), undoRow = pendingDelete != null)
                 ?: return@LaunchedEffect
             if (listState.layoutInfo.visibleItemsInfo.none { it.key == id }) {
                 listState.animateScrollToItem(index)
@@ -518,6 +520,17 @@ fun HomeScreen(
                 if (state.tags.isNotEmpty()) {
                     item(key = "tags") {
                         TagFilterRow(tags = state.tags, selected = state.selectedTag, onSelect = viewModel::selectTag)
+                    }
+                }
+                // The last delete, for a minute: the snackbar's undo, kept where the list is
+                // after the snackbar has gone (see HomeViewModel.pendingDelete).
+                pendingDelete?.let { removed ->
+                    item(key = "undo-delete") {
+                        UndoDeleteRow(
+                            text = removed.reminder.text,
+                            onUndo = { viewModel.undo(removed) },
+                            modifier = Modifier.animateItem(),
+                        )
                     }
                 }
                 state.hero?.let { hero ->
@@ -639,10 +652,16 @@ private fun Header(
     onDiagnostics: () -> Unit,
 ) {
     val locale = currentLocale()
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    // **The controls on the right keep their width; the wordmark gives.** A Row measures its
+    // unweighted children first, so the name at 28sp plus the cog took what they needed and at
+    // a large font scale the four controls beside them were measured into what was left —
+    // search, Hechos and diagnostics clipped off the edge. Weighted with `fill = false` the
+    // wordmark is measured last, into the width the controls leave, and ellipsises there.
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
+                .weight(1f, fill = false)
                 .clip(MaterialTheme.shapes.small)
                 .clickable(role = Role.Button, onClick = onSettings)
                 .heightIn(min = Tokens.sizes.touch)
@@ -653,6 +672,9 @@ private fun Header(
                 // rather than stored twice, so there is one place the app is called anything.
                 text = stringResource(R.string.app_name).uppercase(locale),
                 style = MaterialTheme.typography.headlineMedium.copy(letterSpacing = 1.sp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
             )
             Spacer(Modifier.width(Tokens.spacing.sm))
             Icon(
@@ -663,7 +685,6 @@ private fun Header(
                 modifier = Modifier.size(Tokens.sizes.cog),
             )
         }
-        Spacer(Modifier.weight(1f))
         Row(verticalAlignment = Alignment.CenterVertically) {
             // Only while the encrypted copy has something waiting; see BackupBadge.
             BackupBadge()

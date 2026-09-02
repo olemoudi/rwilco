@@ -117,7 +117,10 @@ class BackupTourTest {
     private fun waitingLabel(): String = s(R.string.vault_card_title).take(0) + "copiarse"
 
     private fun androidx.compose.ui.test.junit4.ComposeTestRule.waitUntilShown(text: String) {
-        waitUntil(timeoutMillis = 10_000) { onAllNodesWithText(text, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+        // Case-insensitively: the wordmark on Home is the app's name uppercased, which is what
+        // the badge test waits for, and an exact "Rwilco" has not matched it since the header
+        // was rewritten.
+        waitUntil(timeoutMillis = 10_000) { onAllNodesWithText(text, ignoreCase = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
     }
 
     private fun shot(name: String) {

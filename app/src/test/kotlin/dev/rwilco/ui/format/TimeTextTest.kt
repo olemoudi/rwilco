@@ -37,6 +37,8 @@ class TimeTextTest {
         assertEquals("Thu 10 Jan 2030", TimeText.dayDate(LocalDate.of(2030, 1, 10), en, today))
         // The first day of next year is next year, however close it is.
         assertEquals("vie 1 ene 2027", TimeText.dayDate(LocalDate.of(2027, 1, 1), es, LocalDate.of(2026, 12, 31)))
+        // And the head of an export says its year whatever year it is: it is read later.
+        assertEquals("jue 27 ago 2026", TimeText.dayDateWithYear(date, es))
     }
 
     @Test

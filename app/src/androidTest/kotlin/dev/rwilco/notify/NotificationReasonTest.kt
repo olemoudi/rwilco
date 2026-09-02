@@ -109,6 +109,15 @@ class NotificationReasonTest {
         assertTrue("no window in \"$text\"", text.contains("18:00") || text.contains("6:00"))
     }
 
+    /** Expanded, the card carries the whole words and then the reason: a long reminder is readable from the shade. */
+    @Test
+    fun expandedTheCardShowsTheWordsWholeAndThenTheReason() {
+        val rule = TriggerRule(Trigger.AtDateTime(java.time.LocalDateTime.of(2026, 9, 3, 9, 0)))
+        val big = postAndRead(reminder(rule)).line(Notification.EXTRA_BIG_TEXT)!!
+        assertTrue("the words come first: $big", big.startsWith("Organizar fotos"))
+        assertTrue("and the reason under them: $big", big.contains("\n") && big.contains("9:00"))
+    }
+
     @Test
     fun theTagsMoveOutOfTheWayOfTheReason() {
         val notification = postAndRead(

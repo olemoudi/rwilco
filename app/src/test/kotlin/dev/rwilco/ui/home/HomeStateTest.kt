@@ -51,6 +51,19 @@ class HomeStateTest {
     }
 
     @Test
+    fun `an overdue card says how long ago its moment went, and no other card does`() {
+        // Under "Vencidos" every row went on describing the rule exactly as a future card's
+        // rows do, so the heading was the only thing telling the two apart.
+        val missed = reminder("missed", Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 12, 0)))
+            .copy(lastFiredAt = LocalDateTime.of(2026, 8, 27, 12, 0).atZone(zone).toInstant())
+        val state = buildHomeState(listOf(missed, soon, paused), defaultTime, now, zone, selectedTag = null)
+        val overdue = state.sections.single { it.section == Section.OVERDUE }.cards.single()
+        assertEquals(LocalDateTime.of(2026, 8, 27, 12, 0).atZone(zone).toInstant(), overdue.missedAt)
+        assertNull(state.hero?.card?.missedAt, "the one that glows has a moment ahead of it")
+        assertNull(state.sections.single { it.section == Section.PAUSED }.cards.single().missedAt, "a paused card has missed nothing")
+    }
+
+    @Test
     fun `a postponed reminder says so on its card, not only when it is the one that glows`() {
         // The one that sent this looking: "los viernes cada dos semanas", put off for two hours.
         // Something sooner takes the glowing card, so this one is a plain card in a section —
@@ -296,6 +309,8 @@ class HomeStateTest {
         assertEquals(3, homeCardIndex(state, "a", strip = true, pinned = true))
         val withTags = state.copy(tags = listOf(TagFilter.Untagged))
         assertEquals(2, homeCardIndex(withTags, "a", strip = false, pinned = false))
+        // The "deleted · undo" row sits under the tags and above the cards while it lasts.
+        assertEquals(3, homeCardIndex(withTags, "a", strip = false, pinned = false, undoRow = true))
         // The hero is lifted out of its section but it is still a row in the same column, and a
         // list scrolled well down has it off the top — which is where an edit that gives a
         // reminder the soonest moment on the phone sends it.

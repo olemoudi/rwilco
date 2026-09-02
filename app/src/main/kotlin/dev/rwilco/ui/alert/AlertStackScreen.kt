@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -304,7 +305,13 @@ private fun Strip(
             }
             Spacer(Modifier.weight(1f))
             Spacer(Modifier.height(spacing.md))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+            // **"Hecho" is never squeezed out** (0.67.0). The answers were one Row with no
+            // weights, so two long offers ("Mañana a la misma hora" beside "Mañana por la
+            // mañana", both one tap away in Settings) were measured first and "Hecho" — the
+            // one answer the strip exists to take — got whatever was left, down to nothing:
+            // the 0.48.1 bug on the screen that never got the fix. The offers flow now and
+            // wrap above "Hecho" when they do not fit beside it, and every pill keeps one line.
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
@@ -315,27 +322,32 @@ private fun Strip(
                 ) {
                     Text(text = viewLabel, style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant)
                 }
-                Spacer(Modifier.weight(1f))
-                for (snooze in snoozes.take(NOTIFICATION_SNOOZES)) {
-                    val label = snoozeLabel(snooze, customMinutes)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(spacing.sm, Alignment.End),
+                    verticalArrangement = Arrangement.spacedBy(spacing.xs),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    for (snooze in snoozes.take(NOTIFICATION_SNOOZES)) {
+                        val label = snoozeLabel(snooze, customMinutes)
+                        HeldPill(
+                            guard = guard,
+                            action = GuardedAction(Icons.Outlined.Snooze, holding = snoozeVerb, done = snoozedWord, detail = label),
+                            onConfirmed = { onSnooze(item.id, snooze) },
+                            label = label,
+                            minHeight = Tokens.sizes.touch,
+                        )
+                    }
                     HeldPill(
                         guard = guard,
-                        action = GuardedAction(Icons.Outlined.Snooze, holding = snoozeVerb, done = snoozedWord, detail = label),
-                        onConfirmed = { onSnooze(item.id, snooze) },
-                        label = label,
+                        action = GuardedAction(Icons.Filled.Check, holding = doneLabel),
+                        onConfirmed = { onDone(item.id) },
+                        label = doneLabel,
+                        icon = Icons.Filled.Check,
+                        loud = true,
+                        textStyle = MaterialTheme.typography.titleSmall,
                         minHeight = Tokens.sizes.touch,
                     )
                 }
-                HeldPill(
-                    guard = guard,
-                    action = GuardedAction(Icons.Filled.Check, holding = doneLabel),
-                    onConfirmed = { onDone(item.id) },
-                    label = doneLabel,
-                    icon = Icons.Filled.Check,
-                    loud = true,
-                    textStyle = MaterialTheme.typography.titleSmall,
-                    minHeight = Tokens.sizes.touch,
-                )
             }
         }
     }
@@ -376,7 +388,7 @@ private fun HeldPill(
                 Icon(icon, contentDescription = null)
                 Spacer(Modifier.width(Tokens.spacing.xs))
             }
-            Text(text = label, style = textStyle)
+            Text(text = label, style = textStyle, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

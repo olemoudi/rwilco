@@ -35,7 +35,7 @@ fun reminderSummary(words: Words, reminder: Reminder, today: LocalDate, defaultT
                 // "sólo" said once in front of all of them, and an "y" between, exactly as the
                 // sentence over the save button joins them.
                 val fences = rule.conditions.joinToString(" " + words.get(R.string.editor_sentence_and) + " ") {
-                    conditionPhrase(words, it)
+                    conditionPhrase(words, it, today)
                 }
                 append(" " + words.get(R.string.editor_sentence_only, fences))
             }

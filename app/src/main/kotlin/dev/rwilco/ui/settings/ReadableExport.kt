@@ -20,7 +20,7 @@ import java.time.ZoneId
  * to be understood. Open ones first, oldest first; done ones after, most recent first.
  */
 fun readableExport(words: Words, reminders: List<Reminder>, today: LocalDate, defaultTime: LocalTime, zone: ZoneId): String = buildString {
-    appendLine(words.get(R.string.export_text_title, TimeText.dayDate(today, words.locale)))
+    appendLine(words.get(R.string.export_text_title, TimeText.dayDateWithYear(today, words.locale)))
     val (done, open) = reminders.partition { it.status == Status.DONE }
     fun block(reminder: Reminder) {
         appendLine("• " + reminder.text.trim())
@@ -29,7 +29,7 @@ fun readableExport(words: Words, reminders: List<Reminder>, today: LocalDate, de
         if (reminder.tags.isNotEmpty()) appendLine("  " + reminder.tags.joinToString(" ") { "#$it" })
         if (reminder.status == Status.PAUSED) appendLine("  " + words.get(R.string.export_text_paused))
         reminder.doneAt?.takeIf { reminder.status == Status.DONE }?.let { at ->
-            appendLine("  " + words.get(R.string.export_text_done_on, TimeText.dayDate(at.atZone(zone).toLocalDate(), words.locale)))
+            appendLine("  " + words.get(R.string.export_text_done_on, TimeText.dayDate(at.atZone(zone).toLocalDate(), words.locale, today)))
         }
         appendLine()
     }

@@ -89,6 +89,7 @@
     <string name="home_skip_hint">La de %1$s; la siguiente se queda</string>
     <string name="preset_deleted">Preset borrado</string>
     <string name="recur_preset_deleted">Preset de recurrencia borrado</string>
+    <string name="home_deleted_row">Eliminado: %1$s</string>
     <string name="home_deleted">Eliminado</string>
     <string name="home_paused">En pausa</string>
     <string name="home_resumed">Reanudado</string>
@@ -278,6 +279,7 @@
     <string name="kind_weekday_hint">Los viernes, los findes — sólo los días</string>
     <string name="weekday_hint_alone">Solo, suena en cuanto empieza el próximo día que marques, y al siguiente si lo dejas pasar.</string>
     <string name="weekday_hint_together">Con «a la vez» es el día dentro del que tiene que caer todo lo demás: «los viernes, y a las 14:00».</string>
+    <string name="calendar_days_error">Marca al menos un día, o la semana no llega nunca.</string>
     <string name="weekday_days_hint">Marca al menos uno: aquí los días son todo el disparador.</string>
     <string name="kind_repeat_time">Se repite</string>
     <string name="kind_repeat_time_hint">Cada día, semana, mes o año</string>
@@ -302,6 +304,7 @@
     <string name="random_window_label">Entre</string>
     <string name="random_from">Desde</string>
     <string name="random_to">Hasta</string>
+    <string name="countdown_zero_error">Un plazo de cero no es un plazo: un minuto al menos.</string>
     <string name="random_window_error">La franja necesita un minuto por sorteo.</string>
     <string name="random_days_label">Días</string>
     <string name="random_days_hint">Todos los días si no marcas ninguno.</string>
@@ -577,6 +580,7 @@
     <string name="perm_location_fix">Permitir</string>
     <string name="perm_location_off">La ubicación está apagada en el teléfono.</string>
     <string name="perm_location_off_fix">Encender</string>
+    <string name="place_label_required">Ponle un nombre al lugar.</string>
     <string name="place_no_permission">Rwilco no tiene permiso para leer tu ubicación. Concédelo, o mantén pulsado el mapa.</string>
     <string-array name="whats_new_0_2_3">
         <item>Una lupa en la pantalla principal: busca a la vez entre recordatorios y etiquetas, y cada resultado dice cuál de las dos cosas es. Perdona acentos, mayúsculas y letras que falten.</item>
@@ -612,6 +616,7 @@
     <string name="card_tags_more">…</string>
     <string name="home_compact_on">Plegar la lista</string>
     <string name="home_compact_off">Desplegar la lista</string>
+    <string name="card_missed">Debía sonar %1$s</string>
     <string name="card_snoozed">Pospuesto</string>
     <string name="card_recurrence_from_done">desde que lo marcas hecho</string>
     <string name="card_rule_happened">Ya ha ocurrido</string>
@@ -1053,6 +1058,7 @@
     <string name="perm_restricted_missing">El uso en segundo plano está restringido para Rwilco, así que nada rearma los avisos con la app cerrada.</string>
     <string name="perm_restricted_fix">Permitir</string>
     <string name="perm_battery_missing">La optimización de batería puede detener Rwilco en segundo plano. Las alarmas suenan igual; la red que las rearma puede no correr.</string>
+    <string name="settings_page_unavailable">Este móvil no tiene esa página de ajustes; se ha abierto la de la app.</string>
     <string name="perm_battery_fix">Excluir</string>
 
     <string-array name="whats_new_0_12_0">
@@ -1173,6 +1179,17 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_67_0">
+        <item>Un recordatorio borrado se puede recuperar durante un minuto entero. El «Deshacer» del aviso duraba cuatro segundos y el siguiente gesto lo sustituía, así que borrar uno y marcar «hecho» el de debajo — que es como se limpia una lista — lo perdía para siempre. Ahora una fila arriba de la lista guarda ese mismo deshacer sesenta segundos.</item>
+        <item>«Vencidos» va en el orden en que se pasaron, el más antiguo arriba, y cada tarjeta lo dice: «Debía sonar hace 3 h». Antes se ordenaban por el día en que los escribiste y eran iguales que una tarjeta futura.</item>
+        <item>La cabecera de inicio conserva los botones de buscar, historial y diagnóstico con la letra grande: cede el nombre, no los botones.</item>
+        <item>Un tramo de fechas de otro año dice el año: en las tarjetas, en la frase sobre «Guardar», en los «sólo si» y en el export legible.</item>
+        <item>Cuando suenan varios a la vez, el «Hecho» de cada tira ya no se queda sin sitio por unos posponer largos: las ofertas pasan a la línea de arriba.</item>
+        <item>Desplegada, una notificación muestra las palabras del recordatorio enteras, con el motivo debajo. Un recordatorio largo no se podía leer desde el cajón.</item>
+        <item>Un canal que silenciaste con un sonido o un ritmo que ya no usas ya no deja «puede que este móvil no suene» en inicio para siempre: los canales de tonos viejos se barren, y «Reactivar» abre la página del canal silenciado en vez de la lista de la app.</item>
+        <item>Los botones de «arreglar» de Ajustes ya no pueden cerrar la app en un móvil sin esa página de ajustes: abren la página de la app y lo dicen. «Excluir» de la optimización de batería lo pide con el diálogo de un toque en vez de dejarte en una lista con todas las apps.</item>
+        <item>En el editor, mover el inicio de una serie más allá de su fin arrastra el fin, en vez de dejarte montar algo que luego el guardar rechaza. Un lugar sin nombre, un plazo de cero y una semana sin ningún día dicen por qué «Añadir» está apagado. Y un permiso de ubicación denegado dos veces tiene ahora salida: una fila con un botón «Ajustes», visible aunque ya haya un pin en el mapa.</item>
+    </string-array>
     <string-array name="whats_new_0_66_2">
         <item>Un día que no es de este año ahora dice su año — «mar 3 sept 2030» — allí donde la app te lee un momento: la línea de «suena mañana · luego…» bajo el editor, las tarjetas, el historial. Un recordatorio que vuelve cada cuatro años se leía «luego mar 3 sept · luego dom 3 sept», el mismo día dos veces y sólo el día de la semana para distinguirlos.</item>
     </string-array>

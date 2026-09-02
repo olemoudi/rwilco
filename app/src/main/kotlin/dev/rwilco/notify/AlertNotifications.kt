@@ -52,6 +52,13 @@ import dev.rwilco.model.notificationSnoozeOffers
  * — which is exactly the leftover this function was written to prevent, arriving through the
  * other door.
  */
+/**
+ * The alert channels this tone and rhythm no longer ring: everything under the prefix that is
+ * not one of the [live] four. Pure, for the test; the deleting is [AlertNotifications.ensureChannels]'s.
+ */
+internal fun staleAlertChannels(existing: List<String>, live: Set<String>): List<String> =
+    existing.filter { it.startsWith(AlertNotifications.ALERT_CHANNEL_PREFIX) && it !in live }
+
 internal fun bundleChildren(listed: List<Int>, posted: Int? = null, cancelled: Set<Int> = emptySet()): Int {
     val ids = listed.toMutableSet()
     ids -= cancelled
@@ -110,10 +117,21 @@ object AlertNotifications {
         // With notification-policy access granted the channels are made to bypass Do Not
         // Disturb outright; without it the alarm attributes below are what get them through.
         val bypass = manager.isNotificationPolicyAccessGranted
+        val live = mutableSetOf<String>()
         for (sound in listOf(false, true)) {
             for (vibrate in listOf(false, true)) {
-                manager.createNotificationChannel(alertChannel(context, sound, vibrate, vibration, chosen, bypass))
+                val channel = alertChannel(context, sound, vibrate, vibration, chosen, bypass)
+                manager.createNotificationChannel(channel)
+                live += channel.id
             }
+        }
+        // **The ones nobody rings any more go** (0.67.0). A channel is made per tone, rhythm
+        // and DND grant and was kept for ever, so one muted by hand under an old tone stood in
+        // the phone's list for good — and counted as "a reminder channel is muted" on Home, a
+        // red strip nothing could clear. Only the four this tone and rhythm ring are kept; a
+        // muted one among them is a real problem, and the fix row can name it.
+        for (stale in staleAlertChannels(manager.notificationChannels.map { it.id }, live)) {
+            manager.deleteNotificationChannel(stale)
         }
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_MISSED, context.getString(R.string.notif_channel_missed), NotificationManager.IMPORTANCE_DEFAULT).apply {
@@ -195,7 +213,11 @@ object AlertNotifications {
         val builder = NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(reminder.text)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(reason.ifBlank { reminder.text }))
+            // Expanded, the card shows the words whole and the reason under them (0.67.0). The
+            // title is one ellipsised line collapsed *and* expanded, and the big text was the
+            // reason alone, so a long reminder could never be read in full from the shade —
+            // the one surface most of them are answered on.
+            .setStyle(NotificationCompat.BigTextStyle().bigText(if (reason.isBlank()) reminder.text else reminder.text + "\n" + reason))
             .setContentIntent(tap)
             .setAutoCancel(false)
             .setOnlyAlertOnce(false)

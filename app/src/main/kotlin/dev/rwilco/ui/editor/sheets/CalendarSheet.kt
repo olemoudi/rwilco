@@ -151,10 +151,11 @@ fun CalendarSheet(
         onDismiss = onDismiss,
         onConfirm = { onConfirm(built) },
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
-        // A week with no day ticked is a week that never comes round, and a stretch with no
-        // width has no moment in it.
+        // A week with no day ticked is a week that never comes round, a stretch with no
+        // width has no moment in it, and a series told to stop before it starts is empty.
         confirmEnabled = (unit != RepeatUnit.WEEK || selectedDays.isNotEmpty()) &&
-            (kind != WhenKind.IN_WINDOW || windowFrom != windowTo),
+            (kind != WhenKind.IN_WINDOW || windowFrom != windowTo) &&
+            (endMode != 1 || endDate >= startsOn),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm)) {
             Label(stringResource(R.string.sheet_repeat_every))
@@ -182,6 +183,15 @@ fun CalendarSheet(
                 selected = selectedDays,
                 onToggle = { day -> days = if (day.name in days) days - day.name else days + day.name },
             )
+            // Said, not only greyed out: "Añadir" going quiet with no word beside it reads as
+            // the sheet being broken.
+            if (selectedDays.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.calendar_days_error),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
         }
 
         // The same two answers for a month and for a year: the day, or a weekday of it. A
@@ -239,7 +249,15 @@ fun CalendarSheet(
             Label(stringResource(R.string.sheet_repeat_starts))
             // The anchor, not a formality: every block is counted from the day this falls on,
             // so moving it moves the whole series — which is why it is shown and not assumed.
-            MonthCalendar(selected = startsOn, today = today, onSelect = { startsOn = it }, minDate = null)
+            // The end follows the start (0.67.0): only the end grid was fenced by the start,
+            // so moving the start past a chosen end built a series the save then refused
+            // with nothing on the sheet to point at. The same coupling DateRangeSheet has.
+            MonthCalendar(
+                selected = startsOn,
+                today = today,
+                onSelect = { startsOn = it; if (endDate < it) endDate = it },
+                minDate = null,
+            )
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm)) {
@@ -251,7 +269,8 @@ fun CalendarSheet(
                     stringResource(R.string.sheet_repeat_ends_after),
                 ),
                 selectedIndex = endMode,
-                onSelect = { endMode = it },
+                // The default end (a month out) can already sit before a start moved past it.
+                onSelect = { endMode = it; if (it == 1 && endDate < startsOn) endDate = startsOn },
             )
             when (endMode) {
                 1 -> MonthCalendar(selected = endDate, today = today, onSelect = { endDate = it }, minDate = startsOn)

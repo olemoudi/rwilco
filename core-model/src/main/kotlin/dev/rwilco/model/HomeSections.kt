@@ -14,6 +14,13 @@ data class HomeEntry(
     val next: NextFire?,
     /** What the alarm is set for: the moment this reminder cannot ring before. */
     val wake: Wake? = null,
+    /**
+     * For a reminder with nothing ahead of it, the moment that got away: when it last rang, or
+     * the alarm it was armed for, or — for one that never rang at all — the last moment its
+     * rules named. What "Vencidos" is sorted by and what its cards say ("hace 3 h"); null
+     * everywhere else.
+     */
+    val missedAt: Instant? = null,
 )
 
 /**
@@ -70,7 +77,13 @@ fun groupForHome(
         .filter { it.status != Status.DONE }
         .filter { tagFilter == null || tagFilter.matches(it) }
         .map {
-            HomeEntry(it, nextFire(it, now, zone, defaultTime, dayStart, shape), nextWake(it, now, zone, defaultTime, dayStart, shape))
+            val next = nextFire(it, now, zone, defaultTime, dayStart, shape)
+            HomeEntry(
+                reminder = it,
+                next = next,
+                wake = nextWake(it, now, zone, defaultTime, dayStart, shape),
+                missedAt = if (next == null) it.missedMoment(now, zone, defaultTime, dayStart, shape) else null,
+            )
         }
     val hero = heroOf(entries, now)
     val grouped = entries
@@ -78,10 +91,14 @@ fun groupForHome(
         // A reminder with no trigger but a recurrence is not "kept, not timed": it has a moment.
         .groupBy { sectionOf(it.next, it.reminder.status, it.reminder.rules.isNotEmpty() || it.reminder.recurrence.isAnchored, now, zone) }
         // By the moment, then by the day it was written. **Not by when it was last edited**,
-        // which is what it was: in the sections where nothing has a moment — vencidos, cuando
-        // ocurra, sin fecha, en pausa — every card ties on the first key, so the second was the
-        // whole order, and fixing a typo threw the reminder to the top of its section. Nothing
-        // about editing the words says anything about where a card belongs.
+        // which is what it was: in the sections where nothing has a moment — cuando ocurra,
+        // sin fecha, en pausa — every card ties on the first key, so the second was the whole
+        // order, and fixing a typo threw the reminder to the top of its section. Nothing about
+        // editing the words says anything about where a card belongs. **Vencidos has a
+        // moment too** (0.67.0): the one that got away. It used to tie on `Instant.MAX` with
+        // the rest, so five overdue cards came out in the order they were *typed*; now the one
+        // missed longest ago is on top, and the list reads from the past to the future the
+        // way the sections under it do.
         .mapValues { (_, list) -> list.sortedWith(compareBy({ it.sortInstant() }, { it.reminder.createdAt })) }
     val ordered = LinkedHashMap<Section, List<HomeEntry>>()
     for (section in Section.entries) grouped[section]?.let { ordered[section] = it }
@@ -127,7 +144,22 @@ val HERO_HORIZON: Duration = Duration.ofDays(7)
 private fun HomeEntry.sortInstant(): Instant = when (val next = next) {
     is NextFire.Scheduled -> next.at
     is NextFire.Sometime -> next.at
+    null -> missedAt ?: Instant.MAX
     else -> Instant.MAX
+}
+
+/**
+ * The moment an overdue reminder missed. The ring is the best witness when there was one; the
+ * alarm it was armed for is the next best (a ring the phone slept through); and for one that
+ * never got as far as an alarm, the last moment its rules named ([lastMomentGone]), which is
+ * the same walk the safety net takes. A paused or unarmed shape with nothing to name gives
+ * null, and sorts last.
+ */
+private fun Reminder.missedMoment(now: Instant, zone: ZoneId, defaultTime: LocalTime, dayStart: LocalTime, shape: DayShape): Instant? {
+    if (status != Status.ACTIVE) return null
+    lastFiredAt?.let { return it }
+    armedFor?.takeIf { !it.isAfter(now) }?.let { return it }
+    return lastMomentGone(now, zone, defaultTime, dayStart, shape)
 }
 
 /** Every tag in use on open reminders, most used first, then alphabetically; one spelling per tag. */

@@ -47,6 +47,8 @@ import dev.rwilco.notify.canScheduleExactAlarms
 import dev.rwilco.notify.ignoresBatteryOptimisations
 import dev.rwilco.notify.isBackgroundRestricted
 import dev.rwilco.notify.canUseFullScreenIntent
+import dev.rwilco.notify.mutedAlertChannelId
+import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.notify.hasUsageAccess
 import dev.rwilco.ui.components.PermissionFixRow
 import dev.rwilco.ui.components.RwilcoCard
@@ -87,6 +89,8 @@ data class AlertReadiness(
      * with the rest, so the card stays a pure function of one snapshot.
      */
     val policyAccess: Boolean = true,
+    /** The muted channel's id when [channels] is false, so the fix opens that channel's page. Not one of the ten. */
+    val mutedChannelId: String? = null,
     /**
      * Whether this is an answer at all. Everything above starts granted so a fresh screen never
      * flashes red before the first read — which means the default is a *guess*, and anything
@@ -171,6 +175,7 @@ fun rememberAlertReadiness(): AlertReadiness {
 fun Context.readAlertReadiness(): AlertReadiness = AlertReadiness(
     notifications = NotificationManagerCompat.from(this).areNotificationsEnabled(),
     channels = !anyAlertChannelMuted(),
+    mutedChannelId = mutedAlertChannelId(),
     fullScreen = canUseFullScreenIntent(),
     exactAlarms = canScheduleExactAlarms(),
     alarmVolume = alarmVolumeIsUp(),
@@ -190,10 +195,15 @@ fun Context.readAlertReadiness(): AlertReadiness = AlertReadiness(
 @Composable
 fun AlertPermissionsCard(readiness: AlertReadiness) {
     val context = LocalContext.current
+    val snackbar = LocalSnackbar.current
+    val pageUnavailable = stringResource(R.string.settings_page_unavailable)
+    // Every fix button goes through this: a page this phone does not have is the app's own
+    // page and a word about it, not a crash (see openSettingsPage).
+    val open: (Intent) -> Unit = { intent -> if (!context.openSettingsPage(intent)) snackbar.show(pageUnavailable) }
     // A grant needs no bookkeeping here: the dialog resumes the activity behind it, and the
     // resume is what re-reads all ten. Only a refusal has anywhere else to go.
     val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (!granted) context.startActivity(appNotificationSettings(context))
+        if (!granted) open(appNotificationSettings(context))
     }
 
     RwilcoCard {
@@ -220,7 +230,7 @@ fun AlertPermissionsCard(readiness: AlertReadiness) {
                         if (needsRuntimePermission) {
                             askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
                         } else {
-                            context.startActivity(appNotificationSettings(context))
+                            open(appNotificationSettings(context))
                         }
                     },
                 )
@@ -229,7 +239,9 @@ fun AlertPermissionsCard(readiness: AlertReadiness) {
                 PermissionFixRow(
                     text = stringResource(R.string.perm_channel_muted),
                     action = stringResource(R.string.perm_channel_muted_fix),
-                    onFix = { context.startActivity(appNotificationSettings(context)) },
+                    // The channel's own page, where the switch is: the app's list showed four
+                    // channels with the same names and no way to tell which one was meant.
+                    onFix = { open(readiness.mutedChannelId?.let { context.channelSettingsIntent(it) } ?: appNotificationSettings(context)) },
                 )
             }
             if (!readiness.fullScreen) {
@@ -238,7 +250,7 @@ fun AlertPermissionsCard(readiness: AlertReadiness) {
                     action = stringResource(R.string.perm_fullscreen_fix),
                     onFix = {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                            context.startActivity(
+                            open(
                                 Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:${context.packageName}")),
                             )
                         }
@@ -251,7 +263,7 @@ fun AlertPermissionsCard(readiness: AlertReadiness) {
                     action = stringResource(R.string.perm_alarms_fix),
                     onFix = {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            context.startActivity(
+                            open(
                                 Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}")),
                             )
                         }
@@ -262,14 +274,14 @@ fun AlertPermissionsCard(readiness: AlertReadiness) {
                 PermissionFixRow(
                     text = stringResource(R.string.perm_volume_missing),
                     action = stringResource(R.string.perm_volume_fix),
-                    onFix = { context.startActivity(Intent(Settings.ACTION_SOUND_SETTINGS)) },
+                    onFix = { open(Intent(Settings.ACTION_SOUND_SETTINGS)) },
                 )
             }
             if (!readiness.throughDnd) {
                 PermissionFixRow(
                     text = stringResource(R.string.perm_dnd_missing),
                     action = stringResource(R.string.perm_dnd_fix),
-                    onFix = { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) },
+                    onFix = { open(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) },
                 )
             }
             // The two that decide whether the app is allowed to keep its promises with the
@@ -280,7 +292,7 @@ fun AlertPermissionsCard(readiness: AlertReadiness) {
                     text = stringResource(R.string.perm_restricted_missing),
                     action = stringResource(R.string.perm_restricted_fix),
                     onFix = {
-                        context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
+                        open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
                     },
                 )
             }
@@ -288,7 +300,14 @@ fun AlertPermissionsCard(readiness: AlertReadiness) {
                 PermissionFixRow(
                     text = stringResource(R.string.perm_battery_missing),
                     action = stringResource(R.string.perm_battery_fix),
-                    onFix = { context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) },
+                    onFix = {
+                        // The one-tap dialog for this app, not the phone-wide list that opens
+                        // filtered to "not optimised" — which this app is not in, so "Excluir"
+                        // landed somebody on a list to search. The list is the fallback for
+                        // the few builds that refuse the dialog.
+                        val ask = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}"))
+                        if (runCatching { open(ask) }.isFailure) open(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                    },
                 )
             }
             // The two that decide whether a firing takes the screen or knocks: without them the
@@ -298,7 +317,7 @@ fun AlertPermissionsCard(readiness: AlertReadiness) {
                     text = stringResource(R.string.perm_overlay_missing),
                     action = stringResource(R.string.perm_overlay_fix),
                     onFix = {
-                        context.startActivity(
+                        open(
                             Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")),
                         )
                     },
@@ -308,7 +327,7 @@ fun AlertPermissionsCard(readiness: AlertReadiness) {
                 PermissionFixRow(
                     text = stringResource(R.string.perm_usage_missing),
                     action = stringResource(R.string.perm_usage_fix),
-                    onFix = { context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) },
+                    onFix = { open(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) },
                 )
             }
             // After the red rows, because it is not one: alarms get through every mode but
@@ -320,7 +339,7 @@ fun AlertPermissionsCard(readiness: AlertReadiness) {
                 SettingsLinkRow(
                     title = stringResource(R.string.perm_dnd_optin),
                     summary = stringResource(R.string.perm_dnd_optin_hint),
-                    onClick = { runCatching { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) } },
+                    onClick = { open(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) },
                 )
             }
         }

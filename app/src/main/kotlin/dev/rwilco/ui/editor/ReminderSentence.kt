@@ -91,7 +91,7 @@ private fun sentenceText(parts: List<SentencePart>, today: LocalDate, defaultTim
                         // cannot be called from joinToString's lambda. Joined with the same "y"
                         // the rules use, and the "sólo" said once in front of all of them.
                         val fences = mutableListOf<String>()
-                        for (condition in part.rule.conditions) fences += conditionPhrase(words, condition)
+                        for (condition in part.rule.conditions) fences += conditionPhrase(words, condition, today)
                         val joined = fences.joinToString(" " + stringResource(R.string.editor_sentence_and) + " ")
                         append(" " + stringResource(R.string.editor_sentence_only, joined))
                     }

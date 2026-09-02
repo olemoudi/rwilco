@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import dev.rwilco.ui.components.LocalSnackbar
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -58,6 +59,8 @@ import kotlinx.coroutines.withContext
 fun AppUpdateCard() {
     val spacing = Tokens.spacing
     val context = LocalContext.current
+    val snackbar = LocalSnackbar.current
+    val pageUnavailable = stringResource(R.string.settings_page_unavailable)
     val updateState by UpdateCenter.state.collectAsStateWithLifecycle()
 
     // Re-check permissions when the person comes back from the settings screens we open.
@@ -110,9 +113,9 @@ fun AppUpdateCard() {
                     text = stringResource(R.string.perm_install_missing),
                     action = stringResource(R.string.perm_install_fix),
                     onFix = {
-                        context.startActivity(
-                            Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}")),
-                        )
+                        if (!context.openSettingsPage(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}")))) {
+                            snackbar.show(pageUnavailable)
+                        }
                     },
                 )
             }

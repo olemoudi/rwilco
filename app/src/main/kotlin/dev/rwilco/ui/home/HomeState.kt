@@ -60,15 +60,16 @@ data class HomeUiState(
  * pinned by a test, rather than counted out at the call site where nothing would ever notice it
  * drifting.
  *
- * [strip] and [pinned] are the two items above the list that come and go; searching and the
- * loading placeholder are not asked about, because neither is on screen when somebody arrives
- * back from a save.
+ * [strip], [pinned] and [undoRow] are the items above the list that come and go; searching and
+ * the loading placeholder are not asked about, because neither is on screen when somebody
+ * arrives back from a save.
  */
-fun homeCardIndex(state: HomeUiState, id: String, strip: Boolean, pinned: Boolean): Int? {
+fun homeCardIndex(state: HomeUiState, id: String, strip: Boolean, pinned: Boolean, undoRow: Boolean = false): Int? {
     var index = 0
     if (strip) index++
     if (pinned) index++
     if (state.tags.isNotEmpty()) index++
+    if (undoRow) index++
     if (state.hero != null) {
         if (state.hero.card.id == id) return index
         index++
@@ -128,6 +129,13 @@ data class ReminderCardUi(
     val snoozedUntil: Instant? = null,
     /** Or the place it was pushed away to: "cuando llegue a casa". The two are never both set. */
     val snoozedToPlace: Trigger.Location? = null,
+    /**
+     * For a card under "Vencidos", the moment that got away ([dev.rwilco.model.HomeEntry.missedAt]),
+     * so the card can say "debía sonar hace 3 h". The rows under it go on describing the rule
+     * ("09:00 · lunes") exactly as a future card's do, which is why the section heading was the
+     * only thing telling the two apart.
+     */
+    val missedAt: Instant? = null,
     /**
      * The tag whose colour runs down the card's edge, or null for a reminder with no tags.
      *
@@ -222,7 +230,7 @@ fun buildHomeState(
         else tags.firstOrNull { it is TagFilter.Named && it.tag.equals(chosen.tag, ignoreCase = true) }
     }
     val groups = groupForHome(reminders, now, zone, defaultTime, filter, dayStart, shape)
-    fun card(reminder: Reminder): ReminderCardUi {
+    fun card(reminder: Reminder, missedAt: Instant? = null): ReminderCardUi {
         val standings = reminder.ruleStandings(now, zone, dayStart, shape) { index -> inside(reminder.id, index) }
         val circles = reminder.watchedCircles(now, zone, defaultTime, shape, dayStart)
         val rows = reminder.rules.mapIndexed { index, rule ->
@@ -250,6 +258,7 @@ fun buildHomeState(
             // A paused reminder rings at no moment at all, so a snooze on it is not news.
             snoozedUntil = reminder.snoozedUntil?.takeIf { it > now && reminder.status == Status.ACTIVE },
             snoozedToPlace = reminder.snoozedToPlace?.takeIf { reminder.status == Status.ACTIVE },
+            missedAt = missedAt,
             match = reminder.ruleMatch.takeIf { reminder.rules.size > 1 },
             recurrence = reminder.recurrence.takeIf { it.isAnchored },
             snoozeOffered = reminder.awaitingAnswer(now) ||
@@ -271,7 +280,7 @@ fun buildHomeState(
                 atEarliest = hero.atEarliest,
             )
         },
-        sections = groups.sections.map { (section, entries) -> SectionUi(section, entries.map { card(it.reminder) }) },
+        sections = groups.sections.map { (section, entries) -> SectionUi(section, entries.map { card(it.reminder, it.missedAt) }) },
         tags = tags,
         selectedTag = filter,
         defaultTime = defaultTime,

@@ -26,10 +26,13 @@ object TimeText {
      * Without it, "luego mar 3 sept · luego dom 3 sept" was a reminder four years apart reading
      * as the same day twice, the weekday its only tell.
      */
-    fun dayDate(date: LocalDate, locale: Locale, today: LocalDate? = null): String {
-        val pattern = if (today != null && date.year != today.year) "EEE d MMM yyyy" else "EEE d MMM"
-        return date.format(DateTimeFormatter.ofPattern(pattern, locale)).replace(".", "")
-    }
+    fun dayDate(date: LocalDate, locale: Locale, today: LocalDate? = null): String =
+        if (today != null && date.year != today.year) dayDateWithYear(date, locale)
+        else date.format(DateTimeFormatter.ofPattern("EEE d MMM", locale)).replace(".", "")
+
+    /** "jue 27 ago 2026", always: the head of an export, which is read in some other year. */
+    fun dayDateWithYear(date: LocalDate, locale: Locale): String =
+        date.format(DateTimeFormatter.ofPattern("EEE d MMM yyyy", locale)).replace(".", "")
 
     /** "jueves, 27 de agosto" / "Thursday, 27 August" — the Home header. */
     fun dateLong(date: LocalDate, locale: Locale): String {

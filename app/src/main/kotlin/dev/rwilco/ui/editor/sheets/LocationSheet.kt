@@ -65,7 +65,10 @@ import dev.rwilco.model.MIN_RADIUS_M
 import dev.rwilco.model.Presence
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.Trigger
+import dev.rwilco.ui.components.PermissionFixRow
 import dev.rwilco.ui.components.PresetChip
+import dev.rwilco.ui.settings.appDetailsIntent
+import dev.rwilco.ui.settings.openSettingsPage
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.SegmentedChoice
 import dev.rwilco.ui.components.SheetScaffold
@@ -265,6 +268,14 @@ fun LocationSheet(
             ),
             modifier = Modifier.fillMaxWidth(),
         )
+        // The pin is down and "Añadir" is grey: the one thing missing is said, where the field is.
+        if (known && label.isBlank()) {
+            Text(
+                text = stringResource(R.string.place_label_required),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
         if (pickTransition) {
             PresenceChoice(
                 presence = Presence.valueOf(presence),
@@ -385,13 +396,23 @@ fun LocationSheet(
             Text(
                 text = when {
                     known -> String.format(Locale.ROOT, "%.5f, %.5f", lat, lng) + " · " + stringResource(R.string.place_map_hint)
-                    failure == FAILURE_PERMISSION -> stringResource(R.string.place_no_permission)
                     failure == FAILURE_NO_FIX -> stringResource(R.string.place_no_fix)
                     else -> stringResource(R.string.place_map_hint)
                 },
                 style = MaterialTheme.typography.bodySmall,
-                color = if (failure != null && !known) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (failure == FAILURE_NO_FIX && !known) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            // A permission refused twice is one the system will not ask for again, so the
+            // crosshair used to spin and stop with nowhere to go — and with a pin already down
+            // the refusal was not even said, because the coordinates took its line. Its own
+            // row, with the door to the app's page, whether or not there is a pin (0.67.0).
+            if (failure == FAILURE_PERMISSION) {
+                PermissionFixRow(
+                    text = stringResource(R.string.place_no_permission),
+                    action = stringResource(R.string.home_settings),
+                    onFix = { context.openSettingsPage(context.appDetailsIntent()) },
+                )
+            }
         }
         RadiusControl(radius = radius, onChange = { radius = it })
         if (keepOffered) {

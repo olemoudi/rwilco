@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import dev.rwilco.ui.components.LocalSnackbar
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -104,16 +105,19 @@ fun LocationPermissionCard(readiness: PlaceReadiness, needsPlaces: Boolean, watc
     val context = LocalContext.current
     val access = readiness.access
     val locationOn = readiness.locationOn
+    val snackbar = LocalSnackbar.current
+    val pageUnavailable = stringResource(R.string.settings_page_unavailable)
+    val open: (Intent) -> Unit = { intent -> if (!context.openSettingsPage(intent)) snackbar.show(pageUnavailable) }
 
     val askForeground = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         // A flat refusal cannot be asked again from here: the system stops showing the dialog.
         val granted = context.locationAccess()
-        if (granted == LocationAccess.NONE || granted == LocationAccess.APPROXIMATE) context.startActivity(appDetails(context))
+        if (granted == LocationAccess.NONE || granted == LocationAccess.APPROXIMATE) open(appDetails(context))
     }
     val askBackground = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         // Since Android 11 "all the time" only exists on the app's own settings page; the
         // request above is refused without ever showing a dialog, so this is the way through.
-        if (context.locationAccess() != LocationAccess.ALWAYS) context.startActivity(appDetails(context))
+        if (context.locationAccess() != LocationAccess.ALWAYS) open(appDetails(context))
     }
 
     RwilcoCard {
@@ -189,7 +193,7 @@ fun LocationPermissionCard(readiness: PlaceReadiness, needsPlaces: Boolean, watc
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                             askBackground.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                         } else {
-                            context.startActivity(appDetails(context))
+                            open(appDetails(context))
                         }
                     },
                 )
@@ -200,7 +204,7 @@ fun LocationPermissionCard(readiness: PlaceReadiness, needsPlaces: Boolean, watc
                 PermissionFixRow(
                     text = stringResource(R.string.perm_location_off),
                     action = stringResource(R.string.perm_location_off_fix),
-                    onFix = { context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) },
+                    onFix = { open(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) },
                 )
             }
         }

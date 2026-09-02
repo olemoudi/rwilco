@@ -73,6 +73,22 @@ class NotificationBundleTest {
         Thread.sleep(600)
     }
 
+    /**
+     * A channel from a tone nobody rings any more is swept away when the channels are made,
+     * and the two quiet channels beside it are not: the phone's list used to keep every tone
+     * ever chosen, and a muted one among them was a red strip on Home nothing could clear.
+     */
+    @Test
+    fun aChannelOfAnOldToneIsSweptAwayAndTheQuietOnesStay() {
+        manager.createNotificationChannel(
+            android.app.NotificationChannel("alert_v2_zzz_old_tone", "old", NotificationManager.IMPORTANCE_DEFAULT),
+        )
+        AlertNotifications.ensureChannels(context)
+        assertEquals(null, manager.getNotificationChannel("alert_v2_zzz_old_tone"))
+        assertEquals(true, manager.getNotificationChannel(AlertNotifications.CHANNEL_MISSED) != null)
+        assertEquals(true, manager.getNotificationChannel(AlertNotifications.CHANNEL_NET) != null)
+    }
+
     @Test
     fun dealingWithOneAlertLeavesTheOtherStanding() {
         post("bundle-a", "Sacar la basura")

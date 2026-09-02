@@ -28,6 +28,7 @@ import java.util.UUID
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -395,7 +396,33 @@ class HomeViewModel(
                     repository.delete(id)
                 }
             }
-            events.send(HomeEvent.Removed(kind, reminder, history))
+            val event = HomeEvent.Removed(kind, reminder, history)
+            if (kind == HomeEvent.Removed.Kind.DELETED) keepUndoable(event)
+            events.send(event)
+        }
+    }
+
+    /**
+     * **The last delete stays undoable for a minute, whatever the snackbar does** (0.67.0).
+     *
+     * A delete is the one thing on Home with no other way back: "hecho" is on the Hechos
+     * screen, a pause is a tap, a snooze is on the card — a deleted row is gone. Its only door
+     * was the snackbar, which lasts four seconds and is replaced by the next one; so a delete
+     * followed by a "hecho" on the card under it, which is how a list gets cleared, destroyed
+     * the first reminder with a vault restore as the only way back. This is that door held
+     * open: Home draws a row at the top of the list for [UNDO_DELETE_MS] with the same undo the
+     * snackbar had. The snackbar is untouched.
+     */
+    val pendingDelete: StateFlow<HomeEvent.Removed?> get() = _pendingDelete
+    private val _pendingDelete = MutableStateFlow<HomeEvent.Removed?>(null)
+    private var pendingDeleteTimer: Job? = null
+
+    private fun keepUndoable(removed: HomeEvent.Removed) {
+        pendingDeleteTimer?.cancel()
+        _pendingDelete.value = removed
+        pendingDeleteTimer = viewModelScope.launch {
+            delay(UNDO_DELETE_MS)
+            _pendingDelete.compareAndSet(removed, null)
         }
     }
 
@@ -405,6 +432,8 @@ class HomeViewModel(
      * status back would leave the clock wound forward.
      */
     fun undo(removed: HomeEvent.Removed) {
+        // Undone from either door, the other closes: the row is about a delete that is no more.
+        if (_pendingDelete.compareAndSet(removed, null)) pendingDeleteTimer?.cancel()
         viewModelScope.launch { repository.restore(removed.reminder, removed.history) }
     }
 
@@ -504,3 +533,6 @@ class HomeViewModel(
             ) as T
     }
 }
+
+/** How long a deleted reminder can be brought back from the row on Home; see [HomeViewModel.pendingDelete]. */
+const val UNDO_DELETE_MS = 60_000L

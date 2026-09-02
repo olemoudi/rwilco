@@ -376,6 +376,45 @@ Left alone, on purpose: a missed moment is held with no fresh OS alarm until a c
 (Room lives in credential-encrypted storage, and BOOT_COMPLETED after unlock catches up);
 `conditionsHold` fails open for places; a past recurrence rings once immediately by design.
 
+## The review round, 0.67.0 (2026-09-02)
+A read of the whole experience by three reviewers with different remits (Home and cards; the
+editor and presets; the alert, notifications, settings and accessibility), eighty-odd findings,
+the thirteen that lose data, crash or dead-end fixed first. Worth not re-deriving:
+
+- **Delete's undo was a four-second snackbar, and the next snackbar killed it.**
+  `SnackbarController` shows one at a time on purpose (five quick swipes must not queue five
+  "Eliminado"), which is right for "hecho" and wrong for the one act with no other way back.
+  The fix is not a longer snackbar but a second door: the ViewModel keeps the last delete for a
+  minute and Home draws a row for it.
+- **Notification channels were never deleted.** One per tone, rhythm and DND grant, kept for
+  ever, and `anyAlertChannelMuted` tested every one of them — so a channel muted under a tone
+  nobody rang any more was a red strip on Home that nothing could clear. Sweep in
+  `ensureChannels`, and make the channels with the *chosen* tone at start-up (the defaults
+  first would have swept the chosen ones on every launch).
+- **`startActivity` on a settings page is not safe.** Three of the pages the readiness card
+  opens are absent on some OEM builds and on Android Go; `openSettingsPage` falls back to the
+  app's page and says so.
+- **A `Row` with no weights measures its unweighted children first**, and the wordmark took the
+  header's width from the four buttons at a large font scale; the strips' answers did the same
+  to "Hecho". `weight(1f, fill = false)` on the thing that should give, `FlowRow` where the
+  things should wrap.
+- The compose test clock virtualises `delay` in effects and fast-forwards animations while
+  waiting for idle (see `AlertGuardTest`); the emulator's SystemUI ANR dialog sits over every
+  capture once it appears and "Close app" restarts SystemUI — between runs only.
+
+Still open from the same round, in order: the alert guard's three softenings (opened by a tap,
+the strips after an answer, the preview's close), the FAB in neutral, the hero's mark, the blank
+search, the widget's words and overdue count, "nada para hoy", the pinned tag filter, the pin
+panel's semantics, Hechos off the main thread, the stability config, an error state for Home,
+the editor's refusal pointing at the card, the sheets asking before discarding, "Vuelve"
+selection semantics, the preset name cap, the chooser subtitle, "preset guardado", the sentence
+truncating its "when", "Suena al llegar", background location under a place rule, the rename
+focus, the countdown preview's day, the map's 44dp "Listo", the 64dp primary token, first-run
+wording, readiness in two groups, the sound-copy failure, the update's notification, the light
+theme's contrast; then the copy, token, haptic and search polish, and the dead code
+(`HoldButton`'s disc, `TimeText.dateLong`, `RuleRoot(muted)`, `nextRoundHour`, `EVERY_DAY`,
+`editor_repeats*`, `RuleMatch.joinRes` twice).
+
 ## Still to prove on the real phone (Pixel 8 Pro)
 - The reliability round (0.59.0): a real arrival three minutes after a clock ring must ring
   (the echo is per rule now); «al llegar a casa» said from the metro with no good fix must

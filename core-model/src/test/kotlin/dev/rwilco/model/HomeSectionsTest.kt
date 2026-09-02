@@ -136,6 +136,27 @@ class HomeSectionsTest {
     }
 
     @Test
+    fun `overdue cards sit in the order they were missed, not written`() {
+        // Three that got away: one rang at nine and was left, one was armed for noon and the
+        // phone slept through it, one was written for last week and never got as far as an
+        // alarm. Written in the opposite order, so the old tie on `Instant.MAX` would have put
+        // the freshest miss first.
+        val rang = reminder(at(2026, 8, 27, 9, 0)).copy(id = "rang", createdAt = local(2026, 8, 27, 8, 0), lastFiredAt = local(2026, 8, 27, 9, 0))
+        val slept = reminder(at(2026, 8, 27, 12, 0)).copy(id = "slept", createdAt = local(2026, 8, 27, 7, 0), armedFor = local(2026, 8, 27, 12, 0))
+        val forgotten = reminder(at(2026, 8, 20, 18, 0)).copy(id = "forgotten", createdAt = local(2026, 8, 19, 10, 0))
+
+        val groups = groupForHome(listOf(rang, slept, forgotten), now, zone, defaultTime)
+
+        val overdue = groups.sections[Section.OVERDUE].orEmpty()
+        assertEquals(listOf("forgotten", "rang", "slept"), overdue.map { it.reminder.id })
+        assertEquals(local(2026, 8, 20, 18, 0), overdue[0].missedAt, "a moment that never rang is still the moment it named")
+        assertEquals(local(2026, 8, 27, 9, 0), overdue[1].missedAt, "the ring is the witness")
+        assertEquals(local(2026, 8, 27, 12, 0), overdue[2].missedAt, "the alarm the phone slept through")
+        // Nothing ahead of it is what makes a card overdue; a card with a moment ahead has no miss.
+        assertNull(groups.hero?.entry?.missedAt)
+    }
+
+    @Test
     fun `dealt with, the same reminder is next up again`() {
         val dealt = local(2026, 8, 27, 14, 30)
         val pills = reminder().copy(

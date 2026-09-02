@@ -633,6 +633,19 @@ because that is what its chip would show.
   among — `SettingsLinkRow(topLevel = true)`, `titleMedium`, and `heading()` in the semantics so
   a screen reader walking the index by its headings does not step over it. In the same face as
   its neighbours, because the same word in a lighter one looks like a mistake.
+- **Every "fix" button goes through `openSettingsPage`** (0.67.0, `ui/settings/SettingsIntents.kt`):
+  a page this phone does not have — `ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS`,
+  `ACTION_USAGE_ACCESS_SETTINGS` and the DND policy page are absent or blocked on plenty of OEM
+  builds and on Android Go — opens the app's own page and says so in the snackbar, where it
+  used to kill the app from a red row. Battery asks with the one-tap
+  `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` dialog (the manifest carries the permission; a
+  sideloaded app is allowed it) and falls back to the list; the list opened filtered to "not
+  optimised", which this app is never in, so "Excluir" was a search. **And a muted channel is
+  named** (`AlertReadiness.mutedChannelId`): the fix opens that channel's own page rather than
+  the app's list of four channels wearing the same names. Every `alert_*` channel left on the
+  phone is one the chosen tone and rhythm ring, because `ensureChannels` sweeps the rest —
+  see the channels note under firing — so a muted one is a real problem, and the strip that
+  used to say "1 cosa por arreglar" for ever about a tone nobody rang any more is gone.
 - **Settings is an index, not a scroll** (`SettingsScreen.kt`, `SettingsGroup.kt`). Thirty-odd
   controls in one column is past every published ceiling for a settings screen, so they fold
   into ten rows, each carrying its own current value — the sound's name, "08:00–23:30", "3
@@ -742,6 +755,28 @@ because that is what its chip would show.
   the same key, and nothing rebuilt it until a scroll took it off screen and back. Which way it went is remembered from when the
   glass filled, not read off the box at release — by then the box is sliding back and would
   answer "neither".
+- **A delete can be undone for a minute** (0.67.0, `HomeViewModel.pendingDelete`,
+  `UndoDeleteRow`). A delete is the one thing on Home with no other way back — "hecho" is on
+  the Hechos screen, a pause is a tap, a snooze is on the card — and its only door was the
+  snackbar: four seconds, and replaced by the next one. Delete a card and swipe the next one
+  "hecho", which is how a list gets cleared, and the first was gone with a vault restore as
+  the only way back. The ViewModel keeps the last delete for `UNDO_DELETE_MS` and Home draws a
+  row at the top of the list with the same undo; the snackbar is untouched, and `homeCardIndex`
+  counts the row (`undoRow`) so a save still scrolls to its card. `HomeSwipeTest` deletes one,
+  swipes the next, and brings the first back from the row.
+- **"Vencidos" is ordered by the moment that got away, and says it** (0.67.0,
+  `HomeEntry.missedAt`). Overdue entries tied on `Instant.MAX` and fell through to `createdAt`,
+  so five overdue cards came out in the order they were typed, and the card itself read the
+  rule ("09:00 · lunes") exactly as a future card's does — the heading was the only tell. The
+  missed moment is the ring when there was one, else the alarm the phone slept through
+  (`armedFor`), else the last moment the rules named (`lastMomentGone`, the safety net's own
+  walk); oldest first, so the list reads from the past to the future like the sections under
+  it; and `ReminderCard.MissedRow` says "debía sonar hace 3 h" in the error ink, ticking by
+  the minute. `HomeSectionsTest` and `HomeStateTest` pin both halves.
+- **The header gives up the name before the buttons** (0.67.0). A `Row` measures its unweighted
+  children first, so the wordmark at 28sp plus the cog took what they needed and at a large font
+  scale search, Hechos and diagnostics were clipped off the edge. The wordmark block is weighted
+  with `fill = false` and ellipsises; the controls keep their width.
 - **Held, a card says what can be done to it** (`ReminderActionsMenu`), and the menu opens at the
   **top of the screen**: a held press lands wherever the card is, which on a list is the middle,
   and a menu that opens under the thumb that opened it has to be read around the hand holding it.
@@ -1009,6 +1044,17 @@ because that is what its chip would show.
   words. It was nine o'clock written into `QuickWhenRow`, so the two controls disagreed the
   moment anybody moved their morning. "Esta noche" has nothing to read — `awake`'s far end is
   bedtime rather than the evening — and stays a named constant.
+- **A sheet that greys its button says why, and cannot build what the save refuses** (0.67.0).
+  `CalendarSheet` couples the end to the start the way `DateRangeSheet` always has — moving the
+  start past a chosen end drags the end along, switching to "termina en una fecha" lifts a
+  default that sits before the start, and `confirmEnabled` refuses the pair — because the
+  save's `ENDS_BEFORE_START` arrived as "la forma de volver no está bien" with nothing on the
+  sheet to point at. And the three sheets that went quiet with no word beside the grey button
+  (a place with no name, a countdown of nought, a week with no day) carry the red line their
+  siblings already had (`IntervalSheet`, `WeekdaySheet`). `LocationSheet` gives a permission
+  refused twice its own `PermissionFixRow` with a door to the app's page, shown whether or not
+  a pin is down: the coordinates used to take the refusal's line, so with a pin from a saved
+  place the crosshair spun, stopped, and said nothing.
 - Editor: `EditorUiState` + pure reducers (`EditorState.kt`, tested). A save replaces the whole
   row and deliberately drops the snooze and the armed moment — editing re-decides when a
   reminder rings — but carries `lastDealtAt` and `lastFiredAt`. The first is the anchor a
@@ -1463,6 +1509,18 @@ because that is what its chip would show.
   re-encodes the whole blob and a restored one from a newer build carries fields this build has
   no words for. Copies nothing points at are then dropped; the one thing that costs is undoing a
   restore that had changed the sound, which lands on the default tone like any missing one.
+- **Channels of a tone or rhythm nobody rings any more are deleted** (0.67.0,
+  `staleAlertChannels`, pinned by `AlertChannelsTest`; the sweep is in `ensureChannels`). A
+  channel is made per tone, rhythm and DND grant and nothing ever deleted one, so the phone's
+  list grew a channel per choice ever made — and one muted under an old tone counted as "a
+  reminder channel is muted" on Home for good. Only the four the current settings ring are kept
+  (`missed_`/`net_` are not alert channels and stay). Which is why the application no longer
+  makes the channels with the defaults at start-up: it waits for the settings and makes them
+  with the chosen tone, or every launch would have swept the chosen ones and remade them at the
+  next ring. A ring that arrives before the settings do makes its own (`post` calls
+  `ensureChannels`). **And expanded, a card shows the words whole** (`bigText` is the text and
+  then the reason): the title is one ellipsised line collapsed and expanded, so a long reminder
+  could not be read from the shade at all.
 - **Two tones, split by what the reminder was asked to do** (`AppSettings.soundFor`): "sonido"
   says it once, "hasta que reciba caso" comes back every few minutes until somebody answers, and
   a tone that is right for the first is often wrong for the second — you are going to hear the
@@ -1602,6 +1660,11 @@ because that is what its chip would show.
   the phone's own screen timeout has already made, and this screen is not more entitled to
   override it than anything else here. `setTurnScreenOn` still brings the display up so the alert
   is seen; from there it goes off when the system says so.
+- **On the strips screen "Hecho" is never squeezed out** (0.67.0). A strip's answers were one
+  `Row` with no weights, so two long offers ("Mañana a la misma hora" beside "Mañana por la
+  mañana", both one tap away in Settings) were measured first and "Hecho" got what was left,
+  down to nothing — the 0.48.1 bug on the screen that never got the fix. The offers are a
+  `FlowRow` that wraps above "Hecho" when they do not fit beside it, and every pill keeps one line.
 - `AlertActivity` shows over the lock screen and turns it on; it is its own task so dismissing
   an alarm at three in the morning does not drop anybody into the app's back stack. "Hecho" is
   the bottom-most control on it, because the bottom of the screen is where a half-awake thumb

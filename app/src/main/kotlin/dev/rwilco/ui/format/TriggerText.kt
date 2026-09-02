@@ -21,6 +21,7 @@ import dev.rwilco.model.Period
 import dev.rwilco.model.Trigger
 import java.time.DayOfWeek
 import java.time.LocalDate
+import dev.rwilco.ui.localToday
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.TextStyle
@@ -110,9 +111,12 @@ fun placeReading(presence: Presence, onCrossing: Boolean): Int = when {
     else -> R.string.place_while_outside
 }
 
-/** A condition in a few words: "18:00–22:00 · L M X J V". */
+/**
+ * A condition in a few words: "18:00–22:00 · L M X J V". [today] is what lets a stretch of
+ * another year say so (0.67.0, the same fix `dayWord` had in 0.66.2).
+ */
 @Composable
-fun conditionLabel(condition: Condition): String {
+fun conditionLabel(condition: Condition, today: LocalDate = localToday()): String {
     val words = rememberWords()
     val locale = words.locale
     val is24h = words.is24h
@@ -123,8 +127,8 @@ fun conditionLabel(condition: Condition): String {
         }
         is Condition.DateRange -> stringResource(
             R.string.condition_date_range,
-            TimeText.dayDate(condition.from, locale),
-            TimeText.dayDate(condition.to, locale),
+            TimeText.dayDate(condition.from, locale, today),
+            TimeText.dayDate(condition.to, locale, today),
         )
         is Condition.OnDays -> daysSummary(words, condition.days)
         is Condition.AtPlace -> stringResource(
@@ -234,8 +238,8 @@ fun triggerLine(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): Tri
             }
         }
         is Trigger.DateRange -> TriggerLine(
-            primary = TimeText.dayDate(trigger.from, locale),
-            secondary = stringResource(R.string.trigger_until, TimeText.dayDate(trigger.to, locale)),
+            primary = TimeText.dayDate(trigger.from, locale, today),
+            secondary = stringResource(R.string.trigger_until, TimeText.dayDate(trigger.to, locale, today)),
             primaryMono = true,
         )
         is Trigger.Location -> TriggerLine(
@@ -282,8 +286,8 @@ fun triggerPhrase(words: Words, trigger: Trigger, today: LocalDate, defaultTime:
         // The same words as the fence it folds into siblings as, because it is the same stretch.
         is Trigger.DateRange -> words.get(
             R.string.editor_sentence_date_range,
-            TimeText.dayDate(trigger.from, locale),
-            TimeText.dayDate(trigger.to, locale),
+            TimeText.dayDate(trigger.from, locale, today),
+            TimeText.dayDate(trigger.to, locale, today),
         )
         is Trigger.AtTime -> words.get(
             R.string.editor_sentence_at_time,
@@ -350,7 +354,7 @@ fun placePhrase(presence: Presence, onCrossing: Boolean): Int = when {
  * A fence as the rest of the sentence "sólo …", so that two of them join with an "y" and
  * neither repeats the word.
  */
-fun conditionPhrase(words: Words, condition: Condition): String = when (condition) {
+fun conditionPhrase(words: Words, condition: Condition, today: LocalDate): String = when (condition) {
     is Condition.TimeWindow -> words.get(
         R.string.editor_sentence_window_of,
         TimeText.window(condition.from, condition.to, words.is24h, words.locale) +
@@ -358,8 +362,8 @@ fun conditionPhrase(words: Words, condition: Condition): String = when (conditio
     )
     is Condition.DateRange -> words.get(
         R.string.editor_sentence_date_range,
-        TimeText.dayDate(condition.from, words.locale),
-        TimeText.dayDate(condition.to, words.locale),
+        TimeText.dayDate(condition.from, words.locale, today),
+        TimeText.dayDate(condition.to, words.locale, today),
     )
     is Condition.OnDays -> words.get(R.string.editor_sentence_on_days, daysPhrase(words, condition.days))
     is Condition.AtPlace -> words.get(

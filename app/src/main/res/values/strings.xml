@@ -91,6 +91,7 @@
     <string name="home_skip_hint">The one %1$s; the one after stays</string>
     <string name="preset_deleted">Preset deleted</string>
     <string name="recur_preset_deleted">Recurrence preset deleted</string>
+    <string name="home_deleted_row">Deleted: %1$s</string>
     <string name="home_deleted">Deleted</string>
     <string name="home_paused">Paused</string>
     <string name="home_resumed">Resumed</string>
@@ -280,6 +281,7 @@
     <string name="kind_weekday_hint">Fridays, weekends — the days on their own</string>
     <string name="weekday_hint_alone">On its own it rings when the next day you pick starts, and on the one after that if you leave it.</string>
     <string name="weekday_hint_together">With «at once» it is the day everything else has to land inside: «Fridays, and at 14:00».</string>
+    <string name="calendar_days_error">Pick at least one day, or the week never comes round.</string>
     <string name="weekday_days_hint">Pick at least one: here the days are the whole trigger.</string>
     <string name="kind_repeat_time">Repeats</string>
     <string name="kind_repeat_time_hint">Every day, week, month or year</string>
@@ -304,6 +306,7 @@
     <string name="random_window_label">Between</string>
     <string name="random_from">From</string>
     <string name="random_to">To</string>
+    <string name="countdown_zero_error">A countdown of nothing is not a countdown: a minute at least.</string>
     <string name="random_window_error">The window needs a minute per draw.</string>
     <string name="random_days_label">Days</string>
     <string name="random_days_hint">Every day unless you pick some.</string>
@@ -579,6 +582,7 @@
     <string name="perm_location_fix">Allow</string>
     <string name="perm_location_off">Location is switched off on the phone.</string>
     <string name="perm_location_off_fix">Turn on</string>
+    <string name="place_label_required">Give the place a name.</string>
     <string name="place_no_permission">Rwilco is not allowed to read your location. Allow it, or long-press the map.</string>
     <string-array name="whats_new_0_2_3">
         <item>A magnifier on the main screen: one search over reminders and tags at once, and every result says which it is. Accents, capitals and missing letters are forgiven.</item>
@@ -614,6 +618,7 @@
     <string name="card_tags_more">…</string>
     <string name="home_compact_on">Fold the list away</string>
     <string name="home_compact_off">Open the list out</string>
+    <string name="card_missed">Was due %1$s</string>
     <string name="card_snoozed">Put off</string>
     <string name="card_recurrence_from_done">from when you mark it done</string>
     <string name="card_rule_happened">Already happened</string>
@@ -1055,6 +1060,7 @@
     <string name="perm_restricted_missing">Background use is restricted for Rwilco, so nothing re-arms reminders while it is closed.</string>
     <string name="perm_restricted_fix">Allow</string>
     <string name="perm_battery_missing">Battery optimisation can stop Rwilco in the background. The alarms still ring; the net that re-arms them may not run.</string>
+    <string name="settings_page_unavailable">This phone has no such settings page; the app\'s own page opened instead.</string>
     <string name="perm_battery_fix">Exclude</string>
 
     <string-array name="whats_new_0_12_0">
@@ -1175,6 +1181,17 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_67_0">
+        <item>A deleted reminder can be brought back for a whole minute. The «Undo» in the snackbar lasted four seconds and the next swipe replaced it, so a delete followed by a «done» on the card under it — which is how a list gets cleared — was gone for good. Now a row at the top of the list keeps the same undo for sixty seconds.</item>
+        <item>«Overdue» is in the order things were missed, oldest first, and each card says so: «Was due 3 h ago». It used to sort by the day you wrote them and look exactly like a future card.</item>
+        <item>The Home header keeps its search, history and diagnostics buttons at large font sizes; the name gives way instead of the buttons.</item>
+        <item>A stretch of dates in another year says the year, on the cards, in the sentence over «Save», in the «only if» fences and in the readable export.</item>
+        <item>When several reminders ring at once, «Done» on each strip is never squeezed out by long snooze labels: the offers wrap above it instead.</item>
+        <item>Expanded, a notification shows the reminder\'s words in full, with the reason under them. A long reminder could not be read from the shade at all.</item>
+        <item>A reminder channel you muted under a sound or rhythm you no longer use no longer keeps «this phone may not ring» on Home for ever: channels of old tones are swept away, and «Unmute» opens the muted channel\'s own page rather than the app\'s list.</item>
+        <item>The «fix» buttons in Settings can no longer crash the app on a phone without that settings page; they open the app\'s own page and say so. «Exclude» for battery optimisation asks with the one-tap dialog instead of dropping you on a list of every app.</item>
+        <item>In the editor, moving a series\' start past its end now drags the end along instead of letting you build something the save then refuses. A place without a name, a countdown of nought and a week with no day ticked each say why «Add» is grey. And a location permission refused twice now has a way through: a row with an «Settings» button, shown even once a pin is on the map.</item>
+    </string-array>
     <string-array name="whats_new_0_66_2">
         <item>A day outside this year now says its year — «Tue 3 Sept 2030» — wherever the app reads a moment back to you: the «rings tomorrow · then…» line under the editor, the cards, the history. A reminder that comes back every four years read as «then Tue 3 Sept · then Sun 3 Sept», the same day twice with only the weekday to tell them apart.</item>
     </string-array>

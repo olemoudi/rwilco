@@ -573,7 +573,10 @@ private fun SummaryText(summary: VaultSummary) {
 
 @Composable
 private fun PassphraseDialog(title: String, body: String, action: String, onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
-    var passphrase by rememberSaveable { mutableStateOf("") }
+    // Plain `remember`, on purpose: a saveable one is written into the activity's saved state,
+    // which the system may keep on disk across process death. A rotation losing a half-typed
+    // passphrase is the cheaper failure.
+    var passphrase by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
@@ -595,7 +598,8 @@ private fun PassphraseDialog(title: String, body: String, action: String, onConf
 @Composable
 private fun CredentialsDialog(repo: String, onSave: (String, String) -> Unit, onDismiss: () -> Unit) {
     var repoText by rememberSaveable { mutableStateOf(repo) }
-    var token by rememberSaveable { mutableStateOf("") }
+    // The token is a secret; see PassphraseDialog.
+    var token by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.vault_update_credentials_title)) },

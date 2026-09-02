@@ -65,9 +65,16 @@ fun Context.alarmVolumeDescription(): String {
 }
 
 /** A channel muted by hand is invisible to `areNotificationsEnabled`; this is the check it lacks. */
-fun Context.anyAlertChannelMuted(): Boolean {
-    val manager = getSystemService(NotificationManager::class.java) ?: return false
+fun Context.anyAlertChannelMuted(): Boolean = mutedAlertChannelId() != null
+
+/**
+ * The muted alert channel, by id, so the fix can open that channel's own page rather than the
+ * app's list. Every `alert_*` channel left is one this tone and rhythm ring — the others are
+ * swept at [AlertNotifications.ensureChannels] — so any muted one is a real problem.
+ */
+fun Context.mutedAlertChannelId(): String? {
+    val manager = getSystemService(NotificationManager::class.java) ?: return null
     return runCatching {
-        manager.notificationChannels.any { it.id.startsWith(AlertNotifications.ALERT_CHANNEL_PREFIX) && it.importance == NotificationManager.IMPORTANCE_NONE }
-    }.getOrDefault(false)
+        manager.notificationChannels.firstOrNull { it.id.startsWith(AlertNotifications.ALERT_CHANNEL_PREFIX) && it.importance == NotificationManager.IMPORTANCE_NONE }?.id
+    }.getOrNull()
 }

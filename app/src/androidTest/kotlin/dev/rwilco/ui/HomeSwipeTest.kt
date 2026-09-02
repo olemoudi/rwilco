@@ -4,6 +4,8 @@ import android.app.LocaleManager
 import android.os.LocaleList
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.hasAnySibling
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -65,6 +67,8 @@ class HomeSwipeTest {
 
     private fun s(resId: Int): String = rule.activity.getString(resId)
 
+    private fun s(resId: Int, vararg args: Any): String = rule.activity.getString(resId, *args)
+
     private fun waitFor(value: String) {
         rule.waitUntil(10_000) { rule.onAllNodesWithText(value, ignoreCase = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
     }
@@ -82,6 +86,52 @@ class HomeSwipeTest {
         }
         Thread.sleep(900)
         rule.onRoot().performTouchInput { up() }
+    }
+
+    /** The other way: open the card to the left and hold it there, which is the delete. */
+    private fun swipeCardLeftAndHold(target: String = words) {
+        rule.onNodeWithText(target).performTouchInput {
+            down(centerRight)
+            moveTo(centerLeft)
+        }
+        Thread.sleep(900)
+        rule.onRoot().performTouchInput { up() }
+    }
+
+    /**
+     * A delete's undo outlives the snackbar that offered it. Delete one card, mark the next
+     * "hecho" — which replaces the snackbar — and the first is still one tap from coming back,
+     * from the row at the top of the list, for a minute.
+     */
+    @Test
+    fun aDeleteCanStillBeUndoneAfterTheNextSwipeTookTheSnackbar() {
+        val otherId = "swipe-test-other"
+        val otherWords = "Bajar la basura al contenedor"
+        runBlocking {
+            val now = app.clock.instant()
+            app.repository.save(Reminder(id = otherId, text = otherWords, createdAt = now, updatedAt = now))
+        }
+        waitFor(words)
+        waitFor(otherWords)
+
+        swipeCardLeftAndHold(words)
+        rule.waitUntil(10_000) { runBlocking { app.repository.get(id) } == null }
+
+        // The next gesture's snackbar takes the first one's place, and with it the only undo
+        // there used to be.
+        swipeCardRightAndHold(otherWords)
+        rule.waitUntil(10_000) { runBlocking { app.repository.get(otherId)?.status } == Status.DONE }
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText(s(R.string.home_deleted), useUnmergedTree = true).fetchSemanticsNodes().isEmpty()
+        }
+
+        // The row is still there, and it still knows which reminder it is about. Its undo is
+        // the one beside those words: a snackbar on its way out can still be holding another.
+        val rowText = s(R.string.home_deleted_row, words)
+        waitFor(rowText)
+        rule.onNode(hasText(s(R.string.common_undo)) and hasAnySibling(hasText(rowText))).performClick()
+        rule.waitUntil(10_000) { runBlocking { app.repository.get(id)?.text } == words }
+        waitFor(words)
     }
 
     @Before

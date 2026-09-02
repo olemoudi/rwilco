@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Autorenew
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.QuestionMark
@@ -58,6 +59,10 @@ import dev.rwilco.ui.components.RuleTree
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.TagLabel
 import dev.rwilco.ui.components.TriggerKeycap
+import dev.rwilco.ui.components.rememberNow
+import dev.rwilco.ui.LocalClock
+import dev.rwilco.model.partsBetween
+import dev.rwilco.ui.format.countdownText
 import dev.rwilco.model.conditions
 import dev.rwilco.ui.editor.titleRes
 import dev.rwilco.ui.format.recurrenceLabel
@@ -152,6 +157,9 @@ fun ReminderCard(
             }
             Spacer(Modifier.height(spacing.md))
             Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                // Before everything: a moment that got away is the one thing this card is
+                // about, and the rows under it go on describing the rule as if it were ahead.
+                card.missedAt?.let { MissedRow(it) }
                 // First, because it is what happens next: a snooze outranks every rule under it
                 // until it has rung.
                 card.snoozedUntil?.let { SnoozedRow(it, today, zone, muted = card.paused) }
@@ -354,6 +362,32 @@ fun RecurrenceRow(recurrence: Recurrence, today: LocalDate, muted: Boolean = fal
                 )
             }
         }
+    }
+}
+
+/**
+ * "Debía sonar hace 3 h": the moment an overdue card missed, in the error ink and above
+ * everything else on it. Ticks by the minute, like the hero's countdown at the same distance.
+ */
+@Composable
+fun MissedRow(missedAt: Instant) {
+    val now by rememberNow(60_000, LocalClock.current)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = Icons.Outlined.ErrorOutline,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.error,
+            modifier = Modifier.size(Tokens.sizes.badge),
+        )
+        Spacer(Modifier.width(Tokens.spacing.sm))
+        Text(
+            text = stringResource(R.string.card_missed, countdownText(partsBetween(now, missedAt))),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.error,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
+        )
     }
 }
 
