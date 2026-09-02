@@ -337,6 +337,9 @@
     <string name="alert_silence">Silence</string>
     <string name="alert_view">View</string>
     <string name="alert_done_all">Done with all</string>
+    <string name="alert_snoozed">Snoozed</string>
+    <string name="alert_snoozed_all">All snoozed</string>
+    <string name="alert_hold_hint">Hold to answer</string>
     <string name="widget_next_label">Next up</string>
     <string name="widget_next_description">What fires next, how many today, and a way to write one.</string>
     <string name="widget_nothing">Nothing next</string>
@@ -1172,6 +1175,9 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_66_0">
+        <item>The full-screen alert no longer takes a tap. For the first two seconds after it comes up nothing but Silence answers — a count at the top says so and the buttons stay dim — and after that «Done», every snooze and «View» answer only to a finger kept on them for a second: a ring at the top fills, a tick comes up, and the answer is given when you let go. Let go early and nothing happens. The screen that wakes you at three in the morning, or lights up under a hand reaching into a pocket, was the one screen in the app where a stray touch could file a reminder away for good.</item>
+    </string-array>
     <string-array name="whats_new_0_65_3">
         <item>«New» asks «blank or from a preset» again whenever you have a preset, pinned or not. It had stopped asking once a preset was pinned, on the theory that the row above the list already answered — but that row is a shortcut to the presets on it, not the way to the rest.</item>
     </string-array>

@@ -6,8 +6,6 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -88,15 +86,17 @@ class AlertStackTest {
         rule.onNodeWithText(textB).assertIsDisplayed()
         shot("alert-strips")
 
-        // One hold answers both: the strips empty first, then each is dealt with in turn.
+        // One hold answers both, on release: the strips empty first, then each is dealt with
+        // in turn.
         val doneAll = string { it.getString(R.string.alert_done_all) }
         rule.onNodeWithText(doneAll).assertIsDisplayed()
-        rule.onNodeWithText(doneAll).performTouchInput { down(center) }
+        rule.holdToAnswer(doneAll) {
+            check(runBlocking { app.repository.get("stack-a")?.lastDealtAt == null }) { "answered before the finger lifted" }
+        }
         rule.waitUntil(timeoutMillis = 10_000) {
             runBlocking { app.repository.get("stack-a")?.lastDealtAt != null && app.repository.get("stack-b")?.lastDealtAt != null }
         }
-        // The screen leaves before the finger does: with nothing left ringing the activity
-        // closes itself, so there is no button to lift off. That it is gone is the assertion.
+        // With nothing left ringing the activity closes itself. That it is gone is the assertion.
         rule.waitUntil(timeoutMillis = 10_000) {
             // A finished activity has no hierarchy to ask, which the test rule reports by throwing.
             runCatching { rule.onAllNodesWithText(doneAll).fetchSemanticsNodes().isEmpty() }.getOrDefault(true)
@@ -116,7 +116,7 @@ class AlertStackTest {
         rule.onAllNodesWithText(textB).assertCountEquals(0)
         shot("alert-sequential")
 
-        rule.onNodeWithText(string { it.getString(R.string.alert_done) }).performClick()
+        rule.holdToAnswer(string { it.getString(R.string.alert_done) })
 
         rule.waitUntilShown(textB)
         rule.onAllNodesWithText(waiting).assertCountEquals(0)

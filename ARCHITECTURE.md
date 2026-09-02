@@ -1104,6 +1104,29 @@ because that is what its chip would show.
   choice by name rather than index so the chip that lights is the one just made. The countdown
   sheet produces a `Trigger.Countdown` (the note above saying `AtDateTime` was stale). The alert
   preview is `AlertScreen`, the same composable `AlertActivity` hosts under a full-screen intent.
+- **The alert screen takes no tap** (0.66.0, `PressGuard`, `ui/components/PressGuard.kt`). The
+  screen that takes over a phone at three in the morning, or lights up under a hand reaching
+  into a pocket, gives the one kind of answer the app cannot take back, and it used to give it
+  to any touch. Now, for `Motion.guardArm` (2 s) after the screen shows, nothing but Silence
+  answers — a ring at the top drains under the digits "2", "1", and every button is faded and
+  reports itself disabled — and after that "Hecho", every snooze and "Ver" answer only to a
+  finger *kept* on them for `Motion.guardHold` (1 s): the ring fills, the tick pops in, and the
+  answer is given **when the finger lifts**, not when the second ends, so the tick is seen and
+  a screen that closes is one that was let go of. Let go early and nothing happens but the
+  hint ("mantén pulsado para contestar", `guardHint`). Silencing is exempt because it confirms
+  nothing. The rules are a plain class (`PressGuard.begin/complete/release/disarm`, pinned by
+  `PressGuardTest` with no clock); the timing lives in `rememberPressGuard` (keyed on the
+  content, so the next reminder taking over the screen — right under the thumb that answered
+  the last — starts the countdown again, and re-run on every RESUMED, so a phone picked up a
+  minute after it lit up is protected too; leaving the screen forgets whatever a finger was
+  doing) and in `Modifier.guarded`, which is the touch, the ripple and the semantics of a
+  guarded control (a screen reader gets an ordinary click: a double tap is already deliberate).
+  `GuardIndicator` draws the one spot all three phases report to, at the top — the one place a
+  hand holding a button at the bottom is never over. The strips screen and the editor's preview
+  wear the same guard; "Hecho con todos" moved from the 700 ms `HoldButton` to this 1 s hold so
+  one screen has one gesture. `AlertGuardTest` stops the test clock to prove a press begun
+  during the countdown counts for nothing however long it is kept, and that a tap does nothing
+  but bring up the hint; the other alert tests answer through `holdToAnswer` (`Holds.kt`).
 - **On the alert screen the words are what gives** (0.48.1). They sat between two weighted
   spacers, which centres them and lets everything below overflow: seven snooze offers and a
   six-line reminder at a large font scale pushed "Hecho" — the one answer the screen is asking

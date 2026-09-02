@@ -136,8 +136,9 @@ class AlertSilenceTest {
             check(app.repository.get(loudId)?.lastDealtAt == null) { "silencing dismissed the reminder" }
         }
 
-        // And now the ordinary answer, which is the one it was keeping out of reach.
-        rule.onNodeWithText(done).performClick()
+        // And now the ordinary answer, which is the one it was keeping out of reach — a hold,
+        // like every answer on this screen.
+        rule.holdToAnswer(done)
         rule.waitUntil(timeoutMillis = 10_000) {
             runBlocking { app.repository.get(loudId)?.lastDealtAt != null }
         }
@@ -190,7 +191,7 @@ class AlertSilenceTest {
         shot("alert-from-note")
 
         // And the ordinary answer still works, which is the whole reason it is on the screen.
-        rule.onNodeWithText(string { it.getString(R.string.alert_done) }).performClick()
+        rule.holdToAnswer(string { it.getString(R.string.alert_done) })
         rule.waitUntil(timeoutMillis = 10_000) {
             runBlocking { app.repository.get(noteId)?.lastDealtAt != null }
         }
@@ -214,7 +215,7 @@ class AlertSilenceTest {
         }
 
         // And it is still a reminder owed an answer, which is why the tap opens it at all.
-        rule.onNodeWithText(string { it.getString(R.string.alert_done) }).performClick()
+        rule.holdToAnswer(string { it.getString(R.string.alert_done) })
         rule.waitUntil(timeoutMillis = 10_000) {
             runBlocking { app.repository.get(cardId)?.lastDealtAt != null }
         }

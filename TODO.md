@@ -23,6 +23,12 @@ Running notes: what is next, what cost time, what must not be re-derived.
   convention is the JVM suites'; `androidTest` is dexed, and dex refuses spaces in a SimpleName
   prior to version 040 — it fails in `dexBuilderDebugAndroidTest`, not in the compiler, so the
   error arrives a minute later and does not name the convention.
+- **"System UI isn't responding" on the emulator sits over every capture.** SystemUI ANRs
+  by itself on this image a while after boot and its dialog is in every screenshot from then
+  on; the app's tests still pass under it. Tapping "Wait" does nothing; "Close app" restarts
+  SystemUI — and a test running at that moment loses its activity ("No compose hierarchies
+  found"), so close it *between* runs, then re-run only the class that needs clean captures.
+  Cost: one extra device run on 2026-09-02.
 - `adb shell uiautomator dump` must write to `/data/local/tmp/ui.xml` (the `/sdcard` path
   silently fails on this image). Even then, `input tap` on Compose buttons landed maybe one time
   in three and a missed tap cascades (a stray BACK on Home closes the app). The instrumented tour

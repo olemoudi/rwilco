@@ -1,6 +1,7 @@
 package dev.rwilco.ui.alert
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,29 +21,36 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import dev.rwilco.R
 import dev.rwilco.model.Snooze
 import dev.rwilco.model.kind
+import dev.rwilco.ui.components.GuardIndicator
+import dev.rwilco.ui.components.GuardedAction
 import dev.rwilco.ui.components.TagLabel
 import dev.rwilco.ui.components.TriggerKeycap
+import dev.rwilco.ui.components.guarded
 import dev.rwilco.ui.components.lampGlow
+import dev.rwilco.ui.components.rememberPressGuard
 import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.format.triggerLine
 import dev.rwilco.ui.theme.Tokens
@@ -55,6 +63,13 @@ import dev.rwilco.model.SnoozePlace
  * The lamp at full brightness. The reminder's words as big as they fit, and one button the
  * thumb cannot miss. In phase 1 it is reached only as a preview; phase 2 hosts the same
  * composable in the activity a full-screen intent launches.
+ *
+ * **Every answer on it is guarded** (0.66.0, [rememberPressGuard]): for two seconds after the
+ * screen shows nothing but Silence takes a touch, and after that "Hecho", the snoozes and
+ * "Ver" answer only to a finger kept on them for a second — the ring at the top fills, the
+ * tick comes up, and the answer is given when the finger lifts. The screen is what comes up
+ * under a hand reaching into a pocket, and its answers are the kind that cannot be taken
+ * back; the preview keeps the guard because it is a preview of exactly that.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -84,6 +99,9 @@ fun AlertScreen(
     val spacing = Tokens.spacing
     val haptics = Tokens.haptics
     val locale = currentLocale()
+    // A new reminder on the same screen is a new guard: the thumb that answered the last one
+    // is still where this one's "Hecho" is.
+    val guard = rememberPressGuard(content)
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -120,6 +138,10 @@ fun AlertScreen(
                     color = scheme.onSurfaceVariant,
                 )
             }
+            // Where the guard reports: the countdown, the filling ring, the tick. Up here and
+            // not around the button, because the hand holding the button is over the button.
+            Spacer(Modifier.height(spacing.md))
+            GuardIndicator(guard, modifier = Modifier.fillMaxWidth())
             // **The words are what gives.** They used to sit between two weighted spacers,
             // which centres them beautifully and lets everything below overflow: seven snooze
             // offers (five, once) plus a six-line reminder at a large font scale pushed "Hecho"
@@ -158,18 +180,26 @@ fun AlertScreen(
             // Every answer, each its own tap target and none of them a chip a thumb has to aim
             // at. They sit clear of the Done button, because the two mean opposite things and a
             // half-awake hand should not be able to confuse them.
-            SnoozeOffers(offers = Snooze.entries, customMinutes = customMinutes, onPick = onSnooze, places = places, onPickPlace = onSnoozeToPlace)
+            SnoozeOffers(offers = Snooze.entries, customMinutes = customMinutes, onPick = onSnooze, places = places, onPickPlace = onSnoozeToPlace, guard = guard)
             Spacer(Modifier.height(spacing.lg))
             // "Ver" goes ABOVE "Hecho", not under it. The bottom of the screen is where the
             // thumb lands, and it belongs to the one answer this screen is asking for — an
             // alarm answered half awake must not be able to hand somebody the edit form
             // instead. Which is exactly what it did.
-            TextButton(
-                onClick = onView,
-                colors = ButtonDefaults.textButtonColors(contentColor = scheme.onSurfaceVariant),
-                modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.sizes.touch),
+            val viewLabel = stringResource(if (preview) R.string.alert_close_preview else R.string.alert_view)
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = Tokens.sizes.touch)
+                    .clip(MaterialTheme.shapes.medium)
+                    .guarded(
+                        guard,
+                        GuardedAction(icon = if (preview) Icons.Outlined.Close else Icons.AutoMirrored.Outlined.OpenInNew, holding = viewLabel),
+                        onConfirmed = onView,
+                    ),
             ) {
-                Text(stringResource(if (preview) R.string.alert_close_preview else R.string.alert_view))
+                Text(text = viewLabel, style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(spacing.sm))
             // **While it is ringing, the big button is "Silenciar" and not "Hecho".**
@@ -191,6 +221,10 @@ fun AlertScreen(
             // change is the whole of the feedback that the tap did something. Two buttons
             // stacked would put "Hecho" where the eye already is and make the silence a step
             // somebody skips.
+            //
+            // **And it is the one thing on the screen that is still a tap.** Silencing confirms
+            // nothing and can be reflexive; "Hecho" cannot, so it is a hold like everything
+            // else here (see [rememberPressGuard]).
             val silencing = ringing
             val fill by animateColorAsState(
                 targetValue = if (silencing) scheme.errorContainer else scheme.onBackground,
@@ -202,24 +236,38 @@ fun AlertScreen(
                 animationSpec = tween(Tokens.motion.medium),
                 label = "alertPrimaryInk",
             )
-            Button(
-                onClick = {
-                    // Silencing confirms nothing; the reminder is still owed an answer.
-                    haptics.perform(if (silencing) HapticFeedbackType.ContextClick else HapticFeedbackType.Confirm)
-                    if (silencing) onSilence() else onDone()
-                },
+            val doneLabel = stringResource(R.string.alert_done)
+            Surface(
                 shape = MaterialTheme.shapes.large,
-                colors = ButtonDefaults.buttonColors(containerColor = fill, contentColor = ink),
+                color = fill,
+                contentColor = ink,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = Tokens.sizes.primary),
+                    .heightIn(min = Tokens.sizes.primary)
+                    .clip(MaterialTheme.shapes.large)
+                    .then(
+                        if (silencing) {
+                            Modifier.clickable(role = Role.Button) {
+                                haptics.perform(HapticFeedbackType.ContextClick)
+                                onSilence()
+                            }
+                        } else {
+                            Modifier.guarded(guard, GuardedAction(icon = Icons.Filled.Check, holding = doneLabel), onConfirmed = onDone)
+                        },
+                    ),
             ) {
-                Icon(if (silencing) Icons.AutoMirrored.Filled.VolumeOff else Icons.Filled.Check, contentDescription = null)
-                Spacer(Modifier.width(spacing.sm))
-                Text(
-                    text = stringResource(if (silencing) R.string.alert_silence else R.string.alert_done),
-                    style = MaterialTheme.typography.titleLarge,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth().padding(ButtonDefaults.ContentPadding),
+                ) {
+                    Icon(if (silencing) Icons.AutoMirrored.Filled.VolumeOff else Icons.Filled.Check, contentDescription = null)
+                    Spacer(Modifier.width(spacing.sm))
+                    Text(
+                        text = if (silencing) stringResource(R.string.alert_silence) else doneLabel,
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                }
             }
             Spacer(Modifier.height(spacing.sm))
         }

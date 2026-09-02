@@ -371,8 +371,11 @@ class EditorTourTest {
 
         rule.onNodeWithContentDescription(s(R.string.editor_preview)).performClick()
         rule.waitUntilShown(s(R.string.alert_done))
+        // The preview is guarded like the real thing: the capture is of the screen once it
+        // has armed, and closing it is a hold — with the tick up top the moment before.
+        rule.waitUntilArmed(s(R.string.alert_close_preview))
         shot("alert-preview")
-        text(s(R.string.alert_close_preview)).performClick()
+        rule.holdToAnswer(s(R.string.alert_close_preview)) { shot("alert-hold") }
         rule.waitUntilGone(s(R.string.alert_done))
 
         text(s(R.string.common_save)).performClick()

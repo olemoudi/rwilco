@@ -5,7 +5,6 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -95,7 +94,7 @@ class AlertSnoozePlaceTest {
         val arrive = string { it.getString(R.string.snooze_arrive_at, "Casa") }
         rule.waitUntilShown(arrive)
         rule.onNodeWithText(arrive).assertIsDisplayed()
-        rule.onNodeWithText(arrive).performClick()
+        rule.holdToAnswer(arrive)
         rule.waitUntil(timeoutMillis = 10_000) { runBlocking { app.repository.get(id)?.snoozedToPlace != null } }
         val door = runBlocking { app.repository.get(id)!!.snoozedToPlace!! }
         assertEquals(Presence.INSIDE, door.presence)
@@ -110,7 +109,7 @@ class AlertSnoozePlaceTest {
         rule.waitUntilShown(text)
         val leave = string { it.getString(R.string.snooze_leave_here) }
         rule.waitUntilShown(leave)
-        rule.onNodeWithText(leave).performClick()
+        rule.holdToAnswer(leave)
         rule.waitUntil(timeoutMillis = 20_000) { runBlocking { app.repository.get(id)?.snoozedToPlace != null } }
         val here = runBlocking { app.repository.get(id)!!.snoozedToPlace!! }
         assertEquals(Presence.OUTSIDE, here.presence)
