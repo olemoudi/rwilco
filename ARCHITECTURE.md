@@ -1110,7 +1110,8 @@ because that is what its chip would show.
   to any touch. Now, for `Motion.guardArm` (2 s) after the screen shows, nothing but Silence
   answers — a ring at the top drains under the digits "2", "1", and every button is faded and
   reports itself disabled — and after that "Hecho", every snooze and "Ver" answer only to a
-  finger *kept* on them for `Motion.guardHold` (1 s): the ring fills, the tick pops in, and the
+  finger *kept* on them for `Motion.guardHold` (700 ms since 0.66.1, the same `HOLD_MILLIS` as a
+  card's pause; it began as a full second): the ring fills, the tick pops in, and the
   answer is given **when the finger lifts**, not when the second ends, so the tick is seen and
   a screen that closes is one that was let go of. Let go early and nothing happens but the
   hint ("mantén pulsado para contestar", `guardHint`). Silencing is exempt because it confirms
@@ -1123,8 +1124,8 @@ because that is what its chip would show.
   guarded control (a screen reader gets an ordinary click: a double tap is already deliberate).
   `GuardIndicator` draws the one spot all three phases report to, at the top — the one place a
   hand holding a button at the bottom is never over. The strips screen and the editor's preview
-  wear the same guard; "Hecho con todos" moved from the 700 ms `HoldButton` to this 1 s hold so
-  one screen has one gesture. `AlertGuardTest` stops the test clock to prove a press begun
+  wear the same guard; "Hecho con todos" moved from `HoldButton` to it so one screen has one
+  gesture, and the hold is now the one length the whole app has. `AlertGuardTest` stops the test clock to prove a press begun
   during the countdown counts for nothing however long it is kept, and that a tap does nothing
   but bring up the hint; the other alert tests answer through `holdToAnswer` (`Holds.kt`).
 - **On the alert screen the words are what gives** (0.48.1). They sat between two weighted

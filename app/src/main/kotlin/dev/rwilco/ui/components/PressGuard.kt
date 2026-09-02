@@ -83,7 +83,8 @@ data class GuardedAction(
 /**
  * The alert screen's defence against a thumb that lands before the eyes have: for the first
  * moments after the screen shows, nothing but Silence answers at all ([armed]); after that,
- * every answer is a finger *kept* on its button for a second, and given only when it lifts.
+ * every answer is a finger *kept* on its button ([dev.rwilco.ui.theme.Motion.guardHold]), and
+ * given only when it lifts.
  *
  * The screen is what takes over a phone at three in the morning, or comes up under a hand
  * already reaching into a pocket, and its answers are the one kind that cannot be taken back:
@@ -217,7 +218,7 @@ private const val ASLEEP_ALPHA = 0.38f
 
 /**
  * A control that answers only to a finger that stays: press, and the ring up top fills; keep it
- * there for the whole second and the tick comes up; lift, and [onConfirmed] runs. Let go early
+ * there for the whole hold and the tick comes up; lift, and [onConfirmed] runs. Let go early
  * and nothing happens, except that the indicator says how to. Until the guard is [armed] the
  * control is faded and takes nothing.
  *

@@ -66,7 +66,7 @@ import dev.rwilco.model.SnoozePlace
  *
  * **Every answer on it is guarded** (0.66.0, [rememberPressGuard]): for two seconds after the
  * screen shows nothing but Silence takes a touch, and after that "Hecho", the snoozes and
- * "Ver" answer only to a finger kept on them for a second — the ring at the top fills, the
+ * "Ver" answer only to a finger kept on them — the ring at the top fills, the
  * tick comes up, and the answer is given when the finger lifts. The screen is what comes up
  * under a hand reaching into a pocket, and its answers are the kind that cannot be taken
  * back; the preview keeps the guard because it is a preview of exactly that.

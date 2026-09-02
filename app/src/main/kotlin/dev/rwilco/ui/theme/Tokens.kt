@@ -38,11 +38,11 @@ data class Motion(
      * The alert screen's press guard ([dev.rwilco.ui.components.PressGuard]): nothing but
      * Silence answers for [guardArm] after the screen shows; after that every answer is a
      * finger kept on its button for [guardHold], and a hold let go early says how for
-     * [guardHint]. Longer than [dev.rwilco.ui.components.HOLD_MILLIS] on purpose — a card's
-     * pause is undone with a tap, an alarm's "hecho" is not undone at all.
+     * [guardHint]. [guardHold] is the same 700 ms as [dev.rwilco.ui.components.HOLD_MILLIS]
+     * (0.66.1; it was a full second): one length of hold in the app, so a hand learns it once.
      */
     val guardArm: Int = 2000,
-    val guardHold: Int = 1000,
+    val guardHold: Int = 700,
     val guardHint: Int = 1500,
 )
 

@@ -31,8 +31,8 @@ import java.time.LocalTime
 
 /**
  * The alert screen takes no tap. For two seconds after it comes up nothing but Silence
- * answers; after that, "Hecho" and the snoozes answer only to a finger kept on them for a
- * second, and only when it lifts. [dev.rwilco.ui.components.PressGuardTest] has the rules
+ * answers; after that, "Hecho" and the snoozes answer only to a finger kept on them, and
+ * only when it lifts. [dev.rwilco.ui.components.PressGuardTest] has the rules
  * with no clock; this is the wiring — the countdown, the ring, the tick, the release — on a
  * screen that is actually up.
  *
@@ -142,7 +142,7 @@ class AlertGuardTest {
     }
 
     @Test
-    fun aHoldKeptForTheWholeSecondAnswersWhenTheFingerLifts() {
+    fun aHoldKeptToItsEndAnswersWhenTheFingerLifts() {
         seed(holdId, hold)
         scenario = ActivityScenario.launch(alert(holdId))
         rule.waitUntilShown(hold)

@@ -1175,6 +1175,9 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_66_1">
+        <item>Answering the full-screen alert takes a shorter hold: seven tenths of a second instead of a full one — the same hold a card\'s «pause» already takes, so there is one length to learn. The two quiet seconds after the screen comes up are unchanged.</item>
+    </string-array>
     <string-array name="whats_new_0_66_0">
         <item>The full-screen alert no longer takes a tap. For the first two seconds after it comes up nothing but Silence answers — a count at the top says so and the buttons stay dim — and after that «Done», every snooze and «View» answer only to a finger kept on them for a second: a ring at the top fills, a tick comes up, and the answer is given when you let go. Let go early and nothing happens. The screen that wakes you at three in the morning, or lights up under a hand reaching into a pocket, was the one screen in the app where a stray touch could file a reminder away for good.</item>
     </string-array>
