@@ -49,6 +49,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
@@ -397,7 +399,9 @@ internal fun RecurrenceSection(
                 listing = false
                 editing = it.id
             },
-            onDelete = onDeletePreset,
+            // The list closes with the delete, or the undo the snackbar offers is drawn
+            // behind this dialog and times out unseen.
+            onDelete = { listing = false; onDeletePreset(it) },
             onDismiss = { listing = false },
         )
     }
@@ -515,10 +519,13 @@ private fun RecurrenceButton(
             onClick()
         },
         shape = MaterialTheme.shapes.small,
-        // On is inverted, like every other "on" in the app.
+        // On is inverted, like every other "on" in the app — and said, for a screen reader
+        // that hears fifteen identical buttons otherwise (0.68.0).
         color = if (selected) scheme.onSurface else scheme.surfaceContainerHigh,
         border = if (selected) null else BorderStroke(Tokens.strokes.control, scheme.outline),
-        modifier = Modifier.heightIn(min = Tokens.sizes.touch),
+        modifier = Modifier
+            .heightIn(min = Tokens.sizes.touch)
+            .semantics { this.selected = selected },
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -706,10 +713,10 @@ private fun CustomRecurrenceDialog(
                 )
                 Spacer(Modifier.height(spacing.sm))
                 // Which moment it counts from is asked on the card, not here: this pane
-                // builds the span, and a second copy of that question would be a second
-                // place for the two to disagree.
+                // builds the span, and only *reads* that answer back — it used to state one
+                // of the two as fact, three rows under a card that said the other.
                 Text(
-                    text = stringResource(R.string.recur_after_done),
+                    text = stringResource(if (initial.from == RecurrenceFrom.RANG) R.string.recur_after_rang_note else R.string.recur_after_done),
                     style = MaterialTheme.typography.bodySmall,
                     color = scheme.onSurfaceVariant,
                 )

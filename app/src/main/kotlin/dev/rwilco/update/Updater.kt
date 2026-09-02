@@ -129,6 +129,14 @@ class Updater(private val context: Context) {
             enoughSpace = context.cacheDir.usableSpace >= REQUIRED_FREE_BYTES,
         )
         Log.i(TAG, "next step: $step")
+        // An update there is no permission to install would fail every twelve hours with only
+        // the Settings card to say so (0.68.0): said in the shade instead, with the way to it.
+        if (step != UpdateStep.NOTHING_TO_DO && !context.packageManager.canRequestPackageInstalls()) {
+            Log.w(TAG, "an update is available but installing from this app is not allowed")
+            UpdateNotifications.notifyInstallPermissionNeeded(context)
+            UpdateCenter.report(UpdateUiState.Failed("install permission"))
+            return@withContext UpdateCheckOutcome.INSTALL_FAILURE
+        }
         when (step) {
             UpdateStep.NOTHING_TO_DO -> {
                 // Anything still in the cache is for a build this device has already passed —

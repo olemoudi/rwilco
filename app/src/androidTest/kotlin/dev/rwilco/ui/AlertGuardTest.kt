@@ -124,8 +124,12 @@ class AlertGuardTest {
         rule.waitUntilShown(tap)
         val done = string { it.getString(R.string.alert_done) }
         rule.waitUntilArmed(done)
-        // Nothing is up top once the screen has armed and no finger is on it.
-        check(rule.onAllNodesWithText(string { it.getString(R.string.alert_hold_hint) }).fetchSemanticsNodes().isEmpty())
+        // Arming shows the hint once, as a promise; let it pass, so the one after the tap is
+        // the tap's own.
+        rule.mainClock.advanceTimeBy(3_000)
+        rule.waitUntil(timeoutMillis = 5_000) {
+            rule.onAllNodesWithText(string { it.getString(R.string.alert_hold_hint) }).fetchSemanticsNodes().isEmpty()
+        }
 
         // A tap is a hold let go at once. The clock is stopped so the framework cannot run the
         // hold to its end between the finger going down and coming up.

@@ -56,6 +56,17 @@
     <string name="home_snooze_cancelled">Snooze cancelled</string>
     <string name="home_keep_preset">Keep as a preset</string>
     <string name="home_keep_preset_hint">Its shape under a name, for next time</string>
+    <string name="readiness_short_notifications">Notifications are off</string>
+    <string name="readiness_short_channels">A reminder channel is muted</string>
+    <string name="readiness_short_alarmVolume">The alarm volume is at zero</string>
+    <string name="readiness_short_throughDnd">Do Not Disturb blocks everything</string>
+    <string name="readiness_short_exactAlarms">Exact alarms are not allowed</string>
+    <string name="readiness_short_unrestricted">Background use is restricted</string>
+    <string name="readiness_short_battery">Battery optimisation can stop it</string>
+    <plurals name="home_readiness_more">
+        <item quantity="one">and %d more</item>
+        <item quantity="other">and %d more</item>
+    </plurals>
     <string name="home_readiness_title">This phone may not ring</string>
     <string name="home_readiness_fix">Fix</string>
     <string name="home_readiness_dismiss">Not now</string>
@@ -91,6 +102,9 @@
     <string name="home_skip_hint">The one %1$s; the one after stays</string>
     <string name="preset_deleted">Preset deleted</string>
     <string name="recur_preset_deleted">Recurrence preset deleted</string>
+    <string name="home_quiet_today">Nothing for today</string>
+    <string name="home_failed_title">The reminders could not be read</string>
+    <string name="home_failed_body">Something went wrong reading the phone\'s store. The diagnostics report says what; restarting the app is the first thing to try.</string>
     <string name="home_deleted_row">Deleted: %1$s</string>
     <string name="home_deleted">Deleted</string>
     <string name="home_paused">Paused</string>
@@ -339,14 +353,25 @@
     <string name="alert_done">Done</string>
     <string name="alert_silence">Silence</string>
     <string name="alert_view">View</string>
+    <string name="recur_after_rang_note">Counted from when it rings.</string>
+    <string name="editor_preset_saved">Preset saved</string>
+    <string name="home_pin_action">Pin</string>
+    <string name="settings_sound_copy_failed">That file could not be copied; the sound stays as it was.</string>
+    <string name="editor_will_ring_until_done">and so on until you do it</string>
+    <string name="editor_will_ring_then_returns">then it comes back %1$s</string>
     <string name="alert_done_all">Done with all</string>
     <string name="alert_snoozed">Snoozed</string>
     <string name="alert_snoozed_all">All snoozed</string>
+    <string name="alert_guard_wait">One moment…</string>
     <string name="alert_hold_hint">Hold to answer</string>
     <string name="widget_next_label">Next up</string>
     <string name="widget_next_description">What fires next, how many today, and a way to write one.</string>
     <string name="widget_nothing">Nothing next</string>
     <string name="widget_nothing_hint">Tap to write one</string>
+    <plurals name="widget_overdue">
+        <item quantity="one">%1$d overdue</item>
+        <item quantity="other">%1$d overdue</item>
+    </plurals>
     <plurals name="widget_today">
         <item quantity="one">%1$d today</item>
         <item quantity="other">%1$d today</item>
@@ -419,6 +444,8 @@
 
     <!-- Self-update -->
     <string name="update_channel_name">App updates</string>
+    <string name="update_permission_title">An update is waiting</string>
+    <string name="update_permission_text">Allow Rwilco to install apps to get it. Tap to open Settings.</string>
     <string name="update_ready_title">Update ready</string>
     <string name="update_ready_text">Tap to install the new version of Rwilco</string>
     <string name="update_declined_title">Update not installed</string>
@@ -435,6 +462,8 @@
     <string name="update_state_failed">Last check failed (%1$s)</string>
     <string name="perm_install_missing">Installing updates needs permission to install unknown apps.</string>
     <string name="perm_install_fix">Allow</string>
+    <string name="perm_notifications_rationale_title">Rwilco reminds you with notifications</string>
+    <string name="perm_notifications_rationale_body">Android will now ask whether to allow them. Without them, nothing reaches you while the app is closed.</string>
     <string name="perm_notifications_missing">Notifications are off, so you will not see the install prompt.</string>
     <string name="perm_notifications_fix">Turn on</string>
     <string name="whats_new_title">What\'s new</string>
@@ -624,6 +653,7 @@
     <string name="card_rule_happened">Already happened</string>
 
     <!-- Alert permissions -->
+    <string name="perm_quirks_heading">These change how a reminder appears, not whether it arrives</string>
     <string name="perm_overlay_missing">Without "display over other apps" a reminder cannot take the screen while the phone is unlocked.</string>
     <string name="perm_overlay_fix">Allow</string>
     <string name="perm_usage_missing">Without "usage access" Rwilco cannot tell an open app from the home screen, so it always arrives as a banner.</string>
@@ -1181,6 +1211,14 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_68_0">
+        <item>The alert screen\'s two quiet seconds are only for a screen that took you by surprise. A reminder you opened yourself — from a card or a note — and the strips left after you answer one of several are ready to hold at once; «Close preview» in the editor is a plain tap again. While the count runs, the screen says «One moment…» and then, once, «Hold to answer», rather than a bare number.</item>
+        <item>«New» is no longer amber: amber means what fires next, and the hero\'s glow is the only amber left to look for. The card you just saved is marked even when it is the one at the top, and a screen reader gets «done» and «delete» on that card too.</item>
+        <item>Home says «Nothing for today» when there is nothing due and nothing missed. The magnifier opens on your tags instead of a blank page. A tag filter stays visible in the header while you scroll, with an × to clear it. The widget redraws when you fix a reminder\'s words and counts what is overdue.</item>
+        <item>«Done» and Home no longer sit on a loading screen for ever if the store cannot be read: they say so, with the diagnostics a tap away. The done list is grouped off the main thread and its «today» moves at midnight.</item>
+        <item>In the editor a refused save now goes to the card it is about and marks it. A sheet with real work in it — a place, a calendar — asks before the back gesture throws it away. The line under the form says what a span counted from «done» really does: «and so on until you do it · then it comes back every 4 years». A place reminder gets its «rings when you get to Casa» line. A preset saved says so and offers to pin it; the preset chooser says what each shape does instead of counting its triggers; a preset\'s name is capped where it is typed rather than cut on save. Renaming a phrase or tag opens ready to type. The countdown preview names the day. A place rule that still needs background location says so under the rule.</item>
+        <item>Settings: the ten checks are two groups now — what stops a reminder arriving (counted, red) and what only changes how it appears. Home\'s strip names the worst problem rather than a count. A fresh install hears one sentence from the app before Android\'s notification dialog. A sound file that cannot be copied says so. An update found in the background no longer drops the install dialog on top of what you are doing; the notification asks, and a tap picks the moment. An update the app is not allowed to install says so in the shade. The light theme\'s amber and outlines meet the contrast floor.</item>
+    </string-array>
     <string-array name="whats_new_0_67_0">
         <item>A deleted reminder can be brought back for a whole minute. The «Undo» in the snackbar lasted four seconds and the next swipe replaced it, so a delete followed by a «done» on the card under it — which is how a list gets cleared — was gone for good. Now a row at the top of the list keeps the same undo for sixty seconds.</item>
         <item>«Overdue» is in the order things were missed, oldest first, and each card says so: «Was due 3 h ago». It used to sort by the day you wrote them and look exactly like a future card.</item>

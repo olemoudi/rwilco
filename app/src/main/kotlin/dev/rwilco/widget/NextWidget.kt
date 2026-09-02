@@ -96,6 +96,8 @@ data class WidgetState(
     /** When, in words: "hoy 18:30", "mañana 09:00"; null when the next is a place or a chance. */
     val nextWhen: String?,
     val today: Int,
+    /** Missed and still owed: the one number a glance most needs, and the one it used to hide. */
+    val overdue: Int = 0,
 )
 
 private suspend fun widgetState(context: Context): WidgetState {
@@ -125,6 +127,7 @@ internal fun widgetStateOf(
         nextText = hero?.entry?.reminder?.text,
         nextWhen = at?.let { dayWord(words, it.toLocalDate(), today) + " " + TimeText.time(it.toLocalTime(), words.is24h, words.locale) },
         today = dueToday,
+        overdue = groups.sections[dev.rwilco.model.Section.OVERDUE]?.size ?: 0,
     )
 }
 
@@ -170,6 +173,15 @@ private fun Content(state: WidgetState) {
             if (wide) {
                 Spacer(GlanceModifier.width(12.dp))
                 Column(horizontalAlignment = Alignment.End) {
+                    // Overdue first and in the error ink: "0 hoy" over three missed reminders
+                    // was the widget saying the opposite of Home (0.68.0).
+                    if (state.overdue > 0) {
+                        Text(
+                            text = context.resources.getQuantityString(R.plurals.widget_overdue, state.overdue, state.overdue),
+                            style = TextStyle(color = ColorProvider(RwilcoDarkColors.error), fontSize = 12.sp, fontWeight = FontWeight.Bold),
+                            maxLines = 1,
+                        )
+                    }
                     Text(
                         text = context.resources.getQuantityString(R.plurals.widget_today, state.today, state.today),
                         style = TextStyle(color = quiet, fontSize = 12.sp),

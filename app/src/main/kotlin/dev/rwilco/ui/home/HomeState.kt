@@ -41,9 +41,17 @@ data class HomeUiState(
     val defaultTime: LocalTime = LocalTime.of(9, 0),
     /** The hours somebody is up; carried so a preset written in one tap is judged by them too. */
     val dayShape: DayShape = DayShape.DEFAULT,
+    /**
+     * Reminders, but none for today and none missed: the verdict Home never gave (0.68.0). A
+     * phone with five reminders next month showed a list and no answer to "am I free today?",
+     * while the widget beside it said "0 hoy".
+     */
+    val quietToday: Boolean = false,
+    /** The store could not be read: an error to say, not a loading state to sit in for ever. */
+    val failed: Boolean = false,
 ) {
     /** Nothing open at all (as opposed to a filter that matched nothing). */
-    val empty: Boolean get() = loaded && hero == null && sections.isEmpty() && selectedTag == null
+    val empty: Boolean get() = loaded && !failed && hero == null && sections.isEmpty() && selectedTag == null
 }
 
 /**
@@ -74,6 +82,7 @@ fun homeCardIndex(state: HomeUiState, id: String, strip: Boolean, pinned: Boolea
         if (state.hero.card.id == id) return index
         index++
     }
+    if (state.quietToday) index++
     for (section in state.sections) {
         index++ // the section's own heading
         val at = section.cards.indexOfFirst { it.id == id }
@@ -270,8 +279,12 @@ fun buildHomeState(
             },
         )
     }
+    val today = now.atZone(zone).toLocalDate()
+    val heroToday = groups.hero?.entry?.wake?.at?.atZone(zone)?.toLocalDate() == today
+    val busySections = groups.sections.keys.any { it == Section.TODAY || it == Section.OVERDUE }
     return HomeUiState(
         loaded = true,
+        quietToday = (groups.hero != null || groups.sections.isNotEmpty()) && !heroToday && !busySections && filter == null,
         hero = groups.hero?.let { hero ->
             HeroUi(
                 card = card(hero.entry.reminder),

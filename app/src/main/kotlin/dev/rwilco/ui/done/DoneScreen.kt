@@ -38,12 +38,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.material.icons.outlined.ErrorOutline
+import dev.rwilco.ui.components.rememberNow
 import dev.rwilco.R
 import dev.rwilco.ui.components.SectionHeader
-import dev.rwilco.model.groupDone
 import dev.rwilco.model.DoneSection
 import dev.rwilco.model.Reminder
-import dev.rwilco.model.doneByDay
 import dev.rwilco.ui.components.DayBars
 import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.ui.components.EmptyState
@@ -64,10 +64,12 @@ private const val DAYS_IN_A_WEEK = 7
 
 @Composable
 fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpen: (String) -> Unit) {
-    val done by viewModel.done.collectAsStateWithLifecycle()
+    val view by viewModel.view.collectAsStateWithLifecycle()
     var confirmingPurge by rememberSaveable { mutableStateOf(false) }
     val spacing = Tokens.spacing
-    val today = clock.instant().atZone(clock.zone).toLocalDate()
+    // By the minute, so a screen left open across midnight moves its "hoy" with the day.
+    val now by rememberNow(60_000, clock)
+    val today = now.atZone(clock.zone).toLocalDate()
     val locale = currentLocale()
     val is24h = rememberIs24h()
     val snackbar = LocalSnackbar.current
@@ -97,7 +99,7 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
                             .weight(1f)
                             .padding(horizontal = spacing.sm),
                     )
-                    if (!done.isNullOrEmpty()) {
+                    if ((view?.total ?: 0) > 0) {
                         IconButton(onClick = { confirmingPurge = true }) {
                             Icon(Icons.Outlined.DeleteSweep, contentDescription = stringResource(R.string.done_purge))
                         }
@@ -106,7 +108,7 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
             }
         },
     ) { padding ->
-        val list = done
+        val shown = view
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
@@ -117,10 +119,19 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
             ),
             verticalArrangement = Arrangement.spacedBy(spacing.md),
         ) {
-            if (list == null) {
+            if (shown == null) {
                 item { ListPlaceholder() }
             }
-            if (list != null && list.isEmpty()) {
+            if (shown != null && shown.failed) {
+                item {
+                    EmptyState(
+                        title = stringResource(R.string.home_failed_title),
+                        body = stringResource(R.string.home_failed_body),
+                        icon = Icons.Outlined.ErrorOutline,
+                    )
+                }
+            }
+            if (shown != null && !shown.failed && shown.total == 0) {
                 item {
                     EmptyState(
                         title = stringResource(R.string.done_empty_title),
@@ -133,15 +144,14 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
             // fortnight behind it. A list of what got done answers "did I do it?"; this answers
             // "how is it going?", which is the question somebody opens this screen with and
             // which no amount of scrolling was ever going to answer.
-            if (!list.isNullOrEmpty()) {
+            if (shown != null && shown.total > 0) {
                 item(key = "chart") {
-                    val bars = doneByDay(list, clock.instant(), clock.zone)
-                    DoneHeadline(counts = bars, week = bars.takeLast(DAYS_IN_A_WEEK).sum())
+                    DoneHeadline(counts = shown.bars, week = shown.bars.takeLast(DAYS_IN_A_WEEK).sum())
                 }
             }
             // Three bands rather than one long list: what got done today, what got done this
             // week, and the rest — which is a place to look rather than a place to read.
-            for ((section, reminders) in groupDone(list.orEmpty(), clock.instant(), clock.zone)) {
+            for ((section, reminders) in shown?.sections.orEmpty()) {
                 item(key = "head-$section") {
                     SectionHeader(title = stringResource(section.titleRes), trailing = reminders.size.toString())
                 }
@@ -163,7 +173,7 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
             }
             // Said once, at the bottom, because a list that quietly forgets things is worse
             // than one that says how long it remembers for.
-            if (!list.isNullOrEmpty()) {
+            if (shown != null && shown.total > 0) {
                 item(key = "kept") {
                     Text(
                         text = stringResource(R.string.done_kept_note),

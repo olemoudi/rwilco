@@ -285,7 +285,7 @@ private fun CompactCard(
  * *change*, and a card that simply is a different colour says nothing about which of them moved.
  */
 @Composable
-private fun markedColour(marked: Boolean): Color {
+internal fun markedColour(marked: Boolean): Color {
     val scheme = MaterialTheme.colorScheme
     val colour by animateColorAsState(
         targetValue = if (marked) scheme.surfaceContainerHighest else scheme.surfaceContainer,

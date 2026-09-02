@@ -35,6 +35,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Bookmarks
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -206,12 +207,19 @@ fun PinPresetsPanel(
                         Surface(
                             onClick = { onTogglePin(preset) },
                             shape = MaterialTheme.shapes.small,
-                            // Pinned is inverted, like every other "on" in the app.
+                            // Pinned is inverted, like every other "on" in the app — and said
+                            // (0.68.0): a checkbox to a screen reader, and a check glyph for
+                            // anyone the inversion alone does not reach.
                             color = if (preset.pinned) scheme.onSurface else presetWash(preset.colorIndex),
                             border = if (preset.pinned) null else BorderStroke(Tokens.strokes.control, color.copy(alpha = 0.55f)),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(min = Tokens.sizes.touch),
+                                .heightIn(min = Tokens.sizes.touch)
+                                .semantics {
+                                    contentDescription = preset.name
+                                    role = Role.Checkbox
+                                    toggleableState = if (preset.pinned) ToggleableState.On else ToggleableState.Off
+                                },
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -229,7 +237,17 @@ fun PinPresetsPanel(
                                     color = if (preset.pinned) scheme.surface else scheme.onSurface,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f),
                                 )
+                                if (preset.pinned) {
+                                    Spacer(Modifier.width(spacing.sm))
+                                    Icon(
+                                        imageVector = Icons.Outlined.Check,
+                                        contentDescription = null,
+                                        tint = scheme.surface,
+                                        modifier = Modifier.size(Tokens.sizes.glyph),
+                                    )
+                                }
                             }
                         }
                     }

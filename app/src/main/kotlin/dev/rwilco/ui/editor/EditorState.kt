@@ -231,8 +231,13 @@ data class EditorUiState(
     val canSave: Boolean get() = errors.isEmpty()
 }
 
-/** The toggle. Nothing else about the draft changes: a preset keeps all four parts. */
-fun EditorUiState.setAsPreset(asPreset: Boolean): EditorUiState = copy(asPreset = asPreset)
+/**
+ * The toggle. Nothing else about the draft changes: a preset keeps all four parts — except
+ * that a name has a shorter cap than a reminder's words, and it is applied here rather than
+ * silently at the save (0.68.0).
+ */
+fun EditorUiState.setAsPreset(asPreset: Boolean): EditorUiState =
+    copy(asPreset = asPreset, draft = if (asPreset) draft.copy(text = draft.text.take(MAX_PRESET_NAME)) else draft)
 
 /** The words reminders made from this preset start with; empty for "ask me every time". */
 fun EditorUiState.setPresetText(text: String): EditorUiState = copy(presetText = text.take(MAX_TEXT_LENGTH))
@@ -257,7 +262,7 @@ fun EditorUiState.toPreset(id: String, now: Instant, existing: Preset?, others: 
 )
 
 fun EditorUiState.withText(text: String): EditorUiState =
-    copy(draft = draft.copy(text = text.take(MAX_TEXT_LENGTH)))
+    copy(draft = draft.copy(text = text.take(if (asPreset) MAX_PRESET_NAME else MAX_TEXT_LENGTH)))
 
 /**
  * The "when" read from the words, offered only while the form has not answered it another

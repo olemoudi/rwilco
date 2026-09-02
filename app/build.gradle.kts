@@ -24,8 +24,8 @@ android {
         // v0.1.0 and v0.2.0: the published versionName came out as the comment's placeholder
         // with the real one stuck on the end. Updates kept working (the version CODE never
         // matched the comment), so nothing complained — it just offered a nonsense version.
-        versionCode = 118
-        versionName = "0.67.0-alpha"
+        versionCode = 119
+        versionName = "0.68.0-alpha"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -77,6 +77,12 @@ android {
 
 room {
     schemaDirectory("$projectDir/schemas")
+}
+
+composeCompiler {
+    // See compose_stability.conf: the model's data classes and java.time as stable, so the
+    // cards can be skipped when nothing of theirs changed.
+    stabilityConfigurationFiles.add(project.layout.projectDirectory.file("compose_stability.conf"))
 }
 
 dependencies {

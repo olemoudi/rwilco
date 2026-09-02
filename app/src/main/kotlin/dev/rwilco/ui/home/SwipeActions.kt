@@ -39,6 +39,9 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -102,6 +105,10 @@ fun SwipeableCard(
 
     val armed = state.targetValue != SwipeToDismissBoxValue.Settled
     val toDone = state.dismissDirection == SwipeToDismissBoxValue.StartToEnd
+    // What the swipes do, for whoever cannot swipe — on every card, the hero included (0.68.0):
+    // hung on the card's own modifier they reached every card but the one the screen is about.
+    val doneLabel = stringResource(R.string.card_swipe_done)
+    val deleteLabel = stringResource(R.string.card_swipe_delete)
 
     // A gesture that outlives the app being on screen is not a gesture any more.
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -162,7 +169,12 @@ fun SwipeableCard(
     )
     SwipeToDismissBox(
         state = state,
-        modifier = modifier
+        modifier = modifier.semantics {
+            customActions = listOf(
+                CustomAccessibilityAction(doneLabel) { onDone(); true },
+                CustomAccessibilityAction(deleteLabel) { onDelete(); true },
+            )
+        }
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {
@@ -184,7 +196,10 @@ fun SwipeableCard(
             ) {
                 FillingGlyph(
                     icon = if (toDone) Icons.Outlined.Check else Icons.Outlined.Delete,
-                    contentDescription = stringResource(if (toDone) R.string.card_swipe_done else R.string.card_swipe_delete),
+                    // Silent: the glass is composed under every card at rest, and named it put
+                    // a stray "Eliminar" between every two cards in a screen reader's walk.
+                    // The actions are the custom actions above.
+                    contentDescription = null,
                     color = color,
                     fill = fill.value,
                 )
@@ -199,7 +214,7 @@ fun SwipeableCard(
  * much longer to hold is something you can watch rather than something you have to guess.
  */
 @Composable
-private fun FillingGlyph(icon: ImageVector, contentDescription: String, color: Color, fill: Float) {
+private fun FillingGlyph(icon: ImageVector, contentDescription: String?, color: Color, fill: Float) {
     val scheme = MaterialTheme.colorScheme
     Box(
         modifier = Modifier

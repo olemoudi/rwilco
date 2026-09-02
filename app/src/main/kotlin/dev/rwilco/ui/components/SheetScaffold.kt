@@ -23,6 +23,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -72,6 +76,12 @@ fun SheetScaffold(
     onConfirm: () -> Unit,
     confirmLabel: String = stringResource(R.string.sheet_done),
     confirmEnabled: Boolean = true,
+    /**
+     * Whether the sheet holds work worth a question: back and the scrim then ask before
+     * throwing it away (0.68.0), as the editor behind the sheet always has for a one-letter
+     * typo. "Cancelar" stays direct: it says what it does.
+     */
+    dirty: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(
@@ -80,9 +90,13 @@ fun SheetScaffold(
     )
     val haptics = Tokens.haptics
     val spacing = Tokens.spacing
+    var askingToDiscard by remember { mutableStateOf(false) }
+    if (askingToDiscard) {
+        DiscardDialog(onKeep = { askingToDiscard = false }, onDiscard = { askingToDiscard = false; onDismiss() })
+    }
     NoBounce {
         ModalBottomSheet(
-            onDismissRequest = onDismiss,
+            onDismissRequest = { if (dirty) askingToDiscard = true else onDismiss() },
             sheetState = sheetState,
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             contentColor = MaterialTheme.colorScheme.onSurface,
@@ -140,7 +154,7 @@ fun SheetScaffold(
                         ),
                         modifier = Modifier
                             .weight(1f)
-                            .heightIn(min = Tokens.sizes.control),
+                            .heightIn(min = Tokens.sizes.primary),
                     ) {
                         Text(confirmLabel, style = MaterialTheme.typography.titleMedium)
                         }

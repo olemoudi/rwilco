@@ -61,7 +61,7 @@ sealed interface EditorEvent {
      * [reminderId] is the row that was written, so Home can go and find it; null for a preset,
      * which has no card to go to.
      */
-    data class Saved(val reminderId: String?) : EditorEvent
+    data class Saved(val reminderId: String?, val presetId: String? = null) : EditorEvent
     data class Deleted(val reminder: Reminder) : EditorEvent
     /** A preset left the list; the screen closes and the snackbar offers it back. */
     /** [index] is where it sat, so an undo puts it back there rather than at the end. */
@@ -455,7 +455,14 @@ class EditorViewModel(
                 val preset = current.toPreset(id, now, current.editingPreset, others)
                 settings.copy(presets = settings.presets.keeping(preset))
             }
-            events.send(EditorEvent.Saved(null))
+            events.send(EditorEvent.Saved(null, presetId = id))
+        }
+    }
+
+    /** "Fijar", from the snackbar that says the preset was saved: on the row above Home's list. */
+    fun pinPreset(id: String) {
+        viewModelScope.launch {
+            store.update { settings -> settings.copy(presets = settings.presets.map { if (it.id == id) it.copy(pinned = true) else it }) }
         }
     }
 

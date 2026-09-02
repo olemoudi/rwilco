@@ -48,6 +48,8 @@ fun TagChip(
      * the chip is not silent, it is only wordless.
      */
     icon: ImageVector? = null,
+    /** A glyph after the word — the × on the chip that stands for an active filter. */
+    trailingIcon: ImageVector? = null,
     /** The second thing this chip can do, on a held finger; null when it does only one. */
     onHold: (() -> Unit)? = null,
     holdIcon: ImageVector = Icons.Outlined.Edit,
@@ -72,6 +74,7 @@ fun TagChip(
             }
         },
         enabled = enabled,
+        trailingIcon = trailingIcon?.let { glyph -> { Icon(glyph, contentDescription = null, modifier = Modifier.size(18.dp)) } },
         shape = MaterialTheme.shapes.small,
         colors = FilterChipDefaults.filterChipColors(
             containerColor = scheme.surfaceContainerLow,

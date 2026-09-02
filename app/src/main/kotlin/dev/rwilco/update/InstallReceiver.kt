@@ -26,8 +26,11 @@ class InstallReceiver : BroadcastReceiver() {
                 val confirm = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_INTENT, Intent::class.java) ?: return
                 UpdateCenter.report(UpdateUiState.PendingConfirmation(UpdateCenter.lastTarget()))
                 UpdateNotifications.notifyConfirmationNeeded(context, Intent(confirm))
-                confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                runCatching { context.startActivity(confirm) }
+                // Only when somebody asked for it; see UpdateCenter.manual.
+                if (UpdateCenter.manual) {
+                    confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    runCatching { context.startActivity(confirm) }
+                }
             }
             PackageInstaller.STATUS_SUCCESS -> {
                 // Self-update: the process is normally restarted before this runs; tidy up if not.

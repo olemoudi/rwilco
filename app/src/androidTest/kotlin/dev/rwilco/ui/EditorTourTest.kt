@@ -372,10 +372,11 @@ class EditorTourTest {
         rule.onNodeWithContentDescription(s(R.string.editor_preview)).performClick()
         rule.waitUntilShown(s(R.string.alert_done))
         // The preview is guarded like the real thing: the capture is of the screen once it
-        // has armed, and closing it is a hold — with the tick up top the moment before.
-        rule.waitUntilArmed(s(R.string.alert_close_preview))
+        // has armed, and its "Hecho" is a hold — with the tick up top the moment before —
+        // which closes the preview. ("Cerrar la vista previa" is a plain tap since 0.68.0.)
+        rule.waitUntilArmed(s(R.string.alert_done))
         shot("alert-preview")
-        rule.holdToAnswer(s(R.string.alert_close_preview)) { shot("alert-hold") }
+        rule.holdToAnswer(s(R.string.alert_done)) { shot("alert-hold") }
         rule.waitUntilGone(s(R.string.alert_done))
 
         text(s(R.string.common_save)).performClick()

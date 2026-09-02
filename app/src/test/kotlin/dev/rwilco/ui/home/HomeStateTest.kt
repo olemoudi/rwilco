@@ -51,6 +51,21 @@ class HomeStateTest {
     }
 
     @Test
+    fun `home says when there is nothing for today, and only then`() {
+        val nextWeek = reminder("later", Trigger.AtDateTime(LocalDateTime.of(2026, 9, 10, 9, 0)))
+        assertTrue(buildHomeState(listOf(nextWeek), defaultTime, now, zone, selectedTag = null).quietToday, "a list with nothing today")
+        assertFalse(buildHomeState(listOf(nextWeek, soon), defaultTime, now, zone, selectedTag = null).quietToday, "the hero is today")
+        val missed = reminder("missed", Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 12, 0)))
+        assertFalse(buildHomeState(listOf(nextWeek, missed), defaultTime, now, zone, selectedTag = null).quietToday, "something is overdue")
+        assertFalse(buildHomeState(emptyList(), defaultTime, now, zone, selectedTag = null).quietToday, "nothing at all is the empty state's job")
+        assertFalse(buildHomeState(listOf(nextWeek), defaultTime, now, zone, selectedTag = TagFilter.Untagged).quietToday, "a filter is a different question")
+        // And the row counts as a row for the scroll arithmetic: one more than without it.
+        val state = buildHomeState(listOf(nextWeek), defaultTime, now, zone, selectedTag = null)
+        val without = homeCardIndex(state.copy(quietToday = false), "later", strip = false, pinned = false)!!
+        assertEquals(without + 1, homeCardIndex(state, "later", strip = false, pinned = false), "the quiet row pushes the card down by one")
+    }
+
+    @Test
     fun `an overdue card says how long ago its moment went, and no other card does`() {
         // Under "Vencidos" every row went on describing the rule exactly as a future card's
         // rows do, so the heading was the only thing telling the two apart.

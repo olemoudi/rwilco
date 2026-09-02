@@ -98,28 +98,42 @@ data class AlertReadiness(
      */
     val read: Boolean = false,
 ) {
-    /** How many of the ten are in the way; zero is a phone that will ring. */
+    /**
+     * How many of the seven that decide whether a reminder *arrives* are in the way; zero is a
+     * phone that will ring. The three that only decide how it appears — the full screen, the
+     * overlay, usage access — are [quirks], and counted apart (0.68.0): they used to weigh the
+     * same as notifications being off, so a person who had refused usage access on purpose
+     * (a fair thing to refuse) was told for ever that their phone might not ring.
+     */
     val problems: Int
-        get() = listOf(
-            notifications, channels, fullScreen, exactAlarms, alarmVolume,
-            throughDnd, unrestricted, battery, overlay, usageAccess,
-        ).count { !it }
+        get() = listOf(notifications, channels, exactAlarms, alarmVolume, throughDnd, unrestricted, battery).count { !it }
+
+    /** The ones that change how a reminder shows itself, never whether it arrives. */
+    val quirks: Int get() = listOf(fullScreen, overlay, usageAccess).count { !it }
 
     val allGood: Boolean get() = problems == 0
 
-    /** The names of the ones in the way, for remembering which of them somebody has already waved off. */
+    /** The names of the ones in the way, for remembering which of them somebody has already waved off. Worst first. */
     fun problemNames(): Set<String> = buildSet {
         if (!notifications) add("notifications")
         if (!channels) add("channels")
-        if (!fullScreen) add("fullScreen")
-        if (!exactAlarms) add("exactAlarms")
         if (!alarmVolume) add("alarmVolume")
         if (!throughDnd) add("throughDnd")
+        if (!exactAlarms) add("exactAlarms")
         if (!unrestricted) add("unrestricted")
         if (!battery) add("battery")
-        if (!overlay) add("overlay")
-        if (!usageAccess) add("usageAccess")
     }
+}
+
+/** The problem in a few words, for the strip on Home; see [AlertReadiness.problemNames]. */
+fun readinessShortRes(name: String): Int = when (name) {
+    "notifications" -> R.string.readiness_short_notifications
+    "channels" -> R.string.readiness_short_channels
+    "alarmVolume" -> R.string.readiness_short_alarmVolume
+    "throughDnd" -> R.string.readiness_short_throughDnd
+    "exactAlarms" -> R.string.readiness_short_exactAlarms
+    "unrestricted" -> R.string.readiness_short_unrestricted
+    else -> R.string.readiness_short_battery
 }
 
 /**
@@ -244,19 +258,6 @@ fun AlertPermissionsCard(readiness: AlertReadiness) {
                     onFix = { open(readiness.mutedChannelId?.let { context.channelSettingsIntent(it) } ?: appNotificationSettings(context)) },
                 )
             }
-            if (!readiness.fullScreen) {
-                PermissionFixRow(
-                    text = stringResource(R.string.perm_fullscreen_missing),
-                    action = stringResource(R.string.perm_fullscreen_fix),
-                    onFix = {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                            open(
-                                Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:${context.packageName}")),
-                            )
-                        }
-                    },
-                )
-            }
             if (!readiness.exactAlarms) {
                 PermissionFixRow(
                     text = stringResource(R.string.perm_alarms_missing),
@@ -310,12 +311,34 @@ fun AlertPermissionsCard(readiness: AlertReadiness) {
                     },
                 )
             }
-            // The two that decide whether a firing takes the screen or knocks: without them the
-            // alert is always a banner, which is what the system does on its own.
+            // The three that decide whether a firing takes the screen or knocks: without them
+            // the alert is a banner, which is what the system does on its own. Said under a
+            // line of their own and never in red: refusing one is a choice, not a fault.
+            if (readiness.quirks > 0) {
+                Text(
+                    text = stringResource(R.string.perm_quirks_heading),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = Tokens.spacing.lg),
+                )
+            }
+            if (!readiness.fullScreen) {
+                PermissionFixRow(
+                    text = stringResource(R.string.perm_fullscreen_missing),
+                    action = stringResource(R.string.perm_fullscreen_fix),
+                    quiet = true,
+                    onFix = {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                            open(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:${context.packageName}")))
+                        }
+                    },
+                )
+            }
             if (!readiness.overlay) {
                 PermissionFixRow(
                     text = stringResource(R.string.perm_overlay_missing),
                     action = stringResource(R.string.perm_overlay_fix),
+                    quiet = true,
                     onFix = {
                         open(
                             Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")),
@@ -327,6 +350,7 @@ fun AlertPermissionsCard(readiness: AlertReadiness) {
                 PermissionFixRow(
                     text = stringResource(R.string.perm_usage_missing),
                     action = stringResource(R.string.perm_usage_fix),
+                    quiet = true,
                     onFix = { open(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) },
                 )
             }

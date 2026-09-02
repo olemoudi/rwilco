@@ -33,6 +33,15 @@ object UpdateCenter {
     @Volatile
     private var target: UpdateInfo? = null
 
+    /**
+     * Whether the run in flight was asked for by hand (the button, or "install what is here").
+     * Only then does [InstallReceiver] bring the system's install dialog up by itself: the
+     * periodic check used to drop it on top of the editor mid-sentence (0.68.0). In the
+     * background the notification asks, and the tap is the person choosing the moment.
+     */
+    @Volatile
+    var manual: Boolean = false
+
     internal fun report(state: UpdateUiState) {
         targetOf(state)?.let { target = it }
         mutable.value = state

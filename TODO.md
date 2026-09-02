@@ -402,18 +402,20 @@ the thirteen that lose data, crash or dead-end fixed first. Worth not re-derivin
   waiting for idle (see `AlertGuardTest`); the emulator's SystemUI ANR dialog sits over every
   capture once it appears and "Close app" restarts SystemUI — between runs only.
 
-Still open from the same round, in order: the alert guard's three softenings (opened by a tap,
-the strips after an answer, the preview's close), the FAB in neutral, the hero's mark, the blank
-search, the widget's words and overdue count, "nada para hoy", the pinned tag filter, the pin
-panel's semantics, Hechos off the main thread, the stability config, an error state for Home,
-the editor's refusal pointing at the card, the sheets asking before discarding, "Vuelve"
-selection semantics, the preset name cap, the chooser subtitle, "preset guardado", the sentence
-truncating its "when", "Suena al llegar", background location under a place rule, the rename
-focus, the countdown preview's day, the map's 44dp "Listo", the 64dp primary token, first-run
-wording, readiness in two groups, the sound-copy failure, the update's notification, the light
-theme's contrast; then the copy, token, haptic and search polish, and the dead code
-(`HoldButton`'s disc, `TimeText.dateLong`, `RuleRoot(muted)`, `nextRoundHour`, `EVERY_DAY`,
-`editor_repeats*`, `RuleMatch.joinRes` twice).
+The "should-fix" third of the round shipped as 0.68.0 (see ARCHITECTURE.md's 0.68.0 entries).
+Still open, for the polish release: the copy pass (Borrar/Eliminar/Vaciar, "En pausa" as an
+event, English "Done" that closes a dialog, the widget's description, solo/sólo, «», recordatorio
+vs aviso in the channel names, "Disparado por", `watch_busy_title`, the "Vuelve" chips), the
+token pass (loose dp/sp, numbers in Manrope, `TimeField`'s stroke, glyph sizes), haptics on the
+header buttons and FABs, the gesture hints on the empty Home, the words-chip beside the field,
+weekday chips in the date sheet, `RuleTree` in the editor, one preset panel, "my location" on the
+big map, the calendar's and the time wheel's semantics, the fades in `CuratePanel`/`PickSheet`,
+search's cap and "when" line, the hero's tags via `FittingRow`, the volume button, `InfoBadge`'s
+titles, `Trigger.Countdown`'s zone, and the dead code (`HoldButton`'s disc, `TimeText.dateLong`,
+`RuleRoot(muted)`, `nextRoundHour`, `EVERY_DAY`, `editor_repeats*`, `RuleMatch.joinRes` twice).
+To prove on the phone from 0.68.0: the alert opened from a card arms at once; a strip answered
+leaves the others armed; the periodic update check posts its notification and does not open the
+install dialog by itself; the first-run sentence before the notification dialog.
 
 ## Still to prove on the real phone (Pixel 8 Pro)
 - The reliability round (0.59.0): a real arrival three minutes after a clock ring must ring

@@ -36,7 +36,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,6 +48,12 @@ import dev.rwilco.ui.components.scrollFade
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.presetColor
 import dev.rwilco.ui.theme.presetWash
+import dev.rwilco.model.isAnchored
+import dev.rwilco.ui.format.recurrenceLabel
+import dev.rwilco.ui.format.rememberWords
+import dev.rwilco.ui.format.triggerPhrase
+import dev.rwilco.ui.localToday
+import java.time.LocalTime
 
 /**
  * What "New" asks once there is a preset to offer: from nothing, or from one of the shapes you
@@ -62,6 +67,8 @@ import dev.rwilco.ui.theme.presetWash
 @Composable
 fun NewReminderChooser(
     presets: List<Preset>,
+    /** When a date-only rule rings, for reading a preset's rules back. */
+    defaultTime: LocalTime,
     onBlank: () -> Unit,
     onPreset: (Preset) -> Unit,
     onEditPreset: (Preset) -> Unit,
@@ -121,6 +128,7 @@ fun NewReminderChooser(
                         items(presets, key = { it.id }) { preset ->
                             PresetButton(
                                 preset = preset,
+                                defaultTime = defaultTime,
                                 onClick = { onPreset(preset) },
                                 onEdit = { onEditPreset(preset) },
                             )
@@ -169,7 +177,7 @@ private fun BigChoice(icon: ImageVector, label: String, onClick: () -> Unit, mod
  * the handle, and after a week it is how the hand finds "la compra" without reading the row.
  */
 @Composable
-private fun PresetButton(preset: Preset, onClick: () -> Unit, onEdit: () -> Unit) {
+private fun PresetButton(preset: Preset, defaultTime: LocalTime, onClick: () -> Unit, onEdit: () -> Unit) {
     val haptics = Tokens.haptics
     val scheme = MaterialTheme.colorScheme
     val color = presetColor(preset.colorIndex)
@@ -203,7 +211,7 @@ private fun PresetButton(preset: Preset, onClick: () -> Unit, onEdit: () -> Unit
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                val summary = presetSummary(preset)
+                val summary = presetSummary(preset, defaultTime)
                 if (summary != null) {
                     Text(
                         text = summary,
@@ -225,14 +233,19 @@ private fun PresetButton(preset: Preset, onClick: () -> Unit, onEdit: () -> Unit
     }
 }
 
-/** "casa · 2 disparadores", or nothing when a preset is only a name. */
+/**
+ * "casa · los viernes a las 14:00 · vuelve cada semana", or nothing when a preset is only a
+ * name. What it *does*, in the app's own words (0.68.0): it said "2 disparadores", a count
+ * of the one thing somebody picks a shape by.
+ */
 @Composable
-private fun presetSummary(preset: Preset): String? {
+private fun presetSummary(preset: Preset, defaultTime: LocalTime): String? {
+    val words = rememberWords()
+    val today = localToday()
     val parts = buildList {
         if (preset.tags.isNotEmpty()) add(preset.tags.joinToString(" · "))
-        if (preset.rules.isNotEmpty()) {
-            add(pluralStringResource(R.plurals.home_preset_triggers, preset.rules.size, preset.rules.size))
-        }
+        for (rule in preset.rules) add(triggerPhrase(words, rule.trigger, today, defaultTime))
+        if (preset.recurrence.isAnchored) add(recurrenceLabel(words, preset.recurrence, today))
     }
     return parts.joinToString(" · ").ifEmpty { null }
 }

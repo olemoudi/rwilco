@@ -46,6 +46,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import dev.rwilco.ui.settings.openSettingsPage
+import dev.rwilco.ui.settings.appDetailsIntent
+import dev.rwilco.ui.components.PermissionFixRow
+import dev.rwilco.geo.hasBackgroundLocation
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -484,6 +490,8 @@ internal fun TriggersSection(
     dayStart: LocalTime,
     /** What is worth saying about each rule, by index: one string resource, the worst one. */
     ruleWarnings: Map<Int, Int>,
+    /** The rules a save refused, by index, once "Guardar" has been tried: the refusal on the row it is about. */
+    ruleErrors: Map<Int, Int> = emptyMap(),
     onAdd: () -> Unit,
     onQuickAdd: (Trigger) -> Unit,
     /** The "when"s used before, best first; empty on a phone with no history yet. */
@@ -541,11 +549,30 @@ internal fun TriggersSection(
                     today = today,
                     defaultTime = defaultTime,
                     warning = ruleWarnings[index],
+                    error = ruleErrors[index],
                     onEdit = { onEdit(index) },
                     onRemove = { onRemove(index) },
                     onAddCondition = { onAddCondition(index) },
                     onEditCondition = { conditionIndex -> onEditCondition(index, conditionIndex) },
                     onRemoveCondition = { conditionIndex -> onRemoveCondition(index, conditionIndex) },
+                )
+            }
+        }
+        // A place rule needs location "all the time", and the sheet only ever asked for the
+        // foreground half: the reminder saved fine and would not ring until Home's strip said
+        // why. Said here, where the rule is written, with the same row Settings uses (0.68.0).
+        if (rules.any { it.trigger is Trigger.Location }) {
+            val context = LocalContext.current
+            var background by remember { mutableStateOf(context.hasBackgroundLocation()) }
+            LifecycleResumeEffect(Unit) {
+                background = context.hasBackgroundLocation()
+                onPauseOrDispose { }
+            }
+            if (!background) {
+                PermissionFixRow(
+                    text = stringResource(R.string.perm_background_location_missing),
+                    action = stringResource(R.string.perm_background_location_fix),
+                    onFix = { context.openSettingsPage(context.appDetailsIntent()) },
                 )
             }
         }
@@ -694,6 +721,7 @@ private fun TriggerEditRow(
     today: LocalDate,
     defaultTime: LocalTime,
     warning: Int?,
+    error: Int? = null,
     onEdit: () -> Unit,
     onRemove: () -> Unit,
     onAddCondition: () -> Unit,
@@ -734,6 +762,7 @@ private fun TriggerEditRow(
                     Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.editor_remove_trigger), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+            if (error != null) FieldError(stringResource(error))
             if (warning != null) FieldWarning(stringResource(warning))
             // The conditions sit under the trigger they restrict, because that is what they are:
             // not another way to ring, but a fence around this one.

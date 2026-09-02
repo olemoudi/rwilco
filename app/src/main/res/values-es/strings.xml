@@ -54,6 +54,17 @@
     <string name="home_snooze_cancelled">Posponer quitado</string>
     <string name="home_keep_preset">Guardar como preset</string>
     <string name="home_keep_preset_hint">Su forma con nombre, para la próxima</string>
+    <string name="readiness_short_notifications">Las notificaciones están desactivadas</string>
+    <string name="readiness_short_channels">Un canal de recordatorios está silenciado</string>
+    <string name="readiness_short_alarmVolume">El volumen de alarma está a cero</string>
+    <string name="readiness_short_throughDnd">No molestar lo bloquea todo</string>
+    <string name="readiness_short_exactAlarms">No se permiten alarmas exactas</string>
+    <string name="readiness_short_unrestricted">El uso en segundo plano está restringido</string>
+    <string name="readiness_short_battery">La optimización de batería puede pararla</string>
+    <plurals name="home_readiness_more">
+        <item quantity="one">y %d más</item>
+        <item quantity="other">y %d más</item>
+    </plurals>
     <string name="home_readiness_title">Puede que este móvil no suene</string>
     <string name="home_readiness_fix">Arreglar</string>
     <string name="home_readiness_dismiss">Ahora no</string>
@@ -89,6 +100,9 @@
     <string name="home_skip_hint">La de %1$s; la siguiente se queda</string>
     <string name="preset_deleted">Preset borrado</string>
     <string name="recur_preset_deleted">Preset de recurrencia borrado</string>
+    <string name="home_quiet_today">Nada para hoy</string>
+    <string name="home_failed_title">No se han podido leer los recordatorios</string>
+    <string name="home_failed_body">Algo ha fallado al leer el almacén del móvil. El informe de diagnóstico dice qué; lo primero que probar es reiniciar la app.</string>
     <string name="home_deleted_row">Eliminado: %1$s</string>
     <string name="home_deleted">Eliminado</string>
     <string name="home_paused">En pausa</string>
@@ -337,14 +351,25 @@
     <string name="alert_done">Hecho</string>
     <string name="alert_silence">Silenciar</string>
     <string name="alert_view">Ver</string>
+    <string name="recur_after_rang_note">Se cuenta desde que suena.</string>
+    <string name="editor_preset_saved">Preset guardado</string>
+    <string name="home_pin_action">Fijar</string>
+    <string name="settings_sound_copy_failed">No se ha podido copiar ese archivo; el sonido sigue como estaba.</string>
+    <string name="editor_will_ring_until_done">y así hasta que lo hagas</string>
+    <string name="editor_will_ring_then_returns">después vuelve %1$s</string>
     <string name="alert_done_all">Hecho con todos</string>
     <string name="alert_snoozed">Pospuesto</string>
     <string name="alert_snoozed_all">Pospuestos todos</string>
+    <string name="alert_guard_wait">Un momento…</string>
     <string name="alert_hold_hint">Mantén pulsado para contestar</string>
     <string name="widget_next_label">Lo siguiente</string>
     <string name="widget_next_description">Qué suena ahora, cuántos hoy, y una forma de escribir uno.</string>
     <string name="widget_nothing">Nada previsto</string>
     <string name="widget_nothing_hint">Toca para escribir uno</string>
+    <plurals name="widget_overdue">
+        <item quantity="one">%1$d vencido</item>
+        <item quantity="other">%1$d vencidos</item>
+    </plurals>
     <plurals name="widget_today">
         <item quantity="one">%1$d hoy</item>
         <item quantity="other">%1$d hoy</item>
@@ -417,6 +442,8 @@
 
     <!-- Self-update -->
     <string name="update_channel_name">Actualizaciones de la app</string>
+    <string name="update_permission_title">Hay una actualización esperando</string>
+    <string name="update_permission_text">Permite a Rwilco instalar apps para recibirla. Toca para abrir Ajustes.</string>
     <string name="update_ready_title">Actualización lista</string>
     <string name="update_ready_text">Toca para instalar la nueva versión de Rwilco</string>
     <string name="update_declined_title">Actualización sin instalar</string>
@@ -433,6 +460,8 @@
     <string name="update_state_failed">La última comprobación falló (%1$s)</string>
     <string name="perm_install_missing">Para instalar actualizaciones hace falta permiso para instalar apps desconocidas.</string>
     <string name="perm_install_fix">Permitir</string>
+    <string name="perm_notifications_rationale_title">Rwilco avisa con notificaciones</string>
+    <string name="perm_notifications_rationale_body">Android va a preguntar ahora si las permites. Sin ellas, nada te llega con la app cerrada.</string>
     <string name="perm_notifications_missing">Las notificaciones están desactivadas: no verás el aviso de instalación.</string>
     <string name="perm_notifications_fix">Activar</string>
     <string name="whats_new_title">Novedades</string>
@@ -622,6 +651,7 @@
     <string name="card_rule_happened">Ya ha ocurrido</string>
 
     <!-- Alert permissions -->
+    <string name="perm_quirks_heading">Esto cambia cómo aparece un recordatorio, no si llega</string>
     <string name="perm_overlay_missing">Sin «mostrar sobre otras apps» un recordatorio no puede tomar la pantalla con el móvil desbloqueado.</string>
     <string name="perm_overlay_fix">Permitir</string>
     <string name="perm_usage_missing">Sin «acceso al uso» Rwilco no distingue una app abierta del escritorio, así que siempre llega como banner.</string>
@@ -1179,6 +1209,14 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_68_0">
+        <item>Los dos segundos de calma de la alerta son sólo para una pantalla que te pilla por sorpresa. Un recordatorio que abres tú — desde una tarjeta o una nota — y las tiras que quedan tras contestar una de varias están listas para mantener pulsado desde el principio; «Cerrar la vista previa» en el editor vuelve a ser un toque normal. Mientras corre la cuenta la pantalla dice «Un momento…» y después, una vez, «Mantén pulsado para contestar», en vez de un número a secas.</item>
+        <item>«Nuevo» ya no es ámbar: el ámbar significa lo siguiente que suena, y el brillo de la tarjeta principal es el único ámbar que buscar. La tarjeta que acabas de guardar se marca también cuando es la de arriba, y un lector de pantalla tiene «hecho» y «eliminar» en esa tarjeta igual que en las demás.</item>
+        <item>Inicio dice «Nada para hoy» cuando no hay nada para hoy ni nada vencido. La lupa se abre con tus etiquetas en vez de con una página vacía. Un filtro por etiqueta se queda a la vista en la cabecera mientras bajas, con una × para quitarlo. El widget se redibuja cuando corriges las palabras de un recordatorio y cuenta los vencidos.</item>
+        <item>«Hechos» e inicio ya no se quedan cargando para siempre si no se puede leer el almacén: lo dicen, con el diagnóstico a un toque. La lista de hechos se agrupa fuera del hilo principal y su «hoy» cambia a medianoche.</item>
+        <item>En el editor, un guardar rechazado va ahora a la tarjeta de la que trata y la marca. Una hoja con trabajo de verdad — un lugar, un calendario — pregunta antes de que el gesto de atrás lo tire. La línea de debajo del formulario dice lo que hace de verdad un plazo contado desde «hecho»: «y así hasta que lo hagas · después vuelve cada 4 años». Un recordatorio de lugar tiene su línea «suena al llegar a Casa». Un preset guardado lo dice y ofrece fijarlo; el selector de presets dice qué hace cada forma en vez de contar sus disparadores; el nombre de un preset se limita donde lo escribes, no al guardar. Renombrar una frase o etiqueta abre listo para escribir. La vista previa del plazo dice el día. Una regla de lugar a la que le falta la ubicación en segundo plano lo dice bajo la regla.</item>
+        <item>Ajustes: las diez comprobaciones son ahora dos grupos — lo que impide que un recordatorio llegue (contado, en rojo) y lo que sólo cambia cómo aparece. La franja de inicio nombra el peor problema en vez de una cuenta. Una instalación nueva oye una frase de la app antes del diálogo de notificaciones de Android. Un archivo de sonido que no se puede copiar lo dice. Una actualización encontrada en segundo plano ya no te planta el diálogo de instalar encima de lo que estés haciendo; la notificación pregunta, y un toque elige el momento. Una actualización que la app no tiene permiso para instalar lo dice en el cajón. El ámbar y los contornos del tema claro cumplen el mínimo de contraste.</item>
+    </string-array>
     <string-array name="whats_new_0_67_0">
         <item>Un recordatorio borrado se puede recuperar durante un minuto entero. El «Deshacer» del aviso duraba cuatro segundos y el siguiente gesto lo sustituía, así que borrar uno y marcar «hecho» el de debajo — que es como se limpia una lista — lo perdía para siempre. Ahora una fila arriba de la lista guarda ese mismo deshacer sesenta segundos.</item>
         <item>«Vencidos» va en el orden en que se pasaron, el más antiguo arriba, y cada tarjeta lo dice: «Debía sonar hace 3 h». Antes se ordenaban por el día en que los escribiste y eran iguales que una tarjeta futura.</item>

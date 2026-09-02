@@ -26,6 +26,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -163,8 +166,11 @@ private fun CurateRow(item: String, removeLabel: String, onEdit: () -> Unit, onR
 /** The row turned into a field, in place: renaming is a small act and does not deserve a screen. */
 @Composable
 private fun RenameRow(initial: String, onCancel: () -> Unit, onConfirm: (String) -> Unit) {
-    var text by remember { mutableStateOf(initial) }
+    // Focused and selected whole on arrival (0.68.0): a rename is a retype, and the field
+    // used to open with the keyboard down and the cursor nowhere.
+    var text by remember { mutableStateOf(TextFieldValue(initial, selection = TextRange(0, initial.length))) }
     val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
     val scheme = MaterialTheme.colorScheme
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         OutlinedTextField(
@@ -181,7 +187,7 @@ private fun RenameRow(initial: String, onCancel: () -> Unit, onConfirm: (String)
                 .weight(1f)
                 .focusRequester(focusRequester),
         )
-        IconButton(onClick = { onConfirm(text.trim()) }) {
+        IconButton(onClick = { onConfirm(text.text.trim()) }) {
             Icon(Icons.Outlined.Check, contentDescription = stringResource(R.string.curate_rename_confirm), tint = scheme.onSurface)
         }
         TextButton(onClick = onCancel) { Text(stringResource(R.string.sheet_cancel)) }

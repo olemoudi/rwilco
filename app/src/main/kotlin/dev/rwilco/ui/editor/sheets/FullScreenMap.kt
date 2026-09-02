@@ -103,13 +103,15 @@ fun FullScreenMap(
                         },
                         shape = MaterialTheme.shapes.medium,
                         colors = ButtonDefaults.buttonColors(containerColor = scheme.onSurface, contentColor = scheme.surface),
+                        // The gap under it is outside the button: with the padding inside,
+                        // the bottom 12dp of what read as the button did nothing.
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(min = Tokens.sizes.control)
-                            .padding(bottom = spacing.md),
+                            .heightIn(min = Tokens.sizes.control),
                     ) {
                         Text(stringResource(R.string.common_done), style = MaterialTheme.typography.titleMedium)
                     }
+                    Spacer(Modifier.height(spacing.md))
                 }
             }
         }

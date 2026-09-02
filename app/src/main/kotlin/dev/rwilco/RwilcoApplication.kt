@@ -199,7 +199,10 @@ class RwilcoApplication : Application() {
         appScope.launch {
             // The widget says what Home says first, so it is redrawn whenever that can have
             // changed: a reminder written, dealt with, rung, or a setting that moves a moment.
-            combine(repository.open, settingsStore.settings.map(ReminderScheduler::settingsKey)) { open, key -> open.map(ReminderScheduler::schedulingKey) to key }
+            // The words too (0.68.0): the scheduling key is deliberately about moments, and the
+            // widget's whole job is the words and when — a typo fixed sat on the home screen
+            // until the next moment moved.
+            combine(repository.open, settingsStore.settings.map(ReminderScheduler::settingsKey)) { open, key -> open.map { ReminderScheduler.schedulingKey(it) to it.text } to key }
                 .distinctUntilChanged()
                 .collect { NextWidget.refresh(this@RwilcoApplication) }
         }

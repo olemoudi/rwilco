@@ -48,6 +48,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import kotlin.math.roundToInt
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -100,6 +104,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.model.upcomingMoments
 import dev.rwilco.model.NextFire
+import dev.rwilco.model.Recurrence
 import kotlinx.coroutines.launch
 import java.time.ZoneId
 import dev.rwilco.model.Understood
@@ -129,6 +134,10 @@ fun EditorScreen(
     val triggerMessage = stringResource(R.string.editor_error_trigger)
     val recurrenceMessage = stringResource(R.string.editor_error_recurrence)
     val recurrencePresetDeletedMessage = stringResource(R.string.recur_preset_deleted)
+    val presetSavedMessage = stringResource(R.string.editor_preset_saved)
+    val pinLabel = stringResource(R.string.home_pin_action)
+    // Where each card sits in the scrolling column, so a refusal can go to the one it is about.
+    val sectionTops = remember { mutableStateMapOf<String, Int>() }
     val triggerRemovedMessage = stringResource(R.string.editor_trigger_removed)
     val undoLabel = stringResource(R.string.common_undo)
     LaunchedEffect(viewModel) {
@@ -136,6 +145,10 @@ fun EditorScreen(
             when (event) {
                 is EditorEvent.Saved -> {
                     event.reminderId?.let(onSaved)
+                    // A preset saved used to close the screen and say nothing — and unless it
+                    // was pinned, leave no trace anywhere. Said, with the one thing worth
+                    // doing to it next (0.68.0).
+                    event.presetId?.let { id -> snackbar.show(presetSavedMessage, pinLabel) { viewModel.pinPreset(id) } }
                     onClose()
                 }
                 is EditorEvent.Deleted -> {
@@ -164,10 +177,17 @@ fun EditorScreen(
                             is ValidationError.BadRecurrence -> recurrenceMessage
                         },
                     )
-                    // The words are the top card: go there and put the cursor in them.
-                    if (event.error == ValidationError.TextBlank || event.error == ValidationError.TextTooLong) {
-                        scope.launch { scrollState.animateScrollTo(0) }
-                        if (event.error == ValidationError.TextBlank) focusNonce++
+                    // The words are the top card: go there and put the cursor in them. A bad
+                    // rule or a bad "Vuelve" goes to its card the same way (0.68.0): the
+                    // refusal used to be a snackbar at the far end of the screen and a card
+                    // with no mark on it.
+                    when (event.error) {
+                        ValidationError.TextBlank, ValidationError.TextTooLong -> {
+                            scope.launch { scrollState.animateScrollTo(0) }
+                            if (event.error == ValidationError.TextBlank) focusNonce++
+                        }
+                        is ValidationError.BadTrigger -> sectionTops[SECTION_WHEN]?.let { top -> scope.launch { scrollState.animateScrollTo(top) } }
+                        is ValidationError.BadRecurrence -> sectionTops[SECTION_RETURNS]?.let { top -> scope.launch { scrollState.animateScrollTo(top) } }
                     }
                 }
             }
@@ -287,6 +307,7 @@ fun EditorScreen(
                     today = today,
                     defaultTime = state.defaultTime,
                     upcoming = upcoming,
+                    recurrence = state.draft.recurrence,
                     zone = zone,
                     onSave = {
                         haptics.perform(HapticFeedbackType.Confirm)
@@ -360,6 +381,7 @@ fun EditorScreen(
                     title = stringResource(R.string.editor_when_title),
                     icon = Icons.Outlined.Schedule,
                     note = stringResource(R.string.editor_when_optional),
+                    modifier = Modifier.onGloballyPositioned { sectionTops[SECTION_WHEN] = it.positionInParent().y.roundToInt() },
                 ) {
                     TriggersSection(
                         rules = state.draft.rules,
@@ -370,6 +392,11 @@ fun EditorScreen(
                         defaultTime = state.defaultTime,
                         dayStart = state.dayStart,
                         ruleWarnings = ruleWarnings,
+                        ruleErrors = if (state.showErrors) {
+                            state.errors.filterIsInstance<ValidationError.BadTrigger>().associate { it.index to R.string.editor_error_trigger }
+                        } else {
+                            emptyMap()
+                        },
                         onAdd = {
                             focusManager.clearFocus()
                             viewModel.openKindPicker()
@@ -398,7 +425,11 @@ fun EditorScreen(
                     // The only one of the five that did not say so, which made it read as a
                     // question the form was waiting on. Most reminders never come back.
                     note = stringResource(R.string.editor_optional),
+                    modifier = Modifier.onGloballyPositioned { sectionTops[SECTION_RETURNS] = it.positionInParent().y.roundToInt() },
                 ) {
+                    if (state.showErrors && state.errors.any { it is ValidationError.BadRecurrence }) {
+                        FieldError(stringResource(R.string.editor_error_recurrence), Modifier.padding(bottom = spacing.sm))
+                    }
                     RecurrenceSection(
                         recurrence = state.draft.recurrence,
                         presets = state.recurrencePresets,
@@ -656,6 +687,7 @@ private fun SaveBar(
     onSave: () -> Unit,
     upcoming: List<NextFire> = emptyList(),
     zone: ZoneId = ZoneId.systemDefault(),
+    recurrence: Recurrence = Recurrence.None,
 ) {
     Surface(color = MaterialTheme.colorScheme.background) {
         Column(
@@ -677,7 +709,7 @@ private fun SaveBar(
                 )
             }
             // What the arrangement above comes to: the next moments it will actually ring at.
-            UpcomingLine(upcoming = upcoming, today = today, zone = zone, modifier = Modifier.padding(bottom = Tokens.spacing.sm))
+            UpcomingLine(upcoming = upcoming, today = today, zone = zone, recurrence = recurrence, modifier = Modifier.padding(bottom = Tokens.spacing.sm))
             Button(
                 onClick = onSave,
                 enabled = enabled,
@@ -688,7 +720,8 @@ private fun SaveBar(
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = Tokens.sizes.control),
+                    // The one button the screen is about, at the height the token names (0.68.0).
+                    .heightIn(min = Tokens.sizes.primary),
             ) {
                 Text(stringResource(R.string.common_save), style = MaterialTheme.typography.titleMedium)
             }
@@ -803,3 +836,6 @@ internal fun FieldWarning(text: String, modifier: Modifier = Modifier) {
     )
 }
 
+/** Keys of the cards a refusal can be sent to; see the `Invalid` event. */
+private const val SECTION_WHEN = "when"
+private const val SECTION_RETURNS = "returns"

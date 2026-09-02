@@ -11,9 +11,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import dev.rwilco.ui.theme.Tokens
 
-/** A missing permission named in plain words, with the one button that fixes it. */
+/**
+ * A missing permission named in plain words, with the one button that fixes it. [quiet] for
+ * the ones that change how a reminder appears rather than whether it arrives: the same row in
+ * the ordinary ink, because refusing one of those is a choice and not a fault.
+ */
 @Composable
-fun PermissionFixRow(text: String, action: String, onFix: () -> Unit) {
+fun PermissionFixRow(text: String, action: String, quiet: Boolean = false, onFix: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -23,7 +27,7 @@ fun PermissionFixRow(text: String, action: String, onFix: () -> Unit) {
         Text(
             text = text,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error,
+            color = if (quiet) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
             modifier = Modifier.weight(1f),
         )
         TextButton(onClick = onFix) { Text(action) }

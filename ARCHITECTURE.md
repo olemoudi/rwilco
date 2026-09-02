@@ -1150,6 +1150,59 @@ because that is what its chip would show.
   choice by name rather than index so the chip that lights is the one just made. The countdown
   sheet produces a `Trigger.Countdown` (the note above saying `AtDateTime` was stale). The alert
   preview is `AlertScreen`, the same composable `AlertActivity` hosts under a full-screen intent.
+- **The guard's two seconds are for a screen that took somebody by surprise** (0.68.0).
+  `rememberPressGuard(key, openedOnPurpose)` skips the countdown — never the hold — for a
+  reminder opened from a card or a note (`AlertActivity` passes `id in silenced`), and for a
+  new key on a screen whose last guard was already armed (a strip answered, the rest left):
+  two dead seconds per answer on a screen of five was the guard costing more than the accident
+  it guards against. Both only for the *first* arming; a screen shown again counts down as
+  ever. The preview's "Cerrar la vista previa" is a plain tap (a control of the preview, not an
+  answer); its "Hecho" and snoozes keep the guard, which is what the preview is for. While the
+  digits run the indicator says "un momento…", and once armed it shows the hint for a moment as
+  a promise rather than a correction; the indicator is a live region and a disarmed control
+  carries the wait as its `stateDescription`, so TalkBack is not told "disabled" with no why.
+- **The line under the editor says what a span from the "hecho" does** (0.68.0,
+  `UpcomingLine(recurrence)`). Its next moments are the rules' own — "a las 20:45", every day —
+  because nothing has been dealt with yet, so under "vuelve cada 4 años" it read "luego vie 4
+  sept · luego sáb 5 sept": true, and read from the phone as the years being missing. After the
+  first two moments it now says "y así hasta que lo hagas · después vuelve cada 4 años". A
+  place reminder gets its line too (`upcomingMoments` keeps a `WhenAt` as the first and only
+  entry): "suena al llegar a Casa" where a blank line read as the app having nothing to say.
+- **Readiness is two groups** (0.68.0): `AlertReadiness.problems` counts the seven that decide
+  whether a reminder *arrives* (notifications, a muted channel, the alarm volume, total-silence
+  DND, exact alarms, a restricted background, battery optimisation) and `quirks` the three that
+  only decide how it shows itself (the full screen, the overlay, usage access) — listed under
+  their own line in the ordinary ink, because refusing one is a choice, not a fault. Home's
+  strip names the worst problem in its own words (`readinessShortRes`) and counts the rest.
+  A fresh install hears one sentence (`NotificationsRationaleDialog`) before Android's own
+  dialog. `UpdateCenter.manual` keeps the periodic check from dropping the system's install
+  dialog on top of whatever somebody is doing: in the background the notification asks; an
+  update the app may not install says so in the shade (`notifyInstallPermissionNeeded`).
+- **The light scheme meets AA** (0.68.0): `AmberDeep` #8F5500 (5.5:1 on the ground, it was
+  3.65:1) and `outline` #7E8A9A / `outlineVariant` #B3BDCA (3.2:1, it was 2.06:1); checked
+  with the WCAG formula, not by eye — the owner never runs the light theme.
+- **Home's smaller answers** (0.68.0): "Nuevo" in the inverted neutral every other primary
+  wears; the just-saved mark on the hero (`HeroCard(marked)`); the swipes' accessibility
+  actions on `SwipeableCard` itself, hero included, and the swipe glass silent (it was a stray
+  "Eliminar" between every two cards for a screen reader); the tags under an empty search
+  field; the tag filter as a chip with an × on the header while it is on; "nada para hoy"
+  (`HomeUiState.quietToday`, counted by `homeCardIndex`) when the day is clear; the widget
+  redrawn on the words (`id to text` in its key) and counting the overdue in the error ink; the
+  pin panel a checkbox with a check glyph; `HomeUiState.failed` and `DoneView.failed` in place
+  of a placeholder that never ended; `DoneViewModel` grouping off the main thread with a minute
+  pulse; `compose_stability.conf` so the cards skip when nothing of theirs changed, and `today`
+  through `derivedStateOf` so the minute tick reaches nothing until the day changes.
+- **The editor's smaller answers** (0.68.0): a refused save scrolls to the card it is about
+  (`sectionTops`) and marks the rule or the "Vuelve" with `FieldError`; `SheetScaffold(dirty)`
+  asks before back or the scrim throw a place or a calendar away; `RecurrenceButton` says
+  `selected`; the custom-span dialog reads the anchor chosen on the card instead of asserting
+  one; deleting a kept recurrence closes the list so the undo can be seen; a preset's name is
+  capped where it is typed; the chooser reads a preset's rules back (`triggerPhrase`) instead of
+  counting them; "preset guardado · fijar"; the sentence over "Guardar" bounds its words
+  (`MAX_SENTENCE_WORDS`) so the "when" survives; a place rule without background location gets
+  the `PermissionFixRow` under it; a rename opens focused and selected; the countdown preview
+  names the day; the big map's "Listo" is all button; Save and every sheet's confirm sit at
+  `Sizes.primary`.
 - **The alert screen takes no tap** (0.66.0, `PressGuard`, `ui/components/PressGuard.kt`). The
   screen that takes over a phone at three in the morning, or lights up under a hand reaching
   into a pocket, gives the one kind of answer the app cannot take back, and it used to give it

@@ -69,6 +69,16 @@ class SentencePartsTest {
     }
 
     @Test
+    fun `long words are cut so the when after them survives`() {
+        val long = "a".repeat(200)
+        val words = sentenceParts(long, emptyList(), RuleMatch.ANY, Recurrence.None).single() as SentencePart.Words
+        assertEquals(MAX_SENTENCE_WORDS + 1, words.text.length)
+        assertTrue(words.text.endsWith("…"))
+        val short = sentenceParts("Comprar pan", emptyList(), RuleMatch.ANY, Recurrence.None).single() as SentencePart.Words
+        assertEquals("Comprar pan", short.text)
+    }
+
+    @Test
     fun `blank words are left out rather than stood in for`() {
         val parts = sentenceParts("   ", listOf(clock), RuleMatch.ANY, Recurrence.None)
         assertTrue(parts.none { it is SentencePart.Words })

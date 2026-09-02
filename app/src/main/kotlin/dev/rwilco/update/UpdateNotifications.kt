@@ -55,6 +55,23 @@ object UpdateNotifications {
         )
     }
 
+    /** An update is waiting and the app may not install it: the one-tap way to the setting. */
+    fun notifyInstallPermissionNeeded(context: Context) {
+        val open = Intent(context, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            .putExtra(MainActivity.EXTRA_DESTINATION, MainActivity.DESTINATION_SETTINGS)
+        val tap = PendingIntent.getActivity(
+            context, NOTIF_ID, open,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        post(
+            context,
+            title = context.getString(R.string.update_permission_title),
+            text = context.getString(R.string.update_permission_text),
+            tap = tap,
+        )
+    }
+
     fun cancel(context: Context) {
         runCatching { NotificationManagerCompat.from(context).cancel(NOTIF_ID) }
     }

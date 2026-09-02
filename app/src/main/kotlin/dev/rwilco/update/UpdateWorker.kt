@@ -35,6 +35,9 @@ class UpdateWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             return Result.success()
         }
         val updater = Updater(applicationContext)
+        // Whether somebody is waiting for this one: the system's install dialog may come up
+        // on its own only then; a check in the background leaves the notification to ask.
+        UpdateCenter.manual = stagedOnly || inputData.getBoolean(KEY_MANUAL, false)
         val outcome = if (stagedOnly) updater.installStaged() else updater.checkAndUpdate()
         Diag.note("update", "outcome=$outcome${if (stagedOnly) " (staged)" else ""}")
         return when (outcome) {

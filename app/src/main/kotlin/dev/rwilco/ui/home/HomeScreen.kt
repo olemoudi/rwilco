@@ -28,6 +28,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.EventAvailable
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Place
@@ -46,6 +49,7 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,10 +64,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.customActions
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
@@ -89,6 +90,7 @@ import dev.rwilco.ui.format.rememberWords
 import dev.rwilco.ui.format.dayWord
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.settings.rememberAlertReadiness
+import dev.rwilco.ui.settings.readinessShortRes
 import dev.rwilco.ui.settings.stripShows
 import dev.rwilco.ui.format.snoozePlacePhrase
 import kotlinx.coroutines.delay
@@ -152,8 +154,6 @@ fun HomeScreen(
     val skippedMessage = stringResource(R.string.home_skipped)
     val undoLabel = stringResource(R.string.common_undo)
     val cardActionsLabel = stringResource(R.string.home_card_actions)
-    val swipeDoneLabel = stringResource(R.string.card_swipe_done)
-    val swipeDeleteLabel = stringResource(R.string.card_swipe_delete)
     val createdMessage = stringResource(R.string.home_created)
     val pausedMessage = stringResource(R.string.home_paused)
     val resumedMessage = stringResource(R.string.home_resumed)
@@ -223,6 +223,7 @@ fun HomeScreen(
     if (choosing) {
         NewReminderChooser(
             presets = presets,
+            defaultTime = state.defaultTime,
             onBlank = {
                 choosing = false
                 onNew()
@@ -363,6 +364,8 @@ fun HomeScreen(
                         onDoneList = onDoneList,
                         onSettings = onSettings,
                         onDiagnostics = onDiagnostics,
+                        filter = state.selectedTag,
+                        onClearFilter = { viewModel.selectTag(null) },
                     )
                 }
             }
@@ -388,13 +391,17 @@ fun HomeScreen(
                         contentDescription = stringResource(if (compactHome) R.string.home_compact_off else R.string.home_compact_on),
                     )
                 }
+                // **Not amber either** (0.68.0). It was the biggest amber thing on the screen,
+                // and amber means what fires next; the one primary action wears the inverted
+                // neutral every other primary in the app wears (EmptyState, "Hecho"), and the
+                // hero's glow is the only amber left to look for.
                 ExtendedFloatingActionButton(
                     // Straight to the form unless there is a question worth asking; see [asksWhichKind].
                     onClick = { if (asksWhichKind) choosing = true else onNew() },
                     icon = { Icon(Icons.Outlined.Add, contentDescription = null) },
                     text = { Text(stringResource(R.string.home_new), style = MaterialTheme.typography.titleMedium) },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    containerColor = MaterialTheme.colorScheme.onSurface,
+                    contentColor = MaterialTheme.colorScheme.surface,
                     shape = MaterialTheme.shapes.large,
                     modifier = Modifier.heightIn(min = Tokens.sizes.primary),
                 )
@@ -402,10 +409,12 @@ fun HomeScreen(
             }
         },
     ) { padding ->
-        // The minute pulse for everything on this screen that is not the hero's live countdown.
-        val now by rememberNow(60_000, viewModel.clock)
+        // The minute pulse for everything on this screen that is not the hero's live countdown —
+        // read through derivedStateOf, so the list is told about it only when the day changes
+        // (0.68.0): read plainly, every card recomposed in full once a minute.
+        val nowState = rememberNow(60_000, viewModel.clock)
         val zone = viewModel.clock.zone
-        val today = now.atZone(zone).toLocalDate()
+        val today by remember(zone) { derivedStateOf { nowState.value.atZone(zone).toLocalDate() } }
         val defaultTime = state.defaultTime
 
         // **At the top of the list, the row is there.** It travels by what the list consumed,
@@ -468,10 +477,12 @@ fun HomeScreen(
             // Home: the one screen somebody actually looks at says so, once, until waved off.
             if (stripShown) {
                 item(key = "readiness") {
+                    val remaining = readiness.problemNames() - dismissedProblems
                     ReadinessStrip(
                         // What is left to say, not the total: naming a problem somebody has
                         // already waved off is the strip arguing with them.
-                        problems = (readiness.problemNames() - dismissedProblems).size,
+                        problems = remaining.size,
+                        worst = remaining.firstOrNull()?.let { stringResource(readinessShortRes(it)) },
                         onFix = onSettings,
                         onDismiss = { viewModel.dismissAlertStrip(readiness.problemNames()) },
                         modifier = Modifier.padding(bottom = spacing.sm),
@@ -494,6 +505,13 @@ fun HomeScreen(
                 }
             }
             if (search.open) {
+                // A field and a void, otherwise: with nothing typed yet, the tags are what
+                // there is to reach for (0.68.0). Picking one is a filter, and closes the search.
+                if (search.query.isBlank() && state.tags.isNotEmpty()) {
+                    item(key = "search-tags") {
+                        TagFilterRow(tags = state.tags, selected = null, onSelect = { tag -> if (tag is TagFilter.Named) viewModel.filterByTag(tag.tag) else viewModel.selectTagAndClose(tag) })
+                    }
+                }
                 items(search.hits, key = { it.key }) { hit ->
                     SearchResultRow(
                         hit = hit,
@@ -554,9 +572,15 @@ fun HomeScreen(
                                 onLongClick = { actingOn = hero.card.id },
                                 longClickLabel = cardActionsLabel,
                                 onTogglePause = { viewModel.togglePause(hero.card.id, hero.card.paused) },
+                                // The just-saved mark, on the one card it was built for: an edit
+                                // that gives a reminder the soonest moment lands here.
+                                marked = hero.card.id == marked,
                             )
                         }
                     }
+                }
+                if (state.quietToday) {
+                    item(key = "quiet-today") { QuietTodayRow() }
                 }
                 for (section in state.sections) {
                     item(key = "section-${section.section}") {
@@ -591,15 +615,19 @@ fun HomeScreen(
                                 compact = cardCompact,
                                 onToggleCompact = { viewModel.flipCard(card.id) },
                                 marked = card.id == marked,
-                                // What the swipes do, for whoever cannot swipe.
-                                modifier = Modifier.semantics {
-                                    customActions = listOf(
-                                        CustomAccessibilityAction(swipeDoneLabel) { viewModel.markDone(card.id); true },
-                                        CustomAccessibilityAction(swipeDeleteLabel) { viewModel.delete(card.id); true },
-                                    )
-                                },
                             )
                         }
+                    }
+                }
+                if (state.failed) {
+                    item(key = "failed") {
+                        EmptyState(
+                            title = stringResource(R.string.home_failed_title),
+                            body = stringResource(R.string.home_failed_body),
+                            icon = Icons.Outlined.ErrorOutline,
+                            actionLabel = stringResource(R.string.home_diagnostics),
+                            onAction = onDiagnostics,
+                        )
                     }
                 }
                 if (state.empty) {
@@ -650,6 +678,9 @@ private fun Header(
     onDoneList: () -> Unit,
     onSettings: () -> Unit,
     onDiagnostics: () -> Unit,
+    /** The tag the list is filtered by, said up here where the row of chips is not (0.68.0). */
+    filter: TagFilter? = null,
+    onClearFilter: () -> Unit = {},
 ) {
     val locale = currentLocale()
     // **The controls on the right keep their width; the wordmark gives.** A Row measures its
@@ -657,7 +688,13 @@ private fun Header(
     // a large font scale the four controls beside them were measured into what was left —
     // search, Hechos and diagnostics clipped off the edge. Weighted with `fill = false` the
     // wordmark is measured last, into the width the controls leave, and ellipsises there.
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+    // Full width, said: the weighted Spacer that used to be here stretched the row on its own,
+    // and without it the row wrapped its content and the controls sat beside the name.
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
@@ -686,6 +723,19 @@ private fun Header(
             )
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
+            // Twenty cards down a filtered list nothing said the list was filtered, and the
+            // row of chips was off the top; the header comes back on any upward flick, so the
+            // filter rides on it, with the × that clears it.
+            if (filter != null) {
+                TagChip(
+                    label = filter.label(),
+                    selected = true,
+                    onClick = onClearFilter,
+                    tint = (filter as? TagFilter.Named)?.let { tagColor(it.tag) },
+                    trailingIcon = Icons.Outlined.Close,
+                )
+                Spacer(Modifier.width(Tokens.spacing.xs))
+            }
             // Only while the encrypted copy has something waiting; see BackupBadge.
             BackupBadge()
             IconButton(onClick = onSearch) {
@@ -760,3 +810,22 @@ private fun TagFilter.label(): String = when (this) {
 
 /** How long a just-saved card stays lit: long enough to be caught, short enough not to be worn. */
 private const val MARK_MS = 1_400L
+
+/** "Nada para hoy": one quiet line where the day's section would be, so the list has a verdict. */
+@Composable
+private fun QuietTodayRow() {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = Tokens.spacing.xs)) {
+        Icon(
+            imageVector = Icons.Outlined.EventAvailable,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(Tokens.sizes.glyph),
+        )
+        Spacer(Modifier.width(Tokens.spacing.sm))
+        Text(
+            text = stringResource(R.string.home_quiet_today),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}

@@ -13,8 +13,9 @@ import java.time.ZoneId
  * window is shown, never the draw, and the draw after it even less so), after a snooze, and
  * after the ring of an "all of them" set — the next round of that needs a "hecho" nobody has
  * given. A span counted from the "hecho" stops on its own for the same reason: with nothing
- * dealt with there is nothing to count from. A place is no moment at all, and a list that
- * would start with one says nothing — the sentence over the button already says "al llegar".
+ * dealt with there is nothing to count from. A place is no moment at all, but a list that
+ * would start with one *says so* (0.68.0): "suena al llegar a casa" is what will happen, and
+ * a blank line under a place reminder read as the app having nothing to say about it.
  */
 fun upcomingMoments(
     reminder: Reminder,
@@ -29,7 +30,10 @@ fun upcomingMoments(
     var current = reminder
     while (out.size < count) {
         val next = nextFire(current, now, zone, defaultTime, dayStart, shape) ?: break
-        if (next is NextFire.WhenAt) break
+        if (next is NextFire.WhenAt) {
+            if (out.isEmpty()) out += next
+            break
+        }
         out += next
         if (next is NextFire.Sometime) break
         if (next is NextFire.Scheduled && next.snoozed) break

@@ -36,7 +36,14 @@ import dev.rwilco.ui.theme.Tokens
  * remembers these problems, and only these (`stripShows`).
  */
 @Composable
-fun ReadinessStrip(problems: Int, onFix: () -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+fun ReadinessStrip(
+    problems: Int,
+    onFix: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** The worst of them in its own words — "las notificaciones están desactivadas" — and "y 3 más" (0.68.0). */
+    worst: String? = null,
+) {
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
     RwilcoCard(modifier = modifier, color = scheme.errorContainer) {
@@ -51,7 +58,13 @@ fun ReadinessStrip(problems: Int, onFix: () -> Unit, onDismiss: () -> Unit, modi
                         color = scheme.onErrorContainer,
                     )
                     Text(
-                        text = pluralStringResource(R.plurals.settings_summary_broken, problems, problems),
+                        // A count alone ("4 cosas por arreglar") named nothing; the worst one
+                        // is said, and the rest counted.
+                        text = when {
+                            worst == null -> pluralStringResource(R.plurals.settings_summary_broken, problems, problems)
+                            problems > 1 -> worst + " · " + pluralStringResource(R.plurals.home_readiness_more, problems - 1, problems - 1)
+                            else -> worst
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = scheme.onErrorContainer,
                     )

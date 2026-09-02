@@ -23,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.rwilco.ui.RwilcoApp
+import dev.rwilco.ui.components.NotificationsRationaleDialog
 import dev.rwilco.ui.theme.RwilcoTheme
 import dev.rwilco.ui.theme.resolvesToDark
 import dev.rwilco.update.UpdateWorker
@@ -67,6 +68,14 @@ class MainActivity : ComponentActivity() {
                             intent = Intent(this, MainActivity::class.java)
                         },
                     )
+                    if (explainingNotifications.value) {
+                        NotificationsRationaleDialog(
+                            onContinue = {
+                                explainingNotifications.value = false
+                                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), ASK_NOTIFICATIONS)
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -110,8 +119,12 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
         if (!asked.compareAndSet(false, true)) return
-        ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), ASK_NOTIFICATIONS)
+        // A word from the app first (0.68.0); the system's dialog follows "Entendido".
+        explainingNotifications.value = true
     }
+
+    /** Whether the sentence before the notification dialog is up; see [askForNotificationsOnce]. */
+    private val explainingNotifications = mutableStateOf(false)
 
     companion object {
         /** The one permission this activity asks for by hand; the answer is read, not awaited. */

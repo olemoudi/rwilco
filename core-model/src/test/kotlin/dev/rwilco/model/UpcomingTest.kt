@@ -64,6 +64,7 @@ class UpcomingTest {
         val everySixHours = reminder().copy(recurrence = Recurrence.After(6, RecurrenceUnit.HOURS))
         assertEquals(1, upcomingMoments(everySixHours, now, zone, defaultTime).size)
         val place = reminder(Trigger.Location(40.4, -3.7, 200, Presence.INSIDE, "Casa"))
-        assertTrue(upcomingMoments(place, now, zone, defaultTime).isEmpty())
+        // A place is no moment, but it is the one thing the line can say: "al llegar a Casa".
+        assertTrue(upcomingMoments(place, now, zone, defaultTime).single() is NextFire.WhenAt)
     }
 }

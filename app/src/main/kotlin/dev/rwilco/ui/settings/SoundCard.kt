@@ -36,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import dev.rwilco.ui.components.LocalSnackbar
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -102,11 +103,15 @@ fun SoundCard(
     }
 
     // Any audio file the phone can open. mp3 and wav are what people have; the rest is a bonus.
+    // A file that cannot be copied (no space, a provider that will not read) is said (0.68.0):
+    // the chip used to simply not change, with no word about why.
+    val snackbar = LocalSnackbar.current
+    val copyFailed = stringResource(R.string.settings_sound_copy_failed)
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) onSound(context.rememberSound(uri) ?: return@rememberLauncherForActivityResult)
+        if (uri != null) onSound(context.rememberSound(uri) ?: run { snackbar.show(copyFailed); return@rememberLauncherForActivityResult })
     }
     val pickInsistent = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) onInsistentSound(context.rememberSound(uri) ?: return@rememberLauncherForActivityResult)
+        if (uri != null) onInsistentSound(context.rememberSound(uri) ?: run { snackbar.show(copyFailed); return@rememberLauncherForActivityResult })
     }
 
     RwilcoCard {

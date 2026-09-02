@@ -31,6 +31,8 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -315,6 +317,12 @@ class HomeViewModel(
         }
     }
         .flowOn(Dispatchers.Default)
+        // A read that throws used to cancel the combine and leave the placeholder cards up for
+        // ever, with nothing to press; it is a state now, with the diagnostics door (0.68.0).
+        .catch { failure ->
+            Log.e(TAG, "could not build Home", failure)
+            emit(HomeUiState(loaded = true, failed = true))
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     /**
@@ -358,6 +366,12 @@ class HomeViewModel(
     /** From a search result: the tag is being asked for, not toggled, and the search is done. */
     fun filterByTag(tag: String) {
         selectedTag.value = TagFilter.Named(tag)
+        setSearching(false)
+    }
+
+    /** From the tags offered under an empty search field: the same, for the app's own two chips. */
+    fun selectTagAndClose(tag: TagFilter?) {
+        selectedTag.value = tag
         setSearching(false)
     }
 
@@ -536,3 +550,5 @@ class HomeViewModel(
 
 /** How long a deleted reminder can be brought back from the row on Home; see [HomeViewModel.pendingDelete]. */
 const val UNDO_DELETE_MS = 60_000L
+
+private const val TAG = "HomeViewModel"

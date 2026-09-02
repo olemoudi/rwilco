@@ -11,9 +11,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import dev.rwilco.R
 import dev.rwilco.model.NextFire
+import dev.rwilco.model.Recurrence
+import dev.rwilco.model.countsFromRinging
+import dev.rwilco.ui.format.recurrenceLabel
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.Words
 import dev.rwilco.ui.format.dayWord
+import dev.rwilco.ui.format.placePhrase
 import dev.rwilco.ui.format.rememberWords
 import java.time.LocalDate
 import java.time.ZoneId
@@ -28,18 +32,39 @@ import java.time.ZoneId
  * amber means here — the next thing to ring — and the rest are the plain ink of a list.
  */
 @Composable
-fun UpcomingLine(upcoming: List<NextFire>, today: LocalDate, zone: ZoneId, modifier: Modifier = Modifier) {
+fun UpcomingLine(
+    upcoming: List<NextFire>,
+    today: LocalDate,
+    zone: ZoneId,
+    modifier: Modifier = Modifier,
+    /** The draft's "Vuelve", for the one shape whose next moments are not the whole story. */
+    recurrence: Recurrence = Recurrence.None,
+) {
     if (upcoming.isEmpty()) return
     val words = rememberWords()
     val first = MaterialTheme.colorScheme.primary
     val rest = MaterialTheme.colorScheme.onSurfaceVariant
     val readings = upcoming.map { momentReading(words, it, today, zone) }
     val firstLine = stringResource(R.string.editor_will_ring, readings.first())
+    // **A span counted from the "hecho" is said as one** (0.68.0). Its next moments are the
+    // rules' own — "a las 20:45", every day — because nothing has been dealt with yet, and
+    // the line read "luego vie 4 sept · luego sáb 5 sept" under a reminder that says "vuelve
+    // cada 4 años": true, and read as the years being missing. So after the first moment it
+    // says what actually happens: the rules go on until it is done, and then the span.
+    val untilDone = recurrence is Recurrence.After && !recurrence.countsFromRinging && readings.size > 1
     Text(
         text = buildAnnotatedString {
             withStyle(SpanStyle(color = first, fontWeight = FontWeight.SemiBold)) { append(firstLine) }
-            for (reading in readings.drop(1)) {
-                withStyle(SpanStyle(color = rest)) { append(" · " + words.get(R.string.editor_will_ring_then, reading)) }
+            if (untilDone) {
+                withStyle(SpanStyle(color = rest)) {
+                    append(" · " + words.get(R.string.editor_will_ring_then, readings[1]))
+                    append(" · " + words.get(R.string.editor_will_ring_until_done))
+                    append(" · " + words.get(R.string.editor_will_ring_then_returns, recurrenceLabel(words, recurrence, today)))
+                }
+            } else {
+                for (reading in readings.drop(1)) {
+                    withStyle(SpanStyle(color = rest)) { append(" · " + words.get(R.string.editor_will_ring_then, reading)) }
+                }
             }
         },
         style = MaterialTheme.typography.bodyMedium,
@@ -62,6 +87,6 @@ private fun momentReading(words: Words, next: NextFire, today: LocalDate, zone: 
             TimeText.window(from.toLocalTime(), to.toLocalTime(), words.is24h, words.locale),
         )
     }
-    // Never reaches here: the walk stops before a place. Said anyway, so the `when` is total.
-    is NextFire.WhenAt -> ""
+    // A place, as the first and only thing: "Suena al llegar a Casa".
+    is NextFire.WhenAt -> words.get(placePhrase(next.trigger.presence, next.trigger.onCrossing), next.trigger.label)
 }

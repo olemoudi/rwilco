@@ -28,6 +28,8 @@ import dev.rwilco.ui.components.SheetScaffold
 import dev.rwilco.ui.components.Stepper
 import dev.rwilco.ui.components.rememberNow
 import dev.rwilco.ui.format.TimeText
+import dev.rwilco.ui.format.rememberWords
+import dev.rwilco.ui.format.dayWord
 import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.format.rememberIs24h
 import dev.rwilco.ui.theme.MonoStyles
@@ -115,7 +117,11 @@ fun CountdownSheet(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text(text = TimeText.time(ringsAt.toLocalTime(), is24h, locale), style = MonoStyles.time)
+            // The day too (0.68.0): five days out, "Sonará a las 09:00" was true and useless.
+            Text(
+                text = dayWord(rememberWords(), ringsAt.toLocalDate(), now.atZone(clock.zone).toLocalDate()) + " " + TimeText.time(ringsAt.toLocalTime(), is24h, locale),
+                style = MonoStyles.time,
+            )
         }
     }
 }

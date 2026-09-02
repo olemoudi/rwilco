@@ -23,7 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -94,6 +93,11 @@ fun AlertScreen(
      */
     ringing: Boolean = false,
     onSilence: () -> Unit = {},
+    /**
+     * Whether somebody chose to see this — a card or a note tapped — rather than the screen
+     * taking over. The guard keeps its hold and skips its countdown; see [rememberPressGuard].
+     */
+    openedOnPurpose: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
     val spacing = Tokens.spacing
@@ -101,7 +105,7 @@ fun AlertScreen(
     val locale = currentLocale()
     // A new reminder on the same screen is a new guard: the thumb that answered the last one
     // is still where this one's "Hecho" is.
-    val guard = rememberPressGuard(content)
+    val guard = rememberPressGuard(content, openedOnPurpose = openedOnPurpose)
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -193,10 +197,12 @@ fun AlertScreen(
                     .fillMaxWidth()
                     .heightIn(min = Tokens.sizes.touch)
                     .clip(MaterialTheme.shapes.medium)
-                    .guarded(
-                        guard,
-                        GuardedAction(icon = if (preview) Icons.Outlined.Close else Icons.AutoMirrored.Outlined.OpenInNew, holding = viewLabel),
-                        onConfirmed = onView,
+                    .then(
+                        // "Cerrar la vista previa" is a control of the preview, not an answer
+                        // to a reminder: a plain tap (0.68.0). "Hecho" and the snoozes keep
+                        // the guard, because showing the real gesture is what the preview is for.
+                        if (preview) Modifier.clickable(role = Role.Button, onClick = onView)
+                        else Modifier.guarded(guard, GuardedAction(icon = Icons.AutoMirrored.Outlined.OpenInNew, holding = viewLabel), onConfirmed = onView),
                     ),
             ) {
                 Text(text = viewLabel, style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant)

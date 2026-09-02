@@ -67,6 +67,8 @@ fun HeroCard(
     longClickLabel: String? = null,
     /** The pause pill, the same one every other card has; it was the one card without it. */
     onTogglePause: () -> Unit = {},
+    /** Just saved: the same mark a plain card wears (see HomeScreen), for the same moment. */
+    marked: Boolean = false,
 ) {
     val spacing = Tokens.spacing
     val amber = MaterialTheme.colorScheme.primary
@@ -88,7 +90,7 @@ fun HeroCard(
         ?: hero.card.triggers.firstOrNull { it.trigger is Trigger.Location }.takeIf { hero.atEarliest }
         ?: hero.card.triggers.firstOrNull().takeIf { hero.card.recurrence == null || hero.snoozed }
 
-    RwilcoCard(onClick = onClick, onLongClick = onLongClick, longClickLabel = longClickLabel, shape = MaterialTheme.shapes.extraLarge) {
+    RwilcoCard(onClick = onClick, onLongClick = onLongClick, longClickLabel = longClickLabel, shape = MaterialTheme.shapes.extraLarge, color = markedColour(marked)) {
         Column(
             modifier = Modifier
                 .lampGlow(amber, intensity)

@@ -48,7 +48,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -97,7 +100,15 @@ data class GuardedAction(
  * and then let go* — has a test that needs no device.
  */
 @Stable
-class PressGuard {
+class PressGuard(
+    /**
+     * Skip the countdown the first time this guard arms — the hold stays. For a screen that
+     * nobody was startled by: a reminder opened on purpose from a card or a note, or the
+     * strips left on a screen that was already armed when one of them was answered. A screen
+     * shown *again* after that (the phone picked up a minute later) counts down as ever.
+     */
+    internal val skipFirstCountdown: Boolean = false,
+) {
     /** Whole seconds still to run before the screen answers; 0 once it does. */
     var secondsLeft by mutableIntStateOf(0)
         internal set
@@ -174,30 +185,46 @@ class PressGuard {
  * taking over from the one just answered, right under the thumb that answered it — and the
  * countdown starts over. It also starts over every time the screen is shown again, because a
  * phone lit up by an alarm and picked up a minute later is the accidental tap this exists for.
+ *
+ * Two exceptions, both since 0.68.0, and both only for the *first* arming of a guard: with
+ * [openedOnPurpose] (a card or a note was tapped — the eyes arrived first) there is no
+ * countdown, only the hold; and a new key on a screen whose last guard was already armed
+ * (a strip answered, the others left) arms at once too, because two dead seconds per answer
+ * on a screen of five was the guard costing more than the accident it guards against.
  */
 @Composable
-fun rememberPressGuard(key: Any?): PressGuard {
-    val guard = remember(key) { PressGuard() }
+fun rememberPressGuard(key: Any?, openedOnPurpose: Boolean = false): PressGuard {
+    val last = remember { mutableStateOf<PressGuard?>(null) }
+    val guard = remember(key) {
+        PressGuard(skipFirstCountdown = openedOnPurpose || last.value?.armed == true).also { last.value = it }
+    }
     val haptics = Tokens.haptics
     val motion = Tokens.motion
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(guard, lifecycleOwner) {
+        var skipCountdown = guard.skipFirstCountdown
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             try {
-                coroutineScope {
-                    launch {
-                        guard.progress.snapTo(1f)
-                        guard.progress.animateTo(0f, tween(motion.guardArm, easing = LinearEasing))
+                if (!skipCountdown) {
+                    coroutineScope {
+                        launch {
+                            guard.progress.snapTo(1f)
+                            guard.progress.animateTo(0f, tween(motion.guardArm, easing = LinearEasing))
+                        }
+                        val seconds = (motion.guardArm + 999) / 1000
+                        for (left in seconds downTo 1) {
+                            guard.secondsLeft = left
+                            delay(minOf(1000L, motion.guardArm - (left - 1) * 1000L))
+                        }
                     }
-                    val seconds = (motion.guardArm + 999) / 1000
-                    for (left in seconds downTo 1) {
-                        guard.secondsLeft = left
-                        delay(minOf(1000L, motion.guardArm - (left - 1) * 1000L))
-                    }
+                    // A small tick for the hand, so nobody has to watch the digits to know.
+                    haptics.perform(HapticFeedbackType.ContextClick)
                 }
-                // A small tick for the hand, so nobody has to watch the digits to know.
-                haptics.perform(HapticFeedbackType.ContextClick)
+                skipCountdown = false
                 guard.arm()
+                // The hint as a promise, not a correction: it used to appear only after a
+                // press that failed, so the gesture was taught by making somebody fail at it.
+                guard.hinting = true
                 awaitCancellation()
             } finally {
                 guard.disarm()
@@ -233,6 +260,7 @@ fun Modifier.guarded(guard: PressGuard, action: GuardedAction, onConfirmed: () -
     val haptics = Tokens.haptics
     val motion = Tokens.motion
     val interaction = remember { MutableInteractionSource() }
+    val waitWord = stringResource(R.string.alert_guard_wait)
     var pressed by remember { mutableStateOf(false) }
     val fade by animateFloatAsState(
         targetValue = if (guard.armed) 1f else ASLEEP_ALPHA,
@@ -287,7 +315,10 @@ fun Modifier.guarded(guard: PressGuard, action: GuardedAction, onConfirmed: () -
                     true
                 }
             } else {
+                // Disabled *and* said why: "desactivado" alone, with no reason and no end,
+                // is a screen reader being told the alarm is broken.
                 disabled()
+                stateDescription = waitWord
             }
         }
 }
@@ -345,7 +376,10 @@ fun GuardIndicator(guard: PressGuard, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(spacing.md),
         modifier = modifier
             .heightIn(min = RING)
-            .graphicsLayer { this.alpha = alpha },
+            .graphicsLayer { this.alpha = alpha }
+            // What changes up here is what a screen reader needs to hear change: the wait, the
+            // hint, the answer being held, the answer given.
+            .semantics { liveRegion = LiveRegionMode.Polite },
     ) {
         Box(
             contentAlignment = Alignment.Center,
@@ -404,7 +438,12 @@ fun GuardIndicator(guard: PressGuard, modifier: Modifier = Modifier) {
         }
         Column {
             when {
-                arming -> Unit
+                // A number alone read as "it is loading"; a word beside it says what the wait is.
+                arming -> Text(
+                    text = stringResource(R.string.alert_guard_wait),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = scheme.onSurfaceVariant,
+                )
                 guard.hinting -> Text(
                     text = stringResource(R.string.alert_hold_hint),
                     style = MaterialTheme.typography.titleMedium,

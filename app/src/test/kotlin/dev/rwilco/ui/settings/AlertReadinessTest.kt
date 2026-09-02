@@ -32,8 +32,13 @@ class AlertReadinessTest {
             overlay = false,
             usageAccess = false,
         )
-        assertEquals(10, nothing.problems)
+        // Seven decide whether a reminder arrives; the three that only decide how it appears
+        // are counted apart, so a refused "usage access" is not "your phone may not ring".
+        assertEquals(7, nothing.problems)
+        assertEquals(3, nothing.quirks)
+        assertEquals(7, nothing.problemNames().size)
         assertFalse(nothing.allGood)
+        assertTrue(AlertReadiness(usageAccess = false, overlay = false, fullScreen = false).allGood)
     }
 
     @Test

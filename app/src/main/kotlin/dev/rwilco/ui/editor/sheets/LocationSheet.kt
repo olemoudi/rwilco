@@ -191,6 +191,8 @@ fun LocationSheet(
     }
 
     val known = lat != null && lng != null
+    // What the sheet opened with, so back and the scrim can tell work from nothing.
+    val untouched = remember { listOf(lat, lng, radius, label, presence, onCrossing) }
     // A share of the window, never less than the old fixed height: on a tall phone 260dp was a
     // letterbox the circle had to be aimed through.
     val sizes = Tokens.sizes
@@ -223,6 +225,7 @@ fun LocationSheet(
         },
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
         confirmEnabled = known && label.isNotBlank(),
+        dirty = listOf(lat, lng, radius, label, presence, onCrossing) != untouched,
     ) {
         // The places kept by name, one tap each: name, pin and radius at once. The one that
         // matches the pin is inverted, so a rule built from "Casa" says so.

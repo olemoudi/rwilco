@@ -237,6 +237,8 @@ class AlertActivity : ComponentActivity() {
                         onSnoozeToPlace = { offer -> snoozeToPlace(first.id, offer) },
                         ringing = noise,
                         onSilence = ::hush,
+                        // Silent because it was tapped open: the eyes arrived before the thumb.
+                        openedOnPurpose = first.id in silenced,
                     )
                 }
             }

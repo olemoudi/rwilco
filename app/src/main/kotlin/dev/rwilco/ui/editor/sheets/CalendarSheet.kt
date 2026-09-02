@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -146,10 +147,13 @@ fun CalendarSheet(
         },
     )
 
+    // What the sheet opened with, so back and the scrim can tell work from nothing.
+    val untouched = remember { built }
     SheetScaffold(
         title = stringResource(R.string.recur_calendar),
         onDismiss = onDismiss,
         onConfirm = { onConfirm(built) },
+        dirty = built != untouched,
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
         // A week with no day ticked is a week that never comes round, a stretch with no
         // width has no moment in it, and a series told to stop before it starts is empty.

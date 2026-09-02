@@ -24,7 +24,8 @@ private val Amber = Color(0xFFFFB454)
  * the system's own surface, not on ours, and this is the value that reads on it either way.
  */
 const val AMBER_ARGB: Int = 0xFFFFB454.toInt()
-private val AmberDeep = Color(0xFFB86E00)
+// Dark enough for AA as text on the light ground (5.5:1 on #F3F5F8; it was 3.65:1 at #B86E00), 0.68.0.
+private val AmberDeep = Color(0xFF8F5500)
 private val OnAmber = Color(0xFF2A1B00)
 private val AmberContainerDark = Color(0xFF3D2A05)
 private val AmberContainerLight = Color(0xFFFFE1B3)
@@ -99,8 +100,10 @@ val RwilcoLightColors = lightColorScheme(
     onError = Color.White,
     errorContainer = Color(0xFFFFDAD6),
     onErrorContainer = Color(0xFF410002),
-    outline = Color(0xFFA3AEBD),
-    outlineVariant = Color(0xFFCBD3DE),
+    // The line that says "this responds to a thumb" has to be seen: 3.2:1 on the ground (it was
+    // 2.06:1), and the card edge a step darker with it (0.68.0).
+    outline = Color(0xFF7E8A9A),
+    outlineVariant = Color(0xFFB3BDCA),
     scrim = Color(0xFF000000),
     surfaceBright = Color(0xFFFFFFFF),
     surfaceDim = Color(0xFFDCE1E8),

@@ -44,7 +44,10 @@ fun sentenceParts(
     recurrence: Recurrence,
 ): List<SentencePart> {
     val parts = mutableListOf<SentencePart>()
-    if (text.isNotBlank()) parts += SentencePart.Words(text.trim())
+    // The words are bounded so the clause after them survives: the line over "Guardar" is
+    // capped at three lines, and a two-sentence reminder ate exactly the half somebody
+    // scrolled down to check (0.68.0).
+    if (text.isNotBlank()) parts += SentencePart.Words(text.trim().let { if (it.length > MAX_SENTENCE_WORDS) it.take(MAX_SENTENCE_WORDS).trimEnd() + "…" else it })
     rules.forEachIndexed { index, rule ->
         if (index > 0) parts += SentencePart.Join(match)
         parts += SentencePart.Rule(rule)
@@ -62,3 +65,6 @@ fun sentenceParts(
  * repeating what somebody has just typed two fields above is noise — so it is not shown.
  */
 fun List<SentencePart>.saysMoreThanWords(): Boolean = any { it !is SentencePart.Words }
+
+/** How much of the words the sentence over the button carries before an ellipsis. */
+const val MAX_SENTENCE_WORDS = 60
