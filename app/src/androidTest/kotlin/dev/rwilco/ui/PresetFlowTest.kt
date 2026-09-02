@@ -230,6 +230,26 @@ class PresetFlowTest {
         assertEquals("the preset kept its own answer", DEFAULT_ACTIONS, shape.actions)
     }
 
+    /** The row above the list is a shortcut to what is on it, not the door to the rest: "Nuevo" still asks. */
+    @Test
+    fun withAPresetPinnedNewStillAsksWhichKind() {
+        waitFor(s(R.string.home_new))
+        runBlocking {
+            app.settingsStore.update { settings ->
+                settings.copy(
+                    presets = listOf(
+                        dev.rwilco.model.Preset(id = "p1", name = presetName, text = reminderWords, pinned = true, createdAt = app.clock.instant()),
+                    ),
+                )
+            }
+        }
+        waitFor(presetName)
+        text(s(R.string.home_new)).performClick()
+        waitFor(s(R.string.home_new_title))
+        text(s(R.string.home_new_blank)).assertIsDisplayed()
+        text(s(R.string.home_new_preset)).assertIsDisplayed()
+    }
+
     @Test
     fun aPresetCanBeEditedAndDeletedFromTheChooser() {
         waitFor(s(R.string.home_new))

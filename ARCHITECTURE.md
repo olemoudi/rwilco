@@ -979,14 +979,14 @@ because that is what its chip would show.
   editor opens with the cursor in the words and the keyboard up (the one place in the app where
   it opens by itself, because a preset has already answered everything else), and set means the
   reminder arrives written. Home's "New" asks blank-or-preset
-  (`NewReminderChooser`) **only while the answer is not already on the screen** (0.63.0): a
-  preset exists somewhere *and* none is pinned. It used to ask from the moment a single preset
-  existed anywhere, so every blank reminder — which is most of them — paid a tap for ever, and
-  with a pinned row above the list the dialog was asking something the screen had already
-  answered (one tap there, one hold on the launcher icon). With presets kept but none pinned it
-  is still the only door to them and still opens. Picking one opens the editor pre-filled
-  (`Routes.Editor(fromPresetId=…)`) rather than writing the reminder outright, because a preset
-  can hold a date that has since passed and the form is where that gets seen.
+  (`NewReminderChooser`) **whenever a preset exists, pinned or not** (0.65.3). The friction
+  pass (0.63.0) had it stop asking once a preset was pinned, on the argument that the row above
+  the list had already answered — and the owner reported the menu as gone: the row is a
+  shortcut to the presets *on* it, not the door to the rest, and the question is cheap next to
+  a preset that cannot be reached. With nothing kept under a name there is no question to ask.
+  Picking one opens the editor pre-filled (`Routes.Editor(fromPresetId=…)`) rather than writing
+  the reminder outright, because a preset can hold a date that has since passed and the form is
+  where that gets seen.
 - **A save keeps the snooze, unless the edit re-decided the "when"** (0.63.0). It used to drop it
   every time, and the argument — editing re-decides when a reminder rings, so "recuérdamelo en
   diez minutos" from the old shape means nothing — is true of a change to the rules and false of

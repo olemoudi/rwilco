@@ -1170,6 +1170,9 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_65_3">
+        <item>«Nuevo» vuelve a preguntar «en blanco o desde un preset» siempre que tengas algún preset, fijado o no. Había dejado de preguntar en cuanto fijabas uno, con la idea de que la fila sobre la lista ya respondía — pero esa fila es un atajo a los presets que lleva, no el camino al resto.</item>
+    </string-array>
     <string-array name="whats_new_0_65_2">
         <item>Ya no se queda la línea del cajón que pone «1 recordatorio» y nada más. Es el encabezado que la app pone sobre un grupo de avisos, y mientras hay un aviso debajo el cajón dibuja el aviso en su lugar — así que esa línea sólo la veías cuando ya no le quedaba nada que encabezar. Se quedaba al atender un recordatorio: las dos tarjetas que puede tener bajaban juntas y el encabezado se contaba dos veces, una por tarjeta, contra una lista que el sistema aún no había terminado de actualizar. Ahora se cuenta una sola vez. Y la que ya tengas atascada en el cajón se barre la próxima vez que arranque la app.</item>
     </string-array>

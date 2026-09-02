@@ -1172,6 +1172,9 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_65_3">
+        <item>«New» asks «blank or from a preset» again whenever you have a preset, pinned or not. It had stopped asking once a preset was pinned, on the theory that the row above the list already answered — but that row is a shortcut to the presets on it, not the way to the rest.</item>
+    </string-array>
     <string-array name="whats_new_0_65_2">
         <item>The line in the drawer reading «1 reminder» and nothing else is gone. It is the heading the app puts over a bundle of alerts, and while there is an alert under it the drawer draws the alert instead — so you only ever saw that line when it had nothing left to stand for. It was left behind when you dealt with a reminder: the two cards a reminder can have came down together and the heading was counted twice, once per card, against a list the system had not finished updating. Now it is counted once. Any line already stuck in your drawer is swept away the next time the app starts.</item>
     </string-array>

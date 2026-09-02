@@ -132,14 +132,13 @@ fun HomeScreen(
     val dismissedProblems by viewModel.dismissedAlertProblems.collectAsStateWithLifecycle()
     LaunchedEffect(readiness) { viewModel.noteAlertReadiness(readiness) }
     var choosing by rememberSaveable { mutableStateOf(false) }
-    // **"Nuevo" asks which kind only while the answer is not already on the screen.** The
-    // question ("en blanco" or "un preset") was asked the moment a single preset existed
-    // anywhere, so from then on every blank reminder — which is most of them — paid a tap for
-    // ever. A pinned preset is one tap away in the row above the list and one hold away on the
-    // launcher icon, so with a row up there the dialog is asking something the screen has
-    // already answered. With presets kept but none pinned it is still the only door to them,
-    // and it still opens.
-    val asksWhichKind = presets.isNotEmpty() && pinned.isEmpty()
+    // **"Nuevo" asks which kind whenever there is a kind to ask about** (0.65.3). The friction
+    // pass (0.63.0) had it stop asking once a preset was pinned, on the argument that the row
+    // above the list had already answered — and the owner reported the menu as gone. The row
+    // is a shortcut to the presets it holds, not the door to the rest of them; "en blanco" or
+    // "un preset" is asked from the moment a single preset exists, pinned row or no pinned
+    // row. With nothing kept under a name there is no question to ask.
+    val asksWhichKind = presets.isNotEmpty()
     var managingPins by rememberSaveable { mutableStateOf(false) }
     // The preset whose words are being asked for before it can be written.
     var askingWordsFor by rememberSaveable { mutableStateOf<String?>(null) }
