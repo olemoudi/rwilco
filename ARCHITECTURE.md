@@ -1172,7 +1172,11 @@ because that is what its chip would show.
   not the model's to know: after a random draw (the window is shown, never the draw), after a
   snooze, after the ring of an "all of them" set, and a span from the "hecho" stops on its own
   because nothing has been dealt with. A place is no moment at all and a list starting with one
-  says nothing. The first moment is amber, because that is exactly what amber means.
+  says nothing. The first moment is amber, because that is exactly what amber means. **A day
+  outside this year says its year** (0.66.2, `TimeText.dayDate(date, locale, today)`, through
+  `dayWord` and so everywhere a moment is read back — this line, the cards, the history): "cada
+  4 años" from tomorrow read as "luego mar 3 sept · luego dom 3 sept", the same day twice with
+  the weekday its only tell. Now "luego mar 3 sept 2030 · luego dom 3 sept 2034".
 - **A refused save says so** (0.46.0): "Guardar" on a draft that cannot be saved used to set
   `showErrors` and stop, and the only sign was a red line under a field three cards up — a button
   that does nothing looks broken, not refused. `EditorEvent.Invalid` carries the first error to a

@@ -1175,6 +1175,9 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_66_2">
+        <item>A day outside this year now says its year — «Tue 3 Sept 2030» — wherever the app reads a moment back to you: the «rings tomorrow · then…» line under the editor, the cards, the history. A reminder that comes back every four years read as «then Tue 3 Sept · then Sun 3 Sept», the same day twice with only the weekday to tell them apart.</item>
+    </string-array>
     <string-array name="whats_new_0_66_1">
         <item>Answering the full-screen alert takes a shorter hold: seven tenths of a second instead of a full one — the same hold a card\'s «pause» already takes, so there is one length to learn. The two quiet seconds after the screen comes up are unchanged.</item>
     </string-array>

@@ -19,9 +19,17 @@ object TimeText {
         return time.format(DateTimeFormatter.ofPattern(pattern, locale))
     }
 
-    /** "jue 27 ago" / "Thu 27 Aug": the abbreviation dots some locales add are noise at 14sp mono. */
-    fun dayDate(date: LocalDate, locale: Locale): String =
-        date.format(DateTimeFormatter.ofPattern("EEE d MMM", locale)).replace(".", "")
+    /**
+     * "jue 27 ago" / "Thu 27 Aug": the abbreviation dots some locales add are noise at 14sp mono.
+     *
+     * With [today] given, a date outside this year says its year — "mar 3 sept 2030" (0.66.2).
+     * Without it, "luego mar 3 sept · luego dom 3 sept" was a reminder four years apart reading
+     * as the same day twice, the weekday its only tell.
+     */
+    fun dayDate(date: LocalDate, locale: Locale, today: LocalDate? = null): String {
+        val pattern = if (today != null && date.year != today.year) "EEE d MMM yyyy" else "EEE d MMM"
+        return date.format(DateTimeFormatter.ofPattern(pattern, locale)).replace(".", "")
+    }
 
     /** "jueves, 27 de agosto" / "Thursday, 27 August" — the Home header. */
     fun dateLong(date: LocalDate, locale: Locale): String {

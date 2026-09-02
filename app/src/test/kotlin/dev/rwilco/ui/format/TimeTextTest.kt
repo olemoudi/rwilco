@@ -28,6 +28,18 @@ class TimeTextTest {
     }
 
     @Test
+    fun `a day-date says its year only when it is not this one`() {
+        val today = LocalDate.of(2026, 9, 2)
+        assertEquals("jue 3 sept", TimeText.dayDate(LocalDate.of(2026, 9, 3), es, today))
+        // "Cada 4 años" from tomorrow: without the year these two read as one day twice.
+        assertEquals("mar 3 sept 2030", TimeText.dayDate(LocalDate.of(2030, 9, 3), es, today))
+        assertEquals("dom 3 sept 2034", TimeText.dayDate(LocalDate.of(2034, 9, 3), es, today))
+        assertEquals("Thu 10 Jan 2030", TimeText.dayDate(LocalDate.of(2030, 1, 10), en, today))
+        // The first day of next year is next year, however close it is.
+        assertEquals("vie 1 ene 2027", TimeText.dayDate(LocalDate.of(2027, 1, 1), es, LocalDate.of(2026, 12, 31)))
+    }
+
+    @Test
     fun `the long date reads naturally in both languages`() {
         assertEquals("jueves, 27 de agosto", TimeText.dateLong(date, es))
         assertEquals("Thursday, 27 August", TimeText.dateLong(date, en))

@@ -73,7 +73,7 @@ fun dayWord(words: Words, date: LocalDate, today: LocalDate): String = when (dat
     today -> words.get(R.string.relative_today)
     today.plusDays(1) -> words.get(R.string.relative_tomorrow)
     today.minusDays(1) -> words.get(R.string.relative_yesterday)
-    else -> TimeText.dayDate(date, words.locale)
+    else -> TimeText.dayDate(date, words.locale, today)
 }
 
 /** "en 3 d 4 h" · "en 2 h 14 min" · "en 14 min 05 s" (ticking, under an hour) · "hace 5 min" · "ahora mismo". */

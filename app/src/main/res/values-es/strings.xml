@@ -1173,6 +1173,9 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_66_2">
+        <item>Un día que no es de este año ahora dice su año — «mar 3 sept 2030» — allí donde la app te lee un momento: la línea de «suena mañana · luego…» bajo el editor, las tarjetas, el historial. Un recordatorio que vuelve cada cuatro años se leía «luego mar 3 sept · luego dom 3 sept», el mismo día dos veces y sólo el día de la semana para distinguirlos.</item>
+    </string-array>
     <string-array name="whats_new_0_66_1">
         <item>Contestar al aviso a pantalla completa pide una pulsación más corta: siete décimas de segundo en vez de un segundo entero — la misma que ya pide «pausar» en una tarjeta, para que haya una sola duración que aprender. Los dos segundos de calma al aparecer la pantalla siguen igual.</item>
     </string-array>
