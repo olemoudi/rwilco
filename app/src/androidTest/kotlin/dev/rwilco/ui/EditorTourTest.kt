@@ -443,8 +443,10 @@ class EditorTourTest {
         rule.onNodeWithContentDescription(s(R.string.common_back)).performClick()
         rule.waitUntilShown(s(R.string.home_next_up))
 
-        // Editing the saved reminder and deleting it leaves the list as it was.
-        text(reminderText).performScrollTo().performClick()
+        // Editing the saved reminder and deleting it leaves the list as it was. The way in is
+        // the pencil since 0.71.0; the tap folds the card.
+        text(reminderText).performScrollTo()
+        rule.editCard(reminderText)
         rule.waitUntilShown(s(R.string.editor_title_edit))
         rule.onNodeWithContentDescription(s(R.string.editor_delete)).performClick()
         rule.waitUntilGone(reminderText)

@@ -3,7 +3,7 @@ package dev.rwilco.ui.home
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.material.icons.outlined.UnfoldLess
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -97,8 +97,14 @@ import dev.rwilco.model.Trigger
  * rather than the reminder: thirty cards at full height is a lot of scrolling to answer "what
  * have I got on". What it costs is said plainly — the rules lose their words and keep only
  * their kind, the standing marks go with them, and the pause control goes (the held menu still
- * has it). [onToggleCompact] is the way back, and on a compact card the tap is the way back
- * too: opening it out is what somebody wants first, and the form is one tap further.
+ * has it).
+ *
+ * **The tap is the fold, both ways** (0.71.0): a card opens out under it and closes back under
+ * it, so the one gesture the whole list answers to is the one that costs nothing and can be
+ * taken back by doing it again. The form is behind the pencil in the corner ([onEdit]) —
+ * named, deliberate, and never somewhere a thumb arrives by accident. It used to be the tap on
+ * an open card, which meant that reading a reminder and leaving for a form were the same
+ * gesture, told apart only by what the card happened to be doing at the time.
  */
 @Composable
 fun ReminderCard(
@@ -106,20 +112,21 @@ fun ReminderCard(
     today: LocalDate,
     defaultTime: LocalTime,
     zone: ZoneId,
-    onClick: () -> Unit,
+    /** The pencil: the form for this reminder. */
+    onEdit: () -> Unit,
     onTogglePause: () -> Unit,
     /** Held: the menu of what can be done to this reminder. */
     onLongClick: () -> Unit = {},
     longClickLabel: String? = null,
     compact: Boolean = false,
-    /** The icon in the corner of an open card, and the only thing on it that is not the tap. */
+    /** The tap, on a card of either height: out on a folded one, away on an open one. */
     onToggleCompact: () -> Unit = {},
     /** Just saved and just arrived at: lit for a moment so the eye knows which card moved. */
     marked: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     if (compact) {
-        CompactCard(card, onClick, onLongClick, longClickLabel, marked, modifier)
+        CompactCard(card, onToggleCompact, onLongClick, longClickLabel, marked, modifier)
         return
     }
     val spacing = Tokens.spacing
@@ -128,7 +135,15 @@ fun ReminderCard(
     // A paused reminder is not going to ring at all, so its band drops the colour with the rest
     // of the card and goes the same grey.
     val rail = card.railTag?.let { if (card.paused) scheme.onSurfaceVariant else tagColor(it) }
-    RwilcoCard(onClick = onClick, onLongClick = onLongClick, longClickLabel = longClickLabel, modifier = modifier, rail = rail, color = markedColour(marked)) {
+    RwilcoCard(
+        onClick = onToggleCompact,
+        onLongClick = onLongClick,
+        longClickLabel = longClickLabel,
+        clickLabel = stringResource(R.string.card_compact),
+        modifier = modifier,
+        rail = rail,
+        color = markedColour(marked),
+    ) {
         // A card is a glance, not a page — but the words are the glance, so they get the width
         // and the size, and the one control goes down to the footer with the rest of the
         // furniture. Under the title: the rules, then the read-only footer.
@@ -142,17 +157,20 @@ fun ReminderCard(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
-                // The one thing on an open card that is not the tap. In the corner, quiet, and
-                // the same glyph the button over "Nuevo" wears, because it does the same thing
-                // to one card that that one does to the list.
+                // The one thing on an open card that is not the tap, and the only way to the
+                // form: everything else a card does can be taken back by doing it again, and
+                // leaving the list is not that.
                 // At the size every other icon that *acts* is drawn, not the 16dp of the
                 // read-only marks below it: muted enough to stay out of the way of the words,
                 // legible enough to be seen as a thing to press.
-                val foldHaptics = Tokens.haptics
-                IconButton(onClick = { foldHaptics.perform(HapticFeedbackType.ContextClick); onToggleCompact() }) {
+                val editHaptics = Tokens.haptics
+                IconButton(onClick = { editHaptics.perform(HapticFeedbackType.ContextClick); onEdit() }) {
                     Icon(
-                        imageVector = Icons.Outlined.UnfoldLess,
-                        contentDescription = stringResource(R.string.card_compact),
+                        imageVector = Icons.Outlined.Edit,
+                        // Named after the reminder it belongs to: a list of thirty cards is a
+                        // list of thirty pencils, and "edit this one" said thirty times over
+                        // does not say which one to a screen reader.
+                        contentDescription = stringResource(R.string.card_edit, card.text),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -216,7 +234,7 @@ fun ReminderCard(
 @Composable
 private fun CompactCard(
     card: ReminderCardUi,
-    onClick: () -> Unit,
+    onExpand: () -> Unit,
     onLongClick: () -> Unit,
     longClickLabel: String?,
     marked: Boolean,
@@ -226,7 +244,15 @@ private fun CompactCard(
     val scheme = MaterialTheme.colorScheme
     val muted = scheme.onSurfaceVariant
     val rail = card.railTag?.let { if (card.paused) muted else tagColor(it) }
-    RwilcoCard(onClick = onClick, onLongClick = onLongClick, longClickLabel = longClickLabel, modifier = modifier, rail = rail, color = markedColour(marked)) {
+    RwilcoCard(
+        onClick = onExpand,
+        onLongClick = onLongClick,
+        longClickLabel = longClickLabel,
+        clickLabel = stringResource(R.string.card_expand),
+        modifier = modifier,
+        rail = rail,
+        color = markedColour(marked),
+    ) {
         Column(modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.md)) {
             Text(
                 text = card.text,

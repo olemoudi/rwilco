@@ -78,7 +78,7 @@ class SafetyNetFlowTest {
     @Test
     fun theFormSaysWhatTheNetComesToForThisReminder() {
         rule.waitUntilShown(words)
-        rule.onNodeWithText(words).performClick()
+        rule.editCard(words)
         // At the foot of the form, under the last card: it is not one of the four answers, it
         // is what happens if none of them lands. Waited for by the button that ends the form,
         // because a section's own title is drawn in capitals and is not the string it was given.

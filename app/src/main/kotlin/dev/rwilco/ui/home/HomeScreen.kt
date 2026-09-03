@@ -624,11 +624,11 @@ fun HomeScreen(
                                 today = today,
                                 defaultTime = defaultTime,
                                 zone = zone,
-                                // **On a folded card the tap opens it out, not the form.** What
-                                // somebody wants from a line they cannot read the whole of is to
-                                // see it; the form is one tap further, from the card that is now
-                                // open, exactly as it always was.
-                                onClick = { if (cardCompact) viewModel.flipCard(card.id) else onOpen(card.id) },
+                                // **The tap is the fold, both ways** (0.71.0), and the form is
+                                // behind the pencil. A gesture that can be taken back by making
+                                // it again is the one a whole list can answer to; leaving for a
+                                // form is not that, so it is named and asked for.
+                                onEdit = { onOpen(card.id) },
                                 onTogglePause = { viewModel.togglePause(card.id, card.paused) },
                                 onLongClick = { actingOn = card.id },
                                 longClickLabel = cardActionsLabel,

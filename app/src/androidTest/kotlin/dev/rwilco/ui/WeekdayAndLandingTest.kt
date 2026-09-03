@@ -86,7 +86,7 @@ class WeekdayAndLandingTest {
     @Test
     fun theDaysAreTheirOwnTileAndTheSpanThenAsksWhereItLands() {
         rule.waitUntilShown(words)
-        rule.onNodeWithText(words).performClick()
+        rule.editCard(words)
         rule.waitUntilShown(s(R.string.recur_counts_from))
 
         // An hour every day narrows no days, so there is nothing for the span to land on and

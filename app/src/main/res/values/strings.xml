@@ -647,6 +647,8 @@
     <string name="card_match_all">all of them</string>
     <string name="card_recurrence">Repeats</string>
     <string name="card_compact">Fold this one away</string>
+    <string name="card_expand">Open this one out</string>
+    <string name="card_edit">Edit «%1$s»</string>
     <string name="card_tags_more">…</string>
     <string name="card_tags_more_description">more tags</string>
     <string name="home_compact_on">Fold the list away</string>
@@ -1216,6 +1218,10 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_71_0">
+        <item>A tap on a reminder folds it away, and another opens it out again — the same gesture both ways, on every card in the list. It used to mean two different things depending on how tall the card already was, and one of them took you off the list and into the form.</item>
+        <item>The form is behind a pencil now, in the corner of an open card where the fold icon used to be, and in the footer of the glowing one. Leaving the list is something you ask for by name; everything else a card does can be undone by doing it again.</item>
+    </string-array>
     <string-array name="whats_new_0_70_0">
         <item>Tags sit against the left margin again. A card with a single tag drew it adrift in the middle of the footer: the row that lays them out reported less width than it had been given, and Android centres whatever does not fill the space it was handed.</item>
         <item>The alert screen\'s quiet moment is one second now, not two — long enough to outlast a thumb that was already on its way down. What guards every answer after that is still the finger kept on it.</item>

@@ -917,10 +917,17 @@ because that is what its chip would show.
   round because a reminder nobody has touched then never has to be listed at all, and because
   the toggle can empty the set — a mode that left yesterday's exceptions behind is one that does
   not quite do what it says. Screen state, in the ViewModel so it survives a rotation.
-  **On a folded card the tap opens it out rather than the form**: what somebody wants from a
-  line they cannot read all of is to see it, and the form is one tap further from the card that
-  is now open. An open card carries the way back in its corner, at the size every icon that
-  *acts* is drawn rather than the 16dp of the read-only marks under it.
+  **The tap is the fold, both ways** (0.71.0): a card opens out under it and closes back under
+  it, and the form is behind a pencil in the corner of an open card — at the size every icon
+  that *acts* is drawn rather than the 16dp of the read-only marks under it. Until then the tap
+  meant "open out" on a folded card and "leave for the form" on an open one, so the same gesture
+  on the same card did two unrelated things depending on what the card happened to be doing;
+  and the one gesture the whole list answers to is now the one that costs nothing and undoes
+  itself. Leaving the list is asked for by name. The hero is never folded, so its tap goes on
+  opening the form and it wears the same pencil in its footer beside the pause: "the pencil is
+  the form" has to hold on every card or it holds on none. The card carries an `onClickLabel`
+  (`card_expand` / `card_compact`) because a screen reader cannot see which way it is about to
+  go, and `Cards.kt`'s `editCard(words)` is how the instrumented tests ask for the form.
   What it costs is stated rather than hidden: a rule keeps its kind and loses its words, the
   standing marks go with them, and the pause pill goes (the held menu still has it). The hero is
   never folded — it is the one card the screen is about. The tags use `FittingRow`, which places

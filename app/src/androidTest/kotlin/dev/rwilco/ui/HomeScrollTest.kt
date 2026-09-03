@@ -97,7 +97,7 @@ class HomeScrollTest {
     fun leavingTheEditorWithoutSavingKeepsThePlaceYouWereReadingFrom() {
         val last = words.last()
         scrollTo(last)
-        rule.onNodeWithText(last, useUnmergedTree = true).performClick()
+        rule.editCard(last)
         waitFor(s(R.string.editor_title_edit))
         rule.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
         waitFor(last)
@@ -111,7 +111,7 @@ class HomeScrollTest {
         // moment tied — so coming back meant a screen scrolled to where the card no longer was.
         val last = words.last()
         scrollTo(last)
-        rule.onNodeWithText(last, useUnmergedTree = true).performClick()
+        rule.editCard(last)
         waitFor(s(R.string.editor_title_edit))
         rule.onNodeWithTag(EDITOR_TEXT_TAG).performTextInput("!")
         rule.onNodeWithText(s(R.string.common_save), useUnmergedTree = true).performClick()
@@ -132,7 +132,7 @@ class HomeScrollTest {
         // the scroll means looking at the place it used to be.
         val last = words.last()
         scrollTo(last)
-        rule.onNodeWithText(last, useUnmergedTree = true).performClick()
+        rule.editCard(last)
         waitFor(s(R.string.editor_title_edit))
 
         // "En 30 min" is the first of the quick answers, and it puts the card at the top.

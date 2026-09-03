@@ -133,8 +133,8 @@ class HomeCompactTest {
         waitFor(ruleWords)
         shot("home-compact-one-open")
 
-        // And the icon in its corner folds it back again.
-        rule.onNodeWithContentDescription(s(R.string.card_compact)).performClick()
+        // And the same tap folds it back again: the gesture undoes itself (0.71.0).
+        rule.onNodeWithText(words).performClick()
         waitGone(ruleWords)
 
         // The toggle is a clean sweep: opening the list out again leaves no exceptions behind.

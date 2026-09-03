@@ -42,6 +42,12 @@ fun RwilcoCard(
     onLongClick: (() -> Unit)? = null,
     /** What the held press does, for a screen reader — it cannot feel the hold. */
     longClickLabel: String? = null,
+    /**
+     * What the tap does, for a screen reader. A card whose tap folds it away is not "button",
+     * and only the caller knows which way it is about to go. Honoured on a card that also takes
+     * a held press, which is every card in the app.
+     */
+    clickLabel: String? = null,
     shape: Shape = MaterialTheme.shapes.large,
     color: Color = MaterialTheme.colorScheme.surfaceContainer,
     rail: Color? = null,
@@ -68,6 +74,7 @@ fun RwilcoCard(
                 .clip(shape)
                 .combinedClickable(
                     role = Role.Button,
+                    onClickLabel = clickLabel,
                     onLongClickLabel = longClickLabel,
                     onLongClick = {
                         haptics.perform(HapticFeedbackType.LongPress)

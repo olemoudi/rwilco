@@ -70,7 +70,7 @@ class RecurrenceHourTest {
     @Test
     fun theHourIsAskedBesideTheAnchorAndCanBeOneOfItsOwn() {
         rule.waitUntilShown(words)
-        rule.onNodeWithText(words).performClick()
+        rule.editCard(words)
         rule.waitUntilShown(s(R.string.recur_hour))
 
         for (label in listOf(R.string.recur_hour_day_start, R.string.recur_hour_same, R.string.recur_hour_custom)) {

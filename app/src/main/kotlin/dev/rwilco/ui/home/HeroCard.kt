@@ -9,6 +9,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Autorenew
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -169,6 +173,18 @@ fun HeroCard(
             // one that could only be paused by holding it and reading a menu.
             Spacer(Modifier.height(spacing.sm))
             CardFooter(tags = hero.card.tags, actions = hero.card.actions, modifier = Modifier.fillMaxWidth()) {
+                // The pencil the plain cards wear in their corner, where this card has room for
+                // it: the hero is never folded, so its tap has nothing to fold and goes on
+                // opening the form — but "the pencil is the form" has to hold on every card, or
+                // it holds on none.
+                val editHaptics = Tokens.haptics
+                IconButton(onClick = { editHaptics.perform(HapticFeedbackType.ContextClick); onClick() }) {
+                    Icon(
+                        imageVector = Icons.Outlined.Edit,
+                        contentDescription = stringResource(R.string.card_edit, hero.card.text),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Spacer(Modifier.width(spacing.sm))
                 HoldButton(
                     icon = Icons.Outlined.Pause,
