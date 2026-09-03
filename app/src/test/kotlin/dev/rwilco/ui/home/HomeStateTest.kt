@@ -1,5 +1,6 @@
 package dev.rwilco.ui.home
 
+import dev.rwilco.model.momentDealtWith
 import dev.rwilco.model.Period
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RecurrenceUnit
@@ -332,6 +333,43 @@ class HomeStateTest {
         val withHero = withTags.copy(hero = HeroUi(card("hero"), Instant.EPOCH))
         assertEquals(1, homeCardIndex(withHero, "hero", strip = false, pinned = false))
         assertEquals(3, homeCardIndex(withHero, "a", strip = false, pinned = false))
+    }
+
+    @Test
+    fun `a reminder resting between two rounds says the round it will ring, not the one it just spent`() {
+        // The complaint from the phone (0.74.0): "los lunes, y vuelve cada semana", swiped done
+        // on a Thursday. The swipe was right — the reminder stays open and rings the Monday
+        // after — but every card row was asked from *now*, so the card went on naming the
+        // Monday that had just been dealt through, which is the one Monday it will not ring on.
+        // The class's own "now" is Thursday 27 August 2026, so the Monday to come is the 31st.
+        val monday = LocalDate.of(2026, 8, 31)
+        val weekly = Reminder(
+            id = "bins",
+            text = "sacar el cubo",
+            rules = listOf(TriggerRule(Trigger.Weekday(setOf(DayOfWeek.MONDAY)))),
+            recurrence = Recurrence.After(1, RecurrenceUnit.WEEKS),
+            createdAt = now,
+            updatedAt = now,
+        )
+        val before = buildHomeState(listOf(weekly), defaultTime, now, zone, selectedTag = null)
+        assertEquals(monday, before.hero?.at?.atZone(zone)?.toLocalDate(), "it fires on the Monday to come")
+        assertNull(before.hero?.card?.returnsAt, "nothing is resting yet, and the rules say it themselves")
+
+        // Dealt with on the Thursday, exactly as ReminderFiring.dismiss leaves the row.
+        val spent = weekly.momentDealtWith(now, zone, defaultTime)!!
+        val dealt = weekly.copy(lastDealtAt = now, dealtThrough = spent)
+        val after = buildHomeState(listOf(dealt), defaultTime, now, zone, selectedTag = null)
+        val card = after.sections.flatMap { it.cards }.single { it.id == "bins" }
+        assertEquals(
+            monday.plusWeeks(1),
+            card.triggers.single().nextAt?.atZone(zone)?.toLocalDate(),
+            "the row names the Monday it will ring on",
+        )
+        assertEquals(
+            monday.plusWeeks(1),
+            card.returnsAt?.atZone(zone)?.toLocalDate(),
+            "and the recurrence row says when it comes back, because past a week it is not the hero",
+        )
     }
 
     @Test

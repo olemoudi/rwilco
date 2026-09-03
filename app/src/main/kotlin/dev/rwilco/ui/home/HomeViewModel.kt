@@ -20,6 +20,8 @@ import dev.rwilco.model.TagFilter
 import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.ValidationWarning
+import dev.rwilco.model.moment
+import dev.rwilco.model.nextFire
 import dev.rwilco.model.presetsByPopularity
 import dev.rwilco.model.toReminder
 import dev.rwilco.model.used
@@ -67,7 +69,19 @@ sealed interface HomeEvent {
      * A reminder left the list; the snackbar offers to bring it back. [history] is what a
      * delete takes with it (the cascade), so the undo can put it back too.
      */
-    data class Removed(val kind: Kind, val reminder: Reminder, val history: List<FiringEvent> = emptyList()) : HomeEvent {
+    data class Removed(
+        val kind: Kind,
+        val reminder: Reminder,
+        val history: List<FiringEvent> = emptyList(),
+        /**
+         * When it comes back, for a reminder that is not finished — the one thing "Hecho" never
+         * said. A recurring reminder dealt with from the list stays open on its next round, and
+         * a word that reads as "this is over" was the whole of what somebody was told about it.
+         * Null when it really is done, when it is a delete, and when nothing can name a moment
+         * (a place: it comes back on arrival, and no clock knows when that is).
+         */
+        val comesBackAt: Instant? = null,
+    ) : HomeEvent {
         /** [SKIPPED] is a "hecho" given ahead of the ring, said with the word for that. */
         enum class Kind { DONE, DELETED, SKIPPED }
     }
@@ -411,17 +425,35 @@ class HomeViewModel(
         viewModelScope.launch {
             val reminder = repository.get(id) ?: return@launch
             var history: List<FiringEvent> = emptyList()
+            var comesBackAt: Instant? = null
             when (kind) {
-                HomeEvent.Removed.Kind.DONE, HomeEvent.Removed.Kind.SKIPPED -> firing.dismiss(id)
+                HomeEvent.Removed.Kind.DONE, HomeEvent.Removed.Kind.SKIPPED -> {
+                    firing.dismiss(id)
+                    // Asked of the row the dismissal left rather than worked out again here:
+                    // whether that was the end of it, and when it comes back if it was not, are
+                    // [ReminderFiring]'s answers; the snackbar only reads them back.
+                    comesBackAt = comesBack(id)
+                }
                 HomeEvent.Removed.Kind.DELETED -> {
                     history = repository.history(id)
                     repository.delete(id)
                 }
             }
-            val event = HomeEvent.Removed(kind, reminder, history)
+            val event = HomeEvent.Removed(kind, reminder, history, comesBackAt)
             if (kind == HomeEvent.Removed.Kind.DELETED) keepUndoable(event)
             events.send(event)
         }
+    }
+
+    /**
+     * When [id] rings next, for a reminder a "hecho" left open — its recurrence's next round.
+     * Null for one that is finished, and for one whose next answer is a place rather than a
+     * moment ([dev.rwilco.model.moment]).
+     */
+    private suspend fun comesBack(id: String): Instant? {
+        val after = repository.get(id)?.takeIf { it.status == Status.ACTIVE } ?: return null
+        val current = store.settings.first()
+        return nextFire(after, clock.instant(), clock.zone, current.defaultTime, current.dayStart, current.dayShape)?.moment
     }
 
     /**

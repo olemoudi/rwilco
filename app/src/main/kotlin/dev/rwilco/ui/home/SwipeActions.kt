@@ -52,8 +52,13 @@ import dev.rwilco.ui.theme.LocalDarkTheme
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.familyColor
 
-/** How long the card has to be held open before the action takes. */
-private const val SWIPE_HOLD_MILLIS = 500
+/**
+ * How long the card has to be held open before the action takes. 300 ms since 0.74.0 (it was
+ * 500): the swipe itself is already the deliberate half of the gesture — nothing here happens
+ * on a scroll — and the hold is there so a thumb that opened a card by accident can take it
+ * back, which it can as well in three tenths of a second as in five.
+ */
+private const val SWIPE_HOLD_MILLIS = 300
 
 private val GLASS = 48.dp
 

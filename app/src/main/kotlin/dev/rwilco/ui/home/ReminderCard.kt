@@ -195,7 +195,7 @@ fun ReminderCard(
                 }
                 // Last, because that is the order the two answer in: the triggers say when it
                 // rings the first time and the recurrence says when it comes back.
-                card.recurrence?.let { RecurrenceRow(it, today, muted = card.paused) }
+                card.recurrence?.let { RecurrenceRow(it, today, zone, card.returnsAt, muted = card.paused) }
             }
             Spacer(Modifier.height(spacing.md))
             CardFooter(
@@ -344,7 +344,14 @@ private fun CompactGlyph(icon: ImageVector, contentDescription: String) {
  * line is the part people get wrong about it: the clock starts at the "hecho", not at the ring.
  */
 @Composable
-fun RecurrenceRow(recurrence: Recurrence, today: LocalDate, muted: Boolean = false) {
+fun RecurrenceRow(
+    recurrence: Recurrence,
+    today: LocalDate,
+    zone: ZoneId,
+    /** When it comes back, while it is resting between two rounds; see [ReminderCardUi.returnsAt]. */
+    returnsAt: Instant? = null,
+    muted: Boolean = false,
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         TriggerKeycap(
             family = TriggerFamily.TIME,
@@ -364,8 +371,19 @@ fun RecurrenceRow(recurrence: Recurrence, today: LocalDate, muted: Boolean = fal
             // The second line is the half of the sentence the first one cannot say: "cada
             // semana" is the same words whether the week is counted from the calendar, from
             // the ringing or from you.
+            //
+            // **While it rests, that half is *when*.** Where the span counts from is a thing to
+            // know once; which day it comes back on is what somebody has the card open to find
+            // out, and the rules above cannot say it — they describe every Monday, including
+            // the one just dealt with (0.74.0).
+            val at = returnsAt?.atZone(zone)
             Text(
-                text = stringResource(
+                text = if (at != null) {
+                    stringResource(
+                        R.string.card_recurrence_returns,
+                        dayWord(rememberWords(), at.toLocalDate(), today) + " " + TimeText.time(at.toLocalTime(), rememberIs24h(), currentLocale()),
+                    )
+                } else stringResource(
                     when {
                         recurrence == Recurrence.ByTrigger || recurrence is Recurrence.MonthlyWeekday ||
                             recurrence is Recurrence.Calendar -> R.string.card_recurrence_from_calendar

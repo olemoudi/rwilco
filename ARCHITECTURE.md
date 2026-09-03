@@ -728,7 +728,7 @@ because that is what its chip would show.
   `compact` pill with the verb beside the glyph on a card, at the end of the footer's read-only
   action glyphs. The pill is what it wears on Home: as a disc in the top row it took a column
   ~96dp wide out of the one line of the card anybody actually reads, and the reminder's own words
-  were wrapping around it. It fires only after a 700ms hold, and what reports on the hold is
+  were wrapping around it. It fires only after a 500ms hold, and what reports on the hold is
   `HoldOverlay` — the whole screen dimmed behind one ring filling in the middle of it, which
   is the one place no thumb is ever over. The overlay lives at the root of `RwilcoApp` and is
   reached through `LocalHoldOverlay`, because a control in the corner of a card cannot dim the
@@ -962,6 +962,26 @@ because that is what its chip would show.
   counts as a row: it is lifted out of its *section*, not out of the column, and a list scrolled
   well down has it off the top — which is exactly where an edit that gives a reminder the
   soonest moment on the phone sends it.
+- **A card that is resting says when it comes back** (0.74.0). Reported from a phone: "los
+  lunes" with "vuelve cada semana", swiped done on a Thursday, and the card went on saying it
+  would ring on Monday. The swipe was right all along — `ReminderFiring.dismiss` spends the
+  round, keeps the reminder ACTIVE and arms the Monday after, which `HomeSwipeTest` has pinned
+  since 0.64.0 — but nothing on the screen said so, and two things were wrong with what it did
+  say. First, every card row was asked for its next moment **from `now`**, while the reminder
+  itself looks from past what it has spent and past its rest: the row named the very Monday
+  that had just been dealt through. That expression had been written out twice, in `nextFire`
+  and `nextWake`, and Home had a third version of it; it is one name now
+  (`Reminder.rulesLookFrom`, pure) and the card asks it too. Second, a plain card has nowhere
+  to *say* a moment — the rules describe every Monday, and past a week (`HERO_HORIZON`) a
+  weekly reminder just dealt with is never the hero, which is the one card that says its moment
+  in words. So the recurrence row — the row about coming back — answers "vuelve lun 14 sept
+  08:00" in place of its "desde que la haces" line, for as long as the rest lasts
+  (`ReminderCardUi.returnsAt`, null the rest of the time, because the rules speak for
+  themselves then). The same fact reaches the snackbar the swipe leaves behind
+  (`HomeEvent.Removed.comesBackAt`, read off the row the dismissal wrote rather than worked out
+  again): "Hecho · vuelve el lunes 08:00" where it used to say the one word that reads as *this
+  is over*. It is the same complaint the snooze row answers one round further out, and the same
+  rule behind both: **a card may not say the opposite of what will happen.**
 - Home: `HomeViewModel` combines the open reminders, settings, the tag filter and a minute pulse
   into `HomeUiState` (`buildHomeState`, pure and tested). The hero card's countdown ticks in its
   own composable (`rememberNow`) so nothing else recomposes. The magnifier has a flow of its own
@@ -1103,7 +1123,7 @@ because that is what its chip would show.
   settings file with it. Each row shows
   `VISIBLE_SUGGESTIONS` of them and puts the rest behind `MoreChip` → `PickSheet` (a searchable
   list), because a row that grows with every reminder ever written stops being a shortcut.
-  Holding one of those chips (the shared `Modifier.holdable`, the same 700ms and the same overlay
+  Holding one of those chips (the shared `Modifier.holdable`, the same 500ms and the same overlay
   as `HoldButton` — a watcher that consumes nothing, so the chip keeps its own click and only
   stands it down when a hold has just completed) opens `CuratePanel` to mend the list: the pure functions in
   `core-model/Curation.kt` rename a tag or a phrase across the reminders that carry it —
@@ -1247,8 +1267,10 @@ because that is what its chip would show.
   than the thumb it outlasts) after the screen shows, nothing but Silence
   answers — a ring at the top drains under the digit "1", and every button is faded and
   reports itself disabled — and after that "Hecho", every snooze and "Ver" answer only to a
-  finger *kept* on them for `Motion.guardHold` (700 ms since 0.66.1, the same `HOLD_MILLIS` as a
-  card's pause; it began as a full second): the ring fills, the tick pops in, and the
+  finger *kept* on them for `Motion.guardHold` (500 ms since 0.74.0, the same `HOLD_MILLIS` as a
+  card's pause; it was 700 ms and began as a full second — half a second is still nothing a
+  thumb already in flight can produce, which is the whole of what the hold is for, and the
+  swipe's own confirmation came down with it: `SWIPE_HOLD_MILLIS` 500 → 300): the ring fills, the tick pops in, and the
   answer is given **when the finger lifts**, not when the second ends, so the tick is seen and
   a screen that closes is one that was let go of. Let go early and nothing happens but the
   hint ("mantén pulsado para contestar", `guardHint`). Silencing is exempt because it confirms

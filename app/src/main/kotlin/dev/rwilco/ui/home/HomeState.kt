@@ -21,7 +21,9 @@ import dev.rwilco.model.family
 import dev.rwilco.model.groupForHome
 import dev.rwilco.model.isAnchored
 import dev.rwilco.model.nextFireOfRule
+import dev.rwilco.model.restUntil
 import dev.rwilco.model.ruleInSet
+import dev.rwilco.model.rulesLookFrom
 import dev.rwilco.model.search
 import dev.rwilco.model.TagFilter
 import dev.rwilco.model.tagFilters
@@ -190,6 +192,18 @@ data class ReminderCardUi(
      */
     val skipsMoment: Instant? = null,
     /**
+     * When it comes back, while a recurrence is holding its rules quiet — and null the rest of
+     * the time, when the rules on the card speak for themselves.
+     *
+     * The same complaint the snooze row answers, one round further out: a card whose rules say
+     * "los lunes" says exactly that on the Thursday it was dealt with, and the Monday it means
+     * is the one it will *not* ring on. Nothing else on a plain card could say so — the hero
+     * says its moment in its own words, but past a week ([dev.rwilco.model.HERO_HORIZON]) a
+     * reminder is not the hero, and a weekly one dealt with today is always past it. So the
+     * recurrence row, which is the row about coming back, says when.
+     */
+    val returnsAt: Instant? = null,
+    /**
      * Whether "posponer" is an answer this card can give from Home.
      *
      * Only where it *is* an answer: the reminder rang and nobody has dealt with it since
@@ -251,13 +265,18 @@ fun buildHomeState(
         else tags.firstOrNull { it is TagFilter.Named && it.tag.equals(chosen.tag, ignoreCase = true) }
     }
     val groups = groupForHome(reminders, now, zone, defaultTime, filter, dayStart, shape)
-    fun card(reminder: Reminder, missedAt: Instant? = null): ReminderCardUi {
+    fun card(reminder: Reminder, missedAt: Instant? = null, next: NextFire? = null): ReminderCardUi {
         val standings = reminder.ruleStandings(now, zone, dayStart, shape) { index -> inside(reminder.id, index) }
         val circles = reminder.watchedCircles(now, zone, defaultTime, shape, dayStart)
+        // **Asked from where the reminder itself looks**, not from now ([rulesLookFrom]): a
+        // moment already spent is spent, and rules resting between two rounds of a recurrence
+        // are not about to produce the moment they would have produced yesterday.
+        val rest = reminder.restUntil(zone, dayStart, shape)?.takeIf { it > now }
+        val from = reminder.rulesLookFrom(now, rest)
         val rows = reminder.rules.mapIndexed { index, rule ->
             // Under "a la vez" the row says when the folded rule next holds, which is what
             // will ring; a fold of two moments never does, and the row says nothing.
-            val next = reminder.ruleInSet(index, shape)?.let { nextFireOfRule(it, reminder.id, now, zone, defaultTime, shape) }
+            val next = reminder.ruleInSet(index, shape)?.let { nextFireOfRule(it, reminder.id, from, zone, defaultTime, shape) }
             TriggerRowUi(
                 trigger = rule.trigger,
                 conditions = rule.conditions,
@@ -280,6 +299,8 @@ fun buildHomeState(
             snoozedUntil = reminder.snoozedUntil?.takeIf { it > now && reminder.status == Status.ACTIVE },
             snoozedToPlace = reminder.snoozedToPlace?.takeIf { reminder.status == Status.ACTIVE },
             missedAt = missedAt,
+            // Only while it rests: with the rules speaking again they say it themselves.
+            returnsAt = rest?.let { (next as? NextFire.Scheduled)?.at },
             match = reminder.ruleMatch.takeIf { reminder.rules.size > 1 },
             recurrence = reminder.recurrence.takeIf { it.isAnchored },
             snoozeOffered = reminder.awaitingAnswer(now) ||
@@ -299,13 +320,15 @@ fun buildHomeState(
         quietToday = (groups.hero != null || groups.sections.isNotEmpty()) && !heroToday && !busySections && filter == null,
         hero = groups.hero?.let { hero ->
             HeroUi(
-                card = card(hero.entry.reminder),
+                // The hero says its moment in its own words, so it needs no [returnsAt] — but
+                // it is carried all the same, the way the snooze is, and HeroCard leaves it out.
+                card = card(hero.entry.reminder, next = hero.entry.next),
                 at = hero.entry.wake!!.at,
                 snoozed = (hero.entry.next as? NextFire.Scheduled)?.snoozed == true,
                 atEarliest = hero.atEarliest,
             )
         },
-        sections = groups.sections.map { (section, entries) -> SectionUi(section, entries.map { card(it.reminder, it.missedAt) }) },
+        sections = groups.sections.map { (section, entries) -> SectionUi(section, entries.map { card(it.reminder, it.missedAt, it.next) }) },
         tags = tags,
         selectedTag = filter,
         defaultTime = defaultTime,

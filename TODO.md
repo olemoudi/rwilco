@@ -3,6 +3,14 @@
 Running notes: what is next, what cost time, what must not be re-derived.
 
 
+## Build notes that cost time
+- **`&apos;` in `strings.xml` fails the resource merge with an NPE, not an error message.**
+  `mergeDebugResources` dies with `Cannot invoke "javax.xml.stream.events.Attribute.getValue()"
+  because … getAttributeByName(…) is null`, naming the *merged* values.xml and no line in it. The
+  cause is an apostrophe written as the XML entity instead of the Android escape: this file uses
+  `\'` everywhere, and that is what it wants. Cost: one bisect of the release's own strings,
+  2026-09-03.
+
 ## Emulator notes that cost time
 - **A View animation that asks for its own next frame hangs every Espresso test.**
   `postInvalidateOnAnimation()` from inside `Overlay.draw` is the ordinary way to animate a

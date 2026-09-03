@@ -76,7 +76,7 @@ fun nextFire(
         return reminder.recurrenceMoment(now, zone, dayStart, shape)
             ?.let { NextFire.Scheduled(it, reminder.rules.firstOrNull()?.trigger) }
     }
-    val from = maxOf(reminder.searchFrom(now), rest ?: now)
+    val from = reminder.rulesLookFrom(now, rest)
     val pending = reminder.pendingRules()
     val candidates = pending.mapNotNull { index ->
         // Under "a la vez" the rule is judged with its siblings folded in as conditions — the
@@ -157,7 +157,7 @@ fun nextWake(
     if (reminder.spanHasTakenOver) {
         return reminder.recurrenceMoment(now, zone, dayStart, shape)?.let { Wake(it, null) }
     }
-    val from = maxOf(reminder.searchFrom(now), rest ?: now)
+    val from = reminder.rulesLookFrom(now, rest)
     val candidates = reminder.pendingRules().mapNotNull { index ->
         val rule = reminder.ruleInSet(index, shape) ?: return@mapNotNull null
         nextFireOfRule(rule, reminder.id, from, zone, defaultTime, shape)?.let { index to it }
@@ -520,6 +520,18 @@ fun Reminder.restUntil(zone: ZoneId, dayStart: LocalTime, shape: DayShape = DayS
     if (rules.none { it.trigger.namesAnHour }) return moved
     return moved.atZone(zone).toLocalDate().atStartOfDay(zone).toInstant()
 }
+
+/**
+ * Where the rules start looking for their next moment: past the one already spent
+ * ([searchFrom] — it rang, or it was dealt with ahead of time) and past any rest the recurrence
+ * is holding them quiet for ([restUntil]).
+ *
+ * Named because three places need exactly this answer and only two of them had it. [nextFire]
+ * and [nextWake] spelled it out; Home's cards did not, and asked each rule from *now* — so a
+ * "los lunes, y vuelve cada semana" dealt with on a Thursday went on drawing the Monday it had
+ * just been dealt through, on the one screen somebody would look at to check.
+ */
+fun Reminder.rulesLookFrom(now: Instant, rest: Instant?): Instant = maxOf(searchFrom(now), rest ?: now)
 
 /**
  * Whether an "exactly the span" recurrence has taken the rules out of the loop.

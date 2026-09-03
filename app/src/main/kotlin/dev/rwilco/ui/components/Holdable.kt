@@ -23,8 +23,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import dev.rwilco.ui.theme.Tokens
 
-/** The same 700ms everywhere: one length of hold in the app, so a hand only learns it once. */
-const val HOLD_MILLIS = 700
+/** The same 500ms everywhere: one length of hold in the app, so a hand only learns it once. */
+const val HOLD_MILLIS = 500
 
 /**
  * What the hold tells the control it sits on: [held] is true from the moment a hold completes

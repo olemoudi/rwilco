@@ -97,7 +97,9 @@
     <string name="home_empty_body">Escribe qué quieres recordar y luego di cuándo y cómo. En una tarjeta: deslízala a la derecha y mantén para darla por hecha, a la izquierda para eliminarla, y mantenla pulsada para lo demás.</string>
     <string name="home_empty_action">Escribe uno</string>
     <string name="home_marked_done">Hecho</string>
+    <string name="home_marked_done_returns">Hecho · vuelve %1$s</string>
     <string name="home_skipped">Saltada la próxima</string>
+    <string name="home_skipped_returns">Saltada la próxima · vuelve %1$s</string>
     <string name="home_skip">Saltar la próxima</string>
     <string name="home_skip_hint">La de %1$s; la siguiente se queda</string>
     <string name="preset_deleted">Preset borrado</string>
@@ -246,6 +248,7 @@
     <string name="recur_from_ringing">Cuando suena</string>
     <string name="recur_from_dealt">Cuando lo marco hecho</string>
     <string name="card_recurrence_from_ringing">desde que suena</string>
+    <string name="card_recurrence_returns">vuelve %1$s</string>
     <string name="card_recurrence_from_calendar">en sus propias fechas</string>
     <string name="recur_after_done">Se cuenta desde que lo marcas hecho, no desde el reloj.</string>
     <string name="recur_unit_hours">horas</string>
@@ -1217,6 +1220,10 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_74_0">
+        <item>Un recordatorio que vuelve ya dice cuándo. Darlo por hecho desde la lista siempre ha gastado sólo esa vez y ha armado la siguiente — pero una tarjeta cuya regla dice «lunes» seguía diciendo justo eso, incluido el lunes que acababa de darse por hecho, y nada en la pantalla mostraba que el swipe hubiera hecho algo. La fila de la repetición dice «vuelve lun 14 sept 08:00» mientras descansa, y el aviso lo dice también en vez del «Hecho» a secas.</item>
+        <item>Mantener pulsado para contestar tarda 200 ms menos en todas partes: el «Hecho» de la pantalla de aviso y sus «posponer», el pausar de una tarjeta, y la pulsación que confirma un swipe.</item>
+    </string-array>
     <string-array name="whats_new_0_73_0">
         <item>«Ver» en uno de los varios recordatorios que comparten la pantalla de aviso le da ahora la pantalla entera a ese recordatorio — sus palabras a tamaño completo, todos los «posponer» y el «Hecho» donde está el pulgar — en vez de abrirte el formulario. Al resolverlo vuelves con los que quedan, uno menos; la flecha de arriba vuelve sin responder nada.</item>
         <item>Al recordatorio recién escrito se va: el home se coloca donde haya caído la tarjeta nueva y abre esa, para releer lo que has escrito y tener el lápiz a un toque si algo no está bien. Al editar uno que ya existía la lista se queda justo donde la estabas leyendo.</item>

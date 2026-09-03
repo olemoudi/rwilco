@@ -38,8 +38,11 @@ data class Motion(
      * The alert screen's press guard ([dev.rwilco.ui.components.PressGuard]): nothing but
      * Silence answers for [guardArm] after the screen shows; after that every answer is a
      * finger kept on its button for [guardHold], and a hold let go early says how for
-     * [guardHint]. [guardHold] is the same 700 ms as [dev.rwilco.ui.components.HOLD_MILLIS]
-     * (0.66.1; it was a full second): one length of hold in the app, so a hand learns it once.
+     * [guardHint]. [guardHold] is the same 500 ms as [dev.rwilco.ui.components.HOLD_MILLIS]
+     * (0.74.0; it was 700, and a full second before that): one length of hold in the app, so a
+     * hand learns it once. Half a second is still a hold and not a tap — and the guard's point
+     * is that no answer can be given by a finger that was already moving, which 500 ms buys
+     * exactly as well as 700 did.
      *
      * [guardArm] is one second (0.70.0; it was two). The countdown is there to outlast the
      * thumb that is already moving when the screen arrives, and that thumb lands in a few
@@ -47,7 +50,7 @@ data class Motion(
      * be let in. The hold behind it is what actually guards the answer.
      */
     val guardArm: Int = 1000,
-    val guardHold: Int = 700,
+    val guardHold: Int = 500,
     val guardHint: Int = 1500,
 )
 

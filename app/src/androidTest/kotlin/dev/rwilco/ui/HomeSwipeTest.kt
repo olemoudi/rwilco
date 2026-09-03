@@ -20,6 +20,8 @@ import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
+import dev.rwilco.model.Trigger
+import dev.rwilco.model.TriggerRule
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -29,6 +31,7 @@ import androidx.test.rule.GrantPermissionRule
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.DayOfWeek
 import java.time.Duration
 
 /**
@@ -138,7 +141,7 @@ class HomeSwipeTest {
     fun oneCard() {
         runBlocking {
             app.repository.deleteAll()
-            app.settingsStore.update { it.copy(presets = emptyList(), lastSeenVersionCode = BuildConfig.VERSION_CODE) }
+            app.settingsStore.update { it.copy(presets = emptyList(), compactHome = false, lastSeenVersionCode = BuildConfig.VERSION_CODE) }
             val now = app.clock.instant()
             // No trigger: one plain card, no hero, nothing else on the screen to swipe by mistake.
             app.repository.save(Reminder(id = id, text = words, createdAt = now, updatedAt = now))
@@ -206,6 +209,66 @@ class HomeSwipeTest {
             "an hour after the swipe, not after the ring: $armed",
             Duration.between(swipedAt, armed).toMinutes() in 55..65,
         )
+    }
+
+    /**
+     * The complaint from the phone (0.74.0): "los lunes, y vuelve cada semana", swiped on a
+     * Thursday, and the card went on saying "lunes" — true of every Monday and false about the
+     * only one that mattered, the one just dealt through. The swipe was right all along;
+     * nothing on the screen said so. Now the card and the snackbar both name the day.
+     */
+    @Test
+    fun aWeeklyReminderSwipedDoneSaysWhichDayItComesBackOn() {
+        val bins = "Sacar el cubo al portal"
+        runBlocking {
+            app.repository.deleteAll()
+            val now = app.clock.instant()
+            app.repository.save(
+                Reminder(
+                    id = id,
+                    text = bins,
+                    rules = listOf(TriggerRule(Trigger.Weekday(setOf(DayOfWeek.MONDAY)))),
+                    recurrence = Recurrence.After(1, RecurrenceUnit.WEEKS),
+                    createdAt = now,
+                    updatedAt = now,
+                ),
+            )
+        }
+        waitFor(bins)
+
+        swipeCardRightAndHold(bins)
+        rule.waitUntil(10_000) { runBlocking { app.repository.get(id)?.dealtThrough } != null }
+        val after = runBlocking { app.repository.get(id)!! }
+        assertEquals("a reminder asked to come back was finished instead", Status.ACTIVE, after.status)
+
+        // The snackbar says it, with the day in it rather than the bare "Hecho".
+        val said = prefixOf(R.string.home_marked_done_returns)
+        waitForPart(said)
+        // And once it has gone (SnackbarDuration.Short), the card is still saying it on the
+        // recurrence row — which is the half that matters tomorrow, when nobody is watching a
+        // snackbar. Waited for by the snackbar's own words, so the card's cannot answer for it.
+        rule.waitUntil(15_000) {
+            rule.onAllNodesWithText(said, substring = true, ignoreCase = true, useUnmergedTree = true).fetchSemanticsNodes().isEmpty()
+        }
+        waitForPart(prefixOf(R.string.card_recurrence_returns))
+        shot("home-comes-back")
+    }
+
+    /** The words a string with one placeholder starts with, for a substring match. */
+    private fun prefixOf(resId: Int): String = s(resId, "\u0000").substringBefore("\u0000").trim()
+
+    private fun waitForPart(value: String) {
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText(value, substring = true, ignoreCase = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    private fun shot(name: String) {
+        rule.waitForIdle()
+        Thread.sleep(600)
+        val dir = java.io.File(rule.activity.filesDir, "screenshots").apply { mkdirs() }
+        val bitmap = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot() ?: return
+        java.io.File(dir, "$name.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
     }
 
     @Test

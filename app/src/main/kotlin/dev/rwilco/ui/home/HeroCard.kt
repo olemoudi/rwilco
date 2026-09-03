@@ -166,7 +166,9 @@ fun HeroCard(
                     } else {
                         for (row in hero.card.triggers) TriggerRow(row, today, defaultTime)
                     }
-                    hero.card.recurrence?.let { RecurrenceRow(it, today) }
+                    // No "vuelve el…" here: the hero's whole top half is that moment, said
+                    // bigger and with a countdown on it.
+                    hero.card.recurrence?.let { RecurrenceRow(it, today, clock.zone) }
                 }
             }
             // Always, because the pause pill lives here: the one card that matters most was the

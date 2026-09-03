@@ -28,6 +28,7 @@ import dev.rwilco.model.TriggerRule
 import dev.rwilco.ui.editor.EDITOR_TEXT_TAG
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Rule
@@ -117,6 +118,16 @@ class HomeCompactTest {
                 updatedAt = now,
             ),
         )
+    }
+
+    /**
+     * The fold is a setting, so a test that leaves it on leaves it on for every class after —
+     * and a folded card has no pencil, which is how the other suites reach the form.
+     */
+    @After
+    fun unfold() = runBlocking {
+        app.settingsStore.update { it.copy(compactHome = false) }
+        Unit
     }
 
     @Test

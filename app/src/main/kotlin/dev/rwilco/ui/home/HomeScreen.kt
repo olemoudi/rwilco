@@ -178,8 +178,20 @@ fun HomeScreen(
     LaunchedEffect(viewModel) {
         viewModel.eventFlow.collect { event ->
             when (event) {
+                // **"Hecho" says when it comes back** (0.74.0). A reminder with a "Vuelve" is
+                // not finished by a "hecho" — the round is spent and the next one is armed —
+                // and the app said the one word that reads as "this is over", which is how
+                // somebody comes to believe the swipe killed their weekly reminder.
                 is HomeEvent.Removed -> snackbar.show(
-                    message = when (event.kind) {
+                    message = event.comesBackAt?.let { back ->
+                        val here = back.atZone(zone)
+                        val todayHere = viewModel.clock.instant().atZone(zone).toLocalDate()
+                        val moment = dayWord(words, here.toLocalDate(), todayHere) + " " + TimeText.time(here.toLocalTime(), words.is24h, words.locale)
+                        words.get(
+                            if (event.kind == HomeEvent.Removed.Kind.SKIPPED) R.string.home_skipped_returns else R.string.home_marked_done_returns,
+                            moment,
+                        )
+                    } ?: when (event.kind) {
                         HomeEvent.Removed.Kind.DONE -> doneMessage
                         HomeEvent.Removed.Kind.DELETED -> deletedMessage
                         HomeEvent.Removed.Kind.SKIPPED -> skippedMessage

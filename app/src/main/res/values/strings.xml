@@ -99,7 +99,9 @@
     <string name="home_empty_body">Write what you want to remember, then say when and how. On a card: swipe right and hold to mark it done, left to delete it, and hold it for everything else.</string>
     <string name="home_empty_action">Write one</string>
     <string name="home_marked_done">Done</string>
+    <string name="home_marked_done_returns">Done · back %1$s</string>
     <string name="home_skipped">Next one skipped</string>
+    <string name="home_skipped_returns">Next one skipped · back %1$s</string>
     <string name="home_skip">Skip the next one</string>
     <string name="home_skip_hint">The one %1$s; the one after stays</string>
     <string name="preset_deleted">Preset deleted</string>
@@ -248,6 +250,9 @@
     <string name="recur_from_ringing">When it rings</string>
     <string name="recur_from_dealt">When you\'re done</string>
     <string name="card_recurrence_from_ringing">from when it rings</string>
+    <!-- The recurrence row's second line while a reminder rests between two rounds: the rules
+         above it describe every Monday, including the one just dealt with. -->
+    <string name="card_recurrence_returns">back %1$s</string>
     <string name="card_recurrence_from_calendar">on its own dates</string>
     <string name="recur_after_done">Counted from the moment you mark it done, not from the clock.</string>
     <string name="recur_unit_hours">hours</string>
@@ -1221,6 +1226,10 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_74_0">
+        <item>A reminder that comes back now says when. Marking one done from the list has always spent just that round and armed the next — but a card whose rule reads «Mondays» went on saying exactly that, including the Monday it had just been dealt through, and nothing on screen showed that the swipe had done anything. The repeat row says «back Mon 14 Sept 08:00» while it rests, and the confirmation says it too instead of the bare «Done».</item>
+        <item>Holding to answer is 200 ms shorter everywhere: the alert screen\'s «Done» and its snoozes, a card\'s pause, and the hold that confirms a swipe.</item>
+    </string-array>
     <string-array name="whats_new_0_73_0">
         <item>«Ver» on one of several reminders sharing the alert screen now gives that reminder the whole screen — its words at full size, every snooze, and «Hecho» where your thumb is — instead of handing you the edit form. Deal with it and you are back among the ones that are left, one fewer; the arrow at the top comes back without answering anything.</item>
         <item>A reminder you have just written is landed on: Home goes to wherever the new card ended up and opens that one card, so you can read back what you wrote and reach the pencil if something is wrong. Editing an existing one still leaves the list exactly where you were reading.</item>
