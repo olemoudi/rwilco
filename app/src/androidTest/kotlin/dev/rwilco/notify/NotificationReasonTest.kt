@@ -8,6 +8,7 @@ import androidx.test.rule.GrantPermissionRule
 import dev.rwilco.model.Action
 import dev.rwilco.model.Condition
 import dev.rwilco.model.FiringPlan
+import dev.rwilco.model.NetWord
 import dev.rwilco.model.Presence
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
@@ -62,14 +63,15 @@ class NotificationReasonTest {
         )
 
     /** Posting is a binder hop; the shade has it a moment later, not on the next line. */
-    private fun postAndRead(reminder: Reminder): Notification {
+    private fun postAndRead(reminder: Reminder, nudge: NetWord? = null): Notification {
         manager.cancelAll()
-        AlertNotifications.post(context, reminder, plan, late = null, fullScreen = false)
+        AlertNotifications.post(context, reminder, plan, late = null, fullScreen = false, nudge = nudge, nudgeAbout = Instant.now())
         var posted: Notification? = null
         val deadline = System.currentTimeMillis() + 5_000
         while (posted == null && System.currentTimeMillis() < deadline) {
             posted = manager.activeNotifications
-                .firstOrNull { it.notification.extras.getCharSequence(Notification.EXTRA_TITLE) == "Organizar fotos" }
+                // By the words rather than by the whole title: the net's card marks them.
+                .firstOrNull { it.notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.contains("Organizar fotos") == true }
                 ?.notification
             if (posted == null) Thread.sleep(50)
         }
@@ -116,6 +118,25 @@ class NotificationReasonTest {
         val big = postAndRead(reminder(rule)).line(Notification.EXTRA_BIG_TEXT)!!
         assertTrue("the words come first: $big", big.startsWith("Organizar fotos"))
         assertTrue("and the reason under them: $big", big.contains("\n") && big.contains("9:00"))
+    }
+
+    /**
+     * The net's card says what it is in the words themselves, not only in the sub-line: a quiet
+     * card in a shade full of cards otherwise looks exactly like the alarm it is *about*.
+     */
+    @Test
+    fun theNetMarksTheWordsWhenSomethingGotAway() {
+        val rule = TriggerRule(Trigger.AtTime(LocalTime.of(9, 0), emptySet()))
+        val icymi = context.getString(dev.rwilco.R.string.notif_net_prefix, "Organizar fotos")
+
+        val letGo = postAndRead(reminder(rule), nudge = NetWord.LET_GO)
+        assertEquals("the words were not marked", icymi, letGo.line(Notification.EXTRA_TITLE))
+        assertTrue("expanded it lost the mark: " + letGo.line(Notification.EXTRA_BIG_TEXT), letGo.line(Notification.EXTRA_BIG_TEXT)!!.startsWith(icymi))
+        assertEquals(context.getString(dev.rwilco.R.string.notif_net_subtext), letGo.line(Notification.EXTRA_SUB_TEXT))
+
+        // A ring that is not owed an answer yet is not something missed, and is not marked.
+        val ringing = postAndRead(reminder(rule))
+        assertEquals("Organizar fotos", ringing.line(Notification.EXTRA_TITLE))
     }
 
     @Test

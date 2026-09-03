@@ -1506,7 +1506,14 @@ because that is what its chip would show.
   `IMPORTANCE_LOW`, silent, still, never a screen and never pinned — the same card with the same
   three buttons — "hecho" and the two snoozes the settings chose — on a line that says *puede
   que se te haya pasado* and a clock counting up from
-  the ring. What it waits for is `nudgeAt`: the whole wait (`afterHours`, a day) when the
+  the ring. **And, since 0.75.0, on the words themselves: "ICYMI: sacar la basura"**
+  (`notif_net_prefix`, both languages). The line that says which kind of card this is sits
+  beside the app's name in the smallest type the shade has and is the first thing a narrow row
+  drops, so a note about something that got away read exactly like the alarm it was about. The
+  mark goes in the title and in the expanded text, where nothing can crop it, and only for the
+  words that mean something was missed (`NetWord.saysItGotAway`, pure): `WAITING` is a reminder
+  still waiting at its place, and telling somebody they missed it would be the net's one job
+  done backwards. What it waits for is `nudgeAt`: the whole wait (`afterHours`, a day) when the
   reminder has nothing left to ring, and otherwise a **tenth** (`fraction`) of the gap to its
   next ring, whichever is shorter — the point being to catch it before the next one buries it.
   Under `minCadenceMinutes` (an hour) it cannot be armed at all: there the next ring already is

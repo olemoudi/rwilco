@@ -280,4 +280,14 @@ class SafetyNetTest {
         // The crossing rings and clears the wait; back to the ordinary words.
         assertEquals(NetWord.LET_GO, waiting.copy(snoozedToPlace = null).netDue(now, zone, defaultTime, settings)?.word, "without the wait the ring is owed the ordinary word")
     }
+
+    @Test
+    fun `only the words about something missed are the ones marked as missed`() {
+        // What the notification's "ICYMI:" is asked before it marks the words. A reminder still
+        // waiting at its place has missed nothing, and telling somebody it got away would be
+        // the net's one job done backwards.
+        assertTrue(NetWord.LET_GO.saysItGotAway, "it rang and nobody answered")
+        assertTrue(NetWord.NEVER_RANG.saysItGotAway, "its moment came and nothing rang at all")
+        assertFalse(NetWord.WAITING.saysItGotAway, "it is still waiting at its place, which is not missing it")
+    }
 }

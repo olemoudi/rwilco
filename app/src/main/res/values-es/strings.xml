@@ -483,6 +483,7 @@
     <string name="alert_missed_subtext">No sonó a su hora</string>
     <string name="notif_channel_net">Red de seguridad</string>
     <string name="notif_channel_net_description">Un aviso discreto sobre un recordatorio que sonó y que nadie atendió.</string>
+    <string name="notif_net_prefix">ICYMI: %1$s</string>
     <string name="notif_net_subtext">Puede que se te haya pasado</string>
     <string name="notif_net_subtext_never">Esto no llegó a sonar</string>
     <string name="notif_net_subtext_waiting_arrive">Sigue esperando a que llegues a %1$s</string>
@@ -1220,6 +1221,9 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_75_0">
+        <item>El aviso callado de la red de seguridad ya lo dice en las palabras mismas: «ICYMI: sacar la basura». Su tarjeta lleva el texto del propio recordatorio en un canal sin sonido, y en una barra llena se veía igual que la alarma de la que hablaba — la línea pequeña que decía «puede que se te haya pasado» va al lado del nombre de la app y es lo primero que se cae cuando la fila es estrecha. Un recordatorio que sigue esperando en un sitio no se marca: ahí no se ha pasado nada.</item>
+    </string-array>
     <string-array name="whats_new_0_74_0">
         <item>Un recordatorio que vuelve ya dice cuándo. Darlo por hecho desde la lista siempre ha gastado sólo esa vez y ha armado la siguiente — pero una tarjeta cuya regla dice «lunes» seguía diciendo justo eso, incluido el lunes que acababa de darse por hecho, y nada en la pantalla mostraba que el swipe hubiera hecho algo. La fila de la repetición dice «vuelve lun 14 sept 08:00» mientras descansa, y el aviso lo dice también en vez del «Hecho» a secas.</item>
         <item>Mantener pulsado para contestar tarda 200 ms menos en todas partes: el «Hecho» de la pantalla de aviso y sus «posponer», el pausar de una tarjeta, y la pulsación que confirma un swipe.</item>

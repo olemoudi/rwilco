@@ -179,6 +179,19 @@ enum class NetWord {
     WAITING,
 }
 
+/**
+ * Whether this word is about something that **got away** — as opposed to something still on its
+ * way.
+ *
+ * The two that got away are marked as such where somebody reads them (the notification's
+ * "ICYMI:"), because a quiet card in the shade otherwise looks exactly like the alarm it is
+ * *about*, and the difference between "this is ringing" and "this rang and you missed it" is the
+ * whole of what the net has to say. [NetWord.WAITING] is deliberately not one of them: nothing
+ * has been missed there — the reminder is still waiting at its place, and telling somebody they
+ * missed it would be the net's one job done backwards.
+ */
+val NetWord.saysItGotAway: Boolean get() = this == NetWord.LET_GO || this == NetWord.NEVER_RANG
+
 /** A word owed: when it is due, the moment it is about, and which of the two it is. */
 data class NetDue(val at: Instant, val about: Instant, val word: NetWord)
 

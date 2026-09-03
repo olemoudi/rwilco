@@ -489,6 +489,9 @@
     <string name="alert_missed_subtext">Did not ring on time</string>
     <string name="notif_channel_net">Safety net</string>
     <string name="notif_channel_net_description">A quiet word about a reminder that rang and was never answered.</string>
+    <!-- The net's mark on the words themselves: the sub-line that says which kind of card this
+         is sits in the smallest type the shade has and is the first thing a narrow row drops. -->
+    <string name="notif_net_prefix">ICYMI: %1$s</string>
     <string name="notif_net_subtext">You may have let this one go</string>
     <string name="notif_net_subtext_never">This never reached you</string>
     <string name="notif_net_subtext_waiting_arrive">Still waiting for you to reach %1$s</string>
@@ -1226,6 +1229,9 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_75_0">
+        <item>The safety net\'s quiet word now says so in the words themselves: «ICYMI: sacar la basura». Its card carries the reminder\'s own text on a silent channel, and in a full shade that looked exactly like the alarm it was about — the little line that said «puede que se te haya pasado» sits beside the app\'s name and is the first thing a narrow row drops. A reminder still waiting at a place is not marked: nothing has been missed there.</item>
+    </string-array>
     <string-array name="whats_new_0_74_0">
         <item>A reminder that comes back now says when. Marking one done from the list has always spent just that round and armed the next — but a card whose rule reads «Mondays» went on saying exactly that, including the Monday it had just been dealt through, and nothing on screen showed that the swipe had done anything. The repeat row says «back Mon 14 Sept 08:00» while it rests, and the confirmation says it too instead of the bare «Done».</item>
         <item>Holding to answer is 200 ms shorter everywhere: the alert screen\'s «Done» and its snoozes, a card\'s pause, and the hold that confirms a swipe.</item>

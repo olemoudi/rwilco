@@ -19,6 +19,7 @@ import dev.rwilco.model.AppSettings
 import dev.rwilco.model.FiringPlan
 import dev.rwilco.ui.format.summaryLine
 import dev.rwilco.model.NetWord
+import dev.rwilco.model.saysItGotAway
 import dev.rwilco.model.Presence
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.AlertSound
@@ -210,14 +211,23 @@ object AlertNotifications {
         // own text again, which the title already carries and which said nothing twice. The
         // sentence is the editor's own, minus the words themselves (`reminderSummary`).
         val reason = reminder.summaryLine(context, defaultTime)
+        // **A note from the net says so in the first two words** (0.75.0). Its card carries the
+        // reminder's own text, on a channel with no sound and no screen, and in a shade full of
+        // cards that is indistinguishable from the alarm it is about — the line that says which
+        // it is (`setSubText`) sits beside the app's name, in the smallest type the system has,
+        // and is the first thing dropped when the row is narrow. So the words themselves are
+        // marked: "ICYMI: sacar la basura" is legible collapsed, expanded, and in a bundle.
+        // Only for the words that mean something got away ([saysItGotAway]) — a reminder still
+        // waiting at its place has not been missed.
+        val title = if (nudge?.saysItGotAway == true) context.getString(R.string.notif_net_prefix, reminder.text) else reminder.text
         val builder = NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(reminder.text)
+            .setContentTitle(title)
             // Expanded, the card shows the words whole and the reason under them (0.67.0). The
             // title is one ellipsised line collapsed *and* expanded, and the big text was the
             // reason alone, so a long reminder could never be read in full from the shade —
             // the one surface most of them are answered on.
-            .setStyle(NotificationCompat.BigTextStyle().bigText(if (reason.isBlank()) reminder.text else reminder.text + "\n" + reason))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(if (reason.isBlank()) title else title + "\n" + reason))
             .setContentIntent(tap)
             .setAutoCancel(false)
             .setOnlyAlertOnce(false)
