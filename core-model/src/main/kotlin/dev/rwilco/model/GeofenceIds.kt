@@ -77,6 +77,19 @@ object GeofenceIds {
     fun circleKey(lat: Double, lng: Double, radiusM: Int): String =
         String.format(Locale.ROOT, "%.5f,%.5f,%d", lat, lng, radiusM)
 
+    /**
+     * A short, stable name for one circle, for the diagnostics report and nothing else.
+     *
+     * The report rounds every position to about a kilometre so it cannot point at anybody's
+     * door — and that made four circles in the same neighbourhood one string: a rule saying
+     * `@40.43,-3.67/50m`, a watch line saying `@40.43,-3.67/100m` and a fence count were three
+     * facts about, possibly, three different places, and reading a dump meant guessing which.
+     * This is what joins them: four hex characters of the circle's own key, the same for the
+     * same circle on every line and every report, and sixteen bits that name nowhere.
+     */
+    fun tag(lat: Double, lng: Double, radiusM: Int): String =
+        (circleKey(lat, lng, radiusM).hashCode() and 0xFFFF).toString(16).padStart(4, '0')
+
     private fun circle(lat: Double, lng: Double, radiusM: Int, way: Char): String =
         circleKey(lat, lng, radiusM) + "," + way
 

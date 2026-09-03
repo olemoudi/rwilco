@@ -5,6 +5,7 @@ import dev.rwilco.data.FiringEvent
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Condition
 import dev.rwilco.model.DiagNote
+import dev.rwilco.model.GeofenceIds
 import dev.rwilco.model.NextFire
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.Reminder
@@ -13,7 +14,11 @@ import dev.rwilco.model.RepeatEnd
 import dev.rwilco.model.RepeatUnit
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
+import dev.rwilco.model.PlaceWatchState
+import dev.rwilco.model.WatchLog
 import dev.rwilco.model.WatchNote
+import dev.rwilco.model.typicalAccuracyM
+import dev.rwilco.model.watchedCircles
 import dev.rwilco.model.monthlyRule
 import dev.rwilco.model.weekDays
 import dev.rwilco.model.nextFire
@@ -79,6 +84,14 @@ data class Diagnostics(
     val watch: List<WatchNote>,
     /** The newest few happenings of each reminder, by id: what rang, what was answered, when. */
     val events: Map<String, List<FiringEvent>> = emptyMap(),
+    /** Which side of every circle the watch believes the phone is on, as it stands. */
+    val watchState: PlaceWatchState = PlaceWatchState(),
+    /**
+     * The platform's own location providers that are switched on, which is a different door
+     * from the one the watch uses (Play Services): the map's blue dot and the crosshair ask
+     * these, and a phone where none of them answers is a phone with a working watch and no dot.
+     */
+    val locationProviders: List<String> = emptyList(),
 )
 
 /** How many happenings per reminder the report carries: the last few days of a daily one. */
@@ -126,6 +139,13 @@ fun Diagnostics.report(): String = buildString {
         appendLine("overlay=${yes(overlay)} usageAccess=${yes(usageAccess)} battery=${if (ignoresBatteryOptimisation) "unrestricted" else "optimised"} background=${if (backgroundRestricted) "RESTRICTED" else "ok"}")
         appendLine("dnd=$dnd alarmVolume=$alarmVolume location=$location playServices=${yes(playServices)}")
     }
+    // What this phone's positions actually come back at, which is the number that decides
+    // whether a circle can ever be entered (see the places section), and which of the
+    // platform's own providers are on, which is what the map's dot and crosshair ask.
+    appendLine(
+        "fixAcc=" + (WatchLog(watch).typicalAccuracyM()?.let { "~${it}m" } ?: "-") +
+            " providers=" + locationProviders.joinToString("+").ifEmpty { "none" },
+    )
     appendLine()
 
     appendLine("-- settings that decide when things ring --")
@@ -146,7 +166,14 @@ fun Diagnostics.report(): String = buildString {
     val active = reminders.count { it.status == Status.ACTIVE }
     val paused = reminders.count { it.status == Status.PAUSED }
     val done = reminders.count { it.status == Status.DONE }
-    val shown = reminders.sortedByDescending { it.updatedAt }.take(DIAG_REMINDERS)
+    // **A reminder the log talks about is never one of the ones left out.** The list is the
+    // most recently edited thirty, which is the right cut for reading a phone at rest and the
+    // wrong one for reading a bug: the reminder dropped at 20:00 was edited weeks ago, so the
+    // one line that explained the drop named a reminder whose rules were not in the report.
+    val mentioned = notes.take(DIAG_NOTES)
+        .flatMapTo(HashSet()) { note -> MENTIONED.findAll(note.text).map { it.groupValues[1] } }
+    val named = reminders.filter { it.id.take(8) in mentioned }
+    val shown = (named + reminders.sortedByDescending { it.updatedAt }).distinct().take(maxOf(DIAG_REMINDERS, named.size))
     appendLine("-- reminders: ${reminders.size} ($active active, $paused paused, $done done) --")
     for (reminder in shown) {
         appendLine(reminder.identityLine())
@@ -156,8 +183,61 @@ fun Diagnostics.report(): String = buildString {
             appendLine("    hist=" + history.joinToString(" ") { "${it.at.atZone(zone).format(short)}:${it.kind.name.lowercase()}${it.ruleIndex?.let { r -> "/r$r" } ?: ""}" })
         }
     }
-    if (reminders.size > shown.size) appendLine("... ${reminders.size - shown.size} more not listed (oldest by last edit)")
+    if (reminders.size > shown.size) {
+        appendLine("... ${reminders.size - shown.size} more not listed (oldest by last edit; every one the log names is above)")
+    }
     appendLine()
+
+    // **One line per circle, which the rest of the report could only ever say in pieces.**
+    // A rule says what it asks for, a watch line says what one look saw, and neither says the
+    // thing somebody actually wants to know about a place reminder that never rang: which side
+    // the watch believes the phone is on, when it last said so, whether the circle is being
+    // watched at all right now — and whether this phone can settle a circle that small in the
+    // first place. Grouped by the circle rather than by the reminder ([GeofenceIds.tag]),
+    // because the same doorway named by six rules is one place, and six lines about it is the
+    // log telling the truth and saying nothing.
+    val typical = WatchLog(watch).typicalAccuracyM()
+    val circles = reminders
+        .filter { it.status == Status.ACTIVE }
+        .flatMap { reminder ->
+            reminder.watchedCircles(env.now, zone, settings.defaultTime, settings.dayShape, settings.dayStart)
+                .map { gated -> reminder to gated }
+        }
+    if (circles.isNotEmpty()) {
+        appendLine("-- places being watched: ${circles.size} circles --")
+        for ((tag, group) in circles.groupBy { (_, gated) -> GeofenceIds.tag(gated.place.lat, gated.place.lng, gated.place.radiusM) }) {
+            val place = group.first().second.place
+            // What the watch believes, per circle id — the same pin read as a doorway and as a
+            // state are two ids on purpose, and they can honestly disagree.
+            val sides = group.mapNotNull { (_, gated) -> watchState.inside[gated.place.id] }.distinct()
+            val side = when {
+                sides.isEmpty() -> "?"
+                sides.size > 1 -> "y/n"
+                else -> yes(sides.single())
+            }
+            // The last thing the log said about this circle, whichever look it was.
+            val lastSeen = watch.firstOrNull { note ->
+                note.lat != null && note.lng != null && note.radiusM != null &&
+                    GeofenceIds.tag(note.lat!!, note.lng!!, note.radiusM!!) == tag
+            }
+            val opens = group.mapNotNull { (_, gated) -> gated.opensAt }
+            val gate = when {
+                group.any { (_, gated) -> gated.opensAt == null } -> "open"
+                else -> "shut until ${stamp(opens.min())}"
+            }
+            appendLine(
+                "#$tag ${place.radiusM}m x${group.size} in=$side" +
+                    (lastSeen?.let { " seen=${it.at.atZone(zone).format(short)}" } ?: " seen=-") +
+                    " gate=$gate" +
+                    " r=" + group.map { (reminder, _) -> reminder.id.take(8) }.distinct().joinToString(",") +
+                    // The whole of yesterday's puzzle in one clause: arriving takes a fix at
+                    // least as tight as the circle ([insideAfter]), so a circle under this
+                    // phone's own doubt is one the watch can never see anybody arrive at.
+                    (if (typical != null && typical > place.radiusM) "  UNDER FIX DOUBT (~${typical}m): no arrival can be seen" else ""),
+            )
+        }
+        appendLine()
+    }
 
     appendLine("-- log: last ${minOf(notes.size, DIAG_NOTES)} of ${notes.size} --")
     for (note in notes.take(DIAG_NOTES)) {
@@ -171,7 +251,16 @@ fun Diagnostics.report(): String = buildString {
                 "${note.at.atZone(zone).format(short)} ${note.kind.name.padEnd(5)}" +
                     // Which circle, rounded to about a kilometre like every other one here:
                     // enough to tell four co-located circles apart, not enough to find a door.
-                    (note.lat?.let { lat -> note.lng?.let { lng -> " @${fixed(lat, 2)},${fixed(lng, 2)}${note.radiusM?.let { "/${it}m" } ?: ""}" } } ?: "") +
+                    // The circle, by the tag that joins it to a rule and to the places section
+                    // above — and rounded to about a kilometre like every other one here.
+                    (
+                        note.lat?.let { lat ->
+                            note.lng?.let { lng ->
+                                " " + (note.radiusM?.let { "#${GeofenceIds.tag(lat, lng, it)} " } ?: "") +
+                                    "@${fixed(lat, 2)},${fixed(lng, 2)}${note.radiusM?.let { "/${it}m" } ?: ""}"
+                            }
+                        } ?: ""
+                        ) +
                     (note.gapM?.let { " gap=${it.toInt()}m" } ?: "") +
                     (note.accuracyM?.let { " acc=${it}m" } ?: "") +
                     (note.inside?.let { " inside=${yes(it)}" } ?: "") +
@@ -189,6 +278,9 @@ fun Diagnostics.report(): String = buildString {
     }
     appendLine("== end ==")
 }
+
+/** How the log names a reminder (`r=0f1e2d3c`), so the ones it talks about can be kept. */
+private val MENTIONED = Regex("r=([0-9a-f]{8})")
 
 /** `#0f1e2d3c ACTIVE ANY t=13 g=2 rules=[…] rec=…` — who it is and what it asks for. */
 private fun Reminder.identityLine(): String = buildString {
@@ -220,7 +312,7 @@ private fun NextFire?.describe(stampOf: (Instant?) -> String): String = when (th
 }
 
 private fun TriggerRule.describe(): String =
-    trigger.describe() + if (conditions.isEmpty()) "" else conditions.joinToString(",", prefix = " if(", postfix = ")") { it.describe() }
+    trigger.describe() + if (conditions.isEmpty()) "" else conditions.joinToString(",", prefix = " if(", postfix = ")") { it.diagLine() }
 
 private fun Trigger.describe(): String = when (this) {
     is Trigger.AtDateTime -> "at $at"
@@ -242,15 +334,25 @@ private fun Trigger.describe(): String = when (this) {
     is Trigger.Random -> "random $timesPer/$period $from-$to ${days.describe()}"
 }
 
-/** Rounded to two decimals — about a kilometre: two rules on one circle still match, and that is all. */
+/**
+ * Rounded to two decimals — about a kilometre: two rules on one circle still match, and that is
+ * all. The tag in front is what actually joins them ([GeofenceIds.tag]): the rounding put four
+ * circles in one neighbourhood under one string, so a rule, a watch line and a place's own
+ * state could not be told to be about the same circle or three different ones.
+ */
 private fun Trigger.Location.describeCircle(): String =
-    "${radiusM}m $presence${if (onCrossing) "/crossing" else ""} @${fixed(lat, 2)},${fixed(lng, 2)}"
+    "#${GeofenceIds.tag(lat, lng, radiusM)} ${radiusM}m $presence${if (onCrossing) "/crossing" else ""} @${fixed(lat, 2)},${fixed(lng, 2)}"
 
-private fun Condition.describe(): String = when (this) {
+/**
+ * One condition, in the report's own words. Internal rather than private because the firing
+ * names the condition that dropped a ring with it ([dev.rwilco.alarm.ReminderFiring]): the log
+ * and the report saying the same fence two different ways is how a reader stops trusting either.
+ */
+internal fun Condition.diagLine(): String = when (this) {
     is Condition.TimeWindow -> "win $from-$to ${days.describe()}"
     is Condition.DateRange -> "dates $from..$to"
     is Condition.OnDays -> "days ${days.describe()}"
-    is Condition.AtPlace -> "at ${radiusM}m @${fixed(lat, 2)},${fixed(lng, 2)} in=${yes(inside)}"
+    is Condition.AtPlace -> "at #${GeofenceIds.tag(lat, lng, radiusM)} ${radiusM}m @${fixed(lat, 2)},${fixed(lng, 2)} in=${yes(inside)}"
 }
 
 private fun Recurrence.describe(): String = when (this) {
@@ -258,7 +360,7 @@ private fun Recurrence.describe(): String = when (this) {
     Recurrence.ByTrigger -> "byTrigger"
     is Recurrence.After -> "after $amount $unit"
     is Recurrence.MonthlyWeekday -> "monthly $ordinal $day"
-    is Recurrence.Calendar -> "calendar " + repeat.describe() + conditions.joinToString("") { " +" + it.describe() }
+    is Recurrence.Calendar -> "calendar " + repeat.describe() + conditions.joinToString("") { " +" + it.diagLine() }
 }
 
 private fun Set<java.time.DayOfWeek>.describe(): String =

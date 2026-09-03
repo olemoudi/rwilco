@@ -36,6 +36,8 @@ import dev.rwilco.model.firingPlan
 import dev.rwilco.model.isPlaceEcho
 import dev.rwilco.model.missedFire
 import dev.rwilco.model.netDue
+import dev.rwilco.diag.diagLine
+import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.momentDealtWith
 import dev.rwilco.model.momentRungFor
 import dev.rwilco.model.outcomeOfFiring
@@ -160,9 +162,14 @@ class ReminderFiring(
             scheduler.rearmAll()
             return@withLock
         }
-        if (judged != null && !conditionsHold(judged.conditions, askAll = judged.trigger is Trigger.Location, now, moment = late ?: now)) {
+        val failed = judged?.let { firstFailing(it.conditions, askAll = it.trigger is Trigger.Location, now, moment = late ?: now) }
+        if (failed != null) {
             Log.i(TAG, "$id came round outside what its rule asks for")
-            Diag.note(TAG_DIAG, "r=${short(id)} dropped: conditions of rule $ruleIndex do not hold")
+            // **Which** condition, not just that one of them said no (0.78.0). "conditions of
+            // rule 1 do not hold" is the same line whether the hour was wrong, the day was
+            // wrong or the phone was somewhere else — three completely different bugs — and
+            // the one that turned up in anger took a watch log and an afternoon to tell apart.
+            Diag.note(TAG_DIAG, "r=${short(id)} dropped: rule $ruleIndex wants ${failed.said(placeWatch.read())}")
             spendArmed()
             scheduler.rearmAll()
             return@withLock
@@ -174,9 +181,10 @@ class ReminderFiring(
         // then" about a ring that already happened.
         val calendarFences = (reminder.recurrence as? Recurrence.Calendar)?.conditions.orEmpty()
             .takeIf { ruleIndex == null && reminder.snoozedUntil == null && !viaSnoozePlace }.orEmpty()
-        if (calendarFences.isNotEmpty() && !conditionsHold(calendarFences, askAll = false, now, moment = late ?: now)) {
+        val calendarFailed = firstFailing(calendarFences, askAll = false, now, moment = late ?: now)
+        if (calendarFences.isNotEmpty() && calendarFailed != null) {
             Log.i(TAG, "$id came round outside what its calendar asks for")
-            Diag.note(TAG_DIAG, "r=${short(id)} dropped: the calendar's conditions do not hold")
+            Diag.note(TAG_DIAG, "r=${short(id)} dropped: the calendar wants ${calendarFailed.said(placeWatch.read())}")
             spendArmed()
             scheduler.rearmAll()
             return@withLock
@@ -354,6 +362,39 @@ class ReminderFiring(
      * at noon does not answer it. Asked of now, it said no, and a moment nobody could vouch for
      * was dropped for good.
      */
+    /**
+     * The condition, as the log should name it: what it asks for, in the diagnostics report's
+     * own words ([diagLine]) — and for a place, what the watch believes on top of it, since
+     * "you were not there" and "nothing could say where you were" are different answers.
+     */
+    private fun Condition.said(watch: PlaceWatchState): String = when (this) {
+        is Condition.AtPlace -> diagLine() + " (watch says " +
+            (watch.sideOf(lat, lng, radiusM, inside)?.let { if (it) "in" else "out" } ?: "nothing") + ")"
+        else -> diagLine()
+    }
+
+    /**
+     * The first condition that says no, or null when every one of them holds — the same walk
+     * [conditionsHold] takes, kept apart so the drop can be *named* in the log. Which one it is
+     * is the whole difference between "you were somewhere else", "it was the wrong hour" and
+     * "it was the wrong day", and the log used to say the same eleven words for all three.
+     */
+    private suspend fun firstFailing(conditions: List<Condition>, askAll: Boolean, now: Instant, moment: Instant): Condition? {
+        val asked = if (askAll) conditions else conditions.filterNot { it.knownInAdvance }
+        if (asked.isEmpty()) return null
+        val (places, hours) = asked.partition { it is Condition.AtPlace }
+        hours.firstOrNull { !it.holdsAt(now, clock.zone) }?.let { return it }
+        if (places.isEmpty()) return null
+        val watch = placeWatch.read()
+        val where = watch.lastFix?.takeIf { it.speaksFor(moment) }
+        return places.firstOrNull { condition ->
+            val circle = condition as Condition.AtPlace
+            val remembered = if (where != null) watch.sideOf(circle.lat, circle.lng, circle.radiusM, circle.inside) else null
+            val holds = if (remembered != null) remembered == circle.inside else condition.holdsAt(now, clock.zone, where)
+            !holds
+        }
+    }
+
     private suspend fun conditionsHold(conditions: List<Condition>, askAll: Boolean, now: Instant, moment: Instant): Boolean {
         val asked = if (askAll) conditions else conditions.filterNot { it.knownInAdvance }
         if (asked.isEmpty()) return true

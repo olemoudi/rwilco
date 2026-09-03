@@ -3,7 +3,11 @@ package dev.rwilco.diag
 import dev.rwilco.model.Action
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Condition
+import dev.rwilco.model.ACCURACY_SAMPLE
 import dev.rwilco.model.DiagNote
+import dev.rwilco.model.GeofenceIds
+import dev.rwilco.model.NoteKind
+import dev.rwilco.model.WatchNote
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
@@ -83,7 +87,7 @@ class DiagReportTest {
         assertTrue(report.contains("armed=2026-08-26 12:10:00"), "in the phone's own zone")
         assertTrue(report.contains("fired=2026-08-26 11:30:00"))
         assertTrue(report.contains("time 09:00 d=1"))
-        assertTrue(report.contains("place 150m INSIDE"))
+        assertTrue(report.contains("place #${GeofenceIds.tag(40.4169, -3.7035, 150)} 150m INSIDE"), "the circle, by the tag that joins every line about it")
         assertTrue(report.contains("if(win 18:00-22:00"))
         assertTrue(report.contains("rec=after 6 HOURS"))
         assertTrue(report.contains("next="))
@@ -92,6 +96,50 @@ class DiagReportTest {
         assertTrue(report.contains("alarmVolume=7/15"))
         assertTrue(report.contains("dropped: nothing armed"), "the log itself")
         assertTrue(report.contains("cadence=EVERY_4_HOURS"))
+    }
+
+    @Test
+    fun `every circle carries the tag that joins the lines about it`() {
+        // The report rounds positions to about a kilometre, which put four circles in one
+        // neighbourhood under one string: reading a dump meant guessing whether a rule, a watch
+        // line and a place's state were about the same circle or three different ones.
+        val tag = GeofenceIds.tag(40.4169, -3.7035, 150)
+        val watchNote = WatchNote(at = now, kind = NoteKind.FIX, lat = 40.4169, lng = -3.7035, radiusM = 150, accuracyM = 30, inside = true)
+        val report = diagnostics().copy(watch = List(ACCURACY_SAMPLE) { watchNote }).report()
+        assertTrue(report.contains("place #$tag 150m INSIDE"), "the rule names the circle")
+        assertTrue(report.contains("#$tag @40.42,-3.70/150m"), "and so does the watch's own line")
+        assertTrue(report.contains("-- places being watched"), "and one line gathers them")
+        assertTrue(report.contains("fixAcc=~30m"), "what this phone's positions actually come back at")
+    }
+
+    @Test
+    fun `a circle smaller than the phone's own doubt is called out where it is watched`() {
+        // The whole of a real afternoon's puzzle: a fifty-metre circle on a phone whose fixes
+        // come back at ±70 m can never be entered, and nothing in the report said so.
+        val small = reminder.copy(
+            rules = listOf(TriggerRule(Trigger.Location(40.4169, -3.7035, 50, Presence.INSIDE, "casa"))),
+            recurrence = Recurrence.None,
+            // Never rung: a lone state circle that has already had its say is deliberately not
+            // watched at all, and this is about the ones that are.
+            lastFiredAt = null,
+        )
+        val vague = WatchNote(at = now, kind = NoteKind.FIX, lat = 40.4169, lng = -3.7035, radiusM = 50, accuracyM = 70)
+        val report = diagnostics(reminders = listOf(small)).copy(watch = List(ACCURACY_SAMPLE) { vague }).report()
+        assertTrue(report.contains("UNDER FIX DOUBT (~70m)"), "said where the circle is listed")
+    }
+
+    @Test
+    fun `a reminder the log talks about is never one of the ones left out`() {
+        // The list is the thirty most recently edited, which is the right cut for a phone at
+        // rest and the wrong one for a bug: the reminder that was dropped had not been edited
+        // in weeks, so the line explaining the drop named rules the report did not carry.
+        val old = reminder.copy(id = "beefcafe-2222-4000-8000-000000000002", updatedAt = now.minusSeconds(9_000_000))
+        val many = (1..DIAG_REMINDERS + 5).map { reminder.copy(id = "id-$it", updatedAt = now.minusSeconds(it.toLong())) }
+        val report = diagnostics(
+            reminders = many + old,
+            notes = listOf(DiagNote(now, "fire", "r=beefcafe dropped: rule 1 wants win 19:00-21:30")),
+        ).report()
+        assertTrue(report.contains("#beefcafe"), "the log named it, so it is listed whatever its age")
     }
 
     @Test

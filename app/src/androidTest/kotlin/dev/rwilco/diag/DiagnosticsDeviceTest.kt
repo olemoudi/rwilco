@@ -35,6 +35,10 @@ class DiagnosticsDeviceTest {
         for (section in listOf("== rwilco diagnostics ==", "-- what the phone allows --", "-- reminders:", "-- log:", "== end ==")) {
             assertTrue("missing $section", report.contains(section))
         }
+        // The demo data has places in it, so the section about them is one only a device can
+        // fill: the watch's own memory of which side of each circle the phone is on.
+        assertTrue("no places section, with place reminders seeded", report.contains("-- places being watched"))
+        assertTrue("the platform's own providers are part of what the phone allows", report.contains("providers="))
         assertTrue("the log did not reach the report", report.contains("dropped: nothing armed"))
         File(context.filesDir, "screenshots").apply { mkdirs() }.resolve("diagnostics.txt").writeText(report)
     }

@@ -1222,6 +1222,9 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_78_0">
+        <item>El informe de diagnóstico contesta ya lo que el anterior no podía. Cada círculo lleva una etiqueta corta, así que una regla, una línea de la vigilancia y el estado de un sitio se pueden atar al mismo sitio o distinguir entre sí; hay una sección nueva con los círculos vigilados, de qué lado cree la app que estás en cada uno y si se puede juzgar siquiera; un recordatorio descartado dice qué condición lo descartó en vez de «no se cumplen las condiciones»; y un recordatorio del que habla el log nunca es de los que se quedan fuera de la lista.</item>
+    </string-array>
     <string-array name="whats_new_0_77_0">
         <item>La hoja del sitio avisa ahora cuando el círculo es más pequeño que lo que tu móvil sabe medir. Para dar por llegada una posición hace falta que sea al menos tan fina como el círculo, así que en un móvil cuyas posiciones vuelven con ±70 m — dentro de casa, por wifi, que es justo donde se juzga el círculo de casa — uno de cincuenta metros no te ve llegar nunca y el recordatorio no suena. Va debajo del radio, en rojo, con el número que tu propio móvil viene dando estos días.</item>
     </string-array>

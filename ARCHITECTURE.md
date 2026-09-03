@@ -2287,6 +2287,26 @@ because that is what its chip would show.
   reminder text, no tag or place names and no token: a bug lives in the moments, not in the
   words, and a circle rounded to two decimals still tells two of them apart. Behind the last row
   in Settings.
+  **What was added after reading one in anger** (0.78.0), which is the only reason anything is
+  in it: four circles in one neighbourhood rounded to the same two decimals, so a rule, a watch
+  line and a fence count could not be told to be about the same place or three different ones —
+  every circle now carries a **tag** (`GeofenceIds.tag`, four hex characters of its own key,
+  the same on every line and every report, naming nowhere). A **places section** gathers them,
+  one line per circle rather than per reminder: how many rules name it, which side the watch
+  believes the phone is on, when it last said anything about it, whether its gate is open or
+  shut until when, which reminders it belongs to — and, when the circle is smaller than the
+  doubt this phone's own fixes come back with, `UNDER FIX DOUBT (~70m): no arrival can be seen`,
+  which is a whole afternoon's puzzle in one clause. The permissions block gained that number
+  (`fixAcc`, `WatchLog.typicalAccuracyM`) and the **platform providers** that are switched on,
+  because the map's dot and the crosshair knock at that door while the watch uses Play Services'
+  — a phone finding positions every quarter of an hour and drawing no dot is telling you they
+  are two doors. A **dropped firing names the condition that dropped it**, in the report's own
+  vocabulary (`Condition.diagLine`, shared with `ReminderFiring` so the log and the report
+  cannot say the same fence two ways) and, for a place, what the watch believed: "you were
+  somewhere else", "it was the wrong hour" and "it was the wrong day" used to be the same eleven
+  words. And **a reminder the log talks about is never one of the ones left out** of the list —
+  the cut is the thirty most recently edited, which is the right cut for a phone at rest and the
+  wrong one for a bug: the reminder that was dropped had not been touched in weeks.
 - `SystemEventsReceiver` re-arms after a reboot, an install over ourselves, the clock moving — a
   wall-clock promise is not an instant until a zone says so — and the exact-alarm grant changing
   hands (`ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED`): on Android 12 and 13 taking

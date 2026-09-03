@@ -63,4 +63,16 @@ class GeofenceIdsTest {
             assertFalse(GeofenceIds.looksLikeId(name), name)
         }
     }
+
+    @Test
+    fun `a circle's tag is four characters, the same everywhere, and different for a different circle`() {
+        // What joins a rule, a watch line and a fence count in a report whose positions are all
+        // rounded to a kilometre. Two circles a couple of streets apart round to one string and
+        // must not tag as one.
+        val home = GeofenceIds.tag(40.43012, -3.66601, 50)
+        assertEquals(4, home.length)
+        assertEquals(home, GeofenceIds.tag(40.43012, -3.66601, 50), "the same circle, the same tag")
+        assertNotEquals(home, GeofenceIds.tag(40.43012, -3.66601, 100), "the radius is part of the circle")
+        assertNotEquals(home, GeofenceIds.tag(40.43212, -3.66801, 50), "two hundred metres away is another place")
+    }
 }

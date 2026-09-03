@@ -67,6 +67,8 @@ suspend fun RwilcoApplication.collectDiagnostics(): Diagnostics = withContext(Di
         notes = diagStore.read().notes,
         watch = placeLog.read().notes,
         events = repository.recentHistory(DIAG_EVENTS_PER_REMINDER),
+        watchState = placeWatch.read(),
+        locationProviders = enabledProviders(),
     )
 }
 
@@ -86,6 +88,22 @@ private fun Context.permissions(): DiagPermissions = DiagPermissions(
         GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(this) == ConnectionResult.SUCCESS
     }.getOrDefault(false),
 )
+
+/**
+ * The platform's own providers that are switched on — the door the map's blue dot and the
+ * crosshair knock at, which is not the door the place watch uses (Play Services' fused
+ * provider). A phone whose watch is finding positions every quarter of an hour and whose map
+ * draws no dot is telling you the two are different doors, and this is what says so.
+ */
+private fun Context.enabledProviders(): List<String> {
+    val manager = getSystemService(LocationManager::class.java) ?: return emptyList()
+    val candidates = buildList {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) add(LocationManager.FUSED_PROVIDER)
+        add(LocationManager.NETWORK_PROVIDER)
+        add(LocationManager.GPS_PROVIDER)
+    }
+    return candidates.filter { runCatching { manager.isProviderEnabled(it) }.getOrDefault(false) }
+}
 
 /** What the app may know about where the phone is, and whether the phone will say at all. */
 private fun Context.locationDescription(): String {
