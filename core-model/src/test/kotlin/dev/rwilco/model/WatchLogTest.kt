@@ -175,23 +175,30 @@ class WatchLogTest {
     }
 
     @Test
-    fun `a circle smaller than what the phone can settle is one it will never see you arrive at`() {
+    fun `how tight the phone is right now is asked of the looks it has taken lately`() {
         // The rule this is about is insideAfter's `false` branch: arriving takes a fix at least
         // as tight as the circle. A phone that comes back at ±70 m can never enter fifty metres.
-        fun accuracies(vararg values: Int): WatchLog {
+        fun accuracies(vararg values: Int, spacing: Duration = Duration.ofMinutes(10)): WatchLog {
             var built = WatchLog()
             for ((index, value) in values.withIndex()) {
-                built = built.noting(WatchNote(at = now.minusSeconds(index.toLong()), kind = NoteKind.FIX, accuracyM = value))
+                built = built.noting(WatchNote(at = now - spacing.multipliedBy(index.toLong()), kind = NoteKind.FIX, accuracyM = value))
             }
             return built
         }
         val vague = accuracies(70, 65, 72, 53, 68, 80, 12, 60)
-        assertEquals(68, vague.typicalAccuracyM(), "the middle of them, not the one good one")
-        assertTrue(vague.radiusOutOfReach(50), "fifty metres is inside its own doubt")
-        assertFalse(vague.radiusOutOfReach(100), "a hundred is not")
+        assertEquals(68, vague.typicalAccuracyM(now), "the middle of them, not the one good one")
+        assertTrue(vague.radiusOutOfReach(now, 50), "fifty metres is finer than what it is giving")
+        assertFalse(vague.radiusOutOfReach(now, 100), "a hundred is not")
 
-        // Said only once it has looked enough times to have an opinion.
-        assertNull(accuracies(70, 65, 72).typicalAccuracyM())
-        assertFalse(accuracies(70, 65, 72).radiusOutOfReach(50), "three looks is not a verdict about a phone")
+        // Three looks is enough to describe a situation; two is not.
+        assertEquals(70, accuracies(70, 65, 72).typicalAccuracyM(now))
+        assertNull(accuracies(70, 65).typicalAccuracyM(now))
+
+        // **And it is about now.** A morning of open sky must not answer for an evening indoors:
+        // looks older than the window are not asked, and a log of nothing but old ones says
+        // nothing at all rather than yesterday's verdict.
+        val yesterday = accuracies(12, 15, 16, 14, 18, spacing = Duration.ofHours(2))
+        assertNull(yesterday.typicalAccuracyM(now + Duration.ofHours(6)), "six hours on, none of it is about now")
+        assertFalse(yesterday.radiusOutOfReach(now + Duration.ofHours(6), 50), "and nothing is said about a circle either")
     }
 }

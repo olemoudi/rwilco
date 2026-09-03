@@ -253,9 +253,10 @@
     <!-- The recurrence row's second line while a reminder rests between two rounds: the rules
          above it describe every Monday, including the one just dealt with. -->
     <string name="card_recurrence_returns">back %1$s</string>
-    <!-- On a place row whose circle is smaller than what this phone's positions can settle:
-         arriving takes a fix at least as tight as the circle, so this rule cannot fire at all. -->
-    <string name="card_place_under_doubt">Smaller than this phone can measure — it may never see you arrive</string>
+    <!-- On a place row whose circle is finer than the middle of this phone\'s recent positions.
+         A "how often", not a "whether": arriving takes a fix at least as tight as the circle, and
+         the same circle is entered off a street fix and missed off a wifi one indoors. -->
+    <string name="card_place_under_doubt">The phone is placing you to ±%1$d m right now: it may be slow to see you arrive here</string>
     <string name="card_recurrence_from_calendar">on its own dates</string>
     <string name="recur_after_done">Counted from the moment you mark it done, not from the clock.</string>
     <string name="recur_unit_hours">hours</string>
@@ -344,7 +345,7 @@
     <string name="place_metres">%1$d m</string>
     <!-- Under the radius slider, when the circle is smaller than the doubt this phone's own
          positions come back with: arriving takes a fix at least as tight as the circle. -->
-    <string name="place_radius_under_accuracy">Your phone usually places you to within ±%1$d m. A circle smaller than that may never see you arrive.</string>
+    <string name="place_radius_under_accuracy">Right now this phone is placing you to ±%1$d m. A circle finer than that may be slow to see you arrive — or miss it, until a better position comes along.</string>
     <string name="place_map_hint">Long-press the map to move the pin. Map © OpenStreetMap contributors.</string>
     <string name="place_expand">Open the map full screen</string>
     <string name="place_collapse">Back to the form</string>
@@ -1237,6 +1238,9 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_81_0">
+        <item>The warning about a circle finer than your positions now says what it actually means. It is about right now, not about the phone: it reads the looks of the last few hours, so it appears indoors on wifi and goes away in the street under the open sky — and it is worded as what it is, a reminder that may be slow to notice you arriving, not one that cannot. All of this is best effort: a better position, or the system\'s own geofences, can still ring it.</item>
+    </string-array>
     <string-array name="whats_new_0_80_0">
         <item>«When I leave here» now draws the smallest circle your position can defend — twice its own accuracy, never under 100 m — instead of a flat 150. Under the open sky that is a hundred metres and walking home from the park next door rings it; indoors it grows with the doubt, so nothing is promised that the phone cannot see. The button says the size it would draw.</item>
         <item>A reminder whose circle is smaller than what your phone can measure says so on its own card, in red, on the rule it belongs to. The warning used to live only where a radius is chosen, which reached the next place you wrote and none of the ones written months ago — and those are the ones quietly not ringing.</item>

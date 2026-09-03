@@ -144,7 +144,7 @@ fun Diagnostics.report(): String = buildString {
     // whether a circle can ever be entered (see the places section), and which of the
     // platform's own providers are on, which is what the map's dot and crosshair ask.
     appendLine(
-        "fixAcc=" + (WatchLog(watch).typicalAccuracyM()?.let { "~${it}m" } ?: "-") +
+        "fixAcc=" + (WatchLog(watch).typicalAccuracyM(env.now)?.let { "~${it}m" } ?: "-") +
             " providers=" + locationProviders.joinToString("+").ifEmpty { "none" },
     )
     appendLine()
@@ -197,7 +197,7 @@ fun Diagnostics.report(): String = buildString {
     // first place. Grouped by the circle rather than by the reminder ([GeofenceIds.tag]),
     // because the same doorway named by six rules is one place, and six lines about it is the
     // log telling the truth and saying nothing.
-    val typical = WatchLog(watch).typicalAccuracyM()
+    val typical = WatchLog(watch).typicalAccuracyM(env.now)
     val circles = reminders
         .filter { it.status == Status.ACTIVE }
         .flatMap { reminder ->

@@ -2063,12 +2063,23 @@ because that is what its chip would show.
   at least, or it says nothing about a phone it has barely watched) and, while the radius sits
   under that, says it in the error colour where the radius is chosen. Reported from a phone whose
   home was a 50 m circle and whose evening fixes were 50–72 m.
-  **And the card says it too** (0.80.0, `TriggerRowUi.underDoubt`). The editor's line reaches
-  the next place somebody writes and none of the ones written months ago — which are exactly
-  the reminders quietly not ringing. Home's rows carry the same verdict, in the error colour,
-  on the rule it is about: the number comes down the same way everything else on that screen
-  does (`HomeViewModel`'s `fixAccuracy`, the watch log's own flow, folded into the state combine
+  **And the card says it too** (0.80.0, `TriggerRowUi.doubtM`). The editor's line reaches the
+  next place somebody writes and none of the ones written months ago — which are exactly the
+  reminders that are quietly unreliable. Home's rows carry the same note, on the rule it is
+  about: the number comes down the same way everything else on that screen does
+  (`HomeViewModel`'s `fixAccuracy`, the watch log's own flow, folded into the state combine
   beside the place watch, since the two are one question about where the phone is).
+  **It is a situation, not a verdict** (0.81.0), and both halves of that were wrong first time.
+  The words said "smaller than this phone can measure", and the owner answered that these
+  reminders have been working for months — which is true and is the point: the same fifty metres
+  is entered off the ±15 m the street gives and missed off the ±70 m of a wifi position indoors.
+  So `typicalAccuracyM` is bounded in time (`ACCURACY_WINDOW`, three hours, at least
+  `ACCURACY_MIN_SAMPLE` looks inside it) — a morning of open sky cannot answer for an evening
+  indoors, and the mark comes and goes with the situation it is about. And the line is in the
+  rule's own muted ink rather than the error colour, saying what is happening now ("ahora mismo
+  el móvil te sitúa con ±70 m: puede tardar en ver que llegas aquí"): the app is still trying,
+  the next good fix settles the same circle, and the system's own geofences are a second eye
+  with signals the app never sees. All of this is best-effort by nature, and the note says so.
   **The cheapest fix is the one already taken.** Before any radio is spent the provider's own
   last position is read — kept warm by whatever else on the phone asks for one, at no cost here —
   and when it answers the question this look was going to ask (`Fix.answersFor`: young next to

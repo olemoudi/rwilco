@@ -249,7 +249,7 @@
     <string name="recur_from_dealt">Cuando lo marco hecho</string>
     <string name="card_recurrence_from_ringing">desde que suena</string>
     <string name="card_recurrence_returns">vuelve %1$s</string>
-    <string name="card_place_under_doubt">Más pequeño de lo que este móvil sabe medir: puede no verte llegar</string>
+    <string name="card_place_under_doubt">Ahora mismo el móvil te sitúa con ±%1$d m: puede tardar en ver que llegas aquí</string>
     <string name="card_recurrence_from_calendar">en sus propias fechas</string>
     <string name="recur_after_done">Se cuenta desde que lo marcas hecho, no desde el reloj.</string>
     <string name="recur_unit_hours">horas</string>
@@ -336,7 +336,7 @@
     <string name="place_no_fix">No se pudo obtener la ubicación. Comprueba que está activada y permitida.</string>
     <string name="place_radius">Radio</string>
     <string name="place_metres">%1$d m</string>
-    <string name="place_radius_under_accuracy">Tu móvil suele situarte con ±%1$d m. Un círculo más pequeño que eso puede no verte llegar nunca.</string>
+    <string name="place_radius_under_accuracy">Ahora mismo este móvil te sitúa con ±%1$d m. Un círculo más fino que eso puede tardar en ver que llegas — o no verlo, hasta que llegue una posición mejor.</string>
     <string name="place_map_hint">Mantén pulsado el mapa para mover el pin. Mapa © colaboradores de OpenStreetMap.</string>
     <string name="place_expand">Abrir el mapa a pantalla completa</string>
     <string name="place_collapse">Volver a la hoja</string>
@@ -1223,6 +1223,9 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_81_0">
+        <item>El aviso de «círculo más fino que tus posiciones» dice ya lo que de verdad significa. Habla de ahora mismo, no del móvil: mira las miradas de las últimas horas, así que aparece dentro de casa con wifi y desaparece en la calle a cielo abierto — y está escrito como lo que es, un recordatorio que puede tardar en enterarse de que llegas, no uno que no pueda. Todo esto es «lo mejor posible»: una posición mejor, o las geocercas del propio sistema, pueden hacerlo sonar igual.</item>
+    </string-array>
     <string-array name="whats_new_0_80_0">
         <item>«Al salir de aquí» dibuja ahora el círculo más pequeño que tu posición puede defender — el doble de su propia precisión, nunca menos de 100 m — en vez de 150 fijos. A cielo abierto son cien metros y volver del parque de al lado ya lo dispara; dentro de casa crece con la duda, así que no se promete nada que el móvil no pueda ver. El botón dice el tamaño que dibujaría.</item>
         <item>Un recordatorio cuyo círculo es más pequeño de lo que tu móvil sabe medir lo dice en su propia tarjeta, en rojo, sobre la regla a la que pertenece. El aviso vivía sólo donde se elige el radio, que alcanza al siguiente sitio que escribas y a ninguno de los escritos hace meses — y son justo esos los que no suenan.</item>

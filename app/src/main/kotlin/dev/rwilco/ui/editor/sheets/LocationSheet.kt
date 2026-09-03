@@ -157,7 +157,7 @@ fun LocationSheet(
      */
     val typicalAccuracy by produceState<Int?>(initialValue = null) {
         val app = context.applicationContext as? RwilcoApplication ?: return@produceState
-        value = withContext(Dispatchers.IO) { app.placeLog.read().typicalAccuracyM() }
+        value = withContext(Dispatchers.IO) { app.placeLog.read().typicalAccuracyM(app.clock.instant()) }
     }
 
     /** The place watch's last position, when it is recent enough to stand in for a fix. */

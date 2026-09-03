@@ -144,35 +144,56 @@ data class WatchLog(
 /** How many entries the log keeps: a couple of days of a quiet watch, half of one of a busy one. */
 const val WATCH_LOG_KEEP = 200
 
-/** How many of the last looks "how tight is this phone" is drawn from; fewer and it has not said enough. */
+/** At most this many looks answer "how tight is this phone right now"; the newest first. */
 const val ACCURACY_SAMPLE = 8
 
+/** And at least this many, or the watch has not looked enough lately to have an opinion. */
+const val ACCURACY_MIN_SAMPLE = 3
+
 /**
- * The doubt this phone actually comes back with: the middle of the accuracies its last looks
- * carried, or null until it has taken enough of them to have an opinion.
- *
- * The middle rather than the best or the worst, because what it is asked for is what happens
- * *usually*: one 12-metre fix among a run of 70-metre ones says the sky opened once.
+ * How far back "right now" reaches. A morning of ±12 m in the street must not answer for an
+ * evening of ±70 m indoors — which is the same phone in two different situations, and the
+ * situation is the whole of what this is asked about.
  */
-fun WatchLog.typicalAccuracyM(sample: Int = ACCURACY_SAMPLE): Int? {
-    val recent = notes.mapNotNull { it.accuracyM }.take(sample)
-    if (recent.size < sample) return null
+val ACCURACY_WINDOW: Duration = Duration.ofHours(3)
+
+/**
+ * The doubt this phone's positions are coming back with **at the moment**: the middle of the
+ * accuracies its looks carried inside [within], or null when it has taken fewer than
+ * [ACCURACY_MIN_SAMPLE] of them.
+ *
+ * The middle rather than the best or the worst, because what it is asked for is what is
+ * happening *usually*: one 12-metre fix among a run of 70-metre ones says the sky opened once.
+ * And bounded in time, because it is a fact about a situation and not about a phone — a
+ * fifty-metre circle is entered perfectly well off the ±15 m the street gives and not at all
+ * off the ±70 m of a wifi position indoors, which is why somebody watching these reminders work
+ * for months is right to say the phone can measure it. It can, sometimes, and this says when.
+ */
+fun WatchLog.typicalAccuracyM(now: Instant, within: Duration = ACCURACY_WINDOW, sample: Int = ACCURACY_SAMPLE): Int? {
+    val recent = notes.asSequence()
+        .filter { Duration.between(it.at, now) in Duration.ZERO..within }
+        .mapNotNull { it.accuracyM }
+        .take(sample)
+        .toList()
+    if (recent.size < ACCURACY_MIN_SAMPLE) return null
     return recent.sorted()[recent.size / 2]
 }
 
 /**
- * Whether a circle of [radiusM] is smaller than what this phone can settle — the circle the
- * watch will keep saying you are outside of however close you stand.
+ * Whether a circle of [radiusM] is finer than the positions this phone is giving right now.
  *
  * It is [insideAfter]'s `false` branch said the other way round: **arriving takes a fix at
- * least as tight as the circle**, so on a phone whose positions come back at ±70 m a
- * fifty-metre circle can never be entered at all. That rule is right — a fix vaguer than the
- * circle cannot tell inside from outside, and guessing is how a reminder rings twenty minutes
- * after you left — but it is a hazard nobody could see: the app offers fifty metres, the map
- * draws a neat little circle, and the reminder simply never goes off. So the sheet says so
- * while the radius is being chosen.
+ * least as tight as the circle**, so while the positions come back at ±70 m a fifty-metre
+ * circle is not being entered. That rule is right — a fix vaguer than the circle cannot tell
+ * inside from outside, and guessing is how a reminder rings twenty minutes after you left.
+ *
+ * **It is a "how often", not a "whether".** The next look under an open sky settles the same
+ * circle, and the system's own geofences are a second eye with signals the app never sees: a
+ * reminder marked here can still ring, and the ones on somebody's phone have been ringing for
+ * months. What this buys is the answer to "why was that one late, or quiet, this evening".
  */
-fun WatchLog.radiusOutOfReach(radiusM: Int): Boolean = (typicalAccuracyM() ?: return false) > radiusM
+fun WatchLog.radiusOutOfReach(now: Instant, radiusM: Int): Boolean =
+    (typicalAccuracyM(now) ?: return false) > radiusM
 
 /** The newest line, and the oldest ones dropped. Newest first, which is how it is read. */
 fun WatchLog.noting(note: WatchNote): WatchLog = copy(notes = (listOf(note) + notes).take(WATCH_LOG_KEEP))

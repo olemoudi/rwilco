@@ -591,7 +591,7 @@ class HomeViewModel(
                 app.firing,
                 app.settings,
                 app.placeWatch.state,
-                app.placeLog.log.map { it.typicalAccuracyM() },
+                app.placeLog.log.map { it.typicalAccuracyM(app.clock.instant()) },
                 app.clock,
                 hereFix = { hereFix(app, app.placeWatch, app.clock.instant()) },
                 locationAllowed = { app.hasBackgroundLocation() },

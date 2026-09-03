@@ -373,7 +373,7 @@ class HomeStateTest {
     }
 
     @Test
-    fun `a circle smaller than what this phone can settle is marked on the rule it belongs to`() {
+    fun `a circle finer than most of this phone's positions is marked on the rule it belongs to`() {
         // The editor says it while a radius is being chosen, which reaches the next place
         // somebody writes and none of the ones already written — and those are the ones quietly
         // not ringing. So the card says it on the rule, from what the watch's own looks carry.
@@ -383,10 +383,12 @@ class HomeStateTest {
             .let { state -> (listOfNotNull(state.hero?.card) + state.sections.flatMap { it.cards }).single { it.id == id } }
             .triggers.single()
 
-        assertTrue(rowOf("home", 70).underDoubt, "fifty metres is inside a seventy-metre doubt")
-        assertFalse(rowOf("wide", 70).underDoubt, "two hundred is not")
-        assertFalse(rowOf("home", null).underDoubt, "and nothing is said about a phone the watch has barely looked with")
-        assertFalse(rowOf("home", 30).underDoubt, "nor about one whose positions are tighter than the circle")
+        // The number travels with the mark: the words are about how often, not whether, and
+        // "±70 m" is what makes that readable.
+        assertEquals(70, rowOf("home", 70).doubtM, "fifty metres is inside a seventy-metre doubt")
+        assertNull(rowOf("wide", 70).doubtM, "two hundred is not")
+        assertNull(rowOf("home", null).doubtM, "and nothing is said about a phone the watch has barely looked with")
+        assertNull(rowOf("home", 30).doubtM, "nor about one whose positions are tighter than the circle")
     }
 
     @Test

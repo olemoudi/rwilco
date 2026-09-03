@@ -519,16 +519,26 @@ fun TriggerRow(row: TriggerRowUi, today: LocalDate, defaultTime: LocalTime, mute
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            // **A circle this phone cannot settle says so on the card** (0.80.0). The editor
-            // says it while a radius is being dragged, which reaches the next place somebody
-            // writes and none of the ones written months ago — and those are the reminders
-            // quietly not ringing. In the error colour, because it is not a detail: this rule
-            // cannot fire at all until the circle is widened.
-            if (row.underDoubt) {
+            // **A circle finer than most of this phone's positions says so on the card**
+            // (0.80.0). The editor says it while a radius is being dragged, which reaches the
+            // next place somebody writes and none of the ones written months ago — and those
+            // are the reminders that are quietly unreliable.
+            //
+            // "Unreliable", not "broken" (0.81.0). The number is the middle of the recent
+            // looks, so this is a circle more than half of them cannot settle — not one none
+            // of them can: the same fifty metres is entered off the ±15 m the street gives and
+            // missed off the ±70 m of a wifi position indoors. The first wording said the
+            // phone could not measure it, and the owner rightly answered that these reminders
+            // have been working for months.
+            row.doubtM?.let { doubt ->
                 Text(
-                    text = stringResource(R.string.card_place_under_doubt),
+                    text = stringResource(R.string.card_place_under_doubt, doubt),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
+                    // Not the error colour: the app is still trying, the next good fix settles
+                    // the same circle, and the system's own geofences are a second eye. This is
+                    // a note about why one evening was quiet, in the ink the rule's own second
+                    // line is written in — not a verdict on the reminder.
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )

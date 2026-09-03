@@ -231,16 +231,24 @@ data class TriggerRowUi(
      */
     val standing: RuleStanding? = null,
     /**
-     * Whether this rule's circle is smaller than what this phone's positions can settle — the
-     * circle the watch will keep saying you are outside of however close you stand.
+     * The doubt this phone's positions come back with, when it is wider than this rule's circle;
+     * null when the circle is comfortably inside it, and null while the watch has not looked
+     * enough times to have an opinion.
+     *
+     * **It is a "how often", not a "whether"** — the number is the *middle* of the recent looks
+     * ([dev.rwilco.model.WatchLog.typicalAccuracyM]), so a circle under it is one more than half
+     * of them cannot settle, and arriving takes a fix at least as tight as the circle
+     * (`insideAfter`'s `false` branch). The same fifty-metre circle is entered perfectly well
+     * off the ±15 m the sky gives in the street and not at all off the ±70 m of a wifi position
+     * indoors: what somebody sees is a reminder that works when they walk home and does not
+     * when they are already in. Saying "this phone cannot measure it" was the first wording and
+     * it was wrong — the owner said so, having watched these reminders work for months.
      *
      * The editor says it while a radius is being chosen (0.77.0), which reaches the next place
      * somebody writes and none of the ones already written months ago — and those are the
-     * reminders that are quietly not ringing. So the card says it too, on the rule it is about.
-     * See [dev.rwilco.model.WatchLog.radiusOutOfReach] for the rule, and `insideAfter` for why:
-     * arriving takes a fix at least as tight as the circle.
+     * reminders that are quietly unreliable. So the card says it too, on the rule it is about.
      */
-    val underDoubt: Boolean = false,
+    val doubtM: Int? = null,
     /**
      * Whether the place watch is spending anything on this rule's circle right now.
      *
@@ -265,7 +273,7 @@ fun buildHomeState(
     /**
      * What this phone's positions usually come back at ([dev.rwilco.model.WatchLog.typicalAccuracyM]),
      * or null while the watch has not looked enough times to have an opinion: the one number
-     * that says whether a circle can be judged at all. See [TriggerRowUi.underDoubt].
+     * that says whether a circle can be judged at all. See [TriggerRowUi.doubtM].
      */
     fixAccuracyM: Int? = null,
     /** Is the phone inside this rule's circle? Only the place watch knows; null when nothing does. */
@@ -301,7 +309,7 @@ fun buildHomeState(
                 nextAt = (next as? NextFire.Scheduled)?.at,
                 window = (next as? NextFire.Sometime)?.let { it.windowStart to it.windowEnd },
                 standing = standings.getOrNull(index),
-                underDoubt = fixAccuracyM != null && (rule.trigger as? Trigger.Location)?.let { it.radiusM < fixAccuracyM } == true,
+                doubtM = fixAccuracyM?.takeIf { doubt -> (rule.trigger as? Trigger.Location)?.let { it.radiusM < doubt } == true },
                 watched = rule.trigger !is Trigger.Location || circles.watchingRule(index),
             )
         }
