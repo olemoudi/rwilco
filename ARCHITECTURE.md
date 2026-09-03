@@ -1998,8 +1998,20 @@ because that is what its chip would show.
   "mientras esté en casa", written at home, rings), while a **doorway** (`onCrossing`) is
   baselined without an event and waits until the watch has seen the phone on the far side. Doubt
   in that first fix leans the same way for both — towards the side the rule is about
-  (`insideAfter`) — and it buys the state its ring and the doorway its silence. While a doorway
-  waits it costs the least of anything in the app.
+  (`insideAfter`) — and it buys the state its ring and the doorway its silence.
+  **A doorway a fix cannot settle is not baselined at all** (0.72.0, `Fix.settlesFirstSideOf`):
+  the app was stricter about arriving than about deciding somebody was already there, and the
+  sloppy answer was the one that silenced. Getting in from a side already seen wants a fix at
+  least as tight as the circle, so a 100 m fix can never arrive at a 50 m one; but with no
+  history that same fix wrote *inside*, because the lean puts anything within `radius +
+  accuracy` on the side the rule waits on. "Al llegar" written in the car at the end of the
+  street ate its own arrival and then waited for a leaving. So a doorway whose circle is
+  smaller than the doubt keeps no entry, and the next look that can answer answers — nothing is
+  delayed that could have rung, since a fix that cannot settle the first side could not have
+  carried a crossing from the second either. A state and a snooze circle are not asked: the
+  state's lean is what buys its ring, and the snooze's first side is the person's own word.
+  Only a *first* judgement is ever skipped; a side already seen is held by `insideAfter`.
+  While a doorway waits it costs the least of anything in the app.
   A state says it *once*: the watch reports the moment it becomes true and holds its tongue
   while it stays true, and what stops a second ring after that is the round it already rang in
   (`presenceAlreadyRang`), which dealing with the reminder starts again. That is also why a
@@ -2144,7 +2156,8 @@ because that is what its chip would show.
   is waited on — and not just the rule's index, because `inside` is remembered by that id: a
   rule deleted above another once handed the survivor the memory of a place that was gone, and
   rang an arrival at somebody who had not moved. An edited circle is a new id, which costs one
-  baseline look and rings nothing. With no history the baseline resolves doubt towards silence
+  baseline look and rings nothing — which is also the way a place reminder edited *at* the place
+  goes quiet until the next real arrival, and the reason `settlesFirstSideOf` exists. With no history the baseline resolves doubt towards silence
   (`insideAfter`): a place waiting for an arrival is inside when the fix *could* be, one waiting
   for a leaving is outside unless the fix is clearly in — a cold provider's first fix is often a
   cell tower's kilometre, and the plain answer off its centre is a guess the next good fix

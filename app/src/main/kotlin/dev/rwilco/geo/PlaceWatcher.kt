@@ -34,6 +34,7 @@ import dev.rwilco.model.WatchedPlace
 import dev.rwilco.model.answersFor
 import dev.rwilco.model.blindRetry
 import dev.rwilco.model.insideAfter
+import dev.rwilco.model.settlesFirstSideOf
 import dev.rwilco.model.busyNotice
 import dev.rwilco.model.crossingIsNews
 import dev.rwilco.model.pollsSince
@@ -281,7 +282,9 @@ class PlaceWatcher(
     private fun baselined(watch: Watching, judged: Map<String, Boolean>, fix: Fix?, now: Instant): Map<String, Boolean> {
         if (fix == null || Duration.between(fix.at, now).abs() > PlaceWatchPolicy.CACHE_MAX_AGE) return emptyMap()
         return (watch.asking + watch.listening)
-            .filter { it.onCrossing && it.id !in judged }
+            // And not off a fix too vague to settle the circle at all: that answer leans
+            // towards "already there", which is a doorway silenced for the whole visit.
+            .filter { it.onCrossing && it.id !in judged && fix.settlesFirstSideOf(it) }
             .associate { place -> place.id to insideAfter(null, place, fix) }
     }
 

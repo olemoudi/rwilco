@@ -560,7 +560,35 @@ private fun Duration.clamp(floor: Duration, ceiling: Duration): Duration = when 
  * just arrived. For a *state* it buys the ring, which is the thing that reading is for:
  * "mientras esté en casa", written at home, is true now and says so. With a good fix the two
  * read as the plain answer; only doubt leans, and it leans the same way in both.
+ *
+ * A doorway's first judgement is not taken off a fix that cannot make it at all — see
+ * [settlesFirstSideOf], the question its caller asks before this one.
  */
+/**
+ * Whether this fix is good enough to decide [place]'s **first** judgement.
+ *
+ * The app was stricter about arriving than about deciding somebody was already there, and the
+ * sloppy answer was the one that silenced. Getting in from a side already seen takes a fix at
+ * least as tight as the circle ([insideAfter]'s `false` branch): a 100 m fix cannot arrive at a
+ * 50 m circle, ever. But with no history that same 100 m fix was enough to write "inside" — the
+ * reading leans towards the side the rule waits on, so anywhere within 150 m of the centre read
+ * as being there — and for a doorway that is the strongest silence there is: "al llegar"
+ * baselined inside rings nothing until the phone has been seen to leave and come back. A
+ * reminder written in the car at the end of the street ate its own arrival.
+ *
+ * So a doorway whose circle is smaller than the doubt is left unjudged, and the next look that
+ * can answer answers. Nothing is lost by waiting: a fix that cannot settle the first side could
+ * not have carried a crossing from the second one either, so the ring it delays is a ring that
+ * was never going to come off that fix.
+ *
+ * Two circles are not asked this. A **state** ("mientras esté en casa") rings on its first
+ * judgement and that ring is the point of it: the lean is what buys it, and erring towards
+ * ringing is the right way round. A **snooze** circle's first side is the person's own word
+ * ("al llegar a…" starts outside), which no fix outranks and none is needed for.
+ */
+fun Fix.settlesFirstSideOf(place: WatchedPlace): Boolean =
+    !place.onCrossing || GeofenceIds.isSnooze(place.id) || accuracyM <= place.radiusM
+
 fun insideAfter(wasInside: Boolean?, place: WatchedPlace, fix: Fix): Boolean {
     val distance = distanceMeters(fix.lat, fix.lng, place.lat, place.lng)
     return when (wasInside) {
@@ -685,7 +713,15 @@ fun stepPlaceWatch(
     listening: List<WatchedPlace> = emptyList(),
 ): WatchStep {
     val movement = movementSince(state.lastFix, fix, sensed, state.stillStreak)
-    val inside = (places + listening).associate { place -> place.id to insideAfter(state.inside[place.id], place, fix) }
+    val inside = (places + listening).mapNotNull { place ->
+        val before = state.inside[place.id]
+        // Unjudged and unjudgeable stays unjudged: nothing is written, and the next look that
+        // can answer baselines it instead of this one guessing. Only a *first* judgement is
+        // ever skipped — a side already seen is never forgotten by a bad fix, insideAfter
+        // holds it.
+        if (before == null && !fix.settlesFirstSideOf(place)) return@mapNotNull null
+        place.id to insideAfter(before, place, fix)
+    }.toMap()
     // A circle reports the moment its own side becomes true, and not again while it stays
     // true. The one difference between the two readings of a place is what "before" nothing
     // counts as: a state ("mientras esté en casa") is satisfied by simply being there, so a

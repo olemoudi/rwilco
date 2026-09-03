@@ -1218,6 +1218,9 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_72_0">
+        <item>A place reminder that rings «on arrival» no longer loses its arrival to a vague position. The app needs a position at least as tight as the circle to say you have arrived, but it used to settle for a much vaguer one to decide you were already there — and «already there» is the answer that keeps a reminder quiet until you leave and come back. Now a circle a position cannot settle is left alone until one can.</item>
+    </string-array>
     <string-array name="whats_new_0_71_0">
         <item>A tap on a reminder folds it away, and another opens it out again — the same gesture both ways, on every card in the list. It used to mean two different things depending on how tall the card already was, and one of them took you off the list and into the form.</item>
         <item>The form is behind a pencil now, in the corner of an open card where the fold icon used to be, and in the footer of the glowing one. Leaving the list is something you ask for by name; everything else a card does can be undone by doing it again.</item>

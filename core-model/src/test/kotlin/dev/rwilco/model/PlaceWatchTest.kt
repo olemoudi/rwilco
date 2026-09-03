@@ -353,19 +353,58 @@ class PlaceWatchTest {
     }
 
     @Test
-    fun `a sloppy first fix baselines on the side that rings nothing`() {
+    fun `a doorway a fix cannot settle is left unjudged rather than guessed at`() {
         // A cell fix a kilometre wide, centred 300 m from home: it cannot say which side of the
-        // line the phone is on. Read as "outside", the next good fix at home would ring an
-        // arrival at somebody who never left; read as "inside", the real arrival still comes
-        // after the watch has seen them leave.
+        // line the phone is on, and the lean it used to be read with wrote "inside" — which for
+        // a doorway is silence until the phone has been seen to leave and come back.
         val sloppy = north(300.0, accuracy = 1200.0)
-        assertTrue(insideAfter(null, home, sloppy), "waiting for an arrival: could be inside, so inside")
-        assertFalse(insideAfter(null, work.copy(lat = homeLat, lng = homeLng, radiusM = 200), sloppy), "waiting for a leaving: not clearly inside, so outside")
-        val settled = stepPlaceWatch(PlaceWatchState(inside = mapOf(home.id to true)), north(50.0), listOf(home), now)
-        assertTrue(settled.events.isEmpty(), "a good fix at home after a sloppy one is not an arrival")
-        // A good fix reads as the plain answer either way.
+        assertFalse(sloppy.settlesFirstSideOf(home), "1200 m of doubt about a 200 m circle settles nothing")
+        val step = stepPlaceWatch(PlaceWatchState(), sloppy, listOf(home), now)
+        assertTrue(home.id !in step.state.inside, "an unjudgeable doorway keeps no entry at all")
+        assertTrue(step.events.isEmpty(), "and says nothing happened")
+        // A fix as tight as the circle settles it, and then the lean is the plain answer again.
+        assertTrue(north(50.0).settlesFirstSideOf(home))
         assertTrue(insideAfter(null, home, north(50.0)))
         assertFalse(insideAfter(null, home, north(300.0)))
+    }
+
+    @Test
+    fun `the arrival a sloppy baseline used to swallow rings`() {
+        // The phone at the far end of the street with a network fix, then at the door with a
+        // good one. Baselined "inside" off the first, the arrival was not an arrival and the
+        // reminder waited for a leaving that was never going to come.
+        val approaching = north(300.0, accuracy = 1200.0)
+        val outside = stepPlaceWatch(PlaceWatchState(), approaching, listOf(home), now)
+        val arriving = stepPlaceWatch(outside.state, north(240.0, accuracy = 30.0), listOf(home), now)
+        assertEquals(false, arriving.state.inside[home.id], "the first fix that can answer is the baseline")
+        assertTrue(arriving.events.isEmpty(), "and a baseline is not a crossing")
+        val arrived = stepPlaceWatch(arriving.state, north(50.0, accuracy = 30.0), listOf(home), now)
+        assertEquals(listOf(PlaceEvent(home.id, Transition.ENTER)), arrived.events)
+    }
+
+    @Test
+    fun `a state and a snooze still lean on a fix that settles nothing`() {
+        // Only a doorway waits. "Mientras esté en casa" written at home rings on its first
+        // judgement, and that ring is what the lean is for.
+        val sloppy = north(300.0, accuracy = 1200.0)
+        val state = home.copy(id = "r9#0", onCrossing = false)
+        assertTrue(sloppy.settlesFirstSideOf(state))
+        assertTrue(insideAfter(null, state, sloppy), "a state leans towards the side it is about")
+        // A snooze's first side is the person's own word; no fix is needed to know it.
+        val snoozeId = GeofenceIds.encodeSnooze("r1", Trigger.Location(homeLat, homeLng, 200, Presence.INSIDE, "Casa", onCrossing = true))
+        val snooze = WatchedPlace(snoozeId, homeLat, homeLng, radiusM = 200, transition = Transition.ENTER, label = "Casa", onCrossing = true)
+        assertTrue(sloppy.settlesFirstSideOf(snooze))
+        assertFalse(insideAfter(null, snooze, sloppy), "waiting to arrive still starts outside")
+    }
+
+    @Test
+    fun `a side already seen is never forgotten by a bad fix`() {
+        // The skip is for a first judgement only: what the watch knows, it keeps, and
+        // insideAfter's own hysteresis is what refuses to move it.
+        val sloppy = north(300.0, accuracy = 1200.0)
+        val step = stepPlaceWatch(PlaceWatchState(inside = mapOf(home.id to false)), sloppy, listOf(home), now)
+        assertEquals(false, step.state.inside[home.id])
+        assertTrue(step.events.isEmpty())
     }
 
     @Test
