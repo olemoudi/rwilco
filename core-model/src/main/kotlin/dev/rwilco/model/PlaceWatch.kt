@@ -471,13 +471,39 @@ private fun planFor(place: WatchedPlace, fix: Fix, previous: Fix?, movement: Mov
     val blind = if (movement.speedMps == null) PlaceWatchPolicy.UNKNOWN_MAX_WAIT else PlaceWatchPolicy.MAX_WAIT
     val ceiling = maxOf(blind, reachCeiling(gap))
     var wait = Duration.ofSeconds((gap / planningSpeed).toLong()).clamp(PlaceWatchPolicy.MIN_WAIT, ceiling)
-    if (movement.still) {
+    // **Moving is not approaching** (0.82.0). A phone carried about a house a hundred metres
+    // from a watched line is moving all evening — the sensor fires, the fixes wobble — and
+    // "time to the line" is then two minutes, over and over, for a line nobody is walking
+    // towards: thirty looks an hour, which is above the rate the app's own log calls a fault
+    // ([PlaceWatchPolicy.BUSY_POLLS]). What the cadence is about is progress *towards this
+    // line* ([closingM], the same measure "when I leave" has always planned by), so a look
+    // that finds none of it is worth exactly what a still one is worth, and backs off the
+    // same way.
+    //
+    // **Only near the line**, and that bound is the whole safety of it: far away the distance
+    // arithmetic answers on its own, and out there a coarse fix's own doubt can swallow a
+    // kilometre of genuine approach (a car five kilometres off on tower fixes measures as
+    // closing nothing, and is already planned at half an hour by distance alone). Near, the
+    // fixes are the blend and the doubt is tens of metres, so "no nearer" means it.
+    val wandering = near && closingM(place, previous, fix)?.let { it <= 0.0 } == true
+    if (movement.still || wandering) {
         val doublings = min(movement.stillStreak, PlaceWatchPolicy.MAX_STILL_DOUBLINGS)
         val backoff = PlaceWatchPolicy.MIN_WAIT.multipliedBy(1L shl doublings)
         // Still and near a line is a phone about to go through it, so the back-off is held
         // short — unless the sensor felt nothing either, which is a phone on a table.
-        val cap = if (near && !movement.settled) PlaceWatchPolicy.STILL_NEAR_MAX else ceiling
-        wait = maxOf(wait, backoff).clamp(PlaceWatchPolicy.MIN_WAIT, cap)
+        //
+        // **And a circle waiting to be left is held to its own ceiling** (0.82.0). Half an hour
+        // is what [leavingWait] says that case is worth and why; the back-off used to double
+        // straight past it to the hour, so a phone resting inside a "cuando salga de aquí"
+        // looked once an hour — which is what the owner's log showed with a place snooze
+        // pending. The cap is on the *back-off*, never on the distance answer: deep inside a
+        // place kilometres wide, time-to-the-line is still the better number and still wins.
+        val cap = when {
+            inside == true && place.transition == Transition.EXIT -> PlaceWatchPolicy.LEAVING_MAX_WAIT
+            near && !movement.settled -> PlaceWatchPolicy.STILL_NEAR_MAX
+            else -> ceiling
+        }
+        wait = maxOf(wait, minOf(backoff, cap)).clamp(PlaceWatchPolicy.MIN_WAIT, ceiling)
     }
     if (inside == true) {
         // Inside, only one of the two crossings is still ahead, and neither is urgent. Never
@@ -736,10 +762,23 @@ fun stepPlaceWatch(
         PlaceEvent(place.id, place.transition)
     }
     val plan = planNextCheck(fix, movement, places, inside, charge, previous = state.lastFix)
+    // **The streak counts looks that got the phone no nearer anything** (0.82.0), not only the
+    // ones that found it motionless. It is what the back-off doubles on, and a phone being
+    // lived with inside its own four walls is not still — it is going nowhere, which for a
+    // cadence is the same thing and used to be worth nothing. A look that finds real progress
+    // towards any line being watched starts the count again; with no earlier fix there is
+    // nothing to compare and it starts at zero.
+    //
+    // A look that changed a side is never one of them, whatever the arithmetic says about
+    // distances: crossing a line and walking on *into* a place reads as getting further from
+    // the line — which is true, and is the one moment in the whole evening worth hurrying for.
+    // (`PlaceWatchDeviceTest` caught this: an arrival stopped resetting the count.)
+    val nowhereNearer = state.lastFix != null && inside == state.inside &&
+        places.none { (closingM(it, state.lastFix, fix) ?: 0.0) > 0.0 }
     val next = PlaceWatchState(
         lastFix = fix,
         inside = inside,
-        stillStreak = if (movement.still) state.stillStreak + 1 else 0,
+        stillStreak = if (movement.still || nowhereNearer) state.stillStreak + 1 else 0,
         nextCheckAt = plan?.let { now + it.wait },
         lastGapM = plan?.gapM,
         nearestLabel = plan?.nearest?.label,

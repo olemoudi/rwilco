@@ -145,6 +145,73 @@ class PlaceWatchTest {
     }
 
     @Test
+    fun `being carried about a house is not an approach`() {
+        // The hole this closes: a phone two hundred metres from a watched line, carried about
+        // its own four walls all evening. The sensor fires every time, so the phone is never
+        // "still"; the fixes wobble without ever getting nearer the line; and "time to the
+        // line" is the two-minute floor, over and over — thirty looks an hour, which is more
+        // than the log's own idea of a fault ([PlaceWatchPolicy.BUSY_POLLS]).
+        val shop = home.copy(id = "shop#0", radiusM = 50)
+        var state = PlaceWatchState()
+        var at = now
+        val waits = (1..6).map { look ->
+            // Thirty metres of wobble either side of the same spot, two hundred metres out.
+            val fix = north(200.0 + if (look % 2 == 0) 30.0 else -30.0, accuracy = 30.0, at = at)
+            val step = stepPlaceWatch(state, fix, listOf(shop), at, sensed = true)
+            state = step.state
+            at += step.plan!!.wait
+            step.plan!!.wait.toMinutes()
+        }
+        assertEquals(listOf(2L, 2L, 4L, 8L, 15L, 15L), waits, "it backs off exactly as a still phone does")
+        assertEquals(5, state.stillStreak, "and the count is what does it")
+
+        // And the moment somebody actually sets off towards the line, the count starts again:
+        // this is a back-off about *progress*, not about movement.
+        val setOff = stepPlaceWatch(state, north(70.0, accuracy = 30.0, at = at), listOf(shop), at, sensed = true)
+        assertEquals(PlaceWatchPolicy.MIN_WAIT, setOff.plan!!.wait, "one look that closes on the line and it is back to two minutes")
+        assertEquals(0, setOff.state.stillStreak)
+
+        // And so does a look that changed a side, whatever the distances made of it: walking
+        // *into* a place is getting further from its line, and it is the one moment in the
+        // evening worth hurrying for.
+        val walkedIn = stepPlaceWatch(setOff.state, north(10.0, accuracy = 30.0, at = at), listOf(shop), at, sensed = true)
+        assertEquals(true, walkedIn.state.inside[shop.id], "it is inside now")
+        assertEquals(0, walkedIn.state.stillStreak, "a crossing is never a look that found nothing")
+    }
+
+    @Test
+    fun `a circle waiting to be left is never slept past its own half hour`() {
+        // [leavingWait] says half an hour is what that case is worth and why — the geofence is
+        // the prompt eye and this is the cheap second opinion. The still back-off used to
+        // double straight past it to the hour, so a phone resting inside a "cuando salga de
+        // aquí" looked once an hour, which is what the owner's log showed with a place snooze
+        // pending.
+        val leaving = work.copy(radiusM = 150)
+        val inside = mapOf(leaving.id to true)
+        val fix = Fix(leaving.lat, leaving.lng, 30.0, now)
+        val settled = Movement(speedMps = 0.0, sensed = false, stillStreak = 6)
+        assertEquals(
+            PlaceWatchPolicy.LEAVING_MAX_WAIT,
+            planNextCheck(fix, settled, listOf(leaving), inside, previous = fix)!!.wait,
+            "the back-off may not outsleep the case's own ceiling",
+        )
+        // The cap is on the back-off and never on the distance answer: deep inside a place
+        // kilometres wide, time-to-the-line is the better number and still wins.
+        val wide = leaving.copy(radiusM = 3_000)
+        assertTrue(
+            planNextCheck(fix, settled, listOf(wide), mapOf(wide.id to true), previous = fix)!!.wait > PlaceWatchPolicy.LEAVING_MAX_WAIT,
+            "a three-kilometre circle is not left in half an hour of sitting still",
+        )
+        // A circle waiting to be *arrived* at, already inside, is the cheapest watch there is
+        // and keeps every bit of its sleep.
+        val arriving = leaving.copy(transition = Transition.ENTER)
+        assertEquals(
+            PlaceWatchPolicy.MAX_WAIT,
+            planNextCheck(fix, settled, listOf(arriving), mapOf(arriving.id to true), previous = fix)!!.wait,
+        )
+    }
+
+    @Test
     fun `the motion sensor's word is taken one way only`() {
         val outside = home.copy(radiusM = 20)
         val fix = north(50.0)

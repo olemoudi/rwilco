@@ -2051,6 +2051,29 @@ because that is what its chip would show.
   makes it safe to spend so little on: `insideAfter` refuses a fix sloppier than the circle on
   the way in and keeps the phone where it was on the way out, and `gapToLine` eats the doubt
   before any of it reaches a cadence, so a vague fix asks to be looked at sooner, never later.
+  **Moving is not approaching** (0.82.0). The cadence is "time to the line at the speed the line
+  is being approached", and for circles the phone was *outside* of it used to be time-to-the-line
+  at the speed the phone happened to be going — which reads a life being lived indoors as an
+  approach. A phone two hundred metres from a watched line, carried about its own four walls all
+  evening, is never `still` (the sensor fires), so it never earned the back-off, and
+  time-to-the-line at walking pace is the two-minute floor: **thirty looks an hour, above the
+  rate the log itself calls a fault** (`BUSY_POLLS`). So `planFor` backs off for a phone that is
+  still *or* wandering — near a line and no nearer it than last time (`closingM`, the measure
+  "when I leave" has always planned by) — and `stepPlaceWatch`'s streak counts those looks too.
+  Measured: 2, 2, 4, 8, 15, 15 minutes across an evening instead of 2 for ever, and back to two
+  minutes on the first look that closes on anything. **Only near the line**, and that bound is
+  the safety of it: far out the distance arithmetic already answers, and a coarse fix's own
+  doubt can swallow a kilometre of genuine approach (a car five kilometres off on tower fixes
+  measures as closing nothing, and is planned at half an hour by distance alone either way).
+  **And a crossing is never a look that found nothing**: walking *into* a place is getting
+  further from its line, so the streak resets on any side that changed — which `PlaceWatchDeviceTest`
+  caught, an arrival having stopped resetting the count.
+  **A circle waiting to be left keeps its own ceiling** (0.82.0). `leavingWait` says half an
+  hour is what that case is worth and why — the geofence is the prompt eye, this is the cheap
+  second opinion — and the still back-off used to double straight past it to the hour, which is
+  what the owner's log showed with a place snooze pending. The cap is on the back-off and never
+  on the distance answer: deep inside a place kilometres wide, time-to-the-line is still the
+  better number and still wins.
   **And what that costs is now said out loud** (0.77.0, `WatchLog.typicalAccuracyM` /
   `radiusOutOfReach`, pure and tested; the line under the radius slider). Arriving takes a fix at
   least as tight as the circle, so on a phone whose positions come back at ±70 m — indoors, on

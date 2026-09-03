@@ -1238,6 +1238,10 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_82_0">
+        <item>Less battery for the same watching. A phone carried about the house within a couple of hundred metres of a place it is watching used to be read as approaching it, and looked every two minutes all evening — thirty times an hour. Moving is not approaching: what counts now is getting nearer the line, so an evening indoors backs off to a look every quarter of an hour, and the first step towards the place brings it straight back to two minutes.</item>
+        <item>A place you asked to be reminded on leaving is looked at every half hour at worst, never the hour it could drift to before.</item>
+    </string-array>
     <string-array name="whats_new_0_81_0">
         <item>The warning about a circle finer than your positions now says what it actually means. It is about right now, not about the phone: it reads the looks of the last few hours, so it appears indoors on wifi and goes away in the street under the open sky — and it is worded as what it is, a reminder that may be slow to notice you arriving, not one that cannot. All of this is best effort: a better position, or the system\'s own geofences, can still ring it.</item>
     </string-array>

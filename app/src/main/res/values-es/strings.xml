@@ -1223,6 +1223,10 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_82_0">
+        <item>Menos batería para la misma vigilancia. Un móvil que se pasea por casa a un par de cientos de metros de un sitio vigilado se leía como que se estaba acercando, y se miraba cada dos minutos toda la tarde: treinta veces por hora. Moverse no es acercarse: ahora cuenta ganarle terreno a la línea, así que una tarde en casa se relaja a una mirada cada cuarto de hora, y el primer paso hacia el sitio la devuelve a dos minutos.</item>
+        <item>Un sitio del que pediste aviso «al salir» se mira como mucho cada media hora, nunca la hora a la que podía irse antes.</item>
+    </string-array>
     <string-array name="whats_new_0_81_0">
         <item>El aviso de «círculo más fino que tus posiciones» dice ya lo que de verdad significa. Habla de ahora mismo, no del móvil: mira las miradas de las últimas horas, así que aparece dentro de casa con wifi y desaparece en la calle a cielo abierto — y está escrito como lo que es, un recordatorio que puede tardar en enterarse de que llegas, no uno que no pueda. Todo esto es «lo mejor posible»: una posición mejor, o las geocercas del propio sistema, pueden hacerlo sonar igual.</item>
     </string-array>
