@@ -75,9 +75,13 @@ import dev.rwilco.ui.components.SheetScaffold
 import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
+import dev.rwilco.RwilcoApplication
+import dev.rwilco.model.worthDrawing
 import java.util.Locale
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.osmdroid.util.GeoPoint
 
 /**
@@ -142,6 +146,14 @@ fun LocationSheet(
         }
     }
 
+    /** The place watch's last position, when it is recent enough to stand in for a fix. */
+    suspend fun remembered(): GeoPoint? = withContext(Dispatchers.IO) {
+        val app = context.applicationContext as? RwilcoApplication ?: return@withContext null
+        app.placeWatch.read().lastFix
+            ?.takeIf { it.worthDrawing(app.clock.instant()) }
+            ?.let { GeoPoint(it.lat, it.lng) }
+    }
+
     /**
      * [asked] is somebody pressing the crosshair; the sheet also asks on its own when it opens
      * ([initial] null and the permission already given), and that one has to be quieter. It
@@ -153,6 +165,17 @@ fun LocationSheet(
         locating = true
         failure = null
         scope.launch {
+            // **The watch's own last position, drawn while the platform is being asked**
+            // (0.76.0). The place watch pays for a fix every quarter of an hour or so through
+            // Play Services and remembers it; the platform providers this asks are a different
+            // door, and on a phone where they are slow — or answer nothing at all indoors —
+            // the map drew no dot while the app itself knew perfectly well where it was. It is
+            // never the *pin*: a remembered position is for looking at, not for writing into a
+            // circle somebody will be woken by ([Fix.speaksForHere] is that question, and it
+            // is stricter).
+            if (here == null) {
+                remembered()?.let { if (here == null) here = it }
+            }
             val fix = currentLocation(context)
             // **The dot first, and whatever happens to the pin afterwards.** Where the phone is
             // standing is true either way — the quiet fix on opening loses the *pin* to
@@ -181,8 +204,16 @@ fun LocationSheet(
     // rather than on the whole of Spain waiting for a long-press. Only when the permission is
     // already given: a sheet that opens with a system dialog on top of it is a worse first
     // second than a map you have to press the crosshair on.
+    //
+    // **And it asks on every opening, not only when it is about to move the pin** (0.76.0).
+    // The dot used to be a side effect of the pin being placed — the condition here was
+    // `initial == null && lat == null` — so a place that already existed opened as a circle on
+    // a map with nothing to measure it against, which is exactly the screen where "is this
+    // circle where I actually am?" is the only question. `locate(asked = false)` is already
+    // built for this: it draws the dot whatever happens and gives the *pin* up the moment
+    // there is one, so an existing place is never moved by it.
     LaunchedEffect(Unit) {
-        if (initial == null && lat == null && hasAnyLocationPermission(context)) locate(asked = false)
+        if (hasAnyLocationPermission(context)) locate(asked = false)
     }
     // Both, not just the precise one: a person who answers "approximate" has said yes, and the
     // old code read that as a refusal and gave up with the phone perfectly able to answer.

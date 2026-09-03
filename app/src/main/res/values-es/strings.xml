@@ -1221,6 +1221,9 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_76_0">
+        <item>Vuelve el punto azul del mapa, y ahora sale cada vez que se abre la hoja del sitio — no sólo al añadir uno nuevo. Era un efecto secundario del pin: abrir un sitio ya guardado dibujaba el círculo y nada con lo que medirlo, que es justo la pantalla donde la única pregunta es «¿este círculo está donde estoy de verdad?». Además pinta la posición que la vigilancia de sitios ya tiene mientras se vuelve a preguntar al móvil, así que hay punto incluso donde los proveedores del sistema tardan en contestar.</item>
+    </string-array>
     <string-array name="whats_new_0_75_0">
         <item>El aviso callado de la red de seguridad ya lo dice en las palabras mismas: «ICYMI: sacar la basura». Su tarjeta lleva el texto del propio recordatorio en un canal sin sonido, y en una barra llena se veía igual que la alarma de la que hablaba — la línea pequeña que decía «puede que se te haya pasado» va al lado del nombre de la app y es lo primero que se cae cuando la fila es estrecha. Un recordatorio que sigue esperando en un sitio no se marca: ahí no se ha pasado nada.</item>
     </string-array>

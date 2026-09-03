@@ -189,4 +189,15 @@ class SnoozeToPlaceTest {
         assertFalse(Fix(1.0, 1.0, 30.0, now).speaksForHere(now.plus(Duration.ofMinutes(3))), "too old")
         assertFalse(Fix(1.0, 1.0, 400.0, now).speaksForHere(now), "sloppier than the circle it would draw")
     }
+
+    @Test
+    fun `a position is worth drawing for longer than it is worth waking somebody with`() {
+        // The map's blue dot and the circle "al salir de aquí" draws are two different
+        // questions about the same fix: one is looked at, the other is slept through.
+        val fix = Fix(1.0, 1.0, 30.0, now)
+        assertTrue(fix.worthDrawing(now.plus(Duration.ofMinutes(10))), "ten minutes old is still roughly here")
+        assertFalse(fix.speaksForHere(now.plus(Duration.ofMinutes(10))), "and nowhere near tight enough to ring on")
+        assertFalse(fix.worthDrawing(now.plus(Duration.ofMinutes(20))), "past the watch's own cadence it is not a dot, it is a memory")
+        assertFalse(Fix(1.0, 1.0, 400.0, now).worthDrawing(now), "a fix vaguer than that is not where anybody is")
+    }
 }

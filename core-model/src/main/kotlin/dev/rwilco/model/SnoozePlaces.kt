@@ -46,6 +46,25 @@ fun Fix.speaksForHere(now: Instant): Boolean =
     Duration.between(at, now).abs() <= HERE_FIX_MAX_AGE && accuracyM <= HERE_FIX_MAX_ACCURACY_M
 
 /**
+ * How old the place watch's own last position may be and still be worth *drawing* on the map.
+ *
+ * Wider than [HERE_FIX_MAX_AGE] on purpose, and the difference is what the two are for: two
+ * minutes is what it takes to draw a circle somebody will be woken by, and this is a dot that
+ * says "roughly here" while the phone is asked again. The watch looks every fifteen minutes at
+ * its most awake ([PlaceWatchState]'s own cadence), so anything tighter would mean no dot at
+ * all on a phone whose platform providers are slow to answer — which is the state the map was
+ * in when this was written.
+ */
+val MAP_FIX_MAX_AGE: Duration = Duration.ofMinutes(15)
+
+/**
+ * Whether a position is worth drawing as the blue dot when nothing fresher has answered. Same
+ * accuracy floor as "aquí": a dot drawn from a fix vaguer than that is not where anybody is.
+ */
+fun Fix.worthDrawing(now: Instant): Boolean =
+    Duration.between(at, now).abs() <= MAP_FIX_MAX_AGE && accuracyM <= HERE_FIX_MAX_ACCURACY_M
+
+/**
  * The saved place this person's reminders name most — in their rules or their "y sólo si"
  * fences, open and done alike — and the first one saved when none of them names any. Null with
  * nothing saved: there is no place to offer.

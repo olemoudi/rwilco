@@ -1152,7 +1152,21 @@ because that is what its chip would show.
   chosen while it was in flight and says nothing when it fails — **it loses the pin, never the
   dot** (see below): where the phone is standing is true either way.
   **And the map says where the phone is** (0.63.0, `HereOverlay`): the blue dot, with a slow
-  faint wave going out of it. Aiming a circle at a doorway is a question about the distance
+  faint wave going out of it. **It is asked for on every opening of the sheet, and it has the
+  watch's own memory behind it** (0.76.0). Both halves were the same mistake — the dot was a
+  side effect of the *pin*: the sheet asked the phone where it was only when it was about to
+  open on it (`initial == null && lat == null`) and only through the platform's providers. So a
+  place that already existed opened as a circle on a map with nothing to measure it against,
+  which is exactly the screen where "is this circle where I actually am?" is the only question
+  worth asking — and on a phone whose platform providers answer slowly or not at all indoors,
+  there was no dot even for a new one, while the app's own place watch (Play Services, a fix
+  every quarter of an hour) knew perfectly well where it was. Now the sheet always asks
+  (`locate(asked = false)`, which is already built to draw the dot and give the pin up the
+  moment there is one, so an existing place is never moved), and the watch's last position is
+  drawn at once while the platform is asked (`Fix.worthDrawing`, `MAP_FIX_MAX_AGE` — fifteen
+  minutes, the watch's own cadence at its most awake). It is never the pin: a remembered
+  position is for looking at, and what may be written into a circle somebody will be woken by is
+  the stricter `speaksForHere`. Aiming a circle at a doorway is a question about the distance
   between *two* things and only one of them was ever drawn — the fix has never been a position
   on the map, it is written straight into `lat`/`lng` and becomes the pin — so `LocationSheet`
   now keeps it in a `here` of its own and hands it to `OsmMap` and `FullScreenMap` alike. The

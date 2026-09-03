@@ -1229,6 +1229,9 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_76_0">
+        <item>The blue dot is back on the map, and on every opening of the place sheet — not only when adding a new place. It was a side effect of the pin: opening a place you had already saved drew the circle and nothing to measure it against, which is the one screen where «is this circle where I actually am?» is the whole question. It also draws the position the place watch already has while the phone is asked again, so there is a dot even where the system\'s own providers answer slowly.</item>
+    </string-array>
     <string-array name="whats_new_0_75_0">
         <item>The safety net\'s quiet word now says so in the words themselves: «ICYMI: sacar la basura». Its card carries the reminder\'s own text on a silent channel, and in a full shade that looked exactly like the alarm it was about — the little line that said «puede que se te haya pasado» sits beside the app\'s name and is the first thing a narrow row drops. A reminder still waiting at a place is not marked: nothing has been missed there.</item>
     </string-array>
