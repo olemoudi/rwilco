@@ -64,7 +64,7 @@ import dev.rwilco.model.SnoozePlace
  * thumb cannot miss. In phase 1 it is reached only as a preview; phase 2 hosts the same
  * composable in the activity a full-screen intent launches.
  *
- * **Every answer on it is guarded** (0.66.0, [rememberPressGuard]): for two seconds after the
+ * **Every answer on it is guarded** (0.66.0, [rememberPressGuard]): for a second after the
  * screen shows nothing but Silence takes a touch, and after that "Hecho", the snoozes and
  * "Ver" answer only to a finger kept on them — the ring at the top fills, the
  * tick comes up, and the answer is given when the finger lifts. The screen is what comes up

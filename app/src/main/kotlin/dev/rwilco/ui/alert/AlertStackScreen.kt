@@ -82,7 +82,7 @@ data class AlertItem(val id: String, val content: AlertContent)
  * lands — with the two snoozes people actually use, because five do not fit beside a button.
  * Up to three share the height; more than that scroll.
  *
- * Guarded like the single alert (0.66.0, [rememberPressGuard]): two seconds in which only
+ * Guarded like the single alert (0.66.0, [rememberPressGuard]): a second in which only
  * Silence answers, then every answer a held finger — one guard for the whole screen, reporting
  * at the top, and it starts over whenever a strip leaves, because the ones left take its
  * height and move under the thumb.

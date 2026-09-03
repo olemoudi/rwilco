@@ -925,7 +925,11 @@ because that is what its chip would show.
   standing marks go with them, and the pause pill goes (the held menu still has it). The hero is
   never folded — it is the one card the screen is about. The tags use `FittingRow`, which places
   what fits and marks the rest, because a `Row` that clips draws half a chip and "the first two"
-  says the same nothing whether there are two or five.
+  says the same nothing whether there are two or five. It reports the width it *used* so the
+  compact card can hang it off the right edge — but never under the minimum it was measured
+  with (0.70.0): a layout that under-reports is stretched back up by the parent with its
+  contents **centred** in the difference, which is how one tag in the footer's `weight(1f)`
+  sat 147dp adrift of the margin it was placed at. `FittingRowTest` holds both ends.
 - **A save is taken to its card** (0.64.0, `homeCardIndex`). Editing the words leaves a card
   where it was, and Home keeping the scroll is exactly right there — that is what
   `HomeScrollTest` has pinned since the ordering was fixed. Editing *when* it rings moves it, to
@@ -1166,11 +1170,11 @@ because that is what its chip would show.
   in the editor (the segmented control already says the reading, and a root word would say it
   twice), the search rows' "when" line, and solo/sólo (the app writes "sólo" more often than
   not, and an adverb is not safe to accent by script).
-- **The guard's two seconds are for a screen that took somebody by surprise** (0.68.0).
+- **The guard's countdown is for a screen that took somebody by surprise** (0.68.0).
   `rememberPressGuard(key, openedOnPurpose)` skips the countdown — never the hold — for a
   reminder opened from a card or a note (`AlertActivity` passes `id in silenced`), and for a
   new key on a screen whose last guard was already armed (a strip answered, the rest left):
-  two dead seconds per answer on a screen of five was the guard costing more than the accident
+  a dead countdown per answer on a screen of five was the guard costing more than the accident
   it guards against. Both only for the *first* arming; a screen shown again counts down as
   ever. The preview's "Cerrar la vista previa" is a plain tap (a control of the preview, not an
   answer); its "Hecho" and snoozes keep the guard, which is what the preview is for. While the
@@ -1222,8 +1226,9 @@ because that is what its chip would show.
 - **The alert screen takes no tap** (0.66.0, `PressGuard`, `ui/components/PressGuard.kt`). The
   screen that takes over a phone at three in the morning, or lights up under a hand reaching
   into a pocket, gives the one kind of answer the app cannot take back, and it used to give it
-  to any touch. Now, for `Motion.guardArm` (2 s) after the screen shows, nothing but Silence
-  answers — a ring at the top drains under the digits "2", "1", and every button is faded and
+  to any touch. Now, for `Motion.guardArm` (1 s since 0.70.0; it was two, which was longer
+  than the thumb it outlasts) after the screen shows, nothing but Silence
+  answers — a ring at the top drains under the digit "1", and every button is faded and
   reports itself disabled — and after that "Hecho", every snooze and "Ver" answer only to a
   finger *kept* on them for `Motion.guardHold` (700 ms since 0.66.1, the same `HOLD_MILLIS` as a
   card's pause; it began as a full second): the ring fills, the tick pops in, and the

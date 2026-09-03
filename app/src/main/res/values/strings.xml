@@ -1216,6 +1216,10 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_70_0">
+        <item>Tags sit against the left margin again. A card with a single tag drew it adrift in the middle of the footer: the row that lays them out reported less width than it had been given, and Android centres whatever does not fill the space it was handed.</item>
+        <item>The alert screen\'s quiet moment is one second now, not two — long enough to outlast a thumb that was already on its way down. What guards every answer after that is still the finger kept on it.</item>
+    </string-array>
     <string-array name="whats_new_0_69_0">
         <item>The polish round. The chip that reads a «when» out of your words now sits right under the words as you type them, not two cards down; the date sheet offers the next seven days by name beside «Today» and «Tomorrow»; the pinned-presets panel edits a preset too, so one list does it all; the big map has its own «my location» button.</item>
         <item>Words settled: one verb for deleting a reminder, «Paused» as what just happened, «Close» on the dialogs that only close, «Cuando suena / Cuando lo marco hecho» on the «Vuelve» card, and the widget\'s description says what the widget does.</item>

@@ -40,8 +40,13 @@ data class Motion(
      * finger kept on its button for [guardHold], and a hold let go early says how for
      * [guardHint]. [guardHold] is the same 700 ms as [dev.rwilco.ui.components.HOLD_MILLIS]
      * (0.66.1; it was a full second): one length of hold in the app, so a hand learns it once.
+     *
+     * [guardArm] is one second (0.70.0; it was two). The countdown is there to outlast the
+     * thumb that is already moving when the screen arrives, and that thumb lands in a few
+     * hundred milliseconds — the rest of it was spent by somebody awake, reading, waiting to
+     * be let in. The hold behind it is what actually guards the answer.
      */
-    val guardArm: Int = 2000,
+    val guardArm: Int = 1000,
     val guardHold: Int = 700,
     val guardHint: Int = 1500,
 )

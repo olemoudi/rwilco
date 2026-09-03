@@ -22,7 +22,10 @@ import androidx.compose.ui.unit.Dp
  * which is what keeps the mark from turning up beside a gap it could have filled.
  *
  * The width is what was used rather than what was offered, so a caller can hang this off the
- * end of a `Row` and have it sit against the right edge.
+ * end of a `Row` and have it sit against the right edge — but never less than the width asked
+ * for, because a layout that reports under its minimum is stretched back up by the parent and
+ * has its contents *centred* in the difference, which is one chip adrift in the middle of a
+ * weighted row rather than against the margin it was placed at.
  */
 @Composable
 fun FittingRow(
@@ -50,7 +53,8 @@ fun FittingRow(
             used += lead + measured.width
         }
         val dropped = placed.size < items.size
-        val width = (used + if (dropped) markRoom else 0).coerceAtMost(constraints.maxWidth)
+        val width = (used + if (dropped) markRoom else 0)
+            .coerceIn(constraints.minWidth, constraints.maxWidth)
         val height = (placed.maxOfOrNull { it.height } ?: 0)
             .coerceAtLeast(if (dropped) mark?.height ?: 0 else 0)
 

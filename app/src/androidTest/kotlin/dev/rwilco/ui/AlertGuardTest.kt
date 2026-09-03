@@ -30,7 +30,7 @@ import java.time.DayOfWeek
 import java.time.LocalTime
 
 /**
- * The alert screen takes no tap. For two seconds after it comes up nothing but Silence
+ * The alert screen takes no tap. For a second after it comes up nothing but Silence
  * answers; after that, "Hecho" and the snoozes answer only to a finger kept on them, and
  * only when it lifts. [dev.rwilco.ui.components.PressGuardTest] has the rules
  * with no clock; this is the wiring — the countdown, the ring, the tick, the release — on a
@@ -38,7 +38,7 @@ import java.time.LocalTime
  *
  * The test clock stands still where a test is about *when* the finger went down: with it
  * running, the framework fast-forwards every animation to the end the moment it waits for
- * idle, and the two seconds are over before the first touch lands.
+ * idle, and the countdown is over before the first touch lands.
  */
 @RunWith(AndroidJUnit4::class)
 class AlertGuardTest {
@@ -98,7 +98,7 @@ class AlertGuardTest {
         val done = string { it.getString(R.string.alert_done) }
         // The digit is composed on the frame after the words; a few more frames lay it out.
         rule.mainClock.advanceTimeBy(64)
-        rule.onNodeWithText("2").assertIsDisplayed()
+        rule.onNodeWithText("1").assertIsDisplayed()
         check(rule.onAllNodes(hasText(done) and hasClickAction()).fetchSemanticsNodes().isEmpty()) {
             "«Hecho» answered while the digits were still up"
         }
