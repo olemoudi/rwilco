@@ -253,6 +253,9 @@
     <!-- The recurrence row's second line while a reminder rests between two rounds: the rules
          above it describe every Monday, including the one just dealt with. -->
     <string name="card_recurrence_returns">back %1$s</string>
+    <!-- On a place row whose circle is smaller than what this phone's positions can settle:
+         arriving takes a fix at least as tight as the circle, so this rule cannot fire at all. -->
+    <string name="card_place_under_doubt">Smaller than this phone can measure — it may never see you arrive</string>
     <string name="card_recurrence_from_calendar">on its own dates</string>
     <string name="recur_after_done">Counted from the moment you mark it done, not from the clock.</string>
     <string name="recur_unit_hours">hours</string>
@@ -1234,6 +1237,10 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_80_0">
+        <item>«When I leave here» now draws the smallest circle your position can defend — twice its own accuracy, never under 100 m — instead of a flat 150. Under the open sky that is a hundred metres and walking home from the park next door rings it; indoors it grows with the doubt, so nothing is promised that the phone cannot see. The button says the size it would draw.</item>
+        <item>A reminder whose circle is smaller than what your phone can measure says so on its own card, in red, on the rule it belongs to. The warning used to live only where a radius is chosen, which reached the next place you wrote and none of the ones written months ago — and those are the ones quietly not ringing.</item>
+    </string-array>
     <string-array name="whats_new_0_79_0">
         <item>«When I leave here» now says how far «here» reaches. It draws a fixed 150-metre circle around where you are standing, and leaving it takes that plus your phone\'s own doubt — a good two hundred metres of walking. Nothing said so, so a reminder put off in a park next door never rang, which is the app keeping a promise nobody could read.</item>
         <item>The diagnostics report says how far the phone is from the middle of every circle it watches, beside which side of the line it thinks you are on. Those two numbers together are what explains a place reminder that did not ring.</item>

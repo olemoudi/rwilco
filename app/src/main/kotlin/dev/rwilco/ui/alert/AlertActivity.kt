@@ -349,7 +349,7 @@ class AlertActivity : ComponentActivity() {
                 val now = app.clock.instant()
                 app.firing.snoozeToPlace(id, offer.circle(), app.placeWatch.read().lastFix?.takeIf { it.speaksForHere(now) }, app.placeWatcher::remember)
             }
-            SnoozePlace.LeaveHere -> {
+            is SnoozePlace.LeaveHere -> {
                 if (seekingHere) return
                 seekingHere = true
                 lifecycleScope.launch {

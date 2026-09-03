@@ -249,6 +249,7 @@
     <string name="recur_from_dealt">Cuando lo marco hecho</string>
     <string name="card_recurrence_from_ringing">desde que suena</string>
     <string name="card_recurrence_returns">vuelve %1$s</string>
+    <string name="card_place_under_doubt">Más pequeño de lo que este móvil sabe medir: puede no verte llegar</string>
     <string name="card_recurrence_from_calendar">en sus propias fechas</string>
     <string name="recur_after_done">Se cuenta desde que lo marcas hecho, no desde el reloj.</string>
     <string name="recur_unit_hours">horas</string>
@@ -1222,6 +1223,10 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_80_0">
+        <item>«Al salir de aquí» dibuja ahora el círculo más pequeño que tu posición puede defender — el doble de su propia precisión, nunca menos de 100 m — en vez de 150 fijos. A cielo abierto son cien metros y volver del parque de al lado ya lo dispara; dentro de casa crece con la duda, así que no se promete nada que el móvil no pueda ver. El botón dice el tamaño que dibujaría.</item>
+        <item>Un recordatorio cuyo círculo es más pequeño de lo que tu móvil sabe medir lo dice en su propia tarjeta, en rojo, sobre la regla a la que pertenece. El aviso vivía sólo donde se elige el radio, que alcanza al siguiente sitio que escribas y a ninguno de los escritos hace meses — y son justo esos los que no suenan.</item>
+    </string-array>
     <string-array name="whats_new_0_79_0">
         <item>«Al salir de aquí» dice ya hasta dónde llega «aquí». Dibuja un círculo fijo de 150 m alrededor de donde estás, y salir de él exige eso más la propia imprecisión del móvil: doscientos metros largos andando. Como no lo decía, un recordatorio pospuesto en el parque de al lado no sonó nunca — la app cumpliendo una promesa que nadie podía leer.</item>
         <item>El informe de diagnóstico dice a qué distancia está el móvil del centro de cada círculo vigilado, junto a de qué lado de la línea cree que estás. Esos dos números juntos son lo que explica un recordatorio de sitio que no ha sonado.</item>

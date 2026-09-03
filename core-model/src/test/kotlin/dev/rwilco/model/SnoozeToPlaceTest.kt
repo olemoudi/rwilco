@@ -38,7 +38,7 @@ class SnoozeToPlaceTest {
     fun `the doorway in, whichever side the phone is on`() {
         assertEquals(Trigger.Location(40.4169, -3.7035, 200, Presence.INSIDE, "Casa", onCrossing = true), homeDoor)
         val here = hereCircle(Fix(40.45, -3.69, 20.0, now), "aquí")
-        assertEquals(Trigger.Location(40.45, -3.69, SNOOZE_HERE_RADIUS_M, Presence.OUTSIDE, "aquí", onCrossing = true), here)
+        assertEquals(Trigger.Location(40.45, -3.69, SNOOZE_HERE_MIN_RADIUS_M, Presence.OUTSIDE, "aquí", onCrossing = true), here)
     }
 
     @Test
@@ -170,12 +170,12 @@ class SnoozeToPlaceTest {
     @Test
     fun `arriving is not offered from inside, and nothing is offered without a grant`() {
         val watch = PlaceWatchState()
-        assertEquals(listOf(SnoozePlace.Arrive(home), SnoozePlace.LeaveHere), snoozePlaceOffers(listOf(home), emptyList(), watch, locationAllowed = true))
-        assertEquals(listOf(SnoozePlace.LeaveHere), snoozePlaceOffers(emptyList(), emptyList(), watch, locationAllowed = true))
+        assertEquals(listOf(SnoozePlace.Arrive(home), SnoozePlace.LeaveHere(SNOOZE_HERE_MIN_RADIUS_M)), snoozePlaceOffers(listOf(home), emptyList(), watch, locationAllowed = true))
+        assertEquals(listOf(SnoozePlace.LeaveHere(SNOOZE_HERE_MIN_RADIUS_M)), snoozePlaceOffers(emptyList(), emptyList(), watch, locationAllowed = true))
         assertEquals(emptyList<SnoozePlace>(), snoozePlaceOffers(listOf(home), emptyList(), watch, locationAllowed = false))
         val insideHome = PlaceWatchState(inside = mapOf(GeofenceIds.encode("x", 0, homeDoor.copy(onCrossing = false)) to true))
         assertFalse(arriveOffered(home, insideHome))
-        assertEquals(listOf(SnoozePlace.LeaveHere), snoozePlaceOffers(listOf(home), emptyList(), insideHome, locationAllowed = true))
+        assertEquals(listOf(SnoozePlace.LeaveHere(SNOOZE_HERE_MIN_RADIUS_M)), snoozePlaceOffers(listOf(home), emptyList(), insideHome, locationAllowed = true))
         val outsideHome = PlaceWatchState(inside = mapOf(GeofenceIds.encode("x", 0, homeDoor.copy(onCrossing = false)) to false))
         assertTrue(arriveOffered(home, outsideHome))
         // A doorway's own lean is not a word about where the phone is.
@@ -188,6 +188,19 @@ class SnoozeToPlaceTest {
         assertTrue(Fix(1.0, 1.0, 30.0, now).speaksForHere(now.plusSeconds(60)))
         assertFalse(Fix(1.0, 1.0, 30.0, now).speaksForHere(now.plus(Duration.ofMinutes(3))), "too old")
         assertFalse(Fix(1.0, 1.0, 400.0, now).speaksForHere(now), "sloppier than the circle it would draw")
+    }
+
+    @Test
+    fun `aqui is as small as the fix can defend`() {
+        // The complaint it comes from: "al salir de aquí" set in a park next door to the house
+        // never rang, because leaving takes the radius PLUS the fix's own doubt — a flat 150 m
+        // with a ±50 m position is two hundred metres of walking.
+        assertEquals(SNOOZE_HERE_MIN_RADIUS_M, hereRadiusM(15.0), "under the open sky, the floor")
+        assertEquals(SNOOZE_HERE_MIN_RADIUS_M, hereRadiusM(50.0), "and at fifty metres of doubt, still the floor")
+        assertEquals(140, hereRadiusM(70.0), "indoors it grows with the doubt, not with a guess")
+        assertEquals(300, hereRadiusM(HERE_FIX_MAX_ACCURACY_M), "the widest there is: nothing sloppier may draw it at all")
+        // And the circle written is that radius around the fix.
+        assertEquals(140, hereCircle(Fix(40.0, -3.0, 70.0, now), "aquí").radiusM)
     }
 
     @Test

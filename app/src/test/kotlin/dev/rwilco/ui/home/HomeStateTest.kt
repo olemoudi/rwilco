@@ -373,6 +373,23 @@ class HomeStateTest {
     }
 
     @Test
+    fun `a circle smaller than what this phone can settle is marked on the rule it belongs to`() {
+        // The editor says it while a radius is being chosen, which reaches the next place
+        // somebody writes and none of the ones already written — and those are the ones quietly
+        // not ringing. So the card says it on the rule, from what the watch's own looks carry.
+        val home = reminder("home", Trigger.Location(40.4, -3.7, 50, Presence.INSIDE, "casa"))
+        val wide = reminder("wide", Trigger.Location(40.4, -3.7, 200, Presence.INSIDE, "club"))
+        fun rowOf(id: String, accuracy: Int?) = buildHomeState(listOf(home, wide), defaultTime, now, zone, selectedTag = null, fixAccuracyM = accuracy)
+            .let { state -> (listOfNotNull(state.hero?.card) + state.sections.flatMap { it.cards }).single { it.id == id } }
+            .triggers.single()
+
+        assertTrue(rowOf("home", 70).underDoubt, "fifty metres is inside a seventy-metre doubt")
+        assertFalse(rowOf("wide", 70).underDoubt, "two hundred is not")
+        assertFalse(rowOf("home", null).underDoubt, "and nothing is said about a phone the watch has barely looked with")
+        assertFalse(rowOf("home", 30).underDoubt, "nor about one whose positions are tighter than the circle")
+    }
+
+    @Test
     fun `a card shown open is on whichever side of the flipped set the mode is not`() {
         // What a save asks for: the card it just wrote, open, whatever the list is doing.
         assertEquals(setOf("new"), shownOpen(emptySet(), "new", compact = true), "folded list: an exception")

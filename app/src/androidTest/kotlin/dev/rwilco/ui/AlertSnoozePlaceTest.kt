@@ -17,7 +17,7 @@ import dev.rwilco.model.Fix
 import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.Presence
 import dev.rwilco.model.Reminder
-import dev.rwilco.model.SNOOZE_HERE_RADIUS_M
+import dev.rwilco.model.hereRadiusM
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
@@ -107,13 +107,16 @@ class AlertSnoozePlaceTest {
     fun whenILeaveHereIsAnAnswerDrawnAroundThePhone() {
         scenario = ActivityScenario.launch(alert())
         rule.waitUntilShown(text)
-        val leave = string { it.getString(R.string.snooze_leave_here) }
+        // The offer says the circle it would draw from the watch's own last position; the
+        // seeded fix is ±15 m, so that is the floor ([SNOOZE_HERE_MIN_RADIUS_M]).
+        val leave = string { it.getString(R.string.snooze_leave_here, hereRadiusM(15.0)) }
         rule.waitUntilShown(leave)
         rule.holdToAnswer(leave)
         rule.waitUntil(timeoutMillis = 20_000) { runBlocking { app.repository.get(id)?.snoozedToPlace != null } }
         val here = runBlocking { app.repository.get(id)!!.snoozedToPlace!! }
         assertEquals(Presence.OUTSIDE, here.presence)
-        assertEquals(SNOOZE_HERE_RADIUS_M, here.radiusM)
+        // As small as the fix could defend: twice its doubt, never under the floor.
+        assertEquals(hereRadiusM(15.0), here.radiusM)
         assertEquals(40.4500, here.lat, 0.0001)
         assertEquals(-3.6900, here.lng, 0.0001)
         gone()

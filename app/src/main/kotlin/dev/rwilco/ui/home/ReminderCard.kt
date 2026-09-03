@@ -519,6 +519,20 @@ fun TriggerRow(row: TriggerRowUi, today: LocalDate, defaultTime: LocalTime, mute
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+            // **A circle this phone cannot settle says so on the card** (0.80.0). The editor
+            // says it while a radius is being dragged, which reaches the next place somebody
+            // writes and none of the ones written months ago — and those are the reminders
+            // quietly not ringing. In the error colour, because it is not a detail: this rule
+            // cannot fire at all until the circle is widened.
+            if (row.underDoubt) {
+                Text(
+                    text = stringResource(R.string.card_place_under_doubt),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             if (row.conditions.isNotEmpty()) {
                 Text(
                     text = stringResource(R.string.editor_only_if_prefix, row.conditions.map { conditionLabel(it) }.joinToString(" · ")),

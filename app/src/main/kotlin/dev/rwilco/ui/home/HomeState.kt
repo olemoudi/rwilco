@@ -231,6 +231,17 @@ data class TriggerRowUi(
      */
     val standing: RuleStanding? = null,
     /**
+     * Whether this rule's circle is smaller than what this phone's positions can settle — the
+     * circle the watch will keep saying you are outside of however close you stand.
+     *
+     * The editor says it while a radius is being chosen (0.77.0), which reaches the next place
+     * somebody writes and none of the ones already written months ago — and those are the
+     * reminders that are quietly not ringing. So the card says it too, on the rule it is about.
+     * See [dev.rwilco.model.WatchLog.radiusOutOfReach] for the rule, and `insideAfter` for why:
+     * arriving takes a fix at least as tight as the circle.
+     */
+    val underDoubt: Boolean = false,
+    /**
      * Whether the place watch is spending anything on this rule's circle right now.
      *
      * Always true for everything that is not a place: nothing else costs a radio. A circle
@@ -251,6 +262,12 @@ fun buildHomeState(
     dayStart: LocalTime = DEFAULT_DAY_START,
     /** The hours somebody is up, which is where a moment "at random during the day" comes from. */
     shape: DayShape = DayShape.DEFAULT,
+    /**
+     * What this phone's positions usually come back at ([dev.rwilco.model.WatchLog.typicalAccuracyM]),
+     * or null while the watch has not looked enough times to have an opinion: the one number
+     * that says whether a circle can be judged at all. See [TriggerRowUi.underDoubt].
+     */
+    fixAccuracyM: Int? = null,
     /** Is the phone inside this rule's circle? Only the place watch knows; null when nothing does. */
     inside: (String, Int) -> Boolean? = { _, _ -> null },
 ): HomeUiState {
@@ -284,6 +301,7 @@ fun buildHomeState(
                 nextAt = (next as? NextFire.Scheduled)?.at,
                 window = (next as? NextFire.Sometime)?.let { it.windowStart to it.windowEnd },
                 standing = standings.getOrNull(index),
+                underDoubt = fixAccuracyM != null && (rule.trigger as? Trigger.Location)?.let { it.radiusM < fixAccuracyM } == true,
                 watched = rule.trigger !is Trigger.Location || circles.watchingRule(index),
             )
         }

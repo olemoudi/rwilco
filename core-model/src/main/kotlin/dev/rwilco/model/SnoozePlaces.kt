@@ -19,12 +19,41 @@ sealed interface SnoozePlace {
     /** "Al llegar a [place]". */
     data class Arrive(val place: SavedPlace) : SnoozePlace
 
-    /** "Al salir de aquí": a circle around the phone's own position, made at the moment of the tap. */
-    data object LeaveHere : SnoozePlace
+    /**
+     * "Al salir de aquí": a circle around the phone's own position, made at the moment of the
+     * tap. [radiusM] is how big that circle would be *now* ([hereRadiusM] of the watch's last
+     * position), so the button can say it; what is actually written comes from the fresh fix
+     * the tap goes and asks for, which is usually the same or tighter.
+     */
+    data class LeaveHere(val radiusM: Int = SNOOZE_HERE_MIN_RADIUS_M) : SnoozePlace
 }
 
-/** The radius of "aquí": generous, so a fix a street off and a walk to the corner are both inside. */
-const val SNOOZE_HERE_RADIUS_M = 150
+/**
+ * The smallest "aquí" there is.
+ *
+ * A hundred metres rather than nothing, because the circle is also the guard: a wifi position
+ * indoors can jump a hundred and eighty metres with the phone flat on a table (it is in the
+ * owner's own watch log), and a circle smaller than that noise is a reminder that comes back
+ * for standing still.
+ */
+const val SNOOZE_HERE_MIN_RADIUS_M = 100
+
+/**
+ * The circle "aquí" means: **as small as the fix can defend**, which is twice its own doubt,
+ * and never under [SNOOZE_HERE_MIN_RADIUS_M].
+ *
+ * It was a flat 150 m (0.79.0 and before), which is a promise about a distance nobody could
+ * see and one the phone often could not keep the other way round either. Leaving a circle takes
+ * the radius *plus* the fix's own accuracy ([insideAfter]'s `true` branch), so a flat 150 with a
+ * ±50 m position meant two hundred metres of walking — and a reminder put off "al salir de
+ * aquí" in a park next door to the house never came back. Twice the doubt is the same guard
+ * expressed in the units it is actually about: with a ±15 m fix under the open sky, "aquí" is
+ * a hundred metres and the walk home rings it; with a ±70 m one indoors it is a hundred and
+ * forty, and nothing is claimed that the fix cannot carry. The ceiling comes for free: nothing
+ * sloppier than [HERE_FIX_MAX_ACCURACY_M] may draw "aquí" at all, so the widest it goes is 300.
+ */
+fun hereRadiusM(accuracyM: Double): Int =
+    maxOf(SNOOZE_HERE_MIN_RADIUS_M, kotlin.math.round(accuracyM * 2).toInt())
 
 /** How far apart two circles may be and still be the same place; four decimals, as the suggestions count. */
 private const val SAME_PLACE_M = 11.0
@@ -39,7 +68,7 @@ fun SnoozePlace.Arrive.circle(): Trigger.Location =
 
 /** The doorway out of a circle drawn around [fix]; [label] is the word for "here" in the person's language. */
 fun hereCircle(fix: Fix, label: String): Trigger.Location =
-    Trigger.Location(fix.lat, fix.lng, SNOOZE_HERE_RADIUS_M, Presence.OUTSIDE, label, onCrossing = true)
+    Trigger.Location(fix.lat, fix.lng, hereRadiusM(fix.accuracyM), Presence.OUTSIDE, label, onCrossing = true)
 
 /** Whether a position is fresh and tight enough to draw "aquí" around. */
 fun Fix.speaksForHere(now: Instant): Boolean =
@@ -111,7 +140,11 @@ fun snoozePlaceOffers(
 ): List<SnoozePlace> {
     if (!locationAllowed) return emptyList()
     val arrive = mostUsedPlace(saved, reminders)?.takeIf { arriveOffered(it, watch) }?.let { SnoozePlace.Arrive(it) }
-    return listOfNotNull(arrive) + SnoozePlace.LeaveHere
+    // The size the offer would draw if it were tapped now, from the last position anything took.
+    // An estimate on purpose: the tap asks for a fresh fix, and a better one only makes the
+    // circle smaller — which is the direction that rings sooner.
+    val here = SnoozePlace.LeaveHere(watch.lastFix?.let { hereRadiusM(it.accuracyM) } ?: SNOOZE_HERE_MIN_RADIUS_M)
+    return listOfNotNull(arrive) + here
 }
 
 /** What a history line keeps about a snooze to a place: which way, and the place's name. */

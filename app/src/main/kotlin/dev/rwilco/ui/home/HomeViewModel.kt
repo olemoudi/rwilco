@@ -23,10 +23,12 @@ import dev.rwilco.model.ValidationWarning
 import dev.rwilco.model.moment
 import dev.rwilco.model.nextFire
 import dev.rwilco.model.presetsByPopularity
+import dev.rwilco.model.typicalAccuracyM
 import dev.rwilco.model.toReminder
 import dev.rwilco.model.used
 import dev.rwilco.model.warnings
 import java.util.UUID
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -133,6 +135,13 @@ class HomeViewModel(
     settings: Flow<AppSettings?>,
     /** Which circles the phone is inside, as the place watch last saw it. */
     private val placeWatch: Flow<PlaceWatchState>,
+    /**
+     * What this phone's positions usually come back at, from the watch's own log — the number
+     * that decides whether a circle can be judged at all ([TriggerRowUi.underDoubt]). A flow
+     * because it moves as the phone does: a week of GPS in the street and a week of wifi
+     * indoors are two different phones as far as a fifty-metre circle is concerned.
+     */
+    private val fixAccuracy: Flow<Int?> = flowOf(null),
     val clock: Clock,
     /** Where the phone is now, for "al salir de aquí"; null when nothing can say. */
     private val hereFix: suspend () -> Fix? = { null },
@@ -327,14 +336,16 @@ class HomeViewModel(
         // startTick is a StateFlow, so the merge has a value from the first collection on.
         merge(startTick, minutePulse),
         // Which circles the phone is in, as the watch last saw it: the rule marks read it, and
-        // it changes on its own, which is what makes a mark change back.
-        placeWatch,
-    ) { reminders, current, tag, _, watch ->
+        // it changes on its own, which is what makes a mark change back — paired with how tight
+        // this phone's positions come, because `combine` takes five and these two are one
+        // question: what the watch knows about where you are.
+        combine(placeWatch, fixAccuracy) { watch, accuracy -> watch to accuracy },
+    ) { reminders, current, tag, _, (watch, accuracy) ->
         // The ticks only say WHEN to rebuild; the moment is read fresh. startTick is a
         // StateFlow, and on every resubscription — the app coming back after five seconds
         // away — it replays its last value, the instant the ViewModel was made, possibly hours
         // ago: Home was built for a morning that had passed until the next minute tick.
-        buildHomeState(reminders, current.defaultTime, clock.instant(), clock.zone, tag, current.dayStart, current.dayShape) { id, index ->
+        buildHomeState(reminders, current.defaultTime, clock.instant(), clock.zone, tag, current.dayStart, current.dayShape, accuracy) { id, index ->
             insideOf(reminders, watch, id, index)
         }
     }
@@ -539,7 +550,7 @@ class HomeViewModel(
             val now = clock.instant()
             val (place, fix) = when (offer) {
                 is SnoozePlace.Arrive -> offer.circle() to placeWatch.first().lastFix?.takeIf { it.speaksForHere(now) }
-                SnoozePlace.LeaveHere -> {
+                is SnoozePlace.LeaveHere -> {
                     val fix = hereFix() ?: run { events.send(HomeEvent.NoFix); return@launch }
                     hereCircle(fix, hereLabel) to fix
                 }
@@ -580,6 +591,7 @@ class HomeViewModel(
                 app.firing,
                 app.settings,
                 app.placeWatch.state,
+                app.placeLog.log.map { it.typicalAccuracyM() },
                 app.clock,
                 hereFix = { hereFix(app, app.placeWatch, app.clock.instant()) },
                 locationAllowed = { app.hasBackgroundLocation() },

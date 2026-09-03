@@ -1486,13 +1486,22 @@ because that is what its chip would show.
   the card at three in the morning. **The rehearsal is the one exemption** (`TestAlert.isTest`):
   somebody pressing "probar una alerta" is asking whether the noise works, and silence is the one
   answer that must never be given to that question.
-- **"Al salir de aquí" says how far "aquí" is** (0.79.0). The circle it draws is a fixed
-  `SNOOZE_HERE_RADIUS_M` (150 m) around the fix, and the offer said none of it: a person hears
-  "when I leave here" and pictures the doorstep, while the ring actually waits for the radius
-  *plus* the fix's own doubt — a good two hundred metres. Walking to the park next door is not
-  that, and the reminder that never came was the app keeping a promise nobody could read. The
-  offer carries the metres now (`snooze_leave_here`, from the constant, so the words cannot
-  drift from the circle).
+- **"Al salir de aquí" is as small as the fix can defend, and says how big it came out**
+  (0.79.0, 0.80.0). It used to draw a flat 150 m around the position and say none of it: a
+  person hears "when I leave here" and pictures the doorstep, while leaving a circle takes the
+  radius *plus* the fix's own doubt (`insideAfter`'s `true` branch) — a good two hundred metres
+  with an ordinary indoor fix. A reminder put off in a park next door to the house never came
+  back, and the app was keeping a promise nobody could read. `hereRadiusM` is the radius now:
+  **twice the fix's own accuracy, floored at `SNOOZE_HERE_MIN_RADIUS_M` (100 m)**, so under the
+  open sky at ±15 m "aquí" is a hundred metres and the walk home rings it, while indoors at
+  ±70 m it is a hundred and forty and nothing is claimed the fix cannot carry; the ceiling is
+  free, since nothing sloppier than `HERE_FIX_MAX_ACCURACY_M` may draw "aquí" at all. The floor
+  is the guard the flat radius used to be: a wifi position indoors can jump 180 m with the phone
+  on a table (it is in the owner's own watch log), and a circle smaller than that noise comes
+  back for standing still. The offer carries the metres it would draw right now
+  (`SnoozePlace.LeaveHere.radiusM`, from the watch's last position) — an estimate on purpose,
+  and the fresh fix the tap asks for only ever makes it tighter, which is the direction that
+  rings sooner.
 - **The safety net** (`core-model/SafetyNet.kt`) is the one thing the app does about a reminder
   that got away. **There are three ways one does** (`NetWord`), and one switch for all of them, because
   nobody knows in advance which it will be: it **rang and was never answered** (`LET_GO`), it
@@ -2054,6 +2063,12 @@ because that is what its chip would show.
   at least, or it says nothing about a phone it has barely watched) and, while the radius sits
   under that, says it in the error colour where the radius is chosen. Reported from a phone whose
   home was a 50 m circle and whose evening fixes were 50–72 m.
+  **And the card says it too** (0.80.0, `TriggerRowUi.underDoubt`). The editor's line reaches
+  the next place somebody writes and none of the ones written months ago — which are exactly
+  the reminders quietly not ringing. Home's rows carry the same verdict, in the error colour,
+  on the rule it is about: the number comes down the same way everything else on that screen
+  does (`HomeViewModel`'s `fixAccuracy`, the watch log's own flow, folded into the state combine
+  beside the place watch, since the two are one question about where the phone is).
   **The cheapest fix is the one already taken.** Before any radio is spent the provider's own
   last position is read — kept warm by whatever else on the phone asks for one, at no cost here —
   and when it answers the question this look was going to ask (`Fix.answersFor`: young next to
