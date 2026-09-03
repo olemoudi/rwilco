@@ -56,6 +56,8 @@ fun FullScreenMap(
     /** The crosshair the sheet's own map has; here too, since this is the view somebody pans away in (0.69.0). */
     onLocate: (() -> Unit)? = null,
     locating: Boolean = false,
+    /** What this phone's positions usually come back at; see [RadiusControl]. */
+    typicalAccuracyM: Int? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
     val spacing = Tokens.spacing
@@ -121,7 +123,7 @@ fun FullScreenMap(
                         color = scheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(spacing.sm))
-                    RadiusControl(radius = radiusM, onChange = onRadius)
+                    RadiusControl(radius = radiusM, onChange = onRadius, typicalAccuracyM = typicalAccuracyM)
                     Spacer(Modifier.height(spacing.md))
                     Button(
                         onClick = {

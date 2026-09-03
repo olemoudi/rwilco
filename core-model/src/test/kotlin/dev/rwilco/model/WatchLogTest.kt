@@ -173,4 +173,25 @@ class WatchLogTest {
         assertEquals(written, ReminderCodec.decodeWatchLog(ReminderCodec.encodeWatchLog(written)))
         assertEquals(WatchLog(), ReminderCodec.decodeWatchLog("not json"))
     }
+
+    @Test
+    fun `a circle smaller than what the phone can settle is one it will never see you arrive at`() {
+        // The rule this is about is insideAfter's `false` branch: arriving takes a fix at least
+        // as tight as the circle. A phone that comes back at ±70 m can never enter fifty metres.
+        fun accuracies(vararg values: Int): WatchLog {
+            var built = WatchLog()
+            for ((index, value) in values.withIndex()) {
+                built = built.noting(WatchNote(at = now.minusSeconds(index.toLong()), kind = NoteKind.FIX, accuracyM = value))
+            }
+            return built
+        }
+        val vague = accuracies(70, 65, 72, 53, 68, 80, 12, 60)
+        assertEquals(68, vague.typicalAccuracyM(), "the middle of them, not the one good one")
+        assertTrue(vague.radiusOutOfReach(50), "fifty metres is inside its own doubt")
+        assertFalse(vague.radiusOutOfReach(100), "a hundred is not")
+
+        // Said only once it has looked enough times to have an opinion.
+        assertNull(accuracies(70, 65, 72).typicalAccuracyM())
+        assertFalse(accuracies(70, 65, 72).radiusOutOfReach(50), "three looks is not a verdict about a phone")
+    }
 }

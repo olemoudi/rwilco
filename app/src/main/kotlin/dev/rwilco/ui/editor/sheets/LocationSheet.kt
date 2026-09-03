@@ -75,7 +75,10 @@ import dev.rwilco.ui.components.SheetScaffold
 import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
+import androidx.compose.runtime.produceState
 import dev.rwilco.RwilcoApplication
+import dev.rwilco.model.WatchLog
+import dev.rwilco.model.typicalAccuracyM
 import dev.rwilco.model.worthDrawing
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -144,6 +147,17 @@ fun LocationSheet(
             searching = false
             searched = true
         }
+    }
+
+    /**
+     * How tight this phone's own positions come back, from the watch's log — the one number
+     * that decides whether a circle this small can ever be entered ([WatchLog.radiusOutOfReach]).
+     * Null until the watch has looked enough times to have an opinion, and read once: it is a
+     * fact about the phone, not about this second.
+     */
+    val typicalAccuracy by produceState<Int?>(initialValue = null) {
+        val app = context.applicationContext as? RwilcoApplication ?: return@produceState
+        value = withContext(Dispatchers.IO) { app.placeLog.read().typicalAccuracyM() }
     }
 
     /** The place watch's last position, when it is recent enough to stand in for a fix. */
@@ -238,6 +252,7 @@ fun LocationSheet(
             here = here,
             radiusM = radius,
             locating = locating,
+            typicalAccuracyM = typicalAccuracy,
             onLocate = {
                 if (hasAnyLocationPermission(context)) {
                     locate()
@@ -456,16 +471,25 @@ fun LocationSheet(
                 )
             }
         }
-        RadiusControl(radius = radius, onChange = { radius = it })
+        RadiusControl(radius = radius, onChange = { radius = it }, typicalAccuracyM = typicalAccuracy)
         if (keepOffered) {
             KeepPlaceRow(keep = keep, onChange = { keep = it })
         }
     }
 }
 
-/** The radius, read in metres and dragged in fifty-metre ticks: the sheet's and the full map's. */
+/**
+ * The radius, read in metres and dragged in fifty-metre ticks: the sheet's and the full map's.
+ *
+ * [typicalAccuracyM] is what this phone's positions usually come back at, and the one thing this
+ * control could never say for itself: **a circle smaller than that doubt is one the watch will
+ * never see anybody arrive at** (`insideAfter`, the `false` branch — arriving takes a fix at
+ * least as tight as the circle). The rule is right and the hazard was invisible: the app offers
+ * fifty metres, the map draws a neat little circle, and the reminder simply never rings. Null
+ * while the watch has not looked enough times to have an opinion, and nothing is said then.
+ */
 @Composable
-internal fun RadiusControl(radius: Int, onChange: (Int) -> Unit) {
+internal fun RadiusControl(radius: Int, onChange: (Int) -> Unit, typicalAccuracyM: Int? = null) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.place_radius), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
@@ -498,6 +522,13 @@ internal fun RadiusControl(radius: Int, onChange: (Int) -> Unit) {
                     inactiveTickColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 ),
             )
+            if (typicalAccuracyM != null && typicalAccuracyM > radius) {
+                Text(
+                    text = stringResource(R.string.place_radius_under_accuracy, typicalAccuracyM),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
         }
 }
 

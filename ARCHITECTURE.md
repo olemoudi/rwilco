@@ -2035,6 +2035,18 @@ because that is what its chip would show.
   makes it safe to spend so little on: `insideAfter` refuses a fix sloppier than the circle on
   the way in and keeps the phone where it was on the way out, and `gapToLine` eats the doubt
   before any of it reaches a cadence, so a vague fix asks to be looked at sooner, never later.
+  **And what that costs is now said out loud** (0.77.0, `WatchLog.typicalAccuracyM` /
+  `radiusOutOfReach`, pure and tested; the line under the radius slider). Arriving takes a fix at
+  least as tight as the circle, so on a phone whose positions come back at ±70 m — indoors, on
+  wifi, which is where somebody's home circle is judged — a **fifty-metre circle can never be
+  entered at all**. The rule is right (a fix vaguer than the circle cannot tell inside from
+  outside, and guessing is how a reminder rings twenty minutes after you left) and no rule can
+  mend it: the information is not in the fix. What was wrong is that nothing said so — the app
+  offers fifty metres, the map draws a neat little circle, and the reminder simply never rings.
+  So `LocationSheet` reads the middle of the accuracies the watch's own log carries (eight looks
+  at least, or it says nothing about a phone it has barely watched) and, while the radius sits
+  under that, says it in the error colour where the radius is chosen. Reported from a phone whose
+  home was a 50 m circle and whose evening fixes were 50–72 m.
   **The cheapest fix is the one already taken.** Before any radio is spent the provider's own
   last position is read — kept warm by whatever else on the phone asks for one, at no cost here —
   and when it answers the question this look was going to ask (`Fix.answersFor`: young next to

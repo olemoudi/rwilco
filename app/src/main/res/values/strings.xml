@@ -339,6 +339,9 @@
     <string name="place_no_fix">Could not get a location. Check location is on and allowed.</string>
     <string name="place_radius">Radius</string>
     <string name="place_metres">%1$d m</string>
+    <!-- Under the radius slider, when the circle is smaller than the doubt this phone's own
+         positions come back with: arriving takes a fix at least as tight as the circle. -->
+    <string name="place_radius_under_accuracy">Your phone usually places you to within ±%1$d m. A circle smaller than that may never see you arrive.</string>
     <string name="place_map_hint">Long-press the map to move the pin. Map © OpenStreetMap contributors.</string>
     <string name="place_expand">Open the map full screen</string>
     <string name="place_collapse">Back to the form</string>
@@ -1229,6 +1232,9 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_77_0">
+        <item>The place sheet now says when a circle is smaller than what your phone can actually measure. Arriving somewhere takes a position at least as tight as the circle, so on a phone whose fixes come back at ±70 m — indoors, on wifi, which is exactly where a home circle is judged — a fifty-metre circle never sees you arrive and the reminder never rings. Under the radius, in red, with the number your own phone has been managing lately.</item>
+    </string-array>
     <string-array name="whats_new_0_76_0">
         <item>The blue dot is back on the map, and on every opening of the place sheet — not only when adding a new place. It was a side effect of the pin: opening a place you had already saved drew the circle and nothing to measure it against, which is the one screen where «is this circle where I actually am?» is the whole question. It also draws the position the place watch already has while the phone is asked again, so there is a dot even where the system\'s own providers answer slowly.</item>
     </string-array>

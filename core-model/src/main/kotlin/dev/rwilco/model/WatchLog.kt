@@ -144,6 +144,36 @@ data class WatchLog(
 /** How many entries the log keeps: a couple of days of a quiet watch, half of one of a busy one. */
 const val WATCH_LOG_KEEP = 200
 
+/** How many of the last looks "how tight is this phone" is drawn from; fewer and it has not said enough. */
+const val ACCURACY_SAMPLE = 8
+
+/**
+ * The doubt this phone actually comes back with: the middle of the accuracies its last looks
+ * carried, or null until it has taken enough of them to have an opinion.
+ *
+ * The middle rather than the best or the worst, because what it is asked for is what happens
+ * *usually*: one 12-metre fix among a run of 70-metre ones says the sky opened once.
+ */
+fun WatchLog.typicalAccuracyM(sample: Int = ACCURACY_SAMPLE): Int? {
+    val recent = notes.mapNotNull { it.accuracyM }.take(sample)
+    if (recent.size < sample) return null
+    return recent.sorted()[recent.size / 2]
+}
+
+/**
+ * Whether a circle of [radiusM] is smaller than what this phone can settle — the circle the
+ * watch will keep saying you are outside of however close you stand.
+ *
+ * It is [insideAfter]'s `false` branch said the other way round: **arriving takes a fix at
+ * least as tight as the circle**, so on a phone whose positions come back at ±70 m a
+ * fifty-metre circle can never be entered at all. That rule is right — a fix vaguer than the
+ * circle cannot tell inside from outside, and guessing is how a reminder rings twenty minutes
+ * after you left — but it is a hazard nobody could see: the app offers fifty metres, the map
+ * draws a neat little circle, and the reminder simply never goes off. So the sheet says so
+ * while the radius is being chosen.
+ */
+fun WatchLog.radiusOutOfReach(radiusM: Int): Boolean = (typicalAccuracyM() ?: return false) > radiusM
+
 /** The newest line, and the oldest ones dropped. Newest first, which is how it is read. */
 fun WatchLog.noting(note: WatchNote): WatchLog = copy(notes = (listOf(note) + notes).take(WATCH_LOG_KEEP))
 

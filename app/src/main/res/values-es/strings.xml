@@ -335,6 +335,7 @@
     <string name="place_no_fix">No se pudo obtener la ubicación. Comprueba que está activada y permitida.</string>
     <string name="place_radius">Radio</string>
     <string name="place_metres">%1$d m</string>
+    <string name="place_radius_under_accuracy">Tu móvil suele situarte con ±%1$d m. Un círculo más pequeño que eso puede no verte llegar nunca.</string>
     <string name="place_map_hint">Mantén pulsado el mapa para mover el pin. Mapa © colaboradores de OpenStreetMap.</string>
     <string name="place_expand">Abrir el mapa a pantalla completa</string>
     <string name="place_collapse">Volver a la hoja</string>
@@ -1221,6 +1222,9 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_77_0">
+        <item>La hoja del sitio avisa ahora cuando el círculo es más pequeño que lo que tu móvil sabe medir. Para dar por llegada una posición hace falta que sea al menos tan fina como el círculo, así que en un móvil cuyas posiciones vuelven con ±70 m — dentro de casa, por wifi, que es justo donde se juzga el círculo de casa — uno de cincuenta metros no te ve llegar nunca y el recordatorio no suena. Va debajo del radio, en rojo, con el número que tu propio móvil viene dando estos días.</item>
+    </string-array>
     <string-array name="whats_new_0_76_0">
         <item>Vuelve el punto azul del mapa, y ahora sale cada vez que se abre la hoja del sitio — no sólo al añadir uno nuevo. Era un efecto secundario del pin: abrir un sitio ya guardado dibujaba el círculo y nada con lo que medirlo, que es justo la pantalla donde la única pregunta es «¿este círculo está donde estoy de verdad?». Además pinta la posición que la vigilancia de sitios ya tiene mientras se vuelve a preguntar al móvil, así que hay punto incluso donde los proveedores del sistema tardan en contestar.</item>
     </string-array>
