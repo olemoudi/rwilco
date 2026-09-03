@@ -645,7 +645,9 @@
     <string name="snooze_next_week">Next week</string>
     <string name="snooze_tomorrow_morning">Tomorrow morning</string>
     <string name="snooze_arrive_at">When I get to %1$s</string>
-    <string name="snooze_leave_here">When I leave here</string>
+    <!-- The circle "here" means is a fixed size around where you stand; saying so is the
+         difference between "the doorstep" and the hundred and fifty metres it really is. -->
+    <string name="snooze_leave_here">When I leave here (%1$d m)</string>
     <string name="snooze_here_label">here</string>
     <string name="snooze_no_fix">Couldn\'t tell where you are just now; try again in a moment</string>
     <string name="snooze_until_arrive">you get to %1$s</string>
@@ -1232,6 +1234,10 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_79_0">
+        <item>«When I leave here» now says how far «here» reaches. It draws a fixed 150-metre circle around where you are standing, and leaving it takes that plus your phone\'s own doubt — a good two hundred metres of walking. Nothing said so, so a reminder put off in a park next door never rang, which is the app keeping a promise nobody could read.</item>
+        <item>The diagnostics report says how far the phone is from the middle of every circle it watches, beside which side of the line it thinks you are on. Those two numbers together are what explains a place reminder that did not ring.</item>
+    </string-array>
     <string-array name="whats_new_0_78_0">
         <item>The diagnostics report answers the questions the last one could not. Every circle carries a short tag, so a rule, a watch line and a place\'s own state can be told to be about the same place or different ones; a new section lists the circles being watched, which side of each one the app thinks you are on and whether it can be judged at all; a dropped reminder says which condition dropped it instead of «conditions do not hold»; and a reminder the log talks about is never one of the ones cut from the list.</item>
     </string-array>

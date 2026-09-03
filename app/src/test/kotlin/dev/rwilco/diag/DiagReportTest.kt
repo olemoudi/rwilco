@@ -5,7 +5,9 @@ import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Condition
 import dev.rwilco.model.ACCURACY_SAMPLE
 import dev.rwilco.model.DiagNote
+import dev.rwilco.model.Fix
 import dev.rwilco.model.GeofenceIds
+import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.NoteKind
 import dev.rwilco.model.WatchNote
 import dev.rwilco.model.Recurrence
@@ -126,6 +128,22 @@ class DiagReportTest {
         val vague = WatchNote(at = now, kind = NoteKind.FIX, lat = 40.4169, lng = -3.7035, radiusM = 50, accuracyM = 70)
         val report = diagnostics(reminders = listOf(small)).copy(watch = List(ACCURACY_SAMPLE) { vague }).report()
         assertTrue(report.contains("UNDER FIX DOUBT (~70m)"), "said where the circle is listed")
+    }
+
+    @Test
+    fun `a place line says how far the phone is from the middle of the circle`() {
+        // The hysteresis made visible: leaving takes the radius *plus* the fix's own doubt, so
+        // a watch that still holds the phone inside a circle it is 247 m from the centre of is
+        // the app being right and unreadable. One line now says both.
+        val watching = reminder.copy(
+            rules = listOf(TriggerRule(Trigger.Location(40.4169, -3.7035, 150, Presence.OUTSIDE, "aquí", onCrossing = true))),
+            recurrence = Recurrence.None,
+            lastFiredAt = null,
+        )
+        // A fix a few streets away, on the watch's own memory.
+        val away = Fix(40.4191, -3.7035, 30.0, now)
+        val report = diagnostics(reminders = listOf(watching)).copy(watchState = PlaceWatchState(lastFix = away)).report()
+        assertTrue(report.contains(" d=2"), "the distance from the middle, in metres: " + report.lines().first { it.startsWith("#") && it.contains("150m") })
     }
 
     @Test

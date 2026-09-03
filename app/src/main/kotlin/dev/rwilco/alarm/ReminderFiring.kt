@@ -610,7 +610,11 @@ class ReminderFiring(
             }
             val now = clock.instant()
             repository.snooze(id, null, place)
-            Diag.note(TAG_DIAG, "r=${short(id)} snoozed to a place (${place.snoozeDetail().substringBefore(':')}, side ${if (fix == null) "unknown" else "known"})")
+            Diag.note(
+            TAG_DIAG,
+            "r=${short(id)} snoozed to a place #${GeofenceIds.tag(place.lat, place.lng, place.radiusM)} ${place.radiusM}m " +
+                "(${place.snoozeDetail().substringBefore(':')}, side ${if (fix == null) "unknown" else "known"})",
+        )
             repository.record(id, FiringKind.SNOOZED, now, detail = place.snoozeDetail())
             repeater.cancel(id)
             AlertNotifications.cancel(context, id)

@@ -15,6 +15,7 @@ import dev.rwilco.model.RepeatUnit
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.PlaceWatchState
+import dev.rwilco.model.distanceMeters
 import dev.rwilco.model.WatchLog
 import dev.rwilco.model.WatchNote
 import dev.rwilco.model.typicalAccuracyM
@@ -225,8 +226,15 @@ fun Diagnostics.report(): String = buildString {
                 group.any { (_, gated) -> gated.opensAt == null } -> "open"
                 else -> "shut until ${stamp(opens.min())}"
             }
+            // **How far the phone is from the middle of it, by the watch's own last fix.** With
+            // the side beside it this is the hysteresis made visible: `150m in=y d=247m` says
+            // in one line that the watch still holds the phone inside a circle it is well
+            // outside the middle of, which is what leaving takes (radius + the fix's doubt) and
+            // what nothing in the report could be asked before.
+            val away = watchState.lastFix?.let { fix -> distanceMeters(fix.lat, fix.lng, place.lat, place.lng) }
             appendLine(
                 "#$tag ${place.radiusM}m x${group.size} in=$side" +
+                    (away?.let { " d=${it.toInt()}m" } ?: " d=-") +
                     (lastSeen?.let { " seen=${it.at.atZone(zone).format(short)}" } ?: " seen=-") +
                     " gate=$gate" +
                     " r=" + group.map { (reminder, _) -> reminder.id.take(8) }.distinct().joinToString(",") +

@@ -1486,6 +1486,13 @@ because that is what its chip would show.
   the card at three in the morning. **The rehearsal is the one exemption** (`TestAlert.isTest`):
   somebody pressing "probar una alerta" is asking whether the noise works, and silence is the one
   answer that must never be given to that question.
+- **"Al salir de aquí" says how far "aquí" is** (0.79.0). The circle it draws is a fixed
+  `SNOOZE_HERE_RADIUS_M` (150 m) around the fix, and the offer said none of it: a person hears
+  "when I leave here" and pictures the doorstep, while the ring actually waits for the radius
+  *plus* the fix's own doubt — a good two hundred metres. Walking to the park next door is not
+  that, and the reminder that never came was the app keeping a promise nobody could read. The
+  offer carries the metres now (`snooze_leave_here`, from the constant, so the words cannot
+  drift from the circle).
 - **The safety net** (`core-model/SafetyNet.kt`) is the one thing the app does about a reminder
   that got away. **There are three ways one does** (`NetWord`), and one switch for all of them, because
   nobody knows in advance which it will be: it **rang and was never answered** (`LET_GO`), it
@@ -2307,6 +2314,13 @@ because that is what its chip would show.
   words. And **a reminder the log talks about is never one of the ones left out** of the list —
   the cut is the thirty most recently edited, which is the right cut for a phone at rest and the
   wrong one for a bug: the reminder that was dropped had not been touched in weeks.
+  **And a place line says how far the phone is from the middle of the circle** (0.79.0,
+  `d=247m` beside `150m in=y`), which is the hysteresis made readable: leaving takes the radius
+  *plus* the fix's own doubt (`insideAfter`'s `true` branch), so a watch that still holds a
+  phone inside a circle it is well outside the middle of is the app being right and
+  unreadable — the second half of the same afternoon, where "al salir de aquí" set in a park
+  next door never rang because a hundred and fifty metres plus a fifty-metre doubt is two
+  hundred metres of walking, and the park is not that far from the house.
 - `SystemEventsReceiver` re-arms after a reboot, an install over ourselves, the clock moving — a
   wall-clock promise is not an instant until a zone says so — and the exact-alarm grant changing
   hands (`ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED`): on Android 12 and 13 taking

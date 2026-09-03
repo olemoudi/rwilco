@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import dev.rwilco.R
 import dev.rwilco.model.Presence
+import dev.rwilco.model.SNOOZE_HERE_RADIUS_M
 import dev.rwilco.model.Snooze
 import dev.rwilco.model.SnoozePlace
 import dev.rwilco.model.Trigger
@@ -30,7 +31,12 @@ fun snoozeLabel(snooze: Snooze, customMinutes: Int): String = snoozeLabel(rememb
 /** "Al llegar a Casa" · "Al salir de aquí": the two place offers, as buttons say them. */
 fun placeOfferLabel(words: Words, offer: SnoozePlace): String = when (offer) {
     is SnoozePlace.Arrive -> words.get(R.string.snooze_arrive_at, offer.place.label)
-    SnoozePlace.LeaveHere -> words.get(R.string.snooze_leave_here)
+    // **With the distance in it** (0.79.0): "al salir de aquí" is a circle of a fixed size
+    // drawn around where you stand ([SNOOZE_HERE_RADIUS_M]), and nobody could see it. A person
+    // hears "when I leave here" and pictures the doorstep; walking to the park next door does
+    // not cross a hundred and fifty metres, and the ring that never came was the app keeping a
+    // promise nobody could read.
+    SnoozePlace.LeaveHere -> words.get(R.string.snooze_leave_here, SNOOZE_HERE_RADIUS_M)
 }
 
 @Composable
