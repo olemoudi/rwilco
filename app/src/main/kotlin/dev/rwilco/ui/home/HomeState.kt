@@ -93,6 +93,18 @@ fun homeCardIndex(state: HomeUiState, id: String, strip: Boolean, pinned: Boolea
 }
 
 /**
+ * The flipped set with [id] shown *open*, whatever the mode is — what a save asks for, so the
+ * words are there to read back and the pencil is one tap away.
+ *
+ * The flipped set holds the exceptions to the mode ([dev.rwilco.ui.home.HomeViewModel.flippedCards]),
+ * so "open" is which side of it the card belongs on: an exception while the list is folded away,
+ * and no exception while it is not. Pure, because it is the one bit of that state with a rule
+ * in it rather than a toggle.
+ */
+fun shownOpen(flipped: Set<String>, id: String, compact: Boolean): Set<String> =
+    if (compact) flipped + id else flipped - id
+
+/**
  * The one card that glows. [snoozed] when the moment shown is a "remind me later" rather than
  * the reminder's own: without it a postponed reminder comes back as "next up" with a countdown
  * and no hint that it is there because somebody pushed it away.

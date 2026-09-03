@@ -60,8 +60,12 @@ sealed interface EditorEvent {
     /**
      * [reminderId] is the row that was written, so Home can go and find it; null for a preset,
      * which has no card to go to.
+     *
+     * [created] is whether this save is the one that *wrote* it. A new reminder has no place on
+     * the list somebody was reading from, so Home goes to it and opens the card; an edit keeps
+     * the place it had. See Home's just-saved effect.
      */
-    data class Saved(val reminderId: String?, val presetId: String? = null) : EditorEvent
+    data class Saved(val reminderId: String?, val presetId: String? = null, val created: Boolean = false) : EditorEvent
     data class Deleted(val reminder: Reminder) : EditorEvent
     /** A preset left the list; the screen closes and the snackbar offers it back. */
     /** [index] is where it sat, so an undo puts it back there rather than at the end. */
@@ -435,7 +439,7 @@ class EditorViewModel(
             )
             repository.save(reminder)
             rearm()
-            events.send(EditorEvent.Saved(reminder.id))
+            events.send(EditorEvent.Saved(reminder.id, created = before == null))
         }
     }
 

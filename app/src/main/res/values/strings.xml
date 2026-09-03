@@ -355,6 +355,9 @@
     <string name="alert_done">Done</string>
     <string name="alert_silence">Silence</string>
     <string name="alert_view">View</string>
+    <!-- One strip's "View" among several on the alert screen: named after its own reminder, the
+         way Home's pencils are, because "View, button" said three times says nothing. -->
+    <string name="alert_view_one">View «%1$s»</string>
     <string name="recur_after_rang_note">Counted from when it rings.</string>
     <string name="editor_preset_saved">Preset saved</string>
     <string name="home_pin_action">Pin</string>
@@ -1218,6 +1221,10 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_73_0">
+        <item>«Ver» on one of several reminders sharing the alert screen now gives that reminder the whole screen — its words at full size, every snooze, and «Hecho» where your thumb is — instead of handing you the edit form. Deal with it and you are back among the ones that are left, one fewer; the arrow at the top comes back without answering anything.</item>
+        <item>A reminder you have just written is landed on: Home goes to wherever the new card ended up and opens that one card, so you can read back what you wrote and reach the pencil if something is wrong. Editing an existing one still leaves the list exactly where you were reading.</item>
+    </string-array>
     <string-array name="whats_new_0_72_0">
         <item>A place reminder that rings «on arrival» no longer loses its arrival to a vague position. The app needs a position at least as tight as the circle to say you have arrived, but it used to settle for a much vaguer one to decide you were already there — and «already there» is the answer that keeps a reminder quiet until you leave and come back. Now a circle a position cannot settle is left alone until one can.</item>
     </string-array>

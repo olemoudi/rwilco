@@ -101,6 +101,17 @@ import kotlinx.coroutines.delay
 /** So a test can scroll the list itself; a lazy list does not compose what is off screen. */
 const val HOME_LIST_TAG = "homeList"
 
+/**
+ * A reminder the editor has just written, on its way to Home's list.
+ *
+ * [created] is the difference between the two saves. A **new** reminder has no place on the list
+ * somebody was reading from — it did not exist a moment ago — so the list goes to it whether or
+ * not it happens to be on screen, and the card is opened out: the words are there to read back
+ * and the pencil is one tap away. An **edit** keeps the place it had, and the list moves only
+ * when the card is no longer on it (see the effect below).
+ */
+data class JustSaved(val id: String, val created: Boolean)
+
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
@@ -108,7 +119,7 @@ fun HomeScreen(
     requestedPreset: String? = null,
     onPresetConsumed: () -> Unit = {},
     /** A reminder a save has just written, to be gone to and marked; see the effect below. */
-    justSaved: String? = null,
+    justSaved: JustSaved? = null,
     onJustSavedShown: () -> Unit = {},
     onNew: () -> Unit,
     onNewFromPreset: (String) -> Unit,
@@ -438,20 +449,31 @@ fun HomeScreen(
         // ocurra" — and then keeping the scroll means looking at the place it used to be. So the
         // list goes to it, and it is marked for a moment so the eye knows which of them moved.
         //
-        // Only when it is not already on screen: a list that jumps when nothing has moved is
-        // worse than one that does not move at all. Re-run on the state as well as on the id,
-        // because the save reaches the screen a beat after it reaches the database, and until it
-        // does there is no row to go to.
+        // For an *edit*, only when it is not already on screen: a list that jumps when nothing
+        // has moved is worse than one that does not move at all. A reminder that has just been
+        // **written** is the other case and gets the other answer ([JustSaved.created]): there is
+        // no place to keep, so the list goes to wherever the new card landed and opens it —
+        // "guardar" ending on a screen that looks unchanged is the app saying nothing about the
+        // one thing that just happened. Re-run on the state as well as on the id, because the
+        // save reaches the screen a beat after it reaches the database, and until it does there
+        // is no row to go to.
         var marked by remember { mutableStateOf<String?>(null) }
         // Asked once and read twice — by the list that draws it and by the arithmetic that
         // counts past it — because the two disagreeing is a scroll to the wrong card.
         val stripShown = !search.open && stripShows(readiness, dismissedProblems)
         val listState = rememberLazyListState()
         LaunchedEffect(justSaved, state.sections, state.hero) {
-            val id = justSaved ?: return@LaunchedEffect
+            val saved = justSaved ?: return@LaunchedEffect
+            val id = saved.id
             val index = homeCardIndex(state, id, strip = stripShown, pinned = presets.isNotEmpty(), undoRow = pendingDelete != null)
                 ?: return@LaunchedEffect
-            if (listState.layoutInfo.visibleItemsInfo.none { it.key == id }) {
+            if (saved.created) {
+                viewModel.expandCard(id)
+                listState.animateScrollToItem(index)
+            } else if (listState.layoutInfo.visibleItemsInfo.none { it.key == id || it.key == HERO_KEY_PREFIX + id }) {
+                // The hero's row is keyed by its slot and not by the reminder alone, so a card
+                // asked for by id was never found up there — and an edit to the one that fires
+                // next threw the list to the top to "go to" a card already sitting on it.
                 listState.animateScrollToItem(index)
             }
             marked = id
@@ -575,7 +597,7 @@ fun HomeScreen(
                     // Keyed by the reminder and not by the slot: a swipe acts on release, and
                     // a hero that changed under a held thumb was a different reminder marked done.
                     val heroId = hero.card.id
-                    item(key = "hero-$heroId") {
+                    item(key = HERO_KEY_PREFIX + heroId) {
                         // Swipeable like every other card: it is a reminder, and the one that
                         // matters most is the last one that should be impossible to deal with.
                         SwipeableCard(
@@ -834,6 +856,9 @@ private fun TagFilter.label(): String = when (this) {
 
 /** How long a just-saved card stays lit: long enough to be caught, short enough not to be worn. */
 private const val MARK_MS = 1_400L
+
+/** The hero's row is keyed by its slot, not by the reminder alone; read by the just-saved effect. */
+private const val HERO_KEY_PREFIX = "hero-"
 
 /** "Nada para hoy": one quiet line where the day's section would be, so the list has a verdict. */
 @Composable

@@ -334,4 +334,15 @@ class HomeStateTest {
         assertEquals(3, homeCardIndex(withHero, "a", strip = false, pinned = false))
     }
 
+    @Test
+    fun `a card shown open is on whichever side of the flipped set the mode is not`() {
+        // What a save asks for: the card it just wrote, open, whatever the list is doing.
+        assertEquals(setOf("new"), shownOpen(emptySet(), "new", compact = true), "folded list: an exception")
+        assertEquals(emptySet<String>(), shownOpen(emptySet(), "new", compact = false), "open list: nothing to say")
+        // And it is not a toggle: asking twice, or asking about a card already on the wrong
+        // side of the mode, still leaves it open.
+        assertEquals(setOf("new"), shownOpen(setOf("new"), "new", compact = true))
+        assertEquals(setOf("other"), shownOpen(setOf("new", "other"), "new", compact = false), "a card folded by hand opens, and nobody else moves")
+    }
+
 }

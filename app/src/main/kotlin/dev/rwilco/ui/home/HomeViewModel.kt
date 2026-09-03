@@ -198,6 +198,14 @@ class HomeViewModel(
         flipped.value = if (id in flipped.value) flipped.value - id else flipped.value + id
     }
 
+    /**
+     * One card open, whatever the mode: what a reminder just written asks for, so its words can
+     * be read back and the pencil is one tap away. See [shownOpen].
+     */
+    fun expandCard(id: String) {
+        flipped.value = shownOpen(flipped.value, id, compactHome.value)
+    }
+
     /** How long the custom snooze is, for the menu's offers to read the way the alert's do. */
     val snoozeCustomMinutes: StateFlow<Int> = settings
         .filterNotNull()

@@ -21,10 +21,12 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -99,6 +101,11 @@ fun AlertScreen(
      * taking over. The guard keeps its hold and skips its countdown; see [rememberPressGuard].
      */
     openedOnPurpose: Boolean = false,
+    /**
+     * The way back to the reminders this one was taken out of, or null when there is nowhere to
+     * go back to. Set only for a strip opened out of the stack ([AlertStackScreen]'s "Ver").
+     */
+    onBack: (() -> Unit)? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
     val spacing = Tokens.spacing
@@ -116,6 +123,16 @@ fun AlertScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize().padding(spacing.screen)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // **The way back to the others.** A strip opened out of the stack is a *look*
+                // at one reminder, not an answer to it, so getting out of it again costs
+                // nothing: a plain tap, like the back gesture that does the same thing. It is
+                // up here, away from the buttons at the bottom that do mean something.
+                if (onBack != null) {
+                    IconButton(onClick = { haptics.perform(HapticFeedbackType.ContextClick); onBack() }) {
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.common_back))
+                    }
+                    Spacer(Modifier.width(spacing.xs))
+                }
                 Text(
                     text = stringResource(if (preview) R.string.alert_preview_label else R.string.app_name).uppercase(locale),
                     style = MaterialTheme.typography.labelMedium.copy(letterSpacing = Tracking.eyebrow, fontWeight = FontWeight.SemiBold),

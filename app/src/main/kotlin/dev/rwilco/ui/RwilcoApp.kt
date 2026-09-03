@@ -47,6 +47,7 @@ import dev.rwilco.ui.editor.EditorScreen
 import dev.rwilco.ui.editor.EditorViewModel
 import dev.rwilco.ui.home.HomeScreen
 import dev.rwilco.ui.home.HomeViewModel
+import dev.rwilco.ui.home.JustSaved
 import dev.rwilco.ui.settings.BackupScreen
 import dev.rwilco.ui.settings.BackupViewModel
 import dev.rwilco.ui.settings.DiagnosticsScreen
@@ -79,7 +80,7 @@ fun RwilcoApp(
     // rather than navigated to, and the stack is popped back to Home if the app was elsewhere.
     var requestedPreset by remember { mutableStateOf<String?>(null) }
     /** The reminder a save just wrote, until Home has taken somebody to it. */
-    var justSaved by remember { mutableStateOf<String?>(null) }
+    var justSaved by remember { mutableStateOf<JustSaved?>(null) }
     LaunchedEffect(requestedDestination) {
         val reminderId = MainActivity.reminderIdIn(requestedDestination)
         val sharedText = Destinations.sharedTextIn(requestedDestination)
@@ -173,7 +174,7 @@ fun RwilcoApp(
                         onClose = { navController.popBackStack() },
                         // Held here rather than in either screen's ViewModel: the editor's dies
                         // with it, and Home's is a different scope that the editor cannot reach.
-                        onSaved = { id -> justSaved = id },
+                        onSaved = { id, created -> justSaved = JustSaved(id, created) },
                         onDeleted = { reminder ->
                             // The editor's scope dies with the screen; the undo outlives it.
                             snackbar.show(deletedMessage, undoLabel) {

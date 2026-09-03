@@ -2,12 +2,18 @@ package dev.rwilco.ui
 
 import android.app.LocaleManager
 import android.os.LocaleList
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.GrantPermissionRule
@@ -19,6 +25,7 @@ import dev.rwilco.model.Presence
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
+import dev.rwilco.ui.editor.EDITOR_TEXT_TAG
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
@@ -64,6 +71,9 @@ class HomeCompactTest {
 
     /** The place's own name: on an open card and on no folded one. */
     private val place = "El portal"
+
+    /** Written during the test, so it is the one card that has just been saved. */
+    private val fresh = "Comprar pilas para el mando"
     private val crowded = "Entregar los papeles de la matrícula"
 
     private fun s(resId: Int): String = rule.activity.getString(resId)
@@ -141,5 +151,33 @@ class HomeCompactTest {
         rule.onNodeWithContentDescription(s(R.string.home_compact_off)).performClick()
         waitFor(ruleWords)
         rule.waitUntil(10_000) { runBlocking { !app.settingsStore.settings.first().compactHome } }
+    }
+
+    @Test
+    fun aReminderJustWrittenIsLandedOnAndShownOpen() {
+        // "Guardar" used to end on a screen that looked exactly as it had before: with the list
+        // folded away the new reminder was one line among the others, wherever its section
+        // happened to be. Home goes to it now and opens that one card — the words to read back,
+        // and the pencil there to press if something is wrong.
+        waitFor(words)
+        rule.onNodeWithContentDescription(s(R.string.home_compact_on)).performClick()
+        waitGone(place)
+
+        // With nothing kept as a preset, "Nuevo" goes straight to a blank form.
+        rule.onNodeWithText(s(R.string.home_new), useUnmergedTree = true).performClick()
+        waitFor(s(R.string.editor_title_new))
+        rule.onNodeWithText(s(R.string.editor_write), useUnmergedTree = true).performClick()
+        rule.waitUntil(10_000) { rule.onAllNodesWithTag(EDITOR_TEXT_TAG).fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithTag(EDITOR_TEXT_TAG).performTextInput(fresh)
+        rule.onNodeWithText(s(R.string.common_save), useUnmergedTree = true).performClick()
+
+        // On Home, at the new card: open, which is what having a pencil means.
+        waitFor(fresh)
+        rule.waitUntil(10_000) {
+            rule.onAllNodes(hasContentDescription(fresh, substring = true) and hasClickAction()).fetchSemanticsNodes().isNotEmpty()
+        }
+        shot("home-new-card-open")
+        // And nothing else was opened with it: the fold is still the answer for the rest.
+        rule.onAllNodesWithText(place).assertCountEquals(0)
     }
 }

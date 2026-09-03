@@ -2,6 +2,7 @@ package dev.rwilco.ui.alert
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,7 +23,6 @@ import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
-import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Snooze
 import androidx.compose.material3.Button
@@ -44,6 +44,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -92,6 +95,12 @@ fun AlertStackScreen(
     items: List<AlertItem>,
     onDone: (String) -> Unit,
     onSnooze: (String, Snooze) -> Unit,
+    /**
+     * "Ver" on a strip: this one reminder given the whole screen, so it can be dealt with the
+     * way a single alert is — every snooze, the place answers, the words at full size. Not the
+     * form: answering the alarm is what this screen is for, and the form is one more tap from
+     * there. See [AlertScreen]'s own "Ver", and its way back here.
+     */
     onView: (String) -> Unit,
     /** The two offers a strip has room for — the notification's own — and the custom one's length. */
     snoozes: List<Snooze> = AppSettings().notificationSnoozeOffers,
@@ -262,8 +271,12 @@ private fun Strip(
 ) {
     val scheme = MaterialTheme.colorScheme
     val spacing = Tokens.spacing
+    val haptics = Tokens.haptics
     val content = item.content
     val viewLabel = stringResource(R.string.alert_view)
+    // Named after its own reminder, the way Home's pencils are: three strips are three "Ver"s,
+    // and a screen reader hearing the verb alone cannot tell which reminder it would open.
+    val viewThis = stringResource(R.string.alert_view_one, content.text)
     val snoozeVerb = stringResource(R.string.alert_snooze)
     val snoozedWord = stringResource(R.string.alert_snoozed)
     val doneLabel = stringResource(R.string.alert_done)
@@ -313,13 +326,25 @@ private fun Strip(
             // the 0.48.1 bug on the screen that never got the fix. The offers flow now and
             // wrap above "Hecho" when they do not fit beside it, and every pill keeps one line.
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                // **"Ver" is a tap, because it answers nothing** (0.73.0). It used to be a hold
+                // like the answers beside it — and it used to hand somebody the edit form, which
+                // is why: leaving the alarm for a form is not something to do by accident. What
+                // it does now is give this reminder the screen, which can be taken back with the
+                // arrow up there, so it costs what unfolding the offers costs: nothing. It still
+                // sleeps through the countdown with the rest of the strip, because the screen
+                // being read at all is what that second is for.
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .heightIn(min = Tokens.sizes.touch)
                         .clip(MaterialTheme.shapes.medium)
-                        .guarded(guard, GuardedAction(Icons.AutoMirrored.Outlined.OpenInNew, holding = viewLabel), onConfirmed = { onView(item.id) })
-                        .padding(horizontal = spacing.md),
+                        .asleepUntilArmed(guard)
+                        .clickable(enabled = guard.armed, role = Role.Button) {
+                            haptics.perform(HapticFeedbackType.ContextClick)
+                            onView(item.id)
+                        }
+                        .padding(horizontal = spacing.md)
+                        .semantics(mergeDescendants = true) { contentDescription = viewThis },
                 ) {
                     Text(text = viewLabel, style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant)
                 }

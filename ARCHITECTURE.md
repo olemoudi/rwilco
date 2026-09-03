@@ -946,7 +946,17 @@ because that is what its chip would show.
   reach); Home scrolls to it **only when it is not already on screen**, because a list that
   jumps when nothing has moved is worse than one that does not move, and marks it for
   [MARK_MS] — a step brighter, not amber, since "the one you were editing" is not "what fires
-  next". `homeCardIndex` is a **mirror of the order the LazyColumn is built in** — a column only
+  next". **A reminder that has just been *written* gets the other answer** (0.73.0,
+  `EditorEvent.Saved.created` → `JustSaved`): there is no place on the list to keep, because a
+  moment ago there was no card, so the list goes to wherever it landed whether or not it happens
+  to be on screen, and that one card is opened out (`HomeViewModel.expandCard`, `shownOpen`,
+  pure) — the words to read back and the pencil one tap away. "Guardar" ending on a screen that
+  looks exactly as it did is the app saying nothing about the one thing that just happened, and
+  with the list folded away the new reminder was one more line among the others. An **edit**
+  keeps both the place and the fold: `HomeScrollTest` pins that half, `HomeCompactTest` the new
+  one. The visibility test asks after the hero's key as well as the reminder's own
+  (`HERO_KEY_PREFIX`), since the hero's row is keyed by its slot — without it an edit to what
+  fires next threw the list to the top to "go to" a card already sitting on it. `homeCardIndex` is a **mirror of the order the LazyColumn is built in** — a column only
   knows the keys it has composed, and scrolling wants an index — so it is pure and pinned by a
   test rather than counted out at the call site where nothing would notice it drifting. The hero
   counts as a row: it is lifted out of its *section*, not out of the column, and a list scrolled
@@ -1776,7 +1786,19 @@ because that is what its chip would show.
   then read as "never rang"); the second arrives through `onNewIntent` and joins. What the
   screen does with it is `AppSettings.alertStacking`: one after the other (the next appears the
   instant the first is answered, with "N más esperando" over the words) or as strips
-  (`AlertStackScreen`, each with its own "Hecho"). **Under the strips, one answer for all of
+  (`AlertStackScreen`, each with its own "Hecho"). **"Ver" on a strip is that reminder given the
+  whole screen** (0.73.0, `AlertActivity.focused`), not the edit form: a strip is the alert in
+  small — two snoozes out of seven, no place answers, four lines of words — and what somebody
+  reaches for when they cannot deal with one *among* the others is the rest of the alert, not a
+  form, which is the last thing wanted with a phone buzzing. The arrow beside the wordmark
+  (`AlertScreen(onBack)`) and the back gesture hand it back; answering it does the same, since
+  `drop` clears the focus and the strips come back with one fewer — and the last one left is the
+  single alert anyway, so the arrow is only there while there is a stack behind it. It is a
+  **tap**, not a hold: it answers nothing and undoes itself, like "Posponer todos" unfolding —
+  though it sleeps through the guard's countdown with the rest of the strip, and it carries the
+  reminder's own words in its description (`alert_view_one`), because three strips are three
+  "Ver"s and the verb alone names none of them. The full screen it opens skips the countdown
+  (`openedOnPurpose`): the eyes arrived first, on a screen that was already armed. **Under the strips, one answer for all of
   them (0.52.0)**: "Hecho con todos" is a `HoldButton` — it is three in the morning and five
   reminders are gone on release — and "Posponer todos" unfolds the strip's two offers once for
   everyone; `AlertActivity.answerAll` empties the screen first and answers each in turn through

@@ -3,6 +3,7 @@ package dev.rwilco.ui.alert
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.DisposableEffect
@@ -92,6 +93,18 @@ class AlertActivity : ComponentActivity() {
      */
     private val silenced = mutableStateListOf<String>()
 
+    /**
+     * The one taken out of the strips to be dealt with on its own — "Ver" on a strip.
+     *
+     * A strip is the alert in small: two snoozes out of seven, no place answers, and the words
+     * cut to four lines. "Ver" used to leave the alarm altogether for the edit form, which is
+     * the one thing nobody reaches for with a phone buzzing in their hand; what it does now is
+     * hand this reminder the whole screen — every answer, at full size — and the arrow up there
+     * (or the back gesture) hands it back. Answering it does the same thing: the strips come
+     * back with one fewer, because that is [drop]'s business and it clears this too.
+     */
+    private var focused by mutableStateOf<String?>(null)
+
     /** Bumped when a reminder joins: the noise and the two-minute budget start over for it. */
     private var ringEpoch by mutableIntStateOf(0)
 
@@ -122,6 +135,7 @@ class AlertActivity : ComponentActivity() {
         // so an alert opened from a card and then turned sideways would have rung the alarm it
         // was careful not to ring in the first place.
         val wasQuiet = savedInstanceState?.getStringArrayList(STATE_SILENT).orEmpty()
+        focused = savedInstanceState?.getString(STATE_FOCUSED)
         savedInstanceState?.getStringArrayList(STATE_RINGING)?.forEachIndexed { index, id ->
             val rule = savedInstanceState.getIntArray(STATE_RULES)?.getOrNull(index)?.takeIf { it >= 0 }
             track(id, rule, held = id in wasHeld, quiet = id in wasQuiet)
@@ -210,12 +224,19 @@ class AlertActivity : ComponentActivity() {
             }
             RwilcoTheme(darkTheme = current.theme.resolvesToDark(), haptics = current.haptics) {
                 val items = reminders.map { AlertItem(it.id, AlertContent.fromReminder(it, today, current.defaultTime, rules[it.id])) }
-                if (items.size > 1 && current.alertStacking == AlertStacking.STRIPS) {
+                // The strip somebody asked to see on its own, while there is still a stack to
+                // go back to: the last one left is the single alert anyway, and its arrow would
+                // have nowhere to point.
+                val stacked = items.size > 1 && current.alertStacking == AlertStacking.STRIPS
+                val focusedItem = focused?.takeIf { stacked }?.let { id -> items.firstOrNull { it.id == id } }
+                BackHandler(enabled = focusedItem != null) { focused = null }
+                if (stacked && focusedItem == null) {
                     AlertStackScreen(
                         items = items,
                         onDone = { id -> answer(id) { app.firing.dismiss(id) } },
                         onSnooze = { id, snooze -> answer(id) { app.firing.snooze(id, snooze) } },
-                        onView = ::view,
+                        // Not the form: this one reminder, on the whole screen. See [focused].
+                        onView = { id -> focused = id },
                         snoozes = current.notificationSnoozeOffers,
                         customMinutes = current.snoozeCustomMinutes,
                         onDoneAll = { answerAll(items.map { it.id }) { id -> app.firing.dismiss(id) } },
@@ -224,7 +245,7 @@ class AlertActivity : ComponentActivity() {
                         onSilence = ::hush,
                     )
                 } else {
-                    val first = items.first()
+                    val first = focusedItem ?: items.first()
                     AlertScreen(
                         content = first.content,
                         preview = false,
@@ -238,7 +259,11 @@ class AlertActivity : ComponentActivity() {
                         ringing = noise,
                         onSilence = ::hush,
                         // Silent because it was tapped open: the eyes arrived before the thumb.
-                        openedOnPurpose = first.id in silenced,
+                        // A strip opened out of the stack is the same thing — somebody chose to
+                        // look at this one on a screen that was already armed, so the second
+                        // countdown is one the guard has already charged for.
+                        openedOnPurpose = first.id in silenced || focusedItem != null,
+                        onBack = if (focusedItem != null) ({ focused = null }) else null,
                     )
                 }
             }
@@ -293,6 +318,8 @@ class AlertActivity : ComponentActivity() {
     }
 
     private fun drop(id: String) {
+        // Answered, here or from the shade: the screen goes back to the ones that are left.
+        if (focused == id) focused = null
         watches.remove(id)?.cancel()
         ringing.remove(id)
         loaded.remove(id)
@@ -372,6 +399,7 @@ class AlertActivity : ComponentActivity() {
         outState.putIntArray(STATE_RULES, IntArray(ringing.size) { rules[ringing[it]] ?: -1 })
         outState.putStringArrayList(STATE_ANYWAY, ArrayList(anyway))
         outState.putStringArrayList(STATE_SILENT, ArrayList(silenced))
+        outState.putString(STATE_FOCUSED, focused)
     }
 
     override fun onStop() {
@@ -392,5 +420,6 @@ class AlertActivity : ComponentActivity() {
         const val STATE_RULES = "rules"
         const val STATE_ANYWAY = "anyway"
         const val STATE_SILENT = "silenced"
+        const val STATE_FOCUSED = "focused"
     }
 }
