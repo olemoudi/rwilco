@@ -15,6 +15,10 @@ import java.util.Locale
  * "manana"), and the letters of the query only have to appear in order, so "cmp" finds
  * "comprar pan". Being forgiving costs nothing here — the list is small and one screen wide —
  * while an exact match asks the person to remember how they wrote it.
+ *
+ * **Forgiving is not the same as coincidental** (see [subsequenceScore]): the letters in order
+ * have to start where a word does, or a name typed in full finds a sentence that merely happens
+ * to contain its letters somewhere.
  */
 sealed interface SearchHit {
     /** Higher is a better match; the list comes back sorted by it. */
@@ -112,6 +116,17 @@ fun fuzzyScore(needle: String, haystack: String): Int? {
  * The letters of [needle] in order somewhere in [haystack]. Matching the first letter of a word
  * is what makes "cmp" mean "comprar manzanas para el postre" rather than a coincidence, so it
  * is worth more than a letter in the middle; every jump costs.
+ *
+ * **And the first of them has to start a word**, or this band is not forgiveness but
+ * coincidence: "ramon" found `r` inside "p_r_ueba", `a` inside "prueb_a_", `m` at "mesas", `o`
+ * inside "p_o_ng" and `n` beside it, so a name typed in full came back with a reminder about
+ * table tennis. That is the tell, and it is the only one that separates the two: the scattering
+ * does not — "pan" over "poner la lavadora antes de nada" is spread just as thin and is the
+ * abbreviation this band exists for. **Nobody abbreviates from the middle of a word.** So the
+ * run has to begin at the start of one, which costs the useful matches nothing (they all start
+ * at a word, "cmp" and "cp" over "comprar pan" included) and takes the mid-word coincidences
+ * out. A refusal rather than a penalty, because a score this low is still a row on a small
+ * screen, and the row is the whole complaint.
  */
 private fun subsequenceScore(needle: String, haystack: String): Int? {
     var from = 0
@@ -121,7 +136,10 @@ private fun subsequenceScore(needle: String, haystack: String): Int? {
     for (letter in needle) {
         val found = haystack.indexOf(letter, from)
         if (found < 0) return null
-        if (first < 0) first = found
+        if (first < 0) {
+            first = found
+            if (found > 0 && haystack[found - 1].isLetterOrDigit()) return null
+        }
         if (found > from) jumps++
         if (found == 0 || !haystack[found - 1].isLetterOrDigit()) bonus += WORD_START_BONUS
         from = found + 1

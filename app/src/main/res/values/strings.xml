@@ -1238,6 +1238,9 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_84_0">
+        <item>The search no longer answers a name with a coincidence. Typing "ramon" used to bring up a reminder about ping pong tables, because its letters happen to appear in that order somewhere in the sentence. Letters in order still find what they are for — "cmp" still finds "comprar pan" — but only when they start where a word does.</item>
+    </string-array>
     <string-array name="whats_new_0_83_0">
         <item>A set of triggers under "all of them" or "at once" can be given a time limit: hours of the day on the day the set is due, or so many minutes from the first one that happens. When it passes with something still missing, the reminder is let go without a sound — done, or on to its next round.</item>
     </string-array>

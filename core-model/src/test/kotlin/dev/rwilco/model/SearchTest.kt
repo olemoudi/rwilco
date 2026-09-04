@@ -60,6 +60,25 @@ class SearchTest {
     }
 
     @Test
+    fun `letters in order have to start a word, or they are a coincidence`() {
+        // A name typed in full used to find this: r inside "prueba", a inside "prueba", m at
+        // "mesas", o and n inside "pong". What gives it away is where it starts — nobody
+        // abbreviates from the middle of a word — and not how thinly it is spread, because
+        // "pan" over "poner la lavadora antes de nada" is spread just as thin and is meant.
+        val reminders = listOf(reminder("Prueba al llegar a mesas ping pong club"), reminder("Ping Ramón", id = "r2"))
+        assertEquals(listOf("Ping Ramón"), texts(search(reminders, "ramon")))
+        assertNull(fuzzyScore("ramon", fold("Prueba al llegar a mesas ping pong club")))
+        // Every abbreviation this band exists for starts where a word does, and still answers.
+        assertNotNull(fuzzyScore("cmp", "comprar pan"))
+        assertNotNull(fuzzyScore("cp", "comprar pan"))
+        assertNotNull(fuzzyScore("pan", "poner la nevera"))
+        assertNotNull(fuzzyScore("pan", "poner la lavadora antes de nada"))
+        // And a run that starts inside a word is not an abbreviation of anything, whatever
+        // order its letters are in.
+        assertNull(fuzzyScore("ram", "prueba mesas"))
+    }
+
+    @Test
     fun `what was done is found too, after what is open, and says so`() {
         val reminders = listOf(
             reminder("Comprar pan", tags = listOf("compra"), id = "open"),

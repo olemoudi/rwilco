@@ -1223,6 +1223,9 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_84_0">
+        <item>El buscador ya no contesta a un nombre con una casualidad. Escribir «ramon» sacaba un recordatorio sobre mesas de ping pong, porque sus letras aparecen en ese orden en algún punto de la frase. Las letras en orden siguen encontrando lo suyo — «cmp» sigue encontrando «comprar pan» — pero solo cuando arrancan donde empieza una palabra.</item>
+    </string-array>
     <string-array name="whats_new_0_83_0">
         <item>Un conjunto de disparadores bajo «todos» o «a la vez» puede llevar un plazo: unas horas del día, el día que toque, o tantos minutos desde el primero que ocurra. Si pasa y aún falta algo, el recordatorio se da por hecho sin sonar — terminado, o a por la siguiente ronda.</item>
     </string-array>

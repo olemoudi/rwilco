@@ -526,7 +526,14 @@ pins the rest of the model, and `SnoozePlaceFiringTest`, `AlertSnoozePlaceTest` 
 returning `SearchHit.OfReminder`/`OfTag` so the screen can say which is which. Matching is
 folded (case and accents dropped) and banded — whole, prefix, word start, anywhere, then letters
 in order — because the cost of being forgiving is nil on a list this size, and the cost of being
-strict is asking somebody to remember how they spelled it. **What was done is found too**
+strict is asking somebody to remember how they spelled it. **The last band has to start where a
+word does** (0.84.0): "ramon" was finding "prueba al llegar a mesas ping pong club" — `r` inside
+"p_r_ueba", `a` inside "prueb_a_", `m` at "mesas", `o` inside "p_o_ng" — so a name typed in full
+came back with a reminder about table tennis. What gives that away is where the run *starts* and
+not how thinly it is spread: "pan" over "poner la lavadora antes de nada" is spread just as thin
+and is exactly the abbreviation the band exists for. Nobody abbreviates from the middle of a
+word, so the run must begin at the start of one, which costs the useful matches nothing and
+takes the mid-word coincidences out. **What was done is found too**
 (0.51.0), after everything open whatever its score — somebody typing on Home is after something
 to do before something they did — and the row says "hecho" where it said "recordatorio". The
 history kept three months and the only way through it was scrolling; `HomeViewModel` feeds the

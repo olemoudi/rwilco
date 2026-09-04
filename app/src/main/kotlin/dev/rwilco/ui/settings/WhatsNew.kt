@@ -40,6 +40,7 @@ data class Release(val versionCode: Int, val name: String, @ArrayRes val bullets
  * brought the notes back, so a phone that last saw 0.20.0 is told once what happened since.
  */
 val RELEASES: List<Release> = listOf(
+    Release(versionCode = 135, name = "0.84.0", bulletsRes = R.array.whats_new_0_84_0),
     Release(versionCode = 134, name = "0.83.0", bulletsRes = R.array.whats_new_0_83_0),
     Release(versionCode = 133, name = "0.82.0", bulletsRes = R.array.whats_new_0_82_0),
     Release(versionCode = 132, name = "0.81.0", bulletsRes = R.array.whats_new_0_81_0),
