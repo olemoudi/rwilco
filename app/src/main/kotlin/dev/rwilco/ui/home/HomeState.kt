@@ -32,6 +32,8 @@ import java.time.LocalTime
 import java.time.ZoneId
 import dev.rwilco.model.awaitingAnswer
 import dev.rwilco.model.momentDealtWith
+import dev.rwilco.model.Deadline
+import dev.rwilco.model.hasDeadline
 
 data class HomeUiState(
     val loaded: Boolean = false,
@@ -182,6 +184,13 @@ data class ReminderCardUi(
      */
     val recurrence: Recurrence? = null,
     /**
+     * The deadline on the set, where it means anything, and when the round under way runs
+     * out — null while none is running (a timer waiting for its first moment, a round that
+     * rang). The card says both, because neither is visible anywhere else.
+     */
+    val deadline: Deadline? = null,
+    val expiresAt: Instant? = null,
+    /**
      * The moment "saltar la próxima" would let pass, or null where there is nothing to skip.
      *
      * The act itself is not new: a "hecho" given to a recurring reminder that is not waiting
@@ -301,7 +310,7 @@ fun buildHomeState(
         val rows = reminder.rules.mapIndexed { index, rule ->
             // Under "a la vez" the row says when the folded rule next holds, which is what
             // will ring; a fold of two moments never does, and the row says nothing.
-            val next = reminder.ruleInSet(index, shape)?.let { nextFireOfRule(it, reminder.id, from, zone, defaultTime, shape) }
+            val next = reminder.ruleInSet(index, shape, zone)?.let { nextFireOfRule(it, reminder.id, from, zone, defaultTime, shape) }
             TriggerRowUi(
                 trigger = rule.trigger,
                 conditions = rule.conditions,
@@ -329,6 +338,8 @@ fun buildHomeState(
             returnsAt = rest?.let { (next as? NextFire.Scheduled)?.at },
             match = reminder.ruleMatch.takeIf { reminder.rules.size > 1 },
             recurrence = reminder.recurrence.takeIf { it.isAnchored },
+            deadline = reminder.deadline.takeIf { reminder.hasDeadline },
+            expiresAt = reminder.expiresAt.takeIf { reminder.hasDeadline && reminder.status == Status.ACTIVE },
             snoozeOffered = reminder.awaitingAnswer(now) ||
                 (reminder.status == Status.ACTIVE && (reminder.snoozedUntil?.let { it > now } == true || reminder.snoozedToPlace != null)),
             skipsMoment = if (reminder.status == Status.ACTIVE && reminder.recurrence != Recurrence.None) {

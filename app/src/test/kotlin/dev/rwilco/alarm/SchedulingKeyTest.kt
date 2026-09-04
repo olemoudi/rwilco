@@ -2,6 +2,7 @@ package dev.rwilco.alarm
 
 import dev.rwilco.model.Action
 import dev.rwilco.model.AppSettings
+import dev.rwilco.model.Deadline
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
@@ -63,6 +64,9 @@ class SchedulingKeyTest {
         // Put off until a place: nothing on the clock, but the fences and the watch read this key.
         val door = Trigger.Location(40.4169, -3.7035, 200, Presence.INSIDE, "Casa", onCrossing = true)
         assertNotEquals(key(timed), key(timed.copy(snoozedToPlace = door)))
+        // A deadline is a third alarm, and the moment it runs out is what that alarm is set for.
+        assertNotEquals(key(timed), key(timed.copy(deadline = Deadline.Timer(30))))
+        assertNotEquals(key(timed), key(timed.copy(expiresAt = written.plusSeconds(1800))))
     }
 
     @Test

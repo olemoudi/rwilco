@@ -107,6 +107,28 @@ object TolerantSound : KSerializer<AlertSound> {
     }
 }
 
+/**
+ * A preset's deadline a build cannot read is no deadline: the set waits as it always did, which
+ * is the direction every unreadable shape in this app falls — towards ringing, never towards
+ * silence. Never the whole settings.
+ */
+object TolerantDeadline : KSerializer<Deadline?> {
+    private val delegate = Deadline.serializer()
+    override val descriptor: SerialDescriptor = delegate.descriptor
+
+    override fun serialize(encoder: Encoder, value: Deadline?) {
+        val json = encoder as? JsonEncoder ?: return if (value == null) encoder.encodeNull() else delegate.serialize(encoder, value)
+        json.encodeJsonElement(if (value == null) JsonNull else json.json.encodeToJsonElement(delegate, value))
+    }
+
+    override fun deserialize(decoder: Decoder): Deadline? {
+        val json = decoder as? JsonDecoder ?: return delegate.deserialize(decoder)
+        val element = json.decodeJsonElement()
+        if (element is JsonNull) return null
+        return runCatching { json.json.decodeFromJsonElement(delegate, element) }.getOrNull()
+    }
+}
+
 /** The same for the tone that may be unset: unreadable reads as unset, which is "the same as the other". */
 object TolerantSoundOrNull : KSerializer<AlertSound?> {
     private val delegate = AlertSound.serializer()

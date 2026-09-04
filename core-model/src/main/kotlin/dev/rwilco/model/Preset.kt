@@ -50,6 +50,9 @@ data class Preset(
     /** How the reminders made from it come back after they are dealt with. */
     @Serializable(with = TolerantRecurrence::class)
     val recurrence: Recurrence = Recurrence.None,
+    /** The deadline the reminders made from it carry, if any; one a build cannot read is none. */
+    @Serializable(with = TolerantDeadline::class)
+    val deadline: Deadline? = null,
     /** Which of the [PRESET_COLORS] this one wears. */
     val colorIndex: Int = 0,
     /** Whether it has a button of its own on Home, for making one in a single tap. */
@@ -126,6 +129,7 @@ fun Preset.toReminder(
     ruleMatch = ruleMatch,
     actions = actions,
     recurrence = recurrence,
+    deadline = deadline,
     status = Status.ACTIVE,
     createdAt = now,
     updatedAt = now,

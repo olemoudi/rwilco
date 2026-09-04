@@ -86,6 +86,9 @@ import java.time.LocalTime
 import java.time.ZoneId
 import dev.rwilco.ui.format.placePhrase
 import dev.rwilco.model.Trigger
+import dev.rwilco.model.Deadline
+import dev.rwilco.ui.format.deadlineCardLabel
+import androidx.compose.material.icons.outlined.HourglassBottom
 
 /**
  * One reminder at a glance. [modifier] is where Home hangs the accessibility actions for the
@@ -193,6 +196,10 @@ fun ReminderCard(
                 } else {
                     for (row in card.triggers) TriggerRow(row, today, defaultTime, muted = card.paused)
                 }
+                // The deadline bounds the set above it, and comes before the recurrence for
+                // the same reason the set does: it is about this round, and "vuelve" is about
+                // the next one.
+                card.deadline?.let { DeadlineRow(it, card.expiresAt, today, zone, muted = card.paused) }
                 // Last, because that is the order the two answer in: the triggers say when it
                 // rings the first time and the recurrence says when it comes back.
                 card.recurrence?.let { RecurrenceRow(it, today, zone, card.returnsAt, muted = card.paused) }
@@ -409,6 +416,57 @@ fun RecurrenceRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+        }
+    }
+}
+
+/**
+ * The deadline on the set, and when the round under way runs out.
+ *
+ * In the clock family's keycap like the recurrence row, and never amber: amber is what fires
+ * next, and this is the one moment on the card that fires nothing. The second line is the half
+ * the first cannot say — a window's close falls on a day the hours alone do not name, and a
+ * timer is either running or waiting for its first moment.
+ */
+@Composable
+fun DeadlineRow(
+    deadline: Deadline,
+    expiresAt: Instant?,
+    today: LocalDate,
+    zone: ZoneId,
+    muted: Boolean = false,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        TriggerKeycap(
+            family = TriggerFamily.TIME,
+            icon = Icons.Outlined.HourglassBottom,
+            contentDescription = stringResource(R.string.card_deadline),
+            size = Tokens.sizes.badge,
+        )
+        Spacer(Modifier.width(Tokens.spacing.sm))
+        Column(modifier = Modifier.weight(1f, fill = false)) {
+            Text(
+                text = deadlineCardLabel(rememberWords(), deadline),
+                style = MaterialTheme.typography.titleSmall,
+                color = if (muted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            val at = expiresAt?.atZone(zone)
+            Text(
+                text = when {
+                    at != null -> stringResource(
+                        R.string.card_deadline_lapses,
+                        dayWord(rememberWords(), at.toLocalDate(), today) + " " + TimeText.time(at.toLocalTime(), rememberIs24h(), currentLocale()),
+                    )
+                    deadline is Deadline.Timer -> stringResource(R.string.card_deadline_waiting)
+                    else -> ""
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

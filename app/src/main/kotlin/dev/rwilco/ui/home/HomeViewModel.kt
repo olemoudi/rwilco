@@ -64,6 +64,7 @@ import dev.rwilco.model.speaksForHere
 import dev.rwilco.geo.hasBackgroundLocation
 import kotlinx.coroutines.flow.first
 import dev.rwilco.data.FiringEvent
+import dev.rwilco.model.roundExpiry
 
 /** What Home reports back that is not state: things to say in a snackbar. */
 sealed interface HomeEvent {
@@ -274,7 +275,10 @@ class HomeViewModel(
                 actions = actions ?: preset.actions,
                 zone = clock.zone,
                 shape = shape,
-            )
+            ).let { made ->
+                // The deadline's close for the round that starts now, as the editor's save writes it.
+                made.copy(expiresAt = made.roundExpiry(now, clock.zone, defaultTime, shape = shape))
+            }
             repository.save(reminder)
             store.update { settings ->
                 settings.copy(presets = settings.presets.map { if (it.id == preset.id) it.used(now) else it })

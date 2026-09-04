@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.LocalDateTime
 import java.time.LocalTime
+import dev.rwilco.model.Deadline
 
 /** The shape of the sentence over the save button: what is said, and in what order. */
 class SentencePartsTest {
@@ -48,6 +49,17 @@ class SentencePartsTest {
         assertEquals(listOf(RuleMatch.ANY), joins(RuleMatch.ANY))
         assertEquals(listOf(RuleMatch.ALL), joins(RuleMatch.ALL))
         assertEquals(listOf(RuleMatch.TOGETHER), joins(RuleMatch.TOGETHER))
+    }
+
+    @Test
+    fun `the deadline comes after the rules, and only where it means anything`() {
+        val window = Deadline.Window(LocalTime.of(18, 0), LocalTime.of(22, 0))
+        val bounded = sentenceParts("x", listOf(clock, place), RuleMatch.ALL, Recurrence.After(1, RecurrenceUnit.DAYS), deadline = window)
+        assertEquals(listOf("Words", "Rule", "Join", "Rule", "Bounded", "Returns"), bounded.map { it::class.simpleName })
+        assertTrue(sentenceParts("x", listOf(clock, place), RuleMatch.ANY, Recurrence.None, deadline = window).none { it is SentencePart.Bounded }, "cualquiera has nothing to give up on")
+        assertTrue(sentenceParts("x", listOf(clock), RuleMatch.ALL, Recurrence.None, deadline = window).none { it is SentencePart.Bounded }, "one rule is not a set")
+        assertTrue(sentenceParts("x", listOf(clock, place), RuleMatch.TOGETHER, Recurrence.None, deadline = Deadline.Timer(30)).none { it is SentencePart.Bounded }, "no first trigger under a la vez")
+        assertTrue(sentenceParts("x", listOf(clock, place), RuleMatch.TOGETHER, Recurrence.None, deadline = window).any { it is SentencePart.Bounded })
     }
 
     @Test

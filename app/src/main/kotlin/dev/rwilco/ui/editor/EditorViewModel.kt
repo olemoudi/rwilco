@@ -23,6 +23,8 @@ import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
 import dev.rwilco.model.Condition
+import dev.rwilco.model.roundExpiry
+import dev.rwilco.model.Deadline
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerKind
 import dev.rwilco.model.TriggerRule
@@ -221,6 +223,9 @@ class EditorViewModel(
     fun addTag(raw: String) = _state.update { it.addTag(raw) }
     fun toggleAction(action: Action) = _state.update { it.toggleAction(action) }
     fun setRuleMatch(match: RuleMatch) = _state.update { it.setRuleMatch(match) }
+    fun openDeadline() = _state.update { it.openDeadline() }
+    fun commitDeadline(deadline: Deadline) = _state.update { it.commitDeadline(deadline) }
+    fun clearDeadline() = _state.update { it.clearDeadline() }
     fun setRecurrence(recurrence: Recurrence) = _state.update { it.setRecurrence(recurrence) }
 
     fun openCalendar() = _state.update { it.openCalendar() }
@@ -407,7 +412,17 @@ class EditorViewModel(
             val whenUntouched = before != null &&
                 before.rules == current.draft.rules &&
                 before.ruleMatch == current.draft.ruleMatch &&
-                before.recurrence == current.draft.recurrence
+                before.recurrence == current.draft.recurrence &&
+                before.deadline == current.draft.deadline
+            // The round under way survives an edit that leaves the set alone — the rules, the
+            // reading and the deadline — and its clock with it; anything else, or a reminder
+            // brought back from "hecho", is a round starting now, and a window's close is
+            // worked out again below for the day the round falls on. A timer's clock starts
+            // with the round's first moment, and is nothing until then.
+            val roundUntouched = before != null && before.status != Status.DONE &&
+                before.rules == current.draft.rules &&
+                before.ruleMatch == current.draft.ruleMatch &&
+                before.deadline == current.draft.deadline
             val reminder = current.draft.toReminder(
                 id = before?.id ?: draftId,
                 createdAt = before?.createdAt ?: now,
@@ -434,9 +449,13 @@ class EditorViewModel(
                 // re-decision of when it rings, and there the old answer really is meaningless.
                 snoozedUntil = if (whenUntouched) before?.snoozedUntil else null,
                 snoozedToPlace = if (whenUntouched) before?.snoozedToPlace else null,
+                expiresAt = if (roundUntouched) before?.expiresAt else null,
                 zone = clock.zone,
                 shape = current.dayShape,
-            )
+            ).let { built ->
+                if (roundUntouched) built
+                else built.copy(expiresAt = built.roundExpiry(now, clock.zone, current.defaultTime, current.dayStart, current.dayShape))
+            }
             repository.save(reminder)
             rearm()
             events.send(EditorEvent.Saved(reminder.id, created = before == null))

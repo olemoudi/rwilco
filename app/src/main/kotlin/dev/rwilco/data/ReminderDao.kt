@@ -59,8 +59,11 @@ interface ReminderDao {
     @Query("UPDATE reminder SET snoozedUntil = :until, snoozedToPlace = :place WHERE id = :id")
     suspend fun setSnooze(id: String, until: Long?, place: String?)
 
-    /** Deliberately does not touch updatedAt: ringing is not editing. */
-    @Query("UPDATE reminder SET lastFiredAt = :at, lastFiredRule = :ruleIndex, snoozedUntil = NULL, snoozedToPlace = NULL WHERE id = :id")
+    /**
+     * Deliberately does not touch updatedAt: ringing is not editing. The deadline goes with the
+     * ring: a set that rang is not given up on, whatever the clock says afterwards.
+     */
+    @Query("UPDATE reminder SET lastFiredAt = :at, lastFiredRule = :ruleIndex, snoozedUntil = NULL, snoozedToPlace = NULL, expiresAt = NULL WHERE id = :id")
     suspend fun markFired(id: String, at: Long, ruleIndex: Int?)
 
     /**
@@ -70,9 +73,13 @@ interface ReminderDao {
      */
     @Query(
         "UPDATE reminder SET snoozedUntil = NULL, snoozedToPlace = NULL, firedRules = '', lastDealtAt = :at, " +
-            "status = :status, updatedAt = :at, doneAt = :doneAt, dealtThrough = :through WHERE id = :id",
+            "status = :status, updatedAt = :at, doneAt = :doneAt, dealtThrough = :through, expiresAt = :expiresAt WHERE id = :id",
     )
-    suspend fun dealtWith(id: String, at: Long, status: String, doneAt: Long?, through: Long?)
+    suspend fun dealtWith(id: String, at: Long, status: String, doneAt: Long?, through: Long?, expiresAt: Long?)
+
+    /** The deadline of the round under way: a timer started by its first moment, or nothing. */
+    @Query("UPDATE reminder SET expiresAt = :at WHERE id = :id")
+    suspend fun setExpiresAt(id: String, at: Long?)
 
     /** The safety net has said its word about the firing at hand; it says one per firing. */
     @Query("UPDATE reminder SET nudgedAt = :at WHERE id = :id")

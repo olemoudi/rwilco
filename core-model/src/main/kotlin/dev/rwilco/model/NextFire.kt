@@ -82,7 +82,7 @@ fun nextFire(
         // Under "a la vez" the rule is judged with its siblings folded in as conditions — the
         // same rule the firing will judge — so a moment outside a sibling's window is not
         // offered, let alone armed. A fold of two moments can never ring and yields nothing.
-        val rule = reminder.ruleInSet(index, shape) ?: return@mapNotNull null
+        val rule = reminder.ruleInSet(index, shape, zone) ?: return@mapNotNull null
         nextFireOfRule(rule, reminder.id, from, zone, defaultTime, shape)
     }
     if (candidates.isEmpty() && rest != null) {
@@ -159,7 +159,7 @@ fun nextWake(
     }
     val from = reminder.rulesLookFrom(now, rest)
     val candidates = reminder.pendingRules().mapNotNull { index ->
-        val rule = reminder.ruleInSet(index, shape) ?: return@mapNotNull null
+        val rule = reminder.ruleInSet(index, shape, zone) ?: return@mapNotNull null
         nextFireOfRule(rule, reminder.id, from, zone, defaultTime, shape)?.let { index to it }
     }
     if (candidates.isEmpty() && rest != null) return reminder.recurrenceMoment(now, zone, dayStart, shape)?.let { Wake(it, null) }

@@ -20,7 +20,7 @@ abstract class RwilcoDatabase : RoomDatabase() {
 
     companion object {
         /** A named constant so MigrationChainTest can assert the chain reaches it. */
-        const val VERSION = 10
+        const val VERSION = 11
         private const val NAME = "rwilco.db"
 
         /** One entry per version step; `// vN: what it added` on each. */
@@ -126,6 +126,14 @@ abstract class RwilcoDatabase : RoomDatabase() {
             object : Migration(9, 10) {
                 override fun migrate(db: SupportSQLiteDatabase) {
                     db.execSQL("ALTER TABLE reminder ADD COLUMN snoozedToPlace TEXT")
+                }
+            },
+            // v11: the deadline on a set of rules (Deadline, as JSON) and when the round under
+            // way runs out. Null on every existing row: no deadline, and nothing running.
+            object : Migration(10, 11) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE reminder ADD COLUMN deadline TEXT")
+                    db.execSQL("ALTER TABLE reminder ADD COLUMN expiresAt INTEGER")
                 }
             },
         )

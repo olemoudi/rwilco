@@ -27,6 +27,12 @@ import dev.rwilco.model.Condition
 import dev.rwilco.model.PlaceWatchPolicy
 import dev.rwilco.model.allHoldAt
 import dev.rwilco.model.awaitingAnswer
+import dev.rwilco.model.deadlineOutranked
+import dev.rwilco.model.expiryDue
+import dev.rwilco.model.lapsed
+import dev.rwilco.model.roundExpiry
+import dev.rwilco.model.timerExpiry
+import dev.rwilco.model.Reminder
 import dev.rwilco.model.ruleInSet
 import dev.rwilco.model.knownInAdvance
 import dev.rwilco.model.lateForPresentation
@@ -126,7 +132,7 @@ class ReminderFiring(
         // Under "a la vez" the rule is judged with every other one folded into it as a state:
         // the moment this one happened is only a firing if all of them are true then. A null
         // is a set that cannot hold at all — two instants asked to coincide.
-        val judged = ruleIndex?.let { reminder.ruleInSet(it, settings.dayShape) }
+        val judged = ruleIndex?.let { reminder.ruleInSet(it, settings.dayShape, clock.zone) }
         // Every way of NOT ringing below re-arms before it leaves. The alarm that brought us
         // here is spent, and a drop that left nothing behind was a reminder silent until the
         // six-hourly net came round — or for ever, if the process died first.
@@ -241,6 +247,25 @@ class ReminderFiring(
             scheduler.rearmAll()
             return@withLock
         }
+        // The set's deadline passed before the moment this firing is about: the round is over
+        // and what just happened belongs to no round. Asked of the moment and not of the clock,
+        // so a moment the phone slept through before the deadline is still noted or rung for
+        // what it was; and only of a rule's own moment — a snooze's ring has no rule behind it,
+        // is the person's, and outranks the deadline like everything else they did. A window's
+        // fence has usually refused a late event already (firstFailing); a timer has no fence,
+        // and this is what shuts its door.
+        if (ruleIndex != null && reminder.expiryDue(late ?: now)) {
+            Log.i(TAG, "$id ran out of time before rule $ruleIndex happened")
+            Diag.note(TAG_DIAG, "r=${short(id)} dropped: the deadline ${reminder.expiresAt} had passed (rule $ruleIndex)")
+            lapse(reminder, now, settings)
+            spendArmed()
+            scheduler.rearmAll()
+            return@withLock
+        }
+        // Recorded against the moment it rang FOR, not the millisecond the alarm arrived. See
+        // momentRungFor: a place is the one firing that must not reach for the armed moment,
+        // because that moment belongs to whatever else the reminder is still waiting for.
+        val rangFor = momentRungFor(now, reminder.armedFor, late, eventDriven)
         // Under ALL a moment is first of all something that happened: only the one that
         // completes the set rings, and the rest are written down and waited on.
         when (val outcome = outcomeOfFiring(reminder, ruleIndex)) {
@@ -251,6 +276,13 @@ class ReminderFiring(
                 // moment still owed, which the catch-up notes again (harmless) — the other
                 // order left one spent and never noted, a set waiting for a moment gone by.
                 repository.setFiredRules(id, outcome.fired)
+                // A timer starts with the first moment of the round; a state starts nothing.
+                // See Reminder.timerExpiry. Written after the note for the same reason: a
+                // clock running on a moment nobody wrote down is a deadline on nothing.
+                ruleIndex?.let { reminder.timerExpiry(it, rangFor) }?.let { until ->
+                    Diag.note(TAG_DIAG, "r=${short(id)} the clock is running: until $until")
+                    repository.setExpiresAt(id, until)
+                }
                 spendArmed()
                 scheduler.rearmAll()
                 return@withLock
@@ -258,10 +290,6 @@ class ReminderFiring(
             FiringOutcome.Ring -> Unit
         }
         Log.i(TAG, "firing $id${if (late != null) " (late)" else ""}")
-        // Recorded against the moment it rang FOR, not the millisecond the alarm arrived. See
-        // momentRungFor: a place is the one firing that must not reach for the armed moment,
-        // because that moment belongs to whatever else the reminder is still waiting for.
-        val rangFor = momentRungFor(now, reminder.armedFor, late, eventDriven)
         // **The hours somebody is asleep take the noise out of everything**, whatever its tiles
         // say, and they do it by the moment the firing is *for* as well as by the hour it
         // arrives — see [hushedByTheHour]. The rehearsal is the one exemption there can be:
@@ -489,6 +517,12 @@ class ReminderFiring(
         // moment nobody is going to be told about.
         val dealt = reminder.copy(lastDealtAt = now, dealtThrough = consumed ?: reminder.dealtThrough)
         val status = statusAfterDismissal(dealt, now, clock.zone, settings.defaultTime, settings.dayShape)
+        // And the next round's deadline, when the set has a window: its close on the day the
+        // round after the rest falls on. Read off the row as this "hecho" leaves it, for the
+        // same reason the status is. A timer gets nothing here — its clock starts with the
+        // round's first moment — and a reminder that is finished has no round to bound.
+        val nextExpiry = dealt.copy(status = status, firedRules = emptySet(), snoozedUntil = null, snoozedToPlace = null, expiresAt = null)
+            .roundExpiry(now, clock.zone, settings.defaultTime, settings.dayStart, settings.dayShape)
         // One write: the snooze goes, a round dealt with is a round over (what had already
         // happened stops counting), and the moment every recurrence counts from is stamped —
         // "six hours after the last one" is six hours after this, not after whenever the alarm
@@ -496,12 +530,61 @@ class ReminderFiring(
         // closed with its anchor unmoved is a reminder that never comes back.
         // A "hecho" that spends no moment (an answer to a ring) keeps what was dealt with ahead:
         // written as null it wiped the rounds already skipped, and they came back.
-        repository.dealtWith(id, now, status, consumed ?: reminder.dealtThrough)
+        repository.dealtWith(id, now, status, consumed ?: reminder.dealtThrough, nextExpiry)
         // The word for what this was: an answer to a ring, or a round of something that comes
         // back let pass ahead of it. A one-off finished ahead of its moment is still "hecho".
         val skipped = consumed != null && reminder.recurrence != Recurrence.None && !reminder.awaitingAnswer(now)
         repository.record(id, if (skipped) FiringKind.SKIPPED else FiringKind.DEALT, now)
         scheduler.rearmAll()
+    }
+
+    /**
+     * The set's deadline ran out: the round is let go, without a sound.
+     *
+     * The one thing in the app that finishes a reminder with nobody tapping "hecho", and it is
+     * the same write ([Reminder.lapsed] through `dealtWith`): the round closes, the anchor moves
+     * to the deadline, the status is what dealing with it would have made it. A firing the
+     * phone slept through goes first — the catch-up decides about the moment it was for, and
+     * every fire re-arms, so this alarm comes round again straight after. And anything the
+     * person did stands in front of it ([Reminder.deadlineOutranked]): a ring waiting for an
+     * answer or a snooze means the deadline is dropped, never applied.
+     */
+    suspend fun expire(id: String) = lock.withLock {
+        val reminder = repository.get(id) ?: return@withLock Diag.note(TAG_DIAG, "r=${short(id)} gone")
+        if (reminder.status != Status.ACTIVE) return@withLock Diag.note(TAG_DIAG, "r=${short(id)} lapse dropped: not active (${reminder.status})")
+        val now = clock.instant()
+        if (!reminder.expiryDue(now)) {
+            Diag.note(TAG_DIAG, "r=${short(id)} lapse dropped: nothing due (expires=${reminder.expiresAt})")
+            scheduler.rearmAll()
+            return@withLock
+        }
+        if (missedFire(reminder, now) != null) {
+            Diag.note(TAG_DIAG, "r=${short(id)} lapse held: a firing is still owed for ${reminder.armedFor}")
+            return@withLock
+        }
+        lapse(reminder, now, settings())
+        scheduler.rearmAll()
+    }
+
+    /** Under the lock: the round let go, or the deadline dropped for something the person did. */
+    private suspend fun lapse(reminder: Reminder, now: Instant, settings: AppSettings) {
+        val id = reminder.id
+        val at = reminder.expiresAt ?: return
+        if (reminder.deadlineOutranked(now)) {
+            Diag.note(TAG_DIAG, "r=${short(id)} deadline dropped: answered or put off already")
+            repository.setExpiresAt(id, null)
+            return
+        }
+        val row = reminder.lapsed(at, clock.zone, settings.defaultTime, settings.dayStart, settings.dayShape)
+        Log.i(TAG, "$id ran out of time; letting the round go (${row.status})")
+        Diag.note(TAG_DIAG, "r=${short(id)} LAPSED at $at -> ${row.status}${row.expiresAt?.let { " next $it" } ?: ""}")
+        withContext(NonCancellable) {
+            repository.dealtWith(id, at, row.status, row.dealtThrough, row.expiresAt)
+            // A moment armed past the deadline is not a firing owed: the re-arm pass holds
+            // those exactly as they are, and this round has nothing left to be owed.
+            repository.setArmedFor(id, null, null)
+            repository.record(id, FiringKind.LAPSED, at)
+        }
     }
 
     /**

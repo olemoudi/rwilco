@@ -100,7 +100,7 @@ fun Reminder.watchedCircles(
     // [Reminder.spanHasTakenOver]; the snooze circle above outranks it, as it outranks the rules.
     if (spanHasTakenOver) return emptyList()
     val pending = pendingRules().toSet()
-    val folded = rules.indices.map { ruleInSet(it, shape) }
+    val folded = rules.indices.map { ruleInSet(it, shape, zone) }
     // A rule's moment cannot be asked before a snooze is over: the snooze rings instead, with
     // no rule behind it and nothing asked. Nor before a rest is — dealt with and coming back on
     // a span, the rules say nothing until it is up.

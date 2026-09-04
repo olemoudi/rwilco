@@ -248,6 +248,7 @@ fun warnings(
     match: RuleMatch = RuleMatch.ANY,
     shape: DayShape = DayShape.DEFAULT,
     reminderId: String = "",
+    deadline: Deadline? = null,
 ): List<ValidationWarning> {
     // Judged as they will be saved: a day left to the day is narrowed to what is left of it at
     // the save (settleDays), and a warning read off the unnarrowed window said "ya ha pasado" of
@@ -262,13 +263,19 @@ fun warnings(
     // Under "a la vez" every rule is judged with the others folded into it as conditions, which
     // is exactly what it will be judged by when the alarm goes off (Reminder.ruleInSet) — and
     // in the same order, which is the one thing about this that has to match.
-    val folded = if (match == RuleMatch.TOGETHER && rules.size > 1) {
-        rules.indices.map { index ->
+    // And the set's own deadline, when it is a window, is a fence on every rule of the round —
+    // the window's hours on the round's day, the same fence Reminder.ruleInSet hands the alarm —
+    // so a rule that cannot land inside it is NeverFires here (and NeverCompletes under
+    // "todos") before anybody waits a day to find out.
+    val plazo = (deadline as? Deadline.Window)?.takeIf { match != RuleMatch.ANY && rules.size > 1 }
+        ?.let { window -> window.asCondition(date = window.openDayOf(windowExpiryOf(rules, window, now, zone, defaultTime, shape, reminderId), zone)) }
+    val folded = when {
+        match == RuleMatch.TOGETHER && rules.size > 1 -> rules.indices.map { index ->
             val others = rules.filterIndexed { at, _ -> at != index }
-            rules[index].let { it.copy(conditions = it.conditions + others.flatMap { o -> o.conditions } + others.mapNotNull { o -> o.trigger.asState(shape) }) }
+            rules[index].let { it.copy(conditions = it.conditions + others.flatMap { o -> o.conditions } + others.mapNotNull { o -> o.trigger.asState(shape) } + listOfNotNull(plazo)) }
         }
-    } else {
-        rules
+        plazo != null -> rules.map { it.copy(conditions = it.conditions + plazo) }
+        else -> rules
     }
     // Counted on the rules as written, for the same reason: whether a rule is only ever true at
     // an instant is a fact about what somebody asked for, not about the moment a set gives it.

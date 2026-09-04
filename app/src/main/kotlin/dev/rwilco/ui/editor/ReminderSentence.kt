@@ -23,6 +23,7 @@ import dev.rwilco.ui.format.triggerPhrase
 import dev.rwilco.ui.theme.color
 import java.time.LocalDate
 import java.time.LocalTime
+import dev.rwilco.ui.format.deadlinePhrase
 
 /**
  * The whole draft as one line, over the button that saves it.
@@ -74,7 +75,7 @@ private fun sentenceText(parts: List<SentencePart>, today: LocalDate, defaultTim
                 // the next. The joins carry no spacing of their own, or every one of them would
                 // land in the middle of a double space.
                 val previous = parts[index - 1]
-                append(if (previous is SentencePart.Words || part is SentencePart.Returns) ", " else " ")
+                append(if (previous is SentencePart.Words || part is SentencePart.Returns || part is SentencePart.Bounded) ", " else " ")
             }
             when (part) {
                 is SentencePart.Words ->
@@ -96,6 +97,8 @@ private fun sentenceText(parts: List<SentencePart>, today: LocalDate, defaultTim
                         append(" " + stringResource(R.string.editor_sentence_only, joined))
                     }
                 }
+
+                is SentencePart.Bounded -> append(deadlinePhrase(words, part.deadline))
 
                 is SentencePart.Returns -> {
                     // A recurrence is a clock's business, and wears the clock's colour — the

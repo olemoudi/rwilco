@@ -32,6 +32,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
+import dev.rwilco.model.Deadline
 
 class EditorStateTest {
 
@@ -128,6 +129,25 @@ class EditorStateTest {
         val saved = state.draft.toReminder("id", stamp, stamp, Status.ACTIVE, zone = zone)
         assertEquals(RuleMatch.ALL, saved.ruleMatch)
         assertEquals(RuleMatch.ALL, saved.toDraft().ruleMatch)
+    }
+
+    @Test
+    fun `a deadline is set from its sheet, travels to the reminder, and a timer does not survive "a la vez"`() {
+        val home = Trigger.Location(40.4, -3.7, 200, Presence.INSIDE, "Casa")
+        val two = blank.withText("Llamar a Marta").commitTrigger(null, tonight).commitTrigger(null, home).setRuleMatch(RuleMatch.ALL)
+        val opened = two.openDeadline()
+        assertEquals(EditorSheet.ConfigureDeadline(null), opened.sheet)
+        val timed = opened.commitDeadline(Deadline.Timer(90))
+        assertEquals(EditorSheet.None, timed.sheet)
+        assertEquals(Deadline.Timer(90), timed.draft.deadline)
+        val saved = timed.draft.toReminder("r", now, now, Status.ACTIVE, zone = zone)
+        assertEquals(Deadline.Timer(90), saved.deadline)
+        assertEquals(Deadline.Timer(90), saved.toDraft().deadline)
+        // "A la vez" has no first trigger: the sheet offers no timer there, and the form keeps none.
+        assertNull(timed.setRuleMatch(RuleMatch.TOGETHER).draft.deadline)
+        val window = Deadline.Window(LocalTime.of(18, 0), LocalTime.of(22, 0))
+        assertEquals(window, timed.commitDeadline(window).setRuleMatch(RuleMatch.TOGETHER).draft.deadline, "a window is fine under either")
+        assertNull(timed.clearDeadline().draft.deadline)
     }
 
     @Test

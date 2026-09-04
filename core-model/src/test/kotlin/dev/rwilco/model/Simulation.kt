@@ -50,6 +50,9 @@ class Simulation(
     /** Under ALL: moments written down without ringing (FiringOutcome.Wait). */
     val noted = mutableListOf<Wake>()
 
+    /** The deadlines that passed with the set incomplete, and let the round go (Reminder.lapsed). */
+    val lapses = mutableListOf<Instant>()
+
     /**
      * rearmAll: what the row says the alarm is set for. A moment armed, come and not answered is
      * held rather than moved on — the delivery in flight rings it — exactly as the scheduler does.
@@ -62,9 +65,51 @@ class Simulation(
         return wake
     }
 
+    /**
+     * The deadline's own alarm, when the set has one running: the second alarm the scheduler
+     * keeps per reminder (`ReminderScheduler.armLapse`). Only for a reminder still active — a
+     * paused one keeps the moment and is asked again when it comes back.
+     */
+    fun lapseAt(): Instant? = reminder.expiresAt?.takeIf { reminder.status == Status.ACTIVE && reminder.hasDeadline }
+
+    /**
+     * The deadline's alarm arrives: what `ReminderFiring.expire` decides, in the same order. A
+     * firing still owed — a moment the phone slept through — goes first, so the catch-up can
+     * note or ring it for the moment it was about; and anything the person did, a ring waiting
+     * for an answer or a snooze, means the deadline no longer applies and is simply dropped.
+     * [force] is the check `fire` makes on its own way in, where the moment at hand is the
+     * owed one and there is nothing to wait for.
+     */
+    fun expire(force: Boolean = false): Boolean {
+        val row = reminder
+        val at = row.expiresAt ?: return false
+        if (row.status != Status.ACTIVE || !row.expiryDue(now)) return false
+        if (!force && missedFire(row, now) != null) return false
+        if (row.deadlineOutranked(now)) {
+            reminder = row.copy(expiresAt = null)
+            arm()
+            return false
+        }
+        reminder = row.lapsed(at, zone, defaultTime, dayStart, shape)
+        lapses += at
+        arm()
+        return true
+    }
+
+    /** Whether the next thing to arrive is the deadline rather than a ring. */
+    private fun lapseFirst(wake: Wake?, lapse: Instant?): Boolean =
+        lapse != null && (wake == null || lapse < wake.at) && missedFire(reminder, now) == null
+
     /** The next alarm arrives: the clock jumps to it and the row transitions. Null when nothing is armed. */
     fun step(deal: (Ring) -> Deal = { Deal.Ignore }): Ring? {
-        val wake = arm() ?: return null
+        val wake = arm()
+        val lapse = lapseAt()
+        if (lapseFirst(wake, lapse)) {
+            now = maxOf(now, lapse!!)
+            expire()
+            return null
+        }
+        if (wake == null) return null
         now = maxOf(now, wake.at)
         return fire(wake.ruleIndex, late = null, deal)
     }
@@ -73,7 +118,15 @@ class Simulation(
     fun run(until: Instant, maxSteps: Int = 5_000, deal: (Ring) -> Deal = { Deal.Ignore }): List<Ring> {
         val before = rings.size
         repeat(maxSteps) {
-            val wake = arm() ?: return rings.drop(before)
+            val wake = arm()
+            val lapse = lapseAt()
+            if (lapseFirst(wake, lapse)) {
+                if (lapse!! > until) return rings.drop(before)
+                now = maxOf(now, lapse)
+                expire()
+                return@repeat
+            }
+            if (wake == null) return rings.drop(before)
             if (wake.at > until) return rings.drop(before)
             now = maxOf(now, wake.at)
             fire(wake.ruleIndex, late = null, deal)
@@ -101,6 +154,9 @@ class Simulation(
                 fire(owed.ruleIndex, late = owed.at, deal)
             }
         }
+        // The deadline's alarm, delivered at once for a moment already past — after the catch-up
+        // has had its say about the moments before it.
+        expire()
         return rings.drop(before)
     }
 
@@ -143,6 +199,8 @@ class Simulation(
                     doneAt = now.takeIf { status == Status.DONE },
                     updatedAt = now,
                 )
+                // And the next round's window close, counted from the rest, as dismiss writes it.
+                reminder = reminder.copy(expiresAt = reminder.roundExpiry(now, zone, defaultTime, dayStart, shape))
             }
             is Deal.Later -> reminder = reminder.copy(snoozedUntil = deal.snooze.until(now, zone, weekendDay, weekendTime), snoozedToPlace = null)
             is Deal.Elsewhere -> reminder = reminder.copy(snoozedUntil = null, snoozedToPlace = deal.place)
@@ -156,7 +214,7 @@ class Simulation(
         if (viaSnoozePlace && row.snoozedToPlace == null) return null
         val fired = row.lastFiredAt
         if (late != null && fired != null && !fired.isBefore(late)) return null
-        val judged = ruleIndex?.let { row.ruleInSet(it, shape) }
+        val judged = ruleIndex?.let { row.ruleInSet(it, shape, zone) }
         val armed = row.armedFor
         val eventDriven = ruleIndex?.let { row.rules.getOrNull(it) }?.trigger is Trigger.Location || viaSnoozePlace
         // ReminderFiring.spendArmed: a moment judged and dropped is written off before the
@@ -190,9 +248,34 @@ class Simulation(
             arm()
             return null
         }
+        // A place is judged against its hours when it happens (ReminderFiring.firstFailing with
+        // askAll): an arrival outside the window a fold or a deadline put on it is nothing. Only
+        // the fences a clock can answer — where the phone is, this harness never knows, and what
+        // nobody can vouch for holds.
+        if (judged != null && judged.trigger is Trigger.Location &&
+            !judged.conditions.filter { it.knownInAdvance }.allHoldAt(late ?: now, zone)
+        ) {
+            spendArmed()
+            arm()
+            return null
+        }
+        // The deadline passed before the moment this is about: the round is over, and what just
+        // happened belongs to no round. Asked of the moment and not of the clock, so a moment
+        // the phone slept through before the deadline is still noted or rung for what it was.
+        // Only a rule's own moment: a snooze's ring (no rule behind it) is the person's, and
+        // outranks the deadline like everything else they did.
+        if (ruleIndex != null && row.expiryDue(late ?: now)) {
+            expire(force = true)
+            spendArmed()
+            arm()
+            return null
+        }
+        val rangFor = momentRungFor(now, row.armedFor, late, eventDriven)
         when (val outcome = outcomeOfFiring(row, ruleIndex)) {
             is FiringOutcome.Wait -> {
-                reminder = row.copy(firedRules = outcome.fired)
+                // The timer starts with the first moment of the round, and a state starts nothing.
+                val started = ruleIndex?.let { row.timerExpiry(it, rangFor) }
+                reminder = row.copy(firedRules = outcome.fired, expiresAt = started ?: row.expiresAt)
                 noted += Wake(now, ruleIndex)
                 spendArmed()
                 arm()
@@ -200,8 +283,7 @@ class Simulation(
             }
             FiringOutcome.Ring -> Unit
         }
-        val rangFor = momentRungFor(now, row.armedFor, late, eventDriven)
-        reminder = row.copy(lastFiredAt = rangFor, lastFiredRule = ruleIndex, snoozedUntil = null, snoozedToPlace = null)
+        reminder = row.copy(lastFiredAt = rangFor, lastFiredRule = ruleIndex, snoozedUntil = null, snoozedToPlace = null, expiresAt = null)
         if (row.ruleMatch == RuleMatch.ALL && row.rulesCombine) reminder = reminder.copy(firedRules = row.rules.indices.toSet())
         val ring = Ring(now, rangFor, ruleIndex, late)
         rings += ring

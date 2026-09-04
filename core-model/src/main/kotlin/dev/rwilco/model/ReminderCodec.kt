@@ -42,6 +42,13 @@ object ReminderCodec {
     fun decodeTrigger(raw: String?): Trigger? =
         raw?.let { runCatching { json.decodeFromString(Trigger.serializer(), it) }.getOrNull() }
 
+    /** The set's deadline, on its own. */
+    fun encodeDeadline(deadline: Deadline): String = json.encodeToString(Deadline.serializer(), deadline)
+
+    /** Null for anything this build cannot read, which for a deadline means "none": the set waits as it always did. */
+    fun decodeDeadline(raw: String?): Deadline? =
+        raw?.let { runCatching { json.decodeFromString(Deadline.serializer(), it) }.getOrNull() }
+
     /**
      * Element by element, so a rule of a kind this build does not know (or a corrupt one) is
      * skipped and the reminder survives with the rules it can still honour.

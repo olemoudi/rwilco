@@ -68,6 +68,8 @@ class VaultSchemaTest {
             "lastFiredRule",
             // Room v10: the place a snooze waits at; older rows wait at none.
             "snoozedToPlace",
+            // Room v11: the set's deadline and when the round under way runs out; older rows have neither.
+            "deadline", "expiresAt",
         )
     }
 }

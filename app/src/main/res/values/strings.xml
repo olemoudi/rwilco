@@ -1238,6 +1238,9 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_83_0">
+        <item>A set of triggers under "all of them" or "at once" can be given a time limit: hours of the day on the day the set is due, or so many minutes from the first one that happens. When it passes with something still missing, the reminder is let go without a sound — done, or on to its next round.</item>
+    </string-array>
     <string-array name="whats_new_0_82_0">
         <item>Less battery for the same watching. A phone carried about the house within a couple of hundred metres of a place it is watching used to be read as approaching it, and looked every two minutes all evening — thirty times an hour. Moving is not approaching: what counts now is getting nearer the line, so an evening indoors backs off to a look every quarter of an hour, and the first step towards the place brings it straight back to two minutes.</item>
         <item>A place you asked to be reminded on leaving is looked at every half hour at worst, never the hour it could drift to before.</item>
@@ -1538,6 +1541,24 @@
     <string name="settings_awake_sleep">To bed at</string>
     <string name="settings_weekend_end">When "the weekend" ends</string>
     <string name="settings_weekend_end_hint">From this moment the weekday bedtime applies again, which is what makes a Sunday night an early one.</string>
+    <!-- The deadline on a set of rules ("plazo") -->
+    <string name="editor_deadline_add">Time limit…</string>
+    <string name="editor_deadline_window">Time limit: %1$s to %2$s</string>
+    <string name="editor_deadline_timer">Time limit: %1$s from the first</string>
+    <string name="editor_deadline_clear">Remove the time limit</string>
+    <string name="deadline_sheet_title">Time limit</string>
+    <string name="deadline_kind_window">Between hours</string>
+    <string name="deadline_kind_timer">From the first</string>
+    <string name="deadline_hint_window">Only what happens between these hours counts, on the day the set is due. If they close with something still missing, the reminder is let go without a sound — or waits for its next round, if it comes back.</string>
+    <string name="deadline_hint_timer">The clock starts with the first thing that happens at a moment: an hour, a date, walking through a door. Not with a place you are already at. If it runs out with something still missing, the reminder is let go without a sound — or waits for its next round, if it comes back.</string>
+    <string name="card_deadline">Time limit</string>
+    <string name="card_deadline_window">Between %1$s and %2$s</string>
+    <string name="card_deadline_timer">%1$s from the first</string>
+    <string name="card_deadline_lapses">Runs out %1$s</string>
+    <string name="card_deadline_waiting">The clock starts with the first</string>
+    <string name="editor_sentence_deadline_window">by %1$s</string>
+    <string name="editor_sentence_deadline_timer">within %1$s of the first</string>
+    <string name="history_lapsed">the time limit ran out</string>
     <plurals name="trigger_repeat_days">
         <item quantity="one">every day</item>
         <item quantity="other">every %1$d days</item>

@@ -5,6 +5,12 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 
+/**
+ * The fold with the tests' own zone. The zone only serves the set's deadline (its window's day
+ * is read off the close), so a set without one reads exactly as it always did.
+ */
+fun Reminder.ruleInSet(index: Int, shape: DayShape = DayShape.DEFAULT): TriggerRule? = ruleInSet(index, shape, Fixtures.zone)
+
 /** Shared clock for the model tests: a Thursday afternoon in Madrid, late August 2026. */
 object Fixtures {
     val zone: ZoneId = ZoneId.of("Europe/Madrid")

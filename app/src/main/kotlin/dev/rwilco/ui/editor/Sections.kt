@@ -119,6 +119,8 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.temporal.ChronoUnit
 import java.util.Locale
+import dev.rwilco.model.Deadline
+import dev.rwilco.ui.format.deadlineButtonLabel
 
 /** Lets the instrumented tour find the text field; a BasicTextField has no other handle. */
 const val EDITOR_TEXT_TAG = "editorText"
@@ -478,6 +480,36 @@ internal fun TagsSection(
 /** Lets the tour ask whether tags used before are actually being offered back. */
 const val EDITOR_TAGS_TAG = "editorTags"
 
+/**
+ * "Plazo…", in the same quiet style as "Sólo si…": what is set, or the offer to set it, and a
+ * cross to take it away. The sheet it opens is the deadline sheet (DeadlineSheet).
+ */
+@Composable
+private fun DeadlineButton(deadline: Deadline?, onDeadline: () -> Unit, onClear: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = Tokens.spacing.sm)) {
+        TextButton(
+            onClick = onDeadline,
+            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant),
+            contentPadding = PaddingValues(horizontal = Tokens.spacing.sm),
+        ) {
+            Text(
+                text = if (deadline == null) stringResource(R.string.editor_deadline_add) else deadlineButtonLabel(rememberWords(), deadline),
+                style = MaterialTheme.typography.labelMedium,
+            )
+        }
+        if (deadline != null) {
+            IconButton(onClick = onClear) {
+                Icon(
+                    imageVector = Icons.Outlined.Close,
+                    contentDescription = stringResource(R.string.editor_deadline_clear),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(Tokens.sizes.glyphSmall),
+                )
+            }
+        }
+    }
+}
+
 @Composable
 internal fun TriggersSection(
     rules: List<TriggerRule>,
@@ -504,6 +536,10 @@ internal fun TriggersSection(
     onAddCondition: (Int) -> Unit,
     onEditCondition: (Int, Int) -> Unit,
     onRemoveCondition: (Int, Int) -> Unit,
+    /** How long the set has to complete, under "todos" or "a la vez"; see [Deadline]. */
+    deadline: Deadline? = null,
+    onDeadline: () -> Unit = {},
+    onClearDeadline: () -> Unit = {},
 ) {
     Column {
         // The choice only exists once there is something to combine, and it comes before the
@@ -523,6 +559,9 @@ internal fun TriggersSection(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = Tokens.spacing.xs, bottom = Tokens.spacing.sm),
             )
+            // The deadline sits under the reading it belongs to: "cualquiera" rings with the
+            // first thing that happens and has nothing to give up on, so it gets no row.
+            if (ruleMatch != RuleMatch.ANY) DeadlineButton(deadline, onDeadline, onClearDeadline)
         }
         if (rules.isEmpty()) {
             Text(

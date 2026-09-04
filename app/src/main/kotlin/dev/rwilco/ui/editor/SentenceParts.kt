@@ -4,6 +4,8 @@ import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.isAnchored
+import dev.rwilco.model.Deadline
+import dev.rwilco.model.deadlineApplies
 
 /**
  * The pieces a reminder reads as, in the order they are said. Pure: no strings, no locale, no
@@ -22,6 +24,9 @@ sealed interface SentencePart {
 
     /** "…and comes back every fortnight": only where the recurrence works out its own moments. */
     data class Returns(val recurrence: Recurrence) : SentencePart
+
+    /** "…, antes de las 22:00": the deadline on the set, after the rules it bounds. */
+    data class Bounded(val deadline: Deadline) : SentencePart
 }
 
 /**
@@ -42,6 +47,7 @@ fun sentenceParts(
     rules: List<TriggerRule>,
     match: RuleMatch,
     recurrence: Recurrence,
+    deadline: Deadline? = null,
 ): List<SentencePart> {
     val parts = mutableListOf<SentencePart>()
     // The words are bounded so the clause after them survives: the line over "Guardar" is
@@ -52,6 +58,9 @@ fun sentenceParts(
         if (index > 0) parts += SentencePart.Join(match)
         parts += SentencePart.Rule(rule)
     }
+    // After the rules and before the recurrence: it bounds the set, and the round after the
+    // rest is bounded the same way. Only where it means anything (deadlineApplies).
+    if (deadlineApplies(deadline, rules, match)) parts += SentencePart.Bounded(deadline!!)
     // Only a recurrence that produces its own moments has anything to add; "no repetir" is the
     // absence of a sentence, not a clause in one.
     if (recurrence.isAnchored) parts += SentencePart.Returns(recurrence)

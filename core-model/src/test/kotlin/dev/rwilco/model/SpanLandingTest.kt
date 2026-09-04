@@ -172,8 +172,10 @@ class SpanLandingTest {
     @Test
     fun `a spent place is not watched, not registered, and does not ring`() {
         val reminder = placeUnderExact()
-        // Long after the rest is up, which is when the gate on the rest alone stopped helping.
-        val later = local(2026, 6, 30, 12, 0)
+        // Long after the rest is up, which is when the gate on the rest alone stopped helping —
+        // and inside the door's own hours, a Friday morning, because the harness judges an
+        // arrival against them exactly as the phone does.
+        val later = local(2026, 7, 3, 9, 30)
         assertEquals(emptyList<Gated>(), reminder.watchedCircles(later, zone, defaultTime, dayStart = dayStart))
         assertEquals(emptyList<Pair<String, Trigger.Location>>(), geofenceChoices(listOf(reminder)))
         // And the door itself: an arrival delivered anyway rings nothing.

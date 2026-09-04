@@ -29,6 +29,33 @@ remembered — `Reminder.firedRules`, by index — the scheduler wakes at each p
 turn to write it down (`nextWake`), and only the moment that completes the set rings
 (`outcomeOfFiring`). Dealing with the firing clears the set and starts the round again.
 
+**A set can be given a deadline (`Deadline`, 0.83.0).** "Todos" remembers what has happened for
+ever and "a la vez" waits for the next opening for ever, and neither could say "and if it has not
+all happened by then, forget it". `Reminder.deadline` is that: a **window** of hours of the day
+(`Deadline.Window`), under either reading, or a **timer** counted from the first *moment* of the
+round (`Deadline.Timer`, under "todos" only — "a la vez" has no first trigger, and a state being
+ticked is nothing anybody would call one: a place is ticked the moment the phone is seen inside
+it, possibly days early, so only an hour, a date, a countdown or a doorway starts the clock,
+`timerExpiry`). One runtime slot, `expiresAt`, is the whole of the bookkeeping: a window's close
+on the round's day, written wherever a round starts (the editor's save when the set changed,
+"hecho", the lapse itself — `roundExpiry`); a timer's end, written by the `Wait` branch of the
+firing; cleared by the ring (`markFired`), because a set that rang is not given up on. **The
+round's day is the day of the set's earliest moment**, walked with the window's hours as a fence
+on every rule (`windowExpiryOf`): a date trigger's date, the next Friday, tomorrow's 20:00 when
+today's has gone — never "the day it was written", which would leave "los viernes, y en casa"
+written on a Monday to die on the Monday. The window is then folded into every rule of the round
+as a *dated* `TimeWindow` (`deadlineFence`, through `ruleInSet`, which is why it needed almost no
+new machinery: the walk, the place gate and the fire-time judgement all read a rule's fences), so
+"el 12 a las 19:00, y en casa, de 18 a 22" does not tick the place on the 10th. When the deadline
+passes with the set incomplete the round is **let go without a sound** (`Reminder.lapsed`): a
+"hecho" nobody tapped — the ticks cleared, the anchor moved to the deadline, DONE unless
+something asks it to come back, and the history says "se pasó el plazo" (`FiringKind.LAPSED`).
+Anything the person did outranks it (`deadlineOutranked`): a ring waiting for an answer or a
+snooze not yet rung means the deadline is dropped, never applied. `deadlineApplies` is the half
+of `hasDeadline` a draft can answer, and `warnings` folds the same fence so a rule that cannot
+land inside the window is `NeverFires` before anybody waits a day. `DeadlineTest` and
+`DeadlineJourneyTest` pin all of it, the second through `Simulation`.
+
 Conditions (`Condition.kt`) are states, asked "were you true at that moment?", which is what
 makes them safe to AND with anything: `time_window` (hours + days, crossing midnight allowed),
 `date_range` (two days of the calendar, both ends included), `on_days` (the days of the week
@@ -563,6 +590,10 @@ because that is what its chip would show.
   armed, and `ReminderFiring` drops a firing it has no armed moment for: the reminder went
   quiet until some other re-arm came round. `EditorViewModel` calls the scheduler itself now,
   and `SchedulingKeyBlindSpotTest` holds the reason.
+- **Room v11 adds the set's deadline (0.83.0)**: `deadline`, the `Deadline` as JSON (unreadable
+  reads as none, `ReminderCodec.decodeDeadline`), and `expiresAt`, when the round under way runs
+  out. Null on every existing row, which is exactly what it was. Two more frozen names in the
+  vault; a preset carries the deadline under a tolerant serializer of its own.
 
 ## UI
 
@@ -1915,6 +1946,18 @@ because that is what its chip would show.
   reports as null and `momentsCannotCoincide` says out loud — and "en casa Y a las nueve" is
   *not* that trap, because a place is a state: it means being at home at nine, and it is the
   clock's rule that rings it.
+- **The deadline's own alarm (0.83.0).** A third PendingIntent per reminder
+  (`rwilco://lapse/<id>`, inexact like the net's, `ReminderScheduler.armLapse`) at
+  `Reminder.expiresAt`; the receiver routes it to `ReminderFiring.expire`, which lets the round go
+  (`Reminder.lapsed`, through the same one-write `dealtWith` a "hecho" uses, plus the armed moment
+  cleared — a moment armed past the deadline is not a firing owed, and the re-arm pass holds
+  those). One already past is delivered at once, which is how a deadline the phone slept through
+  is applied on the next pass; but a firing still owed (`missedFire`) goes first, so the catch-up
+  decides about the moment it was for, and every fire re-arms the lapse behind it. `fire` itself
+  asks `expiryDue` of the moment it is about (`late ?: now`), before the note or the ring, and
+  only for a rule's own moment: a late event under a timer, which has no fence to refuse it, is
+  dropped there and the round let go; a snooze's ring has no rule behind it and is the person's.
+  `Simulation` mirrors all of it (`expire`, `lapseAt`), so the journeys run on the JVM.
 - **Conditions are the other way into the same conjunction.** They always were, and there are
   two kinds: `Condition.TimeWindow` and
   `Condition.AtPlace` ("y sólo si estoy en casa"). A place condition is the one thing nothing

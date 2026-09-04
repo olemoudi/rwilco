@@ -109,6 +109,8 @@ import dev.rwilco.model.Recurrence
 import kotlinx.coroutines.launch
 import java.time.ZoneId
 import dev.rwilco.model.Understood
+import dev.rwilco.ui.editor.sheets.DeadlineSheet
+import dev.rwilco.model.roundExpiry
 
 @Composable
 fun EditorScreen(
@@ -218,9 +220,9 @@ fun EditorScreen(
     // draft will be saved under, because a random window's moments are drawn from it: the same
     // question asked of another seed answers about another reminder. Not a remember() key —
     // it is minted once, when the editor opens, and cannot change under it.
-    val ruleWarnings = remember(state.draft.rules, state.draft.ruleMatch, state.defaultTime) {
+    val ruleWarnings = remember(state.draft.rules, state.draft.ruleMatch, state.draft.deadline, state.defaultTime) {
         val worst = HashMap<Int, Int>()
-        for (warning in warnings(state.draft.rules, now, zone, state.defaultTime, state.draft.ruleMatch, state.dayShape, viewModel.draftId).sortedBy(::severityOf)) {
+        for (warning in warnings(state.draft.rules, now, zone, state.defaultTime, state.draft.ruleMatch, state.dayShape, viewModel.draftId, deadline = state.draft.deadline).sortedBy(::severityOf)) {
             val (index, message) = when (warning) {
                 // The strongest thing that can be said: under "todos" one dud rule is the
                 // whole reminder, so it is said on the rule that causes it.
@@ -248,10 +250,13 @@ fun EditorScreen(
     // What the draft will actually do, read back beside the sentence that says what was asked
     // for. Remembered like the cadence above: it walks up to three moments. Not for a preset,
     // which is a shape and rings nothing.
-    val upcoming = remember(state.draft.rules, state.draft.ruleMatch, state.draft.recurrence, state.defaultTime, state.dayStart, state.dayShape, state.asPreset) {
+    val upcoming = remember(state.draft.rules, state.draft.ruleMatch, state.draft.recurrence, state.draft.deadline, state.defaultTime, state.dayStart, state.dayShape, state.asPreset) {
         if (state.asPreset) emptyList()
         else upcomingMoments(
-            state.draft.toReminder(viewModel.draftId, now, now, Status.ACTIVE, zone = zone, shape = state.dayShape),
+            // With the deadline's close a save would write, so the moments read back are the
+            // ones the alarm will be set for and not the ones outside the window.
+            state.draft.toReminder(viewModel.draftId, now, now, Status.ACTIVE, zone = zone, shape = state.dayShape)
+                .let { it.copy(expiresAt = it.roundExpiry(now, zone, state.defaultTime, state.dayStart, state.dayShape)) },
             now, zone, state.defaultTime, state.dayStart, state.dayShape,
         )
     }
@@ -307,6 +312,7 @@ fun EditorScreen(
                         rules = state.draft.rules,
                         match = state.draft.ruleMatch,
                         recurrence = state.draft.recurrence,
+                        deadline = state.draft.deadline,
                     ),
                     today = today,
                     defaultTime = state.defaultTime,
@@ -401,6 +407,9 @@ fun EditorScreen(
                         rules = state.draft.rules,
                         ruleMatch = state.draft.ruleMatch,
                         onRuleMatch = viewModel::setRuleMatch,
+                        deadline = state.draft.deadline,
+                        onDeadline = viewModel::openDeadline,
+                        onClearDeadline = viewModel::clearDeadline,
                         clock = viewModel.clock,
                         today = today,
                         defaultTime = state.defaultTime,
@@ -531,6 +540,14 @@ fun EditorScreen(
                 onConfirm = { condition -> viewModel.commitCondition(sheet.ruleIndex, sheet.conditionIndex, condition) },
                 onDismiss = viewModel::closeSheet,
                 onKeepPlace = viewModel::keepPlace,
+            )
+            is EditorSheet.ConfigureDeadline -> DeadlineSheet(
+                initial = sheet.initial,
+                // A timer counts from the first trigger, which "a la vez" does not have.
+                allowTimer = state.draft.ruleMatch == RuleMatch.ALL,
+                savedWindows = state.savedWindows,
+                onConfirm = viewModel::commitDeadline,
+                onDismiss = viewModel::closeSheet,
             )
             is EditorSheet.Configure -> {
                 val commit = { trigger: dev.rwilco.model.Trigger -> viewModel.commitTrigger(sheet.index, trigger) }

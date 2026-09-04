@@ -12,6 +12,7 @@ import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.diag.Diag
 import dev.rwilco.model.DayShape
+import dev.rwilco.model.Deadline
 import dev.rwilco.model.SafetyNetSettings
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.dayShape
@@ -22,6 +23,7 @@ import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
 import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.Wake
+import dev.rwilco.model.hasDeadline
 import dev.rwilco.model.missedFire
 import dev.rwilco.model.nudgeAt
 import dev.rwilco.model.nextWake
@@ -61,6 +63,9 @@ class ReminderScheduler(
 
     /** The ids whose net alarm this process holds; for a test to see the net survive a pass. */
     internal val nudgingNow: Set<String> get() = nudging.toSet()
+
+    /** And for the set's deadline — a third PendingIntent, for the same reason the net has one. */
+    private val lapsing = Collections.synchronizedSet(mutableSetOf<String>())
 
     /**
      * One pass at a time. A pass is a read of every row, a decision each, and a write of the
@@ -112,6 +117,7 @@ class ReminderScheduler(
             // net's moment recorded there would have the catch-up RING the reminder rather than
             // whisper about it (missedFire), and spend the moment while it was at it.
             armNudge(reminder, reminder.nudgeAt(now, zone, defaultTime, settings.safetyNet, dayStart, settings.dayShape))
+            armLapse(reminder)
             if (missedFire(reminder, now) != null) {
                 // Owed and unanswered: held as it stands, alarm included (see the class doc).
                 missed += reminder
@@ -141,6 +147,7 @@ class ReminderScheduler(
         // ringing is the armed-moment check in ReminderFiring.fire, not this list.
         for (id in armed.toList() - seen) cancelRing(id)
         for (id in nudging.toList() - seen) cancelNudge(id)
+        for (id in lapsing.toList() - seen) cancelLapse(id)
         Log.i(TAG, "armed ${seen.size} reminders, ${missed.size} missed")
         Diag.note("arm", "armed=${seen.size} missed=${missed.size} exact=${if (canScheduleExact()) "y" else "n"}")
         for (reminder in missed) Diag.note("arm", "r=${reminder.id.take(8)} missed its moment ${reminder.armedFor} (rule ${reminder.armedRule})")
@@ -155,6 +162,32 @@ class ReminderScheduler(
     private fun cancelNudge(id: String) {
         runCatching { alarms.cancel(nudgeIntent(id)) }
         nudging -= id
+    }
+
+    private fun cancelLapse(id: String) {
+        runCatching { alarms.cancel(lapseIntent(id)) }
+        lapsing -= id
+    }
+
+    /**
+     * The deadline's own alarm, at the moment the round runs out, or nothing.
+     *
+     * Inexact like the net's, and for the same reason: the quietest thing the app does has no
+     * business in the system's "next alarm". A few minutes late costs nothing — a window's fence
+     * refuses a late event on its own — and one already past is delivered at once, which is how
+     * a deadline the phone slept through is applied on the next pass. Not for a round that has
+     * rung: the ring clears the moment, so there is simply nothing here to arm.
+     */
+    private fun armLapse(reminder: Reminder) {
+        val at = reminder.expiresAt?.takeIf { reminder.status == Status.ACTIVE && reminder.hasDeadline }
+        if (at == null) {
+            cancelLapse(reminder.id)
+            return
+        }
+        runCatching {
+            alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.toEpochMilli(), lapseIntent(reminder.id))
+            lapsing += reminder.id
+        }.onFailure { Log.e(TAG, "could not arm the deadline of ${reminder.id}", it) }
     }
 
     /**
@@ -251,6 +284,14 @@ class ReminderScheduler(
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
 
+    /** The deadline's own, told apart the same way. */
+    private fun lapseIntent(id: String): PendingIntent = PendingIntent.getBroadcast(
+        context,
+        0,
+        Intent(context, AlarmReceiver::class.java).setData(lapseUri(id)),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+
     companion object {
         private const val TAG = "RwilcoAlarms"
 
@@ -266,6 +307,11 @@ class ReminderScheduler(
 
         /** Whether this alarm is the net's quiet word rather than the reminder's own moment. */
         fun isNudge(intent: Intent): Boolean = intent.data?.host == "nudge"
+
+        /** The set's deadline running out, under its own URI for the same reason the net has one. */
+        fun lapseUri(id: String) = "rwilco://lapse/$id".toUri()
+
+        fun isLapse(intent: Intent): Boolean = intent.data?.host == "lapse"
 
         fun ruleIndexOf(intent: Intent): Int? = intent.getIntExtra(EXTRA_RULE, -1).takeIf { it >= 0 }
 
@@ -321,6 +367,8 @@ class ReminderScheduler(
             reminder.recurrence,
             reminder.lastDealtAt,
             reminder.snoozedToPlace,
+            reminder.deadline,
+            reminder.expiresAt,
         )
     }
 
@@ -358,5 +406,8 @@ class ReminderScheduler(
          * them the moment it is written.
          */
         val snoozedToPlace: Trigger.Location? = null,
+        /** The set's deadline and the moment the round under way runs out: the third alarm. */
+        val deadline: Deadline? = null,
+        val expiresAt: Instant? = null,
     )
 }

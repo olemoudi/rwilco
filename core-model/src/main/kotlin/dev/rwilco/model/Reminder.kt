@@ -90,6 +90,19 @@ data class Reminder(
      * dropped for a ring that belonged to a different rule.
      */
     val lastFiredRule: Int? = null,
+    /**
+     * How long the set has to complete before the reminder gives up on the round — see
+     * [Deadline] and [hasDeadline]. Null (every row written before the column) is no deadline.
+     */
+    val deadline: Deadline? = null,
+    /**
+     * When the deadline runs out on the round under way, or null while none is running: a
+     * window's close on the round's day, written wherever a round starts; a timer's end, written
+     * when its first moment happens. Cleared by the ring — a set that rang is not given up on —
+     * and consumed by [lapsed]. The one slot the whole thing needs: "expire now" is this being
+     * behind the clock, and the window's fence reads its day off it ([deadlineFence]).
+     */
+    val expiresAt: Instant? = null,
 )
 
 /**
@@ -177,16 +190,22 @@ fun Reminder.pendingRules(): List<Int> = when {
  * minute alone and its window's opening in company. It means the opening either way now
  * ([openingOf]), so there is one reading of a rule and this only has to add the company's.
  */
-fun Reminder.ruleInSet(index: Int, shape: DayShape = DayShape.DEFAULT): TriggerRule? {
+fun Reminder.ruleInSet(index: Int, shape: DayShape = DayShape.DEFAULT, zone: ZoneId): TriggerRule? {
     val rule = rules.getOrNull(index) ?: return null
-    if (!rulesCombine || ruleMatch != RuleMatch.TOGETHER) return rule
+    if (!rulesCombine || ruleMatch == RuleMatch.ANY) return rule
+    // The set's deadline, when it is a window, is one more fence on every rule of the round:
+    // its hours on the round's day (see [deadlineFence]). Under ALL that is the whole of what a
+    // set does to a rule; under TOGETHER it goes in after the siblings, in the order [warnings]
+    // folds too.
+    val plazo = listOfNotNull(deadlineFence(zone))
+    if (ruleMatch == RuleMatch.ALL) return if (plazo.isEmpty()) rule else rule.copy(conditions = rule.conditions + plazo)
     val others = rules.filterIndexed { at, _ -> at != index }
     // A sibling that is only ever true at an instant cannot be true at *this* instant, so the
     // set cannot hold and this rule must not ring. Folding it to nothing and carrying on would
     // ring a set that [momentsCannotCoincide] has already called impossible — which is the one
     // way this could have quietly done the wrong thing.
     if (others.any { it.trigger.isMoment }) return null
-    return rule.copy(conditions = rule.conditions + others.flatMap { it.conditions } + others.mapNotNull { it.trigger.asState(shape) })
+    return rule.copy(conditions = rule.conditions + others.flatMap { it.conditions } + others.mapNotNull { it.trigger.asState(shape) } + plazo)
 }
 
 /**

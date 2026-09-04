@@ -17,6 +17,8 @@ class AlarmReceiver : BroadcastReceiver() {
         // word about a moment nobody answered. They arrive here by the same door, told apart by
         // the URI they were armed under.
         val nudge = ReminderScheduler.isNudge(intent)
+        // And a third: the set's deadline running out, which rings nothing and lets the round go.
+        val lapse = ReminderScheduler.isLapse(intent)
         val app = context.applicationContext as RwilcoApplication
         // goAsync: the work is a database read and a notification, and a receiver that returns
         // before them is a reminder that never rings.
@@ -26,7 +28,11 @@ class AlarmReceiver : BroadcastReceiver() {
                 // Bounded under the broadcast's own budget: past it the system finishes the
                 // receiver itself, and a finish() of our own on top of that throws.
                 val done = withTimeoutOrNull(BUDGET_MS) {
-                    if (nudge) app.firing.nudge(id) else app.firing.fire(id, ruleIndex = ruleIndex)
+                    when {
+                        nudge -> app.firing.nudge(id)
+                        lapse -> app.firing.expire(id)
+                        else -> app.firing.fire(id, ruleIndex = ruleIndex)
+                    }
                 }
                 if (done == null) Log.e("RwilcoAlarms", "firing $id ran out of time")
             } catch (t: Throwable) {

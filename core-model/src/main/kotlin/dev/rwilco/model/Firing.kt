@@ -41,8 +41,62 @@ fun statusAfterDismissal(
     if (reminder.recurrence.isCalendar && reminder.calendarMoment(reminder.searchFrom(now), zone, shape) == null) return Status.DONE
     // Dealt with means the round is over: what had already happened under ALL stops counting,
     // and the question is whether the reminder can come round again from scratch.
-    val cleared = reminder.copy(status = Status.ACTIVE, snoozedUntil = null, snoozedToPlace = null, firedRules = emptySet())
+    val cleared = reminder.copy(status = Status.ACTIVE, snoozedUntil = null, snoozedToPlace = null, firedRules = emptySet(), expiresAt = null)
     return if (nextFire(cleared, now, zone, defaultTime, shape = shape) == null) Status.DONE else Status.ACTIVE
+}
+
+/**
+ * When the window deadline of the round that begins at [from] closes, for a row as it stands
+ * after whatever started that round — a save, a "hecho", a lapse. Null for a timer (its clock
+ * starts with the first moment, not with the round), for a reminder that is not active, and for
+ * one with no deadline that applies. Counted from the rest when the recurrence is holding the
+ * rules quiet: the round is the one after the rest, and its day is counted from there.
+ */
+fun Reminder.roundExpiry(
+    from: Instant,
+    zone: ZoneId,
+    defaultTime: LocalTime,
+    dayStart: LocalTime = DEFAULT_DAY_START,
+    shape: DayShape = DayShape.DEFAULT,
+): Instant? {
+    if (status != Status.ACTIVE) return null
+    val rest = restUntil(zone, dayStart, shape)
+    return windowExpiry(maxOf(from, rest ?: from), zone, defaultTime, shape)
+}
+
+/**
+ * The row once its deadline has passed with the set incomplete: a "hecho" nobody tapped.
+ *
+ * The round is over (the ticks are cleared, the anchor moves to the deadline, everything up to
+ * it is spent), the status is what dealing with it would have made it — DONE unless something
+ * asks it to come back — and the next round, if there is one, gets its own window close. The
+ * armed moment goes too: a moment armed *after* the deadline (a phone asleep across it) would
+ * otherwise read as a firing owed, and the re-arm pass holds those exactly as they are.
+ * Nothing of the person's is touched here on purpose — a snooze or an unanswered ring means
+ * the deadline no longer applies (`ReminderFiring.expire` stands down first), so both are
+ * simply null by the time this runs.
+ */
+fun Reminder.lapsed(
+    at: Instant,
+    zone: ZoneId,
+    defaultTime: LocalTime,
+    dayStart: LocalTime = DEFAULT_DAY_START,
+    shape: DayShape = DayShape.DEFAULT,
+): Reminder {
+    val cleared = copy(
+        firedRules = emptySet(),
+        lastDealtAt = at,
+        dealtThrough = at,
+        armedFor = null,
+        armedRule = null,
+        expiresAt = null,
+        snoozedUntil = null,
+        snoozedToPlace = null,
+        updatedAt = at,
+    )
+    val status = statusAfterDismissal(cleared, at, zone, defaultTime, shape)
+    val row = cleared.copy(status = status, doneAt = at.takeIf { status == Status.DONE })
+    return row.copy(expiresAt = row.roundExpiry(at, zone, defaultTime, dayStart, shape))
 }
 
 /**

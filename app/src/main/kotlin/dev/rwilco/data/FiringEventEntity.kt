@@ -64,6 +64,9 @@ enum class FiringKind {
 
     /** Under "todos", a place rule ticked off came undone again. */
     UNTICKED,
+
+    /** The set's deadline ran out with the set incomplete, and the round was let go without a sound. */
+    LAPSED,
 }
 
 data class FiringEvent(val kind: FiringKind, val at: Instant, val ruleIndex: Int? = null, val detail: String? = null)

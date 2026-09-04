@@ -24,6 +24,8 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
+import dev.rwilco.model.Deadline
+import dev.rwilco.model.RuleMatch
 
 class HomeStateTest {
 
@@ -49,6 +51,24 @@ class HomeStateTest {
         val cards = (listOfNotNull(state.hero?.card) + state.sections.flatMap { it.cards }).associateBy { it.id }
         assertEquals("casa", cards.getValue("filed").railTag, "the first tag, the one the footer reads first")
         assertNull(cards.getValue("unfiled").railTag)
+    }
+
+    @Test
+    fun `the card carries the deadline and when the round runs out, where they mean anything`() {
+        val window = Deadline.Window(LocalTime.of(18, 0), LocalTime.of(22, 0))
+        val close = LocalDateTime.of(2026, 8, 27, 22, 0).atZone(zone).toInstant()
+        val bounded = reminder("bounded", Trigger.TimeOfDay(LocalTime.of(20, 0)), Trigger.Location(40.4, -3.7, 200, Presence.INSIDE, "Casa"))
+            .copy(ruleMatch = RuleMatch.ALL, deadline = window, expiresAt = close)
+        fun card(reminder: Reminder): ReminderCardUi {
+            val state = buildHomeState(listOf(reminder), defaultTime, now, zone, selectedTag = null)
+            return (listOfNotNull(state.hero?.card) + state.sections.flatMap { it.cards }).first { it.id == reminder.id }
+        }
+        assertEquals(window, card(bounded).deadline)
+        assertEquals(close, card(bounded).expiresAt)
+        assertNull(card(bounded.copy(ruleMatch = RuleMatch.ANY)).deadline, "cualquiera has nothing to give up on")
+        assertNull(card(bounded.copy(rules = bounded.rules.take(1))).deadline, "one rule is not a set")
+        assertNull(card(bounded.copy(status = Status.PAUSED)).expiresAt, "paused rings at no moment, and runs out at none")
+        assertEquals(window, card(bounded.copy(status = Status.PAUSED)).deadline)
     }
 
     @Test

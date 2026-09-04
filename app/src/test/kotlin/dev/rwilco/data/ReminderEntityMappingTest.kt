@@ -7,6 +7,7 @@ import dev.rwilco.model.RepeatUnit
 import dev.rwilco.model.Status
 import dev.rwilco.model.Presence
 import dev.rwilco.model.Condition
+import dev.rwilco.model.Deadline
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -45,6 +46,22 @@ class ReminderEntityMappingTest {
         assertEquals(reminder, reminder.toEntity().toDomain())
         val done = reminder.copy(status = Status.DONE, doneAt = Instant.ofEpochMilli(1_700_000_900_000))
         assertEquals(done, done.toEntity().toDomain())
+    }
+
+    @Test
+    fun `the deadline on a set and its running clock survive the trip`() {
+        val evening = Deadline.Window(LocalTime.of(18, 0), LocalTime.of(22, 0))
+        val bounded = reminder.copy(deadline = evening, expiresAt = Instant.ofEpochMilli(1_700_000_600_000))
+        assertEquals(bounded, bounded.toEntity().toDomain())
+        val row = bounded.toEntity()
+        assertEquals("""{"type":"window","from":"18:00","to":"22:00"}""", row.deadline)
+        assertEquals(1_700_000_600_000, row.expiresAt)
+        val timed = reminder.copy(deadline = Deadline.Timer(45))
+        assertEquals(timed, timed.toEntity().toDomain())
+        // A row from before v11 has neither column; a deadline this build cannot read is none.
+        assertEquals(reminder, reminder.toEntity().copy(deadline = null, expiresAt = null).toDomain())
+        assertEquals(null, reminder.toEntity().copy(deadline = """{"type":"fortnight"}""").toDomain().deadline)
+        assertEquals(null, reminder.toEntity().copy(deadline = "rubbish").toDomain().deadline)
     }
 
     @Test

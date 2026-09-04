@@ -6,6 +6,7 @@ import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.isAnchored
 import java.time.LocalDate
 import java.time.LocalTime
+import dev.rwilco.model.deadlineApplies
 
 /**
  * Why a reminder rings, in one plain line — the same sentence the form says back over its save
@@ -39,6 +40,11 @@ fun reminderSummary(words: Words, reminder: Reminder, today: LocalDate, defaultT
                 }
                 append(" " + words.get(R.string.editor_sentence_only, fences))
             }
+        }
+        // The deadline on the set, after the rules it bounds — the same clause the editor says.
+        val deadline = reminder.deadline
+        if (deadline != null && deadlineApplies(deadline, reminder.rules, reminder.ruleMatch) && isNotEmpty()) {
+            append(", " + deadlinePhrase(words, deadline))
         }
         // Only a recurrence that works out its own moments has anything to add; "no repetir" is
         // the absence of a clause, not one.

@@ -6,6 +6,7 @@ import dev.rwilco.model.dayTimingOf
 import dev.rwilco.model.Action
 import dev.rwilco.model.toggling
 import dev.rwilco.model.Condition
+import dev.rwilco.model.Deadline
 import dev.rwilco.model.DayShape
 import dev.rwilco.model.DEFAULT_ACTIONS
 import dev.rwilco.model.MAX_PRESET_NAME
@@ -53,9 +54,11 @@ data class Draft(
     /** How it comes back after being dealt with. Asked for, never assumed. */
     val recurrence: Recurrence = Recurrence.None,
     val actions: Set<Action> = DEFAULT_ACTIONS,
+    /** How long a set has to complete; only means anything under "todos" or "a la vez". */
+    val deadline: Deadline? = null,
 )
 
-fun Reminder.toDraft() = Draft(text = text, tags = tags, rules = rules, ruleMatch = ruleMatch, actions = actions, recurrence = recurrence)
+fun Reminder.toDraft() = Draft(text = text, tags = tags, rules = rules, ruleMatch = ruleMatch, actions = actions, recurrence = recurrence, deadline = deadline)
 
 /**
  * Note what is NOT carried over: the armed moment, which the scheduler writes again the instant
@@ -102,6 +105,11 @@ fun Draft.toReminder(
     /** The answer somebody already gave to a ring: kept unless this edit re-decided the "when". */
     snoozedUntil: Instant? = null,
     snoozedToPlace: Trigger.Location? = null,
+    /**
+     * When the deadline on the round under way runs out: carried while the round survives the
+     * edit, and worked out again by the caller when it does not (see [EditorViewModel.save]).
+     */
+    expiresAt: Instant? = null,
     /** Where and how the day is shaped, for a date left to the day: see [settleDays]. */
     zone: ZoneId,
     shape: DayShape = DayShape.DEFAULT,
@@ -128,6 +136,8 @@ fun Draft.toReminder(
     nudgedAt = nudgedAt,
     snoozedUntil = snoozedUntil,
     snoozedToPlace = snoozedToPlace,
+    deadline = deadline,
+    expiresAt = expiresAt,
 )
 
 /** Which of the two lists the editor offers back is being mended. */
@@ -149,6 +159,9 @@ sealed interface EditorSheet {
 
     /** A fence on that calendar — the same "y sólo si" a rule has; [index] null when adding. */
     data class ConfigureRecurrenceCondition(val index: Int?, val initial: Condition?) : EditorSheet
+
+    /** The deadline on the set; [initial] is the one set, or null when there is none yet. */
+    data class ConfigureDeadline(val initial: Deadline?) : EditorSheet
 }
 
 data class EditorUiState(
@@ -253,6 +266,7 @@ fun EditorUiState.toPreset(id: String, now: Instant, existing: Preset?, others: 
     ruleMatch = draft.ruleMatch,
     actions = draft.actions,
     recurrence = draft.recurrence,
+    deadline = draft.deadline,
     // A preset keeps the colour it was given: it is how it is recognised, and a colour that
     // moves is worse than no colour at all.
     colorIndex = existing?.colorIndex ?: nextPresetColor(others),
@@ -347,7 +361,21 @@ private fun EditorUiState.withRecurrenceConditions(
  * half-satisfied by history.
  */
 fun EditorUiState.setRuleMatch(match: RuleMatch): EditorUiState =
-    copy(draft = draft.copy(ruleMatch = match))
+    copy(
+        draft = draft.copy(
+            ruleMatch = match,
+            // A timer has no "first trigger" under "a la vez" and the sheet does not offer one
+            // there; a value the form cannot show is not a value worth saving.
+            deadline = draft.deadline.takeUnless { it is Deadline.Timer && match == RuleMatch.TOGETHER },
+        ),
+    )
+
+fun EditorUiState.openDeadline(): EditorUiState = copy(sheet = EditorSheet.ConfigureDeadline(draft.deadline))
+
+fun EditorUiState.commitDeadline(deadline: Deadline): EditorUiState =
+    copy(draft = draft.copy(deadline = deadline), sheet = EditorSheet.None)
+
+fun EditorUiState.clearDeadline(): EditorUiState = copy(draft = draft.copy(deadline = null))
 
 /**
  * A tile on or off — except that the two sound tiles are one choice. Asking for a sound once

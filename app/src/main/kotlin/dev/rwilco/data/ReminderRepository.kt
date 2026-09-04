@@ -57,6 +57,9 @@ class ReminderRepository(
     /** Which rules of an ALL reminder have happened so far; empty starts the round again. */
     suspend fun setFiredRules(id: String, indices: Set<Int>) = dao.setFiredRules(id, encodeIndices(indices))
 
+    /** When the deadline on the round under way runs out; null takes it away. */
+    suspend fun setExpiresAt(id: String, at: Instant?) = dao.setExpiresAt(id, at?.toEpochMilli())
+
     /** Upsert as given; the caller decides `updatedAt`. */
     suspend fun save(reminder: Reminder) = dao.upsert(reminder.toEntity())
 
@@ -71,9 +74,9 @@ class ReminderRepository(
      * coming and has been dealt with before it could ring, or null when the thing dealt with was
      * a firing that had already happened.
      */
-    suspend fun dealtWith(id: String, at: Instant, status: Status, through: Instant?) {
+    suspend fun dealtWith(id: String, at: Instant, status: Status, through: Instant?, expiresAt: Instant?) {
         val millis = at.toEpochMilli()
-        dao.dealtWith(id, millis, status.name, if (status == Status.DONE) millis else null, through?.toEpochMilli())
+        dao.dealtWith(id, millis, status.name, if (status == Status.DONE) millis else null, through?.toEpochMilli(), expiresAt?.toEpochMilli())
     }
 
     suspend fun setStatus(id: String, status: Status) {

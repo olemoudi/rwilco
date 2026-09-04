@@ -67,6 +67,10 @@ data class ReminderEntity(
     val lastFiredRule: Int? = null,
     /** The place a snooze waits at, as a trigger's JSON; null (every older row) is no such snooze. */
     val snoozedToPlace: String? = null,
+    /** The set's deadline, as JSON (see `Deadline`); null (every older row) is none. */
+    val deadline: String? = null,
+    /** When the deadline on the round under way runs out; null (every older row) is no round under one. */
+    val expiresAt: Long? = null,
 )
 
 /** The stored form of no recurrence, and what every row written before v5 gets. */
@@ -108,6 +112,10 @@ fun ReminderEntity.toDomain(zone: ZoneId = ZoneId.systemDefault()): Reminder = R
     // Anything but a place reads as no snooze: a shape this build cannot read must not hold a
     // reminder silent for ever, and erring towards ringing is the house rule.
     snoozedToPlace = ReminderCodec.decodeTrigger(snoozedToPlace) as? Trigger.Location,
+    // A deadline this build cannot read is none: the set waits as it always did, and a slot
+    // with no deadline behind it means nothing (see Reminder.hasDeadline).
+    deadline = ReminderCodec.decodeDeadline(deadline),
+    expiresAt = expiresAt?.let(Instant::ofEpochMilli),
 ).foldRepeats(zone)
 
 fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
@@ -132,6 +140,8 @@ fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
     dealtThrough = dealtThrough?.toEpochMilli(),
     lastFiredRule = lastFiredRule,
     snoozedToPlace = snoozedToPlace?.let(ReminderCodec::encodeTrigger),
+    deadline = deadline?.let(ReminderCodec::encodeDeadline),
+    expiresAt = expiresAt?.toEpochMilli(),
 )
 
 /**
