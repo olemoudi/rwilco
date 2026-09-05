@@ -3,6 +3,27 @@
 Running notes: what is next, what cost time, what must not be re-derived.
 
 
+## Performance notes
+
+- **Composing a card is the whole cost of scrolling Home** (2026-09-05). Measured with
+  `scripts/scroll-bench.sh`, ~90 cards: of the UI thread's time in a frame, measure and layout
+  took 0.2 ms and recording the display list 3.2 ms, while the composition phase took 10-16 ms
+  at the median and 53-95 ms at the 90th, with `gfxinfo` calling the UI thread slow on 40 frames
+  of 42. Nothing about layout, drawing or overdraw is worth touching; what is worth touching is
+  how much there is to compose per card and how fast that code runs.
+- **The Compose compiler report says recomposition is already fine.** Every composable under
+  `ui.home` comes out `restartable skippable` (`compose_stability.conf` is what buys that), the
+  Home state is built on `Dispatchers.Default`, `HomeUiState` is a data class so the minute pulse
+  conflates in the `StateFlow`, and the header offset is read inside `graphicsLayer {}` rather
+  than in composition. Re-derive none of that; the reports are one line of
+  `composeCompiler { reportsDestination.set(...) }` away if it needs checking again.
+- **The emulator cannot A/B a scroll.** Three runs of the *same* build: 13.8 / 13.9 / 16.0 ms
+  median, 58.8 / 53.6 / 94.7 ms at the 90th. The noise is wider than any change worth making.
+  Diagnose on it (the phase breakdown is stable and honest); judge on the phone.
+- **Do not read the size of `assets/dexopt/baseline.prof` as a measure of what is in it.** It is
+  a compressed bitmap: 1768 methods came to 214 bytes. `profgen dumpProfile` is the answer — see
+  the header of `app/src/main/baseline-prof.txt`.
+
 ## Build notes that cost time
 - **`&apos;` in `strings.xml` fails the resource merge with an NPE, not an error message.**
   `mergeDebugResources` dies with `Cannot invoke "javax.xml.stream.events.Attribute.getValue()"
@@ -38,7 +59,13 @@ Running notes: what is next, what cost time, what must not be re-derived.
   found"), so close it *between* runs, then re-run only the class that needs clean captures.
   Cost: one extra device run on 2026-09-02, and one more on 2026-09-05: force-stopping SystemUI
   between runs is not enough on this image — it ANRs again within a couple of minutes, so the
-  re-run's captures came back with the dialog in the same place. Do not spend a third run on it.
+  re-run's captures came back with the dialog in the same place.
+  **The fix is `adb shell settings put global hide_error_dialogs 1`** (found 2026-09-05, after
+  the above had cost three runs between two rounds). It stops the system putting up ANR and crash
+  dialogs at all; the one already on screen has to be dismissed once (BACK, or a tap on "Wait" —
+  it is a system dialog, not Compose, so tapping it is fine), and none comes back. Worth doing on
+  every fresh AVD: while that dialog is up it also **eats touch events**, so a scripted swipe
+  scrolls nothing and a measurement taken then is a measurement of the dialog.
 - `adb shell uiautomator dump` must write to `/data/local/tmp/ui.xml` (the `/sdcard` path
   silently fails on this image). Even then, `input tap` on Compose buttons landed maybe one time
   in three and a missed tap cascades (a stray BACK on Home closes the app). The instrumented tour

@@ -208,4 +208,32 @@ object DemoData {
         repository.deleteAll()
         reminders.forEach { repository.save(it) }
     }
+
+    /**
+     * The demo set, [copies] times over, for looking at a long list.
+     *
+     * A Home with eighteen cards is not the Home anybody has a scrolling problem with, and a
+     * scroll measurement taken on one is a measurement of nothing. This clones the shapes above
+     * — every kind of trigger, tags, snoozes, recurrences, an overdue one — under fresh ids and
+     * numbered words, so the list is long *and* varied, which is what makes composing each card
+     * cost what it really costs. Debug only, like the rest of this file.
+     */
+    suspend fun seedMany(repository: ReminderRepository, clock: Clock, copies: Int) {
+        seed(repository, clock)
+        val base = repository.openNow()
+        for (copy in 1..copies) {
+            for (one in base) {
+                repository.save(
+                    one.copy(
+                        id = "${one.id}-$copy",
+                        text = "${one.text} ($copy)",
+                        // Spread them through the day so the sections fill rather than one of
+                        // them holding every card.
+                        createdAt = one.createdAt.minus(Duration.ofMinutes(copy * 7L)),
+                        updatedAt = one.updatedAt.minus(Duration.ofMinutes(copy * 7L)),
+                    ),
+                )
+            }
+        }
+    }
 }

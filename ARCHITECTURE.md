@@ -2599,6 +2599,50 @@ session; `InstallReceiver` turns "needs confirmation" into a notification and ke
 APK for the one-tap retry in Settings (`AppUpdateCard`). `BootReceiver` re-arms after boot and
 after the update itself.
 
+## Performance
+
+Home is a list of rich cards and it is scrolled fast, so the only thing that has ever cost a
+frame here is **composing a card**. Measured with `scripts/scroll-bench.sh`, which reads the
+phase timestamps out of `gfxinfo framestats` rather than the frame times (the frame time is the
+GPU too, and on the emulator that half swamps everything): against ~90 cards, measure and layout
+came to 0.2 ms and recording the display list to 3.2 ms, while the composition phase took 10-16
+ms at the median and 53-95 ms at the 90th. At a fast fling the list's prefetch cannot stay ahead
+and that composition lands on the critical path, which is the stutter people notice.
+
+Three things follow, and the third is the one that was missing.
+
+**Recomposition is not the problem and has not been for a while.** Every composable under
+`ui.home` compiles `restartable skippable` — which is what `app/compose_stability.conf` buys, by
+telling the compiler that `java.time` and `dev.rwilco.model` are immutable — the state is built
+on `Dispatchers.Default`, `HomeUiState` is a data class so the minute pulse conflates in the
+`StateFlow` instead of rebuilding every card, `today` sits behind a `derivedStateOf`, and the
+header's offset is read inside a `graphicsLayer {}` block rather than in composition. Nothing on
+this screen recomposes per scroll frame.
+
+**A row is only reusable as the same kind of row** (`CONTENT_CARD` and friends, `HomeScreen.kt`).
+A `LazyColumn` hands a scrolling row the nodes of a row that has just left, so that composing it
+can skip what the two have in common — and the pool is keyed by content type. Left at the
+default every row is the same type, `null`, so a card could be given the slot a section heading
+had just vacated and the tree would be thrown away and built from nothing. The two card heights
+are two types for the same reason: they are different trees.
+
+**And the app's own code is compiled ahead of time** (`app/src/main/baseline-prof.txt`). Without
+it the release APK carried a 12 KB profile that was only the merge of what the libraries ship;
+everything in `dev.rwilco` started interpreted and was JIT-compiled while somebody scrolled. It
+matters more here than in most apps because this one updates itself every few days, and every
+install throws away the profile ART had been collecting on its own — so it never stayed warm. The
+file is a wildcard over the app's package rather than a generated profile: coarser and bigger,
+but it cannot go stale, which for a repo that ships a release per feature is the trade worth
+making. It expands to about 18,600 methods and costs 1.4 KB of APK. **A rule that matches nothing
+fails silently**, so the file's own header carries the `profgen dumpProfile` incantation that
+says what actually went in; the profile's *size* answers nothing, being a compressed bitmap.
+
+What has not been done, and is the next lever if this is still not enough: every card carries a
+whole `SwipeToDismissBox` at rest — the "glass" background composed under it whether or not
+anything is being swiped, an `Animatable`, an `animateFloatAsState`, two `LaunchedEffect`s, a
+lifecycle observer and a `pointerInput` loop. That is roughly ten nodes and four coroutines per
+card for a gesture that is almost never in progress.
+
 ## Distribution
 
 GitHub Actions: `ci.yml` (tests, coverage badge, debug APK, compiles instrumented tests) and

@@ -1,0 +1,50 @@
+# The app's own code, marked for ahead-of-time compilation.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# Without it the release APK carries a ~12 KB profile that is nothing but the merge of what the
+# libraries ship (Compose, Room, WorkManager). Everything in `dev.rwilco` — every composable Home
+# draws, the formatting under it, the next-fire arithmetic — started interpreted and was compiled
+# by the JIT while somebody was already scrolling.
+#
+# Measured on the emulator against a Home of ~90 cards (a debug build, so the absolute numbers
+# are inflated, but the shape repeated over five runs): of the UI thread's time in a frame,
+# measure and layout took 0.2 ms and recording the display list 3.2 ms, while the composition
+# phase took 10-16 ms at the median and 53-95 ms at the 90th — and `gfxinfo` called the UI thread
+# slow on 40 frames out of 42. Composing a card is the whole cost of scrolling here, so making
+# that code run compiled is the one lever that acts on all of it at once.
+#
+# And this app needs it more than most: it updates itself from GitHub every few days, and every
+# install throws away the profile ART had been collecting on its own. Left to the JIT it never
+# gets to stay warm — which is exactly the "it was fine and now it stutters" that prompted this.
+#
+# WHY IT IS WRITTEN BY HAND, WITH WILDCARDS
+# -----------------------------------------
+# The usual way is a generated profile: a macrobenchmark module drives a scroll on a device and
+# records the methods that actually ran. It is more precise — it marks only what is hot, so ART
+# compiles less — and it rots: it is a snapshot of one afternoon's code, and this repo ships a
+# release per feature. A wildcard over the app's own package is coarser and bigger, and it can
+# never go stale: a composable written next month is already in it. For an app whose own dex is a
+# few megabytes, compiling more of it than strictly necessary costs install time nobody is
+# watching and buys a scroll somebody is.
+#
+# H = hot, S = startup, P = post-startup. All three, because the screens are the startup path and
+# the scroll is the post-startup one, and there is no third thing this app does. The second line
+# is the classes themselves, so they are laid out together and loaded without a lookup each.
+#
+# CHECKING IT
+# -----------
+# The rule expands at build time; the result is worth looking at rather than trusting, because a
+# rule that matches nothing fails silently and the file would sit here doing nothing:
+#
+#   unzip -p app/build/outputs/apk/release/app-release.apk assets/dexopt/baseline.prof > /tmp/b.prof
+#   $ANDROID_HOME/cmdline-tools/latest/bin/profgen dumpProfile \
+#       -p /tmp/b.prof -a app/build/outputs/apk/release/app-release.apk -o /tmp/b.txt
+#   grep -c Ldev/rwilco /tmp/b.txt      # thousands, not zero
+#
+# Do not read the .prof's SIZE as the answer: it is a compressed bitmap, and 1768 methods of
+# `ui.home` came to 214 bytes. On the phone, `adb shell cmd package dump-profiles dev.rwilco`
+# says what ART actually holds.
+
+HSPLdev/rwilco/**->**(**)**
+Ldev/rwilco/**

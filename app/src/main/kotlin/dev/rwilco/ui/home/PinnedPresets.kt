@@ -91,8 +91,8 @@ fun PinnedPresetsRow(
         horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        items(presets, key = { it.id }) { preset -> PinnedPresetButton(preset, onPick) }
-        item(key = "add") { AddPinnedButton(onManage) }
+        items(presets, key = { it.id }, contentType = { "preset" }) { preset -> PinnedPresetButton(preset, onPick) }
+        item(key = "add", contentType = "add") { AddPinnedButton(onManage) }
     }
 }
 

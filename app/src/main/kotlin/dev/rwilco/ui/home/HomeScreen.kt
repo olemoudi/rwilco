@@ -518,7 +518,7 @@ fun HomeScreen(
             // A fold in Settings may never hide a phone that will not ring, and neither may
             // Home: the one screen somebody actually looks at says so, once, until waved off.
             if (stripShown) {
-                item(key = "readiness") {
+                item(key = "readiness", contentType = "readiness") {
                     val remaining = readiness.problemNames() - dismissedProblems
                     ReadinessStrip(
                         // What is left to say, not the total: naming a problem somebody has
@@ -534,7 +534,7 @@ fun HomeScreen(
             // Shown as soon as there is a shape worth a button — otherwise the "+" that adds
             // one would be hiding inside the row it is meant to fill.
             if (!search.open && presets.isNotEmpty()) {
-                item(key = "pinned") {
+                item(key = "pinned", contentType = "pinned") {
                     PinnedPresetsRow(
                         presets = pinned,
                         onPick = { preset ->
@@ -550,11 +550,11 @@ fun HomeScreen(
                 // A field and a void, otherwise: with nothing typed yet, the tags are what
                 // there is to reach for (0.68.0). Picking one is a filter, and closes the search.
                 if (search.query.isBlank() && state.tags.isNotEmpty()) {
-                    item(key = "search-tags") {
+                    item(key = "search-tags", contentType = "tags") {
                         TagFilterRow(tags = state.tags, selected = null, onSelect = { tag -> if (tag is TagFilter.Named) viewModel.filterByTag(tag.tag) else viewModel.selectTagAndClose(tag) })
                     }
                 }
-                items(search.hits, key = { it.key }) { hit ->
+                items(search.hits, key = { it.key }, contentType = { CONTENT_HIT }) { hit ->
                     SearchResultRow(
                         hit = hit,
                         onOpen = onOpen,
@@ -565,7 +565,7 @@ fun HomeScreen(
                 // Capped at twenty with nothing to say so: a search that found more read as a
                 // search that found twenty (0.69.0).
                 if (search.hits.size >= SEARCH_LIMIT) {
-                    item(key = "search-more") {
+                    item(key = "search-more", contentType = "search-more") {
                         Text(
                             text = stringResource(R.string.home_search_more, SEARCH_LIMIT),
                             style = MaterialTheme.typography.bodySmall,
@@ -575,7 +575,7 @@ fun HomeScreen(
                     }
                 }
                 if (search.nothingFound) {
-                    item(key = "search-empty") {
+                    item(key = "search-empty", contentType = "empty") {
                         EmptyState(
                             title = stringResource(R.string.home_search_none_title),
                             body = stringResource(R.string.home_search_none_body),
@@ -587,17 +587,17 @@ fun HomeScreen(
                 // Before the first emission the list is unknown, not empty: card shapes, so the
                 // screen never says "nothing to remember" about reminders it has not read yet.
                 if (!state.loaded) {
-                    item(key = "loading") { ListPlaceholder() }
+                    item(key = "loading", contentType = "loading") { ListPlaceholder() }
                 }
                 if (state.tags.isNotEmpty()) {
-                    item(key = "tags") {
+                    item(key = "tags", contentType = "tags") {
                         TagFilterRow(tags = state.tags, selected = state.selectedTag, onSelect = viewModel::selectTag)
                     }
                 }
                 // The last delete, for a minute: the snackbar's undo, kept where the list is
                 // after the snackbar has gone (see HomeViewModel.pendingDelete).
                 pendingDelete?.let { removed ->
-                    item(key = "undo-delete") {
+                    item(key = "undo-delete", contentType = "undo") {
                         UndoDeleteRow(
                             text = removed.reminder.text,
                             onUndo = { viewModel.undo(removed) },
@@ -609,7 +609,7 @@ fun HomeScreen(
                     // Keyed by the reminder and not by the slot: a swipe acts on release, and
                     // a hero that changed under a held thumb was a different reminder marked done.
                     val heroId = hero.card.id
-                    item(key = HERO_KEY_PREFIX + heroId) {
+                    item(key = HERO_KEY_PREFIX + heroId, contentType = CONTENT_HERO) {
                         // Swipeable like every other card: it is a reminder, and the one that
                         // matters most is the last one that should be impossible to deal with.
                         SwipeableCard(
@@ -634,17 +634,30 @@ fun HomeScreen(
                     }
                 }
                 if (state.quietToday) {
-                    item(key = "quiet-today") { QuietTodayRow() }
+                    item(key = "quiet-today", contentType = "quiet") { QuietTodayRow() }
                 }
                 for (section in state.sections) {
-                    item(key = "section-${section.section}") {
+                    item(key = "section-${section.section}", contentType = CONTENT_SECTION) {
                         SectionHeader(
                             title = stringResource(section.section.titleRes),
                             accent = if (section.section == Section.OVERDUE) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                             trailing = section.cards.size.toString(),
                         )
                     }
-                    items(section.cards, key = { it.id }) { card ->
+                    // **A card is only reusable as the same kind of card.** The pool a
+                    // LazyColumn hands a scrolling row its nodes back out of is keyed by content
+                    // type, and with every item left at the default — null — they are all one
+                    // kind: a card could be handed the slot a section heading had just vacated,
+                    // and a folded one the slot of an open one. The shapes do not match, so the
+                    // subtree is torn down and built again instead of reused, which is precisely
+                    // the work a fast fling cannot afford (measured: composition is the whole of
+                    // the UI thread's time here). The two card heights are two types for the
+                    // same reason: they are different trees.
+                    items(
+                        section.cards,
+                        key = { it.id },
+                        contentType = { if (compactHome != (it.id in flippedCards)) CONTENT_CARD_COMPACT else CONTENT_CARD },
+                    ) { card ->
                         SwipeableCard(
                             onDone = { viewModel.markDone(card.id) },
                             onDelete = { viewModel.delete(card.id) },
@@ -674,7 +687,7 @@ fun HomeScreen(
                     }
                 }
                 if (state.failed) {
-                    item(key = "failed") {
+                    item(key = "failed", contentType = "failed") {
                         EmptyState(
                             title = stringResource(R.string.home_failed_title),
                             body = stringResource(R.string.home_failed_body),
@@ -685,7 +698,7 @@ fun HomeScreen(
                     }
                 }
                 if (state.empty) {
-                    item(key = "empty") {
+                    item(key = "empty", contentType = "empty") {
                         EmptyState(
                             title = stringResource(R.string.home_empty_title),
                             body = stringResource(R.string.home_empty_body),
@@ -826,10 +839,10 @@ private fun TagFilterRow(tags: List<TagFilter>, selected: TagFilter?, onSelect: 
         horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        item(key = "all") {
+        item(key = "all", contentType = CONTENT_TAG) {
             TagChip(label = stringResource(R.string.home_all_tags), selected = selected == null, onClick = { onSelect(null) })
         }
-        items(tags, key = { it.key }) { tag ->
+        items(tags, key = { it.key }, contentType = { CONTENT_TAG }) { tag ->
             TagChip(
                 label = tag.label(),
                 selected = tag == selected,
@@ -871,6 +884,23 @@ private const val MARK_MS = 1_400L
 
 /** The hero's row is keyed by its slot, not by the reminder alone; read by the just-saved effect. */
 private const val HERO_KEY_PREFIX = "hero-"
+
+/*
+ * What each row of Home *is*, for the list's reuse pool.
+ *
+ * A LazyColumn keeps the nodes of a row that scrolls off and hands them to the next row of the
+ * same content type, so that composing it can skip everything the two have in common. Left at
+ * the default the type is null for every row, which makes them all one kind and the reuse
+ * worthless: the tree that comes back is a section heading's and the tree being asked for is a
+ * card's, so it is thrown away and built from nothing. Naming them is the whole fix, and it is
+ * worth naming even the one-off rows — a card must not be given the strip's slot either.
+ */
+private const val CONTENT_CARD = "card"
+private const val CONTENT_CARD_COMPACT = "card-compact"
+private const val CONTENT_HERO = "hero"
+private const val CONTENT_SECTION = "section"
+private const val CONTENT_TAG = "tag"
+private const val CONTENT_HIT = "hit"
 
 /** "Nada para hoy": one quiet line where the day's section would be, so the list has a verdict. */
 @Composable

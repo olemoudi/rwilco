@@ -15,6 +15,9 @@ class DemoSeedReceiver : BroadcastReceiver() {
             try {
                 when (intent.getStringExtra("seed")) {
                     "demo" -> DemoData.seed(app.repository, app.clock)
+                    // `--es seed many --ei copies 5`: the demo set, that many times over, for
+                    // looking at (and measuring) a list long enough to have a scroll in it.
+                    "many" -> DemoData.seedMany(app.repository, app.clock, intent.getIntExtra("copies", 5))
                     "clear" -> app.repository.deleteAll()
                 }
             } finally {

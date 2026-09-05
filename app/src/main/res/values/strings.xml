@@ -1260,6 +1260,10 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_86_0">
+        <item>Home scrolls better with a lot of cards. The app\'s own code is now compiled ahead of time instead of being compiled by the phone while you scroll — which mattered here more than in most apps, because Rwilco updates itself every few days and every update threw that work away.</item>
+        <item>And the list reuses a card\'s slot for another card instead of rebuilding it from nothing. Measured: composing cards was the whole of what a frame spent on the processor; laying them out and drawing them barely registered.</item>
+    </string-array>
     <string-array name="whats_new_0_85_0">
         <item>A place you asked about "when I get there" or "when I leave" can now ask for a while as well: "when I get home, and once I have been there 10 minutes". Crossing a line is the loudest thing a place can do and the least reliable — walking past a door, a trip to the bins — and this is the answer to that. Under "when I leave" it counts the other side, which is what tells going out from going out for the evening.</item>
         <item>A position or two on the wrong side is forgiven; leaving for good is not, and then it waits for you to arrive again. It costs four wifi positions after an arrival, never the satellites, and the phone\'s own geofences time the same wait for free. With the battery low enough that Rwilco can barely look, it says so instead of going quiet.</item>

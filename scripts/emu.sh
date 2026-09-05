@@ -4,6 +4,7 @@
 #   scripts/emu.sh up | down | wake    # boot (and keep awake) / kill / nudge a dozing screen
 #   scripts/emu.sh install | launch    # install the debug APK / start the app
 #   scripts/emu.sh seed | clear        # demo data in / out (debug builds only)
+#   scripts/emu.sh seed-many [N]       # the demo set N times over, for a long list
 #   scripts/emu.sh shot NAME           # docs/screenshots/NAME.png (raw screencap)
 #   scripts/emu.sh tour                # run the instrumented UI tour, pull its screenshots into docs/screenshots
 #   scripts/emu.sh watch               # the place watch against mock locations (PlaceWatchDeviceTest)
@@ -49,6 +50,9 @@ case "${1:-}" in
   install) "$ADB" install -r app/build/outputs/apk/debug/app-debug.apk ;;
   launch) "$ADB" shell am start -n "$PKG/.MainActivity" ;;
   seed) "$ADB" shell am broadcast -n "$PKG/.debug.DemoSeedReceiver" --es seed demo ;;
+  # The demo set N times over (default 5 → ~90 cards): a Home with a scroll in it, which is the
+  # only kind worth measuring a scroll on.
+  seed-many) "$ADB" shell am broadcast -n "$PKG/.debug.DemoSeedReceiver" --es seed many --ei copies "${2:-5}" ;;
   clear) "$ADB" shell am broadcast -n "$PKG/.debug.DemoSeedReceiver" --es seed clear ;;
   shot)
     mkdir -p docs/screenshots
