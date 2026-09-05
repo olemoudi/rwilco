@@ -13,12 +13,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Share
@@ -29,16 +27,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -55,6 +49,9 @@ import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
 import kotlinx.coroutines.launch
+import dev.rwilco.ui.components.RwilcoTopBar
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /**
  * What the app knows about itself, as one block of text to be copied and handed to whoever is
@@ -109,26 +106,9 @@ fun DiagnosticsScreen(app: RwilcoApplication, onBack: () -> Unit) {
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
-            Surface(color = MaterialTheme.colorScheme.background) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = spacing.sm)
-                        .heightIn(min = Tokens.sizes.control),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.common_back))
-                    }
-                    Text(
-                        text = stringResource(R.string.diag_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.weight(1f).padding(horizontal = spacing.sm),
-                    )
-                    IconButton(onClick = { confirmingClear = true }) {
-                        Icon(Icons.Outlined.DeleteOutline, contentDescription = stringResource(R.string.diag_clear))
-                    }
+            RwilcoTopBar(title = stringResource(R.string.diag_title), onBack = onBack) {
+                IconButton(onClick = { confirmingClear = true }) {
+                    Icon(Icons.Outlined.DeleteOutline, contentDescription = stringResource(R.string.diag_clear))
                 }
             }
         },

@@ -24,6 +24,8 @@ import androidx.compose.ui.res.stringResource
 import dev.rwilco.R
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.theme.Tokens
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import dev.rwilco.ui.format.join
 
 /**
  * "Puede que este móvil no suene": Home's word about a phone that cannot keep the app's promise.
@@ -62,7 +64,7 @@ fun ReadinessStrip(
                         // is said, and the rest counted.
                         text = when {
                             worst == null -> pluralStringResource(R.plurals.settings_summary_broken, problems, problems)
-                            problems > 1 -> worst + " · " + pluralStringResource(R.plurals.home_readiness_more, problems - 1, problems - 1)
+                            problems > 1 -> join(worst, pluralStringResource(R.plurals.home_readiness_more, problems - 1, problems - 1))
                             else -> worst
                         },
                         style = MaterialTheme.typography.bodyMedium,
@@ -71,9 +73,10 @@ fun ReadinessStrip(
                 }
             }
             Spacer(Modifier.height(spacing.md))
+            val haptics = Tokens.haptics
             Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm), modifier = Modifier.fillMaxWidth()) {
                 TextButton(
-                    onClick = onDismiss,
+                    onClick = { haptics.perform(HapticFeedbackType.ContextClick); onDismiss() },
                     colors = ButtonDefaults.textButtonColors(contentColor = scheme.onErrorContainer),
                     modifier = Modifier.heightIn(min = Tokens.sizes.touch),
                 ) {
@@ -81,7 +84,7 @@ fun ReadinessStrip(
                 }
                 Spacer(Modifier.weight(1f))
                 Button(
-                    onClick = onFix,
+                    onClick = { haptics.perform(HapticFeedbackType.Confirm); onFix() },
                     shape = MaterialTheme.shapes.medium,
                     colors = ButtonDefaults.buttonColors(containerColor = scheme.error, contentColor = scheme.onError),
                     modifier = Modifier.heightIn(min = Tokens.sizes.touch),

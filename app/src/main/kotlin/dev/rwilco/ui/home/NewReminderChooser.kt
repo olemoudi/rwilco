@@ -33,10 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -44,7 +41,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.rwilco.R
@@ -59,6 +55,8 @@ import dev.rwilco.ui.format.rememberWords
 import dev.rwilco.ui.format.triggerPhrase
 import dev.rwilco.ui.localToday
 import java.time.LocalTime
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /**
  * What "New" asks once there is a preset to offer: from nothing, or from one of the shapes you
@@ -184,14 +182,14 @@ private fun BigChoice(icon: ImageVector, label: String, onClick: () -> Unit, mod
         shape = MaterialTheme.shapes.large,
         color = scheme.surfaceContainerHigh,
         border = BorderStroke(Tokens.strokes.control, scheme.outline),
-        modifier = modifier.heightIn(min = 128.dp),
+        modifier = modifier.heightIn(min = Tokens.sizes.choice),
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.padding(Tokens.spacing.lg),
         ) {
-            Icon(icon, contentDescription = null, tint = scheme.onSurface, modifier = Modifier.size(32.dp))
+            Icon(icon, contentDescription = null, tint = scheme.onSurface, modifier = Modifier.size(Tokens.sizes.cog))
             Spacer(Modifier.height(Tokens.spacing.sm))
             Text(
                 text = label,
@@ -222,7 +220,7 @@ private fun PresetButton(preset: Preset, defaultTime: LocalTime, onClick: () -> 
         border = BorderStroke(Tokens.strokes.control, color.copy(alpha = 0.5f)),
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 72.dp),
+            .heightIn(min = Tokens.sizes.tile),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,

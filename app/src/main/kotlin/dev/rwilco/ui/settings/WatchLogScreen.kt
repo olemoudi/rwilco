@@ -9,36 +9,28 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.rwilco.R
-import dev.rwilco.model.FixTier
 import dev.rwilco.model.NoteKind
 import dev.rwilco.model.WatchNote
 import dev.rwilco.model.WatchTally
@@ -55,6 +47,10 @@ import java.time.Duration
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Locale
+import dev.rwilco.ui.components.RwilcoTopBar
+import dev.rwilco.ui.format.joinAll
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /**
  * What the place watch has been doing, one line a look, newest first.
@@ -91,32 +87,19 @@ fun WatchLogScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
-            Surface(color = MaterialTheme.colorScheme.background) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = spacing.sm)
-                        .heightIn(min = Tokens.sizes.control),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.common_back))
-                    }
-                    Text(
-                        text = stringResource(R.string.watch_log_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = spacing.sm),
-                    )
-                    if (log.notes.isNotEmpty()) {
+            RwilcoTopBar(
+                title = stringResource(R.string.watch_log_title),
+                onBack = onBack,
+                action = if (log.notes.isNotEmpty()) {
+                    {
                         IconButton(onClick = { confirmingClear = true }) {
                             Icon(Icons.Outlined.DeleteOutline, contentDescription = stringResource(R.string.watch_log_clear))
                         }
                     }
-                }
-            }
+                } else {
+                    null
+                },
+            )
         },
     ) { padding ->
         if (log.notes.isEmpty()) {
@@ -285,7 +268,7 @@ private fun NoteRow(note: WatchNote) {
             val under = detailOf(note, locale)
             if (under.isNotEmpty()) {
                 Text(
-                    text = under.joinToString(" · "),
+                    text = joinAll(under),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

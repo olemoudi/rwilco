@@ -136,6 +136,7 @@ class EditorViewModel(
             val current = settings.filterNotNull().first()
             val loaded = reminderId?.let { repository.get(it) }
             existing = loaded
+            if (loaded?.status == Status.DONE) _state.update { it.copy(revives = true) }
             // One of six openings: an existing reminder, a preset being edited, a new reminder
             // wearing a preset's shape, a copy of another reminder, that copy kept as a preset,
             // or a blank one.

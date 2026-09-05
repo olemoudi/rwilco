@@ -42,6 +42,7 @@ fun UpcomingLine(
 ) {
     if (upcoming.isEmpty()) return
     val words = rememberWords()
+    val sep = words.get(R.string.common_separator)
     val first = MaterialTheme.colorScheme.primary
     val rest = MaterialTheme.colorScheme.onSurfaceVariant
     val readings = upcoming.map { momentReading(words, it, today, zone) }
@@ -57,13 +58,13 @@ fun UpcomingLine(
             withStyle(SpanStyle(color = first, fontWeight = FontWeight.SemiBold)) { append(firstLine) }
             if (untilDone) {
                 withStyle(SpanStyle(color = rest)) {
-                    append(" · " + words.get(R.string.editor_will_ring_then, readings[1]))
-                    append(" · " + words.get(R.string.editor_will_ring_until_done))
-                    append(" · " + words.get(R.string.editor_will_ring_then_returns, recurrenceLabel(words, recurrence, today)))
+                    append(sep + words.get(R.string.editor_will_ring_then, readings[1]))
+                    append(sep + words.get(R.string.editor_will_ring_until_done))
+                    append(sep + words.get(R.string.editor_will_ring_then_returns, recurrenceLabel(words, recurrence, today)))
                 }
             } else {
                 for (reading in readings.drop(1)) {
-                    withStyle(SpanStyle(color = rest)) { append(" · " + words.get(R.string.editor_will_ring_then, reading)) }
+                    withStyle(SpanStyle(color = rest)) { append(sep + words.get(R.string.editor_will_ring_then, reading)) }
                 }
             }
         },

@@ -164,6 +164,8 @@ sealed interface EditorSheet {
 data class EditorUiState(
     val loaded: Boolean = false,
     val isNew: Boolean = true,
+    /** Opened on a finished reminder: a save puts it back on the list, and the form says so (0.94.0). */
+    val revives: Boolean = false,
     val draft: Draft = Draft(),
     /** What was loaded (or the blank draft): the yardstick for "unsaved changes". */
     val initial: Draft = Draft(),

@@ -28,7 +28,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -38,10 +37,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import dev.rwilco.R
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.theme.Tokens
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /**
  * One foldable group of settings.
@@ -76,6 +82,19 @@ fun SettingsGroup(
         label = "caret",
     )
 
+    // A group opened by a tap comes into view (0.94.0): "Acerca de" at the bottom of eleven
+    // rows unfolded entirely below the fold. Only for a tap — a group that opens itself on
+    // arrival, or one restored open, must not move the screen — and once the fold has grown,
+    // or the request measures a row that is still a line tall.
+    val bringIntoView = remember { BringIntoViewRequester() }
+    var wasExpanded by remember { mutableStateOf(expanded) }
+    LaunchedEffect(expanded) {
+        if (expanded && !wasExpanded) {
+            delay(motion.medium.toLong())
+            bringIntoView.bringIntoView()
+        }
+        wasExpanded = expanded
+    }
     Column(modifier.padding(top = spacing.md)) {
         RwilcoCard(
             onClick = {
@@ -93,11 +112,13 @@ fun SettingsGroup(
                         modifier = Modifier.semantics { heading() },
                     )
                     if (summary.isNotEmpty()) {
+                        // Two lines, not one (0.94.0): the summary is the whole point of the
+                        // fold, and at a large font scale one line was "Alerta · fuer…".
                         Text(
                             text = summary,
                             style = MaterialTheme.typography.bodySmall,
                             color = if (attention) scheme.error else scheme.onSurfaceVariant,
-                            maxLines = 1,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
@@ -121,7 +142,9 @@ fun SettingsGroup(
             exit = shrinkVertically(tween(motion.fast, easing = motion.emphasized)) + fadeOut(tween(motion.fast)),
         ) {
             Column(
-                modifier = Modifier.padding(top = spacing.sm),
+                modifier = Modifier
+                    .padding(top = spacing.sm)
+                    .bringIntoViewRequester(bringIntoView),
                 verticalArrangement = Arrangement.spacedBy(spacing.sm),
                 content = content,
             )
@@ -163,10 +186,13 @@ fun SettingsLinkRow(
                     modifier = if (topLevel) Modifier.semantics { heading() } else Modifier,
                 )
                 if (summary.isNotEmpty()) {
+                    // Trimmed like a fold's, so the two kinds of row in one index agree.
                     Text(
                         text = summary,
                         style = MaterialTheme.typography.bodySmall,
                         color = if (attention) scheme.error else scheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }

@@ -14,9 +14,7 @@
     <string name="curate_hold">Editar la lista</string>
     <string name="curate_texts_title">Recordatorios que reutilizas</string>
     <string name="curate_tags_title">Tus etiquetas</string>
-    <string name="curate_rename">Renombrar</string>
     <string name="curate_rename_confirm">Guardar el nombre nuevo</string>
-    <string name="curate_text_remove">Dejar de ofrecer este</string>
     <string name="curate_tag_remove">Quitar esta etiqueta de todo</string>
     <string name="curate_tag_remove_title">¿Quitar «%1$s» de todo?</string>
     <string name="curate_tag_remove_body">Desaparece de cada recordatorio que la lleva. No se puede deshacer.</string>
@@ -98,7 +96,7 @@
     <string name="home_tags_done_only">sólo en recordatorios hechos</string>
     <string name="home_tags_none">Todavía no hay etiquetas.</string>
     <string name="home_empty_title">Nada que recordar todavía</string>
-    <string name="home_empty_body">Escribe qué quieres recordar y luego di cuándo y cómo. En una tarjeta: deslízala a la derecha y mantén para darla por hecha, a la izquierda para eliminarla, y mantenla pulsada para lo demás.</string>
+    <string name="home_empty_body">Escribe qué quieres recordar y luego di cuándo y cómo. En una tarjeta: deslízala a la derecha y mantén para darla por hecha, a la izquierda para eliminarla, y el ⋯ (o mantenerla pulsada) para lo demás.</string>
     <string name="home_empty_action">Escribe uno</string>
     <string name="home_marked_done">Hecho</string>
     <string name="home_marked_done_returns">Hecho · vuelve %1$s</string>
@@ -211,8 +209,6 @@
     <string name="editor_new_tag_hint">Nombre de la etiqueta</string>
     <string name="editor_when_title">Cuándo</string>
     <string name="editor_add_trigger">Añadir disparador</string>
-    <string name="editor_edit_trigger">Editar disparador</string>
-    <string name="editor_remove_trigger">Quitar disparador</string>
     <string name="editor_trigger_removed">Disparador quitado</string>
     <string name="editor_what_title">Qué pasa</string>
     <string name="editor_recurrence_title">Vuelve</string>
@@ -231,8 +227,6 @@
     <string name="recur_custom">Cada cierto tiempo</string>
     <string name="recur_custom_title">Cada cierto tiempo</string>
     <string name="recur_list_title">Recurrencias</string>
-    <string name="recur_edit">Editar</string>
-    <string name="recur_delete">Borrar</string>
     <string name="recur_save_as">Guardar con un nombre</string>
     <string name="recur_save_as_hint">Déjalo vacío para no guardarla</string>
     <string name="recur_every">Cada</string>
@@ -280,6 +274,14 @@
     <string name="editor_repeats_off">Marcarlo hecho lo da por terminado.</string>
     <string name="editor_error_text">Escribe qué quieres recordar.</string>
     <string name="editor_error_text_long">El recordatorio es demasiado largo.</string>
+    <string name="editor_edit_trigger_named">Editar «%1$s»</string>
+    <string name="editor_remove_trigger_named">Quitar «%1$s»</string>
+    <string name="editor_text_count">%1$d/%2$d</string>
+    <string name="curate_rename_named">Renombrar «%1$s»</string>
+    <string name="curate_text_remove_named">Dejar de ofrecer «%1$s»</string>
+    <string name="recur_edit_named">Editar «%1$s»</string>
+    <string name="recur_delete_named">Eliminar «%1$s»</string>
+    <string name="editor_revives">Guardar lo devuelve a la lista.</string>
     <string name="editor_error_trigger">Una de las reglas de cuándo no está bien.</string>
     <string name="editor_error_recurrence">La forma de volver no está bien.</string>
     <string name="editor_will_ring">Suena %1$s</string>
@@ -441,7 +443,9 @@
     <string name="settings_group_look">Aspecto y tacto</string>
     <string name="settings_group_expand">Abrir</string>
     <string name="settings_group_collapse">Cerrar</string>
-    <string name="settings_summary_join">%1$s · %2$s</string>
+    <string name="common_join">%1$s · %2$s</string>
+    <string name="common_separator">" · "</string>
+    <string name="sound_level_of">%1$d/%2$d</string>
     <string name="settings_summary_ready">Todo en su sitio</string>
     <plurals name="settings_summary_broken">
         <item quantity="one">%d cosa por arreglar</item>
@@ -664,6 +668,8 @@
     <string name="card_recurrence">Repetición</string>
     <string name="card_compact">Plegar este</string>
     <string name="card_expand">Desplegar este</string>
+    <string name="card_open">Abrir el formulario</string>
+    <string name="card_more">Más para «%1$s»</string>
     <string name="card_edit">Editar «%1$s»</string>
     <string name="card_tags_more">…</string>
     <string name="card_tags_more_description">más etiquetas</string>
@@ -681,8 +687,6 @@
     <string name="perm_usage_missing">Sin «acceso al uso» Rwilco no distingue una app abierta del escritorio, así que siempre llega como banner.</string>
     <string name="perm_usage_fix">Permitir</string>
     <string name="home_section_no_trigger">Guardados, sin aviso</string>
-    <string name="editor_when_optional">opcional</string>
-    <string name="editor_what_optional">opcional</string>
     <string name="editor_net_note">Si suena y lo dejas pasar — o si su momento pasa sin que llegue a sonar — un aviso discreto %1$s después.</string>
     <string name="editor_net_too_fast">Vuelve cada %1$s: demasiado seguido para una red, el siguiente aviso llega antes.</string>
     <string name="editor_when_empty">No suena: se queda guardado, bajo sus etiquetas.</string>
@@ -1272,6 +1276,12 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_94_0">
+        <item>Una tarjeta desplegada tiene un ⋯ junto a su lápiz: el mismo menú que abre la pulsación larga (posponer, saltar la próxima, clonar, guardar como preset), detrás de un botón que se ve.</item>
+        <item>El formulario se lee como una sola cosa: las palabras, luego el cuándo, luego «Vuelve», y las etiquetas después. Los avisos bajo una regla ya no van en ámbar (el ámbar es lo que suena a continuación); uno que significa que nunca sonará va en rojo. Un contador aparece cuando las palabras se acercan a su límite, cuarenta para el nombre de un preset. El formulario dice cuándo guardar un recordatorio hecho lo devuelve a la lista.</item>
+        <item>Para un lector de pantalla: el botón grande de una alerta sonando va primero, no después de nueve posponer; el título de cada pantalla es un encabezado; los lápices y papeleras de reglas, frases y recurrencias dicen cuál; la tarjeta principal dice que su toque abre el formulario; el fondo del menú de tarjeta dice que cierra; los errores bajo una hoja se anuncian al aparecer.</item>
+        <item>Ajustes: un grupo que abres se desplaza a la vista; las filas cerradas conservan dos líneas de resumen con letra grande; la oferta de No molestar es una fila como sus vecinas. La alerta respeta el agujero de la cámara con el móvil de lado. Todos los botones hechos a mano vibran como el resto.</item>
+    </string-array>
     <string-array name="whats_new_0_93_0">
         <item>Una alarma silenciada sigue en silencio al girar el móvil. Reconstruir la pantalla volvía a arrancar la alarma un minuto entero, botón rojo incluido.</item>
         <item>Una notificación abre ahora su pantalla sobre la lista principal, estuviera abierto lo que estuviera: Ajustes ya no cae encima de un recordatorio a medio escribir, y un segundo aviso de copia ya no apila pantallas que recorrer hacia atrás. Los avisos de la vigilancia abren el registro del que hablan. Y dos toques rápidos en «Nuevo» abren un formulario, no dos.</item>

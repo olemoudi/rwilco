@@ -84,7 +84,17 @@ class TagReuseTest {
 
         // In the row itself, not behind the dots: with one tag there is nothing else to offer.
         rule.waitUntilShown(tag)
+        scrollToTheTags()
         rule.onNodeWithText(tag, useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+    }
+
+    /**
+     * The tags sit after "Vuelve" (0.94.0), and `performScrollTo` moves only the *nearest*
+     * scrollable — the chips' own horizontal row — so the form has to be brought down to them
+     * first. The card after theirs at the bottom edge is the whole row in view.
+     */
+    private fun scrollToTheTags() {
+        rule.onNode(hasText(rule.activity.getString(R.string.editor_what_title), ignoreCase = true), useUnmergedTree = true).performScrollTo()
     }
 
     /**
@@ -106,6 +116,7 @@ class TagReuseTest {
 
         rule.onNodeWithText(rule.activity.getString(R.string.editor_write), useUnmergedTree = true).performClick()
         rule.onNodeWithTag(EDITOR_TEXT_TAG).performTextInput(words)
+        scrollToTheTags()
         rule.onNodeWithContentDescription(rule.activity.getString(R.string.editor_new_tag)).performScrollTo().performClick()
         rule.waitUntilShown(rule.activity.getString(R.string.editor_new_tag_hint))
         rule.onNodeWithTag(TAG_NAME_FIELD_TAG).performTextInput(typed)
@@ -132,7 +143,7 @@ class TagReuseTest {
         rule.onNodeWithContentDescription(rule.activity.getString(R.string.home_tags_manage)).performClick()
         rule.waitUntilShown(rule.activity.getString(R.string.curate_tags_title))
 
-        rule.onNodeWithContentDescription(rule.activity.getString(R.string.curate_rename)).performClick()
+        rule.onNodeWithContentDescription(rule.activity.getString(R.string.curate_rename_named, tag)).performClick()
         // The word is on the screen three times over — the chip behind the dialog, the card's
         // own label, and the field the pencil just opened. Only one of them can be typed into.
         rule.onNode(hasSetTextAction() and hasText(tag), useUnmergedTree = true).performTextReplacement(renamed)

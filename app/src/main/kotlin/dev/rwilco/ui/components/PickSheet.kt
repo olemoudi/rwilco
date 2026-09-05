@@ -3,7 +3,6 @@ package dev.rwilco.ui.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -30,11 +29,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -44,6 +41,8 @@ import androidx.compose.ui.unit.dp
 import dev.rwilco.R
 import dev.rwilco.ui.theme.Tokens
 import java.util.Locale
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /** How many of anything reusable a row shows before the rest go behind the dots. */
 const val VISIBLE_SUGGESTIONS = 5
@@ -56,7 +55,7 @@ const val VISIBLE_SUGGESTIONS = 5
  * takes; the rest are still there, with a search box, for the day you want the one from March.
  */
 @Composable
-fun MoreChip(onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun MoreChip(onClick: () -> Unit, modifier: Modifier = Modifier, contentDescription: String = stringResource(R.string.reuse_more)) {
     val haptics = Tokens.haptics
     val scheme = MaterialTheme.colorScheme
     AssistChip(
@@ -67,8 +66,8 @@ fun MoreChip(onClick: () -> Unit, modifier: Modifier = Modifier) {
         label = {
             Icon(
                 imageVector = Icons.Outlined.MoreHoriz,
-                contentDescription = stringResource(R.string.reuse_more),
-                modifier = Modifier.size(20.dp),
+                contentDescription = contentDescription,
+                modifier = Modifier.size(Tokens.sizes.glyphMedium),
             )
         },
         shape = MaterialTheme.shapes.small,

@@ -29,9 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +49,8 @@ import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.Stepper
 import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /**
  * What a reminder sounds like, and — for the insistent one — how often it says it again.
@@ -350,7 +350,7 @@ private fun AlarmVolume() {
             )
             Spacer(Modifier.width(spacing()))
             Text(
-                text = "$level/$max",
+                text = stringResource(R.string.sound_level_of, level, max),
                 style = MonoStyles.label,
                 color = if (level == 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
             )

@@ -16,9 +16,9 @@
     <string name="curate_hold">Edit the list</string>
     <string name="curate_texts_title">Reminders you reuse</string>
     <string name="curate_tags_title">Your tags</string>
-    <string name="curate_rename">Rename</string>
+    <string name="curate_rename_named">Rename «%1$s»</string>
     <string name="curate_rename_confirm">Save the new name</string>
-    <string name="curate_text_remove">Stop offering this one</string>
+    <string name="curate_text_remove_named">Stop offering «%1$s»</string>
     <string name="curate_tag_remove">Remove this tag everywhere</string>
     <string name="curate_tag_remove_title">Remove «%1$s» from everything?</string>
     <string name="curate_tag_remove_body">It goes from every reminder that carries it. There is no undo.</string>
@@ -100,7 +100,7 @@
     <string name="home_tags_done_only">only on finished reminders</string>
     <string name="home_tags_none">No tags yet.</string>
     <string name="home_empty_title">Nothing to remember yet</string>
-    <string name="home_empty_body">Write what you want to remember, then say when and how. On a card: swipe right and hold to mark it done, left to delete it, and hold it for everything else.</string>
+    <string name="home_empty_body">Write what you want to remember, then say when and how. On a card: swipe right and hold to mark it done, left to delete it, and the ⋯ (or a long press) for everything else.</string>
     <string name="home_empty_action">Write one</string>
     <string name="home_marked_done">Done</string>
     <string name="home_marked_done_returns">Done · back %1$s</string>
@@ -213,8 +213,9 @@
     <string name="editor_new_tag_hint">Tag name</string>
     <string name="editor_when_title">When</string>
     <string name="editor_add_trigger">Add a trigger</string>
-    <string name="editor_edit_trigger">Edit trigger</string>
-    <string name="editor_remove_trigger">Remove trigger</string>
+    <string name="editor_edit_trigger_named">Edit «%1$s»</string>
+    <string name="editor_remove_trigger_named">Remove «%1$s»</string>
+    <string name="editor_text_count">%1$d/%2$d</string>
     <string name="editor_trigger_removed">Trigger removed</string>
     <string name="editor_what_title">What happens</string>
     <string name="editor_recurrence_title">Comes back</string>
@@ -233,8 +234,8 @@
     <string name="recur_custom">Every so often</string>
     <string name="recur_custom_title">Every so often</string>
     <string name="recur_list_title">Recurrences</string>
-    <string name="recur_edit">Edit</string>
-    <string name="recur_delete">Delete</string>
+    <string name="recur_edit_named">Edit «%1$s»</string>
+    <string name="recur_delete_named">Delete «%1$s»</string>
     <string name="recur_save_as">Keep it under a name</string>
     <string name="recur_save_as_hint">Leave empty not to keep it</string>
     <string name="recur_every">Every</string>
@@ -287,6 +288,7 @@
     <string name="editor_repeats_off">Marking it done finishes it.</string>
     <string name="editor_error_text">Write what you want to remember.</string>
     <string name="editor_error_text_long">The reminder is too long.</string>
+    <string name="editor_revives">Saving puts it back on the list.</string>
     <string name="editor_error_trigger">One of the "when" rules is not right.</string>
     <string name="editor_error_recurrence">The way it comes back is not right.</string>
     <string name="editor_will_ring">Rings %1$s</string>
@@ -452,7 +454,9 @@
     <string name="settings_group_look">Look and feel</string>
     <string name="settings_group_expand">Open</string>
     <string name="settings_group_collapse">Close</string>
-    <string name="settings_summary_join">%1$s · %2$s</string>
+    <string name="common_join">%1$s · %2$s</string>
+    <string name="common_separator">" · "</string>
+    <string name="sound_level_of">%1$d/%2$d</string>
     <string name="settings_summary_ready">Everything is in place</string>
     <plurals name="settings_summary_broken">
         <item quantity="one">%d thing needs fixing</item>
@@ -679,6 +683,8 @@
     <string name="card_recurrence">Repeats</string>
     <string name="card_compact">Fold this one away</string>
     <string name="card_expand">Open this one out</string>
+    <string name="card_open">Open the form</string>
+    <string name="card_more">More for «%1$s»</string>
     <string name="card_edit">Edit «%1$s»</string>
     <string name="card_tags_more">…</string>
     <string name="card_tags_more_description">more tags</string>
@@ -696,8 +702,6 @@
     <string name="perm_usage_missing">Without "usage access" Rwilco cannot tell an open app from the home screen, so it always arrives as a banner.</string>
     <string name="perm_usage_fix">Allow</string>
     <string name="home_section_no_trigger">Kept, not timed</string>
-    <string name="editor_when_optional">optional</string>
-    <string name="editor_what_optional">optional</string>
     <string name="editor_net_note">If it rings and you let it go — or if its moment passes without it ringing at all — one quiet word about it %1$s later.</string>
     <string name="editor_net_too_fast">It comes back every %1$s — too often for a net, since the next ring gets there first.</string>
     <string name="editor_when_empty">Nothing rings it: it is simply kept, under its tags.</string>
@@ -1287,6 +1291,12 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_94_0">
+        <item>An open card has a ⋯ beside its pencil: the same menu the long press opens — put off, skip the next one, clone, keep as a preset — behind a button you can see.</item>
+        <item>The form reads as one thing now: the words, then when, then «Comes back», and the tags after. Warnings under a rule are no longer amber (amber means what fires next); one that means the reminder will never ring is red. A counter appears as the words near their limit, forty for a preset\'s name. The form says when saving a finished reminder puts it back on the list.</item>
+        <item>To a screen reader: the big button on a ringing alert comes first, not after nine snooze offers; every screen\'s title is a heading; the pencils and bins on rules, phrases and recurrences say which one; the hero card says its tap opens the form; the card menu\'s backdrop says it closes; errors under a sheet are announced as they appear.</item>
+        <item>Settings: a group you open scrolls into view; closed rows keep two lines of summary at large text sizes; the Do Not Disturb offer is a row like its neighbours. The alert respects a punch-hole on a phone on its side. Every hand-rolled button buzzes like the rest.</item>
+    </string-array>
     <string-array name="whats_new_0_93_0">
         <item>A silenced alarm stays silent when the phone is turned sideways. Rebuilding the screen used to start the alarm over for a fresh minute, red button and all.</item>
         <item>A notification now opens its screen over the main list, whatever was open: Settings no longer lands on top of a half-written reminder, and a second backup notice no longer builds a stack of screens to walk back through. The watch\'s notices open the log they are about. And two quick taps on «New» open one form, not two.</item>

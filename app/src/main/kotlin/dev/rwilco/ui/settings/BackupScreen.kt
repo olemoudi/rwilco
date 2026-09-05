@@ -18,14 +18,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -40,7 +38,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -48,10 +45,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -66,7 +61,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.text.format.Formatter
 import android.content.Intent
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 import dev.rwilco.R
 import dev.rwilco.model.BackupCadence
@@ -83,9 +77,11 @@ import dev.rwilco.ui.theme.familyColor
 import dev.rwilco.vault.VaultOutcome
 import dev.rwilco.vault.VaultState
 import dev.rwilco.vault.VaultSummary
-import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import dev.rwilco.ui.components.RwilcoTopBar
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /**
  * The encrypted backup, off by default. Off, it is a form and one button; on, it is a status
@@ -140,27 +136,7 @@ fun BackupScreen(viewModel: BackupViewModel, onBack: () -> Unit) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing,
-        topBar = {
-            Surface(color = MaterialTheme.colorScheme.background) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = spacing.sm)
-                        .heightIn(min = Tokens.sizes.control),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.common_back))
-                    }
-                    Text(
-                        text = stringResource(R.string.vault_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.padding(horizontal = spacing.sm),
-                    )
-                }
-            }
-        },
+        topBar = { RwilcoTopBar(title = stringResource(R.string.vault_title), onBack = onBack) },
     ) { padding ->
         val vault = state ?: return@Scaffold
         Column(

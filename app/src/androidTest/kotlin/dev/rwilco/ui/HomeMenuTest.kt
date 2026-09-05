@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.GrantPermissionRule
@@ -90,6 +91,19 @@ class HomeMenuTest {
     private fun holdTheCard() {
         rule.waitUntilShown(words)
         rule.onAllNodesWithText(words, useUnmergedTree = true)[0].performTouchInput { longClick() }
+    }
+
+    /**
+     * The same menu through the door with a name (0.94.0): the held press was the only way in,
+     * and the one place it was taught was the empty screen.
+     */
+    @Test
+    fun theMoreButtonOpensTheSameMenuTheHoldDoes() {
+        rule.waitUntilShown(words)
+        rule.onNodeWithContentDescription(rule.activity.getString(R.string.card_more, words)).performClick()
+        rule.waitUntilShown(s(R.string.home_snooze))
+        rule.onNodeWithText(s(R.string.home_menu_done), useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithText(s(R.string.home_keep_preset), useUnmergedTree = true).assertIsDisplayed()
     }
 
     @Test

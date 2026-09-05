@@ -16,7 +16,6 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
@@ -26,7 +25,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.sp
 import dev.rwilco.ui.components.HoldButton
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.foundation.layout.width
@@ -56,6 +54,9 @@ import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import dev.rwilco.ui.format.join
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.testTag
 
 /**
  * The one card that glows: the next definite moment. The lamp brightens as it nears, and the
@@ -97,7 +98,9 @@ fun HeroCard(
         ?: hero.card.triggers.firstOrNull { it.trigger is Trigger.Location }.takeIf { hero.atEarliest }
         ?: hero.card.triggers.firstOrNull().takeIf { hero.card.recurrence == null || hero.snoozed }
 
-    RwilcoCard(onClick = onClick, onLongClick = onLongClick, longClickLabel = longClickLabel, shape = MaterialTheme.shapes.extraLarge, color = markedColour(marked)) {
+    // The one card whose tap opens the form rather than folding it, and the one that did not
+    // say so to a screen reader (0.94.0): every plain card carries its "plegar"/"desplegar".
+    RwilcoCard(onClick = onClick, onLongClick = onLongClick, longClickLabel = longClickLabel, clickLabel = stringResource(R.string.card_open), shape = MaterialTheme.shapes.extraLarge, color = markedColour(marked)) {
         Column(
             modifier = Modifier
                 .lampGlow(amber, intensity)
@@ -138,8 +141,8 @@ fun HeroCard(
             Spacer(Modifier.height(spacing.sm))
             LiveCountdown(at = hero.at, clock = clock, style = MonoStyles.countdown, color = amber)
             Text(
-                text = dayWord(rememberWords(), at.toLocalDate(), today) + " · " + TimeText.time(at.toLocalTime(), is24h, locale) +
-                    if (hero.atEarliest) " · " + stringResource(R.string.home_next_up_earliest_hint) else "",
+                text = join(dayWord(rememberWords(), at.toLocalDate(), today), TimeText.time(at.toLocalTime(), is24h, locale))
+                    .let { if (hero.atEarliest) join(it, stringResource(R.string.home_next_up_earliest_hint)) else it },
                 style = MonoStyles.date,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -180,7 +183,7 @@ fun HeroCard(
                 // opening the form — but "the pencil is the form" has to hold on every card, or
                 // it holds on none.
                 val editHaptics = Tokens.haptics
-                IconButton(onClick = { editHaptics.perform(HapticFeedbackType.ContextClick); onClick() }) {
+                IconButton(onClick = { editHaptics.perform(HapticFeedbackType.ContextClick); onClick() }, modifier = Modifier.testTag(CARD_EDIT_TAG)) {
                     Icon(
                         imageVector = Icons.Outlined.Edit,
                         contentDescription = stringResource(R.string.card_edit, hero.card.text),

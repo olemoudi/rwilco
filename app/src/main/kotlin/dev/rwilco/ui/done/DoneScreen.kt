@@ -7,32 +7,23 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material.icons.automirrored.outlined.Undo
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -62,6 +53,11 @@ import dev.rwilco.ui.format.rememberIs24h
 import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
 import java.time.Clock
+import dev.rwilco.ui.components.RwilcoTopBar
+import dev.rwilco.ui.settings.ClearDialog
+import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /** The last seven bars of the fortnight: what "esta semana" means on this screen. */
 private const val DAYS_IN_A_WEEK = 7
@@ -84,32 +80,19 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
-            Surface(color = MaterialTheme.colorScheme.background) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = spacing.sm)
-                        .heightIn(min = Tokens.sizes.control),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.common_back))
-                    }
-                    Text(
-                        text = stringResource(R.string.done_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = spacing.sm),
-                    )
-                    if ((view?.total ?: 0) > 0) {
+            RwilcoTopBar(
+                title = stringResource(R.string.done_title),
+                onBack = onBack,
+                action = if ((view?.total ?: 0) > 0) {
+                    {
                         IconButton(onClick = { confirmingPurge = true }) {
                             Icon(Icons.Outlined.DeleteSweep, contentDescription = stringResource(R.string.done_purge))
                         }
                     }
-                }
-            }
+                } else {
+                    null
+                },
+            )
         },
     ) { padding ->
         val shown = view
@@ -140,11 +123,15 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
             }
             if (shown != null && !shown.failed && shown.total == 0) {
                 item {
-                    EmptyState(
-                        title = stringResource(R.string.done_empty_title),
-                        body = stringResource(R.string.done_empty_body),
-                        icon = Icons.Outlined.TaskAlt,
-                    )
+                    // Centred in the screen, as the watch log's is (0.94.0); it floated near
+                    // the top of a tall phone.
+                    Box(Modifier.fillParentMaxHeight(0.7f), contentAlignment = Alignment.Center) {
+                        EmptyState(
+                            title = stringResource(R.string.done_empty_title),
+                            body = stringResource(R.string.done_empty_body),
+                            icon = Icons.Outlined.TaskAlt,
+                        )
+                    }
                 }
             }
             // The screen's own face, before the bands: how many this week, and the shape of the
@@ -194,21 +181,16 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
     }
 
     if (confirmingPurge) {
-        AlertDialog(
-            onDismissRequest = { confirmingPurge = false },
-            title = { Text(stringResource(R.string.done_purge_title)) },
-            text = { Text(stringResource(R.string.done_purge_body)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmingPurge = false
-                    viewModel.purge()
-                }) { Text(stringResource(R.string.done_purge), color = MaterialTheme.colorScheme.error) }
+        // The same question the two logs ask, and the dialog its KDoc always said this was.
+        ClearDialog(
+            titleRes = R.string.done_purge_title,
+            bodyRes = R.string.done_purge_body,
+            confirmRes = R.string.done_purge,
+            onConfirm = {
+                confirmingPurge = false
+                viewModel.purge()
             },
-            dismissButton = {
-                TextButton(onClick = { confirmingPurge = false }) { Text(stringResource(R.string.sheet_cancel)) }
-            },
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            shape = MaterialTheme.shapes.extraLarge,
+            onDismiss = { confirmingPurge = false },
         )
     }
 }

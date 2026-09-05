@@ -51,11 +51,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Alignment
@@ -68,9 +66,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.LocalContext
 import dev.rwilco.shortcuts.PresetShortcuts
@@ -101,6 +97,8 @@ import dev.rwilco.ui.format.snoozePlacePhrase
 import dev.rwilco.data.FiringEvent
 import dev.rwilco.model.Reminder
 import kotlinx.coroutines.delay
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /** So a test can scroll the list itself; a lazy list does not compose what is off screen. */
 const val HOME_LIST_TAG = "homeList"
@@ -348,9 +346,10 @@ fun HomeScreen(
     actingOn?.let { id ->
         val held = state.hero?.card?.takeIf { it.id == id }
             ?: state.sections.firstNotNullOfOrNull { section -> section.cards.firstOrNull { it.id == id } }
-        if (held == null) {
-            actingOn = null
-        } else {
+        // Dealt with from the shade while the menu was up: the menu goes with it. An effect,
+        // not a write in the middle of composing (0.94.0) — it converged, but only by luck.
+        LaunchedEffect(held == null) { if (held == null) actingOn = null }
+        if (held != null) {
             ReminderActionsMenu(
                 words = held.text,
                 paused = held.paused,

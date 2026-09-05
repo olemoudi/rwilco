@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -32,10 +31,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -75,6 +72,12 @@ import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
 import dev.rwilco.model.NOTIFICATION_SNOOZES
 import dev.rwilco.ui.format.snoozeLabel
 import dev.rwilco.model.notificationSnoozeOffers
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.traversalIndex
+import dev.rwilco.ui.format.join
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /** One reminder on the alert screen: its id, for the answer, and what it shows. */
 data class AlertItem(val id: String, val content: AlertContent)
@@ -121,15 +124,17 @@ fun AlertStackScreen(
             .fillMaxSize()
             .background(scheme.background)
             .lampGlow(scheme.primary, intensity = 1f)
-            .systemBarsPadding(),
+            .safeDrawingPadding(),
     ) {
-        Column(modifier = Modifier.fillMaxSize().padding(spacing.screen)) {
+        // See AlertScreen: a traversal group so "Silenciar" comes first to a screen reader.
+        Column(modifier = Modifier.fillMaxSize().padding(spacing.screen).semantics { isTraversalGroup = true }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                val appName = stringResource(R.string.app_name)
                 Text(
-                    text = stringResource(R.string.app_name).uppercase(locale),
+                    text = appName.uppercase(locale),
                     style = MaterialTheme.typography.labelMedium.copy(letterSpacing = Tracking.eyebrow, fontWeight = FontWeight.SemiBold),
                     color = scheme.primary,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).semantics { contentDescription = appName },
                 )
                 Text(
                     text = pluralStringResource(R.plurals.alert_count, items.size, items.size),
@@ -156,7 +161,7 @@ fun AlertStackScreen(
                 }
             }
             Spacer(Modifier.height(spacing.md))
-            SilenceRow(ringing, onSilence)
+            Box(Modifier.semantics { traversalIndex = -1f }) { SilenceRow(ringing, onSilence) }
             AllRow(guard, snoozes, customMinutes, onDoneAll, onSnoozeAll)
         }
     }
@@ -293,7 +298,7 @@ private fun Strip(
                     Spacer(Modifier.width(spacing.sm))
                     val line = triggerLine(trigger, content.today, content.defaultTime)
                     Text(
-                        text = line.primary + " · " + line.secondary,
+                        text = join(line.primary, line.secondary),
                         style = MaterialTheme.typography.bodySmall,
                         color = scheme.onSurfaceVariant,
                         maxLines = 1,

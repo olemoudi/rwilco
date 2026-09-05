@@ -1,7 +1,6 @@
 package dev.rwilco.ui.settings
 
 import android.Manifest
-import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import kotlin.math.roundToInt
@@ -25,15 +24,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -62,6 +58,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /**
  * The ten states that decide whether a reminder actually arrives: the five grants that say how
@@ -370,11 +368,14 @@ fun AlertPermissionsCard(readiness: AlertReadiness) {
             // given in advance, and total silence is the mode people put on for the night —
             // which is when a morning alarm matters. Under total silence the red row above
             // already asks for the same grant, so this one steps aside.
+            // The same row as the three above it (0.94.0): it was a bordered card inside this
+            // bordered card, one indent deeper than every other row on the screen.
             if (readiness.throughDnd && !readiness.policyAccess) {
-                SettingsLinkRow(
-                    title = stringResource(R.string.perm_dnd_optin),
-                    summary = stringResource(R.string.perm_dnd_optin_hint),
-                    onClick = { open(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) },
+                PermissionFixRow(
+                    text = stringResource(R.string.perm_dnd_optin_hint),
+                    action = stringResource(R.string.perm_dnd_optin),
+                    quiet = true,
+                    onFix = { open(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) },
                 )
             }
         }

@@ -21,10 +21,8 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -51,6 +49,9 @@ import dev.rwilco.model.TriggerFamily
 import dev.rwilco.ui.theme.LocalDarkTheme
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.familyColor
+import dev.rwilco.ui.theme.MUTED_ALPHA
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /**
  * How long the card has to be held open before the action takes. 300 ms since 0.74.0 (it was
@@ -231,7 +232,7 @@ private fun FillingGlyph(icon: ImageVector, contentDescription: String?, color: 
                     val top = size.height * (1f - fill.coerceIn(0f, 1f))
                     drawRect(color = color, topLeft = Offset(0f, top), size = Size(size.width, size.height - top))
                 }
-                drawCircle(color = color.copy(alpha = 0.55f), style = Stroke(width = 1.5.dp.toPx()))
+                drawCircle(color = color.copy(alpha = MUTED_ALPHA), style = Stroke(width = 1.5.dp.toPx()))
             },
         contentAlignment = Alignment.Center,
     ) {

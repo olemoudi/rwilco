@@ -55,6 +55,13 @@ data class Motion(
 )
 
 /**
+ * How far a colour steps back when it is beside the thing it belongs to and must not compete
+ * with it: a tag's ring around its own wash, a preset's edge, the glass under a swipe (0.94.0
+ * — it was the number 0.55 in six places).
+ */
+const val MUTED_ALPHA = 0.55f
+
+/**
  * Line weights. Two, because they say different things: [edge] is what makes a card a card, and
  * [control] is what says "this responds to a thumb". A single hairline for both is what makes a
  * screen read as flat — every surface equally quiet, nothing asking to be pressed.
@@ -92,6 +99,14 @@ data class Sizes(
     val glyphSmall: Dp = 18.dp,
     /** A glyph that stands for a state at the head of a card: the check of "all good". */
     val glyphMedium: Dp = 20.dp,
+    /** An icon that stands on its own in a control or a menu tile: Material's own 24. */
+    val glyphLarge: Dp = 24.dp,
+    /** A colour dot beside a name — a preset's, a tag's — where the colour is the handle. */
+    val dot: Dp = 12.dp,
+    /** A tile with a glyph over a word: a menu's three answers, an action, a preset row. */
+    val tile: Dp = 72.dp,
+    /** One of two big answers to a question ("en blanco" / "un preset"): thumb-sized. */
+    val choice: Dp = 128.dp,
     /** The most a dialog in the middle of the screen grows to before its list scrolls. */
     val dialogMax: Dp = 560.dp,
     /**

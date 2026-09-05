@@ -36,7 +36,6 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,15 +44,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import kotlin.math.roundToInt
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -64,7 +59,6 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.rwilco.R
 import dev.rwilco.model.RecurrenceWarning
@@ -112,6 +106,13 @@ import java.time.ZoneId
 import dev.rwilco.model.Understood
 import dev.rwilco.ui.editor.sheets.DeadlineSheet
 import dev.rwilco.model.roundExpiry
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.material.icons.outlined.WarningAmber
+import dev.rwilco.model.MAX_PRESET_NAME
+import dev.rwilco.model.MAX_TEXT_LENGTH
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 @Composable
 fun EditorScreen(
@@ -304,6 +305,7 @@ fun EditorScreen(
                 // hiding "Guardar" for.
                 SaveBar(
                     enabled = state.loaded,
+                    revives = state.revives,
                     // Read back over the button that commits it: five cards up a scrolling
                     // column is too far to hold the whole thing in your head.
                     sentence = sentenceParts(
@@ -357,6 +359,7 @@ fun EditorScreen(
                         onCurate = { viewModel.curateTexts(true) },
                         autoFocus = state.focusText,
                         focusKey = focusNonce,
+                        cap = if (state.asPreset) MAX_PRESET_NAME else MAX_TEXT_LENGTH,
                     )
                     // What the words say about when, one tap away from where they are being
                     // typed; the same chip the "Cuándo" card offers.
@@ -375,21 +378,9 @@ fun EditorScreen(
                     }
                 }
                 EditorSection(
-                    title = stringResource(R.string.editor_tags_title),
-                    icon = Icons.Outlined.LocalOffer,
-                    note = stringResource(R.string.editor_optional),
-                ) {
-                    TagsSection(
-                        existingTags = state.existingTags,
-                        selected = state.draft.tags,
-                        onToggle = viewModel::toggleTag,
-                        onAdd = viewModel::addTag,
-                    )
-                }
-                EditorSection(
                     title = stringResource(R.string.editor_when_title),
                     icon = Icons.Outlined.Schedule,
-                    note = stringResource(R.string.editor_when_optional),
+                    note = stringResource(R.string.editor_optional),
                     modifier = Modifier.onGloballyPositioned { sectionTops[SECTION_WHEN] = it.positionInParent().y.roundToInt() },
                 ) {
                     TriggersSection(
@@ -491,10 +482,26 @@ fun EditorScreen(
                         onDeletePreset = viewModel::deleteRecurrencePreset,
                     )
                 }
+                // **After the "when" and the "vuelve"** (0.94.0). Tags are the part of a
+                // reminder most people leave alone, and the card sat between the words and
+                // the "cuándo" — the two things somebody actually came to answer, a card's
+                // height apart. The words and the when read as one form now; the tags follow.
+                EditorSection(
+                    title = stringResource(R.string.editor_tags_title),
+                    icon = Icons.Outlined.LocalOffer,
+                    note = stringResource(R.string.editor_optional),
+                ) {
+                    TagsSection(
+                        existingTags = state.existingTags,
+                        selected = state.draft.tags,
+                        onToggle = viewModel::toggleTag,
+                        onAdd = viewModel::addTag,
+                    )
+                }
                 EditorSection(
                     title = stringResource(R.string.editor_what_title),
                     icon = Icons.Outlined.NotificationsActive,
-                    note = stringResource(R.string.editor_what_optional),
+                    note = stringResource(R.string.editor_optional),
                 ) {
                     ActionsSection(
                         selected = state.draft.actions,
@@ -713,6 +720,7 @@ private fun SaveBar(
     upcoming: List<NextFire> = emptyList(),
     zone: ZoneId = ZoneId.systemDefault(),
     recurrence: Recurrence = Recurrence.None,
+    revives: Boolean = false,
 ) {
     Surface(color = MaterialTheme.colorScheme.background) {
         Column(
@@ -722,6 +730,17 @@ private fun SaveBar(
                 .imePadding()
                 .padding(horizontal = Tokens.spacing.screen, vertical = Tokens.spacing.md),
         ) {
+            // A finished reminder opened from Hechos or from a search result: saving it puts
+            // it back on the list, which nothing in the form said (0.94.0). Said over the
+            // button that does it.
+            if (revives) {
+                Text(
+                    text = stringResource(R.string.editor_revives),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = Tokens.spacing.sm),
+                )
+            }
             // Only once there is an arrangement to read: while somebody is typing the words into
             // a blank draft this would be their own sentence handed back to them, under the
             // keyboard, in the room the form needs.
@@ -837,9 +856,19 @@ internal fun FieldError(text: String, modifier: Modifier = Modifier) {
         text = text,
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.error,
-        modifier = modifier.padding(top = Tokens.spacing.xs),
+        // Announced as it appears (0.94.0): a line that comes and goes under a control whose
+        // button also quietly greys is otherwise a sheet that went wrong with no word why.
+        modifier = modifier
+            .padding(top = Tokens.spacing.xs)
+            .semantics { liveRegion = LiveRegionMode.Polite },
     )
 }
+
+/**
+ * The warnings that mean the reminder will not ring at all, as opposed to the ones that only
+ * say something about it; the first wear the error ink, the rest the muted one.
+ */
+internal val SEVERE_WARNINGS = setOf(R.string.editor_warning_never_fires, R.string.editor_warning_never_completes)
 
 /** Worst first, so the line a rule gets is the one that matters most. */
 private fun severityOf(warning: ValidationWarning): Int = when (warning) {
@@ -851,14 +880,31 @@ private fun severityOf(warning: ValidationWarning): Int = when (warning) {
     is ValidationWarning.BetterAsCondition -> 4
 }
 
+/**
+ * A warning under a rule or the recurrence. **Not amber** (0.94.0): amber means what fires
+ * next, by the app's own rule, and "nunca sonará" wore the colour of the happy path. A glyph
+ * and the muted ink for a thing worth knowing; the error ink, for a warning that means the
+ * reminder will never ring ([SEVERE_WARNINGS]) — those kill it as surely as an error does,
+ * and only differ in being allowed through the save.
+ */
 @Composable
-internal fun FieldWarning(text: String, modifier: Modifier = Modifier) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = modifier.padding(top = Tokens.spacing.xs),
-    )
+internal fun FieldWarning(text: String, modifier: Modifier = Modifier, severe: Boolean = false) {
+    val ink = if (severe) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .padding(top = Tokens.spacing.xs)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.WarningAmber,
+            contentDescription = null,
+            tint = ink,
+            modifier = Modifier.size(Tokens.sizes.glyphSmall),
+        )
+        Spacer(Modifier.width(Tokens.spacing.xs))
+        Text(text = text, style = MaterialTheme.typography.labelMedium, color = ink)
+    }
 }
 
 /** Keys of the cards a refusal can be sent to; see the `Invalid` event. */

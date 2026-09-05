@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
@@ -31,7 +30,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,6 +58,13 @@ import dev.rwilco.ui.theme.icon
 import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
 import dev.rwilco.ui.components.SnoozeOffers
 import dev.rwilco.model.SnoozePlace
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.traversalIndex
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import dev.rwilco.ui.format.join
+import androidx.compose.runtime.getValue
 
 /**
  * The lamp at full brightness. The reminder's words as big as they fit, and one button the
@@ -119,9 +124,13 @@ fun AlertScreen(
             .fillMaxSize()
             .background(scheme.background)
             .lampGlow(scheme.primary, intensity = 1f)
-            .systemBarsPadding(),
+            // The cutout too (0.94.0): the eyebrow sat under a punch-hole on a phone on its side.
+            .safeDrawingPadding(),
     ) {
-        Column(modifier = Modifier.fillMaxSize().padding(spacing.screen)) {
+        // A traversal group, so the bottom control can come first to a screen reader: it was
+        // the last node after up to nine snooze offers, on a screen whose whole point is that
+        // one answer (0.94.0).
+        Column(modifier = Modifier.fillMaxSize().padding(spacing.screen).semantics { isTraversalGroup = true }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // **The way back to the others.** A strip opened out of the stack is a *look*
                 // at one reminder, not an answer to it, so getting out of it again costs
@@ -133,11 +142,13 @@ fun AlertScreen(
                     }
                     Spacer(Modifier.width(spacing.xs))
                 }
+                val eyebrow = stringResource(if (preview) R.string.alert_preview_label else R.string.app_name)
                 Text(
-                    text = stringResource(if (preview) R.string.alert_preview_label else R.string.app_name).uppercase(locale),
+                    text = eyebrow.uppercase(locale),
                     style = MaterialTheme.typography.labelMedium.copy(letterSpacing = Tracking.eyebrow, fontWeight = FontWeight.SemiBold),
                     color = scheme.primary,
-                    modifier = Modifier.weight(1f),
+                    // Read as the word, not spelt out: capitals are for the eye.
+                    modifier = Modifier.weight(1f).semantics { contentDescription = eyebrow },
                 )
                 if (waiting > 0) {
                     Text(
@@ -155,7 +166,7 @@ fun AlertScreen(
                 val line = triggerLine(trigger, content.today, content.defaultTime)
                 Spacer(Modifier.height(spacing.sm))
                 Text(
-                    text = stringResource(R.string.alert_fired_by, line.primary + " · " + line.secondary),
+                    text = stringResource(R.string.alert_fired_by, join(line.primary, line.secondary)),
                     style = MaterialTheme.typography.bodyMedium,
                     color = scheme.onSurfaceVariant,
                 )
@@ -268,6 +279,7 @@ fun AlertScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = Tokens.sizes.primary)
+                    .semantics { traversalIndex = -1f }
                     .clip(MaterialTheme.shapes.large)
                     .then(
                         if (silencing) {

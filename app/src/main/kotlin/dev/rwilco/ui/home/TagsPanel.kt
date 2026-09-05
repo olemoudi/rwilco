@@ -33,11 +33,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -52,7 +50,6 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.rwilco.R
@@ -61,6 +58,10 @@ import dev.rwilco.ui.components.scrollFade
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.tagColor
 import dev.rwilco.ui.theme.tagWash
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import dev.rwilco.ui.theme.MUTED_ALPHA
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /**
  * The one place tags are administered, behind the "+" at the end of Home's row of chips.
@@ -207,11 +208,15 @@ private fun TagPanelRow(tag: TagRow, onTogglePin: () -> Unit, onEdit: () -> Unit
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
     val color = tagColor(tag.name)
+    val haptics = Tokens.haptics
     Surface(
-        onClick = onTogglePin,
+        onClick = {
+            haptics.perform(HapticFeedbackType.SegmentTick)
+            onTogglePin()
+        },
         shape = MaterialTheme.shapes.small,
         color = if (tag.pinned) scheme.onSurface else tagWash(tag.name),
-        border = if (tag.pinned) null else BorderStroke(Tokens.strokes.control, color.copy(alpha = 0.55f)),
+        border = if (tag.pinned) null else BorderStroke(Tokens.strokes.control, color.copy(alpha = MUTED_ALPHA)),
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = Tokens.sizes.touch)
@@ -227,7 +232,7 @@ private fun TagPanelRow(tag: TagRow, onTogglePin: () -> Unit, onEdit: () -> Unit
         ) {
             Box(
                 modifier = Modifier
-                    .size(12.dp)
+                    .size(Tokens.sizes.dot)
                     .background(color, CircleShape),
             )
             Spacer(Modifier.width(spacing.md))
@@ -262,7 +267,7 @@ private fun TagPanelRow(tag: TagRow, onTogglePin: () -> Unit, onEdit: () -> Unit
             }
             val ink = if (tag.pinned) scheme.surface else scheme.onSurfaceVariant
             IconButton(onClick = onEdit) {
-                Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.curate_rename), tint = ink)
+                Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.curate_rename_named, tag.name), tint = ink)
             }
             IconButton(onClick = onRemove) {
                 Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.curate_tag_remove), tint = ink)

@@ -61,8 +61,10 @@ fun PresetChip(
         border = if (selected) null else BorderStroke(Tokens.strokes.control, scheme.outline),
         modifier = modifier
             .heightIn(min = Tokens.sizes.touch)
-            // The inverted colours are the whole of "on" for eyes; a screen reader gets the word.
-            .then(if (selected) Modifier.semantics { this.selected = true } else Modifier)
+            // The inverted colours are the whole of "on" for eyes; a screen reader gets the
+            // word — either way round, so fifteen identical chips are told apart (0.94.0, the
+            // rule the recurrence's own buttons had, now that they are these chips).
+            .semantics { this.selected = selected }
             .then(if (onHold == null) Modifier else Modifier.holdable(holdIcon, holdLabel, onHold, hold)),
     )
 }

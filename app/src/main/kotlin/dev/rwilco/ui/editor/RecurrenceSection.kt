@@ -25,7 +25,6 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FilterAlt
-import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -43,24 +42,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.rwilco.R
 import dev.rwilco.model.Condition
-import dev.rwilco.model.LAST_ORDINAL
 import dev.rwilco.model.MAX_RECURRENCE_AMOUNT
 import dev.rwilco.model.withSpanOf
 import dev.rwilco.model.MIN_RECURRENCE_AMOUNT
@@ -81,18 +73,18 @@ import dev.rwilco.ui.format.recurrenceLabel
 import dev.rwilco.ui.format.repeatSummary
 import dev.rwilco.ui.format.conditionLabel
 import dev.rwilco.ui.components.Stepper
-import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.components.scrollFade
 import dev.rwilco.ui.theme.Tokens
 import java.time.LocalDate
-import java.time.format.TextStyle
 import java.time.LocalTime
-import dev.rwilco.ui.format.rememberIs24h
-import dev.rwilco.ui.format.Words
 import dev.rwilco.ui.format.rememberWords
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.components.TimeField
 import androidx.compose.material.icons.outlined.FormatQuote
+import dev.rwilco.ui.components.PresetChip
+import dev.rwilco.ui.components.MoreChip
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /** How many recurrences get a button of their own before the rest go behind the dots. */
 private const val VISIBLE_PRESETS = 4
@@ -171,7 +163,7 @@ internal fun RecurrenceSection(
             horizontalArrangement = Arrangement.spacedBy(spacing.sm),
             verticalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
-            RecurrenceButton(
+            PresetChip(
                 label = stringResource(R.string.recur_none),
                 selected = recurrence == Recurrence.None,
                 onClick = { onCustom(Recurrence.None) },
@@ -182,16 +174,16 @@ internal fun RecurrenceSection(
             understood?.let { read ->
                 val hour = (read as? Recurrence.Calendar)?.repeat?.time
                     ?.let { " · " + TimeText.time(it, readWords.is24h, readWords.locale) }.orEmpty()
-                RecurrenceButton(
-                    icon = Icons.Outlined.FormatQuote,
+                PresetChip(
+                    leadingIcon = Icons.Outlined.FormatQuote,
                     label = (recurrenceLabel(readWords, read, today) + hour).replaceFirstChar { it.titlecase(readWords.locale) },
                     selected = false,
                     onClick = { onUnderstood(read) },
-                    contentDescription = stringResource(R.string.editor_when_from_words),
+                    leadingIconDescription = stringResource(R.string.editor_when_from_words),
                 )
             }
             for (preset in spans) {
-                RecurrenceButton(
+                PresetChip(
                     label = presetLabel(preset, today),
                     selected = recurrence.sameSpanAs(preset.recurrence),
                     onClick = { onPick(preset) },
@@ -200,22 +192,16 @@ internal fun RecurrenceSection(
             // One flow and not two rows: they are all answers to the same question, and a card
             // that spends four lines on seven buttons pushes "y sólo si" off the screen.
             if (presets.size > VISIBLE_PRESETS - 1) {
-                RecurrenceButton(
-                    icon = Icons.Outlined.MoreHoriz,
-                    label = null,
-                    selected = false,
-                    onClick = { listing = true },
-                    contentDescription = stringResource(R.string.recur_more),
-                )
+                MoreChip(onClick = { listing = true }, contentDescription = stringResource(R.string.recur_more))
             }
-            RecurrenceButton(
-                icon = Icons.Outlined.CalendarMonth,
+            PresetChip(
+                leadingIcon = Icons.Outlined.CalendarMonth,
                 label = stringResource(R.string.recur_calendar),
                 selected = calendar != null,
                 onClick = onCalendar,
             )
-            RecurrenceButton(
-                icon = Icons.Outlined.Tune,
+            PresetChip(
+                leadingIcon = Icons.Outlined.Tune,
                 label = stringResource(R.string.recur_custom),
                 // Selected when a span is set that is not one of the buttons above.
                 selected = recurrence is Recurrence.After && spans.none { recurrence.sameSpanAs(it.recurrence) },
@@ -225,8 +211,8 @@ internal fun RecurrenceSection(
             // out dates of its own, and offering "lo decide el azar" without one is offering
             // nothing.
             if (chanceDecides) {
-                RecurrenceButton(
-                    icon = Icons.Outlined.Casino,
+                PresetChip(
+                    leadingIcon = Icons.Outlined.Casino,
                     label = stringResource(R.string.recur_by_trigger),
                     selected = recurrence == Recurrence.ByTrigger,
                     onClick = { onCustom(Recurrence.ByTrigger) },
@@ -247,12 +233,12 @@ internal fun RecurrenceSection(
                 horizontalArrangement = Arrangement.spacedBy(spacing.sm),
                 verticalArrangement = Arrangement.spacedBy(spacing.sm),
             ) {
-                RecurrenceButton(
+                PresetChip(
                     label = stringResource(R.string.recur_from_ringing),
                     selected = recurrence.countsFromRinging,
                     onClick = { onCustom(recurrence.copy(from = RecurrenceFrom.RANG)) },
                 )
-                RecurrenceButton(
+                PresetChip(
                     label = stringResource(R.string.recur_from_dealt),
                     selected = !recurrence.countsFromRinging,
                     onClick = { onCustom(recurrence.copy(from = RecurrenceFrom.DEALT)) },
@@ -276,7 +262,7 @@ internal fun RecurrenceSection(
                     verticalArrangement = Arrangement.spacedBy(spacing.sm),
                 ) {
                     for (landing in SpanLanding.entries) {
-                        RecurrenceButton(
+                        PresetChip(
                             label = stringResource(landing.labelRes),
                             selected = recurrence.landing == landing,
                             // "Justo el plazo" takes the rules out of the loop, so the hour they
@@ -315,17 +301,17 @@ internal fun RecurrenceSection(
                     horizontalArrangement = Arrangement.spacedBy(spacing.sm),
                     verticalArrangement = Arrangement.spacedBy(spacing.sm),
                 ) {
-                    RecurrenceButton(
+                    PresetChip(
                         label = stringResource(R.string.recur_hour_day_start),
                         selected = recurrence.hour == RecurrenceHour.DayStart,
                         onClick = { onCustom(recurrence.copy(hour = RecurrenceHour.DayStart)) },
                     )
-                    RecurrenceButton(
+                    PresetChip(
                         label = stringResource(R.string.recur_hour_same),
                         selected = recurrence.hour == RecurrenceHour.Same,
                         onClick = { onCustom(recurrence.copy(hour = RecurrenceHour.Same)) },
                     )
-                    RecurrenceButton(
+                    PresetChip(
                         label = stringResource(R.string.recur_hour_custom),
                         selected = recurrence.hour is RecurrenceHour.At,
                         // Starting from the hour this person means by "a las nueve", so the
@@ -376,7 +362,7 @@ internal fun RecurrenceSection(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            if (warning != null) FieldWarning(stringResource(warning))
+            if (warning != null) FieldWarning(stringResource(warning), severe = warning in SEVERE_WARNINGS)
             RecurrenceConditions(
                 conditions = recurrence.conditions,
                 onAdd = onAddCondition,
@@ -503,56 +489,6 @@ private fun RecurrenceConditions(
     }
 }
 
-@Composable
-private fun RecurrenceButton(
-    label: String?,
-    selected: Boolean,
-    onClick: () -> Unit,
-    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
-    contentDescription: String? = null,
-) {
-    val haptics = Tokens.haptics
-    val scheme = MaterialTheme.colorScheme
-    Surface(
-        onClick = {
-            haptics.perform(HapticFeedbackType.SegmentTick)
-            onClick()
-        },
-        shape = MaterialTheme.shapes.small,
-        // On is inverted, like every other "on" in the app — and said, for a screen reader
-        // that hears fifteen identical buttons otherwise (0.68.0).
-        color = if (selected) scheme.onSurface else scheme.surfaceContainerHigh,
-        border = if (selected) null else BorderStroke(Tokens.strokes.control, scheme.outline),
-        modifier = Modifier
-            .heightIn(min = Tokens.sizes.touch)
-            .semantics { this.selected = selected },
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = Tokens.spacing.md),
-        ) {
-            if (icon != null) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = contentDescription,
-                    tint = if (selected) scheme.surface else scheme.onSurface,
-                    modifier = Modifier.width(20.dp),
-                )
-                if (label != null) Spacer(Modifier.width(Tokens.spacing.sm))
-            }
-            if (label != null) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (selected) scheme.surface else scheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
-}
-
 /** The whole list, with the two things you can do to one you made yourself. */
 @Composable
 private fun RecurrenceListDialog(
@@ -615,11 +551,11 @@ private fun RecurrenceListDialog(
                             // "cada día" would be losing it rather than editing it.
                             if (preset.recurrence is Recurrence.After) {
                                 IconButton(onClick = { onEdit(preset) }) {
-                                    Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.recur_edit), tint = scheme.onSurfaceVariant)
+                                    Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.recur_edit_named, presetLabel(preset, today)), tint = scheme.onSurfaceVariant)
                                 }
                             }
                             IconButton(onClick = { onDelete(preset.id) }) {
-                                Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.recur_delete), tint = scheme.onSurfaceVariant)
+                                Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.recur_delete_named, presetLabel(preset, today)), tint = scheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -669,7 +605,7 @@ private fun CustomRecurrenceDialog(
             border = BorderStroke(Tokens.strokes.edge, scheme.outlineVariant),
             modifier = Modifier
                 .fillMaxWidth(0.92f)
-                .heightIn(max = 620.dp),
+                .heightIn(max = Tokens.sizes.dialogMax),
         ) {
             Column(Modifier.padding(spacing.lg)) {
                 Text(stringResource(R.string.recur_custom_title), style = MaterialTheme.typography.headlineSmall)

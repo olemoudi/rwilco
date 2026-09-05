@@ -25,17 +25,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.ErrorOutline
-import androidx.compose.material.icons.filled.Circle
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.QuestionMark
-import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.Snooze
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -89,6 +84,14 @@ import dev.rwilco.model.Trigger
 import dev.rwilco.model.Deadline
 import dev.rwilco.ui.format.deadlineCardLabel
 import androidx.compose.material.icons.outlined.HourglassBottom
+import androidx.compose.material.icons.outlined.MoreHoriz
+import dev.rwilco.ui.format.join
+import dev.rwilco.ui.format.joinAll
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.testTag
+
+/** The pencil on a card, for the tests that open the form by it; see [ReminderCard]. */
+const val CARD_EDIT_TAG = "cardEdit"
 
 /**
  * One reminder at a glance. [modifier] is where Home hangs the accessibility actions for the
@@ -167,13 +170,27 @@ fun ReminderCard(
                 // read-only marks below it: muted enough to stay out of the way of the words,
                 // legible enough to be seen as a thing to press.
                 val editHaptics = Tokens.haptics
-                IconButton(onClick = { editHaptics.perform(HapticFeedbackType.ContextClick); onEdit() }) {
+                // Tagged for the tests (0.94.0): the "⋯" beside it carries the same words in
+                // its description, and "the button named after this reminder" is two buttons.
+                IconButton(onClick = { editHaptics.perform(HapticFeedbackType.ContextClick); onEdit() }, modifier = Modifier.testTag(CARD_EDIT_TAG)) {
                     Icon(
                         imageVector = Icons.Outlined.Edit,
                         // Named after the reminder it belongs to: a list of thirty cards is a
                         // list of thirty pencils, and "edit this one" said thirty times over
                         // does not say which one to a screen reader.
                         contentDescription = stringResource(R.string.card_edit, card.text),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                // **A door to the menu that can be seen** (0.94.0). Posponer, saltar la
+                // próxima, clonar and guardar como preset lived behind the held press alone,
+                // and the one place that gesture was taught was the empty screen — seen once,
+                // for about as long as it takes to write the first reminder. The hold still
+                // works; this is the same menu, asked for by a thing with a name.
+                IconButton(onClick = { editHaptics.perform(HapticFeedbackType.ContextClick); onLongClick() }) {
+                    Icon(
+                        imageVector = Icons.Outlined.MoreHoriz,
+                        contentDescription = stringResource(R.string.card_more, card.text),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -408,7 +425,7 @@ fun RecurrenceRow(
                 Text(
                     text = stringResource(
                         R.string.editor_only_if_prefix,
-                        recurrence.conditions.map { conditionLabel(it) }.joinToString(" · "),
+                        joinAll(recurrence.conditions.map { conditionLabel(it) }),
                     ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -526,7 +543,7 @@ fun SnoozedRow(until: Instant, today: LocalDate, zone: ZoneId, muted: Boolean = 
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = stringResource(R.string.card_snoozed) + " · " + dayWord(rememberWords(), at.toLocalDate(), today),
+                text = join(stringResource(R.string.card_snoozed), dayWord(rememberWords(), at.toLocalDate(), today)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -603,7 +620,7 @@ fun TriggerRow(row: TriggerRowUi, today: LocalDate, defaultTime: LocalTime, mute
             }
             if (row.conditions.isNotEmpty()) {
                 Text(
-                    text = stringResource(R.string.editor_only_if_prefix, row.conditions.map { conditionLabel(it) }.joinToString(" · ")),
+                    text = stringResource(R.string.editor_only_if_prefix, joinAll(row.conditions.map { conditionLabel(it) })),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

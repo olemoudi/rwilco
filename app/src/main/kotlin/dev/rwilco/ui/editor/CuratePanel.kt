@@ -32,22 +32,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextRange
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.rwilco.R
 import dev.rwilco.ui.theme.Tokens
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /**
  * Mending the phrases the editor offers back.
@@ -159,10 +158,10 @@ private fun CurateRow(item: String, onEdit: () -> Unit, onRemove: () -> Unit) {
             modifier = Modifier.weight(1f),
         )
         IconButton(onClick = onEdit) {
-            Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.curate_rename), tint = scheme.onSurfaceVariant)
+            Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.curate_rename_named, item), tint = scheme.onSurfaceVariant)
         }
         IconButton(onClick = onRemove) {
-            Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.curate_text_remove), tint = scheme.onSurfaceVariant)
+            Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.curate_text_remove_named, item), tint = scheme.onSurfaceVariant)
         }
     }
 }

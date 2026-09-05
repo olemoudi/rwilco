@@ -5,6 +5,8 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.hasTestTag
+import dev.rwilco.ui.home.CARD_EDIT_TAG
 
 /**
  * Home's way into the form since 0.71.0: the pencil on the card whose words are [words]. The tap
@@ -24,6 +26,7 @@ import androidx.compose.ui.test.performSemanticsAction
  * thumb can reach the corner of a half-scrolled card.
  */
 fun ComposeTestRule.editCard(words: String) {
-    onNode(hasContentDescription(words, substring = true) and hasClickAction())
+    // The pencil by its tag and its reminder: the "⋯" beside it carries the same words (0.94.0).
+    onNode(hasTestTag(CARD_EDIT_TAG) and hasContentDescription(words, substring = true) and hasClickAction())
         .performSemanticsAction(SemanticsActions.OnClick)
 }

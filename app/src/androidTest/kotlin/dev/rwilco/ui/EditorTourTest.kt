@@ -133,6 +133,11 @@ class EditorTourTest {
 
     @Test
     fun theWholeFirstPhaseHoldsTogether() {
+        // The per-app locale set in @BeforeClass lands a beat later than the call: the first
+        // activity can come up in English and be recreated in Spanish, and a string read off
+        // it before that is the wrong string for the rest of the run — the first wait timed
+        // out on "Next up" with "LO SIGUIENTE" on the screen (0.94.0). So: the language first.
+        rule.waitUntil(timeoutMillis = 10_000) { rule.activity.resources.configuration.locales[0].language == "es" }
         rule.waitUntilShown(s(R.string.home_next_up))
         shot("home")
 
@@ -303,7 +308,8 @@ class EditorTourTest {
         rule.waitUntilDisplayed("3")
         text(s(R.string.sheet_add)).performClick()
         rule.waitUntilGone(s(R.string.sheet_add))
-        rule.onNodeWithContentDescription(s(R.string.editor_edit_trigger)).assertIsDisplayed()
+        // The pencil is named after its rule (0.94.0): "Editar «3 min»".
+        rule.onNodeWithContentDescription(s(R.string.editor_edit_trigger_named, s(R.string.countdown_minutes, 3))).assertIsDisplayed()
         // What the draft will do, read back over the button: a countdown of three minutes rings
         // today, and the line says so in the first amber words of the bar.
         rule.onNode(hasText(s(R.string.editor_will_ring, ""), substring = true), useUnmergedTree = true).assertIsDisplayed()

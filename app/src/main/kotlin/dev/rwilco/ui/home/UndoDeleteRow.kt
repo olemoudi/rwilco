@@ -22,6 +22,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import dev.rwilco.R
 import dev.rwilco.ui.theme.Tokens
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 
 /**
  * "Eliminado: <words> · Deshacer", at the top of the list for a minute after a delete
@@ -33,6 +34,7 @@ import dev.rwilco.ui.theme.Tokens
 @Composable
 fun UndoDeleteRow(text: String, onUndo: () -> Unit, modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
+    val haptics = Tokens.haptics
     Surface(
         shape = MaterialTheme.shapes.medium,
         color = scheme.surfaceContainerHigh,
@@ -60,7 +62,7 @@ fun UndoDeleteRow(text: String, onUndo: () -> Unit, modifier: Modifier = Modifie
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = onUndo) {
+            TextButton(onClick = { haptics.perform(HapticFeedbackType.Confirm); onUndo() }) {
                 Text(stringResource(R.string.common_undo))
             }
         }

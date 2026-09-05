@@ -47,13 +47,13 @@ import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.Snooze
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import dev.rwilco.model.Snooze
 import dev.rwilco.ui.components.SnoozeOffers
 import dev.rwilco.model.SnoozePlace
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /**
  * What can be done to one reminder, asked by holding its card.
@@ -107,6 +107,8 @@ fun ReminderActionsMenu(
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
+                    // A screen-sized nameless button to a screen reader, otherwise (0.94.0).
+                    onClickLabel = stringResource(R.string.common_close),
                     onClick = onDismiss,
                 )
                 .safeDrawingPadding()
@@ -215,14 +217,14 @@ private fun ActionTile(icon: ImageVector, label: String, onClick: () -> Unit, mo
         shape = MaterialTheme.shapes.medium,
         color = scheme.surfaceContainerHigh,
         border = BorderStroke(Tokens.strokes.control, scheme.outline),
-        modifier = modifier.heightIn(min = 72.dp),
+        modifier = modifier.heightIn(min = Tokens.sizes.tile),
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.padding(Tokens.spacing.sm),
         ) {
-            Icon(icon, contentDescription = null, tint = scheme.onSurface, modifier = Modifier.size(24.dp))
+            Icon(icon, contentDescription = null, tint = scheme.onSurface, modifier = Modifier.size(Tokens.sizes.glyphLarge))
             Spacer(Modifier.height(Tokens.spacing.xs))
             Text(text = label, style = MaterialTheme.typography.labelLarge, color = scheme.onSurface)
         }
@@ -244,13 +246,13 @@ private fun ActionRow(icon: ImageVector, label: String, hint: String, onClick: (
         border = BorderStroke(Tokens.strokes.control, scheme.outline),
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 72.dp),
+            .heightIn(min = Tokens.sizes.tile),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(Tokens.spacing.md),
         ) {
-            Icon(icon, contentDescription = null, tint = scheme.onSurface, modifier = Modifier.size(24.dp))
+            Icon(icon, contentDescription = null, tint = scheme.onSurface, modifier = Modifier.size(Tokens.sizes.glyphLarge))
             Spacer(Modifier.width(Tokens.spacing.md))
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(text = label, style = MaterialTheme.typography.titleMedium, color = scheme.onSurface)

@@ -30,7 +30,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
@@ -40,13 +39,11 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -89,6 +86,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.osmdroid.util.GeoPoint
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /**
  * A place, a radius, and whether arriving or leaving matters. The pin comes from a saved place,
@@ -387,7 +386,7 @@ fun LocationSheet(
             leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
             trailingIcon = {
                 if (searching) {
-                    CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+                    CircularProgressIndicator(strokeWidth = Tokens.strokes.strong, modifier = Modifier.size(Tokens.sizes.glyphMedium))
                 } else if (query.isNotBlank()) {
                     IconButton(onClick = { runSearch() }) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = stringResource(R.string.place_search))
@@ -477,7 +476,7 @@ fun LocationSheet(
                         .size(Tokens.sizes.control),
                 ) {
                     if (locating) {
-                        CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+                        CircularProgressIndicator(strokeWidth = Tokens.strokes.strong, modifier = Modifier.size(Tokens.sizes.glyphMedium))
                     } else {
                         Icon(Icons.Outlined.MyLocation, contentDescription = stringResource(R.string.place_my_location))
                     }

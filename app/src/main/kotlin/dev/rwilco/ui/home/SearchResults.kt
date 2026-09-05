@@ -25,10 +25,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -41,11 +39,14 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.unit.dp
 import dev.rwilco.R
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.TagLabel
 import dev.rwilco.ui.theme.Tokens
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import dev.rwilco.ui.format.joinAll
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /** Lets the instrumented tour type into the search field. */
 const val HOME_SEARCH_TAG = "homeSearch"
@@ -78,8 +79,10 @@ fun SearchField(query: String, onQueryChange: (String) -> Unit, onClose: () -> U
         field = TextFieldValue("")
         onQueryChange("")
     }
+    val haptics = Tokens.haptics
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        IconButton(onClick = onClose) {
+        // Buzzes like the header buttons it replaces (0.69.0's rule, missed here until 0.94.0).
+        IconButton(onClick = { haptics.perform(HapticFeedbackType.ContextClick); onClose() }) {
             Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.common_back))
         }
         OutlinedTextField(
@@ -128,15 +131,15 @@ fun SearchResultRow(
 ) {
     when (hit) {
         is SearchHitUi.OfReminder -> ResultCard(
-            icon = { Icon(Icons.AutoMirrored.Outlined.Notes, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp)) },
+            icon = { Icon(Icons.AutoMirrored.Outlined.Notes, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(Tokens.sizes.glyphMedium)) },
             title = hit.text,
-            subtitle = hit.tags.take(3).joinToString(" · ").takeIf { it.isNotEmpty() },
+            subtitle = joinAll(hit.tags.take(3)).takeIf { it.isNotEmpty() },
             kind = stringResource(if (hit.done) R.string.home_search_kind_done else R.string.home_search_kind_reminder),
             onClick = { onOpen(hit.id) },
             modifier = modifier,
         )
         is SearchHitUi.OfTag -> ResultCard(
-            icon = { Icon(Icons.Outlined.LocalOffer, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp)) },
+            icon = { Icon(Icons.Outlined.LocalOffer, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(Tokens.sizes.glyphMedium)) },
             title = hit.tag,
             subtitle = pluralStringResource(R.plurals.home_search_tag_count, hit.count, hit.count),
             kind = stringResource(R.string.home_search_kind_tag),

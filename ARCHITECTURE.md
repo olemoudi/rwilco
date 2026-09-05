@@ -1470,6 +1470,37 @@ because that is what its chip would show.
   safety net after the vibration as the enum always had it, "Novedades" called that in
   Settings too, Hechos reading both horizontal insets and naming each "Recuperar" to a screen
   reader. The second half — structure, accessibility, tokens — is 0.94.0.
+- **The structure round** (0.94.0), the second half of that review. **A door to the menu that
+  can be seen**: an open card wears a `⋯` beside its pencil (`card_more`, named after the
+  reminder), opening the same `ReminderActionsMenu` the held press does; the hold still works,
+  and the empty screen's tuition names the button first. **The form is five cards in the order
+  people answer them**: the words, "Cuándo", "Vuelve", then the tags, then "Qué pasa" — the
+  tags had sat between the words and the when, a card's height apart, since 0.87.0 halved their
+  contents without moving the card. **Warnings are not amber** (`FieldWarning(severe)`): the
+  muted ink with a glyph for a thing worth knowing, the error ink for `NeverFires` and
+  `NeverCompletes` (`SEVERE_WARNINGS`), which kill the reminder as surely as an error does.
+  **One selectable chip**: `RecurrenceButton` was `PresetChip` with different padding and a
+  `selected` said only when true; it is `PresetChip` now, which says `selected` either way.
+  **Every screen under Home shares `RwilcoTopBar`** (`ui/components/TopBar.kt`): the title is
+  weighted, trimmed and a heading — two of the five copies clipped their title at a large font
+  scale and none was a heading, so a screen reader walking by headings met "Avisos" with no
+  "Ajustes" above it. **The alert's bottom control comes first to a screen reader**
+  (`isTraversalGroup` on the column, `traversalIndex = -1f` on the control): it was the last
+  node after up to nine snooze offers. The alert pads the cutout (`safeDrawingPadding`), and
+  the wordmark is read as the word. **A group opened by a tap scrolls into view**
+  (`SettingsGroup`, `BringIntoViewRequester` after the fold's motion — never for one that opened
+  itself or was restored open); closed rows keep two lines of summary. And the smaller ones: a
+  counter under the words as they near their cap (forty for a preset's name), "Guardar lo
+  devuelve a la lista" over the button on a finished reminder (`EditorUiState.revives`), row
+  controls named after their row (`editor_edit_trigger_named` and its kin), `liveRegion` on
+  `FieldError`/`FieldWarning`, the DND offer a `PermissionFixRow` like its siblings, Hechos'
+  purge through `ClearDialog` and its empty state centred, the hero's `clickLabel`, the menu's
+  scrim named, the last unbuzzed hand-rolled controls buzzing, `Sizes.glyphLarge/dot/tile/
+  choice` and `MUTED_ALPHA` for the numbers the screens had been spelling out, and `" · "`
+  through `common_join`/`common_separator` (`ui/format/Join.kt`). Left alone, judged on the
+  screenshot: "Qué pasa"'s fifth tile at full width (three columns leave a hole too, and the
+  pips lose their words), and the sheets vanishing rather than sliding on Confirm — `hide()`
+  against a sheet that refuses `Hidden` is not a change to make blind.
 
 ## Firing
 

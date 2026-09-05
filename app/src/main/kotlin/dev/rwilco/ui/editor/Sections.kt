@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
@@ -53,11 +52,9 @@ import dev.rwilco.geo.hasBackgroundLocation
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -72,7 +69,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import dev.rwilco.R
@@ -108,7 +104,6 @@ import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.durationText
 import dev.rwilco.ui.format.conditionLabel
 import dev.rwilco.ui.format.currentLocale
-import dev.rwilco.ui.format.dayWord
 import dev.rwilco.ui.format.rememberIs24h
 import dev.rwilco.ui.format.triggerLine
 import dev.rwilco.ui.home.labelRes
@@ -121,10 +116,12 @@ import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
-import java.time.temporal.ChronoUnit
 import java.util.Locale
 import dev.rwilco.model.Deadline
 import dev.rwilco.ui.format.deadlineButtonLabel
+import dev.rwilco.model.MAX_TEXT_LENGTH
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /** Lets the instrumented tour find the text field; a BasicTextField has no other handle. */
 const val EDITOR_TEXT_TAG = "editorText"
@@ -230,6 +227,8 @@ internal fun TextSection(
     autoFocus: Boolean = false,
     /** Bumped by whoever wants the cursor here now — a refused save, asking for the words. */
     focusKey: Int = 0,
+    /** Where the field stops taking letters: a reminder's words, or a preset's shorter name. */
+    cap: Int = MAX_TEXT_LENGTH,
 ) {
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -297,6 +296,16 @@ internal fun TextSection(
             },
         )
         if (error) FieldError(stringResource(R.string.editor_error_text))
+        // The cap, said as it is neared (0.94.0): the field stops taking letters at it and
+        // nothing used to say so — least of all for a preset's name, which is forty.
+        if (text.length >= cap - cap / 10) {
+            Text(
+                text = stringResource(R.string.editor_text_count, text.length, cap),
+                style = MonoStyles.label,
+                color = if (text.length >= cap) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = Tokens.spacing.xs),
+            )
+        }
         if (text.isEmpty() && suggestions.isNotEmpty()) {
             Spacer(Modifier.height(Tokens.spacing.lg))
             SectionTitle(stringResource(R.string.editor_reuse))
@@ -614,7 +623,6 @@ private fun QuickWhenRow(
 ) {
     val locale = currentLocale()
     val is24h = rememberIs24h()
-    val words = rememberWords()
     val now = clock.instant().atZone(clock.zone)
     val today = now.toLocalDate()
     // **"Mañana por la mañana" is a setting, and it was a number.** `dayStart` is the hour
@@ -677,7 +685,7 @@ internal fun UnderstoodChip(understood: Understood, today: LocalDate, defaultTim
         is Understood.Comes -> {
             val recurrence = understood.recurrence
             val time = (recurrence as? Recurrence.Calendar)?.repeat?.time
-            val hour = time?.let { " · " + TimeText.time(it, is24h, locale) }.orEmpty()
+            val hour = time?.let { stringResource(R.string.common_separator) + TimeText.time(it, is24h, locale) }.orEmpty()
             (recurrenceLabel(words, recurrence, today) + hour).replaceFirstChar { it.titlecase(locale) }
         }
     }
@@ -761,15 +769,16 @@ private fun TriggerEditRow(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                // Named after the rule (0.94.0): three rules were six identical labels.
                 IconButton(onClick = onEdit) {
-                    Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.editor_edit_trigger), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.editor_edit_trigger_named, line.primary), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(onClick = onRemove) {
-                    Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.editor_remove_trigger), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.editor_remove_trigger_named, line.primary), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             if (error != null) FieldError(stringResource(error))
-            if (warning != null) FieldWarning(stringResource(warning))
+            if (warning != null) FieldWarning(stringResource(warning), severe = warning in SEVERE_WARNINGS)
             // The conditions sit under the trigger they restrict, because that is what they are:
             // not another way to ring, but a fence around this one.
             FlowRow(
@@ -910,7 +919,7 @@ private fun ActionTile(action: Action, selected: Boolean, onToggle: () -> Unit, 
         color = fill,
         border = if (selected) null else BorderStroke(Tokens.strokes.control, scheme.outline),
         modifier = modifier
-            .heightIn(min = 72.dp)
+            .heightIn(min = Tokens.sizes.tile)
             .semantics { this.selected = selected },
     ) {
         Row(

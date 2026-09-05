@@ -7,7 +7,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
-import android.media.RingtoneManager
 import android.net.Uri
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -273,7 +272,7 @@ object AlertNotifications {
         // a label belongs — and give it up to a word the net or a missed ring has to say, which
         // is about this arrival rather than about the reminder.
         if (reason.isNotBlank()) builder.setContentText(reason)
-        if (reminder.tags.isNotEmpty()) builder.setSubText(reminder.tags.joinToString(" · "))
+        if (reminder.tags.isNotEmpty()) builder.setSubText(reminder.tags.joinToString(context.getString(R.string.common_separator)))
         when {
             nudge == NetWord.LET_GO -> builder.setSubText(context.getString(R.string.notif_net_subtext))
             // The other way one gets away, and a different thing to be told: this one never

@@ -49,10 +49,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -63,7 +61,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.rwilco.R
@@ -72,6 +69,9 @@ import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.presetColor
 import dev.rwilco.ui.theme.presetWash
 import androidx.compose.runtime.saveable.rememberSaveable
+import dev.rwilco.ui.theme.MUTED_ALPHA
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /**
  * The row of shapes kept within reach, under the date.
@@ -108,7 +108,7 @@ private fun PinnedPresetButton(preset: Preset, onPick: (Preset) -> Unit) {
         },
         shape = MaterialTheme.shapes.small,
         color = presetWash(preset.colorIndex),
-        border = BorderStroke(Tokens.strokes.control, color.copy(alpha = 0.55f)),
+        border = BorderStroke(Tokens.strokes.control, color.copy(alpha = MUTED_ALPHA)),
         modifier = Modifier.heightIn(min = Tokens.sizes.touch),
     ) {
         Row(
@@ -117,7 +117,7 @@ private fun PinnedPresetButton(preset: Preset, onPick: (Preset) -> Unit) {
         ) {
             Box(
                 modifier = Modifier
-                    .size(10.dp)
+                    .size(Tokens.sizes.dot)
                     .background(color, CircleShape),
             )
             Spacer(Modifier.width(Tokens.spacing.sm))
@@ -135,8 +135,13 @@ private fun PinnedPresetButton(preset: Preset, onPick: (Preset) -> Unit) {
 @Composable
 private fun AddPinnedButton(onManage: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
+    val haptics = Tokens.haptics
     Surface(
-        onClick = onManage,
+        // The same door as the tags' "+", which buzzed; this one did not (0.94.0).
+        onClick = {
+            haptics.perform(HapticFeedbackType.Confirm)
+            onManage()
+        },
         shape = MaterialTheme.shapes.small,
         color = scheme.surfaceContainerHigh,
         border = BorderStroke(Tokens.strokes.control, scheme.outline),
@@ -206,16 +211,20 @@ fun PinPresetsPanel(
                         .scrollFade(scroll, scheme.surfaceContainer)
                         .verticalScroll(scroll),
                 ) {
+                    val pinHaptics = Tokens.haptics
                     for (preset in presets) {
                         val color = presetColor(preset.colorIndex)
                         Surface(
-                            onClick = { onTogglePin(preset) },
+                            onClick = {
+                                pinHaptics.perform(HapticFeedbackType.SegmentTick)
+                                onTogglePin(preset)
+                            },
                             shape = MaterialTheme.shapes.small,
                             // Pinned is inverted, like every other "on" in the app — and said
                             // (0.68.0): a checkbox to a screen reader, and a check glyph for
                             // anyone the inversion alone does not reach.
                             color = if (preset.pinned) scheme.onSurface else presetWash(preset.colorIndex),
-                            border = if (preset.pinned) null else BorderStroke(Tokens.strokes.control, color.copy(alpha = 0.55f)),
+                            border = if (preset.pinned) null else BorderStroke(Tokens.strokes.control, color.copy(alpha = MUTED_ALPHA)),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(min = Tokens.sizes.touch)
@@ -231,7 +240,7 @@ fun PinPresetsPanel(
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(12.dp)
+                                        .size(Tokens.sizes.dot)
                                         .background(color, CircleShape),
                                 )
                                 Spacer(Modifier.width(spacing.md))
@@ -320,7 +329,7 @@ fun PresetWordsDialog(preset: Preset, onConfirm: (String, Set<Action>) -> Unit, 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(12.dp)
+                            .size(Tokens.sizes.dot)
                             .background(presetColor(preset.colorIndex), CircleShape),
                     )
                     Spacer(Modifier.width(spacing.sm))

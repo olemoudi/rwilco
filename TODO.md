@@ -502,7 +502,39 @@ after the span in "Vuelve"), and the editor's draft not surviving process death 
 `SavedStateHandle`). The second half of the round — the `⋯` on a card, Tags below "Vuelve",
 warnings off amber, one top bar, TalkBack order on the alert, the tokens — is 0.94.0.
 
+## The structure round, 0.94.0 (2026-09-06)
+The second half of the fifth review (see 0.93.0 above). Worth not re-deriving:
+
+- **An import sweep by regex removes the delegate imports.** `getValue`/`setValue` never
+  appear in the body textually (`by remember` is the use), so a "drop what is not mentioned"
+  pass took them out of twenty-six files and the compiler said so twenty-six times. Restore
+  by the presence of `by`, not by name.
+- **A renamed string resource is used by tests too**: `curate_rename` → `curate_rename_named`
+  reached `TagReuseTest`, and `editor_edit_trigger` the tour. `grep` the test trees before
+  deleting a key.
+- **`traversalIndex` needs a traversal group around it** to mean anything: on the column.
+- **`performScrollTo` moves the *nearest* scrollable only.** A chip in a horizontal row inside
+  the form's column is scrolled within its row and never down the form; `TagReuseTest` had
+  passed while the tags card sat at the top and failed the day it moved. Bring the column to
+  the section first (`scrollToTheTags`), then the chip.
+- **The per-app locale lands a beat after `setApplicationLocales`.** The tour's first activity
+  can come up in English and be recreated in Spanish, and `rule.activity.getString` read
+  before that is the wrong string for the whole run — the first wait timed out on "Next up"
+  with "LO SIGUIENTE" on the screen, twice, and passed alone. The tour waits for the
+  configuration's language first. The capture-on-failed-wait added in 0.93.0 is what found it.
+- **A description the tests match by substring is a description two controls may share.** The
+  `⋯` carries the reminder's words like the pencil does; `editCard` matches the pencil's
+  `CARD_EDIT_TAG` now.
+
+Still open after the two halves: the "every day at 8" tap count (the hour controls only after
+the span in "Vuelve"), the editor's draft across process death (`SavedStateHandle`), the sheets
+sliding out on Confirm (`hide()` vs `confirmValueChange`), and the dead code listed under
+0.67.0 — asked about, not deleted.
+
 ## Still to prove on the real phone (Pixel 8 Pro)
+- The structure round (0.94.0): TalkBack on a ringing alert lands on "Silenciar" first; the
+  `⋯` on a card with the thumb, and whether the pencil and the `⋯` sit far enough apart;
+  a group opened at the bottom of Settings coming into view without the list jumping.
 - The navigation round (0.93.0): silence a ringing alert and turn the phone sideways — it must
   stay silent and "Hecho" must stay in reach; tap a vault notification from the Backup screen
   and press Back once (Settings, then Home); search from the bottom of a long list.
