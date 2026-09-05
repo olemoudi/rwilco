@@ -1,5 +1,6 @@
 package dev.rwilco.ui.settings
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -51,12 +52,16 @@ fun UpdateChannelCard(channel: UpdateChannel, onChannel: (UpdateChannel) -> Unit
     val context = LocalContext.current
     var confirming by rememberSaveable { mutableStateOf(false) }
 
-    // What the chosen channel currently serves. Read when the card appears and whenever the
-    // choice changes: it is one small document, and without it the notice below cannot be
-    // told apart from "no idea yet" — which is what ChannelSwitch.Unknown says instead.
+    // What the chosen channel currently serves, read when the card appears and whenever the
+    // choice changes. Three states and not two, because "the manifest says nothing is published
+    // here" and "we could not read the manifest" are different sentences to somebody who has
+    // just tapped a control and is looking for evidence that it did anything.
+    var reading by remember { mutableStateOf(true) }
     var offer by remember { mutableStateOf<UpdateInfo?>(null) }
     LaunchedEffect(channel) {
+        reading = true
         offer = withContext(Dispatchers.IO) { runCatching { Updater(context).fetchInfo(channel) }.getOrNull() }
+        reading = false
     }
 
     RwilcoCard {
@@ -79,26 +84,30 @@ fun UpdateChannelCard(channel: UpdateChannel, onChannel: (UpdateChannel) -> Unit
                     if (chosen == UpdateChannel.ALPHA) confirming = true else onChannel(chosen)
                 },
             )
-            val switch = channelSwitch(
-                installedVersionCode = BuildConfig.VERSION_CODE,
-                channelVersionCode = offer?.versionCode ?: 0,
-                channelVersionName = offer?.versionName.orEmpty(),
-            )
-            // The one case the choice cannot make true on its own: a phone on an alpha build
-            // that has asked to come back.
-            if (channel == UpdateChannel.BETA && switch is ChannelSwitch.WaitsForNextRelease) {
+            // Where this phone stands against the channel it follows, in one line, always.
+            //
+            // Always is the point (0.89.0). This used to paint one case out of four — being
+            // ahead of beta — so choosing a channel that had nothing published on it yet, which
+            // is what alpha was on the day the channels shipped, changed the segmented control
+            // and said nothing else. From the outside that is a dead control: the version above
+            // does not move, no update arrives, and nothing on the screen explains why.
+            val standing = channelStanding(reading, offer, BuildConfig.VERSION_CODE)
+            if (standing != null) {
                 Spacer(Modifier.height(spacing.sm))
                 Text(
-                    text = stringResource(R.string.settings_channel_waiting, switch.channelVersionName),
+                    text = standing.argument?.let { stringResource(standing.textRes, it) }
+                        ?: stringResource(standing.textRes),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
+                    color = if (standing.alarming) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Spacer(Modifier.height(spacing.xs))
-                Text(
-                    text = stringResource(R.string.settings_channel_waiting_manual),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (standing.alarming) {
+                    Spacer(Modifier.height(spacing.xs))
+                    Text(
+                        text = stringResource(R.string.settings_channel_waiting_manual),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }
@@ -139,6 +148,43 @@ fun UpdateChannelCard(channel: UpdateChannel, onChannel: (UpdateChannel) -> Unit
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             shape = MaterialTheme.shapes.extraLarge,
         )
+    }
+}
+
+/** One line about where this phone stands, and whether it is the kind that wants red. */
+internal data class Standing(
+    @StringRes val textRes: Int,
+    val argument: String? = null,
+    val alarming: Boolean = false,
+)
+
+/**
+ * Which line, out of what the card knows: whether the manifest has been read at all, what it
+ * said, and what this build is.
+ *
+ * Pure, and split out from the card for the reason the rest of the update decisions are: this is
+ * the part that was wrong, it was wrong by *omission*, and an omission is only visible in a
+ * table you can read all the rows of. Null while the read is in flight — a line that flickers
+ * "could not read this channel" for a moment on every visit is worse than a beat of silence.
+ */
+internal fun channelStanding(reading: Boolean, offer: UpdateInfo?, installedVersionCode: Int): Standing? {
+    if (reading) return null
+    // Read and empty, or not read at all: two different sentences to somebody who has just
+    // tapped a control and is looking for evidence that it did anything.
+    if (offer == null) return Standing(R.string.settings_channel_unreachable)
+    val switch = channelSwitch(
+        installedVersionCode = installedVersionCode,
+        channelVersionCode = offer.versionCode,
+        channelVersionName = offer.versionName,
+    )
+    return when (switch) {
+        is ChannelSwitch.Unknown -> Standing(R.string.settings_channel_empty)
+        is ChannelSwitch.Immediate -> Standing(R.string.settings_channel_coming, switch.versionName)
+        is ChannelSwitch.AlreadyOnIt -> Standing(R.string.settings_channel_current)
+        // The one thing the choice cannot make true on its own, so it is the one said in red
+        // and the only one with a way out under it.
+        is ChannelSwitch.WaitsForNextRelease ->
+            Standing(R.string.settings_channel_waiting, switch.channelVersionName, alarming = true)
     }
 }
 

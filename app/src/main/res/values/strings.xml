@@ -1192,6 +1192,10 @@
     <string name="settings_channel_warn_body">Alpha builds are published as they are written and nobody else has run them. Something that works today can break tomorrow, and what breaks here is a reminder that does not arrive.</string>
     <string name="settings_channel_warn_back">Coming back is not immediate: Android will not install an older version over a newer one, so you would stay on the alpha build until the beta channel passes it. If you need to return sooner, save a vault and install the beta APK by hand.</string>
     <string name="settings_channel_warn_confirm">Use alpha builds</string>
+    <string name="settings_channel_empty">Nothing has been published on this channel yet, so no update will arrive on it.</string>
+    <string name="settings_channel_current">You are on the newest build of this channel.</string>
+    <string name="settings_channel_coming">%1$s is on this channel; it will arrive at the next check.</string>
+    <string name="settings_channel_unreachable">Could not read this channel just now.</string>
     <string name="settings_channel_waiting">You are on a build newer than the beta channel (%1$s). You will rejoin it at the next beta release.</string>
     <string name="settings_channel_waiting_manual">To return now, save a vault and reinstall the beta version by hand.</string>
     <string name="disclaimer_body">Warning: this app is experimental software. The author accepts no responsibility for any problems it may cause. If your reminders are especially critical to you, perhaps you should not rely on this app.</string>
@@ -1276,6 +1280,9 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_89_0">
+        <item>The update channel now says where you stand. Picking a channel with nothing published on it yet moved the control and changed nothing else on the screen, which looks exactly like a control that does not work — so it says that, and says the other three cases too: an update on its way, being on the newest build, and being ahead of the channel you chose.</item>
+    </string-array>
     <string-array name="whats_new_0_88_0">
         <item>Two update channels, chosen in Settings → Updates. Beta is the tested one and where you already are; alpha is builds as they are written, which nobody else has run. Going to alpha happens at the next check; coming back waits for beta to catch up, because Android will not install an older version over a newer one — the screen says so before you choose and again while it is true.</item>
         <item>A downloaded update is refused unless it is a build of the channel you follow. The check reads the version inside the APK rather than trusting the file that named it, so a mistake in a manifest cannot move this phone onto builds it never asked for.</item>

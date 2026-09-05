@@ -1177,6 +1177,10 @@
     <string name="settings_channel_warn_body">Las compilaciones alpha se publican según se escriben y nadie más las ha usado. Lo que hoy funciona puede romperse mañana, y lo que se rompe aquí es un recordatorio que no llega.</string>
     <string name="settings_channel_warn_back">Volver no es inmediato: Android no instala una versión más antigua sobre una más nueva, así que te quedarías en la compilación alpha hasta que el canal beta la adelante. Si necesitas volver antes, guarda un vault e instala el APK beta a mano.</string>
     <string name="settings_channel_warn_confirm">Usar compilaciones alpha</string>
+    <string name="settings_channel_empty">Todavía no se ha publicado nada en este canal, así que no llegará ninguna actualización por él.</string>
+    <string name="settings_channel_current">Estás en la compilación más nueva de este canal.</string>
+    <string name="settings_channel_coming">%1$s está en este canal; llegará en la próxima comprobación.</string>
+    <string name="settings_channel_unreachable">No se ha podido leer este canal ahora mismo.</string>
     <string name="settings_channel_waiting">Estás en una compilación más nueva que el canal beta (%1$s). Volverás a él en la siguiente versión beta.</string>
     <string name="settings_channel_waiting_manual">Para volver ahora, guarda un vault y reinstala la versión beta a mano.</string>
     <string name="disclaimer_body">Atención: esta aplicación es software experimental. El autor no se hace responsable de posibles incidencias que pueda ocasionar. Si los recordatorios son especialmente críticos para ti, quizá no deberías fiarte de esta aplicación.</string>
@@ -1261,6 +1265,9 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_89_0">
+        <item>El canal de actualización ahora dice dónde estás. Elegir un canal en el que aún no hay nada publicado movía el control y no cambiaba nada más en la pantalla, que es exactamente lo que parece un control que no funciona — así que lo dice, y dice también los otros tres casos: una actualización en camino, estar en la más nueva, y estar por delante del canal que elegiste.</item>
+    </string-array>
     <string-array name="whats_new_0_88_0">
         <item>Dos canales de actualización, elegibles en Ajustes → Actualizaciones. Beta es el probado y donde ya estás; alpha son compilaciones según se escriben, que nadie más ha usado. Pasar a alpha ocurre en la siguiente comprobación; volver espera a que beta la adelante, porque Android no instala una versión más antigua sobre una más nueva — la pantalla lo dice antes de elegir y mientras siga siendo verdad.</item>
         <item>Una actualización descargada se rechaza si no es una compilación del canal que sigues. La comprobación lee la versión dentro del APK en vez de fiarse del fichero que lo nombró, así que un error en un manifiesto no puede mover este móvil a compilaciones que no pidió.</item>
