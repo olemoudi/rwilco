@@ -1281,6 +1281,9 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_92_0">
+        <item>What the alpha channel has been carrying since 0.88.0, now on beta. Nothing is new in this build itself — it is the same app the test channel has been running, published where everyone can get it. The entries below say what each of those changes was.</item>
+    </string-array>
     <string-array name="whats_new_0_91_0">
         <item>Removing a tag now reaches your presets as well. A preset keeps tags of its own and puts them on every reminder made from it, so a tag deleted from every reminder and left in a preset was not really deleted — it came back the next time you used that shape. Renaming reaches them too, and merges rather than leaving the shape wearing the same tag twice.</item>
     </string-array>

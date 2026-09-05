@@ -1266,6 +1266,9 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_92_0">
+        <item>Lo que el canal alpha venía llevando desde la 0.88.0, ahora en beta. En esta versión no hay nada nuevo por sí misma: es la misma app que ha estado corriendo el canal de pruebas, publicada donde la tiene todo el mundo. Las entradas de abajo dicen qué era cada cambio.</item>
+    </string-array>
     <string-array name="whats_new_0_91_0">
         <item>Quitar una etiqueta alcanza ahora también a tus presets. Un preset lleva etiquetas propias y se las pone a cada recordatorio que sale de él, así que una etiqueta borrada de todos los recordatorios y olvidada en un preset no estaba borrada de verdad: volvía la próxima vez que usabas esa forma. Renombrar también los alcanza, y fusiona en vez de dejar la forma con la misma etiqueta dos veces.</item>
     </string-array>
