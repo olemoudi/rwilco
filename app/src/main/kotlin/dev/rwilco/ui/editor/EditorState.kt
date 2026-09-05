@@ -140,9 +140,6 @@ fun Draft.toReminder(
     expiresAt = expiresAt,
 )
 
-/** Which of the two lists the editor offers back is being mended. */
-enum class CurateKind { TEXTS, TAGS }
-
 /** What is open on top of the editor. State, not navigation: it must survive rotation. */
 sealed interface EditorSheet {
     data object None : EditorSheet
@@ -218,8 +215,14 @@ data class EditorUiState(
     val editingPreset: Preset? = null,
     /** Everything ever written, for the panel that mends the offers; the chips show fewer. */
     val allTexts: List<String> = emptyList(),
-    /** Which list of offers is being mended, if any. */
-    val curating: CurateKind? = null,
+    /**
+     * Whether the panel that mends the phrases on offer is open.
+     *
+     * The tags used to have one of these too, reached the same way — by holding a chip. They
+     * are administered from Home now (TagsPanel), where the row of them lives: a hold is a
+     * gesture nobody finds, and it was the only door to renaming one (0.87.0).
+     */
+    val curatingTexts: Boolean = false,
     /** The recurrences kept under a name, most used first. */
     val recurrencePresets: List<RecurrencePreset> = emptyList(),
     /** The preset this reminder was started from, when it was: named on the screen. */

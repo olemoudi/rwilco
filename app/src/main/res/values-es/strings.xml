@@ -93,6 +93,9 @@
     <string name="home_done_list">Recordatorios hechos</string>
     <string name="home_settings">Ajustes</string>
     <string name="home_all_tags">Todo</string>
+    <string name="home_tags_manage">Gestionar etiquetas</string>
+    <string name="home_tags_hint">Toca una etiqueta para ponerla al principio de la fila. Renombrarla o quitarla alcanza a todos los recordatorios que la llevan.</string>
+    <string name="home_tags_none">Todavía no hay etiquetas.</string>
     <string name="home_empty_title">Nada que recordar todavía</string>
     <string name="home_empty_body">Escribe qué quieres recordar y luego di cuándo y cómo. En una tarjeta: deslízala a la derecha y mantén para darla por hecha, a la izquierda para eliminarla, y mantenla pulsada para lo demás.</string>
     <string name="home_empty_action">Escribe uno</string>
@@ -200,7 +203,6 @@
     <string name="editor_tags_title">Etiquetas</string>
     <string name="editor_new_tag">Nueva etiqueta</string>
     <string name="editor_new_tag_hint">Nombre de la etiqueta</string>
-    <string name="editor_new_tag_add">Añadir etiqueta</string>
     <string name="editor_when_title">Cuándo</string>
     <string name="editor_add_trigger">Añadir disparador</string>
     <string name="editor_edit_trigger">Editar disparador</string>
@@ -559,7 +561,7 @@
     <string name="time_typed_hint">hhmm</string>
     <string name="time_now">Ahora</string>
     <string name="time_in_15">En 15 min</string>
-    <string name="editor_reuse_tag">O reutilizar una</string>
+    <string name="editor_all_tags">Todas tus etiquetas</string>
     <string-array name="whats_new_0_2_2">
         <item>Las horas se eligen con ruedas: un gesto y encaja, sin apuntar a un reloj con una mano.</item>
         <item>Las etiquetas que ya has usado se ofrecen bajo el botón "Nueva etiqueta", y se filtran según escribes.</item>
@@ -1245,6 +1247,10 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_87_0">
+        <item>Las etiquetas son ahora una sola fila al escribir un recordatorio: un + que pide el nombre, las que más usas, y los puntos para el resto. Antes era un botón que se abría en campo, un título y una parrilla de chips, entre las palabras y el «cuándo».</item>
+        <item>Y se gestionan en un sitio: el + al final de la fila de etiquetas de la pantalla principal. Renombrar, borrar, poner las que usas al principio de la fila, o apuntar una antes del recordatorio que la necesita. Renombrar y borrar alcanzan a todos los recordatorios que la llevan; borrar pregunta antes.</item>
+    </string-array>
     <string-array name="whats_new_0_86_0">
         <item>Inicio va mejor con muchas tarjetas. El código de la app viene ya compilado en vez de compilarlo el móvil mientras haces scroll — algo que aquí importa más que en otras apps, porque Rwilco se actualiza sola cada pocos días y cada actualización tiraba ese trabajo.</item>
         <item>Y la lista reaprovecha el hueco de una tarjeta para otra tarjeta en vez de reconstruirlo desde cero. Medido: componer tarjetas era todo lo que un fotograma gastaba en el procesador; colocarlas y dibujarlas casi no contaban.</item>

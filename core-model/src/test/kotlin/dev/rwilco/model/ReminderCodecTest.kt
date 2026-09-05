@@ -215,7 +215,7 @@ class ReminderCodecTest {
                 """"weekendDay":"FRIDAY","weekendTime":"20:30","weekendEndDay":"SUNDAY","weekendEndTime":"22:00",""" +
                 """"awake":{"wake":"08:00","sleep":"23:30","weekendWake":"10:00","weekendSleep":"01:30"},""" +
                 """"lastSeenVersionCode":0,"savedPlaces":[],"savedWindows":[],""" +
-                """"defaultActions":["NOTIFICATION","VIBRATE"],"presets":[],"hiddenTexts":[],""" +
+                """"defaultActions":["NOTIFICATION","VIBRATE"],"presets":[],"hiddenTexts":[],"tagPrefs":[],""" +
                 """"dayStart":"09:00","recurrencePresets":[""" +
                 """{"id":"builtin-day","recurrence":{"type":"after","amount":1,"unit":"DAYS","from":"DEALT","hour":{"type":"day_start"},"landing":"NEXT"},"name":"","uses":0,"lastUsedAt":null},""" +
                 """{"id":"builtin-6h","recurrence":{"type":"after","amount":6,"unit":"HOURS","from":"DEALT","hour":{"type":"day_start"},"landing":"NEXT"},"name":"","uses":0,"lastUsedAt":null},""" +

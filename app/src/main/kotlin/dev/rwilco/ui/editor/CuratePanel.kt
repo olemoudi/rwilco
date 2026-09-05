@@ -46,28 +46,24 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.annotation.StringRes
 import dev.rwilco.R
 import dev.rwilco.ui.theme.Tokens
 
 /**
- * Mending the lists the editor offers back.
+ * Mending the phrases the editor offers back.
  *
- * The tags and the phrases on offer are read off everything ever written, so they inherit
- * every typo and every abandoned wording. This is where those get fixed: rename one and it is
- * renamed on the reminders that carry it; remove one and it stops being offered.
+ * They are read off everything ever written, so they inherit every typo and every abandoned
+ * wording. This is where those get fixed: rename one and it is renamed on the reminders that
+ * carry it; remove one and it stops being offered, while the reminders that used it stay —
+ * they are somebody's history, not a list to tidy.
  *
  * Reached by holding one of the chips, because it is the rare thing: the everyday act is
- * tapping one to use it, and that must stay a tap.
+ * tapping one to use it, and that must stay a tap. (Tags used to be mended the same way. They
+ * are administered from Home now — see TagsPanel — because a hold is a gesture nobody finds.)
  */
 @Composable
 fun CuratePanel(
-    title: String,
     items: List<String>,
-    removeLabel: String,
-    /** The question asked before a removal, with the item in it, and the sentence under it. */
-    @StringRes removeTitleRes: Int,
-    @StringRes removeBodyRes: Int,
     onRename: (String, String) -> Unit,
     onRemove: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -75,8 +71,8 @@ fun CuratePanel(
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
-    // Removing rewrites every reminder that carries a tag, and a phrase hidden has no door back
-    // through: neither has an undo, so both ask. A rename does not — rename it back.
+    // A phrase hidden has no door back through, and there is no undo: it asks first. A rename
+    // does not — rename it back.
     var removing by rememberSaveable { mutableStateOf<String?>(null) }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -89,7 +85,7 @@ fun CuratePanel(
                 .heightIn(max = Tokens.sizes.dialogMax),
         ) {
             Column(modifier = Modifier.padding(spacing.lg)) {
-                Text(title, style = MaterialTheme.typography.headlineSmall)
+                Text(stringResource(R.string.curate_texts_title), style = MaterialTheme.typography.headlineSmall)
                 Spacer(Modifier.height(spacing.md))
                 // The edge says the rows carry on under it; see Modifier.scrollFade.
                 val listState = rememberLazyListState()
@@ -114,7 +110,6 @@ fun CuratePanel(
                         } else {
                             CurateRow(
                                 item = item,
-                                removeLabel = removeLabel,
                                 onEdit = { editing = item },
                                 onRemove = { removing = item },
                             )
@@ -135,8 +130,8 @@ fun CuratePanel(
     removing?.let { item ->
         AlertDialog(
             onDismissRequest = { removing = null },
-            title = { Text(stringResource(removeTitleRes, item)) },
-            text = { Text(stringResource(removeBodyRes)) },
+            title = { Text(stringResource(R.string.curate_text_remove_title, item)) },
+            text = { Text(stringResource(R.string.curate_text_remove_body)) },
             confirmButton = {
                 TextButton(onClick = {
                     removing = null
@@ -153,7 +148,7 @@ fun CuratePanel(
 }
 
 @Composable
-private fun CurateRow(item: String, removeLabel: String, onEdit: () -> Unit, onRemove: () -> Unit) {
+private fun CurateRow(item: String, onEdit: () -> Unit, onRemove: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -167,7 +162,7 @@ private fun CurateRow(item: String, removeLabel: String, onEdit: () -> Unit, onR
             Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.curate_rename), tint = scheme.onSurfaceVariant)
         }
         IconButton(onClick = onRemove) {
-            Icon(Icons.Outlined.Delete, contentDescription = removeLabel, tint = scheme.onSurfaceVariant)
+            Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.curate_text_remove), tint = scheme.onSurfaceVariant)
         }
     }
 }

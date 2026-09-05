@@ -135,6 +135,13 @@ class EditorTourTest {
         rule.waitUntilShown(s(R.string.home_next_up))
         shot("home")
 
+        // The one place tags are administered, behind the "+" docked at the end of their row.
+        rule.onNodeWithContentDescription(s(R.string.home_tags_manage)).performClick()
+        rule.waitUntilShown(s(R.string.curate_tags_title))
+        shot("home-tags")
+        text(s(R.string.common_close)).performClick()
+        rule.waitUntilGone(s(R.string.curate_tags_title))
+
         text(s(R.string.home_new)).performClick()
         rule.waitUntilShown(s(R.string.editor_title_new))
         shot("editor-empty")
@@ -356,22 +363,16 @@ class EditorTourTest {
         rule.waitUntilDisplayed(s(R.string.condition_window_hint))
         text(s(R.string.sheet_add)).performClick()
         rule.waitUntilGone(s(R.string.condition_title))
-        // Opening "nueva etiqueta" must not take the way to save with it. It used to: the
-        // field was a one-way door, the Save bar stepped aside while it was open, and anybody
-        // who scrolled back down to the triggers had lost the button with no way to get it
-        // back. Both halves are checked — the bar stays, and the field closes behind you.
-        text(s(R.string.editor_new_tag)).performScrollTo().performClick()
+        // "Nueva etiqueta" is a dialog now (0.87.0), and it is asked and answered without the
+        // form underneath moving: one question, cancelled, and everything is where it was. It
+        // used to be a field that unfolded in the form — a one-way door that took the Save bar
+        // with it — which is why the way out is still checked.
+        rule.onNodeWithContentDescription(s(R.string.editor_new_tag)).performScrollTo().performClick()
         rule.waitUntilDisplayed(s(R.string.editor_new_tag_hint))
-        text(s(R.string.common_save)).assertIsDisplayed()
-        text(s(R.string.editor_add_trigger)).performScrollTo().performClick()
-        rule.waitUntilShown(s(R.string.kind_date))
-        // All the way into a configurator and back out: the tag field is left behind twice over.
-        text(s(R.string.kind_date)).performClick()
-        rule.waitUntilDisplayed(s(R.string.sheet_cancel))
+        shot("editor-new-tag")
         text(s(R.string.sheet_cancel)).performClick()
-        rule.waitUntilGone(s(R.string.sheet_cancel))
+        rule.waitUntilGone(s(R.string.editor_new_tag_hint))
         text(s(R.string.common_save)).assertIsDisplayed()
-        text(s(R.string.editor_new_tag)).performScrollTo().assertIsDisplayed()
 
         // A tag on, so the capture shows what "on" looks like next to "off".
         text("casa").performScrollTo().performClick()

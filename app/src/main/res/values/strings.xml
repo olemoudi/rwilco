@@ -95,6 +95,9 @@
     <string name="home_done_list">Done reminders</string>
     <string name="home_settings">Settings</string>
     <string name="home_all_tags">All</string>
+    <string name="home_tags_manage">Manage tags</string>
+    <string name="home_tags_hint">Tap a tag to bring it to the front of the row. Renaming or removing one reaches every reminder that carries it.</string>
+    <string name="home_tags_none">No tags yet.</string>
     <string name="home_empty_title">Nothing to remember yet</string>
     <string name="home_empty_body">Write what you want to remember, then say when and how. On a card: swipe right and hold to mark it done, left to delete it, and hold it for everything else.</string>
     <string name="home_empty_action">Write one</string>
@@ -202,7 +205,6 @@
     <string name="editor_tags_title">Tags</string>
     <string name="editor_new_tag">New tag</string>
     <string name="editor_new_tag_hint">Tag name</string>
-    <string name="editor_new_tag_add">Add tag</string>
     <string name="editor_when_title">When</string>
     <string name="editor_add_trigger">Add a trigger</string>
     <string name="editor_edit_trigger">Edit trigger</string>
@@ -572,7 +574,7 @@
     <string name="time_typed_hint">hhmm</string>
     <string name="time_now">Now</string>
     <string name="time_in_15">In 15 min</string>
-    <string name="editor_reuse_tag">Or reuse one</string>
+    <string name="editor_all_tags">All your tags</string>
     <string-array name="whats_new_0_2_2">
         <item>Times are picked on wheels now: flick and it snaps, no aiming at a dial with one hand.</item>
         <item>Tags you have used before are offered under the "New tag" button, and narrow as you type.</item>
@@ -1260,6 +1262,10 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_87_0">
+        <item>Tags are one row now when you write a reminder: a + that asks for a name, the ones you use most, and the dots for the rest. It used to be a button that unfolded into a field, a heading and a grid of chips, sitting between the words and the "when".</item>
+        <item>And they are administered in one place: the + at the end of the row of tags on the main screen. Rename one, remove one, put the ones you use at the front of the row, or write one down before the reminder that needs it. Renaming and removing reach every reminder carrying the tag; removing asks first.</item>
+    </string-array>
     <string-array name="whats_new_0_86_0">
         <item>Home scrolls better with a lot of cards. The app\'s own code is now compiled ahead of time instead of being compiled by the phone while you scroll — which mattered here more than in most apps, because Rwilco updates itself every few days and every update threw that work away.</item>
         <item>And the list reuses a card\'s slot for another card instead of rebuilding it from nothing. Measured: composing cards was the whole of what a frame spent on the processor; laying them out and drawing them barely registered.</item>

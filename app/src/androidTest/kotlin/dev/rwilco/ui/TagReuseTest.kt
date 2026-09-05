@@ -4,6 +4,9 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -24,7 +27,8 @@ import java.time.LocalDateTime
 import java.util.UUID
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTextInput
-import dev.rwilco.ui.editor.EDITOR_TAG_FIELD_TAG
+import androidx.compose.ui.test.performTextReplacement
+import dev.rwilco.ui.components.TAG_NAME_FIELD_TAG
 import dev.rwilco.ui.editor.EDITOR_TEXT_TAG
 
 /**
@@ -78,21 +82,22 @@ class TagReuseTest {
         }
         rule.onNodeWithText(newLabel, useUnmergedTree = true).performClick()
 
-        val reuseLabel = rule.activity.getString(R.string.editor_reuse_tag)
-        rule.waitUntil(timeoutMillis = 10_000) {
-            rule.onAllNodesWithText(reuseLabel, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
-        }
+        // In the row itself, not behind the dots: with one tag there is nothing else to offer.
+        rule.waitUntilShown(tag)
         rule.onNodeWithText(tag, useUnmergedTree = true).performScrollTo().assertIsDisplayed()
     }
 
     /**
-     * A tag typed but not yet added is part of the reminder: pressing "Guardar" with a word in
-     * that field means the word. The field committed on losing the focus and the save cleared
-     * the focus on its way in, which lands one snapshot too late — the reminder was saved with
-     * no tag at all, and the word typed just vanished.
+     * The "+" on the row asks for a name and nothing else, and the tag it makes is on the
+     * reminder that gets saved.
+     *
+     * This used to be a field that unfolded in the form, and a word left half-typed in it was a
+     * tag lost on the way to "Guardar": the field committed on losing the focus and the save
+     * cleared the focus on its way in, one snapshot too late. A dialog cannot be left half-typed
+     * — it is answered or cancelled — which is the whole reason it is one (0.87.0).
      */
     @Test
-    fun aTagStillBeingTypedIsSavedWithTheReminder() {
+    fun aTagMadeFromThePlusIsSavedWithTheReminder() {
         val words = "Cambiar el filtro"
         val typed = "coche"
         rule.waitUntilShown(rule.activity.getString(R.string.home_new))
@@ -101,17 +106,45 @@ class TagReuseTest {
 
         rule.onNodeWithText(rule.activity.getString(R.string.editor_write), useUnmergedTree = true).performClick()
         rule.onNodeWithTag(EDITOR_TEXT_TAG).performTextInput(words)
-        rule.onNodeWithText(rule.activity.getString(R.string.editor_new_tag), useUnmergedTree = true).performScrollTo().performClick()
+        rule.onNodeWithContentDescription(rule.activity.getString(R.string.editor_new_tag)).performScrollTo().performClick()
         rule.waitUntilShown(rule.activity.getString(R.string.editor_new_tag_hint))
-        rule.onNodeWithTag(EDITOR_TAG_FIELD_TAG).performTextInput(typed)
-        // Straight to "Guardar", without pressing the + or leaving the field.
+        rule.onNodeWithTag(TAG_NAME_FIELD_TAG).performTextInput(typed)
+        rule.onNodeWithText(rule.activity.getString(R.string.sheet_add), useUnmergedTree = true).performClick()
+        rule.waitUntilGone(rule.activity.getString(R.string.editor_new_tag_hint))
         rule.onNodeWithText(rule.activity.getString(R.string.common_save), useUnmergedTree = true).performClick()
 
         rule.waitUntil(timeoutMillis = 10_000) {
             runBlocking { app.repository.allNow().any { it.text == words } }
         }
         val saved = runBlocking { app.repository.allNow().first { it.text == words } }
-        check(saved.tags == listOf(typed)) { "the tag being typed should have been saved: ${saved.tags}" }
+        check(saved.tags == listOf(typed)) { "the tag from the dialog should have been saved: ${saved.tags}" }
+    }
+
+    /**
+     * The "+" at the end of Home's row is where a tag is renamed, and the rename reaches every
+     * reminder carrying it — the only door to that, now the hold on a chip is gone.
+     */
+    @Test
+    fun aTagIsRenamedFromHomeAndTheReminderFollows() {
+        val renamed = "lampista"
+        rule.waitUntilShown(rule.activity.getString(R.string.home_new))
+        rule.waitUntilShown(tag)
+        rule.onNodeWithContentDescription(rule.activity.getString(R.string.home_tags_manage)).performClick()
+        rule.waitUntilShown(rule.activity.getString(R.string.curate_tags_title))
+
+        rule.onNodeWithContentDescription(rule.activity.getString(R.string.curate_rename)).performClick()
+        // The word is on the screen three times over — the chip behind the dialog, the card's
+        // own label, and the field the pencil just opened. Only one of them can be typed into.
+        rule.onNode(hasSetTextAction() and hasText(tag), useUnmergedTree = true).performTextReplacement(renamed)
+        rule.onNodeWithContentDescription(rule.activity.getString(R.string.curate_rename_confirm)).performClick()
+
+        rule.waitUntil(timeoutMillis = 10_000) {
+            runBlocking { app.repository.allNow().any { it.tags == listOf(renamed) } }
+        }
+    }
+
+    private fun androidx.compose.ui.test.junit4.ComposeTestRule.waitUntilGone(text: String) {
+        waitUntil(timeoutMillis = 10_000) { onAllNodesWithText(text, useUnmergedTree = true).fetchSemanticsNodes().isEmpty() }
     }
 
     private fun androidx.compose.ui.test.junit4.ComposeTestRule.waitUntilShown(text: String) {

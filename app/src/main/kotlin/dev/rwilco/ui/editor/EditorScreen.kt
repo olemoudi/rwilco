@@ -133,8 +133,6 @@ fun EditorScreen(
     val scrollState = rememberScrollState()
     // Bumped when a refused save wants the words: TextSection takes it as a key to focus on.
     var focusNonce by remember { mutableIntStateOf(0) }
-    // A tag being typed right now. Held here so "Guardar" can put it on the reminder first.
-    var pendingTag by rememberSaveable { mutableStateOf("") }
     val textBlankMessage = stringResource(R.string.editor_error_text)
     val textLongMessage = stringResource(R.string.editor_error_text_long)
     val triggerMessage = stringResource(R.string.editor_error_trigger)
@@ -301,8 +299,8 @@ fun EditorScreen(
             bottomBar = {
                 // Always. The one primary action of the screen used to step aside while a tag
                 // was being typed, and a person who left that field open lost the way to save
-                // at all — see TagsSection. Nothing is worth hiding "Guardar" for: clearing the
-                // focus on the way in commits whatever was in the field first.
+                // at all — see TagsSection, where that field is a dialog now. Nothing is worth
+                // hiding "Guardar" for.
                 SaveBar(
                     enabled = state.loaded,
                     // Read back over the button that commits it: five cards up a scrolling
@@ -321,13 +319,6 @@ fun EditorScreen(
                     zone = zone,
                     onSave = {
                         haptics.perform(HapticFeedbackType.Confirm)
-                        // A tag typed but not yet added goes on the reminder: pressing "Guardar"
-                        // with a word in that field means the word, not the empty list. The
-                        // blur would commit it too, one snapshot too late to be saved.
-                        if (pendingTag.isNotBlank()) {
-                            viewModel.addTag(pendingTag)
-                            pendingTag = ""
-                        }
                         focusManager.clearFocus()
                         viewModel.save()
                     },
@@ -362,7 +353,7 @@ fun EditorScreen(
                         error = state.showErrors && ValidationError.TextBlank in state.errors,
                         placeholderRes = if (state.asPreset) R.string.editor_preset_name_placeholder else R.string.editor_text_placeholder,
                         writeRes = if (state.asPreset) R.string.editor_name_preset else R.string.editor_write,
-                        onCurate = { viewModel.curate(CurateKind.TEXTS) },
+                        onCurate = { viewModel.curateTexts(true) },
                         autoFocus = state.focusText,
                         focusKey = focusNonce,
                     )
@@ -392,9 +383,6 @@ fun EditorScreen(
                         selected = state.draft.tags,
                         onToggle = viewModel::toggleTag,
                         onAdd = viewModel::addTag,
-                        onCurate = { viewModel.curate(CurateKind.TAGS) },
-                        pendingTag = pendingTag,
-                        onPendingTagChange = { pendingTag = it },
                     )
                 }
                 EditorSection(
@@ -628,27 +616,12 @@ fun EditorScreen(
             DiscardDialog(onKeep = viewModel::keepEditing, onDiscard = viewModel::discard)
         }
 
-        when (state.curating) {
-            null -> Unit
-            CurateKind.TEXTS -> CuratePanel(
-                removeTitleRes = R.string.curate_text_remove_title,
-                removeBodyRes = R.string.curate_text_remove_body,
-                title = stringResource(R.string.curate_texts_title),
+        if (state.curatingTexts) {
+            CuratePanel(
                 items = state.allTexts,
-                removeLabel = stringResource(R.string.curate_text_remove),
                 onRename = viewModel::renameText,
                 onRemove = viewModel::hideText,
-                onDismiss = { viewModel.curate(null) },
-            )
-            CurateKind.TAGS -> CuratePanel(
-                removeTitleRes = R.string.curate_tag_remove_title,
-                removeBodyRes = R.string.curate_tag_remove_body,
-                title = stringResource(R.string.curate_tags_title),
-                items = state.existingTags,
-                removeLabel = stringResource(R.string.curate_tag_remove),
-                onRename = viewModel::renameTag,
-                onRemove = viewModel::removeTag,
-                onDismiss = { viewModel.curate(null) },
+                onDismiss = { viewModel.curateTexts(false) },
             )
         }
 

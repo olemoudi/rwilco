@@ -47,15 +47,20 @@ fun TagFilter.matches(reminder: Reminder): Boolean = when (this) {
  * The chips Home offers: every tag in use, and then the app's own three — but only while they
  * have anything in them.
  *
+ * The named ones come in the order [pinnedFirst] gives them: whatever the person put at the
+ * front of the row, and then the ones they use most.
+ *
  * That last part is the whole point of them. "Sin etiqueta" is a job to do, so it appears when
  * there is one and disappears when it is done; a row that always ends in chips nobody can act on
  * is a row people stop reading. Same for "en pausa" and for the places: nothing under one,
  * nothing to say about it.
  */
-fun tagFilters(reminders: List<Reminder>): List<TagFilter> {
+fun tagFilters(reminders: List<Reminder>, prefs: List<TagPref> = emptyList()): List<TagFilter> {
     val open = reminders.filter { it.status != Status.DONE }
     val chips = ArrayList<TagFilter>()
-    tagsInUse(reminders).mapTo(chips) { TagFilter.Named(it) }
+    // Pinned first, then the rest by use. A pinned tag nothing wears gets no chip all the same:
+    // a filter that finds nothing is not a filter, which is the rule the app's own three follow.
+    pinnedFirst(tagsInUse(reminders), prefs).mapTo(chips) { TagFilter.Named(it) }
     if (open.any { it.tags.isEmpty() }) chips += TagFilter.Untagged
     if (open.any { it.status == Status.PAUSED }) chips += TagFilter.Paused
     if (open.any { reminder -> reminder.rules.any { it.trigger is Trigger.Location } }) chips += TagFilter.Place

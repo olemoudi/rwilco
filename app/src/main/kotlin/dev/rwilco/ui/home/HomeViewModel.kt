@@ -17,6 +17,13 @@ import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
 import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.TagFilter
+import dev.rwilco.model.knownTags
+import dev.rwilco.model.removeTagIn
+import dev.rwilco.model.renameTagIn
+import dev.rwilco.model.tagsInUse
+import dev.rwilco.model.withTagForgotten
+import dev.rwilco.model.withTagPref
+import dev.rwilco.model.withTagRenamed
 import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.ValidationWarning
@@ -241,6 +248,55 @@ class HomeViewModel(
         .map { list -> list.filter { it.pinned } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /**
+     * Every tag there is, for the panel behind the row's "+": the ones on reminders and the
+     * ones written down and not yet worn, each saying whether it leads the row.
+     */
+    val tagRows: StateFlow<List<TagRow>> = combine(repository.open, settings.filterNotNull()) { reminders, current ->
+        val prefs = current.tagPrefs
+        knownTags(tagsInUse(reminders), prefs).map { name ->
+            TagRow(name, prefs.any { it.pinned && it.name.equals(name, ignoreCase = true) })
+        }
+    }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Which tags lead the row of chips. Nothing else about the tag changes. */
+    fun toggleTagPin(tag: String) {
+        viewModelScope.launch {
+            store.update { settings ->
+                val pinned = settings.tagPrefs.any { it.pinned && it.name.equals(tag, ignoreCase = true) }
+                settings.copy(tagPrefs = withTagPref(settings.tagPrefs, tag, pinned = !pinned))
+            }
+        }
+    }
+
+    /** A tag written down before anything wears it, so the editor can offer it straight away. */
+    fun createTag(tag: String) {
+        viewModelScope.launch {
+            store.update { settings -> settings.copy(tagPrefs = withTagPref(settings.tagPrefs, tag, pinned = false)) }
+        }
+    }
+
+    /**
+     * Renaming and removing reach the reminders themselves — a tag is what they carry, not a
+     * record on its own — and then the row here, so a pinned tag is not left pinned under a
+     * name nothing uses. Neither has an undo, which is why the panel asks before removing.
+     */
+    fun renameTag(from: String, to: String) {
+        viewModelScope.launch {
+            repository.saveAll(renameTagIn(repository.allNow(), from, to))
+            store.update { settings -> settings.copy(tagPrefs = withTagRenamed(settings.tagPrefs, from, to)) }
+        }
+    }
+
+    fun deleteTag(tag: String) {
+        viewModelScope.launch {
+            repository.saveAll(removeTagIn(repository.allNow(), tag))
+            store.update { settings -> settings.copy(tagPrefs = withTagForgotten(settings.tagPrefs, tag)) }
+        }
+    }
+
     fun togglePin(preset: Preset) {
         viewModelScope.launch {
             store.update { settings ->
@@ -349,9 +405,12 @@ class HomeViewModel(
         // StateFlow, and on every resubscription — the app coming back after five seconds
         // away — it replays its last value, the instant the ViewModel was made, possibly hours
         // ago: Home was built for a morning that had passed until the next minute tick.
-        buildHomeState(reminders, current.defaultTime, clock.instant(), clock.zone, tag, current.dayStart, current.dayShape, accuracy) { id, index ->
-            insideOf(reminders, watch, id, index)
-        }
+        buildHomeState(
+            reminders, current.defaultTime, clock.instant(), clock.zone, tag,
+            current.dayStart, current.dayShape, accuracy,
+            inside = { id, index -> insideOf(reminders, watch, id, index) },
+            tagPrefs = current.tagPrefs,
+        )
     }
         .flowOn(Dispatchers.Default)
         // A read that throws used to cancel the combine and leave the placeholder cards up for

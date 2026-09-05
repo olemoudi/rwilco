@@ -94,6 +94,10 @@ import dev.rwilco.ui.components.PickSheet
 import dev.rwilco.ui.components.PresetChip
 import dev.rwilco.ui.components.SegmentedChoice
 import dev.rwilco.ui.components.TagChip
+import dev.rwilco.ui.components.TagNameDialog
+import dev.rwilco.model.normalizeTags
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.AssistChip
 import dev.rwilco.ui.components.TriggerKeycap
 import dev.rwilco.ui.components.VISIBLE_SUGGESTIONS
 import dev.rwilco.model.SafetyNetSettings
@@ -124,9 +128,6 @@ import dev.rwilco.ui.format.deadlineButtonLabel
 
 /** Lets the instrumented tour find the text field; a BasicTextField has no other handle. */
 const val EDITOR_TEXT_TAG = "editorText"
-
-/** The field a new tag is typed into, for the instrumented tests. */
-const val EDITOR_TAG_FIELD_TAG = "editorTagField"
 
 /**
  * What this screen is writing: a reminder, or the shape of one kept under a name. The words
@@ -330,151 +331,105 @@ internal fun TextSection(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+/** How many tags a row offers before the rest go behind the dots: room for a thumb, no more. */
+private const val VISIBLE_TAGS = 2
+
+/**
+ * Tags, in one row: the way to a new one, the ones on this reminder, the two most used, and the
+ * dots for everything else.
+ *
+ * One row and not a card of them (0.87.0). Tags are the part of a reminder most people leave
+ * alone, and this used to be three or four rows deep — a button that unfolded into a field, a
+ * heading, and a grid of chips — sitting between the words and the "when", which are the two
+ * things somebody actually came to answer. It scrolls sideways when it does not fit, because
+ * the row is a shortcut and the whole list is one tap away at the end of it.
+ *
+ * The ones already on are always in it, ahead of the offers: a tag you cannot see is a tag you
+ * cannot take off.
+ */
 @Composable
 internal fun TagsSection(
     existingTags: List<String>,
     selected: List<String>,
     onToggle: (String) -> Unit,
     onAdd: (String) -> Unit,
-    onCurate: () -> Unit = {},
-    /**
-     * The tag being typed, held by the screen rather than by this field.
-     *
-     * Because "Guardar" has to be able to see it. The field committed on losing the focus and
-     * the save cleared the focus on its way in, which reads like it should work and does not:
-     * the commit lands in a later snapshot than the read, so a reminder saved straight from a
-     * half-typed tag was saved without it — the word typed, the button pressed, and the tag
-     * gone. Now the screen holds the word and commits it itself before saving.
-     */
-    pendingTag: String = "",
-    onPendingTagChange: (String) -> Unit = {},
 ) {
-    var adding by rememberSaveable { mutableStateOf(false) }
-    var newTag by rememberSaveable { mutableStateOf("") }
+    var naming by rememberSaveable { mutableStateOf(false) }
     var listing by rememberSaveable { mutableStateOf(false) }
-    val focusRequester = remember { FocusRequester() }
     val haptics = Tokens.haptics
 
-    // Everything on this reminder plus every tag used before, one spelling each, the ones
-    // already picked first. While a new one is being typed the list narrows to what matches,
-    // so "co" surfaces "compra" instead of asking for it to be spelled out again.
-    val offered = remember(existingTags, selected, newTag) {
-        val all = (selected + existingTags).distinctBy { it.lowercase() }
-        val query = newTag.trim().lowercase()
-        if (query.isEmpty()) {
-            all
-        } else {
-            all.filter { tag -> tag.lowercase().contains(query) || selected.any { it.equals(tag, ignoreCase = true) } }
-        }
+    // Everything on this reminder plus every tag there has ever been, one spelling each.
+    val offered = remember(existingTags, selected) { normalizeTags(selected + existingTags) }
+    val shown = remember(offered, selected) {
+        val (on, off) = offered.partition { tag -> selected.any { it.equals(tag, ignoreCase = true) } }
+        on + off.take(VISIBLE_TAGS)
     }
 
-    fun commit() {
-        val raw = newTag
-        newTag = ""
-        onPendingTagChange("")
-        adding = false
-        if (raw.isNotBlank()) {
-            haptics.perform(HapticFeedbackType.Confirm)
-            onAdd(raw)
-        }
-    }
-
-    Column {
-        // The way to a new tag sits on top, like the way to a new reminder text; what is under
-        // it is the answer most of the time.
-        if (adding) {
-            // Whether the focus has ever arrived. onFocusChanged reports the state the moment
-            // the field is attached, which is "not focused" — so without this the way out
-            // below fires before the way in does, and the field shuts as it opens.
-            var everFocused by remember { mutableStateOf(false) }
-            LaunchedEffect(Unit) { focusRequester.requestFocus() }
-            // Committed from outside (the save button did it): the field lets it go too.
-            LaunchedEffect(pendingTag) { if (pendingTag.isEmpty() && newTag.isNotEmpty()) newTag = "" }
-            OutlinedTextField(
-                value = newTag,
-                onValueChange = { newTag = it; onPendingTagChange(it) },
-                placeholder = { Text(stringResource(R.string.editor_new_tag_hint)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { commit() }),
-                // A plus, not a tick: this adds a tag to the list, it does not save anything.
-                trailingIcon = {
-                    IconButton(onClick = { commit() }) {
-                        Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.editor_new_tag_add))
-                    }
-                },
-                shape = MaterialTheme.shapes.small,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.outline,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                    cursorColor = MaterialTheme.colorScheme.primary,
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag(EDITOR_TAG_FIELD_TAG)
-                    .focusRequester(focusRequester)
-                    // The way out. Opening this field used to be a one-way door: nothing but
-                    // its own + closed it again, so anybody who opened it and went back to the
-                    // form left a field open at the top of a screen they had scrolled past.
-                    // Losing the focus is somebody having moved on, and what they typed goes in
-                    // with them rather than being thrown away.
-                    .onFocusChanged { state ->
-                        if (state.isFocused) everFocused = true else if (everFocused && adding) commit()
-                    },
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .horizontalScroll(rememberScrollState())
+            .testTag(EDITOR_TAGS_TAG),
+    ) {
+        AddTagChip(onClick = { naming = true })
+        for (tag in shown) {
+            TagChip(
+                label = tag,
+                selected = selected.any { it.equals(tag, ignoreCase = true) },
+                onClick = { onToggle(tag) },
             )
-        } else {
-            OutlinedButton(
-                onClick = { adding = true },
-                shape = MaterialTheme.shapes.small,
-                border = BorderStroke(Tokens.strokes.control, MaterialTheme.colorScheme.outline),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                ),
-                contentPadding = PaddingValues(horizontal = Tokens.spacing.lg),
-                modifier = Modifier.heightIn(min = Tokens.sizes.touch),
-            ) {
-                Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(Tokens.sizes.glyphSmall))
-                Spacer(Modifier.width(Tokens.spacing.sm))
-                Text(stringResource(R.string.editor_new_tag), style = MaterialTheme.typography.labelLarge)
-            }
         }
-        if (offered.isNotEmpty()) {
-            Spacer(Modifier.height(Tokens.spacing.md))
-            SectionTitle(stringResource(R.string.editor_reuse_tag))
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
-                verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
-                modifier = Modifier.testTag(EDITOR_TAGS_TAG),
-            ) {
-                // The ones already on are never hidden behind the dots — a tag you cannot see
-                // is a tag you cannot take off.
-                val shown = offered.take(maxOf(VISIBLE_SUGGESTIONS, selected.size))
-                for (tag in shown) {
-                    TagChip(
-                        label = tag,
-                        selected = selected.any { it.equals(tag, ignoreCase = true) },
-                        onClick = { onToggle(tag) },
-                        onHold = onCurate,
-                        holdLabel = stringResource(R.string.curate_hold),
-                    )
-                }
-                if (offered.size > shown.size) MoreChip(onClick = { listing = true })
-            }
-        }
+        if (offered.size > shown.size) MoreChip(onClick = { listing = true })
     }
 
+    if (naming) {
+        TagNameDialog(
+            onConfirm = { name ->
+                naming = false
+                haptics.perform(HapticFeedbackType.Confirm)
+                onAdd(name)
+            },
+            onDismiss = { naming = false },
+        )
+    }
     // Tags stay open: turning three on from the list is one visit, not three.
     if (listing) {
         PickSheet(
-            title = stringResource(R.string.editor_reuse_tag),
+            title = stringResource(R.string.editor_all_tags),
             items = offered,
             selected = selected.toSet(),
             onPick = onToggle,
             onDismiss = { listing = false },
         )
     }
+}
+
+/** The "+" that opens the row: same shape as the dots that close it. */
+@Composable
+private fun AddTagChip(onClick: () -> Unit) {
+    val haptics = Tokens.haptics
+    val scheme = MaterialTheme.colorScheme
+    AssistChip(
+        onClick = {
+            haptics.perform(HapticFeedbackType.Confirm)
+            onClick()
+        },
+        label = {
+            Icon(
+                imageVector = Icons.Outlined.Add,
+                contentDescription = stringResource(R.string.editor_new_tag),
+                modifier = Modifier.size(Tokens.sizes.glyphSmall),
+            )
+        },
+        shape = MaterialTheme.shapes.small,
+        colors = AssistChipDefaults.assistChipColors(
+            containerColor = scheme.surfaceContainerHigh,
+            labelColor = scheme.onSurface,
+        ),
+        border = BorderStroke(Tokens.strokes.control, scheme.outline),
+        modifier = Modifier.heightIn(min = Tokens.sizes.touch),
+    )
 }
 
 /** Lets the tour ask whether tags used before are actually being offered back. */

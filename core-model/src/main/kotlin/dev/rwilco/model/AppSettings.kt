@@ -73,6 +73,11 @@ data class AppSettings(
     /** Phrases dismissed from the "or reuse one" offers; the reminders that used them stay. */
     val hiddenTexts: List<String> = emptyList(),
     /**
+     * The little the app has to remember about tags themselves: see [TagPref]. Everything else
+     * about a tag is read off the reminders wearing it.
+     */
+    val tagPrefs: List<TagPref> = emptyList(),
+    /**
      * What "the next day" means: the hour a recurrence measured in days, weeks or months lands
      * on. Never earlier — a reminder dealt with at midnight comes back in the morning, not at
      * one minute past.

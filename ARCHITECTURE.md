@@ -17,6 +17,13 @@ file changes in the same commit.
 
 A `Reminder` is text + tags + a list of `Trigger`s + a set of `Action`s + a `Status`.
 
+A tag is not a record of its own: it is read off the reminders carrying it (`tagsInUse`,
+`suggestedTags`), which is why the last reminder to lose one makes it stop existing.
+`AppSettings.tagPrefs` (`TagPref`, `Tags.kt`) is the exception, and holds only the two things a
+reminder cannot say: which tags lead Home's row (`pinnedFirst`), and a tag written down before
+anything wears it (`knownTags`). A pinned tag nothing wears still gets no chip — a filter that
+finds nothing is not a filter — but the editor offers it from the moment it exists.
+
 A reminder rings by **rules**: a list of `TriggerRule`, each an event plus the conditions that
 have to hold when it happens. `RuleMatch` says how the rules combine — ANY (either of them
 rings it, the default) or ALL — and a rule's own conditions always all have to hold (ANDed). That shape — an OR of ANDs — expresses any combination somebody can
@@ -588,7 +595,8 @@ because that is what its chip would show.
 - `ReminderRepository`: reactive `open`/`done` flows for the screens, suspend writes.
 - `SettingsStore`: Preferences DataStore with one JSON blob (`AppSettings`: theme, default time
   for date-only reminders, the trigger kind offered first, when "the weekend" starts, haptics,
-  last-seen version for What's New, the saved places). Additive changes need no migration.
+  last-seen version for What's New, the saved places, the tag preferences). Additive changes need
+  no migration.
   **What's New is guarded (0.51.0):** `RELEASES` went silent at 0.20.0 and nobody noticed for
   forty-five builds, because a sheet with nothing to say says nothing. `WhatsNewTest` now
   refuses a build whose code is not the head of the list, so a release cannot be cut without its
@@ -676,12 +684,19 @@ because that is what its chip would show.
   drag handle above the content and the gap under the status bar); capping against the whole
   window instead asks for more room than the sheet has and clips the row all the same, only by
   less. With a real bound the weight means what it says.
-- **A tag still being typed belongs to the reminder** (0.49.0). The field committed on losing the
-  focus and "Guardar" cleared the focus on its way in — which reads like it should work and does
-  not: the commit lands one snapshot after the save has read the draft, so a reminder saved
-  straight from a half-typed tag was saved without it. The word is held by the screen now
-  (`pendingTag`) and the save adds it before saving. `TagReuseTest` types one and presses
-  Guardar.
+- **Tags are administered from Home, and asked for in a dialog** (0.87.0). The editor's tag
+  section is one horizontally-scrolling row — `[+]`, the tags on this reminder, the two most
+  used, and the dots for the rest (`TagsSection`, `PickSheet`) — because tags are the part of a
+  reminder most people leave alone and this used to be three or four rows deep between the words
+  and the "cuándo". The `+` opens `TagNameDialog`, which also retires the `pendingTag` workaround
+  the unfolding field needed (0.49.0: the field committed on losing the focus and "Guardar"
+  cleared the focus on its way in, one snapshot too late, so a reminder saved straight from a
+  half-typed tag was saved without it). A dialog is answered or cancelled; it cannot be left
+  half-typed. Renaming, removing, ordering and writing one down live behind the `+` at the end of
+  Home's row of chips (`TagsPanel`), the door the presets already have — the hold on a chip that
+  used to be the only way there was a gesture nobody found. That `+` is *docked* rather than the
+  row's last item, because the row holds every tag there is: at the end of it, it would be two
+  screens away. `TagReuseTest` covers all three.
 - The backup is the one row in the settings index that is not a fold (a group whose whole
   content is one link costs a tap and hides a row), so it is set like the headings it stands
   among — `SettingsLinkRow(topLevel = true)`, `titleMedium`, and `heading()` in the semantics so

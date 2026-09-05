@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -56,6 +57,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.material3.Surface
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -158,6 +160,7 @@ fun HomeScreen(
     // row. With nothing kept under a name there is no question to ask.
     val asksWhichKind = presets.isNotEmpty()
     var managingPins by rememberSaveable { mutableStateOf(false) }
+    var managingTags by rememberSaveable { mutableStateOf(false) }
     // The preset whose words are being asked for before it can be written.
     var askingWordsFor by rememberSaveable { mutableStateOf<String?>(null) }
     // The card being held, and so the one the actions menu is about.
@@ -280,6 +283,17 @@ fun HomeScreen(
                 managingPins = false
                 onEditPreset(preset.id)
             },
+        )
+    }
+    if (managingTags) {
+        val tags by viewModel.tagRows.collectAsStateWithLifecycle()
+        TagsPanel(
+            tags = tags,
+            onTogglePin = viewModel::toggleTagPin,
+            onRename = viewModel::renameTag,
+            onDelete = viewModel::deleteTag,
+            onCreate = viewModel::createTag,
+            onDismiss = { managingTags = false },
         )
     }
     askingWordsFor?.let { id ->
@@ -591,7 +605,12 @@ fun HomeScreen(
                 }
                 if (state.tags.isNotEmpty()) {
                     item(key = "tags", contentType = "tags") {
-                        TagFilterRow(tags = state.tags, selected = state.selectedTag, onSelect = viewModel::selectTag)
+                        TagFilterRow(
+                            tags = state.tags,
+                            selected = state.selectedTag,
+                            onSelect = viewModel::selectTag,
+                            onManage = { managingTags = true },
+                        )
                     }
                 }
                 // The last delete, for a minute: the snackbar's undo, kept where the list is
@@ -834,29 +853,77 @@ private fun Header(
  * them. Housekeeping belongs after the filing, not in the middle of it.
  */
 @Composable
-private fun TagFilterRow(tags: List<TagFilter>, selected: TagFilter?, onSelect: (TagFilter?) -> Unit) {
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        item(key = "all", contentType = CONTENT_TAG) {
-            TagChip(label = stringResource(R.string.home_all_tags), selected = selected == null, onClick = { onSelect(null) })
+private fun TagFilterRow(
+    tags: List<TagFilter>,
+    selected: TagFilter?,
+    onSelect: (TagFilter?) -> Unit,
+    /**
+     * The way to the panel that administers them, at the end of the row where the presets keep
+     * theirs. Null on the search overlay: that row is a way of finding reminders, and a "+" on
+     * it would offer to file while somebody is looking for something.
+     */
+    onManage: (() -> Unit)? = null,
+) {
+    // Docked rather than the last item, which is where the presets' one sits. Theirs is the end
+    // of a handful of buttons; this row holds every tag there is and the app's own three, so
+    // "at the end" would be two screens of scrolling away — the same hidden door this was meant
+    // to replace. It stays at the end of the row, and always in it.
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
+            modifier = Modifier.weight(1f),
+        ) {
+            item(key = "all", contentType = CONTENT_TAG) {
+                TagChip(label = stringResource(R.string.home_all_tags), selected = selected == null, onClick = { onSelect(null) })
+            }
+            items(tags, key = { it.key }, contentType = { CONTENT_TAG }) { tag ->
+                TagChip(
+                    label = tag.label(),
+                    selected = tag == selected,
+                    onClick = { onSelect(tag) },
+                    // The places wear the family's own colour and its pin, and no word at all: a
+                    // pin is what a place looks like everywhere else in this app, and the hue is
+                    // one no tag can have (the tag circle has the three family hues cut out of
+                    // it), so it cannot be read as somebody's word for something.
+                    tint = when (tag) {
+                        is TagFilter.Named -> tagColor(tag.tag)
+                        TagFilter.Place -> familyColor(TriggerFamily.PLACE, LocalDarkTheme.current)
+                        else -> null
+                    },
+                    icon = Icons.Outlined.Place.takeIf { tag == TagFilter.Place },
+                )
+            }
         }
-        items(tags, key = { it.key }, contentType = { CONTENT_TAG }) { tag ->
-            TagChip(
-                label = tag.label(),
-                selected = tag == selected,
-                onClick = { onSelect(tag) },
-                // The places wear the family's own colour and its pin, and no word at all: a
-                // pin is what a place looks like everywhere else in this app, and the hue is one
-                // no tag can have (the tag circle has the three family hues cut out of it), so
-                // it cannot be read as somebody's word for something.
-                tint = when (tag) {
-                    is TagFilter.Named -> tagColor(tag.tag)
-                    TagFilter.Place -> familyColor(TriggerFamily.PLACE, LocalDarkTheme.current)
-                    else -> null
-                },
-                icon = Icons.Outlined.Place.takeIf { tag == TagFilter.Place },
+        if (onManage != null) {
+            Spacer(Modifier.width(Tokens.spacing.sm))
+            ManageTagsChip(onManage)
+        }
+    }
+}
+
+/** The "+" that ends the row: the same door, in the same place, as the presets' one. */
+@Composable
+private fun ManageTagsChip(onClick: () -> Unit) {
+    val haptics = Tokens.haptics
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        onClick = {
+            haptics.perform(HapticFeedbackType.Confirm)
+            onClick()
+        },
+        shape = MaterialTheme.shapes.small,
+        color = scheme.surfaceContainerHigh,
+        border = BorderStroke(Tokens.strokes.control, scheme.outline),
+        modifier = Modifier
+            .heightIn(min = Tokens.sizes.touch)
+            .width(Tokens.sizes.touch),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = Icons.Outlined.Add,
+                contentDescription = stringResource(R.string.home_tags_manage),
+                tint = scheme.onSurface,
+                modifier = Modifier.size(Tokens.sizes.glyphMedium),
             )
         }
     }

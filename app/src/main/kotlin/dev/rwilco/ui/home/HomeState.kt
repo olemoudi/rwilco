@@ -26,6 +26,7 @@ import dev.rwilco.model.ruleInSet
 import dev.rwilco.model.rulesLookFrom
 import dev.rwilco.model.search
 import dev.rwilco.model.TagFilter
+import dev.rwilco.model.TagPref
 import dev.rwilco.model.tagFilters
 import java.time.Instant
 import java.time.LocalTime
@@ -269,6 +270,14 @@ data class TriggerRowUi(
     val watched: Boolean = true,
 )
 
+/**
+ * A tag as the panel behind the row's "+" shows it: its name, and whether it leads the row.
+ *
+ * Not part of [HomeUiState]: the panel is a door off Home rather than a part of it, and every
+ * card on the screen would be rebuilt for a tag being renamed inside a dialog.
+ */
+data class TagRow(val name: String, val pinned: Boolean)
+
 /** Everything Home shows, from the open reminders. Pure and JVM-tested. */
 fun buildHomeState(
     reminders: List<Reminder>,
@@ -287,8 +296,10 @@ fun buildHomeState(
     fixAccuracyM: Int? = null,
     /** Is the phone inside this rule's circle? Only the place watch knows; null when nothing does. */
     inside: (String, Int) -> Boolean? = { _, _ -> null },
+    /** What the person has said about their own tags; here, only which ones lead the row. */
+    tagPrefs: List<TagPref> = emptyList(),
 ): HomeUiState {
-    val tags = tagFilters(reminders)
+    val tags = tagFilters(reminders, tagPrefs)
     // A filter on something that is no longer offered is no filter: the last reminder carrying
     // that tag was deleted, the last untagged one was named, the last paused one resumed.
     // Case-insensitively, and by the spelling on offer: the chip reads whichever spelling

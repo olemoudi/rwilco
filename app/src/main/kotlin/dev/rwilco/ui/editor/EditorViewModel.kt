@@ -28,11 +28,8 @@ import dev.rwilco.model.Deadline
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerKind
 import dev.rwilco.model.TriggerRule
-import dev.rwilco.model.normalizeTag
-import dev.rwilco.model.normalizeTags
-import dev.rwilco.model.removeTagIn
-import dev.rwilco.model.renameTagIn
 import dev.rwilco.model.renameTextIn
+import dev.rwilco.model.knownTags
 import dev.rwilco.model.suggestedTags
 import dev.rwilco.model.suggestedTriggers
 import dev.rwilco.model.Understood
@@ -174,7 +171,7 @@ class EditorViewModel(
                 isNew = loaded == null,
                 draft = draft,
                 initial = draft,
-                existingTags = suggestedTags(past, now),
+                existingTags = knownTags(suggestedTags(past, now), current.tagPrefs),
                 suggestedTexts = visibleTexts(suggestedTexts(past, now, limit = 8, exclude = draft.text), current.hiddenTexts),
                 allTexts = visibleTexts(suggestedTexts(past, now, limit = 100), current.hiddenTexts),
                 defaultTime = current.defaultTime,
@@ -337,30 +334,14 @@ class EditorViewModel(
     fun setAsPreset(asPreset: Boolean) = _state.update { it.setAsPreset(asPreset) }
     fun setPresetText(text: String) = _state.update { it.setPresetText(text) }
 
-    fun curate(kind: CurateKind?) = _state.update { it.copy(curating = kind) }
+    fun curateTexts(open: Boolean) = _state.update { it.copy(curatingTexts = open) }
 
     /**
-     * Mending the offers. A tag or a phrase is not a record of its own — it is read off the
-     * reminders that use it — so renaming one rewrites those reminders, and only those.
-     * Dropping a phrase only stops it being offered: the reminders that used it are somebody's
-     * history, not a list to tidy.
+     * Mending the offers. A phrase is not a record of its own — it is read off the reminders
+     * that use it — so renaming one rewrites those reminders, and only those. Dropping a phrase
+     * only stops it being offered: the reminders that used it are somebody's history, not a
+     * list to tidy. (Tags are mended from Home now: see HomeViewModel.renameTag.)
      */
-    fun renameTag(from: String, to: String) = curateWith {
-        repository.saveAll(renameTagIn(repository.allNow(), from, to))
-        normalizeTag(to)?.let { renamed ->
-            _state.update { state ->
-                state.copy(draft = state.draft.copy(tags = normalizeTags(state.draft.tags.map { if (it.equals(from, true)) renamed else it })))
-            }
-        }
-    }
-
-    fun removeTag(tag: String) = curateWith {
-        repository.saveAll(removeTagIn(repository.allNow(), tag))
-        _state.update { state ->
-            state.copy(draft = state.draft.copy(tags = state.draft.tags.filterNot { it.equals(tag, ignoreCase = true) }))
-        }
-    }
-
     fun renameText(from: String, to: String) = curateWith {
         repository.saveAll(renameTextIn(repository.allNow(), from, to))
         _state.update { state ->
@@ -381,7 +362,6 @@ class EditorViewModel(
             val hidden = store.settings.first().hiddenTexts
             _state.update { state ->
                 state.copy(
-                    existingTags = suggestedTags(past, now),
                     suggestedTexts = visibleTexts(suggestedTexts(past, now, limit = 8, exclude = state.draft.text), hidden),
                     allTexts = visibleTexts(suggestedTexts(past, now, limit = 100), hidden),
                 )
