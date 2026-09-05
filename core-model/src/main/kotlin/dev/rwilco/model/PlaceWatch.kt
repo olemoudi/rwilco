@@ -78,6 +78,12 @@ data class WatchedPlace(
      * See [Trigger.Location.onCrossing]; the whole of it is one line in [stepPlaceWatch].
      */
     val onCrossing: Boolean = false,
+    /**
+     * How long [transition]'s own side has to hold before the crossing counts, or null for the
+     * doorway as it has always been. See [Dwelling] and [stepDwell]; only a doorway ever carries
+     * one ([Trigger.Location.dwell]).
+     */
+    val dwell: Duration? = null,
 )
 
 /** A place kept in Settings, offered whole — name, pin and radius — when a rule needs one. */
@@ -261,7 +267,76 @@ object PlaceWatchPolicy {
     const val BUSY_POLLS = 18
 
     val BUSY_WINDOW: Duration = Duration.ofHours(1)
+
+    /**
+     * How many looks a rate is measured over: the count asks for its own duration divided by
+     * this, floored at [MIN_WAIT]. Ten minutes is therefore a look every two and a half.
+     *
+     * Four because it is the fewest that can tell a stay from a pause. The tolerance below is
+     * a third of the rate, so a count survives one look on the wrong side and no more — which is
+     * the honest reading of "somebody stepped out for a moment", and the fifth look is already
+     * past the ceiling. Fewer would make a single sloppy fix decisive; more would buy nothing a
+     * geofence and four wifi positions have not already answered.
+     */
+    const val DWELL_SAMPLES = 4L
+
+    /**
+     * How much of a rate may be spent on the wrong side before the count is given up: a third of
+     * it, which is a quarter of the series at the finishing line (a ten-minute rate allows three
+     * minutes and twenty seconds of straying, and 3:20 of 13:20 is exactly 25%).
+     *
+     * A budget and not a running percentage, and that is the whole of the difference. A
+     * percentage of the series so far is brutal at the start — the first reading on the wrong
+     * side is 100% of everything measured — and it drifts with the cadence, so the same number
+     * would mean different things to a phone being looked at every two minutes and one being
+     * looked at every ten. A budget only grows, means minutes, and lands on the same 25% where
+     * it matters.
+     */
+    const val DWELL_STRAY_SHARE = 3L
+
+    /**
+     * The longest a count may run before it is given up on, whatever it has accrued.
+     *
+     * With a cadence it can afford, a count closes at the rate plus its own tolerance and never
+     * comes near this — ten minutes finishes inside thirteen and a third. What this bounds is the
+     * case that cannot: a battery low enough that [batteryFloor] holds every look an hour apart,
+     * a process the system keeps killing. Then the vouched minutes come in too slowly, the blind
+     * ones pile up, and rather than count for ever the watch stops and says so
+     * ([WatchStep.unmeasured]) — a reminder that will not ring is worth a sentence.
+     *
+     * Two hours, and it is the same two hours that bounds [MAX_DWELL_MINUTES]: ninety minutes
+     * plus its own thirty of tolerance is exactly this, so the longest rate anybody may ask for
+     * is the longest one that still fits inside the ceiling with its tolerance intact.
+     */
+    val DWELL_CEILING: Duration = Duration.ofHours(2)
 }
+
+/**
+ * How often a circle with a rate on it asks to be looked at while it is counting: the rate over
+ * [PlaceWatchPolicy.DWELL_SAMPLES], never under [PlaceWatchPolicy.MIN_WAIT].
+ *
+ * It is also exactly how long one look is allowed to vouch for (see [stepDwell]), and the two
+ * being the same number is the point: a look speaks for the span the count asked it to cover and
+ * not a second more, so a gap the battery or a dead process stretched to an hour still credits
+ * two and a half minutes. The cadence can slip; the arithmetic cannot.
+ */
+fun dwellWait(dwell: Duration): Duration =
+    maxOf(dwell.dividedBy(PlaceWatchPolicy.DWELL_SAMPLES), PlaceWatchPolicy.MIN_WAIT)
+
+/** How much of the rate may be spent on the wrong side before the count is given up. */
+fun dwellTolerance(dwell: Duration): Duration = dwell.dividedBy(PlaceWatchPolicy.DWELL_STRAY_SHARE)
+
+/**
+ * How long this count may run: the rate, its tolerance, and whatever time nothing could vouch
+ * for — capped at [PlaceWatchPolicy.DWELL_CEILING].
+ *
+ * The blind time is in it because it is the one thing the count did not get to decide. A look
+ * the battery held back an hour leaves fifty-seven and a half minutes nobody can say anything
+ * about, and spending the ceiling on them would give up on a phone that never moved. Adding them
+ * lets a starved count go on trying up to the ceiling, and the ceiling is where it stops.
+ */
+fun dwellCeiling(dwell: Duration, blindMs: Long): Duration =
+    minOf(PlaceWatchPolicy.DWELL_CEILING, dwell + dwellTolerance(dwell) + Duration.ofMillis(blindMs))
 
 /**
  * The soonest a battery this low will allow a look — a floor under every other answer, never a
@@ -449,8 +524,9 @@ fun planNextCheck(
     inside: Map<String, Boolean> = emptyMap(),
     charge: Double? = null,
     previous: Fix? = null,
+    counting: Set<String> = emptySet(),
 ): WatchPlan? = places
-    .map { place -> planFor(place, fix, previous, movement, inside[place.id]) }
+    .map { place -> planFor(place, fix, previous, movement, inside[place.id], place.id in counting) }
     // The soonest look any one place asks for; on a tie, the one that is closest. A phone
     // sitting at home with an errand across town is planned by the errand, not by the sofa.
     .minWithOrNull(compareBy({ it.wait }, { it.gapM }))
@@ -460,7 +536,14 @@ fun planNextCheck(
         plan.copy(wait = maxOf(plan.wait, floor), tier = tier)
     }
 
-private fun planFor(place: WatchedPlace, fix: Fix, previous: Fix?, movement: Movement, inside: Boolean?): WatchPlan {
+private fun planFor(
+    place: WatchedPlace,
+    fix: Fix,
+    previous: Fix?,
+    movement: Movement,
+    inside: Boolean?,
+    counting: Boolean = false,
+): WatchPlan {
     val gap = gapToLine(place, fix)
     val floor = place.floor
     val near = gap < PlaceWatchPolicy.NEAR_M
@@ -504,6 +587,21 @@ private fun planFor(place: WatchedPlace, fix: Fix, previous: Fix?, movement: Mov
             else -> ceiling
         }
         wait = maxOf(wait, minOf(backoff, cap)).clamp(PlaceWatchPolicy.MIN_WAIT, ceiling)
+    }
+    // **A rate being counted outranks every floor there is.** Every other number in this file
+    // exists to look away for longer, and each of them is exactly what a count cannot afford:
+    // INSIDE_MIN_WAIT is half an hour, which measures a ten-minute stay as nothing; leavingWait
+    // is the same; the "todos" floor is an hour. So while a count is running, this circle asks
+    // for what the count asks for ([dwellWait]) and never less often, and it does not stop the
+    // ordinary arithmetic asking for sooner. Never GPS — the question is "still on the same side
+    // of a line I am standing next to", which no satellite answers better than the blend — and
+    // never the towers, which cannot answer it at all.
+    //
+    // What still has the last word is the battery ([planNextCheck] floors this like everything
+    // else). A phone too low to be looked at often enough simply cannot measure a rate, and the
+    // count gives up and says so rather than pretending: see [dwellCeiling].
+    if (counting && place.dwell != null) {
+        return WatchPlan(minOf(maxOf(wait, floor), dwellWait(place.dwell)), tier = FixTier.BALANCED, gapM = gap, nearest = place)
     }
     if (inside == true) {
         // Inside, only one of the two crossings is still ahead, and neither is urgent. Never
@@ -659,7 +757,122 @@ data class PlaceWatchState(
     val tier: FixTier = FixTier.BALANCED,
     /** Consecutive checks that got no fix worth having. See [blindRetry]. */
     val blindStreak: Int = 0,
+    /**
+     * The counts running right now, by circle. Empty on every blob written before rates existed,
+     * which is what a phone full of doorways reads back as: no count, and the first crossing
+     * after the update starts one.
+     */
+    val dwelling: Map<String, Dwelling> = emptyMap(),
 )
+
+/**
+ * A rate being counted at one circle: "al llegar a casa, y cuando lleve diez minutos allí".
+ *
+ * It is bookkeeping and not a judgement, which is why it lives here beside [PlaceWatchState.inside]
+ * rather than on the reminder: it is worth exactly as long as the visit it is about, and a phone
+ * that reboots in the middle of one has genuinely lost the evidence.
+ *
+ * Time and not readings. A count over "how many of the last N positions were inside" cannot mean
+ * the same thing twice when the cadence itself moves — and moving the cadence is what this watch
+ * does for a living. So every look credits the span since the one before it, up to what one look
+ * is allowed to vouch for ([dwellWait]); [heldMs] is that span spent on the side the rule is
+ * about, [strayMs] is it spent on the other, and [blindMs] is what nothing could speak for at
+ * all. The three of them together are the whole of the evidence, and the sum of them is not
+ * necessarily the wall clock — that difference *is* [blindMs].
+ */
+@Serializable
+data class Dwelling(
+    /** When the crossing that opened this count happened. The ceiling is measured from here. */
+    val since: Instant,
+    /** The look that last vouched for anything. The next gap is measured from here. */
+    val lastAt: Instant,
+    /** Vouched time on the side the rule is about. */
+    val heldMs: Long = 0,
+    /** Vouched time on the other side. */
+    val strayMs: Long = 0,
+    /** Elapsed time no look could speak for: gaps longer than one look is allowed to vouch for. */
+    val blindMs: Long = 0,
+)
+
+/** What the counts came to on one look. */
+data class DwellStep(
+    /** The counts still running. */
+    val dwelling: Map<String, Dwelling>,
+    /** Circles whose rate is now met: these are the crossings that ring. */
+    val met: List<WatchedPlace>,
+    /** Circles given up on because nothing could look often enough. Worth telling somebody. */
+    val unmeasured: List<WatchedPlace>,
+)
+
+/**
+ * One look, from the point of view of the rates being counted.
+ *
+ * A circle with a rate on it does not ring when the line is crossed; the crossing opens a count
+ * ([crossed], which both eyes feed — the watch's own step below and `PlaceWatcher.accept`), and
+ * the count is what rings. Each look after that credits the span since the last one to one of
+ * three buckets and then asks three questions, in this order:
+ *
+ * - **Met**: [Dwelling.heldMs] has reached the rate. The crossing happens now, and the moment it
+ *   is judged at is now — which is the honest reading for the hours a rule may also carry: "en la
+ *   oficina entre las cinco y las siete, y diez minutos allí" is asking about the ten minutes,
+ *   not about the doorstep.
+ * - **Strayed**: more of the rate has been spent on the wrong side than [dwellTolerance] allows.
+ *   The count is dropped in silence and the circle goes back to waiting for a crossing: somebody
+ *   who left is somebody who has to arrive again. Note it may be dropped while the phone is
+ *   *inside* — a couple of positions out and back can spend the budget — and that is deliberate.
+ *   The evidence is gone; inventing it would be the one mistake here nobody can see from a card.
+ * - **Out of time**: past [dwellCeiling]. With a cadence it can afford this is unreachable; it is
+ *   the starved count, and it is the only one worth a word ([DwellStep.unmeasured]).
+ *
+ * A circle with no side judged yet credits the gap to [Dwelling.blindMs] rather than to straying:
+ * "nobody looked" and "you were not there" are not the same answer, and only one of them should
+ * cost somebody their reminder.
+ */
+fun stepDwell(
+    before: Map<String, Dwelling>,
+    places: List<WatchedPlace>,
+    inside: Map<String, Boolean>,
+    crossed: Set<String>,
+    now: Instant,
+): DwellStep {
+    val next = HashMap<String, Dwelling>()
+    val met = ArrayList<WatchedPlace>()
+    val unmeasured = ArrayList<WatchedPlace>()
+    for (place in places) {
+        val dwell = place.dwell ?: continue
+        val running = before[place.id]
+        if (running == null) {
+            // A count opens exactly where the ring used to be — on the crossing, and only on the
+            // crossing. Being found on the right side is not enough: a doorway nobody has been
+            // seen to cross is not a doorway crossed, which is the rule the events below have
+            // always followed, and starting a count off it would ring "al llegar a casa" at
+            // somebody who had been at home all along.
+            if (place.id in crossed) next[place.id] = Dwelling(since = now, lastAt = now)
+            continue
+        }
+        val gap = Duration.between(running.lastAt, now).coerceAtLeast(Duration.ZERO)
+        val vouched = minOf(gap, dwellWait(dwell))
+        val blind = running.blindMs + gap.minus(vouched).toMillis()
+        val side = inside[place.id]
+        val onSide = side == (place.transition == Transition.ENTER)
+        val counted = Dwelling(
+            since = running.since,
+            lastAt = now,
+            heldMs = running.heldMs + if (side != null && onSide) vouched.toMillis() else 0,
+            strayMs = running.strayMs + if (side != null && !onSide) vouched.toMillis() else 0,
+            // A circle nothing could judge is blind time, not time spent away.
+            blindMs = if (side == null) blind + vouched.toMillis() else blind,
+        )
+        when {
+            counted.heldMs >= dwell.toMillis() -> met += place
+            counted.strayMs > dwellTolerance(dwell).toMillis() -> Unit
+            Duration.between(counted.since, now) > dwellCeiling(dwell, counted.blindMs) ->
+                if (counted.blindMs > 0) unmeasured += place
+            else -> next[place.id] = counted
+        }
+    }
+    return DwellStep(next, met, unmeasured)
+}
 
 /**
  * How long to wait after a check that got nothing: no fix at all, or one too old to speak for
@@ -711,6 +924,11 @@ data class WatchStep(
     val events: List<PlaceEvent>,
     val plan: WatchPlan?,
     val movement: Movement = Movement(),
+    /**
+     * Rates given up on because nothing could look often enough to measure them. Not an event:
+     * nothing rang, and that is the whole reason it is here — see [stepDwell].
+     */
+    val unmeasured: List<WatchedPlace> = emptyList(),
 )
 
 /**
@@ -753,15 +971,27 @@ fun stepPlaceWatch(
     // counts as: a state ("mientras esté en casa") is satisfied by simply being there, so a
     // first judgement that finds the phone inside is news; a crossing ("al llegar") wants the
     // doorway, so a side nobody has seen yet is not the other side and it waits.
-    val events = places.mapNotNull { place ->
+    val crossed = places.mapNotNull { place ->
         if (place.crossing == Crossing.NOTHING) return@mapNotNull null
         val before = state.inside[place.id]
         if (place.onCrossing && before == null) return@mapNotNull null
         val wantsInside = place.transition == Transition.ENTER
         if (before == wantsInside || inside.getValue(place.id) != wantsInside) return@mapNotNull null
-        PlaceEvent(place.id, place.transition)
+        place
     }
-    val plan = planNextCheck(fix, movement, places, inside, charge, previous = state.lastFix)
+    // A rate turns the crossing into the start of a count and the *count* into the event. Only
+    // the circles asking for a fix can carry one: a listener must not ring, so it must not count
+    // either, and a count kept for a circle nobody is watching any more is dropped with it.
+    val dwelt = stepDwell(
+        before = state.dwelling.filterKeys { id -> places.any { it.id == id } },
+        places = places,
+        inside = inside,
+        crossed = crossed.mapTo(HashSet()) { it.id },
+        now = now,
+    )
+    val events = crossed.filter { it.dwell == null }.map { PlaceEvent(it.id, it.transition) } +
+        dwelt.met.map { PlaceEvent(it.id, it.transition) }
+    val plan = planNextCheck(fix, movement, places, inside, charge, previous = state.lastFix, counting = dwelt.dwelling.keys)
     // **The streak counts looks that got the phone no nearer anything** (0.82.0), not only the
     // ones that found it motionless. It is what the back-off doubles on, and a phone being
     // lived with inside its own four walls is not still — it is going nowhere, which for a
@@ -783,8 +1013,9 @@ fun stepPlaceWatch(
         lastGapM = plan?.gapM,
         nearestLabel = plan?.nearest?.label,
         tier = plan?.tier ?: FixTier.BALANCED,
+        dwelling = dwelt.dwelling,
     )
-    return WatchStep(next, events, plan, movement)
+    return WatchStep(next, events, plan, movement, dwelt.unmeasured)
 }
 
 /**
@@ -811,6 +1042,13 @@ fun stepWithoutLooking(
     listening: List<WatchedPlace> = emptyList(),
 ): WatchStep? {
     if (sensed != false || state.stillStreak == 0) return null
+    // **A count is never rested through.** The premise of a rest is that there is nothing to see,
+    // and a rate being counted is the one thing there is: a rest that met one would produce the
+    // ring in a branch whose whole contract is that it produces none, and the crossing would be
+    // written off as spent without ever reaching the phone. The saving given up is small — a
+    // count asks for a look every [dwellWait] and lasts minutes — and it is given up on the side
+    // that rings rather than the side that goes quiet.
+    if (places.any { it.dwell != null && it.id in state.dwelling }) return null
     val fix = state.lastFix ?: return null
     val step = stepPlaceWatch(state, fix, places, now, sensed = false, charge = charge, listening = listening)
     val wait = step.plan?.wait ?: return null
@@ -897,3 +1135,19 @@ fun PlaceWatchState.sideOf(lat: Double, lng: Double, radiusM: Int, inside: Boole
 /** The same crossing written down, so the eye that saw it second knows it is old news. */
 fun PlaceWatchState.remembering(placeId: String, transition: Transition): PlaceWatchState =
     copy(inside = inside + (placeId to (transition == Transition.ENTER)))
+
+/**
+ * A crossing that starts a count rather than ringing. The other half of [remembering], for a
+ * circle carrying a rate ([WatchedPlace.dwell]).
+ *
+ * Both eyes open a count, exactly as both eyes report a crossing. [stepPlaceWatch] does it for
+ * the one it saw itself; this is for the one the system's geofence saw first — without it the
+ * fence's arrival would write the side down, the next look would find nothing to report (the
+ * side is already true, so there is no crossing left), and a count that should have started at
+ * the doorstep would never start at all.
+ */
+fun PlaceWatchState.counting(placeId: String, now: Instant): PlaceWatchState =
+    copy(dwelling = dwelling + (placeId to Dwelling(since = now, lastAt = now)))
+
+/** A count settled by somebody else — the system's own loitering — is a count no longer running. */
+fun PlaceWatchState.counted(placeId: String): PlaceWatchState = copy(dwelling = dwelling - placeId)

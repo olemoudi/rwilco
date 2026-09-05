@@ -46,6 +46,18 @@ enum class NoteKind {
 
     /** Play Services reported a crossing the watch's own last fix says never happened. */
     ECHO,
+
+    /**
+     * Play Services timed a rate for us: a `GEOFENCE_TRANSITION_DWELL`, the free half of "y
+     * cuando lleve diez minutos allí". No fix taken, and the count it settles is over.
+     */
+    LOITER,
+
+    /**
+     * A rate given up on because nothing could look often enough to measure it — a battery too
+     * low for the cadence it needed. Nothing rang, which is the point of writing it down.
+     */
+    UNMEASURED,
 }
 
 /**
@@ -115,6 +127,10 @@ data class WatchNote(
     val accuracyM: Int? = null,
     /** How much radio was asked for. A note written before there were three reads back as balanced. */
     val tier: FixTier = FixTier.BALANCED,
+    /** The rate this line is about, in seconds, when a count had anything to do with it. */
+    val dwellS: Long? = null,
+    /** How much of that rate had been vouched for. Null on a line that is not about a count. */
+    val heldS: Long? = null,
 ) {
     /** Whether this look actually spent radio. The whole point of the other kinds is that they did not. */
     val isPoll: Boolean get() = kind == NoteKind.FIX || kind == NoteKind.BLIND
@@ -235,7 +251,10 @@ fun List<WatchNote>.asEvents(within: Duration = Duration.ofMinutes(1)): List<Wat
 
 /** Whether [next], the line under this one, is more of the same crossing rather than another one. */
 private fun WatchNote.runsInto(next: WatchNote, within: Duration): Boolean =
-    (kind == NoteKind.FENCE || kind == NoteKind.ECHO) &&
+    // A loitering and a rate given up on fold for the same reason a crossing does: a place named
+    // by six rules is six fences timing the same wait, and six counts giving up on the same
+    // afternoon. One thing happened.
+    (kind == NoteKind.FENCE || kind == NoteKind.ECHO || kind == NoteKind.LOITER || kind == NoteKind.UNMEASURED) &&
         kind == next.kind &&
         inside == next.inside &&
         lat == next.lat &&
@@ -297,8 +316,10 @@ data class WatchTally(
 )
 
 fun List<WatchNote>.tally(since: Instant): WatchTally {
-    // Crossings and stirs are things that happened to the watch, not looks it took.
-    val looks = filter { it.at >= since && it.kind != NoteKind.FENCE && it.kind != NoteKind.ECHO && it.kind != NoteKind.STIR }
+    // Crossings and stirs are things that happened to the watch, not looks it took — and so are
+    // a loitering the system timed and a rate given up on, neither of which spent anything.
+    val notLooks = setOf(NoteKind.FENCE, NoteKind.ECHO, NoteKind.STIR, NoteKind.LOITER, NoteKind.UNMEASURED)
+    val looks = filter { it.at >= since && it.kind !in notLooks }
     if (looks.isEmpty()) return WatchTally()
     val fixes = looks.filter { it.kind == NoteKind.FIX }
     val paced = looks.mapNotNull { it.placeName }.groupingBy { it }.eachCount().maxByOrNull { it.value }

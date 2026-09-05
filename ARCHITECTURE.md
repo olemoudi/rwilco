@@ -98,6 +98,22 @@ every place written before this reads as a state, which is the reading it almost
 and `ReminderCodecTest` pins both halves. What it costs is stated plainly: somebody's existing
 "al llegar a casa", sitting at home, will ring on the next look.
 
+**And a doorway can be asked to be stayed at (0.85.0, `dwellMinutes`).** Crossing a line is the
+loudest thing a place can do and the least reliable — walking past a door, a trip to the bins, a
+position that wobbles over the line and back are all crossings, and all of them ring. So a
+doorway may carry a rate: "al llegar a casa, y cuando lleve diez minutos allí". What is counted
+is time on **the side the rule is about** — inside for "al llegar", outside for "al salir", where
+it is what tells going out from going out *for the evening* — and the whole of the arithmetic is
+in the place watch below. Only a doorway is asked (`Trigger.Location.dwell` reads the field
+through `onCrossing`): a side of a line already holds for as long as somebody is on it, and a
+state asked to last is the same state, so the editor offers the switch under the doorway reading
+and nowhere else. `dwellMinutes` is `@EncodeDefault(NEVER)`, so no place already on a phone
+changes shape on disk over a field it does not use, and a build older than this one meets an
+unknown key, ignores it and rings at the line — erring towards ringing, which is the right way
+round. `MIN_DWELL_MINUTES`/`MAX_DWELL_MINUTES` are 5 and 90, and the ninety is not taste: a count
+runs for its rate plus a third of it in tolerance, and ninety plus thirty is exactly the two
+hours the watch gives up at (`PlaceWatchPolicy.DWELL_CEILING`).
+
 Triggers (`core-model/.../Trigger.kt`), with their frozen JSON discriminators:
 
 | Kind (UI tile)        | Stored as                          | `type`         |
@@ -109,7 +125,7 @@ Triggers (`core-model/.../Trigger.kt`), with their frozen JSON discriminators:
 | Day of the week       | `Weekday(days)` — the days alone, a state for the whole of one | `weekday` |
 | Countdown             | `Countdown(minutes, startedAt?)`   | `countdown`    |
 | Interval              | `Interval(from, to, days)` — a stretch of the day | `interval` |
-| Place                 | `Location(lat, lng, radiusM, INSIDE/OUTSIDE, label, onCrossing)` | `location` |
+| Place                 | `Location(lat, lng, radiusM, INSIDE/OUTSIDE, label, onCrossing, dwellMinutes?)` | `location` |
 | Random                | `Random(timesPer, DAY/WEEK, from, to, days)` | `random` |
 | *(not a tile)* Calendar | `Repeat(startsOn, every, unit, time?, days, monthly?, ends)` | `repeat` |
 | *(read only)* Date only | `OnDate(date)` — rings at the default time (a setting) | `on_date` |
@@ -2195,6 +2211,59 @@ because that is what its chip would show.
   state's lean is what buys its ring, and the snooze's first side is the person's own word.
   Only a *first* judgement is ever skipped; a side already seen is held by `insideAfter`.
   While a doorway waits it costs the least of anything in the app.
+  **A rate turns the crossing into the start of a count, and the count into the event** (0.85.0,
+  `stepDwell`, `Dwelling`, `PlaceWatchState.dwelling`). A circle carrying
+  `WatchedPlace.dwell` does not ring when the line is crossed: the crossing opens a count —
+  both eyes open one, `stepPlaceWatch` for the one it saw itself and `PlaceWatcher.accept` for
+  the one the geofence saw first, without which the side would be written down and the next look
+  would find no crossing left to report. Each look after that credits the span since the last
+  one to one of three buckets and asks three questions in order: **met** (`heldMs` has reached
+  the rate — the crossing happens *now*, which is also the moment any hours on the rule are
+  judged at, and that is the honest reading: "en la oficina entre las cinco y las siete, y diez
+  minutos allí" is asking about the ten minutes); **strayed** (more than `dwellTolerance`, a
+  third of the rate, spent on the wrong side — dropped in silence, and the circle waits for
+  another crossing, because somebody who left has to arrive again); **out of time**
+  (`dwellCeiling`).
+  **It counts time, not readings, and that is the whole of why it survives an adaptive cadence.**
+  A percentage of the last N positions cannot mean the same thing twice when the cadence itself
+  moves, and moving the cadence is what this watch does for a living — the same "75% inside"
+  means one thing at a look every two minutes and another at a look every fifteen. It is also
+  brutal at the start, where one position on the wrong side is 100% of everything measured. So
+  the tolerance is a **budget in minutes**: it only grows, it lands on exactly a quarter of the
+  series at the finishing line (3:20 of 13:20 for a ten-minute rate), and one look on the wrong
+  side costs a look rather than the reminder.
+  **A look vouches for exactly what the count asked it to wait** (`dwellWait`, the rate over
+  `DWELL_SAMPLES`, floored at `MIN_WAIT`). The cadence can slip — a battery floor, a process the
+  system keeps killing — and the arithmetic cannot: a gap stretched to an hour still credits two
+  and a half minutes, and the rest is `blindMs`, which belongs to neither side. That is what
+  makes it impossible to ring early off one fix after a silence.
+  **While a count runs it outranks every floor in this file**, because every one of them is a
+  reason to look away for longer and each is exactly what a count cannot afford: `INSIDE_MIN_WAIT`
+  is half an hour, which measures a ten-minute stay as nothing at all, and the "todos" floor is
+  the hour. Never GPS and never the towers — the question is "still on the same side of a line I
+  am standing next to", which the blend answers and neither of the others does. It also refuses
+  the rest (`stepWithoutLooking`): the premise of a rest is that there is nothing to see, and a
+  count is the one thing there is — a rest that met one would produce the ring in a branch whose
+  contract is that it produces none. **The battery still has the last word**, which is the
+  owner's call and the honest one: a phone too low to be looked at often enough cannot measure a
+  rate at all. Rather than count for ever it gives up at the ceiling and **says so** — a
+  `NoteKind.UNMEASURED` line and a notification (`WatchNotices.notifyUnmeasured`, on by default,
+  unlike the busy notice), because nothing rang and nothing was wrong is the one failure a person
+  cannot see from any screen.
+  **And the system times it too, for free** (`GEOFENCE_TRANSITION_DWELL`). A fence behind a rate
+  asks for the transition and carries the rate as its `setLoiteringDelay` — the loitering delay
+  that had sat inert since the fences were written, kept so that adding this could not throw.
+  Play Services times the same wait out of signals the app never sees, and it is *stricter* than
+  the count (its own timer resets on any leaving), so a loitering it reports is a stay by
+  anybody's reckoning: `PlaceWatcher.acceptDwell` takes it and the watch's four positions are
+  never spent. Only inwards — there is no such transition for staying *away* from a circle, and
+  that half is the watch's alone. What guards the two eyes against ringing twice is the count
+  itself and not `isPlaceEcho`: five minutes is too narrow when a rate of an hour lets them
+  finish a quarter of an hour apart, so whichever finishes it clears it and the other arrives at
+  nothing. Which also leaves the watch's own count as the one authority on *giving up*: it
+  measures against the circle somebody drew, with this app's hysteresis. The rate is in the
+  geofence id (`~10` after the crossing mark, `GeofenceIds`) for the reason the geometry is:
+  change ten minutes to twenty and the count that was running was counting something else.
   A state says it *once*: the watch reports the moment it becomes true and holds its tongue
   while it stays true, and what stops a second ring after that is the round it already rang in
   (`presenceAlreadyRang`), which dealing with the reminder starts again. That is also why a

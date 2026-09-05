@@ -46,6 +46,11 @@ class ValidationTest {
             Trigger.Random(1, Period.WEEK, LocalTime.of(10, 0), LocalTime.of(10, 0), emptySet()),
             // Ends before it starts: an evening that runs past midnight, and nothing wrong with it.
             Trigger.Random(1, Period.WEEK, LocalTime.of(22, 0), LocalTime.of(2, 0), emptySet()),
+            Trigger.Location(40.0, -3.0, 200, Presence.INSIDE, "x", onCrossing = true, dwellMinutes = MAX_DWELL_MINUTES + 1),
+            // A rate on a side reading is a rate nothing will ever read, so nothing is wrong
+            // with it: refusing to save over a field the rule ignores would block a shape that
+            // means exactly what it says.
+            Trigger.Location(40.0, -3.0, 200, Presence.INSIDE, "x", dwellMinutes = 9_000),
         )
         assertEquals(
             listOf(
@@ -56,6 +61,7 @@ class ValidationTest {
                 ValidationError.BadTrigger(5, TriggerProblem.TIMES_OUT_OF_RANGE),
                 ValidationError.BadTrigger(6, TriggerProblem.WINDOW_EMPTY),
                 ValidationError.BadTrigger(7, TriggerProblem.WINDOW_EMPTY),
+                ValidationError.BadTrigger(9, TriggerProblem.DWELL_OUT_OF_RANGE),
             ),
             validate("ok", triggers.asRules()),
         )

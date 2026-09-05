@@ -78,8 +78,8 @@ class PlaceWatchDeviceTest {
     private val radius = 200
 
     /** The watch's key for the one place a seeded reminder carries. */
-    private fun key(id: String, presence: Presence, onCrossing: Boolean = false) =
-        GeofenceIds.encode(id, 0, Trigger.Location(homeLat, homeLng, radius, presence, "Casa", onCrossing))
+    private fun key(id: String, presence: Presence, onCrossing: Boolean = false, dwellMinutes: Int? = null) =
+        GeofenceIds.encode(id, 0, Trigger.Location(homeLat, homeLng, radius, presence, "Casa", onCrossing, dwellMinutes))
 
     /** The watch's key for the place at [index] of a seeded reminder. */
     private fun keyAt(id: String, index: Int, presence: Presence) =
@@ -89,7 +89,7 @@ class PlaceWatchDeviceTest {
         GeofenceIds.encodeCondition(id, 0, 0, Condition.AtPlace(homeLat, homeLng, radius, "Casa", inside = true))
 
     /** Fix times are synthetic and ordered, ten minutes back so they are never in the future. */
-    private val t0 = System.currentTimeMillis() - 10 * 60_000L
+    private val t0 = System.currentTimeMillis() - FIX_LAG_MS
 
     @Before
     fun grantAndReset() {
@@ -519,19 +519,105 @@ class PlaceWatchDeviceTest {
     }
 
     /** One reminder with one place rule at home; returns its id. */
+    // ---- a doorway asked to be stayed at ------------------------------------------------
+
+    @Test
+    fun aRateRingsOnceItHasBeenStayedAtAndNotAtTheDoor() = runBlocking {
+        // "Al llegar a casa, y cuando lleve diez minutos allí." What only a device answers here
+        // is that the ring the count produces goes all the way through ReminderFiring — a place
+        // has no armed moment, and the crossing that rings is now minutes late.
+        val id = seed("rate", Presence.INSIDE, onCrossing = true, dwellMinutes = 10)
+        val circle = key(id, Presence.INSIDE, onCrossing = true, dwellMinutes = 10)
+        val ticking = ticking()
+
+        moveTo(south = 5_000.0, at = t0)
+        ticking.check()
+        assertEquals(false, store.read().inside[circle])
+
+        // Through the door: nothing rings, and a count opens.
+        walkTo(ticking, metres = 50.0, after = 2)
+        assertNull("a rate must not ring at the doorstep", app.repository.get(id)!!.lastFiredAt)
+        assertEquals(true, store.read().inside[circle])
+        assertNotNull("the crossing should have opened a count", store.read().dwelling[circle])
+
+        // Four looks, two and a half minutes apart, all of them at home.
+        repeat(3) { walkTo(ticking, metres = 50.0, after = 2, seconds = 30) }
+        assertNull("seven and a half minutes is not ten", app.repository.get(id)!!.lastFiredAt)
+        walkTo(ticking, metres = 50.0, after = 2, seconds = 30)
+        assertNotNull("ten minutes at home should have rung", app.repository.get(id)!!.lastFiredAt)
+        assertNull("a count that rang is over", store.read().dwelling[circle])
+    }
+
+    @Test
+    fun aRateGivesUpOnSomebodyWhoLeavesAndDoesNotRingWhenTheyComeBack() = runBlocking {
+        val id = seed("rate", Presence.INSIDE, onCrossing = true, dwellMinutes = 10)
+        val circle = key(id, Presence.INSIDE, onCrossing = true, dwellMinutes = 10)
+        val ticking = ticking()
+
+        moveTo(south = 5_000.0, at = t0)
+        ticking.check()
+        walkTo(ticking, metres = 50.0, after = 2)
+        assertNotNull(store.read().dwelling[circle])
+
+        // Three minutes in and away again: past the third of the rate the budget allows.
+        walkTo(ticking, metres = 50.0, after = 2, seconds = 30)
+        walkTo(ticking, metres = 2_000.0, after = 2, seconds = 30)
+        walkTo(ticking, metres = 2_000.0, after = 2, seconds = 30)
+        assertNull("the count is dropped", store.read().dwelling[circle])
+        assertNull("and nothing rang", app.repository.get(id)!!.lastFiredAt)
+
+        // Coming back is a new crossing, so a new count — not a ring.
+        walkTo(ticking, metres = 50.0, after = 2, seconds = 30)
+        assertNull("coming back is not having stayed", app.repository.get(id)!!.lastFiredAt)
+        assertNotNull("it starts again from the door", store.read().dwelling[circle])
+    }
+
+    /**
+     * A watch on a clock this test moves. Everything about a rate is measured in elapsed time,
+     * and two `check()` calls in a row are milliseconds apart however far the phone was moved
+     * between them — so the clock has to be the thing that moves, exactly as the fixes are.
+     */
+    private fun ticking(): PlaceWatcher =
+        PlaceWatcher(context, app.repository, app.firing, store, app.placeLog, app.settingsStore, movable, silent)
+
+    private val movable = object : java.time.Clock() {
+        var offsetS: Long = 0
+        override fun getZone(): java.time.ZoneId = app.clock.zone
+        // Started at the real now and only ever moved forward, so every alarm this watch arms
+        // lands in the future exactly as the other tests' do. A clock in the past would arm one
+        // for a moment already gone, and the receiver would wake the *app's* watch — on the real
+        // clock — in the middle of this.
+        override fun withZone(zone: java.time.ZoneId): java.time.Clock = this
+        override fun instant(): Instant = Instant.ofEpochMilli(t0 + FIX_LAG_MS).plusSeconds(offsetS)
+    }
+
+    /**
+     * The clock and the phone move together: [metres] out, [after] minutes and [seconds] on.
+     *
+     * The fixes stay [FIX_LAG_MS] behind the clock, which is where the other tests keep theirs —
+     * far enough back that the cached-fix path never answers, so every look reads the mock that
+     * was just set, and well inside the ninety minutes a fix goes on speaking for.
+     */
+    private suspend fun walkTo(watcher: PlaceWatcher, metres: Double, after: Long, seconds: Long = 0) {
+        movable.offsetS += after * 60 + seconds
+        moveTo(south = metres, at = t0 + movable.offsetS * 1_000)
+        watcher.check()
+    }
+
     private suspend fun seed(
         id: String,
         presence: Presence,
         conditions: List<Condition> = emptyList(),
         recurrence: Recurrence = Recurrence.None,
         onCrossing: Boolean = false,
+        dwellMinutes: Int? = null,
     ): String {
         val now = app.clock.instant()
         app.repository.save(
             Reminder(
                 id = "watch-$id",
                 text = "Place test $id",
-                rules = listOf(TriggerRule(Trigger.Location(homeLat, homeLng, radius, presence, "Casa", onCrossing), conditions)),
+                rules = listOf(TriggerRule(Trigger.Location(homeLat, homeLng, radius, presence, "Casa", onCrossing, dwellMinutes), conditions)),
                 recurrence = recurrence,
                 status = Status.ACTIVE,
                 createdAt = now,
@@ -682,5 +768,10 @@ class PlaceWatchDeviceTest {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         context.getSystemService(AlarmManager::class.java).cancel(intent)
+    }
+
+    private companion object {
+        /** How far behind the clock the synthetic fixes run. See [walkTo]. */
+        const val FIX_LAG_MS = 10 * 60_000L
     }
 }

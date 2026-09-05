@@ -8,10 +8,12 @@
 
 package dev.rwilco.model
 
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -271,6 +273,15 @@ sealed interface Trigger {
      * [onCrossing] asks for the doorway back — "al llegar", "al salir" — and means exactly one
      * thing: a side nobody has seen yet does not count as the other side. The phone has to be
      * seen on the far side first, and only then does arriving ring.
+     *
+     * [dwellMinutes] asks the doorway to be *stayed at*: "al llegar a casa, y cuando lleve diez
+     * minutos allí". Crossing a line is the loudest thing a place can do and the least reliable
+     * — walking past a door, a trip to the bins, a fix that wobbles over the line and back are
+     * all crossings — so a rule may ask for the side to hold for a while before it counts. The
+     * rate is time spent on **the side the rule is about**: inside for "al llegar", outside for
+     * "al salir", where it is what tells going out from going out *for the evening*. Only a
+     * doorway can ask (see [dwell]): a side of a line is already a state, and a state asked to
+     * last is the same state.
      */
     @Serializable
     @SerialName("location")
@@ -282,6 +293,11 @@ sealed interface Trigger {
         @SerialName("transition") val presence: Presence,
         val label: String,
         val onCrossing: Boolean = false,
+        // Never written when it is not asked for, so no place already on a phone changes shape
+        // on disk over a field it does not use. The same reason [Condition.TimeWindow.date]
+        // carries this: the rate is the rare answer, and the bytes belong to the common one.
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
+        val dwellMinutes: Int? = null,
     ) : Trigger
 
     /**
@@ -330,6 +346,19 @@ val Presence.asTransition: Transition
 /** The other side: what "mientras no estoy" is to "mientras estoy". */
 val Presence.opposite: Presence
     get() = if (this == Presence.INSIDE) Presence.OUTSIDE else Presence.INSIDE
+
+/**
+ * How long this rule's own side has to hold before the doorway counts, or null for the doorway
+ * as it has always been: the line, and the instant it is crossed.
+ *
+ * **Only a doorway is asked.** [Trigger.Location.dwellMinutes] on a rule read as a *state* would
+ * be asking a state to last, which is the same state: "mientras esté en casa" is true the whole
+ * time somebody is at home, and the ring it is owed is the moment it becomes true. So the field
+ * is read through here and nowhere else, and a shape that somehow carries both is the state it
+ * says it is. The editor only offers it on a doorway for the same reason.
+ */
+val Trigger.Location.dwell: Duration?
+    get() = dwellMinutes?.takeIf { onCrossing && it > 0 }?.let { Duration.ofMinutes(it.toLong()) }
 
 enum class Period { DAY, WEEK }
 

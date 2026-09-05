@@ -190,10 +190,22 @@ class EditorTourTest {
                 // write — so the sheet's own shot above is already the crossing reading. The
                 // second shot is the other half of the switch: the place as a state.
                 text(s(R.string.place_side_arriving)).performScrollTo().assertIsDisplayed()
+                // The rate is offered under the doorway and only under it — it is the same
+                // question, one line later — and it opens closed: "al llegar" is what somebody
+                // reached for, and the stay is the answer to the noise that reading makes.
+                text(s(R.string.place_dwell_inside)).performScrollTo().performClick()
+                rule.waitUntilDisplayed(s(R.string.place_dwell_explain))
+                shot("sheet-place-dwell")
+                text(s(R.string.place_dwell_inside)).performScrollTo().performClick()
+                rule.waitUntilGone(s(R.string.place_dwell_explain))
                 text(s(R.string.place_side_leaving)).performScrollTo().performClick()
                 rule.waitUntilDisplayed(s(R.string.place_means_leaving))
+                // Under "al salir" the same switch counts the other side, and says so.
+                rule.waitUntilDisplayed(s(R.string.place_dwell_outside))
                 text(s(R.string.place_needs_crossing)).performScrollTo().performClick()
                 rule.waitUntilDisplayed(s(R.string.place_side_outside))
+                // And it is gone with the doorway: a side of a line already lasts.
+                rule.waitUntilGone(s(R.string.place_dwell_outside))
                 shot("sheet-place-presence")
                 // The radius, which lives under the map and so is off the bottom of both shots
                 // above: its own, because the slider's inset from the sheet margin is a thing to

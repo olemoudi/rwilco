@@ -84,7 +84,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
-import dev.rwilco.ui.format.placePhrase
+import dev.rwilco.ui.format.placePhraseOf
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.Deadline
 import dev.rwilco.ui.format.deadlineCardLabel
@@ -727,7 +727,7 @@ fun SnoozedPlaceRow(place: Trigger.Location, muted: Boolean = false) {
         Spacer(Modifier.width(Tokens.spacing.sm))
         Column(modifier = Modifier.weight(1f, fill = false)) {
             Text(
-                text = stringResource(placePhrase(place.presence, place.onCrossing), place.label),
+                text = placePhraseOf(rememberWords(), place),
                 style = MaterialTheme.typography.titleSmall,
                 color = if (muted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,

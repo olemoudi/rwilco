@@ -6,6 +6,7 @@ import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Condition
 import dev.rwilco.model.DiagNote
 import dev.rwilco.model.GeofenceIds
+import dev.rwilco.model.dwell
 import dev.rwilco.model.NextFire
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.Reminder
@@ -280,6 +281,10 @@ fun Diagnostics.report(): String = buildString {
                     (note.speedMps?.let { " v=${fixed(it, 1)}" } ?: "") +
                     (note.waitS?.let { " next=${it / 60}m" } ?: "") +
                     (note.charge?.let { " bat=$it" } ?: "") +
+                    // A count in progress, which is the one thing on this line that explains a
+                    // cadence the rest of the numbers cannot: "held=150/600" is why a phone
+                    // sitting still indoors is being looked at every two and a half minutes.
+                    (note.dwellS?.let { rate -> " held=${note.heldS ?: 0}/$rate" } ?: "") +
                     (if (note.isPoll) " ${note.tier.name.lowercase()}" else ""),
             )
         }
@@ -349,7 +354,9 @@ private fun Trigger.describe(): String = when (this) {
  * state could not be told to be about the same circle or three different ones.
  */
 private fun Trigger.Location.describeCircle(): String =
-    "#${GeofenceIds.tag(lat, lng, radiusM)} ${radiusM}m $presence${if (onCrossing) "/crossing" else ""} @${fixed(lat, 2)},${fixed(lng, 2)}"
+    "#${GeofenceIds.tag(lat, lng, radiusM)} ${radiusM}m $presence${if (onCrossing) "/crossing" else ""}" +
+        (dwell?.let { "/dwell${it.toMinutes()}m" } ?: "") +
+        " @${fixed(lat, 2)},${fixed(lng, 2)}"
 
 /**
  * One condition, in the report's own words. Internal rather than private because the firing

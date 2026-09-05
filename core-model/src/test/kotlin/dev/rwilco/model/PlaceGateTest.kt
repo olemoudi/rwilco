@@ -234,4 +234,14 @@ class PlaceGateTest {
             .copy(lastFiredAt = local(2026, 8, 27, 18, 21))
         assertTrue(set.watchedCircles(now, zone, defaultTime).any { it.ruleIndex == 0 })
     }
+    @Test
+    fun `a rate travels to the watch with the doorway that asked for it`() {
+        val rate = home.copy(onCrossing = true, dwellMinutes = 10)
+        val door = reminder(TriggerRule(rate)).watchedCircles(now, zone, defaultTime).single()
+        assertEquals(Duration.ofMinutes(10), door.place.dwell)
+
+        // And nowhere else. A side reading never reads one, so the circle behind it carries none.
+        val state = reminder(TriggerRule(home.copy(dwellMinutes = 10))).watchedCircles(now, zone, defaultTime).single()
+        assertNull(state.place.dwell)
+    }
 }

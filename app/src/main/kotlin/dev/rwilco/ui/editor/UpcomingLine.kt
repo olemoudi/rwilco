@@ -17,7 +17,7 @@ import dev.rwilco.ui.format.recurrenceLabel
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.Words
 import dev.rwilco.ui.format.dayWord
-import dev.rwilco.ui.format.placePhrase
+import dev.rwilco.ui.format.placePhraseOf
 import dev.rwilco.ui.format.rememberWords
 import java.time.LocalDate
 import java.time.ZoneId
@@ -88,5 +88,5 @@ private fun momentReading(words: Words, next: NextFire, today: LocalDate, zone: 
         )
     }
     // A place, as the first and only thing: "Suena al llegar a Casa".
-    is NextFire.WhenAt -> words.get(placePhrase(next.trigger.presence, next.trigger.onCrossing), next.trigger.label)
+    is NextFire.WhenAt -> placePhraseOf(words, next.trigger)
 }

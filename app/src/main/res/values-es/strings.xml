@@ -174,6 +174,8 @@
     <string name="trigger_weekends">fines de semana</string>
     <string name="trigger_arrive_at">al llegar a %1$s</string>
     <string name="trigger_leave_from">al salir de %1$s</string>
+    <string name="trigger_arrive_at_after">al llevar %2$s en %1$s</string>
+    <string name="trigger_leave_from_after">al llevar %2$s fuera de %1$s</string>
     <plurals name="trigger_times_a_day">
         <item quantity="one">%1$d vez al día</item>
         <item quantity="other">%1$d veces al día</item>
@@ -837,10 +839,20 @@
     <string name="watch_notice_title">Avisarme si mira demasiado</string>
     <string name="watch_notice_body">Una notificación discreta cuando el vigilante de lugares lea tu ubicación más de 18 veces en una hora. Desactivado por defecto. Su cadencia más rápida es una mirada cada dos minutos, así que 18 significa más de media hora acercándote andando a un lugar \u2014 o algo que va mal, que es para lo que está esto.</string>
     <string name="watch_channel_name">Vigilante de ubicación</string>
-    <string name="watch_channel_description">Avisa cuando el vigilante de lugares está leyendo tu ubicación más a menudo de lo que debería.</string>
+    <string name="watch_channel_description">Avisa cuando el vigilante de lugares está leyendo tu ubicación más a menudo de lo que debería, o cuando no ha podido medir un rato que un recordatorio estaba esperando.</string>
     <string name="watch_busy_title">Rwilco ha mirado mucho esta hora</string>
     <string name="watch_busy_text">%1$d lecturas de ubicación en la última hora</string>
     <string name="watch_busy_body">%1$d lecturas de ubicación en la última hora, que ocupan más de media a la cadencia más rápida que tiene el vigilante. Una caminata muy larga hasta un lugar puede lograrlo; cualquier otra cosa no debería. Toca para ver con qué estaba decidiendo.</string>
+    <string name="watch_said_stayed">Llevabas %1$d min en %2$s</string>
+    <string name="watch_said_stayed_somewhere">Llevabas %1$d min en un sitio que vigila</string>
+    <string name="watch_said_unmeasured">Dejó de medir los %1$d min en %2$s</string>
+    <string name="watch_said_unmeasured_somewhere">Dejó de medir los %1$d min en un sitio que vigila</string>
+    <string name="watch_why_too_few_looks">no pudo mirar lo bastante a menudo</string>
+    <string name="watch_why_low_battery">batería al %1$d%%</string>
+    <string name="watch_counting">llevas %1$d de %2$d min</string>
+    <string name="watch_unmeasured_title">Rwilco no pudo medir tu rato en %1$s</string>
+    <string name="watch_unmeasured_body">Un recordatorio esperaba %2$d minutos en %1$s antes de sonar, y no se pudo mirar dónde estabas lo bastante a menudo para medirlos. No ha sonado nada. Lo volverá a intentar la próxima vez que llegues.</string>
+    <string name="watch_unmeasured_body_battery">Un recordatorio esperaba %2$d minutos en %1$s antes de sonar, y no se pudo mirar dónde estabas lo bastante a menudo para medirlos: la batería estaba al %3$d%%, y por debajo de la mitad Rwilco mira cada vez menos. No ha sonado nada. Lo volverá a intentar la próxima vez que llegues.</string>
     <string-array name="whats_new_0_8_0">
         <item>El vigilante de lugares gasta mucha menos batería. Ahora sabe a qué distancia está un lugar —a 300 km no se puede llegar en menos de dos horas y media, así que deja de preguntar— y le pregunta al sensor de movimiento del propio teléfono si algo se ha movido, que es gratis, y se salta la lectura entera cuando no.</item>
         <item>Estar dentro de un lugar con una regla de «al irme de aquí» era lo más caro que hacía la app. Ahora parte de media hora y sólo acelera según cruzas el lugar de verdad — y en el momento en que sales, el sensor de movimiento adelanta la siguiente mirada.</item>
@@ -855,6 +867,8 @@
     <string name="place_while_outside">mientras no estoy</string>
     <string name="place_on_arrival">al llegar</string>
     <string name="place_on_leaving">al salir</string>
+    <string name="place_on_arrival_after">al llevar %1$s allí</string>
+    <string name="place_on_leaving_after">al llevar %1$s fuera</string>
     <string name="place_side_inside">Mientras estoy</string>
     <string name="place_side_outside">Mientras no estoy</string>
     <string name="place_side_arriving">Al llegar</string>
@@ -864,6 +878,14 @@
     <string name="place_means_outside">Basta con que no estés allí: si ya estás fuera cuando toque todo lo demás, suena.</string>
     <string name="place_means_arriving">Tiene que verte llegar. Si ya estás allí, espera a que salgas y vuelvas.</string>
     <string name="place_means_leaving">Tiene que verte salir. Si ya estás fuera, espera a que entres y vuelvas a salir.</string>
+    <string name="place_dwell_inside">Y quedarme allí un rato</string>
+    <string name="place_dwell_outside">Y seguir fuera un rato</string>
+    <string name="place_dwell_hint_inside">No suena al cruzar la línea, sino cuando lleves ese rato allí.</string>
+    <string name="place_dwell_hint_outside">No suena al cruzar la línea, sino cuando lleves ese rato fuera.</string>
+    <string name="place_dwell_label">Cuánto rato allí</string>
+    <string name="place_dwell_label_outside">Cuánto rato fuera</string>
+    <string name="place_dwell_out_of_range">Entre %1$d y %2$d minutos.</string>
+    <string name="place_dwell_explain">El móvil mira unas cuantas veces a lo largo de ese rato. Salir un momento no lo rompe; irse del todo sí, y entonces espera a que vuelvas a llegar.</string>
     <string name="condition_kind_place">Lugar</string>
     <string name="condition_place_hint">Sólo cuenta cuando el teléfono está allí — o cuando no lo está. Elige entre los lugares que guardas en Ajustes.</string>
     <string name="condition_place_none">Aún no hay lugares guardados por su nombre. Crea uno aquí; queda en Ajustes → Lugares.</string>
@@ -1223,6 +1245,10 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_85_0">
+        <item>Un lugar puesto «al llegar» o «al salir» puede pedir además un rato: «al llegar a casa, y cuando lleve 10 minutos allí». Cruzar una línea es lo más ruidoso que hace un sitio y lo menos fiable — pasar por delante de la puerta, bajar a la basura — y esto es la respuesta a eso. En «al salir» cuenta el otro lado, que es lo que distingue salir un momento de haberse ido.</item>
+        <item>Una medición o dos del lado que no toca se perdonan; irse de verdad no, y entonces espera a que vuelvas a llegar. Cuesta cuatro posiciones de wifi tras la llegada, nunca el GPS, y las vallas del propio móvil miden ese mismo rato gratis. Con la batería tan baja que Rwilco apenas puede mirar, lo dice en vez de callarse.</item>
+    </string-array>
     <string-array name="whats_new_0_84_0">
         <item>El buscador ya no contesta a un nombre con una casualidad. Escribir «ramon» sacaba un recordatorio sobre mesas de ping pong, porque sus letras aparecen en ese orden en algún punto de la frase. Las letras en orden siguen encontrando lo suyo — «cmp» sigue encontrando «comprar pan» — pero solo cuando arrancan donde empieza una palabra.</item>
     </string-array>

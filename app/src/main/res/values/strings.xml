@@ -176,6 +176,8 @@
     <string name="trigger_weekends">weekends</string>
     <string name="trigger_arrive_at">when arriving at %1$s</string>
     <string name="trigger_leave_from">when leaving %1$s</string>
+    <string name="trigger_arrive_at_after">when I have been at %1$s for %2$s</string>
+    <string name="trigger_leave_from_after">when I have been away from %1$s for %2$s</string>
     <plurals name="trigger_times_a_day">
         <item quantity="one">%1$d time a day</item>
         <item quantity="other">%1$d times a day</item>
@@ -852,10 +854,20 @@
     <string name="watch_notice_title">Warn me if it looks too often</string>
     <string name="watch_notice_body">A quiet notification when the place watch reads your location more than 18 times in an hour. Off by default. Its fastest cadence is one look every two minutes, so 18 means over half the hour spent walking up to a place \u2014 or something going wrong, which is what this is for.</string>
     <string name="watch_channel_name">Location watch</string>
-    <string name="watch_channel_description">Says so when the place watch is reading your location more often than it should.</string>
+    <string name="watch_channel_description">Says so when the place watch is reading your location more often than it should, or when it could not time a stay a reminder was waiting for.</string>
     <string name="watch_busy_title">Rwilco has looked a lot this hour</string>
     <string name="watch_busy_text">%1$d location reads in the last hour</string>
     <string name="watch_busy_body">%1$d location reads in the last hour, which takes over half of it at the fastest cadence the watch has. A very long walk up to a place can do it; anything else should not. Tap to see what it was deciding from.</string>
+    <string name="watch_said_stayed">You had been %1$d min at %2$s</string>
+    <string name="watch_said_stayed_somewhere">You had been %1$d min at a place it watches</string>
+    <string name="watch_said_unmeasured">It gave up timing %1$d min at %2$s</string>
+    <string name="watch_said_unmeasured_somewhere">It gave up timing %1$d min at a place it watches</string>
+    <string name="watch_why_too_few_looks">it could not look often enough</string>
+    <string name="watch_why_low_battery">battery at %1$d%%</string>
+    <string name="watch_counting">%1$d of %2$d min so far</string>
+    <string name="watch_unmeasured_title">Rwilco could not time your stay at %1$s</string>
+    <string name="watch_unmeasured_body">A reminder was waiting for %2$d minutes at %1$s before ringing, and the phone could not be looked at often enough to measure them. Nothing rang. It will try again next time you arrive.</string>
+    <string name="watch_unmeasured_body_battery">A reminder was waiting for %2$d minutes at %1$s before ringing, and the phone could not be looked at often enough to measure them: the battery was at %3$d%%, and below half Rwilco looks less and less often. Nothing rang. It will try again next time you arrive.</string>
     <string-array name="whats_new_0_8_0">
         <item>The place watch now spends a great deal less battery. It knows how far away a place is — nothing 300 km off can be arrived at for two and a half hours, so it stops asking — and it asks the phone\'s own motion sensor whether anything moved at all, which is free, and skips the reading entirely when nothing did.</item>
         <item>Sitting inside a place you have a «when I leave» rule for used to be the most expensive thing the app did. It now starts at half an hour and speeds up only as you actually cross the place — and the moment you really do walk out, the motion sensor pulls the next look forward.</item>
@@ -870,6 +882,8 @@
     <string name="place_while_outside">while I\'m not there</string>
     <string name="place_on_arrival">when I get there</string>
     <string name="place_on_leaving">when I leave</string>
+    <string name="place_on_arrival_after">once I have been there %1$s</string>
+    <string name="place_on_leaving_after">once I have been away %1$s</string>
     <string name="place_side_inside">While I\'m there</string>
     <string name="place_side_outside">While I\'m not there</string>
     <string name="place_side_arriving">When I get there</string>
@@ -879,6 +893,14 @@
     <string name="place_means_outside">Being away is enough: if you are already away when everything else is due, it rings.</string>
     <string name="place_means_arriving">It has to see you arrive. If you are already there, it waits until you leave and come back.</string>
     <string name="place_means_leaving">It has to see you leave. If you are already away, it waits until you go there and leave again.</string>
+    <string name="place_dwell_inside">And stay there a while</string>
+    <string name="place_dwell_outside">And stay away a while</string>
+    <string name="place_dwell_hint_inside">It does not ring at the line, but once you have been there that long.</string>
+    <string name="place_dwell_hint_outside">It does not ring at the line, but once you have been away that long.</string>
+    <string name="place_dwell_label">How long there</string>
+    <string name="place_dwell_label_outside">How long away</string>
+    <string name="place_dwell_out_of_range">Between %1$d and %2$d minutes.</string>
+    <string name="place_dwell_explain">The phone checks a few times over that stretch. Stepping out for a moment is fine; leaving for good is not, and then it waits for you to arrive again.</string>
     <string name="condition_kind_place">Place</string>
     <string name="condition_place_hint">Only counts when the phone is there — or when it is not. Pick from the places you keep in Settings.</string>
     <string name="condition_place_none">No place kept by name yet. Make one here; it is kept in Settings → Places.</string>
@@ -1238,6 +1260,10 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_85_0">
+        <item>A place you asked about "when I get there" or "when I leave" can now ask for a while as well: "when I get home, and once I have been there 10 minutes". Crossing a line is the loudest thing a place can do and the least reliable — walking past a door, a trip to the bins — and this is the answer to that. Under "when I leave" it counts the other side, which is what tells going out from going out for the evening.</item>
+        <item>A position or two on the wrong side is forgiven; leaving for good is not, and then it waits for you to arrive again. It costs four wifi positions after an arrival, never the satellites, and the phone\'s own geofences time the same wait for free. With the battery low enough that Rwilco can barely look, it says so instead of going quiet.</item>
+    </string-array>
     <string-array name="whats_new_0_84_0">
         <item>The search no longer answers a name with a coincidence. Typing "ramon" used to bring up a reminder about ping pong tables, because its letters happen to appear in that order somewhere in the sentence. Letters in order still find what they are for — "cmp" still finds "comprar pan" — but only when they start where a word does.</item>
     </string-array>

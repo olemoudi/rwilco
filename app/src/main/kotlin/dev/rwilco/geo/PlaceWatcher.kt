@@ -36,6 +36,8 @@ import dev.rwilco.model.blindRetry
 import dev.rwilco.model.insideAfter
 import dev.rwilco.model.settlesFirstSideOf
 import dev.rwilco.model.busyNotice
+import dev.rwilco.model.counted
+import dev.rwilco.model.counting
 import dev.rwilco.model.crossingIsNews
 import dev.rwilco.model.pollsSince
 import dev.rwilco.model.remembering
@@ -236,7 +238,7 @@ class PlaceWatcher(
             // Nothing worth a fix now is not the same as nothing to watch: a set whose hours
             // open at five is worth waking for at five and worth nothing until then.
             val gate = watch.opensAt.takeIf { context.hasBackgroundLocation() }
-            store.write(current.copy(inside = current.inside.filterKeys { it in watch.remembered }, nextCheckAt = gate))
+            store.write(current.copy(inside = current.inside.filterKeys { it in watch.remembered }, nextCheckAt = gate, dwelling = emptyMap()))
             if (gate == null) cancel() else scheduleAt(gate)
             return@withLock
         }
@@ -252,7 +254,11 @@ class PlaceWatcher(
         // forward in this process (which the store will not have caught up with yet).
         val pending = listOfNotNull(current.nextCheckAt, plannedAt).filter { it > now }.minOrNull()
         val at = if (pending != null && ids.all { it in judged }) pending else now + SOON
-        store.write(current.copy(inside = judged, nextCheckAt = at))
+        // A count belongs to a circle that is being asked for a position. A circle that has gone
+        // — edited, dealt with, its rate changed, and so a new id ([GeofenceIds]) — takes its
+        // count with it, and so does one whose gate has shut: a listener must not ring, and a
+        // count is a ring waiting to happen.
+        store.write(current.copy(inside = judged, nextCheckAt = at, dwelling = current.dwelling.filterKeys { it in ids }))
         scheduleAt(at)
     }
 
@@ -349,16 +355,82 @@ class PlaceWatcher(
             log.note(WatchNote(at = now, kind = NoteKind.ECHO, place = label, lat = live?.lat, lng = live?.lng, radiusM = live?.radiusM, inside = state.inside[placeId], reported = arrived))
             return@withLock Crossing.NOTHING
         }
-        store.write(state.remembering(placeId, transition))
+        // **A rate turns the crossing into the start of a count.** "Al llegar a casa, y cuando
+        // lleve diez minutos allí" is not rung by the doorstep, so the fence's word — which is
+        // the prompt eye and usually the first one here — opens the count instead of ringing,
+        // and the count is what rings (`stepDwell`). Without this the side would be written down
+        // and the next look would find no crossing left to report, so a count that should have
+        // started at the door would never start at all.
+        val awaited = live != null && live.transition == transition
+        val rate = live?.dwell?.takeIf { awaited && live.crossing != Crossing.NOTHING }
+        val remembered = state.remembering(placeId, transition)
+        store.write(if (rate != null) remembered.counting(placeId, now) else remembered)
         // Written down either way; acted on only for the crossing the rule waits for, and only
         // while the circle is worth watching at all — not resting, not outside its hours. What
         // acting on it means is the circle's own to say: a place under "todos" that has already
         // been ticked off is waiting for the crossing that takes that tick back. Decided before
         // the line is written, because the line is what says whether anything came of it: a
         // crossing that fell on the floor and one that rang the phone read the same otherwise.
-        val crossing = if (live != null && live.transition == transition) live.crossing else Crossing.NOTHING
-        log.note(WatchNote(at = now, kind = NoteKind.FENCE, place = label, lat = live?.lat, lng = live?.lng, radiusM = live?.radiusM, inside = arrived, reported = arrived, acted = crossing != Crossing.NOTHING))
+        val crossing = if (awaited && rate == null) live!!.crossing else Crossing.NOTHING
+        log.note(
+            WatchNote(
+                at = now, kind = NoteKind.FENCE, place = label, lat = live?.lat, lng = live?.lng, radiusM = live?.radiusM,
+                inside = arrived, reported = arrived, acted = crossing != Crossing.NOTHING,
+                // On a crossing that started one, this is what the line is really about.
+                dwellS = rate?.seconds, heldS = rate?.let { 0L },
+            ),
+        )
         crossing
+    }
+
+    /**
+     * The system says the wait after an arrival is over: a `GEOFENCE_TRANSITION_DWELL`, which
+     * only a fence behind a rate ever asks for.
+     *
+     * This is the free half of counting a rate. Play Services times the same wait out of signals
+     * this app never sees and at no cost here, and when it answers first the watch's own four
+     * positions are never spent. It is *stricter* than the count below it — the system resets its
+     * own timer on any leaving, where the watch tolerates a third of the rate — so a loitering it
+     * reports is a stay by anybody's reckoning.
+     *
+     * **A count still running is what it needs to find.** Not [crossingIsNews], which is five
+     * minutes wide: with a rate of an hour the two eyes can finish a quarter of an hour apart and
+     * the second one would ring a second time. Whichever finishes the count clears it, so the
+     * other arrives at nothing. That also leaves the watch's own count as the one authority on
+     * *giving up*: it measures against the circle somebody drew, with this app's hysteresis, and
+     * a loitering that arrives after it has already decided the phone left is about a different
+     * line.
+     */
+    suspend fun acceptDwell(placeId: String): Crossing = lock.withLock {
+        val state = store.read()
+        val now = clock.instant()
+        val lively = runCatching { places().firstOrNull { it.id == placeId } }
+        val failed = lively.exceptionOrNull()
+        if (failed != null) {
+            Log.e(TAG, "could not judge a loitering at $placeId", failed)
+            Diag.note("geo", "loitering unjudged (${failed::class.simpleName}); left for the next look")
+            return@withLock Crossing.NOTHING
+        }
+        val live = lively.getOrNull()
+        val rate = live?.dwell
+        val running = state.dwelling[placeId]
+        if (live == null || rate == null || running == null) {
+            Log.i(TAG, "the system timed $placeId, but no count is running")
+            log.note(WatchNote(at = now, kind = NoteKind.ECHO, place = live?.label, lat = live?.lat, lng = live?.lng, radiusM = live?.radiusM, inside = state.inside[placeId], reported = true))
+            return@withLock Crossing.NOTHING
+        }
+        // The side goes down too: a loitering is an arrival the app may not have seen, and the
+        // memory is what the next crossing is judged against.
+        store.write(state.remembering(placeId, Transition.ENTER).counted(placeId))
+        Log.i(TAG, "the system says ${rate.toMinutes()} min at $placeId")
+        log.note(
+            WatchNote(
+                at = now, kind = NoteKind.LOITER, place = live.label, lat = live.lat, lng = live.lng, radiusM = live.radiusM,
+                inside = true, reported = true, acted = live.crossing != Crossing.NOTHING,
+                dwellS = rate.seconds, heldS = rate.seconds,
+            ),
+        )
+        live.crossing
     }
 
     /**
@@ -413,12 +485,13 @@ class PlaceWatcher(
             // subtraction is one nobody made.
             val current = store.read()
             val forgotten = current.inside.filterKeys { it in watch.remembered }
+            // And a count with nothing left looking at it is a count that cannot finish.
             if (gate == null) {
-                store.write(current.copy(inside = forgotten))
+                store.write(current.copy(inside = forgotten, dwelling = emptyMap()))
                 cancel()
             } else {
                 Log.i(TAG, "nothing worth a fix until the hours open")
-                store.write(current.copy(inside = forgotten, nextCheckAt = gate, tier = FixTier.BALANCED))
+                store.write(current.copy(inside = forgotten, nextCheckAt = gate, tier = FixTier.BALANCED, dwelling = emptyMap()))
                 scheduleAt(gate)
             }
             return
@@ -501,6 +574,23 @@ class PlaceWatcher(
         // seven seconds on a fix — is one no later look can report again. So they go out
         // whatever happens to the coroutine, and one that fails does not take the rest with it.
         withContext(NonCancellable) {
+            // **A rate nothing could measure is worth a sentence.** The battery has the last word
+            // on how often this watch looks ([batteryFloor]), and under it a ten-minute stay
+            // simply cannot be timed: the looks arrive an hour apart, the vouched minutes never
+            // add up, and the count gives up. Nothing rang and nothing was wrong — which is
+            // exactly the failure nobody can see, so it is said out loud once, here.
+            for (place in step.unmeasured) {
+                Log.w(TAG, "gave up timing ${place.dwell?.toMinutes()} min at ${place.label}")
+                log.note(
+                    WatchNote(
+                        at = now, kind = NoteKind.UNMEASURED, place = place.label,
+                        lat = place.lat, lng = place.lng, radiusM = place.radiusM,
+                        charge = charge?.let { (it * 100).roundToInt() },
+                        dwellS = place.dwell?.seconds,
+                    ),
+                )
+                place.dwell?.let { runCatching { WatchNotices.notifyUnmeasured(context, place.label, it, charge) } }
+            }
             for (event in step.events) {
                 val reminderId = GeofenceIds.reminderIdOf(event.placeId)
                 val ruleIndex = GeofenceIds.triggerIndexOf(event.placeId)
@@ -551,6 +641,11 @@ class PlaceWatcher(
                 charge = charge?.let { (it * 100).roundToInt() },
                 accuracyM = state.lastFix?.accuracyM?.roundToInt(),
                 tier = plan?.tier ?: FixTier.BALANCED,
+                // A count in progress on the circle that set the cadence — which, while one is
+                // running, is nearly always the circle counting: it asks for the shortest wait
+                // there is. Everything else on this line is about `plan.nearest` too.
+                dwellS = plan?.nearest?.dwell?.seconds,
+                heldS = plan?.nearest?.let { state.dwelling[it.id]?.heldMs?.div(1_000) },
             ),
         )
         if (!written.busyNotice(now)) return

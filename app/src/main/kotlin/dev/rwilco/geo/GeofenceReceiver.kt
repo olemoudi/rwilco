@@ -36,6 +36,12 @@ class GeofenceReceiver : BroadcastReceiver() {
             if (event.errorCode == GeofenceStatusCodes.GEOFENCE_NOT_AVAILABLE) RearmWorker.runNow(context)
             return
         }
+        // **A loitering is not an arrival.** It used to be folded into one, harmlessly, because
+        // no fence asked for the transition; now the fences behind a rate do, and it means the
+        // opposite of an arrival — not "the line was crossed" but "the wait after it is over".
+        // Still an ENTER as far as which side of the line the phone is on, which is all the
+        // memory and the log want from it.
+        val loitered = event.geofenceTransition == Geofence.GEOFENCE_TRANSITION_DWELL
         val transition = when (event.geofenceTransition) {
             Geofence.GEOFENCE_TRANSITION_ENTER, Geofence.GEOFENCE_TRANSITION_DWELL -> Transition.ENTER
             Geofence.GEOFENCE_TRANSITION_EXIT -> Transition.EXIT
@@ -69,7 +75,10 @@ class GeofenceReceiver : BroadcastReceiver() {
                                 // takes the tick back.
                                 val reminderId = GeofenceIds.reminderIdOf(placeId)
                                 val ruleIndex = GeofenceIds.triggerIndexOf(placeId)
-                                when (app.placeWatcher.accept(placeId, transition)) {
+                                val crossing =
+                                    if (loitered) app.placeWatcher.acceptDwell(placeId)
+                                    else app.placeWatcher.accept(placeId, transition)
+                                when (crossing) {
                                     Crossing.RINGS ->
                                         if (GeofenceIds.isSnooze(placeId)) app.firing.fire(reminderId, viaSnoozePlace = true)
                                         else app.firing.fire(reminderId, ruleIndex = ruleIndex)

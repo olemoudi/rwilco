@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -27,6 +28,7 @@ import dev.rwilco.model.TriggerRule
 import dev.rwilco.ui.editor.ReminderSentence
 import dev.rwilco.ui.editor.sentenceParts
 import dev.rwilco.ui.theme.RwilcoTheme
+import org.junit.Assert.assertTrue
 import org.junit.BeforeClass
 import org.junit.Rule
 import org.junit.Test
@@ -64,6 +66,7 @@ class SentenceTest {
 
     private val home = Trigger.Location(40.4169, -3.7035, 150, Presence.OUTSIDE, "Casa")
     private val office = Trigger.Location(40.42, -3.70, 200, Presence.INSIDE, "la oficina", onCrossing = true)
+    private val gym = Trigger.Location(40.43, -3.69, 200, Presence.INSIDE, "el gimnasio", onCrossing = true, dwellMinutes = 10)
     private val evening = Trigger.Interval(LocalTime.of(18, 30), LocalTime.of(20, 0), setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY))
     private val nine = Trigger.AtDateTime(LocalDateTime.of(2026, 8, 29, 9, 0))
     private val everyDayAtEight = Trigger.AtTime(LocalTime.of(20, 30), DayOfWeek.entries.toSet())
@@ -76,6 +79,9 @@ class SentenceTest {
             // A place read as a state, which is the one that used to read backwards.
             Triple("Coger el paraguas", listOf(TriggerRule(home)), Recurrence.None),
             Triple("Fichar la salida", listOf(TriggerRule(office)), Recurrence.None),
+            // A doorway asked to be stayed at: the crossing is no longer the moment, so the
+            // sentence must not go on calling it one.
+            Triple("Ducharme", listOf(TriggerRule(gym)), Recurrence.None),
             Triple("Regar las plantas", listOf(TriggerRule(evening)), Recurrence.None),
             Triple("Llamar al dentista", listOf(TriggerRule(nine)), Recurrence.None),
             Triple("Pastillas", listOf(TriggerRule(everyDayAtEight)), Recurrence.After(8, RecurrenceUnit.HOURS)),
@@ -125,6 +131,13 @@ class SentenceTest {
             }
         }
         rule.waitForIdle()
+        // The one line here worth an assertion as well as an eye: a rate reads as the stay and
+        // not as the door, and getting that wrong is a sentence that promises the wrong thing.
+        assertTrue(
+            "the rate should read as the stay",
+            rule.onAllNodesWithText("al llevar 10 min en el gimnasio", substring = true, ignoreCase = true)
+                .fetchSemanticsNodes().isNotEmpty(),
+        )
         val bitmap: Bitmap = rule.onRoot().captureToImage().asAndroidBitmap()
         val dir = File(context.filesDir, "screenshots").apply { mkdirs() }
         File(dir, "sentences.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }

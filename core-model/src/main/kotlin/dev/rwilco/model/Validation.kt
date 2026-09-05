@@ -20,6 +20,19 @@ const val MIN_COUNTDOWN_MINUTES = 1
 const val MAX_COUNTDOWN_MINUTES = 7 * 24 * 60
 const val MIN_RANDOM_TIMES = 1
 const val MAX_RANDOM_TIMES = 5
+/**
+ * How long a doorway may be asked to be stayed at ([Trigger.Location.dwell]).
+ *
+ * Ninety at the top, and it is [PlaceWatchPolicy.DWELL_CEILING] that says so rather than taste:
+ * a count runs for its rate plus a third of it in tolerance, and ninety plus thirty is the two
+ * hours the watch gives up at. Anything longer would be a rate the app could not finish
+ * measuring even on a good battery — a reminder that never rings, offered on screen as though it
+ * would. Five at the bottom, because under that the count is arguing with the fixes' own doubt:
+ * four looks at [PlaceWatchPolicy.MIN_WAIT] is eight minutes whatever the rate says, so a rate
+ * below that is answered late by construction and would only read as broken.
+ */
+const val MIN_DWELL_MINUTES = 5
+const val MAX_DWELL_MINUTES = 90
 
 /**
  * What blocks saving — which is only the words, and a trigger that is nonsense in itself.
@@ -56,6 +69,7 @@ enum class TriggerProblem {
     WINDOW_EMPTY,
     EVERY_OUT_OF_RANGE,
     ENDS_BEFORE_START,
+    DWELL_OUT_OF_RANGE,
 }
 
 /**
@@ -213,6 +227,11 @@ fun problemOf(trigger: Trigger): TriggerProblem? = when (trigger) {
         trigger.lat !in -90.0..90.0 || trigger.lng !in -180.0..180.0 -> TriggerProblem.COORDINATES_INVALID
         trigger.radiusM !in MIN_RADIUS_M..MAX_RADIUS_M -> TriggerProblem.RADIUS_OUT_OF_RANGE
         trigger.label.length > MAX_LABEL_LENGTH -> TriggerProblem.LABEL_TOO_LONG
+        // Only what the rule will actually read: a rate on a state is not a rate at all
+        // ([Trigger.Location.dwell]), and refusing to save over a field nothing looks at would
+        // block a shape that means exactly what it says.
+        trigger.dwellMinutes != null && trigger.onCrossing &&
+            trigger.dwellMinutes !in MIN_DWELL_MINUTES..MAX_DWELL_MINUTES -> TriggerProblem.DWELL_OUT_OF_RANGE
         else -> null
     }
     is Trigger.Random -> when {

@@ -62,6 +62,8 @@ import dev.rwilco.R
 import dev.rwilco.model.MAX_LABEL_LENGTH
 import dev.rwilco.model.MAX_RADIUS_M
 import dev.rwilco.model.MIN_RADIUS_M
+import dev.rwilco.model.MAX_DWELL_MINUTES
+import dev.rwilco.model.MIN_DWELL_MINUTES
 import dev.rwilco.model.Presence
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.Trigger
@@ -72,6 +74,7 @@ import dev.rwilco.ui.settings.openSettingsPage
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.SegmentedChoice
 import dev.rwilco.ui.components.SheetScaffold
+import dev.rwilco.ui.components.Stepper
 import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
@@ -114,6 +117,11 @@ fun LocationSheet(
     // The editor's opening answer, not the model's: [Trigger.Location.onCrossing] stays false on
     // disk, where it is what every place trigger written before the field existed decodes to.
     var onCrossing by rememberSaveable { mutableStateOf(initial?.onCrossing ?: true) }
+    // The rate, and whether it is being asked for at all. Two pieces of state and not one
+    // nullable, so turning the switch off and on again offers back the number that was typed
+    // rather than the default — the same shape "Guardar como lugar" has.
+    var dwellOn by rememberSaveable { mutableStateOf(initial?.dwellMinutes != null && initial.onCrossing) }
+    var dwellMinutes by rememberSaveable { mutableIntStateOf(initial?.dwellMinutes ?: DEFAULT_DWELL_MINUTES) }
     var radius by rememberSaveable { mutableIntStateOf(initial?.radiusM ?: 200) }
     var lat by rememberSaveable { mutableStateOf(initial?.lat) }
     var lng by rememberSaveable { mutableStateOf(initial?.lng) }
@@ -236,8 +244,11 @@ fun LocationSheet(
     }
 
     val known = lat != null && lng != null
+    // What the rule will actually carry: a rate belongs to a doorway, so the side reading writes
+    // none however the switch was left ([Trigger.Location.dwell] reads it the same way).
+    val rate = dwellMinutes.takeIf { onCrossing && dwellOn }
     // What the sheet opened with, so back and the scrim can tell work from nothing.
-    val untouched = remember { listOf(lat, lng, radius, label, presence, onCrossing) }
+    val untouched = remember { listOf(lat, lng, radius, label, presence, onCrossing, rate) }
     // A share of the window, never less than the old fixed height: on a tall phone 260dp was a
     // letterbox the circle had to be aimed through.
     val sizes = Tokens.sizes
@@ -275,11 +286,11 @@ fun LocationSheet(
         onDismiss = onDismiss,
         onConfirm = {
             if (keep && keepOffered) onKeepPlace?.invoke(SavedPlace(label.trim(), lat!!, lng!!, radius))
-            onConfirm(Trigger.Location(lat!!, lng!!, radius, Presence.valueOf(presence), label.trim(), onCrossing))
+            onConfirm(Trigger.Location(lat!!, lng!!, radius, Presence.valueOf(presence), label.trim(), onCrossing, rate))
         },
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
-        confirmEnabled = known && label.isNotBlank(),
-        dirty = listOf(lat, lng, radius, label, presence, onCrossing) != untouched,
+        confirmEnabled = known && label.isNotBlank() && (rate == null || rate in MIN_DWELL_MINUTES..MAX_DWELL_MINUTES),
+        dirty = listOf(lat, lng, radius, label, presence, onCrossing, rate) != untouched,
     ) {
         // The places kept by name, one tap each: name, pin and radius at once. The one that
         // matches the pin is inverted, so a rule built from "Casa" says so.
@@ -340,6 +351,19 @@ fun LocationSheet(
                 onPresence = { presence = it.name },
                 onCrossingChange = { onCrossing = it },
             )
+            // Only under a doorway, because only a doorway can be asked to be stayed at: a side
+            // of a line already holds for as long as somebody is on it, and asking a state to
+            // last is the same state. The switch simply disappears with the reading, which is
+            // the same thing the four segment labels above it do.
+            if (onCrossing) {
+                DwellRow(
+                    inside = Presence.valueOf(presence) == Presence.INSIDE,
+                    on = dwellOn,
+                    minutes = dwellMinutes,
+                    onChange = { dwellOn = it },
+                    onMinutes = { dwellMinutes = it },
+                )
+            }
         }
         // Typing an address is the way in for a place you are not standing in; the map and the
         // crosshair are for the two you are.
@@ -572,6 +596,106 @@ private fun KeepPlaceRow(keep: Boolean, onChange: (Boolean) -> Unit) {
     }
 }
 
+/**
+ * "Y quedarme allí un rato": the doorway asked to be *stayed at*.
+ *
+ * Crossing a line is the loudest thing a place can do and the least reliable — walking past a
+ * door, a trip to the bins and a position that wobbles over the line and back are all crossings,
+ * and all of them ring. This is the answer to that, and it is offered where the mistake is made
+ * rather than as a condition further down: it is the same question as "al llegar", one line
+ * later. Under "al salir" it counts the other side, which is what tells going out from going out
+ * *for the evening*.
+ *
+ * Shaped like [KeepPlaceRow] — the row owns the gesture and the switch is along for the ride —
+ * and, once it is on, like [CountdownSheet]: chips for the long way round, a stepper for the
+ * minute nobody put on a chip. One stepper and no hours, because ninety minutes is the top
+ * ([MAX_DWELL_MINUTES]) and two controls for a number under a hundred is one too many.
+ */
+@Composable
+private fun DwellRow(
+    inside: Boolean,
+    on: Boolean,
+    minutes: Int,
+    onChange: (Boolean) -> Unit,
+    onMinutes: (Int) -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val haptics = Tokens.haptics
+    Column(verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .toggleable(
+                    value = on,
+                    role = Role.Switch,
+                    onValueChange = { checked ->
+                        haptics.perform(if (checked) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff)
+                        onChange(checked)
+                    },
+                )
+                .heightIn(min = Tokens.sizes.touch),
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(if (inside) R.string.place_dwell_inside else R.string.place_dwell_outside),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Text(
+                    text = stringResource(if (inside) R.string.place_dwell_hint_inside else R.string.place_dwell_hint_outside),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = scheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.width(Tokens.spacing.md))
+            Switch(
+                checked = on,
+                onCheckedChange = null,
+                colors = SwitchDefaults.colors(checkedThumbColor = scheme.surface, checkedTrackColor = scheme.onSurface),
+            )
+        }
+        if (!on) return@Column
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+        ) {
+            for (preset in PRESET_DWELL_MINUTES) {
+                val label = if (preset < 60) stringResource(R.string.countdown_minutes, preset) else stringResource(R.string.countdown_hours, preset / 60)
+                PresetChip(label = label, selected = minutes == preset, onClick = { onMinutes(preset) })
+            }
+        }
+        Column {
+            Text(
+                text = stringResource(if (inside) R.string.place_dwell_label else R.string.place_dwell_label_outside),
+                style = MaterialTheme.typography.labelMedium,
+                color = scheme.onSurfaceVariant,
+            )
+            Stepper(
+                valueLabel = stringResource(R.string.countdown_minutes, minutes),
+                onDecrement = { onMinutes((minutes - 1).coerceAtLeast(MIN_DWELL_MINUTES)) },
+                onIncrement = { onMinutes((minutes + 1).coerceAtMost(MAX_DWELL_MINUTES)) },
+                decrementEnabled = minutes > MIN_DWELL_MINUTES,
+                incrementEnabled = minutes < MAX_DWELL_MINUTES,
+            )
+        }
+        // The stepper clamps, so the only way to be here is a rate written by something else —
+        // a restored vault, a build from the future. Saying so beats a confirm button that has
+        // quietly gone grey with nothing on screen to explain it.
+        if (minutes !in MIN_DWELL_MINUTES..MAX_DWELL_MINUTES) {
+            Text(
+                text = stringResource(R.string.place_dwell_out_of_range, MIN_DWELL_MINUTES, MAX_DWELL_MINUTES),
+                style = MaterialTheme.typography.labelMedium,
+                color = scheme.error,
+            )
+        }
+        Text(
+            text = stringResource(R.string.place_dwell_explain),
+            style = MaterialTheme.typography.bodySmall,
+            color = scheme.onSurfaceVariant,
+        )
+    }
+}
+
 /** One geocoder hit: what it is called, and where, so two "Calle Mayor 3" can be told apart. */
 @Composable
 private fun ResultRow(place: FoundPlace, onPick: () -> Unit) {
@@ -590,6 +714,10 @@ private fun ResultRow(place: FoundPlace, onPick: () -> Unit) {
         }
     }
 }
+
+/** Ten minutes is what somebody means by "un rato" more often than anything else. */
+private const val DEFAULT_DWELL_MINUTES = 10
+private val PRESET_DWELL_MINUTES = listOf(5, 10, 15, 30, 60)
 
 /** Saveable across a rotation, which an enum entry is not without a custom saver. */
 private const val FAILURE_PERMISSION = "permission"

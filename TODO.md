@@ -36,7 +36,9 @@ Running notes: what is next, what cost time, what must not be re-derived.
   on; the app's tests still pass under it. Tapping "Wait" does nothing; "Close app" restarts
   SystemUI — and a test running at that moment loses its activity ("No compose hierarchies
   found"), so close it *between* runs, then re-run only the class that needs clean captures.
-  Cost: one extra device run on 2026-09-02.
+  Cost: one extra device run on 2026-09-02, and one more on 2026-09-05: force-stopping SystemUI
+  between runs is not enough on this image — it ANRs again within a couple of minutes, so the
+  re-run's captures came back with the dialog in the same place. Do not spend a third run on it.
 - `adb shell uiautomator dump` must write to `/data/local/tmp/ui.xml` (the `/sdcard` path
   silently fails on this image). Even then, `input tap` on Compose buttons landed maybe one time
   in three and a missed tap cascades (a stray BACK on Home closes the app). The instrumented tour
@@ -156,7 +158,10 @@ build (`ReminderCodecTest`).
 Left alone on purpose: `Geofence.setLoiteringDelay` is inert without a DWELL transition type,
 which these fences do not ask for — the comment now says what actually damps a wobbling fix
 (`setNotificationResponsiveness`). Adding DWELL would change when a place fires and wants a
-real phone to judge it.
+real phone to judge it. *(Taken up in 0.85.0: a doorway may now carry a rate, and the fences
+behind one do ask for DWELL with the rate as their loitering delay. The judgement it wants from
+a real phone is the only part of that round without a test — see ARCHITECTURE.md, "a rate turns
+the crossing into the start of a count".)*
 
 ## "19 location reads in the last hour", reported from the phone (2026-08-29, 0.43.0)
 The busy notice fired — which is the notice working, not a bug: it is off by default, it was

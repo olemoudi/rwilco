@@ -25,6 +25,17 @@ object GeofenceIds {
     private const val CIRCLE = '@'
     private const val CROSSING = "!"
 
+    /**
+     * How long the doorway has to be stayed at, in minutes, after the crossing mark.
+     *
+     * In the id for the reason the geometry is in it: the id is what the watch remembers a circle
+     * by, and a rate is part of what the circle *is*. Change ten minutes to twenty and the count
+     * that was running was counting something else — kept under the old key it would finish and
+     * ring for a rate nobody asked for any more. A new id starts from no memory and no count,
+     * which costs one baseline look and rings nothing.
+     */
+    private const val RATE = '~'
+
     /** In place of a rule index: the circle a snooze waits for belongs to no rule. */
     private const val SNOOZE = 's'
 
@@ -43,7 +54,11 @@ object GeofenceIds {
     fun encode(reminderId: String, triggerIndex: Int, place: Trigger.Location): String =
         "$reminderId$SEPARATOR$triggerIndex$CIRCLE" +
             circle(place.lat, place.lng, place.radiusM, if (place.presence == Presence.INSIDE) 'E' else 'X') +
-            if (place.onCrossing) CROSSING else ""
+            (if (place.onCrossing) CROSSING else "") +
+            // Only ever after the crossing mark: a rate is a doorway's to ask for, and
+            // [Trigger.Location.dwell] is null on anything else, so no id already on a phone
+            // grows a tail it did not have.
+            (place.dwell?.let { "$RATE${it.toMinutes()}" } ?: "")
 
     /** The [conditionIndex]th circle named by rule [ruleIndex]'s conditions. Never a trigger. */
     fun encodeCondition(reminderId: String, ruleIndex: Int, conditionIndex: Int, place: Condition.AtPlace): String =
@@ -108,5 +123,5 @@ object GeofenceIds {
      */
     fun looksLikeId(value: String): Boolean = ID_TAIL.containsMatchIn(value)
 
-    private val ID_TAIL = Regex("""@-?\d+\.\d{5},-?\d+\.\d{5},\d+,[EXIO]!?$""")
+    private val ID_TAIL = Regex("""@-?\d+\.\d{5},-?\d+\.\d{5},\d+,[EXIO](!(~\d+)?)?$""")
 }

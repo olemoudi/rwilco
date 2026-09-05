@@ -10,6 +10,8 @@ import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.diag.Diag
+import dev.rwilco.model.Presence
+import dev.rwilco.model.dwell
 import dev.rwilco.model.geofenceChoices
 import dev.rwilco.model.geofenceFingerprint
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -80,6 +82,15 @@ class GeofenceManager(
         }
 
         val geofences = places.map { (id, place) ->
+            // **A rate asks the system to time it too, and that costs nothing.** A doorway with
+            // a rate on it ("al llegar a casa, y cuando lleve diez minutos allí") is counted by
+            // the place watch out of its own positions, four of them, which is the second
+            // opinion and the one that works in both directions. Play Services will time the
+            // same wait for free, out of signals this app never sees, and report it as a DWELL —
+            // so the fence asks for one, and whichever eye finishes first is the one that rings.
+            // Only inwards: there is no such transition for staying *away* from a circle, and
+            // that half is the watch's alone.
+            val rate = place.dwell?.takeIf { place.presence == Presence.INSIDE }
             Geofence.Builder()
                 .setRequestId(id)
                 .setCircularRegion(place.lat, place.lng, place.radiusM.toFloat())
@@ -89,13 +100,19 @@ class GeofenceManager(
                 // place that has already rung is owed before it may ring again — and the
                 // system sees a leaving the watch's own hourly look would miss. The receiver
                 // only rings the one the rule asked for; the other is written down.
-                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT)
+                .setTransitionTypes(
+                    Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT or
+                        (if (rate != null) Geofence.GEOFENCE_TRANSITION_DWELL else 0),
+                )
                 // A place reminder that fires the instant a GPS fix wobbles across the line is
                 // worse than one that fires half a minute late, and the responsiveness is what
-                // buys that: Play Services is allowed to take a minute to be sure. (The
-                // loitering delay below only ever applies to a DWELL transition, which these
-                // fences do not ask for; it is set so that adding DWELL later cannot throw.)
-                .setLoiteringDelay(LOITERING_MS)
+                // buys that: Play Services is allowed to take a minute to be sure.
+                //
+                // The loitering delay only applies to a DWELL transition. On a fence that asks
+                // for one it is the rate itself — which is why the rate is in the id
+                // ([GeofenceIds]): change the rate and this is a different fence, registered
+                // afresh, rather than one still timing the old wait.
+                .setLoiteringDelay(rate?.toMillis()?.toInt() ?: LOITERING_MS)
                 .setNotificationResponsiveness(RESPONSIVENESS_MS)
                 .build()
         }

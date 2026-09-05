@@ -194,6 +194,12 @@ fun Reminder.watchedCircles(
                         fold == null -> Crossing.NOTHING
                         else -> Crossing.RINGS
                     },
+                    // A rate belongs to the doorway that asks for it, and to nothing else. Not
+                    // to a ticked-off place under "todos": what is watched there is the crossing
+                    // that takes the tick *back*, and a state coming undone is undone the moment
+                    // it stops holding — asking it to hold its untruth for ten minutes would
+                    // leave the set carrying a rule that is plainly false.
+                    dwell = if (ticked) null else it.dwell,
                     floor = floor,
                 ),
                 ruleIndex = index,

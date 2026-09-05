@@ -330,6 +330,21 @@ private fun saidOf(note: WatchNote): String = when (note.kind) {
             else -> stringResource(R.string.watch_said_left_somewhere)
         }
     }
+    // The system timed a stay for us and it cost nothing: the other free line on this screen,
+    // and the one that answers "why did it ring ten minutes after I got in?".
+    NoteKind.LOITER -> {
+        val place = note.placeName
+        val minutes = ((note.dwellS ?: 0L) / 60).toInt()
+        if (place != null) stringResource(R.string.watch_said_stayed, minutes, place)
+        else stringResource(R.string.watch_said_stayed_somewhere, minutes)
+    }
+    // Nothing rang and nothing was wrong, which is why it is worth a line of its own.
+    NoteKind.UNMEASURED -> {
+        val place = note.placeName
+        val minutes = ((note.dwellS ?: 0L) / 60).toInt()
+        if (place != null) stringResource(R.string.watch_said_unmeasured, minutes, place)
+        else stringResource(R.string.watch_said_unmeasured_somewhere, minutes)
+    }
 }
 
 /** The little under it that helps: why it was free or came to nothing, where you were, what it planned next. */
@@ -365,11 +380,26 @@ private fun detailOf(note: WatchNote, locale: Locale): List<String> = buildList 
         // sitting on the sofa. Null is a line written before the outcome was kept: it says
         // nothing rather than guessing.
         NoteKind.FENCE -> if (note.acted == false) add(stringResource(R.string.watch_why_no_ring))
+        NoteKind.LOITER -> if (note.acted == false) add(stringResource(R.string.watch_why_no_ring))
+        // Why it gave up, which is the whole content of the line: the looks were too far apart
+        // to add up to the rate, and the battery is what holds them apart.
+        NoteKind.UNMEASURED -> {
+            add(stringResource(R.string.watch_why_too_few_looks))
+            note.charge?.let { add(stringResource(R.string.watch_why_low_battery, it)) }
+        }
         else -> Unit
     }
     // Where, said as a person would: inside the place, or a distance from it. A crossing has
     // already said both in its own line and adds nothing here.
-    if (note.kind != NoteKind.FENCE && note.kind != NoteKind.ECHO) {
+    // A count in progress on the circle that is setting the pace: "llevas 6 de 10 min".
+    val rate = note.dwellS
+    val held = note.heldS
+    if (rate != null && held != null && note.kind != NoteKind.LOITER && note.kind != NoteKind.UNMEASURED) {
+        add(stringResource(R.string.watch_counting, (held / 60).toInt(), (rate / 60).toInt()))
+    }
+    if (note.kind != NoteKind.FENCE && note.kind != NoteKind.ECHO &&
+        note.kind != NoteKind.LOITER && note.kind != NoteKind.UNMEASURED
+    ) {
         val place = note.placeName
         val gap = note.gapM
         when {

@@ -19,6 +19,7 @@ import dev.rwilco.model.weekDays
 import dev.rwilco.model.CountdownParts
 import dev.rwilco.model.Period
 import dev.rwilco.model.Trigger
+import dev.rwilco.model.dwell
 import java.time.DayOfWeek
 import java.time.LocalDate
 import dev.rwilco.ui.localToday
@@ -110,6 +111,27 @@ fun placeReading(presence: Presence, onCrossing: Boolean): Int = when {
     presence == Presence.INSIDE -> R.string.place_while_inside
     onCrossing -> R.string.place_on_leaving
     else -> R.string.place_while_outside
+}
+
+/**
+ * The same four readings, and the fifth thing one of them can say: how long the side has to hold
+ * ([Trigger.Location.dwell]). "Al llegar" becomes "al llevar 10 min allí" — the doorway is no
+ * longer the moment, so saying it as one would be a lie on every screen at once.
+ *
+ * Both of these take the whole circle rather than its two flags, so that no caller has to
+ * remember there is a rate to ask about; there is one place that knows, and it is here.
+ */
+fun placeReadingOf(words: Words, place: Trigger.Location): String {
+    val rate = place.dwell ?: return words.get(placeReading(place.presence, place.onCrossing))
+    val id = if (place.presence == Presence.INSIDE) R.string.place_on_arrival_after else R.string.place_on_leaving_after
+    return words.get(id, durationText(words, rate.toMinutes().toInt()))
+}
+
+/** The same, said the way it is said inside a sentence. */
+fun placePhraseOf(words: Words, place: Trigger.Location): String {
+    val rate = place.dwell ?: return words.get(placePhrase(place.presence, place.onCrossing), place.label)
+    val id = if (place.presence == Presence.INSIDE) R.string.trigger_arrive_at_after else R.string.trigger_leave_from_after
+    return words.get(id, place.label, durationText(words, rate.toMinutes().toInt()))
 }
 
 /**
@@ -246,7 +268,7 @@ fun triggerLine(trigger: Trigger, today: LocalDate, defaultTime: LocalTime): Tri
         )
         is Trigger.Location -> TriggerLine(
             primary = trigger.label,
-            secondary = stringResource(placeReading(trigger.presence, trigger.onCrossing)),
+            secondary = placeReadingOf(words, trigger),
             primaryMono = false,
         )
         is Trigger.Random -> TriggerLine(
@@ -327,7 +349,7 @@ fun triggerPhrase(words: Words, trigger: Trigger, today: LocalDate, defaultTime:
                 atDayAndTime(words, fires.toLocalDate(), fires.toLocalTime(), today)
             }
         }
-        is Trigger.Location -> words.get(placePhrase(trigger.presence, trigger.onCrossing), trigger.label)
+        is Trigger.Location -> placePhraseOf(words, trigger)
         is Trigger.Random -> words.get(
             R.string.editor_sentence_random,
             randomSummary(words, trigger),

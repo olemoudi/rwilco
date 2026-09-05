@@ -75,4 +75,26 @@ class GeofenceIdsTest {
         assertNotEquals(home, GeofenceIds.tag(40.43012, -3.66601, 100), "the radius is part of the circle")
         assertNotEquals(home, GeofenceIds.tag(40.43212, -3.66801, 50), "two hundred metres away is another place")
     }
+    @Test
+    fun `the rate is part of the circle, and only a doorway carries one`() {
+        val uuid = "7f1225fa-26c1-4100-9d5e-5185757a7996"
+        val door = Trigger.Location(40.4169, -3.7035, 200, Presence.INSIDE, "Casa", onCrossing = true)
+        val plain = GeofenceIds.encode(uuid, 0, door)
+        val ten = GeofenceIds.encode(uuid, 0, door.copy(dwellMinutes = 10))
+        val twenty = GeofenceIds.encode(uuid, 0, door.copy(dwellMinutes = 20))
+
+        assertTrue(ten.endsWith("!~10"), ten)
+        assertNotEquals(plain, ten, "a rate is part of what the circle is")
+        assertNotEquals(ten, twenty, "changing the rate must not inherit a count of the old one")
+        // The side reading never reads a rate, so it never wears one either.
+        assertEquals(
+            GeofenceIds.encode(uuid, 0, door.copy(onCrossing = false)),
+            GeofenceIds.encode(uuid, 0, door.copy(onCrossing = false, dwellMinutes = 10)),
+        )
+        // And the whole tail is still an id to the guard that keeps ids off a person's screen.
+        assertTrue(GeofenceIds.looksLikeId(ten))
+        assertTrue(GeofenceIds.looksLikeId("7f1225fa-26c1-4100-9d5e-5185757a7996#0@40.50074,-3.66413,150,E!~90"))
+        assertEquals(0, GeofenceIds.triggerIndexOf(ten))
+        assertEquals(uuid, GeofenceIds.reminderIdOf(ten))
+    }
 }

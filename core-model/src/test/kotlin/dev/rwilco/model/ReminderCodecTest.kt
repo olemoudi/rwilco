@@ -2,6 +2,7 @@ package dev.rwilco.model
 
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.DayOfWeek
@@ -290,4 +291,31 @@ class ReminderCodecTest {
         val rule = TriggerRule(Trigger.Location(40.4169, -3.7035, 200, Presence.OUTSIDE, "Casa", onCrossing = true))
         assertEquals(listOf(rule), ReminderCodec.decodeRules(ReminderCodec.encodeRules(listOf(rule))))
     }
+    @Test
+    fun `a rate survives the trip, and a place without one does not grow a key`() {
+        val rule = TriggerRule(Trigger.Location(40.4169, -3.7035, 200, Presence.INSIDE, "Casa", onCrossing = true, dwellMinutes = 10))
+        val json = ReminderCodec.encodeRules(listOf(rule))
+        assertTrue(json.contains("\"dwellMinutes\":10"), json)
+        assertEquals(listOf(rule), ReminderCodec.decodeRules(json))
+
+        // Every place on every phone keeps its bytes: the rate is @EncodeDefault(NEVER), so a
+        // rule that does not ask for one writes nothing about it at all.
+        val plain = TriggerRule(Trigger.Location(40.4169, -3.7035, 200, Presence.INSIDE, "Casa", onCrossing = true))
+        assertFalse(ReminderCodec.encodeRules(listOf(plain)).contains("dwellMinutes"))
+    }
+
+    @Test
+    fun `a place written before rates existed asks for none, and a key from the future is skipped`() {
+        val old = """[{"trigger":{"type":"location","lat":40.4169,"lng":-3.7035,"radiusM":200,"transition":"ENTER","label":"Casa","onCrossing":true}}]"""
+        assertNull((ReminderCodec.decodeRules(old).single().trigger as Trigger.Location).dwellMinutes)
+
+        // The other direction, and the cost said out loud: a build older than this one meets
+        // `dwellMinutes` as an unknown key, ignores it, and rings the moment the line is crossed.
+        // Erring towards ringing too often is the right way round — the failure somebody notices
+        // is the one that never arrives.
+        val newer = """[{"trigger":{"type":"location","lat":40.4169,"lng":-3.7035,"radiusM":200,"transition":"ENTER","label":"Casa","onCrossing":true,"dwellMinutes":10,"loiterStyle":"whatever"}}]"""
+        val place = ReminderCodec.decodeRules(newer).single().trigger as Trigger.Location
+        assertEquals(10, place.dwellMinutes)
+    }
 }
+
