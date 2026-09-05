@@ -1266,6 +1266,9 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_91_0">
+        <item>Quitar una etiqueta alcanza ahora también a tus presets. Un preset lleva etiquetas propias y se las pone a cada recordatorio que sale de él, así que una etiqueta borrada de todos los recordatorios y olvidada en un preset no estaba borrada de verdad: volvía la próxima vez que usabas esa forma. Renombrar también los alcanza, y fusiona en vez de dejar la forma con la misma etiqueta dos veces.</item>
+    </string-array>
     <string-array name="whats_new_0_90_0">
         <item>Una etiqueta que se te ofrece es ahora una etiqueta que puedes borrar. Una etiqueta que sólo quedaba en recordatorios ya hechos seguía apareciendo al elegir etiquetas, pero faltaba en el panel del + de la pantalla principal — el único sitio que renombra o quita una — así que no había forma de deshacerse de ella. El panel lista ahora todas las que existen, incluidas las de los recordatorios hechos.</item>
         <item>Esas etiquetas siguen sin tener chip en la pantalla principal, porque un filtro que no encuentra nada no es un filtro. El panel dice cuáles son en vez de dejarlas pareciendo rotas.</item>

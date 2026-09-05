@@ -19,7 +19,9 @@ import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.TagFilter
 import dev.rwilco.model.knownTags
 import dev.rwilco.model.removeTagIn
+import dev.rwilco.model.removeTagInPresets
 import dev.rwilco.model.renameTagIn
+import dev.rwilco.model.renameTagInPresets
 import dev.rwilco.model.tagsEverUsed
 import dev.rwilco.model.tagsInUse
 import dev.rwilco.model.withTagForgotten
@@ -302,14 +304,24 @@ class HomeViewModel(
     fun renameTag(from: String, to: String) {
         viewModelScope.launch {
             repository.saveAll(renameTagIn(repository.allNow(), from, to))
-            store.update { settings -> settings.copy(tagPrefs = withTagRenamed(settings.tagPrefs, from, to)) }
+            store.update { settings ->
+                settings.copy(
+                    tagPrefs = withTagRenamed(settings.tagPrefs, from, to),
+                    presets = renameTagInPresets(settings.presets, from, to),
+                )
+            }
         }
     }
 
     fun deleteTag(tag: String) {
         viewModelScope.launch {
             repository.saveAll(removeTagIn(repository.allNow(), tag))
-            store.update { settings -> settings.copy(tagPrefs = withTagForgotten(settings.tagPrefs, tag)) }
+            store.update { settings ->
+                settings.copy(
+                    tagPrefs = withTagForgotten(settings.tagPrefs, tag),
+                    presets = removeTagInPresets(settings.presets, tag),
+                )
+            }
         }
     }
 

@@ -27,6 +27,9 @@ class OrphanTagTest {
     private fun r(id: String, tags: List<String>, status: Status = Status.ACTIVE) =
         reminder(trigger, id = id, tags = tags, status = status)
 
+    private fun preset(id: String, tags: List<String>) =
+        Preset(id = id, name = id, tags = tags, createdAt = now)
+
     private val reminders = listOf(
         r("live", listOf("casa")),
         r("finished", listOf("location"), status = Status.DONE),
@@ -54,6 +57,35 @@ class OrphanTagTest {
         val prefs = withTagPref(emptyList(), "bici", pinned = true)
         assertTrue("bici" in knownTags(tagsEverUsed(reminders), prefs))
         assertTrue(tagFilters(reminders, prefs).none { it == TagFilter.Named("bici") })
+    }
+
+    /**
+     * The other place a tag can hide, and the one that puts it back rather than merely keeping
+     * it: a preset carries tags of its own and puts them on every reminder made from it. Removed
+     * from every reminder and left in a shape, a tag returns the next time that shape is used.
+     */
+    @Test
+    fun `removing a tag reaches the shapes that would put it back`() {
+        val presets = listOf(
+            preset("p1", listOf("location", "casa")),
+            preset("p2", listOf("casa")),
+        )
+        assertEquals(listOf(listOf("casa"), listOf("casa")), removeTagInPresets(presets, "LOCATION").map { it.tags })
+    }
+
+    @Test
+    fun `renaming reaches them too, and merges rather than doubling`() {
+        val presets = listOf(preset("p1", listOf("location", "casa")))
+        assertEquals(listOf("sitio", "casa"), renameTagInPresets(presets, "location", "sitio").single().tags)
+        // Onto a tag the shape already carries: one tag out, not the same one twice.
+        assertEquals(listOf("casa"), renameTagInPresets(presets, "location", "casa").single().tags)
+    }
+
+    @Test
+    fun `a shape without the tag is left exactly as it was`() {
+        val untouched = preset("p2", listOf("casa"))
+        assertEquals(untouched, removeTagInPresets(listOf(untouched), "location").single())
+        assertEquals(listOf(untouched), renameTagInPresets(listOf(untouched), "location", "sitio"))
     }
 
     @Test

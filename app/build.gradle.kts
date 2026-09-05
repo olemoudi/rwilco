@@ -24,8 +24,8 @@ android {
         // v0.1.0 and v0.2.0: the published versionName came out as the comment's placeholder
         // with the real one stuck on the end. Updates kept working (the version CODE never
         // matched the comment), so nothing complained — it just offered a nonsense version.
-        versionCode = 141
-        versionName = "0.90.0-alpha"
+        versionCode = 142
+        versionName = "0.91.0-alpha"
         // Ours, and only so the launch notice is answered once for the whole suite: see
         // RwilcoTestRunner. Everything else about it is AndroidJUnitRunner.
         testInstrumentationRunner = "dev.rwilco.RwilcoTestRunner"

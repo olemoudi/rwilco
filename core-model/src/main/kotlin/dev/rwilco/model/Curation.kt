@@ -37,6 +37,35 @@ fun removeTagIn(reminders: List<Reminder>, tag: String): List<Reminder> {
 }
 
 /**
+ * The same two edits, on the tags a **preset** carries.
+ *
+ * A preset keeps tags of its own and puts them on every reminder made from it, so a tag removed
+ * from every reminder and left in a preset is not removed — it comes back the next time that
+ * shape is used, and a renamed one comes back under its old spelling alongside the new. "Quitar
+ * esta etiqueta de todo" has to mean the shapes too, or it is not "de todo".
+ *
+ * The whole list back rather than only what changed: this one is written to the settings blob,
+ * which is replaced whole, and not to rows that can be saved individually.
+ */
+fun renameTagInPresets(presets: List<Preset>, tag: String, to: String): List<Preset> {
+    val replacement = normalizeTag(to) ?: return presets
+    val key = tag.lowercase(Locale.ROOT)
+    return presets.map { preset ->
+        if (preset.tags.none { it.lowercase(Locale.ROOT) == key }) return@map preset
+        // Through normalizeTags for the reason renameTagIn is: renaming onto a tag the preset
+        // already carries merges them rather than leaving it wearing the same tag twice.
+        preset.copy(tags = normalizeTags(preset.tags.map { if (it.lowercase(Locale.ROOT) == key) replacement else it }))
+    }
+}
+
+fun removeTagInPresets(presets: List<Preset>, tag: String): List<Preset> {
+    val key = tag.lowercase(Locale.ROOT)
+    return presets.map { preset ->
+        preset.copy(tags = preset.tags.filterNot { it.lowercase(Locale.ROOT) == key })
+    }
+}
+
+/**
  * Every reminder whose words are exactly [text] (case-insensitively), reworded to [to]. The
  * whole phrase or nothing: a suggestion is one phrase, and half-replacing it inside a longer
  * sentence would rewrite reminders nobody asked about.

@@ -1281,6 +1281,9 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_91_0">
+        <item>Removing a tag now reaches your presets as well. A preset keeps tags of its own and puts them on every reminder made from it, so a tag deleted from every reminder and left in a preset was not really deleted — it came back the next time you used that shape. Renaming reaches them too, and merges rather than leaving the shape wearing the same tag twice.</item>
+    </string-array>
     <string-array name="whats_new_0_90_0">
         <item>A tag you are offered is now a tag you can delete. A tag left only on reminders you have finished still showed up when picking tags, but was missing from the panel behind the + on the main screen — the one place that renames or removes one — so there was no way to get rid of it. The panel lists every tag that exists now, finished reminders included.</item>
         <item>Those tags still get no chip on the main screen, because a filter that finds nothing is not a filter. The panel says which ones they are instead of leaving them looking broken.</item>
