@@ -223,7 +223,7 @@ private fun TagPanelRow(tag: TagRow, onTogglePin: () -> Unit, onEdit: () -> Unit
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(start = spacing.md),
+            modifier = Modifier.padding(start = spacing.md, top = spacing.xs, bottom = spacing.xs),
         ) {
             Box(
                 modifier = Modifier
@@ -231,14 +231,26 @@ private fun TagPanelRow(tag: TagRow, onTogglePin: () -> Unit, onEdit: () -> Unit
                     .background(color, CircleShape),
             )
             Spacer(Modifier.width(spacing.md))
-            Text(
-                text = tag.name,
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (tag.pinned) scheme.surface else scheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = tag.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (tag.pinned) scheme.surface else scheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                // Why this one is here and not in the row of chips outside. Without the line it
+                // is a tag that ignores being pinned and never appears, which reads as a fault.
+                if (!tag.onHome) {
+                    Text(
+                        text = stringResource(R.string.home_tags_done_only),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (tag.pinned) scheme.surface.copy(alpha = 0.75f) else scheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
             if (tag.pinned) {
                 Spacer(Modifier.width(spacing.sm))
                 Icon(

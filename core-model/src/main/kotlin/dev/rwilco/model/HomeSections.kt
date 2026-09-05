@@ -163,10 +163,23 @@ private fun Reminder.missedMoment(now: Instant, zone: ZoneId, defaultTime: Local
 }
 
 /** Every tag in use on open reminders, most used first, then alphabetically; one spelling per tag. */
-fun tagsInUse(reminders: List<Reminder>): List<String> {
+fun tagsInUse(reminders: List<Reminder>): List<String> =
+    rankTags(reminders.filter { it.status != Status.DONE })
+
+/**
+ * Every tag any reminder carries, **finished ones included**, in the same order.
+ *
+ * A different question from [tagsInUse] and both are asked: Home's chips filter a list with no
+ * finished reminders in it, so a tag only worn by finished ones would be a filter that finds
+ * nothing. But it still *exists* — the editor offers it back, because the point of the offers is
+ * everything you have ever written — and so it has to be administrable. Listing the panel off
+ * [tagsInUse] is what made a tag you could be offered and could not delete (0.90.0).
+ */
+fun tagsEverUsed(reminders: List<Reminder>): List<String> = rankTags(reminders)
+
+private fun rankTags(reminders: List<Reminder>): List<String> {
     val counts = LinkedHashMap<String, Pair<String, Int>>()
     for (reminder in reminders) {
-        if (reminder.status == Status.DONE) continue
         for (tag in reminder.tags) {
             val key = tag.lowercase(Locale.ROOT)
             val (spelling, count) = counts[key] ?: (tag to 0)

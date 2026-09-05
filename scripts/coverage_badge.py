@@ -29,17 +29,46 @@ def color(pct: float) -> str:
     return "#e05d44"
 
 
-def text_width(s: str) -> int:
-    # Rough average glyph width for Verdana 11px; good enough for a badge.
-    return int(len(s) * 6.5) + 10
+# What these glyphs draw at 11px, in pixels.
+#
+# Calibrated against shields.io's own geometry for the same two strings, which is the only
+# reference that matters here: it puts "coverage" at 51.0px and "84%" at 25.0px. One average for
+# every character is what this used to do, and it is right for a word — letters really do come
+# out near 6.4 — but a digit is wider than a letter and "%" is nearly twice one, so "84%" was
+# measured at 19.0px against the 25.0px it draws.
+#
+# Six pixels short is not a cosmetic error, because of textLength below: the browser honours the
+# promise by taking the missing width out of the spacing between the glyphs, and three glyphs
+# pulled six pixels together touch. The per cent sign is the widest of them and the one that
+# visibly collided — reported as "el % sale mal dibujado".
+GLYPHS = {"%": 11.0, ".": 3.9, " ": 3.5, **{d: 7.0 for d in "0123456789"}}
+AVERAGE_GLYPH = 6.4
+
+# Space either side of the text inside its half of the badge.
+PADDING = 10
+
+
+def text_width(s: str) -> float:
+    """How wide [s] actually draws, in badge pixels."""
+    return sum(GLYPHS.get(ch, AVERAGE_GLYPH) for ch in s)
 
 
 def badge(pct: float) -> str:
+    """A flat badge, sized around its text rather than the other way round.
+
+    `textLength` is kept, as shields.io keeps it: it is what stops a reader whose browser
+    substitutes a wider font from having the text spill out of its colour. It is only safe while
+    the number is honest, though — an *under*-measured string is packed until its glyphs touch,
+    which is the bug this replaced. Measure first, then draw the box around the measurement.
+    """
     label, value = "coverage", f"{pct:.0f}%"
-    lw, rw = text_width(label), text_width(value)
+    ltl, rtl = text_width(label), text_width(value)
+    lw, rw = round(ltl + PADDING), round(rtl + PADDING)
     w = lw + rw
-    lx, rx = lw * 10 // 2, (lw + rw // 2) * 10
-    ltl, rtl = (lw - 10) * 10, (rw - 10) * 10
+    # Centres of the two halves, in the 10x space the text group is scaled down from. Halved as
+    # a float: integer division put the value half a pixel off its own box.
+    lx, rx = round(lw / 2 * 10), round((lw + rw / 2) * 10)
+    ltl, rtl = round(ltl * 10), round(rtl * 10)
     return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="20" role="img" aria-label="{label}: {value}">
 <title>{label}: {value}</title>
 <linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>

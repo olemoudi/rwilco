@@ -20,6 +20,7 @@ import dev.rwilco.model.TagFilter
 import dev.rwilco.model.knownTags
 import dev.rwilco.model.removeTagIn
 import dev.rwilco.model.renameTagIn
+import dev.rwilco.model.tagsEverUsed
 import dev.rwilco.model.tagsInUse
 import dev.rwilco.model.withTagForgotten
 import dev.rwilco.model.withTagPref
@@ -249,13 +250,28 @@ class HomeViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /**
-     * Every tag there is, for the panel behind the row's "+": the ones on reminders and the
-     * ones written down and not yet worn, each saying whether it leads the row.
+     * Every tag there is, for the panel behind the row's "+".
+     *
+     * **Finished reminders included** — that is the whole point of the flow taking two lists.
+     * The editor offers a tag back for as long as anything has ever worn it, so a tag left only
+     * on finished reminders was being offered from one screen and was absent from the only place
+     * that can rename or delete it: undeletable, by construction (0.90.0). Home's own chips still
+     * leave it out, because a filter that finds nothing is not a filter — [TagRow.onHome] is what
+     * lets the panel say that rather than leave it looking broken.
      */
-    val tagRows: StateFlow<List<TagRow>> = combine(repository.open, settings.filterNotNull()) { reminders, current ->
+    val tagRows: StateFlow<List<TagRow>> = combine(
+        repository.open,
+        repository.done,
+        settings.filterNotNull(),
+    ) { open, done, current ->
         val prefs = current.tagPrefs
-        knownTags(tagsInUse(reminders), prefs).map { name ->
-            TagRow(name, prefs.any { it.pinned && it.name.equals(name, ignoreCase = true) })
+        val live = tagsInUse(open)
+        knownTags(tagsEverUsed(open + done), prefs).map { name ->
+            TagRow(
+                name = name,
+                pinned = prefs.any { it.pinned && it.name.equals(name, ignoreCase = true) },
+                onHome = live.any { it.equals(name, ignoreCase = true) },
+            )
         }
     }
         .flowOn(Dispatchers.Default)

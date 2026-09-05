@@ -276,7 +276,18 @@ data class TriggerRowUi(
  * Not part of [HomeUiState]: the panel is a door off Home rather than a part of it, and every
  * card on the screen would be rebuilt for a tag being renamed inside a dialog.
  */
-data class TagRow(val name: String, val pinned: Boolean)
+data class TagRow(
+    val name: String,
+    val pinned: Boolean,
+    /**
+     * Whether any *open* reminder carries it, which is whether Home gives it a chip.
+     *
+     * A tag left only on finished reminders still exists and is still offered by the editor, so
+     * it belongs in this list — but pinning it moves nothing and it will not be found in the row,
+     * and a panel that did not say so is a panel where half the rows are quietly inert.
+     */
+    val onHome: Boolean = true,
+)
 
 /** Everything Home shows, from the open reminders. Pure and JVM-tested. */
 fun buildHomeState(
