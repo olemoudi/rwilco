@@ -254,10 +254,20 @@ These are standing rules for this repository. Follow them without being re-asked
   downloaded APK whose version name does not end in its channel's suffix, so a mismatch ships a
   release every phone on that channel downloads and throws away. Guarded twice — `ChannelBuildTest`
   before the tag is pushed, and the workflow after.
+- **Which channel to cut is not a judgement call.** The owner lives on alpha; the people he
+  hands the app to live on beta. So **every ordinary piece of work ships as `-alpha`** — that is
+  the default, without asking. A `-beta` is cut **only when the owner says so in words**, as
+  "promote the alpha to beta"; never on your own initiative, however safe the change looks,
+  because a beta is what other people's phones install.
+- **A promotion is a fresh build, not a re-tag.** The alpha APK cannot be republished as a beta:
+  its version name ends in `-alpha` and a phone on beta refuses it (`apkIsInstallable`). So a
+  promotion raises `versionCode`, sets `versionName` to the next `X.Y.Z-beta`, and its `RELEASES`
+  line says which alphas it is carrying over — the beta's number will not match the alpha it came
+  from, and the notes are where that link is made.
 - **Bumping a version:** raise `versionCode` and `versionName` in `app/build.gradle.kts` —
   exactly one occurrence of each, the release workflow greps the first — add the build's line to
-  `RELEASES` (`WhatsNewTest` refuses a build without one), then push the matching `v*-beta` or
-  `v*-alpha` tag.
+  `RELEASES` (`WhatsNewTest` refuses a build without one), then push the matching `v*-alpha` (or,
+  when asked, `v*-beta`) tag.
 
 ### Auto-update
 - The app self-updates from GitHub Releases: `UpdateWorker` (periodic + on launch/boot) runs

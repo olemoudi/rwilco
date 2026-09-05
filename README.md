@@ -35,7 +35,12 @@ Point your phone's camera at this code, or tap the link below.
 
 Android 10 or newer. Your phone will warn you that the file comes from outside the Play Store,
 and Play Protect may offer to scan it first — that is normal for any app installed this way.
-Once installed, Rwilco keeps itself up to date from this same page.
+
+That link is always the newest **beta**, which is the one to install: it is the tested channel,
+and it is where the app keeps itself up to date from afterwards. Settings → Updates also offers
+an **alpha** channel — builds as they are written, which nobody else has run yet. It is there for
+the author, and coming back from it is not immediate, because Android will not install an older
+version over a newer one. Unless you want to be a test pilot, stay on beta.
 
 ## Status
 

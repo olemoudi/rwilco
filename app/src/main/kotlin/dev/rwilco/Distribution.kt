@@ -12,10 +12,15 @@ import dev.rwilco.model.UpdateChannel
 object Distribution {
 
     /**
-     * Always the newest *beta* release's APK. What a sideload link points at.
+     * Always the newest *beta* release's APK. The README's link and the QR code beside it
+     * (`docs/install-qr.png`) encode exactly this string — `InstallLinkTest` holds them together.
      *
-     * Still `latest` and still right now that alpha builds exist, because those are published as
-     * GitHub pre-releases and `latest` skips them.
+     * **It resolves to a beta because alpha releases are GitHub pre-releases and `latest` skips
+     * them**, which is the whole reason the workflow sets that flag rather than leaving it. This
+     * is the url handed to other people, so two things must never happen to it: it must not be
+     * repointed at a channel manifest or a pinned tag (every phone and every printed QR already
+     * resolves through it), and alphas must not start being published as ordinary releases —
+     * that alone would silently put untested builds behind this link.
      */
     const val APK_URL = "https://github.com/olemoudi/rwilco/releases/latest/download/rwilco.apk"
 
