@@ -93,8 +93,9 @@ class Updater(private val context: Context) {
      * The update already downloaded and waiting in the cache, if it is one this device could
      * install right now — otherwise null. Null covers every way the file can be useless: there
      * is no file; it does not parse as an APK at all (a captive portal's login page served with
-     * a 200, a body cut short when the connection dropped); it is not this package; or it is not
-     * newer than the build already running (the leftovers of the update that just succeeded).
+     * a 200, a body cut short when the connection dropped); it is not this package; it is not
+     * newer than the build already running (the leftovers of the update that just succeeded);
+     * or it is not a build of [channel]. See [apkIsInstallable].
      */
     fun stagedUpdate(channel: UpdateChannel): UpdateInfo? {
         val apk = apkIdentity(apkFile()) ?: return null
