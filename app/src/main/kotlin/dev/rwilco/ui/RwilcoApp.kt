@@ -248,6 +248,17 @@ fun RwilcoApp(
                     lastSeenVersionCode = current.lastSeenVersionCode,
                     onSeen = { seen -> app.appScope.launch { app.settingsStore.update { it.copy(lastSeenVersionCode = seen) } } },
                 )
+                // Last of all, and over everything: the one thing somebody should read before
+                // they trust an alarm to this. Once per launch until it is turned off for good.
+                if (!current.disclaimerRead && !Disclaimer.readThisRun) {
+                    DisclaimerDialog(
+                        onRead = { Disclaimer.readThisRun = true },
+                        onNeverAgain = {
+                            Disclaimer.readThisRun = true
+                            app.appScope.launch { app.settingsStore.update { it.copy(disclaimerRead = true) } }
+                        },
+                    )
+                }
             }
         }
     }

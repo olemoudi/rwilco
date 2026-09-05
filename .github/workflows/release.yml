@@ -24,6 +24,38 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      # The tag decides the channel, and a tag that names neither is a mistake worth stopping
+      # for: publishing it would either put an alpha build in front of everybody or hide a beta
+      # one where nobody is looking, and neither is undoable once a phone has installed it.
+      - name: Work out which channel this tag is for
+        id: channel
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          case "$TAG" in
+            *-alpha) NAME=alpha; PRERELEASE=true ;;
+            *-beta)  NAME=beta;  PRERELEASE=false ;;
+            *) echo "::error::tag '$TAG' names no channel; it has to end in -alpha or -beta"; exit 1 ;;
+          esac
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "publishing $TAG to the $NAME channel (prerelease=$PRERELEASE)"
+
+      # The version name has to carry the same suffix as the tag, because the *app* checks it:
+      # a downloaded APK is refused unless it is a build of the channel the phone follows, and
+      # that check reads the version name inside the file. A mismatch here would ship a release
+      # every phone on that channel downloads and then throws away, for ever.
+      - name: Check the version name agrees with the tag
+        run: |
+          set -euo pipefail
+          VN=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts | head -1)
+          SUFFIX="-${{ steps.channel.outputs.name }}"
+          case "$VN" in
+            *"$SUFFIX") echo "versionName $VN matches $SUFFIX" ;;
+            *) echo "::error::versionName '$VN' does not end in '$SUFFIX'; the app would refuse this build"; exit 1 ;;
+          esac
+
       - name: Run tests
         run: ./gradlew test
 
@@ -35,19 +67,43 @@ jobs:
       - name: Copy APK to the stable asset name
         run: cp app/build/outputs/apk/release/app-release.apk rwilco.apk
 
-      - name: Build version.json (drives in-app auto-update)
+      # Two manifests, and they are not the same document.
+      #
+      # version.json is what an install published before the channels existed still polls,
+      # through `releases/latest`. Those copies must keep updating, and because alpha builds are
+      # pre-releases `latest` is always a beta, so they land on the beta channel by themselves
+      # with nothing to do.
+      #
+      # channels/<name>.json is what every current install reads. Its APK url is pinned to *this*
+      # tag rather than to `latest`, which is what stops a download racing a release published
+      # between reading the manifest and fetching the file it named.
+      - name: Build the manifests
+        id: manifest
         run: |
           set -euo pipefail
           # head -1 on both: a second match anywhere in the file (a comment naming the pattern,
           # a flavour) would otherwise be pasted into the JSON and ship an unparseable one.
           VC=$(grep -oP 'versionCode\s*=\s*\K[0-9]+' app/build.gradle.kts | head -1)
           VN=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts | head -1)
+          TAG="${{ steps.channel.outputs.tag }}"
           printf '{"versionCode": %s, "versionName": "%s", "apk": "%s"}\n' \
             "$VC" "$VN" "https://github.com/olemoudi/rwilco/releases/latest/download/rwilco.apk" > version.json
+          printf '{"versionCode": %s, "versionName": "%s", "apk": "%s"}\n' \
+            "$VC" "$VN" "https://github.com/olemoudi/rwilco/releases/download/$TAG/rwilco.apk" \
+            > "channels/${{ steps.channel.outputs.name }}.json"
           cat version.json
-          # The file every installed phone parses to decide whether to update itself: a broken
+          cat "channels/${{ steps.channel.outputs.name }}.json"
+          # The files every installed phone parses to decide whether to update itself: a broken
           # one is silent, and stays silent until somebody notices they stopped getting updates.
-          python3 -c "import json;d=json.load(open('version.json'));assert isinstance(d['versionCode'],int) and d['versionName'] and d['apk'].startswith('https://github.com/olemoudi/rwilco/')"
+          python3 - "channels/${{ steps.channel.outputs.name }}.json" <<'PY'
+          import json, sys
+          for path in ("version.json", sys.argv[1]):
+              d = json.load(open(path))
+              assert isinstance(d["versionCode"], int) and d["versionCode"] > 0, path
+              assert d["versionName"], path
+              assert d["apk"].startswith("https://github.com/olemoudi/rwilco/"), path
+          PY
+          echo "versionName=$VN" >> "$GITHUB_OUTPUT"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v3
@@ -57,3 +113,27 @@ jobs:
             version.json
           fail_on_unmatched_files: true
           generate_release_notes: true
+          # The flag that keeps `releases/latest` meaning "beta", which is what the install link
+          # and every pre-channel install both resolve through.
+          prerelease: ${{ steps.channel.outputs.prerelease }}
+
+      # Only after the release exists: the manifest names an APK, and pointing a channel at a
+      # download that has not been published yet is a few minutes of every phone on that channel
+      # failing to fetch it.
+      - name: Point the channel at it
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          FILE="channels/${{ steps.channel.outputs.name }}.json"
+          git add "$FILE"
+          git diff --cached --quiet && echo "channel already points here" && exit 0
+          git commit -m "chore: point the ${{ steps.channel.outputs.name }} channel at ${{ steps.manifest.outputs.versionName }} [skip ci]"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git rebase origin/main && git push origin HEAD:main && exit 0
+            echo "push $attempt was beaten to it; trying again"
+            sleep $((attempt * 5))
+          done
+          echo "::error::could not point the channel at this release"
+          exit 1

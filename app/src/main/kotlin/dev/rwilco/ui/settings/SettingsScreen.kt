@@ -589,6 +589,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
                 onToggle = { toggle(Group.UPDATES) },
             ) {
                 AppUpdateCard()
+                UpdateChannelCard(channel = current.updateChannel, onChannel = viewModel::setUpdateChannel)
                 RwilcoCard {
                     Column(Modifier.padding(spacing.lg)) {
                         SettingSwitchRow(

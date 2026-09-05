@@ -1,5 +1,7 @@
 package dev.rwilco.update
 
+import dev.rwilco.model.UpdateChannel
+import dev.rwilco.model.belongsToChannel
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -28,21 +30,31 @@ data class ApkIdentity(val packageName: String, val versionCode: Int, val versio
 /**
  * Whether an APK file on disk may be handed to the installer.
  *
- * Three questions, and every one of them has bitten: did it parse as an APK at all ([pkg] is
+ * Four questions, and every one of them has bitten: did it parse as an APK at all ([pkg] is
  * null when it did not — a captive portal's login page served with a 200, or a body cut short
  * when the connection dropped); is it THIS app (nothing else may be installed under our name);
- * and is it newer than the build already running (the installer refuses a downgrade anyway, so
- * retrying one forever is just how a device gets stuck re-downloading fifty megabytes).
+ * is it newer than the build already running (the installer refuses a downgrade anyway, so
+ * retrying one forever is just how a device gets stuck re-downloading fifty megabytes); and is
+ * it a build of the channel this phone follows.
  *
- * Deliberately "newer than installed" rather than "exactly what version.json promised": if the
+ * That last one is asked of the *file* and not of the manifest that named it, which is the whole
+ * point of it: a manifest is a document on the internet, and one edited wrongly — a copy-paste
+ * between the two channels — would otherwise move somebody onto a lineage they never chose,
+ * silently. See [dev.rwilco.model.belongsToChannel].
+ *
+ * Deliberately "newer than installed" rather than "exactly what the manifest promised": if the
  * release moved on mid-download, the newer APK that arrived is still progress.
  */
 fun apkIsInstallable(
     pkg: String?,
     apkVersionCode: Int,
+    apkVersionName: String,
     ourPackage: String,
     installedVersionCode: Int,
-): Boolean = pkg == ourPackage && apkVersionCode > installedVersionCode
+    channel: UpdateChannel,
+): Boolean = pkg == ourPackage &&
+    apkVersionCode > installedVersionCode &&
+    belongsToChannel(apkVersionName, channel)
 
 /**
  * Whether the downloaded APK survives an install that did not succeed.

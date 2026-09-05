@@ -134,6 +134,13 @@ data class AppSettings(
      */
     val updatesWifiOnly: Boolean = false,
     /**
+     * Which stream of builds this phone follows. See [UpdateChannel].
+     *
+     * [UpdateChannel.BETA] by default, and that is what makes the migration onto channels cost
+     * nothing: an install that predates them reads the default and is already where it was.
+     */
+    val updateChannel: UpdateChannel = UpdateChannel.BETA,
+    /**
      * Send a reminder's sound to the headphones when any are connected, instead of letting it
      * out of the phone's own speaker as an alarm otherwise would. On, because somebody wearing
      * headphones is the person most likely to miss the speaker — and off is the honest setting
@@ -170,6 +177,14 @@ data class AppSettings(
      * can still be opened out on its own where the list is not the question.
      */
     val compactHome: Boolean = false,
+    /**
+     * Whether the notice about what this app is has been silenced for good.
+     *
+     * False by default, and that is what makes it appear on a phone that already has the app:
+     * the flag arrives absent, reads as false, and the notice is shown until somebody turns it
+     * off deliberately. Pressing "OK" does not set it — see [dev.rwilco.ui.Disclaimer].
+     */
+    val disclaimerRead: Boolean = false,
 )
 
 /** How the alert screen holds more than one reminder. See [AppSettings.alertStacking]. */

@@ -20,6 +20,7 @@ import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.SavedWindow
 import dev.rwilco.model.PlaceWatchPolicy
 import dev.rwilco.model.ThemeMode
+import dev.rwilco.model.UpdateChannel
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.VibrationPattern
 import dev.rwilco.model.WatchLog
@@ -184,6 +185,9 @@ class SettingsViewModel(
 
     /** Updates only where the data is not paid for by the megabyte; the button always goes. */
     fun setUpdatesWifiOnly(only: Boolean) = update { it.copy(updatesWifiOnly = only) }
+
+    /** Which stream of builds this phone follows. See [UpdateChannel]. */
+    fun setUpdateChannel(channel: UpdateChannel) = update { it.copy(updateChannel = channel) }
 
     /** Two full-screen reminders at once: one behind the other, or side by side as strips. */
     fun setAlertStacking(stacking: AlertStacking) = update { it.copy(alertStacking = stacking) }

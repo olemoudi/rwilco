@@ -82,7 +82,7 @@ fun AppUpdateCard() {
     // moves and whenever the screen comes back. Off the main thread: it parses a big archive.
     var staged by remember { mutableStateOf<UpdateInfo?>(null) }
     LaunchedEffect(updateState, resumeTick) {
-        staged = withContext(Dispatchers.IO) { Updater(context).stagedUpdate() }
+        staged = withContext(Dispatchers.IO) { Updater(context).let { it.stagedUpdate(it.channel()) } }
     }
 
     RwilcoCard {

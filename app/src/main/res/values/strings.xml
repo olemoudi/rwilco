@@ -1183,6 +1183,20 @@
     <string name="vault_pass_enough">Good enough.</string>
     <string name="vault_pass_good">A good one.</string>
     <string name="vault_pass_strong">Long and varied — the best kind.</string>
+    <string name="settings_channel">Update channel</string>
+    <string name="settings_channel_beta">Beta</string>
+    <string name="settings_channel_alpha">Alpha</string>
+    <string name="settings_channel_beta_hint">Tested releases. What the app is for everybody.</string>
+    <string name="settings_channel_alpha_hint">Builds as they are written. Nobody else has run them.</string>
+    <string name="settings_channel_warn_title">Follow the alpha channel?</string>
+    <string name="settings_channel_warn_body">Alpha builds are published as they are written and nobody else has run them. Something that works today can break tomorrow, and what breaks here is a reminder that does not arrive.</string>
+    <string name="settings_channel_warn_back">Coming back is not immediate: Android will not install an older version over a newer one, so you would stay on the alpha build until the beta channel passes it. If you need to return sooner, save a vault and install the beta APK by hand.</string>
+    <string name="settings_channel_warn_confirm">Use alpha builds</string>
+    <string name="settings_channel_waiting">You are on a build newer than the beta channel (%1$s). You will rejoin it at the next beta release.</string>
+    <string name="settings_channel_waiting_manual">To return now, save a vault and reinstall the beta version by hand.</string>
+    <string name="disclaimer_body">Warning: this app is experimental software. The author accepts no responsibility for any problems it may cause. If your reminders are especially critical to you, perhaps you should not rely on this app.</string>
+    <string name="disclaimer_ok">OK</string>
+    <string name="disclaimer_never_again">Don\'t remind me again</string>
     <string name="settings_updates_wifi">Update only over wifi</string>
     <string name="settings_updates_wifi_hint">The app is about fifty megabytes, and an update downloads all of it. With this on, checks and downloads wait for wifi; «Check now» goes over whatever there is, because you asked for it.</string>
     <string name="home_backup_working">Making the encrypted copy…</string>
@@ -1262,6 +1276,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_88_0">
+        <item>Two update channels, chosen in Settings → Updates. Beta is the tested one and where you already are; alpha is builds as they are written, which nobody else has run. Going to alpha happens at the next check; coming back waits for beta to catch up, because Android will not install an older version over a newer one — the screen says so before you choose and again while it is true.</item>
+        <item>A downloaded update is refused unless it is a build of the channel you follow. The check reads the version inside the APK rather than trusting the file that named it, so a mistake in a manifest cannot move this phone onto builds it never asked for.</item>
+        <item>And a word about what this app is, at launch. It is experimental software written for one person: press OK and it comes back next time, or turn it off for good.</item>
+    </string-array>
     <string-array name="whats_new_0_87_0">
         <item>Tags are one row now when you write a reminder: a + that asks for a name, the ones you use most, and the dots for the rest. It used to be a button that unfolded into a field, a heading and a grid of chips, sitting between the words and the "when".</item>
         <item>And they are administered in one place: the + at the end of the row of tags on the main screen. Rename one, remove one, put the ones you use at the front of the row, or write one down before the reminder that needs it. Renaming and removing reach every reminder carrying the tag; removing asks first.</item>

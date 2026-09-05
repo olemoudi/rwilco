@@ -8,6 +8,9 @@ import android.os.Build
 import android.util.Log
 import androidx.core.app.PendingIntentCompat
 import dev.rwilco.Distribution
+import dev.rwilco.RwilcoApplication
+import dev.rwilco.model.UpdateChannel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
@@ -74,7 +77,7 @@ class Updater(private val context: Context) {
      * somebody who dismissed the system's install prompt or swiped the notification away.
      */
     suspend fun installStaged(): UpdateCheckOutcome {
-        val staged = stagedUpdate() ?: return UpdateCheckOutcome.UP_TO_DATE
+        val staged = stagedUpdate(channel()) ?: return UpdateCheckOutcome.UP_TO_DATE
         if (!updateMutex.tryLock()) {
             Log.i(TAG, "install already in flight; skipping")
             return UpdateCheckOutcome.BUSY
@@ -93,12 +96,29 @@ class Updater(private val context: Context) {
      * a 200, a body cut short when the connection dropped); it is not this package; or it is not
      * newer than the build already running (the leftovers of the update that just succeeded).
      */
-    fun stagedUpdate(): UpdateInfo? {
+    fun stagedUpdate(channel: UpdateChannel): UpdateInfo? {
         val apk = apkIdentity(apkFile()) ?: return null
-        if (!apkIsInstallable(apk.packageName, apk.versionCode, context.packageName, currentVersionCode())) {
-            return null
-        }
+        val installable = apkIsInstallable(
+            pkg = apk.packageName,
+            apkVersionCode = apk.versionCode,
+            apkVersionName = apk.versionName,
+            ourPackage = context.packageName,
+            installedVersionCode = currentVersionCode(),
+            channel = channel,
+        )
+        if (!installable) return null
         return UpdateInfo(versionCode = apk.versionCode, versionName = apk.versionName)
+    }
+
+    /**
+     * The channel this phone follows, read fresh every time rather than held: a check outlives
+     * the screen that changed it, and the answer decides which manifest is read and which APKs
+     * are allowed to install. Beta whenever the settings cannot be read at all — the safer of
+     * the two is the right thing to fall back to.
+     */
+    suspend fun channel(): UpdateChannel {
+        val app = context.applicationContext as? RwilcoApplication ?: return UpdateChannel.BETA
+        return runCatching { app.settingsStore.settings.first().updateChannel }.getOrDefault(UpdateChannel.BETA)
     }
 
     /** What a file on disk says it is, or null if it is not an APK at all (the platform parses it). */
@@ -111,9 +131,10 @@ class Updater(private val context: Context) {
     }
 
     private suspend fun doCheckAndUpdate(): UpdateCheckOutcome = withContext(Dispatchers.IO) {
-        Log.i(TAG, "checking for update")
+        val channel = channel()
+        Log.i(TAG, "checking for update on the $channel channel")
         UpdateCenter.report(UpdateUiState.Checking)
-        val info = runCatching { fetchInfo() }.onFailure { Log.w(TAG, "fetch failed", it) }.getOrNull()
+        val info = runCatching { fetchInfo(channel) }.onFailure { Log.w(TAG, "fetch failed", it) }.getOrNull()
         if (info == null) {
             Log.w(TAG, "no version info")
             UpdateCenter.report(UpdateUiState.Failed("fetch"))
@@ -121,7 +142,7 @@ class Updater(private val context: Context) {
         }
         val current = currentVersionCode()
         Log.i(TAG, "installed=$current latest=${info.versionCode}")
-        val staged = stagedUpdate()
+        val staged = stagedUpdate(channel)
         val step = nextUpdateStep(
             isNewer = info.isNewerThan(current),
             hasStagedApk = staged != null,
@@ -174,10 +195,10 @@ class Updater(private val context: Context) {
             UpdateCenter.report(UpdateUiState.Failed("download"))
             return@withContext UpdateCheckOutcome.TRANSIENT_FAILURE
         }
-        val arrived = stagedUpdate()
+        val arrived = stagedUpdate(channel)
         if (arrived == null) {
-            // What came down is not a Rwilco build newer than this one. Handing it to the
-            // installer would only fail later, and less legibly.
+            // What came down is not a Rwilco build of this channel, newer than this one.
+            // Handing it to the installer would only fail later, and less legibly.
             Log.e(TAG, "the downloaded file is not an installable Rwilco APK; discarding it")
             discardStagedApk()
             UpdateCenter.report(UpdateUiState.Failed("bad download"))
@@ -211,10 +232,17 @@ class Updater(private val context: Context) {
         runCatching { apkFile().delete() }
     }
 
-    private fun fetchInfo(): UpdateInfo? {
-        client.newCall(Request.Builder().url(Distribution.VERSION_JSON_URL).build()).execute().use { resp ->
+    /**
+     * What [channel] currently serves.
+     *
+     * The channel's own manifest, not `releases/latest`: those two stopped being the same
+     * question the moment alpha builds started shipping between betas. See
+     * [Distribution.manifestUrl].
+     */
+    internal fun fetchInfo(channel: UpdateChannel): UpdateInfo? {
+        client.newCall(Request.Builder().url(Distribution.manifestUrl(channel)).build()).execute().use { resp ->
             if (!resp.isSuccessful) return null
-            // Bounded: version.json is a hundred bytes. Whatever else ends up behind that url
+            // Bounded: a manifest is a hundred bytes. Whatever else ends up behind that url
             // must not be read into memory whole.
             return UpdateInfo.parse(resp.peekBody(MAX_INFO_BYTES).string())
         }

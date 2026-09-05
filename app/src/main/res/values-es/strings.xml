@@ -1168,6 +1168,20 @@
     <string name="vault_pass_enough">Suficiente.</string>
     <string name="vault_pass_good">Buena.</string>
     <string name="vault_pass_strong">Larga y variada: de las buenas.</string>
+    <string name="settings_channel">Canal de actualización</string>
+    <string name="settings_channel_beta">Beta</string>
+    <string name="settings_channel_alpha">Alpha</string>
+    <string name="settings_channel_beta_hint">Versiones probadas. Lo que la app es para todo el mundo.</string>
+    <string name="settings_channel_alpha_hint">Compilaciones según se escriben. Nadie más las ha usado.</string>
+    <string name="settings_channel_warn_title">¿Seguir el canal alpha?</string>
+    <string name="settings_channel_warn_body">Las compilaciones alpha se publican según se escriben y nadie más las ha usado. Lo que hoy funciona puede romperse mañana, y lo que se rompe aquí es un recordatorio que no llega.</string>
+    <string name="settings_channel_warn_back">Volver no es inmediato: Android no instala una versión más antigua sobre una más nueva, así que te quedarías en la compilación alpha hasta que el canal beta la adelante. Si necesitas volver antes, guarda un vault e instala el APK beta a mano.</string>
+    <string name="settings_channel_warn_confirm">Usar compilaciones alpha</string>
+    <string name="settings_channel_waiting">Estás en una compilación más nueva que el canal beta (%1$s). Volverás a él en la siguiente versión beta.</string>
+    <string name="settings_channel_waiting_manual">Para volver ahora, guarda un vault y reinstala la versión beta a mano.</string>
+    <string name="disclaimer_body">Atención: esta aplicación es software experimental. El autor no se hace responsable de posibles incidencias que pueda ocasionar. Si los recordatorios son especialmente críticos para ti, quizá no deberías fiarte de esta aplicación.</string>
+    <string name="disclaimer_ok">OK</string>
+    <string name="disclaimer_never_again">No volver a recordar</string>
     <string name="settings_updates_wifi">Actualizar solo con wifi</string>
     <string name="settings_updates_wifi_hint">La app son unos cincuenta megas, y una actualización se los descarga enteros. Con esto activado las comprobaciones y las descargas esperan al wifi; «Buscar ahora» sale por donde haya, porque lo has pedido tú.</string>
     <string name="home_backup_working">Haciendo la copia cifrada…</string>
@@ -1247,6 +1261,11 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_88_0">
+        <item>Dos canales de actualización, elegibles en Ajustes → Actualizaciones. Beta es el probado y donde ya estás; alpha son compilaciones según se escriben, que nadie más ha usado. Pasar a alpha ocurre en la siguiente comprobación; volver espera a que beta la adelante, porque Android no instala una versión más antigua sobre una más nueva — la pantalla lo dice antes de elegir y mientras siga siendo verdad.</item>
+        <item>Una actualización descargada se rechaza si no es una compilación del canal que sigues. La comprobación lee la versión dentro del APK en vez de fiarse del fichero que lo nombró, así que un error en un manifiesto no puede mover este móvil a compilaciones que no pidió.</item>
+        <item>Y un aviso sobre lo que es esta app, al arrancar. Es software experimental escrito para una persona: pulsa OK y vuelve la próxima vez, o desactívalo para siempre.</item>
+    </string-array>
     <string-array name="whats_new_0_87_0">
         <item>Las etiquetas son ahora una sola fila al escribir un recordatorio: un + que pide el nombre, las que más usas, y los puntos para el resto. Antes era un botón que se abría en campo, un título y una parrilla de chips, entre las palabras y el «cuándo».</item>
         <item>Y se gestionan en un sitio: el + al final de la fila de etiquetas de la pantalla principal. Renombrar, borrar, poner las que usas al principio de la fila, o apuntar una antes del recordatorio que la necesita. Renombrar y borrar alcanzan a todos los recordatorios que la llevan; borrar pregunta antes.</item>

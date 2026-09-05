@@ -2607,12 +2607,49 @@ history is the backup's history for free — with a fine-grained token scoped to
 
 `update/`: `UpdateWorker` (periodic + boot/focus; the launch check is `MainActivity`'s, not the
 `Application`'s, because the place watch starts the process every few minutes and each start
-was a trip to GitHub) runs `Updater`, which reads
-`version.json`, decides with the pure `nextUpdateStep` table, downloads over OkHttp (no plaintext
-redirects), validates the APK through the platform parser and commits a `PackageInstaller`
-session; `InstallReceiver` turns "needs confirmation" into a notification and keeps a declined
-APK for the one-tap retry in Settings (`AppUpdateCard`). `BootReceiver` re-arms after boot and
-after the update itself.
+was a trip to GitHub) runs `Updater`, which reads the manifest of the channel this phone follows
+(`Distribution.manifestUrl`), decides with the pure `nextUpdateStep` table, downloads over OkHttp
+(no plaintext redirects), validates the APK through the platform parser and commits a
+`PackageInstaller` session; `InstallReceiver` turns "needs confirmation" into a notification and
+keeps a declined APK for the one-tap retry in Settings (`AppUpdateCard`). `BootReceiver` re-arms
+after boot and after the update itself.
+
+### Two channels (0.88.0)
+
+`UpdateChannel.BETA` is the tested stream and the default; `ALPHA` is builds as they are written.
+The choice is `AppSettings.updateChannel`, made in Settings → Updates, and three files have to
+agree about it: the **tag** (`v0.88.0-beta` / `-alpha`), the **manifest** CI commits
+(`channels/beta.json`, `channels/alpha.json`, APK url pinned to that tag rather than to a `latest`
+that can move mid-download), and the **version name inside the APK**.
+
+That last one is the check that makes a channel a channel. `apkIsInstallable` refuses a
+downloaded file whose version name does not end in the followed channel's suffix
+(`belongsToChannel`), and it is asked of the *file* rather than of the manifest that named it: a
+manifest is a document on the internet, and one edited wrongly — a copy-paste between the two
+channels — would otherwise move a phone onto a lineage nobody chose, silently. A version name
+from before the channels ends in neither suffix and is refused by both rather than accepted by
+both.
+
+The asymmetry is the design and the screen says it out loud (`UpdateChannelCard`,
+`channelSwitch`): going to alpha lands at the next check, coming back cannot — Android will not
+install an older version over a newer one — so beta is chosen without a dialog and rejoined when
+beta passes the phone. `ChannelSwitch.AlreadyOnIt` is deliberately distinct from
+`WaitsForNextRelease`, or every up-to-date phone on beta would be told it was stranded.
+
+`version.json` at `releases/latest` is still published, for installs that predate all of this:
+alpha releases are GitHub pre-releases, so `latest` is always a beta and those copies land on the
+beta channel by themselves with nothing to do.
+
+## The launch notice
+
+`DisclaimerDialog`, over Home, once per launch: this is experimental software written for one
+person and updated every few days, and somebody should be told that before they trust an alarm to
+it. "OK" is the filled button and only closes it — `Disclaimer.readThisRun` is process-scoped, so
+a rotation or a trip to Settings is the same launch and starting the app again is not. The quiet
+text button is the one that sets `AppSettings.disclaimerRead` and stops it for good, which is why
+the flag defaults to false: a phone that already has the app is shown the notice too. The
+instrumented suite answers it once for the whole run in `RwilcoTestRunner`; `DisclaimerTest`
+unanswers it for itself.
 
 ## Performance
 
@@ -2661,5 +2698,7 @@ card for a gesture that is almost never in progress.
 ## Distribution
 
 GitHub Actions: `ci.yml` (tests, coverage badge, debug APK, compiles instrumented tests) and
-`release.yml` (tag `v*` → `rwilco.apk` + `version.json` on a GitHub Release). Signed with the
-committed `rwilco-release.jks`. Self-update — milestone 7.
+`release.yml` (tag `v*-beta` or `v*-alpha` → `rwilco.apk` + `version.json` on a GitHub Release,
+plus the channel manifest committed to `main`; a tag naming neither channel fails the workflow,
+and so does a `versionName` that disagrees with it). Signed with the committed
+`rwilco-release.jks`. Self-update — milestone 7.

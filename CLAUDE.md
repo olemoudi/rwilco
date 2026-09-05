@@ -244,16 +244,33 @@ These are standing rules for this repository. Follow them without being re-asked
   purpose (install over a release without uninstalling).
 - Releases are published by GitHub Actions on pushing a tag matching `v*`: `assembleRelease`,
   then two assets with **stable names**: `rwilco.apk` and `version.json`, at
-  `…/releases/latest/download/`. The asset name carries no release stage on purpose; the stage
-  lives in `versionName`, which nothing parses — only `versionCode` drives updates.
-- **Bumping a version:** raise `versionCode` (and `versionName`) in `app/build.gradle.kts` —
-  exactly one occurrence of each, the release workflow greps the first — then push a `v*` tag.
+  `…/releases/latest/download/`. The asset name carries no release stage on purpose.
+- **Two channels, and the tag picks one.** A tag ends in `-beta` (the tested channel, published
+  as a normal release, so `releases/latest` keeps meaning "beta") or in `-alpha` (published as a
+  GitHub **pre-release**, which is what keeps it out of `latest`). A tag ending in neither fails
+  the workflow. CI also writes `channels/beta.json` / `channels/alpha.json` — committed to `main`,
+  with the APK url pinned to *that tag* — which is what installed apps actually read.
+- **`versionName` must carry the same suffix as the tag.** It is not cosmetic: a phone refuses a
+  downloaded APK whose version name does not end in its channel's suffix, so a mismatch ships a
+  release every phone on that channel downloads and throws away. Guarded twice — `ChannelBuildTest`
+  before the tag is pushed, and the workflow after.
+- **Bumping a version:** raise `versionCode` and `versionName` in `app/build.gradle.kts` —
+  exactly one occurrence of each, the release workflow greps the first — add the build's line to
+  `RELEASES` (`WhatsNewTest` refuses a build without one), then push the matching `v*-beta` or
+  `v*-alpha` tag.
 
 ### Auto-update
 - The app self-updates from GitHub Releases: `UpdateWorker` (periodic + on launch/boot) runs
-  `Updater`, which reads `version.json`, compares `versionCode`, downloads the APK, validates it
-  and installs via `PackageInstaller`; the system shows the install confirmation. Keep the
-  decision logic in pure functions (`UpdateInfo.kt`) with JVM tests.
+  `Updater`, which reads the manifest of the channel the phone follows
+  (`Distribution.manifestUrl`), compares `versionCode`, downloads the APK, validates it and
+  installs via `PackageInstaller`; the system shows the install confirmation. Keep the decision
+  logic in pure functions (`UpdateInfo.kt`, `core-model`'s `UpdateChannel.kt`) with JVM tests.
+- `version.json` at `releases/latest` is kept published for installs that predate the channels:
+  they read whatever `latest` names, which is always a beta, so they land on the beta channel by
+  themselves. Do not stop publishing it.
+- The channel is chosen in Settings → Updates. Going to alpha asks first; coming back does not,
+  and cannot be immediate — Android will not install an older version over a newer one, so the
+  phone rejoins beta when beta passes it, and the screen says so while that is true.
 
 ### Data & config migrations (must stay transparent)
 - **Config (DataStore/JSON)** is forward-compatible by construction: new fields get defaults and
