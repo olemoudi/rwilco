@@ -98,6 +98,8 @@ import dev.rwilco.ui.settings.rememberAlertReadiness
 import dev.rwilco.ui.settings.readinessShortRes
 import dev.rwilco.ui.settings.stripShows
 import dev.rwilco.ui.format.snoozePlacePhrase
+import dev.rwilco.data.FiringEvent
+import dev.rwilco.model.Reminder
 import kotlinx.coroutines.delay
 
 /** So a test can scroll the list itself; a lazy list does not compose what is off screen. */
@@ -114,6 +116,16 @@ const val HOME_LIST_TAG = "homeList"
  */
 data class JustSaved(val id: String, val created: Boolean)
 
+/**
+ * A reminder the editor has just deleted, on its way to Home's undo row.
+ *
+ * The editor's own undo was a four-second snackbar the next snackbar kills, while a delete
+ * from a card has had the minute-long row since 0.67.0 — the same act, with a way back only
+ * from one of its two doors (0.93.0). The editor's scope dies with its screen, so the row is
+ * handed here the way a save is, history included: the undo puts back what the cascade took.
+ */
+data class JustDeleted(val reminder: Reminder, val history: List<FiringEvent>)
+
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
@@ -123,6 +135,9 @@ fun HomeScreen(
     /** A reminder a save has just written, to be gone to and marked; see the effect below. */
     justSaved: JustSaved? = null,
     onJustSavedShown: () -> Unit = {},
+    /** A reminder the editor has just deleted: its minute of undo is Home's row. */
+    justDeleted: JustDeleted? = null,
+    onJustDeletedShown: () -> Unit = {},
     onNew: () -> Unit,
     onNewFromPreset: (String) -> Unit,
     onEditPreset: (String) -> Unit,
@@ -175,6 +190,7 @@ fun HomeScreen(
     val pausedMessage = stringResource(R.string.home_paused)
     val resumedMessage = stringResource(R.string.home_resumed)
     val snoozeCancelledMessage = stringResource(R.string.home_snooze_cancelled)
+    val tagRenamedMessage = stringResource(R.string.home_tag_renamed_none)
     val words = rememberWords()
     val zone = viewModel.clock.zone
 
@@ -227,11 +243,27 @@ fun HomeScreen(
                 HomeEvent.NoFix -> snackbar.show(message = noFixMessage)
                 // Something it carries has already passed: the form, not a silent overdue.
                 is HomeEvent.NeedsEditor -> onNewFromPreset(event.presetId)
+                // A rename reaches every reminder wearing the tag and used to say nothing at
+                // all (0.93.0); the undo is the same rename the other way, where that is one.
+                is HomeEvent.TagRenamed -> snackbar.show(
+                    message = if (event.count == 0) tagRenamedMessage
+                    else words.plural(R.plurals.home_tag_renamed, event.count),
+                    undoLabel = undoLabel.takeIf { event.undoable },
+                    onUndo = { viewModel.renameTag(event.to, event.from) }.takeIf { event.undoable },
+                )
             }
         }
     }
 
     BackHandler(enabled = search.open) { viewModel.setSearching(false) }
+    // Then the filter: a list narrowed to one tag is a state somebody put the screen in, and
+    // Back used to leave the app with the list still narrowed (0.93.0).
+    BackHandler(enabled = !search.open && state.selectedTag != null) { viewModel.selectTag(null) }
+    LaunchedEffect(justDeleted) {
+        val deleted = justDeleted ?: return@LaunchedEffect
+        viewModel.noteDeleted(deleted.reminder, deleted.history)
+        onJustDeletedShown()
+    }
 
     // The same two doors the pinned button has: words of its own, written on the spot; none,
     // asked for first. Waits for the presets to have arrived; a shortcut for a preset that no
@@ -285,10 +317,12 @@ fun HomeScreen(
             },
         )
     }
+    // Read here and not only behind the panel: whether there is anything to administer is
+    // what decides whether the row that opens it is drawn at all (see the list).
+    val tagRows by viewModel.tagRows.collectAsStateWithLifecycle()
     if (managingTags) {
-        val tags by viewModel.tagRows.collectAsStateWithLifecycle()
         TagsPanel(
-            tags = tags,
+            tags = tagRows,
             onTogglePin = viewModel::toggleTagPin,
             onRename = viewModel::renameTag,
             onDelete = viewModel::deleteTag,
@@ -487,11 +521,20 @@ fun HomeScreen(
         // Asked once and read twice — by the list that draws it and by the arithmetic that
         // counts past it — because the two disagreeing is a scroll to the wrong card.
         val stripShown = !search.open && stripShows(readiness, dismissedProblems)
+        // The row of chips, and the "+" on it that administers the tags. Not only while a
+        // chip has something to filter (0.93.0): a tag left on finished reminders alone is
+        // the one 0.90.0 made deletable *from that panel*, and the panel had no door then.
+        val tagsRowShown = state.tags.isNotEmpty() || tagRows.isNotEmpty()
         val listState = rememberLazyListState()
+        // The results are a different list and start at their top (0.93.0): sharing the one
+        // state put a search opened twenty cards down twenty rows into its own results, and
+        // closing it left Home wherever the results had been.
+        val searchListState = rememberLazyListState()
+        LaunchedEffect(search.open) { if (search.open) searchListState.scrollToItem(0) }
         LaunchedEffect(justSaved, state.sections, state.hero) {
             val saved = justSaved ?: return@LaunchedEffect
             val id = saved.id
-            val index = homeCardIndex(state, id, strip = stripShown, pinned = presets.isNotEmpty(), undoRow = pendingDelete != null)
+            val index = homeCardIndex(state, id, strip = stripShown, pinned = presets.isNotEmpty(), undoRow = pendingDelete != null, tagsRow = tagsRowShown)
                 ?: return@LaunchedEffect
             if (saved.created) {
                 viewModel.expandCard(id)
@@ -517,7 +560,7 @@ fun HomeScreen(
                 .collect { if (it) headerScroll.show() }
         }
         LazyColumn(
-            state = listState,
+            state = if (search.open) searchListState else listState,
             modifier = Modifier
                 .fillMaxSize()
                 .testTag(HOME_LIST_TAG),
@@ -525,7 +568,9 @@ fun HomeScreen(
                 start = spacing.screen,
                 end = spacing.screen,
                 top = padding.calculateTopPadding() + spacing.md,
-                bottom = padding.calculateBottomPadding() + Tokens.sizes.primary + spacing.xl,
+                // Room for the whole column of buttons at the corner — "Nuevo" and the fold
+                // above it — so the last card's own controls are not under the fold (0.93.0).
+                bottom = padding.calculateBottomPadding() + Tokens.sizes.primary + spacing.sm + Tokens.sizes.touch + spacing.xl,
             ),
             verticalArrangement = Arrangement.spacedBy(spacing.md),
         ) {
@@ -603,7 +648,7 @@ fun HomeScreen(
                 if (!state.loaded) {
                     item(key = "loading", contentType = "loading") { ListPlaceholder() }
                 }
-                if (state.tags.isNotEmpty()) {
+                if (tagsRowShown) {
                     item(key = "tags", contentType = "tags") {
                         TagFilterRow(
                             tags = state.tags,

@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.rwilco.R
@@ -73,6 +74,8 @@ fun ConditionSheet(
     var chosenLabel by rememberSaveable { mutableStateOf(atPlace?.label ?: offered.firstOrNull()?.label) }
     val selected = days.map(DayOfWeek::valueOf).toSet()
     val pickedPlace = offered.firstOrNull { it.label == chosenLabel } ?: offered.firstOrNull()
+    // What the sheet opened with, so a scrim tap or Back asks before throwing an edit away (0.93.0).
+    val untouched = remember { listOf(place, from, to, days, inside, chosenLabel) }
 
     SheetScaffold(
         title = stringResource(R.string.condition_title),
@@ -86,6 +89,7 @@ fun ConditionSheet(
         },
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
         confirmEnabled = if (place) pickedPlace != null else from != to,
+        dirty = listOf(place, from, to, days, inside, chosenLabel) != untouched,
     ) {
         SegmentedChoice(
             options = listOf(stringResource(R.string.condition_kind_hours), stringResource(R.string.condition_kind_place)),

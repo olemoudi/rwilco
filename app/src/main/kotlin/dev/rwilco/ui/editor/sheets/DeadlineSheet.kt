@@ -16,6 +16,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -55,6 +56,8 @@ fun DeadlineSheet(
     var minutes by rememberSaveable { mutableIntStateOf(initialTimer?.minutes ?: 120) }
     val hours = minutes / 60
     val rest = minutes % 60
+    // What the sheet opened with, so a scrim tap or Back asks before throwing an edit away (0.93.0).
+    val untouched = remember { listOf(timer, from, to, minutes) }
 
     SheetScaffold(
         title = stringResource(R.string.deadline_sheet_title),
@@ -62,6 +65,7 @@ fun DeadlineSheet(
         onConfirm = { onConfirm(if (timer) Deadline.Timer(minutes) else Deadline.Window(from, to)) },
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
         confirmEnabled = if (timer) minutes in MIN_DEADLINE_MINUTES..MAX_DEADLINE_MINUTES else from != to,
+        dirty = listOf(timer, from, to, minutes) != untouched,
     ) {
         if (allowTimer) {
             SegmentedChoice(

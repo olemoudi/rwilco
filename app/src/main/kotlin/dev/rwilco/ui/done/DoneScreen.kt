@@ -34,6 +34,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
@@ -110,11 +113,14 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
         },
     ) { padding ->
         val shown = view
+        // Both sides too (0.93.0): the Scaffold is asked for the safe area and only the top and
+        // bottom of its answer were read, so a phone on its side put cards under the cutout.
+        val direction = LocalLayoutDirection.current
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                start = spacing.screen,
-                end = spacing.screen,
+                start = padding.calculateStartPadding(direction) + spacing.screen,
+                end = padding.calculateEndPadding(direction) + spacing.screen,
                 top = padding.calculateTopPadding() + spacing.sm,
                 bottom = padding.calculateBottomPadding() + spacing.xl,
             ),
@@ -260,7 +266,9 @@ private fun DoneCard(reminder: Reminder, doneLabel: String?, onOpen: () -> Unit,
             }
             val restoreHaptics = Tokens.haptics
             IconButton(onClick = { restoreHaptics.perform(HapticFeedbackType.Confirm); onRestore() }) {
-                Icon(Icons.AutoMirrored.Outlined.Undo, contentDescription = stringResource(R.string.done_restore), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                // Named after its own reminder, the way the strips' "Ver" is: twenty cards were
+                // twenty identical "Recuperar"s to a screen reader (0.93.0).
+                Icon(Icons.AutoMirrored.Outlined.Undo, contentDescription = stringResource(R.string.done_restore_named, reminder.text), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

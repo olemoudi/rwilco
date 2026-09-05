@@ -138,6 +138,8 @@ class MainActivity : ComponentActivity() {
         const val DESTINATION_SETTINGS = "settings"
         /** The Backup screen, behind Settings: where a stopped backup's two choices are. */
         const val DESTINATION_BACKUP = "backup"
+        /** The place watch's log, behind Settings: where the number a watch notice names came from. */
+        const val DESTINATION_WATCH_LOG = "watch_log"
         private const val REMINDER_PREFIX = "reminder:"
 
         fun reminderDestination(id: String): String = REMINDER_PREFIX + id

@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.rwilco.R
@@ -32,8 +33,10 @@ import java.time.DayOfWeek
  * can be changed without going looking for the other.
  *
  * No "cualquier día" chip, unlike the sheets that read an empty set as every day: here the days
- * *are* the trigger, so none of them is nothing at all — the confirm button says so by staying
- * out of reach until one is marked.
+ * *are* the trigger, so none of them is nothing at all — the confirm button stays out of reach
+ * until one is marked, and the line under the days says why in red while that is so (0.93.0:
+ * a greyed button with no word beside it reads as the sheet being broken, the lesson the
+ * calendar sheet had already learnt).
  */
 @Composable
 fun WeekdaySheet(
@@ -44,6 +47,8 @@ fun WeekdaySheet(
 ) {
     var days by rememberSaveable { mutableStateOf(initial?.days?.map { it.name }?.toSet() ?: emptySet()) }
     val selected = days.map(DayOfWeek::valueOf).toSet()
+    // What the sheet opened with, so a scrim tap or Back asks before throwing an edit away (0.93.0).
+    val untouched = remember { days }
 
     SheetScaffold(
         title = stringResource(R.string.kind_weekday),
@@ -51,6 +56,7 @@ fun WeekdaySheet(
         onConfirm = { onConfirm(Trigger.Weekday(selected)) },
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
         confirmEnabled = selected.isNotEmpty(),
+        dirty = days != untouched,
     ) {
         Text(
             text = stringResource(if (combining) R.string.weekday_hint_together else R.string.weekday_hint_alone),
@@ -69,7 +75,7 @@ fun WeekdaySheet(
             Text(
                 text = stringResource(R.string.weekday_days_hint),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (selected.isEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

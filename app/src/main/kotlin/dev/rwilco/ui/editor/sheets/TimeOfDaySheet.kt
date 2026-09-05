@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.rwilco.R
@@ -48,12 +49,15 @@ fun TimeOfDaySheet(
     var time by rememberTime(initial?.time ?: defaultTime)
     var days by rememberSaveable { mutableStateOf(initial?.days?.map { it.name }?.toSet() ?: emptySet()) }
     val selected = days.map(DayOfWeek::valueOf).toSet()
+    // What the sheet opened with, so a scrim tap or Back asks before throwing an edit away (0.93.0).
+    val untouched = remember { listOf(time, days) }
 
     SheetScaffold(
         title = stringResource(R.string.kind_time_of_day),
         onDismiss = onDismiss,
         onConfirm = { onConfirm(Trigger.TimeOfDay(time, selected)) },
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
+        dirty = listOf(time, days) != untouched,
     ) {
         Text(
             text = stringResource(if (combining) R.string.time_of_day_hint_together else R.string.time_of_day_hint_alone),

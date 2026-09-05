@@ -7,6 +7,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.res.stringResource
 import dev.rwilco.R
 import dev.rwilco.model.Trigger
@@ -39,12 +40,15 @@ fun DateRangeSheet(
 ) {
     var from by rememberDate(initial?.from ?: today)
     var to by rememberDate(initial?.to ?: today.plusDays(7))
+    // What the sheet opened with, so a scrim tap or Back asks before throwing an edit away (0.93.0).
+    val untouched = remember { listOf(from, to) }
 
     SheetScaffold(
         title = stringResource(R.string.kind_date_range),
         onDismiss = onDismiss,
         onConfirm = { onConfirm(Trigger.DateRange(from, to)) },
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
+        dirty = listOf(from, to) != untouched,
     ) {
         Text(
             text = stringResource(if (combining) R.string.date_range_hint_together else R.string.date_range_hint_alone),

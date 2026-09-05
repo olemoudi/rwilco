@@ -141,7 +141,9 @@ class HomeMenuTest {
         rule.onNodeWithText(s(R.string.home_snooze), useUnmergedTree = true).performClick()
         val arrive = rule.activity.getString(R.string.snooze_arrive_at, "Casa")
         rule.waitUntilShown(arrive)
-        rule.onNodeWithText(s(R.string.snooze_leave_here), useUnmergedTree = true).assertIsDisplayed()
+        // By its opening words: the offer carries the radius it would draw (0.79.0), which is
+        // the fix's to know, so the raw template is not what the chip says.
+        rule.onNodeWithText(s(R.string.snooze_leave_here).substringBefore(" ("), substring = true, useUnmergedTree = true).assertIsDisplayed()
         shot("home-menu-snooze-place")
         rule.onNodeWithText(arrive, useUnmergedTree = true).performClick()
         rule.waitUntil(timeoutMillis = 10_000) { runBlocking { app.repository.get(id)?.snoozedToPlace != null } }

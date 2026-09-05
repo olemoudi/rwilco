@@ -19,7 +19,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Notes
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Icon
@@ -74,7 +79,10 @@ fun NewReminderChooser(
     onEditPreset: (Preset) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var choosingPreset by remember { mutableStateOf(false) }
+    // Saved, so a rotation on the list of presets does not put the first question back.
+    var choosingPreset by rememberSaveable { mutableStateOf(false) }
+    // Back from the list returns to the question; it used to close the whole chooser (0.93.0).
+    BackHandler(enabled = choosingPreset) { choosingPreset = false }
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
 
@@ -134,6 +142,29 @@ fun NewReminderChooser(
                             )
                         }
                     }
+                }
+                // The two panels beside this one end in a "Cerrar"; a question with no visible
+                // way out of it read as one that had to be answered (0.93.0). On the list, a
+                // way back to the question as well — the gesture does the same.
+                Spacer(Modifier.height(spacing.md))
+                Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm), modifier = Modifier.fillMaxWidth()) {
+                    if (choosingPreset) {
+                        TextButton(
+                            onClick = { choosingPreset = false },
+                            colors = ButtonDefaults.textButtonColors(contentColor = scheme.onSurface),
+                            modifier = Modifier.heightIn(min = Tokens.sizes.touch),
+                        ) {
+                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = null, modifier = Modifier.size(Tokens.sizes.glyphSmall))
+                            Spacer(Modifier.width(spacing.sm))
+                            Text(stringResource(R.string.common_back))
+                        }
+                    }
+                    Spacer(Modifier.weight(1f))
+                    TextButton(
+                        onClick = onDismiss,
+                        colors = ButtonDefaults.textButtonColors(contentColor = scheme.onSurface),
+                        modifier = Modifier.heightIn(min = Tokens.sizes.touch),
+                    ) { Text(stringResource(R.string.common_close)) }
                 }
             }
         }

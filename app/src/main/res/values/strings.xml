@@ -114,6 +114,11 @@
     <string name="home_failed_title">The reminders could not be read</string>
     <string name="home_failed_body">Something went wrong reading the phone\'s store. The diagnostics report says what; restarting the app is the first thing to try.</string>
     <string name="home_deleted_row">Deleted: %1$s</string>
+    <string name="home_tag_renamed_none">Tag renamed</string>
+    <plurals name="home_tag_renamed">
+        <item quantity="one">Renamed on %d reminder</item>
+        <item quantity="other">Renamed on %d reminders</item>
+    </plurals>
     <string name="home_deleted">Deleted</string>
     <string name="home_paused">Paused</string>
     <string name="home_resumed">Resumed</string>
@@ -327,7 +332,7 @@
     <string name="sheet_cancel">Cancel</string>
     <string name="sheet_add">Add</string>
     <string name="sheet_time">Time</string>
-    <string name="sheet_rings_at_default">Rings at %1$s</string>
+    <string name="sheet_rings_prefix">Rings</string>
     <string name="countdown_hours_label">Hours</string>
     <string name="countdown_minutes_label">Minutes</string>
     <string name="random_times_label">How many times</string>
@@ -423,7 +428,7 @@
     <string name="done_purge_body">They are removed for good. Reminders you bring back first are kept.</string>
     <string name="done_empty_title">Nothing done yet</string>
     <string name="done_empty_body">Swipe a reminder to the right on the main screen when it is done; it lands here.</string>
-    <string name="done_restore">Bring back</string>
+    <string name="done_restore_named">Bring back “%1$s”</string>
     <string name="done_restored">Brought back</string>
 
     <!-- Settings -->
@@ -638,6 +643,7 @@
     <string name="perm_location_off">Location is switched off on the phone.</string>
     <string name="perm_location_off_fix">Turn on</string>
     <string name="place_label_required">Give the place a name.</string>
+    <string name="place_pin_required">Put the pin down: search an address, use your location, or long-press the map.</string>
     <string name="place_no_permission">Rwilco is not allowed to read your location. Allow it, or long-press the map.</string>
     <string-array name="whats_new_0_2_3">
         <item>A magnifier on the main screen: one search over reminders and tags at once, and every result says which it is. Accents, capitals and missing letters are forgiven.</item>
@@ -983,7 +989,7 @@
     </string-array>
 
     <!-- The change log, at the bottom of Settings. -->
-    <string name="settings_release_notes">What has changed</string>
+    <string name="settings_release_notes">What\'s new</string>
     <string name="settings_release_notes_hint">The last five releases. You are on %1$s.</string>
     <string-array name="whats_new_0_11_1">
         <item>This, at the bottom of Settings: the last five releases, whenever you want them rather than only once after an update.</item>
@@ -1281,6 +1287,14 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_93_0">
+        <item>A silenced alarm stays silent when the phone is turned sideways. Rebuilding the screen used to start the alarm over for a fresh minute, red button and all.</item>
+        <item>A notification now opens its screen over the main list, whatever was open: Settings no longer lands on top of a half-written reminder, and a second backup notice no longer builds a stack of screens to walk back through. The watch\'s notices open the log they are about. And two quick taps on «New» open one form, not two.</item>
+        <item>Search starts at the top of its results, and closing it leaves the list where it was. Back clears a tag filter before it leaves the app. The tags panel has its door even when no open reminder wears a tag. The fold button no longer sits over the last card\'s controls.</item>
+        <item>«New» has a way back from the list of presets, and a «Close» on both steps. Deleting a reminder from the form gets the same minute-long undo row the list has. Renaming a tag says how many reminders it reached, with an undo.</item>
+        <item>Every sheet asks before a tap outside it throws your edit away — it was two of eleven. The list of trigger kinds scrolls, so «Place» and «At random» are reachable at large text sizes. A countdown reads «Rings tomorrow 09:00» rather than «Rings at tomorrow 09:00». A weekday sheet with no day marked, and a place with no pin, say so in red beside the greyed button. Cancelling a fresh trigger returns to the list of kinds. AM/PM buttons are a full thumb\'s height. The keyboard goes down before every sheet.</item>
+        <item>Settings: «Safety net» sits after «Vibration» as intended; the release notes row is called «What\'s new», like the sheet it opens. Done: the list respects the screen\'s edges on its side, and each «Bring back» names its reminder to a screen reader.</item>
+    </string-array>
     <string-array name="whats_new_0_92_0">
         <item>What the alpha channel has been carrying since 0.88.0, now on beta. Nothing is new in this build itself — it is the same app the test channel has been running, published where everyone can get it. The entries below say what each of those changes was.</item>
     </string-array>

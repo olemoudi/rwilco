@@ -250,19 +250,6 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
             }
 
             SettingsGroup(
-                icon = Icons.Outlined.HealthAndSafety,
-                title = stringResource(R.string.settings_net_title),
-                summary = join(
-                    stringResource(R.string.settings_net_after_value, current.safetyNet.afterHours),
-                    stringResource(R.string.settings_net_fraction_value, current.safetyNet.fraction),
-                ),
-                expanded = Group.NET in open,
-                onToggle = { toggle(Group.NET) },
-            ) {
-                SafetyNetCard(settings = current.safetyNet, onChange = viewModel::setSafetyNet)
-            }
-
-            SettingsGroup(
                 icon = Icons.Outlined.Vibration,
                 title = stringResource(R.string.settings_vibration_strength),
                 summary = join(
@@ -285,6 +272,19 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
                 onToggle = { toggle(Group.VIBRATION) },
             ) {
                 VibrationCard(pattern = current.vibration, onChange = viewModel::setVibration)
+            }
+
+            SettingsGroup(
+                icon = Icons.Outlined.HealthAndSafety,
+                title = stringResource(R.string.settings_net_title),
+                summary = join(
+                    stringResource(R.string.settings_net_after_value, current.safetyNet.afterHours),
+                    stringResource(R.string.settings_net_fraction_value, current.safetyNet.fraction),
+                ),
+                expanded = Group.NET in open,
+                onToggle = { toggle(Group.NET) },
+            ) {
+                SafetyNetCard(settings = current.safetyNet, onChange = viewModel::setSafetyNet)
             }
 
             SettingsGroup(

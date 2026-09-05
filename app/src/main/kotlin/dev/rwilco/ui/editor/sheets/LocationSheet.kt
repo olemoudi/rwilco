@@ -336,10 +336,19 @@ fun LocationSheet(
             ),
             modifier = Modifier.fillMaxWidth(),
         )
-        // The pin is down and "Añadir" is grey: the one thing missing is said, where the field is.
-        if (known && label.isBlank()) {
+        // "Añadir" is grey: the thing missing is said, where the field is — the name, and
+        // (0.93.0) the pin too, which used to leave a fresh sheet with a grey button and only
+        // the map's own hint to guess from.
+        if (label.isBlank()) {
             Text(
                 text = stringResource(R.string.place_label_required),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+        if (!known) {
+            Text(
+                text = stringResource(R.string.place_pin_required),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.error,
             )

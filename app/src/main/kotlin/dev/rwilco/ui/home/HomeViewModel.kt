@@ -136,6 +136,13 @@ sealed interface HomeEvent {
      * form is opened on it instead of quietly making something overdue.
      */
     data class NeedsEditor(val presetId: String) : HomeEvent
+
+    /**
+     * A tag was renamed on [count] reminders. [undoable] is whether the same rename the other
+     * way is the inverse: it is not once [to] was a tag already, because then it would sweep
+     * up the rows that were [to] all along.
+     */
+    data class TagRenamed(val from: String, val to: String, val count: Int, val undoable: Boolean) : HomeEvent
 }
 
 class HomeViewModel(
@@ -299,17 +306,23 @@ class HomeViewModel(
     /**
      * Renaming and removing reach the reminders themselves — a tag is what they carry, not a
      * record on its own — and then the row here, so a pinned tag is not left pinned under a
-     * name nothing uses. Neither has an undo, which is why the panel asks before removing.
+     * name nothing uses. Removing has no undo, which is why the panel asks before it; a rename
+     * says how far it reached and offers itself the other way round (0.93.0) — it used to
+     * rewrite forty rows and say nothing whatever.
      */
     fun renameTag(from: String, to: String) {
         viewModelScope.launch {
-            repository.saveAll(renameTagIn(repository.allNow(), from, to))
+            val all = repository.allNow()
+            val merged = all.any { reminder -> reminder.tags.any { it.equals(to, ignoreCase = true) } }
+            val changed = renameTagIn(all, from, to)
+            repository.saveAll(changed)
             store.update { settings ->
                 settings.copy(
                     tagPrefs = withTagRenamed(settings.tagPrefs, from, to),
                     presets = renameTagInPresets(settings.presets, from, to),
                 )
             }
+            events.send(HomeEvent.TagRenamed(from, to, changed.size, undoable = !merged))
         }
     }
 
@@ -572,6 +585,18 @@ class HomeViewModel(
     val pendingDelete: StateFlow<HomeEvent.Removed?> get() = _pendingDelete
     private val _pendingDelete = MutableStateFlow<HomeEvent.Removed?>(null)
     private var pendingDeleteTimer: Job? = null
+
+    /**
+     * A delete the editor did, handed here so it gets the same snackbar and the same minute as
+     * one from a card (0.93.0): the editor's screen — and its scope — is gone by the time
+     * either is wanted, and two undos with one row between them is how a reminder comes back
+     * twice.
+     */
+    fun noteDeleted(reminder: Reminder, history: List<FiringEvent>) {
+        val event = HomeEvent.Removed(HomeEvent.Removed.Kind.DELETED, reminder, history)
+        keepUndoable(event)
+        viewModelScope.launch { events.send(event) }
+    }
 
     private fun keepUndoable(removed: HomeEvent.Removed) {
         pendingDeleteTimer?.cancel()

@@ -511,4 +511,15 @@ private fun EditorUiState.mapRule(index: Int, transform: (TriggerRule) -> Trigge
     return copy(draft = draft.copy(rules = draft.rules.mapIndexed { i, rule -> if (i == index) transform(rule) else rule }))
 }
 
-fun EditorUiState.closeSheet(): EditorUiState = copy(sheet = EditorSheet.None)
+/**
+ * Cancel, Back or the scrim on whatever sheet is up. A configurator opened *from the picker* —
+ * a new rule, with nothing behind it yet — goes back to the picker rather than to the bare form
+ * (0.93.0): "Añadir → Fecha → no, I meant Lugar" used to cost a cancel, a fresh "Añadir" and a
+ * second read of the list. Editing an existing rule, and every other sheet, closes outright.
+ */
+fun EditorUiState.closeSheet(): EditorUiState = copy(
+    sheet = when (val open = sheet) {
+        is EditorSheet.Configure -> if (open.initial == null) EditorSheet.PickKind else EditorSheet.None
+        else -> EditorSheet.None
+    },
+)

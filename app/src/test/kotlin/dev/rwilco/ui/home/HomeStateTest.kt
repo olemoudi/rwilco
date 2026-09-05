@@ -347,6 +347,10 @@ class HomeStateTest {
         assertEquals(2, homeCardIndex(withTags, "a", strip = false, pinned = false))
         // The "deleted · undo" row sits under the tags and above the cards while it lasts.
         assertEquals(3, homeCardIndex(withTags, "a", strip = false, pinned = false, undoRow = true))
+        // The row of chips is also drawn with no chip on it — the door to the panel, for tags
+        // with nothing open to filter — and the screen says so rather than the chips deciding.
+        assertEquals(2, homeCardIndex(state, "a", strip = false, pinned = false, tagsRow = true))
+        assertEquals(1, homeCardIndex(withTags, "a", strip = false, pinned = false, tagsRow = false))
         // The hero is lifted out of its section but it is still a row in the same column, and a
         // list scrolled well down has it off the top — which is where an edit that gives a
         // reminder the soonest moment on the phone sends it.

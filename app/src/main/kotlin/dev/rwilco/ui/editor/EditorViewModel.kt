@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.rwilco.RwilcoApplication
+import dev.rwilco.data.FiringEvent
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.OFFERED_KINDS
@@ -65,7 +66,8 @@ sealed interface EditorEvent {
      * the place it had. See Home's just-saved effect.
      */
     data class Saved(val reminderId: String?, val presetId: String? = null, val created: Boolean = false) : EditorEvent
-    data class Deleted(val reminder: Reminder) : EditorEvent
+    /** [history] is what the cascade took with the row, so an undo can put it back too. */
+    data class Deleted(val reminder: Reminder, val history: List<FiringEvent>) : EditorEvent
     /** A preset left the list; the screen closes and the snackbar offers it back. */
     /** [index] is where it sat, so an undo puts it back there rather than at the end. */
     data class PresetDeleted(val preset: Preset, val index: Int) : EditorEvent
@@ -485,8 +487,9 @@ class EditorViewModel(
         }
         val target = existing ?: return
         viewModelScope.launch {
+            val history = repository.history(target.id)
             repository.delete(target.id)
-            events.send(EditorEvent.Deleted(target))
+            events.send(EditorEvent.Deleted(target, history))
         }
     }
 

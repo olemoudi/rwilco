@@ -1437,6 +1437,39 @@ because that is what its chip would show.
   word), the reading follows them live, a typo leaves the last good time where it was and
   disables "Hecho". "Ahora" and "En 15 min" sit under both, read off the phone's clock in the
   dialog — a moment of the screen, not of the model.
+- **The navigation round** (0.93.0), the first half of a fifth review — this one asking the
+  questions the earlier rounds could not: what a configuration change, a double tap or a
+  notification tapped from the wrong screen does. What it settled, as rules:
+  **A door in from outside opens over Home, whatever was open** (`RwilcoApp`): every deep
+  link pops the stack to Home before it navigates, as the preset shortcut always did, so
+  Settings never lands over a half-written reminder and a second vault notice tapped from the
+  Backup screen no longer builds Home → Backup → Settings → Backup. The watch's notices open
+  the log they name (`DESTINATION_WATCH_LOG`), not the Settings index. **A tap navigates once**
+  (`navigateOnce`): a second tap landing while the first screen is on its way in used to push a
+  second editor; the test is whether the current entry is still RESUMED. **A silenced alarm
+  stays silent through a rotation** (`AlertActivity.hushedOnPurpose`, saved as `STATE_HUSHED`):
+  the recreated screen tracks every reminder again and bumps the epoch, which is what starts
+  the noise, so the alarm somebody had just answered rang a fresh minute under a phone turned
+  sideways; the flag is set by the button and the minute, not by leaving the screen, and a
+  reminder joining the screen clears it. **Search has a list state of its own**, so a search
+  opened twenty cards down starts at the top of its results and Home keeps its place. **Back
+  walks search → filter → exit.** **The row of chips is drawn whenever there is a tag to
+  administer** (`tagsRowShown`, mirrored into `homeCardIndex(tagsRow)`): a tag left on finished
+  reminders alone is the one 0.90.0 made deletable from the panel, and the panel had no door.
+  **Every configurator sheet passes `dirty`** — it was two of eleven, and a scrim tap threw a
+  configured date or interval away with no question. **Sheets are bounded** (`SheetBounds`,
+  shared with the kind picker and `PickSheet`, which took whatever height their rows added up
+  to). **A configurator opened from the picker cancels back to the picker** (`closeSheet`).
+  **A delete from the editor gets Home's minute-long row** (`JustDeleted`, handed the way a
+  save is, history included). **A rename says how far it reached** (`HomeEvent.TagRenamed`),
+  and offers itself the other way round where that is the inverse — not onto a tag that
+  already existed. And the small ones: the fold FAB no longer over the last card's pill, "Nuevo"
+  with a way back from its list of presets and a "Cerrar" on both steps, the weekday sheet and
+  a pinless place saying in red why the button is grey, AM/PM at the 48dp floor, the keyboard
+  down before every sheet, "Sonará mañana 09:00" (it read "Sonará a las mañana 09:00"), the
+  safety net after the vibration as the enum always had it, "Novedades" called that in
+  Settings too, Hechos reading both horizontal insets and naming each "Recuperar" to a screen
+  reader. The second half — structure, accessibility, tokens — is 0.94.0.
 
 ## Firing
 

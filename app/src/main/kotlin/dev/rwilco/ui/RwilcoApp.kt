@@ -15,7 +15,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
@@ -25,8 +24,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -47,6 +48,7 @@ import dev.rwilco.ui.editor.EditorScreen
 import dev.rwilco.ui.editor.EditorViewModel
 import dev.rwilco.ui.home.HomeScreen
 import dev.rwilco.ui.home.HomeViewModel
+import dev.rwilco.ui.home.JustDeleted
 import dev.rwilco.ui.home.JustSaved
 import dev.rwilco.ui.settings.BackupScreen
 import dev.rwilco.ui.settings.BackupViewModel
@@ -81,13 +83,24 @@ fun RwilcoApp(
     var requestedPreset by remember { mutableStateOf<String?>(null) }
     /** The reminder a save just wrote, until Home has taken somebody to it. */
     var justSaved by remember { mutableStateOf<JustSaved?>(null) }
+    /** The reminder the editor just deleted, until Home has put its undo row up. */
+    var justDeleted by remember { mutableStateOf<JustDeleted?>(null) }
+    // **A door in from outside opens over Home, whatever was open** (0.93.0). Each of these used
+    // to navigate on top of the current screen, so a notification tapped from the editor put
+    // Settings over somebody's half-written reminder, and a second vault notice tapped from the
+    // Backup screen built Home → Backup → Settings → Backup, with a phantom Settings to walk
+    // back through. The stack is popped to Home first, as the preset shortcut always did.
     LaunchedEffect(requestedDestination) {
         val reminderId = MainActivity.reminderIdIn(requestedDestination)
         val sharedText = Destinations.sharedTextIn(requestedDestination)
         val presetId = Destinations.presetIdIn(requestedDestination)
+        fun <T : Any> open(route: T) = navController.navigate(route) {
+            popUpTo(Routes.Home) { inclusive = false }
+            launchSingleTop = true
+        }
         when {
             requestedDestination == Destinations.NEW -> {
-                navController.navigate(Routes.Editor()) { launchSingleTop = true }
+                open(Routes.Editor())
                 onDestinationConsumed()
             }
             presetId != null -> {
@@ -96,21 +109,28 @@ fun RwilcoApp(
                 onDestinationConsumed()
             }
             sharedText != null -> {
-                navController.navigate(Routes.Editor(sharedText = sharedText)) { launchSingleTop = true }
+                open(Routes.Editor(sharedText = sharedText))
                 onDestinationConsumed()
             }
             requestedDestination == MainActivity.DESTINATION_SETTINGS -> {
-                navController.navigate(Routes.Settings) { launchSingleTop = true }
+                open(Routes.Settings)
                 onDestinationConsumed()
             }
             requestedDestination == MainActivity.DESTINATION_BACKUP -> {
                 // Settings underneath, so "back" from the backup lands where it lives.
-                navController.navigate(Routes.Settings) { launchSingleTop = true }
+                open(Routes.Settings)
                 navController.navigate(Routes.Backup) { launchSingleTop = true }
                 onDestinationConsumed()
             }
+            requestedDestination == MainActivity.DESTINATION_WATCH_LOG -> {
+                // The watch's notices name a number; this is the log it came from (0.93.0). They
+                // used to land on the Settings index, with the log two folds and a tap away.
+                open(Routes.Settings)
+                navController.navigate(Routes.WatchLog) { launchSingleTop = true }
+                onDestinationConsumed()
+            }
             reminderId != null -> {
-                navController.navigate(Routes.Editor(reminderId)) { launchSingleTop = true }
+                open(Routes.Editor(reminderId))
                 onDestinationConsumed()
             }
         }
@@ -132,17 +152,19 @@ fun RwilcoApp(
                         viewModel = viewModel(factory = HomeViewModel.Factory(app)),
                         justSaved = justSaved,
                         onJustSavedShown = { justSaved = null },
+                        justDeleted = justDeleted,
+                        onJustDeletedShown = { justDeleted = null },
                         requestedPreset = requestedPreset,
                         onPresetConsumed = { requestedPreset = null },
-                        onNew = { navController.navigate(Routes.Editor()) },
-                        onNewFromPreset = { id -> navController.navigate(Routes.Editor(fromPresetId = id)) },
-                        onEditPreset = { id -> navController.navigate(Routes.Editor(editPresetId = id)) },
-                        onNewPreset = { navController.navigate(Routes.Editor(newPreset = true)) },
-                        onOpen = { id -> navController.navigate(Routes.Editor(id)) },
-                        onClone = { id -> navController.navigate(Routes.Editor(cloneOfId = id)) },
-                        onKeepAsPreset = { id -> navController.navigate(Routes.Editor(cloneOfId = id, newPreset = true)) },
-                        onDoneList = { navController.navigate(Routes.Done) },
-                        onSettings = { navController.navigate(Routes.Settings) },
+                        onNew = { navController.navigateOnce(Routes.Editor()) },
+                        onNewFromPreset = { id -> navController.navigateOnce(Routes.Editor(fromPresetId = id)) },
+                        onEditPreset = { id -> navController.navigateOnce(Routes.Editor(editPresetId = id)) },
+                        onNewPreset = { navController.navigateOnce(Routes.Editor(newPreset = true)) },
+                        onOpen = { id -> navController.navigateOnce(Routes.Editor(id)) },
+                        onClone = { id -> navController.navigateOnce(Routes.Editor(cloneOfId = id)) },
+                        onKeepAsPreset = { id -> navController.navigateOnce(Routes.Editor(cloneOfId = id, newPreset = true)) },
+                        onDoneList = { navController.navigateOnce(Routes.Done) },
+                        onSettings = { navController.navigateOnce(Routes.Settings) },
                         // Built here rather than in the ViewModel: a report is a snapshot of the
                         // whole app — permissions, settings, the alarm log, the place watch —
                         // and Home's ViewModel knows about none of that. Collected fresh on
@@ -163,7 +185,6 @@ fun RwilcoApp(
                 }
                 composable<Routes.Editor> { entry ->
                     val route = entry.toRoute<Routes.Editor>()
-                    val deletedMessage = stringResource(R.string.home_deleted)
                     val presetDeletedMessage = stringResource(R.string.preset_deleted)
                     val undoLabel = stringResource(R.string.common_undo)
                     EditorScreen(
@@ -175,12 +196,10 @@ fun RwilcoApp(
                         // Held here rather than in either screen's ViewModel: the editor's dies
                         // with it, and Home's is a different scope that the editor cannot reach.
                         onSaved = { id, created -> justSaved = JustSaved(id, created) },
-                        onDeleted = { reminder ->
-                            // The editor's scope dies with the screen; the undo outlives it.
-                            snackbar.show(deletedMessage, undoLabel) {
-                                app.appScope.launch { app.repository.restore(reminder) }
-                            }
-                        },
+                        // The editor's scope dies with the screen; the undo outlives it. Handed
+                        // to Home (0.93.0), which says it in the snackbar and keeps the row for a
+                        // minute — one delete, one undo, through the same door a card's takes.
+                        onDeleted = { reminder, history -> justDeleted = JustDeleted(reminder, history) },
                         onPresetDeleted = { preset, index ->
                             snackbar.show(presetDeletedMessage, undoLabel) {
                                 // Back where it was, and never twice: the order is what the
@@ -200,16 +219,16 @@ fun RwilcoApp(
                         viewModel = viewModel(factory = DoneViewModel.Factory(app)),
                         clock = app.clock,
                         onBack = { navController.popBackStack() },
-                        onOpen = { id -> navController.navigate(Routes.Editor(id)) },
+                        onOpen = { id -> navController.navigateOnce(Routes.Editor(id)) },
                     )
                 }
                 composable<Routes.Settings> {
                     SettingsScreen(
                         viewModel = viewModel(factory = SettingsViewModel.Factory(app)),
                         onBack = { navController.popBackStack() },
-                        onWatchLog = { navController.navigate(Routes.WatchLog) },
-                        onBackup = { navController.navigate(Routes.Backup) },
-                        onDiagnostics = { navController.navigate(Routes.Diagnostics) },
+                        onWatchLog = { navController.navigateOnce(Routes.WatchLog) },
+                        onBackup = { navController.navigateOnce(Routes.Backup) },
+                        onDiagnostics = { navController.navigateOnce(Routes.Diagnostics) },
                     )
                 }
                 composable<Routes.Diagnostics> {
@@ -262,4 +281,15 @@ fun RwilcoApp(
             }
         }
     }
+}
+
+/**
+ * A tap's navigation, and only the first of two: a second tap landing while the first screen
+ * is still on its way in used to push a second editor, and Back then showed a copy of the form
+ * that had just been left (0.93.0). While a screen is arriving the one leaving is no longer
+ * RESUMED, which is the whole test. `launchSingleTop` alone would not do — a card tapped and
+ * then "Nuevo" are two different routes on the same double tap.
+ */
+private fun <T : Any> NavHostController.navigateOnce(route: T) {
+    if (currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED) navigate(route)
 }

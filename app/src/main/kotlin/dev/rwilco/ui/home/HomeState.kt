@@ -73,15 +73,24 @@ data class HomeUiState(
  * pinned by a test, rather than counted out at the call site where nothing would ever notice it
  * drifting.
  *
- * [strip], [pinned] and [undoRow] are the items above the list that come and go; searching and
- * the loading placeholder are not asked about, because neither is on screen when somebody
- * arrives back from a save.
+ * [strip], [pinned], [undoRow] and [tagsRow] are the items above the list that come and go;
+ * searching and the loading placeholder are not asked about, because neither is on screen when
+ * somebody arrives back from a save. [tagsRow] defaults to what the chips alone would decide,
+ * but the screen also draws it for tags with nothing open to filter (the door to the panel),
+ * and says so.
  */
-fun homeCardIndex(state: HomeUiState, id: String, strip: Boolean, pinned: Boolean, undoRow: Boolean = false): Int? {
+fun homeCardIndex(
+    state: HomeUiState,
+    id: String,
+    strip: Boolean,
+    pinned: Boolean,
+    undoRow: Boolean = false,
+    tagsRow: Boolean = state.tags.isNotEmpty(),
+): Int? {
     var index = 0
     if (strip) index++
     if (pinned) index++
-    if (state.tags.isNotEmpty()) index++
+    if (tagsRow) index++
     if (undoRow) index++
     if (state.hero != null) {
         if (state.hero.card.id == id) return index

@@ -39,7 +39,7 @@ object WatchNotices {
         )
         val open = Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            .putExtra(MainActivity.EXTRA_DESTINATION, MainActivity.DESTINATION_SETTINGS)
+            .putExtra(MainActivity.EXTRA_DESTINATION, MainActivity.DESTINATION_WATCH_LOG)
         val tap = PendingIntent.getActivity(
             context, NOTIF_ID, open,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
@@ -82,7 +82,7 @@ object WatchNotices {
         )
         val open = Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            .putExtra(MainActivity.EXTRA_DESTINATION, MainActivity.DESTINATION_SETTINGS)
+            .putExtra(MainActivity.EXTRA_DESTINATION, MainActivity.DESTINATION_WATCH_LOG)
         val tap = PendingIntent.getActivity(
             context, UNMEASURED_ID, open,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,

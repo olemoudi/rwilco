@@ -38,6 +38,7 @@ import dev.rwilco.model.DateShortcut
 import androidx.compose.foundation.layout.padding
 import java.time.LocalDate
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import dev.rwilco.model.RELATIVE_AMOUNT
 import dev.rwilco.model.RelativeDay
 import dev.rwilco.model.RelativeUnit
@@ -126,6 +127,8 @@ fun DateSheet(
     var windowFrom by rememberTime(startingWindow?.from ?: LocalTime.of(14, 0))
     var windowTo by rememberTime(startingWindow?.to ?: LocalTime.of(16, 0))
     val window = DayWindow(windowFrom, windowTo)
+    // What the sheet opened with, so a scrim tap or Back asks before throwing an edit away (0.93.0).
+    val untouched = remember { listOf(date, time, relative, amount, unitName, weekdayName, kindName, windowFrom, windowTo) }
 
     SheetScaffold(
         title = stringResource(R.string.kind_date),
@@ -147,6 +150,7 @@ fun DateSheet(
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
         // A stretch with no width has no moment in it.
         confirmEnabled = kind != WhenKind.IN_WINDOW || windowFrom != windowTo,
+        dirty = listOf(date, time, relative, amount, unitName, weekdayName, kindName, windowFrom, windowTo) != untouched,
     ) {
         SegmentedChoice(
             options = listOf(stringResource(R.string.sheet_date_fixed), stringResource(R.string.sheet_date_relative)),

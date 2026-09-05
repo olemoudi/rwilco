@@ -462,7 +462,50 @@ To prove on the phone from 0.68.0: the alert opened from a card arms at once; a 
 leaves the others armed; the periodic update check posts its notification and does not open the
 install dialog by itself; the first-run sentence before the notification dialog.
 
+## The navigation round, 0.93.0 (2026-09-06)
+The first half of a fifth review (three reviewers: Home; the editor; navigation, Settings,
+Hechos and the alert), asked for by the owner as "further improvements to the interface and
+navigation". Eighty-odd observations; every one checked against the code and against what
+ARCHITECTURE.md already calls deliberate, which took about half of them out. Worth not
+re-deriving:
+
+- **A silenced alarm rang again on a rotation.** `hush()` stopped the ringer and nothing
+  recorded that the person had; the recreated activity re-tracked every reminder, bumped the
+  epoch, and the `DisposableEffect` keyed on it started the noise for a fresh minute. `silenced`
+  could not carry it (it is about reminders that *arrived* quiet, and it decides the guard's
+  countdown), so a flag of its own, saved in the bundle. `AlertSilenceTest` recreates the
+  activity now; six silence cases and none of them rotated before.
+- **`launchSingleTop` is not a stack discipline.** It only skips a push when the same route is
+  already on top, so the deep links needed `popUpTo(Home)` — and the double tap on "Nuevo"
+  needed a RESUMED check, because a card and "Nuevo" are two routes on one double tap.
+- **One `LazyListState` for two lists is a scroll position that travels.** Search shared Home's.
+- **A fix can be written for a case that has no door.** 0.90.0 made tags on finished reminders
+  deletable from the panel; the panel's only door was the row of chips, drawn only for tags on
+  open reminders. Now `tagsRowShown` — and `homeCardIndex` had to learn it, because the index is
+  a mirror of the column.
+- **A guard that exists is not a guard that is used.** `SheetScaffold(dirty)` was passed by two
+  sheets of eleven since 0.68.0; `SheetBounds` the same shape of thing for the height.
+- **A device test nobody has run since the string changed is a test that fails for nothing.**
+  `HomeMenuTest` matched "Al salir de aquí" by the raw template after 0.79.0 put the radius in
+  the string, and had not been on a device since (the emulator is run per touched flow, on
+  purpose). It matches the opening words now. And the tour's first wait timed out twice on an
+  emulator drawing frames 2.6 s apart after three minutes of tests, then passed alone: the
+  tour now leaves `failed-waiting.png` and the semantics tree behind when a wait runs out, so
+  the next such failure costs one look instead of three runs.
+
+Deliberately left, after this round: the menu opening at the top, the snackbar at the top, the
+bug icon in the header, the wordless place chip, the tap that folds against the hero's tap that
+opens, presets' "+" hidden until one exists, "Hecho con todos" at the strips' bottom-right, Back
+closing the alert without answering, the time wheel's semantics — all argued in ARCHITECTURE.md.
+Not this round, worth its own: "every day at 8" costing six taps (the hour controls only appear
+after the span in "Vuelve"), and the editor's draft not surviving process death (no
+`SavedStateHandle`). The second half of the round — the `⋯` on a card, Tags below "Vuelve",
+warnings off amber, one top bar, TalkBack order on the alert, the tokens — is 0.94.0.
+
 ## Still to prove on the real phone (Pixel 8 Pro)
+- The navigation round (0.93.0): silence a ringing alert and turn the phone sideways — it must
+  stay silent and "Hecho" must stay in reach; tap a vault notification from the Backup screen
+  and press Back once (Settings, then Home); search from the bottom of a long list.
 - The reliability round (0.59.0): a real arrival three minutes after a clock ring must ring
   (the echo is per rule now); «al llegar a casa» said from the metro with no good fix must
   ring at the real doorway; and a place snooze left waiting two days should produce the one

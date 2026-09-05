@@ -28,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
@@ -108,13 +109,7 @@ fun SheetScaffold(
             // above this, and the gap it leaves under the status bar — is the honest guess. Capping
             // against the whole window instead asked for more room than the sheet has and clipped
             // the confirm row all the same, only by less.
-            BoxWithConstraints {
-                val budget = if (constraints.hasBoundedHeight) maxHeight else LocalConfiguration.current.screenHeightDp.dp - SHEET_CHROME
-                Column(
-                    modifier = Modifier
-                        .heightIn(max = budget)
-                        .padding(horizontal = spacing.screen),
-                ) {
+            SheetBounds(modifier = Modifier.padding(horizontal = spacing.screen)) {
                 Text(title, style = MaterialTheme.typography.headlineSmall)
                 Spacer(Modifier.height(spacing.lg))
                 Column(
@@ -157,11 +152,31 @@ fun SheetScaffold(
                             .heightIn(min = Tokens.sizes.primary),
                     ) {
                         Text(confirmLabel, style = MaterialTheme.typography.titleMedium)
-                        }
                     }
                 }
             }
         }
+    }
+}
+
+/**
+ * A column no taller than the sheet can show: the budget is what this slot is actually given,
+ * when it is given one; a bottom sheet usually measures its content unbounded (that is how a
+ * sheet taller than the screen can be dragged), and then the window minus the sheet's own
+ * furniture — the drag handle above this, and the gap it leaves under the status bar — is the
+ * honest guess. Capping against the whole window instead asked for more room than the sheet has
+ * and clipped the confirm row all the same, only by less. Inside it a `weight(1f, fill = false)`
+ * means what it says, which is what lets a scrolling part give way to a row that must not.
+ *
+ * Shared (0.93.0) with the two sheets that are not a form — the kind picker and [PickSheet] —
+ * which took whatever height their rows added up to, and at a large font scale or on a phone
+ * on its side had their last rows off the bottom with no gesture to reach them.
+ */
+@Composable
+fun SheetBounds(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    BoxWithConstraints {
+        val budget = if (constraints.hasBoundedHeight) maxHeight else LocalConfiguration.current.screenHeightDp.dp - SHEET_CHROME
+        Column(modifier = modifier.heightIn(max = budget), content = content)
     }
 }
 

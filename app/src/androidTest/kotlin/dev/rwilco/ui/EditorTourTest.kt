@@ -48,6 +48,7 @@ import org.junit.runner.RunWith
 import java.io.File
 import java.time.LocalTime
 import androidx.compose.ui.test.isHeading
+import androidx.compose.ui.test.printToLog
 
 /**
  * Walks the whole first-phase UI the way a thumb would — create, configure every trigger kind,
@@ -186,8 +187,8 @@ class EditorTourTest {
             if (kind == R.string.kind_interval) {
                 rule.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
                 rule.waitUntilGone(s(R.string.sheet_cancel))
-                // Back closes the picker behind it too, so the way in is the button again.
-                text(s(R.string.editor_add_trigger)).performScrollTo().performClick()
+                // Back from a fresh configurator lands on the picker it came from (0.93.0), so
+                // the same kind is one tap away.
                 rule.waitUntilShown(s(R.string.kind_date))
                 text(s(R.string.kind_interval)).performClick()
                 rule.waitUntilDisplayed(s(R.string.sheet_cancel))
@@ -281,9 +282,10 @@ class EditorTourTest {
                 text(s(R.string.date_range_from)).performScrollTo().assertIsDisplayed()
                 text(s(R.string.date_range_to)).performScrollTo().assertIsDisplayed()
             }
+            // Cancel on a configurator opened from the picker returns to the picker (0.93.0):
+            // the next kind is one tap away, not a cancel and a fresh "Añadir".
             text(s(R.string.sheet_cancel)).performClick()
             rule.waitUntilGone(s(R.string.sheet_cancel))
-            text(s(R.string.editor_add_trigger)).performScrollTo().performClick()
             rule.waitUntilShown(s(R.string.kind_date))
         }
 
@@ -484,9 +486,17 @@ class EditorTourTest {
         rule.waitForIdle()
     }
 
-    // Case-insensitive: labels such as "Lo siguiente" are drawn in capitals.
+    // Case-insensitive: labels such as "Lo siguiente" are drawn in capitals. A wait that runs
+    // out leaves a capture and the tree behind (0.93.0): the tour is the one test whose
+    // failure is "what was on the screen instead", and the process is gone before anyone can look.
     private fun androidx.compose.ui.test.junit4.ComposeTestRule.waitUntilShown(text: String) {
-        waitUntil(timeoutMillis = 10_000) { onAllNodesWithText(text, ignoreCase = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+        try {
+            waitUntil(timeoutMillis = 10_000) { onAllNodesWithText(text, ignoreCase = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+        } catch (e: androidx.compose.ui.test.ComposeTimeoutException) {
+            shot("failed-waiting")
+            onRoot(useUnmergedTree = true).printToLog("TOUR")
+            throw e
+        }
     }
 
     /**

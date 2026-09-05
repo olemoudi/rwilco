@@ -319,6 +319,18 @@ class EditorStateTest {
     }
 
     @Test
+    fun `cancelling a configurator opened from the picker returns to the picker, editing a rule closes outright`() {
+        // "Añadir → Fecha → no, I meant Lugar" is one step back, not a cancel and a fresh
+        // "Añadir"; a rule that already exists has no picker behind it.
+        val fresh = blank.openKindPicker().pickKind(TriggerKind.COUNTDOWN)
+        assertEquals(EditorSheet.PickKind, fresh.closeSheet().sheet)
+        assertEquals(EditorSheet.None, fresh.closeSheet().closeSheet().sheet)
+        val editing = blank.commitTrigger(null, Trigger.Countdown(5)).editTrigger(0)
+        assertTrue(editing.sheet is EditorSheet.Configure)
+        assertEquals(EditorSheet.None, editing.closeSheet().sheet)
+    }
+
+    @Test
     fun `a reminder round-trips through the draft, and a saved draft is clean again`() {
         val reminder = Reminder(
             id = "r1", text = "Water the plants", tags = listOf("casa"), rules = listOf(TriggerRule(weekly)),

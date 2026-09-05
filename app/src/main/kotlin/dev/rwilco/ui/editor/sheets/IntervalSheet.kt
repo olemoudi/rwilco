@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.rwilco.R
@@ -46,6 +47,8 @@ fun IntervalSheet(
     var to by rememberTime(initial?.to ?: LocalTime.of(19, 0))
     var days by rememberSaveable { mutableStateOf(initial?.days?.map { it.name }?.toSet() ?: emptySet()) }
     val selected = days.map(DayOfWeek::valueOf).toSet()
+    // What the sheet opened with, so a scrim tap or Back asks before throwing an edit away (0.93.0).
+    val untouched = remember { listOf(from, to, days) }
 
     SheetScaffold(
         title = stringResource(R.string.kind_interval),
@@ -53,6 +56,7 @@ fun IntervalSheet(
         onConfirm = { onConfirm(Trigger.Interval(from, to, selected)) },
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
         confirmEnabled = from != to,
+        dirty = listOf(from, to, days) != untouched,
     ) {
         Text(
             text = stringResource(if (combining) R.string.interval_hint_together else R.string.interval_hint_alone),

@@ -33,6 +33,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.time.DayOfWeek
 import java.time.Duration
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onNodeWithContentDescription
 
 /**
  * Swiping a card, taking it back, and swiping it again.
@@ -130,6 +132,27 @@ class HomeSwipeTest {
 
         // The row is still there, and it still knows which reminder it is about. Its undo is
         // the one beside those words: a snackbar on its way out can still be holding another.
+        val rowText = s(R.string.home_deleted_row, words)
+        waitFor(rowText)
+        rule.onNode(hasText(s(R.string.common_undo)) and hasAnySibling(hasText(rowText))).performClick()
+        rule.waitUntil(10_000) { runBlocking { app.repository.get(id)?.text } == words }
+        waitFor(words)
+    }
+
+    /**
+     * The same act from the form. The editor's bin used to leave only its four-second snackbar
+     * behind, while a swipe had the row; deleted there, the reminder comes back from Home's
+     * row like any other (0.93.0), its history with it.
+     */
+    @Test
+    fun aDeleteFromTheFormComesBackFromTheSameRow() {
+        waitFor(words)
+        rule.editCard(words)
+        val bin = s(R.string.editor_delete)
+        rule.waitUntil(10_000) { rule.onAllNodesWithContentDescription(bin).fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithContentDescription(bin).performClick()
+        rule.waitUntil(10_000) { runBlocking { app.repository.get(id) } == null }
+
         val rowText = s(R.string.home_deleted_row, words)
         waitFor(rowText)
         rule.onNode(hasText(s(R.string.common_undo)) and hasAnySibling(hasText(rowText))).performClick()

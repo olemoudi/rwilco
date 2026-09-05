@@ -31,6 +31,13 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
 import java.time.LocalTime
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
+import dev.rwilco.ui.home.HOME_LIST_TAG
+import org.junit.Assert.assertEquals
 
 /**
  * The magnifier, on a real list: what only a device can answer is that the field takes the
@@ -100,6 +107,45 @@ class HomeSearchTest {
         rule.waitUntilGone(s(R.string.home_search_hint))
         rule.waitUntilShown("Comprar pan")
     }
+
+    /**
+     * Opened from well down the list, the search starts at the top of its own results, and
+     * closing it leaves Home where it was (0.93.0). The two lists used to share one scroll
+     * position: a search opened twenty cards down began twenty rows into its results, and
+     * closing it left Home wherever the results had been.
+     */
+    @Test
+    fun searchStartsAtTheTopOfItsResultsAndHomeKeepsItsPlace() {
+        rule.waitUntilShown(s(R.string.home_next_up))
+        val list = rule.onNodeWithTag(HOME_LIST_TAG)
+        repeat(3) { list.performTouchInput { swipeUp() } }
+        rule.waitForIdle()
+        // Down the list the header went with it; a short drag that rests before it lifts brings
+        // the row — and the magnifier — back without a fling carrying the list home.
+        list.performTouchInput {
+            down(center)
+            moveBy(Offset(0f, 120f))
+            moveBy(Offset(0f, 120f))
+            advanceEventTime(400)
+            up()
+        }
+        rule.waitForIdle()
+        val homeScroll = scrollOf(list)
+        assertTrue("the list did not go anywhere, so there is nothing to test", homeScroll > 0f)
+
+        rule.onNodeWithContentDescription(s(R.string.home_search)).performClick()
+        rule.onNodeWithTag(HOME_SEARCH_TAG).performTextInput("a")
+        rule.waitUntilShown(s(R.string.home_search_kind_reminder))
+        assertEquals("the results did not start at their top", 0f, scrollOf(list), 0f)
+
+        rule.onNodeWithContentDescription(s(R.string.common_back)).performClick()
+        rule.waitUntilGone(s(R.string.home_search_hint))
+        assertEquals("Home lost its place to the search", homeScroll, scrollOf(list), 0f)
+    }
+
+    /** Where a lazy list is, as its own semantics say it: nought at the very top. */
+    private fun scrollOf(node: SemanticsNodeInteraction): Float =
+        node.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value()
 
     private fun androidx.compose.ui.test.junit4.ComposeTestRule.waitUntilShown(value: String) {
         waitUntil(timeoutMillis = 10_000) { onAllNodesWithText(value, ignoreCase = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }

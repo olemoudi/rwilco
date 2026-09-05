@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -45,6 +46,8 @@ fun RandomSheet(
     val selectedDays = days.map(DayOfWeek::valueOf).toSet()
     val candidate = Trigger.Random(times, Period.valueOf(period), from, to, selectedDays)
     val windowOk = RandomDraw.windowMinutes(candidate) >= times
+    // What the sheet opened with, so a scrim tap or Back asks before throwing an edit away (0.93.0).
+    val untouched = remember { candidate }
 
     SheetScaffold(
         title = stringResource(R.string.kind_random),
@@ -52,6 +55,7 @@ fun RandomSheet(
         onConfirm = { onConfirm(candidate) },
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
         confirmEnabled = windowOk,
+        dirty = candidate != untouched,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Text(

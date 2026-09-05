@@ -112,6 +112,11 @@
     <string name="home_failed_title">No se han podido leer los recordatorios</string>
     <string name="home_failed_body">Algo ha fallado al leer el almacén del móvil. El informe de diagnóstico dice qué; lo primero que probar es reiniciar la app.</string>
     <string name="home_deleted_row">Eliminado: %1$s</string>
+    <string name="home_tag_renamed_none">Etiqueta renombrada</string>
+    <plurals name="home_tag_renamed">
+        <item quantity="one">Renombrada en %d recordatorio</item>
+        <item quantity="other">Renombrada en %d recordatorios</item>
+    </plurals>
     <string name="home_deleted">Eliminado</string>
     <string name="home_paused">Pausado</string>
     <string name="home_resumed">Reanudado</string>
@@ -320,7 +325,7 @@
     <string name="sheet_cancel">Cancelar</string>
     <string name="sheet_add">Añadir</string>
     <string name="sheet_time">Hora</string>
-    <string name="sheet_rings_at_default">Sonará a las %1$s</string>
+    <string name="sheet_rings_prefix">Sonará</string>
     <string name="countdown_hours_label">Horas</string>
     <string name="countdown_minutes_label">Minutos</string>
     <string name="random_times_label">Cuántas veces</string>
@@ -412,7 +417,7 @@
     <string name="done_purge_body">Se eliminan para siempre. Los que recuperes antes se conservan.</string>
     <string name="done_empty_title">Nada hecho todavía</string>
     <string name="done_empty_body">Desliza un recordatorio hacia la derecha en la pantalla principal cuando esté hecho; aparecerá aquí.</string>
-    <string name="done_restore">Recuperar</string>
+    <string name="done_restore_named">Recuperar «%1$s»</string>
     <string name="done_restored">Recuperado</string>
 
     <!-- Settings -->
@@ -625,6 +630,7 @@
     <string name="perm_location_off">La ubicación está apagada en el teléfono.</string>
     <string name="perm_location_off_fix">Encender</string>
     <string name="place_label_required">Ponle un nombre al lugar.</string>
+    <string name="place_pin_required">Pon el pin: busca una dirección, usa tu ubicación o mantén pulsado el mapa.</string>
     <string name="place_no_permission">Rwilco no tiene permiso para leer tu ubicación. Concédelo, o mantén pulsado el mapa.</string>
     <string-array name="whats_new_0_2_3">
         <item>Una lupa en la pantalla principal: busca a la vez entre recordatorios y etiquetas, y cada resultado dice cuál de las dos cosas es. Perdona acentos, mayúsculas y letras que falten.</item>
@@ -968,7 +974,7 @@
     </string-array>
 
     <!-- The change log, at the bottom of Settings. -->
-    <string name="settings_release_notes">Qué ha cambiado</string>
+    <string name="settings_release_notes">Novedades</string>
     <string name="settings_release_notes_hint">Las cinco últimas versiones. Estás en la %1$s.</string>
     <string-array name="whats_new_0_11_1">
         <item>Esto mismo, al final de Ajustes: las cinco últimas versiones, cuando te apetezca y no sólo una vez tras actualizar.</item>
@@ -1266,6 +1272,14 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_93_0">
+        <item>Una alarma silenciada sigue en silencio al girar el móvil. Reconstruir la pantalla volvía a arrancar la alarma un minuto entero, botón rojo incluido.</item>
+        <item>Una notificación abre ahora su pantalla sobre la lista principal, estuviera abierto lo que estuviera: Ajustes ya no cae encima de un recordatorio a medio escribir, y un segundo aviso de copia ya no apila pantallas que recorrer hacia atrás. Los avisos de la vigilancia abren el registro del que hablan. Y dos toques rápidos en «Nuevo» abren un formulario, no dos.</item>
+        <item>La búsqueda empieza arriba de sus resultados, y al cerrarla la lista queda donde estaba. Atrás quita el filtro de etiqueta antes de salir de la app. El panel de etiquetas tiene su puerta aunque ningún recordatorio abierto lleve etiqueta. El botón de plegar ya no tapa los controles de la última tarjeta.</item>
+        <item>«Nuevo» tiene vuelta atrás desde la lista de presets, y un «Cerrar» en los dos pasos. Eliminar un recordatorio desde el formulario tiene la misma fila de deshacer de un minuto que la lista. Renombrar una etiqueta dice a cuántos recordatorios llegó, con deshacer.</item>
+        <item>Todas las hojas preguntan antes de que un toque fuera tire tu edición: eran dos de once. La lista de tipos de disparador hace scroll, así que «Lugar» y «Al azar» se alcanzan con letra grande. Una cuenta atrás dice «Sonará mañana 09:00» y no «Sonará a las mañana 09:00». La hoja de días sin ninguno marcado, y un lugar sin pin, lo dicen en rojo junto al botón gris. Cancelar un disparador recién elegido vuelve a la lista de tipos. Los botones AM/PM tienen la altura de un pulgar. El teclado baja antes de cada hoja.</item>
+        <item>Ajustes: «Red de seguridad» va después de «Vibración», como estaba previsto; la fila de las notas de versión se llama «Novedades», como la hoja que abre. Hechos: la lista respeta los bordes de la pantalla de lado, y cada «Recuperar» dice a un lector de pantalla qué recordatorio es.</item>
+    </string-array>
     <string-array name="whats_new_0_92_0">
         <item>Lo que el canal alpha venía llevando desde la 0.88.0, ahora en beta. En esta versión no hay nada nuevo por sí misma: es la misma app que ha estado corriendo el canal de pruebas, publicada donde la tiene todo el mundo. Las entradas de abajo dicen qué era cada cambio.</item>
     </string-array>

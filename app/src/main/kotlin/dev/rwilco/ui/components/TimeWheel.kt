@@ -305,14 +305,19 @@ private fun PeriodButton(label: String, selected: Boolean, onClick: () -> Unit) 
         shape = MaterialTheme.shapes.small,
         color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surfaceContainerLow,
         border = if (selected) null else androidx.compose.foundation.BorderStroke(Tokens.strokes.control, MaterialTheme.colorScheme.outline),
-        modifier = Modifier.semantics { this.selected = selected },
+        // The one control on the picker that sat under the 48dp floor (0.93.0), and only on a
+        // 12-hour phone, which is how it went unnoticed.
+        modifier = Modifier
+            .heightIn(min = Tokens.sizes.touch)
+            .semantics { this.selected = selected },
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            color = if (selected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = Tokens.spacing.md, vertical = Tokens.spacing.sm),
-        )
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = Tokens.spacing.md)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = if (selected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 

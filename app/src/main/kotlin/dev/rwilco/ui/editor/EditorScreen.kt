@@ -71,6 +71,7 @@ import dev.rwilco.model.RecurrenceWarning
 import dev.rwilco.model.decidesItsOwnDates
 import dev.rwilco.model.recurrenceWarning
 import dev.rwilco.model.Preset
+import dev.rwilco.data.FiringEvent
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.TriggerKind
 import dev.rwilco.model.ValidationError
@@ -121,7 +122,7 @@ fun EditorScreen(
      * flag is whether this save created it — see [EditorEvent.Saved].
      */
     onSaved: (id: String, created: Boolean) -> Unit = { _, _ -> },
-    onDeleted: (Reminder) -> Unit,
+    onDeleted: (Reminder, List<FiringEvent>) -> Unit,
     /** A preset was deleted from here; the caller's snackbar outlives this screen and offers it back. */
     onPresetDeleted: (Preset, Int) -> Unit = { _, _ -> },
 ) {
@@ -156,7 +157,7 @@ fun EditorScreen(
                     onClose()
                 }
                 is EditorEvent.Deleted -> {
-                    onDeleted(event.reminder)
+                    onDeleted(event.reminder, event.history)
                     onClose()
                 }
                 is EditorEvent.PresetDeleted -> {
@@ -396,7 +397,12 @@ fun EditorScreen(
                         ruleMatch = state.draft.ruleMatch,
                         onRuleMatch = viewModel::setRuleMatch,
                         deadline = state.draft.deadline,
-                        onDeadline = viewModel::openDeadline,
+                        // Every door to a sheet puts the keyboard down first (0.93.0): the six
+                        // that did not opened theirs over it.
+                        onDeadline = {
+                            focusManager.clearFocus()
+                            viewModel.openDeadline()
+                        },
                         onClearDeadline = viewModel::clearDeadline,
                         clock = viewModel.clock,
                         today = today,
@@ -423,10 +429,19 @@ fun EditorScreen(
                             focusManager.clearFocus()
                             viewModel.commitUnderstood(read)
                         },
-                        onEdit = viewModel::editTrigger,
+                        onEdit = { index ->
+                            focusManager.clearFocus()
+                            viewModel.editTrigger(index)
+                        },
                         onRemove = viewModel::removeTrigger,
-                        onAddCondition = viewModel::addCondition,
-                        onEditCondition = viewModel::editCondition,
+                        onAddCondition = { ruleIndex ->
+                            focusManager.clearFocus()
+                            viewModel.addCondition(ruleIndex)
+                        },
+                        onEditCondition = { ruleIndex, conditionIndex ->
+                            focusManager.clearFocus()
+                            viewModel.editCondition(ruleIndex, conditionIndex)
+                        },
                         onRemoveCondition = viewModel::removeCondition,
                     )
                 }
@@ -460,9 +475,15 @@ fun EditorScreen(
                         },
                         rulesHour = state.draft.rules.firstNotNullOfOrNull { it.trigger.hourNamed },
                         warning = recurrenceWarning,
-                        onPick = viewModel::pickRecurrencePreset,
+                        onPick = { preset ->
+                            focusManager.clearFocus()
+                            viewModel.pickRecurrencePreset(preset)
+                        },
                         onCustom = viewModel::setRecurrence,
-                        onCalendar = viewModel::openCalendar,
+                        onCalendar = {
+                            focusManager.clearFocus()
+                            viewModel.openCalendar()
+                        },
                         onAddCondition = viewModel::addRecurrenceCondition,
                         onEditCondition = viewModel::editRecurrenceCondition,
                         onRemoveCondition = viewModel::removeRecurrenceCondition,

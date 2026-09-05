@@ -19,6 +19,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import dev.rwilco.ui.components.SheetBounds
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -37,14 +40,17 @@ import dev.rwilco.ui.theme.icon
 
 /**
  * One row per kind: what kind of "when" to add. [preferred] — the kind chosen in Settings —
- * leads and says so; the other five keep their order behind it, because a favourite is a
+ * leads and says so; the others keep their order behind it, because a favourite is a
  * shortcut, not a filter. [kinds] is that order, which Settings can also hand over sorted by
  * what actually gets used.
  *
- * Rows and not a grid. Six things in two columns is a shape that has to be *read* — the eye
+ * Rows and not a grid. Eight things in two columns is a shape that has to be *read* — the eye
  * goes across, then down, then back — and with an odd count the last cell is a hole. One column
  * is one list: the names line up, the hints line up, and the order the sheet is trying to say
- * something with ("your favourite first") is the order you actually see.
+ * something with ("your favourite first") is the order you actually see. Eight rows of 64dp is
+ * also taller than some windows, so the list scrolls inside [SheetBounds] (0.93.0): it used to
+ * take the height its rows added up to, with "Lugar" and "Al azar" off the bottom at a large
+ * font scale and no gesture to reach them.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,7 +69,7 @@ fun TriggerKindSheet(
             contentColor = MaterialTheme.colorScheme.onSurface,
             shape = MaterialTheme.shapes.extraLarge,
         ) {
-            Column(
+            SheetBounds(
                 modifier = Modifier
                     .padding(horizontal = spacing.screen)
                     .navigationBarsPadding()
@@ -75,7 +81,12 @@ fun TriggerKindSheet(
                 // into rather than a seventh row saying the same thing as the second.
                 val favourite = remember(preferred, kinds) { preferred?.offered()?.takeIf { it in kinds } }
                 val ordered = remember(favourite, kinds) { kindsOrdered(favourite, kinds) }
-                Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(spacing.sm),
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState()),
+                ) {
                     for (kind in ordered) {
                         KindRow(
                             kind = kind,

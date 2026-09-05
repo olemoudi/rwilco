@@ -123,6 +123,26 @@ class AlertActivity : ComponentActivity() {
         noise = false
     }
 
+    /**
+     * Whether the noise was put out *for good* — the button, or the minute running out — as
+     * opposed to the screen merely leaving ([onStop] hushes too, and the screen coming back
+     * is meant to stay quiet either way).
+     *
+     * Carried across a configuration change (0.93.0). The recreated screen tracks every
+     * reminder again and bumps the epoch, which is what starts the noise; so an alarm somebody
+     * had just silenced rang again for a fresh minute the moment the phone was turned
+     * sideways, with the red button back over "Hecho". [silenced] could not carry it: that
+     * list is about reminders that *arrived* quiet, and it also decides whether the guard
+     * counts down. A reminder joining the screen clears it — that one is owed its noise.
+     */
+    private var hushedOnPurpose = false
+
+    /** The person's answer to the noise, or the minute's: quiet, and quiet through a rotation. */
+    private fun silence() {
+        hushedOnPurpose = true
+        hush()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // The manifest attributes cover the launch; these cover being re-shown while alive.
         setShowWhenLocked(true)
@@ -140,6 +160,8 @@ class AlertActivity : ComponentActivity() {
             val rule = savedInstanceState.getIntArray(STATE_RULES)?.getOrNull(index)?.takeIf { it >= 0 }
             track(id, rule, held = id in wasHeld, quiet = id in wasQuiet)
         }
+        // After the tracks, which clear it: what was restored is the screen as it was, silenced.
+        hushedOnPurpose = savedInstanceState?.getBoolean(STATE_HUSHED) ?: false
         intent?.let { arrived(it) }
         if (ringing.isEmpty()) {
             finish()
@@ -176,21 +198,27 @@ class AlertActivity : ComponentActivity() {
 
             val looping = loopsOnScreen(plans)
             DisposableEffect(sound, vibrate, current.vibration, tone, current.alertToHeadphones, looping, ringEpoch) {
-                ringer.start(
-                    sound = sound,
-                    vibrate = vibrate,
-                    pattern = current.vibration,
-                    tone = tone,
-                    toHeadphones = current.alertToHeadphones,
-                    // "Sonido" is once, here too: the screen only goes round and round for the
-                    // reminders that asked to be insisted at.
-                    looping = looping,
-                )
-                // **Only a noise that outlives the tap is one there is anything to answer.**
-                // A single tone is over in a second or two and nothing ever cleared this, so
-                // the red button sat on top of "hecho" for the rest of the minute, protecting
-                // somebody from a silence. See [asksToBeSilenced].
-                noise = asksToBeSilenced(plans)
+                if (hushedOnPurpose) {
+                    // Rebuilt after a rotation, or the settings changed under a silenced
+                    // screen: the noise was answered and stays answered. See [hushedOnPurpose].
+                    noise = false
+                } else {
+                    ringer.start(
+                        sound = sound,
+                        vibrate = vibrate,
+                        pattern = current.vibration,
+                        tone = tone,
+                        toHeadphones = current.alertToHeadphones,
+                        // "Sonido" is once, here too: the screen only goes round and round for the
+                        // reminders that asked to be insisted at.
+                        looping = looping,
+                    )
+                    // **Only a noise that outlives the tap is one there is anything to answer.**
+                    // A single tone is over in a second or two and nothing ever cleared this, so
+                    // the red button sat on top of "hecho" for the rest of the minute, protecting
+                    // somebody from a silence. See [asksToBeSilenced].
+                    noise = asksToBeSilenced(plans)
+                }
                 onDispose { hush() }
             }
             // An alarm that rings for ever is one nobody leaves the house with. The alert stays
@@ -213,7 +241,7 @@ class AlertActivity : ComponentActivity() {
             // ring that has gone round for one has made the same point.
             LaunchedEffect(ringEpoch) {
                 delay(RING_TIMEOUT_MS)
-                hush()
+                silence()
             }
 
             // The place answers: the saved place this phone's reminders use most, as a doorway
@@ -242,7 +270,7 @@ class AlertActivity : ComponentActivity() {
                         onDoneAll = { answerAll(items.map { it.id }) { id -> app.firing.dismiss(id) } },
                         onSnoozeAll = { snooze -> answerAll(items.map { it.id }) { id -> app.firing.snooze(id, snooze) } },
                         ringing = noise,
-                        onSilence = ::hush,
+                        onSilence = ::silence,
                     )
                 } else {
                     val first = focusedItem ?: items.first()
@@ -257,7 +285,7 @@ class AlertActivity : ComponentActivity() {
                         places = places,
                         onSnoozeToPlace = { offer -> snoozeToPlace(first.id, offer) },
                         ringing = noise,
-                        onSilence = ::hush,
+                        onSilence = ::silence,
                         // Silent because it was tapped open: the eyes arrived before the thumb.
                         // A strip opened out of the stack is the same thing — somebody chose to
                         // look at this one on a screen that was already armed, so the second
@@ -296,7 +324,10 @@ class AlertActivity : ComponentActivity() {
             // epoch is what starts it. A second tap on the same card is not that moment.
             if (!quiet) {
                 anyway.remove(id)
-                if (silenced.remove(id)) ringEpoch++
+                if (silenced.remove(id)) {
+                    hushedOnPurpose = false
+                    ringEpoch++
+                }
             }
             return
         }
@@ -304,6 +335,8 @@ class AlertActivity : ComponentActivity() {
         if (ruleIndex != null) rules[id] = ruleIndex
         if (held) anyway += id
         if (quiet) silenced += id
+        // A reminder joining the screen is owed its noise, whatever was silenced before it.
+        hushedOnPurpose = false
         ringEpoch++
         watches[id] = lifecycleScope.launch {
             app.repository.observe(id).collect { reminder ->
@@ -400,6 +433,7 @@ class AlertActivity : ComponentActivity() {
         outState.putStringArrayList(STATE_ANYWAY, ArrayList(anyway))
         outState.putStringArrayList(STATE_SILENT, ArrayList(silenced))
         outState.putString(STATE_FOCUSED, focused)
+        outState.putBoolean(STATE_HUSHED, hushedOnPurpose)
     }
 
     override fun onStop() {
@@ -421,5 +455,6 @@ class AlertActivity : ComponentActivity() {
         const val STATE_ANYWAY = "anyway"
         const val STATE_SILENT = "silenced"
         const val STATE_FOCUSED = "focused"
+        const val STATE_HUSHED = "hushed"
     }
 }

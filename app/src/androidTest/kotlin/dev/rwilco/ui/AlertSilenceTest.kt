@@ -61,6 +61,8 @@ class AlertSilenceTest {
     private val card = "Recoger el paquete (prueba de tarjeta pulsada)"
     private val asleepId = "silence-asleep"
     private val asleep = "Cerrar el gas (prueba de madrugada)"
+    private val sidewaysId = "silence-sideways"
+    private val sideways = "Apagar el horno (prueba de giro)"
 
     private var hoursBefore: AwakeHours? = null
 
@@ -106,6 +108,7 @@ class AlertSilenceTest {
         hoursBefore?.let { hours -> app.settingsStore.update { it.copy(awake = hours) } }
         app.repository.delete(noteId)
         app.repository.delete(cardId)
+        app.repository.delete(sidewaysId)
     }
 
     @Test
@@ -237,6 +240,29 @@ class AlertSilenceTest {
         rule.onNodeWithText(string { it.getString(R.string.alert_done) }).assertIsDisplayed()
         check(rule.onAllNodesWithText(string { it.getString(R.string.alert_silence) }).fetchSemanticsNodes().isEmpty()) {
             "an alert in the small hours asked to be silenced, so it must have made a noise"
+        }
+    }
+
+    @Test
+    fun aSilencedAlertStaysSilentWhenThePhoneIsTurnedSideways() {
+        // A configuration change rebuilds the screen from its saved state, and rebuilding it
+        // used to start the alarm over: every reminder tracked again, the epoch bumped, a fresh
+        // minute of noise under a phone somebody had just turned sideways after answering it
+        // (0.93.0). The silence is part of the state now.
+        seed(sidewaysId, sideways, setOf(Action.FULL_SCREEN, Action.VIBRATE))
+        scenario = ActivityScenario.launch(alert(sidewaysId))
+        rule.waitUntilShown(sideways)
+        val silence = string { it.getString(R.string.alert_silence) }
+        val done = string { it.getString(R.string.alert_done) }
+        rule.onNodeWithText(silence).performClick()
+        rule.waitUntilShown(done)
+
+        scenario!!.recreate()
+        rule.waitUntilShown(sideways)
+
+        rule.onNodeWithText(done).assertIsDisplayed()
+        check(rule.onAllNodesWithText(silence).fetchSemanticsNodes().isEmpty()) {
+            "turning the phone sideways started the alarm again"
         }
     }
 

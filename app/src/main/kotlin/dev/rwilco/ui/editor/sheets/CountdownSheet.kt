@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -57,6 +58,8 @@ fun CountdownSheet(
     val is24h = rememberIs24h()
     val hours = minutes / 60
     val rest = minutes % 60
+    // What the sheet opened with, so a scrim tap or Back asks before throwing an edit away (0.93.0).
+    val untouched = remember { minutes }
 
     SheetScaffold(
         title = stringResource(R.string.kind_countdown),
@@ -67,6 +70,7 @@ fun CountdownSheet(
         onConfirm = { onConfirm(countdownOf(minutes, initial)) },
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
         confirmEnabled = minutes in MIN_COUNTDOWN_MINUTES..MAX_COUNTDOWN_MINUTES,
+        dirty = minutes != untouched,
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
@@ -112,12 +116,15 @@ fun CountdownSheet(
             )
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
+            // The verb alone, and the moment after it in its own face. The day too (0.68.0):
+            // five days out, "Sonará a las 09:00" was true and useless — and once the day was
+            // there the old prefix read "Sonará a las mañana 09:00" (0.93.0).
             Text(
-                text = stringResource(R.string.sheet_rings_at_default, ""),
+                text = stringResource(R.string.sheet_rings_prefix),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            // The day too (0.68.0): five days out, "Sonará a las 09:00" was true and useless.
+            Spacer(Modifier.width(Tokens.spacing.xs))
             Text(
                 text = dayWord(rememberWords(), ringsAt.toLocalDate(), now.atZone(clock.zone).toLocalDate()) + " " + TimeText.time(ringsAt.toLocalTime(), is24h, locale),
                 style = MonoStyles.time,

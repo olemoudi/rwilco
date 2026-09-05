@@ -111,7 +111,10 @@ fun PickSheet(
             contentColor = MaterialTheme.colorScheme.onSurface,
             shape = MaterialTheme.shapes.extraLarge,
         ) {
-            Column(
+            // Bounded (0.93.0): the list below is capped on its own, but title, field and cap
+            // together were taller than a phone on its side, and the rows past the edge could
+            // not be reached.
+            SheetBounds(
                 modifier = Modifier
                     .padding(horizontal = spacing.screen)
                     .navigationBarsPadding()
@@ -148,8 +151,10 @@ fun PickSheet(
                         state = listState,
                         verticalArrangement = Arrangement.spacedBy(spacing.sm),
                         contentPadding = PaddingValues(bottom = spacing.xxl),
-                        // Tall enough to be a list, short enough that the search box stays put.
+                        // Tall enough to be a list, short enough that the search box stays put —
+                        // and never more than the sheet has left under the field.
                         modifier = Modifier
+                            .weight(1f, fill = false)
                             .heightIn(max = 420.dp)
                             .scrollFade(listState, MaterialTheme.colorScheme.surfaceContainer),
                     ) {
