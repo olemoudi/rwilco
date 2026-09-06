@@ -10,6 +10,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import dev.rwilco.R
 import dev.rwilco.model.Condition
+import dev.rwilco.model.PlaceWatchPolicy
 import dev.rwilco.model.Presence
 import dev.rwilco.model.MonthlyOn
 import dev.rwilco.model.RepeatEnd
@@ -158,6 +159,7 @@ fun conditionLabel(condition: Condition, today: LocalDate = localToday()): Strin
         )
         is Condition.OnDays -> daysSummary(words, condition.days)
         is Condition.OnMonthDays -> words.plural(R.plurals.condition_month_days, condition.days.size, monthDaysSummary(condition.days))
+        is Condition.Moving -> stringResource(movingLabel(condition))
         is Condition.AtPlace -> stringResource(
             if (condition.inside) R.string.condition_at_place else R.string.condition_away_from_place,
             condition.label,
@@ -395,6 +397,7 @@ fun conditionPhrase(words: Words, condition: Condition, today: LocalDate): Strin
     )
     is Condition.OnDays -> words.get(R.string.editor_sentence_on_days, daysPhrase(words, condition.days))
     is Condition.OnMonthDays -> words.plural(R.plurals.editor_sentence_month_days, condition.days.size, monthDaysSummary(condition.days))
+    is Condition.Moving -> words.get(movingLabel(condition))
     is Condition.AtPlace -> words.get(
         if (condition.inside) R.string.editor_sentence_if_at else R.string.editor_sentence_if_away,
         condition.label,
@@ -439,6 +442,14 @@ fun daysSummary(words: Words, days: Set<DayOfWeek>): String = when (days) {
             .joinToString(" · ") { TimeText.dayInitial(it, words.locale) }
     }
 }
+
+/**
+ * "en coche" · "en marcha": the two readings of a speed fence, told apart at the driving
+ * threshold. One string either way, because a number in metres per second is not something to
+ * put in a sentence somebody reads.
+ */
+fun movingLabel(condition: Condition.Moving): Int =
+    if (condition.minMps >= PlaceWatchPolicy.DRIVING_MPS) R.string.condition_moving_driving else R.string.condition_moving_walking
 
 /** "1" · "1 · 15": the days of a month in order, on a chip and inside a sentence alike. */
 fun monthDaysSummary(days: Set<Int>): String = days.sorted().joinToString(" · ")

@@ -71,6 +71,7 @@ enum class TriggerProblem {
     ENDS_BEFORE_START,
     DWELL_OUT_OF_RANGE,
     MONTH_DAY_OUT_OF_RANGE,
+    SPEED_OUT_OF_RANGE,
 }
 
 /**
@@ -187,6 +188,9 @@ fun problemOf(condition: Condition): TriggerProblem? = when (condition) {
     // a hand-edited store can, and a day nobody's calendar has would quietly become the last
     // one of every month (the clamp in [holdsOn] is for February, not for nonsense).
     is Condition.OnMonthDays -> TriggerProblem.MONTH_DAY_OUT_OF_RANGE.takeIf { condition.days.any { day -> day !in MONTH_DAYS } }
+    // A speed nothing on a road reaches is a fence that never holds; zero is one that always
+    // does. The chips write neither, a hand-edited store can write both.
+    is Condition.Moving -> TriggerProblem.SPEED_OUT_OF_RANGE.takeIf { condition.minMps <= 0.0 || condition.minMps > PlaceWatchPolicy.HIGHWAY_MPS }
     // A window that starts where it ends is not a window; one that crosses midnight is.
     is Condition.TimeWindow -> TriggerProblem.WINDOW_EMPTY.takeIf { condition.from == condition.to }
     // Both days count, so a range of one day is a range; one that ends before it starts is not.

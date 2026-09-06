@@ -113,6 +113,12 @@ class EditorTourTest {
             app.settingsStore.update {
                 it.copy(
                     lastSeenVersionCode = BuildConfig.VERSION_CODE,
+                    // And the disclaimer, for the same reason: it is a dialog over the first
+                    // screen, and a tap aimed at what is underneath it lands on nothing. It
+                    // only ever passed because some earlier class had answered it on this
+                    // device — one run of this tour alone, on a fresh install, failed on the
+                    // first tap after the first capture. 2026-09-06.
+                    disclaimerRead = true,
                     presets = emptyList(),
                     savedPlaces = listOf(
                         SavedPlace("Casa", 40.4169, -3.7035, 200),
@@ -380,6 +386,12 @@ class EditorTourTest {
         monthDay("1").performClick()
         monthDay("15").performClick()
         shot("sheet-condition-month-days")
+        // And the speed, which is the fence that tells leaving for the evening from walking to
+        // the bins — the one a routine's garage door is worth having.
+        text(s(R.string.condition_kind_moving)).performClick()
+        rule.waitUntilDisplayed(s(R.string.condition_moving_hint))
+        text(s(R.string.condition_moving_driving)).performClick()
+        shot("sheet-condition-moving")
         text(s(R.string.condition_kind_hours)).performClick()
         rule.waitUntilDisplayed(s(R.string.condition_window_hint))
         text(s(R.string.sheet_add)).performClick()

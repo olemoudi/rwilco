@@ -583,6 +583,10 @@
     <string name="condition_title">Sólo si</string>
     <string name="condition_window_hint">El disparador sólo cuenta dentro de estas horas.</string>
     <string name="condition_kind_month_days">Días del mes</string>
+    <string name="condition_kind_moving">Velocidad</string>
+    <string name="condition_moving_hint">El disparador sólo cuenta si el móvil iba a esa velocidad. Se calcula entre dos miradas, así que no siempre hay respuesta: cuando nadie puede decirlo, el aviso suena igual; el que se queda quieto es el lugar que da una rutina por hecha.</string>
+    <string name="condition_moving_driving">en coche</string>
+    <string name="condition_moving_walking">en marcha</string>
     <string name="alert_routine_label">Rutina</string>
     <string name="snooze_pick_date">A una fecha</string>
     <string name="snooze_until_title">Posponer hasta</string>
@@ -1329,6 +1333,14 @@
         <item>Un aviso con sonido va ahora a tus auriculares cuando los llevas puestos, en vez de salir por el altavoz del móvil como haría cualquier alarma. Es un ajuste, en Sonido, y merece la pena desactivarlo si tus auriculares viven en un cajón: un aviso que suena para nadie es un aviso perdido.</item>
         <item>Y ya no te corta la música. Lo que estuvieras escuchando baja unos decibelios y sigue por debajo mientras el aviso suena por encima —el aviso va por el canal de alarma y la música no, así que ninguno tiene que pelear con el otro— y vuelve solo a su volumen. Antes pedía el audio en exclusiva, lo que mataba un podcast por un tono de diez segundos.</item>
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_101_0">
+
+        <item>«Y sólo si voy en coche». Una regla puede fijarse ahora a la velocidad a la que iba el móvil — «Sólo si» → «Velocidad» —, que es lo que distingue salir para la tarde de bajar a por el pan, y lo que permite que una rutina que se reinicia al salir tenga un círculo lo bastante ancho como para cruzarse de verdad.</item>
+
+        <item>Se calcula entre dos miradas del vigía, así que no siempre hay respuesta. Cuando nadie puede decirlo, el aviso suena igual: es la regla que sigue cualquier valla aquí. La excepción es el lugar que da una rutina por hecha — ahí la app actúa sola, así que una velocidad que no puede comprobar la detiene en vez de reiniciar una cuenta de tres semanas para nada.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_100_0">

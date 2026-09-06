@@ -94,6 +94,26 @@ sealed interface Condition {
     data class OnMonthDays(val days: Set<Int> = emptySet()) : Condition
 
     /**
+     * Moving at least this fast: "al salir de casa, y sólo si voy en coche".
+     *
+     * The fence that tells leaving *for the evening* from walking to the bins, and the reason a
+     * routine can have a circle wide enough to be crossed reliably: "mover el coche" resets on
+     * leaving a 150 m circle around the street, but only when the leaving was done at a speed
+     * no walk reaches ([PlaceWatchPolicy.DRIVING_MPS]).
+     *
+     * Read from the watch's own memory ([Fix.speedMps]), which is a speed worked out between
+     * two looks — so like a place it cannot be asked about the future ([knownInAdvance]), and
+     * unlike a place it is often not answerable at all: a crossing the phone's own geofence
+     * reports can arrive with the last look an hour old. **What nobody can vouch for holds**,
+     * as everywhere else here — except where holding it would make the app act on its own and
+     * go quiet, which is the one place that is asked differently (`ReminderFiring.resetBy`,
+     * [speedUnvouched]).
+     */
+    @Serializable
+    @SerialName("moving")
+    data class Moving(val minMps: Double = PlaceWatchPolicy.DRIVING_MPS) : Condition
+
+    /**
      * Being somewhere, or not being there: "a las nueve, y sólo si estoy en casa".
      *
      * The state that matches [Trigger.Location]'s event, and the reason it is a condition and
@@ -129,6 +149,9 @@ fun Condition.holdsAt(at: Instant, zone: ZoneId, where: Fix? = null): Boolean = 
     is Condition.DateRange -> at.atZone(zone).toLocalDate() in from..to
     is Condition.OnDays -> days.isEmpty() || at.atZone(zone).toLocalDate().dayOfWeek in days
     is Condition.OnMonthDays -> holdsOn(at.atZone(zone).toLocalDate())
+    // Nobody could say how fast: it holds, which is the house rule and the safe way round for
+    // everything that rings. The one caller that needs the other way round asks [speedUnvouched].
+    is Condition.Moving -> speedAt(at, where)?.let { it >= minMps } ?: true
     is Condition.AtPlace -> {
         if (where == null || where.accuracyM > radiusM) true
         else (distanceMeters(where.lat, where.lng, lat, lng) <= radiusM) == inside
@@ -172,15 +195,33 @@ fun List<Condition>.allHoldAt(at: Instant, zone: ZoneId, where: Fix? = null): Bo
  * about next Tuesday; a place cannot answer it about anywhere. So the scheduler leaves these
  * out and arms the alarm, and they are asked once, for real, when it goes off.
  */
-val Condition.knownInAdvance: Boolean get() = this !is Condition.AtPlace
+val Condition.knownInAdvance: Boolean get() = this !is Condition.AtPlace && this !is Condition.Moving
 
 /** The days a condition is limited to; empty when it says nothing about days. See [Trigger.namedDays]. */
 val Condition.namedDays: Set<DayOfWeek>
     get() = when (this) {
         is Condition.TimeWindow -> days
         is Condition.OnDays -> days
-        is Condition.DateRange, is Condition.AtPlace, is Condition.OnMonthDays -> emptySet()
+        is Condition.DateRange, is Condition.AtPlace, is Condition.OnMonthDays, is Condition.Moving -> emptySet()
     }
+
+/**
+ * The speed [where] can vouch for at [at], or null when nothing can: no fix, no speed on it
+ * (the first look of a run), or one too old to speak for the moment ([Fix.speaksFor]).
+ */
+fun speedAt(at: Instant, where: Fix?): Double? = where?.takeIf { it.speaksFor(at) }?.speedMps
+
+/**
+ * Whether a speed fence on this rule is one nothing can answer right now.
+ *
+ * Asked only where the app is about to act **on its own** — a place that counts a routine as
+ * done (`TriggerRule.resets`) — because there the house rule points the wrong way: a fence let
+ * through unchecked resets a count nobody asked to reset, and the reminder then says nothing
+ * for three weeks, which is the failure nobody notices. Everywhere else an unanswerable fence
+ * holds and the phone rings, which is the failure somebody can see and dismiss.
+ */
+fun List<Condition>.speedUnvouched(at: Instant, where: Fix?): Boolean =
+    filterIsInstance<Condition.Moving>().any { speedAt(at, where) == null }
 
 /** The circle a condition is about, for the conflict checks and for the watch to keep an eye on. */
 val Condition.place: Condition.AtPlace? get() = this as? Condition.AtPlace

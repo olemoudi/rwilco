@@ -502,6 +502,33 @@ after the span in "Vuelve"), and the editor's draft not surviving process death 
 `SavedStateHandle`). The second half of the round — the `⋯` on a card, Tags below "Vuelve",
 warnings off amber, one top bar, TalkBack order on the alert, the tokens — is 0.94.0.
 
+## "Y sólo si voy en coche", 0.101.0 (2026-09-06)
+The last of the four, and the one that needed a decision rather than code.
+
+- **The house rule points the wrong way for a reset.** "What nobody can vouch for holds" is
+  right everywhere that *rings*: the failure somebody notices is the one that never arrives. A
+  place that counts a routine as done is the one thing the app does on its own, and there a
+  fence let through unchecked restarts a count nobody asked to restart — after which the
+  reminder says nothing for three weeks, which is the failure nobody notices. So
+  `Condition.Moving.holdsAt` holds when nothing can answer, and `resetBy` alone asks
+  [speedUnvouched] and stops. One principle, two directions: err towards the outcome somebody
+  would see.
+- **The speed rides on the fix** (`Fix.speedMps`), worked out between two looks, not asked of
+  the platform — a `Location`'s own speed is a GPS field and is zero or missing on the wifi
+  positions this watch lives on. Additive to the stored JSON; every fix written before it
+  decodes to null, which reads as "nobody knows".
+- **A rest hands the stored fix back as the current one** (`stepWithoutLooking`), and comparing
+  a fix with itself is a speed of *zero* that nobody measured — which a fence would read as
+  "standing still" from a look that never happened. `PlaceWatchTest` caught it the moment the
+  speed started being written; the guard is "same instant, same look".
+- The conditions sheet outgrew its segmented row at four kinds ("Días del mes" was the one that
+  would be cut), so the kind is a flow of chips now — the same control the recurrence card uses.
+- **A flake worth knowing about:** `EditorTourTest` failed once on the first tap after the first
+  capture, with the semantics tree showing everything present. It was the disclaimer dialog,
+  which the tour never answered and which only stayed away because some earlier class on that
+  device had answered it. The tour seeds `disclaimerRead = true` now, beside its
+  `lastSeenVersionCode`. Cost: one emulator run and half an hour of theories.
+
 ## An overdue routine on the launcher icon, 0.100.0 (2026-09-06)
 The last of the four the owner picked off the routines' backlog, and the only one that needed
 his answer first: the launcher gives four slots and the pinned presets already had them.

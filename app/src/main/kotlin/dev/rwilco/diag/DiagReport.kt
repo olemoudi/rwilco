@@ -368,6 +368,7 @@ internal fun Condition.diagLine(): String = when (this) {
     is Condition.DateRange -> "dates $from..$to"
     is Condition.OnDays -> "days ${days.describe()}"
     is Condition.OnMonthDays -> "monthDays ${days.sorted().joinToString(",")}"
+    is Condition.Moving -> "moving >=${fixed(minMps, 1)}m/s"
     is Condition.AtPlace -> "at #${GeofenceIds.tag(lat, lng, radiusM)} ${radiusM}m @${fixed(lat, 2)},${fixed(lng, 2)} in=${yes(inside)}"
 }
 

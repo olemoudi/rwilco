@@ -76,6 +76,9 @@ fun Reminder.ruleStandings(
                 // No trigger reads as days of the month — the fence exists, the event does not —
                 // but the shape has to be answered, and it is the same question asked of today.
                 is Condition.OnMonthDays -> if (state.holdsAt(now, zone)) RuleStanding.HOLDING else RuleStanding.NOT_HOLDING
+                // Nor as a speed, and this one nothing on a card could answer anyway: how fast
+                // the phone is going is the watch's to say, at the moment something happens.
+                is Condition.Moving -> RuleStanding.UNKNOWN
                 is Condition.AtPlace -> when (inside(index)) {
                     // A rule waiting to arrive holds while the phone is in; one waiting to leave
                     // holds while it is out. The circle is the same; what is asked of it is not.

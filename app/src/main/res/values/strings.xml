@@ -596,6 +596,10 @@
     <string name="condition_title">Only if</string>
     <string name="condition_window_hint">The trigger only counts inside these hours.</string>
     <string name="condition_kind_month_days">Month days</string>
+    <string name="condition_kind_moving">Speed</string>
+    <string name="condition_moving_hint">The trigger only counts when the phone was moving that fast. Worked out between two looks, so it is not always answerable — when nothing can say, the reminder rings anyway; a place that counts a routine as done is the one that stays put.</string>
+    <string name="condition_moving_driving">in a vehicle</string>
+    <string name="condition_moving_walking">on the move</string>
     <string name="alert_routine_label">Routine</string>
     <string name="snooze_pick_date">To a date</string>
     <string name="snooze_until_title">Snooze until</string>
@@ -1344,6 +1348,14 @@
         <item>A reminder with sound now goes to your headphones when you are wearing any, instead of out of the phone\'s speaker as an alarm otherwise would. It is a setting, in Sound, and it is worth turning off if your earbuds live in a drawer: a reminder played to nobody is a reminder missed.</item>
         <item>And it no longer stops your music. What was playing drops a few decibels and carries on underneath while the reminder sounds over it — the reminder is on the alarm channel and the music is not, so neither has to fight the other — and comes back by itself. It used to ask for the audio outright, which ended podcasts for a ten-second chime.</item>
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_101_0">
+
+        <item>«And only if I am in the car». A rule can now be fenced to the speed the phone was going at — «Only if» → «Speed» — which is what tells leaving for the evening from walking to the bins, and what lets a routine that resets on the way out have a circle wide enough to actually be crossed.</item>
+
+        <item>It is worked out between two of the watch\'s looks, so it is not always answerable. When nothing can say, the reminder rings anyway — the same rule every fence here follows. The one exception is a place that counts a routine as done: that is the app acting on its own, so a speed it cannot check stops it rather than restarting a three-week count for nothing.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_100_0">

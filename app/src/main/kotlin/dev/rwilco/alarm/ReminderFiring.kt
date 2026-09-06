@@ -51,6 +51,7 @@ import dev.rwilco.model.owedUnderAll
 import dev.rwilco.model.holdsAt
 import dev.rwilco.model.sideOf
 import dev.rwilco.model.speaksFor
+import dev.rwilco.model.speedUnvouched
 import dev.rwilco.model.presenceAlreadyRang
 import dev.rwilco.model.rulesCombine
 import dev.rwilco.model.statusAfterDismissal
@@ -726,6 +727,10 @@ class ReminderFiring(
             reminder.status != Status.ACTIVE -> dropped("paused")
             reminder.promptQuietUntil(clock.zone, settings.dayStart)?.let { now < it } == true -> dropped("just done")
             reminder.lastDealtAt?.let { Duration.between(it, now) < PLACE_ECHO } == true -> dropped("reset a moment ago")
+            // A speed nothing can vouch for stops a reset, where it would let a question
+            // through: this is the app acting on its own, and a count restarted for nothing
+            // says nothing for three weeks. See [Condition.Moving].
+            rule.conditions.speedUnvouched(now, placeWatch.read().lastFix) -> dropped("nothing could vouch for the speed")
             else -> {
                 val failed = firstFailing(rule.conditions, askAll = true, now, moment = now)
                 if (failed != null) {

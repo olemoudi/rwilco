@@ -27,9 +27,18 @@ import kotlin.math.sqrt
  * alarm are the caller's job, and everything that decides is pure.
  */
 
-/** One reading of where the phone is; [accuracyM] is the radius, in metres, it may be off by. */
+/**
+ * One reading of where the phone is; [accuracyM] is the radius, in metres, it may be off by.
+ *
+ * [speedMps] is how fast the phone was going when it was taken, worked out from the fix before
+ * it ([speedBetween]) rather than asked of the platform — a `Location`'s own speed is a GPS
+ * field and is zero or missing on the wifi positions this watch mostly lives on. Null is
+ * "nobody knows", which is what the first fix of a run always is, and what every fix written
+ * before the field existed decodes to. It is what "y sólo si voy en coche" is read from
+ * ([Condition.Moving]).
+ */
 @Serializable
-data class Fix(val lat: Double, val lng: Double, val accuracyM: Double, val at: Instant)
+data class Fix(val lat: Double, val lng: Double, val accuracyM: Double, val at: Instant, val speedMps: Double? = null)
 
 /** What a crossing at a watched circle does to the rule behind it. */
 enum class Crossing {
@@ -198,6 +207,15 @@ object PlaceWatchPolicy {
 
     /** With no speed to go on, plan for a slow car. */
     const val UNKNOWN_MPS = 8.0
+
+    /**
+     * Fast enough to be a vehicle: 18 km/h, averaged over the gap between two looks.
+     *
+     * Above any walk and above most of a run over that kind of average, and well under city
+     * traffic — which is the point, since a car pulling out of a garage spends its first minute
+     * doing twenty. What "y sólo si voy en coche" is measured against ([Condition.Moving]).
+     */
+    const val DRIVING_MPS = 5.0
 
     /**
      * And do not look away for long either: the first look of a journey cannot know it is a
@@ -1020,7 +1038,14 @@ fun stepPlaceWatch(
     val nowhereNearer = state.lastFix != null && inside == state.inside &&
         places.none { (closingM(it, state.lastFix, fix) ?: 0.0) > 0.0 }
     val next = PlaceWatchState(
-        lastFix = fix,
+        // The speed goes on the fix that was just taken, so whatever asks later — a fence read
+        // as "y sólo si voy en coche" — reads one thing and not two. See [Fix.speedMps].
+        //
+        // **Only when this is a new look.** A rest hands the stored fix straight back as the
+        // current one ([stepWithoutLooking]), and a fix compared with itself is a speed of zero
+        // that nobody measured — which a fence would read as "standing still" off a look that
+        // never happened. Same instant, same look.
+        lastFix = if (state.lastFix?.at == fix.at) fix else fix.copy(speedMps = movement.speedMps ?: fix.speedMps),
         inside = inside,
         stillStreak = if (movement.still || nowhereNearer) state.stillStreak + 1 else 0,
         nextCheckAt = plan?.let { now + it.wait },
