@@ -502,6 +502,28 @@ after the span in "Vuelve"), and the editor's draft not surviving process death 
 `SavedStateHandle`). The second half of the round — the `⋯` on a card, Tags below "Vuelve",
 warnings off amber, one top bar, TalkBack order on the alert, the tokens — is 0.94.0.
 
+## Days of the month, 0.98.0 (2026-09-06)
+The first of the four the owner picked off the routines' "not done on purpose" list: a routine
+asking its question on a date ("pregúntame el día 1 si he cambiado el filtro").
+
+- **It is a condition, not a rule with a repeat in it.** The obvious road was to let a
+  `Trigger.Repeat` sit under a routine, which is what the 0.96.0 note anticipated — and it needs
+  a guard in `foldRepeats`, because that runs on **every read** and would lift the repeat into
+  `Recurrence.Calendar`, taking the `Since` with it: the routine would stop being a routine in
+  silence, count and all. `Condition.OnMonthDays` needs none of that. It composes with the rules
+  that already exist ("a las nueve, y sólo el día 1"), the walk in `nextFireOfRule` already
+  fences candidate moments with it, `ReminderFiring.ask` already re-asks the fence when the
+  inexact alarm lands, and it is worth having on an ordinary reminder too (the rent).
+- **A day past the end of the month is that month's last day** — the reading `MonthlyOn.Day` has
+  always had, so "el 31" is one day in every month rather than seven months of silence, and
+  29+30+31 together are still one day in February. `holdsOn` is the one line that says it.
+- The grid has no column count of its own: `MonthDayToggles` is a `FlowRow` of stretched discs,
+  because a number written down here is the wrong one on the next screen width. It came out six
+  to a row on the AVD (411dp), which is where the first version's phantom padding cells showed.
+- Not needed after all: the `foldRepeats` guard, and any editor way to write a `Trigger.Repeat`.
+  If a monthly *rule* is ever wanted for something other than a question, that trap is still
+  where it was.
+
 ## The review round, 0.97.0 (2026-09-06)
 The pass after the two routine alphas. Two things to fix, both about something the app did
 *behind* the feature rather than in it, and a few tidyings.

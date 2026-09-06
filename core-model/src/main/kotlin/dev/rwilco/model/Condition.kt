@@ -76,6 +76,24 @@ sealed interface Condition {
     data class OnDays(val days: Set<DayOfWeek> = emptySet()) : Condition
 
     /**
+     * The days of the month and nothing else: "y sólo el día 1".
+     *
+     * The one fence a weekday cannot put. "El día 1 de cada mes" is how rent, a filter and a
+     * meter reading are actually said, and the app could only say it in "Vuelve" — where a
+     * routine's answer is already taken by its span, so a routine had no way to ask its
+     * question on a date at all (see `Prompt.kt`).
+     *
+     * A day past the end of a short month is that month's **last** day, which is the reading
+     * [MonthlyOn.Day] has always had: "el 31" is the last day of every month, February
+     * included, and picking 29, 30 and 31 together is one day in every month rather than three.
+     * Empty is every day, for the same reason [OnDays] empty is: a fence that silently never
+     * holds is the worse failure of the two.
+     */
+    @Serializable
+    @SerialName("on_month_days")
+    data class OnMonthDays(val days: Set<Int> = emptySet()) : Condition
+
+    /**
      * Being somewhere, or not being there: "a las nueve, y sólo si estoy en casa".
      *
      * The state that matches [Trigger.Location]'s event, and the reason it is a condition and
@@ -110,6 +128,7 @@ fun Condition.holdsAt(at: Instant, zone: ZoneId, where: Fix? = null): Boolean = 
     is Condition.TimeWindow -> holdsAt(at.atZone(zone).toLocalDateTime())
     is Condition.DateRange -> at.atZone(zone).toLocalDate() in from..to
     is Condition.OnDays -> days.isEmpty() || at.atZone(zone).toLocalDate().dayOfWeek in days
+    is Condition.OnMonthDays -> holdsOn(at.atZone(zone).toLocalDate())
     is Condition.AtPlace -> {
         if (where == null || where.accuracyM > radiusM) true
         else (distanceMeters(where.lat, where.lng, lat, lng) <= radiusM) == inside
@@ -131,6 +150,16 @@ fun Condition.TimeWindow.holdsAt(at: LocalDateTime): Boolean {
     return inside && (days.isEmpty() || day.dayOfWeek in days) && (date == null || day == date)
 }
 
+/**
+ * Whether [date] is one of the days of the month this fence names — clamped to the month's own
+ * length, so "el 31" is the 28th in February and the 30th in April. See [Condition.OnMonthDays].
+ */
+fun Condition.OnMonthDays.holdsOn(date: LocalDate): Boolean =
+    days.isEmpty() || days.any { date.dayOfMonth == it.coerceAtMost(date.lengthOfMonth()) }
+
+/** The days a month day can be asked for: the calendar's own, and no thirty-second. */
+val MONTH_DAYS = 1..31
+
 /** Whether every condition on a rule held at [at]. */
 fun List<Condition>.allHoldAt(at: Instant, zone: ZoneId, where: Fix? = null): Boolean =
     all { it.holdsAt(at, zone, where) }
@@ -150,7 +179,7 @@ val Condition.namedDays: Set<DayOfWeek>
     get() = when (this) {
         is Condition.TimeWindow -> days
         is Condition.OnDays -> days
-        is Condition.DateRange, is Condition.AtPlace -> emptySet()
+        is Condition.DateRange, is Condition.AtPlace, is Condition.OnMonthDays -> emptySet()
     }
 
 /** The circle a condition is about, for the conflict checks and for the watch to keep an eye on. */

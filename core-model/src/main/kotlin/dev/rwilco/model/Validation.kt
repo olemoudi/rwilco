@@ -70,6 +70,7 @@ enum class TriggerProblem {
     EVERY_OUT_OF_RANGE,
     ENDS_BEFORE_START,
     DWELL_OUT_OF_RANGE,
+    MONTH_DAY_OUT_OF_RANGE,
 }
 
 /**
@@ -182,6 +183,10 @@ fun problemOf(recurrence: Recurrence): TriggerProblem? {
 fun problemOf(condition: Condition): TriggerProblem? = when (condition) {
     // Empty is every day here on purpose: see [Condition.OnDays].
     is Condition.OnDays -> null
+    // And empty is every day here too. The toggles cannot write a thirty-second, but a vault or
+    // a hand-edited store can, and a day nobody's calendar has would quietly become the last
+    // one of every month (the clamp in [holdsOn] is for February, not for nonsense).
+    is Condition.OnMonthDays -> TriggerProblem.MONTH_DAY_OUT_OF_RANGE.takeIf { condition.days.any { day -> day !in MONTH_DAYS } }
     // A window that starts where it ends is not a window; one that crosses midnight is.
     is Condition.TimeWindow -> TriggerProblem.WINDOW_EMPTY.takeIf { condition.from == condition.to }
     // Both days count, so a range of one day is a range; one that ends before it starts is not.

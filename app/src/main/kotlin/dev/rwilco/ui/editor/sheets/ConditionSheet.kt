@@ -20,6 +20,7 @@ import dev.rwilco.R
 import dev.rwilco.model.Condition
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.ui.components.DayToggles
+import dev.rwilco.ui.components.MonthDayToggles
 import dev.rwilco.ui.components.PresetChip
 import dev.rwilco.ui.components.SegmentedChoice
 import dev.rwilco.ui.components.SheetScaffold
@@ -29,13 +30,17 @@ import java.time.DayOfWeek
 import java.time.LocalTime
 
 /**
- * The restriction put on a trigger, in one of its two kinds: a stretch of the day, or a place
- * the phone has to be in (or out of).
+ * The restriction put on a trigger, in one of its three kinds: a stretch of the day, days of the
+ * month, or a place the phone has to be in (or out of).
  *
  * This is the other half of "al llegar a casa, y sólo si es por la tarde" — the trigger says
  * what happens, this says when it is allowed to mean anything. The place kind is what makes
  * "a las nueve, y sólo si estoy en casa" expressible: two things true at once, which is what a
  * condition has always been for and what the "todos" of several triggers is not.
+ *
+ * The month days are the fence a weekday cannot put — "el día 1", which is how a filter, a
+ * meter reading and the rent are said — and the only way a routine can ask its question on a
+ * date, since its "Vuelve" is already spoken for by the span (see `Prompt.kt`).
  *
  * A place condition picks from the places kept by name rather than dropping a pin here. A
  * circle you are going to refer to by name in a sentence is a circle worth naming once, and
@@ -55,11 +60,21 @@ fun ConditionSheet(
 ) {
     val window = initial as? Condition.TimeWindow
     val atPlace = initial as? Condition.AtPlace
-    var place by rememberSaveable { mutableStateOf(atPlace != null) }
+    val onMonthDays = initial as? Condition.OnMonthDays
+    var kind by rememberSaveable {
+        mutableStateOf(
+            when {
+                atPlace != null -> KIND_PLACE
+                onMonthDays != null -> KIND_MONTH_DAYS
+                else -> KIND_HOURS
+            },
+        )
+    }
     var addingPlace by rememberSaveable { mutableStateOf(false) }
     var from by rememberTime(window?.from ?: LocalTime.of(18, 0))
     var to by rememberTime(window?.to ?: LocalTime.of(22, 0))
     var days by rememberSaveable { mutableStateOf(window?.days?.map { it.name }?.toSet() ?: emptySet()) }
+    var monthDays by rememberSaveable { mutableStateOf(onMonthDays?.days ?: emptySet()) }
     var inside by rememberSaveable { mutableStateOf(atPlace?.inside ?: true) }
     // The condition's own place is offered too when nothing saved carries its name any more —
     // deleted or renamed in Settings since — so re-opening it does not quietly point it at
@@ -75,28 +90,48 @@ fun ConditionSheet(
     val selected = days.map(DayOfWeek::valueOf).toSet()
     val pickedPlace = offered.firstOrNull { it.label == chosenLabel } ?: offered.firstOrNull()
     // What the sheet opened with, so a scrim tap or Back asks before throwing an edit away (0.93.0).
-    val untouched = remember { listOf(place, from, to, days, inside, chosenLabel) }
+    val untouched = remember { listOf(kind, from, to, days, monthDays, inside, chosenLabel) }
 
     SheetScaffold(
         title = stringResource(R.string.condition_title),
         onDismiss = onDismiss,
         onConfirm = {
-            if (place && pickedPlace != null) {
-                onConfirm(Condition.AtPlace(pickedPlace.lat, pickedPlace.lng, pickedPlace.radiusM, pickedPlace.label, inside))
-            } else {
-                onConfirm(Condition.TimeWindow(from, to, selected))
+            when {
+                kind == KIND_PLACE && pickedPlace != null ->
+                    onConfirm(Condition.AtPlace(pickedPlace.lat, pickedPlace.lng, pickedPlace.radiusM, pickedPlace.label, inside))
+                kind == KIND_MONTH_DAYS -> onConfirm(Condition.OnMonthDays(monthDays))
+                else -> onConfirm(Condition.TimeWindow(from, to, selected))
             }
         },
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
-        confirmEnabled = if (place) pickedPlace != null else from != to,
-        dirty = listOf(place, from, to, days, inside, chosenLabel) != untouched,
+        // Nothing picked is every day of the month ([Condition.OnMonthDays]), which is a fence
+        // that fences nothing: the button waits rather than writing one.
+        confirmEnabled = when (kind) {
+            KIND_PLACE -> pickedPlace != null
+            KIND_MONTH_DAYS -> monthDays.isNotEmpty()
+            else -> from != to
+        },
+        dirty = listOf(kind, from, to, days, monthDays, inside, chosenLabel) != untouched,
     ) {
         SegmentedChoice(
-            options = listOf(stringResource(R.string.condition_kind_hours), stringResource(R.string.condition_kind_place)),
-            selectedIndex = if (place) 1 else 0,
-            onSelect = { place = it == 1 },
+            options = listOf(
+                stringResource(R.string.condition_kind_hours),
+                stringResource(R.string.condition_kind_month_days),
+                stringResource(R.string.condition_kind_place),
+            ),
+            selectedIndex = kind,
+            onSelect = { kind = it },
         )
-        if (place) {
+        if (kind == KIND_MONTH_DAYS) {
+            Text(
+                text = stringResource(R.string.condition_month_days_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            MonthDayToggles(selected = monthDays, onToggle = { day -> monthDays = if (day in monthDays) monthDays - day else monthDays + day })
+            return@SheetScaffold
+        }
+        if (kind == KIND_PLACE) {
             Text(
                 text = stringResource(if (offered.isEmpty()) R.string.condition_place_none else R.string.condition_place_hint),
                 style = MaterialTheme.typography.bodyMedium,
@@ -167,3 +202,8 @@ fun ConditionSheet(
         )
     }
 }
+
+/** The three kinds, in the order the row offers them. */
+private const val KIND_HOURS = 0
+private const val KIND_MONTH_DAYS = 1
+private const val KIND_PLACE = 2

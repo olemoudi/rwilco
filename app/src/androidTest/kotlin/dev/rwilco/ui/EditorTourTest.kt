@@ -14,6 +14,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.isDisplayed
+import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -94,6 +95,9 @@ class EditorTourTest {
     private fun s(id: Int, arg: Any): String = rule.activity.getString(id, arg)
 
     private fun text(value: String) = rule.onNodeWithText(value, useUnmergedTree = true)
+
+    /** One toggle of the month grid, told from anything else that happens to say a number. */
+    private fun monthDay(value: String) = rule.onNode(hasText(value) and isSelectable())
 
     @Before
     fun seedDemoData() {
@@ -360,13 +364,22 @@ class EditorTourTest {
         text(s(R.string.recur_none)).performScrollTo().performClick()
         rule.waitForIdle()
 
-        // A rule can be fenced in, by hours or by a place: the trigger only counts inside them.
+        // A rule can be fenced in, by hours, by days of the month or by a place: the trigger
+        // only counts inside them.
         text(s(R.string.editor_add_condition)).performScrollTo().performClick()
         rule.waitUntilDisplayed(s(R.string.condition_title))
         shot("sheet-condition")
         text(s(R.string.condition_kind_place)).performClick()
         rule.waitUntilDisplayed(s(R.string.condition_place_inside))
         shot("sheet-condition-place")
+        // The month grid: "el día 1", which is the one fence a weekday cannot put.
+        text(s(R.string.condition_kind_month_days)).performClick()
+        rule.waitUntilDisplayed(s(R.string.condition_month_days_hint))
+        // By "a node that says 1 and can be selected": the form underneath is still composed,
+        // and a bare "1" on it would make the match ambiguous.
+        monthDay("1").performClick()
+        monthDay("15").performClick()
+        shot("sheet-condition-month-days")
         text(s(R.string.condition_kind_hours)).performClick()
         rule.waitUntilDisplayed(s(R.string.condition_window_hint))
         text(s(R.string.sheet_add)).performClick()

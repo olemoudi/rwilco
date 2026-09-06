@@ -595,6 +595,16 @@
     <string name="editor_sentence_if_away">if I am away from %1$s</string>
     <string name="condition_title">Only if</string>
     <string name="condition_window_hint">The trigger only counts inside these hours.</string>
+    <string name="condition_kind_month_days">Month days</string>
+    <string name="condition_month_days_hint">The trigger only counts on those days of the month. The 31st is the last day of a month that has no 31st.</string>
+    <plurals name="condition_month_days">
+        <item quantity="one">day %1$s</item>
+        <item quantity="other">days %1$s</item>
+    </plurals>
+    <plurals name="editor_sentence_month_days">
+        <item quantity="one">on day %1$s</item>
+        <item quantity="other">on days %1$s</item>
+    </plurals>
     <string name="condition_window_error">Pick two different times.</string>
     <string name="editor_write">Write the reminder</string>
     <string name="reuse_more">All of them</string>
@@ -1329,6 +1339,14 @@
         <item>A reminder with sound now goes to your headphones when you are wearing any, instead of out of the phone\'s speaker as an alarm otherwise would. It is a setting, in Sound, and it is worth turning off if your earbuds live in a drawer: a reminder played to nobody is a reminder missed.</item>
         <item>And it no longer stops your music. What was playing drops a few decibels and carries on underneath while the reminder sounds over it — the reminder is on the alarm channel and the music is not, so neither has to fight the other — and comes back by itself. It used to ask for the audio outright, which ended podcasts for a ten-second chime.</item>
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_98_0">
+
+        <item>«And only on the 1st». A rule can now be fenced to days of the month, not just to days of the week: the 1st, the 15th, the last one. Pick them in «Only if» → «Month days», as many as you like.</item>
+
+        <item>Which is the only way a routine can ask its question on a date: its «Comes back» is already taken by the span, so «ask me on the 1st whether I have changed the filter» had nowhere to live. The 31st means the last day in a month that has no 31st — February included.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_97_1">

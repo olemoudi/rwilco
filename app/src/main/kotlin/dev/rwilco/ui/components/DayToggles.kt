@@ -5,6 +5,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,6 +26,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.rwilco.model.MONTH_DAYS
 import dev.rwilco.model.TriggerFamily
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.currentLocale
@@ -81,6 +84,64 @@ fun DayToggles(selected: Set<DayOfWeek>, onToggle: (DayOfWeek) -> Unit, modifier
                 Box(contentAlignment = Alignment.Center) {
                     Text(
                         text = TimeText.dayInitial(day, locale),
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = if (on) FontWeight.Bold else FontWeight.Medium),
+                        color = ink,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The days of the month, as a grid of the same round toggles: as many to a row as the width
+ * takes, each one stretched to share it.
+ *
+ * How many that is belongs to the layout and not to a constant here — the discs are the size
+ * they need to be for a thumb, and a column count written down is one that is wrong on the
+ * next screen width. The number is the label, so unlike [DayToggles] there is nothing to
+ * describe on top of it: what a screen reader reads is the day itself, plus whether it is on.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun MonthDayToggles(selected: Set<Int>, onToggle: (Int) -> Unit, modifier: Modifier = Modifier) {
+    val haptics = Tokens.haptics
+    val family = TriggerFamily.TIME
+    val motion = Tokens.motion
+    FlowRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
+    ) {
+        for (day in MONTH_DAYS) {
+            val on = day in selected
+            val fill by animateColorAsState(
+                targetValue = if (on) family.color() else MaterialTheme.colorScheme.surfaceContainerLow,
+                animationSpec = tween(motion.fast),
+                label = "monthDayFill",
+            )
+            val ink by animateColorAsState(
+                targetValue = if (on) family.onColor() else MaterialTheme.colorScheme.onSurfaceVariant,
+                animationSpec = tween(motion.fast),
+                label = "monthDayInk",
+            )
+            Surface(
+                onClick = {
+                    haptics.perform(if (on) HapticFeedbackType.ToggleOff else HapticFeedbackType.ToggleOn)
+                    onToggle(day)
+                },
+                shape = CircleShape,
+                color = fill,
+                border = if (on) null else BorderStroke(Tokens.strokes.control, MaterialTheme.colorScheme.outline),
+                modifier = Modifier
+                    .weight(1f)
+                    .sizeIn(minWidth = 40.dp, minHeight = 40.dp)
+                    .aspectRatio(1f)
+                    .semantics { this.selected = on },
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "$day",
                         style = MaterialTheme.typography.labelLarge.copy(fontWeight = if (on) FontWeight.Bold else FontWeight.Medium),
                         color = ink,
                     )

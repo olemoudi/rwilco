@@ -100,6 +100,18 @@ class SentenceTest {
                 ),
                 Recurrence.None,
             ),
+            // Days of the month, which nothing but "Vuelve" could say before: on a routine,
+            // where the span is already the answer to "¿y vuelve?", this is the question's day.
+            Triple(
+                "Cambiar el filtro",
+                listOf(TriggerRule(everyDayAtEight, listOf(Condition.OnMonthDays(setOf(1))))),
+                Recurrence.Since(3, RecurrenceUnit.MONTHS),
+            ),
+            Triple(
+                "Leer el contador",
+                listOf(TriggerRule(everyDayAtEight, listOf(Condition.OnMonthDays(setOf(1, 15))))),
+                Recurrence.None,
+            ),
         )
         rule.setContent {
             RwilcoTheme(darkTheme = true) {
@@ -137,6 +149,16 @@ class SentenceTest {
             "the rate should read as the stay",
             rule.onAllNodesWithText("al llevar 10 min en el gimnasio", substring = true, ignoreCase = true)
                 .fetchSemanticsNodes().isNotEmpty(),
+        )
+        // And the new fence, in the two shapes it comes in: one day is "el día", several are
+        // "los días", and neither reads as a weekday.
+        assertTrue(
+            "one day of the month should read in the singular",
+            rule.onAllNodesWithText("el día 1", substring = true, ignoreCase = true).fetchSemanticsNodes().isNotEmpty(),
+        )
+        assertTrue(
+            "several should read in the plural",
+            rule.onAllNodesWithText("los días 1 · 15", substring = true, ignoreCase = true).fetchSemanticsNodes().isNotEmpty(),
         )
         val bitmap: Bitmap = rule.onRoot().captureToImage().asAndroidBitmap()
         val dir = File(context.filesDir, "screenshots").apply { mkdirs() }

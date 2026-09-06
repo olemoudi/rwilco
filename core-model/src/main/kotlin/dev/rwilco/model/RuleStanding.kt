@@ -73,6 +73,9 @@ fun Reminder.ruleStandings(
                 is Condition.DateRange -> if (state.holdsAt(now, zone)) RuleStanding.HOLDING else RuleStanding.NOT_HOLDING
                 // And the days on their own: is today one of them?
                 is Condition.OnDays -> if (state.holdsAt(now, zone)) RuleStanding.HOLDING else RuleStanding.NOT_HOLDING
+                // No trigger reads as days of the month — the fence exists, the event does not —
+                // but the shape has to be answered, and it is the same question asked of today.
+                is Condition.OnMonthDays -> if (state.holdsAt(now, zone)) RuleStanding.HOLDING else RuleStanding.NOT_HOLDING
                 is Condition.AtPlace -> when (inside(index)) {
                     // A rule waiting to arrive holds while the phone is in; one waiting to leave
                     // holds while it is out. The circle is the same; what is asked of it is not.

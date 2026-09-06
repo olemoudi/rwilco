@@ -57,6 +57,9 @@ class Words(private val context: Context, val locale: Locale, val is24h: Boolean
     fun get(id: Int): String = context.getString(id)
     fun get(id: Int, vararg args: Any): String = context.getString(id, *args)
     fun plural(id: Int, count: Int): String = context.resources.getQuantityString(id, count, count)
+
+    /** A plural whose argument is not the count itself: "los días 1 · 15", counted by how many. */
+    fun plural(id: Int, count: Int, vararg args: Any): String = context.resources.getQuantityString(id, count, *args)
     fun ordinals(id: Int): Array<String> = context.resources.getStringArray(id)
 }
 
@@ -154,6 +157,7 @@ fun conditionLabel(condition: Condition, today: LocalDate = localToday()): Strin
             TimeText.dayDate(condition.to, locale, today),
         )
         is Condition.OnDays -> daysSummary(words, condition.days)
+        is Condition.OnMonthDays -> words.plural(R.plurals.condition_month_days, condition.days.size, monthDaysSummary(condition.days))
         is Condition.AtPlace -> stringResource(
             if (condition.inside) R.string.condition_at_place else R.string.condition_away_from_place,
             condition.label,
@@ -390,6 +394,7 @@ fun conditionPhrase(words: Words, condition: Condition, today: LocalDate): Strin
         TimeText.dayDate(condition.to, words.locale, today),
     )
     is Condition.OnDays -> words.get(R.string.editor_sentence_on_days, daysPhrase(words, condition.days))
+    is Condition.OnMonthDays -> words.plural(R.plurals.editor_sentence_month_days, condition.days.size, monthDaysSummary(condition.days))
     is Condition.AtPlace -> words.get(
         if (condition.inside) R.string.editor_sentence_if_at else R.string.editor_sentence_if_away,
         condition.label,
@@ -434,6 +439,9 @@ fun daysSummary(words: Words, days: Set<DayOfWeek>): String = when (days) {
             .joinToString(" · ") { TimeText.dayInitial(it, words.locale) }
     }
 }
+
+/** "1" · "1 · 15": the days of a month in order, on a chip and inside a sentence alike. */
+fun monthDaysSummary(days: Set<Int>): String = days.sorted().joinToString(" · ")
 
 /**
  * The days as they read inside a sentence: one day gets its own name, several get [daysSummary].
