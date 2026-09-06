@@ -73,6 +73,8 @@ data class ReminderEntity(
     val expiresAt: Long? = null,
     /** When a routine was last asked whether it had been done; null (every older row) is never. */
     val askedAt: Long? = null,
+    /** When a pause was last lifted; null (every older row) is one nobody has paused. */
+    val resumedAt: Long? = null,
 )
 
 /** The stored form of no recurrence, and what every row written before v5 gets. */
@@ -119,6 +121,7 @@ fun ReminderEntity.toDomain(zone: ZoneId = ZoneId.systemDefault()): Reminder = R
     deadline = ReminderCodec.decodeDeadline(deadline),
     expiresAt = expiresAt?.let(Instant::ofEpochMilli),
     askedAt = askedAt?.let(Instant::ofEpochMilli),
+    resumedAt = resumedAt?.let(Instant::ofEpochMilli),
 ).foldRepeats(zone)
 
 fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
@@ -146,6 +149,7 @@ fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
     deadline = deadline?.let(ReminderCodec::encodeDeadline),
     expiresAt = expiresAt?.toEpochMilli(),
     askedAt = askedAt?.toEpochMilli(),
+    resumedAt = resumedAt?.toEpochMilli(),
 )
 
 /**

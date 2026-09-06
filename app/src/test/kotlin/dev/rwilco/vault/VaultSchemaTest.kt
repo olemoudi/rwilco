@@ -72,6 +72,7 @@ class VaultSchemaTest {
             "deadline", "expiresAt",
             // Room v12: when a routine was last asked whether it had been done; older rows never were.
             "askedAt",
+            "resumedAt",
         )
     }
 }

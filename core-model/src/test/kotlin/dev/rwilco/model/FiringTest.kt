@@ -228,6 +228,27 @@ class FiringTest {
     }
 
     @Test
+    fun `a pause lifted starts the round again for a state place`() {
+        // Reported from the phone (0.99.1): "mientras esté en casa, y sólo los findes" rang on
+        // the Thursday, was never answered, and from then on the state was spent for good — so
+        // pausing it and bringing it back on the Sunday, standing in the very place, rang
+        // nothing. Resuming answers nothing and finishes no round; it only says "ask me again".
+        val rang = local(2026, 8, 27, 19, 0)
+        val ignored = reminder(casa).copy(lastFiredAt = rang, lastFiredRule = 0)
+        assertTrue(ignored.presenceAlreadyRang(casa, 0))
+
+        val resumed = ignored.copy(resumedAt = rang.plusSeconds(3 * 86_400))
+        assertFalse(resumed.presenceAlreadyRang(casa, 0), "brought back is asked again")
+
+        // And a ring *after* the resume spends the state as it always did: one say per round,
+        // whatever started the round.
+        val rangAgain = resumed.copy(lastFiredAt = resumed.resumedAt!!.plusSeconds(60))
+        assertTrue(rangAgain.presenceAlreadyRang(casa, 0), "it has had its say in this round")
+        // An old pause, lifted long before the ring, is not a round of its own either.
+        assertTrue(ignored.copy(resumedAt = rang.minusSeconds(60)).presenceAlreadyRang(casa, 0))
+    }
+
+    @Test
     fun `a sibling clock ringing does not spend a state place under any`() {
         // "En casa, o a las nueve." Nine rings and is swiped away without a hecho; at six the
         // person walks in. The ring being held against the place was a different rule's, and

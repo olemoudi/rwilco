@@ -1331,6 +1331,12 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_99_1">
+
+        <item>Reanudar un recordatorio pausado vuelve a pedirlo. «Mientras esté en casa» suena una vez y luego se calla hasta que lo contestas — si no, sonaría toda la tarde —, pero un aviso que no contestaste lo dejaba callado para siempre: pausado y reanudado tres días después, dentro del propio sitio, no pasaba nada. Ahora reanudar empieza la ronda de nuevo. Sigue sin contestar nada, sin mover ninguna cuenta y sin dar nada por hecho; pausar no escribe nada.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_99_0">
 
         <item>Una rutina ya no suena como un recordatorio. La pantalla completa se enciende en el color de las rutinas y dice RUTINA donde antes ponía el nombre de la app, y en la barra el aviso pregunta «¿Has hecho “mover el coche”?» en vez de repetirte el texto.</item>

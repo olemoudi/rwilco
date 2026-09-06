@@ -160,7 +160,10 @@ fun Reminder.momentDealtWith(
 fun Reminder.presenceAlreadyRang(place: Trigger.Location, ruleIndex: Int): Boolean {
     if (place.onCrossing) return false
     val fired = lastFiredAt ?: return false
-    if (fired <= (lastDealtAt ?: Instant.MIN)) return false
+    // Dealt with, or brought back from a pause: both start the next round. The second is the
+    // one gesture that says "ask me again" without saying "done" ([Reminder.resumedAt]), and
+    // without it a ring nobody answered kept a state quiet for as long as the reminder lived.
+    if (fired <= maxOf(lastDealtAt ?: Instant.MIN, resumedAt ?: Instant.MIN)) return false
     return lastFiredRule == null || lastFiredRule == ruleIndex
 }
 

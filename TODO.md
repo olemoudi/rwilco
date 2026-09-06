@@ -502,6 +502,28 @@ after the span in "Vuelve"), and the editor's draft not surviving process death 
 `SavedStateHandle`). The second half of the round — the `⋯` on a card, Tags below "Vuelve",
 warnings off amber, one top bar, TalkBack order on the alert, the tokens — is 0.94.0.
 
+## "A resumed reminder did not ring", from the phone (0.99.1, 2026-09-06)
+Reported with a diagnostics report, which named the cause itself:
+`fire r=d5e39eb5 dropped: state place already rang at 2026-09-03T15:32:08`.
+
+The reminder was "mientras esté en casa, y a la vez sólo los findes" (TOGETHER, a place read as
+a **state** plus a weekday rule). It rang on the Thursday and was never answered. On the Sunday,
+standing inside the circle, the owner paused it and brought it back expecting it to ring: the
+watch did look, did find him inside, and the firing was dropped by
+[Reminder.presenceAlreadyRang] — a state place keeps quiet once it has rung **and until it is
+dealt with**, or "mientras esté en casa" rings all evening. Never answered meant never again.
+
+- **The rule now is that a pause lifted starts the round too**, and `resumedAt` (Room v13, one
+  more nullable column; null on every existing row, so the upgrade itself un-silences nothing)
+  is the moment. It is written on the way *back* to ACTIVE only — pausing answers nothing —
+  through a `COALESCE(:resumedAt, resumedAt)` so the pause leaves the column alone.
+- **Narrow on purpose.** The obvious fix was to clear `lastFiredAt` on a resume, which is what
+  "start again" sounds like; it is also the column that makes a moment spent, and a reminder
+  that had rung would go back to looking as if it never had (the missed reading on Home, the
+  net's word, `awaitingAnswer`). Only the state-place guard consults the new moment.
+- Not touched, and worth knowing: an ALL set half ticked off (`firedRules`) survives a pause —
+  a pause is not an answer, and the round it was in is still the round it is in.
+
 ## The routines, second look, 0.99.0 (2026-09-06)
 Three things the owner asked for once the routines were on his phone. All three are about the
 same thing: a routine had the model of its own and the surfaces of a reminder.

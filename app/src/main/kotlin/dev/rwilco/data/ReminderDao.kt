@@ -49,8 +49,13 @@ interface ReminderDao {
     @Upsert
     suspend fun upsertAll(entities: List<ReminderEntity>)
 
-    @Query("UPDATE reminder SET status = :status, updatedAt = :at, doneAt = :doneAt WHERE id = :id")
-    suspend fun setStatus(id: String, status: String, at: Long, doneAt: Long?)
+    /**
+     * [resumedAt] is written only when a pause is being lifted (null leaves the column alone):
+     * bringing a reminder back is asking for it again, which is what stops a ring nobody
+     * answered from keeping a place-as-state quiet for ever. See [Reminder.resumedAt].
+     */
+    @Query("UPDATE reminder SET status = :status, updatedAt = :at, doneAt = :doneAt, resumedAt = COALESCE(:resumedAt, resumedAt) WHERE id = :id")
+    suspend fun setStatus(id: String, status: String, at: Long, doneAt: Long?, resumedAt: Long?)
 
     /**
      * A snooze is the person's word: to a clock or to a place, never both, and the two are

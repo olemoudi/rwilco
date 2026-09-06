@@ -104,6 +104,8 @@ fun Draft.toReminder(
     nudgedAt: Instant? = null,
     /** A routine's last question stands across an edit, or a typo fixed would have it asked again at once. */
     askedAt: Instant? = null,
+    /** And so does the moment a pause was lifted: an edit is not a pause taken back. */
+    resumedAt: Instant? = null,
     /** The answer somebody already gave to a ring: kept unless this edit re-decided the "when". */
     snoozedUntil: Instant? = null,
     snoozedToPlace: Trigger.Location? = null,
@@ -137,6 +139,7 @@ fun Draft.toReminder(
     lastFiredRule = lastFiredRule,
     nudgedAt = nudgedAt,
     askedAt = askedAt,
+    resumedAt = resumedAt,
     snoozedUntil = snoozedUntil,
     snoozedToPlace = snoozedToPlace,
     deadline = deadline,

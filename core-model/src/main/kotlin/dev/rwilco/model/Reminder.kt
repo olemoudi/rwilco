@@ -88,6 +88,17 @@ data class Reminder(
      */
     val askedAt: Instant? = null,
     /**
+     * When a pause was last lifted, and null for a reminder nobody has ever paused.
+     *
+     * **Bringing something back is asking for it again.** A place read as a state keeps quiet
+     * once it has rung and until it is dealt with ([presenceAlreadyRang]) — otherwise "mientras
+     * esté en casa" would ring all evening — and a ring left unanswered three days ago was
+     * silencing it for good. Pausing and resuming is the one gesture that says "start again"
+     * without saying "done": it answers nothing, moves no anchor and finishes no round, and
+     * from here on the old ring is not the reason anything stays quiet.
+     */
+    val resumedAt: Instant? = null,
+    /**
      * Which rule [lastFiredAt] rang for; null when the ring had no rule behind it (a snooze, a
      * recurrence's own moment) — and for every row written before the column existed.
      *

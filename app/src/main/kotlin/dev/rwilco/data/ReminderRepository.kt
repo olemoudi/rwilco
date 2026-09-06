@@ -85,7 +85,8 @@ class ReminderRepository(
 
     suspend fun setStatus(id: String, status: Status) {
         val now = clock.instant().toEpochMilli()
-        dao.setStatus(id, status.name, now, if (status == Status.DONE) now else null)
+        // Stamped only on the way back to ACTIVE: see [ReminderDao.setStatus].
+        dao.setStatus(id, status.name, now, if (status == Status.DONE) now else null, now.takeIf { status == Status.ACTIVE })
     }
 
     suspend fun delete(id: String) = dao.delete(id)

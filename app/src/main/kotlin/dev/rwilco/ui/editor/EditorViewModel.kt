@@ -429,6 +429,7 @@ class EditorViewModel(
                 lastFiredRule = if (before != null && before.rules == current.draft.rules) before.lastFiredRule else null,
                 nudgedAt = before?.nudgedAt,
                 askedAt = before?.askedAt,
+                resumedAt = before?.resumedAt,
                 // **Only a change to the "when" un-answers a snooze.** Somebody who put a ring
                 // off until tomorrow has answered it; fixing a word in the text does not take
                 // that back, and dropping it did two visible things — the card left the section
