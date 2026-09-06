@@ -118,7 +118,10 @@ fun Reminder.ringCadence(
     shape: DayShape = DayShape.DEFAULT,
 ): Duration? {
     val recurrence = recurrence
-    if (recurrence is Recurrence.After || recurrence is Recurrence.MonthlyWeekday) {
+    // A routine is a span too. Asked of the fresh copy below it would answer the same deadline
+    // twice — the copy has no "hecho" to count from — and a cadence of nothing is "too fast for a
+    // net", which is the one reminder that most needs one going quiet.
+    if (recurrence is Recurrence.After || recurrence is Recurrence.Since || recurrence is Recurrence.MonthlyWeekday) {
         val first = nextRecurrence(recurrence, now, zone, dayStart) ?: return null
         val second = nextRecurrence(recurrence, first, zone, dayStart) ?: return null
         return Duration.between(first, second)

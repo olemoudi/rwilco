@@ -504,11 +504,16 @@ internal fun TriggersSection(
     deadline: Deadline? = null,
     onDeadline: () -> Unit = {},
     onClearDeadline: () -> Unit = {},
+    /**
+     * The rules of a routine: questions asked one at a time, never a set. No reading to
+     * choose, no deadline to give up on, and an empty card that says what a rule would do here.
+     */
+    routine: Boolean = false,
 ) {
     Column {
         // The choice only exists once there is something to combine, and it comes before the
         // list because it changes what the list means.
-        if (rules.size > 1) {
+        if (rules.size > 1 && !routine) {
             // Three readings of the same list, in the order they get used: either one, all of
             // them in any order, all of them at once.
             val matches = listOf(RuleMatch.ANY, RuleMatch.ALL, RuleMatch.TOGETHER)
@@ -529,7 +534,7 @@ internal fun TriggersSection(
         }
         if (rules.isEmpty()) {
             Text(
-                text = stringResource(R.string.editor_when_empty),
+                text = stringResource(if (routine) R.string.editor_when_ask_empty else R.string.editor_when_empty),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = Tokens.spacing.sm),

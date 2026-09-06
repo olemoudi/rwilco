@@ -83,12 +83,37 @@
     </plurals>
     <string name="settings_default_actions">Qué hace un recordatorio en blanco</string>
     <string name="settings_default_actions_hint">Lo que viene activado al empezar un recordatorio desde cero. Cada recordatorio se puede cambiar por su cuenta.</string>
+    <string name="settings_routine_actions">Qué hace una rutina nueva</string>
+    <string name="settings_routine_actions_hint">Lo que queda activado al empezar una rutina desde cero: cómo te avisa de que se ha cumplido el plazo. Cada rutina se puede cambiar por su cuenta.</string>
 
     <!-- Home -->
     <string name="home_new">Nuevo</string>
     <string name="home_next_up">Lo siguiente</string>
     <string name="home_next_up_snoozed">Pospuesto hasta</string>
     <string name="home_done_list">Recordatorios hechos</string>
+    <string name="home_routines_title">Rutinas periódicas</string>
+    <string name="home_routines_ok">Rutinas periódicas · al día</string>
+    <string name="home_routines_overdue_title">Todavía no has hecho lo siguiente:</string>
+    <string name="home_routines_open">Abrir las rutinas</string>
+    <plurals name="home_routines_more">
+        <item quantity="one">y una más</item>
+        <item quantity="other">y %d más</item>
+    </plurals>
+    <string name="routines_title">Rutinas periódicas</string>
+    <string name="routines_question">¿He hecho «%1$s»?</string>
+    <string name="routines_yes">Sí</string>
+    <string name="routines_no">No</string>
+    <string name="routines_due">vence %1$s</string>
+    <string name="routines_overdue">vencida %1$s</string>
+    <string name="routines_new">Nueva rutina</string>
+    <string name="routines_done">Hecha</string>
+    <string name="routines_done_returns">Hecha · vuelve a preguntar %1$s</string>
+    <string name="routines_empty_title">Ninguna rutina todavía</string>
+    <string name="routines_empty_body">Una rutina es algo que haces cada cierto tiempo: mover el coche, regar las plantas. Cuenta el tiempo desde la última vez, y un gesto dice que ya está.</string>
+    <string name="routines_filter_all">Todas</string>
+    <string name="routines_filter_overdue">Vencidas</string>
+    <string name="routines_filter_none_title">Nada con este filtro</string>
+    <string name="routines_filter_none_body">Todas las rutinas están en otro sitio. Toca el chip otra vez para verlas todas.</string>
     <string name="home_settings">Ajustes</string>
     <string name="home_all_tags">Todo</string>
     <string name="home_tags_manage">Gestionar etiquetas</string>
@@ -208,6 +233,8 @@
     <string name="editor_new_tag">Nueva etiqueta</string>
     <string name="editor_new_tag_hint">Nombre de la etiqueta</string>
     <string name="editor_when_title">Cuándo</string>
+    <string name="editor_when_ask_title">Pregúntame si lo he hecho</string>
+    <string name="editor_period_title">Cada cuánto</string>
     <string name="editor_add_trigger">Añadir disparador</string>
     <string name="editor_trigger_removed">Disparador quitado</string>
     <string name="editor_what_title">Qué pasa</string>
@@ -225,7 +252,12 @@
     <string name="recur_more">Más</string>
     <string name="recur_calendar">Días concretos</string>
     <string name="recur_custom">Cada cierto tiempo</string>
+    <string name="recur_since">%1$s desde la última vez</string>
+    <string name="recur_day">Cada día</string>
     <string name="recur_custom_title">Cada cierto tiempo</string>
+    <string name="recur_since_chip">Desde la última vez</string>
+    <string name="recur_since_title">Desde la última vez</string>
+    <string name="recur_since_note">Una rutina: cuenta desde la última vez que lo marcaste hecho y suena cuando ha pasado ese tiempo. El «cuándo» sólo pregunta si lo has hecho.</string>
     <string name="recur_list_title">Recurrencias</string>
     <string name="recur_save_as">Guardar con un nombre</string>
     <string name="recur_save_as_hint">Déjalo vacío para no guardarla</string>
@@ -285,6 +317,7 @@
     <string name="editor_error_trigger">Una de las reglas de cuándo no está bien.</string>
     <string name="editor_error_recurrence">La forma de volver no está bien.</string>
     <string name="editor_will_ring">Suena %1$s</string>
+    <string name="editor_will_be_due">Vence %1$s</string>
     <string name="editor_will_ring_then">luego %1$s</string>
     <string name="editor_will_ring_sometime">en algún momento %1$s, %2$s</string>
     <string name="date_shortcut_next_monday">el lunes que viene</string>
@@ -690,6 +723,7 @@
     <string name="editor_net_note">Si suena y lo dejas pasar — o si su momento pasa sin que llegue a sonar — un aviso discreto %1$s después.</string>
     <string name="editor_net_too_fast">Vuelve cada %1$s: demasiado seguido para una red, el siguiente aviso llega antes.</string>
     <string name="editor_when_empty">No suena: se queda guardado, bajo sus etiquetas.</string>
+    <string name="editor_when_ask_empty">No pregunta nada: sólo suena cuando se cumple el plazo. Una hora o un lugar aquí preguntan si lo has hecho, y un lugar puede darlo por hecho él solo.</string>
     <string name="editor_when_from_words">Leído de las palabras</string>
     <string name="editor_what_empty">El momento pasa en silencio.</string>
     <string-array name="whats_new_0_3_0">
@@ -1274,6 +1308,16 @@
         <item>Un aviso con sonido va ahora a tus auriculares cuando los llevas puestos, en vez de salir por el altavoz del móvil como haría cualquier alarma. Es un ajuste, en Sonido, y merece la pena desactivarlo si tus auriculares viven en un cajón: un aviso que suena para nadie es un aviso perdido.</item>
         <item>Y ya no te corta la música. Lo que estuvieras escuchando baja unos decibelios y sigue por debajo mientras el aviso suena por encima —el aviso va por el canal de alarma y la música no, así que ninguno tiene que pelear con el otro— y vuelve solo a su volumen. Antes pedía el audio en exclusiva, lo que mataba un podcast por un tono de diez segundos.</item>
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_95_0">
+
+        <item>Rutinas periódicas: cosas que haces cada cierto tiempo (mover el coche, regar las plantas) y que cuentan el tiempo desde la última vez. «Vuelve» tiene una respuesta nueva, «Desde la última vez»: una rutina suena cuando ha pasado ese tiempo, y marcarla hecha vuelve a empezar la cuenta desde ahora, nunca desde la que venía.</item>
+
+        <item>Su propia pantalla, detrás de una línea que Home mantiene bajo los chips: «Todavía no has hecho lo siguiente: mover el coche» cuando alguna ha vencido, discreta cuando ninguna. Cada fila es la pregunta («¿He hecho «mover el coche»? → Sí/No») con cuánto hace y cuánto queda. Desliza a la derecha y mantén para decir que sí; a la izquierda para borrar; toca para editar; filtra por vencidas o por etiqueta.</item>
+
+        <item>Ajustes tiene «Qué hace una rutina nueva», junto a lo que hace un recordatorio nuevo. Bajo una rutina el formulario pregunta qué harán sus reglas (preguntarte si lo has hecho) y un lugar ahí es siempre una puerta; preguntar y dar un lugar por hecho llegan en la siguiente versión.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_94_0">

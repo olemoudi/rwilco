@@ -68,6 +68,13 @@ data class AppSettings(
      */
     @Serializable(with = TolerantActions::class)
     val defaultActions: Set<Action> = DEFAULT_ACTIONS,
+    /**
+     * The same, for a blank **routine** (see `Routines.kt`): what its deadline does when the
+     * span is up. Its own answer because a routine is a different kind of thing to be told
+     * about — "hace tres semanas que no mueves el coche" is rarely a full-screen alarm.
+     */
+    @Serializable(with = TolerantActions::class)
+    val routineActions: Set<Action> = DEFAULT_ACTIONS,
     /** Reminders kept by shape, under a name: see [Preset]. */
     val presets: List<Preset> = emptyList(),
     /** Phrases dismissed from the "or reuse one" offers; the reminders that used them stay. */

@@ -29,7 +29,14 @@ fun recurrenceLabel(words: Words, recurrence: Recurrence, today: LocalDate): Str
         Recurrence.None -> words.get(R.string.recur_none)
         Recurrence.ByTrigger -> words.get(R.string.recur_by_trigger)
         is Recurrence.Calendar -> repeatSummary(words, recurrence.repeat, today)
-        is Recurrence.After -> recurrenceSpanLabel(words, recurrence) + hourSuffix(words, recurrence)
+        is Recurrence.After -> recurrenceSpanLabel(words, recurrence.amount, recurrence.unit) + hourSuffix(words, recurrence.unit, recurrence.hour)
+        // A routine: the same span, said as what it counts from. "Al día siguiente desde la
+        // última vez" is not a sentence, so a day is "cada día" here.
+        is Recurrence.Since -> {
+            val span = if (recurrence.unit == RecurrenceUnit.DAYS && recurrence.amount == 1) words.get(R.string.recur_day)
+            else recurrenceSpanLabel(words, recurrence.amount, recurrence.unit)
+            words.get(R.string.recur_since, span) + hourSuffix(words, recurrence.unit, recurrence.hour)
+        }
         // Nothing writes one any more; it is still what somebody's saved preset says.
         is Recurrence.MonthlyWeekday -> {
             val ordinals = words.ordinals(R.array.recur_ordinals)
@@ -40,21 +47,21 @@ fun recurrenceLabel(words: Words, recurrence: Recurrence, today: LocalDate): Str
 }
 
 /** The span itself, without the hour it lands on. */
-private fun recurrenceSpanLabel(words: Words, recurrence: Recurrence.After): String =
-    when (recurrence.unit) {
-            RecurrenceUnit.HOURS -> words.get(R.string.recur_hours, recurrence.amount)
+private fun recurrenceSpanLabel(words: Words, amount: Int, unit: RecurrenceUnit): String =
+    when (unit) {
+            RecurrenceUnit.HOURS -> words.get(R.string.recur_hours, amount)
             RecurrenceUnit.DAYS ->
-                if (recurrence.amount == 1) words.get(R.string.recur_next_day)
-                else words.get(R.string.recur_days, recurrence.amount)
+                if (amount == 1) words.get(R.string.recur_next_day)
+                else words.get(R.string.recur_days, amount)
             RecurrenceUnit.WEEKS ->
-                if (recurrence.amount == 1) words.get(R.string.recur_week)
-                else words.get(R.string.recur_weeks, recurrence.amount)
+                if (amount == 1) words.get(R.string.recur_week)
+                else words.get(R.string.recur_weeks, amount)
             RecurrenceUnit.MONTHS ->
-                if (recurrence.amount == 1) words.get(R.string.recur_month)
-                else words.get(R.string.recur_months, recurrence.amount)
+                if (amount == 1) words.get(R.string.recur_month)
+                else words.get(R.string.recur_months, amount)
             RecurrenceUnit.YEARS ->
-                if (recurrence.amount == 1) words.get(R.string.recur_year)
-                else words.get(R.string.recur_years, recurrence.amount)
+                if (amount == 1) words.get(R.string.recur_year)
+                else words.get(R.string.recur_years, amount)
     }
 
 /**
@@ -62,9 +69,9 @@ private fun recurrenceSpanLabel(words: Words, recurrence: Recurrence.After): Str
  * every reminder written before the question existed means [RecurrenceHour.DayStart], and a
  * line that suddenly grew three words would read as something having changed.
  */
-private fun hourSuffix(words: Words, recurrence: Recurrence.After): String {
-    if (recurrence.unit == RecurrenceUnit.HOURS) return ""
-    return when (val hour = recurrence.hour) {
+private fun hourSuffix(words: Words, unit: RecurrenceUnit, hour: RecurrenceHour): String {
+    if (unit == RecurrenceUnit.HOURS) return ""
+    return when (hour) {
         RecurrenceHour.DayStart -> ""
         RecurrenceHour.Same -> " · " + words.get(R.string.recur_hour_same_short)
         is RecurrenceHour.At -> " · " + words.get(

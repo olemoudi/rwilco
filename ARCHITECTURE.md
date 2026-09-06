@@ -391,6 +391,35 @@ anything repeats**:
   where it means anything (a span, not in hours, and rules that name days), and picking `EXACT`
   hands the recurrence the hour the rules were naming, or the reminder would quietly start
   ringing at breakfast.
+- `Since(amount, unit, hour)` — **a routine** (0.95.0, `Routines.kt`): a count of time since the
+  last time something was done. "Mover el coche cada 21 días" is not an appointment and not a
+  series; what matters is how long it has been, and the only thing that resets that is doing it.
+  `Reminder.isRoutine` is exactly this predicate, and everything a routine does follows from the
+  one reading: the span is **always the ring**, counted from `lastDealtAt ?: createdAt`
+  (`routineAnchor`, `routineDeadline`); **"hecho" is now**, never "the one that was coming"
+  (`momentDealtWith` answers null, and `recurrenceAnchor` ignores a `dealtThrough` left behind
+  by an `After` edited into a `Since`); and **the rules never ring and never rest** —
+  `nextFire`/`nextWake` answer with the deadline before `restUntil` is even asked, `restUntil`
+  is null, and `ReminderFiring.fire` (and `Simulation.fire`) drop a rule's moment for a routine
+  the way they drop one under `spanHasTakenOver`. A rule under a routine is a *question* — "¿lo
+  has hecho?" — on an alarm of its own (the prompts and the silent resets by place are the next
+  release; `Reminder.askedAt` and `TriggerRule.resets` already ship, so no migration waits on
+  them). `ringCadence` measures a routine by its span on purpose: through the fresh-copy path the
+  cadence came out as zero and the net switched itself off for the one reminder that most
+  needs one. **"Sí"/"No"** is the row's state (`routineDone`: the deadline is still ahead), and
+  it is never `Status.DONE` — a routine is done *for now*. Home lists no routine
+  (`groupForHome`, `tagsInUse` leave them out — a tag only routines wear would be a chip that
+  finds nothing on Home); it keeps one line about the overdue ones (`overdueRoutines`) and the
+  routines screen has the rest (`routinesFor`: overdue first, longest-waiting on top, paused
+  last; `routineFilters`: "vencidas" while any is, then the routines' own tags). The editor
+  says what a routine changes: "Cada cuánto" instead of "Vuelve", "Pregúntame si lo he hecho"
+  instead of "Cuándo", no set reading and no deadline (forced `ANY`, `EditorState.setRecurrence`),
+  and every place a doorway (`asDoorway`, `LocationSheet(doorwayOnly)`) — a state ("mientras
+  esté") is not a question anybody can be asked once. `sameSpanAs`/`withSpanOf` treat a routine's
+  span as a span, so the "cada semana" button lights up for a weekly routine and picking a
+  span on a routine keeps it a routine. `AppSettings.routineActions` is what a blank routine's
+  deadline does, beside `defaultActions`. `RoutinesTest` pins all of it, a year of the car
+  through `Simulation` included.
 - `ByTrigger` — hands the question back to a trigger that names its own dates, which is now only
   a random window ("tres veces al día" is its own answer to "¿y vuelve?").
 - `MonthlyWeekday(ordinal, day)` — read-only. It is `Calendar` of a month with a `MonthlyOn.Nth`
@@ -655,6 +684,27 @@ because that is what its chip would show.
   otherwise every rotation pushed the shared text back on top of whatever the person was doing.
   Settings → Aspecto has a language row on API 33+ that opens the
   system's per-app page (`locales_config.xml` names the two).
+- **The routines have a screen of their own, and Home keeps one line about them** (0.95.0,
+  `ui/routines/`, `ui/home/RoutinesLine.kt`). `Routes.Routines` is reached from that line —
+  a full-width row under the chips and over the hero, always there once the list has been
+  read, because the owner asked for a door a thumb finds and not an icon in the header. With a
+  routine whose span is up it turns the error wash and names it ("todavía no has hecho lo
+  siguiente: mover el coche", up to three and then "y N más"); with nothing owed it is the
+  neutral "rutinas periódicas · al día". Never amber: amber is what fires next, and this is
+  what has not been done. `homeCardIndex` mirrors it (`routinesLine`). The screen
+  (`RoutinesScreen`, `RoutinesViewModel`, `buildRoutinesState` — pure, JVM-tested) lists every
+  row as the question the routine is — «¿He hecho «mover el coche»? → Sí/No», the answer at the
+  end of the sentence, "No" in the error ink — with "hace 10 d · vence en 11 d" in mono and a
+  thin track of the span under it. **A swipe to the right, held, is "sí, la he hecho"**: the
+  same `SwipeableCard` Home's cards answer with, through the same door (`ReminderFiring.dismiss`,
+  which under a routine is the reset), with a snackbar that says when it will ask again; a
+  swipe to the left, held, deletes with Home's minute of undo (`UndoDeleteRow`); a tap opens the
+  editor; a held press offers `ReminderActionsMenu` (pause, snooze where the deadline rang,
+  clone, keep as preset). The chips are "todas", the app's own "vencidas" while any is, and the
+  routines' tags in their own colours; a filter on something no longer offered clears. "Nueva
+  rutina" opens the editor as a routine (`Routes.Editor(routine = true)`: a week since the last
+  time, with `routineActions`). A tap on a routine's prompt (next release) lands here
+  (`MainActivity.DESTINATION_ROUTINES`).
 - **A sheet answers a swipe with nothing rather than with a spring** (`NoBounce`, 0.63.0). A
   sheet already as far up as it goes has two things that overscroll — the content's own scroll
   and the sheet's own drag — and neither has anywhere to go, so a swipe upwards got two
@@ -1504,6 +1554,13 @@ because that is what its chip would show.
 
 ## Firing
 
+- **A routine's rules never ring** (0.95.0, `Reminder.isRoutine`). `nextWake` arms a routine's
+  deadline and nothing else, so no clock rule of one is ever armed; a place rule's circle still
+  reports crossings, and a stale alarm can still carry a rule index, so `ReminderFiring.fire`
+  drops a firing with a rule behind it for a routine the way it drops one under
+  `spanHasTakenOver` — the door every firing comes through, and `Simulation.fire` mirrors it.
+  What those crossings and moments *do* — ask, or count as done — is the next release's alarm
+  and receiver path (`askedAt`, `TriggerRule.resets`).
 - `ReminderScheduler` keeps one `setAlarmClock` armed per reminder — the only kind of alarm Doze
   never defers and the rate limiter never holds back — and writes the armed moment back to the
   row. **One pass at a time** (a mutex): passes come from six doors, and two side by side could

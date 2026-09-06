@@ -71,6 +71,8 @@ data class ReminderEntity(
     val deadline: String? = null,
     /** When the deadline on the round under way runs out; null (every older row) is no round under one. */
     val expiresAt: Long? = null,
+    /** When a routine was last asked whether it had been done; null (every older row) is never. */
+    val askedAt: Long? = null,
 )
 
 /** The stored form of no recurrence, and what every row written before v5 gets. */
@@ -116,6 +118,7 @@ fun ReminderEntity.toDomain(zone: ZoneId = ZoneId.systemDefault()): Reminder = R
     // with no deadline behind it means nothing (see Reminder.hasDeadline).
     deadline = ReminderCodec.decodeDeadline(deadline),
     expiresAt = expiresAt?.let(Instant::ofEpochMilli),
+    askedAt = askedAt?.let(Instant::ofEpochMilli),
 ).foldRepeats(zone)
 
 fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
@@ -142,6 +145,7 @@ fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
     snoozedToPlace = snoozedToPlace?.let(ReminderCodec::encodeTrigger),
     deadline = deadline?.let(ReminderCodec::encodeDeadline),
     expiresAt = expiresAt?.toEpochMilli(),
+    askedAt = askedAt?.toEpochMilli(),
 )
 
 /**

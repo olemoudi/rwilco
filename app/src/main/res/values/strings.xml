@@ -87,12 +87,37 @@
     </plurals>
     <string name="settings_default_actions">What a blank reminder does</string>
     <string name="settings_default_actions_hint">What is switched on when you start a reminder from nothing. Every reminder can still be changed on its own.</string>
+    <string name="settings_routine_actions">What a blank routine does</string>
+    <string name="settings_routine_actions_hint">What is switched on when you start a routine from nothing: how it tells you the time is up. Every routine can still be changed on its own.</string>
 
     <!-- Home -->
     <string name="home_new">New</string>
     <string name="home_next_up">Next up</string>
     <string name="home_next_up_snoozed">Put off until</string>
     <string name="home_done_list">Done reminders</string>
+    <string name="home_routines_title">Periodic routines</string>
+    <string name="home_routines_ok">Periodic routines · all done</string>
+    <string name="home_routines_overdue_title">You still haven\'t done:</string>
+    <string name="home_routines_open">Open the routines</string>
+    <plurals name="home_routines_more">
+        <item quantity="one">and one more</item>
+        <item quantity="other">and %d more</item>
+    </plurals>
+    <string name="routines_title">Periodic routines</string>
+    <string name="routines_question">Have I done “%1$s”?</string>
+    <string name="routines_yes">Yes</string>
+    <string name="routines_no">No</string>
+    <string name="routines_due">due %1$s</string>
+    <string name="routines_overdue">overdue %1$s</string>
+    <string name="routines_new">New routine</string>
+    <string name="routines_done">Done</string>
+    <string name="routines_done_returns">Done · asks again %1$s</string>
+    <string name="routines_empty_title">No routines yet</string>
+    <string name="routines_empty_body">A routine is something you do every so often: move the car, water the plants. It counts the time since the last time, and one swipe says you\'ve done it.</string>
+    <string name="routines_filter_all">All</string>
+    <string name="routines_filter_overdue">Overdue</string>
+    <string name="routines_filter_none_title">Nothing under this filter</string>
+    <string name="routines_filter_none_body">Every routine is elsewhere. Tap the chip again to see them all.</string>
     <string name="home_settings">Settings</string>
     <string name="home_all_tags">All</string>
     <string name="home_tags_manage">Manage tags</string>
@@ -212,6 +237,8 @@
     <string name="editor_new_tag">New tag</string>
     <string name="editor_new_tag_hint">Tag name</string>
     <string name="editor_when_title">When</string>
+    <string name="editor_when_ask_title">Ask me whether I\'ve done it</string>
+    <string name="editor_period_title">How often</string>
     <string name="editor_add_trigger">Add a trigger</string>
     <string name="editor_edit_trigger_named">Edit «%1$s»</string>
     <string name="editor_remove_trigger_named">Remove «%1$s»</string>
@@ -232,7 +259,12 @@
     <string name="recur_more">More</string>
     <string name="recur_calendar">Specific days</string>
     <string name="recur_custom">Every so often</string>
+    <string name="recur_since">%1$s since the last time</string>
+    <string name="recur_day">Every day</string>
     <string name="recur_custom_title">Every so often</string>
+    <string name="recur_since_chip">Since the last time</string>
+    <string name="recur_since_title">Since the last time</string>
+    <string name="recur_since_note">A routine: it counts from the last time you marked it done, and rings when that long has passed. The «when» only asks whether you\'ve done it.</string>
     <string name="recur_list_title">Recurrences</string>
     <string name="recur_edit_named">Edit «%1$s»</string>
     <string name="recur_delete_named">Delete «%1$s»</string>
@@ -292,6 +324,7 @@
     <string name="editor_error_trigger">One of the "when" rules is not right.</string>
     <string name="editor_error_recurrence">The way it comes back is not right.</string>
     <string name="editor_will_ring">Rings %1$s</string>
+    <string name="editor_will_be_due">Due %1$s</string>
     <string name="editor_will_ring_then">then %1$s</string>
     <string name="editor_will_ring_sometime">sometime %1$s, %2$s</string>
     <string name="date_shortcut_next_monday">next Monday</string>
@@ -705,6 +738,7 @@
     <string name="editor_net_note">If it rings and you let it go — or if its moment passes without it ringing at all — one quiet word about it %1$s later.</string>
     <string name="editor_net_too_fast">It comes back every %1$s — too often for a net, since the next ring gets there first.</string>
     <string name="editor_when_empty">Nothing rings it: it is simply kept, under its tags.</string>
+    <string name="editor_when_ask_empty">Nothing asks: it only rings when the time is up. A time of day or a place here asks whether you\'ve done it — and a place can count as done by itself.</string>
     <string name="editor_when_from_words">Read from the words</string>
     <string name="editor_what_empty">The moment passes in silence.</string>
     <string-array name="whats_new_0_3_0">
@@ -1289,6 +1323,16 @@
         <item>A reminder with sound now goes to your headphones when you are wearing any, instead of out of the phone\'s speaker as an alarm otherwise would. It is a setting, in Sound, and it is worth turning off if your earbuds live in a drawer: a reminder played to nobody is a reminder missed.</item>
         <item>And it no longer stops your music. What was playing drops a few decibels and carries on underneath while the reminder sounds over it — the reminder is on the alarm channel and the music is not, so neither has to fight the other — and comes back by itself. It used to ask for the audio outright, which ended podcasts for a ten-second chime.</item>
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_95_0">
+
+        <item>Periodic routines: things you do every so often — move the car, water the plants — that count the time since the last time. «Comes back» has a new answer, «Since the last time»; a routine rings when that long has passed, and marking it done starts the count again from now, never from the one that was coming.</item>
+
+        <item>Their own screen, behind a line Home keeps under the chips: «You still haven\'t done: move the car» when one is overdue, quiet when none is. Every row is the question — «Have I done “move the car”? → Yes/No» — with how long it has been and how long is left. Swipe right and hold to say yes; swipe left to delete; tap to edit; filter by overdue or by tag.</item>
+
+        <item>Settings has «What a blank routine does», beside what a blank reminder does. Under a routine the form asks for what its rules will do — ask you whether you\'ve done it — and a place there is always a doorway; asking and counting a place as done arrive in the next release.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_94_0">

@@ -46,7 +46,9 @@ fun UpcomingLine(
     val first = MaterialTheme.colorScheme.primary
     val rest = MaterialTheme.colorScheme.onSurfaceVariant
     val readings = upcoming.map { momentReading(words, it, today, zone) }
-    val firstLine = stringResource(R.string.editor_will_ring, readings.first())
+    // A routine's one moment is its span running out — "vence", not "suena" — because the
+    // rules on the form are questions and none of them is what this line is about.
+    val firstLine = stringResource(if (recurrence is Recurrence.Since) R.string.editor_will_be_due else R.string.editor_will_ring, readings.first())
     // **A span counted from the "hecho" is said as one** (0.68.0). Its next moments are the
     // rules' own — "a las 20:45", every day — because nothing has been dealt with yet, and
     // the line read "luego vie 4 sept · luego sáb 5 sept" under a reminder that says "vuelve

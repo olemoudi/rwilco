@@ -81,6 +81,13 @@ data class Reminder(
      */
     val nudgedAt: Instant? = null,
     /**
+     * When a routine was last **asked** whether it had been done — the question a rule under
+     * [Recurrence.Since] puts instead of ringing (see `Routines.kt`). One slot, not one per rule:
+     * two questions within minutes of each other are the same question. Null for everything
+     * that is not a routine, and for every row written before the column existed.
+     */
+    val askedAt: Instant? = null,
+    /**
      * Which rule [lastFiredAt] rang for; null when the ring had no rule behind it (a snooze, a
      * recurrence's own moment) — and for every row written before the column existed.
      *

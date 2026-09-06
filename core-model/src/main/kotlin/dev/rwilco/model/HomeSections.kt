@@ -60,9 +60,11 @@ fun sectionOf(next: NextFire?, status: Status, hasRules: Boolean, now: Instant, 
 }
 
 /**
- * What Home shows. Done reminders are not here (they have their own screen); a [TagFilter] keeps
- * only the reminders that belong under it. The hero is the earliest definite moment among active
- * reminders and is lifted out of its section; a random draw never becomes the hero.
+ * What Home shows. Done reminders are not here (they have their own screen), and neither are
+ * routines (theirs is `Routines.kt`; Home carries one line about the overdue ones); a
+ * [TagFilter] keeps only the reminders that belong under it. The hero is the earliest definite
+ * moment among active reminders and is lifted out of its section; a random draw never becomes
+ * the hero.
  */
 fun groupForHome(
     reminders: List<Reminder>,
@@ -74,7 +76,7 @@ fun groupForHome(
     shape: DayShape = DayShape.DEFAULT,
 ): HomeGroups {
     val entries = reminders
-        .filter { it.status != Status.DONE }
+        .filter { it.status != Status.DONE && !it.isRoutine }
         .filter { tagFilter == null || tagFilter.matches(it) }
         .map {
             val next = nextFire(it, now, zone, defaultTime, dayStart, shape)
@@ -162,9 +164,13 @@ private fun Reminder.missedMoment(now: Instant, zone: ZoneId, defaultTime: Local
     return lastMomentGone(now, zone, defaultTime, dayStart, shape)
 }
 
-/** Every tag in use on open reminders, most used first, then alphabetically; one spelling per tag. */
+/**
+ * Every tag in use on open reminders, most used first, then alphabetically; one spelling per tag.
+ * Routines are left out: they are not on Home, so a tag only they wear would be a chip that finds
+ * nothing there (their own screen ranks theirs, [routineTags]).
+ */
 fun tagsInUse(reminders: List<Reminder>): List<String> =
-    rankTags(reminders.filter { it.status != Status.DONE })
+    rankTags(reminders.filter { it.status != Status.DONE && !it.isRoutine })
 
 /**
  * Every tag any reminder carries, **finished ones included**, in the same order.
@@ -177,7 +183,7 @@ fun tagsInUse(reminders: List<Reminder>): List<String> =
  */
 fun tagsEverUsed(reminders: List<Reminder>): List<String> = rankTags(reminders)
 
-private fun rankTags(reminders: List<Reminder>): List<String> {
+internal fun rankTags(reminders: List<Reminder>): List<String> {
     val counts = LinkedHashMap<String, Pair<String, Int>>()
     for (reminder in reminders) {
         for (tag in reminder.tags) {

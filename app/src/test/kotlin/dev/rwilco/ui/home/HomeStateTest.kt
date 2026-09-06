@@ -357,6 +357,30 @@ class HomeStateTest {
         val withHero = withTags.copy(hero = HeroUi(card("hero"), Instant.EPOCH))
         assertEquals(1, homeCardIndex(withHero, "hero", strip = false, pinned = false))
         assertEquals(3, homeCardIndex(withHero, "a", strip = false, pinned = false))
+        // The line about the routines sits under everything above the list and over the hero.
+        assertEquals(2, homeCardIndex(withHero, "hero", strip = false, pinned = false, routinesLine = true))
+        assertEquals(4, homeCardIndex(withHero, "a", strip = false, pinned = false, routinesLine = true))
+        assertEquals(6, homeCardIndex(withHero, "a", strip = true, pinned = false, undoRow = true, routinesLine = true))
+    }
+
+    @Test
+    fun `home keeps one line about the routines, from the whole list, and no card for them`() {
+        // "Mover el coche cada 21 días", nine days late, and another one fresh: neither is a
+        // card on Home, both are counted, and the late one is named — whatever the tag filter.
+        val late = reminder("late", tags = listOf("coche")).copy(
+            recurrence = Recurrence.Since(21, RecurrenceUnit.DAYS),
+            createdAt = now.minusSeconds(30 * 86_400),
+        )
+        val fresh = reminder("fresh").copy(recurrence = Recurrence.Since(21, RecurrenceUnit.DAYS))
+        val state = buildHomeState(listOf(late, fresh, soon), defaultTime, now, zone, selectedTag = TagFilter.Named("casa"))
+        val cards = (listOfNotNull(state.hero?.card) + state.sections.flatMap { it.cards }).map { it.id }
+        assertEquals(listOf("soon"), cards)
+        assertEquals(2, state.routines.total)
+        assertEquals(listOf("late"), state.routines.overdue.map { it.id })
+        assertEquals("text late", state.routines.overdue.single().text)
+        // And a routine's tag is not a chip on Home: nothing there wears it.
+        assertTrue(state.tags.none { it is TagFilter.Named && it.tag == "coche" })
+        assertEquals(RoutinesLineUi(), buildHomeState(listOf(soon), defaultTime, now, zone, selectedTag = null).routines)
     }
 
     @Test

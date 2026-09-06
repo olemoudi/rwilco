@@ -327,6 +327,15 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
                             // blank reminder opens with.
                             ActionsSection(selected = current.defaultActions, onToggle = viewModel::toggleDefaultAction)
                         }
+                        Column {
+                            SettingTitle(
+                                title = stringResource(R.string.settings_routine_actions),
+                                info = stringResource(R.string.settings_routine_actions_hint),
+                            )
+                            Spacer(Modifier.height(spacing.sm))
+                            // And the same tiles for a blank routine: what its deadline does.
+                            ActionsSection(selected = current.routineActions, onToggle = viewModel::toggleRoutineAction)
+                        }
                     }
                 }
             }

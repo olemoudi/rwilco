@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Casino
 import androidx.compose.material.icons.outlined.Close
@@ -154,6 +155,9 @@ internal fun RecurrenceSection(
     val readWords = rememberWords()
     // The preset being built or edited: null closed, "" a new one, otherwise its id.
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
+    // Whether what is being built is a routine's span ("desde la última vez") rather than one
+    // counted from the ring or the "hecho": the same dialog, building a different shape.
+    var editingSince by rememberSaveable { mutableStateOf(false) }
     val spacing = Tokens.spacing
     val spans = presets.take(VISIBLE_PRESETS - 1)
     val calendar = recurrence.asRepeat()
@@ -205,7 +209,16 @@ internal fun RecurrenceSection(
                 label = stringResource(R.string.recur_custom),
                 // Selected when a span is set that is not one of the buttons above.
                 selected = recurrence is Recurrence.After && spans.none { recurrence.sameSpanAs(it.recurrence) },
-                onClick = { editing = "" },
+                onClick = { editing = ""; editingSince = false },
+            )
+            // A routine: the span counted from the last time it was done. Its own chip and not
+            // one more preset, because it is not another span — it is a different kind of
+            // reminder, and picking it changes what the rules above mean (see Routines.kt).
+            PresetChip(
+                leadingIcon = Icons.Outlined.Autorenew,
+                label = stringResource(R.string.recur_since_chip),
+                selected = recurrence is Recurrence.Since,
+                onClick = { editing = ""; editingSince = true },
             )
             // Only where it means anything: a random window is the one trigger left that works
             // out dates of its own, and offering "lo decide el azar" without one is offering
@@ -291,41 +304,7 @@ internal fun RecurrenceSection(
             // definition, and an hour of the day means nothing to it.
             if (recurrence.unit != RecurrenceUnit.HOURS) {
                 Spacer(Modifier.height(spacing.md))
-                Text(
-                    text = stringResource(R.string.recur_hour),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(spacing.xs))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
-                    verticalArrangement = Arrangement.spacedBy(spacing.sm),
-                ) {
-                    PresetChip(
-                        label = stringResource(R.string.recur_hour_day_start),
-                        selected = recurrence.hour == RecurrenceHour.DayStart,
-                        onClick = { onCustom(recurrence.copy(hour = RecurrenceHour.DayStart)) },
-                    )
-                    PresetChip(
-                        label = stringResource(R.string.recur_hour_same),
-                        selected = recurrence.hour == RecurrenceHour.Same,
-                        onClick = { onCustom(recurrence.copy(hour = RecurrenceHour.Same)) },
-                    )
-                    PresetChip(
-                        label = stringResource(R.string.recur_hour_custom),
-                        selected = recurrence.hour is RecurrenceHour.At,
-                        // Starting from the hour this person means by "a las nueve", so the
-                        // button never opens on a time nobody chose.
-                        onClick = { onCustom(recurrence.copy(hour = RecurrenceHour.At(defaultTime))) },
-                    )
-                }
-                (recurrence.hour as? RecurrenceHour.At)?.let { chosen ->
-                    Spacer(Modifier.height(spacing.sm))
-                    TimeField(
-                        time = chosen.time,
-                        onChange = { onCustom(recurrence.copy(hour = RecurrenceHour.At(it))) },
-                    )
-                }
+                HourChips(hour = recurrence.hour, defaultTime = defaultTime, onHour = { onCustom(recurrence.copy(hour = it)) })
                 // Under "justo el plazo" the rules have stopped deciding, so the note that says
                 // this control decides nothing would be exactly wrong: it decides everything.
                 val hourNote = when {
@@ -352,6 +331,27 @@ internal fun RecurrenceSection(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+        // A routine has one question left to ask — the hour its span lands on — and then says
+        // what it is. No anchor to choose (it counts from the "hecho" by definition) and no day
+        // to bend to (its rules name no days that decide anything).
+        if (recurrence is Recurrence.Since) {
+            if (recurrence.unit != RecurrenceUnit.HOURS) {
+                Spacer(Modifier.height(spacing.md))
+                HourChips(hour = recurrence.hour, defaultTime = defaultTime, onHour = { onCustom(recurrence.copy(hour = it)) })
+            }
+            Spacer(Modifier.height(spacing.sm))
+            Text(
+                text = recurrenceLabel(rememberWords(), recurrence, today),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(spacing.xs))
+            Text(
+                text = stringResource(R.string.recur_since_note),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         // A calendar reads itself back, and carries the fences the rule it used to be could
         // carry: "el día 1, y sólo si estoy en casa" is the one thing the move would have lost.
@@ -384,6 +384,7 @@ internal fun RecurrenceSection(
             onEdit = {
                 listing = false
                 editing = it.id
+                editingSince = it.recurrence is Recurrence.Since
             },
             // The list closes with the delete, or the undo the snackbar offers is drawn
             // behind this dialog and times out unseen.
@@ -393,12 +394,37 @@ internal fun RecurrenceSection(
     }
     editing?.let { id ->
         val existing = presets.firstOrNull { it.id == id }
+        val since = editingSince
+        // The span the dialog opens on: the preset's, else what is set, else a day. The anchor
+        // and the hour an "after" is built with come from the same place; a routine keeps the
+        // hour already chosen on the card.
+        val base = existing?.recurrence ?: recurrence
+        val after = base as? Recurrence.After ?: recurrence as? Recurrence.After ?: Recurrence.After(1, RecurrenceUnit.DAYS)
+        val (initialAmount, initialUnit) = when (base) {
+            is Recurrence.After -> base.amount to base.unit
+            is Recurrence.Since -> base.amount to base.unit
+            else -> 1 to RecurrenceUnit.DAYS
+        }
+        val sinceHour = (recurrence as? Recurrence.Since)?.hour ?: RecurrenceHour.DayStart
         CustomRecurrenceDialog(
-            initial = existing?.recurrence as? Recurrence.After
-                ?: recurrence as? Recurrence.After
-                ?: Recurrence.After(1, RecurrenceUnit.DAYS),
+            initialAmount = initialAmount,
+            initialUnit = initialUnit,
             initialName = existing?.name.orEmpty(),
             today = today,
+            title = stringResource(if (since) R.string.recur_since_title else R.string.recur_custom_title),
+            // Which moment it counts from is asked on the card, not here: this pane builds the
+            // span, and only *reads* that answer back — it used to state one of the two as
+            // fact, three rows under a card that said the other.
+            note = stringResource(
+                when {
+                    since -> R.string.recur_since_note
+                    after.from == RecurrenceFrom.RANG -> R.string.recur_after_rang_note
+                    else -> R.string.recur_after_done
+                },
+            ),
+            build = { amount, unit ->
+                if (since) Recurrence.Since(amount, unit, sinceHour) else Recurrence.After(amount, unit, after.from, after.hour)
+            },
             onConfirm = { built, name ->
                 editing = null
                 // The dialog says the span; the anchor and the hour already chosen on the card
@@ -549,7 +575,7 @@ private fun RecurrenceListDialog(
                             // kept from before the calendar moved here says something this
                             // pane cannot say, and an "edit" that quietly rewrote it as
                             // "cada día" would be losing it rather than editing it.
-                            if (preset.recurrence is Recurrence.After) {
+                            if (preset.recurrence is Recurrence.After || preset.recurrence is Recurrence.Since) {
                                 IconButton(onClick = { onEdit(preset) }) {
                                     Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.recur_edit_named, presetLabel(preset, today)), tint = scheme.onSurfaceVariant)
                                 }
@@ -584,19 +610,26 @@ private fun RecurrenceListDialog(
  */
 @Composable
 private fun CustomRecurrenceDialog(
-    initial: Recurrence.After,
+    initialAmount: Int,
+    initialUnit: RecurrenceUnit,
     initialName: String,
     today: LocalDate,
+    /** What the pane is called: a span every so often, or a routine's "desde la última vez". */
+    title: String,
+    /** The one line under the controls that says what the span counts from. */
+    note: String,
+    /** The shape the parts are built into — an "after" with the card's anchor, or a routine's. */
+    build: (Int, RecurrenceUnit) -> Recurrence,
     onConfirm: (Recurrence, String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
     var name by rememberSaveable { mutableStateOf(initialName) }
-    var amount by rememberSaveable { mutableStateOf(initial.amount) }
-    var unit by rememberSaveable { mutableStateOf(initial.unit.name) }
+    var amount by rememberSaveable { mutableStateOf(initialAmount) }
+    var unit by rememberSaveable { mutableStateOf(initialUnit.name) }
 
-    val built = Recurrence.After(amount, RecurrenceUnit.valueOf(unit), initial.from, initial.hour)
+    val built = build(amount, RecurrenceUnit.valueOf(unit))
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
@@ -608,7 +641,7 @@ private fun CustomRecurrenceDialog(
                 .heightIn(max = Tokens.sizes.dialogMax),
         ) {
             Column(Modifier.padding(spacing.lg)) {
-                Text(stringResource(R.string.recur_custom_title), style = MaterialTheme.typography.headlineSmall)
+                Text(title, style = MaterialTheme.typography.headlineSmall)
                 Spacer(Modifier.height(spacing.md))
                 OutlinedTextField(
                     value = name,
@@ -648,11 +681,8 @@ private fun CustomRecurrenceDialog(
                     onSelect = { unit = RecurrenceUnit.entries[it].name },
                 )
                 Spacer(Modifier.height(spacing.sm))
-                // Which moment it counts from is asked on the card, not here: this pane
-                // builds the span, and only *reads* that answer back — it used to state one
-                // of the two as fact, three rows under a card that said the other.
                 Text(
-                    text = stringResource(if (initial.from == RecurrenceFrom.RANG) R.string.recur_after_rang_note else R.string.recur_after_done),
+                    text = note,
                     style = MaterialTheme.typography.bodySmall,
                     color = scheme.onSurfaceVariant,
                 )
@@ -679,6 +709,50 @@ private fun CustomRecurrenceDialog(
                 }
             }
         }
+    }
+}
+
+/**
+ * Which hour a span of days or more lands on: the day's start, the same hour as the moment it
+ * counts from, or one of its own. Asked of a span after the ring and of a routine alike.
+ */
+@Composable
+private fun HourChips(hour: RecurrenceHour, defaultTime: LocalTime, onHour: (RecurrenceHour) -> Unit) {
+    val spacing = Tokens.spacing
+    Text(
+        text = stringResource(R.string.recur_hour),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(spacing.xs))
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(spacing.sm),
+    ) {
+        PresetChip(
+            label = stringResource(R.string.recur_hour_day_start),
+            selected = hour == RecurrenceHour.DayStart,
+            onClick = { onHour(RecurrenceHour.DayStart) },
+        )
+        PresetChip(
+            label = stringResource(R.string.recur_hour_same),
+            selected = hour == RecurrenceHour.Same,
+            onClick = { onHour(RecurrenceHour.Same) },
+        )
+        PresetChip(
+            label = stringResource(R.string.recur_hour_custom),
+            selected = hour is RecurrenceHour.At,
+            // Starting from the hour this person means by "a las nueve", so the button never
+            // opens on a time nobody chose.
+            onClick = { onHour(RecurrenceHour.At(defaultTime)) },
+        )
+    }
+    (hour as? RecurrenceHour.At)?.let { chosen ->
+        Spacer(Modifier.height(spacing.sm))
+        TimeField(
+            time = chosen.time,
+            onChange = { onHour(RecurrenceHour.At(it)) },
+        )
     }
 }
 

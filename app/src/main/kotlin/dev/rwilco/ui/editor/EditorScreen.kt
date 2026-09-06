@@ -377,8 +377,11 @@ fun EditorScreen(
                         PresetTextField(text = state.presetText, onChange = viewModel::setPresetText)
                     }
                 }
+                // A routine's rules ask rather than ring, and the card says so in its title:
+                // "pregúntame si lo he hecho" is the question they put (see Routines.kt).
+                val routine = state.draft.recurrence is Recurrence.Since
                 EditorSection(
-                    title = stringResource(R.string.editor_when_title),
+                    title = stringResource(if (routine) R.string.editor_when_ask_title else R.string.editor_when_title),
                     icon = Icons.Outlined.Schedule,
                     note = stringResource(R.string.editor_optional),
                     modifier = Modifier.onGloballyPositioned { sectionTops[SECTION_WHEN] = it.positionInParent().y.roundToInt() },
@@ -387,6 +390,7 @@ fun EditorScreen(
                         rules = state.draft.rules,
                         ruleMatch = state.draft.ruleMatch,
                         onRuleMatch = viewModel::setRuleMatch,
+                        routine = routine,
                         deadline = state.draft.deadline,
                         // Every door to a sheet puts the keyboard down first (0.93.0): the six
                         // that did not opened theirs over it.
@@ -437,11 +441,13 @@ fun EditorScreen(
                     )
                 }
                 EditorSection(
-                    title = stringResource(R.string.editor_recurrence_title),
+                    // A routine's "Vuelve" is its whole arrangement, so the card is named for
+                    // the question it answers there: how often.
+                    title = stringResource(if (routine) R.string.editor_period_title else R.string.editor_recurrence_title),
                     icon = Icons.Outlined.Repeat,
                     // The only one of the five that did not say so, which made it read as a
                     // question the form was waiting on. Most reminders never come back.
-                    note = stringResource(R.string.editor_optional),
+                    note = if (routine) null else stringResource(R.string.editor_optional),
                     modifier = Modifier.onGloballyPositioned { sectionTops[SECTION_RETURNS] = it.positionInParent().y.roundToInt() },
                 ) {
                     if (state.showErrors && state.errors.any { it is ValidationError.BadRecurrence }) {
@@ -635,6 +641,8 @@ fun EditorScreen(
                         onDismiss = viewModel::closeSheet,
                         savedPlaces = state.savedPlaces,
                         onKeepPlace = viewModel::keepPlace,
+                        // A routine asks about a doorway and nothing else (see Routines.kt).
+                        doorwayOnly = state.draft.recurrence is Recurrence.Since,
                     )
                 }
             }

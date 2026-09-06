@@ -88,6 +88,31 @@ sealed interface Recurrence {
     ) : Recurrence
 
     /**
+     * A span since the last time it was done — what makes a reminder a **routine**.
+     *
+     * "Mover el coche cada 21 días" is not an appointment and not a series: it is a count of
+     * time since the last time the car moved, and the only thing that resets the count is doing
+     * it. So the span is always the ring, counted from the last "hecho" (or from the day the
+     * routine was written, until it has been done once), and the "hecho" is always *now* —
+     * never "the one that was coming" the way [After] reads it ([Reminder.momentDealtWith]).
+     *
+     * Everything else about a routine follows from that one reading, and none of it is a
+     * field here: its rules never ring — they *ask* whether it has been done, or, for a place
+     * that can vouch for the deed, count as having done it ([TriggerRule.resets]) — and they
+     * never rest, because a question is worth asking every time. See `Routines.kt`.
+     *
+     * [hour] is the same question [After] asks and the same default: a span in days lands at the
+     * hour the day starts, unless somebody says otherwise. Hours are exact.
+     */
+    @Serializable
+    @SerialName("since")
+    data class Since(
+        val amount: Int,
+        val unit: RecurrenceUnit,
+        val hour: RecurrenceHour = RecurrenceHour.DayStart,
+    ) : Recurrence
+
+    /**
      * The [ordinal]th [day] of each month; [LAST_ORDINAL] for the last one.
      *
      * Nothing writes one of these any more — it is a [Calendar] of a month with a
@@ -215,17 +240,38 @@ val Recurrence.countsFromRinging: Boolean
  * halves of one sentence — so a button that says "cada 6 h" stays lit when the anchor changes
  * under it, and picking it again does not undo the anchor.
  */
-fun Recurrence.sameSpanAs(other: Recurrence): Boolean =
-    if (this is Recurrence.After && other is Recurrence.After) amount == other.amount && unit == other.unit
-    else this == other
+fun Recurrence.sameSpanAs(other: Recurrence): Boolean {
+    val mine = spanOf() ?: return this == other
+    val theirs = other.spanOf() ?: return this == other
+    return mine == theirs
+}
+
+/** The span a recurrence is, whatever it counts from; null for the shapes that are not one. */
+private fun Recurrence.spanOf(): Pair<Int, RecurrenceUnit>? = when (this) {
+    is Recurrence.After -> amount to unit
+    is Recurrence.Since -> amount to unit
+    else -> null
+}
 
 /** Whether this span lands on an hour of the day at all: everything but the exact ones. */
 val Recurrence.landsOnAnHour: Boolean
-    get() = this is Recurrence.After && unit != RecurrenceUnit.HOURS
+    get() = when (this) {
+        is Recurrence.After -> unit != RecurrenceUnit.HOURS
+        is Recurrence.Since -> unit != RecurrenceUnit.HOURS
+        else -> false
+    }
 
-/** [other]'s span, kept counting from wherever this one was counting from. */
-fun Recurrence.withSpanOf(other: Recurrence): Recurrence =
-    if (this is Recurrence.After && other is Recurrence.After) other.copy(from = from, hour = hour, landing = landing) else other
+/**
+ * [other]'s span, kept counting from wherever this one was counting from — and a routine stays
+ * a routine: "cada semana" picked on one means a week since the last time, not a reminder that
+ * comes back a week after it rings.
+ */
+fun Recurrence.withSpanOf(other: Recurrence): Recurrence = when {
+    this is Recurrence.After && other is Recurrence.After -> other.copy(from = from, hour = hour, landing = landing)
+    this is Recurrence.Since && other is Recurrence.After -> Recurrence.Since(other.amount, other.unit, hour)
+    this is Recurrence.Since && other is Recurrence.Since -> other.copy(hour = hour)
+    else -> other
+}
 
 /** "The last Sunday of the month" rather than a numbered one. */
 const val LAST_ORDINAL = 5
@@ -235,7 +281,7 @@ const val MAX_RECURRENCE_AMOUNT = 99
 
 /** Whether the recurrence works out its own moments, rather than handing the job to the triggers. */
 val Recurrence.isAnchored: Boolean
-    get() = this is Recurrence.After || this is Recurrence.MonthlyWeekday || this is Recurrence.Calendar
+    get() = this is Recurrence.After || this is Recurrence.Since || this is Recurrence.MonthlyWeekday || this is Recurrence.Calendar
 
 /**
  * Whether it names dates of its own rather than counting a span from something that happened.
@@ -288,6 +334,7 @@ val Recurrence.countsInDays: Boolean
     get() = when (this) {
         Recurrence.None, Recurrence.ByTrigger -> false
         is Recurrence.After -> unit != RecurrenceUnit.HOURS
+        is Recurrence.Since -> unit != RecurrenceUnit.HOURS
         // A calendar names days and nothing shorter, whatever hour it puts inside one.
         is Recurrence.MonthlyWeekday, is Recurrence.Calendar -> true
     }
@@ -307,19 +354,28 @@ fun nextRecurrence(
     dayStart: LocalTime,
 ): Instant? = when (recurrence) {
     Recurrence.None, Recurrence.ByTrigger, is Recurrence.Calendar -> null
-    is Recurrence.After -> {
-        val hour = recurrence.hour
-        when (recurrence.unit) {
-            RecurrenceUnit.HOURS -> anchor.plusSeconds(recurrence.amount * 3_600L)
-            RecurrenceUnit.DAYS -> anchor.landingAt(zone, hour, dayStart) { it.plusDays(recurrence.amount.toLong()) }
-            RecurrenceUnit.WEEKS -> anchor.landingAt(zone, hour, dayStart) { it.plusWeeks(recurrence.amount.toLong()) }
-            RecurrenceUnit.MONTHS -> anchor.landingAt(zone, hour, dayStart) { it.plusMonths(recurrence.amount.toLong()) }
-            // The 29th of February lands on the 28th rather than skipping three years in four,
-            // which is what plusYears does and what anybody with that birthday expects.
-            RecurrenceUnit.YEARS -> anchor.landingAt(zone, hour, dayStart) { it.plusYears(recurrence.amount.toLong()) }
-        }
-    }
+    is Recurrence.After -> spanAfter(anchor, recurrence.amount, recurrence.unit, recurrence.hour, zone, dayStart)
+    // The same arithmetic: a routine's span is a span, whatever it is counted from.
+    is Recurrence.Since -> spanAfter(anchor, recurrence.amount, recurrence.unit, recurrence.hour, zone, dayStart)
     is Recurrence.MonthlyWeekday -> nextMonthlyWeekday(recurrence, anchor, zone, dayStart)
+}
+
+/** [amount] [unit]s after [anchor], landing on [hour] when the unit is a day or more. */
+private fun spanAfter(
+    anchor: Instant,
+    amount: Int,
+    unit: RecurrenceUnit,
+    hour: RecurrenceHour,
+    zone: ZoneId,
+    dayStart: LocalTime,
+): Instant = when (unit) {
+    RecurrenceUnit.HOURS -> anchor.plusSeconds(amount * 3_600L)
+    RecurrenceUnit.DAYS -> anchor.landingAt(zone, hour, dayStart) { it.plusDays(amount.toLong()) }
+    RecurrenceUnit.WEEKS -> anchor.landingAt(zone, hour, dayStart) { it.plusWeeks(amount.toLong()) }
+    RecurrenceUnit.MONTHS -> anchor.landingAt(zone, hour, dayStart) { it.plusMonths(amount.toLong()) }
+    // The 29th of February lands on the 28th rather than skipping three years in four,
+    // which is what plusYears does and what anybody with that birthday expects.
+    RecurrenceUnit.YEARS -> anchor.landingAt(zone, hour, dayStart) { it.plusYears(amount.toLong()) }
 }
 
 /**

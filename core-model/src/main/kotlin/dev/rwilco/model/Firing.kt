@@ -130,6 +130,9 @@ fun Reminder.momentDealtWith(
     shape: DayShape = DayShape.DEFAULT,
 ): Instant? {
     if (awaitingAnswer(now)) return null
+    // A routine's "hecho" is "I did it now", never "I have done the one that was coming": the
+    // count starts again from this moment, and nothing ahead of it is spent.
+    if (isRoutine) return null
     val moment = nextFire(this, now, zone, defaultTime, dayStart, shape)?.moment ?: return null
     val base = maxOf(now, dealtThrough ?: now)
     val step = calendarMoment(base, zone, shape) ?: nextRecurrence(recurrence, base, zone, dayStart) ?: return moment

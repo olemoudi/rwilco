@@ -44,6 +44,8 @@ import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.ui.components.rememberSnackbarController
 import dev.rwilco.ui.done.DoneScreen
 import dev.rwilco.ui.done.DoneViewModel
+import dev.rwilco.ui.routines.RoutinesScreen
+import dev.rwilco.ui.routines.RoutinesViewModel
 import dev.rwilco.ui.editor.EditorScreen
 import dev.rwilco.ui.editor.EditorViewModel
 import dev.rwilco.ui.home.HomeScreen
@@ -116,6 +118,10 @@ fun RwilcoApp(
                 open(Routes.Settings)
                 onDestinationConsumed()
             }
+            requestedDestination == MainActivity.DESTINATION_ROUTINES -> {
+                open(Routes.Routines)
+                onDestinationConsumed()
+            }
             requestedDestination == MainActivity.DESTINATION_BACKUP -> {
                 // Settings underneath, so "back" from the backup lands where it lives.
                 open(Routes.Settings)
@@ -164,6 +170,7 @@ fun RwilcoApp(
                         onClone = { id -> navController.navigateOnce(Routes.Editor(cloneOfId = id)) },
                         onKeepAsPreset = { id -> navController.navigateOnce(Routes.Editor(cloneOfId = id, newPreset = true)) },
                         onDoneList = { navController.navigateOnce(Routes.Done) },
+                        onRoutines = { navController.navigateOnce(Routes.Routines) },
                         onSettings = { navController.navigateOnce(Routes.Settings) },
                         // Built here rather than in the ViewModel: a report is a snapshot of the
                         // whole app — permissions, settings, the alarm log, the place watch —
@@ -189,8 +196,8 @@ fun RwilcoApp(
                     val undoLabel = stringResource(R.string.common_undo)
                     EditorScreen(
                         viewModel = viewModel(
-                            key = "editor/${route.reminderId}/${route.fromPresetId}/${route.cloneOfId}/${route.editPresetId}/${route.newPreset}/${route.sharedText}",
-                            factory = EditorViewModel.Factory(app, route.reminderId, route.fromPresetId, route.cloneOfId, route.editPresetId, route.newPreset, route.sharedText),
+                            key = "editor/${route.reminderId}/${route.fromPresetId}/${route.cloneOfId}/${route.editPresetId}/${route.newPreset}/${route.sharedText}/${route.routine}",
+                            factory = EditorViewModel.Factory(app, route.reminderId, route.fromPresetId, route.cloneOfId, route.editPresetId, route.newPreset, route.sharedText, route.routine),
                         ),
                         onClose = { navController.popBackStack() },
                         // Held here rather than in either screen's ViewModel: the editor's dies
@@ -220,6 +227,17 @@ fun RwilcoApp(
                         clock = app.clock,
                         onBack = { navController.popBackStack() },
                         onOpen = { id -> navController.navigateOnce(Routes.Editor(id)) },
+                    )
+                }
+                composable<Routes.Routines> {
+                    RoutinesScreen(
+                        viewModel = viewModel(factory = RoutinesViewModel.Factory(app)),
+                        clock = app.clock,
+                        onBack = { navController.popBackStack() },
+                        onOpen = { id -> navController.navigateOnce(Routes.Editor(id)) },
+                        onNew = { navController.navigateOnce(Routes.Editor(routine = true)) },
+                        onClone = { id -> navController.navigateOnce(Routes.Editor(cloneOfId = id)) },
+                        onKeepAsPreset = { id -> navController.navigateOnce(Routes.Editor(cloneOfId = id, newPreset = true)) },
                     )
                 }
                 composable<Routes.Settings> {

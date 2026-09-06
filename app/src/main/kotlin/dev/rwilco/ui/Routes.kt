@@ -24,10 +24,16 @@ object Routes {
         val newPreset: Boolean = false,
         /** Words a new reminder starts with: a line shared from another app. */
         val sharedText: String? = null,
+        /** A blank form that starts as a routine (see `Routines.kt`): the way in from the routines screen. */
+        val routine: Boolean = false,
     )
 
     @Serializable
     data object Done
+
+    /** The routines — what counts time since the last time it was done. See `Routines.kt`. */
+    @Serializable
+    data object Routines
 
     @Serializable
     data object Settings

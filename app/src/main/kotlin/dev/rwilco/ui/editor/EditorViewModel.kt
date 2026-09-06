@@ -13,6 +13,7 @@ import dev.rwilco.model.Action
 import dev.rwilco.model.clearCountdowns
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Recurrence
+import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.RecurrencePreset
 import dev.rwilco.model.withSpanOf
@@ -94,6 +95,8 @@ class EditorViewModel(
     private val newPreset: Boolean,
     /** Words a blank reminder starts with — a line shared from another app. */
     private val sharedText: String?,
+    /** A blank form that starts as a routine: a span since the last time, and the routine defaults. */
+    private val routine: Boolean,
     private val repository: ReminderRepository,
     private val store: SettingsStore,
     private val settings: Flow<AppSettings?>,
@@ -162,6 +165,8 @@ class EditorViewModel(
                 editedPreset != null -> Draft(text = editedPreset.name, tags = editedPreset.tags, rules = editedPreset.rules, ruleMatch = editedPreset.ruleMatch, actions = editedPreset.actions, recurrence = editedPreset.recurrence)
                 source != null -> Draft(text = source.text, tags = source.tags, rules = source.rules, ruleMatch = source.ruleMatch, actions = source.actions, recurrence = source.recurrence)
                 // Shared from another app: the words are the one thing already answered.
+                // A routine opens as one: a week since the last time, with the routine defaults.
+                routine -> Draft(actions = current.routineActions, recurrence = Recurrence.Since(1, RecurrenceUnit.WEEKS))
                 else -> Draft(text = sharedText?.trim()?.take(MAX_TEXT_LENGTH).orEmpty(), actions = current.defaultActions)
             }
             val presetWording = editedPreset?.text ?: cloned?.text?.takeIf { newPreset }.orEmpty()
@@ -423,6 +428,7 @@ class EditorViewModel(
                 firedRules = if (before != null && before.rules == current.draft.rules) before.firedRules else emptySet(),
                 lastFiredRule = if (before != null && before.rules == current.draft.rules) before.lastFiredRule else null,
                 nudgedAt = before?.nudgedAt,
+                askedAt = before?.askedAt,
                 // **Only a change to the "when" un-answers a snooze.** Somebody who put a ring
                 // off until tomorrow has answered it; fixing a word in the text does not take
                 // that back, and dropping it did two visible things — the card left the section
@@ -514,6 +520,7 @@ class EditorViewModel(
         private val editPresetId: String? = null,
         private val newPreset: Boolean = false,
         private val sharedText: String? = null,
+        private val routine: Boolean = false,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
@@ -524,6 +531,7 @@ class EditorViewModel(
                 editPresetId,
                 newPreset,
                 sharedText,
+                routine,
                 app.repository,
                 app.settingsStore,
                 app.settings,

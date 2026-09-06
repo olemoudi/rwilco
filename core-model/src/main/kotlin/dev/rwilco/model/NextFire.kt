@@ -58,6 +58,13 @@ fun nextFire(
     if (snoozedUntil != null && snoozedUntil > now) {
         return NextFire.Scheduled(snoozedUntil, reminder.rules.firstOrNull()?.trigger, snoozed = true)
     }
+    // A routine: the span since the last "hecho" is the ring, and the rules never are — they ask
+    // (or count as done) and nothing more, which is the scheduler's business (`nextPrompt`), not
+    // this one's. Before the rest on purpose: with rules and no "hecho" yet, restUntil has
+    // nothing to say and the deadline would otherwise be waited for by nobody.
+    if (reminder.isRoutine) {
+        return reminder.recurrenceMoment(now, zone, dayStart, shape)?.let { NextFire.Scheduled(it, null) }
+    }
     // No rules at all: the recurrence is the whole arrangement, and its moment is the ring.
     if (reminder.rules.isEmpty()) {
         return reminder.recurrenceMoment(now, zone, dayStart, shape)?.let { NextFire.Scheduled(it, null) }
@@ -147,6 +154,9 @@ fun nextWake(
     if (reminder.snoozedToPlace != null) return null
     val snoozedUntil = reminder.snoozedUntil
     if (snoozedUntil != null && snoozedUntil > now) return Wake(snoozedUntil, null)
+    // A routine arms its deadline and nothing else: its rules are questions, on an alarm of
+    // their own (`nextPrompt`), never a moment to ring. See nextFire.
+    if (reminder.isRoutine) return reminder.recurrenceMoment(now, zone, dayStart, shape)?.let { Wake(it, null) }
     // A recurrence's moment is the ring itself: there is no rule behind it to tick off. It is
     // the alarm when there are no rules, and after a rest when the rules have nothing left to
     // say (see nextFire); a place among the rules is something left to say, and arms nothing.
@@ -495,6 +505,9 @@ internal fun Recurrence.Calendar.nextDateMoment(reminderId: String, after: Insta
  */
 fun Reminder.restUntil(zone: ZoneId, dayStart: LocalTime, shape: DayShape = DayShape.DEFAULT): Instant? {
     if (!recurrence.isAnchored || rules.isEmpty()) return null
+    // A routine's rules never rest: a question is worth asking every time, and the span is not
+    // theirs to wait for — it rings on its own (see [Reminder.isRoutine]).
+    if (isRoutine) return null
     // Nothing rests until it has been dealt with — or, for a span counted from the ringing,
     // until it has rung: that is the anchor somebody picks because they are not going to
     // answer, and read off lastDealtAt alone it never spoke until they did. Otherwise a
@@ -574,6 +587,10 @@ fun Reminder.daysNamedByRules(): Set<DayOfWeek> =
  * with the moment it rings, which is most things.
  */
 private fun Reminder.recurrenceAnchor(dealt: Instant): Instant {
+    // A routine counts from the last "hecho" and from nothing else: there is no moment dealt
+    // with ahead (momentDealtWith answers null), and a [dealtThrough] left behind by an "after"
+    // recurrence edited into a routine must not push the count into the future.
+    if (isRoutine) return dealt
     val from = if (recurrence.countsFromRinging) lastFiredAt ?: dealt else dealt
     // A moment dealt with before it arrived is the moment the span counts from: ticking off
     // tomorrow's two o'clock this morning makes the next one a day after *that*, not a day
@@ -599,8 +616,9 @@ fun Reminder.recurrenceMoment(
     // Not restUntil: when the recurrence is the thing that rings, the hour the day starts at is
     // exactly the hour it should ring at — there are no rules here with an hour to defer to.
     // With rules, only once it has been dealt with — or has rung, for a span that counts from
-    // the ringing (see restUntil).
-    val dealt = if (rules.isEmpty()) lastDealtAt ?: createdAt else (lastDealtAt ?: lastFiredAt.takeIf { recurrence.countsFromRinging }) ?: return null
+    // the ringing (see restUntil). A routine counts from the day it was written until it has
+    // been done once, rules or no rules: its rules are questions, not a first ring.
+    val dealt = if (rules.isEmpty() || isRoutine) lastDealtAt ?: createdAt else (lastDealtAt ?: lastFiredAt.takeIf { recurrence.countsFromRinging }) ?: return null
     val at = nextRecurrence(recurrence, recurrenceAnchor(dealt), zone, dayStart)
     if (at == null) return null
     // Spent, the same way a rule's moment is (see [searchFrom]) — and here it matters more.

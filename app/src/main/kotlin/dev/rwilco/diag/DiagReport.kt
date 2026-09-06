@@ -374,6 +374,7 @@ private fun Recurrence.describe(): String = when (this) {
     Recurrence.None -> "none"
     Recurrence.ByTrigger -> "byTrigger"
     is Recurrence.After -> "after $amount $unit"
+    is Recurrence.Since -> "since $amount $unit"
     is Recurrence.MonthlyWeekday -> "monthly $ordinal $day"
     is Recurrence.Calendar -> "calendar " + repeat.describe() + conditions.joinToString("") { " +" + it.diagLine() }
 }

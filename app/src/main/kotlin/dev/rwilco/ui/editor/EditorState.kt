@@ -102,6 +102,8 @@ fun Draft.toReminder(
     lastFiredRule: Int? = null,
     /** The net's one word about the firing at hand was said; an edit does not make it say it twice. */
     nudgedAt: Instant? = null,
+    /** A routine's last question stands across an edit, or a typo fixed would have it asked again at once. */
+    askedAt: Instant? = null,
     /** The answer somebody already gave to a ring: kept unless this edit re-decided the "when". */
     snoozedUntil: Instant? = null,
     snoozedToPlace: Trigger.Location? = null,
@@ -134,6 +136,7 @@ fun Draft.toReminder(
     firedRules = firedRules,
     lastFiredRule = lastFiredRule,
     nudgedAt = nudgedAt,
+    askedAt = askedAt,
     snoozedUntil = snoozedUntil,
     snoozedToPlace = snoozedToPlace,
     deadline = deadline,
@@ -319,8 +322,31 @@ fun EditorUiState.addTag(raw: String): EditorUiState {
     return copy(draft = draft.copy(tags = draft.tags + spelling))
 }
 
-/** What "hecho" means for this one. */
-fun EditorUiState.setRecurrence(recurrence: Recurrence): EditorUiState = copy(draft = draft.copy(recurrence = recurrence))
+/**
+ * What "hecho" means for this one.
+ *
+ * Picking a routine ([Recurrence.Since]) changes what the rules are: questions, never a set
+ * that rings. So the set's reading goes back to "cualquiera" and its deadline goes, and every
+ * place on the form becomes the doorway it will be read as — "mientras esté" is not a question
+ * anybody can be asked once (see `Routines.kt`).
+ */
+fun EditorUiState.setRecurrence(recurrence: Recurrence): EditorUiState {
+    if (recurrence !is Recurrence.Since) return copy(draft = draft.copy(recurrence = recurrence))
+    return copy(
+        draft = draft.copy(
+            recurrence = recurrence,
+            ruleMatch = RuleMatch.ANY,
+            deadline = null,
+            rules = draft.rules.map { it.asDoorway() },
+        ),
+    )
+}
+
+/** The same rule, with a place among its triggers read as the doorway a routine asks about. */
+private fun TriggerRule.asDoorway(): TriggerRule {
+    val place = trigger as? Trigger.Location ?: return this
+    return if (place.onCrossing) this else copy(trigger = place.copy(onCrossing = true))
+}
 
 /**
  * The calendar sheet, opened on whatever is already set — including a legacy "el cuarto
@@ -366,7 +392,9 @@ private fun EditorUiState.withRecurrenceConditions(
  * half-satisfied by history.
  */
 fun EditorUiState.setRuleMatch(match: RuleMatch): EditorUiState =
-    copy(
+    // A routine's rules do not combine — each is its own question — so there is nothing to set.
+    if (draft.recurrence is Recurrence.Since) this
+    else copy(
         draft = draft.copy(
             ruleMatch = match,
             // A timer has no "first trigger" under "a la vez" and the sheet does not offer one
@@ -434,7 +462,7 @@ fun EditorUiState.commitTrigger(index: Int?, trigger: Trigger): EditorUiState {
         draft.rules.mapIndexed { i, rule -> if (i == index) rule.copy(trigger = trigger) else rule }
     } else {
         draft.rules + TriggerRule(trigger)
-    }
+    }.let { if (draft.recurrence is Recurrence.Since) it.map { rule -> rule.asDoorway() } else it }
     val match = matchAfterAdding(rules, adding)
     // Choosing "at random" IS choosing a recurrence — "tres veces al día" says so outright — so
     // it says so in plain sight, right under the row, and changeable. Every other kind leaves
@@ -477,6 +505,8 @@ fun EditorUiState.commitTrigger(index: Int?, trigger: Trigger): EditorUiState {
  * means something ("both have happened") and is never touched.
  */
 private fun EditorUiState.matchAfterAdding(rules: List<TriggerRule>, adding: Boolean): RuleMatch {
+    // A routine's rules are questions asked one at a time, never a set: "cualquiera", always.
+    if (draft.recurrence is Recurrence.Since) return RuleMatch.ANY
     if (!adding || rules.size != 2) return draft.ruleMatch
     val moments = rules.all { it.trigger.isMoment }
     return when {

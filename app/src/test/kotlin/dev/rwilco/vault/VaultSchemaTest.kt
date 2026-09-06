@@ -70,6 +70,8 @@ class VaultSchemaTest {
             "snoozedToPlace",
             // Room v11: the set's deadline and when the round under way runs out; older rows have neither.
             "deadline", "expiresAt",
+            // Room v12: when a routine was last asked whether it had been done; older rows never were.
+            "askedAt",
         )
     }
 }

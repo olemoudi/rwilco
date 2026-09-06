@@ -155,6 +155,7 @@ class SettingsViewModel(
 
     /** What a blank reminder starts with; the editor's own tiles, one screen up. */
     fun toggleDefaultAction(action: Action) = update { it.copy(defaultActions = it.defaultActions.toggling(action)) }
+    fun toggleRoutineAction(action: Action) = update { it.copy(routineActions = it.routineActions.toggling(action)) }
     fun setDefaultTime(time: LocalTime) = update { it.copy(defaultTime = time) }
 
     /** What "the next day" means to this person: where a recurrence in days or months lands. */

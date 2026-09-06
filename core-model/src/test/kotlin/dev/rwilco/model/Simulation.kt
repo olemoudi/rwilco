@@ -234,6 +234,13 @@ class Simulation(
             arm()
             return null
         }
+        // A routine's rules never ring: a crossing or a stale alarm for one of them asks or
+        // resets (the prompt path), and through this door it is nothing at all.
+        if (ruleIndex != null && row.isRoutine) {
+            spendArmed()
+            arm()
+            return null
+        }
         if (!eventDriven && late == null && (armed == null || armed > now.plusSeconds(5))) {
             arm()
             return null

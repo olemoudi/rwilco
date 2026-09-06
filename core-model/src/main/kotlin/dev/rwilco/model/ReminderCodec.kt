@@ -5,6 +5,8 @@ import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.jsonArray
 
 /**
@@ -77,7 +79,9 @@ object ReminderCodec {
         val kept = (obj["conditions"] as? JsonArray).orEmpty().mapNotNull { element ->
             runCatching { json.decodeFromJsonElement(Condition.serializer(), element) }.getOrNull()
         }
-        return TriggerRule(trigger, kept)
+        // Written only when true (see TriggerRule.resets); anything unreadable is the rule that asks.
+        val resets = runCatching { (obj["resets"] as? JsonPrimitive)?.booleanOrNull }.getOrNull() ?: false
+        return TriggerRule(trigger, kept, resets = resets)
     }
 
     fun encodeActions(actions: Set<Action>): String = json.encodeToString(strings, actions.map { it.name })

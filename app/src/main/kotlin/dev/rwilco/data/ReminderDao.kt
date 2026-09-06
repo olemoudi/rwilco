@@ -85,6 +85,10 @@ interface ReminderDao {
     @Query("UPDATE reminder SET nudgedAt = :at WHERE id = :id")
     suspend fun setNudgedAt(id: String, at: Long)
 
+    /** A routine was asked whether it had been done; the next question looks from here. */
+    @Query("UPDATE reminder SET askedAt = :at WHERE id = :id")
+    suspend fun setAskedAt(id: String, at: Long)
+
     @Query("UPDATE reminder SET armedFor = :at, armedRule = :ruleIndex WHERE id = :id")
     suspend fun setArmedFor(id: String, at: Long?, ruleIndex: Int?)
 

@@ -108,6 +108,12 @@ fun LocationSheet(
      * which *is* the list); given, the sheet offers a switch once there is a pin and a name.
      */
     onKeepPlace: ((SavedPlace) -> Unit)? = null,
+    /**
+     * A routine's place is a doorway and nothing else — "al llegar", "al salir" — because a
+     * state ("mientras esté") is not a question anybody can be asked once. The switch that
+     * offers the state reading is simply not there (see `Routines.kt`).
+     */
+    doorwayOnly: Boolean = false,
 ) {
     var label by rememberSaveable { mutableStateOf(initial?.label ?: "") }
     var presence by rememberSaveable { mutableStateOf((initial?.presence ?: Presence.INSIDE).name) }
@@ -115,7 +121,7 @@ fun LocationSheet(
     // write, and the state reading — "mientras esté en casa" — is a tap away on the same switch.
     // The editor's opening answer, not the model's: [Trigger.Location.onCrossing] stays false on
     // disk, where it is what every place trigger written before the field existed decodes to.
-    var onCrossing by rememberSaveable { mutableStateOf(initial?.onCrossing ?: true) }
+    var onCrossing by rememberSaveable { mutableStateOf(doorwayOnly || (initial?.onCrossing ?: true)) }
     // The rate, and whether it is being asked for at all. Two pieces of state and not one
     // nullable, so turning the switch off and on again offers back the number that was typed
     // rather than the default — the same shape "Guardar como lugar" has.
@@ -358,6 +364,7 @@ fun LocationSheet(
                 onCrossing = onCrossing,
                 onPresence = { presence = it.name },
                 onCrossingChange = { onCrossing = it },
+                doorwayOnly = doorwayOnly,
             )
             // Only under a doorway, because only a doorway can be asked to be stayed at: a side
             // of a line already holds for as long as somebody is on it, and asking a state to
@@ -748,6 +755,8 @@ private fun PresenceChoice(
     onCrossing: Boolean,
     onPresence: (Presence) -> Unit,
     onCrossingChange: (Boolean) -> Unit,
+    /** No state reading on offer: the segmented pair is the whole choice. See [LocationSheet]. */
+    doorwayOnly: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
     val haptics = Tokens.haptics
@@ -760,7 +769,7 @@ private fun PresenceChoice(
             selectedIndex = if (presence == Presence.INSIDE) 0 else 1,
             onSelect = { onPresence(if (it == 0) Presence.INSIDE else Presence.OUTSIDE) },
         )
-        Row(
+        if (!doorwayOnly) Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()

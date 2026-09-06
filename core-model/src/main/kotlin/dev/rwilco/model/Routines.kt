@@ -1,0 +1,114 @@
+package dev.rwilco.model
+
+import java.time.Duration
+import java.time.Instant
+import java.time.LocalTime
+import java.time.ZoneId
+import java.util.Locale
+
+/*
+ * Routines: the reminders that count time since the last time something was done.
+ *
+ * "Mover el coche", "regar las plantas", "cambiar el filtro" — none of them is an appointment.
+ * What matters is how long it has been, and the only thing that resets that is doing it. A
+ * routine is a reminder whose "Vuelve" says so ([Recurrence.Since]), and everything about how it
+ * behaves follows from that one reading:
+ *
+ * - The span is the ring, counted from the last "hecho" (or the day it was written).
+ * - "Hecho" is *now*: the count starts again from this moment ([Reminder.momentDealtWith]).
+ * - The rules never ring and never rest. A clock rule *asks* whether it has been done; a place
+ *   asks too, or — when it can vouch for the deed — counts as having done it
+ *   ([TriggerRule.resets]). Both are the scheduler's and the watch's business, on an alarm of
+ *   their own; `nextFire` and `nextWake` only ever answer with the deadline.
+ * - Home does not list them ([groupForHome]); it carries one line about the overdue ones, and
+ *   the routines screen has the rest.
+ */
+
+/** Whether this reminder is a routine. The one predicate everything else here hangs off. */
+val Reminder.isRoutine: Boolean get() = recurrence is Recurrence.Since
+
+/** The moment the count runs from: the last "hecho", or the day it was written until then. */
+fun Reminder.routineAnchor(): Instant = lastDealtAt ?: createdAt
+
+/** When the span is up, counted from [routineAnchor]; null for anything that is not a routine. */
+fun Reminder.routineDeadline(zone: ZoneId, dayStart: LocalTime = DEFAULT_DAY_START): Instant? =
+    if (isRoutine) nextRecurrence(recurrence, routineAnchor(), zone, dayStart) else null
+
+/** How long the span is, as it lands from [routineAnchor] — a whole number of its unit, landed on its hour. */
+fun Reminder.routineSpan(zone: ZoneId, dayStart: LocalTime = DEFAULT_DAY_START): Duration? =
+    routineDeadline(zone, dayStart)?.let { Duration.between(routineAnchor(), it) }
+
+/**
+ * Whether the routine stands done right now — the **"Sí"** on its row. "No" is the deadline having
+ * passed with nothing done since: the ring is what says so out loud, and this is the same
+ * question asked of the row. Not [Status]: a routine is never DONE, only done *for now*.
+ */
+fun Reminder.routineDone(now: Instant, zone: ZoneId, dayStart: LocalTime = DEFAULT_DAY_START): Boolean {
+    val deadline = routineDeadline(zone, dayStart) ?: return false
+    return deadline > now
+}
+
+/** The open routines whose span is up, the one that has waited longest first. What Home's line says. */
+fun overdueRoutines(
+    reminders: List<Reminder>,
+    now: Instant,
+    zone: ZoneId,
+    dayStart: LocalTime = DEFAULT_DAY_START,
+): List<Reminder> = reminders
+    .filter { it.isRoutine && it.status == Status.ACTIVE && !it.routineDone(now, zone, dayStart) }
+    .sortedWith(compareBy({ it.routineDeadline(zone, dayStart) }, { it.createdAt }))
+
+/** What the routines screen shows: everything, only the overdue ones, or the ones wearing a tag. */
+sealed interface RoutineFilter {
+    data object All : RoutineFilter
+    data object Overdue : RoutineFilter
+    data class Tag(val tag: String) : RoutineFilter
+}
+
+/**
+ * The routines under [filter], **overdue ones first** — the one that has waited longest on top —
+ * then the rest by how soon their span is up, and the paused ones last: a paused routine is
+ * still a routine, but nothing is owed while it rests.
+ */
+fun routinesFor(
+    reminders: List<Reminder>,
+    filter: RoutineFilter,
+    now: Instant,
+    zone: ZoneId,
+    dayStart: LocalTime = DEFAULT_DAY_START,
+): List<Reminder> = reminders
+    .filter { it.isRoutine && it.status != Status.DONE }
+    .filter {
+        when (filter) {
+            RoutineFilter.All -> true
+            RoutineFilter.Overdue -> it.status == Status.ACTIVE && !it.routineDone(now, zone, dayStart)
+            is RoutineFilter.Tag -> it.tags.any { tag -> tag.equals(filter.tag, ignoreCase = true) }
+        }
+    }
+    .sortedWith(
+        compareBy<Reminder> {
+            when {
+                it.status != Status.ACTIVE -> 2
+                it.routineDone(now, zone, dayStart) -> 1
+                else -> 0
+            }
+        }
+            .thenBy { it.routineDeadline(zone, dayStart) }
+            .thenBy { it.createdAt },
+    )
+
+/** The filters worth offering: the app's own "vencidas" only while something is, then the routines' tags. */
+fun routineFilters(reminders: List<Reminder>, now: Instant, zone: ZoneId, dayStart: LocalTime = DEFAULT_DAY_START): List<RoutineFilter> {
+    val overdue = if (overdueRoutines(reminders, now, zone, dayStart).isEmpty()) emptyList() else listOf(RoutineFilter.Overdue)
+    return overdue + routineTags(reminders).map { RoutineFilter.Tag(it) }
+}
+
+/** Every tag an open routine wears, most used first; the routines screen's own chips. */
+fun routineTags(reminders: List<Reminder>): List<String> =
+    rankTags(reminders.filter { it.isRoutine && it.status != Status.DONE })
+
+/** Whether [filter] would find [reminder] — for a chip that must never filter itself away. */
+fun RoutineFilter.matches(reminder: Reminder): Boolean = when (this) {
+    RoutineFilter.All, RoutineFilter.Overdue -> true
+    is RoutineFilter.Tag -> reminder.tags.any { it.lowercase(Locale.ROOT) == tag.lowercase(Locale.ROOT) }
+}

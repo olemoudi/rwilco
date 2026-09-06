@@ -148,6 +148,8 @@ fun HomeScreen(
     onDoneList: () -> Unit,
     onSettings: () -> Unit,
     onDiagnostics: () -> Unit,
+    /** The routines screen, behind the one line Home keeps about them (see RoutinesLine). */
+    onRoutines: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val search by viewModel.search.collectAsStateWithLifecycle()
@@ -533,7 +535,7 @@ fun HomeScreen(
         LaunchedEffect(justSaved, state.sections, state.hero) {
             val saved = justSaved ?: return@LaunchedEffect
             val id = saved.id
-            val index = homeCardIndex(state, id, strip = stripShown, pinned = presets.isNotEmpty(), undoRow = pendingDelete != null, tagsRow = tagsRowShown)
+            val index = homeCardIndex(state, id, strip = stripShown, pinned = presets.isNotEmpty(), undoRow = pendingDelete != null, tagsRow = tagsRowShown, routinesLine = state.loaded)
                 ?: return@LaunchedEffect
             if (saved.created) {
                 viewModel.expandCard(id)
@@ -666,6 +668,14 @@ fun HomeScreen(
                             onUndo = { viewModel.undo(removed) },
                             modifier = Modifier.animateItem(),
                         )
+                    }
+                }
+                // The routines, in one line, over the hero: the door to their screen, and the
+                // word about the ones whose span is up. Always there once the list has been
+                // read — the row is the door, and a door that comes and goes is not one.
+                if (state.loaded) {
+                    item(key = "routines", contentType = "routines") {
+                        RoutinesLine(line = state.routines, onOpen = onRoutines, modifier = Modifier.animateItem())
                     }
                 }
                 state.hero?.let { hero ->

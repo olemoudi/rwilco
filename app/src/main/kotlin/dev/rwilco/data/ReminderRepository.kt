@@ -51,6 +51,8 @@ class ReminderRepository(
 
     suspend fun setNudgedAt(id: String, at: Instant) = dao.setNudgedAt(id, at.toEpochMilli())
 
+    suspend fun setAskedAt(id: String, at: Instant) = dao.setAskedAt(id, at.toEpochMilli())
+
     suspend fun setArmedFor(id: String, at: Instant?, ruleIndex: Int?) =
         dao.setArmedFor(id, at?.toEpochMilli(), ruleIndex)
 

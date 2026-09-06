@@ -35,6 +35,20 @@ import dev.rwilco.model.awaitingAnswer
 import dev.rwilco.model.momentDealtWith
 import dev.rwilco.model.Deadline
 import dev.rwilco.model.hasDeadline
+import dev.rwilco.model.isRoutine
+import dev.rwilco.model.overdueRoutines
+
+/**
+ * What Home's one line about the routines says: how many there are, and the ones whose span
+ * is up, longest-waiting first. See `Routines.kt` — the routines themselves live on their own
+ * screen, and this line is the door to it.
+ */
+data class RoutinesLineUi(
+    val total: Int = 0,
+    val overdue: List<RoutineNameUi> = emptyList(),
+)
+
+data class RoutineNameUi(val id: String, val text: String)
 
 data class HomeUiState(
     val loaded: Boolean = false,
@@ -42,6 +56,8 @@ data class HomeUiState(
     val sections: List<SectionUi> = emptyList(),
     val tags: List<TagFilter> = emptyList(),
     val selectedTag: TagFilter? = null,
+    /** The routines, in one line; from the whole list, because a tag filter must not hide the door. */
+    val routines: RoutinesLineUi = RoutinesLineUi(),
     /** When date-only reminders ring; the cards say so under the date. */
     val defaultTime: LocalTime = LocalTime.of(9, 0),
     /** The hours somebody is up; carried so a preset written in one tap is judged by them too. */
@@ -86,12 +102,15 @@ fun homeCardIndex(
     pinned: Boolean,
     undoRow: Boolean = false,
     tagsRow: Boolean = state.tags.isNotEmpty(),
+    /** The line about the routines, under the rows above and over the hero; not drawn while searching. */
+    routinesLine: Boolean = false,
 ): Int? {
     var index = 0
     if (strip) index++
     if (pinned) index++
     if (tagsRow) index++
     if (undoRow) index++
+    if (routinesLine) index++
     if (state.hero != null) {
         if (state.hero.card.id == id) return index
         index++
@@ -399,6 +418,10 @@ fun buildHomeState(
         sections = groups.sections.map { (section, entries) -> SectionUi(section, entries.map { card(it.reminder, it.missedAt, it.next) }) },
         tags = tags,
         selectedTag = filter,
+        routines = RoutinesLineUi(
+            total = reminders.count { it.isRoutine && it.status != Status.DONE },
+            overdue = overdueRoutines(reminders, now, zone, dayStart).map { RoutineNameUi(it.id, it.text) },
+        ),
         defaultTime = defaultTime,
         dayShape = shape,
     )

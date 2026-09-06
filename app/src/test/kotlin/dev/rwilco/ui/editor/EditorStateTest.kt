@@ -33,6 +33,7 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import dev.rwilco.model.Deadline
+import dev.rwilco.model.withSpanOf
 
 class EditorStateTest {
 
@@ -502,5 +503,28 @@ class EditorStateTest {
         // A repeat chosen by hand is not the window's, and stays when the window goes.
         val byHand = chosen.setRecurrence(Recurrence.After(6, RecurrenceUnit.HOURS)).removeTrigger(0)
         assertEquals(Recurrence.After(6, RecurrenceUnit.HOURS), byHand.draft.recurrence)
+    }
+
+    @Test
+    fun `a routine reads its rules as questions asked one at a time, and its places as doorways`() {
+        // "Desde la última vez" picked on a form with a set and a state place: the set goes back
+        // to "cualquiera", its deadline goes, and "mientras esté en el garaje" becomes "al salir".
+        val garage = Trigger.Location(40.4, -3.7, 150, Presence.OUTSIDE, "Garaje")
+        val nine = Trigger.TimeOfDay(LocalTime.of(9, 0))
+        val set = blank.withText("Mover el coche").commitTrigger(null, nine).commitTrigger(null, garage)
+            .setRuleMatch(RuleMatch.ALL).commitDeadline(Deadline.Window(LocalTime.of(18, 0), LocalTime.of(22, 0)))
+        assertEquals(RuleMatch.ALL, set.draft.ruleMatch)
+        val routine = set.setRecurrence(Recurrence.Since(21, RecurrenceUnit.DAYS))
+        assertEquals(RuleMatch.ANY, routine.draft.ruleMatch)
+        assertNull(routine.draft.deadline)
+        assertTrue((routine.draft.rules[1].trigger as Trigger.Location).onCrossing, "a place under a routine is a doorway")
+        assertEquals(nine, routine.draft.rules[0].trigger, "a clock rule is left as it was")
+        // The reading cannot be changed under a routine, and a rule added later does not flip it.
+        assertEquals(RuleMatch.ANY, routine.setRuleMatch(RuleMatch.TOGETHER).draft.ruleMatch)
+        val another = routine.removeTrigger(1).commitTrigger(null, garage)
+        assertEquals(RuleMatch.ANY, another.draft.ruleMatch)
+        assertTrue((another.draft.rules[1].trigger as Trigger.Location).onCrossing, "coerced on the way in too")
+        // And a span picked from the buttons keeps it a routine (withSpanOf).
+        assertEquals(Recurrence.Since(1, RecurrenceUnit.WEEKS), routine.draft.recurrence.let { it.withSpanOf(Recurrence.After(1, RecurrenceUnit.WEEKS)) })
     }
 }
