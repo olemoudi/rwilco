@@ -49,6 +49,8 @@ data class RoutinesUiState(
     val filters: List<RoutineFilter> = emptyList(),
     /** How many routines there are at all, filter or no filter: an empty list under a filter is not "none". */
     val total: Int = 0,
+    /** The words the list is narrowed by; blank when nobody is searching. */
+    val query: String = "",
     val overdue: Int = 0,
     val failed: Boolean = false,
 ) {
@@ -63,6 +65,7 @@ fun buildRoutinesState(
     now: Instant,
     zone: ZoneId,
     dayStart: LocalTime = DEFAULT_DAY_START,
+    query: String = "",
 ): RoutinesUiState {
     val filters = routineFilters(reminders, now, zone, dayStart)
     // A filter on something no longer offered is no filter: the last overdue one was done, the
@@ -72,7 +75,7 @@ fun buildRoutinesState(
         RoutineFilter.Overdue -> selected.takeIf { it in filters } ?: RoutineFilter.All
         is RoutineFilter.Tag -> filters.firstOrNull { it is RoutineFilter.Tag && it.tag.equals(selected.tag, ignoreCase = true) } ?: RoutineFilter.All
     }
-    val rows = routinesFor(reminders, filter, now, zone, dayStart).mapNotNull { reminder ->
+    val rows = routinesFor(reminders, filter, now, zone, dayStart, query).mapNotNull { reminder ->
         val anchor = reminder.routineAnchor()
         val deadline = reminder.routineDeadline(zone, dayStart) ?: return@mapNotNull null
         RoutineRowUi(
@@ -94,6 +97,7 @@ fun buildRoutinesState(
         rows = rows,
         filter = filter,
         filters = filters,
+        query = query,
         // Counted, not listed: how many there are does not need them sorted, and this is
         // asked again every minute. The same count Home's line is built from.
         total = reminders.count { it.isRoutine && it.status != Status.DONE },

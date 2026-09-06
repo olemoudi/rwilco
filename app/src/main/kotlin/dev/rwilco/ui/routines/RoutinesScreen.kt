@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyRow
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -34,6 +36,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -70,6 +73,7 @@ import dev.rwilco.ui.format.countdownText
 import dev.rwilco.ui.format.dayWord
 import dev.rwilco.ui.format.rememberWords
 import dev.rwilco.ui.home.ReminderActionsMenu
+import dev.rwilco.ui.home.SearchField
 import dev.rwilco.ui.home.SwipeableCard
 import dev.rwilco.ui.home.UndoDeleteRow
 import dev.rwilco.ui.theme.MonoStyles
@@ -126,6 +130,9 @@ fun RoutinesScreen(
     // question, so the menu closes and the sheet takes over.
     var pickingDateFor by rememberSaveable { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
+    // The magnifier in the bar opens a field in its place, the way Home's does — the same
+    // control, so the gesture and the keyboard behave the same on both screens.
+    var searching by rememberSaveable { mutableStateOf(false) }
     // A routine arrived at from its own row on Home is scrolled to, once: the list is rebuilt
     // every minute (the counts move), and a scroll on every rebuild would fight the thumb.
     var landed by rememberSaveable { mutableStateOf(false) }
@@ -172,7 +179,33 @@ fun RoutinesScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing,
-        topBar = { RwilcoTopBar(title = stringResource(R.string.routines_title), onBack = onBack) },
+        topBar = {
+            if (searching) {
+                // The field is Home's, and Home's header handles its own insets before drawing
+                // it; here it is the top bar itself, so it takes the status bar's room the way
+                // [RwilcoTopBar] does — without it the placeholder sits under the clock.
+                Surface(color = MaterialTheme.colorScheme.background) {
+                    Box(Modifier.statusBarsPadding().padding(horizontal = spacing.sm, vertical = spacing.xs)) {
+                        SearchField(
+                            query = state.query,
+                            onQueryChange = viewModel::search,
+                            onClose = { searching = false; viewModel.search("") },
+                        )
+                    }
+                }
+            } else {
+                RwilcoTopBar(
+                    title = stringResource(R.string.routines_title),
+                    onBack = onBack,
+                    action = {
+                        val haptics = Tokens.haptics
+                        IconButton(onClick = { haptics.perform(HapticFeedbackType.ContextClick); searching = true }) {
+                            Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.home_search))
+                        }
+                    },
+                )
+            }
+        },
         floatingActionButton = {
             val haptics = Tokens.haptics
             // The screen's one primary action, in the thumb zone, wearing the inverted neutral
@@ -243,8 +276,10 @@ fun RoutinesScreen(
             } else if (state.loaded && !state.failed && state.rows.isEmpty()) {
                 item(key = "none-under-filter") {
                     EmptyState(
-                        title = stringResource(R.string.routines_filter_none_title),
-                        body = stringResource(R.string.routines_filter_none_body),
+                        // Two different nothings: no routine answers these words, or none is
+                        // under this chip. The way out is a different one for each.
+                        title = stringResource(if (state.query.isNotBlank()) R.string.home_search_none_title else R.string.routines_filter_none_title),
+                        body = stringResource(if (state.query.isNotBlank()) R.string.home_search_none_body else R.string.routines_filter_none_body),
                         icon = Icons.Outlined.SearchOff,
                     )
                 }
@@ -378,19 +413,23 @@ private fun RoutineCard(
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(spacing.sm))
+            // **The count and its track are furniture, not the alarm.** The answer at the end
+            // of the question is what says "No", in the error ink and in bold; a second line of
+            // red under it and a red bar under that was the same word said three times. So the
+            // line is the quiet ink whatever the answer is, and the track is a hairline.
             Text(
                 text = dueLine,
                 style = MonoStyles.date,
-                color = if (row.done || row.paused) scheme.onSurfaceVariant else scheme.error,
+                color = scheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(spacing.md))
             LinearProgressIndicator(
                 progress = { progress },
-                color = if (row.done || row.paused) scheme.onSurfaceVariant else scheme.error,
+                color = if (row.done || row.paused) scheme.outline else scheme.error.copy(alpha = OVERDUE_TRACK_ALPHA),
                 trackColor = scheme.surfaceContainerHighest,
                 strokeCap = StrokeCap.Round,
                 drawStopIndicator = {},
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().height(Tokens.strokes.strong),
             )
             // The footer: the tags on the left, the three things a card can be told to do on
             // the right — the same three a reminder's card carries, and the same menu behind
@@ -424,3 +463,6 @@ private fun RoutineCard(
         }
     }
 }
+
+/** A full track on an overdue routine still says so, at the volume a line under the words wants. */
+private const val OVERDUE_TRACK_ALPHA = 0.55f

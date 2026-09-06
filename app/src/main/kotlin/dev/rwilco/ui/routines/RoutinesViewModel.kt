@@ -69,6 +69,7 @@ class RoutinesViewModel(
 ) : ViewModel() {
 
     private val filter = MutableStateFlow<RoutineFilter>(RoutineFilter.All)
+    private val query = MutableStateFlow("")
     private val startTick = MutableStateFlow(clock.instant())
     private val events = Channel<RoutinesEvent>(Channel.BUFFERED)
     val eventFlow: Flow<RoutinesEvent> = events.receiveAsFlow()
@@ -85,9 +86,10 @@ class RoutinesViewModel(
         repository.open,
         settings.filterNotNull(),
         filter,
+        query,
         merge(startTick, minutePulse),
-    ) { reminders, current, chosen, _ ->
-        buildRoutinesState(reminders, chosen, clock.instant(), clock.zone, current.dayStart)
+    ) { reminders, current, chosen, words, _ ->
+        buildRoutinesState(reminders, chosen, clock.instant(), clock.zone, current.dayStart, words)
     }
         .flowOn(Dispatchers.Default)
         .catch { failure ->
@@ -103,6 +105,9 @@ class RoutinesViewModel(
     /** The hour a date with no time of its own means, which is what the calendar opens on. */
     val defaultTime: StateFlow<LocalTime> = settings.filterNotNull().map { it.defaultTime }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings().defaultTime)
+
+    /** What the search field types; blank is not searching. */
+    fun search(words: String) { query.value = words }
 
     /** Tapping the selected chip again clears the filter. */
     fun selectFilter(chosen: RoutineFilter) {

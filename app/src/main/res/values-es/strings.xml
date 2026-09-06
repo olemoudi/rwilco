@@ -1335,6 +1335,14 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_102_0">
+
+        <item>Las rutinas tienen buscador. La lupa de la barra abre el mismo campo con el que se busca en el inicio, y las palabras estrechan la lista sin cambiarle el orden: lo vencido sigue arriba. Se combina con los chips — «Vencidas» y «filtro» a la vez es lo que esperas.</item>
+
+        <item>Las fichas, más discretas. La cuenta va en tinta apagada sea cual sea la respuesta, y la barra del plazo es una línea fina. El «No» del final de la pregunta es lo que dice que se ha pasado, y decirlo tres veces en la misma tarjeta era dos de más.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_101_0">
 
         <item>«Y sólo si voy en coche». Una regla puede fijarse ahora a la velocidad a la que iba el móvil — «Sólo si» → «Velocidad» —, que es lo que distingue salir para la tarde de bajar a por el pan, y lo que permite que una rutina que se reinicia al salir tenga un círculo lo bastante ancho como para cruzarse de verdad.</item>

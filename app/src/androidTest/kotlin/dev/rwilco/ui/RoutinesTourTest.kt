@@ -10,6 +10,8 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performCustomAccessibilityActionWithLabel
@@ -29,6 +31,7 @@ import dev.rwilco.model.ThemeMode
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.routineDone
+import dev.rwilco.ui.home.HOME_SEARCH_TAG
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.BeforeClass
@@ -134,6 +137,16 @@ class RoutinesTourTest {
         rule.onNodeWithText(s(R.string.routines_question, car), substring = true, useUnmergedTree = true).assertIsDisplayed()
         shot("routines-overdue")
         rule.onNodeWithText(s(R.string.routines_filter_all)).performClick()
+        rule.waitUntilShown(s(R.string.routines_question, plants))
+
+        // The magnifier in the bar narrows the list by words — the same field Home searches
+        // with, in the bar's own place.
+        rule.onNodeWithContentDescription(s(R.string.home_search)).performClick()
+        rule.onNodeWithTag(HOME_SEARCH_TAG).performTextInput("coche")
+        rule.waitUntilGone(s(R.string.routines_question, plants))
+        rule.onNodeWithText(s(R.string.routines_question, car), substring = true, useUnmergedTree = true).assertIsDisplayed()
+        shot("routines-search")
+        rule.onNodeWithContentDescription(s(R.string.common_back)).performClick()
         rule.waitUntilShown(s(R.string.routines_question, plants))
 
         // The three controls a routine's card carries, the way a reminder's does (0.99.0): the

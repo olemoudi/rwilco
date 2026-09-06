@@ -502,6 +502,23 @@ after the span in "Vuelve"), and the editor's draft not surviving process death 
 `SavedStateHandle`). The second half of the round — the `⋯` on a card, Tags below "Vuelve",
 warnings off amber, one top bar, TalkBack order on the alert, the tokens — is 0.94.0.
 
+## A search on the routines, and a quieter card, 0.102.0 (2026-09-06)
+Both asked for from the phone, one after the other.
+
+- **The search narrows, it does not re-rank.** `routinesFor` takes a query and filters with the
+  same forgiving match Home searches with (`fuzzyScore` over `fold`) — but the order stays the
+  list's own, because this screen means "what is owed, soonest first" and a list re-sorted by
+  how well each row matched would be answering a different question. It composes with the chips
+  rather than replacing them.
+- The field is Home's own `SearchField`, in the top bar's place. **Home's header handles the
+  status bar before drawing it**, so dropped into a `topBar` slot it came out under the clock:
+  it needs the `statusBarsPadding()` `RwilcoTopBar` applies. One screenshot to see, one line to
+  fix, and the reason it is written down is that the next reuse of that field will hit it too.
+- **The card said "vencida" three times** — the bold "No" at the end of the question, a line of
+  red mono under it, and a red bar under that. The count is now the muted ink whatever the
+  answer is, and the track is `strokes.strong` (2dp) with the error ink at just over half
+  alpha, so a full bar still reads as full without being the loudest thing on the screen.
+
 ## "Y sólo si voy en coche", 0.101.0 (2026-09-06)
 The last of the four, and the one that needed a decision rather than code.
 

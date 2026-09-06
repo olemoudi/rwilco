@@ -1350,6 +1350,14 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_102_0">
+
+        <item>The routines have a search. The magnifier in the bar opens the same field Home searches with, and the words narrow the list without re-ordering it: what is owed stays on top. It works alongside the chips — «Overdue» plus «filter» is what you would expect.</item>
+
+        <item>The cards are quieter. The count is in the muted ink whatever the answer is, and the span\'s track is a hairline. The «No» at the end of the question is what says the span has run out, and saying it three times on one card was twice too many.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_101_0">
 
         <item>«And only if I am in the car». A rule can now be fenced to the speed the phone was going at — «Only if» → «Speed» — which is what tells leaving for the evening from walking to the bins, and what lets a routine that resets on the way out have a circle wide enough to actually be crossed.</item>

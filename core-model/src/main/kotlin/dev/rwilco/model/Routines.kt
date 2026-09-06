@@ -75,8 +75,16 @@ fun routinesFor(
     now: Instant,
     zone: ZoneId,
     dayStart: LocalTime = DEFAULT_DAY_START,
+    /**
+     * Words to narrow the list by, forgivingly ([fuzzyScore], the same match Home searches
+     * with); blank is no narrowing. The **order does not change**: this list means "what is
+     * owed, soonest first", and a search that re-sorted it by how well each row matched would
+     * answer a different question from the one the screen is for.
+     */
+    query: String = "",
 ): List<Reminder> = reminders
     .filter { it.isRoutine && it.status != Status.DONE }
+    .filter { matchesWords(it, query) }
     .filter {
         when (filter) {
             RoutineFilter.All -> true
@@ -95,6 +103,12 @@ fun routinesFor(
             .thenBy { it.routineDeadline(zone, dayStart) }
             .thenBy { it.createdAt },
     )
+
+/** Whether [reminder]'s own words answer [query]; a blank query answers itself. */
+private fun matchesWords(reminder: Reminder, query: String): Boolean {
+    val needle = fold(query)
+    return needle.isEmpty() || fuzzyScore(needle, fold(reminder.text)) != null
+}
 
 /** The filters worth offering: the app's own "vencidas" only while something is, then the routines' tags. */
 fun routineFilters(reminders: List<Reminder>, now: Instant, zone: ZoneId, dayStart: LocalTime = DEFAULT_DAY_START): List<RoutineFilter> {

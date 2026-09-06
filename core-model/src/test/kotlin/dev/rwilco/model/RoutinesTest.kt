@@ -233,6 +233,30 @@ class RoutinesTest {
     }
 
     @Test
+    fun `a search narrows the list and leaves its order alone`() {
+        val plants = car(id = "plants", text = "Regar las plantas", createdAt = now.minusSeconds(25 * 86_400))
+        val filter = car(id = "filter", text = "Cambiar el filtro del agua", span = Recurrence.Since(3, RecurrenceUnit.MONTHS), createdAt = now.minusSeconds(100 * 86_400))
+        val fresh = car(id = "fresh", text = "Mover el coche", createdAt = now.minusSeconds(86_400))
+        val all = listOf(fresh, plants, filter)
+
+        assertEquals(listOf("filter", "plants", "fresh"), routinesFor(all, RoutineFilter.All, now, zone, dayStart).map { it.id }, "no words, no narrowing")
+        assertEquals(listOf("fresh"), routinesFor(all, RoutineFilter.All, now, zone, dayStart, "coche").map { it.id })
+        // Forgiving the way Home's search is: accents, case, and the letters in order.
+        assertEquals(listOf("plants"), routinesFor(all, RoutineFilter.All, now, zone, dayStart, "PLANTAS").map { it.id })
+        assertEquals(listOf("filter"), routinesFor(all, RoutineFilter.All, now, zone, dayStart, "cmbiar").map { it.id })
+        assertEquals(emptyList<String>(), routinesFor(all, RoutineFilter.All, now, zone, dayStart, "bicicleta").map { it.id })
+        // **The order is the list's own**, not the search's: what is owed stays on top even
+        // when the words match the fresh one better.
+        assertEquals(
+            listOf("filter", "plants"),
+            routinesFor(all, RoutineFilter.All, now, zone, dayStart, "a").map { it.id },
+            "one letter matches all three by subsequence only where it starts a word",
+        )
+        // And it composes with a chip rather than replacing it.
+        assertEquals(listOf("filter"), routinesFor(all, RoutineFilter.Overdue, now, zone, dayStart, "filtro").map { it.id })
+    }
+
+    @Test
     fun `the filters offered are vencidas while something is, and then the routines' own tags`() {
         val tagged = car(id = "a", tags = listOf("Casa"), createdAt = now.minusSeconds(86_400))
         val other = car(id = "b", tags = listOf("coche", "casa"), createdAt = now.minusSeconds(86_400))
