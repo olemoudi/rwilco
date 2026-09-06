@@ -11,15 +11,23 @@ import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import dev.rwilco.MainActivity
 import dev.rwilco.model.Preset
+import androidx.compose.ui.graphics.toArgb
 import dev.rwilco.ui.theme.presetColorArgb
+import dev.rwilco.ui.theme.routineColor
 
 /**
- * The pinned presets, held on the launcher icon.
+ * What the launcher icon holds: **the overdue routines first, then the pinned presets.**
  *
  * A pinned preset is one tap on Home; this makes it one tap from the home screen, without the
  * app in between: hold the icon, "Comprar pan", and the reminder is written (or its words are
  * asked for, when the shape left them open — the same two doors Home has). The static "Nuevo"
- * keeps its slot; the pinned ones take what the launcher leaves, in the order Home shows them.
+ * keeps its slot; the rest take what the launcher leaves.
+ *
+ * **An overdue routine outranks a preset there** (the owner's call): the slots are few, a preset
+ * is a thing you go looking for, and a routine whose span has run out is a thing that has to
+ * find *you*. A routine's shortcut opens the routines with that one in view rather than saying
+ * "hecho" outright — a mis-tap on a launcher would otherwise move a three-week count, and the
+ * undo for it would be a snackbar nobody is looking at.
  */
 object PresetShortcuts {
     const val ACTION_PRESET = "dev.rwilco.action.PRESET"
@@ -28,17 +36,39 @@ object PresetShortcuts {
     /** What a shortcut is made of: enough to draw it, and nothing that would republish for no reason. */
     data class Face(val id: String, val name: String, val colorIndex: Int)
 
+    /** An overdue routine's, which needs no colour of its own: they all wear the routines'. */
+    data class RoutineFace(val id: String, val text: String)
+
     fun facesOf(presets: List<Preset>): List<Face> = presets.filter { it.pinned }.map { Face(it.id, it.name, it.colorIndex) }
 
-    /** Replaces the dynamic set wholesale: the launcher shows what Home pins, and nothing else. */
-    fun publish(context: Context, faces: List<Face>) {
+    /**
+     * Replaces the dynamic set wholesale: what is owed first, then what Home pins, and nothing
+     * else. [question] is the routine's line for the long label ("¿He hecho «X»?"), passed in
+     * rather than read here so this stays a drawing job with no resources of its own.
+     */
+    fun publish(context: Context, routines: List<RoutineFace>, faces: List<Face>, question: (String) -> String = { it }) {
         // One slot is the static "Nuevo".
         val room = (ShortcutManagerCompat.getMaxShortcutCountPerActivity(context) - 1).coerceAtLeast(0)
-        val shortcuts = faces.take(room).map { face ->
+        val overdue = routines.take(room).map { routine ->
+            ShortcutInfoCompat.Builder(context, routineShortcutId(routine.id))
+                .setShortLabel(routine.text)
+                .setLongLabel(question(routine.text))
+                .setIcon(disc(context, routineColor(dark = false).toArgb(), routine.text))
+                .setIntent(
+                    // The action is not read anywhere — the destination extra is what MainActivity
+                    // lands on — but a shortcut whose intent has none throws on publication, and
+                    // the throw would leave the launcher with no dynamic shortcuts at all.
+                    Intent(context, MainActivity::class.java)
+                        .setAction(Intent.ACTION_VIEW)
+                        .putExtra(MainActivity.EXTRA_DESTINATION, MainActivity.routineDestination(routine.id)),
+                )
+                .build()
+        }
+        val presets = faces.take((room - overdue.size).coerceAtLeast(0)).map { face ->
             ShortcutInfoCompat.Builder(context, shortcutId(face.id))
                 .setShortLabel(face.name)
                 .setLongLabel(face.name)
-                .setIcon(icon(context, face))
+                .setIcon(disc(context, presetColorArgb(face.colorIndex, dark = false), face.name))
                 .setIntent(
                     Intent(context, MainActivity::class.java)
                         .setAction(ACTION_PRESET)
@@ -46,7 +76,7 @@ object PresetShortcuts {
                 )
                 .build()
         }
-        ShortcutManagerCompat.setDynamicShortcuts(context, shortcuts)
+        ShortcutManagerCompat.setDynamicShortcuts(context, overdue + presets)
     }
 
     /** The launcher ranks by use; a preset used from the app counts for its shortcut too. */
@@ -56,16 +86,18 @@ object PresetShortcuts {
 
     private fun shortcutId(presetId: String) = "preset-$presetId"
 
+    private fun routineShortcutId(routineId: String) = "routine-$routineId"
+
     /**
-     * The preset's disc with its initial on it — the same colour the button on Home wears,
-     * from the palette that reads on a light launcher, which is where most of them are.
+     * A disc with an initial on it — the preset's own colour, or the routines' rose, from the
+     * palette that reads on a light launcher, which is where most of them are.
      */
-    private fun icon(context: Context, face: Face): IconCompat {
+    private fun disc(context: Context, colorArgb: Int, label: String): IconCompat {
         val size = (ICON_DP * context.resources.displayMetrics.density).toInt().coerceAtLeast(48)
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        canvas.drawColor(presetColorArgb(face.colorIndex, dark = false))
-        val initial = face.name.trim().firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString() ?: "·"
+        canvas.drawColor(colorArgb)
+        val initial = label.trim().firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString() ?: "·"
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFFFFFFFF.toInt()
             typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)

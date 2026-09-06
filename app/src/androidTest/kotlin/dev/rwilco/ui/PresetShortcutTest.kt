@@ -2,6 +2,8 @@ package dev.rwilco.ui
 
 import android.content.Intent
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -61,6 +63,28 @@ class PresetShortcutTest {
         runCatching { scenario?.close() }
         app.repository.replaceAll(emptyList())
         app.settingsStore.update { it.copy(presets = emptyList()) }
+    }
+
+    @Test
+    fun anOverdueRoutineTakesTheFirstSlotAndOpensOnItself() {
+        // The owner's call: the launcher has four slots, a preset is a thing you go looking for
+        // and an overdue routine is a thing that has to find you. Published straight rather than
+        // through the app's own collector, which is what the JVM has no way to run.
+        val routine = PresetShortcuts.RoutineFace("r-late", "Mover el coche")
+        PresetShortcuts.publish(context, listOf(routine), PresetShortcuts.facesOf(runBlocking { app.settingsStore.settings.first() }.presets))
+        val published = ShortcutManagerCompat.getDynamicShortcuts(context)
+        check(published.first().id == "routine-r-late") { "an overdue routine comes first, not $published" }
+        check(published.any { it.id == "preset-p1" }) { "and the pinned preset keeps the slot after it" }
+
+        // Its intent is the routines screen, brought to that very routine.
+        val landing = published.first().intent
+        val destination = landing.getStringExtra(MainActivity.EXTRA_DESTINATION)
+        check(MainActivity.routineIdIn(destination) == "r-late") { "the shortcut names its routine: $destination" }
+
+        scenario = ActivityScenario.launch(Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_DESTINATION, destination))
+        rule.waitUntil(timeoutMillis = 10_000) {
+            rule.onAllNodesWithText(context.getString(dev.rwilco.R.string.routines_title), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+        }
     }
 
     @Test

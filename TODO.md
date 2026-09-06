@@ -502,6 +502,25 @@ after the span in "Vuelve"), and the editor's draft not surviving process death 
 `SavedStateHandle`). The second half of the round — the `⋯` on a card, Tags below "Vuelve",
 warnings off amber, one top bar, TalkBack order on the alert, the tokens — is 0.94.0.
 
+## An overdue routine on the launcher icon, 0.100.0 (2026-09-06)
+The last of the four the owner picked off the routines' backlog, and the only one that needed
+his answer first: the launcher gives four slots and the pinned presets already had them.
+
+- **An overdue routine outranks a preset there** (his call, in his words: "gana rutina
+  vencida"). The reasoning is worth keeping: a preset is a thing you go looking for, a routine
+  whose span has run out is a thing that has to find you.
+- **The tap opens the routines with that one in view rather than saying "hecho".** A launcher is
+  where a stray tap happens, the count it would move is three weeks long, and the undo for it
+  would be a snackbar nobody is looking at. The landing is `Routes.Routines(focus)`, which
+  0.99.0 had already built for Home's own rows.
+- **A shortcut whose intent has no action throws on publication**, and the throw is inside the
+  `runCatching` that publishes them — so the launcher would have been left with *no* dynamic
+  shortcuts at all, silently, for anybody with an overdue routine. `PresetShortcutTest` caught
+  it on the device; the intent carries `ACTION_VIEW` now, which nothing reads.
+- The set is republished from `repository.open` + the settings, so a routine falling due
+  reaches it through the row its ring writes. A phone that never rings it republishes at the
+  next process start, which on this app is often.
+
 ## "A resumed reminder did not ring", from the phone (0.99.1, 2026-09-06)
 Reported with a diagnostics report, which named the cause itself:
 `fire r=d5e39eb5 dropped: state place already rang at 2026-09-03T15:32:08`.

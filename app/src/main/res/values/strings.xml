@@ -1346,6 +1346,12 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_100_0">
+
+        <item>An overdue routine is on the launcher icon. Hold the app icon: the routines whose span has run out take the first slots — ahead of the pinned presets, because a preset is something you go looking for and an overdue routine is something that has to find you — and a tap opens the routines with that one in view. It does not mark it done: a stray tap on a home screen should not move a three-week count.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_99_1">
 
         <item>Bringing a reminder back from a pause asks for it again. «While I am at home» rings once and then keeps quiet until you deal with it — otherwise it would ring all evening — but a ring nobody answered was keeping it quiet for good: paused and resumed three days later, standing in the very place, nothing happened. Resuming now starts the round again. It still answers nothing, moves no anchor and finishes nothing; pausing writes nothing at all.</item>

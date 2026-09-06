@@ -20,7 +20,9 @@ import dev.rwilco.diag.DiagStore
 import dev.rwilco.geo.PlaceWatcher
 import dev.rwilco.geo.hasBackgroundLocation
 import dev.rwilco.model.dayShape
+import dev.rwilco.R
 import dev.rwilco.model.AppSettings
+import dev.rwilco.model.overdueRoutines
 import dev.rwilco.notify.AlertNotifications
 import dev.rwilco.notify.SoundStore
 import dev.rwilco.update.UpdateWorker
@@ -216,12 +218,24 @@ class RwilcoApplication : Application() {
                 .collect { NextWidget.refresh(this@RwilcoApplication) }
         }
         appScope.launch {
-            // The pinned presets, on the launcher icon. Republished only when what a shortcut
-            // is made of changes — a pin, a name, a colour — not on every use counted.
-            settingsStore.settings
-                .map { PresetShortcuts.facesOf(it.presets) }
+            // What the launcher icon holds: the overdue routines first, then the pinned presets
+            // (see PresetShortcuts). Republished only when what a shortcut is made of changes —
+            // a routine falling due or being done, a pin, a name, a colour — not on every use
+            // counted. A routine's own span running out reaches this through the row the ring
+            // writes; a phone that never rings it republishes at the next process start.
+            combine(repository.open, settingsStore.settings.filterNotNull()) { open, settings ->
+                val overdue = overdueRoutines(open, clock.instant(), clock.zone, settings.dayStart)
+                    .map { PresetShortcuts.RoutineFace(it.id, it.text) }
+                overdue to PresetShortcuts.facesOf(settings.presets)
+            }
                 .distinctUntilChanged()
-                .collect { faces -> runCatching { PresetShortcuts.publish(this@RwilcoApplication, faces) }.onFailure { Log.w(TAG, "could not publish shortcuts", it) } }
+                .collect { (routines, faces) ->
+                    runCatching {
+                        PresetShortcuts.publish(this@RwilcoApplication, routines, faces) { words ->
+                            getString(R.string.routines_question, words)
+                        }
+                    }.onFailure { Log.w(TAG, "could not publish shortcuts", it) }
+                }
         }
         appScope.launch {
             // The update check follows the same rule the person set for it: on any connection,

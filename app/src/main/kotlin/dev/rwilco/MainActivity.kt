@@ -142,6 +142,13 @@ class MainActivity : ComponentActivity() {
         const val DESTINATION_WATCH_LOG = "watch_log"
         /** The routines screen: where a question about one, or a reset by a place, lands. */
         const val DESTINATION_ROUTINES = "routines"
+        private const val ROUTINE_PREFIX = "routines:"
+
+        /** The routines screen, brought to one of them: what an overdue routine's shortcut asks for. */
+        fun routineDestination(id: String): String = ROUTINE_PREFIX + id
+
+        fun routineIdIn(destination: String?): String? =
+            destination?.takeIf { it.startsWith(ROUTINE_PREFIX) }?.removePrefix(ROUTINE_PREFIX)
         private const val REMINDER_PREFIX = "reminder:"
 
         fun reminderDestination(id: String): String = REMINDER_PREFIX + id

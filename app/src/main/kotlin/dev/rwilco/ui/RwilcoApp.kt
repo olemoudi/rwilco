@@ -122,6 +122,11 @@ fun RwilcoApp(
                 open(Routes.Routines())
                 onDestinationConsumed()
             }
+            // An overdue routine's own launcher shortcut: the list, with that one in view.
+            MainActivity.routineIdIn(requestedDestination) != null -> {
+                open(Routes.Routines(MainActivity.routineIdIn(requestedDestination)))
+                onDestinationConsumed()
+            }
             requestedDestination == MainActivity.DESTINATION_BACKUP -> {
                 // Settings underneath, so "back" from the backup lands where it lives.
                 open(Routes.Settings)
