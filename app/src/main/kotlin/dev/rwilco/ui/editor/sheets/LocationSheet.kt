@@ -625,21 +625,6 @@ private fun KeepPlaceRow(keep: Boolean, onChange: (Boolean) -> Unit) {
 }
 
 /**
- * "Y quedarme allí un rato": the doorway asked to be *stayed at*.
- *
- * Crossing a line is the loudest thing a place can do and the least reliable — walking past a
- * door, a trip to the bins and a position that wobbles over the line and back are all crossings,
- * and all of them ring. This is the answer to that, and it is offered where the mistake is made
- * rather than as a condition further down: it is the same question as "al llegar", one line
- * later. Under "al salir" it counts the other side, which is what tells going out from going out
- * *for the evening*.
- *
- * Shaped like [KeepPlaceRow] — the row owns the gesture and the switch is along for the ride —
- * and, once it is on, like [CountdownSheet]: chips for the long way round, a stepper for the
- * minute nobody put on a chip. One stepper and no hours, because ninety minutes is the top
- * ([MAX_DWELL_MINUTES]) and two controls for a number under a hundred is one too many.
- */
-/**
  * What a routine's doorway does: ask whether it has been done, or count as having done it.
  * Two readings of one crossing, and the line under them says what each one costs, because
  * "counts as done" is the app acting on its own and somebody should know before they pick it.
@@ -665,6 +650,21 @@ private fun RoleChoice(resets: Boolean, onChange: (Boolean) -> Unit) {
     }
 }
 
+/**
+ * "Y quedarme allí un rato": the doorway asked to be *stayed at*.
+ *
+ * Crossing a line is the loudest thing a place can do and the least reliable — walking past a
+ * door, a trip to the bins and a position that wobbles over the line and back are all crossings,
+ * and all of them ring. This is the answer to that, and it is offered where the mistake is made
+ * rather than as a condition further down: it is the same question as "al llegar", one line
+ * later. Under "al salir" it counts the other side, which is what tells going out from going out
+ * *for the evening*.
+ *
+ * Shaped like [KeepPlaceRow] — the row owns the gesture and the switch is along for the ride —
+ * and, once it is on, like [CountdownSheet]: chips for the long way round, a stepper for the
+ * minute nobody put on a chip. One stepper and no hours, because ninety minutes is the top
+ * ([MAX_DWELL_MINUTES]) and two controls for a number under a hundred is one too many.
+ */
 @Composable
 private fun DwellRow(
     inside: Boolean,

@@ -115,34 +115,67 @@ object AlertNotifications {
      */
     const val CHANNEL_ASK = "ask_$VERSION"
 
-    fun ensureChannels(context: Context, vibration: VibrationPattern = VibrationPattern(), chosen: AlertSound = AlertSound.System) {
+    /**
+     * Every channel the app can ring on, and only those: made from the settings, and the ones
+     * this tone and rhythm no longer ring deleted.
+     *
+     * **Both tones, not one.** A reminder marked "insistente" rings with [AppSettings.insistentSound]
+     * when there is one, so the channels of both it and the ordinary tone are live — swept with
+     * one of them in hand, whichever rang last would delete the other's.
+     *
+     * The sweep is this function's alone. A card going out makes the one channel it needs
+     * ([ensureAlertChannel]) and sweeps nothing, because a ring knows only the tone it is
+     * ringing with; this is called from the launch and from every settings change, which are
+     * the moments the whole set is actually known.
+     */
+    fun ensureChannels(
+        context: Context,
+        vibration: VibrationPattern = VibrationPattern(),
+        chosen: AlertSound = AlertSound.System,
+        insistent: AlertSound? = null,
+    ) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         // A channel's tone is played by the system, and one of our own copies lives where the
         // system cannot reach. The grant does not survive a reboot, so it is re-done here rather
         // than once when the sound was chosen. See SoundStore.
-        Sounds.uri(context, chosen)?.let { SoundStore.grantToSystem(context, it) }
-        manager.createNotificationChannelGroup(
-            NotificationChannelGroup(GROUP, context.getString(R.string.notif_group_alerts)),
-        )
+        val tones = listOfNotNull(chosen, insistent).distinct()
+        for (tone in tones) Sounds.uri(context, tone)?.let { SoundStore.grantToSystem(context, it) }
+        ensureQuietChannels(context)
         // With notification-policy access granted the channels are made to bypass Do Not
         // Disturb outright; without it the alarm attributes below are what get them through.
         val bypass = manager.isNotificationPolicyAccessGranted
         val live = mutableSetOf<String>()
-        for (sound in listOf(false, true)) {
-            for (vibrate in listOf(false, true)) {
-                val channel = alertChannel(context, sound, vibrate, vibration, chosen, bypass)
-                manager.createNotificationChannel(channel)
-                live += channel.id
+        for (tone in tones) {
+            for (sound in listOf(false, true)) {
+                for (vibrate in listOf(false, true)) {
+                    val channel = alertChannel(context, sound, vibrate, vibration, tone, bypass)
+                    manager.createNotificationChannel(channel)
+                    live += channel.id
+                }
             }
         }
         // **The ones nobody rings any more go** (0.67.0). A channel is made per tone, rhythm
         // and DND grant and was kept for ever, so one muted by hand under an old tone stood in
         // the phone's list for good — and counted as "a reminder channel is muted" on Home, a
-        // red strip nothing could clear. Only the four this tone and rhythm ring are kept; a
-        // muted one among them is a real problem, and the fix row can name it.
+        // red strip nothing could clear. Only the ones these tones and this rhythm ring are
+        // kept; a muted one among them is a real problem, and the fix row can name it.
         for (stale in staleAlertChannels(manager.notificationChannels.map { it.id }, live)) {
             manager.deleteNotificationChannel(stale)
         }
+    }
+
+    /**
+     * The channels that do not change with the tone: the missed one, the net's, and the
+     * questions'. Their own function because they are the only ones a card outside the ring
+     * needs, and [ensureChannels] **deletes every alert channel this tone and rhythm do not
+     * ring** — so a question asked with the default tone in hand would take the four channels
+     * the person's own tone rings and put four default ones in their place.
+     */
+    fun ensureQuietChannels(context: Context) {
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        manager.createNotificationChannelGroup(
+            NotificationChannelGroup(GROUP, context.getString(R.string.notif_group_alerts)),
+        )
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_MISSED, context.getString(R.string.notif_channel_missed), NotificationManager.IMPORTANCE_DEFAULT).apply {
                 group = GROUP
@@ -170,13 +203,37 @@ object AlertNotifications {
     }
 
     /**
+     * The one alert channel a card is about to go out on, made if this process has not made it
+     * yet; its id. **Made, never swept**: a ring knows the tone it is ringing with and nothing
+     * about the other one, so sweeping from here would delete the insistent tone's channels on
+     * every ordinary ring and the ordinary tone's on every insistent one. The set is reconciled
+     * where it is known, in [ensureChannels].
+     */
+    private fun ensureAlertChannel(
+        context: Context,
+        sound: Boolean,
+        vibrate: Boolean,
+        vibration: VibrationPattern,
+        chosen: AlertSound,
+        bypass: Boolean,
+    ): String {
+        ensureQuietChannels(context)
+        val manager = context.getSystemService(NotificationManager::class.java)
+            ?: return channelId(sound, vibrate, vibration, chosen, bypass)
+        Sounds.uri(context, chosen)?.let { SoundStore.grantToSystem(context, it) }
+        val channel = alertChannel(context, sound, vibrate, vibration, chosen, bypass)
+        manager.createNotificationChannel(channel)
+        return channel.id
+    }
+
+    /**
      * A routine's question, in the shade: «¿He hecho «mover el coche»?», how long it has been
      * and how long is left, and two answers — "sí, ahora", which is the same door "hecho" goes
      * through, and "todavía no", which takes the card down and writes nothing. Silent outside
      * the hours somebody is up ([awake]); tapping the card opens the routines. See Prompt.kt.
      */
     fun ask(context: Context, reminder: Reminder, elapsed: Duration, dueIn: Duration?, awake: Boolean) {
-        ensureChannels(context)
+        ensureQuietChannels(context)
         val ago = context.getString(R.string.countdown_ago, spanWords(context, elapsed))
         val due = dueIn?.let { left ->
             if (left.isNegative) context.getString(R.string.routines_overdue, context.getString(R.string.countdown_ago, spanWords(context, left.abs())))
@@ -204,7 +261,7 @@ object AlertNotifications {
      * has to be visible and reversible. [previous] is where the count goes back to.
      */
     fun resetNotice(context: Context, reminder: Reminder, place: Trigger.Location, previous: Instant?) {
-        ensureChannels(context)
+        ensureQuietChannels(context)
         val doorRes = if (place.presence == Presence.INSIDE) R.string.notif_reset_arrive else R.string.notif_reset_leave
         val undo = Intent(context, AlertActionReceiver::class.java)
             .setAction(AlertActionReceiver.ACTION_UNDO_RESET)
@@ -287,7 +344,6 @@ object AlertNotifications {
         // fixed the moment it is created, so one made under the file's own key while the file
         // was away would keep the system tone for ever, card back in or not.
         val effective = if (chosen is AlertSound.Custom && !Sounds.readable(context, Uri.parse(chosen.uri))) AlertSound.System else chosen
-        ensureChannels(context, vibration, effective)
         // The noise follows where the firing is actually shown, not what was ticked: a
         // full-screen alert rings for itself, but one that ends up as a banner — an app in
         // front, usage access never granted — has no screen to ring, and a silent banner is a
@@ -295,11 +351,16 @@ object AlertNotifications {
         val soundHere = plan.sound && !fullScreen
         val vibrateHere = plan.vibrate && !fullScreen
         val bypass = context.getSystemService(NotificationManager::class.java)?.isNotificationPolicyAccessGranted == true
-        val channel = when {
+        // The channel this card goes out on, made here if the process has not made it yet — a
+        // ring can be the first thing a fresh process does. Only the one it needs, never the
+        // whole set: see [ensureAlertChannel].
+        val quiet = when {
             nudge != null -> CHANNEL_NET
             late != null -> CHANNEL_MISSED
-            else -> channelId(soundHere, vibrateHere, vibration, effective, bypass)
+            else -> null
         }
+        if (quiet != null) ensureQuietChannels(context)
+        val channel = quiet ?: ensureAlertChannel(context, soundHere, vibrateHere, vibration, effective, bypass)
         // **Every card about a reminder opens the alert screen**, whichever of them it is.
         // The net's two words used to go elsewhere — "never rang" to the form, "still waiting"
         // to Home — for one good reason: that screen holds a reminder only while it is owed an

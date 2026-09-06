@@ -1327,6 +1327,14 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_97_0">
+
+        <item>Tu tono y tu vibración se quedan donde los pusiste. Una pregunta de una rutina, un aviso de la red de seguridad o un timbre podían rehacer los canales de notificación con el tono *por defecto*, lo que borra los que suenan con el tono y el ritmo que elegiste y los devuelve en la siguiente alarma. Ahora cada aviso crea sólo el canal que va a usar, el juego entero se rehace cuando cambias el tono, y el tono insistente conserva sus canales en vez de turnarse con el normal.</item>
+
+        <item>La línea de rutinas del inicio dice en voz alta cuál está vencida. Con TalkBack leía sólo «Abrir las rutinas»; ahora lee la fila tal como está escrita («Todavía no has hecho: mover el coche») y después adónde lleva el toque.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_96_0">
 
         <item>Las rutinas preguntan. Una hora del día o un día de la semana bajo una rutina pone una pregunta en la barra («¿He hecho «mover el coche»?») con «Sí, ahora» y «Todavía no». Nunca suena: lo que suena sigue siendo el plazo. Una rutina se calla una décima parte de su plazo después de hacerla, y deja de preguntar mientras su alarma espera respuesta.</item>

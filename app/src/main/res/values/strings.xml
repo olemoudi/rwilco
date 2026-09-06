@@ -1342,6 +1342,14 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_97_0">
+
+        <item>Your own tone and buzz stay where you put them. A routine\'s question, a word from the safety net or a ring could remake the notification channels for the *default* tone — which deletes the ones your chosen tone and rhythm ring, and puts them back at the next alarm. Now a card makes only the channel it is about to use, the whole set is rebuilt when you change the tone, and the insistent tone keeps its own channels instead of taking turns with the ordinary one.</item>
+
+        <item>Home\'s routines line says which one is overdue out loud. With TalkBack it read only «Open the routines»; now it reads the row as it is written — «You still haven\'t done: move the car» — and then where the tap goes.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_96_0">
 
         <item>Routines ask. A time of day or a weekday under a routine puts a question in the shade — «Have I done “move the car”?» — with «Yes, just now» and «Not yet». Never a ring; the ring is still the deadline. A routine keeps quiet for a tenth of its span after you\'ve done it, and stops asking while its alarm is waiting for an answer.</item>

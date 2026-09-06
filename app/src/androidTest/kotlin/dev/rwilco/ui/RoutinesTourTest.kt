@@ -119,8 +119,10 @@ class RoutinesTourTest {
         check(rule.onAllNodesWithText(plants, useUnmergedTree = true).fetchSemanticsNodes().isEmpty()) { "a routine that is done for now is not on Home" }
         shot("home-routines-line")
 
-        // The line is the door.
-        rule.onNodeWithContentDescription(s(R.string.home_routines_open)).performClick()
+        // The line is the door. Its description carries the row's own words as well — a screen
+        // reader hears which routine is overdue *and* where the tap goes — so it is matched on
+        // the door's half of it.
+        rule.onNodeWithContentDescription(s(R.string.home_routines_open), substring = true).performClick()
         rule.waitUntilShown(s(R.string.routines_title))
         rule.waitUntilShown(s(R.string.routines_question, car))
         rule.onNodeWithText(s(R.string.routines_question, plants), substring = true, useUnmergedTree = true).assertIsDisplayed()

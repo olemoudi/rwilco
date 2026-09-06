@@ -42,10 +42,23 @@ fun RoutinesLine(line: RoutinesLineUi, onOpen: () -> Unit, modifier: Modifier = 
     val overdue = line.overdue.isNotEmpty()
     val ink = if (overdue) scheme.onErrorContainer else scheme.onSurfaceVariant
     val opens = stringResource(R.string.home_routines_open)
+    // Up to three by name, in the routine's own words and type, then a count: a row that lists
+    // eight is a section, and this is a line.
+    val named = line.overdue.take(NAMED)
+    val more = line.overdue.size - named.size
+    val heading = stringResource(R.string.home_routines_overdue_title)
+    val names = named.joinToString(stringResource(R.string.common_separator)) { it.text } +
+        if (more > 0) " " + pluralStringResource(R.plurals.home_routines_more, more, more) else ""
+    val quiet = stringResource(if (line.total == 0) R.string.home_routines_title else R.string.home_routines_ok)
+    // **The row's own words first, the door second.** A description of just "abrir las rutinas"
+    // replaces everything under it for a screen reader — the words are still drawn, and TalkBack
+    // reads the description instead — so the one thing the line exists to say, which routine has
+    // not been done, was the one thing it did not say out loud.
+    val spoken = (if (overdue) "$heading $names" else quiet) + stringResource(R.string.common_separator) + opens
     RwilcoCard(
         onClick = onOpen,
         color = if (overdue) scheme.errorContainer else scheme.surfaceContainer,
-        modifier = modifier.semantics { contentDescription = opens },
+        modifier = modifier.semantics { contentDescription = spoken },
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -59,17 +72,12 @@ fun RoutinesLine(line: RoutinesLineUi, onOpen: () -> Unit, modifier: Modifier = 
             Column(Modifier.weight(1f)) {
                 if (overdue) {
                     Text(
-                        text = stringResource(R.string.home_routines_overdue_title),
+                        text = heading,
                         style = MaterialTheme.typography.labelMedium,
                         color = ink,
                     )
-                    // Up to three by name, in the routine's own words and type, then a count:
-                    // a row that lists eight is a section, and this is a line.
-                    val named = line.overdue.take(NAMED)
-                    val more = line.overdue.size - named.size
                     Text(
-                        text = named.joinToString(stringResource(R.string.common_separator)) { it.text } +
-                            if (more > 0) " " + pluralStringResource(R.plurals.home_routines_more, more, more) else "",
+                        text = names,
                         style = MaterialTheme.typography.titleMedium,
                         color = scheme.onErrorContainer,
                         maxLines = 2,
@@ -77,7 +85,7 @@ fun RoutinesLine(line: RoutinesLineUi, onOpen: () -> Unit, modifier: Modifier = 
                     )
                 } else {
                     Text(
-                        text = stringResource(if (line.total == 0) R.string.home_routines_title else R.string.home_routines_ok),
+                        text = quiet,
                         style = MaterialTheme.typography.titleMedium,
                         color = ink,
                     )

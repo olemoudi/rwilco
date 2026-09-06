@@ -502,6 +502,46 @@ after the span in "Vuelve"), and the editor's draft not surviving process death 
 `SavedStateHandle`). The second half of the round — the `⋯` on a card, Tags below "Vuelve",
 warnings off amber, one top bar, TalkBack order on the alert, the tokens — is 0.94.0.
 
+## The review round, 0.97.0 (2026-09-06)
+The pass after the two routine alphas. Two things to fix, both about something the app did
+*behind* the feature rather than in it, and a few tidyings.
+
+- **A card going out was rebuilding every alert channel.** `ensureChannels` makes the four
+  channels for the tone and rhythm it is handed **and deletes every alert channel that is not
+  one of them** — and three paths called it with the defaults in hand: a routine's question, the
+  word about a reset by a place, and `post`, which every ring goes through carrying whichever
+  tone that ring used. So a phone with a chosen tone lost its channels to every question, and —
+  the older half of the same bug — an insistent ring deleted the ordinary tone's channels and
+  the next ordinary ring deleted the insistent one's. The sweep is now `ensureChannels`'s alone
+  and it is called only where the whole answer is known: the launch, and a new collector on
+  `vibration`/`alertSound`/`insistentSound` (there was none — a tone changed in Settings used to
+  take effect through the *ring's* call, which is what made that call load-bearing). A card makes
+  only the channel it is about to use (`ensureAlertChannel`, `ensureQuietChannels`). Nothing was
+  ever silent — Android gives a re-created channel its old user settings back — what it cost was
+  the phone's channel list churning and the "un canal está silenciado" strip having something
+  to find.
+- **Home's routines line said only "abrir las rutinas" to TalkBack.** A `contentDescription` on
+  a card *replaces* the words underneath rather than adding to them, so the one thing the line
+  exists to say — which routine is overdue — was the one thing a screen reader did not hear. The
+  description now carries the row as it is written and the door after it; `RoutinesTourTest`
+  matches it by substring.
+- Tidyings: `buildRoutinesState` counted the routines by sorting the whole list a second time;
+  two KDocs had drifted off what they describe (`DwellRow`'s, stranded above `RoleChoice` by
+  0.96.0, and `nextRecurrence`'s, stranded above `countsInDays` long before that).
+- **Waiting on the owner's word, because they are deletions:** `RoutineFilter.matches` and its
+  wrapper `RoutineFilter.finds` are wired to nothing (0.95.0 wrote them for a chip that ended up
+  filtering another way), and eight string resources are read from nowhere in Kotlin or XML —
+  `editor_repeats`, `editor_repeats_on`, `editor_repeats_off`, `place_use_location`,
+  `place_locating`, `place_no_location`, `settings_backup`, and the plural
+  `home_preset_triggers`.
+- **Read and found sound**, so it need not be read again: the routine's own arithmetic (the
+  early returns in `nextFire`/`nextWake`/`restUntil`, the anchor, the quiet), the ask alarm's
+  bookkeeping (`armAsk` runs before the missed-firing `continue`, and `askedAt` is deliberately
+  out of `SchedulingKey` because `ask` re-arms on its way out), the watch's dispatch of
+  `ASKS`/`RESETS` (a condition circle wears `Crossing.NOTHING` and never becomes an event, so a
+  routine cannot be *rung* by one), the v12 migration and the vault's frozen column list, and
+  the widget (it reads `groupForHome`, which is why no routine is on it).
+
 ## The routines, 0.95.0–0.96.0 (2026-09-06)
 
 What the owner asked for, in his words: a reminder that counts the time since the last time

@@ -119,8 +119,17 @@ class RwilcoApplication : Application() {
         // chosen ones on every start and remake them at the next ring. A ring before the
         // settings arrive makes its own (see post).
         appScope.launch {
-            val current = settings.filterNotNull().first()
-            AlertNotifications.ensureChannels(this@RwilcoApplication, current.vibration, current.alertSound)
+            // And again whenever the tone or the rhythm changes: the channels are made from
+            // them, and the ones the new pair does not ring are swept there. Without this the
+            // old tone's channels stood until the next process start — and a card going out
+            // makes only the one channel it needs (see AlertNotifications.post), on purpose.
+            settings.filterNotNull()
+                .map { Triple(it.vibration, it.alertSound, it.insistentSound) }
+                .distinctUntilChanged()
+                .collect { (vibration, alert, insistent) ->
+                    runCatching { AlertNotifications.ensureChannels(this@RwilcoApplication, vibration, alert, insistent) }
+                        .onFailure { Log.e(TAG, "could not make the alert channels", it) }
+                }
         }
 
         // The periodic checks only. The one-off check at launch is MainActivity's, because "the
@@ -311,7 +320,7 @@ class RwilcoApplication : Application() {
             // the grant allows exist the moment it is given rather than at the next ring.
             if (now.policyAccess != before.policyAccess) {
                 val current = settings.value ?: AppSettings()
-                AlertNotifications.ensureChannels(this@RwilcoApplication, current.vibration, current.alertSound)
+                AlertNotifications.ensureChannels(this@RwilcoApplication, current.vibration, current.alertSound, current.insistentSound)
             }
         }
     }

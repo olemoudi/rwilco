@@ -5,6 +5,7 @@ import dev.rwilco.model.Reminder
 import dev.rwilco.model.RoutineFilter
 import dev.rwilco.model.Status
 import dev.rwilco.model.awaitingAnswer
+import dev.rwilco.model.isRoutine
 import dev.rwilco.model.matches
 import dev.rwilco.model.overdueRoutines
 import dev.rwilco.model.routineAnchor
@@ -94,7 +95,9 @@ fun buildRoutinesState(
         rows = rows,
         filter = filter,
         filters = filters,
-        total = routinesFor(reminders, RoutineFilter.All, now, zone, dayStart).size,
+        // Counted, not listed: how many there are does not need them sorted, and this is
+        // asked again every minute. The same count Home's line is built from.
+        total = reminders.count { it.isRoutine && it.status != Status.DONE },
         overdue = overdueRoutines(reminders, now, zone, dayStart).size,
     )
 }

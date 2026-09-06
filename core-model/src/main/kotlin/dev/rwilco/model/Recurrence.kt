@@ -318,15 +318,6 @@ fun Recurrence.asRepeat(): Trigger.Repeat? = when (this) {
 val Recurrence.repeats: Boolean get() = this != Recurrence.None
 
 /**
- * The next moment, counted from [anchor] — when the reminder was last dealt with, or when it was
- * written if it never has been.
- *
- * [dayStart] is what "the next day" means to this person (09:00 by default): a span measured in
- * days, weeks or months lands there rather than at whatever hour the last one happened to be
- * dealt with, and never before the span itself is up. Hours are left exact, because somebody
- * who says "every six hours" means six hours.
- */
-/**
  * Whether this recurrence measures its span in whole days or more, which is what makes it a
  * thing that lands on a *day* rather than at an instant. See `Reminder.restUntil`.
  */
@@ -340,7 +331,13 @@ val Recurrence.countsInDays: Boolean
     }
 
 /**
- * The next moment a *span* produces, counted from [anchor].
+ * The next moment a *span* produces, counted from [anchor] — when the reminder was last dealt
+ * with, or when it was written if it never has been.
+ *
+ * [dayStart] is what "the next day" means to this person (09:00 by default): a span measured in
+ * days, weeks or months lands there rather than at whatever hour the last one happened to be
+ * dealt with, and never before the span itself is up. Hours are left exact, because somebody
+ * who says "every six hours" means six hours.
  *
  * A calendar is deliberately not one of them and answers null here: its moments come from the
  * dates it names rather than from anything that happened, and working one out needs the reminder
