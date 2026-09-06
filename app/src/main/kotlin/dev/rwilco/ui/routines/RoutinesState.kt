@@ -6,7 +6,6 @@ import dev.rwilco.model.RoutineFilter
 import dev.rwilco.model.Status
 import dev.rwilco.model.awaitingAnswer
 import dev.rwilco.model.isRoutine
-import dev.rwilco.model.matches
 import dev.rwilco.model.overdueRoutines
 import dev.rwilco.model.routineAnchor
 import dev.rwilco.model.routineDeadline
@@ -101,6 +100,3 @@ fun buildRoutinesState(
         overdue = overdueRoutines(reminders, now, zone, dayStart).size,
     )
 }
-
-/** Whether [filter] still finds [reminder]; the row's chip must never filter itself away. */
-fun RoutineFilter.finds(reminder: Reminder): Boolean = matches(reminder)

@@ -77,10 +77,6 @@
     <string name="home_pin_create">Nuevo preset</string>
     <string name="home_pin_create_now">Crear</string>
     <string name="home_created">Creado</string>
-    <plurals name="home_preset_triggers">
-        <item quantity="one">%1$d disparador</item>
-        <item quantity="other">%1$d disparadores</item>
-    </plurals>
     <string name="settings_default_actions">Qué hace un recordatorio en blanco</string>
     <string name="settings_default_actions_hint">Lo que viene activado al empezar un recordatorio desde cero. Cada recordatorio se puede cambiar por su cuenta.</string>
     <string name="settings_routine_actions">Qué hace una rutina nueva</string>
@@ -301,9 +297,6 @@
     </string-array>
     <string name="settings_day_start">Qué significa «al día siguiente»</string>
     <string name="settings_day_start_hint">La hora en la que cae una recurrencia medida en días, semanas o meses. Nunca antes: algo hecho a medianoche vuelve por la mañana.</string>
-    <string name="editor_repeats">Seguir avisando</string>
-    <string name="editor_repeats_on">Marcarlo hecho lo deja esperando al siguiente momento.</string>
-    <string name="editor_repeats_off">Marcarlo hecho lo da por terminado.</string>
     <string name="editor_error_text">Escribe qué quieres recordar.</string>
     <string name="editor_error_text_long">El recordatorio es demasiado largo.</string>
     <string name="editor_edit_trigger_named">Editar «%1$s»</string>
@@ -375,9 +368,6 @@
     <string name="random_days_hint">Todos los días si no marcas ninguno.</string>
     <string name="place_label">Nombre del lugar</string>
     <string name="place_label_hint">Casa, trabajo, el gimnasio…</string>
-    <string name="place_use_location">Usar mi ubicación</string>
-    <string name="place_locating">Localizando…</string>
-    <string name="place_no_location">Sin ubicación todavía</string>
     <string name="place_no_fix">No se pudo obtener la ubicación. Comprueba que está activada y permitida.</string>
     <string name="place_radius">Radio</string>
     <string name="place_metres">%1$d m</string>
@@ -1069,7 +1059,6 @@
     <string name="vault_notice_repo_text">GitHub no encuentra el repositorio donde se guarda la copia. Revisa su nombre en Ajustes › Copia de seguridad.</string>
     <string name="vault_notice_conflict_title">Otro teléfono ha escrito la copia</string>
     <string name="vault_notice_conflict_text">La copia de GitHub no es la última que escribió este teléfono, así que se ha detenido en vez de sobrescribirla. Elige en Ajustes › Copia de seguridad cuál conservar.</string>
-    <string name="settings_backup">Copia de seguridad</string>
     <string name="vault_title">Copia de seguridad</string>
     <string name="vault_card_title">Copia cifrada</string>
     <string name="vault_card_off">Desactivada. Todo se queda en este teléfono.</string>
@@ -1325,6 +1314,12 @@
         <item>Un aviso con sonido va ahora a tus auriculares cuando los llevas puestos, en vez de salir por el altavoz del móvil como haría cualquier alarma. Es un ajuste, en Sonido, y merece la pena desactivarlo si tus auriculares viven en un cajón: un aviso que suena para nadie es un aviso perdido.</item>
         <item>Y ya no te corta la música. Lo que estuvieras escuchando baja unos decibelios y sigue por debajo mientras el aviso suena por encima —el aviso va por el canal de alarma y la música no, así que ninguno tiene que pelear con el otro— y vuelve solo a su volumen. Antes pedía el audio en exclusiva, lo que mataba un podcast por un tono de diez segundos.</item>
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_97_1">
+
+        <item>Limpieza, y nada que se vea: se van ocho textos y dos funciones que ya no leía nadie — lo que quedaba del antiguo interruptor «seguir avisando», del selector de lugar anterior y de una fila de copia de seguridad que se mudó a su propia pantalla.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_97_0">

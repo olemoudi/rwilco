@@ -81,10 +81,6 @@
     <string name="home_pin_create">New preset</string>
     <string name="home_pin_create_now">Create</string>
     <string name="home_created">Created</string>
-    <plurals name="home_preset_triggers">
-        <item quantity="one">%1$d trigger</item>
-        <item quantity="other">%1$d triggers</item>
-    </plurals>
     <string name="settings_default_actions">What a blank reminder does</string>
     <string name="settings_default_actions_hint">What is switched on when you start a reminder from nothing. Every reminder can still be changed on its own.</string>
     <string name="settings_routine_actions">What a blank routine does</string>
@@ -315,9 +311,6 @@
     </string-array>
     <string name="settings_day_start">What "the next day" means</string>
     <string name="settings_day_start_hint">The hour a recurrence measured in days, weeks or months lands on. Never earlier: something dealt with at midnight comes back in the morning.</string>
-    <string name="editor_repeats">Keep reminding me</string>
-    <string name="editor_repeats_on">Marking it done waits for the next moment.</string>
-    <string name="editor_repeats_off">Marking it done finishes it.</string>
     <string name="editor_error_text">Write what you want to remember.</string>
     <string name="editor_error_text_long">The reminder is too long.</string>
     <string name="editor_revives">Saving puts it back on the list.</string>
@@ -382,9 +375,6 @@
     <string name="random_days_hint">Every day unless you pick some.</string>
     <string name="place_label">Place name</string>
     <string name="place_label_hint">Home, work, the gym…</string>
-    <string name="place_use_location">Use my location</string>
-    <string name="place_locating">Locating…</string>
-    <string name="place_no_location">No location yet</string>
     <string name="place_no_fix">Could not get a location. Check location is on and allowed.</string>
     <string name="place_radius">Radius</string>
     <string name="place_metres">%1$d m</string>
@@ -1084,7 +1074,6 @@
     <string name="vault_notice_repo_text">GitHub does not find the repository the backup writes to. Check its name in Settings › Backup.</string>
     <string name="vault_notice_conflict_title">Another phone wrote the backup</string>
     <string name="vault_notice_conflict_text">The copy on GitHub is not the one this phone last wrote, so it stopped rather than write over it. Choose in Settings › Backup which one to keep.</string>
-    <string name="settings_backup">Backup</string>
     <string name="vault_title">Backup</string>
     <string name="vault_card_title">Encrypted backup</string>
     <string name="vault_card_off">Off. Everything stays on this phone.</string>
@@ -1340,6 +1329,12 @@
         <item>A reminder with sound now goes to your headphones when you are wearing any, instead of out of the phone\'s speaker as an alarm otherwise would. It is a setting, in Sound, and it is worth turning off if your earbuds live in a drawer: a reminder played to nobody is a reminder missed.</item>
         <item>And it no longer stops your music. What was playing drops a few decibels and carries on underneath while the reminder sounds over it — the reminder is on the alarm channel and the music is not, so neither has to fight the other — and comes back by itself. It used to ask for the audio outright, which ended podcasts for a ten-second chime.</item>
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_97_1">
+
+        <item>Housekeeping, and nothing you can see: eight words and two functions the app no longer read anywhere are gone — what was left of the old «keep reminding me» switch, of the place picker before this one, and of a backup row that moved into its own screen.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_97_0">

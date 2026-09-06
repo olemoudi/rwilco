@@ -528,12 +528,13 @@ The pass after the two routine alphas. Two things to fix, both about something t
 - Tidyings: `buildRoutinesState` counted the routines by sorting the whole list a second time;
   two KDocs had drifted off what they describe (`DwellRow`'s, stranded above `RoleChoice` by
   0.96.0, and `nextRecurrence`'s, stranded above `countsInDays` long before that).
-- **Waiting on the owner's word, because they are deletions:** `RoutineFilter.matches` and its
-  wrapper `RoutineFilter.finds` are wired to nothing (0.95.0 wrote them for a chip that ended up
-  filtering another way), and eight string resources are read from nowhere in Kotlin or XML —
-  `editor_repeats`, `editor_repeats_on`, `editor_repeats_off`, `place_use_location`,
-  `place_locating`, `place_no_location`, `settings_backup`, and the plural
-  `home_preset_triggers`.
+- **The corpses, gone in 0.97.1** once the owner said so: `RoutineFilter.matches` and its wrapper
+  `RoutineFilter.finds` (0.95.0 wrote them for a chip that ended up filtering another way), and
+  eight words read from nowhere in Kotlin or XML — `editor_repeats`, `editor_repeats_on`,
+  `editor_repeats_off`, `place_use_location`, `place_locating`, `place_no_location`,
+  `settings_backup`, and the plural `home_preset_triggers`. The sweep that found them is one
+  script and worth keeping: for every `<string name=`, grep the tree for `R.string.<name>` and
+  `@string/<name>` — the ones with neither are dead, and only `app_name` is honestly EN-only.
 - **Read and found sound**, so it need not be read again: the routine's own arithmetic (the
   early returns in `nextFire`/`nextWake`/`restUntil`, the anchor, the quiet), the ask alarm's
   bookkeeping (`armAsk` runs before the missed-firing `continue`, and `askedAt` is deliberately

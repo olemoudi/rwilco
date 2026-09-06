@@ -4,7 +4,6 @@ import java.time.Duration
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
-import java.util.Locale
 
 /*
  * Routines: the reminders that count time since the last time something was done.
@@ -106,9 +105,3 @@ fun routineFilters(reminders: List<Reminder>, now: Instant, zone: ZoneId, daySta
 /** Every tag an open routine wears, most used first; the routines screen's own chips. */
 fun routineTags(reminders: List<Reminder>): List<String> =
     rankTags(reminders.filter { it.isRoutine && it.status != Status.DONE })
-
-/** Whether [filter] would find [reminder] — for a chip that must never filter itself away. */
-fun RoutineFilter.matches(reminder: Reminder): Boolean = when (this) {
-    RoutineFilter.All, RoutineFilter.Overdue -> true
-    is RoutineFilter.Tag -> reminder.tags.any { it.lowercase(Locale.ROOT) == tag.lowercase(Locale.ROOT) }
-}
