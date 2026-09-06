@@ -136,6 +136,19 @@ class RoutinesTourTest {
         rule.onNodeWithText(s(R.string.routines_filter_all)).performClick()
         rule.waitUntilShown(s(R.string.routines_question, plants))
 
+        // The three controls a routine's card carries, the way a reminder's does (0.99.0): the
+        // "⋯" opens the same menu the held press does, and "posponer" now ends with a calendar.
+        rule.onNodeWithContentDescription(s(R.string.card_more, car)).performClick()
+        rule.waitUntilShown(s(R.string.home_snooze))
+        rule.onNodeWithText(s(R.string.home_snooze), useUnmergedTree = true).performClick()
+        rule.waitUntilShown(s(R.string.snooze_pick_date))
+        shot("routines-menu")
+        rule.onNodeWithText(s(R.string.snooze_pick_date), useUnmergedTree = true).performClick()
+        rule.waitUntilShown(s(R.string.snooze_until_title))
+        shot("routines-snooze-date")
+        rule.onNodeWithText(s(R.string.sheet_cancel), useUnmergedTree = true).performClick()
+        rule.waitUntilGone(s(R.string.snooze_until_title))
+
         // The swipe's own accessibility action is the same door the gesture reaches: the car
         // moved, the count starts again, and the snackbar says when it will ask next.
         // The actions sit on the swipe's own node, over the card that carries the words.

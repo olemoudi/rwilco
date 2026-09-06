@@ -502,6 +502,34 @@ after the span in "Vuelve"), and the editor's draft not surviving process death 
 `SavedStateHandle`). The second half of the round — the `⋯` on a card, Tags below "Vuelve",
 warnings off amber, one top bar, TalkBack order on the alert, the tokens — is 0.94.0.
 
+## The routines, second look, 0.99.0 (2026-09-06)
+Three things the owner asked for once the routines were on his phone. All three are about the
+same thing: a routine had the model of its own and the surfaces of a reminder.
+
+- **A routine's alert wears its own colour and its own word.** `routineColor` is a recognition
+  colour beside the families' (`FamilyVisuals.kt`), a rose because every other hue is spoken
+  for — amber is what fires next, blue/green/violet are the three families, and the error red an
+  overdue routine wears says "the span ran out", not "this is a routine". The lamp glow and the
+  eyebrow take it, and the eyebrow says RUTINA. In the shade the title becomes the question
+  ("¿Has hecho «X»?", `notif_routine_question`), for the deadline's card and the question's
+  alike; the net's "ICYMI" still outranks it, because that word is about the ring that got away.
+- **The cards grew the three controls a reminder's card has** (pause, edit, `⋯`) and the words
+  are `titleLarge` like a reminder's. Nothing new underneath: the `⋯` opens the same menu the
+  held press always did.
+- **"Posponer" ends with "a una fecha"** everywhere the offers are shown — the menu on Home and
+  on the routines, and the alert itself, where it is held like every other answer there.
+  `SnoozeUntilSheet` is the app's own `MonthCalendar` plus a `TimeField`; `ReminderFiring`
+  grew `snoozeUntil` beside `snooze` (one `putOff` underneath) and refuses a moment already
+  behind us — armed, that alarm arrives at once. **It opens on the first day the hour is still
+  ahead on**: at nine at night, "posponer hasta las 09:00" means tomorrow, and the first version
+  opened on today with its button greyed out.
+- **Home lists the overdue routines rather than counting them.** One row each, with the words
+  and how long it has been, and the tap carries the id: `Routes.Routines(focus)` →
+  `RoutinesScreen(focus)` scrolls to that row, once (the list is rebuilt every minute, and a
+  scroll on every rebuild would fight the thumb). `homeCardIndex` counts rows now, not a flag.
+  Trap found in the picture: `countdownText(partsBetween(...))` already says "hace"; wrapped in
+  `countdown_ago` the row read "hace hace 30 d".
+
 ## Days of the month, 0.98.0 (2026-09-06)
 The first of the four the owner picked off the routines' "not done on purpose" list: a routine
 asking its question on a date ("pregúntame el día 1 si he cambiado el filtro").

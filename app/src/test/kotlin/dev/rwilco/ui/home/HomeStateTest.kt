@@ -357,10 +357,12 @@ class HomeStateTest {
         val withHero = withTags.copy(hero = HeroUi(card("hero"), Instant.EPOCH))
         assertEquals(1, homeCardIndex(withHero, "hero", strip = false, pinned = false))
         assertEquals(3, homeCardIndex(withHero, "a", strip = false, pinned = false))
-        // The line about the routines sits under everything above the list and over the hero.
-        assertEquals(2, homeCardIndex(withHero, "hero", strip = false, pinned = false, routinesLine = true))
-        assertEquals(4, homeCardIndex(withHero, "a", strip = false, pinned = false, routinesLine = true))
-        assertEquals(6, homeCardIndex(withHero, "a", strip = true, pinned = false, undoRow = true, routinesLine = true))
+        // The routine rows sit under everything above the list and over the hero — one row
+        // when nothing is owed, and one per overdue routine when something is.
+        assertEquals(2, homeCardIndex(withHero, "hero", strip = false, pinned = false, routinesRows = 1))
+        assertEquals(4, homeCardIndex(withHero, "a", strip = false, pinned = false, routinesRows = 1))
+        assertEquals(6, homeCardIndex(withHero, "a", strip = true, pinned = false, undoRow = true, routinesRows = 1))
+        assertEquals(6, homeCardIndex(withHero, "a", strip = false, pinned = false, routinesRows = 3), "three overdue push it three")
     }
 
     @Test

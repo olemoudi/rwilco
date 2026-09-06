@@ -11,6 +11,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Snooze
 import androidx.compose.ui.Modifier
@@ -45,6 +46,11 @@ fun SnoozeOffers(
     /** The place answers, after the clock ones: "al llegar a casa", "al salir de aquí". */
     places: List<SnoozePlace> = emptyList(),
     onPickPlace: (SnoozePlace) -> Unit = {},
+    /**
+     * "A una fecha concreta": always the last offer, where there is a calendar to open. Every
+     * other one is a step from now, which is the wrong shape for an answer given a week ahead.
+     */
+    onPickDate: (() -> Unit)? = null,
     guard: PressGuard? = null,
 ) {
     val spacing = Tokens.spacing
@@ -65,6 +71,15 @@ fun SnoozeOffers(
                 accent = TriggerFamily.PLACE.color(),
                 guard = guard,
                 icon = Icons.Outlined.Place,
+            )
+        }
+        // Last, and after the places: it is the only one that asks a second question.
+        if (onPickDate != null) {
+            SnoozeButton(
+                label = stringResource(R.string.snooze_pick_date),
+                onClick = onPickDate,
+                guard = guard,
+                icon = Icons.Outlined.Event,
             )
         }
     }

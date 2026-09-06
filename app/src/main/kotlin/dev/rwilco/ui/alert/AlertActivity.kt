@@ -284,6 +284,7 @@ class AlertActivity : ComponentActivity() {
                         customMinutes = current.snoozeCustomMinutes,
                         places = places,
                         onSnoozeToPlace = { offer -> snoozeToPlace(first.id, offer) },
+                        onSnoozeUntil = { until -> answer(first.id) { app.firing.snoozeUntil(first.id, until) } },
                         ringing = noise,
                         onSilence = ::silence,
                         // Silent because it was tapped open: the eyes arrived before the thumb.

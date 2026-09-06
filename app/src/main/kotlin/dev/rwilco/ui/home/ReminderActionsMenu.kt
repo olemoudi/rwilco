@@ -87,6 +87,8 @@ fun ReminderActionsMenu(
     onPause: () -> Unit,
     onDelete: () -> Unit,
     onSnooze: (Snooze) -> Unit,
+    /** "A una fecha concreta": the menu closes and the screen behind it opens the calendar. */
+    onSnoozeToDate: () -> Unit = {},
     onCancelSnooze: () -> Unit,
     /** The place answers, after the clock ones; empty on a phone that cannot give them. */
     places: List<SnoozePlace> = emptyList(),
@@ -157,7 +159,14 @@ fun ReminderActionsMenu(
                                 color = scheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = spacing.sm),
                             )
-                            SnoozeOffers(offers = Snooze.entries, customMinutes = customMinutes, onPick = onSnooze, places = places, onPickPlace = onSnoozeToPlace)
+                            SnoozeOffers(
+                                offers = Snooze.entries,
+                                customMinutes = customMinutes,
+                                onPick = onSnooze,
+                                places = places,
+                                onPickPlace = onSnoozeToPlace,
+                                onPickDate = onSnoozeToDate,
+                            )
                         } else {
                             ActionRow(
                                 icon = Icons.Outlined.Snooze,

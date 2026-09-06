@@ -771,18 +771,36 @@ class ReminderFiring(
      * that ignored the answer is not.
      */
     suspend fun snooze(id: String, snooze: Snooze) = lock.withLock {
+        val settings = settings()
+        val until = snooze.until(clock.instant(), clock.zone, settings.weekendDay, settings.weekendTime, settings.dayStart, settings.snoozeCustomMinutes)
+        putOff(id, until, said = snooze.name)
+    }
+
+    /**
+     * "Posponer · a una fecha concreta": the same put-off, at a moment somebody picked off a
+     * calendar rather than one of the offers' own lengths. A moment already behind us is
+     * refused rather than written: a snooze into the past rings the instant it is armed.
+     */
+    suspend fun snoozeUntil(id: String, until: Instant) = lock.withLock {
+        if (until <= clock.instant()) {
+            Diag.note(TAG_DIAG, "r=${short(id)} snooze to $until dropped: already behind us")
+            return@withLock
+        }
+        putOff(id, until, said = "a date")
+    }
+
+    /** The write both of them make; the lock is the caller's. */
+    private suspend fun putOff(id: String, until: Instant, said: String) {
         // A notification outlives the row it was posted for (see [dismiss]), and "Posponer" on
         // one of those has nothing to write — but it still has a card to take down.
         if (repository.get(id) == null) {
             repeater.cancel(id)
             AlertNotifications.cancel(context, id)
-            return@withLock
+            return
         }
         val now = clock.instant()
-        val settings = settings()
-        val until = snooze.until(now, clock.zone, settings.weekendDay, settings.weekendTime, settings.dayStart, settings.snoozeCustomMinutes)
         repository.snooze(id, until)
-        Diag.note(TAG_DIAG, "r=${short(id)} snoozed ($snooze) until $until")
+        Diag.note(TAG_DIAG, "r=${short(id)} snoozed ($said) until $until")
         repository.record(id, FiringKind.SNOOZED, now, detail = until.toString())
         repeater.cancel(id)
         AlertNotifications.cancel(context, id)

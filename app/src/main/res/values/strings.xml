@@ -596,6 +596,11 @@
     <string name="condition_title">Only if</string>
     <string name="condition_window_hint">The trigger only counts inside these hours.</string>
     <string name="condition_kind_month_days">Month days</string>
+    <string name="alert_routine_label">Routine</string>
+    <string name="snooze_pick_date">To a date</string>
+    <string name="snooze_until_title">Snooze until</string>
+    <string name="snooze_until_past">That moment has already passed.</string>
+    <string name="notif_routine_question">Have you done «%1$s»?</string>
     <string name="condition_month_days_hint">The trigger only counts on those days of the month. The 31st is the last day of a month that has no 31st.</string>
     <plurals name="condition_month_days">
         <item quantity="one">day %1$s</item>
@@ -1339,6 +1344,18 @@
         <item>A reminder with sound now goes to your headphones when you are wearing any, instead of out of the phone\'s speaker as an alarm otherwise would. It is a setting, in Sound, and it is worth turning off if your earbuds live in a drawer: a reminder played to nobody is a reminder missed.</item>
         <item>And it no longer stops your music. What was playing drops a few decibels and carries on underneath while the reminder sounds over it — the reminder is on the alarm channel and the music is not, so neither has to fight the other — and comes back by itself. It used to ask for the audio outright, which ended podcasts for a ten-second chime.</item>
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_99_0">
+
+        <item>A routine no longer rings like a reminder. The full screen lights up in the routines\' own colour and says ROUTINE where it used to say the app\'s name, and in the shade the card asks «Have you done “move the car”?» instead of repeating the words back at you.</item>
+
+        <item>Routine cards are reminder cards now: bigger, with pause, edit and «⋯» in plain sight rather than behind a long press only.</item>
+
+        <item>«Snooze» always ends with «to a date»: a calendar and an hour, for the answers that are a week away rather than ten minutes. On the routines, on Home, and on the alarm itself.</item>
+
+        <item>Home stops counting overdue routines in a box and gives each one its own row — its words, how long it has been — and a tap lands on that routine inside the list, ready to be dealt with.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_98_0">

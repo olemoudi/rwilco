@@ -22,6 +22,7 @@ import dev.rwilco.model.NetWord
 import dev.rwilco.model.saysItGotAway
 import dev.rwilco.model.Presence
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.isRoutine
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.AlertSound
 import dev.rwilco.model.Snooze
@@ -241,7 +242,7 @@ object AlertNotifications {
         }
         val builder = NotificationCompat.Builder(context, CHANNEL_ASK)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(context.getString(R.string.routines_question, reminder.text))
+            .setContentTitle(context.getString(R.string.notif_routine_question, reminder.text))
             .setContentText(listOfNotNull(ago, due).joinToString(context.getString(R.string.common_separator)))
             .setContentIntent(routinesIntent(context, askNotificationId(reminder.id)))
             .setAutoCancel(true)
@@ -386,7 +387,16 @@ object AlertNotifications {
         // marked: "ICYMI: sacar la basura" is legible collapsed, expanded, and in a bundle.
         // Only for the words that mean something got away ([saysItGotAway]) — a reminder still
         // waiting at its place has not been missed.
-        val title = if (nudge?.saysItGotAway == true) context.getString(R.string.notif_net_prefix, reminder.text) else reminder.text
+        // A routine's card asks rather than states: "¿Has hecho «mover el coche»?" is the whole
+        // of what its ring is for, and in a shade full of reminders it is what tells the two
+        // apart at a glance (the full-screen alert says so in its own colour; see AlertScreen).
+        // The net's prefix outranks it: "ICYMI" is about the ring that got away, not about the
+        // kind of reminder it was.
+        val title = when {
+            nudge?.saysItGotAway == true -> context.getString(R.string.notif_net_prefix, reminder.text)
+            reminder.isRoutine -> context.getString(R.string.notif_routine_question, reminder.text)
+            else -> reminder.text
+        }
         val builder = NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)

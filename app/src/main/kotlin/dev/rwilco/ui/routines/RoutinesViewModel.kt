@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalTime
 
 /** What the routines screen says in a snackbar, each with a way back. */
 sealed interface RoutinesEvent {
@@ -98,6 +99,10 @@ class RoutinesViewModel(
     /** How long "un rato" is on the menu's snooze offers: the person's own length. */
     val snoozeCustomMinutes: StateFlow<Int> = settings.filterNotNull().map { it.snoozeCustomMinutes }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings().snoozeCustomMinutes)
+
+    /** The hour a date with no time of its own means, which is what the calendar opens on. */
+    val defaultTime: StateFlow<LocalTime> = settings.filterNotNull().map { it.defaultTime }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings().defaultTime)
 
     /** Tapping the selected chip again clears the filter. */
     fun selectFilter(chosen: RoutineFilter) {
@@ -173,6 +178,15 @@ class RoutinesViewModel(
         viewModelScope.launch {
             val before = repository.get(id) ?: return@launch
             firing.snooze(id, snooze)
+            events.send(RoutinesEvent.Snoozed(before, repository.get(id)?.snoozedUntil))
+        }
+    }
+
+    /** "A una fecha concreta": the same door, at a moment picked off a calendar. */
+    fun snoozeUntil(id: String, until: Instant) {
+        viewModelScope.launch {
+            val before = repository.get(id) ?: return@launch
+            firing.snoozeUntil(id, until)
             events.send(RoutinesEvent.Snoozed(before, repository.get(id)?.snoozedUntil))
         }
     }

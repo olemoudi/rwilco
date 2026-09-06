@@ -659,6 +659,17 @@ class HomeViewModel(
      * "Al llegar a casa" / "al salir de aquí" from a held card. The second first has to know
      * where here is; with nothing to draw the circle around it says so and writes nothing.
      */
+    /** "A una fecha concreta": the same door, at a moment picked off a calendar. */
+    fun snoozeUntil(id: String, until: Instant) {
+        viewModelScope.launch {
+            val reminder = repository.get(id) ?: return@launch
+            val sideBefore = sideOf(reminder)
+            firing.snoozeUntil(id, until)
+            val after = repository.get(id) ?: return@launch
+            events.send(HomeEvent.Snoozed(reminder, after.snoozedUntil, sideBefore = sideBefore))
+        }
+    }
+
     fun snoozeToPlace(id: String, offer: SnoozePlace, hereLabel: String) {
         viewModelScope.launch {
             val reminder = repository.get(id) ?: return@launch

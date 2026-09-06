@@ -31,9 +31,14 @@ object Routes {
     @Serializable
     data object Done
 
-    /** The routines — what counts time since the last time it was done. See `Routines.kt`. */
+    /**
+     * The routines — what counts time since the last time it was done. See `Routines.kt`.
+     *
+     * [focus] is the routine to bring into view: Home's overdue rows each name one, and a row
+     * tapped there has to land on the routine it names rather than at the top of a list.
+     */
     @Serializable
-    data object Routines
+    data class Routines(val focus: String? = null)
 
     @Serializable
     data object Settings

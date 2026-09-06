@@ -53,10 +53,12 @@ import dev.rwilco.ui.components.rememberPressGuard
 import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.format.triggerLine
 import dev.rwilco.ui.theme.Tokens
+import dev.rwilco.ui.theme.routineColor
 import dev.rwilco.ui.theme.Tracking
 import dev.rwilco.ui.theme.icon
 import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
 import dev.rwilco.ui.components.SnoozeOffers
+import dev.rwilco.ui.components.SnoozeUntilSheet
 import dev.rwilco.model.SnoozePlace
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.semantics.isTraversalGroup
@@ -65,6 +67,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import dev.rwilco.ui.format.join
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import java.time.Instant
+import java.time.ZonedDateTime
 
 /**
  * The lamp at full brightness. The reminder's words as big as they fit, and one button the
@@ -93,6 +100,8 @@ fun AlertScreen(
     /** The place answers this phone can give: "al llegar a casa", "al salir de aquí". */
     places: List<SnoozePlace> = emptyList(),
     onSnoozeToPlace: (SnoozePlace) -> Unit = {},
+    /** "A una fecha concreta", last among the offers; null where there is nothing to write to. */
+    onSnoozeUntil: ((Instant) -> Unit)? = null,
     /**
      * Whether there is a noise going on that will still be going when a thumb arrives — a buzz
      * or the insistent tone, never a single one that has already stopped. While there is, the
@@ -119,11 +128,19 @@ fun AlertScreen(
     // A new reminder on the same screen is a new guard: the thumb that answered the last one
     // is still where this one's "Hecho" is.
     val guard = rememberPressGuard(content, openedOnPurpose = openedOnPurpose)
+    // The calendar behind "posponer · a una fecha", which is the one offer that asks a second
+    // question rather than writing a length.
+    var pickingDate by remember { mutableStateOf(false) }
+    // **A routine does not ring in amber.** Amber is what fires next, and a routine's ring is
+    // not an appointment arriving but a span running out — a different thing to wake up to, and
+    // the one the phone shows least often. So the lamp and the word above it wear the routines'
+    // own colour, which is where the eye lands first on a screen that takes over.
+    val accent = if (content.routine) routineColor() else scheme.primary
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(scheme.background)
-            .lampGlow(scheme.primary, intensity = 1f)
+            .lampGlow(accent, intensity = 1f)
             // The cutout too (0.94.0): the eyebrow sat under a punch-hole on a phone on its side.
             .safeDrawingPadding(),
     ) {
@@ -142,11 +159,19 @@ fun AlertScreen(
                     }
                     Spacer(Modifier.width(spacing.xs))
                 }
-                val eyebrow = stringResource(if (preview) R.string.alert_preview_label else R.string.app_name)
+                // And it says which it is in as many letters: a rehearsal says so, a routine
+                // says so, and everything else is the app's own name.
+                val eyebrow = stringResource(
+                    when {
+                        preview -> R.string.alert_preview_label
+                        content.routine -> R.string.alert_routine_label
+                        else -> R.string.app_name
+                    },
+                )
                 Text(
                     text = eyebrow.uppercase(locale),
                     style = MaterialTheme.typography.labelMedium.copy(letterSpacing = Tracking.eyebrow, fontWeight = FontWeight.SemiBold),
-                    color = scheme.primary,
+                    color = accent,
                     // Read as the word, not spelt out: capitals are for the eye.
                     modifier = Modifier.weight(1f).semantics { contentDescription = eyebrow },
                 )
@@ -213,7 +238,17 @@ fun AlertScreen(
             // Every answer, each its own tap target and none of them a chip a thumb has to aim
             // at. They sit clear of the Done button, because the two mean opposite things and a
             // half-awake hand should not be able to confuse them.
-            SnoozeOffers(offers = Snooze.entries, customMinutes = customMinutes, onPick = onSnooze, places = places, onPickPlace = onSnoozeToPlace, guard = guard)
+            SnoozeOffers(
+                offers = Snooze.entries,
+                customMinutes = customMinutes,
+                onPick = onSnooze,
+                places = places,
+                onPickPlace = onSnoozeToPlace,
+                // Held like the rest, and then it asks its question: the calendar comes up over
+                // the alert, which by then has stopped being an alarm and become a form.
+                onPickDate = onSnoozeUntil?.let { { pickingDate = true } },
+                guard = guard,
+            )
             Spacer(Modifier.height(spacing.lg))
             // "Ver" goes ABOVE "Hecho", not under it. The bottom of the screen is where the
             // thumb lands, and it belongs to the one answer this screen is asking for — an
@@ -306,6 +341,14 @@ fun AlertScreen(
                 }
             }
             Spacer(Modifier.height(spacing.sm))
+        }
+        if (pickingDate && onSnoozeUntil != null) {
+            SnoozeUntilSheet(
+                now = ZonedDateTime.now(),
+                defaultTime = content.defaultTime,
+                onConfirm = { until -> pickingDate = false; onSnoozeUntil(until) },
+                onDismiss = { pickingDate = false },
+            )
         }
     }
 }

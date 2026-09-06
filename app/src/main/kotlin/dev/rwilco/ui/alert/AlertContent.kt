@@ -1,6 +1,7 @@
 package dev.rwilco.ui.alert
 
 import dev.rwilco.model.Trigger
+import dev.rwilco.model.isRoutine
 import dev.rwilco.model.TriggerFamily
 import dev.rwilco.model.family
 import dev.rwilco.ui.editor.Draft
@@ -15,6 +16,8 @@ data class AlertContent(
     val family: TriggerFamily,
     val today: LocalDate,
     val defaultTime: LocalTime,
+    /** A routine's ring, which wears its own word and its own colour: see [routineColor]. */
+    val routine: Boolean = false,
 ) {
     companion object {
         /**
@@ -31,6 +34,7 @@ data class AlertContent(
                 family = trigger?.family ?: TriggerFamily.TIME,
                 today = today,
                 defaultTime = defaultTime,
+                routine = reminder.isRoutine,
             )
         }
 
@@ -43,6 +47,7 @@ data class AlertContent(
                 family = trigger?.family ?: TriggerFamily.TIME,
                 today = today,
                 defaultTime = defaultTime,
+                routine = draft.recurrence is dev.rwilco.model.Recurrence.Since,
             )
         }
     }

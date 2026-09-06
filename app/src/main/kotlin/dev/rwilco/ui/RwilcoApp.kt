@@ -119,7 +119,7 @@ fun RwilcoApp(
                 onDestinationConsumed()
             }
             requestedDestination == MainActivity.DESTINATION_ROUTINES -> {
-                open(Routes.Routines)
+                open(Routes.Routines())
                 onDestinationConsumed()
             }
             requestedDestination == MainActivity.DESTINATION_BACKUP -> {
@@ -170,7 +170,7 @@ fun RwilcoApp(
                         onClone = { id -> navController.navigateOnce(Routes.Editor(cloneOfId = id)) },
                         onKeepAsPreset = { id -> navController.navigateOnce(Routes.Editor(cloneOfId = id, newPreset = true)) },
                         onDoneList = { navController.navigateOnce(Routes.Done) },
-                        onRoutines = { navController.navigateOnce(Routes.Routines) },
+                        onRoutines = { focus -> navController.navigateOnce(Routes.Routines(focus)) },
                         onSettings = { navController.navigateOnce(Routes.Settings) },
                         // Built here rather than in the ViewModel: a report is a snapshot of the
                         // whole app — permissions, settings, the alarm log, the place watch —
@@ -229,10 +229,11 @@ fun RwilcoApp(
                         onOpen = { id -> navController.navigateOnce(Routes.Editor(id)) },
                     )
                 }
-                composable<Routes.Routines> {
+                composable<Routes.Routines> { entry ->
                     RoutinesScreen(
                         viewModel = viewModel(factory = RoutinesViewModel.Factory(app)),
                         clock = app.clock,
+                        focus = entry.toRoute<Routes.Routines>().focus,
                         onBack = { navController.popBackStack() },
                         onOpen = { id -> navController.navigateOnce(Routes.Editor(id)) },
                         onNew = { navController.navigateOnce(Routes.Editor(routine = true)) },

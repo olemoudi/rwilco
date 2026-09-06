@@ -77,6 +77,7 @@ import dev.rwilco.model.TagFilter
 import dev.rwilco.ui.components.EmptyState
 import dev.rwilco.ui.components.ListPlaceholder
 import dev.rwilco.ui.components.LocalSnackbar
+import dev.rwilco.ui.components.SnoozeUntilSheet
 import dev.rwilco.ui.components.SectionHeader
 import dev.rwilco.ui.components.TagChip
 import dev.rwilco.ui.components.rememberNow
@@ -149,7 +150,8 @@ fun HomeScreen(
     onSettings: () -> Unit,
     onDiagnostics: () -> Unit,
     /** The routines screen, behind the one line Home keeps about them (see RoutinesLine). */
-    onRoutines: () -> Unit = {},
+    /** The routines screen; the id is the one to scroll to, when the tap came from its row. */
+    onRoutines: (String?) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val search by viewModel.search.collectAsStateWithLifecycle()
@@ -180,6 +182,8 @@ fun HomeScreen(
     var askingWordsFor by rememberSaveable { mutableStateOf<String?>(null) }
     // The card being held, and so the one the actions menu is about.
     var actingOn by rememberSaveable { mutableStateOf<String?>(null) }
+    // The card a calendar is open for: "posponer · a una fecha concreta" (see SnoozeUntilSheet).
+    var pickingDateFor by rememberSaveable { mutableStateOf<String?>(null) }
     val snackbar = LocalSnackbar.current
     val doneMessage = stringResource(R.string.home_marked_done)
     val deletedMessage = stringResource(R.string.home_deleted)
@@ -389,6 +393,11 @@ fun HomeScreen(
                     actingOn = null
                     viewModel.snooze(held.id, snooze)
                 },
+                // A second question, so the menu gets out of the way and the calendar takes over.
+                onSnoozeToDate = {
+                    actingOn = null
+                    pickingDateFor = held.id
+                },
                 onCancelSnooze = {
                     actingOn = null
                     viewModel.cancelSnooze(held.id)
@@ -404,6 +413,15 @@ fun HomeScreen(
                 onDismiss = { actingOn = null },
             )
         }
+    }
+
+    pickingDateFor?.let { id ->
+        SnoozeUntilSheet(
+            now = viewModel.clock.instant().atZone(zone),
+            defaultTime = state.defaultTime,
+            onConfirm = { until -> pickingDateFor = null; viewModel.snoozeUntil(id, until) },
+            onDismiss = { pickingDateFor = null },
+        )
     }
 
     val spacing = Tokens.spacing
@@ -535,7 +553,15 @@ fun HomeScreen(
         LaunchedEffect(justSaved, state.sections, state.hero) {
             val saved = justSaved ?: return@LaunchedEffect
             val id = saved.id
-            val index = homeCardIndex(state, id, strip = stripShown, pinned = presets.isNotEmpty(), undoRow = pendingDelete != null, tagsRow = tagsRowShown, routinesLine = state.loaded)
+            val index = homeCardIndex(
+                state,
+                id,
+                strip = stripShown,
+                pinned = presets.isNotEmpty(),
+                undoRow = pendingDelete != null,
+                tagsRow = tagsRowShown,
+                routinesRows = if (!state.loaded) 0 else state.routines.overdue.size.coerceAtLeast(1),
+            )
                 ?: return@LaunchedEffect
             if (saved.created) {
                 viewModel.expandCard(id)
@@ -670,12 +696,24 @@ fun HomeScreen(
                         )
                     }
                 }
-                // The routines, in one line, over the hero: the door to their screen, and the
-                // word about the ones whose span is up. Always there once the list has been
-                // read — the row is the door, and a door that comes and goes is not one.
+                // The routines, over the hero: the door to their screen when nothing is owed,
+                // and **one row per overdue routine** when something is — each one landing on
+                // the routine it names. Always there once the list has been read: the row is
+                // the door, and a door that comes and goes is not one.
                 if (state.loaded) {
-                    item(key = "routines", contentType = "routines") {
-                        RoutinesLine(line = state.routines, onOpen = onRoutines, modifier = Modifier.animateItem())
+                    if (state.routines.overdue.isEmpty()) {
+                        item(key = "routines", contentType = "routines") {
+                            RoutinesDoor(total = state.routines.total, onOpen = { onRoutines(null) }, modifier = Modifier.animateItem())
+                        }
+                    } else {
+                        items(state.routines.overdue, key = { "routine-" + it.id }, contentType = { "routine-overdue" }) { routine ->
+                            OverdueRoutineRow(
+                                routine = routine,
+                                now = viewModel.clock.instant(),
+                                onOpen = { onRoutines(routine.id) },
+                                modifier = Modifier.animateItem(),
+                            )
+                        }
                     }
                 }
                 state.hero?.let { hero ->

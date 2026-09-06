@@ -16,15 +16,21 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Autorenew
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.MoreHoriz
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -55,6 +61,7 @@ import dev.rwilco.ui.components.ListPlaceholder
 import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.RwilcoTopBar
+import dev.rwilco.ui.components.SnoozeUntilSheet
 import dev.rwilco.ui.components.TagChip
 import dev.rwilco.ui.components.TagLabel
 import dev.rwilco.ui.components.rememberNow
@@ -70,6 +77,7 @@ import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.tagColor
 import java.time.Clock
 import java.time.Duration
+import java.time.Instant
 
 /**
  * The routines: what counts time since the last time it was done (see `Routines.kt`).
@@ -87,6 +95,8 @@ import java.time.Duration
 fun RoutinesScreen(
     viewModel: RoutinesViewModel,
     clock: Clock,
+    /** The routine to bring into view: a row tapped on Home names one (see `RoutinesLine.kt`). */
+    focus: String? = null,
     onBack: () -> Unit,
     onOpen: (String) -> Unit,
     onNew: () -> Unit,
@@ -96,6 +106,7 @@ fun RoutinesScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val pendingDelete by viewModel.pendingDelete.collectAsStateWithLifecycle()
     val snoozeCustomMinutes by viewModel.snoozeCustomMinutes.collectAsStateWithLifecycle()
+    val defaultTime by viewModel.defaultTime.collectAsStateWithLifecycle()
     val spacing = Tokens.spacing
     // By the minute: "hace 10 d 3 h" moves, and a "Sí" becomes a "No" when the span runs out.
     val now by rememberNow(60_000, clock)
@@ -111,6 +122,13 @@ fun RoutinesScreen(
     val actionsLabel = stringResource(R.string.home_card_actions)
     // The row being held, and so the one the actions menu is about.
     var actingOn by rememberSaveable { mutableStateOf<String?>(null) }
+    // And the one a calendar is open for: "posponer · a una fecha concreta" asks a second
+    // question, so the menu closes and the sheet takes over.
+    var pickingDateFor by rememberSaveable { mutableStateOf<String?>(null) }
+    val listState = rememberLazyListState()
+    // A routine arrived at from its own row on Home is scrolled to, once: the list is rebuilt
+    // every minute (the counts move), and a scroll on every rebuild would fight the thumb.
+    var landed by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(viewModel) {
         viewModel.eventFlow.collect { event ->
@@ -140,6 +158,17 @@ fun RoutinesScreen(
         }
     }
 
+    val filtersShown = state.loaded && !state.failed && state.total > 0
+    LaunchedEffect(focus, state.loaded, state.rows.size) {
+        if (focus == null || landed || !state.loaded) return@LaunchedEffect
+        val row = state.rows.indexOfFirst { it.id == focus }
+        if (row < 0) return@LaunchedEffect
+        // Everything the list draws above the rows, in the order it draws them.
+        val leading = (if (filtersShown) 1 else 0) + (if (pendingDelete != null) 1 else 0)
+        listState.animateScrollToItem(leading + row)
+        landed = true
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -161,6 +190,7 @@ fun RoutinesScreen(
     ) { padding ->
         val direction = LocalLayoutDirection.current
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 start = padding.calculateStartPadding(direction) + spacing.screen,
@@ -184,7 +214,7 @@ fun RoutinesScreen(
             }
             // The chips: "todas", the app's own "vencidas" while any is, then the tags the
             // routines wear — in the tags' own colours, as on Home.
-            if (state.loaded && !state.failed && state.total > 0) {
+            if (filtersShown) {
                 item(key = "filters", contentType = "filters") {
                     FilterRow(filters = state.filters, selected = state.filter, onSelect = viewModel::selectFilter)
                 }
@@ -229,7 +259,8 @@ fun RoutinesScreen(
                         row = row,
                         now = now,
                         onOpen = { onOpen(row.id) },
-                        onLongClick = { actingOn = row.id },
+                        onPause = { viewModel.togglePause(row.id, row.paused) },
+                        onMore = { actingOn = row.id },
                         longClickLabel = actionsLabel,
                     )
                 }
@@ -249,10 +280,20 @@ fun RoutinesScreen(
             onPause = { actingOn = null; viewModel.togglePause(held.id, held.paused) },
             onDelete = { actingOn = null; viewModel.delete(held.id) },
             onSnooze = { snooze -> actingOn = null; viewModel.snooze(held.id, snooze) },
+            onSnoozeToDate = { actingOn = null; pickingDateFor = held.id },
             onCancelSnooze = { actingOn = null; viewModel.cancelSnooze(held.id) },
             onClone = { actingOn = null; onClone(held.id) },
             onKeepAsPreset = { actingOn = null; onKeepAsPreset(held.id) },
             onDismiss = { actingOn = null },
+        )
+    }
+
+    pickingDateFor?.let { id ->
+        SnoozeUntilSheet(
+            now = clock.instant().atZone(zone),
+            defaultTime = defaultTime,
+            onConfirm = { until -> pickingDateFor = null; viewModel.snoozeUntil(id, until) },
+            onDismiss = { pickingDateFor = null },
         )
     }
 }
@@ -293,9 +334,10 @@ private val RoutineFilter.key: String
 @Composable
 private fun RoutineCard(
     row: RoutineRowUi,
-    now: java.time.Instant,
+    now: Instant,
     onOpen: () -> Unit,
-    onLongClick: () -> Unit,
+    onPause: () -> Unit,
+    onMore: () -> Unit,
     longClickLabel: String,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -317,26 +359,31 @@ private fun RoutineCard(
         stringResource(if (row.done) R.string.routines_due else R.string.routines_overdue, due)
     // How far through the span it is: a full track is a "No".
     val progress = if (row.span.isZero) 1f else (Duration.between(row.anchor, now).toMillis().toFloat() / row.span.toMillis()).coerceIn(0f, 1f)
-    RwilcoCard(onClick = onOpen, onLongClick = onLongClick, longClickLabel = longClickLabel) {
-        Column(Modifier.padding(horizontal = spacing.lg, vertical = spacing.md)) {
+    val haptics = Tokens.haptics
+    RwilcoCard(onClick = onOpen, onLongClick = onMore, longClickLabel = longClickLabel) {
+        Column(Modifier.padding(start = spacing.lg, end = spacing.lg, top = spacing.lg, bottom = spacing.sm)) {
+            // **The words get the whole width.** Boxed in beside three buttons the question
+            // broke over three lines with a column of air down the right; the controls go to
+            // the footer instead, which is where a card's furniture lives (see HeroCard).
             Text(
                 text = buildAnnotatedString {
                     append(question)
                     append("  →  ")
                     withStyle(SpanStyle(color = answerInk, fontWeight = FontWeight.Bold)) { append(answer) }
                 },
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
                 color = ink,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth(),
             )
-            Spacer(Modifier.height(spacing.xs))
+            Spacer(Modifier.height(spacing.sm))
             Text(
                 text = dueLine,
                 style = MonoStyles.date,
                 color = if (row.done || row.paused) scheme.onSurfaceVariant else scheme.error,
             )
-            Spacer(Modifier.height(spacing.sm))
+            Spacer(Modifier.height(spacing.md))
             LinearProgressIndicator(
                 progress = { progress },
                 color = if (row.done || row.paused) scheme.onSurfaceVariant else scheme.error,
@@ -345,10 +392,33 @@ private fun RoutineCard(
                 drawStopIndicator = {},
                 modifier = Modifier.fillMaxWidth(),
             )
-            if (row.tags.isNotEmpty()) {
-                Spacer(Modifier.height(spacing.sm))
-                Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
+            // The footer: the tags on the left, the three things a card can be told to do on
+            // the right — the same three a reminder's card carries, and the same menu behind
+            // the "⋯" that the held press opens.
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = spacing.xs)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs), modifier = Modifier.weight(1f)) {
                     for (tag in row.tags.take(3)) TagLabel(tag)
+                }
+                IconButton(onClick = { haptics.perform(HapticFeedbackType.ContextClick); onPause() }) {
+                    Icon(
+                        imageVector = if (row.paused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause,
+                        contentDescription = stringResource(if (row.paused) R.string.card_resume else R.string.card_pause),
+                        tint = scheme.onSurfaceVariant,
+                    )
+                }
+                IconButton(onClick = { haptics.perform(HapticFeedbackType.ContextClick); onOpen() }) {
+                    Icon(
+                        imageVector = Icons.Outlined.Edit,
+                        contentDescription = stringResource(R.string.card_edit, row.text),
+                        tint = scheme.onSurfaceVariant,
+                    )
+                }
+                IconButton(onClick = { haptics.perform(HapticFeedbackType.ContextClick); onMore() }) {
+                    Icon(
+                        imageVector = Icons.Outlined.MoreHoriz,
+                        contentDescription = stringResource(R.string.card_more, row.text),
+                        tint = scheme.onSurfaceVariant,
+                    )
                 }
             }
         }

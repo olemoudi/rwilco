@@ -24,6 +24,21 @@ import dev.rwilco.model.TriggerFamily
 import dev.rwilco.model.TriggerKind
 
 /**
+ * The routines' own colour, on the same terms as the families' below: a recognition colour,
+ * used wherever a routine has to be told from a reminder at a glance — the alert it rings with,
+ * and its line on Home.
+ *
+ * A rose, because every other hue in this app already means something: amber is what fires
+ * next, and the three families hold blue, green and violet. It is deliberately not the error
+ * red an overdue routine wears — that says "the span ran out", which is a different thing from
+ * "this is a routine".
+ */
+fun routineColor(dark: Boolean): Color = if (dark) Color(0xFFFF8FC0) else Color(0xFFB0246E)
+
+@Composable
+fun routineColor(): Color = routineColor(LocalDarkTheme.current)
+
+/**
  * The trigger families' colours live outside the Material scheme: they are recognition colours,
  * assigned by meaning and reused on every screen, not roles a component could restyle.
  */
