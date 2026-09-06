@@ -502,6 +502,42 @@ after the span in "Vuelve"), and the editor's draft not surviving process death 
 `SavedStateHandle`). The second half of the round — the `⋯` on a card, Tags below "Vuelve",
 warnings off amber, one top bar, TalkBack order on the alert, the tokens — is 0.94.0.
 
+## The routines, 0.95.0–0.96.0 (2026-09-06)
+
+What the owner asked for, in his words: a reminder that counts the time since the last time
+something was done ("mover el coche, 21 días"), resets with one gesture, asks whether it has
+been done at moments it might have been (a time of day, a place), and — wherever a place can
+vouch for the deed — resets by itself, silently. Filed as **rutinas periódicas**: a reminder
+whose "Vuelve" is `Recurrence.Since` (`Routines.kt`, `Prompt.kt`), its own screen behind one
+full-width line on Home. Two alphas, one feature each, both walked on the emulator (dark, one
+run per release: `RoutinesTourTest`, `RoutinePromptDeviceTest`, the 11→12 migration).
+
+- **"Hecho" on a routine is now, never "the one that was coming".** The one reading the model
+  did not have: `momentDealtWith` answers null, `recurrenceAnchor` ignores `dealtThrough`. A
+  routine edited out of an `After` keeps a stale `dealtThrough`; the test pins that it is ignored.
+- **The rules never ring and never rest.** `nextFire`/`nextWake` answer with the deadline before
+  `restUntil` is asked; `fire` drops a rule's moment for a routine (a stale alarm, a crossing) the
+  way it drops one under `spanHasTakenOver`. `ringCadence` needed its own arm or the net was off
+  for routines (the fresh copy has no anchor, and two deadlines from `createdAt` are one moment).
+- **Questions are a fourth alarm** (`rwilco://ask`), off `armedFor` and out of `SchedulingKey`
+  like the net's, and the harness grew `promptAt`/`ask`/`resetBy`/`crossRule`. **Trap:** adding
+  `answer` as the *last* parameter of `Simulation.step`/`run` silently rebound every caller's
+  trailing lambda (`phone.step { Deal.Later(...) }`) to the question instead of the ring — twenty
+  journeys failed at once. `deal` stays last; `answer` is named.
+- **The quiet after a "hecho" starts at creation too** (a tenth of the span from `routineAnchor`,
+  which is `createdAt` until the first "hecho"): a routine written today asks nothing for two
+  days on a three-week span. Consistent, and the tests had to be written that way; if the owner
+  finds a fresh routine too quiet, the anchor for the quiet is the one line to change.
+- **Not done, on purpose:** monthly-date questions (a `Repeat` rule under a routine needs a fold
+  guard in `foldRepeats`); speed-qualified crossings ("saliendo en coche" — the watch keeps a
+  speed memory for its cadence, a condition on it would let a wide "al salir de casa" circle
+  reset only when left faster than walking pace); the overdue routines on the widget; a launcher
+  shortcut per routine; the words-derived chip parsing "desde la última vez".
+- **The place reset is the half only a street proves.** `RoutinePromptDeviceTest` proves the
+  watch reports the doorway as `RESETS` and the reset writes and says its word; whether the
+  garage's line is crossed cleanly on the phone, and whether "y cuando lleve diez minutos fuera"
+  is the right proof of having driven off, is the owner's drive to make.
+
 ## The structure round, 0.94.0 (2026-09-06)
 The second half of the fifth review (see 0.93.0 above). Worth not re-deriving:
 
