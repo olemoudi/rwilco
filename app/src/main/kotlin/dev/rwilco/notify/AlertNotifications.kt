@@ -13,6 +13,7 @@ import androidx.core.app.NotificationManagerCompat
 import dev.rwilco.R
 import dev.rwilco.alarm.AlertActionReceiver
 import dev.rwilco.alarm.ReminderScheduler
+import dev.rwilco.MainActivity
 import dev.rwilco.ui.alert.AlertActivity
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.FiringPlan
@@ -21,6 +22,7 @@ import dev.rwilco.model.NetWord
 import dev.rwilco.model.saysItGotAway
 import dev.rwilco.model.Presence
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.Trigger
 import dev.rwilco.model.AlertSound
 import dev.rwilco.model.Snooze
 import dev.rwilco.model.VibrationPattern
@@ -29,6 +31,7 @@ import dev.rwilco.model.notificationPattern
 import dev.rwilco.ui.theme.AMBER_ARGB
 import java.time.LocalTime
 import java.time.Instant
+import java.time.Duration
 import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
 import dev.rwilco.model.NOTIFICATION_SNOOZES
 import dev.rwilco.ui.format.snoozeLabel
@@ -105,6 +108,13 @@ object AlertNotifications {
      */
     const val CHANNEL_NET = "net_$VERSION"
 
+    /**
+     * A routine's questions — "¿has movido el coche?" — an ordinary notification on a channel
+     * of its own: the phone's own notification sound, no screen, nothing pinned. A question is
+     * not an alarm, and a routine's alarm is its deadline, on the alert channels like any other.
+     */
+    const val CHANNEL_ASK = "ask_$VERSION"
+
     fun ensureChannels(context: Context, vibration: VibrationPattern = VibrationPattern(), chosen: AlertSound = AlertSound.System) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         // A channel's tone is played by the system, and one of our own copies lives where the
@@ -149,6 +159,103 @@ object AlertNotifications {
                 enableVibration(false)
             },
         )
+        // The phone's own notification sound and buzz, deliberately: a question is a notification
+        // and nothing more, and the person's own quiet hours make it silent (see [ask]).
+        manager.createNotificationChannel(
+            NotificationChannel(CHANNEL_ASK, context.getString(R.string.notif_channel_ask), NotificationManager.IMPORTANCE_DEFAULT).apply {
+                group = GROUP
+                description = context.getString(R.string.notif_channel_ask_description)
+            },
+        )
+    }
+
+    /**
+     * A routine's question, in the shade: «¿He hecho «mover el coche»?», how long it has been
+     * and how long is left, and two answers — "sí, ahora", which is the same door "hecho" goes
+     * through, and "todavía no", which takes the card down and writes nothing. Silent outside
+     * the hours somebody is up ([awake]); tapping the card opens the routines. See Prompt.kt.
+     */
+    fun ask(context: Context, reminder: Reminder, elapsed: Duration, dueIn: Duration?, awake: Boolean) {
+        ensureChannels(context)
+        val ago = context.getString(R.string.countdown_ago, spanWords(context, elapsed))
+        val due = dueIn?.let { left ->
+            if (left.isNegative) context.getString(R.string.routines_overdue, context.getString(R.string.countdown_ago, spanWords(context, left.abs())))
+            else context.getString(R.string.routines_due, context.getString(R.string.countdown_in, spanWords(context, left)))
+        }
+        val builder = NotificationCompat.Builder(context, CHANNEL_ASK)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(context.getString(R.string.routines_question, reminder.text))
+            .setContentText(listOfNotNull(ago, due).joinToString(context.getString(R.string.common_separator)))
+            .setContentIntent(routinesIntent(context, askNotificationId(reminder.id)))
+            .setAutoCancel(true)
+            .setSilent(!awake)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .addAction(0, context.getString(R.string.notif_ask_yes), actionIntent(context, reminder.id, AlertActionReceiver.ACTION_DONE, null))
+            .addAction(0, context.getString(R.string.notif_ask_later), actionIntent(context, reminder.id, AlertActionReceiver.ACTION_LATER, null))
+        if (reminder.tags.isNotEmpty()) builder.setSubText(reminder.tags.joinToString(context.getString(R.string.common_separator)))
+        runCatching { NotificationManagerCompat.from(context).notify(askNotificationId(reminder.id), builder.build()) }
+    }
+
+    /**
+     * A routine counted as done by a place, said in the shade without a sound — on the net's
+     * channel, the quietest there is — with "deshacer", because a thing the app did on its own
+     * has to be visible and reversible. [previous] is where the count goes back to.
+     */
+    fun resetNotice(context: Context, reminder: Reminder, place: Trigger.Location, previous: Instant?) {
+        ensureChannels(context)
+        val doorRes = if (place.presence == Presence.INSIDE) R.string.notif_reset_arrive else R.string.notif_reset_leave
+        val undo = Intent(context, AlertActionReceiver::class.java)
+            .setAction(AlertActionReceiver.ACTION_UNDO_RESET)
+            .setData(ReminderScheduler.reminderUri(reminder.id))
+            .putExtra(AlertActionReceiver.EXTRA_PREVIOUS, previous?.toEpochMilli() ?: -1L)
+        val builder = NotificationCompat.Builder(context, CHANNEL_NET)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(context.getString(R.string.notif_reset_title, reminder.text))
+            .setContentText(context.getString(doorRes, place.label))
+            .setContentIntent(routinesIntent(context, resetNotificationId(reminder.id)))
+            .setAutoCancel(true)
+            .setSilent(true)
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .addAction(0, context.getString(R.string.common_undo), PendingIntent.getBroadcast(context, 0, undo, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+        if (reminder.tags.isNotEmpty()) builder.setSubText(reminder.tags.joinToString(context.getString(R.string.common_separator)))
+        runCatching { NotificationManagerCompat.from(context).notify(resetNotificationId(reminder.id), builder.build()) }
+    }
+
+    /** "Todavía no": the question goes, and nothing is written. */
+    fun cancelAsk(context: Context, reminderId: String) {
+        runCatching { NotificationManagerCompat.from(context).cancel(askNotificationId(reminderId)) }
+    }
+
+    fun cancelReset(context: Context, reminderId: String) {
+        runCatching { NotificationManagerCompat.from(context).cancel(resetNotificationId(reminderId)) }
+    }
+
+    /** The routines screen, for a card about one of them; [requestCode] tells the cards' intents apart. */
+    private fun routinesIntent(context: Context, requestCode: Int): PendingIntent = PendingIntent.getActivity(
+        context,
+        requestCode,
+        Intent(context, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            .putExtra(MainActivity.EXTRA_DESTINATION, MainActivity.DESTINATION_ROUTINES),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+
+    /** "10 d 3 h" · "2 h 14 min" · "5 min": the same words the cards use, off the clock. */
+    private fun spanWords(context: Context, span: Duration): String {
+        val days = span.toDays()
+        val hours = span.toHours() % 24
+        val minutes = span.toMinutes() % 60
+        return when {
+            days > 0 && hours > 0 -> context.getString(R.string.countdown_days, days) + " " + context.getString(R.string.countdown_hours, hours)
+            days > 0 -> context.getString(R.string.countdown_days, days)
+            hours > 0 && minutes > 0 -> context.getString(R.string.countdown_hours, hours) + " " + context.getString(R.string.countdown_minutes, minutes)
+            hours > 0 -> context.getString(R.string.countdown_hours, hours)
+            else -> context.getString(R.string.countdown_minutes, minutes)
+        }
     }
 
     fun post(
@@ -322,6 +429,10 @@ object AlertNotifications {
             val ids = setOf(notificationId(reminderId), nudgeNotificationId(reminderId))
             ids.forEach(manager::cancel)
             syncSummary(context, cancelled = ids)
+            // A routine's question and the word about a reset are cards of their own, outside
+            // the bundle: a "hecho" answers the question as surely as its own button does.
+            manager.cancel(askNotificationId(reminderId))
+            manager.cancel(resetNotificationId(reminderId))
         }
     }
 
@@ -381,6 +492,11 @@ object AlertNotifications {
 
     /** The safety net's card, beside the ring's rather than over it. */
     fun nudgeNotificationId(reminderId: String): Int = ("net:$reminderId").hashCode()
+
+    /** A routine's question, and the word about a reset by a place: two more cards of their own. */
+    fun askNotificationId(reminderId: String): Int = ("ask:$reminderId").hashCode()
+
+    fun resetNotificationId(reminderId: String): Int = ("reset:$reminderId").hashCode()
 
     private fun channelId(sound: Boolean, vibrate: Boolean, vibration: VibrationPattern, chosen: AlertSound, bypass: Boolean): String {
         // Each part only belongs in the id of a channel it can actually change: a silent channel

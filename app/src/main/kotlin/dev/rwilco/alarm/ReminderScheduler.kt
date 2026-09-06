@@ -26,6 +26,7 @@ import dev.rwilco.model.Wake
 import dev.rwilco.model.hasDeadline
 import dev.rwilco.model.missedFire
 import dev.rwilco.model.nudgeAt
+import dev.rwilco.model.nextPrompt
 import dev.rwilco.model.nextWake
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
@@ -66,6 +67,9 @@ class ReminderScheduler(
 
     /** And for the set's deadline — a third PendingIntent, for the same reason the net has one. */
     private val lapsing = Collections.synchronizedSet(mutableSetOf<String>())
+
+    /** And for a routine's question ("¿lo has hecho?") — a fourth, beside its deadline's. See Prompt.kt. */
+    private val asking = Collections.synchronizedSet(mutableSetOf<String>())
 
     /**
      * One pass at a time. A pass is a read of every row, a decision each, and a write of the
@@ -118,6 +122,9 @@ class ReminderScheduler(
             // whisper about it (missedFire), and spend the moment while it was at it.
             armNudge(reminder, reminder.nudgeAt(now, zone, defaultTime, settings.safetyNet, dayStart, settings.dayShape))
             armLapse(reminder)
+            // A routine's next question, on its own alarm and deliberately off [Reminder.armedFor]
+            // for the same reason the net's is: a question is not a firing owed.
+            armAsk(reminder, reminder.nextPrompt(now, zone, defaultTime, dayStart, settings.dayShape))
             if (missedFire(reminder, now) != null) {
                 // Owed and unanswered: held as it stands, alarm included (see the class doc).
                 missed += reminder
@@ -148,6 +155,7 @@ class ReminderScheduler(
         for (id in armed.toList() - seen) cancelRing(id)
         for (id in nudging.toList() - seen) cancelNudge(id)
         for (id in lapsing.toList() - seen) cancelLapse(id)
+        for (id in asking.toList() - seen) cancelAsk(id)
         Log.i(TAG, "armed ${seen.size} reminders, ${missed.size} missed")
         Diag.note("arm", "armed=${seen.size} missed=${missed.size} exact=${if (canScheduleExact()) "y" else "n"}")
         for (reminder in missed) Diag.note("arm", "r=${reminder.id.take(8)} missed its moment ${reminder.armedFor} (rule ${reminder.armedRule})")
@@ -162,6 +170,27 @@ class ReminderScheduler(
     private fun cancelNudge(id: String) {
         runCatching { alarms.cancel(nudgeIntent(id)) }
         nudging -= id
+    }
+
+    private fun cancelAsk(id: String) {
+        runCatching { alarms.cancel(askIntent(id)) }
+        asking -= id
+    }
+
+    /**
+     * A routine's next question, at [wake] or nothing. Inexact like the net's — a question a
+     * few minutes late is the same question, and `ReminderFiring.ask` re-judges the rule's
+     * hours when it arrives — and the rule it is for rides as an extra, the way the ring's does.
+     */
+    private fun armAsk(reminder: Reminder, wake: Wake?) {
+        if (wake == null) {
+            cancelAsk(reminder.id)
+            return
+        }
+        runCatching {
+            alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, wake.at.toEpochMilli(), askIntent(reminder.id, wake.ruleIndex))
+            asking += reminder.id
+        }.onFailure { Log.e(TAG, "could not arm the question of ${reminder.id}", it) }
     }
 
     private fun cancelLapse(id: String) {
@@ -284,6 +313,18 @@ class ReminderScheduler(
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
 
+    /** A routine's question, told apart the same way; which rule asks travels as an extra, as the ring's does. */
+    private fun askIntent(id: String, ruleIndex: Int? = null): PendingIntent {
+        val intent = Intent(context, AlarmReceiver::class.java).setData(askUri(id))
+        if (ruleIndex != null) intent.putExtra(EXTRA_RULE, ruleIndex)
+        return PendingIntent.getBroadcast(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
     /** The deadline's own, told apart the same way. */
     private fun lapseIntent(id: String): PendingIntent = PendingIntent.getBroadcast(
         context,
@@ -312,6 +353,11 @@ class ReminderScheduler(
         fun lapseUri(id: String) = "rwilco://lapse/$id".toUri()
 
         fun isLapse(intent: Intent): Boolean = intent.data?.host == "lapse"
+
+        /** A routine's question ("¿lo has hecho?"), under its own URI for the same reason the net has one. */
+        fun askUri(id: String) = "rwilco://ask/$id".toUri()
+
+        fun isAsk(intent: Intent): Boolean = intent.data?.host == "ask"
 
         fun ruleIndexOf(intent: Intent): Int? = intent.getIntExtra(EXTRA_RULE, -1).takeIf { it >= 0 }
 

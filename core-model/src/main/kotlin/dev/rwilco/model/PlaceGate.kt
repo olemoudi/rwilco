@@ -99,6 +99,8 @@ fun Reminder.watchedCircles(
     // and none is worth a position — for good, not only while the rest is on. See
     // [Reminder.spanHasTakenOver]; the snooze circle above outranks it, as it outranks the rules.
     if (spanHasTakenOver) return emptyList()
+    // A routine's circles ask or count as done, and never rest: their own gate. See Prompt.kt.
+    if (isRoutine) return routineCircles(now, zone, defaultTime, shape, dayStart)
     val pending = pendingRules().toSet()
     val folded = rules.indices.map { ruleInSet(it, shape, zone) }
     // A rule's moment cannot be asked before a snooze is over: the snooze rings instead, with
@@ -231,6 +233,84 @@ fun Reminder.watchedCircles(
                         resting = false,
                     )
                 }
+            }
+        }
+        listOfNotNull(trigger) + asked
+    }
+}
+
+/**
+ * A routine's circles: every place rule's doorway, asking ([Crossing.ASKS]) or counting as done
+ * ([Crossing.RESETS]), and the condition circles its clock rules will be asked about.
+ *
+ * Three things are different from an ordinary reminder's gate, and all three follow from the
+ * rules being questions rather than a ring. There is no *rest*: a question is worth asking
+ * every time. There is no "already rang" cut: nothing here rings. And there is a **quiet** after
+ * every "hecho" ([Reminder.promptQuietUntil]) — a fix spent on a doorway that would only be
+ * dropped as "you just did it" is a fix spent to learn nothing, so the circle opens when the
+ * quiet is over. A doorway that asks is held back while nothing may ask ([promptsAllowed]: the
+ * deadline is ringing, or the routine is put off); one that counts as done is not — leaving the
+ * garage answers the ring as surely as the button does. The hours gate is the same as
+ * everybody's: a doorway fenced to the evening is worth nothing at three in the morning.
+ */
+private fun Reminder.routineCircles(
+    now: Instant,
+    zone: ZoneId,
+    defaultTime: LocalTime,
+    shape: DayShape,
+    dayStart: LocalTime,
+): List<Gated> {
+    val asking = promptsAllowed(now)
+    val quiet = promptQuietUntil(zone, dayStart)
+    val from = promptLookFrom(now, zone, dayStart)
+    val soon = now + PlaceWatchPolicy.MIN_WAIT
+    return rules.flatMapIndexed { index, rule ->
+        val place = rule.trigger as? Trigger.Location
+        val opensAt: Instant? = if (place != null) {
+            if (!rule.resetsRoutine && !asking) return@flatMapIndexed emptyList()
+            val hours = rule.windows().openFrom(now, zone)?.minus(PlaceWatchPolicy.WINDOW_LEAD) ?: return@flatMapIndexed emptyList()
+            maxOf(hours, quiet ?: hours).takeIf { it > soon }
+        } else {
+            // A clock rule asks about its circles at its next question and at no other time.
+            if (!asking) return@flatMapIndexed emptyList()
+            val moment = nextFireOfRule(rule, id, from, zone, defaultTime, shape)?.moment ?: return@flatMapIndexed emptyList()
+            moment.minus(PlaceWatchPolicy.ASK_LEAD).takeIf { it > soon }
+        }
+        // Always the doorway, whatever the row says: a state is not a question anybody can be
+        // asked once, and the editor writes the crossing anyway (see EditorState.asDoorway).
+        val door = place?.copy(onCrossing = true)
+        val trigger = door?.let {
+            Gated(
+                place = WatchedPlace(
+                    id = GeofenceIds.encode(id, index, place),
+                    lat = it.lat,
+                    lng = it.lng,
+                    radiusM = it.radiusM,
+                    transition = it.presence.asTransition,
+                    label = it.label,
+                    crossing = if (rule.resetsRoutine) Crossing.RESETS else Crossing.ASKS,
+                    onCrossing = true,
+                    dwell = it.dwell,
+                ),
+                ruleIndex = index,
+                opensAt = opensAt,
+            )
+        }
+        val asked = rule.conditions.mapIndexedNotNull { at, condition ->
+            condition.place?.let { circle ->
+                Gated(
+                    place = WatchedPlace(
+                        id = GeofenceIds.encodeCondition(id, index, at, circle),
+                        lat = circle.lat,
+                        lng = circle.lng,
+                        radiusM = circle.radiusM,
+                        transition = if (circle.inside) Transition.ENTER else Transition.EXIT,
+                        label = circle.label,
+                        crossing = Crossing.NOTHING,
+                    ),
+                    ruleIndex = index,
+                    opensAt = opensAt,
+                )
             }
         }
         listOfNotNull(trigger) + asked

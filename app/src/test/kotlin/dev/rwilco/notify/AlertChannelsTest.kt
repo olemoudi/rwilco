@@ -14,12 +14,12 @@ class AlertChannelsTest {
 
     @Test
     fun `an alert channel of a tone nobody rings any more is stale`() {
-        val existing = listOf("alert_v2_s1_v0_chime", "alert_v2_s0_v0", "missed_v2", "net_v2", "alert_v2_s1_v1_system_s_dnd")
+        val existing = listOf("alert_v2_s1_v0_chime", "alert_v2_s0_v0", "missed_v2", "net_v2", "ask_v2", "alert_v2_s1_v1_system_s_dnd")
         assertEquals(listOf("alert_v2_s1_v0_chime", "alert_v2_s1_v1_system_s_dnd"), staleAlertChannels(existing, live))
     }
 
     @Test
     fun `the four live ones and the two quiet channels are never stale`() {
-        assertEquals(emptyList<String>(), staleAlertChannels(live.toList() + listOf("missed_v2", "net_v2"), live))
+        assertEquals(emptyList<String>(), staleAlertChannels(live.toList() + listOf("missed_v2", "net_v2", "ask_v2"), live))
     }
 }

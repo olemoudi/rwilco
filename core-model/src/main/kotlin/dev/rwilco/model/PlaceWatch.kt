@@ -52,6 +52,20 @@ enum class Crossing {
      * place, which is the honest price of asking: the app has to know whether you are.
      */
     NOTHING,
+
+    /**
+     * Asks whether it has been done. A routine's doorway (see `Routines.kt`, `Prompt.kt`):
+     * "al llegar a casa, pregúntame si me he tomado la pastilla" — a question in the shade,
+     * never a ring, and never one that rests.
+     */
+    ASKS,
+
+    /**
+     * Counts as having done it. The other reading of a routine's doorway, for a place that can
+     * vouch for the deed: leaving the garage *is* the car moving, and asking would be asking
+     * somebody to say what the line already said ([TriggerRule.resets]).
+     */
+    RESETS,
 }
 
 /**

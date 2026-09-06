@@ -244,4 +244,49 @@ class PlaceGateTest {
         val state = reminder(TriggerRule(home.copy(dwellMinutes = 10))).watchedCircles(now, zone, defaultTime).single()
         assertNull(state.place.dwell)
     }
+
+    // ---- a routine's circles: ask or count as done, never rest -----------------------------
+
+    @Test
+    fun `a routine's doorway is watched to ask, or to count as done, and never rests`() {
+        val since = Recurrence.Since(21, RecurrenceUnit.DAYS)
+        // Written ten days ago: the quiet after the day it was written is over.
+        val written = now.minusSeconds(10 * 86_400)
+        val asks = reminder(TriggerRule(leavingHome), recurrence = since).copy(createdAt = written)
+        val circle = asks.circles().single()
+        assertEquals(Crossing.ASKS, circle.place.crossing)
+        assertTrue(circle.place.onCrossing, "always the doorway, whatever the row says")
+        assertNull(circle.opensAt, "worth a position now")
+        assertFalse(circle.resting)
+        val counts = reminder(TriggerRule(leavingHome, resets = true), recurrence = since).copy(createdAt = written)
+        assertEquals(Crossing.RESETS, counts.circles().single().place.crossing)
+        // Dealt with an hour ago: an ordinary span would rest its rules; a routine keeps its
+        // doorway, held only for the quiet after the "hecho" — two days on three weeks.
+        val done = counts.copy(lastDealtAt = now.minusSeconds(3_600))
+        val held = done.circles().single()
+        assertEquals(Crossing.RESETS, held.place.crossing)
+        assertEquals(done.promptQuietUntil(zone), held.opensAt, "opens when the quiet is over")
+    }
+
+    @Test
+    fun `a doorway that asks is held back while the deadline is ringing, one that counts as done is not`() {
+        val since = Recurrence.Since(21, RecurrenceUnit.DAYS)
+        val rang = reminder(TriggerRule(leavingHome), recurrence = since)
+            .copy(createdAt = now.minusSeconds(30 * 86_400), lastFiredAt = now.minusSeconds(9 * 86_400))
+        assertTrue(rang.awaitingAnswer(now))
+        assertTrue(rang.circles().isEmpty(), "the alarm is asking louder")
+        val counts = rang.copy(rules = listOf(TriggerRule(leavingHome, resets = true)))
+        assertEquals(Crossing.RESETS, counts.circles().single().place.crossing, "leaving answers the ring as surely as the button")
+    }
+
+    @Test
+    fun `a clock rule's condition circle is watched just before its next question`() {
+        val since = Recurrence.Since(21, RecurrenceUnit.DAYS)
+        val nine = Trigger.TimeOfDay(LocalTime.of(9, 0))
+        val fenced = reminder(TriggerRule(nine, listOf(Condition.AtPlace(homeLat, homeLng, 200, "Casa"))), recurrence = since)
+            .copy(createdAt = now.minusSeconds(10 * 86_400))
+        val circle = fenced.circles().single()
+        assertEquals(Crossing.NOTHING, circle.place.crossing)
+        assertEquals(local(2026, 8, 28, 9, 0).minus(PlaceWatchPolicy.ASK_LEAD), circle.opensAt, "the run-up to tomorrow's nine")
+    }
 }

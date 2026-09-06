@@ -456,12 +456,14 @@ fun EditorUiState.restoreTrigger(index: Int, rule: TriggerRule, recurrence: Recu
  * The configurator's result: replaces the trigger of the rule being edited — keeping whatever
  * conditions were put on it — or appends a rule with no conditions. Closes the sheet.
  */
-fun EditorUiState.commitTrigger(index: Int?, trigger: Trigger): EditorUiState {
+fun EditorUiState.commitTrigger(index: Int?, trigger: Trigger, resets: Boolean? = null): EditorUiState {
     val adding = index == null || index !in draft.rules.indices
+    // What a routine's place does — ask, or count as done — rides beside it ([TriggerRule.resets]);
+    // null leaves the rule's own answer, and a rule that is not a place has none.
     val rules = if (!adding) {
-        draft.rules.mapIndexed { i, rule -> if (i == index) rule.copy(trigger = trigger) else rule }
+        draft.rules.mapIndexed { i, rule -> if (i == index) rule.copy(trigger = trigger, resets = resets ?: rule.resets) else rule }
     } else {
-        draft.rules + TriggerRule(trigger)
+        draft.rules + TriggerRule(trigger, resets = resets ?: false)
     }.let { if (draft.recurrence is Recurrence.Since) it.map { rule -> rule.asDoorway() } else it }
     val match = matchAfterAdding(rules, adding)
     // Choosing "at random" IS choosing a recurrence — "tres veces al día" says so outright — so

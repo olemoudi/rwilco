@@ -444,6 +444,10 @@
     <string name="history_missed">did not ring on time; said quietly</string>
     <string name="history_net">the safety net spoke up</string>
     <string name="history_dealt">done</string>
+    <string name="history_asked">asked whether it was done</string>
+    <string name="history_reset">counted as done by a place</string>
+    <string name="history_reset_leave">counted as done on leaving %1$s</string>
+    <string name="history_reset_arrive">counted as done on arriving at %1$s</string>
     <string name="history_skipped">next round skipped</string>
     <string name="history_snoozed">put off</string>
     <string name="history_snoozed_until">put off until %1$s</string>
@@ -543,6 +547,13 @@
     <string name="alert_missed_subtext">Did not ring on time</string>
     <string name="notif_channel_net">Safety net</string>
     <string name="notif_channel_net_description">A quiet word about a reminder that rang and was never answered.</string>
+    <string name="notif_channel_ask">Routine questions</string>
+    <string name="notif_channel_ask_description">A routine asking whether you\'ve done it — at a time of day, or on arriving at or leaving a place.</string>
+    <string name="notif_ask_yes">Yes, just now</string>
+    <string name="notif_ask_later">Not yet</string>
+    <string name="notif_reset_title">Routine done: %1$s</string>
+    <string name="notif_reset_leave">Counted as done on leaving %1$s</string>
+    <string name="notif_reset_arrive">Counted as done on arriving at %1$s</string>
     <!-- The net's mark on the words themselves: the sub-line that says which kind of card this
          is sits in the smallest type the shade has and is the first thing a narrow row drops. -->
     <string name="notif_net_prefix">ICYMI: %1$s</string>
@@ -936,6 +947,12 @@
     <string name="place_side_arriving">When I get there</string>
     <string name="place_side_leaving">When I leave</string>
     <string name="place_needs_crossing">Only when I cross the line</string>
+    <string name="place_role">What this place does</string>
+    <string name="place_role_ask">Ask whether I\'ve done it</string>
+    <string name="place_role_reset">Count as done, without asking</string>
+    <string name="place_role_ask_hint">A question in the shade when you cross the line, with «yes, just now» one tap away.</string>
+    <string name="place_role_reset_hint">Crossing the line is the deed itself — leaving the garage is the car moving. The count starts again by itself, and a quiet notice offers to undo it.</string>
+    <string name="rule_resets">Counts as done</string>
     <string name="place_means_inside">Being there is enough: if you are already there when everything else is due, it rings.</string>
     <string name="place_means_outside">Being away is enough: if you are already away when everything else is due, it rings.</string>
     <string name="place_means_arriving">It has to see you arrive. If you are already there, it waits until you leave and come back.</string>
@@ -1323,6 +1340,16 @@
         <item>A reminder with sound now goes to your headphones when you are wearing any, instead of out of the phone\'s speaker as an alarm otherwise would. It is a setting, in Sound, and it is worth turning off if your earbuds live in a drawer: a reminder played to nobody is a reminder missed.</item>
         <item>And it no longer stops your music. What was playing drops a few decibels and carries on underneath while the reminder sounds over it — the reminder is on the alarm channel and the music is not, so neither has to fight the other — and comes back by itself. It used to ask for the audio outright, which ended podcasts for a ten-second chime.</item>
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_96_0">
+
+        <item>Routines ask. A time of day or a weekday under a routine puts a question in the shade — «Have I done “move the car”?» — with «Yes, just now» and «Not yet». Never a ring; the ring is still the deadline. A routine keeps quiet for a tenth of its span after you\'ve done it, and stops asking while its alarm is waiting for an answer.</item>
+
+        <item>A place can vouch for the deed. On a routine, a doorway is either «ask whether I\'ve done it» or «count as done, without asking»: leaving the garage is the car moving, so the count starts again by itself, a quiet notice says so with «Undo», and the history keeps the line. A place there is always a doorway, and the stay («and once I\'ve been out ten minutes») is the cheapest proof there is that you drove off.</item>
+
+        <item>Tapping a question opens the routines; «Done» anywhere answers it. A new channel, «Routine questions», carries them with the phone\'s own sound and goes silent in your quiet hours.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_95_0">

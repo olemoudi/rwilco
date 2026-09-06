@@ -527,4 +527,20 @@ class EditorStateTest {
         // And a span picked from the buttons keeps it a routine (withSpanOf).
         assertEquals(Recurrence.Since(1, RecurrenceUnit.WEEKS), routine.draft.recurrence.let { it.withSpanOf(Recurrence.After(1, RecurrenceUnit.WEEKS)) })
     }
+
+    @Test
+    fun `what a routine's place does rides beside it on the way in`() {
+        val garage = Trigger.Location(40.4, -3.7, 150, Presence.OUTSIDE, "Garaje")
+        val routine = blank.withText("Mover el coche").setRecurrence(Recurrence.Since(21, RecurrenceUnit.DAYS))
+        val counts = routine.commitTrigger(null, garage, resets = true)
+        assertTrue(counts.draft.rules.single().resets, "counts as done")
+        assertTrue((counts.draft.rules.single().trigger as Trigger.Location).onCrossing)
+        // Edited without a word about the role, the rule keeps its answer; with one, it changes.
+        val moved = counts.commitTrigger(0, garage.copy(radiusM = 300))
+        assertTrue(moved.draft.rules.single().resets)
+        val asks = moved.commitTrigger(0, garage, resets = false)
+        assertFalse(asks.draft.rules.single().resets)
+        // A place added with no role at all asks, which is the reading every rule has by default.
+        assertFalse(routine.commitTrigger(null, garage).draft.rules.single().resets)
+    }
 }

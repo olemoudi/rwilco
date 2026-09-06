@@ -105,6 +105,9 @@ class SchedulingKeyTest {
         // The safety net's own two are written by a firing, and everything that writes one
         // calls the scheduler on its way out: in the key they would only buy a second pass.
         assertEquals(key(timed), key(timed.copy(nudgedAt = written)))
+        // And a routine's last question, written by the asking itself: the same argument, and
+        // in the key it would also re-sync the geofences on every question.
+        assertEquals(key(timed), key(timed.copy(askedAt = written)))
         assertEquals(key(timed), key(timed.copy(updatedAt = written.plusSeconds(1))))
         assertEquals(key(timed), key(timed.copy(text = "otra cosa", tags = listOf("casa"), actions = setOf(Action.SOUND))))
     }

@@ -71,6 +71,17 @@ import dev.rwilco.model.GeofenceIds
 import dev.rwilco.model.Transition
 import dev.rwilco.model.distanceMeters
 import dev.rwilco.model.snoozeDetail
+import dev.rwilco.model.PLACE_ECHO
+import dev.rwilco.model.Presence
+import dev.rwilco.model.asks
+import dev.rwilco.model.awakeAt
+import dev.rwilco.model.isRoutine
+import dev.rwilco.model.promptLookFrom
+import dev.rwilco.model.promptQuietUntil
+import dev.rwilco.model.promptsAllowed
+import dev.rwilco.model.resetsRoutine
+import dev.rwilco.model.routineAnchor
+import dev.rwilco.model.routineDeadline
 
 /**
  * What happens when a reminder rings, and what the two answers to it do. One place, so the
@@ -642,6 +653,112 @@ class ReminderFiring(
         }
         scheduler.rearmAll()
     }
+
+    /**
+     * A routine asks whether it has been done: "¿has movido el coche?" — a question in the
+     * shade with "sí, ahora" and "todavía no", never a ring (see Prompt.kt).
+     *
+     * Reached from the asking alarm (a clock rule's moment, [viaPlace] false) and from a doorway
+     * the watch or the fences saw crossed ([viaPlace] true). Dropped, and nothing written, when
+     * the question is not worth putting: the rule is gone or does not ask, the deadline has rung
+     * and is asking louder, the routine is put off, the quiet after a "hecho" is not over, the
+     * same doorway asked a moment ago, or the rule's own fences do not hold now — asked in full,
+     * because the asking alarm is inexact and may land after the window. What is written is
+     * [Reminder.askedAt], which is what makes the next question look past this one.
+     */
+    suspend fun ask(id: String, ruleIndex: Int?, viaPlace: Boolean) = lock.withLock {
+        val reminder = repository.get(id) ?: return@withLock Diag.note(TAG_DIAG, "r=${short(id)} gone")
+        val now = clock.instant()
+        val settings = settings()
+        val rule = ruleIndex?.let { reminder.rules.getOrNull(it) }
+        fun dropped(why: String) {
+            Log.i(TAG, "$id: question dropped: $why")
+            Diag.note(TAG_DIAG, "r=${short(id)} question dropped: $why (rule $ruleIndex)")
+        }
+        when {
+            !reminder.isRoutine || rule == null || !rule.asks -> dropped("nothing asks here")
+            !reminder.promptsAllowed(now) -> dropped("not now: ringing, or put off")
+            now.plusSeconds(EARLY_GRACE_SECONDS) < reminder.promptLookFrom(now, clock.zone, settings.dayStart) ->
+                dropped("quiet until ${reminder.promptLookFrom(now, clock.zone, settings.dayStart)}")
+            viaPlace && reminder.askedAt?.let { Duration.between(it, now) < PLACE_ECHO } == true -> dropped("asked ${Duration.between(reminder.askedAt, now).seconds}s ago")
+            else -> {
+                val failed = firstFailing(rule.conditions, askAll = true, now, moment = now)
+                if (failed != null) {
+                    dropped("the rule wants ${failed.said(placeWatch.read())}")
+                } else {
+                    Log.i(TAG, "asking $id whether it has been done (rule $ruleIndex)")
+                    Diag.note(TAG_DIAG, "r=${short(id)} ASKED (rule $ruleIndex)")
+                    repository.setAskedAt(id, now)
+                    repository.record(id, FiringKind.ASKED, now, ruleIndex)
+                    AlertNotifications.ask(
+                        context = context,
+                        reminder = reminder,
+                        elapsed = Duration.between(reminder.routineAnchor(), now),
+                        dueIn = reminder.routineDeadline(clock.zone, settings.dayStart)?.let { Duration.between(now, it) },
+                        awake = settings.dayShape.awakeAt(now, clock.zone),
+                    )
+                }
+            }
+        }
+        scheduler.rearmAll()
+    }
+
+    /**
+     * A place that counts as having done it: leaving the garage *is* the car moving
+     * ([TriggerRule.resets]). The same write "hecho" makes on a routine — the count starts
+     * again from now — with a mute word in the shade that says so and offers to take it back,
+     * because a thing the app did on its own has to be visible and reversible. Dropped inside
+     * the quiet after a "hecho" (a second leaving twenty minutes after the first says nothing
+     * new), a moment after another reset, and when the rule's own fences do not hold now.
+     */
+    suspend fun resetBy(id: String, ruleIndex: Int) = lock.withLock {
+        val reminder = repository.get(id) ?: return@withLock Diag.note(TAG_DIAG, "r=${short(id)} gone")
+        val now = clock.instant()
+        val settings = settings()
+        val rule = reminder.rules.getOrNull(ruleIndex)
+        val place = rule?.trigger as? Trigger.Location
+        fun dropped(why: String) {
+            Log.i(TAG, "$id: reset dropped: $why")
+            Diag.note(TAG_DIAG, "r=${short(id)} reset dropped: $why (rule $ruleIndex)")
+        }
+        when {
+            !reminder.isRoutine || rule == null || place == null || !rule.resetsRoutine -> dropped("this place does not count as done")
+            reminder.status != Status.ACTIVE -> dropped("paused")
+            reminder.promptQuietUntil(clock.zone, settings.dayStart)?.let { now < it } == true -> dropped("just done")
+            reminder.lastDealtAt?.let { Duration.between(it, now) < PLACE_ECHO } == true -> dropped("reset a moment ago")
+            else -> {
+                val failed = firstFailing(rule.conditions, askAll = true, now, moment = now)
+                if (failed != null) {
+                    dropped("the rule wants ${failed.said(placeWatch.read())}")
+                } else {
+                    Log.i(TAG, "$id counted as done at ${place.label} (rule $ruleIndex)")
+                    Diag.note(TAG_DIAG, "r=${short(id)} RESET by ${place.label} (rule $ruleIndex)")
+                    repeater.cancel(id)
+                    AlertNotifications.cancel(context, id)
+                    val previous = reminder.lastDealtAt
+                    // What dismiss writes for a routine: a routine is never finished by doing
+                    // it, spends nothing ahead, and has no round to bound.
+                    repository.dealtWith(id, now, Status.ACTIVE, reminder.dealtThrough, null)
+                    repository.record(id, FiringKind.RESET, now, ruleIndex, detail = place.doorDetail())
+                    AlertNotifications.resetNotice(context, reminder, place, previous)
+                }
+            }
+        }
+        scheduler.rearmAll()
+    }
+
+    /** "Deshacer" on a reset by a place: the count goes back to [previous], the moment it ran from. */
+    suspend fun undoReset(id: String, previous: Instant?) = lock.withLock {
+        AlertNotifications.cancelReset(context, id)
+        val reminder = repository.get(id) ?: return@withLock
+        if (!reminder.isRoutine) return@withLock
+        Diag.note(TAG_DIAG, "r=${short(id)} reset undone: back to $previous")
+        repository.setLastDealtAt(id, previous)
+        scheduler.rearmAll()
+    }
+
+    /** The history's word for which doorway it was: the same shape a snooze to a place keeps. */
+    private fun Trigger.Location.doorDetail(): String = (if (presence == Presence.INSIDE) "arrive:" else "leave:") + label
 
     /**
      * "Posponer": it rings again then, and not at its own moment until it has.

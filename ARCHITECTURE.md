@@ -402,9 +402,8 @@ anything repeats**:
   `nextFire`/`nextWake` answer with the deadline before `restUntil` is even asked, `restUntil`
   is null, and `ReminderFiring.fire` (and `Simulation.fire`) drop a rule's moment for a routine
   the way they drop one under `spanHasTakenOver`. A rule under a routine is a *question* — "¿lo
-  has hecho?" — on an alarm of its own (the prompts and the silent resets by place are the next
-  release; `Reminder.askedAt` and `TriggerRule.resets` already ship, so no migration waits on
-  them). `ringCadence` measures a routine by its span on purpose: through the fresh-copy path the
+  has hecho?" — on an alarm of its own, or a place that counts as having done it (`Prompt.kt`,
+  `Reminder.askedAt`, `TriggerRule.resets`; see **Firing**). `ringCadence` measures a routine by its span on purpose: through the fresh-copy path the
   cadence came out as zero and the net switched itself off for the one reminder that most
   needs one. **"Sí"/"No"** is the row's state (`routineDone`: the deadline is still ahead), and
   it is never `Status.DONE` — a routine is done *for now*. Home lists no routine
@@ -1559,8 +1558,42 @@ because that is what its chip would show.
   reports crossings, and a stale alarm can still carry a rule index, so `ReminderFiring.fire`
   drops a firing with a rule behind it for a routine the way it drops one under
   `spanHasTakenOver` — the door every firing comes through, and `Simulation.fire` mirrors it.
-  What those crossings and moments *do* — ask, or count as done — is the next release's alarm
-  and receiver path (`askedAt`, `TriggerRule.resets`).
+- **A routine's rules ask, or count as done** (0.96.0, `Prompt.kt`). A clock rule under a
+  routine is a moment to *ask* at: **a fourth alarm per reminder**, `rwilco://ask/‹id›`
+  (`ReminderScheduler.armAsk`, inexact like the net's, `EXTRA_RULE` riding as the ring's does),
+  set from `Reminder.nextPrompt` — the earliest asking clock rule from `promptLookFrom`, which is
+  now, past `askedAt`, and past the **quiet** that follows a "hecho" (`promptQuietUntil`: a tenth
+  of the span, the net's proportion, because "¿has movido el coche?" an hour after saying so is
+  noise). Off `armedFor` on purpose, as the net's is, and out of `SchedulingKey` for the same
+  reason (`SchedulingKeyTest` pins both): a question is not a firing owed, and `ask` re-arms on
+  its way out. `AlarmReceiver` routes it to `ReminderFiring.ask(id, ruleIndex, viaPlace)`,
+  which drops — writing nothing — when nothing asks, when nothing may (`promptsAllowed`: the
+  deadline has rung and is asking louder, or the routine is put off), inside the quiet, as an
+  echo of a doorway that asked within `PLACE_ECHO`, or outside the rule's own fences (asked in
+  full, `askAll = true`, because the alarm is inexact and may land after the window); put, it
+  stamps `askedAt`, records `FiringKind.ASKED` and posts the question (`AlertNotifications.ask`:
+  «¿He hecho «X»?» on `CHANNEL_ASK`, IMPORTANCE_DEFAULT with the phone's own sound, silent
+  outside waking hours, "sí, ahora" = `ACTION_DONE`, "todavía no" = `ACTION_LATER` which only
+  takes the card down, the body opening the routines through `DESTINATION_ROUTINES`). A place
+  under a routine is always the doorway and asks the same way when crossed — `Crossing.ASKS`,
+  from `watchedCircles`' routine branch (`routineCircles`: no rest, no "already rang" cut, the
+  hours gate kept, the quiet as a gate of its own so no fix is spent on a crossing that would
+  only be dropped), routed by `GeofenceReceiver` and `PlaceWatcher.look()` — **or counts as
+  having done it** (`TriggerRule.resets`, `Crossing.RESETS`, `ReminderFiring.resetBy`): leaving
+  the garage *is* the car moving. The reset is the write "hecho" makes on a routine, recorded as
+  `FiringKind.RESET` with the doorway in its detail, and said in the shade **mute, with
+  "deshacer"** (`AlertNotifications.resetNotice` on the net's channel, `ACTION_UNDO_RESET`
+  carrying the previous anchor → `undoReset` → `ReminderDao.setLastDealtAt`) — a thing the app
+  did on its own has to be visible and reversible. A resetting doorway is not held back while
+  the deadline rings: leaving answers the ring as surely as the button does. `PlaceWatcher.accept`'s
+  *strict* reading is keyed to the ring, which a routine's doorway never writes, so under a
+  routine a doorway is strict once the routine has asked or been done at all. The editor's
+  `LocationSheet` puts the role under the side of the line (`RoleChoice`, "cuenta como hecho"
+  pre-selected for a place being added — the owner's own reading of what a place is for on a
+  routine), and `commitTrigger(index, trigger, resets)` carries it beside the place; the rule
+  row wears "cuenta como hecho". `PromptTest` pins the model and a year of the car through
+  `Simulation` (which grew `promptAt`, `ask`, `resetBy`, `crossRule`, and an `answer` beside
+  `deal`); `PlaceGateTest` the circles; `RoutinePromptDeviceTest` the phone.
 - `ReminderScheduler` keeps one `setAlarmClock` armed per reminder — the only kind of alarm Doze
   never defers and the rate limiter never holds back — and writes the armed moment back to the
   row. **One pass at a time** (a mutex): passes come from six doors, and two side by side could

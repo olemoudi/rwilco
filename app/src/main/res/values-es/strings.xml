@@ -433,6 +433,10 @@
     <string name="history_missed">no sonó a tiempo; se dijo bajito</string>
     <string name="history_net">avisó la red de seguridad</string>
     <string name="history_dealt">hecho</string>
+    <string name="history_asked">preguntó si estaba hecha</string>
+    <string name="history_reset">contada como hecha por un lugar</string>
+    <string name="history_reset_leave">contada como hecha al salir de %1$s</string>
+    <string name="history_reset_arrive">contada como hecha al llegar a %1$s</string>
     <string name="history_skipped">saltada la siguiente</string>
     <string name="history_snoozed">pospuesto</string>
     <string name="history_snoozed_until">pospuesto hasta %1$s</string>
@@ -532,6 +536,13 @@
     <string name="alert_missed_subtext">No sonó a su hora</string>
     <string name="notif_channel_net">Red de seguridad</string>
     <string name="notif_channel_net_description">Un aviso discreto sobre un recordatorio que sonó y que nadie atendió.</string>
+    <string name="notif_channel_ask">Preguntas de las rutinas</string>
+    <string name="notif_channel_ask_description">Una rutina preguntando si lo has hecho: a una hora del día, o al llegar a un sitio o salir de él.</string>
+    <string name="notif_ask_yes">Sí, ahora</string>
+    <string name="notif_ask_later">Todavía no</string>
+    <string name="notif_reset_title">Rutina hecha: %1$s</string>
+    <string name="notif_reset_leave">Contada como hecha al salir de %1$s</string>
+    <string name="notif_reset_arrive">Contada como hecha al llegar a %1$s</string>
     <string name="notif_net_prefix">ICYMI: %1$s</string>
     <string name="notif_net_subtext">Puede que se te haya pasado</string>
     <string name="notif_net_subtext_never">Esto no llegó a sonar</string>
@@ -921,6 +932,12 @@
     <string name="place_side_arriving">Al llegar</string>
     <string name="place_side_leaving">Al salir</string>
     <string name="place_needs_crossing">Sólo al cruzar la línea</string>
+    <string name="place_role">Qué hace este lugar</string>
+    <string name="place_role_ask">Pregunta si lo he hecho</string>
+    <string name="place_role_reset">Cuenta como hecho, sin preguntar</string>
+    <string name="place_role_ask_hint">Una pregunta en la barra al cruzar la línea, con «sí, ahora» a un toque.</string>
+    <string name="place_role_reset_hint">Cruzar la línea es el hecho mismo: salir del garaje es mover el coche. La cuenta vuelve a empezar sola, y un aviso discreto ofrece deshacerlo.</string>
+    <string name="rule_resets">Cuenta como hecho</string>
     <string name="place_means_inside">Basta con que estés allí: si ya estás cuando toque todo lo demás, suena.</string>
     <string name="place_means_outside">Basta con que no estés allí: si ya estás fuera cuando toque todo lo demás, suena.</string>
     <string name="place_means_arriving">Tiene que verte llegar. Si ya estás allí, espera a que salgas y vuelvas.</string>
@@ -1308,6 +1325,16 @@
         <item>Un aviso con sonido va ahora a tus auriculares cuando los llevas puestos, en vez de salir por el altavoz del móvil como haría cualquier alarma. Es un ajuste, en Sonido, y merece la pena desactivarlo si tus auriculares viven en un cajón: un aviso que suena para nadie es un aviso perdido.</item>
         <item>Y ya no te corta la música. Lo que estuvieras escuchando baja unos decibelios y sigue por debajo mientras el aviso suena por encima —el aviso va por el canal de alarma y la música no, así que ninguno tiene que pelear con el otro— y vuelve solo a su volumen. Antes pedía el audio en exclusiva, lo que mataba un podcast por un tono de diez segundos.</item>
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_96_0">
+
+        <item>Las rutinas preguntan. Una hora del día o un día de la semana bajo una rutina pone una pregunta en la barra («¿He hecho «mover el coche»?») con «Sí, ahora» y «Todavía no». Nunca suena: lo que suena sigue siendo el plazo. Una rutina se calla una décima parte de su plazo después de hacerla, y deja de preguntar mientras su alarma espera respuesta.</item>
+
+        <item>Un lugar puede dar fe del hecho. En una rutina, una puerta es «pregunta si lo he hecho» o «cuenta como hecho, sin preguntar»: salir del garaje es mover el coche, así que la cuenta vuelve a empezar sola, un aviso discreto lo dice con «Deshacer» y el historial guarda la línea. Un lugar ahí es siempre una puerta, y la espera («y cuando lleve diez minutos fuera») es la prueba más barata de que has arrancado.</item>
+
+        <item>Tocar una pregunta abre las rutinas; «Hecho» en cualquier sitio la responde. Un canal nuevo, «Preguntas de las rutinas», las lleva con el sonido del propio móvil y se calla en tus horas de descanso.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_95_0">

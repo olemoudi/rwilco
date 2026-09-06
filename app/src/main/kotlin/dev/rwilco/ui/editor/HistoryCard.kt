@@ -71,6 +71,16 @@ private fun eventWords(event: FiringEvent, today: LocalDate, zone: ZoneId): Stri
         FiringKind.SKIPPED -> stringResource(R.string.history_skipped)
         FiringKind.UNTICKED -> stringResource(R.string.history_unticked)
         FiringKind.LAPSED -> stringResource(R.string.history_lapsed)
+        FiringKind.ASKED -> stringResource(R.string.history_asked)
+        FiringKind.RESET -> {
+            // The doorway that counted it as done, in the person's own word for the place.
+            val place = event.detail?.let(::snoozeDetailOf)
+            when {
+                place == null -> stringResource(R.string.history_reset)
+                place.first == Presence.INSIDE -> stringResource(R.string.history_reset_arrive, place.second)
+                else -> stringResource(R.string.history_reset_leave, place.second)
+            }
+        }
         FiringKind.SNOOZED -> {
             // "Until" is the part worth saying: which offer it was matters less than when it came back.
             val place = event.detail?.let(::snoozeDetailOf)

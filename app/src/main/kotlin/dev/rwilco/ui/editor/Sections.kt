@@ -773,6 +773,15 @@ private fun TriggerEditRow(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    // A routine's place that counts as done rather than asking says so; the
+                    // ones that ask are the ordinary reading and say nothing (see Prompt.kt).
+                    if (rule.resets) {
+                        Text(
+                            text = stringResource(R.string.rule_resets),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
                 }
                 // Named after the rule (0.94.0): three rules were six identical labels.
                 IconButton(onClick = onEdit) {

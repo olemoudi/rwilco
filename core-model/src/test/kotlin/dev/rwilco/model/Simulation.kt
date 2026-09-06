@@ -53,6 +53,88 @@ class Simulation(
     /** The deadlines that passed with the set incomplete, and let the round go (Reminder.lapsed). */
     val lapses = mutableListOf<Instant>()
 
+    /** A routine's questions, as `ReminderFiring.ask` put them: when, and which rule asked. */
+    val prompts = mutableListOf<Wake>()
+
+    /** A routine counted as done by a place (`ReminderFiring.resetBy`): when, and which rule. */
+    val resets = mutableListOf<Wake>()
+
+    /**
+     * The asking alarm: a routine's next question (`ReminderScheduler.armAsk`). Off the row's
+     * armed moment on purpose, as the net's is — a question is not a firing owed.
+     */
+    fun promptAt(): Wake? = reminder.nextPrompt(now, zone, defaultTime, dayStart, shape)
+
+    /**
+     * A question arrives — the asking alarm for rule [ruleIndex], or a doorway crossed with
+     * [viaPlace] — and is judged as `ReminderFiring.ask` judges it: dropped when nothing asks,
+     * when nothing may ask, inside the quiet after a "hecho", as an echo of a question just
+     * put, or outside the rule's own fences (the ones a clock can answer; a place holds, the
+     * house rule). Put, it stamps `askedAt` and takes the person's answer: [Deal.Done] is
+     * "sí, ahora", anything else leaves the row as it is.
+     */
+    fun ask(ruleIndex: Int, viaPlace: Boolean = false, deal: Deal = Deal.Ignore): Boolean {
+        val row = reminder
+        val rule = row.rules.getOrNull(ruleIndex)
+        val put = when {
+            !row.isRoutine || rule == null || !rule.asks -> false
+            !row.promptsAllowed(now) -> false
+            now < row.promptLookFrom(now, zone, dayStart) -> false
+            viaPlace && row.askedAt?.let { java.time.Duration.between(it, now) < PLACE_ECHO } == true -> false
+            !rule.conditions.filter { it.knownInAdvance }.allHoldAt(now, zone) -> false
+            else -> true
+        }
+        if (!put) {
+            arm()
+            return false
+        }
+        reminder = row.copy(askedAt = now)
+        prompts += Wake(now, ruleIndex)
+        deal(deal)
+        return true
+    }
+
+    /**
+     * A place counts the routine as done (`ReminderFiring.resetBy`): the same write "hecho"
+     * makes, unless it is inside the quiet after one, a moment after another, or outside the
+     * rule's fences.
+     */
+    fun resetBy(ruleIndex: Int): Boolean {
+        val row = reminder
+        val rule = row.rules.getOrNull(ruleIndex)
+        val done = when {
+            !row.isRoutine || rule == null || !rule.resetsRoutine -> false
+            row.status != Status.ACTIVE -> false
+            row.promptQuietUntil(zone, dayStart)?.let { now < it } == true -> false
+            row.lastDealtAt?.let { java.time.Duration.between(it, now) < PLACE_ECHO } == true -> false
+            !rule.conditions.filter { it.knownInAdvance }.allHoldAt(now, zone) -> false
+            else -> true
+        }
+        if (!done) {
+            arm()
+            return false
+        }
+        resets += Wake(now, ruleIndex)
+        deal(Deal.Done)
+        return true
+    }
+
+    /**
+     * The phone crosses the line of a routine's rule [ruleIndex] — the watch or the fences
+     * reporting [transition] — which asks, or counts as done, by what the rule is for. Nothing
+     * for the other side of the line: the circle only reports the crossing it waits for.
+     */
+    fun crossRule(ruleIndex: Int, transition: Transition, deal: Deal = Deal.Ignore): Boolean {
+        val rule = reminder.rules.getOrNull(ruleIndex) ?: return false
+        val place = rule.trigger as? Trigger.Location ?: return false
+        if (place.presence.asTransition != transition) return false
+        return if (rule.resetsRoutine) resetBy(ruleIndex) else ask(ruleIndex, viaPlace = true, deal = deal)
+    }
+
+    /** Whether the next thing to arrive is a question rather than a ring or the deadline. */
+    private fun promptFirst(wake: Wake?, lapse: Instant?, prompt: Wake?): Boolean =
+        prompt != null && (wake == null || prompt.at < wake.at) && (lapse == null || prompt.at < lapse) && missedFire(reminder, now) == null
+
     /**
      * rearmAll: what the row says the alarm is set for. A moment armed, come and not answered is
      * held rather than moved on — the delivery in flight rings it — exactly as the scheduler does.
@@ -100,10 +182,20 @@ class Simulation(
     private fun lapseFirst(wake: Wake?, lapse: Instant?): Boolean =
         lapse != null && (wake == null || lapse < wake.at) && missedFire(reminder, now) == null
 
-    /** The next alarm arrives: the clock jumps to it and the row transitions. Null when nothing is armed. */
-    fun step(deal: (Ring) -> Deal = { Deal.Ignore }): Ring? {
+    /**
+     * The next alarm arrives: the clock jumps to it and the row transitions. Null when nothing
+     * is armed, and null after a question — [answer] is what the person says to one. [deal]
+     * stays last, so every caller's trailing lambda is still the answer to a ring.
+     */
+    fun step(answer: (Wake) -> Deal = { Deal.Ignore }, deal: (Ring) -> Deal = { Deal.Ignore }): Ring? {
         val wake = arm()
         val lapse = lapseAt()
+        val prompt = promptAt()
+        if (promptFirst(wake, lapse, prompt)) {
+            now = maxOf(now, prompt!!.at)
+            ask(prompt.ruleIndex!!, viaPlace = false, deal = answer(prompt))
+            return null
+        }
         if (lapseFirst(wake, lapse)) {
             now = maxOf(now, lapse!!)
             expire()
@@ -115,11 +207,18 @@ class Simulation(
     }
 
     /** Alarm after alarm until the next one is past [until]; the rings that went out meanwhile. */
-    fun run(until: Instant, maxSteps: Int = 5_000, deal: (Ring) -> Deal = { Deal.Ignore }): List<Ring> {
+    fun run(until: Instant, maxSteps: Int = 5_000, answer: (Wake) -> Deal = { Deal.Ignore }, deal: (Ring) -> Deal = { Deal.Ignore }): List<Ring> {
         val before = rings.size
         repeat(maxSteps) {
             val wake = arm()
             val lapse = lapseAt()
+            val prompt = promptAt()
+            if (promptFirst(wake, lapse, prompt)) {
+                if (prompt!!.at > until) return rings.drop(before)
+                now = maxOf(now, prompt.at)
+                ask(prompt.ruleIndex!!, viaPlace = false, deal = answer(prompt))
+                return@repeat
+            }
             if (lapseFirst(wake, lapse)) {
                 if (lapse!! > until) return rings.drop(before)
                 now = maxOf(now, lapse)

@@ -89,6 +89,10 @@ interface ReminderDao {
     @Query("UPDATE reminder SET askedAt = :at WHERE id = :id")
     suspend fun setAskedAt(id: String, at: Long)
 
+    /** The undo of a reset by a place: the count goes back to where it was, and nothing else moves. */
+    @Query("UPDATE reminder SET lastDealtAt = :at WHERE id = :id")
+    suspend fun setLastDealtAt(id: String, at: Long?)
+
     @Query("UPDATE reminder SET armedFor = :at, armedRule = :ruleIndex WHERE id = :id")
     suspend fun setArmedFor(id: String, at: Long?, ruleIndex: Int?)
 

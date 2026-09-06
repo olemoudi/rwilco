@@ -83,6 +83,9 @@ class GeofenceReceiver : BroadcastReceiver() {
                                         if (GeofenceIds.isSnooze(placeId)) app.firing.fire(reminderId, viaSnoozePlace = true)
                                         else app.firing.fire(reminderId, ruleIndex = ruleIndex)
                                     Crossing.TAKES_BACK -> ruleIndex?.let { app.firing.untick(reminderId, it) }
+                                    // A routine's doorway: a question, or the deed itself (Prompt.kt).
+                                    Crossing.ASKS -> ruleIndex?.let { app.firing.ask(reminderId, it, viaPlace = true) }
+                                    Crossing.RESETS -> ruleIndex?.let { app.firing.resetBy(reminderId, it) }
                                     Crossing.NOTHING -> Unit
                                 }
                             }.onFailure { Log.e(TAG, "handing on a crossing at $placeId failed", it) }

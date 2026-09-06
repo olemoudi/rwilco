@@ -53,6 +53,8 @@ class ReminderRepository(
 
     suspend fun setAskedAt(id: String, at: Instant) = dao.setAskedAt(id, at.toEpochMilli())
 
+    suspend fun setLastDealtAt(id: String, at: Instant?) = dao.setLastDealtAt(id, at?.toEpochMilli())
+
     suspend fun setArmedFor(id: String, at: Instant?, ruleIndex: Int?) =
         dao.setArmedFor(id, at?.toEpochMilli(), ruleIndex)
 

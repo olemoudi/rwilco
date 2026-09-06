@@ -641,8 +641,15 @@ fun EditorScreen(
                         onDismiss = viewModel::closeSheet,
                         savedPlaces = state.savedPlaces,
                         onKeepPlace = viewModel::keepPlace,
-                        // A routine asks about a doorway and nothing else (see Routines.kt).
+                        // A routine asks about a doorway and nothing else (see Routines.kt) —
+                        // or counts it as done: the role rides beside the place on its way in.
                         doorwayOnly = state.draft.recurrence is Recurrence.Since,
+                        initialResets = sheet.index?.let { state.draft.rules.getOrNull(it)?.resets } ?: true,
+                        onConfirmRule = if (state.draft.recurrence is Recurrence.Since) {
+                            { place, resets -> viewModel.commitTrigger(sheet.index, place, resets) }
+                        } else {
+                            null
+                        },
                     )
                 }
             }

@@ -330,7 +330,7 @@ class EditorViewModel(
 
     fun restoreTrigger(index: Int, rule: TriggerRule, recurrence: Recurrence) =
         _state.update { it.restoreTrigger(index, rule, recurrence) }
-    fun commitTrigger(index: Int?, trigger: Trigger) = _state.update { it.commitTrigger(index, trigger) }
+    fun commitTrigger(index: Int?, trigger: Trigger, resets: Boolean? = null) = _state.update { it.commitTrigger(index, trigger, resets) }
     fun addCondition(ruleIndex: Int) = _state.update { it.addCondition(ruleIndex) }
     fun editCondition(ruleIndex: Int, conditionIndex: Int) = _state.update { it.editCondition(ruleIndex, conditionIndex) }
     fun removeCondition(ruleIndex: Int, conditionIndex: Int) = _state.update { it.removeCondition(ruleIndex, conditionIndex) }

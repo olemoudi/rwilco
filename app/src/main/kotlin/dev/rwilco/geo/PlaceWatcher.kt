@@ -17,6 +17,7 @@ import dev.rwilco.data.ReminderRepository
 import dev.rwilco.diag.Diag
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.GeofenceIds
+import dev.rwilco.model.isRoutine
 import dev.rwilco.model.dayShape
 import dev.rwilco.model.watchedCircles
 import dev.rwilco.model.Crossing
@@ -345,8 +346,15 @@ class PlaceWatcher(
         // ring must not hold the office doorway to the second-ring rule, and the circle a
         // snooze waits at has never rung at all — held strictly with no side yet seen, the
         // first arrival home was dropped and the reminder went quiet for good.
+        // A routine's doorway never rings, so it never writes the ring this is keyed to: it is
+        // held strictly once the routine has asked or been done at all, or a line re-reported
+        // over a stale fix would ask (or count the car as moved) with nobody having left.
         val strict = live?.onCrossing == true && !GeofenceIds.isSnooze(placeId) &&
-            reminder?.lastFiredAt != null && reminder.lastFiredRule == GeofenceIds.triggerIndexOf(placeId)
+            if (reminder?.isRoutine == true) {
+                reminder.askedAt != null || reminder.lastDealtAt != null
+            } else {
+                reminder?.lastFiredAt != null && reminder.lastFiredRule == GeofenceIds.triggerIndexOf(placeId)
+            }
         val arrived = transition == Transition.ENTER
         if (!crossingIsNews(state, placeId, transition, now, strict = strict)) {
             Log.i(TAG, "geofence says $transition at $placeId, but we were already there")
@@ -598,6 +606,11 @@ class PlaceWatcher(
                 runCatching {
                     if (what[event.placeId] == Crossing.TAKES_BACK && ruleIndex != null) {
                         firing.untick(reminderId, ruleIndex)
+                    } else if (what[event.placeId] == Crossing.ASKS && ruleIndex != null) {
+                        // A routine's doorway asks; the other reading counts as done (Prompt.kt).
+                        firing.ask(reminderId, ruleIndex, viaPlace = true)
+                    } else if (what[event.placeId] == Crossing.RESETS && ruleIndex != null) {
+                        firing.resetBy(reminderId, ruleIndex)
                     } else if (GeofenceIds.isSnooze(event.placeId)) {
                         firing.fire(reminderId, viaSnoozePlace = true)
                     } else {

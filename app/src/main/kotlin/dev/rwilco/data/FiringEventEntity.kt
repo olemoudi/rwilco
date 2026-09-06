@@ -67,6 +67,12 @@ enum class FiringKind {
 
     /** The set's deadline ran out with the set incomplete, and the round was let go without a sound. */
     LAPSED,
+
+    /** A routine was asked whether it had been done: a question in the shade, not a ring. */
+    ASKED,
+
+    /** A routine was counted as done by a place — [FiringEvent.detail] says which doorway. */
+    RESET,
 }
 
 data class FiringEvent(val kind: FiringKind, val at: Instant, val ruleIndex: Int? = null, val detail: String? = null)

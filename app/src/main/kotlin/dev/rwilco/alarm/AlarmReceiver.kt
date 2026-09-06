@@ -19,6 +19,8 @@ class AlarmReceiver : BroadcastReceiver() {
         val nudge = ReminderScheduler.isNudge(intent)
         // And a third: the set's deadline running out, which rings nothing and lets the round go.
         val lapse = ReminderScheduler.isLapse(intent)
+        // And a fourth: a routine asking whether it has been done (Prompt.kt).
+        val ask = ReminderScheduler.isAsk(intent)
         val app = context.applicationContext as RwilcoApplication
         // goAsync: the work is a database read and a notification, and a receiver that returns
         // before them is a reminder that never rings.
@@ -31,6 +33,7 @@ class AlarmReceiver : BroadcastReceiver() {
                     when {
                         nudge -> app.firing.nudge(id)
                         lapse -> app.firing.expire(id)
+                        ask -> app.firing.ask(id, ruleIndex, viaPlace = false)
                         else -> app.firing.fire(id, ruleIndex = ruleIndex)
                     }
                 }

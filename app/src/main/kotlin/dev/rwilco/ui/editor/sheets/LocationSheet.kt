@@ -114,8 +114,17 @@ fun LocationSheet(
      * offers the state reading is simply not there (see `Routines.kt`).
      */
     doorwayOnly: Boolean = false,
+    /**
+     * Under a routine, what the doorway does: asks, or counts as done ([TriggerRule.resets]).
+     * Opens on "counts as done" for a place being added — the owner's own reading of what a
+     * place is for on a routine — and on the rule's answer for one being edited.
+     */
+    initialResets: Boolean = true,
+    /** The routine's own confirm, carrying the role beside the place; null everywhere else. */
+    onConfirmRule: ((Trigger.Location, Boolean) -> Unit)? = null,
 ) {
     var label by rememberSaveable { mutableStateOf(initial?.label ?: "") }
+    var resets by rememberSaveable { mutableStateOf(initialResets) }
     var presence by rememberSaveable { mutableStateOf((initial?.presence ?: Presence.INSIDE).name) }
     // A place being *added* is asked for as a doorway: "al llegar a casa" is the sentence people
     // write, and the state reading — "mientras esté en casa" — is a tap away on the same switch.
@@ -291,7 +300,8 @@ fun LocationSheet(
         onDismiss = onDismiss,
         onConfirm = {
             if (keep && keepOffered) onKeepPlace?.invoke(SavedPlace(label.trim(), lat!!, lng!!, radius))
-            onConfirm(Trigger.Location(lat!!, lng!!, radius, Presence.valueOf(presence), label.trim(), onCrossing, rate))
+            val place = Trigger.Location(lat!!, lng!!, radius, Presence.valueOf(presence), label.trim(), onCrossing, rate)
+            onConfirmRule?.invoke(place, resets) ?: onConfirm(place)
         },
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
         confirmEnabled = known && label.isNotBlank() && (rate == null || rate in MIN_DWELL_MINUTES..MAX_DWELL_MINUTES),
@@ -366,6 +376,9 @@ fun LocationSheet(
                 onCrossingChange = { onCrossing = it },
                 doorwayOnly = doorwayOnly,
             )
+            // A routine's doorway asks, or counts as done: the choice the role row puts, right
+            // under the side of the line it is about (see Prompt.kt).
+            if (onConfirmRule != null) RoleChoice(resets = resets, onChange = { resets = it })
             // Only under a doorway, because only a doorway can be asked to be stayed at: a side
             // of a line already holds for as long as somebody is on it, and asking a state to
             // last is the same state. The switch simply disappears with the reading, which is
@@ -626,6 +639,32 @@ private fun KeepPlaceRow(keep: Boolean, onChange: (Boolean) -> Unit) {
  * minute nobody put on a chip. One stepper and no hours, because ninety minutes is the top
  * ([MAX_DWELL_MINUTES]) and two controls for a number under a hundred is one too many.
  */
+/**
+ * What a routine's doorway does: ask whether it has been done, or count as having done it.
+ * Two readings of one crossing, and the line under them says what each one costs, because
+ * "counts as done" is the app acting on its own and somebody should know before they pick it.
+ */
+@Composable
+private fun RoleChoice(resets: Boolean, onChange: (Boolean) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm)) {
+        Text(
+            text = stringResource(R.string.place_role),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        SegmentedChoice(
+            options = listOf(stringResource(R.string.place_role_ask), stringResource(R.string.place_role_reset)),
+            selectedIndex = if (resets) 1 else 0,
+            onSelect = { onChange(it == 1) },
+        )
+        Text(
+            text = stringResource(if (resets) R.string.place_role_reset_hint else R.string.place_role_ask_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
 @Composable
 private fun DwellRow(
     inside: Boolean,

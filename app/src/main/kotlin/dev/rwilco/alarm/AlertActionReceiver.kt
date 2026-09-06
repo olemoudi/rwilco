@@ -6,6 +6,8 @@ import android.content.Intent
 import android.util.Log
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.model.Snooze
+import dev.rwilco.notify.AlertNotifications
+import java.time.Instant
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -28,6 +30,12 @@ class AlertActionReceiver : BroadcastReceiver() {
                                 ?: Snooze.TEN_MINUTES
                             app.firing.snooze(id, snooze)
                         }
+                        // "Todavía no" to a routine's question: the card goes, nothing is written.
+                        ACTION_LATER -> AlertNotifications.cancelAsk(context, id)
+                        ACTION_UNDO_RESET -> app.firing.undoReset(
+                            id,
+                            intent.getLongExtra(EXTRA_PREVIOUS, -1L).takeIf { it >= 0 }?.let(Instant::ofEpochMilli),
+                        )
                     }
                 }
                 if (done == null) Log.e("RwilcoAlarms", "action ${intent.action} on $id ran out of time")
@@ -42,7 +50,12 @@ class AlertActionReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_DONE = "dev.rwilco.alert.DONE"
         const val ACTION_SNOOZE = "dev.rwilco.alert.SNOOZE"
+        /** "Todavía no" on a routine's question. */
+        const val ACTION_LATER = "dev.rwilco.alert.LATER"
+        /** "Deshacer" on a routine counted as done by a place; [EXTRA_PREVIOUS] is where the count goes back to. */
+        const val ACTION_UNDO_RESET = "dev.rwilco.alert.UNDO_RESET"
         const val EXTRA_SNOOZE = "snooze"
+        const val EXTRA_PREVIOUS = "previous"
         private const val BUDGET_MS = 9_000L
     }
 }
