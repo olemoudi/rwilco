@@ -177,6 +177,39 @@ class RoutinesTest {
     }
 
     @Test
+    fun `a routine's net waits half an hour at the least, and the whole wait at the most`() {
+        // Reported from the phone: a routine of one hour put the net's word in the shade six
+        // minutes after the alarm — a tenth of the span, which is the right proportion for
+        // something that is coming back and the wrong one here. The floor is 30 minutes.
+        val rang = now.minusSeconds(60)
+        val hourly = car(
+            span = Recurrence.Since(1, RecurrenceUnit.HOURS),
+            createdAt = now.minusSeconds(4 * 3_600),
+            lastFiredAt = rang,
+        )
+        assertEquals(rang.plus(ROUTINE_NET_FLOOR), hourly.netDue(now, zone, defaultTime, SafetyNetSettings(), dayStart)?.at)
+
+        // The floor is a floor: three weeks still waits the whole day the settings allow.
+        val slow = car(createdAt = now.minusSeconds(30 * 86_400), lastFiredAt = rang)
+        assertEquals(rang.plus(Duration.ofHours(24)), slow.netDue(now, zone, defaultTime, SafetyNetSettings(), dayStart)?.at)
+
+        // And it is the routines' alone: an ordinary reminder that comes back hourly keeps its
+        // six minutes, which is what the proportion was written for.
+        val ordinary = Fixtures.reminder(nine, id = "pills").copy(
+            recurrence = Recurrence.After(1, RecurrenceUnit.HOURS),
+            createdAt = now.minusSeconds(4 * 3_600),
+            lastFiredAt = rang,
+        )
+        assertEquals(rang.plus(Duration.ofMinutes(6)), ordinary.netDue(now, zone, defaultTime, SafetyNetSettings(), dayStart)?.at)
+
+        // A span under the cadence floor still gets no net at all: this does not bring one back
+        // where the settings ruled it out. (An hour is the shortest span a routine can have, so
+        // it takes a raised `minCadenceMinutes` to get there.)
+        val strict = SafetyNetSettings(minCadenceMinutes = 120)
+        assertNull(hourly.netDue(now, zone, defaultTime, strict, dayStart))
+    }
+
+    @Test
     fun `a stale alarm for a rule rings nothing, through the same door everything comes through`() {
         // Simulation.fire mirrors ReminderFiring.fire's guard: a routine's rule is never a ring.
         val sim = Simulation(car(garage, nine), now, dayStart = dayStart)

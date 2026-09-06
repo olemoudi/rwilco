@@ -163,6 +163,21 @@ fun tooFastForNet(cadence: Duration?, settings: SafetyNetSettings): Boolean =
 fun placeSnoozeWait(settings: SafetyNetSettings): Duration = Duration.ofHours(settings.afterHours.toLong() * 2)
 
 /** How long the net waits, given the rhythm it is stretched under. See [SafetyNetSettings]. */
+/**
+ * **A routine's net never speaks sooner than this after the ring** (the owner's number, 2026-09-06).
+ *
+ * The wait below is a tenth of the gap between rings, which is the right proportion for a
+ * reminder that is coming back and the wrong one for a routine: a span of an hour put the word
+ * in the shade six minutes after the alarm — the same reminder twice in six minutes, which is
+ * exactly the nagging the net says it is not. And a routine loses least by the silence: its
+ * count is on its own screen and on Home's row whether anything is said or not.
+ *
+ * A floor, not a replacement: a three-week routine still gets the whole wait (a day), and a span
+ * under [SafetyNetSettings.minCadenceMinutes] still gets no net at all — this does not bring one
+ * back where the cadence ruled it out.
+ */
+val ROUTINE_NET_FLOOR: Duration = Duration.ofMinutes(30)
+
 fun netWait(cadence: Duration?, settings: SafetyNetSettings): Duration {
     val longest = Duration.ofHours(settings.afterHours.toLong())
     if (cadence == null) return longest
@@ -305,7 +320,8 @@ fun Reminder.netDue(
     if (word == NetWord.WAITING) return NetDue(about.plus(placeSnoozeWait(settings)), about, word)
     val cadence = ringCadence(now, zone, defaultTime, dayStart, shape)
     if (tooFastForNet(cadence, settings)) return null
-    return NetDue(about.plus(netWait(cadence, settings)), about, word)
+    val wait = netWait(cadence, settings).let { if (isRoutine) maxOf(it, ROUTINE_NET_FLOOR) else it }
+    return NetDue(about.plus(wait), about, word)
 }
 
 /** Just the moment, for the scheduler, which only has an alarm to set. */

@@ -502,6 +502,22 @@ after the span in "Vuelve"), and the editor's draft not surviving process death 
 `SavedStateHandle`). The second half of the round — the `⋯` on a card, Tags below "Vuelve",
 warnings off amber, one top bar, TalkBack order on the alert, the tokens — is 0.94.0.
 
+## The net's floor for routines, 0.103.0 (2026-09-06)
+Asked from the phone after reading his own diagnostics: two routines with a span of one hour had
+`net` in their history six minutes after `rang`. That is the net working exactly as written — a
+tenth of the cadence, and a routine's cadence is its span — and exactly wrong: the same reminder
+twice in the shade in six minutes is the nagging the net's own doc says it is not.
+
+- `ROUTINE_NET_FLOOR` (30 minutes, the owner's number) is a **floor under the wait, for routines
+  only**: `max(floor, min(afterHours, cadence/fraction))`. Three weeks still waits the whole day;
+  an hourly *reminder* still waits its six minutes, because the proportion is right for something
+  that is coming back to bury it.
+- It does not resurrect a net the cadence ruled out (`tooFastForNet` runs first). An hour is the
+  shortest span a routine can have — there is no MINUTES unit — so that only bites with
+  `minCadenceMinutes` raised above 60.
+- Why a routine loses least by the silence, which is what made the floor safe: its count is on
+  its own screen, on Home's overdue row and on the launcher icon whether the net speaks or not.
+
 ## A search on the routines, and a quieter card, 0.102.0 (2026-09-06)
 Both asked for from the phone, one after the other.
 

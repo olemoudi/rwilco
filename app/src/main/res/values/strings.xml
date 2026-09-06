@@ -1350,6 +1350,12 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_103_0">
+
+        <item>A routine\'s safety net waits half an hour at the least. The word about a ring that got away comes a tenth of the way to the next one, which on a routine of one hour meant six minutes — the same reminder twice in the shade in six minutes, which is the nagging the net exists not to be. Long spans are unchanged: three weeks still gets its word a day later, and a routine still loses least by the silence, since its count is on its own screen and on the home row either way.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_102_0">
 
         <item>The routines have a search. The magnifier in the bar opens the same field Home searches with, and the words narrow the list without re-ordering it: what is owed stays on top. It works alongside the chips — «Overdue» plus «filter» is what you would expect.</item>

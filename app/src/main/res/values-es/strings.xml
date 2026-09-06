@@ -1335,6 +1335,12 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_103_0">
+
+        <item>La red de seguridad de una rutina espera media hora como mínimo. El aviso de que un timbre se escapó llega a una décima parte del siguiente, que en una rutina de una hora eran seis minutos — el mismo recordatorio dos veces en la barra en seis minutos, que es justo la insistencia que la red dice no ser. Los plazos largos no cambian: tres semanas siguen teniendo su aviso un día después, y una rutina es la que menos pierde con el silencio, porque su cuenta sigue en su pantalla y en la fila del inicio.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_102_0">
 
         <item>Las rutinas tienen buscador. La lupa de la barra abre el mismo campo con el que se busca en el inicio, y las palabras estrechan la lista sin cambiarle el orden: lo vencido sigue arriba. Se combina con los chips — «Vencidas» y «filtro» a la vez es lo que esperas.</item>
