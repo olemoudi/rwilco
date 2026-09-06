@@ -268,6 +268,11 @@ These are standing rules for this repository. Follow them without being re-asked
   exactly one occurrence of each, the release workflow greps the first — add the build's line to
   `RELEASES` (`WhatsNewTest` refuses a build without one), then push the matching `v*-alpha` (or,
   when asked, `v*-beta`) tag.
+- **The minor keeps counting past 99: 0.99.1 → 0.100.0 → 0.101.0.** Asked and answered by the
+  owner on 2026-09-06 ("seguir en 0.10x"). **1.0.0 is his to declare and nobody else's** — it is
+  a statement about the app, not the next number in a sequence, so do not reach for it because
+  the digits look untidy. Nothing compares `versionName` as a number: the phone updates by
+  `versionCode` and only checks that the name ends in its channel's suffix.
 
 ### Auto-update
 - The app self-updates from GitHub Releases: `UpdateWorker` (periodic + on launch/boot) runs
