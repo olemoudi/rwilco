@@ -329,9 +329,9 @@ fun EditorUiState.addTag(raw: String): EditorUiState {
  * What "hecho" means for this one.
  *
  * Picking a routine ([Recurrence.Since]) changes what the rules are: questions, never a set
- * that rings. So the set's reading goes back to "cualquiera" and its deadline goes, and every
- * place on the form becomes the doorway it will be read as — "mientras esté" is not a question
- * anybody can be asked once (see `Routines.kt`).
+ * that rings. So the set's reading goes back to "cualquiera" and its deadline goes. A place
+ * keeps the side of the line it was written with — a doorway ("al salir del garaje") or a state
+ * ("si ya estoy en el garaje"), which is the one a phone that never crosses the line needs.
  */
 fun EditorUiState.setRecurrence(recurrence: Recurrence): EditorUiState {
     if (recurrence !is Recurrence.Since) return copy(draft = draft.copy(recurrence = recurrence))
@@ -340,15 +340,17 @@ fun EditorUiState.setRecurrence(recurrence: Recurrence): EditorUiState {
             recurrence = recurrence,
             ruleMatch = RuleMatch.ANY,
             deadline = null,
-            rules = draft.rules.map { it.asDoorway() },
         ),
     )
 }
 
-/** The same rule, with a place among its triggers read as the doorway a routine asks about. */
-private fun TriggerRule.asDoorway(): TriggerRule {
-    val place = trigger as? Trigger.Location ?: return this
-    return if (place.onCrossing) this else copy(trigger = place.copy(onCrossing = true))
+/**
+ * Where a routine's count starts: null is "ahora mismo" — the day it is written — and a moment
+ * is the one somebody picked. Only a routine has the question; anything else is left alone.
+ */
+fun EditorUiState.setRoutineStart(startsAt: Instant?): EditorUiState {
+    val since = draft.recurrence as? Recurrence.Since ?: return this
+    return copy(draft = draft.copy(recurrence = since.copy(startsAt = startsAt)))
 }
 
 /**
@@ -467,7 +469,7 @@ fun EditorUiState.commitTrigger(index: Int?, trigger: Trigger, resets: Boolean? 
         draft.rules.mapIndexed { i, rule -> if (i == index) rule.copy(trigger = trigger, resets = resets ?: rule.resets) else rule }
     } else {
         draft.rules + TriggerRule(trigger, resets = resets ?: false)
-    }.let { if (draft.recurrence is Recurrence.Since) it.map { rule -> rule.asDoorway() } else it }
+    }
     val match = matchAfterAdding(rules, adding)
     // Choosing "at random" IS choosing a recurrence — "tres veces al día" says so outright — so
     // it says so in plain sight, right under the row, and changeable. Every other kind leaves

@@ -64,7 +64,7 @@ import dev.rwilco.ui.components.ListPlaceholder
 import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.RwilcoTopBar
-import dev.rwilco.ui.components.SnoozeUntilSheet
+import dev.rwilco.ui.components.FutureMomentSheet
 import dev.rwilco.ui.components.TagChip
 import dev.rwilco.ui.components.TagLabel
 import dev.rwilco.ui.components.rememberNow
@@ -324,7 +324,7 @@ fun RoutinesScreen(
     }
 
     pickingDateFor?.let { id ->
-        SnoozeUntilSheet(
+        FutureMomentSheet(
             now = clock.instant().atZone(zone),
             defaultTime = defaultTime,
             onConfirm = { until -> pickingDateFor = null; viewModel.snoozeUntil(id, until) },
@@ -387,8 +387,13 @@ private fun RoutineCard(
     val answer = stringResource(if (row.done) R.string.routines_yes else R.string.routines_no)
     // Under a minute it is "ahora mismo": a "hecho" given a moment ago sits a few seconds either
     // side of the last minute pulse, and neither "en 5 s" nor "hace 0 s" is how long it has been.
-    val elapsed = if (Duration.between(row.anchor, now) < Duration.ofMinutes(1)) stringResource(R.string.countdown_just_now)
-    else countdownText(partsBetween(now, row.anchor))
+    // A routine whose count has not begun says so instead ("empieza el martes"): "hace" is a
+    // word about time that has passed, and none of it has.
+    val elapsed = when {
+        row.startsLater -> stringResource(R.string.routines_starts, countdownText(partsBetween(now, row.anchor)))
+        Duration.between(row.anchor, now) < Duration.ofMinutes(1) -> stringResource(R.string.countdown_just_now)
+        else -> countdownText(partsBetween(now, row.anchor))
+    }
     val due = countdownText(partsBetween(now, row.deadline))
     val dueLine = elapsed + stringResource(R.string.common_separator) +
         stringResource(if (row.done) R.string.routines_due else R.string.routines_overdue, due)

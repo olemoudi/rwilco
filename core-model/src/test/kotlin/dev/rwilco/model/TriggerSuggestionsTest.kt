@@ -161,4 +161,17 @@ class TriggerSuggestionsTest {
         // And no favourite at all is the plain order.
         assertEquals(OFFERED_KINDS, kindsOrdered(null))
     }
+
+    @Test
+    fun `a routine offers the three kinds a question can be asked at, and no others`() {
+        // A routine's rules ask whether it has been done, or vouch for the deed — so a place, an
+        // hour and a day of the week. A date, a range, a window, a countdown and a draw all name
+        // one moment and then have nothing more to say, which is no way to ask a question that
+        // comes back every three weeks.
+        assertEquals(listOf(TriggerKind.PLACE, TriggerKind.TIME_OF_DAY, TriggerKind.WEEKDAY), ROUTINE_KINDS)
+        assertTrue(OFFERED_KINDS.containsAll(ROUTINE_KINDS), "a routine's row that is not a tile at all")
+        // The sheet never puts a favourite from outside the three at the top of them.
+        assertEquals(ROUTINE_KINDS, kindsOrdered(TriggerKind.COUNTDOWN, ROUTINE_KINDS))
+        assertEquals(listOf(TriggerKind.WEEKDAY, TriggerKind.PLACE, TriggerKind.TIME_OF_DAY), kindsOrdered(TriggerKind.WEEKDAY, ROUTINE_KINDS))
+    }
 }

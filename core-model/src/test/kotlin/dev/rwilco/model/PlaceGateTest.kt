@@ -248,14 +248,19 @@ class PlaceGateTest {
     // ---- a routine's circles: ask or count as done, never rest -----------------------------
 
     @Test
-    fun `a routine's doorway is watched to ask, or to count as done, and never rests`() {
+    fun `a routine's place is watched to ask, or to count as done, and never rests`() {
         val since = Recurrence.Since(21, RecurrenceUnit.DAYS)
         // Written ten days ago: the quiet after the day it was written is over.
         val written = now.minusSeconds(10 * 86_400)
         val asks = reminder(TriggerRule(leavingHome), recurrence = since).copy(createdAt = written)
         val circle = asks.circles().single()
         assertEquals(Crossing.ASKS, circle.place.crossing)
-        assertTrue(circle.place.onCrossing, "always the doorway, whatever the row says")
+        // Written as a state, watched as one: "si ya estás fuera de casa" is the reading for a
+        // phone that is never seen crossing the line, and forcing the doorway lost that
+        // question for good. A doorway written as one stays a doorway.
+        assertFalse(circle.place.onCrossing, "a state is watched as a state")
+        val door = reminder(TriggerRule(leavingHome.copy(onCrossing = true)), recurrence = since).copy(createdAt = written)
+        assertTrue(door.circles().single().place.onCrossing, "and a doorway as a doorway")
         assertNull(circle.opensAt, "worth a position now")
         assertFalse(circle.resting)
         val counts = reminder(TriggerRule(leavingHome, resets = true), recurrence = since).copy(createdAt = written)

@@ -103,6 +103,7 @@
     <string name="routines_question">Have I done “%1$s”?</string>
     <string name="routines_yes">Yes</string>
     <string name="routines_no">No</string>
+    <string name="routines_starts">starts %1$s</string>
     <string name="routines_due">due %1$s</string>
     <string name="routines_overdue">overdue %1$s</string>
     <string name="routines_new">New routine</string>
@@ -227,13 +228,17 @@
     <!-- Editor -->
     <string name="editor_title_new">New reminder</string>
     <string name="editor_title_edit">Edit reminder</string>
+    <string name="editor_title_new_routine">New routine</string>
+    <string name="editor_title_edit_routine">Edit routine</string>
     <string name="editor_preview">Preview the alert</string>
     <string name="editor_delete">Delete reminder</string>
     <string name="editor_tags_title">Tags</string>
     <string name="editor_new_tag">New tag</string>
     <string name="editor_new_tag_hint">Tag name</string>
     <string name="editor_when_title">When</string>
-    <string name="editor_when_ask_title">Ask me whether I\'ve done it</string>
+    <string name="editor_when_ask_title">And also</string>
+    <string name="editor_start_title">When it starts</string>
+    <string name="editor_add_ask">Add to the routine</string>
     <string name="editor_period_title">How often</string>
     <string name="editor_add_trigger">Add a trigger</string>
     <string name="editor_edit_trigger_named">Edit «%1$s»</string>
@@ -259,6 +264,12 @@
     <string name="recur_day">Every day</string>
     <string name="recur_custom_title">Every so often</string>
     <string name="recur_since_chip">Since the last time</string>
+    <string name="recur_custom_span">Another span</string>
+    <string name="routine_start_now">Right now</string>
+    <string name="routine_start_later">At a future moment</string>
+    <string name="routine_start_title">When does it start?</string>
+    <string name="routine_start_past">That moment is behind us</string>
+    <string name="routine_start_then">and then %1$s</string>
     <string name="recur_since_title">Since the last time</string>
     <string name="recur_since_note">A routine: it counts from the last time you marked it done, and rings when that long has passed. The «when» only asks whether you\'ve done it.</string>
     <string name="recur_list_title">Recurrences</string>
@@ -352,6 +363,9 @@
     <string name="kind_countdown_hint">In a while from now</string>
     <string name="kind_place">Place</string>
     <string name="kind_place_hint">Being somewhere, or getting there</string>
+    <string name="kind_place_routine_hint">Being there or crossing the line: asks, or counts as done</string>
+    <string name="kind_time_of_day_routine_hint">Asks at 09:00, on the days you say</string>
+    <string name="kind_weekday_routine_hint">Asks on Fridays, at weekends — the days on their own</string>
     <string name="kind_random">Random</string>
     <string name="kind_random_hint">Surprise moments in a window</string>
 
@@ -1348,6 +1362,20 @@
         <item>A reminder with sound now goes to your headphones when you are wearing any, instead of out of the phone\'s speaker as an alarm otherwise would. It is a setting, in Sound, and it is worth turning off if your earbuds live in a drawer: a reminder played to nobody is a reminder missed.</item>
         <item>And it no longer stops your music. What was playing drops a few decibels and carries on underneath while the reminder sounds over it — the reminder is on the alarm channel and the music is not, so neither has to fight the other — and comes back by itself. It used to ask for the audio outright, which ended podcasts for a ten-second chime.</item>
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_104_0">
+
+        <item>«Nueva rutina» now opens a form that calls itself that. It said «New reminder» — true of the model, since a routine is a reminder, and a lie about what you were writing. The title follows the thing being written, so a reminder turned into a routine by the chip is renamed there and then.</item>
+
+        <item>A routine can start later. The new «When it starts» card has two answers — «right now», which is what every routine did, and «at a future moment», off the same calendar «snooze to a date» uses — and reads the whole sentence back under them: «starts on 1 October, and then every 3 months since the last time». Nothing is owed until that moment arrives, and the list says «starts in 5 d» rather than counting time that has not passed.</item>
+
+        <item>«How often» is only the span now. It carried «every so often» and «since the last time», which on a routine were literally the same thing — both wrote the same span since the last time, from the same dialog — plus three answers («don\'t repeat», «specific days», «left to chance») that quietly stopped it being a routine at all. One chip, «another span», and the hour.</item>
+
+        <item>A routine offers the three triggers that can ask: a place, a time of day and a day of the week, each saying what it does there («asks at 09:00»). A date, a range, a countdown or a draw all name one moment and then have nothing more to say, which is a fine way to ring once and a poor way to ask a question that comes back every three weeks.</item>
+
+        <item>A routine\'s place counts if you are already there. It could only be written as a doorway — «on arriving», «on leaving» — so a phone that never crossed the line when it mattered was never asked at all. It now has the four readings it has on any reminder, and «while I am in the garage» counts from the first look that finds you there.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_103_0">

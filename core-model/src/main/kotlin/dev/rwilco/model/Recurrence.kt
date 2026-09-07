@@ -2,6 +2,7 @@
 
 package dev.rwilco.model
 
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
@@ -110,6 +111,18 @@ sealed interface Recurrence {
         val amount: Int,
         val unit: RecurrenceUnit,
         val hour: RecurrenceHour = RecurrenceHour.DayStart,
+        /**
+         * When the count starts, for a routine that does not start today: "empezando el 1 de
+         * octubre, y cada 21 días desde entonces". Null is the count that starts the day it was
+         * written, which is what every routine did and still does ([Reminder.routineAnchor]).
+         *
+         * A moment and not a date, because it is an anchor and every other anchor here is one.
+         * Never written when it is not asked for, so no routine already on a phone changes
+         * shape on disk over a field it does not use — the same reason [Trigger.Location]
+         * carries its rate that way.
+         */
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
+        val startsAt: Instant? = null,
     ) : Recurrence
 
     /**
@@ -264,12 +277,14 @@ val Recurrence.landsOnAnHour: Boolean
 /**
  * [other]'s span, kept counting from wherever this one was counting from — and a routine stays
  * a routine: "cada semana" picked on one means a week since the last time, not a reminder that
- * comes back a week after it rings.
+ * comes back a week after it rings. A routine's start ([Recurrence.Since.startsAt]) is the
+ * other half of "from wherever": changing how long the span is says nothing about when it
+ * begins.
  */
 fun Recurrence.withSpanOf(other: Recurrence): Recurrence = when {
     this is Recurrence.After && other is Recurrence.After -> other.copy(from = from, hour = hour, landing = landing)
-    this is Recurrence.Since && other is Recurrence.After -> Recurrence.Since(other.amount, other.unit, hour)
-    this is Recurrence.Since && other is Recurrence.Since -> other.copy(hour = hour)
+    this is Recurrence.Since && other is Recurrence.After -> Recurrence.Since(other.amount, other.unit, hour, startsAt)
+    this is Recurrence.Since && other is Recurrence.Since -> other.copy(hour = hour, startsAt = startsAt)
     else -> other
 }
 

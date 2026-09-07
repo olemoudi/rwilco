@@ -33,6 +33,7 @@ import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -101,6 +102,7 @@ import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.model.upcomingMoments
 import dev.rwilco.model.NextFire
 import dev.rwilco.model.Recurrence
+import dev.rwilco.model.ROUTINE_KINDS
 import kotlinx.coroutines.launch
 import java.time.ZoneId
 import dev.rwilco.model.Understood
@@ -270,6 +272,12 @@ fun EditorScreen(
         }
     }
 
+    // A routine, and so a different form: its own title, the card that says where its count
+    // starts, rules that ask rather than ring, and a "Vuelve" that is only the plazo. All of it
+    // hangs off the one predicate ([Reminder.isRoutine]) rather than off the door it came in
+    // through, so a reminder turned into a routine on this very screen is one at once.
+    val routine = state.draft.recurrence is Recurrence.Since
+
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
@@ -280,6 +288,11 @@ fun EditorScreen(
                         when {
                             state.asPreset && state.editingPreset != null -> R.string.editor_title_edit_preset
                             state.asPreset -> R.string.editor_title_new_preset
+                            // "Nueva rutina" opened a form called "Nuevo recordatorio": true of
+                            // the model — a routine is a reminder — and a lie about what the
+                            // screen is for. The words follow the thing being written.
+                            routine && state.isNew -> R.string.editor_title_new_routine
+                            routine -> R.string.editor_title_edit_routine
                             state.isNew -> R.string.editor_title_new
                             else -> R.string.editor_title_edit
                         },
@@ -377,9 +390,25 @@ fun EditorScreen(
                         PresetTextField(text = state.presetText, onChange = viewModel::setPresetText)
                     }
                 }
-                // A routine's rules ask rather than ring, and the card says so in its title:
-                // "pregúntame si lo he hecho" is the question they put (see Routines.kt).
-                val routine = state.draft.recurrence is Recurrence.Since
+                // Where the count starts, which is a question only a routine has — and the
+                // first one it has, because everything under it is measured from the answer.
+                (state.draft.recurrence as? Recurrence.Since)?.let { since ->
+                    EditorSection(
+                        title = stringResource(R.string.editor_start_title),
+                        icon = Icons.Outlined.PlayArrow,
+                    ) {
+                        RoutineStartSection(
+                            recurrence = since,
+                            now = now.atZone(zone),
+                            today = today,
+                            defaultTime = state.defaultTime,
+                            onStart = viewModel::setRoutineStart,
+                        )
+                    }
+                }
+                // A routine's rules ask rather than ring — or vouch for the deed — so the card
+                // is what it is: everything the routine does besides run its plazo out (see
+                // Routines.kt).
                 EditorSection(
                     title = stringResource(if (routine) R.string.editor_when_ask_title else R.string.editor_when_title),
                     icon = Icons.Outlined.Schedule,
@@ -534,8 +563,11 @@ fun EditorScreen(
         when (val sheet = state.sheet) {
             EditorSheet.None -> Unit
             EditorSheet.PickKind -> TriggerKindSheet(
-                kinds = state.kindOrder,
-                preferred = state.defaultKind,
+                // A routine's three, always in the same order and with no favourite leading
+                // them: a favourite is a shortcut through eight rows, and there are three.
+                kinds = if (routine) ROUTINE_KINDS else state.kindOrder,
+                preferred = if (routine) null else state.defaultKind,
+                routine = routine,
                 onPick = viewModel::pickKind,
                 onDismiss = viewModel::closeSheet,
             )
@@ -641,11 +673,8 @@ fun EditorScreen(
                         onDismiss = viewModel::closeSheet,
                         savedPlaces = state.savedPlaces,
                         onKeepPlace = viewModel::keepPlace,
-                        // A routine asks about a doorway and nothing else (see Routines.kt) —
-                        // or counts it as done: the role rides beside the place on its way in.
-                        doorwayOnly = state.draft.recurrence is Recurrence.Since,
                         initialResets = sheet.index?.let { state.draft.rules.getOrNull(it)?.resets } ?: true,
-                        onConfirmRule = if (state.draft.recurrence is Recurrence.Since) {
+                        onConfirmRule = if (routine) {
                             { place, resets -> viewModel.commitTrigger(sheet.index, place, resets) }
                         } else {
                             null

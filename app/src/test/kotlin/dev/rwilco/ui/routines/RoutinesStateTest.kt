@@ -54,6 +54,23 @@ class RoutinesStateTest {
     }
 
     @Test
+    fun `a routine told to start later is neither overdue nor counting`() {
+        // "Empezando el 1 de octubre": the count runs from October, so the row says when it
+        // starts rather than how long it has been, and nothing is owed meanwhile.
+        val october = LocalDateTime.of(2026, 10, 1, 9, 0).atZone(zone).toInstant()
+        val later = routine("later", daysAgo = 1).let { it.copy(recurrence = Recurrence.Since(3, RecurrenceUnit.MONTHS, startsAt = october)) }
+        val row = buildRoutinesState(listOf(later), RoutineFilter.All, now, zone, dayStart).rows.single()
+        assertTrue(row.startsLater)
+        assertEquals(october, row.anchor)
+        assertEquals(LocalDateTime.of(2027, 1, 1, 9, 0).atZone(zone).toInstant(), row.deadline)
+        assertTrue(row.done, "nothing is owed before it starts")
+        // Once it has been done the start is behind it: the count is about the last time.
+        val done = buildRoutinesState(listOf(later.copy(lastDealtAt = now)), RoutineFilter.All, now, zone, dayStart).rows.single()
+        assertFalse(done.startsLater)
+        assertEquals(now, done.anchor)
+    }
+
+    @Test
     fun `the chips are vencidas while any is, and the routines' own tags`() {
         val tagged = routine("tagged", daysAgo = 1, tags = listOf("coche"))
         val untagged = routine("untagged", daysAgo = 1)

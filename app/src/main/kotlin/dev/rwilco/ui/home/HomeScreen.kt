@@ -77,7 +77,7 @@ import dev.rwilco.model.TagFilter
 import dev.rwilco.ui.components.EmptyState
 import dev.rwilco.ui.components.ListPlaceholder
 import dev.rwilco.ui.components.LocalSnackbar
-import dev.rwilco.ui.components.SnoozeUntilSheet
+import dev.rwilco.ui.components.FutureMomentSheet
 import dev.rwilco.ui.components.SectionHeader
 import dev.rwilco.ui.components.TagChip
 import dev.rwilco.ui.components.rememberNow
@@ -182,7 +182,7 @@ fun HomeScreen(
     var askingWordsFor by rememberSaveable { mutableStateOf<String?>(null) }
     // The card being held, and so the one the actions menu is about.
     var actingOn by rememberSaveable { mutableStateOf<String?>(null) }
-    // The card a calendar is open for: "posponer · a una fecha concreta" (see SnoozeUntilSheet).
+    // The card a calendar is open for: "posponer · a una fecha concreta" (see FutureMomentSheet).
     var pickingDateFor by rememberSaveable { mutableStateOf<String?>(null) }
     val snackbar = LocalSnackbar.current
     val doneMessage = stringResource(R.string.home_marked_done)
@@ -416,7 +416,7 @@ fun HomeScreen(
     }
 
     pickingDateFor?.let { id ->
-        SnoozeUntilSheet(
+        FutureMomentSheet(
             now = viewModel.clock.instant().atZone(zone),
             defaultTime = state.defaultTime,
             onConfirm = { until -> pickingDateFor = null; viewModel.snoozeUntil(id, until) },

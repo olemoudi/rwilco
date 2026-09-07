@@ -481,6 +481,20 @@ enum class TriggerKind(val family: TriggerFamily) {
 val OFFERED_KINDS: List<TriggerKind> = TriggerKind.entries - TriggerKind.DATE_TIME - TriggerKind.REPEAT_TIME
 
 /**
+ * The tiles a **routine** offers, in order. Three of the eight, because a routine's rules are
+ * not ways of ringing: they are the question "¿lo has hecho?" put at a moment, or a doorway
+ * that asks it — or vouches for the deed (see `Routines.kt`, `Prompt.kt`).
+ *
+ * So the ones that survive are the ones that mean something asked over and over: a place, an
+ * hour of the day, a day of the week. A single date, a range, a window, a countdown and a
+ * random draw are all shapes that name *this* moment and then have nothing more to say, which
+ * is a fine way to ring once and a poor way to ask a question that comes back every three
+ * weeks. They stay in [OFFERED_KINDS]: this is what a routine puts on the sheet, not a
+ * shortening of what a trigger can be.
+ */
+val ROUTINE_KINDS: List<TriggerKind> = listOf(TriggerKind.PLACE, TriggerKind.TIME_OF_DAY, TriggerKind.WEEKDAY)
+
+/**
  * What a stored favourite means now that the two date tiles are one and the repeating time has
  * moved to "Vuelve". A favourite that is no longer a tile falls back to the date, which is the
  * nearest thing still on the sheet — and the sheet must never open with nothing marked.

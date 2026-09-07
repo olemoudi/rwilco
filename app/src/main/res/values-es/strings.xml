@@ -99,6 +99,7 @@
     <string name="routines_question">¿He hecho «%1$s»?</string>
     <string name="routines_yes">Sí</string>
     <string name="routines_no">No</string>
+    <string name="routines_starts">empieza %1$s</string>
     <string name="routines_due">vence %1$s</string>
     <string name="routines_overdue">vencida %1$s</string>
     <string name="routines_new">Nueva rutina</string>
@@ -223,13 +224,17 @@
     <!-- Editor -->
     <string name="editor_title_new">Nuevo recordatorio</string>
     <string name="editor_title_edit">Editar recordatorio</string>
+    <string name="editor_title_new_routine">Nueva rutina</string>
+    <string name="editor_title_edit_routine">Editar rutina</string>
     <string name="editor_preview">Previsualizar el aviso</string>
     <string name="editor_delete">Eliminar recordatorio</string>
     <string name="editor_tags_title">Etiquetas</string>
     <string name="editor_new_tag">Nueva etiqueta</string>
     <string name="editor_new_tag_hint">Nombre de la etiqueta</string>
     <string name="editor_when_title">Cuándo</string>
-    <string name="editor_when_ask_title">Pregúntame si lo he hecho</string>
+    <string name="editor_when_ask_title">Y además</string>
+    <string name="editor_start_title">Cuándo empieza</string>
+    <string name="editor_add_ask">Añadir a la rutina</string>
     <string name="editor_period_title">Cada cuánto</string>
     <string name="editor_add_trigger">Añadir disparador</string>
     <string name="editor_trigger_removed">Disparador quitado</string>
@@ -252,6 +257,12 @@
     <string name="recur_day">Cada día</string>
     <string name="recur_custom_title">Cada cierto tiempo</string>
     <string name="recur_since_chip">Desde la última vez</string>
+    <string name="recur_custom_span">Otro plazo</string>
+    <string name="routine_start_now">Ahora mismo</string>
+    <string name="routine_start_later">En un momento futuro</string>
+    <string name="routine_start_title">¿Cuándo empieza?</string>
+    <string name="routine_start_past">Ese momento ya ha pasado</string>
+    <string name="routine_start_then">y luego %1$s</string>
     <string name="recur_since_title">Desde la última vez</string>
     <string name="recur_since_note">Una rutina: cuenta desde la última vez que lo marcaste hecho y suena cuando ha pasado ese tiempo. El «cuándo» sólo pregunta si lo has hecho.</string>
     <string name="recur_list_title">Recurrencias</string>
@@ -345,6 +356,9 @@
     <string name="kind_countdown_hint">Dentro de un rato</string>
     <string name="kind_place">Lugar</string>
     <string name="kind_place_hint">Estar en un sitio, o llegar a él</string>
+    <string name="kind_place_routine_hint">Estar allí o cruzar la línea: pregunta, o lo da por hecho</string>
+    <string name="kind_time_of_day_routine_hint">Pregunta a las 09:00, los días que digas</string>
+    <string name="kind_weekday_routine_hint">Pregunta los viernes, los findes — sólo los días</string>
     <string name="kind_random">Al azar</string>
     <string name="kind_random_hint">Momentos sorpresa en una franja</string>
 
@@ -1333,6 +1347,20 @@
         <item>Un aviso con sonido va ahora a tus auriculares cuando los llevas puestos, en vez de salir por el altavoz del móvil como haría cualquier alarma. Es un ajuste, en Sonido, y merece la pena desactivarlo si tus auriculares viven en un cajón: un aviso que suena para nadie es un aviso perdido.</item>
         <item>Y ya no te corta la música. Lo que estuvieras escuchando baja unos decibelios y sigue por debajo mientras el aviso suena por encima —el aviso va por el canal de alarma y la música no, así que ninguno tiene que pelear con el otro— y vuelve solo a su volumen. Antes pedía el audio en exclusiva, lo que mataba un podcast por un tono de diez segundos.</item>
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_104_0">
+
+        <item>«Nueva rutina» abre por fin un formulario que se llama así. Ponía «Nuevo recordatorio» —cierto del modelo, porque una rutina es un recordatorio, y mentira sobre lo que estabas escribiendo—; ahora el título sigue a la cosa, y un recordatorio que conviertes en rutina con el chip se renombra ahí mismo.</item>
+
+        <item>Una rutina puede empezar más tarde. La tarjeta nueva «Cuándo empieza» tiene dos respuestas —«ahora mismo», que es lo que hacían todas, y «en un momento futuro», con el mismo calendario del «posponer a una fecha»— y debajo se lee la frase entera: «empieza el 1 de octubre, y luego cada 3 meses desde la última vez». Hasta que llega ese momento no se debe nada, y la lista dice «empieza en 5 d» en vez de contar un tiempo que no ha pasado.</item>
+
+        <item>«Cada cuánto» es sólo el plazo. Tenía «cada cierto tiempo» y «desde la última vez», que en una rutina eran literalmente lo mismo —los dos escribían el mismo plazo desde la última vez, desde el mismo diálogo—, más tres respuestas («no repetir», «días concretos», «lo decide el azar») que la dejaban de ser una rutina sin decírtelo. Queda un chip, «otro plazo», y la hora.</item>
+
+        <item>Una rutina ofrece los tres disparadores que pueden preguntar: un lugar, una hora concreta y un día de la semana, y cada uno dice lo que hace ahí («pregunta a las 09:00»). Una fecha, una franja, una cuenta atrás o un sorteo nombran un momento y ya no tienen nada más que decir: es una buena forma de sonar una vez y una mala forma de preguntar algo que vuelve cada tres semanas.</item>
+
+        <item>El lugar de una rutina vale también si ya estás allí. Sólo se podía escribir como puerta —«al llegar», «al salir»—, así que un móvil que nunca cruzaba la línea cuando tocaba no preguntaba nunca. Ahora tiene las cuatro lecturas que tiene en cualquier recordatorio, y «mientras esté en el garaje» cuenta desde el primer vistazo que te encuentra allí.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_103_0">

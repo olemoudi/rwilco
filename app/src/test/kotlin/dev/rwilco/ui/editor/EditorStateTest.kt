@@ -506,9 +506,11 @@ class EditorStateTest {
     }
 
     @Test
-    fun `a routine reads its rules as questions asked one at a time, and its places as doorways`() {
+    fun `a routine reads its rules as questions asked one at a time, and keeps a place as it was written`() {
         // "Desde la última vez" picked on a form with a set and a state place: the set goes back
-        // to "cualquiera", its deadline goes, and "mientras esté en el garaje" becomes "al salir".
+        // to "cualquiera" and its deadline goes. The place is left exactly as it was written —
+        // "mientras esté fuera del garaje" is the reading for a phone that is never seen
+        // crossing the line, and coercing it to "al salir" lost that question for good.
         val garage = Trigger.Location(40.4, -3.7, 150, Presence.OUTSIDE, "Garaje")
         val nine = Trigger.TimeOfDay(LocalTime.of(9, 0))
         val set = blank.withText("Mover el coche").commitTrigger(null, nine).commitTrigger(null, garage)
@@ -517,15 +519,30 @@ class EditorStateTest {
         val routine = set.setRecurrence(Recurrence.Since(21, RecurrenceUnit.DAYS))
         assertEquals(RuleMatch.ANY, routine.draft.ruleMatch)
         assertNull(routine.draft.deadline)
-        assertTrue((routine.draft.rules[1].trigger as Trigger.Location).onCrossing, "a place under a routine is a doorway")
+        assertFalse((routine.draft.rules[1].trigger as Trigger.Location).onCrossing, "a state stays a state")
         assertEquals(nine, routine.draft.rules[0].trigger, "a clock rule is left as it was")
         // The reading cannot be changed under a routine, and a rule added later does not flip it.
         assertEquals(RuleMatch.ANY, routine.setRuleMatch(RuleMatch.TOGETHER).draft.ruleMatch)
-        val another = routine.removeTrigger(1).commitTrigger(null, garage)
-        assertEquals(RuleMatch.ANY, another.draft.ruleMatch)
-        assertTrue((another.draft.rules[1].trigger as Trigger.Location).onCrossing, "coerced on the way in too")
+        val door = routine.removeTrigger(1).commitTrigger(null, garage.copy(onCrossing = true))
+        assertEquals(RuleMatch.ANY, door.draft.ruleMatch)
+        assertTrue((door.draft.rules[1].trigger as Trigger.Location).onCrossing, "and a doorway stays a doorway")
         // And a span picked from the buttons keeps it a routine (withSpanOf).
         assertEquals(Recurrence.Since(1, RecurrenceUnit.WEEKS), routine.draft.recurrence.let { it.withSpanOf(Recurrence.After(1, RecurrenceUnit.WEEKS)) })
+    }
+
+    @Test
+    fun `a routine's count starts where it is told to, and the span it is given does not move it`() {
+        val start = Instant.parse("2026-10-01T07:00:00Z")
+        val routine = blank.withText("Cambiar el filtro").setRecurrence(Recurrence.Since(3, RecurrenceUnit.MONTHS))
+        assertNull((routine.draft.recurrence as Recurrence.Since).startsAt, "written today, by default")
+        val later = routine.setRoutineStart(start)
+        assertEquals(start, (later.draft.recurrence as Recurrence.Since).startsAt)
+        // The plazo is the other card's question: picking a different one keeps the start.
+        val shorter = later.setRecurrence(later.draft.recurrence.withSpanOf(Recurrence.After(1, RecurrenceUnit.MONTHS)))
+        assertEquals(Recurrence.Since(1, RecurrenceUnit.MONTHS, startsAt = start), shorter.draft.recurrence)
+        assertNull((shorter.setRoutineStart(null).draft.recurrence as Recurrence.Since).startsAt, "and back to «ahora mismo»")
+        // Nothing to answer on anything that is not a routine.
+        assertEquals(Recurrence.None, blank.setRoutineStart(start).draft.recurrence)
     }
 
     @Test
@@ -534,7 +551,7 @@ class EditorStateTest {
         val routine = blank.withText("Mover el coche").setRecurrence(Recurrence.Since(21, RecurrenceUnit.DAYS))
         val counts = routine.commitTrigger(null, garage, resets = true)
         assertTrue(counts.draft.rules.single().resets, "counts as done")
-        assertTrue((counts.draft.rules.single().trigger as Trigger.Location).onCrossing)
+        assertFalse((counts.draft.rules.single().trigger as Trigger.Location).onCrossing, "written as a state, kept as one")
         // Edited without a word about the role, the rule keeps its answer; with one, it changes.
         val moved = counts.commitTrigger(0, garage.copy(radiusM = 300))
         assertTrue(moved.draft.rules.single().resets)

@@ -161,13 +161,20 @@ internal fun RecurrenceSection(
     val spacing = Tokens.spacing
     val spans = presets.take(VISIBLE_PRESETS - 1)
     val calendar = recurrence.asRepeat()
+    // **A routine's card is the plazo and nothing else.** Every other answer here would stop it
+    // being a routine ("no repetir", "días concretos", "lo decide el azar"), and the two that
+    // would not were the same answer said twice: "cada cierto tiempo" built an `After` that
+    // `withSpanOf` turned straight back into this `Since`, so the two chips produced the same
+    // reminder from the same dialog. One chip, "otro plazo", and the card is what it says it is
+    // — "Cada cuánto" (see EditorScreen).
+    val routine = recurrence is Recurrence.Since
 
     Column {
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(spacing.sm),
             verticalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
-            PresetChip(
+            if (!routine) PresetChip(
                 label = stringResource(R.string.recur_none),
                 selected = recurrence == Recurrence.None,
                 onClick = { onCustom(Recurrence.None) },
@@ -175,7 +182,7 @@ internal fun RecurrenceSection(
             // What the words say, first among the answers and wearing the quote glyph the
             // "Cuándo" row uses for the same thing. Here and not there: once a rule is on the
             // form the quick row is gone, and a repeat is this card's question anyway.
-            understood?.let { read ->
+            understood?.takeIf { !routine }?.let { read ->
                 val hour = (read as? Recurrence.Calendar)?.repeat?.time
                     ?.let { " · " + TimeText.time(it, readWords.is24h, readWords.locale) }.orEmpty()
                 PresetChip(
@@ -198,7 +205,7 @@ internal fun RecurrenceSection(
             if (presets.size > VISIBLE_PRESETS - 1) {
                 MoreChip(onClick = { listing = true }, contentDescription = stringResource(R.string.recur_more))
             }
-            PresetChip(
+            if (!routine) PresetChip(
                 leadingIcon = Icons.Outlined.CalendarMonth,
                 label = stringResource(R.string.recur_calendar),
                 selected = calendar != null,
@@ -206,24 +213,27 @@ internal fun RecurrenceSection(
             )
             PresetChip(
                 leadingIcon = Icons.Outlined.Tune,
-                label = stringResource(R.string.recur_custom),
+                label = stringResource(if (routine) R.string.recur_custom_span else R.string.recur_custom),
                 // Selected when a span is set that is not one of the buttons above.
-                selected = recurrence is Recurrence.After && spans.none { recurrence.sameSpanAs(it.recurrence) },
-                onClick = { editing = ""; editingSince = false },
+                selected = spans.none { recurrence.sameSpanAs(it.recurrence) } &&
+                    (recurrence is Recurrence.After || recurrence is Recurrence.Since),
+                onClick = { editing = ""; editingSince = routine },
             )
             // A routine: the span counted from the last time it was done. Its own chip and not
             // one more preset, because it is not another span — it is a different kind of
             // reminder, and picking it changes what the rules above mean (see Routines.kt).
-            PresetChip(
+            // Not offered to a routine, which is already one: there it is the card's whole
+            // subject rather than one answer among several.
+            if (!routine) PresetChip(
                 leadingIcon = Icons.Outlined.Autorenew,
                 label = stringResource(R.string.recur_since_chip),
-                selected = recurrence is Recurrence.Since,
+                selected = false,
                 onClick = { editing = ""; editingSince = true },
             )
             // Only where it means anything: a random window is the one trigger left that works
             // out dates of its own, and offering "lo decide el azar" without one is offering
             // nothing.
-            if (chanceDecides) {
+            if (chanceDecides && !routine) {
                 PresetChip(
                     leadingIcon = Icons.Outlined.Casino,
                     label = stringResource(R.string.recur_by_trigger),
@@ -417,7 +427,11 @@ internal fun RecurrenceSection(
             // fact, three rows under a card that said the other.
             note = stringResource(
                 when {
-                    since -> R.string.recur_since_note
+                    // Or a routine editing a span preset of its own: what the dialog builds is
+                    // an `After`, what the card writes is this routine's `Since` (withSpanOf),
+                    // and the note has to say what the reminder will do rather than what the
+                    // dialog happens to be holding.
+                    since || routine -> R.string.recur_since_note
                     after.from == RecurrenceFrom.RANG -> R.string.recur_after_rang_note
                     else -> R.string.recur_after_done
                 },

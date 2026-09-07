@@ -59,6 +59,13 @@ fun TriggerKindSheet(
     onPick: (TriggerKind) -> Unit,
     onDismiss: () -> Unit,
     kinds: List<TriggerKind> = OFFERED_KINDS,
+    /**
+     * Whether this is a routine's sheet: three rows ([ROUTINE_KINDS]), and every one of them
+     * says what it does *there* — a routine's rules ask whether it has been done, or vouch for
+     * the deed. "Un día, y cuándo dentro de él" is a way of ringing once, and reading it under
+     * a routine was reading the wrong app.
+     */
+    routine: Boolean = false,
 ) {
     val spacing = Tokens.spacing
     NoBounce {
@@ -75,7 +82,10 @@ fun TriggerKindSheet(
                     .navigationBarsPadding()
                     .padding(bottom = spacing.xl),
             ) {
-                Text(stringResource(R.string.editor_add_trigger), style = MaterialTheme.typography.headlineSmall)
+                Text(
+                    text = stringResource(if (routine) R.string.editor_add_ask else R.string.editor_add_trigger),
+                    style = MaterialTheme.typography.headlineSmall,
+                )
                 Spacer(Modifier.height(spacing.lg))
                 // Through `offered`, so a favourite that is no longer a tile is the tile it turned
                 // into rather than a seventh row saying the same thing as the second.
@@ -91,6 +101,7 @@ fun TriggerKindSheet(
                         KindRow(
                             kind = kind,
                             isDefault = kind == favourite,
+                            routine = routine,
                             onClick = { onPick(kind) },
                         )
                     }
@@ -101,7 +112,7 @@ fun TriggerKindSheet(
     }
 
 @Composable
-private fun KindRow(kind: TriggerKind, isDefault: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun KindRow(kind: TriggerKind, isDefault: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, routine: Boolean = false) {
     val haptics = Tokens.haptics
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
@@ -127,7 +138,13 @@ private fun KindRow(kind: TriggerKind, isDefault: Boolean, onClick: () -> Unit, 
             Column(Modifier.weight(1f)) {
                 Text(stringResource(kind.titleRes), style = MaterialTheme.typography.titleSmall)
                 Text(
-                    text = stringResource(if (isDefault) R.string.kind_default_badge else kind.hintRes),
+                    text = stringResource(
+                        when {
+                            isDefault -> R.string.kind_default_badge
+                            routine -> kind.routineHintRes
+                            else -> kind.hintRes
+                        },
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = scheme.onSurfaceVariant,
                 )
@@ -162,6 +179,19 @@ val TriggerKind.titleRes: Int
         TriggerKind.COUNTDOWN -> R.string.kind_countdown
         TriggerKind.PLACE -> R.string.kind_place
         TriggerKind.RANDOM -> R.string.kind_random
+    }
+
+/**
+ * What each of a routine's three does *under a routine*: put the question, or — for a place that
+ * can vouch for the deed — count as having done it. See [ROUTINE_KINDS]; anything not on that
+ * list keeps its own hint, which is what an old routine's leftover rule still reads as.
+ */
+private val TriggerKind.routineHintRes: Int
+    get() = when (this) {
+        TriggerKind.PLACE -> R.string.kind_place_routine_hint
+        TriggerKind.TIME_OF_DAY -> R.string.kind_time_of_day_routine_hint
+        TriggerKind.WEEKDAY -> R.string.kind_weekday_routine_hint
+        else -> hintRes
     }
 
 private val TriggerKind.hintRes: Int

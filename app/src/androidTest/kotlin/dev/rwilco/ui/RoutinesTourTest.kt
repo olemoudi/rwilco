@@ -2,6 +2,7 @@ package dev.rwilco.ui
 
 import android.app.LocaleManager
 import android.os.LocaleList
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasAnyDescendant
@@ -173,17 +174,26 @@ class RoutinesTourTest {
         }
         shot("routines-done")
 
-        // "Nueva rutina" opens the form already speaking as a routine: how often, and what
-        // its rules will do.
+        // "Nueva rutina" opens the form already speaking as a routine: its own name over it,
+        // where the count starts, how often, and what else it does.
         rule.onNodeWithText(s(R.string.routines_new), useUnmergedTree = true).performClick()
-        rule.waitUntilShown(s(R.string.editor_title_new))
-        // The draft lands a beat after the screen: the card is "Vuelve" until it does. The
-        // section titles are set in capitals, so they are matched whatever their case.
+        // The draft lands a beat after the screen: until it does the form is a blank reminder,
+        // so the routine's own title is what says the draft has arrived. The section titles are
+        // set in capitals, so they are matched whatever their case.
+        rule.waitUntilShown(s(R.string.editor_title_new_routine))
         rule.waitUntilShown(s(R.string.editor_period_title))
+        rule.onNode(hasText(s(R.string.editor_start_title), ignoreCase = true), useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText(s(R.string.routine_start_now), useUnmergedTree = true).performScrollTo().assertIsDisplayed()
         rule.onNode(hasText(s(R.string.editor_period_title), ignoreCase = true), useUnmergedTree = true).performScrollTo().assertIsDisplayed()
         rule.onNode(hasText(s(R.string.editor_when_ask_title), ignoreCase = true), useUnmergedTree = true).performScrollTo().assertIsDisplayed()
-        rule.onNodeWithText(s(R.string.recur_since_chip), useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        // The plazo is the whole of that card now: no "no repetir", and no second chip saying
+        // what "otro plazo" says (0.104.0).
+        rule.onAllNodesWithText(s(R.string.recur_since_chip), useUnmergedTree = true).assertCountEquals(0)
+        rule.onAllNodesWithText(s(R.string.recur_none), useUnmergedTree = true).assertCountEquals(0)
         shot("routines-editor")
+        // And the plazo card itself, which is the one that changed most.
+        rule.onNodeWithText(s(R.string.recur_custom_span), useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        shot("routines-editor-span")
     }
 
     private fun shot(name: String) {

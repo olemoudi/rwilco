@@ -11,6 +11,7 @@ import dev.rwilco.model.routineAnchor
 import dev.rwilco.model.routineDeadline
 import dev.rwilco.model.routineDone
 import dev.rwilco.model.routineFilters
+import dev.rwilco.model.routineWaitingToStart
 import dev.rwilco.model.routinesFor
 import java.time.Duration
 import java.time.Instant
@@ -26,8 +27,13 @@ data class RoutineRowUi(
     val id: String,
     val text: String,
     val tags: List<String>,
-    /** The moment the count runs from: the last "hecho", or the day it was written. */
+    /** The moment the count runs from: the last "hecho", or where the count starts. */
     val anchor: Instant,
+    /**
+     * Whether the count has not begun: a routine told to start later, never done since. The row
+     * says "empieza en 5 d" rather than counting time that has not passed.
+     */
+    val startsLater: Boolean,
     /** When the span is up, counted from [anchor]. */
     val deadline: Instant,
     /** The span itself, as it lands: what the progress track is a fraction of. */
@@ -83,6 +89,7 @@ fun buildRoutinesState(
             text = reminder.text,
             tags = reminder.tags,
             anchor = anchor,
+            startsLater = reminder.routineWaitingToStart(now),
             deadline = deadline,
             span = Duration.between(anchor, deadline),
             done = reminder.routineDone(now, zone, dayStart),

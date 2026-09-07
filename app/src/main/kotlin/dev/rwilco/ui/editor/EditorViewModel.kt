@@ -50,6 +50,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
+import java.time.Instant
 import java.util.UUID
 import dev.rwilco.model.ValidationError
 import dev.rwilco.model.MAX_TEXT_LENGTH
@@ -232,6 +233,9 @@ class EditorViewModel(
     fun commitDeadline(deadline: Deadline) = _state.update { it.commitDeadline(deadline) }
     fun clearDeadline() = _state.update { it.clearDeadline() }
     fun setRecurrence(recurrence: Recurrence) = _state.update { it.setRecurrence(recurrence) }
+
+    /** Where a routine's count starts: null is "ahora mismo". See [EditorUiState.setRoutineStart]. */
+    fun setRoutineStart(startsAt: Instant?) = _state.update { it.setRoutineStart(startsAt) }
 
     fun openCalendar() = _state.update { it.openCalendar() }
 

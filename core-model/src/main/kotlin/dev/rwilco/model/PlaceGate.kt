@@ -240,7 +240,7 @@ fun Reminder.watchedCircles(
 }
 
 /**
- * A routine's circles: every place rule's doorway, asking ([Crossing.ASKS]) or counting as done
+ * A routine's circles: every place rule, asking ([Crossing.ASKS]) or counting as done
  * ([Crossing.RESETS]), and the condition circles its clock rules will be asked about.
  *
  * Three things are different from an ordinary reminder's gate, and all three follow from the
@@ -276,10 +276,14 @@ private fun Reminder.routineCircles(
             val moment = nextFireOfRule(rule, id, from, zone, defaultTime, shape)?.moment ?: return@flatMapIndexed emptyList()
             moment.minus(PlaceWatchPolicy.ASK_LEAD).takeIf { it > soon }
         }
-        // Always the doorway, whatever the row says: a state is not a question anybody can be
-        // asked once, and the editor writes the crossing anyway (see EditorState.asDoorway).
-        val door = place?.copy(onCrossing = true)
-        val trigger = door?.let {
+        // The rule as it is written, doorway or state. A routine used to force the doorway on
+        // the grounds that a state is not a question anybody can be asked once — and it is the
+        // wrong way round: "si ya estás en el garaje" is exactly the case where nobody is ever
+        // seen crossing the line, and the question (or the deed) was lost for good. A state
+        // here is what it is everywhere else — the first judgement that finds the phone on that
+        // side is news (`stepPlaceWatch`) — and what keeps it from asking twice is the routine's
+        // own quiet after a "hecho", not the shape of the circle.
+        val trigger = place?.let {
             Gated(
                 place = WatchedPlace(
                     id = GeofenceIds.encode(id, index, place),
@@ -289,7 +293,7 @@ private fun Reminder.routineCircles(
                     transition = it.presence.asTransition,
                     label = it.label,
                     crossing = if (rule.resetsRoutine) Crossing.RESETS else Crossing.ASKS,
-                    onCrossing = true,
+                    onCrossing = it.onCrossing,
                     dwell = it.dwell,
                 ),
                 ruleIndex = index,

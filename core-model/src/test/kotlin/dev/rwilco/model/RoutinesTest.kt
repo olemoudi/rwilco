@@ -52,6 +52,8 @@ class RoutinesTest {
         dealtThrough = dealtThrough,
     )
 
+    private fun reminderOf(recurrence: Recurrence) = car(nine, span = recurrence)
+
     private fun Reminder.next() = nextFire(this, now, zone, defaultTime, dayStart)
     private fun Reminder.wake() = nextWake(this, now, zone, defaultTime, dayStart)
 
@@ -104,6 +106,30 @@ class RoutinesTest {
         assertTrue(fresh.routineDone(now, zone, dayStart), "done for now: the count has not run out")
         assertEquals(NextFire.Scheduled(local(2026, 9, 16, 9, 0), null), fresh.next(), "the deadline is what fires next")
         assertEquals(Wake(local(2026, 9, 16, 9, 0), null), fresh.wake(), "and what is armed")
+    }
+
+    @Test
+    fun `a routine can be told when its count starts, and nothing is owed until then`() {
+        // "Cambiar el filtro cada 3 meses, empezando el 1 de octubre", written in August: the
+        // count runs from October, so the deadline is January and not November — and until
+        // October the routine is neither overdue nor counting.
+        val october = local(2026, 10, 1, 9, 0)
+        val filter = car(span = Recurrence.Since(3, RecurrenceUnit.MONTHS, startsAt = october))
+        assertEquals(october, filter.routineStart())
+        assertEquals(october, filter.routineAnchor())
+        assertTrue(filter.routineWaitingToStart(now), "the count has not begun")
+        assertEquals(local(2027, 1, 1, 9, 0), filter.routineDeadline(zone, dayStart))
+        assertEquals(NextFire.Scheduled(local(2027, 1, 1, 9, 0), null), filter.next())
+        assertTrue(overdueRoutines(listOf(filter), now, zone, dayStart).isEmpty(), "nothing is owed yet")
+        // The first "hecho" takes over from the start, the way it takes over from the day it
+        // was written: the count is about the last time, once there is one.
+        val changed = filter.done(now)
+        assertEquals(now, changed.routineAnchor())
+        assertFalse(changed.routineWaitingToStart(now))
+        // And a routine with no start of its own is the one every phone already has.
+        assertEquals(car().createdAt, car().routineStart())
+        assertFalse(car().routineWaitingToStart(now))
+        assertNull(reminderOf(Recurrence.After(3, RecurrenceUnit.MONTHS)).routineStart(), "not a routine, no start")
     }
 
     @Test
@@ -309,6 +335,13 @@ class RoutinesTest {
             ReminderCodec.encodeRecurrence(Recurrence.Since(21, RecurrenceUnit.DAYS)),
         )
         assertEquals(Recurrence.Since(8, RecurrenceUnit.HOURS, RecurrenceHour.Same), ReminderCodec.decodeRecurrence("""{"type":"since","amount":8,"unit":"HOURS","hour":{"type":"same"}}"""))
+        // A start is written only when there is one, so no routine already on a phone changes
+        // shape on disk over a field it does not use — and one written by a newer build reads
+        // back whole.
+        val october = local(2026, 10, 1, 9, 0)
+        val started = ReminderCodec.encodeRecurrence(Recurrence.Since(3, RecurrenceUnit.MONTHS, startsAt = october))
+        assertTrue(started.contains(""""startsAt""""), started)
+        assertEquals(Recurrence.Since(3, RecurrenceUnit.MONTHS, startsAt = october), ReminderCodec.decodeRecurrence(started))
         val asks = TriggerRule(garage)
         val resets = TriggerRule(garage, resets = true)
         val encoded = ReminderCodec.encodeRules(listOf(asks, resets))

@@ -13,7 +13,8 @@ import java.time.ZoneId
  * routine is a reminder whose "Vuelve" says so ([Recurrence.Since]), and everything about how it
  * behaves follows from that one reading:
  *
- * - The span is the ring, counted from the last "hecho" (or the day it was written).
+ * - The span is the ring, counted from the last "hecho" (or from where the count started: the
+ *   day it was written, or a moment the person named — see [routineStart]).
  * - "Hecho" is *now*: the count starts again from this moment ([Reminder.momentDealtWith]).
  * - The rules never ring and never rest. A clock rule *asks* whether it has been done; a place
  *   asks too, or — when it can vouch for the deed — counts as having done it
@@ -26,8 +27,22 @@ import java.time.ZoneId
 /** Whether this reminder is a routine. The one predicate everything else here hangs off. */
 val Reminder.isRoutine: Boolean get() = recurrence is Recurrence.Since
 
-/** The moment the count runs from: the last "hecho", or the day it was written until then. */
-fun Reminder.routineAnchor(): Instant = lastDealtAt ?: createdAt
+/**
+ * Where the count starts before anything has been done: the moment the person named
+ * ("empezando el 1 de octubre"), or the day the routine was written. Null unless it is a
+ * routine. See [Recurrence.Since.startsAt].
+ */
+fun Reminder.routineStart(): Instant? = if (isRoutine) (recurrence as Recurrence.Since).startsAt ?: createdAt else null
+
+/** The moment the count runs from: the last "hecho", or where it started until then. */
+fun Reminder.routineAnchor(): Instant = lastDealtAt ?: routineStart() ?: createdAt
+
+/**
+ * Whether the count has not begun yet: a routine that starts in the future and has never been
+ * done. Nothing is owed meanwhile — the deadline is a span past the start — and the screens say
+ * so rather than counting time that has not passed.
+ */
+fun Reminder.routineWaitingToStart(now: Instant): Boolean = lastDealtAt == null && routineStart()?.let { it > now } == true
 
 /** When the span is up, counted from [routineAnchor]; null for anything that is not a routine. */
 fun Reminder.routineDeadline(zone: ZoneId, dayStart: LocalTime = DEFAULT_DAY_START): Instant? =

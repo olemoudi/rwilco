@@ -616,9 +616,14 @@ fun Reminder.recurrenceMoment(
     // Not restUntil: when the recurrence is the thing that rings, the hour the day starts at is
     // exactly the hour it should ring at — there are no rules here with an hour to defer to.
     // With rules, only once it has been dealt with — or has rung, for a span that counts from
-    // the ringing (see restUntil). A routine counts from the day it was written until it has
-    // been done once, rules or no rules: its rules are questions, not a first ring.
-    val dealt = if (rules.isEmpty() || isRoutine) lastDealtAt ?: createdAt else (lastDealtAt ?: lastFiredAt.takeIf { recurrence.countsFromRinging }) ?: return null
+    // the ringing (see restUntil). A routine counts from where its count starts — the day it was
+    // written, or the moment somebody named ([routineAnchor]) — until it has been done once,
+    // rules or no rules: its rules are questions, not a first ring.
+    val dealt = when {
+        isRoutine -> routineAnchor()
+        rules.isEmpty() -> lastDealtAt ?: createdAt
+        else -> (lastDealtAt ?: lastFiredAt.takeIf { recurrence.countsFromRinging }) ?: return null
+    }
     val at = nextRecurrence(recurrence, recurrenceAnchor(dealt), zone, dayStart)
     if (at == null) return null
     // Spent, the same way a rule's moment is (see [searchFrom]) — and here it matters more.

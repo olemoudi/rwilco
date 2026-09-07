@@ -18,22 +18,29 @@ import java.time.LocalTime
 import java.time.ZonedDateTime
 
 /**
- * "Posponer · a una fecha concreta": the one snooze offer that is not a length.
+ * A moment ahead, picked off a calendar: one day, one hour, one [Instant] handed back.
  *
- * Every other offer is a step from now — ten minutes, two hours, the weekend — which is right
- * for the answers people give in the second after a ring and wrong for the one they give a week
- * ahead: "esto, el 3 de noviembre". So this is the same calendar the date tile uses and the
- * same hour field, and what it hands back is a moment rather than a shape.
+ * Two questions in the app ask it. **"Posponer · a una fecha concreta"** is the one snooze offer
+ * that is not a length: every other one is a step from now — ten minutes, two hours, the weekend
+ * — which is right for the answers people give in the second after a ring and wrong for the one
+ * they give a week ahead ("esto, el 3 de noviembre"). And **"empieza en un momento futuro"** on
+ * a routine, where the moment is not a ring at all but where the count starts
+ * ([Recurrence.Since.startsAt]). Same calendar, same hour field, same refusal of the past — so
+ * one sheet, wearing whichever [title] asked for it.
  *
  * It opens on today at the reminders' own hour, and the button waits while the moment chosen is
- * behind us: a snooze into the past is a ring that arrives the instant the sheet closes.
+ * behind us: a snooze into the past is a ring that arrives the instant the sheet closes, and a
+ * routine that starts in the past is one that starts now, said the long way round.
  */
 @Composable
-fun SnoozeUntilSheet(
+fun FutureMomentSheet(
     now: ZonedDateTime,
     defaultTime: LocalTime,
     onConfirm: (Instant) -> Unit,
     onDismiss: () -> Unit,
+    title: String = stringResource(R.string.snooze_until_title),
+    /** What the button says while the moment chosen is behind us. */
+    pastNote: String = stringResource(R.string.snooze_until_past),
 ) {
     val today = now.toLocalDate()
     // Opens on the first day that hour is still ahead on: at nine in the morning "posponer
@@ -46,7 +53,7 @@ fun SnoozeUntilSheet(
     val chosen = date.atTime(time).atZone(now.zone).toInstant()
     val past = !chosen.isAfter(now.toInstant())
     SheetScaffold(
-        title = stringResource(R.string.snooze_until_title),
+        title = title,
         onDismiss = onDismiss,
         onConfirm = { onConfirm(chosen) },
         confirmEnabled = !past,
@@ -56,7 +63,7 @@ fun SnoozeUntilSheet(
         TimeField(time = time, onChange = { time = it }, label = stringResource(R.string.sheet_time), modifier = Modifier.fillMaxWidth())
         if (past) {
             Text(
-                text = stringResource(R.string.snooze_until_past),
+                text = pastNote,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.error,
             )

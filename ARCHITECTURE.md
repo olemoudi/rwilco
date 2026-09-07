@@ -391,11 +391,12 @@ anything repeats**:
   where it means anything (a span, not in hours, and rules that name days), and picking `EXACT`
   hands the recurrence the hour the rules were naming, or the reminder would quietly start
   ringing at breakfast.
-- `Since(amount, unit, hour)` — **a routine** (0.95.0, `Routines.kt`): a count of time since the
-  last time something was done. "Mover el coche cada 21 días" is not an appointment and not a
-  series; what matters is how long it has been, and the only thing that resets that is doing it.
+- `Since(amount, unit, hour, startsAt)` — **a routine** (0.95.0, `Routines.kt`): a count of time
+  since the last time something was done. "Mover el coche cada 21 días" is not an appointment and
+  not a series; what matters is how long it has been, and the only thing that resets that is
+  doing it.
   `Reminder.isRoutine` is exactly this predicate, and everything a routine does follows from the
-  one reading: the span is **always the ring**, counted from `lastDealtAt ?: createdAt`
+  one reading: the span is **always the ring**, counted from `lastDealtAt ?: routineStart()`
   (`routineAnchor`, `routineDeadline`); **"hecho" is now**, never "the one that was coming"
   (`momentDealtWith` answers null, and `recurrenceAnchor` ignores a `dealtThrough` left behind
   by an `After` edited into a `Since`); and **the rules never ring and never rest** —
@@ -410,13 +411,32 @@ anything repeats**:
   (`groupForHome`, `tagsInUse` leave them out — a tag only routines wear would be a chip that
   finds nothing on Home); it keeps one line about the overdue ones (`overdueRoutines`) and the
   routines screen has the rest (`routinesFor`: overdue first, longest-waiting on top, paused
-  last; `routineFilters`: "vencidas" while any is, then the routines' own tags). The editor
-  says what a routine changes: "Cada cuánto" instead of "Vuelve", "Pregúntame si lo he hecho"
-  instead of "Cuándo", no set reading and no deadline (forced `ANY`, `EditorState.setRecurrence`),
-  and every place a doorway (`asDoorway`, `LocationSheet(doorwayOnly)`) — a state ("mientras
-  esté") is not a question anybody can be asked once. `sameSpanAs`/`withSpanOf` treat a routine's
+  last; `routineFilters`: "vencidas" while any is, then the routines' own tags).
+  **Where the count starts is asked** (0.104.0): `startsAt` is the moment somebody named and
+  null is the day it was written, which is what every routine already on a phone says — written
+  only when it is set (`@EncodeDefault(NEVER)`), so nothing on disk changes shape. `routineStart`
+  is the pair of them, `routineWaitingToStart` is a count that has not begun (nothing is owed,
+  and the routines screen says "empieza el martes" rather than counting time that has not
+  passed), and `recurrenceMoment` reads the anchor through `routineAnchor` so the deadline is a
+  span past the start.
+  **The editor is a routine's own form** (0.104.0): "Nueva rutina"/"Editar rutina" over it
+  (`editor_title_new_routine`), a "Cuándo empieza" card that is `startsAt` and reads the plazo
+  back under it (`RoutineStartSection`, the same `FutureMomentSheet` "posponer a una fecha"
+  uses), "Cada cuánto" instead of "Vuelve" and **only the plazo** on it — the spans, "otro
+  plazo" and the hour, with "no repetir", "días concretos", "lo decide el azar" and the "desde
+  la última vez" chip all gone, because each of the first three would stop it being a routine
+  and the last two were the same answer twice (`withSpanOf` turned the `After` "cada cierto
+  tiempo" built straight back into this `Since`) — "Y además" instead of "Cuándo", offering the
+  three kinds a question can be asked at (`ROUTINE_KINDS`: place, time of day, weekday, with
+  hints that say what they do under a routine) and no quick row of moments, and no set reading
+  and no deadline (forced `ANY`, `EditorState.setRecurrence`). A place under a routine is
+  **written as it is read**: a doorway ("al salir del garaje") or a state ("mientras esté en el
+  garaje"), the same choice every other place rule has — the coercion to a doorway
+  (`asDoorway`, `LocationSheet(doorwayOnly)`) is gone, because "ya estás allí" is exactly the
+  case where nobody is ever seen crossing the line and the question was lost for good.
+  `sameSpanAs`/`withSpanOf` treat a routine's
   span as a span, so the "cada semana" button lights up for a weekly routine and picking a
-  span on a routine keeps it a routine. `AppSettings.routineActions` is what a blank routine's
+  span on a routine keeps it a routine (and keeps its start). `AppSettings.routineActions` is what a blank routine's
   deadline does, beside `defaultActions`. `RoutinesTest` pins all of it, a year of the car
   through `Simulation` included.
 - `ByTrigger` — hands the question back to a trigger that names its own dates, which is now only
@@ -694,7 +714,8 @@ because that is what its chip would show.
   (`RoutinesScreen`, `RoutinesViewModel`, `buildRoutinesState` — pure, JVM-tested) lists every
   row as the question the routine is — «¿He hecho «mover el coche»? → Sí/No», the answer at the
   end of the sentence, "No" in the error ink — with "hace 10 d · vence en 11 d" in mono and a
-  thin track of the span under it. **A swipe to the right, held, is "sí, la he hecho"**: the
+  thin track of the span under it (a routine whose count has not begun says "empieza en 5 d"
+  instead: "hace" is a word about time that has passed, and none of it has). **A swipe to the right, held, is "sí, la he hecho"**: the
   same `SwipeableCard` Home's cards answer with, through the same door (`ReminderFiring.dismiss`,
   which under a routine is the reset), with a snackbar that says when it will ask again; a
   swipe to the left, held, deletes with Home's minute of undo (`UndoDeleteRow`); a tap opens the
@@ -702,7 +723,7 @@ because that is what its chip would show.
   clone, keep as preset). The chips are "todas", the app's own "vencidas" while any is, and the
   routines' tags in their own colours; a filter on something no longer offered clears. "Nueva
   rutina" opens the editor as a routine (`Routes.Editor(routine = true)`: a week since the last
-  time, with `routineActions`). A tap on a routine's prompt (next release) lands here
+  time, with `routineActions`), on a form that says so — see `Since` under **The model**. A tap on a routine's prompt (next release) lands here
   (`MainActivity.DESTINATION_ROUTINES`).
 - **A sheet answers a swipe with nothing rather than with a spring** (`NoBounce`, 0.63.0). A
   sheet already as far up as it goes has two things that overscroll — the content's own scroll
@@ -1575,10 +1596,16 @@ because that is what its chip would show.
   «¿He hecho «X»?» on `CHANNEL_ASK`, IMPORTANCE_DEFAULT with the phone's own sound, silent
   outside waking hours, "sí, ahora" = `ACTION_DONE`, "todavía no" = `ACTION_LATER` which only
   takes the card down, the body opening the routines through `DESTINATION_ROUTINES`). A place
-  under a routine is always the doorway and asks the same way when crossed — `Crossing.ASKS`,
+  under a routine asks the same way when its rule is met — `Crossing.ASKS`,
   from `watchedCircles`' routine branch (`routineCircles`: no rest, no "already rang" cut, the
   hours gate kept, the quiet as a gate of its own so no fix is spent on a crossing that would
-  only be dropped), routed by `GeofenceReceiver` and `PlaceWatcher.look()` — **or counts as
+  only be dropped), routed by `GeofenceReceiver` and `PlaceWatcher.look()` — **and it is met as
+  it is written** (0.104.0): a doorway is the line being crossed, a state is being on that side
+  at all, which is the reading a phone that never crosses needs ("si ya estás en el garaje").
+  `stepPlaceWatch` is where the difference lives and it is one line — the first judgement that
+  finds the phone on a state's own side is news — so a routine's circle carries `onCrossing` as
+  the rule wrote it rather than a forced `true`; what keeps a state from asking twice is the
+  quiet after a "hecho", not the shape of the circle. **Or the place counts as
   having done it** (`TriggerRule.resets`, `Crossing.RESETS`, `ReminderFiring.resetBy`): leaving
   the garage *is* the car moving. The reset is the write "hecho" makes on a routine, recorded as
   `FiringKind.RESET` with the doorway in its detail, and said in the shade **mute, with

@@ -539,16 +539,21 @@ internal fun TriggersSection(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = Tokens.spacing.sm),
             )
-            QuickWhenRow(
-                clock = clock,
-                suggestions = suggestions,
-                understood = understood,
-                defaultTime = defaultTime,
-                dayStart = dayStart,
-                onPick = onQuickAdd,
-                onUnderstood = onUnderstood,
-            )
-            Spacer(Modifier.height(Tokens.spacing.sm))
+            // Not under a routine: every one of these is a moment — "en media hora", "esta
+            // noche", the shapes used before — and a moment is a way of ringing once. What a
+            // routine can be asked at is the three rows behind the button (`ROUTINE_KINDS`).
+            if (!routine) {
+                QuickWhenRow(
+                    clock = clock,
+                    suggestions = suggestions,
+                    understood = understood,
+                    defaultTime = defaultTime,
+                    dayStart = dayStart,
+                    onPick = onQuickAdd,
+                    onUnderstood = onUnderstood,
+                )
+                Spacer(Modifier.height(Tokens.spacing.sm))
+            }
         }
         Column(verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm)) {
             rules.forEachIndexed { index, rule ->
@@ -599,7 +604,10 @@ internal fun TriggersSection(
         ) {
             Icon(Icons.Outlined.Add, contentDescription = null)
             Spacer(Modifier.width(Tokens.spacing.sm))
-            Text(stringResource(R.string.editor_add_trigger), style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = stringResource(if (routine) R.string.editor_add_ask else R.string.editor_add_trigger),
+                style = MaterialTheme.typography.titleMedium,
+            )
         }
     }
 }
