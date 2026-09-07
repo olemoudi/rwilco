@@ -187,7 +187,21 @@ fun Set<Action>.toggling(action: Action): Set<Action> = when {
 
 enum class Status { ACTIVE, PAUSED, DONE }
 
-val DEFAULT_ACTIONS: Set<Action> = setOf(Action.NOTIFICATION, Action.VIBRATE)
+/**
+ * What a reminder written from nothing does when it fires.
+ *
+ * **A sound is in it** (0.109.0). It was a card and a buzz, which on a phone in a pocket is a
+ * reminder that did not happen — and "no sonó" is exactly what somebody says about it, without
+ * ever thinking to look in "Qué pasa" for a tile that was never ticked. An app whose whole job
+ * is arriving should arrive audibly until it is told otherwise; the tile is one tap away either
+ * direction, and Settings answers it once and for all.
+ *
+ * Only ever a *default*: a reminder carries its own set in its own column, so nothing already
+ * written changes. What reaches a phone that already has settings on disk is the one-off in
+ * `SettingsStore.decode` — the blob is written with every field, so a change here alone would
+ * only ever have reached a fresh install.
+ */
+val DEFAULT_ACTIONS: Set<Action> = setOf(Action.NOTIFICATION, Action.SOUND, Action.VIBRATE)
 
 /** The events, without their conditions — for anything that only cares what kind they are. */
 val Reminder.triggers: List<Trigger> get() = rules.map { it.trigger }

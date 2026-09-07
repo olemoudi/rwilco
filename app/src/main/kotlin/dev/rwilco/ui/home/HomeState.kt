@@ -208,6 +208,13 @@ data class ReminderCardUi(
      */
     val missedAt: Instant? = null,
     /**
+     * It can never ring ([dev.rwilco.model.HomeEntry.cannotRing]) — the one card under
+     * "Vencidos" with no [missedAt] to show, because it never had a moment to miss. The row it
+     * gets says the same sentence the editor said over "Guardar", which is the only other place
+     * the app ever mentions it.
+     */
+    val cannotRing: Boolean = false,
+    /**
      * The tag whose colour runs down the card's edge, or null for a reminder with no tags.
      *
      * It was the family of whatever fires next, which was the honest reading and the wrong one
@@ -366,7 +373,7 @@ fun buildHomeState(
         else tags.firstOrNull { it is TagFilter.Named && it.tag.equals(chosen.tag, ignoreCase = true) }
     }
     val groups = groupForHome(reminders, now, zone, defaultTime, filter, dayStart, shape)
-    fun card(reminder: Reminder, missedAt: Instant? = null, next: NextFire? = null): ReminderCardUi {
+    fun card(reminder: Reminder, missedAt: Instant? = null, next: NextFire? = null, cannotRing: Boolean = false): ReminderCardUi {
         val standings = reminder.ruleStandings(now, zone, dayStart, shape) { index -> inside(reminder.id, index) }
         val circles = reminder.watchedCircles(now, zone, defaultTime, shape, dayStart)
         // **Asked from where the reminder itself looks**, not from now ([rulesLookFrom]): a
@@ -401,6 +408,7 @@ fun buildHomeState(
             snoozedUntil = reminder.snoozedUntil?.takeIf { it > now && reminder.status == Status.ACTIVE },
             snoozedToPlace = reminder.snoozedToPlace?.takeIf { reminder.status == Status.ACTIVE },
             missedAt = missedAt,
+            cannotRing = cannotRing,
             // Only while it rests: with the rules speaking again they say it themselves.
             returnsAt = rest?.let { (next as? NextFire.Scheduled)?.at },
             match = reminder.ruleMatch.takeIf { reminder.rules.size > 1 },
@@ -432,7 +440,7 @@ fun buildHomeState(
                 atEarliest = hero.atEarliest,
             )
         },
-        sections = groups.sections.map { (section, entries) -> SectionUi(section, entries.map { card(it.reminder, it.missedAt, it.next) }) },
+        sections = groups.sections.map { (section, entries) -> SectionUi(section, entries.map { card(it.reminder, it.missedAt, it.next, it.cannotRing) }) },
         tags = tags,
         selectedTag = filter,
         routines = RoutinesLineUi(

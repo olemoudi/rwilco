@@ -556,6 +556,70 @@ since 0.63.0; a draft that can never ring showing nothing over "Guardar" and not
 writing "a la vez" over pairs that are not two moments and still cannot coincide; Home's
 readiness strip knowing nothing about the location grant; and `DEFAULT_ACTIONS` without a sound.
 
+## The interface half of the same round, 0.109.0 (2026-09-07)
+
+The second half of "otro análisis del disparo de condiciones" (0.108.0 was the first): the
+places where the app **knew** a reminder would not ring and said nothing, or said the opposite.
+Worth not re-deriving:
+
+- **A time range with hours on it never rang, at all.** The one real firing bug in the round,
+  and it was found by the *default* work below rather than by looking for it: "de 09:00 a 11:00,
+  y sólo si es de 10:00 a 12:00" offered nine, was refused by its own fence, offered the next
+  day's nine, and after `MAX_CANDIDATES` of that answered *never*. `Trigger.Weekday` and
+  `Trigger.DayRandom` have opened at the first minute their fences allow since `openingOf` was
+  written; `Trigger.Interval` was the one shape nobody had done it to. Two ranges under "a la
+  vez" were the same silence, because the fold makes each the other's fence — which is how it
+  turned up: the new guard below read *every* pair of ranges as impossible, including
+  overlapping ones. `nextInterval`, `IntervalFenceTest`. With no fences the walk is unchanged.
+- **A reminder that cannot ring was the one the app said least about.** `UpcomingLine` drew
+  nothing for an empty list, so the save bar under an impossible arrangement was the save bar
+  under a plain note; then it went to "Vencidos" with **no row at all** (`missedAt` is null —
+  there is no past moment to name) and the net dropped it for the same reason
+  (`lastMomentGone` null → `netDue` returned null). Three doors now, one predicate:
+  `Reminder.cannotRing`.
+- **And that predicate had to be `warnings()`, not arithmetic.** The first version was "nothing
+  ahead and nothing behind" and it was wrong in a way worth remembering: `lastMomentGone` walks
+  from `createdAt`, so a **one-shot dated before the reminder was written** leaves it empty too —
+  and that reminder is merely *late*, which is a different sentence the editor already has
+  (`InPast`). Reading it off `warnings()` under the reminder's own match draws exactly the line
+  that is wanted, and has the second virtue that what the card claims is what the person was
+  already shown.
+- **`NetWord.CANNOT_RING`** is a fourth word, anchored on `createdAt` — the only honest moment
+  there is — and **not** one of `saysItGotAway`: nothing got away, nothing was coming, so no
+  "ICYMI". `NetWord` is never persisted (it is computed at nudge time and handed to the
+  notification), so adding one costs no phone anything.
+- **"Suena mañana 04:00" was a promise the night could not keep.** `hushedByTheHour` is
+  deliberate and dates from 0.63.0; what was not deliberate is that the editor went on saying
+  "Suena", and that `settings_awake_hint` said in so many words that a trigger with an hour of
+  its own **ignored all of this** — true when it was written in 0.18.0. Both fixed; the rule is
+  untouched, and there is no per-reminder escape (asked and answered by the owner).
+- **The strip did not know about the location grant.** Seven alert grants and not the one that
+  silences a place reminder, which lived in a card in Settings behind a fold. `stripProblems`,
+  and `HomeViewModel.hasPlaceReminders` off the **whole open list** rather than Home's chips: a
+  routine is not on Home and its vouching circles need the grant just as much. Null there means
+  "nothing to watch", which is not "ready" — a phone with no places must not be told about a
+  permission it has no use for. `rememberPlaceReadiness` moved off the main thread with a `read`
+  flag of its own, for the reason 0.48.1 moved the alert reads.
+- **The editor's own permission row said one sentence for four problems** and handed you the
+  app's system page. `LocationFixRows`, lifted out of `LocationPermissionCard`, which had all
+  four right already.
+- **`DEFAULT_ACTIONS` gained `SOUND`** (the owner's call). The trap: `encodeDefaults = true` and
+  `lastSeenVersionCode` live in the same blob, so **every phone in use already has
+  `defaultActions` on disk** and the constant alone reaches nothing but a fresh install. The
+  one-off is in `SettingsStore`'s read path and fires **only over the old pair exactly** — an
+  empty set means "que pase en silencio" and is somebody's answer, as is anything with the
+  insistent tone or the full screen in it.
+- **A machine-written "a la vez" is checked against its own warning now** (`silentTogether`).
+  Two moments were already spared; two stretches that never overlap were not, and the editor's
+  warning was the only thing between that default and silence — which the comment on
+  `matchAfterAdding` had already argued is a bad default. `commitTrigger` takes a clock for it;
+  without one the old answer stands, so nothing in the existing tests moved.
+
+Still open after both halves, and deliberately: the deep fix for a geofence crossing consumed by
+a throw (`accept()` writing the side before the hand-on returns — a change to the watch's memory,
+wants a real phone); a word when the hundred-fence cap actually cuts; the editor's draft across
+process death; and the "every day at 8" tap count.
+
 ## The net's floor for routines, 0.103.0 (2026-09-06)
 Asked from the phone after reading his own diagnostics: two routines with a span of one hour had
 `net` in their history six minutes after `rang`. That is the net working exactly as written — a
@@ -814,6 +878,19 @@ sliding out on Confirm (`hide()` vs `confirmValueChange`), and the dead code lis
 0.67.0 — asked about, not deleted.
 
 ## Still to prove on the real phone (Pixel 8 Pro)
+- The interface half (0.109.0), and **none of it has been seen on a screen yet**: `EditorTourTest`
+  passes, so the editor still composes and walks, but the tour's flow never reaches any of the new
+  states, and writing tour steps for them was not this release. Four looks: the red line over
+  "Guardar" on "todos los lunes a las 9, y sólo si es de 18 a 22" and the "No sonará nunca" row on
+  its card afterwards (and one word from the net within the day); "Suena mañana 04:00 · en
+  silencio, estarás durmiendo" under a 04:00 reminder with a sound on it; the strip saying the
+  places are not being watched after taking "todo el tiempo" away with a place reminder saved, and
+  "Ahora no" silencing only that; and the editor's location rows with the permission fully denied,
+  approximate, and with the phone's location switch off — three different sentences, three
+  different buttons.
+- A time range with hours on it (0.109.0): "de 17:00 a 19:00, y sólo si es de 18:00 a 20:00" has
+  to ring at 18:00. It never rang at all before, so any reminder shaped like that on the phone
+  has been silent and will start working.
 - The structure round (0.94.0): TalkBack on a ringing alert lands on "Silenciar" first; the
   `⋯` on a card with the thumb, and whether the pencil and the `⋯` sit far enough apart;
   a group opened at the bottom of Settings coming into view without the list jumping.

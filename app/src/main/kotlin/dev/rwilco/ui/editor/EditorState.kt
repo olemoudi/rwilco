@@ -37,6 +37,8 @@ import dev.rwilco.model.settleDays
 import dev.rwilco.model.startCountdowns
 import dev.rwilco.model.normalizeTag
 import dev.rwilco.model.validate
+import dev.rwilco.model.ValidationWarning
+import dev.rwilco.model.warnings
 import java.time.Instant
 import java.time.ZoneId
 import java.time.LocalTime
@@ -486,7 +488,7 @@ fun EditorUiState.restoreTrigger(index: Int, rule: TriggerRule, recurrence: Recu
  * The configurator's result: replaces the trigger of the rule being edited — keeping whatever
  * conditions were put on it — or appends a rule with no conditions. Closes the sheet.
  */
-fun EditorUiState.commitTrigger(index: Int?, trigger: Trigger, resets: Boolean? = null): EditorUiState {
+fun EditorUiState.commitTrigger(index: Int?, trigger: Trigger, resets: Boolean? = null, now: Instant? = null, zone: ZoneId? = null, draftId: String = ""): EditorUiState {
     val adding = index == null || index !in draft.rules.indices
     // What a routine's place does — ask, or count as done — rides beside it ([TriggerRule.resets]);
     // null leaves the rule's own answer, and a rule that is not a place has none.
@@ -495,7 +497,7 @@ fun EditorUiState.commitTrigger(index: Int?, trigger: Trigger, resets: Boolean? 
     } else {
         draft.rules + TriggerRule(trigger, resets = resets ?: false)
     }
-    val match = matchAfterAdding(rules, adding)
+    val match = matchAfterAdding(rules, adding, now, zone, draftId)
     // Choosing "at random" IS choosing a recurrence — "tres veces al día" says so outright — so
     // it says so in plain sight, right under the row, and changeable. Every other kind leaves
     // the answer alone: a place or a date is one-shot until somebody says otherwise, and a
@@ -536,15 +538,46 @@ fun EditorUiState.commitTrigger(index: Int?, trigger: Trigger, resets: Boolean? 
  * `TOGETHER` over two moments is never worth keeping, whoever wrote it; `ALL` over two moments
  * means something ("both have happened") and is never touched.
  */
-private fun EditorUiState.matchAfterAdding(rules: List<TriggerRule>, adding: Boolean): RuleMatch {
+private fun EditorUiState.matchAfterAdding(
+    rules: List<TriggerRule>,
+    adding: Boolean,
+    now: Instant?,
+    zone: ZoneId?,
+    draftId: String,
+): RuleMatch {
     // A routine's rules are questions asked one at a time, never a set: "cualquiera", always.
     if (draft.recurrence is Recurrence.Since) return RuleMatch.ANY
     if (!adding || rules.size != 2) return draft.ruleMatch
     val moments = rules.all { it.trigger.isMoment }
     return when {
         moments -> if (draft.ruleMatch == RuleMatch.TOGETHER) RuleMatch.ANY else draft.ruleMatch
-        draft.ruleMatch == RuleMatch.ANY -> RuleMatch.TOGETHER
+        draft.ruleMatch == RuleMatch.ANY -> RuleMatch.TOGETHER.takeUnless { silentTogether(rules, now, zone, draftId) } ?: RuleMatch.ANY
         else -> draft.ruleMatch
+    }
+}
+
+/**
+ * Whether "a la vez" over these two rules would be a reminder that never rings.
+ *
+ * The two-moments guard above is the case anybody can see coming; it is not the only one. Two
+ * time ranges with no hour in common, a range and an hour outside it, a weekday beside a rule
+ * dated on another day — none of them is two moments, all of them fold into a set with no
+ * instant in it. The editor warns, and the comment on [matchAfterAdding] is exactly why that
+ * is not enough: **a default whose warning is load-bearing is a bad default**, and this is the
+ * same argument the two-moments guard was already written from.
+ *
+ * Asked with the same walk that will draw the warning ([warnings] under [RuleMatch.TOGETHER],
+ * which folds every rule into every other one exactly as the firing will), so what it finds is
+ * what the person would have been told about. Without a clock it cannot be asked at all, and
+ * then the old answer stands: this is a better default, not a new rule.
+ */
+private fun EditorUiState.silentTogether(rules: List<TriggerRule>, now: Instant?, zone: ZoneId?, draftId: String): Boolean {
+    if (now == null || zone == null) return false
+    val found = warnings(rules, now, zone, defaultTime, RuleMatch.TOGETHER, dayShape, draftId, draft.deadline)
+    return found.any {
+        it is ValidationWarning.NeverFires ||
+            it is ValidationWarning.NeverCompletes ||
+            it is ValidationWarning.MomentsCannotCoincide
     }
 }
 

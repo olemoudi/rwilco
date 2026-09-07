@@ -133,8 +133,30 @@ fun readinessShortRes(name: String): Int = when (name) {
     "throughDnd" -> R.string.readiness_short_throughDnd
     "exactAlarms" -> R.string.readiness_short_exactAlarms
     "unrestricted" -> R.string.readiness_short_unrestricted
+    LOCATION_PROBLEM -> R.string.readiness_short_location
     else -> R.string.readiness_short_battery
 }
+
+/** The eighth thing that can stop a reminder arriving, and the only one that is not an alert grant. */
+const val LOCATION_PROBLEM = "location"
+
+/**
+ * Everything in the way of a reminder arriving, for Home's strip: the seven alert grants, and
+ * the location grant **when there is anything to watch**.
+ *
+ * The location grant lived in a card of its own, in Settings, behind a fold — so a phone with
+ * place reminders and permission "only while in use" had the one grant that silences them
+ * stated in no place anybody looks. It belongs with the other seven by the strip's own test:
+ * these are the things that decide whether a reminder *arrives*, and without "all the time" a
+ * place reminder does not.
+ *
+ * [placesReady] is null when there is nothing to watch, which is not the same as ready: a phone
+ * with no place reminders is not missing anything, and telling it about a permission it has no
+ * use for is the strip crying wolf. Worst first, like [AlertReadiness.problemNames] — after
+ * them, because a phone that cannot notify at all cannot notify about a place either.
+ */
+fun stripProblems(readiness: AlertReadiness, placesReady: Boolean?): Set<String> =
+    readiness.problemNames() + setOfNotNull(LOCATION_PROBLEM.takeIf { placesReady == false })
 
 /**
  * Whether Home shows its "this phone may not ring" strip: something is in the way that has not
@@ -144,8 +166,8 @@ fun readinessShortRes(name: String): Int = when (name) {
  * "Ahora no" remembers the problems by name, so a phone that breaks in a *new* way is told
  * again; what keeps that promise is the pruning on the other side ([liveDismissals]).
  */
-fun stripShows(readiness: AlertReadiness, dismissed: Set<String>): Boolean =
-    readiness.read && (readiness.problemNames() - dismissed).isNotEmpty()
+fun stripShows(readiness: AlertReadiness, dismissed: Set<String>, placesReady: Boolean? = null): Boolean =
+    readiness.read && (stripProblems(readiness, placesReady) - dismissed).isNotEmpty()
 
 /**
  * What is still worth remembering as waved off: only the problems that are still there.
@@ -154,8 +176,8 @@ fun stripShows(readiness: AlertReadiness, dismissed: Set<String>): Boolean =
  * which emptying the set at "all good" alone does not keep: with one other thing still in the
  * way, "all good" never arrives and a channel muted for the second time was never mentioned.
  */
-fun liveDismissals(readiness: AlertReadiness, dismissed: Set<String>): Set<String> =
-    if (!readiness.read) dismissed else dismissed intersect readiness.problemNames()
+fun liveDismissals(readiness: AlertReadiness, dismissed: Set<String>, placesReady: Boolean? = null): Set<String> =
+    if (!readiness.read) dismissed else dismissed intersect stripProblems(readiness, placesReady)
 
 /**
  * Read again every time the screen comes back: the person may have gone to system settings and

@@ -21,6 +21,12 @@ data class HomeEntry(
      * everywhere else.
      */
     val missedAt: Instant? = null,
+    /**
+     * It can never ring, and the app can say so ([Reminder.cannotRing]). A card in "Vencidos"
+     * with no [missedAt] is exactly this one — nothing rang, nothing was armed, and there is no
+     * past moment to name — so without a word of its own it sat there saying nothing at all.
+     */
+    val cannotRing: Boolean = false,
 )
 
 /**
@@ -80,11 +86,18 @@ fun groupForHome(
         .filter { tagFilter == null || tagFilter.matches(it) }
         .map {
             val next = nextFire(it, now, zone, defaultTime, dayStart, shape)
+            val missedAt = if (next == null) it.missedMoment(now, zone, defaultTime, dayStart, shape) else null
             HomeEntry(
                 reminder = it,
                 next = next,
                 wake = nextWake(it, now, zone, defaultTime, dayStart, shape),
-                missedAt = if (next == null) it.missedMoment(now, zone, defaultTime, dayStart, shape) else null,
+                missedAt = missedAt,
+                // Only where the row would actually go: an overdue card with a moment to name
+                // says that instead, and this list is rebuilt every minute while [cannotRing]
+                // walks the rules the way the editor's warnings do. Nothing ahead, nothing to
+                // name behind — that is the card that used to say nothing at all.
+                cannotRing = next == null && missedAt == null &&
+                    it.cannotRing(now, zone, defaultTime, dayStart, shape),
             )
         }
     val hero = heroOf(entries, now)

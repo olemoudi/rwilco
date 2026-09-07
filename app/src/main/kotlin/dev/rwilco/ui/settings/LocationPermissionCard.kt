@@ -9,6 +9,10 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -67,21 +71,42 @@ enum class LocationAccess {
  * location switch is even on. Held out of the card so the group that folds it away can say, on
  * the closed row, that a place reminder is waiting on something.
  */
-data class PlaceReadiness(val access: LocationAccess, val locationOn: Boolean) {
+data class PlaceReadiness(
+    val access: LocationAccess = LocationAccess.ALWAYS,
+    val locationOn: Boolean = true,
+    /**
+     * Whether this is an answer at all, exactly as [AlertReadiness.read] is one. It starts
+     * granted so no screen flashes a fault before anything has looked, which makes the default
+     * a *guess* — and Home's strip, which now counts this among its problems, must not act on
+     * a guess either way.
+     */
+    val read: Boolean = false,
+) {
     /** Everything a geofence needs. Anything less and a place trigger is a promise unkept. */
     val ready: Boolean get() = access == LocationAccess.ALWAYS && locationOn
 }
 
-/** Re-read on every resume: the person may have gone to system settings and come back. */
+/**
+ * Re-read on every resume: the person may have gone to system settings and come back.
+ *
+ * **Off the main thread**, like the alert reads next door (0.48.1): both are binder calls, and
+ * this one is no longer only asked by a screen somebody opened on purpose — Home asks it on
+ * every resume, on the frame it is drawing.
+ */
 @Composable
 fun rememberPlaceReadiness(): PlaceReadiness {
     val context = LocalContext.current
-    var readiness by remember { mutableStateOf(PlaceReadiness(context.locationAccess(), context.isLocationEnabled())) }
+    var readiness by remember { mutableStateOf(PlaceReadiness()) }
     val lifecycleOwner = LocalLifecycleOwner.current
+    val scope = rememberCoroutineScope()
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                readiness = PlaceReadiness(context.locationAccess(), context.isLocationEnabled())
+                scope.launch {
+                    readiness = withContext(Dispatchers.IO) {
+                        PlaceReadiness(context.locationAccess(), context.isLocationEnabled(), read = true)
+                    }
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -102,23 +127,7 @@ fun rememberPlaceReadiness(): PlaceReadiness {
  */
 @Composable
 fun LocationPermissionCard(readiness: PlaceReadiness, needsPlaces: Boolean, watch: PlaceWatchState? = null) {
-    val context = LocalContext.current
     val access = readiness.access
-    val locationOn = readiness.locationOn
-    val snackbar = LocalSnackbar.current
-    val pageUnavailable = stringResource(R.string.settings_page_unavailable)
-    val open: (Intent) -> Unit = { intent -> if (!context.openSettingsPage(intent)) snackbar.show(pageUnavailable) }
-
-    val askForeground = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
-        // A flat refusal cannot be asked again from here: the system stops showing the dialog.
-        val granted = context.locationAccess()
-        if (granted == LocationAccess.NONE || granted == LocationAccess.APPROXIMATE) open(appDetails(context))
-    }
-    val askBackground = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
-        // Since Android 11 "all the time" only exists on the app's own settings page; the
-        // request above is refused without ever showing a dialog, so this is the way through.
-        if (context.locationAccess() != LocationAccess.ALWAYS) open(appDetails(context))
-    }
 
     RwilcoCard {
         Column(Modifier.padding(Tokens.spacing.lg)) {
@@ -165,49 +174,78 @@ fun LocationPermissionCard(readiness: PlaceReadiness, needsPlaces: Boolean, watc
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
-            when (access) {
-                LocationAccess.NONE -> PermissionFixRow(
-                    text = stringResource(R.string.perm_location_missing),
-                    action = stringResource(R.string.perm_location_fix),
-                    onFix = {
-                        askForeground.launch(
-                            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
-                        )
-                    },
-                )
-                // Approximate is a yes that does not help: the card has to say "precise", or
-                // the person is sent round the background grant for a problem it cannot fix.
-                LocationAccess.APPROXIMATE -> PermissionFixRow(
-                    text = stringResource(R.string.perm_location_precise_missing),
-                    action = stringResource(R.string.perm_location_fix),
-                    onFix = {
-                        askForeground.launch(
-                            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
-                        )
-                    },
-                )
-                LocationAccess.WHILE_IN_USE -> PermissionFixRow(
-                    text = stringResource(R.string.perm_background_location_missing),
-                    action = stringResource(R.string.perm_background_location_fix),
-                    onFix = {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            askBackground.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                        } else {
-                            open(appDetails(context))
-                        }
-                    },
-                )
-                LocationAccess.ALWAYS -> Unit
-            }
-            // Granted and still useless: the switch in the quick settings is off.
-            if (!locationOn && access != LocationAccess.NONE) {
-                PermissionFixRow(
-                    text = stringResource(R.string.perm_location_off),
-                    action = stringResource(R.string.perm_location_off_fix),
-                    onFix = { open(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) },
-                )
-            }
+            LocationFixRows(readiness)
         }
+    }
+}
+
+/**
+ * What is missing for a place to be watched, and the button that asks for it — the four states
+ * apart, because they need four different things from the person.
+ *
+ * Pulled out of the card so the **editor** can show the same rows where a place rule is being
+ * written (0.109.0). It used to have a flat "necesita la ubicación todo el tiempo" of its own,
+ * with a button that opened the app's page in system settings: the wrong sentence whenever the
+ * real problem was no permission at all, an approximate one, or the phone's location switch
+ * being off — and a longer way round even when it was right.
+ */
+@Composable
+fun LocationFixRows(readiness: PlaceReadiness) {
+    val context = LocalContext.current
+    val snackbar = LocalSnackbar.current
+    val pageUnavailable = stringResource(R.string.settings_page_unavailable)
+    val open: (Intent) -> Unit = { intent -> if (!context.openSettingsPage(intent)) snackbar.show(pageUnavailable) }
+    val askForeground = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        // A flat refusal cannot be asked again from here: the system stops showing the dialog.
+        val granted = context.locationAccess()
+        if (granted == LocationAccess.NONE || granted == LocationAccess.APPROXIMATE) open(appDetails(context))
+    }
+    val askBackground = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        // Since Android 11 "all the time" only exists on the app's own settings page; the
+        // request above is refused without ever showing a dialog, so this is the way through.
+        if (context.locationAccess() != LocationAccess.ALWAYS) open(appDetails(context))
+    }
+    when (readiness.access) {
+        LocationAccess.NONE -> PermissionFixRow(
+            text = stringResource(R.string.perm_location_missing),
+            action = stringResource(R.string.perm_location_fix),
+            onFix = {
+                askForeground.launch(
+                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+                )
+            },
+        )
+        // Approximate is a yes that does not help: the card has to say "precise", or
+        // the person is sent round the background grant for a problem it cannot fix.
+        LocationAccess.APPROXIMATE -> PermissionFixRow(
+            text = stringResource(R.string.perm_location_precise_missing),
+            action = stringResource(R.string.perm_location_fix),
+            onFix = {
+                askForeground.launch(
+                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+                )
+            },
+        )
+        LocationAccess.WHILE_IN_USE -> PermissionFixRow(
+            text = stringResource(R.string.perm_background_location_missing),
+            action = stringResource(R.string.perm_background_location_fix),
+            onFix = {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    askBackground.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                } else {
+                    open(appDetails(context))
+                }
+            },
+        )
+        LocationAccess.ALWAYS -> Unit
+    }
+    // Granted and still useless: the switch in the quick settings is off.
+    if (!readiness.locationOn && readiness.access != LocationAccess.NONE) {
+        PermissionFixRow(
+            text = stringResource(R.string.perm_location_off),
+            action = stringResource(R.string.perm_location_off_fix),
+            onFix = { open(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) },
+        )
     }
 }
 

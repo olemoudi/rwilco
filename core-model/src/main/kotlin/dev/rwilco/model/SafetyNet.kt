@@ -193,6 +193,14 @@ enum class NetWord {
     /** Its moment came while something was shut, and there is none left for it to ring at. */
     NEVER_RANG,
 
+    /**
+     * It never had a moment at all: the hours it allows and the moments it asks for do not meet,
+     * so there is nothing to have missed. The editor says so while it is being written and Home
+     * says so on the card; this is the third door, for the reminder written in a hurry and
+     * scrolled past. Not one that "got away" ([saysItGotAway]) — nothing did.
+     */
+    CANNOT_RING,
+
     /** It was put off until a place, and the crossing has been a long time coming. */
     WAITING,
 }
@@ -296,8 +304,23 @@ fun Reminder.netDue(
         // at: its moment came while something was shut, and there will not be another.
         lastFiredAt == null && lastDealtAt == null &&
             nextFire(this, now, zone, defaultTime, dayStart, shape) == null -> {
-            about = lastMomentGone(now, zone, defaultTime, dayStart, shape) ?: return null
-            word = NetWord.NEVER_RANG
+            // No moment behind it either, and that is not the same failure. This one never had
+            // a moment: its hours and its moments do not meet, and nothing has been missed
+            // because nothing was ever going to happen. It used to be where this function gave
+            // up — `lastMomentGone` answers null and there was nothing to be *about* — so the
+            // one arrangement the app can prove will fail was the only one it never mentioned.
+            // The moment it is about is the day it was written, because that is the only honest
+            // one there is: it was written then, and it has been like this ever since.
+            val gone = lastMomentGone(now, zone, defaultTime, dayStart, shape)
+            about = gone ?: createdAt
+            // Which of the two it is, asked with the predicate the editor and Home use, so all
+            // three say the same thing about the same reminder. Only where it is in doubt: with
+            // a moment behind it something *did* get away, and [cannotRing] walks the rules.
+            word = if (gone == null && cannotRing(now, zone, defaultTime, dayStart, shape)) {
+                NetWord.CANNOT_RING
+            } else {
+                NetWord.NEVER_RANG
+            }
         }
         else -> return null
     }

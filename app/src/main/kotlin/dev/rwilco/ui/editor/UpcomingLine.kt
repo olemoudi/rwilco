@@ -10,9 +10,14 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import dev.rwilco.R
+import dev.rwilco.model.Action
+import dev.rwilco.model.DayShape
 import dev.rwilco.model.NextFire
 import dev.rwilco.model.Recurrence
+import dev.rwilco.model.awakeAt
 import dev.rwilco.model.countsFromRinging
+import dev.rwilco.model.firingPlan
+import dev.rwilco.model.moment
 import dev.rwilco.ui.format.recurrenceLabel
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.Words
@@ -30,6 +35,19 @@ import java.time.ZoneId
  * for a rule with fences and a recurrence behind it is the only way to check the arrangement
  * without saving it and waiting. The first moment is in amber, because that is exactly what
  * amber means here — the next thing to ring — and the rest are the plain ink of a list.
+ *
+ * **Two things it used to leave unsaid, both of them the ones that matter.**
+ *
+ * With no moments at all it drew nothing, so the save bar under an arrangement that can never
+ * ring was identical to the one under a note nobody had answered the "when" for — and the
+ * warning that says so is a small line under a rule that may be three cards up. It says it
+ * here now ([cannotRing]), in the error ink, right over the button.
+ *
+ * And "Suena" was a promise the hours could not keep: everything landing while somebody is
+ * asleep arrives silent, whatever its tiles say (`hushedByTheHour`), so an alarm asked for at
+ * four in the morning came as a card and nothing else. Said on the first moment only — it is
+ * the one that reads as the promise — and only when the draft asked for a noise in the first
+ * place, since "en silencio" is not news about a reminder that was never going to make one.
  */
 @Composable
 fun UpcomingLine(
@@ -39,8 +57,25 @@ fun UpcomingLine(
     modifier: Modifier = Modifier,
     /** The draft's "Vuelve", for the one shape whose next moments are not the whole story. */
     recurrence: Recurrence = Recurrence.None,
+    /** The draft can produce no moment at all: [dev.rwilco.model.cannotRing]. */
+    cannotRing: Boolean = false,
+    /** The person's own hours, for the one thing that decides whether the first moment is heard. */
+    dayShape: DayShape = DayShape.DEFAULT,
+    /** What the draft asked to happen, so silence is only mentioned where it takes something away. */
+    actions: Set<Action> = emptySet(),
 ) {
-    if (upcoming.isEmpty()) return
+    if (upcoming.isEmpty()) {
+        if (cannotRing) {
+            Text(
+                text = stringResource(R.string.editor_will_never_ring),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.error,
+                modifier = modifier,
+            )
+        }
+        return
+    }
     val words = rememberWords()
     val sep = words.get(R.string.common_separator)
     val first = MaterialTheme.colorScheme.primary
@@ -48,7 +83,21 @@ fun UpcomingLine(
     val readings = upcoming.map { momentReading(words, it, today, zone) }
     // A routine's one moment is its span running out — "vence", not "suena" — because the
     // rules on the form are questions and none of them is what this line is about.
-    val firstLine = stringResource(if (recurrence is Recurrence.Since) R.string.editor_will_be_due else R.string.editor_will_ring, readings.first())
+    val due = recurrence is Recurrence.Since
+    // Asleep at the moment it is for, with something to be silenced: the two halves of the
+    // promise this line could not keep. A place has no moment and cannot be asked.
+    val plan = firingPlan(actions)
+    val hushed = (plan.sound || plan.vibrate) &&
+        (upcoming.first().moment?.let { !dayShape.awakeAt(it, zone) } == true)
+    val firstLine = stringResource(
+        when {
+            due && hushed -> R.string.editor_will_be_due_hushed
+            due -> R.string.editor_will_be_due
+            hushed -> R.string.editor_will_ring_hushed
+            else -> R.string.editor_will_ring
+        },
+        readings.first(),
+    )
     // **A span counted from the "hecho" is said as one** (0.68.0). Its next moments are the
     // rules' own — "a las 20:45", every day — because nothing has been dealt with yet, and
     // the line read "luego vie 4 sept · luego sáb 5 sept" under a reminder that says "vuelve

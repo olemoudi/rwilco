@@ -184,6 +184,17 @@ class HomeViewModel(
         .map { presetsByPopularity(it.presets) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /**
+     * Whether any open reminder has a place in it — the question that turns the location grant
+     * into one of Home's problems rather than a permission nobody here needs ([stripProblems]).
+     *
+     * Off the whole open list and not off Home's own chips: a routine is not on Home, and a
+     * circle that counts one as done needs the grant exactly as much as one that rings.
+     */
+    val hasPlaceReminders: StateFlow<Boolean> = repository.open
+        .map { reminders -> reminders.any { reminder -> reminder.rules.any { it.trigger is Trigger.Location } } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     /** The alert problems somebody has waved off from Home's strip; see [stripShows]. */
     val dismissedAlertProblems: StateFlow<Set<String>> = settings
         .filterNotNull()
@@ -201,9 +212,9 @@ class HomeViewModel(
      * default says nothing is wrong, and taking it at its word threw away the "ahora no" that had
      * just been given.
      */
-    fun noteAlertReadiness(readiness: AlertReadiness) {
+    fun noteAlertReadiness(readiness: AlertReadiness, placesReady: Boolean?) {
         val dismissed = dismissedAlertProblems.value
-        val live = liveDismissals(readiness, dismissed)
+        val live = liveDismissals(readiness, dismissed, placesReady)
         if (live == dismissed) return
         viewModelScope.launch { store.update { it.copy(dismissedAlertProblems = live) } }
     }

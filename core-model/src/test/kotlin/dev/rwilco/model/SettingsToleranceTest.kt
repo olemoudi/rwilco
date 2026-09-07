@@ -43,7 +43,7 @@ class SettingsToleranceTest {
 
     @Test
     fun `an unknown action is dropped, not the set`() {
-        val settings = decoded("\"defaultActions\":[\"NOTIFICATION\",\"VIBRATE\"]" to "\"defaultActions\":[\"NOTIFICATION\",\"HOLOGRAM\",\"VIBRATE\"]")
+        val settings = decoded("\"defaultActions\":[\"NOTIFICATION\",\"SOUND\",\"VIBRATE\"]" to "\"defaultActions\":[\"NOTIFICATION\",\"HOLOGRAM\",\"VIBRATE\"]")
         assertEquals(setOf(Action.NOTIFICATION, Action.VIBRATE), settings.defaultActions)
     }
 

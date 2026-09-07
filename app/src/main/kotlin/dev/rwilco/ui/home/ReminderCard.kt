@@ -200,6 +200,10 @@ fun ReminderCard(
                 // Before everything: a moment that got away is the one thing this card is
                 // about, and the rows under it go on describing the rule as if it were ahead.
                 card.missedAt?.let { MissedRow(it) }
+                // And the one overdue card that has no missed moment to show, because it never
+                // had a moment at all. Same place, same ink, and the same sentence the editor
+                // put over "Guardar" — the only other time the app ever says this.
+                if (card.cannotRing) CannotRingRow()
                 // First, because it is what happens next: a snooze outranks every rule under it
                 // until it has rung.
                 card.snoozedUntil?.let { SnoozedRow(it, today, zone, muted = card.paused) }
@@ -485,6 +489,35 @@ fun DeadlineRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+}
+
+/**
+ * "No sonará nunca": the card whose arrangement cannot produce a moment.
+ *
+ * It sits where [MissedRow] sits and wears the same ink, because it is the same news one step
+ * worse — and it is the card that used to have nothing at all. Every other overdue card can at
+ * least say when it should have rung; this one has no such moment, which is exactly the thing
+ * wrong with it. No clock in it: there is nothing to count from or to.
+ */
+@Composable
+fun CannotRingRow() {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = Icons.Outlined.ErrorOutline,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.error,
+            modifier = Modifier.size(Tokens.sizes.badge),
+        )
+        Spacer(Modifier.width(Tokens.spacing.sm))
+        Text(
+            text = stringResource(R.string.editor_will_never_ring),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.error,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
+        )
     }
 }
 

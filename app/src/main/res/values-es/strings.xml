@@ -61,6 +61,7 @@
     <string name="readiness_short_exactAlarms">No se permiten alarmas exactas</string>
     <string name="readiness_short_unrestricted">El uso en segundo plano está restringido</string>
     <string name="readiness_short_battery">La optimización de batería puede pararla</string>
+    <string name="readiness_short_location">Los lugares no se están vigilando</string>
     <plurals name="home_readiness_more">
         <item quantity="one">y %d más</item>
         <item quantity="other">y %d más</item>
@@ -353,6 +354,10 @@
     <string name="editor_error_trigger">Una de las reglas de cuándo no está bien.</string>
     <string name="editor_error_recurrence">La forma de volver no está bien.</string>
     <string name="editor_will_ring">Suena %1$s</string>
+    <!-- The same moment, when the hours somebody is up will take the noise out of it. -->
+    <string name="editor_will_ring_hushed">Suena %1$s · en silencio, estarás durmiendo</string>
+    <string name="editor_will_be_due_hushed">Vence %1$s · en silencio, estarás durmiendo</string>
+    <string name="editor_will_never_ring">Esto no sonará nunca</string>
     <string name="editor_will_be_due">Vence %1$s</string>
     <string name="editor_will_ring_then">luego %1$s</string>
     <string name="editor_will_ring_sometime">en algún momento %1$s, %2$s</string>
@@ -1382,6 +1387,26 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_109_0">
+
+        <item>La otra mitad de la ronda: los sitios donde la app sabía que un recordatorio no iba a sonar y no lo decía, o decía lo contrario.</item>
+
+        <item>Un recordatorio que no puede sonar ya lo dice, dos veces. Hay una línea en rojo sobre «Guardar» mientras lo escribes —«Esto no sonará nunca»— y una fila en su ficha después, porque el único montaje que la app puede demostrar que va a fallar era del que menos decía: se iba a «Vencidos» sin nada que lo explicara, ya que una ficha de ahí dice cuándo debía sonar y esta nunca tuvo un momento que perder. La red de seguridad también tiene una palabra para él, una sola, al día siguiente.</item>
+
+        <item>Y detrás de eso, uno de verdad: una franja horaria con horas encima no sonaba nunca. «De 09:00 a 11:00, y sólo si es de 10:00 a 12:00» abría a las nueve, su propia condición la rechazaba, probaba las nueve del día siguiente, y se rendía —así que una franja con cualquier hora encima era en silencio un recordatorio imposible, y el editor lo decía con esas palabras—. Suena a las diez, que es lo que dice. Dos franjas con «a la vez» eran el mismo silencio, porque esa lectura convierte cada una en condición de la otra.</item>
+
+        <item>«Suena mañana 04:00» era una promesa que la noche no podía cumplir. Entre que te acuestas y te levantas nada hace ruido, digan lo que digan sus casillas —es a propósito y lo es desde la 0.63.0—, pero el editor seguía diciendo «Suena», y Ajustes decía, con todas las letras, que un disparador con hora propia se saltaba todo eso. Ahora la línea dice «en silencio, estarás durmiendo», y la frase de Ajustes dice lo que de verdad pasa. Tus horas siguen siendo tuyas.</item>
+
+        <item>Un recordatorio nuevo suena. Era una tarjeta y un zumbido, que en un bolsillo es un aviso que no ocurrió; «Sonido» viene encendido a partir de ahora, un toque en cualquier dirección, y Ajustes lo sigue respondiendo de una vez para siempre. Los recordatorios que ya tienes escritos conservan exactamente lo que les diste.</item>
+
+        <item>«Puede que este móvil no suene» ya sabe de lugares. El permiso que silencia un recordatorio de lugar —la ubicación «todo el tiempo»— vivía en una tarjeta de Ajustes, tras un pliegue, así que lo único que impide que una llegada suene no se decía en ningún sitio donde se mire. Es la octava cosa que cuenta la tira, y sólo en un móvil que tenga de verdad un lugar que vigilar.</item>
+
+        <item>Y donde se escribe un lugar, el editor pide lo que hace falta. Antes decía «los recordatorios por lugar necesitan la ubicación todo el tiempo» fuera cual fuera el problema —ningún permiso, uno aproximado, el interruptor de ubicación del móvil apagado— y te soltaba en la página de la app en los ajustes del sistema. Ahora distingue los cuatro casos y pide el que falta.</item>
+
+        <item>Un segundo «cuándo» deja de significar «a la vez» cuando «a la vez» significaría silencio. Dos momentos nunca coinciden y ya estaban a salvo; dos franjas horarias que no se solapan no son dos momentos, y se convertían en silencio en un recordatorio imposible. El editor avisaba, y un valor por defecto cuyo aviso es lo único que te separa del silencio es un mal valor por defecto.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_108_0">
 
         <item>Una ronda sobre los cinco sitios donde el disparo podía fallar sin que nadie se enterara nunca. Nada de esto se ve; todo va de la diferencia entre un recordatorio que se queda callado y uno que se queda callado sin dejar rastro.</item>
@@ -1909,7 +1934,7 @@
     <string name="sheet_repeat_monthly_nth">Un día de la semana</string>
     <string name="sheet_repeat_every_value">%1$d</string>
     <string name="settings_awake">Tus horas despierto</string>
-    <string name="settings_awake_hint">De aquí sale la hora cuando un disparador dice «al azar durante el día». Un disparador con hora propia ignora todo esto.</string>
+    <string name="settings_awake_hint">De aquí sale la hora cuando un disparador dice «al azar durante el día» — y son las horas en que algo puede hacer ruido. Un disparador con hora propia sigue sonando a su hora; fuera de estas, llega en silencio.</string>
     <string name="settings_awake_weekday">Entre semana</string>
     <string name="settings_awake_weekend">Fines de semana</string>
     <string name="settings_awake_wake">Te levantas a las</string>

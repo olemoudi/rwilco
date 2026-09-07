@@ -65,6 +65,7 @@
     <string name="readiness_short_exactAlarms">Exact alarms are not allowed</string>
     <string name="readiness_short_unrestricted">Background use is restricted</string>
     <string name="readiness_short_battery">Battery optimisation can stop it</string>
+    <string name="readiness_short_location">Places are not being watched</string>
     <plurals name="home_readiness_more">
         <item quantity="one">and %d more</item>
         <item quantity="other">and %d more</item>
@@ -360,6 +361,10 @@
     <string name="editor_error_trigger">One of the "when" rules is not right.</string>
     <string name="editor_error_recurrence">The way it comes back is not right.</string>
     <string name="editor_will_ring">Rings %1$s</string>
+    <!-- The same moment, when the hours somebody is up will take the noise out of it. -->
+    <string name="editor_will_ring_hushed">Rings %1$s · silently, you\'ll be asleep</string>
+    <string name="editor_will_be_due_hushed">Due %1$s · silently, you\'ll be asleep</string>
+    <string name="editor_will_never_ring">This will never ring</string>
     <string name="editor_will_be_due">Due %1$s</string>
     <string name="editor_will_ring_then">then %1$s</string>
     <string name="editor_will_ring_sometime">sometime %1$s, %2$s</string>
@@ -1397,6 +1402,26 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_109_0">
+
+        <item>The other half of the round: the places where the app knew a reminder would not ring and said nothing about it, or said the opposite.</item>
+
+        <item>A reminder that cannot ring now says so, twice. There is a line in red over «Save» while you are writing it — «This will never ring» — and a row on its card afterwards, because the one arrangement the app can prove will fail was the one it said least about: it went to «Overdue» with nothing to explain itself, since a card there says when it should have rung and this one never had a moment to miss. The safety net has a word for it too, once, the day after.</item>
+
+        <item>And a real one behind that: a time range with hours on it never rang at all. «From 09:00 to 11:00, and only if it is between 10:00 and 12:00» opened at nine, was refused by its own condition, tried nine o\'clock the next day, and gave up — so a range with any hours on it was silently a reminder that could never ring, and the editor said so in as many words. It rings at ten, which is what it says. Two ranges under «at once» were the same silence, since that reading turns each into the other\'s condition.</item>
+
+        <item>«Rings tomorrow 04:00» was a promise the night could not keep. Between going to bed and getting up nothing makes a noise, whatever its tiles say — that is deliberate and has been since 0.63.0 — but the editor went on saying «Rings», and Settings said, in so many words, that a trigger with an hour of its own ignored all of it. The line now reads «silently, you\'ll be asleep», and the sentence in Settings says what actually happens. Your hours are still yours to move.</item>
+
+        <item>A new reminder makes a sound. It was a card and a buzz, which in a pocket is a reminder that did not happen; «Sound» is on from now on, one tap either way, and Settings still answers it once and for all. Reminders you have already written keep exactly what you gave them.</item>
+
+        <item>«This phone may not ring» now knows about places. The permission that silences a place reminder — location «all the time» — lived in a card in Settings, behind a fold, so the one thing that stops an arrival ringing was said nowhere anybody looks. It is the eighth thing the strip counts, and only on a phone that actually has a place to watch.</item>
+
+        <item>And where a place is being written, the editor asks for the right thing. It used to say «place reminders need location all the time» whatever was actually wrong — no permission at all, an approximate one, the phone\'s location switch off — and hand you the app\'s page in system settings. It now tells the four apart and asks for the one that is missing.</item>
+
+        <item>A second «when» stops meaning «at once» when «at once» would mean silence. Two moments never coincide and were already spared; two time ranges that do not overlap are not two moments, and quietly became a reminder that could never ring. The editor warned, and a default whose warning is the only thing between you and silence is a bad default.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_108_0">
 
         <item>A round on the five places where the firing could fail and nobody would ever find out. Nothing about it is visible; all of it is about the difference between a reminder that goes quiet and a reminder that goes quiet without a trace.</item>
@@ -1924,7 +1949,7 @@
     <string name="sheet_repeat_monthly_nth">A weekday</string>
     <string name="sheet_repeat_every_value">%1$d</string>
     <string name="settings_awake">The hours you are up</string>
-    <string name="settings_awake_hint">What “at random during the day” draws from. A trigger given an hour of its own ignores all of this.</string>
+    <string name="settings_awake_hint">What “at random during the day” draws from — and the hours anything is allowed to make a noise in. A trigger with an hour of its own still rings at that hour; outside these, it arrives silent.</string>
     <string name="settings_awake_weekday">Weekdays</string>
     <string name="settings_awake_weekend">Weekends</string>
     <string name="settings_awake_wake">Up at</string>

@@ -92,6 +92,8 @@ import dev.rwilco.ui.format.rememberWords
 import dev.rwilco.ui.format.dayWord
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.settings.rememberAlertReadiness
+import dev.rwilco.ui.settings.rememberPlaceReadiness
+import dev.rwilco.ui.settings.stripProblems
 import dev.rwilco.ui.settings.readinessShortRes
 import dev.rwilco.ui.settings.stripShows
 import dev.rwilco.ui.format.snoozePlacePhrase
@@ -166,8 +168,14 @@ fun HomeScreen(
     val noFixMessage = stringResource(R.string.snooze_no_fix)
     // Whether this phone can ring at all, re-read on every resume; Settings has the detail.
     val readiness = rememberAlertReadiness()
+    // The eighth thing that can keep a reminder from arriving, and the one that used to be
+    // said only in Settings, behind a fold: a place reminder with no "all the time" grant.
+    // Null when there is nothing to watch — a phone with no places is not missing anything.
+    val hasPlaces by viewModel.hasPlaceReminders.collectAsStateWithLifecycle()
+    val placeReadiness = rememberPlaceReadiness()
+    val placesReady = placeReadiness.ready.takeIf { hasPlaces && placeReadiness.read }
     val dismissedProblems by viewModel.dismissedAlertProblems.collectAsStateWithLifecycle()
-    LaunchedEffect(readiness) { viewModel.noteAlertReadiness(readiness) }
+    LaunchedEffect(readiness, placesReady) { viewModel.noteAlertReadiness(readiness, placesReady) }
     var choosing by rememberSaveable { mutableStateOf(false) }
     // **"Nuevo" asks which kind whenever there is a kind to ask about** (0.65.3). The friction
     // pass (0.63.0) had it stop asking once a preset was pinned, on the argument that the row
@@ -539,7 +547,7 @@ fun HomeScreen(
         var marked by remember { mutableStateOf<String?>(null) }
         // Asked once and read twice — by the list that draws it and by the arithmetic that
         // counts past it — because the two disagreeing is a scroll to the wrong card.
-        val stripShown = !search.open && stripShows(readiness, dismissedProblems)
+        val stripShown = !search.open && stripShows(readiness, dismissedProblems, placesReady)
         // The row of chips, and the "+" on it that administers the tags. Not only while a
         // chip has something to filter (0.93.0): a tag left on finished reminders alone is
         // the one 0.90.0 made deletable *from that panel*, and the panel had no door then.
@@ -610,14 +618,14 @@ fun HomeScreen(
             // Home: the one screen somebody actually looks at says so, once, until waved off.
             if (stripShown) {
                 item(key = "readiness", contentType = "readiness") {
-                    val remaining = readiness.problemNames() - dismissedProblems
+                    val remaining = stripProblems(readiness, placesReady) - dismissedProblems
                     ReadinessStrip(
                         // What is left to say, not the total: naming a problem somebody has
                         // already waved off is the strip arguing with them.
                         problems = remaining.size,
                         worst = remaining.firstOrNull()?.let { stringResource(readinessShortRes(it)) },
                         onFix = onSettings,
-                        onDismiss = { viewModel.dismissAlertStrip(readiness.problemNames()) },
+                        onDismiss = { viewModel.dismissAlertStrip(stripProblems(readiness, placesReady)) },
                         modifier = Modifier.padding(bottom = spacing.sm),
                     )
                 }

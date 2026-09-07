@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import dev.rwilco.model.Action
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.ReminderCodec
 import dev.rwilco.model.foldRepeats
@@ -62,6 +63,8 @@ class SettingsStore(private val context: Context) {
         return settings.copy(
             presets = settings.presets.map { it.foldRepeats(zone) },
             defaultTriggerKind = settings.defaultTriggerKind?.offered(),
+            defaultActions = withSound(settings.defaultActions),
+            routineActions = withSound(settings.routineActions),
         )
     }
 
@@ -79,3 +82,25 @@ class SettingsStore(private val context: Context) {
         context.settingsDataStore.edit { prefs -> prefs[key] = json }
     }
 }
+
+/** What every version of this app before 0.109.0 switched on for a new reminder. */
+private val OLD_DEFAULT_ACTIONS = setOf(Action.NOTIFICATION, Action.VIBRATE)
+
+/**
+ * The one-off that carries [DEFAULT_ACTIONS]'s new sound onto a phone that already has
+ * settings written.
+ *
+ * The blob is encoded with every field ([ReminderCodec] sets `encodeDefaults`), and it is
+ * written on the first launch of every build (`lastSeenVersionCode` lives in it), so every
+ * phone in use has `defaultActions` on disk and a change to the constant alone would have
+ * reached nobody but a fresh install.
+ *
+ * **Only the old default set, exactly.** Anything else is somebody's answer and is left
+ * alone: a set with the insistent sound in it, a set with nothing in it (which means "let
+ * the moment pass in silence" and is a real choice), a set with the full screen. What it
+ * costs is the one person who chose exactly a card and a buzz on purpose, once — and the
+ * tile to put it back is where they set it.
+ */
+internal fun withSound(actions: Set<Action>): Set<Action> =
+    if (actions == OLD_DEFAULT_ACTIONS) actions + Action.SOUND else actions
+

@@ -308,13 +308,7 @@ fun nextFireOf(
         // but a ring has to land at an hour somebody is awake to hear it.
         is Trigger.Weekday -> nextWeekday(trigger, now, zone, shape, fences)?.let { NextFire.Scheduled(it, trigger) }
         // The window opening is the moment it becomes true, and the only moment it produces.
-        is Trigger.Interval -> nextAtTime(
-            // No days on a window means every day; nextAtTime reads an empty set as "never",
-            // which is right for a weekly appointment and wrong for a shape of the day.
-            Trigger.AtTime(trigger.from, trigger.days.ifEmpty { DayOfWeek.entries.toSet() }),
-            now,
-            zone,
-        )?.let { NextFire.Scheduled(it, trigger) }
+        is Trigger.Interval -> nextInterval(trigger, now, zone, fences)?.let { NextFire.Scheduled(it, trigger) }
         // A stretch of the calendar names no hour, so it opens at the one a date with no hour
         // has always meant — and at the same hour on each day it is still open, which is what
         // Trigger.Interval does with a stretch of the day, one unit up. Nothing else in the app
@@ -393,6 +387,42 @@ private fun nextWeekday(
         val date = today.plusDays(offset)
         if (date.dayOfWeek !in trigger.days) continue
         val at = openingOf(shape.awakeOn(date), fences).atZone(zone).toInstant()
+        if (at > now) return at
+    }
+    return null
+}
+
+/**
+ * When a stretch of the day next becomes true: the first minute of it the rule's own hour
+ * fences allow, on the next day the window names.
+ *
+ * **The opening used to be taken bare** — the window's own `from` and nothing else — while the
+ * two other shapes that leave the hour to the day ([Trigger.Weekday], [Trigger.DayRandom]) have
+ * always opened at the first minute their fences allow ([openingOf]). So "de 09:00 a 11:00, y
+ * sólo si es de 10:00 a 12:00" offered nine o'clock, its own fence refused it, the walk offered
+ * the next day's nine o'clock, and after [MAX_CANDIDATES] days of that the rule came out as one
+ * that can never ring — silently, and in the editor as "esto no puede sonar nunca". It rings at
+ * ten, which is what it says.
+ *
+ * The same silence reached every "a la vez" with a window in it, because that fold *is* a fence:
+ * "de 09:00 a 11:00" beside "de 10:00 a 12:00" is a set that plainly holds at ten and never
+ * rang. With no fences at all this is the walk it always was, minute for minute.
+ *
+ * An empty day set is every day, as it is everywhere a window is a shape of the day rather than
+ * a weekly appointment.
+ */
+private fun nextInterval(
+    trigger: Trigger.Interval,
+    now: Instant,
+    zone: ZoneId,
+    fences: List<Condition.TimeWindow>,
+): Instant? {
+    val days = trigger.days.ifEmpty { DayOfWeek.entries.toSet() }
+    val today = now.atZone(zone).toLocalDate()
+    for (offset in 0L..7L) {
+        val date = today.plusDays(offset)
+        if (date.dayOfWeek !in days) continue
+        val at = openingOf(DayWindow(trigger.from, trigger.to).on(date), fences).atZone(zone).toInstant()
         if (at > now) return at
     }
     return null
@@ -637,6 +667,53 @@ fun Reminder.recurrenceMoment(
     // nothing — Home files it under overdue — until dealing with it moves the anchor on.
     val fired = lastFiredAt ?: return at
     return at.takeIf { it > fired }
+}
+
+/**
+ * Whether this reminder **cannot ring at all** — not "has nothing left", which is the ordinary
+ * end of a reminder, but "asks for something that can never happen".
+ *
+ * "Todos los lunes a las 9:00, y sólo si es de 18:00 a 22:00" is the shape of it. [warnings]
+ * says so while it is being written, and after the save the app said nothing about it ever
+ * again: it went to Home's overdue list with no row to explain itself — the moment it missed is
+ * worked out from a past moment it never had — and the safety net let it go for the same
+ * reason. The one arrangement the app can *prove* will fail was the one it said least about.
+ *
+ * So it is one predicate, asked twice: by the editor over the save button and by Home on the
+ * card. And it is [warnings] underneath rather than arithmetic of its own, because that walk
+ * already draws the line this needs and is already what the person was shown: **a shape with no
+ * possible moment** (`NeverFires`, `PlacesConflict`, `MomentsCannotCoincide`, and under "todos"
+ * the `NeverCompletes` one dud rule inflicts on the set) is this; **a moment that has simply
+ * been and gone** (`InPast`) is not, and has a sentence of its own. A date already past when it
+ * was written is exactly that second thing, which is why this cannot be "nothing ahead and
+ * nothing behind": [lastMomentGone] walks from the day the reminder was written and never sees
+ * it.
+ *
+ * Two clauses of its own around that. **Active**, because a paused reminder is quiet by
+ * request. And **something ahead already** answers no before any of it: a reminder with a next
+ * moment is not in question, whatever else its rules say.
+ */
+fun Reminder.cannotRing(
+    now: Instant,
+    zone: ZoneId,
+    defaultTime: LocalTime,
+    dayStart: LocalTime = DEFAULT_DAY_START,
+    shape: DayShape = DayShape.DEFAULT,
+): Boolean {
+    if (status != Status.ACTIVE) return false
+    if (nextFire(this, now, zone, defaultTime, dayStart, shape) != null) return false
+    // No rules: the recurrence is the whole arrangement, and only a calendar can be impossible
+    // in itself — a span always has a next step. OVER is a series that ran and ended, which is
+    // not this.
+    if (rules.isEmpty()) {
+        return recurrence.isAnchored && recurrenceWarning(recurrence, now, zone, shape) == RecurrenceWarning.NEVER_FIRES
+    }
+    return warnings(rules, now, zone, defaultTime, ruleMatch, shape, id, deadline).any {
+        it is ValidationWarning.NeverFires ||
+            it is ValidationWarning.NeverCompletes ||
+            it is ValidationWarning.MomentsCannotCoincide ||
+            it is ValidationWarning.PlacesConflict
+    }
 }
 
 /**

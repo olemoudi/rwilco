@@ -82,6 +82,34 @@ class EditorStateTest {
         assertEquals(RuleMatch.TOGETHER, blank.commitTrigger(null, twoAt).commitTrigger(null, standing).draft.ruleMatch)
     }
 
+    /**
+     * The other half of the guard above, and the one the two-moments test could not reach.
+     *
+     * "De 09:00 a 11:00" and "de 17:00 a 19:00" are not two moments — they are two stretches —
+     * so nothing stopped the second one writing "a la vez", and "a la vez" over two stretches
+     * that never overlap is a reminder that can never ring. The editor said so in a small line
+     * under the rule; a default that leans on its own warning is a bad default, which is the
+     * argument the two-moments guard was already written from.
+     *
+     * The clock is what makes it askable at all — the walk is [dev.rwilco.model.warnings], the
+     * same one that draws the warning — so without one the old answer stands, deliberately.
+     */
+    @Test
+    fun `two stretches that never overlap do not become "a la vez"`() {
+        val morning = Trigger.Interval(LocalTime.of(9, 0), LocalTime.of(11, 0))
+        val evening = Trigger.Interval(LocalTime.of(17, 0), LocalTime.of(19, 0))
+        val disjoint = blank.commitTrigger(null, morning, now = now, zone = zone)
+            .commitTrigger(null, evening, now = now, zone = zone)
+        assertEquals(RuleMatch.ANY, disjoint.draft.ruleMatch)
+        // Overlapping ones still mean what a second "cuándo" almost always means.
+        val overlapping = blank.commitTrigger(null, morning, now = now, zone = zone)
+            .commitTrigger(null, Trigger.Interval(LocalTime.of(10, 0), LocalTime.of(12, 0)), now = now, zone = zone)
+        assertEquals(RuleMatch.TOGETHER, overlapping.draft.ruleMatch)
+        // And with no clock to ask with, the answer is the one it always was.
+        val unasked = blank.commitTrigger(null, morning).commitTrigger(null, evening)
+        assertEquals(RuleMatch.TOGETHER, unasked.draft.ruleMatch)
+    }
+
     @Test
     fun `only the second trigger, and only while nobody has chosen`() {
         val twoAt = Trigger.TimeOfDay(LocalTime.of(14, 0))
@@ -187,10 +215,15 @@ class EditorStateTest {
 
     @Test
     fun `actions toggle, and none of them is a moment that passes quietly`() {
-        val none = blank.withText("Regar").toggleAction(Action.NOTIFICATION).toggleAction(Action.VIBRATE)
+        val none = blank.withText("Regar")
+            .toggleAction(Action.NOTIFICATION).toggleAction(Action.SOUND).toggleAction(Action.VIBRATE)
         assertTrue(none.draft.actions.isEmpty())
         assertTrue(none.canSave)
-        assertEquals(DEFAULT_ACTIONS + Action.SOUND, blank.toggleAction(Action.SOUND).draft.actions)
+        // The two sound tiles are one choice: asking for the insistent one puts the plain one away.
+        assertEquals(
+            DEFAULT_ACTIONS - Action.SOUND + Action.SOUND_UNTIL_ANSWERED,
+            blank.toggleAction(Action.SOUND_UNTIL_ANSWERED).draft.actions,
+        )
     }
 
     @Test

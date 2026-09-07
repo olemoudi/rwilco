@@ -45,11 +45,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
-import dev.rwilco.ui.settings.openSettingsPage
-import dev.rwilco.ui.settings.appDetailsIntent
-import dev.rwilco.ui.components.PermissionFixRow
-import dev.rwilco.geo.hasBackgroundLocation
-import androidx.lifecycle.compose.LifecycleResumeEffect
+import dev.rwilco.ui.settings.LocationFixRows
+import dev.rwilco.ui.settings.rememberPlaceReadiness
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -575,21 +572,17 @@ internal fun TriggersSection(
         }
         // A place rule needs location "all the time", and the sheet only ever asked for the
         // foreground half: the reminder saved fine and would not ring until Home's strip said
-        // why. Said here, where the rule is written, with the same row Settings uses (0.68.0).
+        // why. Said here, where the rule is written, with the same rows Settings uses (0.68.0).
+        //
+        // **The same rows, and not a paraphrase of them** (0.109.0). This asked one question —
+        // is background location granted — and answered it with one sentence and a button that
+        // opened the app's page in system settings. So it said "necesita la ubicación todo el
+        // tiempo" to somebody who had granted nothing at all, or only the approximate one, or
+        // who had the phone's location switch off; three different problems, one wrong sentence
+        // and a long way round. `LocationFixRows` tells them apart and asks for the right one.
         if (rules.any { it.trigger is Trigger.Location }) {
-            val context = LocalContext.current
-            var background by remember { mutableStateOf(context.hasBackgroundLocation()) }
-            LifecycleResumeEffect(Unit) {
-                background = context.hasBackgroundLocation()
-                onPauseOrDispose { }
-            }
-            if (!background) {
-                PermissionFixRow(
-                    text = stringResource(R.string.perm_background_location_missing),
-                    action = stringResource(R.string.perm_background_location_fix),
-                    onFix = { context.openSettingsPage(context.appDetailsIntent()) },
-                )
-            }
+            val places = rememberPlaceReadiness()
+            if (places.read && !places.ready) LocationFixRows(places)
         }
         if (rules.isNotEmpty()) Spacer(Modifier.height(Tokens.spacing.sm))
         OutlinedButton(

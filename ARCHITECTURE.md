@@ -181,13 +181,21 @@ visible cost and the honest one: chance is a thing to ask for on purpose, and `T
 the tile that asks for it.
 
 **The opening is moved inside the fences, never judged against them afterwards.** A rule's "y
-sólo si" hour windows (`TriggerRule.windows()`) and a calendar's own fences reach `openingOf`,
+sólo si" hour windows (`TriggerRule.windows()`), a calendar's own fences **and a window's own**
+(0.109.0, `nextInterval`) reach `openingOf`,
 which walks to the first minute they all allow. A door that opened at eight for a rule saying
 "sólo de 16 a 17" was a moment the fence rejected, so the rule answered *never*: "el jueves a
 cualquier hora, y sólo si es entre las 16 y las 17" opens at 16:00, and "el primer viernes de
 cada mes, sólo de 16 a 17" with no hour rings that Friday rather than about once a year. When no
 minute of the stretch clears the fences the plain opening comes back for the walk to reject,
 which is what a fence naming *other days* ("sólo los lunes") has to do to a daily calendar. The
+`Trigger.Interval` was the shape this had never been done to: its opening was taken bare,
+so "de 09:00 a 11:00, y sólo si es de 10:00 a 12:00" offered nine, was refused by its own fence,
+offered the next day's nine, and after `MAX_CANDIDATES` of that answered *never* — a range with
+any hours on it was silently a reminder that could not ring, said so in the editor, and the same
+silence reached every "a la vez" holding two ranges, since the fold makes each one the other's
+fence. It rings at ten. With no fences the walk is what it always was, minute for minute
+(`IntervalFenceTest`). The
 random tile (`Trigger.Random`) is drawn inside them too (`RandomDraw.draws` takes the rule's
 windows): the minutes each day allows are listed first and the draw is one of those, so "una
 vez a la semana al azar, y sólo los sábados" is drawn on a Saturday rather than drawn over the
@@ -277,7 +285,14 @@ shape where "a la vez" means silence: two triggers that are each true at an inst
 coincide (`momentsCannotCoincide`), so a pair of moments — "a las 09:00" beside "a las 21:00",
 or beside a doorway — keeps "cualquiera". The editor warns about that set, and a default whose
 warning is load-bearing is a bad default. Only on the *second* rule, and only while the choice
-is still the untouched `ANY`.
+is still the untouched `ANY`. **And the same argument one step further** (0.109.0,
+`silentTogether`): a pair that is not two moments and still cannot coincide — two stretches with
+no hour in common, a stretch and an hour outside it — was the same silence with the same warning
+holding it up. The chosen `TOGETHER` is now put to `warnings()` under that very reading, which
+is the walk that would have drawn the warning, and falls back to `ANY` when it answers
+`NeverFires`, `NeverCompletes` or `MomentsCannotCoincide`. It needs a clock, so `commitTrigger`
+takes one; without it the old answer stands, deliberately — this is a better default, not a new
+rule.
 
 **A favourite is always one of the tiles** (`kindsOrdered`). `AppSettings.defaultTriggerKind` is
 stored by name and outlives the tile it names, so it is read through `offered()` both in
@@ -882,8 +897,16 @@ loud what DST and a change of zone do to a landing.
   guess** (`AlertReadiness.read`): everything starts granted so no screen flashes red before it
   has looked, which means nothing may act on "all good" until a real read has landed — done
   blindly, every recomposition of Home threw away the "ahora no" that had just been given.
-  The reads themselves are **off the main thread** (`readAlertReadiness`, on `Dispatchers.IO`):
-  twelve binder calls on every resume of the screen somebody actually looks at. One consequence
+  **And the strip counts the location grant too** (0.109.0, `stripProblems`): "todo el tiempo" is
+  the one permission that silences a place reminder, it lived in a card of its own in Settings
+  behind a fold, and by the strip's own test — these are the things that decide whether a
+  reminder *arrives* — it belongs with the other seven. Only on a phone with something to watch
+  (`HomeViewModel.hasPlaceReminders`, off the whole open list rather than Home's chips: a routine
+  is not on Home and its vouching circles need the grant just as much), and `null` there means
+  "nothing to watch", which is not the same as ready. The reads themselves are **off the main
+  thread** (`readAlertReadiness`, on `Dispatchers.IO`, and `rememberPlaceReadiness` with it since
+  it is now asked on Home's hot path — with a `read` flag of its own for the same reason):
+  binder calls on every resume of the screen somebody actually looks at. One consequence
   worth knowing: the groups in trouble now open themselves a beat *after* Settings arrives, and a
   test that toggles a group has to check whether it is already open (`EditorTourTest.openGroup`).
   The Do Not Disturb row is two rows now: the red one only under total
@@ -1482,8 +1505,12 @@ loud what DST and a change of zone do to a landing.
   one; deleting a kept recurrence closes the list so the undo can be seen; a preset's name is
   capped where it is typed; the chooser reads a preset's rules back (`triggerPhrase`) instead of
   counting them; "preset guardado · fijar"; the sentence over "Guardar" bounds its words
-  (`MAX_SENTENCE_WORDS`) so the "when" survives; a place rule without background location gets
-  the `PermissionFixRow` under it; a rename opens focused and selected; the countdown preview
+  (`MAX_SENTENCE_WORDS`) so the "when" survives; a place rule without the location it needs gets
+  the fix rows under it — **Settings' own** since 0.109.0 (`LocationFixRows`, lifted out of
+  `LocationPermissionCard`), because the editor had a flat "necesita la ubicación todo el tiempo"
+  of its own with a button into the app's system page: the wrong sentence for a phone with no
+  grant at all, an approximate one, or its location switch off, and a longer way round when it
+  was right; a rename opens focused and selected; the countdown preview
   names the day; the big map's "Listo" is all button; Save and every sheet's confirm sit at
   `Sizes.primary`.
 - **The alert screen takes no tap** (0.66.0, `PressGuard`, `ui/components/PressGuard.kt`). The
@@ -1562,6 +1589,21 @@ loud what DST and a change of zone do to a landing.
   `dayWord` and so everywhere a moment is read back — this line, the cards, the history): "cada
   4 años" from tomorrow read as "luego mar 3 sept · luego dom 3 sept", the same day twice with
   the weekday its only tell. Now "luego mar 3 sept 2030 · luego dom 3 sept 2034".
+  **And with no moments at all it drew nothing** (0.109.0), so the save bar under an arrangement
+  that can never ring was the save bar under a note nobody had answered the "when" for — while
+  the warning that says so is a small line under a rule three cards up. It says
+  `editor_will_never_ring` there now, in the error ink, off `Reminder.cannotRing` — which is
+  [warnings] underneath rather than arithmetic of its own, so what it claims is what the person
+  was already shown: **a shape with no possible moment** (`NeverFires`, `PlacesConflict`,
+  `MomentsCannotCoincide`, and under "todos" the `NeverCompletes` one dud rule inflicts on the
+  set) is this; **a moment that has been and gone** (`InPast`) is not and has its own sentence.
+  That line is the one thing it could not be read off `lastMomentGone` for: a date already past
+  when the reminder was written leaves that walk empty too, and it is merely late. **Home says
+  the same sentence on the card** (`HomeEntry.cannotRing` → `CannotRingRow`), asked only where
+  there is no missed moment to name — which is exactly the overdue card that used to say nothing
+  at all — and the net has `NetWord.CANNOT_RING` for it, anchored on `createdAt` because that is
+  the only honest moment there is, once, and never wearing "ICYMI" (`saysItGotAway` is false:
+  nothing got away, nothing was coming). `CannotRingTest` pins all three.
 - **A refused save says so** (0.46.0): "Guardar" on a draft that cannot be saved used to set
   `showErrors` and stop, and the only sign was a red line under a field three cards up — a button
   that does nothing looks broken, not refused. `EditorEvent.Invalid` carries the first error to a
@@ -1845,6 +1887,13 @@ loud what DST and a change of zone do to a landing.
   the card at three in the morning. **The rehearsal is the one exemption** (`TestAlert.isTest`):
   somebody pressing "probar una alerta" is asking whether the noise works, and silence is the one
   answer that must never be given to that question.
+  **And it is said where it is decided** (0.109.0). The rule is deliberate; what was not was that
+  the editor went on promising "Suena mañana 04:00" for a moment it would silence, and that
+  `settings_awake_hint` said in so many words that a trigger with an hour of its own *ignored*
+  all of this — true when it was written in 0.18.0, false since 0.63.0. `UpcomingLine` marks the
+  first moment ("en silencio, estarás durmiendo") when `dayShape.awakeAt` says no and the draft
+  asked for a noise at all, and the hint says what actually happens. The first moment only: it is
+  the one that reads as the promise, and marking all three is noise.
 - **"Al salir de aquí" is as small as the fix can defend, and says how big it came out**
   (0.79.0, 0.80.0). It used to draw a flat 150 m around the position and say none of it: a
   person hears "when I leave here" and pictures the doorstep, while leaving a circle takes the
@@ -1950,7 +1999,16 @@ loud what DST and a change of zone do to a landing.
   shown as a banner has no screen to ring and its notification carries the sound and the buzz
   (`AlertNotifications.post` picks the channel from the presentation it was handed). And any
   action at all implies a notification (`firingPlan`): a sound or a buzz is made by a channel,
-  so "sonido" with "notificación" unticked is still a notification rather than nothing. That
+  so "sonido" with "notificación" unticked is still a notification rather than nothing. **A
+  reminder written from nothing makes one** (0.109.0): `DEFAULT_ACTIONS` was a card and a buzz,
+  which in a pocket is a reminder that did not happen and "no sonó" is what somebody says about
+  it, never thinking to look in "Qué pasa" for a tile that was never ticked. It carries
+  `Action.SOUND` now. Only a default — a reminder keeps its own set in its own column — but the
+  constant alone would have reached nobody: the settings blob is encoded with every field and is
+  written on the first launch of every build, so `SettingsStore`'s read path carries it across
+  (`withSound`, tested) **and only over the old pair exactly**, because a set with the insistent
+  tone, a set with the full screen, and an empty set (which means "let the moment pass in
+  silence") are all somebody's answer. That
   needs two permissions granted by hand — usage access (to tell an app from the launcher) and
   "display over other apps" (Android forbids a background activity start without it). Missing
   either falls back to the banner, which is what the system does on its own, and Settings says

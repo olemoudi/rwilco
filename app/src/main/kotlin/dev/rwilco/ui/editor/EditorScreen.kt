@@ -102,6 +102,9 @@ import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.model.upcomingMoments
 import dev.rwilco.model.NextFire
 import dev.rwilco.model.Recurrence
+import dev.rwilco.model.Action
+import dev.rwilco.model.DayShape
+import dev.rwilco.model.cannotRing
 import dev.rwilco.model.ROUTINE_KINDS
 import kotlinx.coroutines.launch
 import java.time.ZoneId
@@ -270,6 +273,15 @@ fun EditorScreen(
             now, zone, state.defaultTime, state.dayStart, state.dayShape,
         )
     }
+    // Nothing at all is coming. Only asked when the walk above already came back empty — which
+    // is the only way it can be true, and the walk behind this one is not free either
+    // ([lastMomentGone] steps through a thousand moments before giving up). A preset rings
+    // nothing by nature and is never this.
+    val cannotRing = remember(upcoming, state.draft.rules, state.draft.recurrence, state.defaultTime, state.dayStart, state.dayShape, state.asPreset) {
+        !state.asPreset && upcoming.isEmpty() &&
+            state.draft.toReminder(viewModel.draftId, now, now, Status.ACTIVE, zone = zone, shape = state.dayShape)
+                .cannotRing(now, zone, state.defaultTime, state.dayStart, state.dayShape)
+    }
     // The same question for the calendar in "Vuelve", which has fences of its own and no rule
     // index to hang a message on. Remembered for the same reason: it walks moments.
     val recurrenceWarning = remember(state.draft.recurrence, state.defaultTime, state.dayShape) {
@@ -339,6 +351,9 @@ fun EditorScreen(
                     defaultTime = state.defaultTime,
                     upcoming = upcoming,
                     recurrence = state.draft.recurrence,
+                    cannotRing = cannotRing,
+                    dayShape = state.dayShape,
+                    actions = state.draft.actions,
                     zone = zone,
                     onSave = {
                         haptics.perform(HapticFeedbackType.Confirm)
@@ -790,6 +805,12 @@ private fun SaveBar(
     zone: ZoneId = ZoneId.systemDefault(),
     recurrence: Recurrence = Recurrence.None,
     revives: Boolean = false,
+    /** The draft produces no moment at all, and the line over the button has to say so. */
+    cannotRing: Boolean = false,
+    /** The person's hours, for the moment that will arrive silent. */
+    dayShape: DayShape = DayShape.DEFAULT,
+    /** What was asked to happen, so silence is only mentioned where it takes something away. */
+    actions: Set<Action> = emptySet(),
 ) {
     Surface(color = MaterialTheme.colorScheme.background) {
         Column(
@@ -823,7 +844,16 @@ private fun SaveBar(
                 )
             }
             // What the arrangement above comes to: the next moments it will actually ring at.
-            UpcomingLine(upcoming = upcoming, today = today, zone = zone, recurrence = recurrence, modifier = Modifier.padding(bottom = Tokens.spacing.sm))
+            UpcomingLine(
+                upcoming = upcoming,
+                today = today,
+                zone = zone,
+                recurrence = recurrence,
+                cannotRing = cannotRing,
+                dayShape = dayShape,
+                actions = actions,
+                modifier = Modifier.padding(bottom = Tokens.spacing.sm),
+            )
             Button(
                 onClick = onSave,
                 enabled = enabled,
