@@ -1397,6 +1397,20 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_108_0">
+
+        <item>A round on the five places where the firing could fail and nobody would ever find out. Nothing about it is visible; all of it is about the difference between a reminder that goes quiet and a reminder that goes quiet without a trace.</item>
+
+        <item>An alarm is no longer set on a row that would not take it. The moment is written down first and the alarm set second, and when the writing failed the alarm went ahead anyway — which was the worst of both: the alarm arrived, found a row saying nothing was due, dropped itself as a stray, and the catch-up could not see it either, because that column is exactly what the catch-up reads. It now leaves the alarm unset and says so; the next pass — a save, a settings change, the six-hourly check — puts it back.</item>
+
+        <item>Three failures that used to happen in silence now reach the diagnostics report: a pass that could not read your reminders at all (it armed nothing and cancelled nothing, and the report showed an unbroken run with a hole in it), a card the phone refused to put in the shade, and a place crossing that was consumed on its way to ringing — the one that could never be reported again, because the watch had already written down which side of the line you were on.</item>
+
+        <item>A routine\'s repeated question is kept somewhere it cannot be lost to two things happening at once.</item>
+
+        <item>And the place watch has a second way back. Every look arms the next one, so a look the system refused to arm leaves the chain broken — and the only thing that could mend it was the alarm that was never set, which left the six-hourly check as the whole recovery. Opening the app now mends it too, and a watch with nothing left to look at no longer claims a look is coming.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_107_1">
 
         <item>The routines\' polish round. «Yes» is a button with its word, not a bare tick, and it is not offered before a routine\'s count has begun. The snackbars and labels on that screen speak of a routine («Deleted», «Routine actions», «Clone routine»), Back closes the search and then the chip as it does on Home, and a routine found by Home\'s search says «Routine» in its own colour and opens the routines with it in view.</item>

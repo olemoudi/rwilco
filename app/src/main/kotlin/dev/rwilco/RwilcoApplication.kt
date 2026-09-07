@@ -310,6 +310,14 @@ class RwilcoApplication : Application() {
         if (!lastCatchUpMs.compareAndSet(last, now)) return
         appScope.launch {
             runCatching { firing.rearmAndCatchUp() }.onFailure { Log.e(TAG, "the resume catch-up failed", it) }
+            // And the watch's own chain, which is a separate thing that can stop. Every link is
+            // set by the look before it, so an `AlarmManager` that refused one (`scheduleAt`)
+            // leaves no link at all — and `recover()`, the one thing that puts a new one, is
+            // only ever called by `PlaceCheckReceiver`, which is to say by the alarm that was
+            // never set. Until now that made the six-hourly worker the whole recovery. It is a
+            // no-op whenever a look is genuinely still coming, and the door is already rate
+            // limited to once every few minutes, so it costs nothing to ask here.
+            runCatching { placeWatcher.recoverIfStalled() }.onFailure { Log.e(TAG, "could not recover the place watch", it) }
         }
     }
 

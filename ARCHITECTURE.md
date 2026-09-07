@@ -1704,7 +1704,8 @@ loud what DST and a change of zone do to a landing.
   still open, is tried again** every quarter of an hour until the window closes (0.107.0,
   `ASK_RETRY`, `closesFrom`, `ReminderScheduler.armAskRetry` — kept in memory so the next re-arm
   does not put tomorrow's question in its place; a process death loses it, which is the day's
-  question lost the way it always was). **Or the place counts as
+  question lost the way it always was; a `ConcurrentHashMap` since 0.108.0, because it is read
+  under the scheduler's lock and written under `ReminderFiring`'s, and two locks are no lock). **Or the place counts as
   having done it** (`TriggerRule.resets`, `Crossing.RESETS`, `ReminderFiring.resetBy`): leaving
   the garage *is* the car moving. The reset is the write "hecho" makes on a routine, recorded as
   `FiringKind.RESET` with the doorway in its detail, and said in the shade **mute, with
@@ -1740,7 +1741,16 @@ loud what DST and a change of zone do to a landing.
   alarm are left as they stand for the delivery in flight, or the next catch-up, to ring. What
   spends a moment is the ring, a judgement in `fire` that dropped it (which writes `armedFor` off
   itself, `spendArmed`, or it would be held and re-judged for ever), a "hecho", a "posponer" or an
-  edit. `Simulation.arm` holds the same way, and `HeldMomentTest` pins it. What a change has to touch before the
+  edit. `Simulation.arm` holds the same way, and `HeldMomentTest` pins it. **The row is written
+  before the alarm is set, and no alarm is set at all when the row will not take the moment**
+  (0.108.0): an alarm the row does not back is the worst of the two ways of failing — the
+  delivery arrives, `fire` reads a column saying nothing is armed and drops it as a stray, and
+  `missedFire` cannot see it either, because seeing it is exactly what the unwritten column was
+  for. The failure is named in the report, whatever the row still holds stays armed-for as far
+  as the catch-up is concerned, and the next pass writes it again: late, not never. A pass that
+  cannot read the rows at all — `openNow()` throwing, which arms nothing, cancels nothing and
+  hands back no missed reminders — says so in the report too, or the report showed an unbroken
+  run of "armed=n" with a hole in it that nothing named. What a change has to touch before the
   whole list is worked out again is `schedulingKey` — the rules, the match, what is ticked off,
   the snooze, the recurrence and the moment it counts from — and deliberately not what the
   scheduler itself writes back, or every re-arm would come round as a change and arm everything
@@ -2748,7 +2758,11 @@ loud what DST and a change of zone do to a landing.
 - **Diagnostics** (`diag/`): the app's own account of itself, because a reminder that never
   arrived leaves nothing behind — no crash, no error, an empty screen. `Diag.note(tag, text)` is
   written from every decision that could be the one (a firing dropped and why, a re-arm, the
-  presentation decision and its five inputs, the vault, the updater, a boot), lands in a ring of
+  presentation decision and its five inputs, the vault, the updater, a boot) — and, since
+  0.108.0, from the three that used to fail in silence: a pass that could not read the rows at
+  all, a card `notify()` refused, and a place crossing consumed on its way to ringing, which is
+  the one no later look can report again because `accept()` has already written down which side
+  of the line the phone was on. It lands in a ring of
   its own (`DiagLog`: 300 lines, a week, and a repeat of the same line inside a minute replaces
   it rather than piling on), and `Diagnostics.report()` — pure, JVM-tested — turns it and the
   state around it into one block of text to copy: the build and the clock, the ten things the
@@ -2806,7 +2820,15 @@ loud what DST and a change of zone do to a landing.
   receiver's timeout cannot land between `markFired` and the showing and spend a moment nothing
   showed — and whatever the showing throws, the re-arm at the end still runs. The place watch
   counts a look as planned only once its alarm exists (`scheduleAt`): planned first, a set that
-  threw left `recover()` standing down for a look that was never coming.
+  threw left `recover()` standing down for a look that was never coming. **And the chain has a second
+  way back** (0.108.0). `recover()`'s two callers are both a look that has just been attempted,
+  so its only door was the alarm that had failed to be set, and the six-hourly worker was the
+  whole recovery. `recoverIfStalled()` is the same thing asked from a door with no look behind
+  it — `catchUpIfStale()`, on the app being opened, already rate limited — and it has to ask
+  first, because *no alarm* is equally what a watch with nothing to watch looks like: the store
+  tells them apart, since `nextCheckAt` is written by the look that planned one and is now
+  cleared when the watch stands down (`sync()` always did; `look()` did not, so a resting watch
+  named a moment in the past as its next look, wrongly in the report and useless as a signal).
   On the showing side: every alert channel carries **alarm** audio attributes, silent ones
   included, and the live notification is `CATEGORY_ALARM` — which is what lets Do Not Disturb
   tell it from a chat and the ringer switch keep its buzz; with notification-policy access

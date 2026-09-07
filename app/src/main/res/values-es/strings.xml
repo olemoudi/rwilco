@@ -1382,6 +1382,20 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_108_0">
+
+        <item>Una ronda sobre los cinco sitios donde el disparo podía fallar sin que nadie se enterara nunca. Nada de esto se ve; todo va de la diferencia entre un recordatorio que se queda callado y uno que se queda callado sin dejar rastro.</item>
+
+        <item>Ya no se arma una alarma sobre una fila que no la ha aceptado. El momento se apunta primero y la alarma se pone después, y cuando la escritura fallaba la alarma se ponía igual —que era lo peor de las dos cosas: la alarma llegaba, encontraba una fila diciendo que no había nada pendiente, se descartaba a sí misma como perdida, y el repesca tampoco podía verla, porque esa columna es justo lo que el repesca lee—. Ahora la alarma no se pone y queda dicho; la siguiente pasada —un guardado, un cambio de ajustes, la revisión de cada seis horas— la vuelve a poner.</item>
+
+        <item>Tres fallos que ocurrían en silencio llegan ya al informe de diagnóstico: una pasada que no pudo leer tus recordatorios (no armaba nada ni cancelaba nada, y el informe enseñaba una serie sin cortes con un agujero dentro), una tarjeta que el móvil se negó a poner en la bandeja, y un cruce de un lugar consumido de camino a sonar —el que no se podía volver a reportar jamás, porque la vigilancia ya había apuntado de qué lado de la línea estabas—.</item>
+
+        <item>La pregunta repetida de una rutina se guarda ahora donde no puede perderse porque dos cosas pasen a la vez.</item>
+
+        <item>Y la vigilancia de lugares tiene una segunda vuelta atrás. Cada mirada arma la siguiente, así que una mirada que el sistema se negó a armar deja la cadena rota —y lo único que podía repararla era la alarma que nunca se puso, con lo que la revisión de cada seis horas era toda la recuperación—. Abrir la app también la repara ahora, y una vigilancia que ya no tiene nada que mirar deja de decir que hay una mirada en camino.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_107_1">
 
         <item>La ronda de pulido de las rutinas. «Sí» es un botón con su palabra, no una marca suelta, y no se ofrece antes de que la cuenta de una rutina haya empezado. Los avisos y las etiquetas de esa pantalla hablan de una rutina («Eliminada», «Acciones de la rutina», «Clonar rutina»), Atrás cierra el buscador y luego el chip como en el inicio, y una rutina encontrada por el buscador del inicio dice «Rutina» en su color y abre las rutinas con esa a la vista.</item>

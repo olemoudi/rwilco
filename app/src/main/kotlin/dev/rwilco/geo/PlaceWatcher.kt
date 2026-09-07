@@ -484,6 +484,31 @@ class PlaceWatcher(
         scheduleAt(at)
     }
 
+    /**
+     * The same recovery, asked from a door with no look behind it: somebody opening the app.
+     *
+     * [recover]'s two callers have both just attempted a look, so there is by construction
+     * something to watch and an absent link is a broken one. From outside that it has to ask
+     * first, because *no link* is also exactly what a watch with nothing to watch looks like,
+     * and a phone that has never had a place reminder would otherwise arm a look every time
+     * its owner opened the app, for nothing.
+     *
+     * The store tells the two apart. `nextCheckAt` is written by the look that planned it and
+     * cleared when the watch stands down, so a moment there that has passed with no alarm
+     * behind it is a chain that stopped — an `AlarmManager` that refused a link ([scheduleAt]),
+     * which until now nothing recovered from until the six-hourly worker came round, because
+     * the only thing that calls [recover] is the alarm that was never set.
+     */
+    suspend fun recoverIfStalled() {
+        val now = clock.instant()
+        if (plannedAt?.let { it > now } == true) return
+        val due = store.read().nextCheckAt ?: return
+        if (due > now) return
+        Log.w(TAG, "the watch had a look due at $due and nothing armed")
+        Diag.note("geo", "the watch had no look armed (due $due); recovering")
+        recover()
+    }
+
     private suspend fun look() {
         val watch = watching()
         val places = watch.asking
@@ -505,7 +530,13 @@ class PlaceWatcher(
             val forgotten = current.inside.filterKeys { it in watch.remembered }
             // And a count with nothing left looking at it is a count that cannot finish.
             if (gate == null) {
-                store.write(current.copy(inside = forgotten, dwelling = emptyMap()))
+                // `nextCheckAt` goes with the alarm. It is the store's word for "a look is
+                // coming at this moment", and standing down means none is — `sync()` has
+                // always cleared it on this same branch, and a look had not, so a watch with
+                // nothing left to do went on naming a moment in the past as its next look:
+                // wrong in the diagnostics report, and useless as the one signal that tells a
+                // watch resting deliberately from a chain that stopped ([recoverIfStalled]).
+                store.write(current.copy(inside = forgotten, nextCheckAt = null, dwelling = emptyMap()))
                 cancel()
             } else {
                 Log.i(TAG, "nothing worth a fix until the hours open")

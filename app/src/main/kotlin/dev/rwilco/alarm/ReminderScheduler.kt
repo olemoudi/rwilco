@@ -36,6 +36,7 @@ import java.time.Clock
 import java.time.Instant
 import java.time.LocalTime
 import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Keeps one alarm armed per reminder: the next moment it has to ring.
@@ -111,6 +112,11 @@ class ReminderScheduler(
         val zone = clock.zone
         val open = runCatching { repository.openNow() }.getOrElse {
             Log.e(TAG, "could not read the reminders to arm", it)
+            // Said out loud in the report, not only in logcat. A pass that cannot read the rows
+            // arms nothing, cancels nothing and hands back no missed reminders — the whole pass
+            // is simply gone — and the one place that is ever read back from the phone showed
+            // an unbroken run of "armed=n" with a hole in it that nothing named.
+            Diag.note("arm", "the pass could not read the reminders: ${it::class.simpleName}")
             return@withLock emptyList()
         }
         val missed = ArrayList<Reminder>()
@@ -143,11 +149,27 @@ class ReminderScheduler(
                 // The row first, the alarm second: an alarm for a moment already past arrives at
                 // once, and a firing that read the row before this write found "nothing armed"
                 // and dropped the ring.
-                if (reminder.armedFor != wake.at || reminder.armedRule != wake.ruleIndex) {
+                //
+                // And **no alarm at all when the row would not take the moment.** An alarm the
+                // row does not back is the worst of both ways of failing: the delivery arrives,
+                // `ReminderFiring.fire` reads a column that says nothing is armed and drops it
+                // as a stray, and `missedFire` cannot see it either — seeing it is exactly what
+                // the unwritten column was for. So the moment goes quiet with a name in the
+                // report instead of quiet with a wasted wake-up, and the next pass (a save, a
+                // settings change, the six-hourly worker) writes it again. Whatever the row
+                // still holds stays armed-for as far as the catch-up is concerned: late, not
+                // never, which is the way round this app fails everywhere else.
+                val wrote = if (reminder.armedFor != wake.at || reminder.armedRule != wake.ruleIndex) {
                     runCatching { repository.setArmedFor(reminder.id, wake.at, wake.ruleIndex) }
-                        .onFailure { Log.e(TAG, "could not write the armed moment of ${reminder.id}", it) }
+                        .onFailure {
+                            Log.e(TAG, "could not write the armed moment of ${reminder.id}", it)
+                            Diag.note("arm", "r=${reminder.id.take(8)} NOT armed: the row would not take ${wake.at} (${it::class.simpleName})")
+                        }
+                        .isSuccess
+                } else {
+                    true
                 }
-                arm(reminder.id, wake)
+                if (wrote) arm(reminder.id, wake) else cancelRing(reminder.id)
             }
         }
         // Whatever was armed and is no longer open (done, deleted) loses its alarm. A process
@@ -222,7 +244,13 @@ class ReminderScheduler(
         askRetries.remove(id)
     }
 
-    private val askRetries = HashMap<String, Wake>()
+    /**
+     * Read inside [lock] (from [armAsk]) and written from `ReminderFiring.ask`, which holds a
+     * lock of its own and runs on another dispatcher — two locks are no lock at all, so the map
+     * has to be one that does not mind. The cost of getting it wrong is a routine's question
+     * lost for the day, which is the one thing the retry exists to prevent.
+     */
+    private val askRetries = ConcurrentHashMap<String, Wake>()
 
     private fun cancelLapse(id: String) {
         runCatching { alarms.cancel(lapseIntent(id)) }

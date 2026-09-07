@@ -30,7 +30,9 @@ Running notes: what is next, what cost time, what must not be re-derived.
   because … getAttributeByName(…) is null`, naming the *merged* values.xml and no line in it. The
   cause is an apostrophe written as the XML entity instead of the Android escape: this file uses
   `\'` everywhere, and that is what it wants. Cost: one bisect of the release's own strings,
-  2026-09-03.
+  2026-09-03. **A bare `'` does it too** (2026-09-07): same NPE, same silence about which line,
+  so the rule is simply that every apostrophe in this file is `\'` — worth grepping the block
+  you just wrote before building.
 
 ## Emulator notes that cost time
 - **A View animation that asks for its own next frame hangs every Espresso test.**
@@ -501,6 +503,58 @@ Not this round, worth its own: "every day at 8" costing six taps (the hour contr
 after the span in "Vuelve"), and the editor's draft not surviving process death (no
 `SavedStateHandle`). The second half of the round — the `⋯` on a card, Tags below "Vuelve",
 warnings off amber, one top bar, TalkBack order on the alert, the tokens — is 0.94.0.
+
+## The silent-failure round, 0.108.0 (2026-09-07)
+
+The first half of a round asked as "otro análisis del disparo de condiciones, y en qué casos
+un recordatorio no suena cuando el usuario lo espera". The arithmetic held — 0.7.5, 0.59.0 and
+0.106.0 did their work — so this half is only the five borders where something fails and
+**nobody can ever find out**. Nothing here is visible; the second half (0.109.0) is the
+interface. Worth not re-deriving:
+
+- **An alarm was armed on a row that had refused the moment.** `setArmedFor` was caught and
+  logged and `arm()` ran anyway, which is the worst of the two ways of failing: the delivery
+  arrives, `fire` reads `armedFor` null and drops it by the "nothing armed" guard, and
+  `missedFire` cannot see it either — seeing it is exactly what the unwritten column was for.
+  So neither the ring nor the record of one owed. Now the alarm is simply not set, the refusal
+  is named in the report, and the next pass writes it again: late, not never.
+- **A pass that could not read the rows died in silence.** `openNow()` throwing returns before
+  the loop *and* before the sweep: nothing armed, nothing cancelled, no missed reminders handed
+  back — a whole pass gone, with an unbroken run of `armed=n` in the report and a hole in it
+  that nothing named. One `Diag.note`.
+- **`askRetries` was a plain `HashMap` reached by two locks.** Read inside the scheduler's mutex
+  (`armAsk`), written and removed from `ReminderFiring.ask`, which holds its own and runs on
+  another dispatcher. `ConcurrentHashMap`. A lost retry is a routine's question lost for the day,
+  which is the one thing the retry exists to prevent.
+- **`AlertNotifications.post` ended in a bare `runCatching`** — no log, no `Diag`. The one route
+  by which a firing spent its moment and vanished with nothing written anywhere: the row says it
+  rang, the shade is empty, and logcat is gone by morning.
+- **A place crossing could be consumed by a throw on the way to ringing.** `accept()` writes the
+  side into the watch's memory *before* its answer says what to do with it, so an exception in
+  `fire` inside the receiver's `runCatching` means no later look can report that arrival again —
+  the same silence 0.58.0 and 0.59.0 closed in `look()` and in `accept`. **Only the report is
+  fixed here**, deliberately: the real fix is that `accept` should not write until the hand-on
+  returns, which is a change to the watch's memory and wants a run on a real phone. It is the
+  first of the open questions below.
+- **And the watch had one door back, reachable only through the alarm that had failed.**
+  `recover()`'s two callers are both a look that has just been attempted; an `AlarmManager` that
+  refused a link left the chain broken with the six-hourly worker as the whole recovery.
+  `recoverIfStalled()` is the same thing asked when the app is opened (through `catchUpIfStale`,
+  already rate limited) — and it has to *ask*, because no alarm is equally what a watch with
+  nothing to watch looks like. The store tells them apart, which needed one more fix:
+  `look()`'s stand-down was not clearing `nextCheckAt` (`sync()` always did), so a resting watch
+  named a past moment as its next look — wrong in the report, and useless as the signal.
+
+Cost: one build failure from a bare apostrophe in `strings.xml` (see the build note at the top —
+the cause is any unescaped `'`, not only `&apos;`; it fails the resource merge with the same
+attribute NPE and names no line).
+
+Left for the second half, and still open: the editor promising "Suena 04:00" for a moment
+`hushedByTheHour` will silence; `settings_awake_hint` saying the opposite of what the app does
+since 0.63.0; a draft that can never ring showing nothing over "Guardar" and nothing ever after
+(no card row, no net word — `lastMomentGone` is null, so `netDue` returns null); the machine
+writing "a la vez" over pairs that are not two moments and still cannot coincide; Home's
+readiness strip knowing nothing about the location grant; and `DEFAULT_ACTIONS` without a sound.
 
 ## The net's floor for routines, 0.103.0 (2026-09-06)
 Asked from the phone after reading his own diagnostics: two routines with a span of one hour had

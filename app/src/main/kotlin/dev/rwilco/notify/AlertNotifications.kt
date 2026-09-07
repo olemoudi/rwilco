@@ -7,12 +7,14 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
+import android.util.Log
 import android.net.Uri
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import dev.rwilco.R
 import dev.rwilco.alarm.AlertActionReceiver
 import dev.rwilco.alarm.ReminderScheduler
+import dev.rwilco.diag.Diag
 import dev.rwilco.MainActivity
 import dev.rwilco.ui.alert.AlertActivity
 import dev.rwilco.model.AppSettings
@@ -87,6 +89,8 @@ internal fun bundleChildren(listed: List<Int>, posted: Int? = null, cancelled: S
  * full-screen alert, which drives the motor itself.
  */
 object AlertNotifications {
+
+    private const val TAG = "RwilcoNotify"
 
     private const val GROUP = "alerts"
 
@@ -511,9 +515,17 @@ object AlertNotifications {
         // about — a pinned, insistent alarm card turned into a low-priority note, with the sound
         // still coming back for it.
         val id = if (nudge != null) nudgeNotificationId(reminder.id) else notificationId(reminder.id)
+        // **A card that would not go out has to be a card somebody can find out about.** Every
+        // other way this path fails names itself in the report; a bare catch here was the one
+        // route by which a firing spent its moment and vanished with nothing written down
+        // anywhere — the row says it rang, the shade is empty, and the log is the only witness
+        // and is gone by morning.
         runCatching {
             NotificationManagerCompat.from(context).notify(id, builder.build())
             syncSummary(context, posted = id)
+        }.onFailure {
+            Log.e(TAG, "could not post the card for ${reminder.id}", it)
+            Diag.note("show", "r=${reminder.id.take(8)} notify FAILED ${it::class.simpleName}")
         }
     }
 

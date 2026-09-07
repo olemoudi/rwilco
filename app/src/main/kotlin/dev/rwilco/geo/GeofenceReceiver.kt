@@ -88,7 +88,18 @@ class GeofenceReceiver : BroadcastReceiver() {
                                     Crossing.RESETS -> ruleIndex?.let { app.firing.resetBy(reminderId, it) }
                                     Crossing.NOTHING -> Unit
                                 }
-                            }.onFailure { Log.e(TAG, "handing on a crossing at $placeId failed", it) }
+                            }.onFailure {
+                                Log.e(TAG, "handing on a crossing at $placeId failed", it)
+                                // **This one has to be in the report.** `accept()` writes the
+                                // side into the watch's memory before its answer says what to
+                                // do with it, so a throw on the way out consumes the crossing
+                                // for good: the memory says "already there" and no later look
+                                // can report that arrival again. It is the same shape of
+                                // silence `look()` and `accept` were hardened against in
+                                // 0.58.0 and 0.59.0, and until now the only witness was a
+                                // logcat line nobody was watching.
+                                Diag.note("geo", "crossing at $placeId was consumed and never rang: ${it::class.simpleName}")
+                            }
                         }
                     }
                 }
