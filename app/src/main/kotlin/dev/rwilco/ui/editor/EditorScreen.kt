@@ -245,6 +245,8 @@ fun EditorScreen(
             }
             worst.putIfAbsent(index, message)
         }
+        // And under a routine, a rule that is not a question at all (see Draft.rulesNotQuestions).
+        for (index in state.draft.rulesNotQuestions()) worst.putIfAbsent(index, R.string.editor_warning_not_a_question)
         worst
     }
     // How often this shape comes back, which is what the safety net stretches under. Walking
@@ -572,7 +574,7 @@ fun EditorScreen(
                         icon = Icons.Outlined.History,
                         note = stringResource(R.string.history_note),
                     ) {
-                        HistoryList(history = state.history, today = today, zone = zone)
+                        HistoryList(history = state.history, today = today, zone = zone, routine = routine)
                     }
                 }
                 // What happens if none of the four cards above it lands: the last word on the

@@ -531,6 +531,18 @@ class EditorStateTest {
     }
 
     @Test
+    fun `a rule that is not a question is named under a routine, and a preset from one keeps no start`() {
+        val garage = Trigger.Location(40.4, -3.7, 150, Presence.OUTSIDE, "Garaje")
+        val nine = Trigger.TimeOfDay(LocalTime.of(9, 0))
+        val set = blank.withText("Mover el coche").commitTrigger(null, tonight).commitTrigger(null, nine).commitTrigger(null, garage)
+        assertTrue(set.draft.rulesNotQuestions().isEmpty(), "on a reminder every rule rings")
+        val routine = set.setRecurrence(Recurrence.Since(21, RecurrenceUnit.DAYS, startsAt = now))
+        assertEquals(listOf(0), routine.draft.rulesNotQuestions(), "the date; the hour and the place are questions")
+        val preset = routine.toPreset("p", now, null, emptyList())
+        assertEquals(Recurrence.Since(21, RecurrenceUnit.DAYS), preset.recurrence, "a shape holds how often, not when one began")
+    }
+
+    @Test
     fun `turning a reminder into a routine is the one edit that sheds the old ring`() {
         val rang = Reminder(id = "r", text = "Regar", createdAt = now.minusSeconds(86_400), updatedAt = now, lastFiredAt = now.minusSeconds(3600))
         val routine = blank.withText("Regar").setRecurrence(Recurrence.Since(21, RecurrenceUnit.DAYS)).draft

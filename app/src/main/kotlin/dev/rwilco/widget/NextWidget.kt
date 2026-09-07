@@ -127,7 +127,10 @@ internal fun widgetStateOf(
         nextText = hero?.entry?.reminder?.text,
         nextWhen = at?.let { dayWord(words, it.toLocalDate(), today) + " " + TimeText.time(it.toLocalTime(), words.is24h, words.locale) },
         today = dueToday,
-        overdue = groups.sections[dev.rwilco.model.Section.OVERDUE]?.size ?: 0,
+        // And the routines owed, which Home lists on its own line and the widget used to say
+        // "0" beside: the surface most likely to be the only one seen for weeks.
+        overdue = (groups.sections[dev.rwilco.model.Section.OVERDUE]?.size ?: 0) +
+            dev.rwilco.model.overdueRoutines(reminders, now, zone, settings.dayStart).size,
     )
 }
 

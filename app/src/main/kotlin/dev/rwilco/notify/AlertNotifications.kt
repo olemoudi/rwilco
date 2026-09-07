@@ -30,6 +30,8 @@ import dev.rwilco.model.VibrationPattern
 import dev.rwilco.model.key
 import dev.rwilco.model.notificationPattern
 import dev.rwilco.ui.theme.AMBER_ARGB
+import androidx.compose.ui.graphics.toArgb
+import dev.rwilco.ui.theme.routineColor
 import java.time.LocalTime
 import java.time.Instant
 import java.time.Duration
@@ -96,6 +98,9 @@ object AlertNotifications {
      * somebody is out should be one thing to pull down, not five things to scroll past.
      */
     private const val BUNDLE = "dev.rwilco.alerts"
+
+    /** The routines' colour as the shade shows it: the light scheme's, which reads on either system surface. */
+    private val ROUTINE_ARGB: Int = routineColor(dark = false).toArgb()
     private const val SUMMARY_ID = 1
     // v2: every alert channel carries alarm audio attributes, silent ones included, and the
     // live alert is CATEGORY_ALARM — which is what lets Do Not Disturb tell an alarm from a chat.
@@ -244,12 +249,16 @@ object AlertNotifications {
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(context.getString(R.string.notif_routine_question, reminder.text))
             .setContentText(listOfNotNull(ago, due).joinToString(context.getString(R.string.common_separator)))
-            .setContentIntent(routinesIntent(context, askNotificationId(reminder.id)))
+            .setContentIntent(routinesIntent(context, askNotificationId(reminder.id), reminder.id))
             .setAutoCancel(true)
             .setSilent(!awake)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            // In the app's bundle with the rings: five routines asking were five loose cards.
+            .setGroup(BUNDLE)
+            .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
+            .setColor(ROUTINE_ARGB)
             .addAction(0, context.getString(R.string.notif_ask_yes), actionIntent(context, reminder.id, AlertActionReceiver.ACTION_DONE, null))
             .addAction(0, context.getString(R.string.notif_ask_later), actionIntent(context, reminder.id, AlertActionReceiver.ACTION_LATER, null))
         if (reminder.tags.isNotEmpty()) builder.setSubText(reminder.tags.joinToString(context.getString(R.string.common_separator)))
@@ -262,22 +271,40 @@ object AlertNotifications {
      * has to be visible and reversible. [previous] is where the count goes back to.
      */
     fun resetNotice(context: Context, reminder: Reminder, place: Trigger.Location, previous: Instant?) {
-        ensureQuietChannels(context)
         val doorRes = if (place.presence == Presence.INSIDE) R.string.notif_reset_arrive else R.string.notif_reset_leave
+        undoableNotice(context, reminder, previous, context.getString(R.string.notif_reset_title, reminder.text), context.getString(doorRes, place.label))
+    }
+
+    /**
+     * A routine's "hecho" given from the shade — "sí, ahora" on a question, "hecho" on the ring
+     * — said back with "deshacer", the way a place's own "done" is. A mis-tap in the shade
+     * moved a three-week count for good, and the shade was the one door with no way back
+     * (the routines screen has its snackbar, the launcher refuses to mark done at all).
+     */
+    fun doneNotice(context: Context, reminder: Reminder, previous: Instant?) {
+        undoableNotice(context, reminder, previous, context.getString(R.string.notif_done_title, reminder.text), context.getString(R.string.notif_done_body))
+    }
+
+    /** The mute card with "deshacer" on the net's channel; [previous] is where the count goes back to. */
+    private fun undoableNotice(context: Context, reminder: Reminder, previous: Instant?, title: String, body: String) {
+        ensureQuietChannels(context)
         val undo = Intent(context, AlertActionReceiver::class.java)
             .setAction(AlertActionReceiver.ACTION_UNDO_RESET)
             .setData(ReminderScheduler.reminderUri(reminder.id))
             .putExtra(AlertActionReceiver.EXTRA_PREVIOUS, previous?.toEpochMilli() ?: -1L)
         val builder = NotificationCompat.Builder(context, CHANNEL_NET)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(context.getString(R.string.notif_reset_title, reminder.text))
-            .setContentText(context.getString(doorRes, place.label))
-            .setContentIntent(routinesIntent(context, resetNotificationId(reminder.id)))
+            .setContentTitle(title)
+            .setContentText(body)
+            .setContentIntent(routinesIntent(context, resetNotificationId(reminder.id), reminder.id))
             .setAutoCancel(true)
             .setSilent(true)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setGroup(BUNDLE)
+            .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
+            .setColor(ROUTINE_ARGB)
             .addAction(0, context.getString(R.string.common_undo), PendingIntent.getBroadcast(context, 0, undo, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
         if (reminder.tags.isNotEmpty()) builder.setSubText(reminder.tags.joinToString(context.getString(R.string.common_separator)))
         runCatching { NotificationManagerCompat.from(context).notify(resetNotificationId(reminder.id), builder.build()) }
@@ -292,13 +319,16 @@ object AlertNotifications {
         runCatching { NotificationManagerCompat.from(context).cancel(resetNotificationId(reminderId)) }
     }
 
-    /** The routines screen, for a card about one of them; [requestCode] tells the cards' intents apart. */
-    private fun routinesIntent(context: Context, requestCode: Int): PendingIntent = PendingIntent.getActivity(
+    /**
+     * The routines screen with [focus] in view, for a card about one of them; [requestCode]
+     * tells the cards' intents apart.
+     */
+    private fun routinesIntent(context: Context, requestCode: Int, focus: String): PendingIntent = PendingIntent.getActivity(
         context,
         requestCode,
         Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            .putExtra(MainActivity.EXTRA_DESTINATION, MainActivity.DESTINATION_ROUTINES),
+            .putExtra(MainActivity.EXTRA_DESTINATION, MainActivity.routineDestination(focus)),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
 
@@ -408,8 +438,9 @@ object AlertNotifications {
             .setOnlyAlertOnce(false)
             // The amber, which is the app's one word for "this is what fires next" — said here
             // on the glyph and on the line that carries the app's name, which is all of a
-            // notification the system lets an app colour.
-            .setColor(AMBER_ARGB)
+            // notification the system lets an app colour. A routine's ring wears the routines'
+            // own, as its full screen does.
+            .setColor(if (reminder.isRoutine) ROUTINE_ARGB else AMBER_ARGB)
             .setGroup(BUNDLE)
             // The children make the noise and the summary never does. Without this the bundle
             // announces itself as well, which is the same alarm twice.

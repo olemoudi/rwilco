@@ -58,6 +58,8 @@ import dev.rwilco.ui.theme.Tracking
 import dev.rwilco.ui.theme.icon
 import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
 import dev.rwilco.ui.components.SnoozeOffers
+import dev.rwilco.ui.format.rememberWords
+import dev.rwilco.ui.format.recurrenceLabel
 import dev.rwilco.ui.components.MomentSheet
 import dev.rwilco.model.SnoozePlace
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -187,7 +189,16 @@ fun AlertScreen(
                     TriggerKeycap(family = content.family, icon = trigger.kind.icon, contentDescription = null)
                 }
             }
-            content.trigger?.let { trigger ->
+            // A routine rings for its plazo and for nothing else: its rules ask, they never
+            // ring, and "suena por: a las 09:00" on its alert named a question as the reason.
+            if (content.routine) {
+                Spacer(Modifier.height(spacing.sm))
+                Text(
+                    text = stringResource(R.string.alert_routine_span, recurrenceLabel(rememberWords(), content.recurrence, content.today).replaceFirstChar { it.lowercase(currentLocale()) }),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = scheme.onSurfaceVariant,
+                )
+            } else content.trigger?.let { trigger ->
                 val line = triggerLine(trigger, content.today, content.defaultTime)
                 Spacer(Modifier.height(spacing.sm))
                 Text(
@@ -229,8 +240,10 @@ fun AlertScreen(
                 }
             }
             Spacer(Modifier.height(spacing.lg))
+            // On a routine the honest answer to "¿has movido el coche?" at three in the morning
+            // is "todavía no", and that is what the offers are: the same write, the right word.
             Text(
-                text = stringResource(R.string.alert_snooze),
+                text = stringResource(if (content.routine) R.string.alert_not_yet else R.string.alert_snooze),
                 style = MaterialTheme.typography.labelMedium,
                 color = scheme.onSurfaceVariant,
             )
@@ -247,6 +260,9 @@ fun AlertScreen(
                 // Held like the rest, and then it asks its question: the calendar comes up over
                 // the alert, which by then has stopped being an alarm and become a form.
                 onPickDate = onSnoozeUntil?.let { { pickingDate = true } },
+                // First on a routine: "ten minutes" is not an answer to a three-week plazo, and
+                // "a una fecha" is the one that is.
+                dateFirst = content.routine,
                 guard = guard,
             )
             Spacer(Modifier.height(spacing.lg))

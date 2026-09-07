@@ -383,6 +383,11 @@ class HomeStateTest {
         // And a routine's tag is not a chip on Home: nothing there wears it.
         assertTrue(state.tags.none { it is TagFilter.Named && it.tag == "coche" })
         assertEquals(RoutinesLineUi(), buildHomeState(listOf(soon), defaultTime, now, zone, selectedTag = null).routines)
+        // The door names the next one to run out when nothing is owed.
+        val calm = buildHomeState(listOf(fresh, soon), defaultTime, now, zone, selectedTag = null).routines
+        assertEquals("fresh", calm.nextDue?.id)
+        assertTrue(calm.overdue.isEmpty())
+        assertEquals(3, HOME_ROUTINE_ROWS, "the screen lists three and counts the rest")
     }
 
     @Test

@@ -301,6 +301,21 @@ private fun Condition.TimeWindow.opensAfter(now: Instant, zone: ZoneId): Instant
     return (nextFireOf(Trigger.Interval(from, to, days), "", now, zone, LocalTime.MIDNIGHT) as? NextFire.Scheduled)?.at
 }
 
+/**
+ * When these windows, all holding at [now], stop holding: the earliest close among them, on
+ * the day it falls (a window past midnight closes tomorrow). Null when they do not all hold now,
+ * or there are none — nothing is "inside" a window that is not there. What bounds a routine's
+ * question retried inside its window (`ReminderFiring.ask`).
+ */
+fun List<Condition.TimeWindow>.closesFrom(now: Instant, zone: ZoneId): Instant? {
+    if (isEmpty() || !allHoldAt(now, zone)) return null
+    return minOf { window ->
+        val here = now.atZone(zone)
+        val close = here.toLocalDate().atTime(window.to).atZone(zone)
+        (if (close.isAfter(here)) close else close.plusDays(1)).toInstant()
+    }
+}
+
 /** The windows on a rule, wherever they came from: its own conditions or a folded-in sibling. */
 fun TriggerRule.windows(): List<Condition.TimeWindow> = conditions.filterIsInstance<Condition.TimeWindow>()
 

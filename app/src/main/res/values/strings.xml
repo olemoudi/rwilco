@@ -104,6 +104,22 @@
     <string name="routines_yes">Yes</string>
     <string name="routines_no">No</string>
     <string name="routines_starts">starts %1$s</string>
+    <string name="routines_filter_paused">Paused</string>
+    <string name="routines_filter_waiting">Not started yet</string>
+    <string name="routines_paused">paused</string>
+    <string name="routines_put_off">put off</string>
+    <string name="routines_mark_done">Mark «%1$s» as done</string>
+    <string name="home_routines_next">%1$s · due %2$s</string>
+    <string name="alert_routine_span">Its span: %1$s</string>
+    <string name="alert_not_yet">Not yet</string>
+    <string name="editor_warning_not_a_question">Under a routine this is not a question: it asks once, or never.</string>
+    <string name="notif_done_title">Done: %1$s</string>
+    <string name="notif_done_body">The count starts again from now.</string>
+    <plurals name="history_routine_done">
+        <item quantity="one">done once</item>
+        <item quantity="other">done %d times</item>
+    </plurals>
+    <string name="history_routine_gap">every %1$s on average</string>
     <string name="routines_due">due %1$s</string>
     <string name="routines_overdue">overdue %1$s</string>
     <string name="routines_new">New routine</string>
@@ -1369,6 +1385,22 @@
         <item>A reminder with sound now goes to your headphones when you are wearing any, instead of out of the phone\'s speaker as an alarm otherwise would. It is a setting, in Sound, and it is worth turning off if your earbuds live in a drawer: a reminder played to nobody is a reminder missed.</item>
         <item>And it no longer stops your music. What was playing drops a few decibels and carries on underneath while the reminder sounds over it — the reminder is on the alarm channel and the music is not, so neither has to fight the other — and comes back by itself. It used to ask for the audio outright, which ended podcasts for a ten-second chime.</item>
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_107_0">
+
+        <item>«Sí» is a button. The answer to the card\'s own question was a swipe held, a held menu and a screen-reader action; it is the first control in the card\'s footer now, beside pause, edit and «⋯». A routine put off says «pospuesta» instead of «No» and carries the snooze under its count, and a paused one says «en pausa»: neither is something owed, so Home\'s line, the launcher and the «Overdue» chip leave them alone. Two chips more, «Paused» and «Not started yet», while any is.</item>
+
+        <item>Home\'s overdue rows answer like every card: a swipe held is «yes, done», the other way deletes. Three rows at most, and the rest counted in one; the count ticks by the minute; and when nothing is owed the door names the next one to run out («Regar las plantas · due in 3 d»). The widget\'s overdue number includes the routines owed, and the launcher keeps two slots for them so the pinned presets keep theirs.</item>
+
+        <item>A «done» given from the shade can be taken back: «yes, now» on a question and «done» on a ring leave a mute card with «undo», the way a place\'s own «done» does. The question cards join the app\'s bundle and wear the routines\' colour; «View» on a routine\'s ring and the tap on its question both land on the routines with that one in view, not on the form.</item>
+
+        <item>The routine\'s alert says its span where a rule\'s line used to name a question as the reason («its span: every 21 days since the last time»), heads its offers «not yet» — which is the honest answer at three in the morning — and puts «to a date» first, because ten minutes is no answer to a three-week span. The ring card in the shade says the span even with no rules.</item>
+
+        <item>A question dropped because you were not where the rule wants you («and only if I am at home») is asked again every quarter of an hour while its window is still open, instead of lost until tomorrow.</item>
+
+        <item>The form warns on a rule that is not a question under a routine (a date, a countdown, a draw: they ask once, or never); a preset kept from a routine no longer carries the day that routine began; and the history card under a routine drops the questions and opens with «done 7 times · every 23 d on average».</item>
+
     </string-array>
 
     <string-array name="whats_new_0_106_0">

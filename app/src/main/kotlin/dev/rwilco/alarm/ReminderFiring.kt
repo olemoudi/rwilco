@@ -77,6 +77,8 @@ import dev.rwilco.model.Presence
 import dev.rwilco.model.asks
 import dev.rwilco.model.awakeAt
 import dev.rwilco.model.isRoutine
+import dev.rwilco.model.closesFrom
+import dev.rwilco.model.windows
 import dev.rwilco.model.promptLookFrom
 import dev.rwilco.model.promptQuietUntil
 import dev.rwilco.model.promptsAllowed
@@ -677,6 +679,7 @@ class ReminderFiring(
         val settings = settings()
         val rule = ruleIndex?.let { reminder.rules.getOrNull(it) }
         val door = if (viaPlace) "place" else "clock"
+        var retry: Instant? = null
         fun dropped(why: String) {
             Log.i(TAG, "$id: question dropped: $why")
             Diag.note(TAG_DIAG, "r=${short(id)} question dropped: $why (rule $ruleIndex, $door)")
@@ -698,9 +701,18 @@ class ReminderFiring(
                     // re-arm, delivered at once, dropped at the same fence, and re-armed — an
                     // alarm in a tight loop. Not recorded as ASKED: nothing was.
                     repository.setAskedAt(id, now)
+                    // A fence nobody could judge in advance ("y sólo si estoy en casa"), inside
+                    // a window still open: a question is cheap to put again, and losing it for
+                    // the day because the phone was at work at nine is the loss nobody sees.
+                    // Every quarter of an hour until the window closes; a rule with no window
+                    // has no end to try until, and gets tomorrow's question as before.
+                    if (!failed.knownInAdvance) {
+                        retry = rule.windows().closesFrom(now, clock.zone)?.let { close -> now.plus(ASK_RETRY).takeIf { it < close } }
+                    }
                 } else {
                     Log.i(TAG, "asking $id whether it has been done (rule $ruleIndex)")
                     Diag.note(TAG_DIAG, "r=${short(id)} ASKED (rule $ruleIndex)")
+                    scheduler.clearAskRetry(id)
                     repository.setAskedAt(id, now)
                     repository.record(id, FiringKind.ASKED, now, ruleIndex)
                     AlertNotifications.ask(
@@ -714,6 +726,10 @@ class ReminderFiring(
             }
         }
         scheduler.rearmAll()
+        retry?.let { at ->
+            Diag.note(TAG_DIAG, "r=${short(id)} question retried at $at (rule $ruleIndex)")
+            scheduler.armAskRetry(id, ruleIndex!!, at)
+        }
     }
 
     /**
@@ -962,3 +978,6 @@ class ReminderFiring(
         const val SETTINGS_TIMEOUT_MS = 5_000L
     }
 }
+
+/** How long a routine's question waits before it is tried again inside its window. */
+private val ASK_RETRY: Duration = Duration.ofMinutes(15)

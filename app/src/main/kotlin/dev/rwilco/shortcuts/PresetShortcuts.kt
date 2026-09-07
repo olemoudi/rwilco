@@ -49,7 +49,9 @@ object PresetShortcuts {
     fun publish(context: Context, routines: List<RoutineFace>, faces: List<Face>, question: (String) -> String = { it }) {
         // One slot is the static "Nuevo".
         val room = (ShortcutManagerCompat.getMaxShortcutCountPerActivity(context) - 1).coerceAtLeast(0)
-        val overdue = routines.take(room).map { routine ->
+        // Two at most: an overdue routine outranks a preset (the owner's call), but four of
+        // them evicting every pinned preset is the launcher losing its other job.
+        val overdue = routines.take(minOf(room, ROUTINE_SLOTS)).map { routine ->
             ShortcutInfoCompat.Builder(context, routineShortcutId(routine.id))
                 .setShortLabel(routine.text)
                 .setLongLabel(question(routine.text))
@@ -115,3 +117,6 @@ object PresetShortcuts {
     /** The initial, sized to sit inside the safe zone the mask leaves. */
     private const val INITIAL_SHARE = 0.42f
 }
+
+/** How many launcher slots the overdue routines may take before the presets. */
+const val ROUTINE_SLOTS = 2

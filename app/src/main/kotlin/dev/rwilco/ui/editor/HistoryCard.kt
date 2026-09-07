@@ -11,6 +11,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import dev.rwilco.model.partsBetween
+import dev.rwilco.ui.format.countdownText
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.style.TextAlign
 import dev.rwilco.R
 import dev.rwilco.data.FiringEvent
@@ -35,10 +38,25 @@ import dev.rwilco.model.snoozeDetailOf
  * could find. This is that answer, on the reminder itself, where somebody looking for it looks.
  */
 @Composable
-fun HistoryList(history: List<FiringEvent>, today: LocalDate, zone: ZoneId) {
+fun HistoryList(history: List<FiringEvent>, today: LocalDate, zone: ZoneId, routine: Boolean = false) {
     val words = rememberWords()
     val spacing = Tokens.spacing
     Column {
+        // A routine's history is its "hechos", and what they come to is the line worth reading
+        // before the list: how many, and how far apart.
+        if (routine) {
+            val summary = routineHistory(history)
+            if (summary.done > 0) {
+                val gap = summary.meanGap?.let { countdownText(partsBetween(Instant.EPOCH, Instant.EPOCH.plus(it))) }
+                Text(
+                    text = if (gap == null) pluralStringResource(R.plurals.history_routine_done, summary.done, summary.done)
+                    else pluralStringResource(R.plurals.history_routine_done, summary.done, summary.done) + stringResource(R.string.common_separator) + stringResource(R.string.history_routine_gap, gap),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(bottom = spacing.sm),
+                )
+            }
+        }
         for (event in history) {
             val at = event.at.atZone(zone)
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = spacing.xs)) {

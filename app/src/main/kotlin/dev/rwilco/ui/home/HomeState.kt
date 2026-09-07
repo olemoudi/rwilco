@@ -38,6 +38,8 @@ import dev.rwilco.model.hasDeadline
 import dev.rwilco.model.isRoutine
 import dev.rwilco.model.overdueRoutines
 import dev.rwilco.model.routineAnchor
+import dev.rwilco.model.routineDeadline
+import dev.rwilco.model.nextDueRoutine
 
 /**
  * What Home says about the routines: how many there are, and the ones whose span is up,
@@ -47,11 +49,20 @@ import dev.rwilco.model.routineAnchor
  */
 data class RoutinesLineUi(
     val total: Int = 0,
+    /** Every routine owed, longest-waiting first; the screen shows [HOME_ROUTINE_ROWS] and counts the rest. */
     val overdue: List<RoutineNameUi> = emptyList(),
+    /** The one whose plazo runs out soonest, for the door to name when nothing is owed. */
+    val nextDue: RoutineDueUi? = null,
 )
 
 /** [since] is the moment the count runs from — the last "hecho", or the day it was written. */
 data class RoutineNameUi(val id: String, val text: String, val since: Instant)
+
+/** A routine still inside its plazo, and when it runs out. */
+data class RoutineDueUi(val id: String, val text: String, val at: Instant)
+
+/** How many overdue routines Home lists as rows before it counts the rest in one. */
+const val HOME_ROUTINE_ROWS = 3
 
 data class HomeUiState(
     val loaded: Boolean = false,
@@ -427,6 +438,7 @@ fun buildHomeState(
         routines = RoutinesLineUi(
             total = reminders.count { it.isRoutine && it.status != Status.DONE },
             overdue = overdueRoutines(reminders, now, zone, dayStart).map { RoutineNameUi(it.id, it.text, it.routineAnchor()) },
+            nextDue = nextDueRoutine(reminders, now, zone, dayStart)?.let { RoutineDueUi(it.id, it.text, it.routineDeadline(zone, dayStart)!!) },
         ),
         defaultTime = defaultTime,
         dayShape = shape,

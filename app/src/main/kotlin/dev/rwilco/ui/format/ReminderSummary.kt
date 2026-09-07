@@ -4,6 +4,7 @@ import dev.rwilco.R
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.isAnchored
+import dev.rwilco.model.isRoutine
 import java.time.LocalDate
 import java.time.LocalTime
 import dev.rwilco.model.deadlineApplies
@@ -48,7 +49,9 @@ fun reminderSummary(words: Words, reminder: Reminder, today: LocalDate, defaultT
         }
         // Only a recurrence that works out its own moments has anything to add; "no repetir" is
         // the absence of a clause, not one.
-        if (reminder.recurrence.isAnchored && isNotEmpty()) {
+        // A routine with no rules — the commonest kind — is its span and nothing else, and the
+        // card that said nothing for it was a ring with no reason on it.
+        if (reminder.recurrence.isAnchored && (isNotEmpty() || reminder.isRoutine)) {
             append(", " + words.get(R.string.editor_sentence_returns) + " ")
             append(recurrenceLabel(words, reminder.recurrence, today).replaceFirstChar { it.lowercase(words.locale) })
         }

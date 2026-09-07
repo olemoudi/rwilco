@@ -85,20 +85,52 @@ fun Reminder.routineDone(now: Instant, zone: ZoneId, dayStart: LocalTime = DEFAU
     return deadline > routineClock(now)
 }
 
-/** The open routines whose span is up, the one that has waited longest first. What Home's line says. */
+/**
+ * Whether the routine has been put off — to a clock still ahead, or to a place — which is an
+ * answer: "not now" was said about this very thing, and until it comes back the routine is not
+ * something owed, however far past its span it is. The row still says so ("pospuesta"), but
+ * Home's line, the launcher and the "vencidas" chip leave it alone.
+ */
+fun Reminder.routinePutOff(now: Instant): Boolean =
+    (snoozedUntil?.let { it > now } ?: false) || snoozedToPlace != null
+
+/** The one predicate every "you still owe this" surface hangs off: active, span up, not put off. */
+fun Reminder.routineOwed(now: Instant, zone: ZoneId, dayStart: LocalTime = DEFAULT_DAY_START): Boolean =
+    status == Status.ACTIVE && !routineDone(now, zone, dayStart) && !routinePutOff(now)
+
+/** The open routines that are owed, the one that has waited longest first. What Home's line says. */
 fun overdueRoutines(
     reminders: List<Reminder>,
     now: Instant,
     zone: ZoneId,
     dayStart: LocalTime = DEFAULT_DAY_START,
 ): List<Reminder> = reminders
-    .filter { it.isRoutine && it.status == Status.ACTIVE && !it.routineDone(now, zone, dayStart) }
+    .filter { it.isRoutine && it.routineOwed(now, zone, dayStart) }
     .sortedWith(compareBy({ it.routineDeadline(zone, dayStart) }, { it.createdAt }))
 
-/** What the routines screen shows: everything, only the overdue ones, or the ones wearing a tag. */
+/**
+ * The routine whose span runs out soonest among the ones still inside it — what Home's door
+ * says when nothing is owed: "la próxima: regar las plantas, en 3 d". Null when none is coming
+ * (none at all, all owed, all paused, or all waiting to start).
+ */
+fun nextDueRoutine(
+    reminders: List<Reminder>,
+    now: Instant,
+    zone: ZoneId,
+    dayStart: LocalTime = DEFAULT_DAY_START,
+): Reminder? = reminders
+    .filter { it.isRoutine && it.status == Status.ACTIVE && it.routineDone(now, zone, dayStart) && !it.routineWaitingToStart(now) }
+    .minWithOrNull(compareBy({ it.routineDeadline(zone, dayStart) }, { it.createdAt }))
+
+/**
+ * What the routines screen shows: everything, only the ones owed, the ones resting, the ones
+ * whose count has not begun, or the ones wearing a tag.
+ */
 sealed interface RoutineFilter {
     data object All : RoutineFilter
     data object Overdue : RoutineFilter
+    data object Paused : RoutineFilter
+    data object Waiting : RoutineFilter
     data class Tag(val tag: String) : RoutineFilter
 }
 
@@ -126,16 +158,20 @@ fun routinesFor(
     .filter {
         when (filter) {
             RoutineFilter.All -> true
-            RoutineFilter.Overdue -> it.status == Status.ACTIVE && !it.routineDone(now, zone, dayStart)
+            RoutineFilter.Overdue -> it.routineOwed(now, zone, dayStart)
+            RoutineFilter.Paused -> it.status == Status.PAUSED
+            RoutineFilter.Waiting -> it.status == Status.ACTIVE && it.routineWaitingToStart(now)
             is RoutineFilter.Tag -> it.tags.any { tag -> tag.equals(filter.tag, ignoreCase = true) }
         }
     }
     .sortedWith(
+        // What is owed first; then the rest inside their plazo and the ones put off (an answer
+        // given), by how soon; the paused ones last.
         compareBy<Reminder> {
             when {
                 it.status != Status.ACTIVE -> 2
-                it.routineDone(now, zone, dayStart) -> 1
-                else -> 0
+                it.routineOwed(now, zone, dayStart) -> 0
+                else -> 1
             }
         }
             .thenBy { it.routineDeadline(zone, dayStart) }
@@ -148,10 +184,18 @@ private fun matchesWords(reminder: Reminder, query: String): Boolean {
     return needle.isEmpty() || fuzzyScore(needle, fold(reminder.text)) != null
 }
 
-/** The filters worth offering: the app's own "vencidas" only while something is, then the routines' tags. */
+/**
+ * The filters worth offering: the app's own "vencidas", "en pausa" and "aún no empieza" only
+ * while something is each of those, then the routines' tags.
+ */
 fun routineFilters(reminders: List<Reminder>, now: Instant, zone: ZoneId, dayStart: LocalTime = DEFAULT_DAY_START): List<RoutineFilter> {
-    val overdue = if (overdueRoutines(reminders, now, zone, dayStart).isEmpty()) emptyList() else listOf(RoutineFilter.Overdue)
-    return overdue + routineTags(reminders).map { RoutineFilter.Tag(it) }
+    val routines = reminders.filter { it.isRoutine && it.status != Status.DONE }
+    val own = listOfNotNull(
+        RoutineFilter.Overdue.takeIf { routines.any { it.routineOwed(now, zone, dayStart) } },
+        RoutineFilter.Paused.takeIf { routines.any { it.status == Status.PAUSED } },
+        RoutineFilter.Waiting.takeIf { routines.any { it.status == Status.ACTIVE && it.routineWaitingToStart(now) } },
+    )
+    return own + routineTags(reminders).map { RoutineFilter.Tag(it) }
 }
 
 /** Every tag an open routine wears, most used first; the routines screen's own chips. */

@@ -100,6 +100,22 @@
     <string name="routines_yes">Sí</string>
     <string name="routines_no">No</string>
     <string name="routines_starts">empieza %1$s</string>
+    <string name="routines_filter_paused">En pausa</string>
+    <string name="routines_filter_waiting">Aún no empieza</string>
+    <string name="routines_paused">en pausa</string>
+    <string name="routines_put_off">pospuesta</string>
+    <string name="routines_mark_done">Marcar «%1$s» como hecha</string>
+    <string name="home_routines_next">%1$s · vence %2$s</string>
+    <string name="alert_routine_span">Su plazo: %1$s</string>
+    <string name="alert_not_yet">Todavía no</string>
+    <string name="editor_warning_not_a_question">Bajo una rutina esto no es una pregunta: pregunta una vez, o nunca.</string>
+    <string name="notif_done_title">Hecha: %1$s</string>
+    <string name="notif_done_body">La cuenta vuelve a empezar desde ahora.</string>
+    <plurals name="history_routine_done">
+        <item quantity="one">hecha una vez</item>
+        <item quantity="other">hecha %d veces</item>
+    </plurals>
+    <string name="history_routine_gap">cada %1$s de media</string>
     <string name="routines_due">vence %1$s</string>
     <string name="routines_overdue">vencida %1$s</string>
     <string name="routines_new">Nueva rutina</string>
@@ -1354,6 +1370,22 @@
         <item>Un aviso con sonido va ahora a tus auriculares cuando los llevas puestos, en vez de salir por el altavoz del móvil como haría cualquier alarma. Es un ajuste, en Sonido, y merece la pena desactivarlo si tus auriculares viven en un cajón: un aviso que suena para nadie es un aviso perdido.</item>
         <item>Y ya no te corta la música. Lo que estuvieras escuchando baja unos decibelios y sigue por debajo mientras el aviso suena por encima —el aviso va por el canal de alarma y la música no, así que ninguno tiene que pelear con el otro— y vuelve solo a su volumen. Antes pedía el audio en exclusiva, lo que mataba un podcast por un tono de diez segundos.</item>
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_107_0">
+
+        <item>«Sí» es un botón. La respuesta a la propia pregunta de la ficha era un deslizar mantenido, un menú por pulsación larga y una acción de lector de pantalla; ahora es el primer control del pie de la ficha, junto a pausar, editar y «⋯». Una rutina pospuesta dice «pospuesta» en vez de «No» y lleva la posposición bajo su cuenta, y una en pausa dice «en pausa»: ninguna de las dos se debe, así que la fila del inicio, el lanzador y el chip «Vencidas» las dejan en paz. Dos chips más, «En pausa» y «Aún no empieza», mientras haya alguna.</item>
+
+        <item>Las filas de vencidas del inicio contestan como cualquier ficha: deslizar y mantener es «sí, hecha», hacia el otro lado borra. Tres filas como mucho, y el resto contado en una; la cuenta se mueve cada minuto; y cuando no se debe nada la puerta nombra la próxima en vencer («Regar las plantas · vence en 3 d»). El número de vencidos del widget incluye las rutinas debidas, y el lanzador les guarda dos huecos para que los presets fijados conserven los suyos.</item>
+
+        <item>Un «hecho» dado desde la barra se puede deshacer: «sí, ahora» en una pregunta y «hecho» en un timbre dejan una tarjeta muda con «deshacer», como la deja el «hecho» de un lugar. Las tarjetas de pregunta se juntan en el grupo de la app y llevan el color de las rutinas; «Ver» en el timbre de una rutina y el toque en su pregunta aterrizan los dos en las rutinas con esa a la vista, no en el formulario.</item>
+
+        <item>La alerta de una rutina dice su plazo donde la línea de una regla nombraba una pregunta como motivo («su plazo: cada 21 días desde la última vez»), encabeza sus ofertas con «todavía no» —que es la respuesta honesta a las tres de la mañana— y pone «a una fecha» primero, porque diez minutos no es respuesta a un plazo de tres semanas. La tarjeta del timbre en la barra dice el plazo aunque no haya reglas.</item>
+
+        <item>Una pregunta descartada porque no estabas donde la regla quiere («y sólo si estoy en casa») se vuelve a hacer cada cuarto de hora mientras su franja siga abierta, en vez de perderse hasta mañana.</item>
+
+        <item>El formulario avisa de una regla que bajo una rutina no es una pregunta (una fecha, una cuenta atrás, un sorteo: preguntan una vez, o nunca); un preset guardado desde una rutina ya no arrastra el día en que esa rutina empezó; y el historial bajo una rutina deja fuera las preguntas y abre con «hecha 7 veces · cada 23 d de media».</item>
+
     </string-array>
 
     <string-array name="whats_new_0_106_0">

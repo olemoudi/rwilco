@@ -6,6 +6,7 @@ import android.content.Intent
 import android.util.Log
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.data.FiringKind
+import dev.rwilco.model.isRoutine
 import dev.rwilco.model.Snooze
 import dev.rwilco.notify.AlertNotifications
 import java.time.Instant
@@ -24,7 +25,13 @@ class AlertActionReceiver : BroadcastReceiver() {
                 // system finishes the receiver itself, and a finish() of ours on top throws.
                 val done = withTimeoutOrNull(BUDGET_MS) {
                     when (intent.action) {
-                        ACTION_DONE -> app.firing.dismiss(id)
+                        ACTION_DONE -> {
+                            // A routine's "hecho" from the shade can be taken back: the count
+                            // it moved is said back with "deshacer" (AlertNotifications.doneNotice).
+                            val before = app.repository.get(id)
+                            app.firing.dismiss(id)
+                            if (before != null && before.isRoutine) AlertNotifications.doneNotice(context, before, before.lastDealtAt)
+                        }
                         ACTION_SNOOZE -> {
                             val snooze = intent.getStringExtra(EXTRA_SNOOZE)
                                 ?.let { name -> Snooze.entries.firstOrNull { it.name == name } }

@@ -13,6 +13,7 @@ import dev.rwilco.model.MAX_PRESET_NAME
 import dev.rwilco.model.MAX_TEXT_LENGTH
 import dev.rwilco.model.Preset
 import dev.rwilco.model.Recurrence
+import dev.rwilco.model.ROUTINE_KINDS
 import dev.rwilco.model.SafetyNetSettings
 import dev.rwilco.model.RecurrencePreset
 import dev.rwilco.model.Reminder
@@ -279,7 +280,8 @@ fun EditorUiState.toPreset(id: String, now: Instant, existing: Preset?, others: 
     rules = clearCountdowns(draft.rules),
     ruleMatch = draft.ruleMatch,
     actions = draft.actions,
-    recurrence = draft.recurrence,
+    // A shape holds how often, never the day one routine happened to start on.
+    recurrence = (draft.recurrence as? Recurrence.Since)?.copy(startsAt = null) ?: draft.recurrence,
     deadline = draft.deadline,
     // A preset keeps the colour it was given: it is how it is recognised, and a colour that
     // moves is worse than no colour at all.
@@ -346,6 +348,16 @@ fun EditorUiState.setRecurrence(recurrence: Recurrence): EditorUiState {
         ),
     )
 }
+
+/**
+ * The rules on a routine that are not questions: a date, a range, a window, a countdown, a
+ * draw — shapes that name one moment and then have nothing more to say ([ROUTINE_KINDS]). A
+ * reminder turned into a routine keeps its rules, and the picker no longer offers these, so
+ * one left on the form looks live and asks once, or never. Indices, for the row's warning.
+ */
+fun Draft.rulesNotQuestions(): List<Int> =
+    if (recurrence !is Recurrence.Since) emptyList()
+    else rules.indices.filter { rules[it].trigger.kind !in ROUTINE_KINDS }
 
 /**
  * Whether saving [draft] over [before] is the edit that turns a reminder into a routine — the

@@ -280,7 +280,7 @@ class AlertActivity : ComponentActivity() {
                         waiting = items.size - 1,
                         onDone = { answer(first.id) { app.firing.dismiss(first.id) } },
                         onSnooze = { snooze: Snooze -> answer(first.id) { app.firing.snooze(first.id, snooze) } },
-                        onView = { view(first.id) },
+                        onView = { view(first.id, first.content.routine) },
                         customMinutes = current.snoozeCustomMinutes,
                         places = places,
                         onSnoozeToPlace = { offer -> snoozeToPlace(first.id, offer) },
@@ -405,10 +405,13 @@ class AlertActivity : ComponentActivity() {
         app.appScope.launch { for (id in ids) work(id) }
     }
 
-    private fun view(id: String) {
+    private fun view(id: String, routine: Boolean = false) {
+        // A routine's home is the routines list, with it in view — the same door its question
+        // card opens — not the form; the form is a tap further, behind the pencil.
+        val destination = if (routine) MainActivity.routineDestination(id) else MainActivity.reminderDestination(id)
         startActivity(
             Intent(this, MainActivity::class.java)
-                .putExtra(MainActivity.EXTRA_DESTINATION, MainActivity.reminderDestination(id))
+                .putExtra(MainActivity.EXTRA_DESTINATION, destination)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
         )
         drop(id)

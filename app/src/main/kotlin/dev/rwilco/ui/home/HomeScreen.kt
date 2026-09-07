@@ -560,7 +560,12 @@ fun HomeScreen(
                 pinned = presets.isNotEmpty(),
                 undoRow = pendingDelete != null,
                 tagsRow = tagsRowShown,
-                routinesRows = if (!state.loaded) 0 else state.routines.overdue.size.coerceAtLeast(1),
+                // One door, or up to three rows and one more counting the rest (see the list).
+                routinesRows = when {
+                    !state.loaded -> 0
+                    state.routines.overdue.isEmpty() -> 1
+                    else -> minOf(state.routines.overdue.size, HOME_ROUTINE_ROWS) + (if (state.routines.overdue.size > HOME_ROUTINE_ROWS) 1 else 0)
+                },
             )
                 ?: return@LaunchedEffect
             if (saved.created) {
@@ -703,16 +708,38 @@ fun HomeScreen(
                 if (state.loaded) {
                     if (state.routines.overdue.isEmpty()) {
                         item(key = "routines", contentType = "routines") {
-                            RoutinesDoor(total = state.routines.total, onOpen = { onRoutines(null) }, modifier = Modifier.animateItem())
-                        }
-                    } else {
-                        items(state.routines.overdue, key = { "routine-" + it.id }, contentType = { "routine-overdue" }) { routine ->
-                            OverdueRoutineRow(
-                                routine = routine,
-                                now = viewModel.clock.instant(),
-                                onOpen = { onRoutines(routine.id) },
+                            RoutinesDoor(
+                                total = state.routines.total,
+                                nextDue = state.routines.nextDue,
+                                now = nowState.value,
+                                onOpen = { onRoutines(null) },
                                 modifier = Modifier.animateItem(),
                             )
+                        }
+                    } else {
+                        // Three rows, and the rest counted in one; and a row answers the way every
+                        // card does — a swipe held is "sí, la he hecho", the other way deletes —
+                        // because the one place a routine showed on Home was the one place it
+                        // could not be dealt with. By the minute (`nowState`), or "hace 30 d"
+                        // sat still for as long as nothing else moved.
+                        items(state.routines.overdue.take(HOME_ROUTINE_ROWS), key = { "routine-" + it.id }, contentType = { "routine-overdue" }) { routine ->
+                            SwipeableCard(
+                                onDone = { viewModel.markDone(routine.id) },
+                                onDelete = { viewModel.delete(routine.id) },
+                                modifier = Modifier.animateItem(),
+                            ) {
+                                OverdueRoutineRow(
+                                    routine = routine,
+                                    now = nowState.value,
+                                    onOpen = { onRoutines(routine.id) },
+                                )
+                            }
+                        }
+                        val more = state.routines.overdue.size - HOME_ROUTINE_ROWS
+                        if (more > 0) {
+                            item(key = "routines-more", contentType = "routines-more") {
+                                MoreOverdueRoutinesRow(more = more, onOpen = { onRoutines(null) }, modifier = Modifier.animateItem())
+                            }
                         }
                     }
                 }

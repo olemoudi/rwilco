@@ -86,6 +86,19 @@ class RoutinesStateTest {
     }
 
     @Test
+    fun `a routine put off says so and is not counted as overdue`() {
+        val until = now.plus(Duration.ofDays(1))
+        val putOff = routine("late", daysAgo = 30, lastFiredAt = now.minus(Duration.ofDays(9))).copy(snoozedUntil = until)
+        val state = buildRoutinesState(listOf(putOff), RoutineFilter.All, now, zone, dayStart)
+        val row = state.rows.single()
+        assertTrue(row.putOff)
+        assertEquals(until, row.snoozedUntil)
+        assertFalse(row.done, "the span is still up")
+        assertEquals(0, state.overdue, "but nothing is owed until the snooze comes back")
+        assertTrue(state.filters.none { it == RoutineFilter.Overdue })
+    }
+
+    @Test
     fun `the chips are vencidas while any is, and the routines' own tags`() {
         val tagged = routine("tagged", daysAgo = 1, tags = listOf("coche"))
         val untagged = routine("untagged", daysAgo = 1)

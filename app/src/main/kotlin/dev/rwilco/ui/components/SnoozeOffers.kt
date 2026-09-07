@@ -51,6 +51,8 @@ fun SnoozeOffers(
      * other one is a step from now, which is the wrong shape for an answer given a week ahead.
      */
     onPickDate: (() -> Unit)? = null,
+    /** The calendar before the lengths: where the lengths are the wrong shape (a routine's plazo). */
+    dateFirst: Boolean = false,
     guard: PressGuard? = null,
 ) {
     val spacing = Tokens.spacing
@@ -59,6 +61,9 @@ fun SnoozeOffers(
         verticalArrangement = Arrangement.spacedBy(spacing.sm),
         modifier = modifier.fillMaxWidth(),
     ) {
+        if (dateFirst && onPickDate != null) {
+            SnoozeButton(label = stringResource(R.string.snooze_pick_date), onClick = onPickDate, guard = guard, icon = Icons.Outlined.Event)
+        }
         for (snooze in offers) {
             SnoozeButton(label = snoozeLabel(snooze, customMinutes), onClick = { onPick(snooze) }, guard = guard)
         }
@@ -74,7 +79,7 @@ fun SnoozeOffers(
             )
         }
         // Last, and after the places: it is the only one that asks a second question.
-        if (onPickDate != null) {
+        if (onPickDate != null && !dateFirst) {
             SnoozeButton(
                 label = stringResource(R.string.snooze_pick_date),
                 onClick = onPickDate,

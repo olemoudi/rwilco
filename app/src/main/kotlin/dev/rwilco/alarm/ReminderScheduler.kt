@@ -184,15 +184,45 @@ class ReminderScheduler(
      * hours when it arrives — and the rule it is for rides as an extra, the way the ring's does.
      */
     private fun armAsk(reminder: Reminder, wake: Wake?) {
-        if (wake == null) {
+        // A question retried inside its window outranks the next one (`armAskRetry`), for as
+        // long as the retry is still ahead: a re-arm in between — a save, a sync — must not
+        // put tomorrow's question in its place.
+        val retry = askRetries[reminder.id]?.takeIf { it.at > clock.instant() }
+        val soonest = when {
+            retry == null -> wake
+            wake == null || retry.at < wake.at -> retry
+            else -> wake
+        }
+        if (soonest == null) {
             cancelAsk(reminder.id)
             return
         }
         runCatching {
-            alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, wake.at.toEpochMilli(), askIntent(reminder.id, wake.ruleIndex))
+            alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, soonest.at.toEpochMilli(), askIntent(reminder.id, soonest.ruleIndex))
             asking += reminder.id
         }.onFailure { Log.e(TAG, "could not arm the question of ${reminder.id}", it) }
     }
+
+    /**
+     * A question tried and dropped at a fence that could not be judged in advance ("y sólo si
+     * estoy en casa"), while its window is still open: asked again at [at], rather than lost
+     * for the day. Kept here so the next re-arm keeps it (see [armAsk]); a process death loses
+     * it, which is the day's question lost the way it always was, and no worse.
+     */
+    fun armAskRetry(id: String, ruleIndex: Int, at: Instant) {
+        askRetries[id] = Wake(at, ruleIndex)
+        runCatching {
+            alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.toEpochMilli(), askIntent(id, ruleIndex))
+            asking += id
+        }.onFailure { Log.e(TAG, "could not arm the retry of $id", it) }
+    }
+
+    /** The retry has been put, or given up on: the next question is the next one. */
+    fun clearAskRetry(id: String) {
+        askRetries.remove(id)
+    }
+
+    private val askRetries = HashMap<String, Wake>()
 
     private fun cancelLapse(id: String) {
         runCatching { alarms.cancel(lapseIntent(id)) }

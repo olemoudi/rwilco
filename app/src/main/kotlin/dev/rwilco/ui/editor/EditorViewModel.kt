@@ -13,6 +13,8 @@ import dev.rwilco.model.Action
 import dev.rwilco.model.clearCountdowns
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Recurrence
+import dev.rwilco.data.FiringKind
+import dev.rwilco.model.isRoutine
 import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.RecurrencePreset
@@ -198,7 +200,13 @@ class EditorViewModel(
                 kindOrder = if (current.popularTriggersFirst) triggerKindsByUse(past, now) else OFFERED_KINDS,
                 savedPlaces = current.savedPlaces,
                 savedWindows = current.savedWindows,
-                history = loaded?.let { repository.history(it.id, HISTORY_SHOWN) }.orEmpty(),
+                // A routine asks every morning, and fourteen lines of "preguntó" pushed its
+                // actual "hechos" — the only history a routine has — off the card. Its list is
+                // read wider and shown without the questions.
+                history = loaded?.let { row ->
+                    if (row.isRoutine) repository.history(row.id).filterNot { it.kind == FiringKind.ASKED }.take(HISTORY_SHOWN)
+                    else repository.history(row.id, HISTORY_SHOWN)
+                }.orEmpty(),
                 recurrencePresets = recurrencePresetsByPopularity(current.recurrencePresets),
                 asPreset = editedPreset != null || newPreset,
                 initialAsPreset = editedPreset != null || newPreset,

@@ -31,6 +31,8 @@ import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Search
+import dev.rwilco.ui.home.SnoozedRow
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.UnfoldLess
 import androidx.compose.material.icons.outlined.UnfoldMore
 import androidx.compose.material.icons.outlined.SearchOff
@@ -335,6 +337,8 @@ fun RoutinesScreen(
                         onOpen = { onOpen(row.id) },
                         onPause = { viewModel.togglePause(row.id, row.paused) },
                         onMore = { actingOn = row.id },
+                        onDone = { viewModel.markDone(row.id) },
+                        zone = zone,
                         longClickLabel = actionsLabel,
                     )
                 }
@@ -382,6 +386,8 @@ private fun FilterRow(filters: List<RoutineFilter>, selected: RoutineFilter, onS
             TagChip(
                 label = when (filter) {
                     is RoutineFilter.Tag -> filter.tag
+                    RoutineFilter.Paused -> stringResource(R.string.routines_filter_paused)
+                    RoutineFilter.Waiting -> stringResource(R.string.routines_filter_waiting)
                     else -> stringResource(R.string.routines_filter_overdue)
                 },
                 selected = filter == selected,
@@ -397,6 +403,8 @@ private val RoutineFilter.key: String
     get() = when (this) {
         RoutineFilter.All -> "all"
         RoutineFilter.Overdue -> "rwilco-overdue"
+        RoutineFilter.Paused -> "rwilco-paused"
+        RoutineFilter.Waiting -> "rwilco-waiting"
         is RoutineFilter.Tag -> "tag-$tag"
     }
 
@@ -425,6 +433,9 @@ private fun RoutineCard(
     onPause: () -> Unit,
     onMore: () -> Unit,
     longClickLabel: String,
+    /** "Sí, lo he hecho": the swipe's door, on a button. */
+    onDone: () -> Unit = {},
+    zone: java.time.ZoneId = java.time.ZoneId.systemDefault(),
     compact: Boolean = false,
     /** The tap, on a card of either height: out on a folded one, away on an open one. */
     onToggleCompact: () -> Unit = {},
@@ -438,7 +449,13 @@ private fun RoutineCard(
         else -> scheme.error
     }
     val question = stringResource(R.string.routines_question, row.text)
-    val answer = stringResource(if (row.done) R.string.routines_yes else R.string.routines_no)
+    // Resting or put off, the answer is neither: the state is said in its place (see below).
+    val answer = when {
+        row.paused -> stringResource(R.string.routines_paused)
+        row.putOff -> stringResource(R.string.routines_put_off)
+        row.done -> stringResource(R.string.routines_yes)
+        else -> stringResource(R.string.routines_no)
+    }
     // Under a minute it is "ahora mismo": a "hecho" given a moment ago sits a few seconds either
     // side of the last minute pulse, and neither "en 5 s" nor "hace 0 s" is how long it has been.
     // A routine whose count has not begun says so instead ("empieza el martes"): "hace" is a
@@ -463,7 +480,8 @@ private fun RoutineCard(
     // card has to say it — the band down the edge, the wash under the whole card, and the
     // track. Folded away there is no "No" to read and no count: the colour is the only thing
     // left to notice, so it has to be impossible to miss rather than tasteful.
-    val overdue = !row.done && !row.paused
+    // Put off is an answer given: the row is not owed, and says so instead of "No".
+    val overdue = !row.done && !row.paused && !row.putOff
     val accent = when {
         row.paused -> scheme.onSurfaceVariant
         overdue -> scheme.error
@@ -512,6 +530,16 @@ private fun RoutineCard(
                             color = scheme.error,
                         )
                     }
+                    // Folded, a routine put off or resting says so with one word, where the
+                    // "No" would go: the state is the one thing the fold keeps.
+                    if (row.putOff || row.paused) {
+                        Spacer(Modifier.width(spacing.sm))
+                        Text(
+                            text = stringResource(if (row.paused) R.string.routines_paused else R.string.routines_put_off),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = scheme.onSurfaceVariant,
+                        )
+                    }
                 }
                 // Thicker than the open card's, because here it is the card's whole answer.
                 track(Modifier.padding(top = spacing.sm), Tokens.strokes.track)
@@ -553,6 +581,12 @@ private fun RoutineCard(
                 style = MonoStyles.date,
                 color = scheme.onSurfaceVariant,
             )
+            // Put off until a clock: the same row Home's card carries, so a routine answered
+            // "tomorrow" does not look identical to one nobody answered.
+            row.snoozedUntil?.let { until ->
+                Spacer(Modifier.height(spacing.sm))
+                SnoozedRow(until = until, today = now.atZone(zone).toLocalDate(), zone = zone, muted = true)
+            }
             track(Modifier.padding(top = spacing.md), Tokens.strokes.strong)
             // The footer: the tags on the left, the three things a card can be told to do on
             // the right — the same three a reminder's card carries, and the same menu behind
@@ -560,6 +594,19 @@ private fun RoutineCard(
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = spacing.xs)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs), modifier = Modifier.weight(1f)) {
                     for (tag in row.tags.take(3)) TagLabel(tag)
+                }
+                // "Sí" — the answer to the card's own question — first among the controls,
+                // and a button: it was a swipe-and-hold, a held menu and a screen-reader
+                // action, and none of those is a thing a thumb finds. Not while it rests: a
+                // "hecho" on a paused routine would move a count that is not running.
+                if (!row.paused) {
+                    IconButton(onClick = { haptics.perform(HapticFeedbackType.Confirm); onDone() }) {
+                        Icon(
+                            imageVector = Icons.Outlined.Check,
+                            contentDescription = stringResource(R.string.routines_mark_done, row.text),
+                            tint = scheme.onSurface,
+                        )
+                    }
                 }
                 IconButton(onClick = { haptics.perform(HapticFeedbackType.ContextClick); onPause() }) {
                     Icon(

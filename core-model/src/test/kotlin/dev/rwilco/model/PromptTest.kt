@@ -144,6 +144,19 @@ class PromptTest {
     }
 
     @Test
+    fun `a set of windows closes at the earliest close among them, on the day it falls`() {
+        // What bounds a question retried inside its window: "de 18 a 22" at 20:00 closes at
+        // 22:00; past midnight at 23:00 closes tomorrow at six; not inside, nothing closes.
+        val evening = listOf(Condition.TimeWindow(LocalTime.of(18, 0), LocalTime.of(22, 0)))
+        assertEquals(local(2026, 8, 27, 22, 0), evening.closesFrom(local(2026, 8, 27, 20, 0), zone))
+        assertNull(evening.closesFrom(local(2026, 8, 27, 15, 0), zone), "not inside it")
+        val night = listOf(Condition.TimeWindow(LocalTime.of(22, 0), LocalTime.of(6, 0)))
+        assertEquals(local(2026, 8, 28, 6, 0), night.closesFrom(local(2026, 8, 27, 23, 0), zone))
+        assertEquals(local(2026, 8, 27, 22, 0), (evening + listOf(Condition.TimeWindow(LocalTime.of(19, 0), LocalTime.of(23, 0)))).closesFrom(local(2026, 8, 27, 20, 0), zone), "the earliest")
+        assertNull(emptyList<Condition.TimeWindow>().closesFrom(now, zone))
+    }
+
+    @Test
     fun `nothing asks while the deadline is asking louder, or while it is put off, or paused`() {
         val late = car(TriggerRule(nine), createdAt = now.minusSeconds(30 * 86_400), lastFiredAt = now.minusSeconds(9 * 86_400))
         assertTrue(late.awaitingAnswer(now))

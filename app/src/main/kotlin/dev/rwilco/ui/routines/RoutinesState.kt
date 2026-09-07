@@ -11,6 +11,7 @@ import dev.rwilco.model.routineAnchor
 import dev.rwilco.model.routineDeadline
 import dev.rwilco.model.routineDone
 import dev.rwilco.model.routineFilters
+import dev.rwilco.model.routinePutOff
 import dev.rwilco.model.routineWaitingToStart
 import dev.rwilco.model.routinesFor
 import java.time.Duration
@@ -49,6 +50,10 @@ data class RoutineRowUi(
     /** Whether "posponer" is an answer right now: its deadline rang, or it is already put off. */
     val snoozeOffered: Boolean,
     val snoozed: Boolean,
+    /** Until when it is put off, for the row to say so; null for a snooze to a place, and for none. */
+    val snoozedUntil: Instant?,
+    /** Put off, to a clock or a place: an answer given, so not owed — and said on the row. */
+    val putOff: Boolean,
 )
 
 data class RoutinesUiState(
@@ -83,7 +88,7 @@ fun buildRoutinesState(
     // last routine wearing that tag was deleted. By the spelling on offer, as Home's chips do.
     val filter = when (selected) {
         RoutineFilter.All -> selected
-        RoutineFilter.Overdue -> selected.takeIf { it in filters } ?: RoutineFilter.All
+        RoutineFilter.Overdue, RoutineFilter.Paused, RoutineFilter.Waiting -> selected.takeIf { it in filters } ?: RoutineFilter.All
         is RoutineFilter.Tag -> filters.firstOrNull { it is RoutineFilter.Tag && it.tag.equals(selected.tag, ignoreCase = true) } ?: RoutineFilter.All
     }
     val rows = routinesFor(reminders, filter, now, zone, dayStart, query).mapNotNull { reminder ->
@@ -103,6 +108,8 @@ fun buildRoutinesState(
             snoozeOffered = reminder.awaitingAnswer(now) ||
                 (reminder.status == Status.ACTIVE && (reminder.snoozedUntil?.let { it > now } == true || reminder.snoozedToPlace != null)),
             snoozed = reminder.status == Status.ACTIVE && (reminder.snoozedUntil?.let { it > now } == true || reminder.snoozedToPlace != null),
+            snoozedUntil = reminder.snoozedUntil?.takeIf { it > now && reminder.status == Status.ACTIVE },
+            putOff = reminder.status == Status.ACTIVE && reminder.routinePutOff(now),
         )
     }
     return RoutinesUiState(

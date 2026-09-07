@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,10 +42,16 @@ import java.time.Instant
  * it). Amber is never used here: it means what fires next, and none of this is due to ring.
  */
 @Composable
-fun RoutinesDoor(total: Int, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+fun RoutinesDoor(total: Int, onOpen: () -> Unit, modifier: Modifier = Modifier, nextDue: RoutineDueUi? = null, now: Instant = Instant.now()) {
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
-    val words = stringResource(if (total == 0) R.string.home_routines_title else R.string.home_routines_ok)
+    // "Al día" said nothing about *how* al día: the door names the next one to run out, so the
+    // line is worth a glance even when nothing is owed.
+    val words = when {
+        total == 0 -> stringResource(R.string.home_routines_title)
+        nextDue != null -> stringResource(R.string.home_routines_next, nextDue.text, countdownText(partsBetween(now, nextDue.at)))
+        else -> stringResource(R.string.home_routines_ok)
+    }
     val opens = stringResource(R.string.home_routines_open)
     RwilcoCard(
         onClick = onOpen,
@@ -117,6 +124,37 @@ fun OverdueRoutineRow(routine: RoutineNameUi, now: Instant, onOpen: () -> Unit, 
                 )
                 Text(text = ago, style = MonoStyles.date, color = ink)
             }
+            Spacer(Modifier.width(spacing.sm))
+            Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = ink)
+        }
+    }
+}
+
+/**
+ * The overdue routines Home does not list one by one — past [HOME_ROUTINE_ROWS], eight red
+ * cards stacked over the hero were the list with its own header eight times — counted in one
+ * row, in the same wash, opening the routines.
+ */
+@Composable
+fun MoreOverdueRoutinesRow(more: Int, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+    val spacing = Tokens.spacing
+    val scheme = MaterialTheme.colorScheme
+    val ink = scheme.onErrorContainer
+    val words = pluralStringResource(R.plurals.home_routines_more, more, more)
+    val opens = stringResource(R.string.home_routines_open)
+    RwilcoCard(
+        onClick = onOpen,
+        color = scheme.errorContainer,
+        modifier = modifier.semantics { contentDescription = words + ". " + opens },
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = Tokens.sizes.touch)
+                .padding(horizontal = spacing.lg, vertical = spacing.md),
+        ) {
+            Text(text = words, style = MaterialTheme.typography.titleMedium, color = ink, modifier = Modifier.weight(1f))
             Spacer(Modifier.width(spacing.sm))
             Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = ink)
         }

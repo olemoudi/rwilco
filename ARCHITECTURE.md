@@ -410,8 +410,14 @@ anything repeats**:
   it is never `Status.DONE` — a routine is done *for now*. Home lists no routine
   (`groupForHome`, `tagsInUse` leave them out — a tag only routines wear would be a chip that
   finds nothing on Home); it keeps one line about the overdue ones (`overdueRoutines`) and the
-  routines screen has the rest (`routinesFor`: overdue first, longest-waiting on top, paused
-  last; `routineFilters`: "vencidas" while any is, then the routines' own tags).
+  routines screen has the rest (`routinesFor`: what is owed first, longest-waiting on top, then
+  the rest and the ones put off by how soon, paused last; `routineFilters`: "vencidas", "en
+  pausa" and "aún no empieza" while any is each, then the routines' own tags).
+  **Owed is one predicate** (0.107.0, `routineOwed`): active, span up, and *not put off* — a
+  snooze to a clock still ahead or to a place is an answer given (`routinePutOff`), so Home's
+  line, the launcher and the "vencidas" chip leave a put-off routine alone while its row says
+  "pospuesta" and carries the `SnoozedRow`. `nextDueRoutine` is the one whose plazo runs out
+  soonest, for Home's door to name when nothing is owed.
   **Where the count starts is asked** (0.104.0): `startsAt` is the moment somebody named and
   null is the day it was written, which is what every routine already on a phone says — written
   only when it is set (`@EncodeDefault(NEVER)`), so nothing on disk changes shape. `routineStart`
@@ -693,6 +699,21 @@ The diagnostics' state line says `asked=`, `nudged=`, `paused=`, and for a routi
 (`nextPrompt`), `quiet=` and `deadline=` — "it did not ask" was a question the report could not
 answer before (0.106.0).
 
+**A routine's other surfaces** (0.107.0): Home lists up to `HOME_ROUTINE_ROWS` overdue rows,
+each a `SwipeableCard` like every card (done / delete), and counts the rest in one
+(`MoreOverdueRoutinesRow`); the door names the next one due; the count ticks by the minute. The
+widget's overdue count includes the routines owed; the launcher gives them `ROUTINE_SLOTS` (two)
+so the pinned presets keep theirs. The ask card and the undo cards join the app's bundle and
+wear `routineColor`; a "hecho" given from the shade on a routine gets an undo card
+(`AlertNotifications.doneNotice`, the same `undoReset` door a place's "done" has); "Ver" on a
+routine's ring and its question card both land on the routines with it in view. The alert says
+the plazo where a rule's line would be ("su plazo: cada 21 días desde la última vez"), heads its
+offers "todavía no" and puts "a una fecha" first; the ring card's reason line says the span even
+with no rules. The form warns on a rule that is not a question under a routine
+(`Draft.rulesNotQuestions`), a preset kept from a routine drops its `startsAt`, and the history
+card under a routine drops the questions and opens with "hecha N veces · cada X de media"
+(`routineHistory`, `HistorySummary.kt`).
+
 ## UI
 
 - Single activity, `navigation-compose` type-safe routes (`Routes.kt`): Home, Editor(id?),
@@ -741,6 +762,9 @@ answer before (0.106.0).
   editor; a held press offers `ReminderActionsMenu` (pause, snooze where the deadline rang,
   clone, keep as preset). The chips are "todas", the app's own "vencidas" while any is, and the
   routines' tags in their own colours; a filter on something no longer offered clears.
+  **"Sí" is a button** (0.107.0): first in the open card's footer, the swipe's own door
+  (`markDone`), because the answer to the card's question was a swipe-and-hold, a held menu and
+  a screen-reader action and none of those is a thing a thumb finds; not while it rests.
   **The list folds** (0.105.0), the way Home's does and through the same pieces: a small button
   over "Nueva rutina" toggles `AppSettings.compactRoutines` (its own flag — the two lists are
   read for different things), a tap on a card is the fold both ways, and the exceptions to the
@@ -1664,7 +1688,11 @@ answer before (0.106.0).
   state fires when the phone comes to that side, or is already there the first time anybody
   looks, and not again until it has left. A routine put off to a place keeps its vouching
   (`RESETS`) circles beside the snooze's (`watchedCircles`), so leaving the garage still counts.
-  `undoReset` never moves the count forward past a later "hecho", and records `UNRESET`. **Or the place counts as
+  `undoReset` never moves the count forward past a later "hecho", and records `UNRESET`. **A question dropped at a fence nobody could judge in advance, inside a window
+  still open, is tried again** every quarter of an hour until the window closes (0.107.0,
+  `ASK_RETRY`, `closesFrom`, `ReminderScheduler.armAskRetry` — kept in memory so the next re-arm
+  does not put tomorrow's question in its place; a process death loses it, which is the day's
+  question lost the way it always was). **Or the place counts as
   having done it** (`TriggerRule.resets`, `Crossing.RESETS`, `ReminderFiring.resetBy`): leaving
   the garage *is* the car moving. The reset is the write "hecho" makes on a routine, recorded as
   `FiringKind.RESET` with the doorway in its detail, and said in the shade **mute, with

@@ -223,6 +223,47 @@ class RoutinesTest {
     }
 
     @Test
+    fun `a routine put off is an answer given, not something owed, until the snooze comes back`() {
+        val deadline = local(2026, 8, 20, 9, 0)
+        val late = car(createdAt = deadline.minusSeconds(21 * 86_400)).copy(lastFiredAt = deadline)
+        assertTrue(late.routineOwed(now, zone, dayStart))
+        val putOff = late.copy(snoozedUntil = now.plusSeconds(86_400))
+        assertTrue(putOff.routinePutOff(now))
+        assertFalse(putOff.routineOwed(now, zone, dayStart), "not now, was said about this very thing")
+        assertFalse(putOff.routineDone(now, zone, dayStart), "but the span is still up: the row says so")
+        assertTrue(overdueRoutines(listOf(putOff), now, zone, dayStart).isEmpty(), "and Home's line leaves it alone")
+        assertTrue(late.copy(snoozedToPlace = garage).routinePutOff(now), "to a place as well")
+        // Back when the snooze is: owed again.
+        assertTrue(putOff.routineOwed(now.plusSeconds(2 * 86_400), zone, dayStart))
+        // Sorted behind what is owed, ahead of the paused ones.
+        val owed = car(id = "owed", createdAt = deadline.minusSeconds(21 * 86_400))
+        val resting = car(id = "rest", createdAt = deadline.minusSeconds(21 * 86_400), status = Status.PAUSED)
+        assertEquals(listOf("owed", "car", "rest"), routinesFor(listOf(resting, putOff, owed), RoutineFilter.All, now, zone, dayStart).map { it.id })
+    }
+
+    @Test
+    fun `the chips say en pausa and aún no empieza only while something is, and filter by them`() {
+        val resting = car(id = "rest", status = Status.PAUSED)
+        val waiting = car(id = "wait", span = Recurrence.Since(21, RecurrenceUnit.DAYS, startsAt = local(2026, 10, 1, 9, 0)))
+        val plain = car()
+        assertEquals(listOf(RoutineFilter.Paused, RoutineFilter.Waiting), routineFilters(listOf(resting, waiting, plain), now, zone, dayStart))
+        assertEquals(listOf("rest"), routinesFor(listOf(resting, waiting, plain), RoutineFilter.Paused, now, zone, dayStart).map { it.id })
+        assertEquals(listOf("wait"), routinesFor(listOf(resting, waiting, plain), RoutineFilter.Waiting, now, zone, dayStart).map { it.id })
+        assertTrue(routineFilters(listOf(plain), now, zone, dayStart).isEmpty())
+    }
+
+    @Test
+    fun `the next one due is the soonest still inside its plazo, and nothing when none is coming`() {
+        val soon = car(id = "soon", createdAt = now.minusSeconds(20 * 86_400))
+        val later = car(id = "later", createdAt = now.minusSeconds(2 * 86_400))
+        val owed = car(id = "owed", createdAt = now.minusSeconds(30 * 86_400))
+        val resting = car(id = "rest", status = Status.PAUSED)
+        val waiting = car(id = "wait", span = Recurrence.Since(21, RecurrenceUnit.DAYS, startsAt = local(2026, 10, 1, 9, 0)))
+        assertEquals("soon", nextDueRoutine(listOf(later, owed, resting, waiting, soon), now, zone, dayStart)?.id)
+        assertNull(nextDueRoutine(listOf(owed, resting, waiting), now, zone, dayStart))
+    }
+
+    @Test
     fun `a snooze on the ring outranks the deadline, as it outranks everything`() {
         val snoozed = car(lastFiredAt = now.minusSeconds(3600)).copy(snoozedUntil = now.plusSeconds(1800))
         assertEquals(NextFire.Scheduled(now.plusSeconds(1800), null, snoozed = true), snoozed.next())

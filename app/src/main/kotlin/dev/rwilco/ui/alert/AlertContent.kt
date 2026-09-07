@@ -18,6 +18,8 @@ data class AlertContent(
     val defaultTime: LocalTime,
     /** A routine's ring, which wears its own word and its own colour: see [routineColor]. */
     val routine: Boolean = false,
+    /** The routine's own plazo, which is what its ring is *for* — said where a rule's line would be. */
+    val recurrence: dev.rwilco.model.Recurrence = dev.rwilco.model.Recurrence.None,
 ) {
     companion object {
         /**
@@ -35,6 +37,7 @@ data class AlertContent(
                 today = today,
                 defaultTime = defaultTime,
                 routine = reminder.isRoutine,
+                recurrence = reminder.recurrence,
             )
         }
 
@@ -48,6 +51,7 @@ data class AlertContent(
                 today = today,
                 defaultTime = defaultTime,
                 routine = draft.recurrence is dev.rwilco.model.Recurrence.Since,
+                recurrence = draft.recurrence,
             )
         }
     }
