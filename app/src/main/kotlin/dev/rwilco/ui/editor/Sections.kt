@@ -223,6 +223,8 @@ internal fun TextSection(
     error: Boolean,
     placeholderRes: Int = R.string.editor_text_placeholder,
     writeRes: Int = R.string.editor_write,
+    /** What a blank field is refused with: a reminder's words, or a routine's own. */
+    errorRes: Int = R.string.editor_error_text,
     onCurate: () -> Unit = {},
     autoFocus: Boolean = false,
     /** Bumped by whoever wants the cursor here now — a refused save, asking for the words. */
@@ -295,7 +297,7 @@ internal fun TextSection(
                 }
             },
         )
-        if (error) FieldError(stringResource(R.string.editor_error_text))
+        if (error) FieldError(stringResource(errorRes))
         // The cap, said as it is neared (0.94.0): the field stops taking letters at it and
         // nothing used to say so — least of all for a preset's name, which is forty.
         if (text.length >= cap - cap / 10) {

@@ -229,6 +229,11 @@
     <string name="editor_title_new">New reminder</string>
     <string name="editor_title_edit">Edit reminder</string>
     <string name="editor_title_new_routine">New routine</string>
+    <string name="editor_routine_title">Routine</string>
+    <string name="editor_routine_write">Write the routine</string>
+    <string name="editor_routine_placeholder">What do you do every so often?</string>
+    <string name="editor_error_routine_text">Write what has to be done.</string>
+    <string name="editor_delete_routine">Delete routine</string>
     <string name="editor_title_edit_routine">Edit routine</string>
     <string name="editor_preview">Preview the alert</string>
     <string name="editor_delete">Delete reminder</string>
@@ -323,7 +328,7 @@
     <string name="settings_day_start">What "the next day" means</string>
     <string name="settings_day_start_hint">The hour a recurrence measured in days, weeks or months lands on. Never earlier: something dealt with at midnight comes back in the morning.</string>
     <string name="editor_error_text">Write what you want to remember.</string>
-    <string name="editor_error_text_long">The reminder is too long.</string>
+    <string name="editor_error_text_long">The text is too long.</string>
     <string name="editor_revives">Saving puts it back on the list.</string>
     <string name="editor_error_trigger">One of the "when" rules is not right.</string>
     <string name="editor_error_recurrence">The way it comes back is not right.</string>
@@ -1362,6 +1367,12 @@
         <item>A reminder with sound now goes to your headphones when you are wearing any, instead of out of the phone\'s speaker as an alarm otherwise would. It is a setting, in Sound, and it is worth turning off if your earbuds live in a drawer: a reminder played to nobody is a reminder missed.</item>
         <item>And it no longer stops your music. What was playing drops a few decibels and carries on underneath while the reminder sounds over it — the reminder is on the alarm channel and the music is not, so neither has to fight the other — and comes back by itself. It used to ask for the audio outright, which ended podcasts for a ten-second chime.</item>
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_104_1">
+
+        <item>The word «reminder» is gone from the routine form. The title said «New routine» and the card under it still said «Reminder · Write the reminder · What do you want to remember?», and so did the refusal when you left it blank and the delete button\'s label. They all say «routine» now, and the chip that reads a date out of your words — which would have written a trigger a routine has no use for — is not offered there.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_104_0">

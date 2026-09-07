@@ -130,6 +130,12 @@ fun EditorScreen(
     onPresetDeleted: (Preset, Int) -> Unit = { _, _ -> },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    // A routine, and so a different form: its own name over it and in every word on it, the
+    // card that says where its count starts, rules that ask rather than ring, and a "Vuelve"
+    // that is only the plazo. All of it hangs off the one predicate ([Reminder.isRoutine])
+    // rather than off the door it came in through, so a reminder turned into a routine on this
+    // very screen is one at once.
+    val routine = state.draft.recurrence is Recurrence.Since
     val focusManager = LocalFocusManager.current
     val haptics = Tokens.haptics
     val snackbar = LocalSnackbar.current
@@ -137,7 +143,7 @@ fun EditorScreen(
     val scrollState = rememberScrollState()
     // Bumped when a refused save wants the words: TextSection takes it as a key to focus on.
     var focusNonce by remember { mutableIntStateOf(0) }
-    val textBlankMessage = stringResource(R.string.editor_error_text)
+    val textBlankMessage = stringResource(if (routine) R.string.editor_error_routine_text else R.string.editor_error_text)
     val textLongMessage = stringResource(R.string.editor_error_text_long)
     val triggerMessage = stringResource(R.string.editor_error_trigger)
     val recurrenceMessage = stringResource(R.string.editor_error_recurrence)
@@ -272,12 +278,6 @@ fun EditorScreen(
         }
     }
 
-    // A routine, and so a different form: its own title, the card that says where its count
-    // starts, rules that ask rather than ring, and a "Vuelve" that is only the plazo. All of it
-    // hangs off the one predicate ([Reminder.isRoutine]) rather than off the door it came in
-    // through, so a reminder turned into a routine on this very screen is one at once.
-    val routine = state.draft.recurrence is Recurrence.Since
-
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
@@ -306,7 +306,11 @@ fun EditorScreen(
                     },
                     onDelete = if (state.isNew && state.editingPreset == null) null else viewModel::delete,
                     deleteDescription = stringResource(
-                        if (state.editingPreset != null) R.string.editor_delete_preset else R.string.editor_delete,
+                        when {
+                            state.editingPreset != null -> R.string.editor_delete_preset
+                            routine -> R.string.editor_delete_routine
+                            else -> R.string.editor_delete
+                        },
                     ),
                     onBack = viewModel::requestClose,
                 )
@@ -349,7 +353,16 @@ fun EditorScreen(
                     .padding(horizontal = spacing.screen),
             ) {
                 EditorSection(
-                    title = stringResource(if (state.asPreset) R.string.editor_preset_title else R.string.editor_text_title),
+                    // "Recordatorio · Escribir el recordatorio · ¿Qué quieres recordar?" on a
+                    // form headed "Nueva rutina": the word has to follow the thing everywhere
+                    // it appears, not only over the door.
+                    title = stringResource(
+                        when {
+                            state.asPreset -> R.string.editor_preset_title
+                            routine -> R.string.editor_routine_title
+                            else -> R.string.editor_text_title
+                        },
+                    ),
                     icon = if (state.asPreset) Icons.Outlined.Bookmarks else Icons.AutoMirrored.Outlined.Notes,
                     // Which shape this came from, so the form is not a mystery already filled in.
                     note = state.fromPresetName,
@@ -367,8 +380,17 @@ fun EditorScreen(
                         allSuggestions = if (state.asPreset) emptyList() else state.allTexts,
                         onTextChange = viewModel::setText,
                         error = state.showErrors && ValidationError.TextBlank in state.errors,
-                        placeholderRes = if (state.asPreset) R.string.editor_preset_name_placeholder else R.string.editor_text_placeholder,
-                        writeRes = if (state.asPreset) R.string.editor_name_preset else R.string.editor_write,
+                        placeholderRes = when {
+                            state.asPreset -> R.string.editor_preset_name_placeholder
+                            routine -> R.string.editor_routine_placeholder
+                            else -> R.string.editor_text_placeholder
+                        },
+                        writeRes = when {
+                            state.asPreset -> R.string.editor_name_preset
+                            routine -> R.string.editor_routine_write
+                            else -> R.string.editor_write
+                        },
+                        errorRes = if (routine) R.string.editor_error_routine_text else R.string.editor_error_text,
                         onCurate = { viewModel.curateTexts(true) },
                         autoFocus = state.focusText,
                         focusKey = focusNonce,
@@ -376,7 +398,7 @@ fun EditorScreen(
                     )
                     // What the words say about when, one tap away from where they are being
                     // typed; the same chip the "Cuándo" card offers.
-                    val read = if (state.asPreset) null else state.understoodOffer()
+                    val read = if (state.asPreset || routine) null else state.understoodOffer()
                     if (read != null) {
                         Spacer(Modifier.height(spacing.sm))
                         UnderstoodChip(read, today, state.defaultTime) {

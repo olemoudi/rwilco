@@ -181,6 +181,9 @@ class RoutinesTourTest {
         // so the routine's own title is what says the draft has arrived. The section titles are
         // set in capitals, so they are matched whatever their case.
         rule.waitUntilShown(s(R.string.editor_title_new_routine))
+        // Every word on the form says what is being written, not only the one over the door.
+        rule.onNodeWithText(s(R.string.editor_routine_write), useUnmergedTree = true).assertIsDisplayed()
+        rule.onAllNodesWithText(s(R.string.editor_write), useUnmergedTree = true).assertCountEquals(0)
         rule.waitUntilShown(s(R.string.editor_period_title))
         rule.onNode(hasText(s(R.string.editor_start_title), ignoreCase = true), useUnmergedTree = true).performScrollTo().assertIsDisplayed()
         rule.onNodeWithText(s(R.string.routine_start_now), useUnmergedTree = true).performScrollTo().assertIsDisplayed()
