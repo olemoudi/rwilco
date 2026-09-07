@@ -721,7 +721,18 @@ because that is what its chip would show.
   swipe to the left, held, deletes with Home's minute of undo (`UndoDeleteRow`); a tap opens the
   editor; a held press offers `ReminderActionsMenu` (pause, snooze where the deadline rang,
   clone, keep as preset). The chips are "todas", the app's own "vencidas" while any is, and the
-  routines' tags in their own colours; a filter on something no longer offered clears. "Nueva
+  routines' tags in their own colours; a filter on something no longer offered clears.
+  **The list folds** (0.105.0), the way Home's does and through the same pieces: a small button
+  over "Nueva rutina" toggles `AppSettings.compactRoutines` (its own flag — the two lists are
+  read for different things), a tap on a card is the fold both ways, and the exceptions to the
+  mode live in the ViewModel as a flipped set (`shownOpen`, shared with Home). A folded routine
+  is its words and the track of its plazo and nothing else: what a folded list answers is "how
+  much is owed, and how badly", which is exactly what a column of tracks says. Arriving from
+  Home's overdue line opens the row it landed on (`expandRow`).
+  **The screen carries the routines' own colour**: `routineColor` down the leading edge of every
+  card (`RwilcoCard(rail)`, as Home rails a card in its tag's colour) and in the track while the
+  plazo is still running — red once it has run out, grey while paused. Before that it was grey
+  cards with a grey hairline each, which said nothing until you read it. "Nueva
   rutina" opens the editor as a routine (`Routes.Editor(routine = true)`: a week since the last
   time, with `routineActions`), on a form that says so — see `Since` under **The model**. A tap on a routine's prompt (next release) lands here
   (`MainActivity.DESTINATION_ROUTINES`).

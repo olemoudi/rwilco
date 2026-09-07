@@ -150,6 +150,17 @@ class RoutinesTourTest {
         rule.onNodeWithContentDescription(s(R.string.common_back)).performClick()
         rule.waitUntilShown(s(R.string.routines_question, plants))
 
+        // The fold, over "Nueva rutina": every routine down to its words and the track of its
+        // plazo, and a tap on one opens it back out on its own (0.105.0).
+        rule.onNodeWithContentDescription(s(R.string.home_compact_on)).performClick()
+        rule.waitUntilGone(s(R.string.routines_question, car))
+        rule.onNodeWithText(car, useUnmergedTree = true).assertIsDisplayed()
+        shot("routines-compact")
+        rule.onNodeWithText(car, useUnmergedTree = true).performClick()
+        rule.waitUntilShown(s(R.string.routines_question, car))
+        rule.onNodeWithContentDescription(s(R.string.home_compact_off)).performClick()
+        rule.waitUntilShown(s(R.string.routines_question, plants))
+
         // The three controls a routine's card carries, the way a reminder's does (0.99.0): the
         // "⋯" opens the same menu the held press does, and "posponer" now ends with a calendar.
         rule.onNodeWithContentDescription(s(R.string.card_more, car)).performClick()

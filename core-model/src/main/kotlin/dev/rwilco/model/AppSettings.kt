@@ -185,6 +185,14 @@ data class AppSettings(
      */
     val compactHome: Boolean = false,
     /**
+     * The same fold on the routines: a routine down to its words and the track of its plazo.
+     *
+     * Its own flag rather than [compactHome] because the two lists are read for different
+     * things — Home is "what have I got on today", the routines are "what is owed" — and
+     * somebody who wants one folded away has said nothing about the other.
+     */
+    val compactRoutines: Boolean = false,
+    /**
      * Whether the notice about what this app is has been silenced for good.
      *
      * False by default, and that is what makes it appear on a phone that already has the app:

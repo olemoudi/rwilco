@@ -1369,6 +1369,14 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_105_0">
+
+        <item>The routines fold away. A button over «New routine» takes the whole list down to a line each — the words and the track of the plazo, no counts, no controls — and a tap on one opens it back out on its own. The same gesture and the same button Home already had, and what you choose is remembered.</item>
+
+        <item>And the screen has colour in it. Every card wears a band of the routines\' own colour down its leading edge, and the track runs in that colour while the plazo is still going and in red once it has run out — which is the one thing worth seeing without reading.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_104_1">
 
         <item>The word «reminder» is gone from the routine form. The title said «New routine» and the card under it still said «Reminder · Write the reminder · What do you want to remember?», and so did the refusal when you left it blank and the delete button\'s label. They all say «routine» now, and the chip that reads a date out of your words — which would have written a trigger a routine has no use for — is not offered there.</item>

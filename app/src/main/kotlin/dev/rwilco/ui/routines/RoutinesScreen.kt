@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -29,6 +30,8 @@ import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.UnfoldLess
+import androidx.compose.material.icons.outlined.UnfoldMore
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -38,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -78,6 +82,7 @@ import dev.rwilco.ui.home.SwipeableCard
 import dev.rwilco.ui.home.UndoDeleteRow
 import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
+import dev.rwilco.ui.theme.routineColor
 import dev.rwilco.ui.theme.tagColor
 import java.time.Clock
 import java.time.Duration
@@ -108,6 +113,8 @@ fun RoutinesScreen(
     onKeepAsPreset: (String) -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val compact by viewModel.compact.collectAsStateWithLifecycle()
+    val flippedRows by viewModel.flippedRows.collectAsStateWithLifecycle()
     val pendingDelete by viewModel.pendingDelete.collectAsStateWithLifecycle()
     val snoozeCustomMinutes by viewModel.snoozeCustomMinutes.collectAsStateWithLifecycle()
     val defaultTime by viewModel.defaultTime.collectAsStateWithLifecycle()
@@ -173,6 +180,9 @@ fun RoutinesScreen(
         // Everything the list draws above the rows, in the order it draws them.
         val leading = (if (filtersShown) 1 else 0) + (if (pendingDelete != null) 1 else 0)
         listState.animateScrollToItem(leading + row)
+        // And open, whatever the mode: Home's line named this one, so it is the one somebody
+        // came here to read.
+        viewModel.expandRow(focus)
         landed = true
     }
 
@@ -208,17 +218,35 @@ fun RoutinesScreen(
         },
         floatingActionButton = {
             val haptics = Tokens.haptics
-            // The screen's one primary action, in the thumb zone, wearing the inverted neutral
-            // every primary in the app wears: amber is what fires next, and this is a door.
-            ExtendedFloatingActionButton(
-                onClick = { haptics.perform(HapticFeedbackType.Confirm); onNew() },
-                icon = { Icon(Icons.Outlined.Add, contentDescription = null) },
-                text = { Text(stringResource(R.string.routines_new), style = MaterialTheme.typography.titleMedium) },
-                containerColor = MaterialTheme.colorScheme.onSurface,
-                contentColor = MaterialTheme.colorScheme.surface,
-                shape = MaterialTheme.shapes.large,
-                modifier = Modifier.heightIn(min = Tokens.sizes.primary),
-            )
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                // Above "Nueva rutina", and the smaller of the two: this one is about *reading*
+                // the list and that one is the screen's job. The same button Home carries, in
+                // the same corner, saying the same words.
+                SmallFloatingActionButton(
+                    onClick = { haptics.perform(HapticFeedbackType.ContextClick); viewModel.setCompact(!compact) },
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.sizeIn(minWidth = Tokens.sizes.touch, minHeight = Tokens.sizes.touch),
+                ) {
+                    Icon(
+                        imageVector = if (compact) Icons.Outlined.UnfoldMore else Icons.Outlined.UnfoldLess,
+                        contentDescription = stringResource(if (compact) R.string.home_compact_off else R.string.home_compact_on),
+                    )
+                }
+                // The screen's one primary action, in the thumb zone, wearing the inverted
+                // neutral every primary in the app wears: amber is what fires next, and this
+                // is a door.
+                ExtendedFloatingActionButton(
+                    onClick = { haptics.perform(HapticFeedbackType.Confirm); onNew() },
+                    icon = { Icon(Icons.Outlined.Add, contentDescription = null) },
+                    text = { Text(stringResource(R.string.routines_new), style = MaterialTheme.typography.titleMedium) },
+                    containerColor = MaterialTheme.colorScheme.onSurface,
+                    contentColor = MaterialTheme.colorScheme.surface,
+                    shape = MaterialTheme.shapes.large,
+                    modifier = Modifier.heightIn(min = Tokens.sizes.primary),
+                )
+            }
         },
     ) { padding ->
         val direction = LocalLayoutDirection.current
@@ -284,7 +312,13 @@ fun RoutinesScreen(
                     )
                 }
             }
-            items(state.rows, key = { it.id }, contentType = { "routine" }) { row ->
+            items(
+                state.rows,
+                key = { it.id },
+                // Two shapes, two content types: a folded row and an open one recycle nothing
+                // useful from each other.
+                contentType = { if (compact != (it.id in flippedRows)) "routine-compact" else "routine" },
+            ) { row ->
                 SwipeableCard(
                     onDone = { viewModel.markDone(row.id) },
                     onDelete = { viewModel.delete(row.id) },
@@ -293,6 +327,8 @@ fun RoutinesScreen(
                     RoutineCard(
                         row = row,
                         now = now,
+                        compact = compact != (row.id in flippedRows),
+                        onToggleCompact = { viewModel.flipRow(row.id) },
                         onOpen = { onOpen(row.id) },
                         onPause = { viewModel.togglePause(row.id, row.paused) },
                         onMore = { actingOn = row.id },
@@ -365,6 +401,18 @@ private val RoutineFilter.key: String
  * One routine: the question, the answer, the count, the track, the tags. The answer is set in
  * the words' own type at the end of the question, because it is part of the sentence; "No"
  * wears the error ink, which is what "the span ran out" looks like everywhere in this app.
+ *
+ * **[compact] is the same routine as its words and its track** — no count, no controls, no
+ * tags. What a folded list answers is "how much is owed, and how badly", and the track answers
+ * exactly that: how far through the plazo each one is, in a column you read down rather than
+ * across. The tap is the fold, both ways, as it is on Home ([dev.rwilco.ui.home.ReminderCard]);
+ * the form stays behind the pencil on the open card, which is somewhere a thumb arrives on
+ * purpose.
+ *
+ * **The colour is the routines' own** ([routineColor]): the band down the leading edge, and the
+ * track while the plazo is still running. A screen made of grey cards with a grey hairline
+ * under each said nothing until you read it — and the one thing worth seeing without reading is
+ * which of them have run out, which is the track turning red.
  */
 @Composable
 private fun RoutineCard(
@@ -374,6 +422,9 @@ private fun RoutineCard(
     onPause: () -> Unit,
     onMore: () -> Unit,
     longClickLabel: String,
+    compact: Boolean = false,
+    /** The tap, on a card of either height: out on a folded one, away on an open one. */
+    onToggleCompact: () -> Unit = {},
 ) {
     val scheme = MaterialTheme.colorScheme
     val spacing = Tokens.spacing
@@ -400,7 +451,51 @@ private fun RoutineCard(
     // How far through the span it is: a full track is a "No".
     val progress = if (row.span.isZero) 1f else (Duration.between(row.anchor, now).toMillis().toFloat() / row.span.toMillis()).coerceIn(0f, 1f)
     val haptics = Tokens.haptics
-    RwilcoCard(onClick = onOpen, onLongClick = onMore, longClickLabel = longClickLabel) {
+    // A paused routine owes nothing while it rests, so it drops the colour with the rest of it.
+    val accent = if (row.paused) scheme.onSurfaceVariant else routineColor()
+    val track: @Composable (Modifier) -> Unit = { trackModifier ->
+        LinearProgressIndicator(
+            progress = { progress },
+            color = when {
+                row.paused -> scheme.outline
+                row.done -> accent
+                else -> scheme.error.copy(alpha = OVERDUE_TRACK_ALPHA)
+            },
+            trackColor = scheme.surfaceContainerHighest,
+            strokeCap = StrokeCap.Round,
+            drawStopIndicator = {},
+            modifier = trackModifier.fillMaxWidth().height(Tokens.strokes.strong),
+        )
+    }
+    if (compact) {
+        RwilcoCard(
+            onClick = onToggleCompact,
+            onLongClick = onMore,
+            longClickLabel = longClickLabel,
+            clickLabel = stringResource(R.string.card_expand),
+            rail = accent,
+        ) {
+            Column(modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.md)) {
+                Text(
+                    text = row.text,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                track(Modifier.padding(top = spacing.sm))
+            }
+        }
+        return
+    }
+    RwilcoCard(
+        onClick = onToggleCompact,
+        onLongClick = onMore,
+        longClickLabel = longClickLabel,
+        clickLabel = stringResource(R.string.card_compact),
+        rail = accent,
+    ) {
         Column(Modifier.padding(start = spacing.lg, end = spacing.lg, top = spacing.lg, bottom = spacing.sm)) {
             // **The words get the whole width.** Boxed in beside three buttons the question
             // broke over three lines with a column of air down the right; the controls go to
@@ -427,15 +522,7 @@ private fun RoutineCard(
                 style = MonoStyles.date,
                 color = scheme.onSurfaceVariant,
             )
-            Spacer(Modifier.height(spacing.md))
-            LinearProgressIndicator(
-                progress = { progress },
-                color = if (row.done || row.paused) scheme.outline else scheme.error.copy(alpha = OVERDUE_TRACK_ALPHA),
-                trackColor = scheme.surfaceContainerHighest,
-                strokeCap = StrokeCap.Round,
-                drawStopIndicator = {},
-                modifier = Modifier.fillMaxWidth().height(Tokens.strokes.strong),
-            )
+            track(Modifier.padding(top = spacing.md))
             // The footer: the tags on the left, the three things a card can be told to do on
             // the right — the same three a reminder's card carries, and the same menu behind
             // the "⋯" that the held press opens.

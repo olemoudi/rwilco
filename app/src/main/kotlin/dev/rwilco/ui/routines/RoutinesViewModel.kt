@@ -18,6 +18,7 @@ import dev.rwilco.model.dayShape
 import dev.rwilco.model.nextFire
 import dev.rwilco.model.moment
 import dev.rwilco.ui.home.UNDO_DELETE_MS
+import dev.rwilco.ui.home.shownOpen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -105,6 +106,36 @@ class RoutinesViewModel(
     /** The hour a date with no time of its own means, which is what the calendar opens on. */
     val defaultTime: StateFlow<LocalTime> = settings.filterNotNull().map { it.defaultTime }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings().defaultTime)
+
+    /** The routines down to their words and their track; see [AppSettings.compactRoutines]. */
+    val compact: StateFlow<Boolean> = settings.filterNotNull().map { it.compactRoutines }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings().compactRoutines)
+
+    /**
+     * The rows showing the *opposite* of the mode: open ones while the list is folded, folded
+     * ones while it is not. The exceptions to the mode rather than a state per row, exactly as
+     * Home keeps them ([dev.rwilco.ui.home.HomeViewModel.flippedCards], [shownOpen]) — screen
+     * state, because a routine opened out to read it is a thing somebody is doing now.
+     */
+    private val flipped = MutableStateFlow(emptySet<String>())
+    val flippedRows: StateFlow<Set<String>> = flipped
+
+    fun setCompact(compact: Boolean) {
+        // A toggle that left yesterday's exceptions behind would be a mode that does not quite
+        // do what it says.
+        flipped.value = emptySet()
+        viewModelScope.launch { store.update { it.copy(compactRoutines = compact) } }
+    }
+
+    /** One row in or out of step with the mode: the tap on a card, both ways. */
+    fun flipRow(id: String) {
+        flipped.value = if (id in flipped.value) flipped.value - id else flipped.value + id
+    }
+
+    /** One row open whatever the mode: what arriving from Home's overdue line asks for. */
+    fun expandRow(id: String) {
+        flipped.value = shownOpen(flipped.value, id, compact.value)
+    }
 
     /** What the search field types; blank is not searching. */
     fun search(words: String) { query.value = words }
