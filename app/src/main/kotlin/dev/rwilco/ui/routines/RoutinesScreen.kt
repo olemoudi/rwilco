@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -486,14 +487,29 @@ private fun RoutineCard(
             rail = accent,
         ) {
             Column(modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.md)) {
-                Text(
-                    text = row.text,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = ink,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = row.text,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = ink,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    // The word itself, on the one that has run out. Colour says "look here" and
+                    // this says what it is — and only on a "No": a column of "Sí"s down the
+                    // right-hand side would be six answers to a question nobody asked, on the
+                    // shape whose whole point is that it is the words and the track.
+                    if (overdue) {
+                        Spacer(Modifier.width(spacing.sm))
+                        Text(
+                            text = stringResource(R.string.routines_no),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = scheme.error,
+                        )
+                    }
+                }
                 // Thicker than the open card's, because here it is the card's whole answer.
                 track(Modifier.padding(top = spacing.sm), Tokens.strokes.track)
             }

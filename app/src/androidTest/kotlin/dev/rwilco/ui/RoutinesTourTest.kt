@@ -155,6 +155,8 @@ class RoutinesTourTest {
         rule.onNodeWithContentDescription(s(R.string.home_compact_on)).performClick()
         rule.waitUntilGone(s(R.string.routines_question, car))
         rule.onNodeWithText(car, useUnmergedTree = true).assertIsDisplayed()
+        // The one that has run out says the word as well as wearing the colour.
+        rule.onNodeWithText(s(R.string.routines_no), useUnmergedTree = true).assertIsDisplayed()
         shot("routines-compact")
         rule.onNodeWithText(car, useUnmergedTree = true).performClick()
         rule.waitUntilShown(s(R.string.routines_question, car))

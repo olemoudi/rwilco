@@ -1369,6 +1369,12 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_105_2">
+
+        <item>A folded routine that has run out says «No» at the end of its line, as the open one does. The colour says «look here»; the word says what it is. Only on a «No» — a column of «Sí»s down the right-hand side would be six answers to a question the folded shape does not ask.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_105_1">
 
         <item>An overdue routine is now impossible to miss. Folded away it was a red hairline where the others had a pink one — the same shape, a different tint, at arm\'s length nothing at all. It is red from the edge in: the band, a wash under the whole card, and a track that is thicker than a hairline because folded away it is the only answer the card gives.</item>

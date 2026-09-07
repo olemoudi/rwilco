@@ -734,9 +734,11 @@ because that is what its chip would show.
   plazo is still running — grey while paused. Before that it was grey cards with a grey hairline
   each, which said nothing until you read it.
   **An overdue routine is red from the edge in** (0.105.1): the rail, a wash of `errorContainer`
-  under the whole card (`OVERDUE_WASH_ALPHA`, a tint and never a red card) and the track at full
+  under the whole card (`OVERDUE_WASH_ALPHA`, a tint and never a red card), the track at full
   strength — and folded away the track is `Strokes.track` rather than the hairline, because
-  there it is the card's whole answer. The first cut said it with a 2dp line at 55% alpha, which
+  there it is the card's whole answer — and the **"No"** at the end of the line (0.105.2), which
+  is the colour saying what it is. Only on a "No": a column of "Sí"s down the right-hand side
+  would be six answers to a question the folded shape does not ask. The first cut said it with a 2dp line at 55% alpha, which
   on a phone at arm's length was the difference between pink and red and nothing else. "Nueva
   rutina" opens the editor as a routine (`Routes.Editor(routine = true)`: a week since the last
   time, with `routineActions`), on a form that says so — see `Since` under **The model**. A tap on a routine's prompt (next release) lands here

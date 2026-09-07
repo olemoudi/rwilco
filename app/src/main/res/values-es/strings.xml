@@ -1354,6 +1354,12 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_105_2">
+
+        <item>Una rutina plegada que se ha pasado dice «No» al final de su línea, como la abierta. El color dice «mira aquí» y la palabra dice qué es. Sólo en el «No»: una columna de «Sí» por la derecha serían seis respuestas a una pregunta que la ficha plegada no hace.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_105_1">
 
         <item>Una rutina vencida ya no se pasa por alto. Plegada era una raya roja donde las demás tenían una rosa —la misma forma, otro tono, a un brazo de distancia nada— y ahora es roja de canto a canto: la banda, un tinte bajo toda la ficha y una barra más gruesa que una raya, porque plegada es lo único que la ficha responde.</item>
