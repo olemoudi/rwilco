@@ -96,6 +96,8 @@ fun ReminderActionsMenu(
     onClone: () -> Unit,
     onKeepAsPreset: () -> Unit,
     onDismiss: () -> Unit,
+    /** About a routine: the rows that name the thing name it as one. */
+    routine: Boolean = false,
 ) {
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
@@ -197,7 +199,7 @@ fun ReminderActionsMenu(
                     }
                     ActionRow(
                         icon = Icons.Outlined.ContentCopy,
-                        label = stringResource(R.string.home_clone),
+                        label = stringResource(if (routine) R.string.home_clone_routine else R.string.home_clone),
                         hint = stringResource(R.string.home_clone_hint),
                         onClick = onClone,
                     )

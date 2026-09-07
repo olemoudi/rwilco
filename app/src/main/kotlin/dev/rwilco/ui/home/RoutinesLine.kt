@@ -95,10 +95,14 @@ fun OverdueRoutineRow(routine: RoutineNameUi, now: Instant, onOpen: () -> Unit, 
     // is what the first draft of this row did.
     val ago = countdownText(partsBetween(now, routine.since))
     val opens = stringResource(R.string.home_routines_open)
+    // The header first: "todavía no has hecho: mover el coche" is the whole of what the row
+    // says, and a description that started with the words alone dropped the half that made
+    // them a complaint.
+    val header = stringResource(R.string.home_routines_overdue_title)
     RwilcoCard(
         onClick = onOpen,
         color = scheme.errorContainer,
-        modifier = modifier.semantics { contentDescription = routine.text + ". " + ago + ". " + opens },
+        modifier = modifier.semantics { contentDescription = header + " " + routine.text + ". " + ago + ". " + opens },
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,

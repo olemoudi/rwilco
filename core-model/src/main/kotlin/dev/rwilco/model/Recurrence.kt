@@ -394,6 +394,12 @@ private fun spanAfter(
  * Move the anchor's date by [step], then take the hour [hour] asks for. If that lands on or
  * before the anchor — dealing with something at 23:00 and asking for "tomorrow at 09:00" cannot
  * mean this morning — the next day is taken instead.
+ *
+ * The landing is a local time in [zone] as it is *now*: an hour inside a spring-forward gap
+ * resolves an hour on (as `AtDateTime` does, see `NextFire.kt`), and a phone that changes zone
+ * re-lands every span in the new one — "las nueve" stays nine o'clock wherever the phone is,
+ * which for a routine can move its deadline by hours across a flight and flip a row from "Sí" to
+ * "No" mid-air. Both are the honest reading; neither is silent any more.
  */
 private inline fun Instant.landingAt(
     zone: ZoneId,

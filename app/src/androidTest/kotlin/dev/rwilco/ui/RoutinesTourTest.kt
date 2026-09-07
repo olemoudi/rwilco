@@ -130,6 +130,8 @@ class RoutinesTourTest {
         rule.waitUntilShown(s(R.string.routines_title))
         rule.waitUntilShown(s(R.string.routines_question, car))
         rule.onNodeWithText(s(R.string.routines_question, plants), substring = true, useUnmergedTree = true).assertIsDisplayed()
+        // "Sí" is a button on the card, named after the routine (0.107.0).
+        rule.onNodeWithContentDescription(s(R.string.routines_mark_done, plants)).assertIsDisplayed()
         shot("routines")
 
         // "Vencidas" keeps the one that is owed; "Todas" brings the rest back.

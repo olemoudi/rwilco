@@ -105,6 +105,16 @@
     <string name="routines_no">No</string>
     <string name="routines_starts">starts %1$s</string>
     <string name="routines_filter_paused">Paused</string>
+    <string name="routines_card_actions">Routine actions</string>
+    <string name="home_clone_routine">Clone routine</string>
+    <string name="routines_failed_title">The routines could not be read</string>
+    <string name="routines_deleted">Deleted</string>
+    <string name="routines_paused_snack">Paused</string>
+    <string name="routines_resumed">Resumed</string>
+    <string name="routines_pause">Pause «%1$s»</string>
+    <string name="routines_resume">Resume «%1$s»</string>
+    <string name="history_note_routine">The last times it was done, asked about or reset. It goes with the routine, and never leaves this phone.</string>
+    <string name="home_search_kind_routine">Routine</string>
     <string name="routines_filter_waiting">Not started yet</string>
     <string name="routines_paused">paused</string>
     <string name="routines_put_off">put off</string>
@@ -1385,6 +1395,16 @@
         <item>A reminder with sound now goes to your headphones when you are wearing any, instead of out of the phone\'s speaker as an alarm otherwise would. It is a setting, in Sound, and it is worth turning off if your earbuds live in a drawer: a reminder played to nobody is a reminder missed.</item>
         <item>And it no longer stops your music. What was playing drops a few decibels and carries on underneath while the reminder sounds over it — the reminder is on the alarm channel and the music is not, so neither has to fight the other — and comes back by itself. It used to ask for the audio outright, which ended podcasts for a ten-second chime.</item>
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_107_1">
+
+        <item>The routines\' polish round. «Yes» is a button with its word, not a bare tick, and it is not offered before a routine\'s count has begun. The snackbars and labels on that screen speak of a routine («Deleted», «Routine actions», «Clone routine»), Back closes the search and then the chip as it does on Home, and a routine found by Home\'s search says «Routine» in its own colour and opens the routines with it in view.</item>
+
+        <item>For a screen reader: a folded routine says its state («Yes · 1 d ago · due in 19 d»), an open one reads its question and answer as one sentence rather than an arrow, the pause control names the routine as its neighbours do, and Home\'s overdue row says its header first.</item>
+
+        <item>The span chips under a routine read as what they will be — «every day since the last time», not «the next day».</item>
+
     </string-array>
 
     <string-array name="whats_new_0_107_0">

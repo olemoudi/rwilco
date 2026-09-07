@@ -461,7 +461,7 @@ sealed interface SearchHitUi {
     val key: String
 
     /** [done] when it is one already dealt with: found all the same, and said so on the row. */
-    data class OfReminder(val id: String, val text: String, val tags: List<String>, val done: Boolean = false) : SearchHitUi {
+    data class OfReminder(val id: String, val text: String, val tags: List<String>, val done: Boolean = false, val routine: Boolean = false) : SearchHitUi {
         override val key: String get() = "reminder-$id"
     }
 
@@ -477,7 +477,7 @@ fun buildSearchState(reminders: List<Reminder>, query: String, open: Boolean): S
     query = query,
     hits = if (!open) emptyList() else search(reminders, query).map { hit ->
         when (hit) {
-            is SearchHit.OfReminder -> SearchHitUi.OfReminder(hit.reminder.id, hit.reminder.text, hit.reminder.tags, done = hit.reminder.status == Status.DONE)
+            is SearchHit.OfReminder -> SearchHitUi.OfReminder(hit.reminder.id, hit.reminder.text, hit.reminder.tags, done = hit.reminder.status == Status.DONE, routine = hit.reminder.isRoutine)
             is SearchHit.OfTag -> SearchHitUi.OfTag(hit.tag, hit.count)
         }
     },

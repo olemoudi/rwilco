@@ -195,7 +195,7 @@ internal fun RecurrenceSection(
             }
             for (preset in spans) {
                 PresetChip(
-                    label = presetLabel(preset, today),
+                    label = presetLabel(preset, today, routine),
                     selected = recurrence.sameSpanAs(preset.recurrence),
                     onClick = { onPick(preset) },
                 )
@@ -577,7 +577,7 @@ private fun RecurrenceListDialog(
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = spacing.md)) {
                                     Text(
-                                        text = presetLabel(preset, today),
+                                        text = presetLabel(preset, today, selected is Recurrence.Since),
                                         style = MaterialTheme.typography.bodyLarge,
                                         color = if (preset.recurrence == selected) scheme.surface else scheme.onSurface,
                                         maxLines = 1,
@@ -772,9 +772,12 @@ private fun HourChips(hour: RecurrenceHour, defaultTime: LocalTime, onHour: (Rec
 
 /** A preset's own name, or the shape's own words when it has none. */
 @Composable
-private fun presetLabel(preset: RecurrencePreset, today: LocalDate): String {
+private fun presetLabel(preset: RecurrencePreset, today: LocalDate, routine: Boolean = false): String {
     val words = rememberWords()
-    return preset.name.ifEmpty { recurrenceLabel(words, preset.recurrence, today) }
+    // Under a routine a span preset is what it will be once picked — "cada día desde la última
+    // vez", not the "al día siguiente" the same shape reads as on a reminder (withSpanOf).
+    val shape = if (routine && preset.recurrence !is Recurrence.Since) Recurrence.Since(1, RecurrenceUnit.DAYS).withSpanOf(preset.recurrence) else preset.recurrence
+    return preset.name.ifEmpty { recurrenceLabel(words, shape, today) }
 }
 
 

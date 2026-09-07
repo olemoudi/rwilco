@@ -572,7 +572,7 @@ fun EditorScreen(
                     EditorSection(
                         title = stringResource(R.string.history_title),
                         icon = Icons.Outlined.History,
-                        note = stringResource(R.string.history_note),
+                        note = stringResource(if (routine) R.string.history_note_routine else R.string.history_note),
                     ) {
                         HistoryList(history = state.history, today = today, zone = zone, routine = routine)
                     }

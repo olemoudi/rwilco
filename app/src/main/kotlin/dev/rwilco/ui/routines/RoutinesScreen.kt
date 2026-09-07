@@ -44,6 +44,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.BorderStroke
+import androidx.activity.compose.BackHandler
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -130,12 +138,12 @@ fun RoutinesScreen(
     val words = rememberWords()
     val snackbar = LocalSnackbar.current
     val doneMessage = stringResource(R.string.routines_done)
-    val deletedMessage = stringResource(R.string.home_deleted)
-    val pausedMessage = stringResource(R.string.home_paused)
-    val resumedMessage = stringResource(R.string.home_resumed)
+    val deletedMessage = stringResource(R.string.routines_deleted)
+    val pausedMessage = stringResource(R.string.routines_paused_snack)
+    val resumedMessage = stringResource(R.string.routines_resumed)
     val snoozeCancelledMessage = stringResource(R.string.home_snooze_cancelled)
     val undoLabel = stringResource(R.string.common_undo)
-    val actionsLabel = stringResource(R.string.home_card_actions)
+    val actionsLabel = stringResource(R.string.routines_card_actions)
     // The row being held, and so the one the actions menu is about.
     var actingOn by rememberSaveable { mutableStateOf<String?>(null) }
     // And the one a calendar is open for: "posponer · a una fecha concreta" asks a second
@@ -148,6 +156,10 @@ fun RoutinesScreen(
     // A routine arrived at from its own row on Home is scrolled to, once: the list is rebuilt
     // every minute (the counts move), and a scroll on every rebuild would fight the thumb.
     var landed by rememberSaveable { mutableStateOf(false) }
+    // Back closes the search first and then the chip, as on Home: both are states somebody put
+    // the screen in, and Back used to leave the screen with the list still narrowed.
+    BackHandler(enabled = searching) { searching = false; viewModel.search("") }
+    BackHandler(enabled = !searching && state.filter != RoutineFilter.All) { viewModel.selectFilter(RoutineFilter.All) }
 
     LaunchedEffect(viewModel) {
         viewModel.eventFlow.collect { event ->
@@ -272,7 +284,7 @@ fun RoutinesScreen(
             if (state.failed) {
                 item(key = "failed") {
                     EmptyState(
-                        title = stringResource(R.string.home_failed_title),
+                        title = stringResource(R.string.routines_failed_title),
                         body = stringResource(R.string.home_failed_body),
                         icon = Icons.Outlined.ErrorOutline,
                     )
@@ -363,6 +375,7 @@ fun RoutinesScreen(
             onClone = { actingOn = null; onClone(held.id) },
             onKeepAsPreset = { actingOn = null; onKeepAsPreset(held.id) },
             onDismiss = { actingOn = null },
+            routine = true,
         )
     }
 
@@ -469,7 +482,8 @@ private fun RoutineCard(
         else -> countdownText(partsBetween(clock, row.anchor))
     }
     val due = countdownText(partsBetween(clock, row.deadline))
-    val dueLine = elapsed + stringResource(R.string.common_separator) +
+    val separator = stringResource(R.string.common_separator)
+    val dueLine = elapsed + separator +
         stringResource(if (row.done) R.string.routines_due else R.string.routines_overdue, due)
     // How far through the span it is: a full track is a "No".
     val progress = if (row.span.isZero) 1f else (Duration.between(row.anchor, clock).toMillis().toFloat() / row.span.toMillis()).coerceIn(0f, 1f)
@@ -506,6 +520,9 @@ private fun RoutineCard(
             clickLabel = stringResource(R.string.card_expand),
             color = cardColour,
             rail = accent,
+            // Folded, the state lives in the colour and the track; a screen reader hears it
+            // here instead — "Sí · hace 1 d · vence en 19 d".
+            modifier = Modifier.semantics { stateDescription = answer + separator + dueLine },
         ) {
             Column(modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.md)) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -569,7 +586,8 @@ private fun RoutineCard(
                 color = ink,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth(),
+                // The arrow is for the eye; a screen reader gets the sentence.
+                modifier = Modifier.fillMaxWidth().semantics { contentDescription = "$question $answer" },
             )
             Spacer(Modifier.height(spacing.sm))
             // **The count and its track are furniture, not the alarm.** The answer at the end
@@ -599,19 +617,28 @@ private fun RoutineCard(
                 // and a button: it was a swipe-and-hold, a held menu and a screen-reader
                 // action, and none of those is a thing a thumb finds. Not while it rests: a
                 // "hecho" on a paused routine would move a count that is not running.
-                if (!row.paused) {
-                    IconButton(onClick = { haptics.perform(HapticFeedbackType.Confirm); onDone() }) {
-                        Icon(
-                            imageVector = Icons.Outlined.Check,
-                            contentDescription = stringResource(R.string.routines_mark_done, row.text),
-                            tint = scheme.onSurface,
-                        )
+                // Nor before the count begins: a "sí" on "empieza el 1 de octubre" would throw
+                // the start away for a "hecho" nobody meant.
+                if (!row.paused && !row.startsLater) {
+                    val markDone = stringResource(R.string.routines_mark_done, row.text)
+                    OutlinedButton(
+                        onClick = { haptics.perform(HapticFeedbackType.Confirm); onDone() },
+                        shape = MaterialTheme.shapes.medium,
+                        border = BorderStroke(Tokens.strokes.control, scheme.outline),
+                        colors = ButtonDefaults.outlinedButtonColors(containerColor = scheme.surfaceContainerHigh, contentColor = scheme.onSurface),
+                        contentPadding = PaddingValues(horizontal = spacing.md),
+                        modifier = Modifier.heightIn(min = Tokens.sizes.touch).semantics { contentDescription = markDone },
+                    ) {
+                        Icon(Icons.Outlined.Check, contentDescription = null, modifier = Modifier.size(Tokens.sizes.glyphSmall))
+                        Spacer(Modifier.width(spacing.xs))
+                        Text(stringResource(R.string.routines_yes), style = MaterialTheme.typography.labelLarge)
                     }
+                    Spacer(Modifier.width(spacing.xs))
                 }
                 IconButton(onClick = { haptics.perform(HapticFeedbackType.ContextClick); onPause() }) {
                     Icon(
                         imageVector = if (row.paused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause,
-                        contentDescription = stringResource(if (row.paused) R.string.card_resume else R.string.card_pause),
+                        contentDescription = stringResource(if (row.paused) R.string.routines_resume else R.string.routines_pause, row.text),
                         tint = scheme.onSurfaceVariant,
                     )
                 }

@@ -649,6 +649,7 @@ fun HomeScreen(
                     SearchResultRow(
                         hit = hit,
                         onOpen = onOpen,
+                        onOpenRoutine = { id -> onRoutines(id) },
                         onFilterByTag = viewModel::filterByTag,
                         modifier = Modifier.animateItem(),
                     )

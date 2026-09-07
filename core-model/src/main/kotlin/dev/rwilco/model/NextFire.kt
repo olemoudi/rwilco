@@ -56,7 +56,9 @@ fun nextFire(
     reminder.snoozedToPlace?.let { return NextFire.WhenAt(it, snoozed = true) }
     val snoozedUntil = reminder.snoozedUntil
     if (snoozedUntil != null && snoozedUntil > now) {
-        return NextFire.Scheduled(snoozedUntil, reminder.rules.firstOrNull()?.trigger, snoozed = true)
+        // A routine's moment has no rule behind it, snoozed or not: its rules ask, and a card
+        // wearing the icon of a rule that can never ring would be saying the wrong thing.
+        return NextFire.Scheduled(snoozedUntil, reminder.rules.firstOrNull()?.trigger.takeUnless { reminder.isRoutine }, snoozed = true)
     }
     // A routine: the span since the last "hecho" is the ring, and the rules never are — they ask
     // (or count as done) and nothing more, which is the scheduler's business (`nextPrompt`), not

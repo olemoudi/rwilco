@@ -101,6 +101,16 @@
     <string name="routines_no">No</string>
     <string name="routines_starts">empieza %1$s</string>
     <string name="routines_filter_paused">En pausa</string>
+    <string name="routines_card_actions">Acciones de la rutina</string>
+    <string name="home_clone_routine">Clonar rutina</string>
+    <string name="routines_failed_title">No se han podido leer las rutinas</string>
+    <string name="routines_deleted">Eliminada</string>
+    <string name="routines_paused_snack">Pausada</string>
+    <string name="routines_resumed">Reanudada</string>
+    <string name="routines_pause">Pausar «%1$s»</string>
+    <string name="routines_resume">Reanudar «%1$s»</string>
+    <string name="history_note_routine">Las últimas veces que se hizo, se preguntó o se reinició. Se va con la rutina, y no sale de este teléfono.</string>
+    <string name="home_search_kind_routine">Rutina</string>
     <string name="routines_filter_waiting">Aún no empieza</string>
     <string name="routines_paused">en pausa</string>
     <string name="routines_put_off">pospuesta</string>
@@ -1370,6 +1380,16 @@
         <item>Un aviso con sonido va ahora a tus auriculares cuando los llevas puestos, en vez de salir por el altavoz del móvil como haría cualquier alarma. Es un ajuste, en Sonido, y merece la pena desactivarlo si tus auriculares viven en un cajón: un aviso que suena para nadie es un aviso perdido.</item>
         <item>Y ya no te corta la música. Lo que estuvieras escuchando baja unos decibelios y sigue por debajo mientras el aviso suena por encima —el aviso va por el canal de alarma y la música no, así que ninguno tiene que pelear con el otro— y vuelve solo a su volumen. Antes pedía el audio en exclusiva, lo que mataba un podcast por un tono de diez segundos.</item>
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_107_1">
+
+        <item>La ronda de pulido de las rutinas. «Sí» es un botón con su palabra, no una marca suelta, y no se ofrece antes de que la cuenta de una rutina haya empezado. Los avisos y las etiquetas de esa pantalla hablan de una rutina («Eliminada», «Acciones de la rutina», «Clonar rutina»), Atrás cierra el buscador y luego el chip como en el inicio, y una rutina encontrada por el buscador del inicio dice «Rutina» en su color y abre las rutinas con esa a la vista.</item>
+
+        <item>Para un lector de pantalla: una rutina plegada dice su estado («Sí · hace 1 d · vence en 19 d»), una abierta lee su pregunta y su respuesta como una frase y no como una flecha, el control de pausa nombra la rutina como sus vecinos, y la fila de vencidas del inicio dice primero su encabezado.</item>
+
+        <item>Los chips de plazo bajo una rutina se leen como lo que serán —«cada día desde la última vez», no «al día siguiente»—.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_107_0">

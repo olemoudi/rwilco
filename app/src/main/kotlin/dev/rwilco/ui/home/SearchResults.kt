@@ -16,6 +16,8 @@ import androidx.compose.material.icons.automirrored.outlined.Notes
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.Search
+import dev.rwilco.ui.theme.routineColor
+import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -128,14 +130,27 @@ fun SearchResultRow(
     onOpen: (String) -> Unit,
     onFilterByTag: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /** A routine's door: the routines with it in view, not the form. */
+    onOpenRoutine: (String) -> Unit = onOpen,
 ) {
     when (hit) {
+        // A routine is found like anything else and said as what it is — its own glyph in its
+        // own colour, "Rutina" in the corner — and opens where it lives.
         is SearchHitUi.OfReminder -> ResultCard(
-            icon = { Icon(Icons.AutoMirrored.Outlined.Notes, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(Tokens.sizes.glyphMedium)) },
+            icon = {
+                if (hit.routine) Icon(Icons.Outlined.Autorenew, contentDescription = null, tint = routineColor(), modifier = Modifier.size(Tokens.sizes.glyphMedium))
+                else Icon(Icons.AutoMirrored.Outlined.Notes, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(Tokens.sizes.glyphMedium))
+            },
             title = hit.text,
             subtitle = joinAll(hit.tags.take(3)).takeIf { it.isNotEmpty() },
-            kind = stringResource(if (hit.done) R.string.home_search_kind_done else R.string.home_search_kind_reminder),
-            onClick = { onOpen(hit.id) },
+            kind = stringResource(
+                when {
+                    hit.done -> R.string.home_search_kind_done
+                    hit.routine -> R.string.home_search_kind_routine
+                    else -> R.string.home_search_kind_reminder
+                },
+            ),
+            onClick = { if (hit.routine) onOpenRoutine(hit.id) else onOpen(hit.id) },
             modifier = modifier,
         )
         is SearchHitUi.OfTag -> ResultCard(

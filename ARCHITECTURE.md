@@ -714,6 +714,18 @@ with no rules. The form warns on a rule that is not a question under a routine
 card under a routine drops the questions and opens with "hecha N veces · cada X de media"
 (`routineHistory`, `HistorySummary.kt`).
 
+**The polish round** (0.107.1): "Sí" is an outlined button with its word, not a bare glyph, and
+not before the count begins; the folded card carries a `stateDescription` ("Sí · hace 1 d · vence
+en 19 d") and the open card's question and answer are one spoken sentence, not an arrow; the pause
+control names the routine as its neighbours do; Home's overdue row tells a screen reader its
+header first; Back closes the search and then the chip, as on Home; the screen's snackbars and
+labels are the routine's own words ("Eliminada", "Acciones de la rutina", "Clonar rutina", the
+read-failure title, the history note); a routine found by Home's search says "Rutina" in its
+colour and opens the routines with it in view; the span chips under a routine read as what they
+will be ("cada día desde la última vez", not "al día siguiente"); `nextFire`'s snooze branch
+carries no rule under a routine, `lastMomentGone` answers null for one, and `landingAt` says out
+loud what DST and a change of zone do to a landing.
+
 ## UI
 
 - Single activity, `navigation-compose` type-safe routes (`Routes.kt`): Home, Editor(id?),

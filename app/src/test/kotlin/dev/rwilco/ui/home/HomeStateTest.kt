@@ -383,6 +383,9 @@ class HomeStateTest {
         // And a routine's tag is not a chip on Home: nothing there wears it.
         assertTrue(state.tags.none { it is TagFilter.Named && it.tag == "coche" })
         assertEquals(RoutinesLineUi(), buildHomeState(listOf(soon), defaultTime, now, zone, selectedTag = null).routines)
+        // Found by the search as what it is, so the row can say "Rutina" and open the routines.
+        val hits = buildSearchState(listOf(late, soon), "late", open = true).hits.filterIsInstance<SearchHitUi.OfReminder>()
+        assertTrue(hits.single { it.id == "late" }.routine)
         // The door names the next one to run out when nothing is owed.
         val calm = buildHomeState(listOf(fresh, soon), defaultTime, now, zone, selectedTag = null).routines
         assertEquals("fresh", calm.nextDue?.id)

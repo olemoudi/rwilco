@@ -238,6 +238,9 @@ fun Reminder.lastMomentGone(
         lastDealtAt = null,
         dealtThrough = null,
     )
+    // A routine's one moment is its deadline and it never runs out of one, so the walk below
+    // would re-derive the same instant a thousand times: nothing here is ever gone for good.
+    if (isRoutine) return null
     var cursor = createdAt.minusMillis(1)
     var last: Instant? = null
     repeat(MOMENTS_WALKED) {
