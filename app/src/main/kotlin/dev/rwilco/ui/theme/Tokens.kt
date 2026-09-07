@@ -71,6 +71,12 @@ data class Strokes(
     val control: Dp = 1.5.dp,
     /** A control that is on, or otherwise wants to be the loudest line on the screen. */
     val strong: Dp = 2.dp,
+    /**
+     * A progress track that is *the* thing on its card rather than furniture under it: the
+     * routines folded away are their words and this bar, and a 2dp hairline read down a list of
+     * them says nothing about which one has run out.
+     */
+    val track: Dp = 5.dp,
 )
 
 /**

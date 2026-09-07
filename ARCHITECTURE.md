@@ -731,8 +731,13 @@ because that is what its chip would show.
   Home's overdue line opens the row it landed on (`expandRow`).
   **The screen carries the routines' own colour**: `routineColor` down the leading edge of every
   card (`RwilcoCard(rail)`, as Home rails a card in its tag's colour) and in the track while the
-  plazo is still running — red once it has run out, grey while paused. Before that it was grey
-  cards with a grey hairline each, which said nothing until you read it. "Nueva
+  plazo is still running — grey while paused. Before that it was grey cards with a grey hairline
+  each, which said nothing until you read it.
+  **An overdue routine is red from the edge in** (0.105.1): the rail, a wash of `errorContainer`
+  under the whole card (`OVERDUE_WASH_ALPHA`, a tint and never a red card) and the track at full
+  strength — and folded away the track is `Strokes.track` rather than the hairline, because
+  there it is the card's whole answer. The first cut said it with a 2dp line at 55% alpha, which
+  on a phone at arm's length was the difference between pink and red and nothing else. "Nueva
   rutina" opens the editor as a routine (`Routes.Editor(routine = true)`: a week since the last
   time, with `routineActions`), on a form that says so — see `Since` under **The model**. A tap on a routine's prompt (next release) lands here
   (`MainActivity.DESTINATION_ROUTINES`).

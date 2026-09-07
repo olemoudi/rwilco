@@ -51,6 +51,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -451,20 +453,27 @@ private fun RoutineCard(
     // How far through the span it is: a full track is a "No".
     val progress = if (row.span.isZero) 1f else (Duration.between(row.anchor, now).toMillis().toFloat() / row.span.toMillis()).coerceIn(0f, 1f)
     val haptics = Tokens.haptics
-    // A paused routine owes nothing while it rests, so it drops the colour with the rest of it.
-    val accent = if (row.paused) scheme.onSurfaceVariant else routineColor()
-    val track: @Composable (Modifier) -> Unit = { trackModifier ->
+    // **An overdue routine is red from the edge in.** A paused one owes nothing while it rests,
+    // so it drops the colour with the rest of it; a routine still inside its plazo wears the
+    // routines' own; and one whose plazo has run out wears the error ink in all three places a
+    // card has to say it — the band down the edge, the wash under the whole card, and the
+    // track. Folded away there is no "No" to read and no count: the colour is the only thing
+    // left to notice, so it has to be impossible to miss rather than tasteful.
+    val overdue = !row.done && !row.paused
+    val accent = when {
+        row.paused -> scheme.onSurfaceVariant
+        overdue -> scheme.error
+        else -> routineColor()
+    }
+    val cardColour = if (overdue) scheme.errorContainer.copy(alpha = OVERDUE_WASH_ALPHA).compositeOver(scheme.surfaceContainer) else scheme.surfaceContainer
+    val track: @Composable (Modifier, Dp) -> Unit = { trackModifier, weight ->
         LinearProgressIndicator(
             progress = { progress },
-            color = when {
-                row.paused -> scheme.outline
-                row.done -> accent
-                else -> scheme.error.copy(alpha = OVERDUE_TRACK_ALPHA)
-            },
+            color = if (row.paused) scheme.outline else accent,
             trackColor = scheme.surfaceContainerHighest,
             strokeCap = StrokeCap.Round,
             drawStopIndicator = {},
-            modifier = trackModifier.fillMaxWidth().height(Tokens.strokes.strong),
+            modifier = trackModifier.fillMaxWidth().height(weight),
         )
     }
     if (compact) {
@@ -473,6 +482,7 @@ private fun RoutineCard(
             onLongClick = onMore,
             longClickLabel = longClickLabel,
             clickLabel = stringResource(R.string.card_expand),
+            color = cardColour,
             rail = accent,
         ) {
             Column(modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.md)) {
@@ -484,7 +494,8 @@ private fun RoutineCard(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                track(Modifier.padding(top = spacing.sm))
+                // Thicker than the open card's, because here it is the card's whole answer.
+                track(Modifier.padding(top = spacing.sm), Tokens.strokes.track)
             }
         }
         return
@@ -494,6 +505,7 @@ private fun RoutineCard(
         onLongClick = onMore,
         longClickLabel = longClickLabel,
         clickLabel = stringResource(R.string.card_compact),
+        color = cardColour,
         rail = accent,
     ) {
         Column(Modifier.padding(start = spacing.lg, end = spacing.lg, top = spacing.lg, bottom = spacing.sm)) {
@@ -522,7 +534,7 @@ private fun RoutineCard(
                 style = MonoStyles.date,
                 color = scheme.onSurfaceVariant,
             )
-            track(Modifier.padding(top = spacing.md))
+            track(Modifier.padding(top = spacing.md), Tokens.strokes.strong)
             // The footer: the tags on the left, the three things a card can be told to do on
             // the right — the same three a reminder's card carries, and the same menu behind
             // the "⋯" that the held press opens.
@@ -557,4 +569,5 @@ private fun RoutineCard(
 }
 
 /** A full track on an overdue routine still says so, at the volume a line under the words wants. */
-private const val OVERDUE_TRACK_ALPHA = 0.55f
+/** How much of the error container the card's wash carries: a tint, never a red card. */
+private const val OVERDUE_WASH_ALPHA = 0.3f
