@@ -24,6 +24,10 @@ import dev.rwilco.model.watchedCircles
 import dev.rwilco.model.monthlyRule
 import dev.rwilco.model.weekDays
 import dev.rwilco.model.nextFire
+import dev.rwilco.model.routineDeadline
+import dev.rwilco.model.promptQuietUntil
+import dev.rwilco.model.nextPrompt
+import dev.rwilco.model.isRoutine
 import dev.rwilco.model.nextWake
 import dev.rwilco.model.pendingRules
 import java.time.Duration
@@ -307,6 +311,11 @@ private fun Reminder.stateLine(now: Instant, zone: ZoneId, settings: AppSettings
     append("armed=${stampOf(armedFor)}${armedRule?.let { "/r$it" } ?: ""}")
     append(" fired=${stampOf(lastFiredAt)}${lastFiredRule?.let { "/r$it" } ?: ""} dealt=${stampOf(lastDealtAt)} snooze=${stampOf(snoozedUntil)}${snoozedToPlace?.let { "/" + it.snoozeDetail().substringBefore(':') } ?: ""}")
     if (firedRules.isNotEmpty()) append(" fr=${firedRules.sorted()}")
+    // The net's word and the routine's question, which the ring's columns say nothing about:
+    // "it did not ask" is a question this line could not answer before.
+    if (nudgedAt != null) append(" nudged=${stampOf(nudgedAt)}")
+    if (askedAt != null) append(" asked=${stampOf(askedAt)}")
+    if (pausedAt != null) append(" paused=${stampOf(pausedAt)}")
     if (status == Status.ACTIVE) {
         val next = nextFire(this@stateLine, now, zone, settings.defaultTime, settings.dayStart, settings.dayShape)
         val wake = nextWake(this@stateLine, now, zone, settings.defaultTime, settings.dayStart, settings.dayShape)
@@ -314,6 +323,12 @@ private fun Reminder.stateLine(now: Instant, zone: ZoneId, settings: AppSettings
         append(" wake=${stampOf(wake?.at)}${wake?.ruleIndex?.let { "/r$it" } ?: ""}")
         val pending = pendingRules()
         if (pending.size != rules.size) append(" pending=$pending")
+        if (isRoutine) {
+            val ask = nextPrompt(now, zone, settings.defaultTime, settings.dayStart, settings.dayShape)
+            append(" ask=${stampOf(ask?.at)}${ask?.ruleIndex?.let { "/r$it" } ?: ""}")
+            append(" quiet=${stampOf(promptQuietUntil(zone, settings.dayStart))}")
+            append(" deadline=${stampOf(routineDeadline(zone, settings.dayStart))}")
+        }
     }
 }
 

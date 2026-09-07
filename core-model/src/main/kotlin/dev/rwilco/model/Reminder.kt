@@ -82,9 +82,11 @@ data class Reminder(
     val nudgedAt: Instant? = null,
     /**
      * When a routine was last **asked** whether it had been done — the question a rule under
-     * [Recurrence.Since] puts instead of ringing (see `Routines.kt`). One slot, not one per rule:
-     * two questions within minutes of each other are the same question. Null for everything
-     * that is not a routine, and for every row written before the column existed.
+     * [Recurrence.Since] puts instead of ringing (see `Routines.kt`) — or last *tried* and
+     * dropped at its own fence, which moves the next question on the same way (see
+     * `ReminderFiring.ask`). One slot, not one per rule: two questions within minutes of each
+     * other are the same question. Null for everything that is not a routine, and for every
+     * row written before the column existed.
      */
     val askedAt: Instant? = null,
     /**
@@ -98,6 +100,16 @@ data class Reminder(
      * from here on the old ring is not the reason anything stays quiet.
      */
     val resumedAt: Instant? = null,
+    /**
+     * When the pause now standing began, and null while nothing is paused.
+     *
+     * A routine's count is frozen by it (see `Routines.kt`): the time paused is not time that
+     * passed, so "mover el coche" paused for the month the car was in the shop owes on resume
+     * exactly what it owed when it was paused, and rings then — not the second the pause is
+     * lifted. Written on pause, cleared on resume, and the resume moves the anchor by the
+     * difference ([routineAnchorAfterPause]). Nothing else reads it.
+     */
+    val pausedAt: Instant? = null,
     /**
      * Which rule [lastFiredAt] rang for; null when the ring had no rule behind it (a snooze, a
      * recurrence's own moment) — and for every row written before the column existed.

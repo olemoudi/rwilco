@@ -116,4 +116,18 @@ class SentencePartsTest {
         assertFalse(note.saysMoreThanWords(), "the line stays off the screen")
         assertTrue(sentenceParts("x", listOf(clock), RuleMatch.ANY, Recurrence.None).saysMoreThanWords())
     }
+
+    @Test
+    fun `a routine told where its count runs from says so, before the span, on either side of now`() {
+        val zone = java.time.ZoneId.of("Europe/Madrid")
+        val now = LocalDateTime.of(2026, 8, 27, 15, 0).atZone(zone).toInstant()
+        val monday = LocalDateTime.of(2026, 8, 24, 9, 0).atZone(zone).toInstant()
+        val behind = sentenceParts("Regar", emptyList(), RuleMatch.ANY, Recurrence.Since(1, RecurrenceUnit.WEEKS, startsAt = monday), now = now)
+        assertEquals(listOf(SentencePart.Words("Regar"), SentencePart.Start(monday, behind = true), SentencePart.Returns(Recurrence.Since(1, RecurrenceUnit.WEEKS, startsAt = monday))), behind)
+        val october = LocalDateTime.of(2026, 10, 1, 9, 0).atZone(zone).toInstant()
+        val ahead = sentenceParts("Filtro", emptyList(), RuleMatch.ANY, Recurrence.Since(3, RecurrenceUnit.MONTHS, startsAt = october), now = now)
+        assertEquals(SentencePart.Start(october, behind = false), ahead[1])
+        // Nothing said when nothing was said: the count runs from the day it was written.
+        assertTrue(sentenceParts("Coche", emptyList(), RuleMatch.ANY, Recurrence.Since(21, RecurrenceUnit.DAYS), now = now).none { it is SentencePart.Start })
+    }
 }

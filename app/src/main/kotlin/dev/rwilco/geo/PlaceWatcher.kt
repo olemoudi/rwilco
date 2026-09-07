@@ -189,13 +189,23 @@ class PlaceWatcher(
                 val gate = circle.opensAt
                 if (gate == null) asking += circle.place else listening += circle.place
                 if (gate != null && (opens == null || gate < opens!!)) opens = gate
-                // A resting circle keeps its baseline only if it is waiting for a doorway. A
-                // *state* has to be asked afresh when the rest is over, and keeping the answer
-                // is how "mientras esté en casa, y vuelve cada día" rang once and then never
-                // again: the phone never left, so the side never changed, so there was no
-                // moment for the watch to report. Forgotten, the first look after the rest
-                // finds it true and says so.
-                if (circle.resting && circle.place.onCrossing) remembered += circle.place.id
+                // A resting circle keeps its baseline if it is waiting for a doorway. An
+                // ordinary *state* has to be asked afresh when the rest is over, and keeping
+                // the answer is how "mientras esté en casa, y vuelve cada día" rang once and
+                // then never again: the phone never left, so the side never changed, so there
+                // was no moment for the watch to report. Forgotten, the first look after the
+                // rest finds it true and says so.
+                //
+                // **A routine's circle keeps it whatever its reading** (0.106.0). Its rest is
+                // the quiet after a "hecho", and forgetting a state across it did the opposite
+                // damage: a place that counts as done ("mientras esté fuera del garaje") was
+                // found true again at the end of every quiet, counted the routine done again,
+                // and the deadline never came. Kept, it fires when the phone comes to that side
+                // — or is already there the first time anybody looks — and not again until it
+                // has left. See PlaceGate.routineCircles.
+                if (circle.resting && (circle.place.onCrossing || circle.place.crossing == Crossing.ASKS || circle.place.crossing == Crossing.RESETS)) {
+                    remembered += circle.place.id
+                }
             }
         }
         return Watching(asking, listening, opens, remembered)

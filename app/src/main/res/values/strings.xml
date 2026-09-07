@@ -271,10 +271,11 @@
     <string name="recur_since_chip">Since the last time</string>
     <string name="recur_custom_span">Another span</string>
     <string name="routine_start_now">Right now</string>
-    <string name="routine_start_later">At a future moment</string>
-    <string name="routine_start_title">When does it start?</string>
-    <string name="routine_start_past">That moment is behind us</string>
+    <string name="routine_start_other">Another moment</string>
+    <string name="routine_start_title">The last time, or when it starts</string>
     <string name="routine_start_then">and then %1$s</string>
+    <string name="editor_sentence_last_time">last time</string>
+    <string name="editor_sentence_starts">starts</string>
     <string name="recur_since_title">Since the last time</string>
     <string name="recur_since_note">A routine: it counts from the last time you marked it done, and rings when that long has passed. The «when» only asks whether you\'ve done it.</string>
     <string name="recur_list_title">Recurrences</string>
@@ -457,6 +458,7 @@
     <string name="history_reset">counted as done by a place</string>
     <string name="history_reset_leave">counted as done on leaving %1$s</string>
     <string name="history_reset_arrive">counted as done on arriving at %1$s</string>
+    <string name="history_unreset">the place\'s «done» was undone</string>
     <string name="history_skipped">next round skipped</string>
     <string name="history_snoozed">put off</string>
     <string name="history_snoozed_until">put off until %1$s</string>
@@ -1367,6 +1369,22 @@
         <item>A reminder with sound now goes to your headphones when you are wearing any, instead of out of the phone\'s speaker as an alarm otherwise would. It is a setting, in Sound, and it is worth turning off if your earbuds live in a drawer: a reminder played to nobody is a reminder missed.</item>
         <item>And it no longer stops your music. What was playing drops a few decibels and carries on underneath while the reminder sounds over it — the reminder is on the alarm channel and the music is not, so neither has to fight the other — and comes back by itself. It used to ask for the audio outright, which ended podcasts for a ten-second chime.</item>
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_106_0">
+
+        <item>A place that counts a routine as done no longer counts it again on its own. Written as «while I am outside the garage» (the reading 0.104.0 opened), the watch forgot which side you were on while the routine kept quiet after a «done», found you still outside when the quiet ended, and called that news — every tenth of the span, for ever, so the deadline never came. It remembers now: a place counts once when you come to its side (or are already there the first time it looks), and not again until you have left.</item>
+
+        <item>Pausing a routine freezes its count. The time it rests is not time that passed: a car a month in the shop still owes eleven days on the day the pause is lifted, not nineteen days ago and ringing that same second. The row keeps saying «hace 10 d» and «Sí» for as long as it rests.</item>
+
+        <item>«The last time was Monday.» The start chip on a routine takes a moment behind you as well as one ahead — it is the same anchor — and the line over «Guardar» says which. A routine written on Wednesday with the plants watered on Monday comes out with its count right.</item>
+
+        <item>A question the phone slept through is still asked. The next question used to be looked for from now, so a nine o\'clock the phone was off for was simply gone until tomorrow; it is looked for from the last one now, and a moment already gone is asked the moment the phone is back. Two doors within minutes are one question whichever put the first, and a routine just written — or told to start next month — is no longer mute for a tenth of its span from the day it was written: the quiet is what follows a «done», and only that.</item>
+
+        <item>Four things that could not happen through the form and could through a backup or an old preset, closed: a reminder turned into a routine sheds the ring it had already given (it used to never arm, never ask and never get the net\'s word); a routine put off «until I get home» keeps watching the places that count it as done; a stray repeat on a routine is no longer lifted into a calendar on read, taking the routine with it; and a routine never carries a set\'s deadline, whose lapse would have written a silent «done».</item>
+
+        <item>Smaller: «not yet» on a question leaves a line in the history; the undo of a place\'s «done» never moves the count forward past a later «done» of your own, and leaves its own line; the net\'s word on a routine keeps the question («ICYMI: Have you done…?»); and the diagnostics say when a routine will next ask, until when it keeps quiet, and when its deadline is.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_105_2">

@@ -54,8 +54,18 @@ interface ReminderDao {
      * bringing a reminder back is asking for it again, which is what stops a ring nobody
      * answered from keeping a place-as-state quiet for ever. See [Reminder.resumedAt].
      */
-    @Query("UPDATE reminder SET status = :status, updatedAt = :at, doneAt = :doneAt, resumedAt = COALESCE(:resumedAt, resumedAt) WHERE id = :id")
-    suspend fun setStatus(id: String, status: String, at: Long, doneAt: Long?, resumedAt: Long?)
+    @Query("UPDATE reminder SET status = :status, updatedAt = :at, doneAt = :doneAt, resumedAt = COALESCE(:resumedAt, resumedAt), pausedAt = :pausedAt WHERE id = :id")
+    suspend fun setStatus(id: String, status: String, at: Long, doneAt: Long?, resumedAt: Long?, pausedAt: Long?)
+
+    /**
+     * A routine brought back from a pause, in one write: the status, the resume stamp, the
+     * pause cleared and the count's anchor moved by the time it rested
+     * ([Reminder.routineAnchorAfterPause]). One statement, or a process dying between two would
+     * leave an anchor already moved under a pause still standing — and the next resume would
+     * move it again.
+     */
+    @Query("UPDATE reminder SET status = 'ACTIVE', updatedAt = :at, resumedAt = :at, pausedAt = NULL, lastDealtAt = :anchor WHERE id = :id")
+    suspend fun resumeRoutine(id: String, at: Long, anchor: Long)
 
     /**
      * A snooze is the person's word: to a clock or to a place, never both, and the two are

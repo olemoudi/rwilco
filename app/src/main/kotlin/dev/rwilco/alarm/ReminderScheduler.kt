@@ -24,6 +24,7 @@ import dev.rwilco.model.Status
 import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.Wake
 import dev.rwilco.model.hasDeadline
+import dev.rwilco.model.isRoutine
 import dev.rwilco.model.missedFire
 import dev.rwilco.model.nudgeAt
 import dev.rwilco.model.nextPrompt
@@ -208,7 +209,9 @@ class ReminderScheduler(
      * rung: the ring clears the moment, so there is simply nothing here to arm.
      */
     private fun armLapse(reminder: Reminder) {
-        val at = reminder.expiresAt?.takeIf { reminder.status == Status.ACTIVE && reminder.hasDeadline }
+        // hasDeadline is already false on a routine; said here too, because a lapse on one
+        // would be a silent "hecho" and this is the door it would come through.
+        val at = reminder.expiresAt?.takeIf { reminder.status == Status.ACTIVE && reminder.hasDeadline && !reminder.isRoutine }
         if (at == null) {
             cancelLapse(reminder.id)
             return

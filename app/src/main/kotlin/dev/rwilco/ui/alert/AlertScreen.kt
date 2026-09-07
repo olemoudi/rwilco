@@ -58,7 +58,7 @@ import dev.rwilco.ui.theme.Tracking
 import dev.rwilco.ui.theme.icon
 import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
 import dev.rwilco.ui.components.SnoozeOffers
-import dev.rwilco.ui.components.FutureMomentSheet
+import dev.rwilco.ui.components.MomentSheet
 import dev.rwilco.model.SnoozePlace
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.semantics.isTraversalGroup
@@ -343,7 +343,7 @@ fun AlertScreen(
             Spacer(Modifier.height(spacing.sm))
         }
         if (pickingDate && onSnoozeUntil != null) {
-            FutureMomentSheet(
+            MomentSheet(
                 now = ZonedDateTime.now(),
                 defaultTime = content.defaultTime,
                 onConfirm = { until -> pickingDate = false; onSnoozeUntil(until) },

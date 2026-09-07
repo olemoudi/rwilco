@@ -73,6 +73,8 @@ class VaultSchemaTest {
             // Room v12: when a routine was last asked whether it had been done; older rows never were.
             "askedAt",
             "resumedAt",
+            // Room v14: when the pause now standing began; older rows are not paused by it.
+            "pausedAt",
         )
     }
 }

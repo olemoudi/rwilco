@@ -660,32 +660,44 @@ class ReminderFiring(
      * shade with "sí, ahora" and "todavía no", never a ring (see Prompt.kt).
      *
      * Reached from the asking alarm (a clock rule's moment, [viaPlace] false) and from a doorway
-     * the watch or the fences saw crossed ([viaPlace] true). Dropped, and nothing written, when
-     * the question is not worth putting: the rule is gone or does not ask, the deadline has rung
-     * and is asking louder, the routine is put off, the quiet after a "hecho" is not over, the
-     * same doorway asked a moment ago, or the rule's own fences do not hold now — asked in full,
-     * because the asking alarm is inexact and may land after the window. What is written is
-     * [Reminder.askedAt], which is what makes the next question look past this one.
+     * or a state the watch or the fences met ([viaPlace] true; the word rides into the diag line
+     * so a dropped question says which door put it). Dropped, and nothing written, when the
+     * question is not worth putting: the rule is gone or does not ask, the deadline has rung
+     * and is asking louder, the routine is put off, or the moment is before the next question
+     * is due ([Reminder.promptLookFrom]: the quiet after a "hecho", the echo of the last
+     * question through either door, the start, the last edit). Dropped **and stamped** when the
+     * rule's own fences do not hold now — asked in full, because the asking alarm is inexact
+     * and may land after the window — because a question owed from the past is handed back by
+     * the next look until something moves it on. Put, it writes [Reminder.askedAt] and the
+     * history line.
      */
     suspend fun ask(id: String, ruleIndex: Int?, viaPlace: Boolean) = lock.withLock {
         val reminder = repository.get(id) ?: return@withLock Diag.note(TAG_DIAG, "r=${short(id)} gone")
         val now = clock.instant()
         val settings = settings()
         val rule = ruleIndex?.let { reminder.rules.getOrNull(it) }
+        val door = if (viaPlace) "place" else "clock"
         fun dropped(why: String) {
             Log.i(TAG, "$id: question dropped: $why")
-            Diag.note(TAG_DIAG, "r=${short(id)} question dropped: $why (rule $ruleIndex)")
+            Diag.note(TAG_DIAG, "r=${short(id)} question dropped: $why (rule $ruleIndex, $door)")
         }
         when {
             !reminder.isRoutine || rule == null || !rule.asks -> dropped("nothing asks here")
             !reminder.promptsAllowed(now) -> dropped("not now: ringing, or put off")
+            // The quiet, the echo of the last question (whichever door put it), the start, the
+            // last edit: one line, because promptLookFrom is one answer (see Prompt.kt).
             now.plusSeconds(EARLY_GRACE_SECONDS) < reminder.promptLookFrom(now, clock.zone, settings.dayStart) ->
-                dropped("quiet until ${reminder.promptLookFrom(now, clock.zone, settings.dayStart)}")
-            viaPlace && reminder.askedAt?.let { Duration.between(it, now) < PLACE_ECHO } == true -> dropped("asked ${Duration.between(reminder.askedAt, now).seconds}s ago")
+                dropped("not before ${reminder.promptLookFrom(now, clock.zone, settings.dayStart)}")
             else -> {
                 val failed = firstFailing(rule.conditions, askAll = true, now, moment = now)
                 if (failed != null) {
                     dropped("the rule wants ${failed.said(placeWatch.read())}")
+                    // Tried, and stamped as tried: the next question is looked for past this
+                    // moment (promptLookFrom), so it is the rule's *next* one. Without the
+                    // stamp a question owed from the past would be handed back by the next
+                    // re-arm, delivered at once, dropped at the same fence, and re-armed — an
+                    // alarm in a tight loop. Not recorded as ASKED: nothing was.
+                    repository.setAskedAt(id, now)
                 } else {
                     Log.i(TAG, "asking $id whether it has been done (rule $ruleIndex)")
                     Diag.note(TAG_DIAG, "r=${short(id)} ASKED (rule $ruleIndex)")
@@ -752,13 +764,27 @@ class ReminderFiring(
         scheduler.rearmAll()
     }
 
-    /** "Deshacer" on a reset by a place: the count goes back to [previous], the moment it ran from. */
+    /**
+     * "Deshacer" on a reset by a place: the count goes back to [previous], the moment it ran from.
+     *
+     * Never forward: a "hecho" given by hand after the reset and before the card was tapped is
+     * the person's own word, and an undo that rolled the count back past it would be undoing
+     * the wrong thing. And written down — the history said the routine was counted as done at
+     * the garage, and stopped there; a reset undone left a line that was no longer true.
+     */
     suspend fun undoReset(id: String, previous: Instant?) = lock.withLock {
         AlertNotifications.cancelReset(context, id)
         val reminder = repository.get(id) ?: return@withLock
         if (!reminder.isRoutine) return@withLock
+        val standing = reminder.lastDealtAt
+        if (standing != null && previous != null && previous > standing) {
+            Diag.note(TAG_DIAG, "r=${short(id)} reset undo refused: would move the count forward")
+            return@withLock
+        }
+        val now = clock.instant()
         Diag.note(TAG_DIAG, "r=${short(id)} reset undone: back to $previous")
         repository.setLastDealtAt(id, previous)
+        repository.record(id, FiringKind.UNRESET, now)
         scheduler.rearmAll()
     }
 

@@ -531,6 +531,16 @@ class EditorStateTest {
     }
 
     @Test
+    fun `turning a reminder into a routine is the one edit that sheds the old ring`() {
+        val rang = Reminder(id = "r", text = "Regar", createdAt = now.minusSeconds(86_400), updatedAt = now, lastFiredAt = now.minusSeconds(3600))
+        val routine = blank.withText("Regar").setRecurrence(Recurrence.Since(21, RecurrenceUnit.DAYS)).draft
+        assertTrue(becomesRoutine(rang, routine))
+        assertFalse(becomesRoutine(rang, blank.withText("Regar").draft), "an ordinary edit carries the ring")
+        assertFalse(becomesRoutine(rang.copy(recurrence = Recurrence.Since(7, RecurrenceUnit.DAYS)), routine), "a routine edited stays one, ring and all")
+        assertFalse(becomesRoutine(null, routine), "a new routine has no ring to shed")
+    }
+
+    @Test
     fun `a routine's count starts where it is told to, and the span it is given does not move it`() {
         val start = Instant.parse("2026-10-01T07:00:00Z")
         val routine = blank.withText("Cambiar el filtro").setRecurrence(Recurrence.Since(3, RecurrenceUnit.MONTHS))

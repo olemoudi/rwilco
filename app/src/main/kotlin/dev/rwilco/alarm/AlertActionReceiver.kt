@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import dev.rwilco.RwilcoApplication
+import dev.rwilco.data.FiringKind
 import dev.rwilco.model.Snooze
 import dev.rwilco.notify.AlertNotifications
 import java.time.Instant
@@ -30,8 +31,13 @@ class AlertActionReceiver : BroadcastReceiver() {
                                 ?: Snooze.TEN_MINUTES
                             app.firing.snooze(id, snooze)
                         }
-                        // "Todavía no" to a routine's question: the card goes, nothing is written.
-                        ACTION_LATER -> AlertNotifications.cancelAsk(context, id)
+                        // "Todavía no" to a routine's question: the card goes and the count does
+                        // not move — but the answer is written down, or "todavía no" and "never
+                        // saw the card" were the same nothing in the history.
+                        ACTION_LATER -> {
+                            AlertNotifications.cancelAsk(context, id)
+                            app.repository.record(id, FiringKind.SNOOZED, detail = LATER_DETAIL)
+                        }
                         ACTION_UNDO_RESET -> app.firing.undoReset(
                             id,
                             intent.getLongExtra(EXTRA_PREVIOUS, -1L).takeIf { it >= 0 }?.let(Instant::ofEpochMilli),
@@ -59,3 +65,6 @@ class AlertActionReceiver : BroadcastReceiver() {
         private const val BUDGET_MS = 9_000L
     }
 }
+
+/** What a "todavía no" writes as its detail: not a moment and not a place, just the word. */
+const val LATER_DETAIL = "later"

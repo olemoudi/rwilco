@@ -264,10 +264,11 @@
     <string name="recur_since_chip">Desde la última vez</string>
     <string name="recur_custom_span">Otro plazo</string>
     <string name="routine_start_now">Ahora mismo</string>
-    <string name="routine_start_later">En un momento futuro</string>
-    <string name="routine_start_title">¿Cuándo empieza?</string>
-    <string name="routine_start_past">Ese momento ya ha pasado</string>
+    <string name="routine_start_other">Otro momento</string>
+    <string name="routine_start_title">La última vez, o cuándo empieza</string>
     <string name="routine_start_then">y luego %1$s</string>
+    <string name="editor_sentence_last_time">la última vez</string>
+    <string name="editor_sentence_starts">empieza</string>
     <string name="recur_since_title">Desde la última vez</string>
     <string name="recur_since_note">Una rutina: cuenta desde la última vez que lo marcaste hecho y suena cuando ha pasado ese tiempo. El «cuándo» sólo pregunta si lo has hecho.</string>
     <string name="recur_list_title">Recurrencias</string>
@@ -446,6 +447,7 @@
     <string name="history_reset">contada como hecha por un lugar</string>
     <string name="history_reset_leave">contada como hecha al salir de %1$s</string>
     <string name="history_reset_arrive">contada como hecha al llegar a %1$s</string>
+    <string name="history_unreset">se deshizo el hecho del lugar</string>
     <string name="history_skipped">saltada la siguiente</string>
     <string name="history_snoozed">pospuesto</string>
     <string name="history_snoozed_until">pospuesto hasta %1$s</string>
@@ -1352,6 +1354,22 @@
         <item>Un aviso con sonido va ahora a tus auriculares cuando los llevas puestos, en vez de salir por el altavoz del móvil como haría cualquier alarma. Es un ajuste, en Sonido, y merece la pena desactivarlo si tus auriculares viven en un cajón: un aviso que suena para nadie es un aviso perdido.</item>
         <item>Y ya no te corta la música. Lo que estuvieras escuchando baja unos decibelios y sigue por debajo mientras el aviso suena por encima —el aviso va por el canal de alarma y la música no, así que ninguno tiene que pelear con el otro— y vuelve solo a su volumen. Antes pedía el audio en exclusiva, lo que mataba un podcast por un tono de diez segundos.</item>
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_106_0">
+
+        <item>Un lugar que da una rutina por hecha ya no la vuelve a dar por hecha él solo. Escrito como «mientras esté fuera del garaje» (la lectura que abrió la 0.104.0), el vigía olvidaba en qué lado estabas mientras la rutina callaba tras un «hecho», te encontraba fuera al acabar la calma y lo tomaba por noticia — cada décima parte del plazo, para siempre, así que el plazo no llegaba nunca. Ahora lo recuerda: un lugar cuenta una vez cuando llegas a su lado (o si ya estás allí la primera vez que mira), y no otra hasta que te hayas ido.</item>
+
+        <item>Pausar una rutina congela su cuenta. El tiempo que descansa no es tiempo que pasó: un coche un mes en el taller sigue debiendo once días el día que se levanta la pausa, no diecinueve días atrás y sonando en ese mismo segundo. La fila sigue diciendo «hace 10 d» y «Sí» mientras descansa.</item>
+
+        <item>«La última vez fue el lunes.» El chip de arranque de una rutina admite un momento pasado además de uno futuro —es la misma ancla— y la frase sobre «Guardar» dice cuál. Una rutina escrita el miércoles con las plantas regadas el lunes sale con la cuenta bien.</item>
+
+        <item>Una pregunta con el móvil apagado se sigue haciendo. La siguiente pregunta se buscaba desde ahora, así que las nueve con el móvil apagado se perdían hasta mañana; ahora se busca desde la última, y un momento ya pasado se pregunta en cuanto el móvil vuelve. Dos puertas con minutos de diferencia son una sola pregunta la ponga quien la ponga, y una rutina recién escrita —o que empieza el mes que viene— ya no calla una décima parte del plazo desde el día que se escribió: la calma es lo que sigue a un «hecho», y sólo eso.</item>
+
+        <item>Cuatro cosas que no podían pasar por el formulario y sí por una copia o un preset viejo, cerradas: un recordatorio convertido en rutina se desprende del timbre que ya había dado (no se armaba, no preguntaba y la red no decía nada); una rutina pospuesta «hasta que llegue a casa» sigue vigilando los lugares que la dan por hecha; una repetición suelta en una rutina ya no se eleva a calendario al leerla llevándose la rutina; y una rutina nunca lleva el plazo de un conjunto, cuyo vencimiento habría escrito un «hecho» en silencio.</item>
+
+        <item>Menores: «todavía no» a una pregunta deja línea en el historial; deshacer el «hecho» de un lugar nunca adelanta la cuenta por encima de un «hecho» tuyo posterior, y deja su línea; la palabra de la red en una rutina conserva la pregunta («ICYMI: ¿Has hecho…?»); y el diagnóstico dice cuándo preguntará una rutina, hasta cuándo calla y cuándo vence.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_105_2">

@@ -18,22 +18,23 @@ import java.time.LocalTime
 import java.time.ZonedDateTime
 
 /**
- * A moment ahead, picked off a calendar: one day, one hour, one [Instant] handed back.
+ * A moment, picked off a calendar: one day, one hour, one [Instant] handed back.
  *
  * Two questions in the app ask it. **"Posponer · a una fecha concreta"** is the one snooze offer
  * that is not a length: every other one is a step from now — ten minutes, two hours, the weekend
  * — which is right for the answers people give in the second after a ring and wrong for the one
- * they give a week ahead ("esto, el 3 de noviembre"). And **"empieza en un momento futuro"** on
- * a routine, where the moment is not a ring at all but where the count starts
- * ([Recurrence.Since.startsAt]). Same calendar, same hour field, same refusal of the past — so
- * one sheet, wearing whichever [title] asked for it.
+ * they give a week ahead ("esto, el 3 de noviembre"). It refuses the past: a snooze into the
+ * past is a ring that arrives the instant the sheet closes. And **where a routine's count runs
+ * from** ([Recurrence.Since.startsAt]) — "la última vez fue el lunes", "empieza el 1 de
+ * octubre" — which is an anchor and not a ring, and so takes either side of now ([allowPast]).
+ * Same calendar, same hour field; one sheet, wearing whichever [title] asked for it.
  *
- * It opens on today at the reminders' own hour, and the button waits while the moment chosen is
- * behind us: a snooze into the past is a ring that arrives the instant the sheet closes, and a
- * routine that starts in the past is one that starts now, said the long way round.
+ * It opens on today at the reminders' own hour — on the first day that hour is still ahead on,
+ * when the past is refused: at nine at night "posponer hasta" means tomorrow, and a sheet that
+ * opens on a moment already past opens with its button greyed out and an error under it.
  */
 @Composable
-fun FutureMomentSheet(
+fun MomentSheet(
     now: ZonedDateTime,
     defaultTime: LocalTime,
     onConfirm: (Instant) -> Unit,
@@ -41,17 +42,16 @@ fun FutureMomentSheet(
     title: String = stringResource(R.string.snooze_until_title),
     /** What the button says while the moment chosen is behind us. */
     pastNote: String = stringResource(R.string.snooze_until_past),
+    /** Whether a moment behind us is an answer: an anchor's is, a snooze's is not. */
+    allowPast: Boolean = false,
 ) {
     val today = now.toLocalDate()
-    // Opens on the first day that hour is still ahead on: at nine in the morning "posponer
-    // hasta" means today, and at nine at night it means tomorrow — a sheet that opens on a
-    // moment already past opens with its button greyed out and an error under it.
-    val opensOn = if (today.atTime(defaultTime).atZone(now.zone).toInstant() > now.toInstant()) today else today.plusDays(1)
+    val opensOn = if (allowPast || today.atTime(defaultTime).atZone(now.zone).toInstant() > now.toInstant()) today else today.plusDays(1)
     var date by rememberDate(opensOn)
     var time by rememberTime(defaultTime)
     val untouched = remember { listOf(date, time) }
     val chosen = date.atTime(time).atZone(now.zone).toInstant()
-    val past = !chosen.isAfter(now.toInstant())
+    val past = !allowPast && !chosen.isAfter(now.toInstant())
     SheetScaffold(
         title = title,
         onDismiss = onDismiss,

@@ -271,6 +271,26 @@ class PlaceGateTest {
         val held = done.circles().single()
         assertEquals(Crossing.RESETS, held.place.crossing)
         assertEquals(done.promptQuietUntil(zone), held.opensAt, "opens when the quiet is over")
+        // Gated, it rests — and the watch keeps a resting routine circle's memory, which is
+        // what stops a state that counts as done from counting itself done again at the end
+        // of every quiet (PlaceWatcher.watching).
+        assertTrue(held.resting, "a gated routine circle rests")
+        assertFalse(circle.resting, "an open one does not")
+    }
+
+    @Test
+    fun `a routine put off to a place keeps the doorway that counts as done, and drops the ones that ask`() {
+        val since = Recurrence.Since(21, RecurrenceUnit.DAYS)
+        val written = now.minusSeconds(10 * 86_400)
+        val garage = leavingHome.copy(lat = homeLat + 0.01, label = "Garaje")
+        val put = reminder(TriggerRule(garage, resets = true), TriggerRule(leavingHome), recurrence = since)
+            .copy(createdAt = written, snoozedToPlace = home)
+        val circles = put.circles()
+        assertEquals(setOf(Crossing.RINGS, Crossing.RESETS), circles.map { it.place.crossing }.toSet(), "the snooze's circle and the vouching one; the asking one waits")
+        assertEquals(SNOOZE_RULE, circles.single { it.place.crossing == Crossing.RINGS }.ruleIndex)
+        assertEquals(0, circles.single { it.place.crossing == Crossing.RESETS }.ruleIndex)
+        // Not a routine: the snooze's circle alone, as ever.
+        assertEquals(1, reminder(TriggerRule(leavingHome)).copy(snoozedToPlace = home).circles().size)
     }
 
     @Test

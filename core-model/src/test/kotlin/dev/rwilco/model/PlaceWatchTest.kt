@@ -26,6 +26,27 @@ class PlaceWatchTest {
         Fix(homeLat + metres / 111_195.0, homeLng, accuracy, at)
 
     @Test
+    fun `a state is news on the first look that finds the phone on its side, and not again until it has left`() {
+        // A routine's place read as a state, "mientras esté fuera del garaje = hecho". The first
+        // judgement finds the phone outside: news, the count restarts. The next look, memory
+        // kept, finds nothing changed. The same look with the memory wiped calls it news again
+        // — which is exactly what the watch did at the end of every quiet before it kept a
+        // resting routine circle's memory (PlaceWatcher.watching, 0.106.0), and why a routine
+        // written that way never rang.
+        val outside = WatchedPlace("r1#0", homeLat, homeLng, radiusM = 200, transition = Transition.EXIT, label = "Garaje", crossing = Crossing.RESETS, onCrossing = false)
+        val first = stepPlaceWatch(PlaceWatchState(), north(1000.0), listOf(outside), now)
+        assertEquals(listOf(PlaceEvent(outside.id, Transition.EXIT)), first.events, "already there: news")
+        assertEquals(false, first.state.inside[outside.id])
+        val again = stepPlaceWatch(first.state, north(1200.0, at = now.plusSeconds(600)), listOf(outside), now.plusSeconds(600))
+        assertTrue(again.events.isEmpty(), "still outside: nothing happened")
+        val forgotten = stepPlaceWatch(first.state.copy(inside = emptyMap()), north(1200.0, at = now.plusSeconds(600)), listOf(outside), now.plusSeconds(600))
+        assertEquals(1, forgotten.events.size, "with the memory wiped the same look is news again")
+        // A doorway waits for the line: no memory, no crossing, nothing.
+        val door = outside.copy(onCrossing = true)
+        assertTrue(stepPlaceWatch(PlaceWatchState(), north(1000.0), listOf(door), now).events.isEmpty())
+    }
+
+    @Test
     fun `haversine agrees with the map`() {
         // Madrid to Barcelona, city centre to city centre: about 505 km.
         val madridBarcelona = distanceMeters(40.4169, -3.7035, 41.3874, 2.1686)

@@ -390,13 +390,11 @@ object AlertNotifications {
         // A routine's card asks rather than states: "¿Has hecho «mover el coche»?" is the whole
         // of what its ring is for, and in a shade full of reminders it is what tells the two
         // apart at a glance (the full-screen alert says so in its own colour; see AlertScreen).
-        // The net's prefix outranks it: "ICYMI" is about the ring that got away, not about the
-        // kind of reminder it was.
-        val title = when {
-            nudge?.saysItGotAway == true -> context.getString(R.string.notif_net_prefix, reminder.text)
-            reminder.isRoutine -> context.getString(R.string.notif_routine_question, reminder.text)
-            else -> reminder.text
-        }
+        // The net's prefix goes in front of it rather than instead of it: "ICYMI" is about the
+        // ring that got away, the question is what the ring was for, and a routine's one word
+        // from the net is the last thing it will say about that ring — it should say both.
+        val words = if (reminder.isRoutine) context.getString(R.string.notif_routine_question, reminder.text) else reminder.text
+        val title = if (nudge?.saysItGotAway == true) context.getString(R.string.notif_net_prefix, words) else words
         val builder = NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)

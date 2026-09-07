@@ -90,4 +90,16 @@ class LegacyRepeatsTest {
         assertNull(folded.lastFiredRule, "a ring of the repeat's is the calendar's now, and has no index")
         assertEquals(listOf(TriggerRule(home)), folded.rules)
     }
+
+    @Test
+    fun `a routine is left exactly as it is, stray repeat and all`() {
+        // Folding runs on every read; lifting a repeat into a calendar would take the `Since`
+        // with it and the routine would stop being one in silence. A restored vault is where
+        // such a row could come from.
+        val since = Recurrence.Since(21, RecurrenceUnit.DAYS)
+        val routine = stored(nine, home, armedRule = null, firedRules = emptySet()).copy(recurrence = since)
+        val folded = routine.foldRepeats(zone)
+        assertEquals(since, folded.recurrence)
+        assertEquals(routine.rules, folded.rules)
+    }
 }

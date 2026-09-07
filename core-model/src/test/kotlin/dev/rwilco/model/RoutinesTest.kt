@@ -174,6 +174,55 @@ class RoutinesTest {
     }
 
     @Test
+    fun `a pause freezes the count, and lifting it continues the count where it stopped`() {
+        // Day 10 of 21, paused: the car is in the shop. Thirty days later the row still says
+        // "hace 10 d" and "Sí" — nothing is owed while it rests — and lifting the pause moves
+        // the anchor on by the thirty days, so the deadline is eleven days from the resume, not
+        // nineteen days ago and ringing the same second.
+        val paused = car(createdAt = now.minusSeconds(10 * 86_400)).copy(status = Status.PAUSED, pausedAt = now)
+        val later = now.plusSeconds(30 * 86_400)
+        assertEquals(now, paused.routineClock(later), "the clock stopped where the pause began")
+        assertTrue(paused.routineDone(later, zone, dayStart), "Sí: nothing is owed while it rests")
+        assertEquals(local(2026, 9, 7, 9, 0), paused.routineDeadline(zone, dayStart), "the deadline as it stood, for the row")
+        val anchor = paused.routineAnchorAfterPause(later)
+        assertEquals(paused.routineAnchor().plusSeconds(30 * 86_400), anchor)
+        // What the repository writes on resume (ReminderDao.resumeRoutine).
+        val resumed = paused.copy(status = Status.ACTIVE, pausedAt = null, lastDealtAt = anchor, resumedAt = later, updatedAt = later)
+        assertEquals(local(2026, 10, 7, 9, 0), resumed.routineDeadline(zone, dayStart), "eleven days from the resume, landed on the hour")
+        assertTrue(resumed.routineDone(later, zone, dayStart))
+        val wake = nextWake(resumed, later, zone, defaultTime, dayStart)
+        assertTrue(wake != null && wake.at > later, "nothing rings the second the pause is lifted")
+        // The same arithmetic on a routine that had been done: the last "hecho" moves on.
+        val done = car(lastDealtAt = now.minusSeconds(5 * 86_400)).copy(status = Status.PAUSED, pausedAt = now)
+        assertEquals(now.minusSeconds(5 * 86_400).plusSeconds(30 * 86_400), done.routineAnchorAfterPause(later))
+        // And nothing paused is nothing to move.
+        assertEquals(car().routineAnchor(), car().routineAnchorAfterPause(later))
+        assertEquals(later, car().routineClock(later))
+    }
+
+    @Test
+    fun `an unanswered ring is one word from the net, at a tenth of the span or half an hour, and then nothing`() {
+        // What the owner expects of a routine nobody answered (2026-09-07): the ring once, the
+        // net's ICYMI after max(30 min, span/10) beside it, and no re-ring and no re-ask. The
+        // routines screen and Home's line carry it from there.
+        val deadline = local(2026, 8, 20, 9, 0)
+        val rang = car(createdAt = deadline.minusSeconds(21 * 86_400)).copy(lastFiredAt = deadline)
+        val due = rang.netDue(deadline.plusSeconds(60), zone, defaultTime, SafetyNetSettings(), dayStart)
+        assertEquals(NetWord.LET_GO, due?.word)
+        // A tenth of three weeks is two days, and the net never waits past its own longest
+        // wait (afterHours, a day): the word comes a day after the ring.
+        assertEquals(deadline.plus(Duration.ofHours(SafetyNetSettings().afterHours.toLong())), due?.at, "capped at the net's longest wait")
+        assertNull(rang.next(), "the ring is spent")
+        assertNull(rang.wake())
+        assertFalse(rang.promptsAllowed(now), "the questions hold while the alarm is asking louder")
+        // Said, it is said: no second word about the same ring.
+        assertNull(rang.copy(nudgedAt = due!!.at).netDue(due.at.plusSeconds(3600), zone, defaultTime, SafetyNetSettings(), dayStart))
+        // Six hours of pills: a tenth is 36 minutes, over the floor; one hour would be the floor.
+        val pills = car(span = Recurrence.Since(6, RecurrenceUnit.HOURS), createdAt = now.minusSeconds(7 * 3600)).copy(lastFiredAt = now.minusSeconds(60))
+        assertEquals(now.minusSeconds(60).plus(Duration.ofMinutes(36)), pills.netDue(now, zone, defaultTime, SafetyNetSettings(), dayStart)?.at)
+    }
+
+    @Test
     fun `a snooze on the ring outranks the deadline, as it outranks everything`() {
         val snoozed = car(lastFiredAt = now.minusSeconds(3600)).copy(snoozedUntil = now.plusSeconds(1800))
         assertEquals(NextFire.Scheduled(now.plusSeconds(1800), null, snoozed = true), snoozed.next())

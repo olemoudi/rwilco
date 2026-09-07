@@ -415,6 +415,7 @@ class EditorViewModel(
                 before.rules == current.draft.rules &&
                 before.ruleMatch == current.draft.ruleMatch &&
                 before.deadline == current.draft.deadline
+            val becomesRoutine = becomesRoutine(before, current.draft)
             val reminder = current.draft.toReminder(
                 id = before?.id ?: draftId,
                 createdAt = before?.createdAt ?: now,
@@ -424,16 +425,25 @@ class EditorViewModel(
                 status = if (before == null || before.status == Status.DONE) Status.ACTIVE else before.status,
                 // The recurrence's anchor and the last ring survive an edit; the armed moment
                 // does not. See Draft.toReminder.
+                //
+                // **Except across the edit that makes it a routine.** A routine's deadline is
+                // `anchor + span`, and `recurrenceMoment` spends any moment at or before the
+                // last ring — so a reminder that rang last week, turned into "cada 21 días
+                // desde la última vez" today, had a first deadline older than its own last
+                // ring: nothing armed, no questions (`awaitingAnswer` held), and the net cut
+                // by the word it had already said. The ring, the round and the net's word
+                // belonged to a reminder that no longer exists; the anchor ("hecho") stays.
                 lastDealtAt = before?.lastDealtAt,
-                lastFiredAt = before?.lastFiredAt,
+                lastFiredAt = before?.lastFiredAt.takeUnless { becomesRoutine },
                 dealtThrough = before?.dealtThrough,
                 // The round under way survives a typo; a change to the rules themselves is
                 // the one edit that starts it again (the indices would name other rules).
-                firedRules = if (before != null && before.rules == current.draft.rules) before.firedRules else emptySet(),
-                lastFiredRule = if (before != null && before.rules == current.draft.rules) before.lastFiredRule else null,
-                nudgedAt = before?.nudgedAt,
+                firedRules = if (before != null && before.rules == current.draft.rules && !becomesRoutine) before.firedRules else emptySet(),
+                lastFiredRule = if (before != null && before.rules == current.draft.rules && !becomesRoutine) before.lastFiredRule else null,
+                nudgedAt = before?.nudgedAt.takeUnless { becomesRoutine },
                 askedAt = before?.askedAt,
                 resumedAt = before?.resumedAt,
+                pausedAt = before?.pausedAt,
                 // **Only a change to the "when" un-answers a snooze.** Somebody who put a ring
                 // off until tomorrow has answered it; fixing a word in the text does not take
                 // that back, and dropping it did two visible things — the card left the section

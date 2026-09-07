@@ -78,7 +78,10 @@ sealed interface Deadline {
  * does with one rule, and comes back the moment it means something again.
  */
 val Reminder.hasDeadline: Boolean
-    get() = deadlineApplies(deadline, rules, ruleMatch) && !spanHasTakenOver
+    // Never on a routine: its rules are questions, not a set, and a lapse would write a silent
+    // "hecho" (Firing.lapsed moves lastDealtAt). The editor already drops the deadline on the
+    // way in; this is for the row that arrives with one — a vault, a preset shaped before.
+    get() = !isRoutine && deadlineApplies(deadline, rules, ruleMatch) && !spanHasTakenOver
 
 /**
  * The half of [hasDeadline] a draft can answer — whether these rules under this reading have a

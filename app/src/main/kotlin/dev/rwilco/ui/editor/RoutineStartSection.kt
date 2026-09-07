@@ -19,7 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.rwilco.R
 import dev.rwilco.model.Recurrence
-import dev.rwilco.ui.components.FutureMomentSheet
+import dev.rwilco.ui.components.MomentSheet
 import dev.rwilco.ui.components.PresetChip
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.dayWord
@@ -41,10 +41,14 @@ import java.time.ZonedDateTime
  * nowhere to say so, because a routine's "Vuelve" is already spent on how long the span is.
  *
  * Two answers, so two chips: **ahora mismo** ([Recurrence.Since.startsAt] null, which is what
- * every routine already on a phone says) and **un momento futuro**, picked off the same calendar
- * "posponer a una fecha" uses. The line underneath reads the whole arrangement back — "y luego
- * cada 21 días desde la última vez" — because the two halves of that sentence are on two
- * different cards and the sentence is the thing being written.
+ * every routine already on a phone says) and **otro momento**, picked off the same calendar
+ * "posponer a una fecha" uses — on either side of now. Behind: "la última vez fue el lunes",
+ * and the count has been running since then (the deadline may already be due, which is the
+ * truth of it). Ahead: "empieza el 1 de octubre", and nothing is owed until then. Both are the
+ * same field, because both are the same question — where the count runs from — and the anchor
+ * does not care which side of today it is on. The line underneath reads the whole arrangement
+ * back — "y luego cada 21 días desde la última vez" — because the two halves of that sentence
+ * are on two different cards and the sentence is the thing being written.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -70,14 +74,14 @@ internal fun RoutineStartSection(
                 selected = startsAt == null,
                 onClick = { onStart(null) },
             )
-            // The chip wears the moment once there is one: a chip that still said "en un
-            // momento futuro" over a date already chosen is a control that hides its own answer.
+            // The chip wears the moment once there is one: a chip that still said "otro
+            // momento" over a date already chosen is a control that hides its own answer.
             val chosen = startsAt?.atZone(now.zone)
             PresetChip(
                 leadingIcon = Icons.Outlined.CalendarMonth,
                 label = chosen?.let {
                     dayWord(words, it.toLocalDate(), today) + " " + TimeText.time(it.toLocalTime(), words.is24h, words.locale)
-                } ?: stringResource(R.string.routine_start_later),
+                } ?: stringResource(R.string.routine_start_other),
                 selected = startsAt != null,
                 onClick = { picking = true },
             )
@@ -97,11 +101,11 @@ internal fun RoutineStartSection(
         )
     }
     if (picking) {
-        FutureMomentSheet(
+        MomentSheet(
             now = now,
             defaultTime = defaultTime,
             title = stringResource(R.string.routine_start_title),
-            pastNote = stringResource(R.string.routine_start_past),
+            allowPast = true,
             onConfirm = { at -> picking = false; onStart(at) },
             onDismiss = { picking = false },
         )

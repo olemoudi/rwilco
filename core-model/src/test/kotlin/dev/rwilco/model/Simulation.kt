@@ -80,8 +80,11 @@ class Simulation(
             !row.isRoutine || rule == null || !rule.asks -> false
             !row.promptsAllowed(now) -> false
             now < row.promptLookFrom(now, zone, dayStart) -> false
-            viaPlace && row.askedAt?.let { java.time.Duration.between(it, now) < PLACE_ECHO } == true -> false
-            !rule.conditions.filter { it.knownInAdvance }.allHoldAt(now, zone) -> false
+            !rule.conditions.filter { it.knownInAdvance }.allHoldAt(now, zone) -> {
+                // Tried and dropped at its fence: stamped as tried, as ReminderFiring.ask does.
+                reminder = row.copy(askedAt = now)
+                false
+            }
             else -> true
         }
         if (!put) {

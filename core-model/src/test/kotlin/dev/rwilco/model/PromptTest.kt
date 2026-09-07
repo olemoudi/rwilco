@@ -34,6 +34,9 @@ class PromptTest {
         snoozedUntil: Instant? = null,
         status: Status = Status.ACTIVE,
         createdAt: Instant = now.minusSeconds(10 * 86_400),
+        // Written ten days ago and last edited now: a question is never owed from before the
+        // last edit, so the fixture asks from now unless a test says otherwise.
+        updatedAt: Instant = now,
     ) = Reminder(
         id = "car",
         text = "Mover el coche",
@@ -41,7 +44,7 @@ class PromptTest {
         recurrence = span,
         status = status,
         createdAt = createdAt,
-        updatedAt = createdAt,
+        updatedAt = updatedAt,
         lastDealtAt = lastDealtAt,
         askedAt = askedAt,
         lastFiredAt = lastFiredAt,
@@ -71,8 +74,19 @@ class PromptTest {
 
     @Test
     fun `the question looks past the one already asked`() {
-        val asked = car(TriggerRule(nine), askedAt = local(2026, 8, 28, 9, 0))
-        assertEquals(Wake(local(2026, 8, 29, 9, 0), 0), asked.prompt(), "the day after the one asked")
+        val asked = car(TriggerRule(nine), askedAt = local(2026, 8, 27, 9, 0))
+        assertEquals(Wake(local(2026, 8, 28, 9, 0), 0), asked.prompt(), "the day after the one asked")
+    }
+
+    @Test
+    fun `a question dropped at its fence is stamped as tried, so the next look moves on`() {
+        // At home only, and not at home at nine: dropped — and the same nine is not handed
+        // back by the next look, which would arm an alarm in the past, at once, for ever.
+        val atHome = TriggerRule(nine, listOf(Condition.OnDays(setOf(java.time.DayOfWeek.SUNDAY))))
+        val sim = Simulation(car(atHome, updatedAt = now.minusSeconds(10 * 86_400), askedAt = local(2026, 8, 25, 9, 0)), local(2026, 8, 26, 9, 0), dayStart = dayStart)
+        assertFalse(sim.ask(0), "not a Sunday")
+        assertEquals(local(2026, 8, 26, 9, 0), sim.reminder.askedAt, "tried, and said so")
+        assertEquals(Wake(local(2026, 8, 30, 9, 0), 0), sim.promptAt(), "the next Sunday, not the same Wednesday again")
     }
 
     @Test
@@ -88,6 +102,45 @@ class PromptTest {
         // In hours: eight hours is quiet for forty-eight minutes.
         val pills = car(TriggerRule(nine), span = Recurrence.Since(8, RecurrenceUnit.HOURS), lastDealtAt = now)
         assertEquals(now.plus(Duration.ofMinutes(48)), pills.promptQuietUntil(zone, dayStart))
+    }
+
+    @Test
+    fun `a routine just written asks from the start, and one told to start later asks from then`() {
+        // The quiet is what follows a "hecho" and nothing else: written today, "cambiar el
+        // filtro cada 3 meses" used to ask nothing for nine days, doorway included.
+        val fresh = car(TriggerRule(nine), span = Recurrence.Since(3, RecurrenceUnit.MONTHS), createdAt = now)
+        assertNull(fresh.promptQuietUntil(zone, dayStart), "nothing done, nothing to be quiet about")
+        assertEquals(Wake(local(2026, 8, 28, 9, 0), 0), fresh.prompt())
+        val start = local(2026, 10, 1, 9, 0)
+        val later = car(TriggerRule(nine), span = Recurrence.Since(21, RecurrenceUnit.DAYS, startsAt = start))
+        val first = later.prompt()!!
+        assertTrue(first.at >= start, "no question before the count begins")
+        assertEquals(LocalTime.of(9, 0), first.at.atZone(zone).toLocalTime())
+    }
+
+    @Test
+    fun `a question the phone slept through is still owed, once, and the next one is tomorrow's`() {
+        // Asked two mornings ago, nothing since (the phone was off): the question is looked for
+        // from that one, not from now, so yesterday's nine is the answer — a moment already
+        // gone, which the alarm delivers at once. Asked now, tomorrow's is next.
+        val slept = car(TriggerRule(nine), updatedAt = now.minusSeconds(10 * 86_400), askedAt = local(2026, 8, 25, 9, 0))
+        assertEquals(Wake(local(2026, 8, 26, 9, 0), 0), slept.prompt(), "owed since yesterday morning")
+        assertEquals(Wake(local(2026, 8, 28, 9, 0), 0), slept.copy(askedAt = now).prompt())
+        // A rule added this morning is not owed yesterday's question: the last edit is a floor.
+        assertEquals(Wake(local(2026, 8, 28, 9, 0), 0), car(TriggerRule(nine)).prompt())
+        // And a stamp from a clock that ran ahead is ignored rather than obeyed.
+        assertEquals(Wake(local(2026, 8, 28, 9, 0), 0), car(TriggerRule(nine), askedAt = now.plusSeconds(3 * 86_400)).prompt())
+    }
+
+    @Test
+    fun `two doors within minutes are one question, whichever put the first`() {
+        // The garage asked at 08:58; the nine o'clock rule is the same question and holds.
+        val sim = Simulation(car(TriggerRule(garage), TriggerRule(nine)), local(2026, 8, 28, 8, 58), dayStart = dayStart)
+        assertTrue(sim.ask(0, viaPlace = true))
+        sim.now = local(2026, 8, 28, 9, 0)
+        assertFalse(sim.ask(1), "the same question, two minutes on")
+        sim.now = local(2026, 8, 28, 9, 6)
+        assertTrue(sim.ask(1), "past the echo it is a question again")
     }
 
     @Test

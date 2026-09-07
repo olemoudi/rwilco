@@ -2,6 +2,8 @@ package dev.rwilco.data
 
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
+import dev.rwilco.model.routineAnchorAfterPause
+import dev.rwilco.model.isRoutine
 import dev.rwilco.model.expiredDone
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -84,9 +86,21 @@ class ReminderRepository(
     }
 
     suspend fun setStatus(id: String, status: Status) {
-        val now = clock.instant().toEpochMilli()
+        val now = clock.instant()
+        // A routine's pause freezes its count, and lifting it moves the count on by the time it
+        // rested: see [Reminder.routineAnchorAfterPause] and [ReminderDao.resumeRoutine]. Any
+        // other reminder, and a routine nothing froze (paused before the column existed), keeps
+        // the plain write.
+        if (status == Status.ACTIVE) {
+            val current = get(id)
+            if (current != null && current.isRoutine && current.pausedAt != null) {
+                dao.resumeRoutine(id, now.toEpochMilli(), current.routineAnchorAfterPause(now).toEpochMilli())
+                return
+            }
+        }
+        val at = now.toEpochMilli()
         // Stamped only on the way back to ACTIVE: see [ReminderDao.setStatus].
-        dao.setStatus(id, status.name, now, if (status == Status.DONE) now else null, now.takeIf { status == Status.ACTIVE })
+        dao.setStatus(id, status.name, at, if (status == Status.DONE) at else null, at.takeIf { status == Status.ACTIVE }, at.takeIf { status == Status.PAUSED })
     }
 
     suspend fun delete(id: String) = dao.delete(id)

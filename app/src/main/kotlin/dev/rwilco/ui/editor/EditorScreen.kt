@@ -331,6 +331,7 @@ fun EditorScreen(
                         match = state.draft.ruleMatch,
                         recurrence = state.draft.recurrence,
                         deadline = state.draft.deadline,
+                        now = now,
                     ),
                     today = today,
                     defaultTime = state.defaultTime,
@@ -815,6 +816,7 @@ private fun SaveBar(
                     parts = sentence,
                     today = today,
                     defaultTime = defaultTime,
+                    zone = zone,
                     modifier = Modifier.padding(bottom = Tokens.spacing.sm),
                 )
             }

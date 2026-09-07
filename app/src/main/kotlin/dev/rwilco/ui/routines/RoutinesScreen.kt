@@ -71,7 +71,7 @@ import dev.rwilco.ui.components.ListPlaceholder
 import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.RwilcoTopBar
-import dev.rwilco.ui.components.FutureMomentSheet
+import dev.rwilco.ui.components.MomentSheet
 import dev.rwilco.ui.components.TagChip
 import dev.rwilco.ui.components.TagLabel
 import dev.rwilco.ui.components.rememberNow
@@ -363,7 +363,7 @@ fun RoutinesScreen(
     }
 
     pickingDateFor?.let { id ->
-        FutureMomentSheet(
+        MomentSheet(
             now = clock.instant().atZone(zone),
             defaultTime = defaultTime,
             onConfirm = { until -> pickingDateFor = null; viewModel.snoozeUntil(id, until) },
@@ -443,16 +443,19 @@ private fun RoutineCard(
     // side of the last minute pulse, and neither "en 5 s" nor "hace 0 s" is how long it has been.
     // A routine whose count has not begun says so instead ("empieza el martes"): "hace" is a
     // word about time that has passed, and none of it has.
+    // A paused routine's count is read against the moment it was paused, not the wall clock:
+    // the time it rests is not time that passed (Reminder.routineClock).
+    val clock = row.pausedAt ?: now
     val elapsed = when {
-        row.startsLater -> stringResource(R.string.routines_starts, countdownText(partsBetween(now, row.anchor)))
-        Duration.between(row.anchor, now) < Duration.ofMinutes(1) -> stringResource(R.string.countdown_just_now)
-        else -> countdownText(partsBetween(now, row.anchor))
+        row.startsLater -> stringResource(R.string.routines_starts, countdownText(partsBetween(clock, row.anchor)))
+        Duration.between(row.anchor, clock) < Duration.ofMinutes(1) -> stringResource(R.string.countdown_just_now)
+        else -> countdownText(partsBetween(clock, row.anchor))
     }
-    val due = countdownText(partsBetween(now, row.deadline))
+    val due = countdownText(partsBetween(clock, row.deadline))
     val dueLine = elapsed + stringResource(R.string.common_separator) +
         stringResource(if (row.done) R.string.routines_due else R.string.routines_overdue, due)
     // How far through the span it is: a full track is a "No".
-    val progress = if (row.span.isZero) 1f else (Duration.between(row.anchor, now).toMillis().toFloat() / row.span.toMillis()).coerceIn(0f, 1f)
+    val progress = if (row.span.isZero) 1f else (Duration.between(row.anchor, clock).toMillis().toFloat() / row.span.toMillis()).coerceIn(0f, 1f)
     val haptics = Tokens.haptics
     // **An overdue routine is red from the edge in.** A paused one owes nothing while it rests,
     // so it drops the colour with the rest of it; a routine still inside its plazo wears the

@@ -79,21 +79,25 @@ fun Reminder.watchedCircles(
     // never gated. The rules are outranked exactly as a clock snooze outranks them, so their
     // circles would only ever buy positions for firings the guards drop.
     snoozedToPlace?.let { place ->
-        return listOf(
-            Gated(
-                place = WatchedPlace(
-                    id = GeofenceIds.encodeSnooze(id, place),
-                    lat = place.lat,
-                    lng = place.lng,
-                    radiusM = place.radiusM,
-                    transition = place.presence.asTransition,
-                    label = place.label,
-                    crossing = Crossing.RINGS,
-                    onCrossing = true,
-                ),
-                ruleIndex = SNOOZE_RULE,
+        val snooze = Gated(
+            place = WatchedPlace(
+                id = GeofenceIds.encodeSnooze(id, place),
+                lat = place.lat,
+                lng = place.lng,
+                radiusM = place.radiusM,
+                transition = place.presence.asTransition,
+                label = place.label,
+                crossing = Crossing.RINGS,
+                onCrossing = true,
             ),
+            ruleIndex = SNOOZE_RULE,
         )
+        // A routine's places that vouch for the deed keep watching through the snooze: leaving
+        // the garage answers "avísame cuando llegue a casa" as surely as it answers the ring,
+        // and a routine put off to a place used to go dark to every door but the button — its
+        // own doorway included. The asking ones stay off, as under any snooze (promptsAllowed).
+        val vouching = if (isRoutine) routineCircles(now, zone, defaultTime, shape, dayStart).filter { it.place.crossing == Crossing.RESETS } else emptyList()
+        return listOf(snooze) + vouching
     }
     // "Justo el plazo" has taken the rules out of the loop, so none of their circles can ring
     // and none is worth a position — for good, not only while the rest is on. See
@@ -298,6 +302,17 @@ private fun Reminder.routineCircles(
                 ),
                 ruleIndex = index,
                 opensAt = opensAt,
+                // **Gated, it rests — and a resting routine circle keeps its memory** (0.106.0).
+                // The watch forgets which side of a line the phone is on for every circle it is
+                // not asking about, and forgetting is right for an ordinary state under a
+                // recurrence: "mientras esté en casa, y vuelve cada día" has to be found true
+                // again after its rest. Under a routine the same forgetting made a state that
+                // counts as done count itself done again the moment every quiet ended — the
+                // first look after the gate found the phone still on that side and called it
+                // news — so the routine never rang at all. Kept, a state fires when the phone
+                // *comes to* that side, or is already there the first time anybody looks, and
+                // not again until it has left. See PlaceWatcher.watching.
+                resting = opensAt != null,
             )
         }
         val asked = rule.conditions.mapIndexedNotNull { at, condition ->

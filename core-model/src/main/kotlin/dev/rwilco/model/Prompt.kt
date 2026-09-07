@@ -18,22 +18,51 @@ import java.time.ZoneId
  * **Quiet for a tenth of the span after a "hecho".** "¿Has movido el coche?" an hour after
  * saying so is noise, and so is a garage door counting the car as moved twice in an afternoon.
  * The same proportion the safety net uses, and for the same reason: it scales with the thing
- * it is about — two days on three weeks, three quarters of an hour on eight hours.
+ * it is about — two days on three weeks, three quarters of an hour on eight hours. After a
+ * "hecho" and only then: a routine just written, or one told to start next month, has done
+ * nothing to be quiet about, and it used to be mute — doorway included — for a tenth of its
+ * span from the day it was written.
+ *
+ * **A question that was owed is still owed.** Where the next question is looked for from is
+ * never "now": it is the last one put (plus the echo, [PLACE_ECHO]), the quiet, the start, or
+ * the last edit — whichever is latest — so a nine o'clock the phone slept through is a moment
+ * in the past, armed as such and delivered at once ([nextPrompt], `ReminderScheduler.armAsk`).
+ * The fences are re-judged in full when it lands (`ReminderFiring.ask`), so a late question
+ * drops itself if its window has closed — and a question dropped at its fence is stamped as
+ * tried ([Reminder.askedAt]), or the next look would hand the same past moment back and the
+ * alarm would loop.
  */
 
 /** One part in this many of the span: how long a routine holds its questions after a "hecho". */
 const val PROMPT_QUIET_FRACTION = 10L
 
-/** Until when a routine keeps quiet after its last "hecho"; null for anything that is not one. */
-fun Reminder.promptQuietUntil(zone: ZoneId, dayStart: LocalTime = DEFAULT_DAY_START): Instant? =
-    routineSpan(zone, dayStart)?.let { routineAnchor().plus(it.dividedBy(PROMPT_QUIET_FRACTION)) }
+/**
+ * Until when a routine keeps quiet after its last "hecho"; null while it has never been done,
+ * and for anything that is not a routine.
+ */
+fun Reminder.promptQuietUntil(zone: ZoneId, dayStart: LocalTime = DEFAULT_DAY_START): Instant? {
+    val dealt = lastDealtAt ?: return null
+    return routineSpan(zone, dayStart)?.let { dealt.plus(it.dividedBy(PROMPT_QUIET_FRACTION)) }
+}
 
 /**
- * Where the next question is looked for from: now, past the one already asked, and past the
- * quiet that follows a "hecho".
+ * Where the next question is looked for from — and deliberately not from [now]: past the one
+ * already asked and its echo (two questions minutes apart are one question, whichever door
+ * put them), past the quiet that follows a "hecho", never before the count starts, and never
+ * before the routine was last written or brought back from a pause ([Reminder.updatedAt]:
+ * a rule added this morning is not owed yesterday's question). A moment earlier than now is a
+ * question that was owed and never put — the phone was off — and it is put at once.
+ *
+ * An [askedAt] ahead of now (a clock that ran ahead and was put right) is ignored rather than
+ * obeyed: obeyed, it held every question until the wall clock caught up.
  */
 fun Reminder.promptLookFrom(now: Instant, zone: ZoneId, dayStart: LocalTime = DEFAULT_DAY_START): Instant =
-    listOfNotNull(now, askedAt?.plusMillis(1), promptQuietUntil(zone, dayStart)).max()
+    listOfNotNull(
+        routineStart(),
+        updatedAt,
+        askedAt?.takeIf { it <= now }?.plus(PLACE_ECHO),
+        promptQuietUntil(zone, dayStart),
+    ).max()
 
 /**
  * Whether a question may be put right now. Not while the deadline has rung and is waiting for
@@ -53,7 +82,9 @@ val TriggerRule.asks: Boolean get() = !resetsRoutine
 /**
  * The next moment a clock rule asks at, and which rule it is — what the asking alarm is set
  * for. A place contributes nothing here: its questions come from the watch, when the phone
- * crosses its line. Null when nothing may ask ([promptsAllowed]) or nothing is left to.
+ * crosses its line. Null when nothing may ask ([promptsAllowed]) or nothing is left to. **May
+ * be in the past** (see [promptLookFrom]): that is a question owed, and the alarm set for a
+ * moment already gone arrives at once.
  */
 fun Reminder.nextPrompt(
     now: Instant,

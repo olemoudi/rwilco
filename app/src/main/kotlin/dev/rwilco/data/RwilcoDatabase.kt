@@ -20,7 +20,7 @@ abstract class RwilcoDatabase : RoomDatabase() {
 
     companion object {
         /** A named constant so MigrationChainTest can assert the chain reaches it. */
-        const val VERSION = 13
+        const val VERSION = 14
         private const val NAME = "rwilco.db"
 
         /** One entry per version step; `// vN: what it added` on each. */
@@ -148,6 +148,14 @@ abstract class RwilcoDatabase : RoomDatabase() {
             object : Migration(12, 13) {
                 override fun migrate(db: SupportSQLiteDatabase) {
                     db.execSQL("ALTER TABLE reminder ADD COLUMN resumedAt INTEGER")
+                }
+            },
+            // v14: when the pause now standing began, which is what freezes a routine's count.
+            // Null on every existing row — a routine already paused at the upgrade resumes as
+            // it always did, its count having run; only pauses from here on are frozen.
+            object : Migration(13, 14) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE reminder ADD COLUMN pausedAt INTEGER")
                 }
             },
         )

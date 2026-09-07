@@ -122,6 +122,7 @@ class SentenceTest {
                                 parts = sentenceParts(text, rules, RuleMatch.ANY, recurrence),
                                 today = today,
                                 defaultTime = LocalTime.of(9, 0),
+                                zone = java.time.ZoneId.systemDefault(),
                             )
                         }
                         // And the three ways two rules can be joined, which is the other half of
@@ -136,6 +137,7 @@ class SentenceTest {
                                 ),
                                 today = today,
                                 defaultTime = LocalTime.of(9, 0),
+                                zone = java.time.ZoneId.systemDefault(),
                             )
                         }
                     }

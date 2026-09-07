@@ -73,6 +73,9 @@ enum class FiringKind {
 
     /** A routine was counted as done by a place — [FiringEvent.detail] says which doorway. */
     RESET,
+
+    /** "Deshacer" on that: the count went back to where it was before the place counted it. */
+    UNRESET,
 }
 
 data class FiringEvent(val kind: FiringKind, val at: Instant, val ruleIndex: Int? = null, val detail: String? = null)

@@ -436,7 +436,22 @@ anything repeats**:
   case where nobody is ever seen crossing the line and the question was lost for good.
   `sameSpanAs`/`withSpanOf` treat a routine's
   span as a span, so the "cada semana" button lights up for a weekly routine and picking a
-  span on a routine keeps it a routine (and keeps its start). `AppSettings.routineActions` is what a blank routine's
+  span on a routine keeps it a routine (and keeps its start).
+  **The start takes either side of now** (0.106.0): "la última vez fue el lunes" is the same
+  anchor as "empieza el 1 de octubre", so `MomentSheet(allowPast)` (the sheet "posponer a una
+  fecha" uses, which keeps refusing the past) serves both, and the sentence over "Guardar" says
+  which (`SentencePart.Start`).
+  **A pause freezes the count** (0.106.0, the owner's call): `pausedAt` (Room v14) is written
+  on pause and read as the clock the count is judged against (`routineClock`, `routineDone`,
+  the row's "hace" and track), so nothing is owed while it rests; lifting it writes
+  `lastDealtAt = routineAnchorAfterPause(now)` and clears the column in one statement
+  (`ReminderDao.resumeRoutine`) — the count continues where it stopped, and does not ring the
+  second the pause is lifted. Two guards for rows that arrive by other roads (a vault, a preset
+  shaped before): `foldRepeats` never touches a `Since`, and `hasDeadline` is false on one
+  (a lapse would have written a silent "hecho"). And the edit that *makes* a routine sheds the
+  old ring (`becomesRoutine`, `EditorViewModel.save`): a routine's first deadline can be older
+  than the reminder's last ring, and `recurrenceMoment` spends a moment at or before it — the
+  routine never armed, never asked, and the net had already said its word. `AppSettings.routineActions` is what a blank routine's
   deadline does, beside `defaultActions`. `RoutinesTest` pins all of it, a year of the car
   through `Simulation` included.
 - `ByTrigger` — hands the question back to a trigger that names its own dates, which is now only
@@ -673,6 +688,10 @@ because that is what its chip would show.
   reads as none, `ReminderCodec.decodeDeadline`), and `expiresAt`, when the round under way runs
   out. Null on every existing row, which is exactly what it was. Two more frozen names in the
   vault; a preset carries the deadline under a tolerant serializer of its own.
+
+The diagnostics' state line says `asked=`, `nudged=`, `paused=`, and for a routine `ask=`
+(`nextPrompt`), `quiet=` and `deadline=` — "it did not ask" was a question the report could not
+answer before (0.106.0).
 
 ## UI
 
@@ -1601,9 +1620,17 @@ because that is what its chip would show.
   routine is a moment to *ask* at: **a fourth alarm per reminder**, `rwilco://ask/‹id›`
   (`ReminderScheduler.armAsk`, inexact like the net's, `EXTRA_RULE` riding as the ring's does),
   set from `Reminder.nextPrompt` — the earliest asking clock rule from `promptLookFrom`, which is
-  now, past `askedAt`, and past the **quiet** that follows a "hecho" (`promptQuietUntil`: a tenth
-  of the span, the net's proportion, because "¿has movido el coche?" an hour after saying so is
-  noise). Off `armedFor` on purpose, as the net's is, and out of `SchedulingKey` for the same
+  **never "now"** (0.106.0): past `askedAt` and its echo (`PLACE_ECHO`, one rule for both doors
+  — the garage at 08:58 and the clock at 09:00 are one question), past the **quiet** that
+  follows a "hecho" (`promptQuietUntil`: a tenth of the span, the net's proportion, because
+  "¿has movido el coche?" an hour after saying so is noise — and *only* after a "hecho": a
+  routine just written, or told to start next month, used to be mute for a tenth of its span
+  from the day it was written, doorway included), never before `routineStart()`, and never
+  before `updatedAt` (a rule added this morning is not owed yesterday's question). A moment
+  earlier than now is a question the phone slept through, armed as it is and delivered at once;
+  a question tried and dropped at its fence stamps `askedAt` too, or the next look would hand
+  the same past moment back and the alarm would loop. An `askedAt` ahead of now (a clock put
+  right) is ignored rather than obeyed. Off `armedFor` on purpose, as the net's is, and out of `SchedulingKey` for the same
   reason (`SchedulingKeyTest` pins both): a question is not a firing owed, and `ask` re-arms on
   its way out. `AlarmReceiver` routes it to `ReminderFiring.ask(id, ruleIndex, viaPlace)`,
   which drops — writing nothing — when nothing asks, when nothing may (`promptsAllowed`: the
@@ -1612,8 +1639,13 @@ because that is what its chip would show.
   full, `askAll = true`, because the alarm is inexact and may land after the window); put, it
   stamps `askedAt`, records `FiringKind.ASKED` and posts the question (`AlertNotifications.ask`:
   «¿He hecho «X»?» on `CHANNEL_ASK`, IMPORTANCE_DEFAULT with the phone's own sound, silent
-  outside waking hours, "sí, ahora" = `ACTION_DONE`, "todavía no" = `ACTION_LATER` which only
-  takes the card down, the body opening the routines through `DESTINATION_ROUTINES`). A place
+  outside waking hours, "sí, ahora" = `ACTION_DONE`, "todavía no" = `ACTION_LATER` which takes
+  the card down and records `SNOOZED`/`LATER_DETAIL` so the history tells it from a card never
+  seen, the body opening the routines through `DESTINATION_ROUTINES`). **An unanswered
+  deadline is the ring once and the net's one word** — `max(30 min, span/10)` after it, capped by
+  the net's longest wait — and nothing else: no re-ring, no re-ask (the owner's expectation,
+  2026-09-07; `RoutinesTest` pins it). The word keeps the question form ("ICYMI: ¿Has hecho
+  «X»?"). A place
   under a routine asks the same way when its rule is met — `Crossing.ASKS`,
   from `watchedCircles`' routine branch (`routineCircles`: no rest, no "already rang" cut, the
   hours gate kept, the quiet as a gate of its own so no fix is spent on a crossing that would
@@ -1622,8 +1654,17 @@ because that is what its chip would show.
   at all, which is the reading a phone that never crosses needs ("si ya estás en el garaje").
   `stepPlaceWatch` is where the difference lives and it is one line — the first judgement that
   finds the phone on a state's own side is news — so a routine's circle carries `onCrossing` as
-  the rule wrote it rather than a forced `true`; what keeps a state from asking twice is the
-  quiet after a "hecho", not the shape of the circle. **Or the place counts as
+  the rule wrote it rather than a forced `true`. **And a routine's gated circle keeps its
+  memory** (0.106.0): the quiet gates the circle, a gated routine circle is `resting`, and
+  `PlaceWatcher.watching` remembers a resting routine circle whatever its reading — an ordinary
+  state under a recurrence must be forgotten across its rest (or "mientras esté en casa, y
+  vuelve cada día" rings once), but forgetting a routine's state across the quiet made the
+  first look after it call the phone's unchanged side news, and a place that counts as done
+  counted the routine done again at the end of every quiet; the deadline never came. Kept, a
+  state fires when the phone comes to that side, or is already there the first time anybody
+  looks, and not again until it has left. A routine put off to a place keeps its vouching
+  (`RESETS`) circles beside the snooze's (`watchedCircles`), so leaving the garage still counts.
+  `undoReset` never moves the count forward past a later "hecho", and records `UNRESET`. **Or the place counts as
   having done it** (`TriggerRule.resets`, `Crossing.RESETS`, `ReminderFiring.resetBy`): leaving
   the garage *is* the car moving. The reset is the write "hecho" makes on a routine, recorded as
   `FiringKind.RESET` with the doorway in its detail, and said in the shade **mute, with

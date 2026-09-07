@@ -114,7 +114,9 @@ class MonthDaysTest {
             rules = listOf(TriggerRule(nine, listOf(first))),
             recurrence = Recurrence.Since(3, RecurrenceUnit.MONTHS),
             createdAt = now.minusSeconds(40 * 86_400),
-            updatedAt = now.minusSeconds(40 * 86_400),
+            // Edited now: a question is never owed from before the last edit, so the 1st of
+            // August is not handed back as a question the phone slept through.
+            updatedAt = now,
         )
         assertEquals(
             Wake(local(2026, 9, 1, 9, 0), 0),

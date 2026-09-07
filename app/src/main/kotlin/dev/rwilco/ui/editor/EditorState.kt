@@ -106,6 +106,8 @@ fun Draft.toReminder(
     askedAt: Instant? = null,
     /** And so does the moment a pause was lifted: an edit is not a pause taken back. */
     resumedAt: Instant? = null,
+    /** Nor a pause begun: a routine edited while it rests goes on resting, count frozen. */
+    pausedAt: Instant? = null,
     /** The answer somebody already gave to a ring: kept unless this edit re-decided the "when". */
     snoozedUntil: Instant? = null,
     snoozedToPlace: Trigger.Location? = null,
@@ -140,6 +142,7 @@ fun Draft.toReminder(
     nudgedAt = nudgedAt,
     askedAt = askedAt,
     resumedAt = resumedAt,
+    pausedAt = pausedAt,
     snoozedUntil = snoozedUntil,
     snoozedToPlace = snoozedToPlace,
     deadline = deadline,
@@ -343,6 +346,16 @@ fun EditorUiState.setRecurrence(recurrence: Recurrence): EditorUiState {
         ),
     )
 }
+
+/**
+ * Whether saving [draft] over [before] is the edit that turns a reminder into a routine — the
+ * one edit that sheds the old ring (`EditorViewModel.save`). A routine's deadline is its anchor
+ * plus its span, and a moment at or before the last ring is spent; carried across, a ring given
+ * last week put the first deadline behind it, and the routine never armed, never asked and
+ * never got the net's word (the word had been said about that same ring).
+ */
+fun becomesRoutine(before: Reminder?, draft: Draft): Boolean =
+    before != null && before.recurrence !is Recurrence.Since && draft.recurrence is Recurrence.Since
 
 /**
  * Where a routine's count starts: null is "ahora mismo" — the day it is written — and a moment

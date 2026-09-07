@@ -16,6 +16,8 @@ import java.time.ZoneId
  * - The span is the ring, counted from the last "hecho" (or from where the count started: the
  *   day it was written, or a moment the person named — see [routineStart]).
  * - "Hecho" is *now*: the count starts again from this moment ([Reminder.momentDealtWith]).
+ * - A pause freezes the count ([Reminder.pausedAt], [routineClock], [routineAnchorAfterPause]):
+ *   nothing is owed while it rests, and the time it rested is not time that passed.
  * - The rules never ring and never rest. A clock rule *asks* whether it has been done; a place
  *   asks too, or — when it can vouch for the deed — counts as having done it
  *   ([TriggerRule.resets]). Both are the scheduler's and the watch's business, on an alarm of
@@ -36,6 +38,27 @@ fun Reminder.routineStart(): Instant? = if (isRoutine) (recurrence as Recurrence
 
 /** The moment the count runs from: the last "hecho", or where it started until then. */
 fun Reminder.routineAnchor(): Instant = lastDealtAt ?: routineStart() ?: createdAt
+
+/**
+ * The clock the count is read against: frozen at the moment a pause began, [now] otherwise.
+ *
+ * Every "how long has it been" and every "is it owed" on a paused routine is asked of this
+ * rather than of the wall clock, so a routine paused ten days into its three weeks reads
+ * "hace 10 d" for as long as it rests — and reads "Sí", because nothing is owed while it does.
+ */
+fun Reminder.routineClock(now: Instant): Instant = pausedAt ?: now
+
+/**
+ * Where the count runs from once a pause is lifted at [now]: the anchor pushed forward by
+ * exactly the time paused, so the count continues where it stopped. What the repository writes
+ * into `lastDealtAt` on resume (the history table keeps the real "hechos"; `lastDealtAt` is
+ * the count's anchor and nothing else on a routine). The anchor as it is when nothing was
+ * paused.
+ */
+fun Reminder.routineAnchorAfterPause(now: Instant): Instant {
+    val paused = pausedAt ?: return routineAnchor()
+    return routineAnchor().plus(Duration.between(paused, now).coerceAtLeast(Duration.ZERO))
+}
 
 /**
  * Whether the count has not begun yet: a routine that starts in the future and has never been
@@ -59,7 +82,7 @@ fun Reminder.routineSpan(zone: ZoneId, dayStart: LocalTime = DEFAULT_DAY_START):
  */
 fun Reminder.routineDone(now: Instant, zone: ZoneId, dayStart: LocalTime = DEFAULT_DAY_START): Boolean {
     val deadline = routineDeadline(zone, dayStart) ?: return false
-    return deadline > now
+    return deadline > routineClock(now)
 }
 
 /** The open routines whose span is up, the one that has waited longest first. What Home's line says. */

@@ -37,8 +37,10 @@ data class Folded(
 
 fun foldRepeats(rules: List<TriggerRule>, recurrence: Recurrence, writtenOn: LocalDate): Folded {
     // Already answered by a calendar: a store where both exist is hand-edited, and guessing
-    // which of the two somebody meant is exactly the thing this is trying to stop.
-    if (recurrence is Recurrence.Calendar) return Folded(rules, recurrence, emptyList())
+    // which of the two somebody meant is exactly the thing this is trying to stop. And never a
+    // routine: this runs on every read, and lifting a stray repeat into a calendar would take
+    // the `Since` — the count, the questions, the doorway — with it, in silence.
+    if (recurrence is Recurrence.Calendar || recurrence is Recurrence.Since) return Folded(rules, recurrence, emptyList())
     val removed = rules.indices.filter { rules[it].trigger.isLegacyRepeat }
     val index = removed.firstOrNull() ?: return Folded(rules, recurrence, emptyList())
     val rule = rules[index]

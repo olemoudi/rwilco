@@ -22,6 +22,9 @@ import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.ui.format.triggerPhrase
 import dev.rwilco.ui.theme.color
 import java.time.LocalDate
+import java.time.ZoneId
+import dev.rwilco.ui.format.TimeText
+import dev.rwilco.ui.format.dayWord
 import java.time.LocalTime
 import dev.rwilco.ui.format.deadlinePhrase
 
@@ -48,10 +51,12 @@ fun ReminderSentence(
     parts: List<SentencePart>,
     today: LocalDate,
     defaultTime: LocalTime,
+    /** For a routine's start, which is an instant and has to be said in a day and an hour. */
+    zone: ZoneId,
     modifier: Modifier = Modifier,
 ) {
     Text(
-        text = sentenceText(parts, today, defaultTime),
+        text = sentenceText(parts, today, defaultTime, zone),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         maxLines = 3,
@@ -62,7 +67,7 @@ fun ReminderSentence(
 
 /** The parts, in words and colours. Separate so the wording can be read in one place. */
 @Composable
-private fun sentenceText(parts: List<SentencePart>, today: LocalDate, defaultTime: LocalTime): AnnotatedString {
+private fun sentenceText(parts: List<SentencePart>, today: LocalDate, defaultTime: LocalTime, zone: ZoneId): AnnotatedString {
     val words = rememberWords()
     val locale = words.locale
     val wordsInk = MaterialTheme.colorScheme.onSurface
@@ -75,7 +80,7 @@ private fun sentenceText(parts: List<SentencePart>, today: LocalDate, defaultTim
                 // the next. The joins carry no spacing of their own, or every one of them would
                 // land in the middle of a double space.
                 val previous = parts[index - 1]
-                append(if (previous is SentencePart.Words || part is SentencePart.Returns || part is SentencePart.Bounded) ", " else " ")
+                append(if (previous is SentencePart.Words || part is SentencePart.Returns || part is SentencePart.Bounded || part is SentencePart.Start) ", " else " ")
             }
             when (part) {
                 is SentencePart.Words ->
@@ -99,6 +104,14 @@ private fun sentenceText(parts: List<SentencePart>, today: LocalDate, defaultTim
                 }
 
                 is SentencePart.Bounded -> append(deadlinePhrase(words, part.deadline))
+
+                is SentencePart.Start -> {
+                    // A moment, in the clock's colour like the span it anchors.
+                    val here = part.at.atZone(zone)
+                    val moment = dayWord(words, here.toLocalDate(), today) + " " + TimeText.time(here.toLocalTime(), words.is24h, words.locale)
+                    append(stringResource(if (part.behind) R.string.editor_sentence_last_time else R.string.editor_sentence_starts) + " ")
+                    withStyle(SpanStyle(color = timeInk, fontWeight = FontWeight.SemiBold)) { append(moment) }
+                }
 
                 is SentencePart.Returns -> {
                     // A recurrence is a clock's business, and wears the clock's colour — the

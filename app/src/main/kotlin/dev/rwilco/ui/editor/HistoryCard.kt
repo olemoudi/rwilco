@@ -72,6 +72,7 @@ private fun eventWords(event: FiringEvent, today: LocalDate, zone: ZoneId): Stri
         FiringKind.UNTICKED -> stringResource(R.string.history_unticked)
         FiringKind.LAPSED -> stringResource(R.string.history_lapsed)
         FiringKind.ASKED -> stringResource(R.string.history_asked)
+        FiringKind.UNRESET -> stringResource(R.string.history_unreset)
         FiringKind.RESET -> {
             // The doorway that counted it as done, in the person's own word for the place.
             val place = event.detail?.let(::snoozeDetailOf)

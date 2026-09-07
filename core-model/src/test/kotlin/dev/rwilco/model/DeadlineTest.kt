@@ -126,6 +126,9 @@ class DeadlineTest {
         val fresh = set(RuleMatch.ALL, atEight, home, recurrence = exact)
         assertTrue(fresh.hasDeadline, "the first round is the rules'")
         assertFalse(fresh.copy(lastDealtAt = now).hasDeadline, "and every round after is the span's")
+        // Never on a routine, whatever shape it arrived in: its rules are questions, not a set,
+        // and a lapse would write a silent "hecho".
+        assertFalse(set(RuleMatch.ALL, atEight, home, recurrence = Recurrence.Since(21, RecurrenceUnit.DAYS)).hasDeadline)
     }
 
     @Test

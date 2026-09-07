@@ -34,6 +34,11 @@ data class RoutineRowUi(
      * says "empieza en 5 d" rather than counting time that has not passed.
      */
     val startsLater: Boolean,
+    /**
+     * The clock the count is read against: frozen where a pause began, null for the wall clock.
+     * "hace 10 d" stays "hace 10 d" for as long as the routine rests ([Reminder.routineClock]).
+     */
+    val pausedAt: Instant?,
     /** When the span is up, counted from [anchor]. */
     val deadline: Instant,
     /** The span itself, as it lands: what the progress track is a fraction of. */
@@ -90,6 +95,7 @@ fun buildRoutinesState(
             tags = reminder.tags,
             anchor = anchor,
             startsLater = reminder.routineWaitingToStart(now),
+            pausedAt = reminder.pausedAt,
             deadline = deadline,
             span = Duration.between(anchor, deadline),
             done = reminder.routineDone(now, zone, dayStart),

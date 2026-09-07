@@ -71,6 +71,21 @@ class RoutinesStateTest {
     }
 
     @Test
+    fun `a paused routine reads the clock it was paused at, and owes nothing`() {
+        // Paused twenty days in, looked at fifteen days later: the span ran out on the wall
+        // clock, but the row says "Sí" and carries the moment the count stopped.
+        val pausedAt = now.minus(Duration.ofDays(15))
+        val resting = routine("rest", daysAgo = 35, status = Status.PAUSED).copy(pausedAt = pausedAt)
+        val row = buildRoutinesState(listOf(resting), RoutineFilter.All, now, zone, dayStart).rows.single()
+        assertTrue(row.paused)
+        assertEquals(pausedAt, row.pausedAt)
+        assertTrue(row.done, "nothing is owed while it rests")
+        assertEquals(0, buildRoutinesState(listOf(resting), RoutineFilter.All, now, zone, dayStart).overdue)
+        // Not paused: the wall clock, and the same routine is overdue.
+        assertFalse(buildRoutinesState(listOf(routine("late", daysAgo = 35)), RoutineFilter.All, now, zone, dayStart).rows.single().done)
+    }
+
+    @Test
     fun `the chips are vencidas while any is, and the routines' own tags`() {
         val tagged = routine("tagged", daysAgo = 1, tags = listOf("coche"))
         val untagged = routine("untagged", daysAgo = 1)
