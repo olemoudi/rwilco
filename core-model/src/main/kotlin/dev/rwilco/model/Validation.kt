@@ -190,7 +190,11 @@ fun problemOf(condition: Condition): TriggerProblem? = when (condition) {
     is Condition.OnMonthDays -> TriggerProblem.MONTH_DAY_OUT_OF_RANGE.takeIf { condition.days.any { day -> day !in MONTH_DAYS } }
     // A speed nothing on a road reaches is a fence that never holds; zero is one that always
     // does. The chips write neither, a hand-edited store can write both.
-    is Condition.Moving -> TriggerProblem.SPEED_OUT_OF_RANGE.takeIf { condition.minMps <= 0.0 || condition.minMps > PlaceWatchPolicy.HIGHWAY_MPS }
+    is Condition.Moving -> TriggerProblem.SPEED_OUT_OF_RANGE.takeIf {
+        condition.minMps <= 0.0 || condition.minMps > PlaceWatchPolicy.HIGHWAY_MPS ||
+            // A band whose ceiling is at or under its floor is a fence nothing can clear.
+            condition.maxMps?.let { it <= condition.minMps } == true
+    }
     // A window that starts where it ends is not a window; one that crosses midnight is.
     is Condition.TimeWindow -> TriggerProblem.WINDOW_EMPTY.takeIf { condition.from == condition.to }
     // Both days count, so a range of one day is a range; one that ends before it starts is not.

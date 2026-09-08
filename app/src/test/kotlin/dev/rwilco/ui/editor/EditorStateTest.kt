@@ -12,6 +12,8 @@ import dev.rwilco.model.nextFire
 import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.RepeatUnit
 import dev.rwilco.model.Condition
+import dev.rwilco.model.MovingKind
+import dev.rwilco.model.movingOf
 import dev.rwilco.model.Understood
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
@@ -38,7 +40,8 @@ import dev.rwilco.model.withSpanOf
 class EditorStateTest {
 
     private val garage = Trigger.Location(40.4168, -3.7038, 150, Presence.OUTSIDE, "garaje", onCrossing = true)
-    private val driving = Condition.Moving()
+    private val driving = movingOf(MovingKind.DRIVING)
+    private val onFoot = movingOf(MovingKind.ON_FOOT)
 
     @Test
     fun `the place sheet sets the speed fence, and re-opening it replaces the one it showed`() {
@@ -48,9 +51,8 @@ class EditorStateTest {
         // or a place edited twice would carry two speeds and mean the faster of them.
         val added = blank.withText("mover el coche").commitTrigger(null, garage, fence = driving)
         assertEquals(listOf<Condition>(driving), added.draft.rules.single().conditions)
-        val walking = Condition.Moving(dev.rwilco.model.PlaceWatchPolicy.WALK_MPS)
-        val changed = added.commitTrigger(0, garage, fence = walking)
-        assertEquals(listOf<Condition>(walking), changed.draft.rules.single().conditions)
+        val changed = added.commitTrigger(0, garage, fence = onFoot)
+        assertEquals(listOf<Condition>(onFoot), changed.draft.rules.single().conditions)
         val off = changed.commitTrigger(0, garage, fence = null)
         assertEquals(emptyList<Condition>(), off.draft.rules.single().conditions, "the switch turned off takes the fence with it")
     }
@@ -70,6 +72,22 @@ class EditorStateTest {
             .commitTrigger(null, tonight)
             .commitCondition(0, null, driving)
         assertEquals(listOf<Condition>(driving), clock.commitTrigger(0, weekly).draft.rules.single().conditions)
+    }
+
+    @Test
+    fun `a place read as a state does not answer the speed question, so it does not rewrite it`() {
+        // The sheet only puts the question under the doorway — a speed is about the instant of
+        // crossing a line, and "mientras esté en el garaje" has no such instant. What it did not
+        // ask it must not answer: a fence somebody wrote from "y sólo si" stays exactly where it
+        // is, instead of being thrown away by the next visit to the place sheet.
+        val standing = garage.copy(onCrossing = false)
+        val fenced = blank.withText("mover el coche")
+            .commitTrigger(null, standing)
+            .commitCondition(0, null, driving)
+        assertEquals(listOf<Condition>(driving), fenced.commitTrigger(0, standing, fence = null).draft.rules.single().conditions)
+        // And turning the reading back into a doorway is the sheet asking again: now it answers.
+        assertEquals(emptyList<Condition>(), fenced.commitTrigger(0, garage, fence = null).draft.rules.single().conditions)
+        assertEquals(listOf<Condition>(onFoot), fenced.commitTrigger(0, garage, fence = onFoot).draft.rules.single().conditions)
     }
 
     private val tonight = Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 21, 30))

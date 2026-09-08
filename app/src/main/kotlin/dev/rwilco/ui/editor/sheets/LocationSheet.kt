@@ -62,7 +62,9 @@ import dev.rwilco.model.MIN_RADIUS_M
 import dev.rwilco.model.MAX_DWELL_MINUTES
 import dev.rwilco.model.MIN_DWELL_MINUTES
 import dev.rwilco.model.Condition
-import dev.rwilco.model.PlaceWatchPolicy
+import dev.rwilco.model.MovingKind
+import dev.rwilco.model.kind
+import dev.rwilco.model.movingOf
 import dev.rwilco.model.Presence
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.Trigger
@@ -72,6 +74,8 @@ import dev.rwilco.ui.settings.appDetailsIntent
 import dev.rwilco.ui.settings.openSettingsPage
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.SegmentedChoice
+import dev.rwilco.ui.format.movingLabel
+import dev.rwilco.ui.format.movingMeaning
 import dev.rwilco.ui.components.SheetScaffold
 import dev.rwilco.ui.components.Stepper
 import dev.rwilco.ui.format.currentLocale
@@ -150,7 +154,7 @@ fun LocationSheet(
     // The speed fence, in the two pieces the rate is kept in and for the same reason: turning the
     // switch off and on again offers back the threshold that was chosen, not the default.
     var speedOn by rememberSaveable { mutableStateOf(initialSpeed != null) }
-    var speedDriving by rememberSaveable { mutableStateOf((initialSpeed?.minMps ?: PlaceWatchPolicy.DRIVING_MPS) >= PlaceWatchPolicy.DRIVING_MPS) }
+    var speedKind by rememberSaveable { mutableStateOf((initialSpeed?.kind ?: MovingKind.DRIVING).name) }
     var radius by rememberSaveable { mutableIntStateOf(initial?.radiusM ?: 200) }
     var lat by rememberSaveable { mutableStateOf(initial?.lat) }
     var lng by rememberSaveable { mutableStateOf(initial?.lng) }
@@ -276,12 +280,14 @@ fun LocationSheet(
     // What the rule will actually carry: a rate belongs to a doorway, so the side reading writes
     // none however the switch was left ([Trigger.Location.dwell] reads it the same way).
     val rate = dwellMinutes.takeIf { onCrossing && dwellOn }
-    // Unlike the rate, this is NOT gated on the doorway. A rate asked of a state is the same
-    // state and the model drops it ([Trigger.Location.dwell]), so writing none costs nothing; a
-    // speed fence on a state is an ordinary condition that means something — arriving home *by
-    // car* — and hiding the row under the other reading would silently throw away one somebody
-    // had written from the "y sólo si" sheet.
-    val fence = if (speedOn) Condition.Moving(if (speedDriving) PlaceWatchPolicy.DRIVING_MPS else PlaceWatchPolicy.WALK_MPS) else null
+    // Gated on the doorway, like the rate: a speed is a question about the instant of crossing a
+    // line, and beside "mientras esté en casa" there is no such instant to ask it of.
+    //
+    // Which is why null here means "not asked" and never "asked, none": under the state reading
+    // this sheet does not put the question, so it must not answer it either. `commitTrigger`
+    // reads that off the confirmed trigger — a state place leaves whatever fence "y sólo si"
+    // gave the rule exactly where it is, instead of quietly throwing away somebody's own words.
+    val fence = if (onCrossing && speedOn) movingOf(MovingKind.valueOf(speedKind)) else null
     // What the sheet opened with, so back and the scrim can tell work from nothing.
     val untouched = remember { listOf(lat, lng, radius, label, presence, onCrossing, rate, fence) }
     // A share of the window, never less than the old fixed height: on a tall phone 260dp was a
@@ -411,14 +417,21 @@ fun LocationSheet(
                     onChange = { dwellOn = it },
                     onMinutes = { dwellMinutes = it },
                 )
-            }
-            // **The speed belongs here, beside the line it is about.** It is a fence like any
-            // other and it can still be put from "y sólo si", but the question it answers — how
-            // was I travelling when I crossed this? — is a question about *this circle*, and
-            // making somebody write the place, close the sheet, find a grey button and come back
-            // is why nobody ever found it. Only where a fence has somewhere to go.
-            if (onConfirmRule != null) {
-                SpeedRow(on = speedOn, driving = speedDriving, onChange = { speedOn = it }, onDriving = { speedDriving = it })
+                // **The speed belongs here, beside the line it is about.** It is a fence like
+                // any other and it can still be put from "y sólo si", but the question it
+                // answers — how was I travelling when I crossed this? — is a question about
+                // *this circle*, and making somebody write the place, close the sheet, find a
+                // grey button and come back is why nobody ever found it. Under the doorway with
+                // the rate, and for the same reason: both are about the crossing. Only where a
+                // fence has somewhere to go.
+                if (onConfirmRule != null) {
+                    SpeedRow(
+                        on = speedOn,
+                        kind = MovingKind.valueOf(speedKind),
+                        onChange = { speedOn = it },
+                        onKind = { speedKind = it.name },
+                    )
+                }
             }
         }
         // Typing an address is the way in for a place you are not standing in; the map and the
@@ -682,16 +695,14 @@ private fun RoleChoice(resets: Boolean, onChange: (Boolean) -> Unit) {
  * "Y sólo si voy en coche": the crossing fenced to the speed the phone was going at.
  *
  * The same shape [DwellRow] has — a switch, and the choice under it once it is on — because it is
- * the same kind of answer: a rate on the thing the circle is about. Two floors on one axis and not
- * two ways of getting about, which is what the line under them is for: "en movimiento" is a walking
- * pace that a bike and a car also clear, "en coche" is a speed no walk reaches
- * ([PlaceWatchPolicy.WALK_MPS], [PlaceWatchPolicy.DRIVING_MPS]).
+ * the same kind of answer about the same crossing, which is also why it sits under the doorway
+ * reading and disappears with it.
  *
- * The words are the "y sólo si" sheet's own ([R.string.condition_moving_walking] and its pair), so
- * the two screens that can set this fence say it with the same four words.
+ * The three answers and their words are the "y sólo si" sheet's own ([MovingKind], [movingLabel]),
+ * so the two screens that can set this fence say it the same way.
  */
 @Composable
-private fun SpeedRow(on: Boolean, driving: Boolean, onChange: (Boolean) -> Unit, onDriving: (Boolean) -> Unit) {
+private fun SpeedRow(on: Boolean, kind: MovingKind, onChange: (Boolean) -> Unit, onKind: (MovingKind) -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val haptics = Tokens.haptics
     Column(verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm)) {
@@ -730,12 +741,12 @@ private fun SpeedRow(on: Boolean, driving: Boolean, onChange: (Boolean) -> Unit,
         }
         if (!on) return@Column
         SegmentedChoice(
-            options = listOf(stringResource(R.string.condition_moving_walking), stringResource(R.string.condition_moving_driving)),
-            selectedIndex = if (driving) 1 else 0,
-            onSelect = { onDriving(it == 1) },
+            options = MovingKind.entries.map { stringResource(movingLabel(it)) },
+            selectedIndex = kind.ordinal,
+            onSelect = { onKind(MovingKind.entries[it]) },
         )
         Text(
-            text = stringResource(if (driving) R.string.condition_moving_means_driving else R.string.condition_moving_means_walking),
+            text = stringResource(movingMeaning(kind)),
             style = MaterialTheme.typography.bodySmall,
             color = scheme.onSurfaceVariant,
         )

@@ -92,12 +92,22 @@ noon is a question about nine, and a fix from noon does not answer it.
 
 **And the speed is asked where it is used.** It is a condition like any other and "y sólo si" can
 still set it, but the question — how was I travelling when I crossed this line? — is about one
-circle, so `LocationSheet` asks it beside the line itself (`SpeedRow`, 0.110.0), the way it already
-asks for a rate to be stayed at. Written from there it lands as a `moving` condition on that rule
-and is edited from either screen after. Both screens say the same four words, and the pair is two
-floors on one axis rather than two ways of getting about — "en movimiento" is `WALK_MPS`, which a
-bike and a car also clear, and "en coche" is `DRIVING_MPS`, which no walk reaches — with a line
-under them that says which floor was picked.
+circle, so `LocationSheet` asks it beside the line itself (`SpeedRow`, 0.110.0), under the doorway
+reading and gone with it, exactly where the rate to be stayed at already is: both are about the
+crossing, and a state has no instant to ask either of. Written from there it lands as a `moving`
+condition on that rule and is edited from either screen after. Under the state reading the sheet
+does not put the question, so it does not answer it: `commitTrigger` rewrites the fence only for a
+doorway (`asked`), and a place read as a state keeps whatever "y sólo si" gave the rule.
+
+**Three answers, because three is what people mean** (`MovingKind`, 0.112.0): *andando*, *en
+coche*, *cualquiera*. A floor alone had only two honest readings — moving at all, and moving fast —
+and the pair that reads best said something false, since a car clears the walking floor too. So
+`Condition.Moving` grew a ceiling (`maxMps`, `@EncodeDefault(NEVER)`): *andando* is the band
+`[WALK_MPS, DRIVING_MPS)`, *en coche* is `[DRIVING_MPS, ∞)`, and *cualquiera* is `[WALK_MPS, ∞)` —
+which is exactly what every bare floor already on a phone means, so nothing changes shape or
+meaning and there is no migration. `movingOf`/`kind` are the only place the numbers are named, and
+both screens plus the card, the sentence and the diagnostics line read them; a line under the
+choice says where each band ends, which two words cannot.
 
 **A place is a state, and the doorway is the exception** (`Trigger.Location`). It used to be an
 event and only an event — "al llegar" meant a line the phone had to be *seen* going through —

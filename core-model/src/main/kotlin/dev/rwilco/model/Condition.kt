@@ -94,12 +94,20 @@ sealed interface Condition {
     data class OnMonthDays(val days: Set<Int> = emptySet()) : Condition
 
     /**
-     * Moving at least this fast: "al salir de casa, y sólo si voy en coche".
+     * Moving, at a speed between [minMps] and [maxMps]: "al salir de casa, y sólo si voy en coche".
      *
      * The fence that tells leaving *for the evening* from walking to the bins, and the reason a
      * routine can have a circle wide enough to be crossed reliably: "mover el coche" resets on
      * leaving a 150 m circle around the street, but only when the leaving was done at a speed
      * no walk reaches ([PlaceWatchPolicy.DRIVING_MPS]).
+     *
+     * **[maxMps] is what makes "andando" a word the app can honour.** A floor alone has only two
+     * honest readings — moving at all, and moving fast — and a floor labelled "andando" says
+     * something false, because a car clears it too. A ceiling turns the pair into a band, so the
+     * three answers somebody actually means are all sayable: on foot, in a vehicle, or either.
+     * See [MovingKind]. Exclusive at the top so the two bands meet without overlapping at
+     * [PlaceWatchPolicy.DRIVING_MPS], and null is no ceiling — which is what every speed fence
+     * written before this one has, and exactly what it meant.
      *
      * Read from the watch's own memory ([Fix.speedMps]), which is a speed worked out between
      * two looks — so like a place it cannot be asked about the future ([knownInAdvance]), and
@@ -109,9 +117,18 @@ sealed interface Condition {
      * go quiet, which is the one place that is asked differently (`ReminderFiring.resetBy`,
      * [speedUnvouched]).
      */
+    @OptIn(ExperimentalSerializationApi::class)
     @Serializable
     @SerialName("moving")
-    data class Moving(val minMps: Double = PlaceWatchPolicy.DRIVING_MPS) : Condition
+    data class Moving(
+        val minMps: Double = PlaceWatchPolicy.DRIVING_MPS,
+        // Never written when it is not asked for, so no speed fence already on a phone changes
+        // shape on disk over a field it does not use — the same reason a place carries its rate
+        // that way, and what makes "the old ones mean what they always meant" true by
+        // construction rather than by a migration.
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
+        val maxMps: Double? = null,
+    ) : Condition
 
     /**
      * Being somewhere, or not being there: "a las nueve, y sólo si estoy en casa".
@@ -151,7 +168,7 @@ fun Condition.holdsAt(at: Instant, zone: ZoneId, where: Fix? = null): Boolean = 
     is Condition.OnMonthDays -> holdsOn(at.atZone(zone).toLocalDate())
     // Nobody could say how fast: it holds, which is the house rule and the safe way round for
     // everything that rings. The one caller that needs the other way round asks [speedUnvouched].
-    is Condition.Moving -> speedAt(at, where)?.let { it >= minMps } ?: true
+    is Condition.Moving -> speedAt(at, where)?.let { it >= minMps && (maxMps == null || it < maxMps) } ?: true
     is Condition.AtPlace -> {
         if (where == null || where.accuracyM > radiusM) true
         else (distanceMeters(where.lat, where.lng, lat, lng) <= radiusM) == inside
@@ -225,3 +242,30 @@ fun List<Condition>.speedUnvouched(at: Instant, where: Fix?): Boolean =
 
 /** The circle a condition is about, for the conflict checks and for the watch to keep an eye on. */
 val Condition.place: Condition.AtPlace? get() = this as? Condition.AtPlace
+
+/**
+ * The three answers the speed control offers, which are the three things somebody means by it.
+ *
+ * Here rather than in either sheet because two screens set this fence — "y sólo si" and the place
+ * sheet — and a card, a sentence and a diagnostics line read it back. Four copies of "5 m/s means
+ * a car" is three too many.
+ *
+ * [ANY] is the shape every speed fence written before the ceiling existed already had, so nothing
+ * on a phone changes meaning: a bare floor at walking pace *is* "moving, either way".
+ */
+enum class MovingKind { ON_FOOT, DRIVING, ANY }
+
+/** Which of the three a fence is. See [MovingKind]. */
+val Condition.Moving.kind: MovingKind
+    get() = when {
+        maxMps != null -> MovingKind.ON_FOOT
+        minMps >= PlaceWatchPolicy.DRIVING_MPS -> MovingKind.DRIVING
+        else -> MovingKind.ANY
+    }
+
+/** The fence a chosen answer writes. The only place the numbers are named. */
+fun movingOf(kind: MovingKind): Condition.Moving = when (kind) {
+    MovingKind.ON_FOOT -> Condition.Moving(PlaceWatchPolicy.WALK_MPS, PlaceWatchPolicy.DRIVING_MPS)
+    MovingKind.DRIVING -> Condition.Moving(PlaceWatchPolicy.DRIVING_MPS)
+    MovingKind.ANY -> Condition.Moving(PlaceWatchPolicy.WALK_MPS)
+}

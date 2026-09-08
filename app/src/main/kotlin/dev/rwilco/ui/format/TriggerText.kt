@@ -10,7 +10,8 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import dev.rwilco.R
 import dev.rwilco.model.Condition
-import dev.rwilco.model.PlaceWatchPolicy
+import dev.rwilco.model.MovingKind
+import dev.rwilco.model.kind
 import dev.rwilco.model.Presence
 import dev.rwilco.model.MonthlyOn
 import dev.rwilco.model.RepeatEnd
@@ -448,8 +449,21 @@ fun daysSummary(words: Words, days: Set<DayOfWeek>): String = when (days) {
  * threshold. One string either way, because a number in metres per second is not something to
  * put in a sentence somebody reads.
  */
-fun movingLabel(condition: Condition.Moving): Int =
-    if (condition.minMps >= PlaceWatchPolicy.DRIVING_MPS) R.string.condition_moving_driving else R.string.condition_moving_walking
+fun movingLabel(condition: Condition.Moving): Int = movingLabel(condition.kind)
+
+/** The same, of the answer itself: what the three segments are called, in one place. */
+fun movingLabel(kind: MovingKind): Int = when (kind) {
+    MovingKind.ON_FOOT -> R.string.condition_moving_walking
+    MovingKind.DRIVING -> R.string.condition_moving_driving
+    MovingKind.ANY -> R.string.condition_moving_any
+}
+
+/** And what each of them means, which two words cannot say on their own. */
+fun movingMeaning(kind: MovingKind): Int = when (kind) {
+    MovingKind.ON_FOOT -> R.string.condition_moving_means_walking
+    MovingKind.DRIVING -> R.string.condition_moving_means_driving
+    MovingKind.ANY -> R.string.condition_moving_means_any
+}
 
 /** "1" · "1 · 15": the days of a month in order, on a chip and inside a sentence alike. */
 fun monthDaysSummary(days: Set<Int>): String = days.sorted().joinToString(" · ")

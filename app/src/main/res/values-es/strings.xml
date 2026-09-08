@@ -638,9 +638,11 @@
     <string name="condition_kind_moving">Velocidad</string>
     <string name="condition_moving_hint">El disparador sólo cuenta si el móvil iba a esa velocidad. Se calcula entre dos miradas, así que no siempre hay respuesta: cuando nadie puede decirlo, el aviso suena igual; el que se queda quieto es el lugar que da una rutina por hecha.</string>
     <string name="condition_moving_driving">en coche</string>
-    <string name="condition_moving_walking">en movimiento</string>
-    <string name="condition_moving_means_walking">A paso de andar o más rápido: en bici y en coche también cuentan.</string>
+    <string name="condition_moving_walking">andando</string>
+    <string name="condition_moving_any">cualquiera</string>
+    <string name="condition_moving_means_walking">En movimiento, pero por debajo de la velocidad de un vehículo.</string>
     <string name="condition_moving_means_driving">A velocidad de vehículo, no un paseo.</string>
+    <string name="condition_moving_means_any">En movimiento, a pie o en coche; sólo estando parado no cuenta.</string>
     <string name="place_speed_label">Sólo a cierta velocidad</string>
     <string name="place_speed_hint">Sólo cuenta si el móvil iba a esa velocidad al cruzar la línea. Cuando nadie puede decirlo, suena igual.</string>
     <string name="alert_routine_label">Rutina</string>
@@ -1389,6 +1391,16 @@
         <item>Un aviso con sonido va ahora a tus auriculares cuando los llevas puestos, en vez de salir por el altavoz del móvil como haría cualquier alarma. Es un ajuste, en Sonido, y merece la pena desactivarlo si tus auriculares viven en un cajón: un aviso que suena para nadie es un aviso perdido.</item>
         <item>Y ya no te corta la música. Lo que estuvieras escuchando baja unos decibelios y sigue por debajo mientras el aviso suena por encima —el aviso va por el canal de alarma y la música no, así que ninguno tiene que pelear con el otro— y vuelve solo a su volumen. Antes pedía el audio en exclusiva, lo que mataba un podcast por un tono de diez segundos.</item>
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_112_0">
+
+        <item>«Y sólo si voy en coche» ya se dice con las palabras que uno usa: andando, en coche, o cualquiera de las dos.</item>
+
+        <item>Eran dos opciones —«en movimiento» y «en coche»— y la primera no quería decir lo que parecía: era un suelo, así que un coche también la cumplía. Por eso no se podía llamar «andando» sin mentir. Ahora la condición tiene techo además de suelo, y con eso las tres respuestas que la gente quiere dar son decibles: «andando» es en movimiento pero por debajo de la velocidad de un vehículo, «en coche» es de ahí para arriba, y «cualquiera» es moverse, sea como sea. Lo que ya tuvieras guardado significa exactamente lo mismo: un «en movimiento» de antes se lee «cualquiera».</item>
+
+        <item>Y el selector desaparece al apagar «sólo al cruzar la línea», donde no significaba nada: una velocidad es una pregunta sobre el instante de cruzar, y «mientras esté en casa» no tiene ese instante. Se va con el «y quedarme allí un rato», que está ahí por lo mismo. Si tenías una velocidad puesta desde «Sólo si» en un lugar leído como estado, se queda: la hoja no hace esa pregunta ahí, así que tampoco la responde.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_111_0">

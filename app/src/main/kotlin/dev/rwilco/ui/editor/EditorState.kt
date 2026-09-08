@@ -508,7 +508,11 @@ fun EditorUiState.commitTrigger(
     // **Only a place sheet ever answers the speed question**, so only a place may rewrite the
     // answer. Every other sheet calls this with the default null, and applying that would strip
     // the fence off "a las nueve, y sólo si voy en coche" the moment somebody changed the hour.
-    val asked = trigger is Trigger.Location
+    //
+    // And only a *doorway*: a speed is about the instant of crossing a line, so the sheet does
+    // not put the question under the state reading — and what it did not ask, it must not
+    // answer. A place read as a state keeps whatever fence "y sólo si" gave the rule.
+    val asked = trigger is Trigger.Location && trigger.onCrossing
     fun List<Condition>.withFence(): List<Condition> =
         if (!asked) this else filterNot { it is Condition.Moving } + listOfNotNull(fence)
     // What a routine's place does — ask, or count as done — rides beside it ([TriggerRule.resets]);

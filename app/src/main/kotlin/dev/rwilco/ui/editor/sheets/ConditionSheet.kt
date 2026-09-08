@@ -20,12 +20,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.rwilco.R
 import dev.rwilco.model.Condition
-import dev.rwilco.model.PlaceWatchPolicy
+import dev.rwilco.model.MovingKind
+import dev.rwilco.model.kind
+import dev.rwilco.model.movingOf
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.ui.components.DayToggles
 import dev.rwilco.ui.components.MonthDayToggles
 import dev.rwilco.ui.components.PresetChip
 import dev.rwilco.ui.components.SegmentedChoice
+import dev.rwilco.ui.format.movingLabel
+import dev.rwilco.ui.format.movingMeaning
 import dev.rwilco.ui.components.SheetScaffold
 import dev.rwilco.ui.components.TimeField
 import dev.rwilco.ui.theme.Tokens
@@ -76,7 +80,9 @@ fun ConditionSheet(
             },
         )
     }
-    var driving by rememberSaveable { mutableStateOf((moving?.minMps ?: PlaceWatchPolicy.DRIVING_MPS) >= PlaceWatchPolicy.DRIVING_MPS) }
+    // By name, like the days and the side of a circle above: an enum is not a thing a saved
+    // instance state can carry, and three answers do not fit in a Boolean any more.
+    var movingKind by rememberSaveable { mutableStateOf((moving?.kind ?: MovingKind.DRIVING).name) }
     var addingPlace by rememberSaveable { mutableStateOf(false) }
     var from by rememberTime(window?.from ?: LocalTime.of(18, 0))
     var to by rememberTime(window?.to ?: LocalTime.of(22, 0))
@@ -97,7 +103,7 @@ fun ConditionSheet(
     val selected = days.map(DayOfWeek::valueOf).toSet()
     val pickedPlace = offered.firstOrNull { it.label == chosenLabel } ?: offered.firstOrNull()
     // What the sheet opened with, so a scrim tap or Back asks before throwing an edit away (0.93.0).
-    val untouched = remember { listOf(kind, from, to, days, monthDays, driving, inside, chosenLabel) }
+    val untouched = remember { listOf(kind, from, to, days, monthDays, movingKind, inside, chosenLabel) }
 
     SheetScaffold(
         title = stringResource(R.string.condition_title),
@@ -107,7 +113,7 @@ fun ConditionSheet(
                 kind == KIND_PLACE && pickedPlace != null ->
                     onConfirm(Condition.AtPlace(pickedPlace.lat, pickedPlace.lng, pickedPlace.radiusM, pickedPlace.label, inside))
                 kind == KIND_MONTH_DAYS -> onConfirm(Condition.OnMonthDays(monthDays))
-                kind == KIND_MOVING -> onConfirm(Condition.Moving(if (driving) PlaceWatchPolicy.DRIVING_MPS else PlaceWatchPolicy.WALK_MPS))
+                kind == KIND_MOVING -> onConfirm(movingOf(MovingKind.valueOf(movingKind)))
                 else -> onConfirm(Condition.TimeWindow(from, to, selected))
             }
         },
@@ -120,7 +126,7 @@ fun ConditionSheet(
             KIND_MOVING -> true
             else -> from != to
         },
-        dirty = listOf(kind, from, to, days, monthDays, driving, inside, chosenLabel) != untouched,
+        dirty = listOf(kind, from, to, days, monthDays, movingKind, inside, chosenLabel) != untouched,
     ) {
         // Chips rather than one segmented row: four kinds do not fit across a phone, and
         // "Días del mes" is the one that would be cut. The same flow the recurrence card uses.
@@ -140,19 +146,21 @@ fun ConditionSheet(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            // **Three, because three is what people mean.** A floor alone has only two honest
+            // readings — moving at all, and moving fast — and the pair that reads best
+            // ("andando" / "en coche") says something false with a floor, since a car clears
+            // the walking one too. The band ([Condition.Moving.maxMps]) is what makes "andando"
+            // a word this can honour, and "cualquiera" is the old floor said out loud.
+            val chosen = MovingKind.valueOf(movingKind)
             SegmentedChoice(
-                options = listOf(stringResource(R.string.condition_moving_walking), stringResource(R.string.condition_moving_driving)),
-                selectedIndex = if (driving) 1 else 0,
-                onSelect = { driving = it == 1 },
+                options = MovingKind.entries.map { stringResource(movingLabel(it)) },
+                selectedIndex = chosen.ordinal,
+                onSelect = { movingKind = MovingKind.entries[it].name },
             )
-            // **They are two floors on one axis, not two ways of getting about.** "En
-            // movimiento" is 1,5 m/s — a walk clears it, and so do a bike and a car — while "en
-            // coche" is 5 m/s, which no walk reaches. Two words cannot say that on their own,
-            // and the pair that could ("andando" / "en coche") would say something false: it
-            // reads as *and not driving*, and driving passes. So the line under them says which
-            // floor was just picked, and changes with the tap that picks it.
+            // Two words still cannot say where a band ends, so the line under them does, and
+            // changes with the tap that picks it.
             Text(
-                text = stringResource(if (driving) R.string.condition_moving_means_driving else R.string.condition_moving_means_walking),
+                text = stringResource(movingMeaning(chosen)),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

@@ -20,8 +20,9 @@ import java.time.Instant
 class MovingConditionTest {
 
     private val now: Instant = local(2026, 8, 27, 19, 0)
-    private val driving = Condition.Moving()
-    private val walking = Condition.Moving(PlaceWatchPolicy.WALK_MPS)
+    private val driving = movingOf(MovingKind.DRIVING)
+    private val onFoot = movingOf(MovingKind.ON_FOOT)
+    private val either = movingOf(MovingKind.ANY)
 
     private fun fix(speed: Double?, at: Instant = now) = Fix(40.4, -3.7, 20.0, at, speedMps = speed)
 
@@ -30,8 +31,43 @@ class MovingConditionTest {
         assertTrue(driving.holdsAt(now, zone, fix(12.0)), "43 km/h is a car")
         assertFalse(driving.holdsAt(now, zone, fix(1.6)), "a walk is not")
         assertTrue(driving.holdsAt(now, zone, fix(PlaceWatchPolicy.DRIVING_MPS)), "the fence itself counts")
-        assertTrue(walking.holdsAt(now, zone, fix(1.6)), "and a walk clears the walking fence")
-        assertFalse(walking.holdsAt(now, zone, fix(0.2)), "standing still clears nothing")
+        assertTrue(either.holdsAt(now, zone, fix(1.6)), "and a walk clears the one that takes either")
+        assertFalse(either.holdsAt(now, zone, fix(0.2)), "standing still clears nothing")
+    }
+
+    @Test
+    fun `andando is a band, which is what makes the word honest`() {
+        // A floor alone cannot say "andando": a car clears the walking one too, so the label
+        // would read as *and not driving* and be false. The ceiling is the whole of the fix.
+        assertTrue(onFoot.holdsAt(now, zone, fix(1.6)), "a walk")
+        assertFalse(onFoot.holdsAt(now, zone, fix(0.2)), "standing still is not walking")
+        assertFalse(onFoot.holdsAt(now, zone, fix(12.0)), "and a car is not walking either")
+        // The two bands meet at the vehicle floor without overlapping: exclusive at the top.
+        assertFalse(onFoot.holdsAt(now, zone, fix(PlaceWatchPolicy.DRIVING_MPS)))
+        assertTrue(driving.holdsAt(now, zone, fix(PlaceWatchPolicy.DRIVING_MPS)))
+        // And "cualquiera" is the union of the two, which is what a bare floor already was.
+        for (speed in listOf(1.6, 4.9, 5.0, 12.0)) assertTrue(either.holdsAt(now, zone, fix(speed)), "$speed m/s is moving")
+    }
+
+    @Test
+    fun `the three answers read back as themselves, and the old shape is the one that took either`() {
+        for (kind in MovingKind.entries) assertEquals(kind, movingOf(kind).kind)
+        // Every speed fence written before the ceiling existed is a bare floor, and a bare floor
+        // at walking pace IS "moving, either way" — so nothing on a phone changes meaning.
+        assertEquals(MovingKind.ANY, Condition.Moving(PlaceWatchPolicy.WALK_MPS).kind)
+        assertEquals(MovingKind.DRIVING, Condition.Moving(PlaceWatchPolicy.DRIVING_MPS).kind)
+        // The ceiling is never written unless it is asked for, so the old shape stays byte for
+        // byte — which is what makes "nothing already on a phone changes" true by construction.
+        fun shapeOf(condition: Condition): String =
+            ReminderCodec.encodeRules(listOf(TriggerRule(Trigger.Weekday(setOf(java.time.DayOfWeek.MONDAY)), listOf(condition))))
+        assertTrue(shapeOf(either).contains("""{"type":"moving","minMps":1.5}"""), shapeOf(either))
+        assertTrue(shapeOf(onFoot).contains("""{"type":"moving","minMps":1.5,"maxMps":5.0}"""), shapeOf(onFoot))
+        assertTrue(shapeOf(driving).contains(""""type":"moving""""), "the vehicle floor is the default: " + shapeOf(driving))
+        // And it reads back as what it was.
+        for (kind in MovingKind.entries) {
+            val rule = TriggerRule(Trigger.Weekday(setOf(java.time.DayOfWeek.MONDAY)), listOf(movingOf(kind)))
+            assertEquals(listOf(rule), ReminderCodec.decodeRules(ReminderCodec.encodeRules(listOf(rule))))
+        }
     }
 
     @Test
@@ -69,8 +105,10 @@ class MovingConditionTest {
         assertEquals(TriggerProblem.SPEED_OUT_OF_RANGE, problemOf(Condition.Moving(0.0)))
         assertEquals(TriggerProblem.SPEED_OUT_OF_RANGE, problemOf(Condition.Moving(-1.0)))
         assertEquals(TriggerProblem.SPEED_OUT_OF_RANGE, problemOf(Condition.Moving(100.0)))
-        assertNull(problemOf(driving))
-        assertNull(problemOf(walking))
+        // A ceiling at or under the floor is a band nothing can be inside of.
+        assertEquals(TriggerProblem.SPEED_OUT_OF_RANGE, problemOf(Condition.Moving(5.0, maxMps = 5.0)))
+        assertEquals(TriggerProblem.SPEED_OUT_OF_RANGE, problemOf(Condition.Moving(5.0, maxMps = 1.0)))
+        for (kind in MovingKind.entries) assertNull(problemOf(movingOf(kind)), "$kind is one of the three the chips write")
     }
 
     @Test

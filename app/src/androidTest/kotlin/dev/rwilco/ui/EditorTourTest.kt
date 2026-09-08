@@ -234,14 +234,31 @@ class EditorTourTest {
                 shot("sheet-place-dwell")
                 text(s(R.string.place_dwell_inside)).performScrollTo().performClick()
                 rule.waitUntilGone(s(R.string.place_dwell_explain))
+                // **The speed, beside the line it is about** (0.110.0). It was only reachable
+                // from "y sólo si" — a grey text button under a trigger that had to exist first —
+                // so nobody found it, and the fence that tells leaving for the evening from
+                // walking to the bins went unused. Under the doorway with the rate, and gone
+                // with it: a speed is about the instant of crossing, and a state has none.
+                // Scrolled to and then asserted, rather than waited for: the row opens near the
+                // bottom of the sheet, so what it unfolds is in the tree and under the fold, and
+                // "displayed" is a question about the viewport. It opens closed, and on "en
+                // coche" — the answer somebody reaching for it wants.
+                text(s(R.string.place_speed_label)).performScrollTo().performClick()
+                rule.waitForIdle()
+                text(s(R.string.condition_moving_means_driving)).performScrollTo().assertIsDisplayed()
+                shot("sheet-place-speed")
+                text(s(R.string.place_speed_label)).performScrollTo().performClick()
+                rule.waitUntilGone(s(R.string.condition_moving_means_driving))
                 text(s(R.string.place_side_leaving)).performScrollTo().performClick()
                 rule.waitUntilDisplayed(s(R.string.place_means_leaving))
                 // Under "al salir" the same switch counts the other side, and says so.
                 rule.waitUntilDisplayed(s(R.string.place_dwell_outside))
                 text(s(R.string.place_needs_crossing)).performScrollTo().performClick()
                 rule.waitUntilDisplayed(s(R.string.place_side_outside))
-                // And it is gone with the doorway: a side of a line already lasts.
+                // And both are gone with the doorway: a side of a line already lasts, and a
+                // speed is a question about the instant of crossing one.
                 rule.waitUntilGone(s(R.string.place_dwell_outside))
+                rule.waitUntilGone(s(R.string.place_speed_label))
                 shot("sheet-place-presence")
                 // The radius, which lives under the map and so is off the bottom of both shots
                 // above: its own, because the slider's inset from the sheet margin is a thing to
@@ -250,22 +267,6 @@ class EditorTourTest {
                 // to it leaves the control under the sheet's action bar.
                 rule.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)).performScrollTo().assertIsDisplayed()
                 shot("sheet-place-radius")
-                // **The speed, beside the line it is about** (0.110.0). It was only reachable
-                // from "y sólo si" — a grey text button under a trigger that had to exist first —
-                // so nobody found it, and the fence that tells leaving for the evening from
-                // walking to the bins went unused. It opens closed, like the rate, and the line
-                // under it says which of the two floors was picked, because "en movimiento" and
-                // "en coche" cannot say that on their own.
-                // Scrolled to and then asserted, rather than waited for: the row opens near the
-                // bottom of the sheet, so what it unfolds is in the tree and under the fold, and
-                // "displayed" is a question about the viewport.
-                text(s(R.string.place_speed_label)).performScrollTo().performClick()
-                rule.waitForIdle()
-                // It opens on "en coche", the same opening the "y sólo si" sheet has.
-                text(s(R.string.condition_moving_means_driving)).performScrollTo().assertIsDisplayed()
-                shot("sheet-place-speed")
-                text(s(R.string.place_speed_label)).performScrollTo().performClick()
-                rule.waitUntilGone(s(R.string.condition_moving_means_driving))
             }
             // The date tile carries all three answers to "when in the day", and it opens on the
             // one that asks for nothing: the hint under it is the day's own waking hours, which

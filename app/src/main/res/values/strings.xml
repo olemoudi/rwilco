@@ -651,9 +651,11 @@
     <string name="condition_kind_moving">Speed</string>
     <string name="condition_moving_hint">The trigger only counts when the phone was moving that fast. Worked out between two looks, so it is not always answerable — when nothing can say, the reminder rings anyway; a place that counts a routine as done is the one that stays put.</string>
     <string name="condition_moving_driving">in a vehicle</string>
-    <string name="condition_moving_walking">on the move</string>
-    <string name="condition_moving_means_walking">Walking pace or faster: a bike and a car count too.</string>
+    <string name="condition_moving_walking">on foot</string>
+    <string name="condition_moving_any">either way</string>
+    <string name="condition_moving_means_walking">Moving, but below the speed of a vehicle.</string>
     <string name="condition_moving_means_driving">Vehicle speed, not a stroll.</string>
+    <string name="condition_moving_means_any">Moving, on foot or in a vehicle; only standing still does not count.</string>
     <string name="place_speed_label">Only at a certain speed</string>
     <string name="place_speed_hint">Only counts if the phone was going that fast at the line. When nothing can say, it rings anyway.</string>
     <string name="alert_routine_label">Routine</string>
@@ -1404,6 +1406,16 @@
         <item>A reminder with sound now goes to your headphones when you are wearing any, instead of out of the phone\'s speaker as an alarm otherwise would. It is a setting, in Sound, and it is worth turning off if your earbuds live in a drawer: a reminder played to nobody is a reminder missed.</item>
         <item>And it no longer stops your music. What was playing drops a few decibels and carries on underneath while the reminder sounds over it — the reminder is on the alarm channel and the music is not, so neither has to fight the other — and comes back by itself. It used to ask for the audio outright, which ended podcasts for a ten-second chime.</item>
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_112_0">
+
+        <item>«Y sólo si voy en coche» now says it with the words people use: on foot, in a vehicle, or either way.</item>
+
+        <item>There were two options — «en movimiento» and «en coche» — and the first did not mean what it looked like: it was a floor, so a car cleared it too. That is why it could not be called «andando» without lying. The condition has a ceiling as well as a floor now, and with it the three answers people actually want to give are all sayable: «andando» is moving but below the speed of a vehicle, «en coche» is from there up, and «cualquiera» is moving, either way. Anything already saved means exactly what it meant: an old «en movimiento» reads as «cualquiera».</item>
+
+        <item>And the choice goes away when «sólo al cruzar la línea» is off, where it meant nothing: a speed is a question about the instant of crossing, and «mientras esté en casa» has no such instant. It goes with «y quedarme allí un rato», which is there for the same reason. A speed set from «Sólo si» on a place read as a state stays put: the sheet does not put that question there, so it does not answer it either.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_111_0">

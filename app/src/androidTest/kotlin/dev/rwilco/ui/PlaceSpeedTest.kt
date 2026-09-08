@@ -138,6 +138,16 @@ class PlaceSpeedTest {
         rule.waitForIdle()
         text(s(R.string.condition_moving_means_driving)).performScrollTo().assertIsDisplayed()
         shot("sheet-place-speed")
+        // Three answers, and the third is the one a floor alone was already saying.
+        rule.onNode(hasText(s(R.string.condition_moving_any)) and isSelectable())
+            .performScrollTo()
+            .performSemanticsAction(SemanticsActions.OnClick)
+        rule.waitForIdle()
+        text(s(R.string.condition_moving_means_any)).performScrollTo().assertIsDisplayed()
+        rule.onNode(hasText(s(R.string.condition_moving_driving)) and isSelectable())
+            .performScrollTo()
+            .performSemanticsAction(SemanticsActions.OnClick)
+        rule.waitForIdle()
 
         text(s(R.string.sheet_add)).performClick()
         rule.waitUntil(timeoutMillis = 10_000) {
