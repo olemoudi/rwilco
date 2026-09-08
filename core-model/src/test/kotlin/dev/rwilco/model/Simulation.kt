@@ -152,10 +152,11 @@ class Simulation(
 
     /**
      * The deadline's own alarm, when the set has one running: the second alarm the scheduler
-     * keeps per reminder (`ReminderScheduler.armLapse`). Only for a reminder still active — a
-     * paused one keeps the moment and is asked again when it comes back.
+     * keeps per reminder (`ReminderScheduler.armLapse`). The decision itself is
+     * [Reminder.lapseAt], the same one the scheduler asks — including the firing still owed that
+     * outranks it, which this harness used to carry as a second clause on [lapseFirst].
      */
-    fun lapseAt(): Instant? = reminder.expiresAt?.takeIf { reminder.status == Status.ACTIVE && reminder.hasDeadline }
+    fun lapseAt(): Instant? = reminder.lapseAt(now)
 
     /**
      * The deadline's alarm arrives: what `ReminderFiring.expire` decides, in the same order. A
@@ -183,7 +184,7 @@ class Simulation(
 
     /** Whether the next thing to arrive is the deadline rather than a ring. */
     private fun lapseFirst(wake: Wake?, lapse: Instant?): Boolean =
-        lapse != null && (wake == null || lapse < wake.at) && missedFire(reminder, now) == null
+        lapse != null && (wake == null || lapse < wake.at)
 
     /**
      * The next alarm arrives: the clock jumps to it and the row transitions. Null when nothing

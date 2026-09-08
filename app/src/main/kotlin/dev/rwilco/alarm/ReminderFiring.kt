@@ -530,6 +530,12 @@ class ReminderFiring(
         }
         if (missedFire(reminder, now) != null) {
             Diag.note(TAG_DIAG, "r=${short(id)} lapse held: a firing is still owed for ${reminder.armedFor}")
+            // Re-armed on the way out like every other exit here. It used to be the one that was
+            // not, and for a good reason at the time: the pass armed a deadline already behind
+            // the clock, which arrived at once and stood down here, over and over. The pass does
+            // not arm a held one any more ([Reminder.lapseAt]), so this leaves nothing behind to
+            // ring — and the catch-up that resolves the owed firing re-arms the deadline with it.
+            scheduler.rearmAll()
             return@withLock
         }
         lapse(reminder, now, settings())

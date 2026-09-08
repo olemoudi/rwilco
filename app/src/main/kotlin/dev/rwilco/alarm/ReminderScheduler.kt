@@ -23,8 +23,7 @@ import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
 import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.Wake
-import dev.rwilco.model.hasDeadline
-import dev.rwilco.model.isRoutine
+import dev.rwilco.model.lapseAt
 import dev.rwilco.model.missedFire
 import dev.rwilco.model.nudgeAt
 import dev.rwilco.model.nextPrompt
@@ -128,7 +127,7 @@ class ReminderScheduler(
             // net's moment recorded there would have the catch-up RING the reminder rather than
             // whisper about it (missedFire), and spend the moment while it was at it.
             armNudge(reminder, reminder.nudgeAt(now, zone, defaultTime, settings.safetyNet, dayStart, settings.dayShape))
-            armLapse(reminder)
+            armLapse(reminder, now)
             // A routine's next question, on its own alarm and deliberately off [Reminder.armedFor]
             // for the same reason the net's is: a question is not a firing owed.
             armAsk(reminder, reminder.nextPrompt(now, zone, defaultTime, dayStart, settings.dayShape))
@@ -265,11 +264,13 @@ class ReminderScheduler(
      * refuses a late event on its own — and one already past is delivered at once, which is how
      * a deadline the phone slept through is applied on the next pass. Not for a round that has
      * rung: the ring clears the moment, so there is simply nothing here to arm.
+     *
+     * Whether there is anything to arm is [Reminder.lapseAt], which is where the fourth reason
+     * lives: a firing the phone slept through outranks the deadline, and arming one that is going
+     * to stand down bought an immediate wake-up on every pass and made re-arming unsafe.
      */
-    private fun armLapse(reminder: Reminder) {
-        // hasDeadline is already false on a routine; said here too, because a lapse on one
-        // would be a silent "hecho" and this is the door it would come through.
-        val at = reminder.expiresAt?.takeIf { reminder.status == Status.ACTIVE && reminder.hasDeadline && !reminder.isRoutine }
+    private fun armLapse(reminder: Reminder, now: Instant) {
+        val at = reminder.lapseAt(now)
         if (at == null) {
             cancelLapse(reminder.id)
             return

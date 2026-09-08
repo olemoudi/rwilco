@@ -50,6 +50,44 @@ class DeadlineTest {
     private fun Reminder.closeFrom(from: Instant) = windowExpiry(from, zone, defaultTime)
 
     @Test
+    fun `a deadline held for a firing the phone slept through is not armed at all`() {
+        // The alarm is set for [expiresAt], and by the time this matters that moment is behind
+        // the clock — so an alarm for it arrives at once. `ReminderFiring.expire` stands down
+        // while a firing is owed, which meant every pass bought a wake-up and a decision to do
+        // nothing, and a pass happens whenever any row in the list changes. It is also what made
+        // "re-arm on the way out" unsafe there: the one exit that did not re-arm was this one.
+        val closing = local(2026, 8, 27, 22, 0)
+        val later = closing.plusSeconds(600)
+        val overdue = set(RuleMatch.ALL, homeDoor, atEight, expiresAt = closing)
+        assertEquals(closing, overdue.lapseAt(later), "nothing owed: the deadline is armed, late and delivered at once")
+        // Armed and never rung is a firing owed, and it outranks the deadline.
+        val owed = overdue.copy(armedFor = closing.minusSeconds(3600), armedRule = 1)
+        assertEquals(owed.armedFor, missedFire(owed, later), "the fixture really is a firing owed")
+        assertNull(owed.lapseAt(later), "so there is nothing to arm until the catch-up resolves it")
+        // And once it has rung, or been dealt with, the deadline is armed again — which is how
+        // the catch-up brings it back without anybody re-arming it by hand.
+        assertEquals(closing, owed.copy(lastFiredAt = later).lapseAt(later))
+        assertEquals(closing, owed.copy(lastDealtAt = later).lapseAt(later))
+        assertEquals(closing, owed.copy(armedFor = null).lapseAt(later), "a moment written off is a moment not owed")
+    }
+
+    @Test
+    fun `nothing to arm without a round, a deadline, or an active reminder`() {
+        val closing = local(2026, 8, 27, 22, 0)
+        val later = closing.plusSeconds(600)
+        assertNull(set(RuleMatch.ALL, homeDoor, atEight).lapseAt(later), "no round under way")
+        assertNull(set(RuleMatch.ALL, homeDoor, atEight, deadline = null, expiresAt = closing).lapseAt(later))
+        assertNull(set(RuleMatch.ANY, homeDoor, atEight, expiresAt = closing).lapseAt(later), "one rule is one rule")
+        assertNull(set(RuleMatch.ALL, homeDoor, atEight, expiresAt = closing).copy(status = Status.PAUSED).lapseAt(later))
+        assertNull(set(RuleMatch.ALL, homeDoor, atEight, expiresAt = closing).copy(status = Status.DONE).lapseAt(later))
+        // A routine's lapse would be a silent "hecho"; hasDeadline already refuses it, and this
+        // is the door the alarm would have come through.
+        val routine = set(RuleMatch.ALL, homeDoor, atEight, expiresAt = closing)
+            .copy(recurrence = Recurrence.Since(21, RecurrenceUnit.DAYS))
+        assertNull(routine.lapseAt(later))
+    }
+
+    @Test
     fun `a weekly rule written on a Monday gives Friday's close, not Monday's`() {
         val fridays = set(RuleMatch.ALL, Trigger.Weekday(setOf(DayOfWeek.FRIDAY)), home)
         val monday = local(2026, 8, 24, 10, 0)

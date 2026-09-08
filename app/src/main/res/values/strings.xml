@@ -1406,6 +1406,16 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_111_0">
+
+        <item>A wake-up that did nothing, several times a day.</item>
+
+        <item>When a set with a deadline also has a firing the phone slept through, the deadline steps aside so the firing goes first — that is right and has not changed. What happened is that the deadline\'s alarm was set anyway, for a moment already behind the clock, so it arrived at once, stood aside for the same reason, and the next pass set it again. And there is a pass every time any reminder in the list changes. It is not set at all while a firing is owed now, and comes back by itself as soon as that firing is resolved.</item>
+
+        <item>That also closes the one exit in the firing machinery that did not re-arm what was left behind it: it could not, without biting its own tail. Now it can.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_110_0">
 
         <item>«Y sólo si voy en coche»: the fence that told leaving home from popping out for bread, and that had been doing nothing since 0.101.0.</item>

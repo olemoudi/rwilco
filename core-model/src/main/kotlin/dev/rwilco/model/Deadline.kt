@@ -158,6 +158,32 @@ fun Reminder.expiryDue(now: Instant): Boolean {
 }
 
 /**
+ * The moment the deadline's own alarm is worth setting for, or null when there is nothing to arm.
+ *
+ * The three plain reasons first: nothing is running, the reminder is not active, or the deadline
+ * does not apply to this shape ([hasDeadline], which is already false on a routine — said again
+ * where the alarm is set, because a lapse on one would be a silent "hecho").
+ *
+ * **And the fourth: a firing the phone slept through outranks it.** `ReminderFiring.expire` stands
+ * down while one is owed — the catch-up decides about the moment it was for, and a set that rings
+ * is not given up on — but the arming pass ran before that check and armed the alarm anyway, for
+ * an [Reminder.expiresAt] already behind the clock. An alarm in the past arrives at once, so every
+ * pass bought a wake-up, a read and a decision to do nothing; and a pass happens whenever any row
+ * in the list changes. Worse, it is what made "re-arm on the way out" unsafe here, so the one exit
+ * in `ReminderFiring` that did not re-arm was this one — the alarm would have set itself, arrived,
+ * stood down and set itself again, as fast as the system allowed.
+ *
+ * So the deadline simply is not armed while a firing is owed. It comes back with the catch-up:
+ * that resolves the firing — it rings, or it is judged and written off — and every firing re-arms
+ * on its way out.
+ */
+fun Reminder.lapseAt(now: Instant): Instant? {
+    if (status != Status.ACTIVE || isRoutine || !hasDeadline) return null
+    val at = expiresAt ?: return null
+    return at.takeIf { missedFire(this, now) == null }
+}
+
+/**
  * Whether something the person did stands in front of the deadline, so that it no longer
  * applies: a ring waiting for an answer, or a snooze not yet rung — "not now, then" said about
  * the reminder is the whole of the answer, and the snooze's own ring rings whatever the set was

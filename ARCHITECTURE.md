@@ -2372,7 +2372,13 @@ loud what DST and a change of zone do to a landing.
   cleared — a moment armed past the deadline is not a firing owed, and the re-arm pass holds
   those). One already past is delivered at once, which is how a deadline the phone slept through
   is applied on the next pass; but a firing still owed (`missedFire`) goes first, so the catch-up
-  decides about the moment it was for, and every fire re-arms the lapse behind it. `fire` itself
+  decides about the moment it was for, and every fire re-arms the lapse behind it. **A held one is
+  not armed at all** (`Reminder.lapseAt`, 0.111.0): the moment it names is already behind the
+  clock, so the alarm arrived at once, `expire` stood down for the firing owed, and the next pass
+  set it again — a wake-up and a decision to do nothing, on every change to any row in the list.
+  It was also what made "re-arm on the way out" unsafe there, so that stand-down was the one exit
+  in `ReminderFiring` that did not re-arm; both are fixed together, and the deadline comes back
+  with the catch-up that resolves the firing. `fire` itself
   asks `expiryDue` of the moment it is about (`late ?: now`), before the note or the ring, and
   only for a rule's own moment: a late event under a timer, which has no fence to refuse it, is
   dropped there and the round let go; a snooze's ring has no rule behind it and is the person's.
