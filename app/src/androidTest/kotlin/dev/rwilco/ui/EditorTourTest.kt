@@ -4,6 +4,7 @@ import android.app.LocaleManager
 import android.graphics.Bitmap
 import android.os.LocaleList
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -26,6 +27,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -152,7 +154,18 @@ class EditorTourTest {
         shot("home")
 
         // The one place tags are administered, behind the "+" docked at the end of their row.
-        rule.onNodeWithContentDescription(s(R.string.home_tags_manage)).performClick()
+        // Waited for as DISPLAYED and not merely present: "lo siguiente" above is drawn while
+        // the list underneath is still skeletons, and a tap aimed at a node whose row has not
+        // been laid out yet lands wherever that space belongs at the time — the bug icon in the
+        // top bar, on the run that found this, which copied the diagnostics and put a snackbar
+        // over the row the next line was about.
+        // Through its own semantics rather than by a tap at its centre. Home's top bar is drawn
+        // over the top of the list, so the "+" docked at the end of the tags row can be under it
+        // while its bounds say otherwise — the tap then landed on the bug icon, copied the
+        // diagnostics, and put a snackbar over the very row the next line is about.
+        rule.waitUntilDisplayed(s(R.string.home_tags_manage))
+        rule.onNodeWithContentDescription(s(R.string.home_tags_manage))
+            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         rule.waitUntilShown(s(R.string.curate_tags_title))
         shot("home-tags")
         text(s(R.string.common_close)).performClick()
@@ -237,6 +250,22 @@ class EditorTourTest {
                 // to it leaves the control under the sheet's action bar.
                 rule.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)).performScrollTo().assertIsDisplayed()
                 shot("sheet-place-radius")
+                // **The speed, beside the line it is about** (0.110.0). It was only reachable
+                // from "y sólo si" — a grey text button under a trigger that had to exist first —
+                // so nobody found it, and the fence that tells leaving for the evening from
+                // walking to the bins went unused. It opens closed, like the rate, and the line
+                // under it says which of the two floors was picked, because "en movimiento" and
+                // "en coche" cannot say that on their own.
+                // Scrolled to and then asserted, rather than waited for: the row opens near the
+                // bottom of the sheet, so what it unfolds is in the tree and under the fold, and
+                // "displayed" is a question about the viewport.
+                text(s(R.string.place_speed_label)).performScrollTo().performClick()
+                rule.waitForIdle()
+                // It opens on "en coche", the same opening the "y sólo si" sheet has.
+                text(s(R.string.condition_moving_means_driving)).performScrollTo().assertIsDisplayed()
+                shot("sheet-place-speed")
+                text(s(R.string.place_speed_label)).performScrollTo().performClick()
+                rule.waitUntilGone(s(R.string.condition_moving_means_driving))
             }
             // The date tile carries all three answers to "when in the day", and it opens on the
             // one that asks for nothing: the hint under it is the day's own waking hours, which
@@ -372,6 +401,10 @@ class EditorTourTest {
 
         // A rule can be fenced in, by hours, by days of the month or by a place: the trigger
         // only counts inside them.
+        // A chip now, not a bare text button (0.110.0): the one control in that row that did not
+        // look like one, and the one that missed the 48dp floor. Asserted as tappable, because
+        // "nobody knew it was there" is exactly what it was.
+        rule.onNodeWithText(s(R.string.editor_add_condition)).performScrollTo().assertHasClickAction()
         text(s(R.string.editor_add_condition)).performScrollTo().performClick()
         rule.waitUntilDisplayed(s(R.string.condition_title))
         shot("sheet-condition")
@@ -390,7 +423,15 @@ class EditorTourTest {
         // the bins — the one a routine's garage door is worth having.
         text(s(R.string.condition_kind_moving)).performClick()
         rule.waitUntilDisplayed(s(R.string.condition_moving_hint))
+        // Two floors on one axis, not two ways of getting about: the line under them changes
+        // with the tap, because "en movimiento" is cleared by a car too and two words cannot
+        // say so.
+        text(s(R.string.condition_moving_means_driving)).performScrollTo().assertIsDisplayed()
+        text(s(R.string.condition_moving_walking)).performClick()
+        rule.waitForIdle()
+        text(s(R.string.condition_moving_means_walking)).performScrollTo().assertIsDisplayed()
         text(s(R.string.condition_moving_driving)).performClick()
+        rule.waitForIdle()
         shot("sheet-condition-moving")
         text(s(R.string.condition_kind_hours)).performClick()
         rule.waitUntilDisplayed(s(R.string.condition_window_hint))
@@ -537,7 +578,10 @@ class EditorTourTest {
      */
     private fun androidx.compose.ui.test.junit4.ComposeTestRule.waitUntilDisplayed(text: String) {
         waitUntil(timeoutMillis = 10_000) {
-            runCatching { onAllNodesWithText(text, ignoreCase = true, useUnmergedTree = true)[0].isDisplayed() }.getOrDefault(false)
+            runCatching {
+                onAllNodesWithText(text, ignoreCase = true, useUnmergedTree = true)[0].isDisplayed() ||
+                    onAllNodesWithContentDescription(text, ignoreCase = true, useUnmergedTree = true)[0].isDisplayed()
+            }.getOrDefault(false)
         }
     }
 

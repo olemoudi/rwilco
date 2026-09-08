@@ -638,7 +638,11 @@
     <string name="condition_kind_moving">Velocidad</string>
     <string name="condition_moving_hint">El disparador sólo cuenta si el móvil iba a esa velocidad. Se calcula entre dos miradas, así que no siempre hay respuesta: cuando nadie puede decirlo, el aviso suena igual; el que se queda quieto es el lugar que da una rutina por hecha.</string>
     <string name="condition_moving_driving">en coche</string>
-    <string name="condition_moving_walking">en marcha</string>
+    <string name="condition_moving_walking">en movimiento</string>
+    <string name="condition_moving_means_walking">A paso de andar o más rápido: en bici y en coche también cuentan.</string>
+    <string name="condition_moving_means_driving">A velocidad de vehículo, no un paseo.</string>
+    <string name="place_speed_label">Sólo a cierta velocidad</string>
+    <string name="place_speed_hint">Sólo cuenta si el móvil iba a esa velocidad al cruzar la línea. Cuando nadie puede decirlo, suena igual.</string>
     <string name="alert_routine_label">Rutina</string>
     <string name="snooze_pick_date">A una fecha</string>
     <string name="snooze_until_title">Posponer hasta</string>
@@ -1385,6 +1389,20 @@
         <item>Un aviso con sonido va ahora a tus auriculares cuando los llevas puestos, en vez de salir por el altavoz del móvil como haría cualquier alarma. Es un ajuste, en Sonido, y merece la pena desactivarlo si tus auriculares viven en un cajón: un aviso que suena para nadie es un aviso perdido.</item>
         <item>Y ya no te corta la música. Lo que estuvieras escuchando baja unos decibelios y sigue por debajo mientras el aviso suena por encima —el aviso va por el canal de alarma y la música no, así que ninguno tiene que pelear con el otro— y vuelve solo a su volumen. Antes pedía el audio en exclusiva, lo que mataba un podcast por un tono de diez segundos.</item>
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_110_0">
+
+        <item>«Y sólo si voy en coche»: la valla que distinguía salir de casa de salir a por el pan, y que llevaba desde la 0.101.0 sin hacer nada.</item>
+
+        <item>No se comprobaba nunca. Al sonar, la app preguntaba por esa condición sin mirar dónde estaba el móvil, y sin nadie que respondiera la respuesta era siempre que sí — así que la valla no frenaba nada, digan lo que digan las palabras que hay bajo ella en el editor. Donde peor caía era en las rutinas: un lugar marcado como «esto cuenta como hecho» quedaba justo del revés, porque una velocidad que nadie podía leer sí lo paraba y un paso de paseo no. Pasar andando por delante del coche ponía a cero la cuenta de «mover el coche», y la rutina se callaba tres semanas. Ahora se pregunta de verdad, y del momento del que va el aviso: unas nueve que el móvil se durmió y recupera a mediodía son una pregunta sobre las nueve.</item>
+
+        <item>Y estaba escondida. «Sólo si…» era un texto gris bajo el disparador, el único mando de esa fila que no parecía un mando; ahora es una ficha con un «+», igual que las condiciones que añade y con el tamaño que se puede tocar. Mejor aún: la velocidad se pregunta en la propia hoja del lugar, al lado de la línea de la que habla, como ya se preguntaba «y que lleve diez minutos allí». Escrita ahí aparece como condición en la regla, que es desde donde se edita luego.</item>
+
+        <item>«En marcha» pasa a ser «en movimiento», y bajo la elección hay una línea que dice qué es cada cosa. No son dos formas de moverse sino dos suelos de lo mismo: «en movimiento» lo cumple un paseo, pero también una bici y un coche; «en coche» es una velocidad a la que no llega ningún paso. Llamarla «andando» habría dicho algo falso.</item>
+
+        <item>Rutinas: pausar y reanudar una que aún no habías hecho nunca escribía un «hecho» que nadie dio. La que tenía fecha de inicio perdía su «aún no empieza» para siempre y se ponía a contar desde una fecha que aún no había llegado; y sus preguntas se callaban una décima parte del plazo, que es el silencio que sigue a un «hecho» de verdad. La pausa sigue congelando la cuenta exactamente igual; lo que se mueve ahora es el inicio, que es de donde cuenta una rutina que todavía no se ha hecho.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_109_0">

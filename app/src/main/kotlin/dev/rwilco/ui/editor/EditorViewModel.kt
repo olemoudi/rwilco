@@ -345,8 +345,8 @@ class EditorViewModel(
     // The clock and the draft's own id ride in because what a second rule *means* by default is
     // now a question about whether that reading could ever ring (see `silentTogether`), and a
     // random window's moments are drawn from the id: asked with the wrong one it is a coin flip.
-    fun commitTrigger(index: Int?, trigger: Trigger, resets: Boolean? = null) =
-        _state.update { it.commitTrigger(index, trigger, resets, clock.instant(), clock.zone, draftId) }
+    fun commitTrigger(index: Int?, trigger: Trigger, resets: Boolean? = null, fence: Condition.Moving? = null) =
+        _state.update { it.commitTrigger(index, trigger, resets, fence, clock.instant(), clock.zone, draftId) }
     fun addCondition(ruleIndex: Int) = _state.update { it.addCondition(ruleIndex) }
     fun editCondition(ruleIndex: Int, conditionIndex: Int) = _state.update { it.editCondition(ruleIndex, conditionIndex) }
     fun removeCondition(ruleIndex: Int, conditionIndex: Int) = _state.update { it.removeCondition(ruleIndex, conditionIndex) }

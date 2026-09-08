@@ -486,16 +486,39 @@ fun EditorUiState.restoreTrigger(index: Int, rule: TriggerRule, recurrence: Recu
 
 /**
  * The configurator's result: replaces the trigger of the rule being edited — keeping whatever
- * conditions were put on it — or appends a rule with no conditions. Closes the sheet.
+ * conditions were put on it, bar the one the sheet itself answers ([fence]) — or appends a rule
+ * carrying that answer and nothing else. Closes the sheet.
  */
-fun EditorUiState.commitTrigger(index: Int?, trigger: Trigger, resets: Boolean? = null, now: Instant? = null, zone: ZoneId? = null, draftId: String = ""): EditorUiState {
+fun EditorUiState.commitTrigger(
+    index: Int?,
+    trigger: Trigger,
+    resets: Boolean? = null,
+    /**
+     * The speed fence the place sheet set, or null for none. **Replaces** whatever [Condition.Moving]
+     * the rule already carried rather than joining it: the sheet opened showing that one, so what
+     * comes back is an answer to it, and two speed fences on one rule is a rule that means the
+     * faster of them and reads as neither.
+     */
+    fence: Condition.Moving? = null,
+    now: Instant? = null,
+    zone: ZoneId? = null,
+    draftId: String = "",
+): EditorUiState {
     val adding = index == null || index !in draft.rules.indices
+    // **Only a place sheet ever answers the speed question**, so only a place may rewrite the
+    // answer. Every other sheet calls this with the default null, and applying that would strip
+    // the fence off "a las nueve, y sólo si voy en coche" the moment somebody changed the hour.
+    val asked = trigger is Trigger.Location
+    fun List<Condition>.withFence(): List<Condition> =
+        if (!asked) this else filterNot { it is Condition.Moving } + listOfNotNull(fence)
     // What a routine's place does — ask, or count as done — rides beside it ([TriggerRule.resets]);
     // null leaves the rule's own answer, and a rule that is not a place has none.
     val rules = if (!adding) {
-        draft.rules.mapIndexed { i, rule -> if (i == index) rule.copy(trigger = trigger, resets = resets ?: rule.resets) else rule }
+        draft.rules.mapIndexed { i, rule ->
+            if (i == index) rule.copy(trigger = trigger, conditions = rule.conditions.withFence(), resets = resets ?: rule.resets) else rule
+        }
     } else {
-        draft.rules + TriggerRule(trigger, resets = resets ?: false)
+        draft.rules + TriggerRule(trigger, conditions = if (asked) listOfNotNull(fence) else emptyList(), resets = resets ?: false)
     }
     val match = matchAfterAdding(rules, adding, now, zone, draftId)
     // Choosing "at random" IS choosing a recurrence — "tres veces al día" says so outright — so

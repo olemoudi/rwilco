@@ -201,6 +201,40 @@ class RoutinesTest {
     }
 
     @Test
+    fun `a routine that has never been done keeps its start, not a hecho nobody gave`() {
+        // The resume used to write the anchor into `lastDealtAt` whatever the routine had done,
+        // and for one that has done nothing that anchor is where the count STARTS. So a pause
+        // and a resume left a "hecho" nobody gave: `routineWaitingToStart` wants lastDealtAt
+        // null, so "aún no empieza" went for good; with a start still ahead the anchor landed in
+        // the FUTURE and the row counted backwards from it; and the quiet after a "hecho" held
+        // the routine's questions over a "hecho" that never happened.
+        val october = local(2026, 10, 1, 9, 0)
+        val waiting = car(span = Recurrence.Since(21, RecurrenceUnit.DAYS, startsAt = october))
+            .copy(status = Status.PAUSED, pausedAt = now)
+        assertTrue(waiting.routineWaitingToStart(now))
+        val later = now.plusSeconds(2 * 86_400)
+        // What the repository writes on resume now (ReminderDao.resumeRoutineStart): the START
+        // moves by the two days it rested, and lastDealtAt is left exactly as it was.
+        val moved = waiting.recurrenceAfterPause(later)
+        assertEquals(october.plusSeconds(2 * 86_400), (moved as Recurrence.Since).startsAt)
+        val resumed = waiting.copy(status = Status.ACTIVE, pausedAt = null, recurrence = moved, resumedAt = later, updatedAt = later)
+        assertNull(resumed.lastDealtAt, "nothing has been done, and the row must not say otherwise")
+        assertTrue(resumed.routineWaitingToStart(later), "and it still has not begun")
+        assertEquals(october.plusSeconds(2 * 86_400), resumed.routineAnchor(), "the count runs from the start it was given")
+        assertNull(resumed.promptQuietUntil(zone, dayStart), "and no quiet, because there is no hecho to be quiet after")
+        assertTrue(resumed.routineDone(later, zone, dayStart), "nothing is owed before the count begins")
+        // A routine with no start of its own is the same story from the day it was written.
+        val fresh = car().copy(status = Status.PAUSED, pausedAt = now)
+        val back = fresh.copy(recurrence = fresh.recurrenceAfterPause(later), status = Status.ACTIVE, pausedAt = null)
+        assertNull(back.lastDealtAt)
+        assertEquals(fresh.createdAt.plusSeconds(2 * 86_400), back.routineAnchor(), "the rest moved the day it was written")
+        // Nothing paused is nothing to move, and nothing that is not a routine is touched at all.
+        assertEquals(car().recurrence, car().recurrenceAfterPause(later))
+        val plain = reminderOf(Recurrence.After(1, RecurrenceUnit.DAYS)).copy(pausedAt = now)
+        assertEquals(plain.recurrence, plain.recurrenceAfterPause(later))
+    }
+
+    @Test
     fun `an unanswered ring is one word from the net, at a tenth of the span or half an hour, and then nothing`() {
         // What the owner expects of a routine nobody answered (2026-09-07): the ring once, the
         // net's ICYMI after max(30 min, span/10) beside it, and no re-ring and no re-ask. The

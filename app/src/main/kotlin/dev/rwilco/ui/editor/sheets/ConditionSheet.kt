@@ -145,6 +145,17 @@ fun ConditionSheet(
                 selectedIndex = if (driving) 1 else 0,
                 onSelect = { driving = it == 1 },
             )
+            // **They are two floors on one axis, not two ways of getting about.** "En
+            // movimiento" is 1,5 m/s — a walk clears it, and so do a bike and a car — while "en
+            // coche" is 5 m/s, which no walk reaches. Two words cannot say that on their own,
+            // and the pair that could ("andando" / "en coche") would say something false: it
+            // reads as *and not driving*, and driving passes. So the line under them says which
+            // floor was just picked, and changes with the tap that picks it.
+            Text(
+                text = stringResource(if (driving) R.string.condition_moving_means_driving else R.string.condition_moving_means_walking),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             return@SheetScaffold
         }
         if (kind == KIND_MONTH_DAYS) {

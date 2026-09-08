@@ -37,6 +37,41 @@ import dev.rwilco.model.withSpanOf
 
 class EditorStateTest {
 
+    private val garage = Trigger.Location(40.4168, -3.7038, 150, Presence.OUTSIDE, "garaje", onCrossing = true)
+    private val driving = Condition.Moving()
+
+    @Test
+    fun `the place sheet sets the speed fence, and re-opening it replaces the one it showed`() {
+        // The speed used to be reachable only from "y sólo si" — a grey text button under a
+        // trigger that had to exist first — so nobody found it. The place sheet asks it now, and
+        // what comes back is an ANSWER to the fence it opened showing: it replaces, never joins,
+        // or a place edited twice would carry two speeds and mean the faster of them.
+        val added = blank.withText("mover el coche").commitTrigger(null, garage, fence = driving)
+        assertEquals(listOf<Condition>(driving), added.draft.rules.single().conditions)
+        val walking = Condition.Moving(dev.rwilco.model.PlaceWatchPolicy.WALK_MPS)
+        val changed = added.commitTrigger(0, garage, fence = walking)
+        assertEquals(listOf<Condition>(walking), changed.draft.rules.single().conditions)
+        val off = changed.commitTrigger(0, garage, fence = null)
+        assertEquals(emptyList<Condition>(), off.draft.rules.single().conditions, "the switch turned off takes the fence with it")
+    }
+
+    @Test
+    fun `the fence leaves every other condition alone, and every other sheet leaves the fence alone`() {
+        val hours = Condition.TimeWindow(LocalTime.of(18, 0), LocalTime.of(22, 0))
+        val fenced = blank.withText("sacar la basura")
+            .commitTrigger(null, garage, fence = driving)
+            .commitCondition(0, null, hours)
+        assertEquals(listOf(driving, hours), fenced.draft.rules.single().conditions)
+        // Re-confirming the place keeps the hours: only the speed is this sheet's to answer.
+        assertEquals(listOf(hours, driving), fenced.commitTrigger(0, garage, fence = driving).draft.rules.single().conditions)
+        // And a rule that is not a place is never touched by the default: editing the hour of
+        // "a las nueve, y sólo si voy en coche" must not quietly drop the speed.
+        val clock = blank.withText("pastilla")
+            .commitTrigger(null, tonight)
+            .commitCondition(0, null, driving)
+        assertEquals(listOf<Condition>(driving), clock.commitTrigger(0, weekly).draft.rules.single().conditions)
+    }
+
     private val tonight = Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 21, 30))
     private val weekly = Trigger.AtTime(LocalTime.of(7, 30), setOf(DayOfWeek.MONDAY))
     private val blank = EditorUiState(loaded = true, existingTags = listOf("Compra", "casa"))

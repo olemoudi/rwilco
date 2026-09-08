@@ -714,10 +714,17 @@ fun EditorScreen(
                         savedPlaces = state.savedPlaces,
                         onKeepPlace = viewModel::keepPlace,
                         initialResets = sheet.index?.let { state.draft.rules.getOrNull(it)?.resets } ?: true,
-                        onConfirmRule = if (routine) {
-                            { place, resets -> viewModel.commitTrigger(sheet.index, place, resets) }
-                        } else {
-                            null
+                        pickRole = routine,
+                        // The fence the rule already carries, so re-opening the place offers back
+                        // the speed that was chosen rather than an empty switch.
+                        initialSpeed = sheet.index?.let { index ->
+                            state.draft.rules.getOrNull(index)?.conditions?.filterIsInstance<dev.rwilco.model.Condition.Moving>()?.firstOrNull()
+                        },
+                        // One door now, routine or not: the sheet hands back the place with
+                        // whatever it decided beside it, and `resets` is simply ignored where
+                        // nothing asked for a role.
+                        onConfirmRule = { place, fence, resets ->
+                            viewModel.commitTrigger(sheet.index, place, resets.takeIf { routine }, fence)
                         },
                     )
                 }

@@ -54,10 +54,37 @@ fun Reminder.routineClock(now: Instant): Instant = pausedAt ?: now
  * into `lastDealtAt` on resume (the history table keeps the real "hechos"; `lastDealtAt` is
  * the count's anchor and nothing else on a routine). The anchor as it is when nothing was
  * paused.
+ *
+ * **Only for a routine that has been done at least once.** One that never has counts from where
+ * it *started*, and that is a different slot — see [recurrenceAfterPause], which is what the
+ * resume writes then.
  */
 fun Reminder.routineAnchorAfterPause(now: Instant): Instant {
     val paused = pausedAt ?: return routineAnchor()
     return routineAnchor().plus(Duration.between(paused, now).coerceAtLeast(Duration.ZERO))
+}
+
+/**
+ * The same rest, moved in the slot a routine that has **never been done** counts from: its own
+ * start ([Recurrence.Since.startsAt]), pushed forward by exactly the time it rested. The
+ * recurrence as it stands for anything else.
+ *
+ * The resume used to write [routineAnchorAfterPause] into `lastDealtAt` whatever the routine had
+ * done, and for one that had done nothing that anchor is `startsAt ?: createdAt` — so a pause and
+ * a resume left a "hecho" nobody gave. What it cost was not arithmetic but everything hung off
+ * "never done": [routineWaitingToStart] wants `lastDealtAt` null, so "aún no empieza" was lost for
+ * good and, with a start still ahead, the row was left counting from an anchor in the future; and
+ * `promptQuietUntil` went from null to a tenth of the span, holding the routine's questions quiet
+ * over a "hecho" that never happened.
+ *
+ * A start still ahead of [now] stays ahead of it, which is the point: the month the pause lasted
+ * is a month the count did not begin in either.
+ */
+fun Reminder.recurrenceAfterPause(now: Instant): Recurrence {
+    val since = recurrence as? Recurrence.Since ?: return recurrence
+    val paused = pausedAt ?: return recurrence
+    val rested = Duration.between(paused, now).coerceAtLeast(Duration.ZERO)
+    return since.copy(startsAt = (since.startsAt ?: createdAt).plus(rested))
 }
 
 /**

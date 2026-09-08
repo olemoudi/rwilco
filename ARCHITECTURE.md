@@ -66,13 +66,38 @@ land inside the window is `NeverFires` before anybody waits a day. `DeadlineTest
 Conditions (`Condition.kt`) are states, asked "were you true at that moment?", which is what
 makes them safe to AND with anything: `time_window` (hours + days, crossing midnight allowed),
 `date_range` (two days of the calendar, both ends included), `on_days` (the days of the week
-alone, which is what `Trigger.Weekday` reads as) and `at_place`. A window also carries an optional **date**, which nobody ever types — the "y
+alone, which is what `Trigger.Weekday` reads as), `on_month_days`, `moving` and `at_place`. A window also carries an optional **date**, which nobody ever types — the "y
 sólo si" sheet offers hours and days — and which exists for one thing: a *dated* rule folded
 into its siblings as a state. "El domingo de 20:30 a 22:00, y a la vez en casa" is a state about
 one Sunday evening, and folded as hours alone it became every evening: the set rang on the
 Friday somebody walked through their own front door, and the circle was paying for a position
 every night until it did. It is `@EncodeDefault(NEVER)`, so nothing anybody has typed changes
 shape on disk.
+
+**Two of them nothing can answer in advance, and that is the whole of how they are judged**
+(`knownInAdvance`): `at_place` and `moving`. The scheduler leaves them out, arms the alarm anyway,
+and `ReminderFiring.firstFailing` asks them for real when it goes off — the fences a clock can
+settle first, because they cost nothing, and the place watch read only once something actually
+needs a position or a speed. That split **was** `it is Condition.AtPlace` (fixed 0.110.0), which
+left `moving` among the hours: asked with no fix, and so always true. "Y sólo si voy en coche"
+fenced nothing — and at the one gate where the app acts on its own, a place that counts a routine
+as done (`TriggerRule.resets`), the fence was inverted end to end, since `speedUnvouched` had
+already turned away every fix without a speed: a speed nobody could read stopped the reset, and a
+walking pace did not. The gate is pure now and `FiringGateTest` walks it.
+
+The house rule holds either way round it: **what nobody can vouch for holds**, because the failure
+somebody notices is the one that never arrives. A speed is asked of the *moment the firing is
+about* and not of the hour it arrives, so a nine o'clock the phone slept through and caught up at
+noon is a question about nine, and a fix from noon does not answer it.
+
+**And the speed is asked where it is used.** It is a condition like any other and "y sólo si" can
+still set it, but the question — how was I travelling when I crossed this line? — is about one
+circle, so `LocationSheet` asks it beside the line itself (`SpeedRow`, 0.110.0), the way it already
+asks for a rate to be stayed at. Written from there it lands as a `moving` condition on that rule
+and is edited from either screen after. Both screens say the same four words, and the pair is two
+floors on one axis rather than two ways of getting about — "en movimiento" is `WALK_MPS`, which a
+bike and a car also clear, and "en coche" is `DRIVING_MPS`, which no walk reaches — with a line
+under them that says which floor was picked.
 
 **A place is a state, and the doorway is the exception** (`Trigger.Location`). It used to be an
 event and only an event — "al llegar" meant a line the phone had to be *seen* going through —
@@ -464,10 +489,18 @@ anything repeats**:
   which (`SentencePart.Start`).
   **A pause freezes the count** (0.106.0, the owner's call): `pausedAt` (Room v14) is written
   on pause and read as the clock the count is judged against (`routineClock`, `routineDone`,
-  the row's "hace" and track), so nothing is owed while it rests; lifting it writes
-  `lastDealtAt = routineAnchorAfterPause(now)` and clears the column in one statement
-  (`ReminderDao.resumeRoutine`) — the count continues where it stopped, and does not ring the
-  second the pause is lifted. Two guards for rows that arrive by other roads (a vault, a preset
+  the row's "hace" and track), so nothing is owed while it rests; lifting it moves the count on
+  by exactly the time it rested and clears the column in one statement — the count continues
+  where it stopped, and does not ring the second the pause is lifted.
+  **Which slot the rest moves depends on what the routine counts from** (0.110.0). Done at least
+  once, it is `lastDealtAt = routineAnchorAfterPause(now)` (`ReminderDao.resumeRoutine`). Never
+  done, the count runs from the routine's own start, and that is what moves:
+  `recurrence = recurrenceAfterPause(now)` (`ReminderDao.resumeRoutineStart`), with `lastDealtAt`
+  left alone. Writing the anchor into `lastDealtAt` there was a **"hecho" nobody gave**, and what
+  it cost was everything hung off "never done": `routineWaitingToStart` wants that column null, so
+  "aún no empieza" went for good and — with a start still ahead — the row was left counting from an
+  anchor in the future; and `promptQuietUntil` went from null to a tenth of the span, holding the
+  routine's questions quiet over a "hecho" that never happened. Two guards for rows that arrive by other roads (a vault, a preset
   shaped before): `foldRepeats` never touches a `Since`, and `hasDeadline` is false on one
   (a lapse would have written a silent "hecho"). And the edit that *makes* a routine sheds the
   old ring (`becomesRoutine`, `EditorViewModel.save`): a routine's first deadline can be older

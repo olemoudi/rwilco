@@ -25,7 +25,6 @@ import dev.rwilco.model.Trigger
 import dev.rwilco.geo.PlaceWatchStore
 import dev.rwilco.model.Condition
 import dev.rwilco.model.PlaceWatchPolicy
-import dev.rwilco.model.allHoldAt
 import dev.rwilco.model.awaitingAnswer
 import dev.rwilco.model.deadlineOutranked
 import dev.rwilco.model.expiryDue
@@ -66,6 +65,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.time.ZoneId
 import dev.rwilco.model.notificationSnoozeOffers
 import dev.rwilco.model.Fix
 import dev.rwilco.model.GeofenceIds
@@ -416,57 +416,13 @@ class ReminderFiring(
     }
 
     /**
-     * The first condition that says no, or null when every one of them holds — the same walk
-     * [conditionsHold] takes, kept apart so the drop can be *named* in the log. Which one it is
-     * is the whole difference between "you were somewhere else", "it was the wrong hour" and
-     * "it was the wrong day", and the log used to say the same eleven words for all three.
+     * This reminder's own gate: [firstFailing] with the clock and the watch this class holds.
+     * Which condition says no is the whole difference between "you were somewhere else", "it was
+     * the wrong hour" and "it was the wrong day", and the log used to say the same eleven words
+     * for all three.
      */
-    private suspend fun firstFailing(conditions: List<Condition>, askAll: Boolean, now: Instant, moment: Instant): Condition? {
-        val asked = if (askAll) conditions else conditions.filterNot { it.knownInAdvance }
-        if (asked.isEmpty()) return null
-        val (places, hours) = asked.partition { it is Condition.AtPlace }
-        hours.firstOrNull { !it.holdsAt(now, clock.zone) }?.let { return it }
-        if (places.isEmpty()) return null
-        val watch = placeWatch.read()
-        val where = watch.lastFix?.takeIf { it.speaksFor(moment) }
-        return places.firstOrNull { condition ->
-            val circle = condition as Condition.AtPlace
-            val remembered = if (where != null) watch.sideOf(circle.lat, circle.lng, circle.radiusM, circle.inside) else null
-            val holds = if (remembered != null) remembered == circle.inside else condition.holdsAt(now, clock.zone, where)
-            !holds
-        }
-    }
-
-    private suspend fun conditionsHold(conditions: List<Condition>, askAll: Boolean, now: Instant, moment: Instant): Boolean {
-        val asked = if (askAll) conditions else conditions.filterNot { it.knownInAdvance }
-        if (asked.isEmpty()) return true
-        // Where the phone is comes LAST, and only if everything a clock can settle has already
-        // said yes. An hour that has passed costs nothing to check; a position costs a store
-        // read of a fix somebody paid a radio for, and there is no sense paying it to find out
-        // something that was already decided.
-        val (places, hours) = asked.partition { it is Condition.AtPlace }
-        if (!hours.allHoldAt(now, clock.zone)) return false
-        if (places.isEmpty()) return true
-        val watch = placeWatch.read()
-        val where = watch.lastFix?.takeIf { it.speaksFor(moment) }
-        // **Ask the watch, not the fix.** The watch keeps which side of every circle it last saw
-        // the phone on, and that memory knows two things a raw measurement does not: what the
-        // system's geofences reported (a crossing writes straight into it, with no fix of its
-        // own) and which way its own doubt was resolved. Measuring the fix again instead was a
-        // second, worse opinion — and on a fifty-metre circle, the tightest the app allows and
-        // smaller than an ordinary network fix is accurate, it resolved to "yes" wherever the
-        // phone was. A reminder rang twenty minutes after the phone's geofences had said the
-        // phone had gone.
-        //
-        // Only while a fix still speaks for now, though. Past that the memory is old news like
-        // everything else, and the house rule takes over: what nobody can vouch for holds,
-        // because the failure somebody notices is the one that never arrives.
-        return places.all { condition ->
-            val circle = condition as Condition.AtPlace
-            val remembered = if (where != null) watch.sideOf(circle.lat, circle.lng, circle.radiusM, circle.inside) else null
-            if (remembered != null) remembered == circle.inside else condition.holdsAt(now, clock.zone, where)
-        }
-    }
+    private suspend fun firstFailing(conditions: List<Condition>, askAll: Boolean, now: Instant, moment: Instant): Condition? =
+        firstFailing(conditions, askAll, now, moment, clock.zone) { placeWatch.read() }
 
     /**
      * A rule of a "todos" set stops being met: the phone walked back into the place it had left.
@@ -981,3 +937,83 @@ class ReminderFiring(
 
 /** How long a routine's question waits before it is tried again inside its window. */
 private val ASK_RETRY: Duration = Duration.ofMinutes(15)
+
+/**
+ * The first condition that says no, or null when every one of them holds.
+ *
+ * Pure, and taking the watch as something to *ask* rather than something already read, because the
+ * order is half of what it does: everything a clock can settle is asked first and costs nothing,
+ * and [watch] is only called once something actually needs a position or a speed — that read is of
+ * a fix somebody paid a radio for, and there is no sense paying it to find out something a clock
+ * had already decided.
+ *
+ * **The split is [Condition.knownInAdvance]**, which is the very question being asked here, one
+ * door later: the scheduler leaves out the fences nothing can answer about next Tuesday and arms
+ * the alarm anyway, and this is where they finally get answered. It used to be
+ * `it is Condition.AtPlace`, which left [Condition.Moving] in the clock half — asked with no fix
+ * at all, and so **always true**. "Y sólo si voy en coche" fenced nothing: a ring came round on a
+ * walk, and worse, a place that counts a routine as done ([TriggerRule.resets]) counted it done on
+ * one. The only case that reached the reset gate was a fix WITH a speed on it ([speedUnvouched]
+ * having already turned away the ones without), so the fence was inverted end to end: a speed
+ * nobody could read stopped it, and a walking pace did not.
+ */
+internal suspend fun firstFailing(
+    conditions: List<Condition>,
+    askAll: Boolean,
+    now: Instant,
+    moment: Instant,
+    zone: ZoneId,
+    watch: suspend () -> PlaceWatchState,
+): Condition? {
+    val asked = if (askAll) conditions else conditions.filterNot { it.knownInAdvance }
+    if (asked.isEmpty()) return null
+    val (byTheClock, needAFix) = asked.partition { it.knownInAdvance }
+    byTheClock.firstOrNull { !it.holdsAt(now, zone) }?.let { return it }
+    if (needAFix.isEmpty()) return null
+    return firstFailingWhere(needAFix, now, moment, zone, watch())
+}
+
+/**
+ * The half of a rule's fences that only a position can answer, judged against what the watch
+ * remembers: the first one that says no, or null when they all hold.
+ *
+ * Pure and apart from the class on purpose — this is the judgement the alarm, the geofence and the
+ * catch-up all come through, and until now nothing could test it without a phone.
+ *
+ * **A place is asked of the watch, not of the fix.** The watch keeps which side of every circle it
+ * last saw the phone on, and that memory knows two things a raw measurement does not: what the
+ * system's geofences reported (a crossing writes straight into it, with no fix of its own) and
+ * which way its own doubt was resolved. Measuring the fix again instead was a second, worse
+ * opinion — and on a fifty-metre circle, the tightest the app allows and smaller than an ordinary
+ * network fix is accurate, it resolved to "yes" wherever the phone was.
+ *
+ * **A speed is asked of [moment], not of [now].** It is the one fence about how the phone was
+ * travelling when the thing happened: "al salir de casa, y sólo si voy en coche", slept through
+ * and caught up at noon, is a question about the moment of leaving, and standing in a kitchen at
+ * noon does not answer it. [Condition.holdsAt] re-asks [Fix.speaksFor] itself, so a fix too old
+ * for that moment reads as no speed at all.
+ *
+ * And past [PlaceWatchPolicy.SPEED_MEMORY] either side of [moment] the memory is old news like
+ * everything else, and the house rule takes over: **what nobody can vouch for holds**, because the
+ * failure somebody notices is the one that never arrives. The one caller that needs it the other
+ * way round — a place that counts a routine as done, where letting a fence through unchecked
+ * restarts a count nobody asked to restart — asks [speedUnvouched] before it ever gets here.
+ */
+internal fun firstFailingWhere(
+    conditions: List<Condition>,
+    now: Instant,
+    moment: Instant,
+    zone: ZoneId,
+    watch: PlaceWatchState,
+): Condition? {
+    val where = watch.lastFix?.takeIf { it.speaksFor(moment) }
+    return conditions.firstOrNull { condition ->
+        when (condition) {
+            is Condition.AtPlace -> {
+                val remembered = if (where != null) watch.sideOf(condition.lat, condition.lng, condition.radiusM, condition.inside) else null
+                if (remembered != null) remembered != condition.inside else !condition.holdsAt(now, zone, where)
+            }
+            else -> !condition.holdsAt(moment, zone, where)
+        }
+    }
+}

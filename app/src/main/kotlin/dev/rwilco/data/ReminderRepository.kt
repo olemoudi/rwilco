@@ -3,6 +3,7 @@ package dev.rwilco.data
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
 import dev.rwilco.model.routineAnchorAfterPause
+import dev.rwilco.model.recurrenceAfterPause
 import dev.rwilco.model.isRoutine
 import dev.rwilco.model.expiredDone
 import kotlinx.coroutines.flow.Flow
@@ -94,7 +95,14 @@ class ReminderRepository(
         if (status == Status.ACTIVE) {
             val current = get(id)
             if (current != null && current.isRoutine && current.pausedAt != null) {
-                dao.resumeRoutine(id, now.toEpochMilli(), current.routineAnchorAfterPause(now).toEpochMilli())
+                // Which slot the rest moves depends on what the routine counts from. Done at
+                // least once, that is `lastDealtAt`; never done, it is the routine's own start,
+                // and writing the anchor into `lastDealtAt` there was a "hecho" nobody gave.
+                if (current.lastDealtAt != null) {
+                    dao.resumeRoutine(id, now.toEpochMilli(), current.routineAnchorAfterPause(now).toEpochMilli())
+                } else {
+                    dao.resumeRoutineStart(id, now.toEpochMilli(), ReminderCodec.encodeRecurrence(current.recurrenceAfterPause(now)))
+                }
                 return
             }
         }

@@ -68,6 +68,19 @@ interface ReminderDao {
     suspend fun resumeRoutine(id: String, at: Long, anchor: Long)
 
     /**
+     * The same resume for a routine that has **never been done**, where the count runs from the
+     * routine's own start and not from a "hecho" there has never been: the rest moves
+     * [Recurrence.Since.startsAt] instead ([Reminder.recurrenceAfterPause]), and `lastDealtAt`
+     * is left alone — writing the anchor there made the row claim it had been done once, which
+     * is what took "aún no empieza" away from it for good.
+     *
+     * One statement, for the reason the one above it is: a process dying between two writes must
+     * not leave a start already moved under a pause still standing.
+     */
+    @Query("UPDATE reminder SET status = 'ACTIVE', updatedAt = :at, resumedAt = :at, pausedAt = NULL, recurrence = :recurrence WHERE id = :id")
+    suspend fun resumeRoutineStart(id: String, at: Long, recurrence: String)
+
+    /**
      * A snooze is the person's word: to a clock or to a place, never both, and the two are
      * written together so whichever is given clears the other.
      */

@@ -61,6 +61,8 @@ import dev.rwilco.model.MAX_RADIUS_M
 import dev.rwilco.model.MIN_RADIUS_M
 import dev.rwilco.model.MAX_DWELL_MINUTES
 import dev.rwilco.model.MIN_DWELL_MINUTES
+import dev.rwilco.model.Condition
+import dev.rwilco.model.PlaceWatchPolicy
 import dev.rwilco.model.Presence
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.Trigger
@@ -117,8 +119,20 @@ fun LocationSheet(
      * because "ya estás allí" is exactly the case where nobody is ever seen crossing.
      */
     initialResets: Boolean = true,
-    /** The routine's own confirm, carrying the role beside the place; null everywhere else. */
-    onConfirmRule: ((Trigger.Location, Boolean) -> Unit)? = null,
+    /** Whether the role row above is asked at all: under a routine, and nowhere else. */
+    pickRole: Boolean = false,
+    /**
+     * The speed fence already on the rule, for a place being edited ([Condition.Moving]). Null is
+     * a place with none, and a place being added.
+     */
+    initialSpeed: Condition.Moving? = null,
+    /**
+     * The **editor's** confirm, carrying everything this sheet decides beside the place: the speed
+     * fence, and (under a routine) the role. Null in Settings and in the condition sheet, which
+     * want the place and nothing else — and where a fence would have nowhere to go, which is why
+     * the row that sets one only appears with this.
+     */
+    onConfirmRule: ((Trigger.Location, Condition.Moving?, Boolean) -> Unit)? = null,
 ) {
     var label by rememberSaveable { mutableStateOf(initial?.label ?: "") }
     var resets by rememberSaveable { mutableStateOf(initialResets) }
@@ -133,6 +147,10 @@ fun LocationSheet(
     // rather than the default — the same shape "Guardar como lugar" has.
     var dwellOn by rememberSaveable { mutableStateOf(initial?.dwellMinutes != null && initial.onCrossing) }
     var dwellMinutes by rememberSaveable { mutableIntStateOf(initial?.dwellMinutes ?: DEFAULT_DWELL_MINUTES) }
+    // The speed fence, in the two pieces the rate is kept in and for the same reason: turning the
+    // switch off and on again offers back the threshold that was chosen, not the default.
+    var speedOn by rememberSaveable { mutableStateOf(initialSpeed != null) }
+    var speedDriving by rememberSaveable { mutableStateOf((initialSpeed?.minMps ?: PlaceWatchPolicy.DRIVING_MPS) >= PlaceWatchPolicy.DRIVING_MPS) }
     var radius by rememberSaveable { mutableIntStateOf(initial?.radiusM ?: 200) }
     var lat by rememberSaveable { mutableStateOf(initial?.lat) }
     var lng by rememberSaveable { mutableStateOf(initial?.lng) }
@@ -258,8 +276,14 @@ fun LocationSheet(
     // What the rule will actually carry: a rate belongs to a doorway, so the side reading writes
     // none however the switch was left ([Trigger.Location.dwell] reads it the same way).
     val rate = dwellMinutes.takeIf { onCrossing && dwellOn }
+    // Unlike the rate, this is NOT gated on the doorway. A rate asked of a state is the same
+    // state and the model drops it ([Trigger.Location.dwell]), so writing none costs nothing; a
+    // speed fence on a state is an ordinary condition that means something — arriving home *by
+    // car* — and hiding the row under the other reading would silently throw away one somebody
+    // had written from the "y sólo si" sheet.
+    val fence = if (speedOn) Condition.Moving(if (speedDriving) PlaceWatchPolicy.DRIVING_MPS else PlaceWatchPolicy.WALK_MPS) else null
     // What the sheet opened with, so back and the scrim can tell work from nothing.
-    val untouched = remember { listOf(lat, lng, radius, label, presence, onCrossing, rate) }
+    val untouched = remember { listOf(lat, lng, radius, label, presence, onCrossing, rate, fence) }
     // A share of the window, never less than the old fixed height: on a tall phone 260dp was a
     // letterbox the circle had to be aimed through.
     val sizes = Tokens.sizes
@@ -298,11 +322,11 @@ fun LocationSheet(
         onConfirm = {
             if (keep && keepOffered) onKeepPlace?.invoke(SavedPlace(label.trim(), lat!!, lng!!, radius))
             val place = Trigger.Location(lat!!, lng!!, radius, Presence.valueOf(presence), label.trim(), onCrossing, rate)
-            onConfirmRule?.invoke(place, resets) ?: onConfirm(place)
+            onConfirmRule?.invoke(place, fence, resets) ?: onConfirm(place)
         },
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),
         confirmEnabled = known && label.isNotBlank() && (rate == null || rate in MIN_DWELL_MINUTES..MAX_DWELL_MINUTES),
-        dirty = listOf(lat, lng, radius, label, presence, onCrossing, rate) != untouched,
+        dirty = listOf(lat, lng, radius, label, presence, onCrossing, rate, fence) != untouched,
     ) {
         // The places kept by name, one tap each: name, pin and radius at once. The one that
         // matches the pin is inverted, so a rule built from "Casa" says so.
@@ -374,7 +398,7 @@ fun LocationSheet(
             )
             // A routine's doorway asks, or counts as done: the choice the role row puts, right
             // under the side of the line it is about (see Prompt.kt).
-            if (onConfirmRule != null) RoleChoice(resets = resets, onChange = { resets = it })
+            if (pickRole) RoleChoice(resets = resets, onChange = { resets = it })
             // Only under a doorway, because only a doorway can be asked to be stayed at: a side
             // of a line already holds for as long as somebody is on it, and asking a state to
             // last is the same state. The switch simply disappears with the reading, which is
@@ -387,6 +411,14 @@ fun LocationSheet(
                     onChange = { dwellOn = it },
                     onMinutes = { dwellMinutes = it },
                 )
+            }
+            // **The speed belongs here, beside the line it is about.** It is a fence like any
+            // other and it can still be put from "y sólo si", but the question it answers — how
+            // was I travelling when I crossed this? — is a question about *this circle*, and
+            // making somebody write the place, close the sheet, find a grey button and come back
+            // is why nobody ever found it. Only where a fence has somewhere to go.
+            if (onConfirmRule != null) {
+                SpeedRow(on = speedOn, driving = speedDriving, onChange = { speedOn = it }, onDriving = { speedDriving = it })
             }
         }
         // Typing an address is the way in for a place you are not standing in; the map and the
@@ -642,6 +674,70 @@ private fun RoleChoice(resets: Boolean, onChange: (Boolean) -> Unit) {
             text = stringResource(if (resets) R.string.place_role_reset_hint else R.string.place_role_ask_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * "Y sólo si voy en coche": the crossing fenced to the speed the phone was going at.
+ *
+ * The same shape [DwellRow] has — a switch, and the choice under it once it is on — because it is
+ * the same kind of answer: a rate on the thing the circle is about. Two floors on one axis and not
+ * two ways of getting about, which is what the line under them is for: "en movimiento" is a walking
+ * pace that a bike and a car also clear, "en coche" is a speed no walk reaches
+ * ([PlaceWatchPolicy.WALK_MPS], [PlaceWatchPolicy.DRIVING_MPS]).
+ *
+ * The words are the "y sólo si" sheet's own ([R.string.condition_moving_walking] and its pair), so
+ * the two screens that can set this fence say it with the same four words.
+ */
+@Composable
+private fun SpeedRow(on: Boolean, driving: Boolean, onChange: (Boolean) -> Unit, onDriving: (Boolean) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val haptics = Tokens.haptics
+    Column(verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .toggleable(
+                    value = on,
+                    role = Role.Switch,
+                    onValueChange = { checked ->
+                        haptics.perform(if (checked) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff)
+                        onChange(checked)
+                    },
+                )
+                .heightIn(min = Tokens.sizes.touch),
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(text = stringResource(R.string.place_speed_label), style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    // Its own line and not the "y sólo si" sheet's: that one is six lines long
+                    // here, which is a paragraph in a row whose neighbours get two, and half of
+                    // it is about the routine reset — an aside that belongs where it is said.
+                    // What survives is the caveat that changes what somebody expects.
+                    text = stringResource(R.string.place_speed_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = scheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.width(Tokens.spacing.md))
+            Switch(
+                checked = on,
+                onCheckedChange = null,
+                colors = SwitchDefaults.colors(checkedThumbColor = scheme.surface, checkedTrackColor = scheme.onSurface),
+            )
+        }
+        if (!on) return@Column
+        SegmentedChoice(
+            options = listOf(stringResource(R.string.condition_moving_walking), stringResource(R.string.condition_moving_driving)),
+            selectedIndex = if (driving) 1 else 0,
+            onSelect = { onDriving(it == 1) },
+        )
+        Text(
+            text = stringResource(if (driving) R.string.condition_moving_means_driving else R.string.condition_moving_means_walking),
+            style = MaterialTheme.typography.bodySmall,
+            color = scheme.onSurfaceVariant,
         )
     }
 }

@@ -834,16 +834,33 @@ private fun TriggerEditRow(
                         modifier = Modifier.heightIn(min = Tokens.sizes.touch),
                     )
                 }
-                TextButton(
+                // **A chip, like the ones it sits with.** It was a bare TextButton in
+                // onSurfaceVariant: the one control in this row that did not look like a
+                // control, reading as a footnote beside chips that have a border, a glyph and a
+                // thumb's worth of height — so the whole of "y sólo si" was a thing people did
+                // not know was there. It is also the one that missed the 48dp floor, since
+                // Material's text button stops at 40. Same shape, same edge, same height as the
+                // conditions it adds, with a "+" where they wear their funnel: the row then
+                // reads as what it is, a list with one more slot at the end.
+                InputChip(
+                    selected = false,
                     onClick = onAddCondition,
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant),
-                    contentPadding = PaddingValues(horizontal = Tokens.spacing.sm),
-                ) {
-                    Text(
-                        text = stringResource(if (rule.conditions.isEmpty()) R.string.editor_add_condition else R.string.editor_add_another_condition),
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                }
+                    colors = InputChipDefaults.inputChipColors(
+                        containerColor = Color.Transparent,
+                        labelColor = MaterialTheme.colorScheme.onSurface,
+                        leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
+                    border = BorderStroke(Tokens.strokes.edge, family.edge()),
+                    label = {
+                        Text(
+                            text = stringResource(if (rule.conditions.isEmpty()) R.string.editor_add_condition else R.string.editor_add_another_condition),
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    },
+                    leadingIcon = { Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(Tokens.sizes.glyph)) },
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.heightIn(min = Tokens.sizes.touch),
+                )
             }
         }
     }

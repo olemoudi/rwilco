@@ -652,6 +652,10 @@
     <string name="condition_moving_hint">The trigger only counts when the phone was moving that fast. Worked out between two looks, so it is not always answerable — when nothing can say, the reminder rings anyway; a place that counts a routine as done is the one that stays put.</string>
     <string name="condition_moving_driving">in a vehicle</string>
     <string name="condition_moving_walking">on the move</string>
+    <string name="condition_moving_means_walking">Walking pace or faster: a bike and a car count too.</string>
+    <string name="condition_moving_means_driving">Vehicle speed, not a stroll.</string>
+    <string name="place_speed_label">Only at a certain speed</string>
+    <string name="place_speed_hint">Only counts if the phone was going that fast at the line. When nothing can say, it rings anyway.</string>
     <string name="alert_routine_label">Routine</string>
     <string name="snooze_pick_date">To a date</string>
     <string name="snooze_until_title">Snooze until</string>
@@ -1400,6 +1404,20 @@
         <item>A reminder with sound now goes to your headphones when you are wearing any, instead of out of the phone\'s speaker as an alarm otherwise would. It is a setting, in Sound, and it is worth turning off if your earbuds live in a drawer: a reminder played to nobody is a reminder missed.</item>
         <item>And it no longer stops your music. What was playing drops a few decibels and carries on underneath while the reminder sounds over it — the reminder is on the alarm channel and the music is not, so neither has to fight the other — and comes back by itself. It used to ask for the audio outright, which ended podcasts for a ten-second chime.</item>
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_110_0">
+
+        <item>«Y sólo si voy en coche»: the fence that told leaving home from popping out for bread, and that had been doing nothing since 0.101.0.</item>
+
+        <item>It was never checked. When something rang, the app asked that condition without looking at where the phone was, and with nobody to answer the answer was always yes — so the fence stopped nothing, whatever the words under it in the editor say. Where it landed worst was on routines: a place marked «this counts as done» was inverted end to end, since a speed nobody could read did stop it and a walking pace did not. Strolling past the car reset the count of «mover el coche», and the routine went quiet for three weeks. It is asked for real now, and about the moment the reminder is for: a nine o\'clock the phone slept through and catches up at noon is a question about nine.</item>
+
+        <item>And it was hidden. «Sólo si…» was grey text under the trigger, the one control in that row that did not look like one; it is a chip with a «+» now, like the conditions it adds and at a size a thumb is meant to hit. Better still, the speed is asked in the place sheet itself, beside the line it is about, the way «and once I have been there ten minutes» already was. Written there it turns up as a condition on the rule, which is where it is edited from afterwards.</item>
+
+        <item>«En marcha» becomes «en movimiento», and a line under the choice says what each one means. They are not two ways of getting about but two floors of the same thing: «en movimiento» is cleared by a walk, and by a bike and a car too; «en coche» is a speed no walk reaches. Calling it «andando» would have said something false.</item>
+
+        <item>Routines: pausing and resuming one you had never done yet wrote a «hecho» nobody gave. One with a start date lost its «aún no empieza» for good and began counting from a date that had not arrived; and its questions went quiet for a tenth of the span, which is the silence that follows a real «hecho». A pause still freezes the count exactly as before; what moves now is the start, which is what a routine that has not been done yet counts from.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_109_0">
