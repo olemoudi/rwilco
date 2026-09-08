@@ -1393,6 +1393,18 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_113_0">
+
+        <item>La actualización automática ya termina en una conexión mala, en vez de gastar datos y no llegar.</item>
+
+        <item>El APK son sesenta megas y a cada intento se le dan diez minutos. En una red lenta no cabía —y cada reintento empezaba por el byte cero—, así que los cinco intentos se gastaban hasta trescientos megas de datos móviles y no instalaban nada, con un «fallo de descarga» por toda explicación. Ahora cada intento pide lo que falta y lo añade a lo que ya hay, así que los reintentos suman en vez de repetirse. Si el servidor no atiende, se vuelve a empezar; y si resulta que ya estaba entero, se da por bueno en vez de quedarse atascado pidiendo un trozo que no existe.</item>
+
+        <item>Lo que se está bajando ya no se llama igual que lo que está listo para instalar: hasta que no llega entero no toma ese nombre. Con eso, una descarga cortada no puede confundirse con una actualización lista, y un intento fallido no deja sesenta megas olvidados en la caché.</item>
+
+        <item>Y elegir canal en Ajustes comprueba en ese momento. Antes escribía el ajuste y ya: la respuesta llegaba con la comprobación periódica, hasta doce horas después, desde un control que acababas de tocar.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_112_0">
 
         <item>«Y sólo si voy en coche» ya se dice con las palabras que uno usa: andando, en coche, o cualquiera de las dos.</item>

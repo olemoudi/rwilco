@@ -29,6 +29,7 @@ import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.SegmentedChoice
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.update.UpdateInfo
+import dev.rwilco.update.UpdateWorker
 import dev.rwilco.update.Updater
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -51,6 +52,19 @@ fun UpdateChannelCard(channel: UpdateChannel, onChannel: (UpdateChannel) -> Unit
     val spacing = Tokens.spacing
     val context = LocalContext.current
     var confirming by rememberSaveable { mutableStateOf(false) }
+
+    /**
+     * Choosing a channel and then looking for evidence that it did anything: the setting was
+     * written and nothing else happened, so the answer arrived with the next periodic check —
+     * up to twelve hours later, from a control the person had just touched. It asks now.
+     *
+     * Going the other way is the same call and costs nothing: beta behind this phone answers
+     * "nothing to do" and the line under the control already says why.
+     */
+    fun follow(chosen: UpdateChannel) {
+        onChannel(chosen)
+        UpdateWorker.checkNow(context)
+    }
 
     // What the chosen channel currently serves, read when the card appears and whenever the
     // choice changes. Three states and not two, because "the manifest says nothing is published
@@ -81,7 +95,7 @@ fun UpdateChannelCard(channel: UpdateChannel, onChannel: (UpdateChannel) -> Unit
                 // interrupting that would be a dialog for its own sake.
                 onSelect = { index ->
                     val chosen = UpdateChannel.entries[index]
-                    if (chosen == UpdateChannel.ALPHA) confirming = true else onChannel(chosen)
+                    if (chosen == UpdateChannel.ALPHA) confirming = true else follow(chosen)
                 },
             )
             // Where this phone stands against the channel it follows, in one line, always.
@@ -134,7 +148,7 @@ fun UpdateChannelCard(channel: UpdateChannel, onChannel: (UpdateChannel) -> Unit
                 TextButton(
                     onClick = {
                         confirming = false
-                        onChannel(UpdateChannel.ALPHA)
+                        follow(UpdateChannel.ALPHA)
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
                 ) { Text(stringResource(R.string.settings_channel_warn_confirm)) }

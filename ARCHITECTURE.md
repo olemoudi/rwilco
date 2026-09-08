@@ -3023,6 +3023,30 @@ was a trip to GitHub) runs `Updater`, which reads the manifest of the channel th
 keeps a declined APK for the one-tap retry in Settings (`AppUpdateCard`). `BootReceiver` re-arms
 after boot and after the update itself.
 
+**The download resumes, and that is what makes it arrive** (0.113.0). The APK is sixty megabytes
+and a worker gets ten minutes, so a weak connection cannot finish one in a single attempt — and
+every attempt used to start at byte zero, so the five retries WorkManager schedules spent three
+hundred megabytes of somebody's data and installed nothing (`updatesWifiOnly` is false by
+default). Each attempt now asks for the rest with a `Range` header and appends, so the retries add
+up instead of repeating each other; the APK has its own OkHttp client because a manifest is a
+hundred bytes and shares none of that problem. Three answers the server can give, all pure and
+tested: 206 continues what is on disk (`continuesPart`), 200 means the range was ignored and the
+part is written over, and 416 means there is nothing past what we hold — the part IS the file
+(`partIsWhole`), which is the trap that would otherwise be permanent, since a part completed a
+moment before the process died would be refused for ever.
+
+The bytes land in `update-<versionCode>.part` and are only given the staged name once the body
+ended where it said it would. Keyed by the build, so a release that moves on mid-download starts a
+clean file rather than splicing two builds together, and named apart from `update.apk`, so a
+download cut short can never be mistaken for an update ready to install — which is also what stops
+a failed attempt leaving sixty megabytes behind under a name nothing sweeps (`staleParts`).
+Whatever the file turns out to be is settled where everything else is: by `apkIsInstallable`, on
+the way to the installer.
+
+Choosing a channel asks straight away (`UpdateChannelCard.follow`). It used to write the setting
+and nothing else, so the answer arrived with the next periodic check — up to twelve hours later,
+from a control somebody had just touched and was looking at for evidence that it did anything.
+
 ### Two channels (0.88.0)
 
 `UpdateChannel.BETA` is the tested stream and the default; `ALPHA` is builds as they are written.

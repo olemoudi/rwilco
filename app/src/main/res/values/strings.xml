@@ -1408,6 +1408,18 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_113_0">
+
+        <item>The self-update now finishes on a bad connection, instead of spending data and never arriving.</item>
+
+        <item>The APK is sixty megabytes and each attempt gets ten minutes. On a slow network it did not fit — and every retry started at byte zero — so the five attempts spent up to three hundred megabytes of mobile data and installed nothing, with «download failed» for an explanation. Each attempt now asks for what is missing and adds it to what is already there, so the retries add up instead of repeating each other. If the server will not do that, it starts again; and if it turns out the file was already whole, it is taken as done rather than getting stuck asking for a piece that does not exist.</item>
+
+        <item>What is still arriving is no longer called the same as what is ready to install: it only takes that name once it is whole. So a cut-short download cannot be mistaken for an update ready to go, and a failed attempt does not leave sixty megabytes forgotten in the cache.</item>
+
+        <item>And choosing a channel in Settings checks there and then. It used to write the setting and nothing else: the answer arrived with the periodic check, up to twelve hours later, from a control you had just touched.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_112_0">
 
         <item>«Y sólo si voy en coche» now says it with the words people use: on foot, in a vehicle, or either way.</item>

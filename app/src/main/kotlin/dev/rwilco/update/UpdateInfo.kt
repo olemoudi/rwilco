@@ -97,3 +97,47 @@ fun nextUpdateStep(
     !enoughSpace -> UpdateStep.NEED_SPACE
     else -> UpdateStep.DOWNLOAD
 }
+
+/**
+ * Where a build's bytes are kept while they are still arriving.
+ *
+ * **Keyed by the build, and not the staged APK's own name.** Two things fall out of that and both
+ * were bugs: a download cut short can no longer be mistaken for an update ready to install — it is
+ * not called `update.apk` until it is whole — and a release that moves on mid-download starts a
+ * clean file instead of appending the bytes of one build to another. The url a channel manifest
+ * names is pinned to its tag, so the bytes behind it never change and resuming is sound.
+ */
+fun partName(versionCode: Int): String = "$PART_PREFIX$versionCode$PART_SUFFIX"
+
+/** Half-downloaded builds that are no longer worth keeping; [keep] is the one being worked on. */
+fun staleParts(names: List<String>, keep: String?): List<String> =
+    names.filter { it.startsWith(PART_PREFIX) && it.endsWith(PART_SUFFIX) && it != keep }
+
+private const val PART_PREFIX = "update-"
+private const val PART_SUFFIX = ".part"
+
+/**
+ * Whether the server is continuing the bytes we already have, or sending the file from the top.
+ *
+ * A range request is a request: 206 is "here is the rest", and a 200 to the same call is a server
+ * that ignored it and is sending the whole thing again. Appending to *that* would splice a second
+ * copy onto the first, so it truncates instead — which costs the bytes already downloaded and is
+ * still the only correct answer.
+ */
+fun continuesPart(code: Int, alreadyHave: Long): Boolean = code == HTTP_PARTIAL && alreadyHave > 0
+
+/**
+ * Whether the server is saying there is nothing past what we already hold.
+ *
+ * A range that starts at or past the end of the file answers 416, and that is not a failure: it
+ * means the part IS the file. It happens for one unremarkable reason — the last attempt wrote the
+ * final byte and then the process died, or the rename did not happen — and without this the next
+ * attempt would ask for a range that does not exist, be refused, and be refused again for ever,
+ * with sixty perfectly good megabytes sitting on the disk. So it is taken as done, and what the
+ * file actually is gets settled where everything else is settled: by [apkIsInstallable], on the
+ * way to the installer.
+ */
+fun partIsWhole(code: Int, alreadyHave: Long): Boolean = code == HTTP_RANGE_NOT_SATISFIABLE && alreadyHave > 0
+
+private const val HTTP_PARTIAL = 206
+private const val HTTP_RANGE_NOT_SATISFIABLE = 416

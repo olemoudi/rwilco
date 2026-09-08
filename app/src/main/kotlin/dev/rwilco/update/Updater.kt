@@ -55,6 +55,24 @@ class Updater(private val context: Context) {
         .build()
 
     /**
+     * The APK's own client, which is a different problem from a manifest's.
+     *
+     * A manifest is a hundred bytes and five minutes is already absurd for it. The APK is sixty
+     * megabytes, and five minutes of it is 1.6 Mbps sustained — under that the call was cut every
+     * single time, and since the download started from byte zero on every retry, a phone on a
+     * poor connection burned the whole file five times over and never got the update. The wait is
+     * longer here, and bounded well inside the ten minutes WorkManager gives a worker: past that
+     * the worker is stopped anyway, and what makes a slow link finish is not a longer call but
+     * [download] resuming where the last one stopped.
+     */
+    private val apkClient = client.newBuilder()
+        .callTimeout(APK_CALL_TIMEOUT_MINUTES, TimeUnit.MINUTES)
+        // A socket that has gone quiet for a minute is a socket that is not coming back, and
+        // saying so early is what leaves time for a retry that resumes.
+        .readTimeout(60, TimeUnit.SECONDS)
+        .build()
+
+    /**
      * Single-flight wrapper: update checks fire from several places and two overlapping runs
      * are actively harmful — install() abandons stale sessions, so a concurrent run would abort
      * the other's half-written session, and both would download the full APK. A second caller
@@ -163,8 +181,10 @@ class Updater(private val context: Context) {
             UpdateStep.NOTHING_TO_DO -> {
                 // Anything still in the cache is for a build this device has already passed —
                 // usually the APK it just installed, whose success broadcast never reached the
-                // process that was replaced.
+                // process that was replaced. The half-downloaded ones go too: there is nothing
+                // left for them to become.
                 discardStagedApk()
+                sweepParts()
                 UpdateCenter.report(UpdateUiState.UpToDate(current))
                 return@withContext UpdateCheckOutcome.UP_TO_DATE
             }
@@ -189,7 +209,7 @@ class Updater(private val context: Context) {
             UpdateStep.DOWNLOAD -> Unit
         }
         UpdateCenter.report(UpdateUiState.Downloading(info))
-        val downloaded = runCatching { download(info.apk) }
+        val downloaded = runCatching { download(info.apk, info.versionCode) }
             .onFailure { Log.w(TAG, "download failed", it) }
             .isSuccess
         if (!downloaded) {
@@ -233,6 +253,14 @@ class Updater(private val context: Context) {
         runCatching { apkFile().delete() }
     }
 
+    /** Half-downloaded builds worth nothing any more; [keep] is the one being worked on. */
+    private fun sweepParts(keep: String? = null) {
+        runCatching {
+            val names = context.cacheDir.list()?.toList().orEmpty()
+            for (name in staleParts(names, keep)) File(context.cacheDir, name).delete()
+        }
+    }
+
     /**
      * What [channel] currently serves.
      *
@@ -249,12 +277,45 @@ class Updater(private val context: Context) {
         }
     }
 
-    private fun download(url: String) {
-        val target = apkFile()
-        client.newCall(Request.Builder().url(url).build()).execute().use { resp ->
+    /**
+     * The APK, into a part file that is only given the staged name once it is whole.
+     *
+     * **Resumable, which is the whole of the fix.** A worker has ten minutes and sixty megabytes
+     * over a weak connection does not fit in them; what used to happen is that every attempt
+     * started at byte zero, so five retries downloaded three hundred megabytes and installed
+     * nothing. Now each attempt asks for the rest ([continuesPart]) and appends, so the retries
+     * WorkManager already schedules add up instead of repeating each other. The url a channel
+     * manifest names is pinned to its tag, so the bytes behind it do not move under us.
+     *
+     * And the file is only called [APK_FILE] when the body ended where it said it would — OkHttp
+     * throws on a truncated one — which is what stops a cut-short download from ever looking like
+     * an update ready to install, and what keeps a failed attempt from leaving sixty megabytes
+     * behind under a name nothing sweeps.
+     */
+    private fun download(url: String, versionCode: Int) {
+        val part = File(context.cacheDir, partName(versionCode))
+        sweepParts(keep = part.name)
+        val have = part.length()
+        val request = Request.Builder().url(url)
+            .apply { if (have > 0) header("Range", "bytes=$have-") }
+            .build()
+        apkClient.newCall(request).execute().use { resp ->
+            // Nothing past what we hold: the part is the whole file, and asking again for a range
+            // that does not exist would be refused for ever. See [partIsWhole].
+            if (partIsWhole(resp.code, have)) {
+                Log.i(TAG, "the part already holds the whole file ($have bytes)")
+                return@use
+            }
             require(resp.isSuccessful) { "download failed: ${resp.code}" }
-            resp.body.byteStream().use { input -> target.outputStream().use { input.copyTo(it) } }
+            val append = continuesPart(resp.code, have)
+            if (have > 0) Log.i(TAG, if (append) "resuming at $have bytes" else "server ignored the range; starting again")
+            resp.body.byteStream().use { input ->
+                java.io.FileOutputStream(part, append).use { input.copyTo(it) }
+            }
         }
+        val target = apkFile()
+        runCatching { target.delete() }
+        require(part.renameTo(target)) { "could not move the download into place" }
         Log.i(TAG, "downloaded ${target.length()} bytes")
     }
 
@@ -310,6 +371,13 @@ class Updater(private val context: Context) {
 
         /** Ceiling on the version.json body we will read (see [fetchInfo]). */
         private const val MAX_INFO_BYTES = 64L * 1024
+
+        /**
+         * How long one attempt at the APK may take. Under the ten minutes WorkManager gives a
+         * worker, because past that it is stopped mid-write anyway — and with [download]
+         * resuming, being stopped costs only the tail of one attempt. See [apkClient].
+         */
+        private const val APK_CALL_TIMEOUT_MINUTES = 8L
 
         /** Where the APK must come from. See [trustedApkUrl]. */
         private const val APK_HOST = "github.com"
