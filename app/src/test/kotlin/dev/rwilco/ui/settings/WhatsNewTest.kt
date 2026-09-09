@@ -29,6 +29,19 @@ class WhatsNewTest {
     }
 
     @Test
+    fun `a promotion speaks for what it carried and ends the list`() {
+        // The beta channel jumps twenty or thirty releases at a time. Everything under the
+        // promotion was written for the channel that tests the app; the promotion said it
+        // already, in the words the person reading it needs.
+        val promoted = listOf(Release(5, "0.5.0", 0), Release(4, "0.4.0", 0, summarises = true), Release(3, "0.3.0", 0), Release(2, "0.2.0", 0))
+        assertEquals(listOf(4), entriesFor(lastSeenVersionCode = 1, currentVersionCode = 4, promoted).map { it.versionCode })
+        // What came after it is still news, and still shown.
+        assertEquals(listOf(5, 4), entriesFor(lastSeenVersionCode = 1, currentVersionCode = 5, promoted).map { it.versionCode })
+        // A phone already past it never sees it at all.
+        assertEquals(listOf(5), entriesFor(lastSeenVersionCode = 4, currentVersionCode = 5, promoted).map { it.versionCode })
+    }
+
+    @Test
     fun `a fresh install and an up-to-date phone are shown nothing`() {
         assertTrue(entriesFor(lastSeenVersionCode = 0, currentVersionCode = 5, releases).isEmpty())
         assertTrue(entriesFor(lastSeenVersionCode = 5, currentVersionCode = 5, releases).isEmpty())

@@ -27,8 +27,21 @@ import dev.rwilco.BuildConfig
 import dev.rwilco.R
 import dev.rwilco.ui.theme.Tokens
 
-/** One release worth announcing: its code, its name, and its bullets (a string-array resource). */
-data class Release(val versionCode: Int, val name: String, @ArrayRes val bulletsRes: Int)
+/**
+ * One release worth announcing: its code, its name, and its bullets (a string-array resource).
+ *
+ * [summarises] marks an entry that speaks for everything it carried — a promotion of the alpha
+ * channel to beta. Beta moves in jumps of twenty or thirty releases and will keep doing so, and
+ * the entries it jumps over were written for the channel that tests the app, one per build and
+ * technical by design. Handing all of them to somebody who just wanted their reminders is not a
+ * change log, it is a wall. So a summarising entry ends the list: see [entriesFor].
+ */
+data class Release(
+    val versionCode: Int,
+    val name: String,
+    @ArrayRes val bulletsRes: Int,
+    val summarises: Boolean = false,
+)
 
 /**
  * Newest first. Empty until there is a release worth a word; the sheet then never appears.
@@ -40,7 +53,8 @@ data class Release(val versionCode: Int, val name: String, @ArrayRes val bullets
  * brought the notes back, so a phone that last saw 0.20.0 is told once what happened since.
  */
 val RELEASES: List<Release> = listOf(
-    Release(versionCode = 172, name = "0.115.0", bulletsRes = R.array.whats_new_0_115_0),
+    Release(versionCode = 173, name = "0.116.0", bulletsRes = R.array.whats_new_0_116_0),
+    Release(versionCode = 172, name = "0.115.0", bulletsRes = R.array.whats_new_0_115_0, summarises = true),
     Release(versionCode = 171, name = "0.114.0", bulletsRes = R.array.whats_new_0_114_0),
     Release(versionCode = 170, name = "0.113.0", bulletsRes = R.array.whats_new_0_113_0),
     Release(versionCode = 169, name = "0.112.0", bulletsRes = R.array.whats_new_0_112_0),
@@ -175,9 +189,13 @@ val RELEASES: List<Release> = listOf(
  */
 fun entriesFor(lastSeenVersionCode: Int, currentVersionCode: Int, releases: List<Release> = RELEASES): List<Release> {
     if (lastSeenVersionCode <= 0) return emptyList()
-    return releases
+    val shown = releases
         .filter { it.versionCode in (lastSeenVersionCode + 1)..currentVersionCode }
         .sortedByDescending { it.versionCode }
+    // The newest entry that speaks for what came before it is where the list ends: everything
+    // older is what it already said, in the voice of the channel it was said to.
+    val summary = shown.indexOfFirst { it.summarises }
+    return if (summary < 0) shown else shown.take(summary + 1)
 }
 
 /** How many releases Settings offers to look back over. Past five is a history, not a change log. */

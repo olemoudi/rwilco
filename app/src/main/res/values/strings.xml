@@ -1408,15 +1408,18 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_116_0">
+
+        <item>A promotion to the stable channel now says its piece and stops. That channel moves in jumps of twenty or thirty releases at a time, and it was handing over every entry it jumped — each one written for the channel that tests the app, one per build. That is not a change log, it is a wall. The promotion\'s own summary is the whole of it now.</item>
+
+    </string-array>
     <string-array name="whats_new_0_115_0">
 
-        <item>What the alpha channel has been carrying since 0.92.0, now on beta. Nothing is new in this build itself — it is the same app the test channel has been running, published where everyone can get it.</item>
+        <item>It has been a while since the last update here, and a fair bit has piled up. The short version:</item>
 
-        <item>The big one is routines: the things you do every so often rather than at a set hour. A routine counts the time since the last one, keeps a line on the main screen, turns red when it is overdue, and can ask you on the clock or when you arrive somewhere. They have a screen of their own, and they fold away when you would rather not see them.</item>
+        <item>Routines are new — for the things you do every so often rather than at a set hour: watering the plants, changing the sheets. Rwilco keeps count of how long it has been, tells you on the main screen, and can ask you about it, either on the clock or when you get somewhere.</item>
 
-        <item>The rest, in short: a rule can now be fenced to days of the month, to how fast you are going, and to whether you are walking or driving; the alert screen, the firing path and the routines each had a round of fixes; and the self-update no longer spends your data without ever arriving.</item>
-
-        <item>The entries below say what each of those changes was, one release at a time.</item>
+        <item>The rest, briefly: a reminder can now depend on the day of the month, or on whether you are walking or driving; alerts arrive more reliably; the app updates itself properly on a slow connection; and letting reminders through total silence can finally be switched on.</item>
 
     </string-array>
     <string-array name="whats_new_0_114_0">
