@@ -96,6 +96,11 @@
     <string name="home_routines_ok">Periodic routines · all done</string>
     <string name="home_routines_overdue_title">You still haven\'t done:</string>
     <string name="home_routines_open">Open the routines</string>
+    <string name="home_contacts_title">Time to get in touch with:</string>
+    <plurals name="home_contacts_more">
+        <item quantity="one">%1$d more contact</item>
+        <item quantity="other">%1$d more contacts</item>
+    </plurals>
     <plurals name="home_routines_more">
         <item quantity="one">and one more</item>
         <item quantity="other">and %d more</item>
@@ -117,6 +122,11 @@
     <string name="history_note_routine">The last times it was done, asked about or reset. It goes with the routine, and never leaves this phone.</string>
     <string name="home_search_kind_routine">Routine</string>
     <string name="routines_filter_waiting">Not started yet</string>
+    <string name="routines_filter_work">Work</string>
+    <string name="routines_filter_personal">Personal</string>
+    <string name="routines_contact_turn">its turn in %1$s</string>
+    <string name="routines_contact_unanswered">told, and waiting on you</string>
+    <string name="routines_contact_no_turn">no turn yet: more contacts than slots</string>
     <string name="routines_paused">paused</string>
     <string name="routines_put_off">put off</string>
     <string name="routines_mark_done">Mark «%1$s» as done</string>
@@ -134,6 +144,12 @@
     <string name="routines_due">due %1$s</string>
     <string name="routines_overdue">overdue %1$s</string>
     <string name="routines_new">New routine</string>
+    <string name="routines_new_routine">Routine</string>
+    <string name="routines_new_routine_hint">Something you do every so often: move the car, water the plants.</string>
+    <string name="routines_new_contact_work">Work contact</string>
+    <string name="routines_new_contact_work_hint">Raised on a work morning, one at a time.</string>
+    <string name="routines_new_contact_personal">Personal contact</string>
+    <string name="routines_new_contact_personal_hint">Raised at the weekend, when there is time to ring somebody.</string>
     <string name="routines_done">Done</string>
     <string name="routines_done_returns">Done · asks again %1$s</string>
     <string name="routines_empty_title">No routines yet</string>
@@ -262,6 +278,9 @@
     <string name="editor_error_routine_text">Write what has to be done.</string>
     <string name="editor_delete_routine">Delete routine</string>
     <string name="editor_title_edit_routine">Edit routine</string>
+    <string name="editor_title_new_contact">New contact</string>
+    <string name="editor_title_edit_contact">Edit contact</string>
+    <string name="editor_contact_kind">Who they are</string>
     <string name="editor_preview">Preview the alert</string>
     <string name="editor_delete">Delete reminder</string>
     <string name="editor_tags_title">Tags</string>
@@ -589,6 +608,10 @@
     <string name="alert_missed_subtext">Did not ring on time</string>
     <string name="notif_channel_net">Safety net</string>
     <string name="notif_channel_net_description">A quiet word about a reminder that rang and was never answered.</string>
+    <string name="notif_channel_contact">Contacts</string>
+    <string name="notif_channel_contact_description">A quiet card when it is a while since you spoke to somebody on your list. Never makes a sound.</string>
+    <string name="notif_contact_title">Time to get in touch with %1$s</string>
+    <string name="notif_contact_done">Spoken</string>
     <string name="notif_channel_ask">Routine questions</string>
     <string name="notif_channel_ask_description">A routine asking whether you\'ve done it — at a time of day, or on arriving at or leaving a place.</string>
     <string name="notif_ask_yes">Yes, just now</string>
@@ -1408,6 +1431,17 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_117_0">
+
+        <item>Contacts: the people you would stop speaking to if nobody kept count.</item>
+
+        <item>Add someone with a cadence — «every 8 weeks» — and mark them work or personal. When the time is up, Rwilco tells you: a quiet card, never a sound, never taking the screen. Work contacts come up on a weekday morning, personal ones at the weekend, at a time drawn inside the window rather than on a clock.</item>
+
+        <item>And it paces you. Two work contacts and two personal ones a week at most, because that is how many slots there are — one person to a slot. Everybody else waits their turn, and the list says whose turn is when. A contact you do not answer comes back next week, ahead of the rest.</item>
+
+        <item>They live with the routines: same screen, same swipes, same «hecho». The slots and their hours are yours to change in Settings → Contacts, and that list is also the limit.</item>
+
+    </string-array>
     <string-array name="whats_new_0_116_0">
 
         <item>A promotion to the stable channel now says its piece and stops. That channel moves in jumps of twenty or thirty releases at a time, and it was handing over every entry it jumped — each one written for the channel that tests the app, one per build. That is not a change log, it is a wall. The promotion\'s own summary is the whole of it now.</item>
@@ -1997,6 +2031,14 @@
     <string name="sheet_in_window">In a window</string>
     <string name="sheet_in_window_hint">Rings when the window opens, and goes on counting until it closes.</string>
     <string name="settings_windows">Times of day</string>
+    <string name="settings_contacts_title">Contacts</string>
+    <string name="settings_contacts_summary">%1$d work · %2$d personal a week</string>
+    <string name="settings_contacts_hint">One contact per slot — so this list is also the limit: however many slots there are is how many people a week you will be asked about. The rest wait their turn.</string>
+    <string name="settings_contacts_slot">Slot %1$d</string>
+    <string name="settings_contacts_slot_remove">Remove this slot</string>
+    <string name="settings_contacts_from">From</string>
+    <string name="settings_contacts_to">To</string>
+    <string name="settings_contacts_add">Add a slot</string>
     <string name="settings_windows_hint">Stretches of the day kept by name, offered wherever one is asked for: at lunchtime, in the evening.</string>
     <string name="settings_windows_empty">Nothing named yet.</string>
     <string name="settings_add_window">Name a stretch</string>

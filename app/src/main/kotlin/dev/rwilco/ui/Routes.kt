@@ -26,6 +26,12 @@ object Routes {
         val sharedText: String? = null,
         /** A blank form that starts as a routine (see `Routines.kt`): the way in from the routines screen. */
         val routine: Boolean = false,
+        /**
+         * A blank form that starts as a **contact** of this kind (see `Contacts.kt`), by name.
+         * The enum's name rather than the enum: a String needs no NavType, the way `sharedText`
+         * already does not.
+         */
+        val contactKind: String? = null,
     )
 
     @Serializable

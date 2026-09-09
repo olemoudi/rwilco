@@ -64,6 +64,12 @@ fun nextFire(
     // (or count as done) and nothing more, which is the scheduler's business (`nextPrompt`), not
     // this one's. Before the rest on purpose: with rules and no "hecho" yet, restUntil has
     // nothing to say and the deadline would otherwise be waited for by nobody.
+    // **A contact's moment is not its own to know.** It is the opening the whole list decides
+    // between them (`Contacts.kt`, [contactQueue]), and no function that can see one reminder
+    // can answer it. The scheduler arms it from the queue; here it is nothing — and deliberately
+    // not the deadline below, which would ring at the day's start, outside every slot, on the
+    // actions the row happens to carry.
+    if (reminder.isContact) return null
     if (reminder.isRoutine) {
         return reminder.recurrenceMoment(now, zone, dayStart, shape)?.let { NextFire.Scheduled(it, null) }
     }
@@ -158,6 +164,12 @@ fun nextWake(
     if (snoozedUntil != null && snoozedUntil > now) return Wake(snoozedUntil, null)
     // A routine arms its deadline and nothing else: its rules are questions, on an alarm of
     // their own (`nextPrompt`), never a moment to ring. See nextFire.
+    // **A contact's moment is not its own to know.** It is the opening the whole list decides
+    // between them (`Contacts.kt`, [contactQueue]), and no function that can see one reminder
+    // can answer it. The scheduler arms it from the queue; here it is nothing — and deliberately
+    // not the deadline below, which would ring at the day's start, outside every slot, on the
+    // actions the row happens to carry.
+    if (reminder.isContact) return null
     if (reminder.isRoutine) return reminder.recurrenceMoment(now, zone, dayStart, shape)?.let { Wake(it, null) }
     // A recurrence's moment is the ring itself: there is no rule behind it to tick off. It is
     // the alarm when there are no rules, and after a rest when the rules have nothing left to

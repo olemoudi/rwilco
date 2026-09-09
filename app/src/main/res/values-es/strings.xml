@@ -92,6 +92,11 @@
     <string name="home_routines_ok">Rutinas periódicas · al día</string>
     <string name="home_routines_overdue_title">Todavía no has hecho lo siguiente:</string>
     <string name="home_routines_open">Abrir las rutinas</string>
+    <string name="home_contacts_title">Toca escribir a:</string>
+    <plurals name="home_contacts_more">
+        <item quantity="one">%1$d contacto más</item>
+        <item quantity="other">%1$d contactos más</item>
+    </plurals>
     <plurals name="home_routines_more">
         <item quantity="one">y una más</item>
         <item quantity="other">y %d más</item>
@@ -113,6 +118,11 @@
     <string name="history_note_routine">Las últimas veces que se hizo, se preguntó o se reinició. Se va con la rutina, y no sale de este teléfono.</string>
     <string name="home_search_kind_routine">Rutina</string>
     <string name="routines_filter_waiting">Aún no empieza</string>
+    <string name="routines_filter_work">Trabajo</string>
+    <string name="routines_filter_personal">Personales</string>
+    <string name="routines_contact_turn">le toca en %1$s</string>
+    <string name="routines_contact_unanswered">avisado, y esperándote</string>
+    <string name="routines_contact_no_turn">sin turno: hay más contactos que huecos</string>
     <string name="routines_paused">en pausa</string>
     <string name="routines_put_off">pospuesta</string>
     <string name="routines_mark_done">Marcar «%1$s» como hecha</string>
@@ -130,6 +140,12 @@
     <string name="routines_due">vence %1$s</string>
     <string name="routines_overdue">vencida %1$s</string>
     <string name="routines_new">Nueva rutina</string>
+    <string name="routines_new_routine">Rutina</string>
+    <string name="routines_new_routine_hint">Algo que haces cada cierto tiempo: mover el coche, regar las plantas.</string>
+    <string name="routines_new_contact_work">Contacto de trabajo</string>
+    <string name="routines_new_contact_work_hint">Te aviso una mañana de labor, de uno en uno.</string>
+    <string name="routines_new_contact_personal">Contacto personal</string>
+    <string name="routines_new_contact_personal_hint">Te aviso el fin de semana, cuando hay tiempo de llamar a alguien.</string>
     <string name="routines_done">Hecha</string>
     <string name="routines_done_returns">Hecha · vuelve a preguntar %1$s</string>
     <string name="routines_empty_title">Ninguna rutina todavía</string>
@@ -258,6 +274,9 @@
     <string name="editor_error_routine_text">Escribe qué hay que hacer.</string>
     <string name="editor_delete_routine">Eliminar la rutina</string>
     <string name="editor_title_edit_routine">Editar rutina</string>
+    <string name="editor_title_new_contact">Nuevo contacto</string>
+    <string name="editor_title_edit_contact">Editar contacto</string>
+    <string name="editor_contact_kind">Quién es</string>
     <string name="editor_preview">Previsualizar el aviso</string>
     <string name="editor_delete">Eliminar recordatorio</string>
     <string name="editor_tags_title">Etiquetas</string>
@@ -578,6 +597,10 @@
     <string name="alert_missed_subtext">No sonó a su hora</string>
     <string name="notif_channel_net">Red de seguridad</string>
     <string name="notif_channel_net_description">Un aviso discreto sobre un recordatorio que sonó y que nadie atendió.</string>
+    <string name="notif_channel_contact">Contactos</string>
+    <string name="notif_channel_contact_description">Una tarjeta discreta cuando hace tiempo que no hablas con alguien de tu lista. Nunca suena.</string>
+    <string name="notif_contact_title">Toca escribir a %1$s</string>
+    <string name="notif_contact_done">Hablado</string>
     <string name="notif_channel_ask">Preguntas de las rutinas</string>
     <string name="notif_channel_ask_description">Una rutina preguntando si lo has hecho: a una hora del día, o al llegar a un sitio o salir de él.</string>
     <string name="notif_ask_yes">Sí, ahora</string>
@@ -1393,6 +1416,17 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_117_0">
+
+        <item>Contactos: la gente con la que dejarías de hablar si nadie llevara la cuenta.</item>
+
+        <item>Añades a alguien con una cadencia —«cada 8 semanas»— y dices si es de trabajo o personal. Cuando pasa el tiempo, Rwilco te avisa: una tarjeta discreta, nunca con sonido y sin tomar la pantalla. Los de trabajo salen una mañana de labor y los personales el fin de semana, a una hora sorteada dentro de la franja en vez de a un reloj.</item>
+
+        <item>Y te marca el ritmo. Como mucho dos de trabajo y dos personales por semana, porque son los huecos que hay — un hueco, una persona. Los demás esperan turno, y la lista dice a quién le toca cuándo. A un contacto que no contestes le vuelve a tocar la semana siguiente, por delante del resto.</item>
+
+        <item>Viven con las rutinas: misma pantalla, mismos swipes, mismo «hecho». Los huecos y sus horas los cambias en Ajustes → Contactos, y esa lista es también el límite.</item>
+
+    </string-array>
     <string-array name="whats_new_0_116_0">
 
         <item>Una promoción al canal estable ya dice lo suyo y para. Ese canal avanza a saltos de veinte o treinta versiones de golpe, y venía entregando todas las entradas que saltaba — cada una escrita para el canal que prueba la app, una por versión. Eso no es un registro de cambios, es un muro. Ahora el resumen de la propia promoción es todo.</item>
@@ -1982,6 +2016,14 @@
     <string name="sheet_in_window">En una franja</string>
     <string name="sheet_in_window_hint">Suena cuando se abre la franja, y sigue valiendo hasta que cierra.</string>
     <string name="settings_windows">Franjas del día</string>
+    <string name="settings_contacts_title">Contactos</string>
+    <string name="settings_contacts_summary">%1$d de trabajo · %2$d personales por semana</string>
+    <string name="settings_contacts_hint">Un contacto por hueco — así que esta lista es también el límite: los huecos que haya son las personas por semana de las que te avisaré. El resto esperan turno.</string>
+    <string name="settings_contacts_slot">Hueco %1$d</string>
+    <string name="settings_contacts_slot_remove">Quitar este hueco</string>
+    <string name="settings_contacts_from">Desde</string>
+    <string name="settings_contacts_to">Hasta</string>
+    <string name="settings_contacts_add">Añadir un hueco</string>
     <string name="settings_windows_hint">Ratos del día guardados con nombre, que se ofrecen allí donde hace falta uno: a la hora de comer, por la tarde.</string>
     <string name="settings_windows_empty">Todavía no hay ninguna.</string>
     <string name="settings_add_window">Nombrar una franja</string>

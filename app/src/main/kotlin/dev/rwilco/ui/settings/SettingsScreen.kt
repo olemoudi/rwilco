@@ -81,6 +81,7 @@ import dev.rwilco.ui.format.rememberIs24h
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.components.LocalSnackbar
 import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.Group
 import android.os.Build
 import android.net.Uri
 import dev.rwilco.ui.components.RwilcoTopBar
@@ -93,7 +94,7 @@ import androidx.compose.runtime.setValue
  * arrives at all, then what it sounds and feels like, then what a new one starts as, then the
  * shape of the day, then the standing things — places, looks, the copy, updates, the app.
  */
-private enum class Group { ALERTS, SOUND, VIBRATION, NET, NEW, DAY, PLACES, LOOK, UPDATES, ABOUT }
+private enum class Group { ALERTS, SOUND, VIBRATION, NET, NEW, DAY, CONTACTS, PLACES, LOOK, UPDATES, ABOUT }
 
 /** Which groups are open, kept across a rotation. Enums are not Bundle-able; their names are. */
 private val OpenGroups = listSaver<Set<Group>, String>(
@@ -436,6 +437,31 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
                             )
                         }
                     }
+                }
+            }
+
+            // Its own group rather than a corner of "el día": the day's shape is when you are
+            // up, and this is how many people a week the app may ask you about. A budget, not
+            // an hour.
+            SettingsGroup(
+                icon = Icons.Outlined.Group,
+                title = stringResource(R.string.settings_contacts_title),
+                summary = stringResource(
+                    R.string.settings_contacts_summary,
+                    current.workContactSlots.size,
+                    current.personalContactSlots.size,
+                ),
+                expanded = Group.CONTACTS in open,
+                onToggle = { toggle(Group.CONTACTS) },
+            ) {
+                Column {
+                    SettingTitle(title = stringResource(R.string.routines_filter_work))
+                    Spacer(Modifier.height(spacing.sm))
+                    ContactSlotsCard(slots = current.workContactSlots, onChange = viewModel::setWorkContactSlots)
+                    Spacer(Modifier.height(spacing.lg))
+                    SettingTitle(title = stringResource(R.string.routines_filter_personal))
+                    Spacer(Modifier.height(spacing.sm))
+                    ContactSlotsCard(slots = current.personalContactSlots, onChange = viewModel::setPersonalContactSlots)
                 }
             }
 

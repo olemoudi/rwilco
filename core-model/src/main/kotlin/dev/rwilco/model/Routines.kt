@@ -125,14 +125,20 @@ fun Reminder.routinePutOff(now: Instant): Boolean =
 fun Reminder.routineOwed(now: Instant, zone: ZoneId, dayStart: LocalTime = DEFAULT_DAY_START): Boolean =
     status == Status.ACTIVE && !routineDone(now, zone, dayStart) && !routinePutOff(now)
 
-/** The open routines that are owed, the one that has waited longest first. What Home's line says. */
+/**
+ * The open routines that are owed, the one that has waited longest first. What Home's line says.
+ *
+ * **Contacts are not among them.** A contact's plazo running out is not something to be red
+ * about — it waits its turn in the queue, and Home hears about it only once it has been told
+ * about and left unanswered (`Contacts.kt`, [overdueContacts]).
+ */
 fun overdueRoutines(
     reminders: List<Reminder>,
     now: Instant,
     zone: ZoneId,
     dayStart: LocalTime = DEFAULT_DAY_START,
 ): List<Reminder> = reminders
-    .filter { it.isRoutine && it.routineOwed(now, zone, dayStart) }
+    .filter { it.isRoutine && !it.isContact && it.routineOwed(now, zone, dayStart) }
     .sortedWith(compareBy({ it.routineDeadline(zone, dayStart) }, { it.createdAt }))
 
 /**
@@ -146,7 +152,7 @@ fun nextDueRoutine(
     zone: ZoneId,
     dayStart: LocalTime = DEFAULT_DAY_START,
 ): Reminder? = reminders
-    .filter { it.isRoutine && it.status == Status.ACTIVE && it.routineDone(now, zone, dayStart) && !it.routineWaitingToStart(now) }
+    .filter { it.isRoutine && !it.isContact && it.status == Status.ACTIVE && it.routineDone(now, zone, dayStart) && !it.routineWaitingToStart(now) }
     .minWithOrNull(compareBy({ it.routineDeadline(zone, dayStart) }, { it.createdAt }))
 
 /**
@@ -158,6 +164,8 @@ sealed interface RoutineFilter {
     data object Overdue : RoutineFilter
     data object Paused : RoutineFilter
     data object Waiting : RoutineFilter
+    /** Only the contacts of one kind: "trabajo", "personales". One member, not two objects. */
+    data class Kind(val kind: ContactKind) : RoutineFilter
     data class Tag(val tag: String) : RoutineFilter
 }
 
@@ -188,6 +196,7 @@ fun routinesFor(
             RoutineFilter.Overdue -> it.routineOwed(now, zone, dayStart)
             RoutineFilter.Paused -> it.status == Status.PAUSED
             RoutineFilter.Waiting -> it.status == Status.ACTIVE && it.routineWaitingToStart(now)
+            is RoutineFilter.Kind -> it.contactKind == filter.kind
             is RoutineFilter.Tag -> it.tags.any { tag -> tag.equals(filter.tag, ignoreCase = true) }
         }
     }
@@ -221,7 +230,7 @@ fun routineFilters(reminders: List<Reminder>, now: Instant, zone: ZoneId, daySta
         RoutineFilter.Overdue.takeIf { routines.any { it.routineOwed(now, zone, dayStart) } },
         RoutineFilter.Paused.takeIf { routines.any { it.status == Status.PAUSED } },
         RoutineFilter.Waiting.takeIf { routines.any { it.status == Status.ACTIVE && it.routineWaitingToStart(now) } },
-    )
+    ) + ContactKind.entries.mapNotNull { kind -> RoutineFilter.Kind(kind).takeIf { routines.any { r -> r.contactKind == kind } } }
     return own + routineTags(reminders).map { RoutineFilter.Tag(it) }
 }
 

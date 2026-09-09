@@ -574,6 +574,12 @@ fun HomeScreen(
                     state.routines.overdue.isEmpty() -> 1
                     else -> minOf(state.routines.overdue.size, HOME_ROUTINE_ROWS) + (if (state.routines.overdue.size > HOME_ROUTINE_ROWS) 1 else 0)
                 },
+                // The same arithmetic as the contacts block in the list below; the two are a
+                // pair, and a scroll that lands on the wrong card is what drift looks like.
+                contactsRows = if (!state.loaded) 0 else {
+                    minOf(state.routines.contacts.size, HOME_CONTACT_ROWS) +
+                        (if (state.routines.contacts.size > HOME_CONTACT_ROWS) 1 else 0)
+                },
             )
                 ?: return@LaunchedEffect
             if (saved.created) {
@@ -749,6 +755,25 @@ fun HomeScreen(
                             item(key = "routines-more", contentType = "routines-more") {
                                 MoreOverdueRoutinesRow(more = more, onOpen = { onRoutines(null) }, modifier = Modifier.animateItem())
                             }
+                        }
+                    }
+                    // **Keep in step with the contactsRows arithmetic above.** The contacts told
+                    // about and left unanswered, under the routines and over the hero: at most
+                    // four a week can arrive, so three rows and a count is the whole of it. They
+                    // answer the way every card does — a swipe held is "hablado".
+                    items(state.routines.contacts.take(HOME_CONTACT_ROWS), key = { "contact-" + it.id }, contentType = { "contact" }) { contact ->
+                        SwipeableCard(
+                            onDone = { viewModel.markDone(contact.id) },
+                            onDelete = { viewModel.delete(contact.id) },
+                            modifier = Modifier.animateItem(),
+                        ) {
+                            ContactRow(contact = contact, now = nowState.value, onOpen = { onRoutines(contact.id) })
+                        }
+                    }
+                    val moreContacts = state.routines.contacts.size - HOME_CONTACT_ROWS
+                    if (moreContacts > 0) {
+                        item(key = "contacts-more", contentType = "contacts-more") {
+                            MoreContactsRow(more = moreContacts, onOpen = { onRoutines(null) }, modifier = Modifier.animateItem())
                         }
                     }
                 }

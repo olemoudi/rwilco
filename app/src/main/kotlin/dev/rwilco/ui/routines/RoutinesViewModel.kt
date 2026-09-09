@@ -11,6 +11,7 @@ import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.contactSlotsOf
 import dev.rwilco.model.RoutineFilter
 import dev.rwilco.model.Snooze
 import dev.rwilco.model.Status
@@ -90,7 +91,7 @@ class RoutinesViewModel(
         query,
         merge(startTick, minutePulse),
     ) { reminders, current, chosen, words, _ ->
-        buildRoutinesState(reminders, chosen, clock.instant(), clock.zone, current.dayStart, words)
+        buildRoutinesState(reminders, chosen, clock.instant(), clock.zone, current.dayStart, words) { kind -> current.contactSlotsOf(kind) }
     }
         .flowOn(Dispatchers.Default)
         .catch { failure ->

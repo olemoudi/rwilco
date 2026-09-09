@@ -1,7 +1,12 @@
 package dev.rwilco.ui.routines
 
+import dev.rwilco.model.ContactKind
+import dev.rwilco.model.ContactSlot
 import dev.rwilco.model.DEFAULT_DAY_START
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.contactOwed
+import dev.rwilco.model.contactQueue
+import dev.rwilco.model.isContact
 import dev.rwilco.model.RoutineFilter
 import dev.rwilco.model.Status
 import dev.rwilco.model.awaitingAnswer
@@ -54,6 +59,14 @@ data class RoutineRowUi(
     val snoozedUntil: Instant?,
     /** Put off, to a clock or a place: an answer given, so not owed — and said on the row. */
     val putOff: Boolean,
+    /** Which kind of contact this is; null for an ordinary routine. */
+    val contactKind: ContactKind? = null,
+    /**
+     * When a contact's turn comes round. Null on an ordinary routine — and on a contact with no
+     * turn inside the year the queue looks over, which is what "sin turno" says: there are more
+     * contacts than there are openings to tell you about them in.
+     */
+    val turnAt: Instant? = null,
 )
 
 data class RoutinesUiState(
@@ -82,18 +95,26 @@ fun buildRoutinesState(
     zone: ZoneId,
     dayStart: LocalTime = DEFAULT_DAY_START,
     query: String = "",
+    slots: (ContactKind) -> List<ContactSlot> = { emptyList() },
 ): RoutinesUiState {
+    // Worked out once for the list, because that is what it is a function of (`Contacts.kt`).
+    val turns = contactQueue(reminders, now, zone, slots, dayStart)
     val filters = routineFilters(reminders, now, zone, dayStart)
     // A filter on something no longer offered is no filter: the last overdue one was done, the
     // last routine wearing that tag was deleted. By the spelling on offer, as Home's chips do.
     val filter = when (selected) {
         RoutineFilter.All -> selected
-        RoutineFilter.Overdue, RoutineFilter.Paused, RoutineFilter.Waiting -> selected.takeIf { it in filters } ?: RoutineFilter.All
+        RoutineFilter.Overdue, RoutineFilter.Paused, RoutineFilter.Waiting, is RoutineFilter.Kind -> selected.takeIf { it in filters } ?: RoutineFilter.All
         is RoutineFilter.Tag -> filters.firstOrNull { it is RoutineFilter.Tag && it.tag.equals(selected.tag, ignoreCase = true) } ?: RoutineFilter.All
     }
     val rows = routinesFor(reminders, filter, now, zone, dayStart, query).mapNotNull { reminder ->
         val anchor = reminder.routineAnchor()
-        val deadline = reminder.routineDeadline(zone, dayStart) ?: return@mapNotNull null
+        val turn = turns[reminder.id]
+        // A contact's row is about its turn, not its plazo: one whose cadence ran out three
+        // weeks ago is waiting quite properly, and reading it against the plazo would draw a
+        // full red track over somebody the budget is simply pacing.
+        val deadline = (if (reminder.isContact) turn else null)
+            ?: reminder.routineDeadline(zone, dayStart) ?: return@mapNotNull null
         RoutineRowUi(
             id = reminder.id,
             text = reminder.text,
@@ -103,13 +124,15 @@ fun buildRoutinesState(
             pausedAt = reminder.pausedAt,
             deadline = deadline,
             span = Duration.between(anchor, deadline),
-            done = reminder.routineDone(now, zone, dayStart),
+            done = if (reminder.isContact) !reminder.contactOwed(now) else reminder.routineDone(now, zone, dayStart),
             paused = reminder.status == Status.PAUSED,
             snoozeOffered = reminder.awaitingAnswer(now) ||
                 (reminder.status == Status.ACTIVE && (reminder.snoozedUntil?.let { it > now } == true || reminder.snoozedToPlace != null)),
             snoozed = reminder.status == Status.ACTIVE && (reminder.snoozedUntil?.let { it > now } == true || reminder.snoozedToPlace != null),
             snoozedUntil = reminder.snoozedUntil?.takeIf { it > now && reminder.status == Status.ACTIVE },
             putOff = reminder.status == Status.ACTIVE && reminder.routinePutOff(now),
+            contactKind = reminder.contactKind,
+            turnAt = turn,
         )
     }
     return RoutinesUiState(

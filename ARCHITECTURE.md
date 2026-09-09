@@ -518,6 +518,42 @@ anything repeats**:
   routine never armed, never asked, and the net had already said its word. `AppSettings.routineActions` is what a blank routine's
   deadline does, beside `defaultActions`. `RoutinesTest` pins all of it, a year of the car
   through `Simulation` included.
+  **A contact is a routine that belongs to somebody** (0.117.0, `Contacts.kt`): the same `Since`
+  count wearing a `contactKind` (Room v15, WORK or PERSONAL, null on every routine there has ever
+  been). `Reminder.isContact` is the predicate, and two things about it are its own.
+  **Nothing else triggers it** — only "cada X semanas / X meses"; the form drops "Y además" and
+  the actions card outright, because asking "¿has llamado a tu madre?" at the door of the
+  supermarket is not the shape of this, and how it is told is not a preference inside the feature
+  but the feature itself (`CONTACT_PLAN`, fixed in `ReminderFiring.fire` rather than read from the
+  row, so a vault row carrying `FULL_SCREEN` still cannot take the screen).
+  **And it is told at a slot, not at its deadline.** A `ContactSlot` is a weekday and a
+  `DayWindow`; a kind owns a handful of them (`AppSettings.workContactSlots` /
+  `personalContactSlots`, Wednesday and Thursday mornings, Friday and Saturday afternoons), and
+  `contactQueue` rounds each deadline forward to that kind's next free one. **One contact per
+  slot, which *is* the weekly budget** — two of each kind a week because that is how many
+  openings there are, and the rest wait. The cadence is shaken ±`CONTACT_JITTER_PERCENT` from
+  `(id, anchor)` so two contacts on "cada 8 semanas" drift apart instead of marching in step, and
+  is drawn afresh exactly once a round because the anchor *is* the round.
+  **The queue is worked out and never written down.** It is a function of the whole set, so a
+  stored answer would be a second truth to keep in step with "hablado"; `nextFire`/`nextWake`
+  answer **null** for a contact on purpose (no per-reminder function can know it) and the three
+  callers that already hold the list ask for it — `ReminderScheduler.rearmAll`, `buildRoutinesState`,
+  and nobody on Home, which needs no queue at all. Two invariants carry the behaviour the owner
+  asked for. Every turn is **strictly ahead of now**: without that, marking one contact done at
+  ten past nine hands the next one this morning's opening, a moment already gone, delivered at
+  once, two people in a slot built for one. And a contact told about and unanswered has its floor
+  moved to **the Monday after it rang** (`contactFloor`) — so it comes back next week rather than
+  tomorrow, and because its anchor never moved it is still the longest waiting and takes that
+  week's first opening. "It returns weekly and goes first" is those two lines, not a retry field.
+  Home shows a contact only once `contactOwed` — which is `awaitingAnswer`, the same reading every
+  other door takes — so somebody the budget has pushed three weeks out is invisible there rather
+  than red, and `overdueRoutines`/`nextDueRoutine` exclude contacts for the same reason. The card
+  is `ContactRow`, deliberately **not** in the error wash: a routine that ran out is a thing you
+  failed to do, a contact whose turn came is an invitation. The alarm is the ring's own URI and
+  `armedFor` (so `missedFire` and the catch-up work unchanged) but always **inexact** — a
+  `setAlarmClock` would announce the quietest thing the app does on the lock screen. The card goes
+  out on `CHANNEL_CONTACT`, mute at the channel and at the card. `ContactsTest` pins the queue,
+  `ContactsWiringTest` the two screens.
 - `ByTrigger` — hands the question back to a trigger that names its own dates, which is now only
   a random window ("tres veces al día" is its own answer to "¿y vuelve?").
 - `MonthlyWeekday(ordinal, day)` — read-only. It is `Calendar` of a month with a `MonthlyOn.Nth`

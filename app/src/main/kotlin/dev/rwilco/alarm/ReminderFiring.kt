@@ -31,6 +31,9 @@ import dev.rwilco.model.expiryDue
 import dev.rwilco.model.lapsed
 import dev.rwilco.model.roundExpiry
 import dev.rwilco.model.timerExpiry
+import dev.rwilco.model.CONTACT_PLAN
+import dev.rwilco.model.isContact
+import dev.rwilco.model.routineAnchor
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.ruleInSet
 import dev.rwilco.model.knownInAdvance
@@ -311,7 +314,12 @@ class ReminderFiring(
         // answer that must never be silence is that one.
         val asleep = !TestAlert.isTest(id) &&
             hushedByTheHour(rangFor, now, clock.zone, settings.dayShape)
-        val plan = firingPlan(reminder.actions).let { if (asleep) it.hushed() else it }
+        // **A contact is told about quietly, whatever its row says.** The plan is fixed here
+        // rather than read from the actions on purpose: a row restored from a vault, or one that
+        // carried FULL_SCREEN before it became a contact, must not be able to take the screen or
+        // make a sound. Same shape as the net's word (see [nudge]).
+        val plan = if (reminder.isContact) CONTACT_PLAN
+        else firingPlan(reminder.actions).let { if (asleep) it.hushed() else it }
         Diag.note(TAG_DIAG, "r=${short(id)} RANG for $rangFor rule=$ruleIndex${if (late != null) " (late for $late)" else ""}${if (viaSnoozePlace) " (place snooze)" else ""} plan=${plan.summary()}")
         // From the sello to the screen in one piece: the receiver runs this under a timeout, and
         // a cancellation landing between markFired and show spent a moment nothing ever showed
@@ -329,7 +337,12 @@ class ReminderFiring(
             try {
                 // The row read above still carries the place this ring is the end of; shown as
                 // is, the notification for the arrival read "pospuesto hasta llegar a casa".
-                AlertPresenter.show(context, if (viaSnoozePlace) reminder.copy(snoozedToPlace = null) else reminder, plan, presentedLate, settings.vibration, settings.soundFor(plan), ruleIndex = ruleIndex, defaultTime = settings.defaultTime, snoozes = settings.notificationSnoozeOffers, customMinutes = settings.snoozeCustomMinutes)
+                if (reminder.isContact) {
+                    // Never the screen, never a sound: its own quiet card, and one answer.
+                    AlertNotifications.contact(context, reminder, Duration.between(reminder.routineAnchor(), rangFor))
+                } else {
+                    AlertPresenter.show(context, if (viaSnoozePlace) reminder.copy(snoozedToPlace = null) else reminder, plan, presentedLate, settings.vibration, settings.soundFor(plan), ruleIndex = ruleIndex, defaultTime = settings.defaultTime, snoozes = settings.notificationSnoozeOffers, customMinutes = settings.snoozeCustomMinutes)
+                }
                 // "Hasta que reciba caso": the first play has gone out, so line up the second.
                 if (plan.insistent) {
                     nextSoundIn(played = 1, plays = settings.soundPlays, gapMinutes = settings.soundGapMinutes)

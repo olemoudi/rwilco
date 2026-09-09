@@ -133,6 +133,12 @@ data class Reminder(
      * behind the clock, and the window's fence reads its day off it ([deadlineFence]).
      */
     val expiresAt: Instant? = null,
+    /**
+     * Which half of a life this belongs to, when it is a **contact** rather than an ordinary
+     * routine (see `Contacts.kt`). Null for everything else, which is what every reminder ever
+     * written is: a contact is a routine wearing this, and nothing else about the shape changes.
+     */
+    val contactKind: ContactKind? = null,
 )
 
 /**

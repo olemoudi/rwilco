@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Autorenew
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.WorkOutline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,6 +24,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import dev.rwilco.R
+import dev.rwilco.model.ContactKind
 import dev.rwilco.model.partsBetween
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.format.countdownText
@@ -135,6 +138,62 @@ fun OverdueRoutineRow(routine: RoutineNameUi, now: Instant, onOpen: () -> Unit, 
 }
 
 /**
+ * One contact whose turn has come and gone unanswered: their name, how long it has been, and a
+ * tap that lands on them in the list.
+ *
+ * **Not the error wash the overdue routines wear**, and that is the one deliberate departure
+ * from "a card like a vencida". A routine that has run out is a thing you failed to do; a
+ * contact whose turn has come is an invitation, and the budget above it exists precisely so
+ * this never feels like a debt. So it wears the routines' own colour with the kind's glyph, and
+ * red stays for what is actually going wrong.
+ */
+@Composable
+fun ContactRow(contact: ContactNameUi, now: Instant, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+    val spacing = Tokens.spacing
+    val scheme = MaterialTheme.colorScheme
+    val accent = routineColor()
+    val ago = countdownText(partsBetween(now, contact.since))
+    val opens = stringResource(R.string.home_routines_open)
+    val header = stringResource(R.string.home_contacts_title)
+    val kindWords = stringResource(
+        if (contact.kind == ContactKind.WORK) R.string.routines_filter_work else R.string.routines_filter_personal,
+    )
+    RwilcoCard(
+        onClick = onOpen,
+        rail = accent,
+        modifier = modifier.semantics { contentDescription = header + " " + contact.text + ". " + ago + ". " + opens },
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = Tokens.sizes.touch)
+                .padding(horizontal = spacing.lg, vertical = spacing.md),
+        ) {
+            Icon(
+                if (contact.kind == ContactKind.WORK) Icons.Outlined.WorkOutline else Icons.Outlined.Person,
+                contentDescription = kindWords,
+                tint = accent,
+            )
+            Spacer(Modifier.width(spacing.md))
+            Column(Modifier.weight(1f)) {
+                Text(text = header, style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
+                Text(
+                    text = contact.text,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = scheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(text = ago, style = MonoStyles.date, color = scheme.onSurfaceVariant)
+            }
+            Spacer(Modifier.width(spacing.sm))
+            Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = scheme.onSurfaceVariant)
+        }
+    }
+}
+
+/**
  * The overdue routines Home does not list one by one — past [HOME_ROUTINE_ROWS], eight red
  * cards stacked over the hero were the list with its own header eight times — counted in one
  * row, in the same wash, opening the routines.
@@ -161,6 +220,32 @@ fun MoreOverdueRoutinesRow(more: Int, onOpen: () -> Unit, modifier: Modifier = M
             Text(text = words, style = MaterialTheme.typography.titleMedium, color = ink, modifier = Modifier.weight(1f))
             Spacer(Modifier.width(spacing.sm))
             Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = ink)
+        }
+    }
+}
+
+/** The contacts past [HOME_CONTACT_ROWS], counted in one row rather than stacked. */
+@Composable
+fun MoreContactsRow(more: Int, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+    val spacing = Tokens.spacing
+    val scheme = MaterialTheme.colorScheme
+    val words = pluralStringResource(R.plurals.home_contacts_more, more, more)
+    val opens = stringResource(R.string.home_routines_open)
+    RwilcoCard(
+        onClick = onOpen,
+        rail = routineColor(),
+        modifier = modifier.semantics { contentDescription = words + ". " + opens },
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = Tokens.sizes.touch)
+                .padding(horizontal = spacing.lg, vertical = spacing.md),
+        ) {
+            Text(text = words, style = MaterialTheme.typography.titleMedium, color = scheme.onSurface, modifier = Modifier.weight(1f))
+            Spacer(Modifier.width(spacing.sm))
+            Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = scheme.onSurfaceVariant)
         }
     }
 }

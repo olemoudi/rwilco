@@ -6,6 +6,7 @@ import dev.rwilco.model.dayTimingOf
 import dev.rwilco.model.Action
 import dev.rwilco.model.toggling
 import dev.rwilco.model.Condition
+import dev.rwilco.model.ContactKind
 import dev.rwilco.model.Deadline
 import dev.rwilco.model.DayShape
 import dev.rwilco.model.DEFAULT_ACTIONS
@@ -59,9 +60,11 @@ data class Draft(
     val actions: Set<Action> = DEFAULT_ACTIONS,
     /** How long a set has to complete; only means anything under "todos" or "a la vez". */
     val deadline: Deadline? = null,
+    /** Which kind of contact this is, when it is one at all (see `Contacts.kt`). */
+    val contactKind: ContactKind? = null,
 )
 
-fun Reminder.toDraft() = Draft(text = text, tags = tags, rules = rules, ruleMatch = ruleMatch, actions = actions, recurrence = recurrence, deadline = deadline)
+fun Reminder.toDraft() = Draft(text = text, tags = tags, rules = rules, ruleMatch = ruleMatch, actions = actions, recurrence = recurrence, deadline = deadline, contactKind = contactKind)
 
 /**
  * Note what is NOT carried over: the armed moment, which the scheduler writes again the instant
@@ -134,6 +137,9 @@ fun Draft.toReminder(
     ruleMatch = ruleMatch,
     actions = actions,
     recurrence = recurrence,
+    // A contact is a routine wearing a kind: lose the count and it is not one any more, so the
+    // kind goes with it rather than sitting on a shape that cannot carry it.
+    contactKind = contactKind.takeIf { recurrence is Recurrence.Since },
     status = status,
     createdAt = createdAt,
     updatedAt = now,
@@ -375,6 +381,10 @@ fun becomesRoutine(before: Reminder?, draft: Draft): Boolean =
  * Where a routine's count starts: null is "ahora mismo" — the day it is written — and a moment
  * is the one somebody picked. Only a routine has the question; anything else is left alone.
  */
+/** Which half of a life a contact belongs to; anything that is not one is left alone. */
+fun EditorUiState.setContactKind(kind: ContactKind): EditorUiState =
+    if (draft.contactKind == null) this else copy(draft = draft.copy(contactKind = kind))
+
 fun EditorUiState.setRoutineStart(startsAt: Instant?): EditorUiState {
     val since = draft.recurrence as? Recurrence.Since ?: return this
     return copy(draft = draft.copy(recurrence = since.copy(startsAt = startsAt)))

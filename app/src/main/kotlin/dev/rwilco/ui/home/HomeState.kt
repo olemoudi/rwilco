@@ -6,6 +6,8 @@ import dev.rwilco.model.Condition
 import dev.rwilco.model.DEFAULT_DAY_START
 import dev.rwilco.model.NextFire
 import dev.rwilco.model.Recurrence
+import dev.rwilco.model.ContactKind
+import dev.rwilco.model.overdueContacts
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.RuleStanding
@@ -53,7 +55,16 @@ data class RoutinesLineUi(
     val overdue: List<RoutineNameUi> = emptyList(),
     /** The one whose plazo runs out soonest, for the door to name when nothing is owed. */
     val nextDue: RoutineDueUi? = null,
+    /**
+     * The contacts told about and left unanswered, longest-rung first. **Not the ones whose
+     * cadence has run out** — one waiting its turn in the queue is being paced, not neglected,
+     * and Home would be handing back the pile the budget exists to spread out (`Contacts.kt`).
+     */
+    val contacts: List<ContactNameUi> = emptyList(),
 )
+
+/** A contact whose turn came and went unanswered; [since] is the last time you spoke. */
+data class ContactNameUi(val id: String, val text: String, val kind: ContactKind, val since: Instant)
 
 /** [since] is the moment the count runs from — the last "hecho", or the day it was written. */
 data class RoutineNameUi(val id: String, val text: String, val since: Instant)
@@ -63,6 +74,9 @@ data class RoutineDueUi(val id: String, val text: String, val at: Instant)
 
 /** How many overdue routines Home lists as rows before it counts the rest in one. */
 const val HOME_ROUTINE_ROWS = 3
+
+/** And how many contacts. Four a week can arrive at most, so three rows and a count is plenty. */
+const val HOME_CONTACT_ROWS = 3
 
 data class HomeUiState(
     val loaded: Boolean = false,
@@ -121,6 +135,8 @@ fun homeCardIndex(
      * is owed, one row per overdue routine when something is. Not drawn while searching.
      */
     routinesRows: Int = 0,
+    /** And how many contact rows under those. **Keep in step with the list in HomeScreen.** */
+    contactsRows: Int = 0,
 ): Int? {
     var index = 0
     if (strip) index++
@@ -128,6 +144,7 @@ fun homeCardIndex(
     if (tagsRow) index++
     if (undoRow) index++
     index += routinesRows
+    index += contactsRows
     if (state.hero != null) {
         if (state.hero.card.id == id) return index
         index++
@@ -447,6 +464,9 @@ fun buildHomeState(
             total = reminders.count { it.isRoutine && it.status != Status.DONE },
             overdue = overdueRoutines(reminders, now, zone, dayStart).map { RoutineNameUi(it.id, it.text, it.routineAnchor()) },
             nextDue = nextDueRoutine(reminders, now, zone, dayStart)?.let { RoutineDueUi(it.id, it.text, it.routineDeadline(zone, dayStart)!!) },
+            // No queue is needed here: "its turn came and nobody answered" is written in the row
+            // itself, which is the whole reason contactOwed reads awaitingAnswer.
+            contacts = overdueContacts(reminders, now).map { ContactNameUi(it.id, it.text, it.contactKind!!, it.routineAnchor()) },
         ),
         defaultTime = defaultTime,
         dayShape = shape,

@@ -75,6 +75,8 @@ class VaultSchemaTest {
             "resumedAt",
             // Room v14: when the pause now standing began; older rows are not paused by it.
             "pausedAt",
+            // Room v15: which kind of contact a routine is; older rows belong to nobody.
+            "contactKind",
         )
     }
 }

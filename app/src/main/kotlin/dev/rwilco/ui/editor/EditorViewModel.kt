@@ -12,6 +12,7 @@ import dev.rwilco.model.dayShape
 import dev.rwilco.model.Action
 import dev.rwilco.model.clearCountdowns
 import dev.rwilco.model.AppSettings
+import dev.rwilco.model.ContactKind
 import dev.rwilco.model.Recurrence
 import dev.rwilco.data.FiringKind
 import dev.rwilco.model.isRoutine
@@ -100,6 +101,7 @@ class EditorViewModel(
     private val sharedText: String?,
     /** A blank form that starts as a routine: a span since the last time, and the routine defaults. */
     private val routine: Boolean,
+    private val contactKind: ContactKind?,
     private val repository: ReminderRepository,
     private val store: SettingsStore,
     private val settings: Flow<AppSettings?>,
@@ -169,6 +171,9 @@ class EditorViewModel(
                 source != null -> Draft(text = source.text, tags = source.tags, rules = source.rules, ruleMatch = source.ruleMatch, actions = source.actions, recurrence = source.recurrence)
                 // Shared from another app: the words are the one thing already answered.
                 // A routine opens as one: a week since the last time, with the routine defaults.
+                // A contact opens as one: eight weeks, and no actions at all — how it is told
+                // about is fixed (CONTACT_PLAN), not something to choose on the form.
+                contactKind != null -> Draft(actions = emptySet(), recurrence = Recurrence.Since(8, RecurrenceUnit.WEEKS), contactKind = contactKind)
                 routine -> Draft(actions = current.routineActions, recurrence = Recurrence.Since(1, RecurrenceUnit.WEEKS))
                 else -> Draft(text = sharedText?.trim()?.take(MAX_TEXT_LENGTH).orEmpty(), actions = current.defaultActions)
             }
@@ -243,6 +248,9 @@ class EditorViewModel(
     fun setRecurrence(recurrence: Recurrence) = _state.update { it.setRecurrence(recurrence) }
 
     /** Where a routine's count starts: null is "ahora mismo". See [EditorUiState.setRoutineStart]. */
+    /** Which half of a life this person is in. Only ever asked of a contact. */
+    fun setContactKind(kind: ContactKind) = _state.update { it.setContactKind(kind) }
+
     fun setRoutineStart(startsAt: Instant?) = _state.update { it.setRoutineStart(startsAt) }
 
     fun openCalendar() = _state.update { it.openCalendar() }
@@ -548,6 +556,7 @@ class EditorViewModel(
         private val newPreset: Boolean = false,
         private val sharedText: String? = null,
         private val routine: Boolean = false,
+        private val contactKind: ContactKind? = null,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
@@ -559,6 +568,7 @@ class EditorViewModel(
                 newPreset,
                 sharedText,
                 routine,
+                contactKind,
                 app.repository,
                 app.settingsStore,
                 app.settings,

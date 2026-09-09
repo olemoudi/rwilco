@@ -7,6 +7,7 @@ import dev.rwilco.RwilcoApplication
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.geo.PlaceLogStore
+import dev.rwilco.model.ContactSlot
 import dev.rwilco.model.AwakeHours
 import dev.rwilco.model.Action
 import dev.rwilco.model.AppSettings
@@ -201,6 +202,11 @@ class SettingsViewModel(
 
     /** What "the weekend" means when a reminder is put off to it. */
     fun setWeekend(day: DayOfWeek, time: LocalTime) = update { it.copy(weekendDay = day, weekendTime = time) }
+
+    /** The openings each kind of contact is raised in — which is also the weekly budget. */
+    fun setWorkContactSlots(slots: List<ContactSlot>) = update { it.copy(workContactSlots = slots) }
+
+    fun setPersonalContactSlots(slots: List<ContactSlot>) = update { it.copy(personalContactSlots = slots) }
 
     /** And when it is over, which is what gives a Sunday night its earlier bedtime. */
     fun setWeekendEnd(day: DayOfWeek, time: LocalTime) = update { it.copy(weekendEndDay = day, weekendEndTime = time) }

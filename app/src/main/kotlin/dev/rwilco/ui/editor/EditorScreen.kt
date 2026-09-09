@@ -2,6 +2,7 @@ package dev.rwilco.ui.editor
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Notes
+import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.outlined.Delete
@@ -62,6 +64,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.rwilco.R
+import dev.rwilco.model.ContactKind
 import dev.rwilco.model.RecurrenceWarning
 import dev.rwilco.model.decidesItsOwnDates
 import dev.rwilco.model.recurrenceWarning
@@ -75,6 +78,7 @@ import dev.rwilco.model.ValidationWarning
 import dev.rwilco.model.warnings
 import dev.rwilco.ui.alert.AlertContent
 import dev.rwilco.ui.alert.AlertScreen
+import dev.rwilco.ui.components.PresetChip
 import dev.rwilco.ui.components.DiscardDialog
 import dev.rwilco.ui.editor.sheets.ConditionSheet
 import dev.rwilco.ui.editor.sheets.CountdownSheet
@@ -139,6 +143,9 @@ fun EditorScreen(
     // rather than off the door it came in through, so a reminder turned into a routine on this
     // very screen is one at once.
     val routine = state.draft.recurrence is Recurrence.Since
+    // And a contact is a routine that belongs to somebody. Off the draft for the same reason:
+    // what the form is is what is on it, not the door it was opened by.
+    val contact = state.draft.contactKind != null
     val focusManager = LocalFocusManager.current
     val haptics = Tokens.haptics
     val snackbar = LocalSnackbar.current
@@ -305,6 +312,8 @@ fun EditorScreen(
                             // "Nueva rutina" opened a form called "Nuevo recordatorio": true of
                             // the model — a routine is a reminder — and a lie about what the
                             // screen is for. The words follow the thing being written.
+                            contact && state.isNew -> R.string.editor_title_new_contact
+                            contact -> R.string.editor_title_edit_contact
                             routine && state.isNew -> R.string.editor_title_new_routine
                             routine -> R.string.editor_title_edit_routine
                             state.isNew -> R.string.editor_title_new
@@ -430,6 +439,27 @@ fun EditorScreen(
                         PresetTextField(text = state.presetText, onChange = viewModel::setPresetText)
                     }
                 }
+                // Which half of a life this person belongs to, which is the whole of what
+                // "and besides" means for a contact: it decides nothing but the days they are
+                // raised on, and there is nothing else to ask.
+                state.draft.contactKind?.let { kind ->
+                    EditorSection(
+                        title = stringResource(R.string.editor_contact_kind),
+                        icon = Icons.Outlined.Group,
+                    ) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm)) {
+                            for (option in ContactKind.entries) {
+                                PresetChip(
+                                    label = stringResource(
+                                        if (option == ContactKind.WORK) R.string.routines_filter_work else R.string.routines_filter_personal,
+                                    ),
+                                    selected = option == kind,
+                                    onClick = { viewModel.setContactKind(option) },
+                                )
+                            }
+                        }
+                    }
+                }
                 // Where the count starts, which is a question only a routine has — and the
                 // first one it has, because everything under it is measured from the answer.
                 (state.draft.recurrence as? Recurrence.Since)?.let { since ->
@@ -449,7 +479,10 @@ fun EditorScreen(
                 // A routine's rules ask rather than ring — or vouch for the deed — so the card
                 // is what it is: everything the routine does besides run its plazo out (see
                 // Routines.kt).
-                EditorSection(
+                // **A contact has no rules at all.** Only "cada X semanas": asking "¿has llamado
+                // a tu madre?" at the door of the supermarket is not the shape of this, and a
+                // card offering it would be offering something the model would then drop.
+                if (!contact) EditorSection(
                     title = stringResource(if (routine) R.string.editor_when_ask_title else R.string.editor_when_title),
                     icon = Icons.Outlined.Schedule,
                     note = stringResource(R.string.editor_optional),
@@ -573,7 +606,10 @@ fun EditorScreen(
                         onAdd = viewModel::addTag,
                     )
                 }
-                EditorSection(
+                // Nor any choice about how it is told: quiet, never a sound, fixed in the
+                // firing itself (CONTACT_PLAN). A card of tiles here would be a promise the
+                // app deliberately does not keep.
+                if (!contact) EditorSection(
                     title = stringResource(R.string.editor_what_title),
                     icon = Icons.Outlined.NotificationsActive,
                     note = stringResource(R.string.editor_optional),

@@ -32,6 +32,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import dev.rwilco.model.ContactKind
 import dev.rwilco.MainActivity
 import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
@@ -201,8 +202,8 @@ fun RwilcoApp(
                     val undoLabel = stringResource(R.string.common_undo)
                     EditorScreen(
                         viewModel = viewModel(
-                            key = "editor/${route.reminderId}/${route.fromPresetId}/${route.cloneOfId}/${route.editPresetId}/${route.newPreset}/${route.sharedText}/${route.routine}",
-                            factory = EditorViewModel.Factory(app, route.reminderId, route.fromPresetId, route.cloneOfId, route.editPresetId, route.newPreset, route.sharedText, route.routine),
+                            key = "editor/${route.reminderId}/${route.fromPresetId}/${route.cloneOfId}/${route.editPresetId}/${route.newPreset}/${route.sharedText}/${route.routine}/${route.contactKind}",
+                            factory = EditorViewModel.Factory(app, route.reminderId, route.fromPresetId, route.cloneOfId, route.editPresetId, route.newPreset, route.sharedText, route.routine, ContactKind.entries.firstOrNull { it.name == route.contactKind }),
                         ),
                         onClose = { navController.popBackStack() },
                         // Held here rather than in either screen's ViewModel: the editor's dies
@@ -241,7 +242,11 @@ fun RwilcoApp(
                         focus = entry.toRoute<Routes.Routines>().focus,
                         onBack = { navController.popBackStack() },
                         onOpen = { id -> navController.navigateOnce(Routes.Editor(id)) },
-                        onNew = { navController.navigateOnce(Routes.Editor(routine = true)) },
+                        onNew = { kind ->
+                            navController.navigateOnce(
+                                if (kind == null) Routes.Editor(routine = true) else Routes.Editor(contactKind = kind.name),
+                            )
+                        },
                         onClone = { id -> navController.navigateOnce(Routes.Editor(cloneOfId = id)) },
                         onKeepAsPreset = { id -> navController.navigateOnce(Routes.Editor(cloneOfId = id, newPreset = true)) },
                     )

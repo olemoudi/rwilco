@@ -18,6 +18,11 @@ import dev.rwilco.model.Trigger
 import dev.rwilco.model.dayShape
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.AppSettings
+import dev.rwilco.model.ContactKind
+import dev.rwilco.model.ContactSlot
+import dev.rwilco.model.contactQueue
+import dev.rwilco.model.contactSlotsOf
+import dev.rwilco.model.isContact
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
@@ -118,6 +123,10 @@ class ReminderScheduler(
             Diag.note("arm", "the pass could not read the reminders: ${it::class.simpleName}")
             return@withLock emptyList()
         }
+        // **The one list-level answer in the whole scheduler.** A contact's moment is the opening
+        // the whole set decides between them, so it is worked out once here and read per row —
+        // `nextWake` answers null for one on purpose (`Contacts.kt`, NextFire).
+        val turns = contactQueue(open, now, zone, { kind -> settings.contactSlotsOf(kind) }, dayStart)
         val missed = ArrayList<Reminder>()
         val seen = HashSet<String>(open.size)
         for (reminder in open) {
@@ -136,7 +145,8 @@ class ReminderScheduler(
                 missed += reminder
                 continue
             }
-            val wake = nextWake(reminder, now, zone, defaultTime, dayStart, settings.dayShape)
+            val wake = if (reminder.isContact) turns[reminder.id]?.let { Wake(it, null) }
+            else nextWake(reminder, now, zone, defaultTime, dayStart, settings.dayShape)
             if (wake == null) {
                 // The ring alone. A reminder with nothing left to ring is exactly the one the
                 // net has a word for — it rang and was let go, or its moment came while a fence
@@ -168,7 +178,7 @@ class ReminderScheduler(
                 } else {
                     true
                 }
-                if (wrote) arm(reminder.id, wake) else cancelRing(reminder.id)
+                if (wrote) arm(reminder.id, wake, quiet = reminder.isContact) else cancelRing(reminder.id)
             }
         }
         // Whatever was armed and is no longer open (done, deleted) loses its alarm. A process
@@ -300,11 +310,16 @@ class ReminderScheduler(
         }.onFailure { Log.e(TAG, "could not arm the safety net of ${reminder.id}", it) }
     }
 
-    private fun arm(id: String, wake: Wake) {
+    private fun arm(id: String, wake: Wake, quiet: Boolean = false) {
         val at = wake.at
         val operation = alarmIntent(id, wake.ruleIndex)
         runCatching {
-            if (canScheduleExact()) {
+            if (quiet) {
+                // A contact is the quietest thing this app does, and setAlarmClock would announce
+                // it in the loudest place the phone has — the system's "next alarm", on the lock
+                // screen. Inexact, like the net's and the question's, and for the same reason.
+                alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.toEpochMilli(), operation)
+            } else if (canScheduleExact()) {
                 // setAlarmClock, not setExactAndAllowWhileIdle: it is the only kind of alarm Doze
                 // never defers and the rate limiter never holds back, and the system's "next
                 // alarm" then tells the truth about what this phone is going to do next.
@@ -462,7 +477,12 @@ class ReminderScheduler(
          * until something else re-armed.
          */
         fun settingsKey(settings: AppSettings): SettingsKey =
-            SettingsKey(settings.defaultTime, settings.dayStart, settings.dayShape, settings.safetyNet)
+            SettingsKey(
+                settings.defaultTime, settings.dayStart, settings.dayShape, settings.safetyNet,
+                // Move a slot in Settings and every contact's turn moves with it. Without this
+                // they would stay armed on the old openings until something else re-armed them.
+                settings.workContactSlots, settings.personalContactSlots,
+            )
 
         /** What the scheduling of a list depends on; anything else changing must not re-arm it. */
         fun schedulingKey(reminder: Reminder): SchedulingKey = SchedulingKey(
@@ -477,6 +497,8 @@ class ReminderScheduler(
             reminder.snoozedToPlace,
             reminder.deadline,
             reminder.expiresAt,
+            // Making a routine into a contact changes what is armed, and nothing else in here.
+            reminder.contactKind,
         )
     }
 
@@ -486,6 +508,8 @@ class ReminderScheduler(
         val dayStart: LocalTime,
         val dayShape: DayShape,
         val safetyNet: SafetyNetSettings,
+        val workContactSlots: List<ContactSlot>,
+        val personalContactSlots: List<ContactSlot>,
     )
 
     data class SchedulingKey(
@@ -517,5 +541,6 @@ class ReminderScheduler(
         /** The set's deadline and the moment the round under way runs out: the third alarm. */
         val deadline: Deadline? = null,
         val expiresAt: Instant? = null,
+        val contactKind: ContactKind? = null,
     )
 }

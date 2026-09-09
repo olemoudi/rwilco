@@ -36,6 +36,8 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.UnfoldLess
 import androidx.compose.material.icons.outlined.UnfoldMore
 import androidx.compose.material.icons.outlined.SearchOff
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.WorkOutline
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,9 +52,12 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.BorderStroke
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -63,6 +68,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -73,7 +79,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.graphics.vector.ImageVector
 import dev.rwilco.R
+import dev.rwilco.model.ContactKind
 import dev.rwilco.model.RoutineFilter
 import dev.rwilco.model.partsBetween
 import dev.rwilco.ui.components.EmptyState
@@ -121,7 +129,7 @@ fun RoutinesScreen(
     focus: String? = null,
     onBack: () -> Unit,
     onOpen: (String) -> Unit,
-    onNew: () -> Unit,
+    onNew: (ContactKind?) -> Unit,
     onClone: (String) -> Unit,
     onKeepAsPreset: (String) -> Unit,
 ) {
@@ -152,6 +160,8 @@ fun RoutinesScreen(
     val listState = rememberLazyListState()
     // The magnifier in the bar opens a field in its place, the way Home's does — the same
     // control, so the gesture and the keyboard behave the same on both screens.
+    // Three things can be made from here now, so the + asks which rather than assuming.
+    var choosing by rememberSaveable { mutableStateOf(false) }
     var searching by rememberSaveable { mutableStateOf(false) }
     // A routine arrived at from its own row on Home is scrolled to, once: the list is rebuilt
     // every minute (the counts move), and a scroll on every rebuild would fight the thumb.
@@ -255,7 +265,7 @@ fun RoutinesScreen(
                 // neutral every primary in the app wears: amber is what fires next, and this
                 // is a door.
                 ExtendedFloatingActionButton(
-                    onClick = { haptics.perform(HapticFeedbackType.Confirm); onNew() },
+                    onClick = { haptics.perform(HapticFeedbackType.Confirm); choosing = true },
                     icon = { Icon(Icons.Outlined.Add, contentDescription = null) },
                     text = { Text(stringResource(R.string.routines_new), style = MaterialTheme.typography.titleMedium) },
                     containerColor = MaterialTheme.colorScheme.onSurface,
@@ -314,7 +324,7 @@ fun RoutinesScreen(
                             body = stringResource(R.string.routines_empty_body),
                             icon = Icons.Outlined.Autorenew,
                             actionLabel = stringResource(R.string.routines_new),
-                            onAction = onNew,
+                            onAction = { choosing = true },
                         )
                     }
                 }
@@ -358,6 +368,12 @@ fun RoutinesScreen(
         }
     }
 
+    if (choosing) {
+        NewRoutineChooser(
+            onPick = { kind -> choosing = false; onNew(kind) },
+            onDismiss = { choosing = false },
+        )
+    }
     actingOn?.let { id ->
         val held = state.rows.firstOrNull { it.id == id } ?: run { actingOn = null; return@let }
         ReminderActionsMenu(
@@ -401,6 +417,9 @@ private fun FilterRow(filters: List<RoutineFilter>, selected: RoutineFilter, onS
                     is RoutineFilter.Tag -> filter.tag
                     RoutineFilter.Paused -> stringResource(R.string.routines_filter_paused)
                     RoutineFilter.Waiting -> stringResource(R.string.routines_filter_waiting)
+                    is RoutineFilter.Kind -> stringResource(
+                        if (filter.kind == ContactKind.WORK) R.string.routines_filter_work else R.string.routines_filter_personal,
+                    )
                     else -> stringResource(R.string.routines_filter_overdue)
                 },
                 selected = filter == selected,
@@ -418,6 +437,7 @@ private val RoutineFilter.key: String
         RoutineFilter.Overdue -> "rwilco-overdue"
         RoutineFilter.Paused -> "rwilco-paused"
         RoutineFilter.Waiting -> "rwilco-waiting"
+        is RoutineFilter.Kind -> "rwilco-kind-${kind.name}"
         is RoutineFilter.Tag -> "tag-$tag"
     }
 
@@ -483,8 +503,15 @@ private fun RoutineCard(
     }
     val due = countdownText(partsBetween(clock, row.deadline))
     val separator = stringResource(R.string.common_separator)
-    val dueLine = elapsed + separator +
-        stringResource(if (row.done) R.string.routines_due else R.string.routines_overdue, due)
+    // A contact is not late, it is queued: what it is waiting for is its turn, and saying
+    // "vencida hace 3 semanas" over somebody the budget is pacing would be a lie the screen
+    // tells about its own arithmetic. Told about and unanswered, it reads like anything overdue.
+    val dueLine = when {
+        row.contactKind == null -> elapsed + separator + stringResource(if (row.done) R.string.routines_due else R.string.routines_overdue, due)
+        !row.done -> elapsed + separator + stringResource(R.string.routines_contact_unanswered)
+        row.turnAt == null -> elapsed + separator + stringResource(R.string.routines_contact_no_turn)
+        else -> elapsed + separator + stringResource(R.string.routines_contact_turn, due)
+    }
     // How far through the span it is: a full track is a "No".
     val progress = if (row.span.isZero) 1f else (Duration.between(row.anchor, clock).toMillis().toFloat() / row.span.toMillis()).coerceIn(0f, 1f)
     val haptics = Tokens.haptics
@@ -664,3 +691,49 @@ private fun RoutineCard(
 /** A full track on an overdue routine still says so, at the volume a line under the words wants. */
 /** How much of the error container the card's wash carries: a tint, never a red card. */
 private const val OVERDUE_WASH_ALPHA = 0.3f
+
+/**
+ * What the + on the routines screen makes: a routine, or a contact of either kind.
+ *
+ * A sheet rather than three buttons because two of the three are the same thing wearing a
+ * different half of a life, and a row of three primaries would say they were three features.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NewRoutineChooser(onPick: (ContactKind?) -> Unit, onDismiss: () -> Unit) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Tokens.spacing.screen)
+                .padding(bottom = Tokens.spacing.xl)
+                .navigationBarsPadding(),
+        ) {
+            ChooserRow(Icons.Outlined.Autorenew, stringResource(R.string.routines_new_routine), stringResource(R.string.routines_new_routine_hint), routineColor()) { onPick(null) }
+            ChooserRow(Icons.Outlined.WorkOutline, stringResource(R.string.routines_new_contact_work), stringResource(R.string.routines_new_contact_work_hint), routineColor()) { onPick(ContactKind.WORK) }
+            ChooserRow(Icons.Outlined.Person, stringResource(R.string.routines_new_contact_personal), stringResource(R.string.routines_new_contact_personal_hint), routineColor()) { onPick(ContactKind.PERSONAL) }
+        }
+    }
+}
+
+@Composable
+private fun ChooserRow(icon: ImageVector, title: String, hint: String, accent: Color, onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    RwilcoCard(onClick = onClick, rail = accent, modifier = Modifier.semantics { contentDescription = "$title. $hint" }) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = Tokens.sizes.primary)
+                .padding(horizontal = Tokens.spacing.lg, vertical = Tokens.spacing.md),
+        ) {
+            Icon(icon, contentDescription = null, tint = accent)
+            Spacer(Modifier.width(Tokens.spacing.md))
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, color = scheme.onSurface)
+                Text(hint, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+            }
+        }
+    }
+}

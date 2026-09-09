@@ -126,6 +126,14 @@ object AlertNotifications {
     const val CHANNEL_ASK = "ask_$VERSION"
 
     /**
+     * A contact whose turn has come. **Mute by construction**: no tone, no buzz, and it cannot be
+     * given one later, because a channel's sound is fixed the moment it is made. Its id sits
+     * outside [ALERT_CHANNEL_PREFIX] on purpose, so the tone sweep never touches it and muting it
+     * is not the "a reminder channel is muted" fault Home's strip is about.
+     */
+    const val CHANNEL_CONTACT = "contact_$VERSION"
+
+    /**
      * Every channel the app can ring on, and only those: made from the settings, and the ones
      * this tone and rhythm no longer ring deleted.
      *
@@ -205,6 +213,17 @@ object AlertNotifications {
         // The phone's own notification sound and buzz, deliberately: a question is a notification
         // and nothing more, and the person's own quiet hours make it silent (see [ask]).
         manager.createNotificationChannel(
+            // DEFAULT rather than the net's LOW: a contact should be seen once as it arrives.
+            // LOW never peeks, and a contact nobody sees is a contact that does not happen. No
+            // tone and no buzz, which is where "discreet" actually lives.
+            NotificationChannel(CHANNEL_CONTACT, context.getString(R.string.notif_channel_contact), NotificationManager.IMPORTANCE_DEFAULT).apply {
+                group = GROUP
+                description = context.getString(R.string.notif_channel_contact_description)
+                setSound(null, null)
+                enableVibration(false)
+            },
+        )
+        manager.createNotificationChannel(
             NotificationChannel(CHANNEL_ASK, context.getString(R.string.notif_channel_ask), NotificationManager.IMPORTANCE_DEFAULT).apply {
                 group = GROUP
                 description = context.getString(R.string.notif_channel_ask_description)
@@ -267,6 +286,35 @@ object AlertNotifications {
             .addAction(0, context.getString(R.string.notif_ask_later), actionIntent(context, reminder.id, AlertActionReceiver.ACTION_LATER, null))
         if (reminder.tags.isNotEmpty()) builder.setSubText(reminder.tags.joinToString(context.getString(R.string.common_separator)))
         runCatching { NotificationManagerCompat.from(context).notify(askNotificationId(reminder.id), builder.build()) }
+    }
+
+    /**
+     * A contact whose turn has come: their name, how long it has been, and one answer.
+     *
+     * The same "hecho" door every other surface uses ([AlertActionReceiver.ACTION_DONE]), so the
+     * undo card comes with it for free. No "más tarde": a contact left alone comes back next
+     * week by itself, which is the same answer without having to give it. Posted on the ring's
+     * own id so [cancel] takes it down with everything else.
+     */
+    fun contact(context: Context, reminder: Reminder, elapsed: Duration) {
+        ensureQuietChannels(context)
+        val builder = NotificationCompat.Builder(context, CHANNEL_CONTACT)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(context.getString(R.string.notif_contact_title, reminder.text))
+            .setContentText(context.getString(R.string.countdown_ago, spanWords(context, elapsed)))
+            .setContentIntent(routinesIntent(context, notificationId(reminder.id), reminder.id))
+            .setAutoCancel(true)
+            // Mute at the card as well as at the channel: the two together are the promise.
+            .setSilent(true)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setGroup(BUNDLE)
+            .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
+            .setColor(ROUTINE_ARGB)
+            .addAction(0, context.getString(R.string.notif_contact_done), actionIntent(context, reminder.id, AlertActionReceiver.ACTION_DONE, null))
+        if (reminder.tags.isNotEmpty()) builder.setSubText(reminder.tags.joinToString(context.getString(R.string.common_separator)))
+        runCatching { NotificationManagerCompat.from(context).notify(notificationId(reminder.id), builder.build()) }
     }
 
     /**

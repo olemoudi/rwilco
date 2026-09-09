@@ -3,6 +3,7 @@ package dev.rwilco.data
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import dev.rwilco.model.ContactKind
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.ReminderCodec
 import dev.rwilco.model.Trigger
@@ -77,6 +78,13 @@ data class ReminderEntity(
     val resumedAt: Long? = null,
     /** When the pause now standing began; null (every older row, and everything not paused) is none. */
     val pausedAt: Long? = null,
+    /**
+     * Which kind of contact this routine is, by name; null (every older row, and every ordinary
+     * routine) is "not a contact". A name this build does not know reads as null for the same
+     * reason an unknown trigger is skipped: a contact nobody can place is better read as the
+     * routine it also is than refused.
+     */
+    val contactKind: String? = null,
 )
 
 /** The stored form of no recurrence, and what every row written before v5 gets. */
@@ -125,6 +133,7 @@ fun ReminderEntity.toDomain(zone: ZoneId = ZoneId.systemDefault()): Reminder = R
     askedAt = askedAt?.let(Instant::ofEpochMilli),
     resumedAt = resumedAt?.let(Instant::ofEpochMilli),
     pausedAt = pausedAt?.let(Instant::ofEpochMilli),
+    contactKind = contactKind?.let { name -> ContactKind.entries.firstOrNull { it.name == name } },
 ).foldRepeats(zone)
 
 fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
@@ -154,6 +163,7 @@ fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
     askedAt = askedAt?.toEpochMilli(),
     resumedAt = resumedAt?.toEpochMilli(),
     pausedAt = pausedAt?.toEpochMilli(),
+    contactKind = contactKind?.name,
 )
 
 /**
