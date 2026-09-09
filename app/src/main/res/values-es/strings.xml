@@ -1393,6 +1393,17 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_115_0">
+
+        <item>Lo que el canal alpha viene llevando desde la 0.92.0, ahora en beta. En esta versión no hay nada nuevo en sí — es la misma app que ha estado corriendo el canal de pruebas, publicada donde la puede coger todo el mundo.</item>
+
+        <item>Lo gordo son las rutinas: las cosas que haces cada cierto tiempo en vez de a una hora fija. Una rutina cuenta lo que ha pasado desde la última vez, mantiene su línea en la pantalla principal, se pone roja cuando se te ha vencido, y puede preguntarte por reloj o al llegar a un sitio. Tienen pantalla propia, y se pliegan cuando prefieres no verlas.</item>
+
+        <item>Lo demás, en corto: una regla ya se puede acotar a días del mes, a la velocidad a la que vas y a si vas andando o en coche; la pantalla de aviso, el camino del disparo y las rutinas han tenido cada uno su ronda de arreglos; y la actualización automática ya no se gasta tus datos sin llegar nunca.</item>
+
+        <item>Las entradas de abajo dicen qué fue cada uno de esos cambios, versión a versión.</item>
+
+    </string-array>
     <string-array name="whats_new_0_114_0">
 
         <item>Dejar pasar los avisos por el «silencio total» ya se puede permitir de verdad.</item>
