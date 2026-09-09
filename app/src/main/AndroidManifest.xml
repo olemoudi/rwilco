@@ -30,6 +30,13 @@
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!-- The marker permission (normal, no prompt) that puts the app in the phone's "Do Not
+         Disturb access" list. It grants nothing by itself, but without it that list has no
+         Rwilco in it — so the access could never be given at all, and every alert channel was
+         built with bypassDnd off, which is the one thing that crosses total silence. The
+         Settings row offering it has opened that list since 0.12.0; until 0.114.0 the list it
+         opened had nothing in it to tap. -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <!-- Taking the screen while the phone is unlocked and in somebody's hand: Android forbids a
          background app from starting an activity unless it may draw over other apps, and there
          is no way to tell an open app from the home screen without usage access. Both are

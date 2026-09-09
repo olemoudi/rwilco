@@ -1408,6 +1408,15 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_114_0">
+
+        <item>Letting reminders through «total silence» can now actually be allowed.</item>
+
+        <item>Do Not Disturb lets alarms through in every mode but that one, and Settings has been offering «Ring even on total silence» — but the button opened the phone\'s list of apps allowed through, and Rwilco was not in it. Nothing you could do there, because an app only appears on that list if it says it wants to, and this one never did. It says so now, so the switch is there to turn on.</item>
+
+        <item>Until you turn it on nothing changes: the permission grants nothing by itself, and the alerts keep getting through every other Do Not Disturb mode the way they always have.</item>
+
+    </string-array>
     <string-array name="whats_new_0_113_0">
 
         <item>The self-update now finishes on a bad connection, instead of spending data and never arriving.</item>

@@ -1393,6 +1393,15 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_114_0">
+
+        <item>Dejar pasar los avisos por el «silencio total» ya se puede permitir de verdad.</item>
+
+        <item>No molestar deja pasar las alarmas en todos sus modos menos ese, y Ajustes venía ofreciendo «Sonar incluso en silencio total» — pero el botón abría la lista de apps a las que el móvil deja pasar, y Rwilco no estaba en ella. Allí no había nada que hacer, porque a esa lista solo se sale si la app dice que lo quiere, y esta no lo decía. Ahora lo dice, así que el interruptor está ahí para activarlo.</item>
+
+        <item>Hasta que no lo actives no cambia nada: el permiso por sí solo no concede nada, y los avisos siguen atravesando los demás modos de No molestar como siempre.</item>
+
+    </string-array>
     <string-array name="whats_new_0_113_0">
 
         <item>La actualización automática ya termina en una conexión mala, en vez de gastar datos y no llegar.</item>
