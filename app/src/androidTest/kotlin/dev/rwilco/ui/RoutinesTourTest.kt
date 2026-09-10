@@ -7,6 +7,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasSetTextAction
+import android.view.inputmethod.InputMethodManager
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -238,9 +240,26 @@ class RoutinesTourTest {
         shot("routines-new-closeness")
         rule.onNodeWithText(s(R.string.routines_new_close), useUnmergedTree = true).performClick()
         rule.waitUntilShown(s(R.string.editor_title_new_contact))
-        // A name is what is written on this form, and it says so rather than asking what you do.
-        rule.onNodeWithText(s(R.string.editor_contact_write), useUnmergedTree = true).assertIsDisplayed()
-        rule.onAllNodesWithText(s(R.string.editor_routine_write), useUnmergedTree = true).assertCountEquals(0)
+        // Creating one asks for the name and nothing else (0.119.0): the kind and how close were
+        // answered on the way in, and Settings answer the rest.
+        rule.onNode(hasText(s(R.string.editor_contact_title), ignoreCase = true), useUnmergedTree = true).assertIsDisplayed()
+        for (title in listOf(R.string.editor_contact_kind, R.string.editor_start_title, R.string.editor_period_title, R.string.editor_contact_when, R.string.editor_tags_title)) {
+            rule.onAllNodesWithText(s(title), ignoreCase = true, useUnmergedTree = true).assertCountEquals(0)
+        }
+        shot("routines-editor-contact-new")
+        rule.onNode(hasSetTextAction(), useUnmergedTree = true).performTextInput("Ana")
+        hideKeyboard()
+        rule.onNodeWithText(s(R.string.common_save), useUnmergedTree = true).performClick()
+        // Saved, it is a row asking the contact's own question.
+        val question = s(R.string.routines_contact_question, "Ana")
+        rule.waitUntil(timeoutMillis = 10_000) {
+            rule.onAllNodesWithText(question, substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        shot("routines-contact-row")
+
+        // Opened again, the form has everything a contact is changed by hand with.
+        rule.onNodeWithContentDescription(s(R.string.card_edit, "Ana")).performScrollTo().performClick()
+        rule.waitUntilShown(s(R.string.editor_title_edit_contact))
         rule.onNodeWithText(s(R.string.editor_contact_close), useUnmergedTree = true).performScrollTo().assertIsDisplayed()
         shot("routines-editor-contact-who")
         val threeMonths = s(R.string.editor_contact_follows) + s(R.string.common_separator) +
@@ -257,6 +276,17 @@ class RoutinesTourTest {
         shot("routines-editor-contact-when")
         // And the foot says what the net does for a contact, not what it does for something that rings.
         rule.onNodeWithText(s(R.string.editor_net_contact_note), useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+    }
+
+    /** The keyboard down, the way WhenChipTest puts it down: it resizes the window and covers "Guardar". */
+    private fun hideKeyboard() {
+        val activity = rule.activity
+        rule.runOnUiThread {
+            activity.getSystemService(InputMethodManager::class.java)
+                ?.hideSoftInputFromWindow(activity.window.decorView.windowToken, 0)
+        }
+        rule.waitForIdle()
+        Thread.sleep(500)
     }
 
     private fun shot(name: String) {

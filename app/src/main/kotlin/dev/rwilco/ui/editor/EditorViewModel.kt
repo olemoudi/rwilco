@@ -241,7 +241,9 @@ class EditorViewModel(
                 initialPresetText = presetWording,
                 // Only when the preset left the words open: with default wording there is
                 // nothing to type, and a keyboard would be covering a finished form.
-                focusText = editedPreset == null && ((cloned != null && !newPreset) || (source != null && source.text.isBlank())),
+                // And a new contact, whose name is the one thing its form asks for (0.119.0).
+                focusText = editedPreset == null &&
+                    ((cloned != null && !newPreset) || (source != null && source.text.isBlank()) || (loaded == null && contactKind != null)),
             )
         }
     }

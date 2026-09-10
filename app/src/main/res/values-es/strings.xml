@@ -120,7 +120,7 @@
     <string name="routines_filter_waiting">Aún no empieza</string>
     <string name="routines_filter_work">Trabajo</string>
     <string name="routines_filter_personal">Personales</string>
-    <string name="routines_contact_turn">le toca en %1$s</string>
+    <string name="routines_contact_turn">le toca %1$s</string>
     <string name="routines_contact_unanswered">avisado, y esperándote</string>
     <string name="routines_contact_no_turn">sin turno en el próximo año</string>
     <string name="routines_contact_question">¿Has llamado a %1$s?</string>
@@ -1442,6 +1442,13 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_119_0">
+
+        <item>Crear un contacto ya solo pide el nombre. El tipo y la cercanía se eligen al entrar, y la cadencia, los días y la franja salen de Ajustes, así que el formulario se abre con el teclado listo y nada más. Todo lo demás sigue ahí al abrir el contacto para cambiarlo a mano.</item>
+
+        <item>Arreglado: la fila de un contacto decía «le toca en en 96 d».</item>
+
+    </string-array>
     <string-array name="whats_new_0_118_0">
 
         <item>Keep in touch, afinado. «Nueva rutina» pregunta ahora paso a paso: rutina o keep in touch; si es keep in touch, de trabajo o personal; y si es alguien cercano de verdad o un contacto esporádico. El formulario se abre con lo que digan los Ajustes para esa combinación.</item>

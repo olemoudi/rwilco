@@ -149,6 +149,10 @@ fun EditorScreen(
     // And a contact is a routine that belongs to somebody. Off the draft for the same reason:
     // what the form is is what is on it, not the door it was opened by.
     val contact = state.draft.contactKind != null
+    // **Creating one asks for the name and nothing else** (0.119.0): the kind and how close were
+    // answered on the way in, and Settings answer the rest. Everything else is on the form when
+    // it is opened again, which is where a contact is changed by hand.
+    val creatingContact = contact && state.isNew
     val focusManager = LocalFocusManager.current
     val haptics = Tokens.haptics
     val snackbar = LocalSnackbar.current
@@ -409,14 +413,15 @@ fun EditorScreen(
                     // The toggle first: it changes what every part under it means. Only where
                     // it means something — turning a reminder that already exists into a
                     // preset would leave a question about the reminder nobody asked.
-                    if (state.isNew || state.editingPreset != null) {
+                    if ((state.isNew || state.editingPreset != null) && !contact) {
                         PresetToggle(asPreset = state.asPreset, onChange = viewModel::setAsPreset)
                         Spacer(Modifier.height(spacing.md))
                     }
                     TextSection(
                         text = state.draft.text,
-                        suggestions = if (state.asPreset) emptyList() else state.suggestedTexts,
-                        allSuggestions = if (state.asPreset) emptyList() else state.allTexts,
+                        // A person's name is not one of the words written before: no offers.
+                        suggestions = if (state.asPreset || contact) emptyList() else state.suggestedTexts,
+                        allSuggestions = if (state.asPreset || contact) emptyList() else state.allTexts,
                         onTextChange = viewModel::setText,
                         error = state.showErrors && ValidationError.TextBlank in state.errors,
                         placeholderRes = when {
@@ -460,7 +465,7 @@ fun EditorScreen(
                 // Which half of a life this person belongs to, which is the whole of what
                 // "and besides" means for a contact: it decides nothing but the days they are
                 // raised on, and there is nothing else to ask.
-                state.draft.contactKind?.let { kind ->
+                state.draft.contactKind?.takeIf { !creatingContact }?.let { kind ->
                     EditorSection(
                         title = stringResource(R.string.editor_contact_kind),
                         icon = Icons.Outlined.Group,
@@ -494,7 +499,7 @@ fun EditorScreen(
                 }
                 // Where the count starts, which is a question only a routine has — and the
                 // first one it has, because everything under it is measured from the answer.
-                (state.draft.recurrence as? Recurrence.Since)?.let { since ->
+                (state.draft.recurrence as? Recurrence.Since)?.takeIf { !creatingContact }?.let { since ->
                     EditorSection(
                         title = stringResource(R.string.editor_start_title),
                         icon = Icons.Outlined.PlayArrow,
@@ -574,7 +579,7 @@ fun EditorScreen(
                         onRemoveCondition = viewModel::removeCondition,
                     )
                 }
-                EditorSection(
+                if (!creatingContact) EditorSection(
                     // A routine's "Vuelve" is its whole arrangement, so the card is named for
                     // the question it answers there: how often.
                     title = stringResource(if (routine) R.string.editor_period_title else R.string.editor_recurrence_title),
@@ -635,7 +640,7 @@ fun EditorScreen(
                 }
                 // **When a contact is told about** — its kind's days and window in Settings, or
                 // its own once changed here, which stops Settings reaching them (`Contacts.kt`).
-                state.draft.contactKind?.let { kind ->
+                state.draft.contactKind?.takeIf { !creatingContact }?.let { kind ->
                     val schedule = state.contactSchedule(kind)
                     EditorSection(
                         title = stringResource(R.string.editor_contact_when),
@@ -655,7 +660,7 @@ fun EditorScreen(
                 // reminder most people leave alone, and the card sat between the words and
                 // the "cuándo" — the two things somebody actually came to answer, a card's
                 // height apart. The words and the when read as one form now; the tags follow.
-                EditorSection(
+                if (!creatingContact) EditorSection(
                     title = stringResource(R.string.editor_tags_title),
                     icon = Icons.Outlined.LocalOffer,
                     note = stringResource(R.string.editor_optional),
@@ -696,7 +701,7 @@ fun EditorScreen(
                     // A contact's net is its own (`Contacts.kt`): the next day at the same time,
                     // and silent like the telling. The generic note says "si suena", which a
                     // contact never does.
-                    Text(
+                    if (!creatingContact) Text(
                         text = stringResource(R.string.editor_net_contact_note),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

@@ -124,7 +124,7 @@
     <string name="routines_filter_waiting">Not started yet</string>
     <string name="routines_filter_work">Work</string>
     <string name="routines_filter_personal">Personal</string>
-    <string name="routines_contact_turn">its turn in %1$s</string>
+    <string name="routines_contact_turn">its turn %1$s</string>
     <string name="routines_contact_unanswered">told, and waiting on you</string>
     <string name="routines_contact_no_turn">no turn in the coming year</string>
     <string name="routines_contact_question">Have you called %1$s?</string>
@@ -1457,6 +1457,13 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_119_0">
+
+        <item>Adding a contact now asks for the name and nothing else. Kind and closeness are picked on the way in, and the cadence, days and window come from Settings, so the form opens with the keyboard ready and nothing more. Everything else is still there when you open the contact to change it by hand.</item>
+
+        <item>Fixed: a contact\'s row read «its turn in in 96 d».</item>
+
+    </string-array>
     <string-array name="whats_new_0_118_0">
 
         <item>Keep in touch, refined. «New routine» now asks a step at a time: a routine or keep in touch; if keep in touch, work or personal; and whether it is somebody really close or somebody to keep up with now and then. The form opens with whatever Settings say for that pair.</item>

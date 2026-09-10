@@ -539,6 +539,9 @@ anything repeats**:
   `RwilcoApplication` writes their recurrence alone (`ReminderDao.setFollowedCadence`, guarded by
   the flag, so neither a ring written in between nor a cadence set by hand meanwhile is put back).
   The editor sets the flag on any change of how often, and "Volver a Ajustes" clears it.
+  Creating a contact asks for the name alone (0.119.0) — kind and closeness were answered in the
+  chooser and Settings answer the rest — and the sections it is changed by hand with appear once
+  it is opened again.
   **And it is told at a drawn moment, one of each kind a day at most** (`contactQueue`). Walked a
   day at a time: for each kind not yet told about that day, every window its contacts use gets a
   moment drawn inside it (seeded by kind, window and day, so it holds still across passes), and
