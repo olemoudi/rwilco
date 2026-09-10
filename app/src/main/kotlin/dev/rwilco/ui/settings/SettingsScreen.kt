@@ -441,27 +441,32 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
             }
 
             // Its own group rather than a corner of "el día": the day's shape is when you are
-            // up, and this is how many people a week the app may ask you about. A budget, not
-            // an hour.
+            // up, and this is when — and how often — the app brings somebody up.
             SettingsGroup(
                 icon = Icons.Outlined.Group,
                 title = stringResource(R.string.settings_contacts_title),
                 summary = stringResource(
                     R.string.settings_contacts_summary,
-                    current.workContactSlots.size,
-                    current.personalContactSlots.size,
+                    contactScheduleSummary(current.workContacts),
+                    contactScheduleSummary(current.personalContacts),
                 ),
                 expanded = Group.CONTACTS in open,
                 onToggle = { toggle(Group.CONTACTS) },
             ) {
                 Column {
+                    Text(
+                        text = stringResource(R.string.settings_contacts_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(spacing.lg))
                     SettingTitle(title = stringResource(R.string.routines_filter_work))
                     Spacer(Modifier.height(spacing.sm))
-                    ContactSlotsCard(slots = current.workContactSlots, onChange = viewModel::setWorkContactSlots)
+                    ContactScheduleCard(schedule = current.workContacts, onChange = viewModel::setWorkContacts)
                     Spacer(Modifier.height(spacing.lg))
                     SettingTitle(title = stringResource(R.string.routines_filter_personal))
                     Spacer(Modifier.height(spacing.sm))
-                    ContactSlotsCard(slots = current.personalContactSlots, onChange = viewModel::setPersonalContactSlots)
+                    ContactScheduleCard(schedule = current.personalContacts, onChange = viewModel::setPersonalContacts)
                 }
             }
 

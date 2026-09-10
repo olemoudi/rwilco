@@ -32,6 +32,7 @@ import dev.rwilco.model.lapsed
 import dev.rwilco.model.roundExpiry
 import dev.rwilco.model.timerExpiry
 import dev.rwilco.model.CONTACT_PLAN
+import dev.rwilco.model.contactPutOffUntil
 import dev.rwilco.model.isContact
 import dev.rwilco.model.routineAnchor
 import dev.rwilco.model.Reminder
@@ -283,6 +284,15 @@ class ReminderFiring(
         // momentRungFor: a place is the one firing that must not reach for the armed moment,
         // because that moment belongs to whatever else the reminder is still waiting for.
         val rangFor = momentRungFor(now, reminder.armedFor, late, eventDriven)
+        // **One contact of each kind a day** (`Contacts.kt`). The draw never names two, but a
+        // phone off across two turns wakes owing both, and the catch-up would put them in the
+        // shade together. The second one waits: spent here, and the re-arm finds it its next turn.
+        if (reminder.isContact && anotherContactToldThatDay(reminder, rangFor)) {
+            Diag.note(TAG_DIAG, "r=${short(id)} dropped: a ${reminder.contactKind} contact was already told about that day")
+            spendArmed()
+            scheduler.rearmAll()
+            return@withLock
+        }
         // Under ALL a moment is first of all something that happened: only the one that
         // completes the set rings, and the rest are written down and waited on.
         when (val outcome = outcomeOfFiring(reminder, ruleIndex)) {
@@ -604,6 +614,13 @@ class ReminderFiring(
         Diag.note(TAG_DIAG, "r=${short(id)} NET said (${due.word}), about the moment at ${due.about}")
         repository.setNudgedAt(id, now)
         repository.record(id, FiringKind.NET, now, detail = due.word.name)
+        // **A contact's word is its own card**, as mute as the telling it is about: the same
+        // question under "ICYMI:", the same two answers, and no sound at any hour (`Contacts.kt`).
+        if (reminder.isContact) {
+            AlertNotifications.contact(context, reminder, Duration.between(reminder.routineAnchor(), due.about), nudge = true)
+            scheduler.rearmAll()
+            return@withLock
+        }
         AlertNotifications.post(
             context = context,
             reminder = reminder,
@@ -809,6 +826,30 @@ class ReminderFiring(
             return@withLock
         }
         putOff(id, until, said = "a date")
+    }
+
+    /**
+     * "Posponer 1 semana" on a contact's card: until the start of the day a week after the telling
+     * ([contactPutOffUntil]), so it is back for that same weekday's window — and, being an answer,
+     * with no word from the net in the meantime.
+     */
+    suspend fun putOffContact(id: String) = lock.withLock {
+        val reminder = repository.get(id)
+        if (reminder == null) {
+            repeater.cancel(id)
+            AlertNotifications.cancel(context, id)
+            return@withLock
+        }
+        putOff(id, reminder.contactPutOffUntil(clock.instant(), clock.zone), said = "a week")
+    }
+
+    /** Whether a contact of the same kind as [contact] has already rung on the day of [at]. */
+    private suspend fun anotherContactToldThatDay(contact: Reminder, at: Instant): Boolean {
+        val day = at.atZone(clock.zone).toLocalDate()
+        return repository.openNow().any { other ->
+            other.id != contact.id && other.contactKind == contact.contactKind &&
+                other.lastFiredAt?.atZone(clock.zone)?.toLocalDate() == day
+        }
     }
 
     /** The write both of them make; the lock is the caller's. */

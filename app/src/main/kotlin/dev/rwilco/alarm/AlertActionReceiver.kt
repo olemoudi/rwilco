@@ -32,6 +32,7 @@ class AlertActionReceiver : BroadcastReceiver() {
                             app.firing.dismiss(id)
                             if (before != null && before.isRoutine) AlertNotifications.doneNotice(context, before, before.lastDealtAt)
                         }
+                        ACTION_PUT_OFF_WEEK -> app.firing.putOffContact(id)
                         ACTION_SNOOZE -> {
                             val snooze = intent.getStringExtra(EXTRA_SNOOZE)
                                 ?.let { name -> Snooze.entries.firstOrNull { it.name == name } }
@@ -63,6 +64,8 @@ class AlertActionReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_DONE = "dev.rwilco.alert.DONE"
         const val ACTION_SNOOZE = "dev.rwilco.alert.SNOOZE"
+        /** "Posponer 1 semana" on a contact's card: back for the same weekday's window next week. */
+        const val ACTION_PUT_OFF_WEEK = "dev.rwilco.alert.PUT_OFF_WEEK"
         /** "Todavía no" on a routine's question. */
         const val ACTION_LATER = "dev.rwilco.alert.LATER"
         /** "Deshacer" on a routine counted as done by a place; [EXTRA_PREVIOUS] is where the count goes back to. */

@@ -6,7 +6,15 @@ import dev.rwilco.model.dayTimingOf
 import dev.rwilco.model.Action
 import dev.rwilco.model.toggling
 import dev.rwilco.model.Condition
+import dev.rwilco.model.Closeness
 import dev.rwilco.model.ContactKind
+import dev.rwilco.model.ContactSchedule
+import dev.rwilco.model.DayWindow
+import dev.rwilco.model.DEFAULT_PERSONAL_CONTACTS
+import dev.rwilco.model.DEFAULT_WORK_CONTACTS
+import dev.rwilco.model.RecurrenceUnit
+import dev.rwilco.model.monthsFor
+import java.time.DayOfWeek
 import dev.rwilco.model.Deadline
 import dev.rwilco.model.DayShape
 import dev.rwilco.model.DEFAULT_ACTIONS
@@ -62,9 +70,23 @@ data class Draft(
     val deadline: Deadline? = null,
     /** Which kind of contact this is, when it is one at all (see `Contacts.kt`). */
     val contactKind: ContactKind? = null,
+    /** How close, when it is a contact; null reads as close. */
+    val contactCloseness: Closeness? = null,
+    /** Whether a contact's cadence was set by hand, rather than following Settings. */
+    val contactCadenceByHand: Boolean = false,
+    /** A contact's days and window, when set by hand; null follows its kind's in Settings. */
+    val contactDays: Set<DayOfWeek>? = null,
+    val contactWindow: DayWindow? = null,
 )
 
-fun Reminder.toDraft() = Draft(text = text, tags = tags, rules = rules, ruleMatch = ruleMatch, actions = actions, recurrence = recurrence, deadline = deadline, contactKind = contactKind)
+fun Reminder.toDraft() = Draft(
+    text = text, tags = tags, rules = rules, ruleMatch = ruleMatch, actions = actions, recurrence = recurrence, deadline = deadline,
+    contactKind = contactKind, contactCloseness = contactCloseness, contactCadenceByHand = contactCadenceByHand,
+    contactDays = contactDays, contactWindow = contactWindow,
+)
+
+/** A contact is a routine wearing a kind: without the count, the draft is not one. */
+private val Draft.isContact: Boolean get() = contactKind != null && recurrence is Recurrence.Since
 
 /**
  * Note what is NOT carried over: the armed moment, which the scheduler writes again the instant
@@ -138,8 +160,13 @@ fun Draft.toReminder(
     actions = actions,
     recurrence = recurrence,
     // A contact is a routine wearing a kind: lose the count and it is not one any more, so the
-    // kind goes with it rather than sitting on a shape that cannot carry it.
-    contactKind = contactKind.takeIf { recurrence is Recurrence.Since },
+    // kind goes with it rather than sitting on a shape that cannot carry it — and so does
+    // everything else only a contact has.
+    contactKind = contactKind.takeIf { isContact },
+    contactCloseness = contactCloseness.takeIf { isContact },
+    contactCadenceByHand = contactCadenceByHand && isContact,
+    contactDays = contactDays.takeIf { isContact },
+    contactWindow = contactWindow.takeIf { isContact },
     status = status,
     createdAt = createdAt,
     updatedAt = now,
@@ -245,6 +272,9 @@ data class EditorUiState(
     val curatingTexts: Boolean = false,
     /** The recurrences kept under a name, most used first. */
     val recurrencePresets: List<RecurrencePreset> = emptyList(),
+    /** What Settings say about each kind of contact: the defaults a contact's form follows. */
+    val workContacts: ContactSchedule = DEFAULT_WORK_CONTACTS,
+    val personalContacts: ContactSchedule = DEFAULT_PERSONAL_CONTACTS,
     /** The preset this reminder was started from, when it was: named on the screen. */
     val fromPresetName: String? = null,
     /**
@@ -348,11 +378,16 @@ fun EditorUiState.addTag(raw: String): EditorUiState {
  */
 fun EditorUiState.setRecurrence(recurrence: Recurrence): EditorUiState {
     if (recurrence !is Recurrence.Since) return copy(draft = draft.copy(recurrence = recurrence))
+    // How often, picked here for a contact, is picked by hand: Settings stop reaching it. Only a
+    // change of how often counts — the hour it lands on is nothing Settings say.
+    val before = draft.recurrence as? Recurrence.Since
+    val touched = draft.contactKind != null && (before == null || before.amount != recurrence.amount || before.unit != recurrence.unit)
     return copy(
         draft = draft.copy(
             recurrence = recurrence,
             ruleMatch = RuleMatch.ANY,
             deadline = null,
+            contactCadenceByHand = draft.contactCadenceByHand || touched,
         ),
     )
 }
@@ -378,13 +413,63 @@ fun becomesRoutine(before: Reminder?, draft: Draft): Boolean =
     before != null && before.recurrence !is Recurrence.Since && draft.recurrence is Recurrence.Since
 
 /**
+ * Which half of a life a contact belongs to; anything that is not one is left alone. A cadence
+ * still following Settings follows the new kind's, as the saved contact would.
+ */
+fun EditorUiState.setContactKind(kind: ContactKind): EditorUiState {
+    if (draft.contactKind == null) return this
+    return copy(draft = draft.copy(contactKind = kind).withSettingsCadence(contactSchedule(kind)))
+}
+
+/** How close, which is what decides how often; the same rule about a cadence following Settings. */
+fun EditorUiState.setContactCloseness(closeness: Closeness): EditorUiState {
+    val kind = draft.contactKind ?: return this
+    return copy(draft = draft.copy(contactCloseness = closeness).withSettingsCadence(contactSchedule(kind)))
+}
+
+/** "Volver a Ajustes" under the cadence: following them again, at the months they say now. */
+fun EditorUiState.resetContactCadence(): EditorUiState {
+    val kind = draft.contactKind ?: return this
+    return copy(draft = draft.copy(contactCadenceByHand = false).withSettingsCadence(contactSchedule(kind)))
+}
+
+/**
+ * A day on or off for this contact alone, starting from its kind's days in Settings. The last day
+ * stays on: a contact told on no day at all is never told about, which is not what anybody means
+ * by tapping a day off.
+ */
+fun EditorUiState.toggleContactDay(day: DayOfWeek): EditorUiState {
+    val kind = draft.contactKind ?: return this
+    val days = draft.contactDays ?: contactSchedule(kind).days
+    val next = if (day in days) days - day else days + day
+    if (next.isEmpty()) return this
+    return copy(draft = draft.copy(contactDays = next))
+}
+
+/** The stretch of those days, for this contact alone. One with no length has no moment in it, and is refused. */
+fun EditorUiState.setContactWindow(window: DayWindow): EditorUiState {
+    if (draft.contactKind == null || window.from == window.to) return this
+    return copy(draft = draft.copy(contactWindow = window))
+}
+
+/** "Volver a Ajustes" under the days: its kind's days and window again, and whatever Settings say from here on. */
+fun EditorUiState.resetContactWhen(): EditorUiState = copy(draft = draft.copy(contactDays = null, contactWindow = null))
+
+/** What Settings say about [kind], as they stood when the form opened. */
+fun EditorUiState.contactSchedule(kind: ContactKind): ContactSchedule =
+    if (kind == ContactKind.WORK) workContacts else personalContacts
+
+/** The cadence Settings give this draft while it follows them; one set by hand is left as it is. */
+private fun Draft.withSettingsCadence(schedule: ContactSchedule): Draft {
+    if (contactCadenceByHand) return this
+    val since = recurrence as? Recurrence.Since ?: return this
+    return copy(recurrence = since.copy(amount = schedule.monthsFor(contactCloseness ?: Closeness.CLOSE), unit = RecurrenceUnit.MONTHS))
+}
+
+/**
  * Where a routine's count starts: null is "ahora mismo" — the day it is written — and a moment
  * is the one somebody picked. Only a routine has the question; anything else is left alone.
  */
-/** Which half of a life a contact belongs to; anything that is not one is left alone. */
-fun EditorUiState.setContactKind(kind: ContactKind): EditorUiState =
-    if (draft.contactKind == null) this else copy(draft = draft.copy(contactKind = kind))
-
 fun EditorUiState.setRoutineStart(startsAt: Instant?): EditorUiState {
     val since = draft.recurrence as? Recurrence.Since ?: return this
     return copy(draft = draft.copy(recurrence = since.copy(startsAt = startsAt)))

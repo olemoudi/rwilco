@@ -189,9 +189,13 @@ class RoutinesTourTest {
         }
         shot("routines-done")
 
-        // "Nueva rutina" opens the form already speaking as a routine: its own name over it,
-        // where the count starts, how often, and what else it does.
+        // "Nueva rutina" asks what is being added first, and "Rutina" opens the form already
+        // speaking as a routine: its own name over it, where the count starts, how often, and
+        // what else it does.
         rule.onNodeWithText(s(R.string.routines_new), useUnmergedTree = true).performClick()
+        rule.waitUntilShown(s(R.string.routines_new_title))
+        shot("routines-new-what")
+        rule.onNodeWithText(s(R.string.routines_new_routine), useUnmergedTree = true).performClick()
         // The draft lands a beat after the screen: until it does the form is a blank reminder,
         // so the routine's own title is what says the draft has arrived. The section titles are
         // set in capitals, so they are matched whatever their case.
@@ -212,6 +216,47 @@ class RoutinesTourTest {
         // And the plazo card itself, which is the one that changed most.
         rule.onNodeWithText(s(R.string.recur_custom_span), useUnmergedTree = true).performScrollTo().assertIsDisplayed()
         shot("routines-editor-span")
+
+        // And somebody to keep in touch with, a step at a time — keep in touch, which half of a
+        // life, how close — onto a form already following Settings for those answers: three
+        // months for a close colleague, on Wednesdays.
+        // Back through the activity rather than a tap on the arrow: the "Hecha · deshacer"
+        // snackbar from the swipe above sits over the top bar for its few seconds, and the tap
+        // went to the snackbar. The editor answers system back exactly as it answers the arrow.
+        rule.runOnUiThread { rule.activity.onBackPressedDispatcher.onBackPressed() }
+        // Waited for by the form going, not by the button coming back: in Spanish the new
+        // routine's form is headed "Nueva rutina" too, so "is it shown?" said yes while the
+        // editor was still on screen, and the tap landed on its title.
+        rule.waitUntilGone(s(R.string.editor_routine_write))
+        rule.onNodeWithText(s(R.string.routines_new), useUnmergedTree = true).performClick()
+        rule.waitUntilShown(s(R.string.routines_new_kit))
+        rule.onNodeWithText(s(R.string.routines_new_kit), useUnmergedTree = true).performClick()
+        rule.waitUntilShown(s(R.string.routines_new_kind_title))
+        shot("routines-new-kind")
+        rule.onNodeWithText(s(R.string.routines_new_work), useUnmergedTree = true).performClick()
+        rule.waitUntilShown(s(R.string.routines_new_closeness_title))
+        shot("routines-new-closeness")
+        rule.onNodeWithText(s(R.string.routines_new_close), useUnmergedTree = true).performClick()
+        rule.waitUntilShown(s(R.string.editor_title_new_contact))
+        // A name is what is written on this form, and it says so rather than asking what you do.
+        rule.onNodeWithText(s(R.string.editor_contact_write), useUnmergedTree = true).assertIsDisplayed()
+        rule.onAllNodesWithText(s(R.string.editor_routine_write), useUnmergedTree = true).assertCountEquals(0)
+        rule.onNodeWithText(s(R.string.editor_contact_close), useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        shot("routines-editor-contact-who")
+        val threeMonths = s(R.string.editor_contact_follows) + s(R.string.common_separator) +
+            rule.activity.resources.getQuantityString(R.plurals.trigger_repeat_months, 3, 3)
+        rule.onNodeWithText(threeMonths, useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        // Its own note under the cadence: never "suena", never "si lo has hecho".
+        rule.onNodeWithText(s(R.string.recur_contact_note), useUnmergedTree = true).assertIsDisplayed()
+        rule.onAllNodesWithText(s(R.string.recur_since_note), useUnmergedTree = true).assertCountEquals(0)
+        shot("routines-editor-contact")
+        // When it is told: Settings' days and window, and said to be Settings'.
+        rule.onNodeWithText(s(R.string.editor_contact_follows), useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        // Nothing asks and nothing is chosen about how it is told: those two cards are not there.
+        rule.onAllNodesWithText(s(R.string.editor_when_ask_title), ignoreCase = true, useUnmergedTree = true).assertCountEquals(0)
+        shot("routines-editor-contact-when")
+        // And the foot says what the net does for a contact, not what it does for something that rings.
+        rule.onNodeWithText(s(R.string.editor_net_contact_note), useUnmergedTree = true).performScrollTo().assertIsDisplayed()
     }
 
     private fun shot(name: String) {

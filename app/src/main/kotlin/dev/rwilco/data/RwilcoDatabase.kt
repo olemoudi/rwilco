@@ -20,7 +20,7 @@ abstract class RwilcoDatabase : RoomDatabase() {
 
     companion object {
         /** A named constant so MigrationChainTest can assert the chain reaches it. */
-        const val VERSION = 15
+        const val VERSION = 16
         private const val NAME = "rwilco.db"
 
         /** One entry per version step; `// vN: what it added` on each. */
@@ -164,6 +164,18 @@ abstract class RwilcoDatabase : RoomDatabase() {
             object : Migration(14, 15) {
                 override fun migrate(db: SupportSQLiteDatabase) {
                     db.execSQL("ALTER TABLE reminder ADD COLUMN contactKind TEXT")
+                }
+            },
+            // v16: how close a contact is, and what on it was changed by hand — its cadence, its
+            // days, its window. Null (or false) on every existing row is the truth about them: a
+            // 0.117.0 contact was never asked how close, and nothing on it was set apart from
+            // Settings.
+            object : Migration(15, 16) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE reminder ADD COLUMN contactCloseness TEXT")
+                    db.execSQL("ALTER TABLE reminder ADD COLUMN contactCadenceByHand INTEGER NOT NULL DEFAULT 0")
+                    db.execSQL("ALTER TABLE reminder ADD COLUMN contactDays TEXT")
+                    db.execSQL("ALTER TABLE reminder ADD COLUMN contactWindow TEXT")
                 }
             },
         )

@@ -139,7 +139,26 @@ class SettingsTourTest {
         shot("settings-alerts-row")
     }
 
-    /** The ten rows, in the order the screen puts them. */
+    /**
+     * The contacts group: how each kind is told about, and how often somebody close and somebody
+     * sporadic comes round — the Settings every contact follows unless changed by hand on it.
+     */
+    @Test
+    fun theContactsGroupSaysHowEachKindIsToldAbout() {
+        rule.onNodeWithContentDescription(s(R.string.home_settings)).performClick()
+        rule.waitUntilShown(s(R.string.settings_contacts_title))
+        rule.onNodeWithText(s(R.string.settings_contacts_title), useUnmergedTree = true).performScrollTo().performClick()
+        rule.waitUntilShown(s(R.string.settings_contacts_hint))
+        rule.onNodeWithText(s(R.string.settings_contacts_hint), useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        shot("settings-contacts")
+        // Work's card and then personal's, each with its two cadences.
+        rule.onAllNodesWithText(s(R.string.settings_contacts_close), useUnmergedTree = true).assertCountEquals(2)
+        rule.onAllNodesWithText(s(R.string.settings_contacts_distant), useUnmergedTree = true).assertCountEquals(2)
+        rule.onNodeWithText(s(R.string.routines_filter_personal), useUnmergedTree = true).performScrollTo()
+        shot("settings-contacts-personal")
+    }
+
+    /** The rows, in the order the screen puts them. */
     private fun indexTitles(): List<String> = listOf(
         s(R.string.settings_alerts),
         s(R.string.settings_sound_title),
@@ -147,6 +166,7 @@ class SettingsTourTest {
         s(R.string.settings_net_title),
         s(R.string.settings_group_new),
         s(R.string.settings_group_day),
+        s(R.string.settings_contacts_title),
         s(R.string.settings_places),
         s(R.string.settings_group_look),
         s(R.string.vault_card_title),

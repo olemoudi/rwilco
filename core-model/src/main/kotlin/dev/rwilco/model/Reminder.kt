@@ -1,5 +1,6 @@
 package dev.rwilco.model
 
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
@@ -139,6 +140,20 @@ data class Reminder(
      * written is: a contact is a routine wearing this, and nothing else about the shape changes.
      */
     val contactKind: ContactKind? = null,
+    /**
+     * How close this contact is (see `Contacts.kt`). Null on everything that is not one — and on
+     * a contact written before the question existed, which reads as close ([closeness]).
+     */
+    val contactCloseness: Closeness? = null,
+    /**
+     * Whether this contact's cadence was changed by hand. False follows Settings: a change to the
+     * months there rewrites it ([withCadenceFrom]); true keeps the one somebody chose.
+     */
+    val contactCadenceByHand: Boolean = false,
+    /** The days this contact is told on, when changed by hand; null follows its kind's in Settings. */
+    val contactDays: Set<DayOfWeek>? = null,
+    /** And the stretch of those days, the same way. */
+    val contactWindow: DayWindow? = null,
 )
 
 /**

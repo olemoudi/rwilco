@@ -18,10 +18,12 @@ import dev.rwilco.model.Trigger
 import dev.rwilco.model.dayShape
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.AppSettings
+import dev.rwilco.model.Closeness
 import dev.rwilco.model.ContactKind
-import dev.rwilco.model.ContactSlot
+import dev.rwilco.model.ContactSchedule
+import dev.rwilco.model.DayWindow
 import dev.rwilco.model.contactQueue
-import dev.rwilco.model.contactSlotsOf
+import dev.rwilco.model.contactScheduleOf
 import dev.rwilco.model.isContact
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
@@ -123,10 +125,10 @@ class ReminderScheduler(
             Diag.note("arm", "the pass could not read the reminders: ${it::class.simpleName}")
             return@withLock emptyList()
         }
-        // **The one list-level answer in the whole scheduler.** A contact's moment is the opening
+        // **The one list-level answer in the whole scheduler.** A contact's moment is the draw
         // the whole set decides between them, so it is worked out once here and read per row —
         // `nextWake` answers null for one on purpose (`Contacts.kt`, NextFire).
-        val turns = contactQueue(open, now, zone, { kind -> settings.contactSlotsOf(kind) }, dayStart)
+        val turns = contactQueue(open, now, zone, settings::contactScheduleOf, dayStart)
         val missed = ArrayList<Reminder>()
         val seen = HashSet<String>(open.size)
         for (reminder in open) {
@@ -479,9 +481,9 @@ class ReminderScheduler(
         fun settingsKey(settings: AppSettings): SettingsKey =
             SettingsKey(
                 settings.defaultTime, settings.dayStart, settings.dayShape, settings.safetyNet,
-                // Move a slot in Settings and every contact's turn moves with it. Without this
-                // they would stay armed on the old openings until something else re-armed them.
-                settings.workContactSlots, settings.personalContactSlots,
+                // Move a contact window in Settings and every turn moves with it. Without this
+                // they would stay armed in the old windows until something else re-armed them.
+                settings.workContacts, settings.personalContacts,
             )
 
         /** What the scheduling of a list depends on; anything else changing must not re-arm it. */
@@ -497,8 +499,13 @@ class ReminderScheduler(
             reminder.snoozedToPlace,
             reminder.deadline,
             reminder.expiresAt,
-            // Making a routine into a contact changes what is armed, and nothing else in here.
+            // Making a routine into a contact changes what is armed, and nothing else in here —
+            // nor does how close it is, or the days and window set on it by hand, which decide
+            // where its turn falls and who it goes before.
             reminder.contactKind,
+            reminder.contactCloseness,
+            reminder.contactDays,
+            reminder.contactWindow,
         )
     }
 
@@ -508,8 +515,8 @@ class ReminderScheduler(
         val dayStart: LocalTime,
         val dayShape: DayShape,
         val safetyNet: SafetyNetSettings,
-        val workContactSlots: List<ContactSlot>,
-        val personalContactSlots: List<ContactSlot>,
+        val workContacts: ContactSchedule,
+        val personalContacts: ContactSchedule,
     )
 
     data class SchedulingKey(
@@ -542,5 +549,8 @@ class ReminderScheduler(
         val deadline: Deadline? = null,
         val expiresAt: Instant? = null,
         val contactKind: ContactKind? = null,
+        val contactCloseness: Closeness? = null,
+        val contactDays: Set<java.time.DayOfWeek>? = null,
+        val contactWindow: DayWindow? = null,
     )
 }

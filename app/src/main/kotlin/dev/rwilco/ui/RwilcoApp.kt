@@ -32,6 +32,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import dev.rwilco.model.Closeness
 import dev.rwilco.model.ContactKind
 import dev.rwilco.MainActivity
 import dev.rwilco.R
@@ -202,8 +203,12 @@ fun RwilcoApp(
                     val undoLabel = stringResource(R.string.common_undo)
                     EditorScreen(
                         viewModel = viewModel(
-                            key = "editor/${route.reminderId}/${route.fromPresetId}/${route.cloneOfId}/${route.editPresetId}/${route.newPreset}/${route.sharedText}/${route.routine}/${route.contactKind}",
-                            factory = EditorViewModel.Factory(app, route.reminderId, route.fromPresetId, route.cloneOfId, route.editPresetId, route.newPreset, route.sharedText, route.routine, ContactKind.entries.firstOrNull { it.name == route.contactKind }),
+                            key = "editor/${route.reminderId}/${route.fromPresetId}/${route.cloneOfId}/${route.editPresetId}/${route.newPreset}/${route.sharedText}/${route.routine}/${route.contactKind}/${route.contactCloseness}",
+                            factory = EditorViewModel.Factory(
+                                app, route.reminderId, route.fromPresetId, route.cloneOfId, route.editPresetId, route.newPreset, route.sharedText, route.routine,
+                                ContactKind.entries.firstOrNull { it.name == route.contactKind },
+                                Closeness.entries.firstOrNull { it.name == route.contactCloseness },
+                            ),
                         ),
                         onClose = { navController.popBackStack() },
                         // Held here rather than in either screen's ViewModel: the editor's dies
@@ -242,9 +247,10 @@ fun RwilcoApp(
                         focus = entry.toRoute<Routes.Routines>().focus,
                         onBack = { navController.popBackStack() },
                         onOpen = { id -> navController.navigateOnce(Routes.Editor(id)) },
-                        onNew = { kind ->
+                        onNew = { kind, closeness ->
                             navController.navigateOnce(
-                                if (kind == null) Routes.Editor(routine = true) else Routes.Editor(contactKind = kind.name),
+                                if (kind == null) Routes.Editor(routine = true)
+                                else Routes.Editor(contactKind = kind.name, contactCloseness = closeness?.name),
                             )
                         },
                         onClone = { id -> navController.navigateOnce(Routes.Editor(cloneOfId = id)) },

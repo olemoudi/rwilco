@@ -24,6 +24,7 @@ import dev.rwilco.model.NetWord
 import dev.rwilco.model.saysItGotAway
 import dev.rwilco.model.Presence
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.isContact
 import dev.rwilco.model.isRoutine
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.AlertSound
@@ -289,18 +290,21 @@ object AlertNotifications {
     }
 
     /**
-     * A contact whose turn has come: their name, how long it has been, and one answer.
+     * A contact whose turn has come: «¿Has llamado a Ana?», how long it has been, and two answers
+     * — "hablado", through the same "hecho" door every other surface uses
+     * ([AlertActionReceiver.ACTION_DONE], so the undo card comes with it), and "posponer 1
+     * semana" ([AlertActionReceiver.ACTION_PUT_OFF_WEEK]). Never a sound, never the screen.
      *
-     * The same "hecho" door every other surface uses ([AlertActionReceiver.ACTION_DONE]), so the
-     * undo card comes with it for free. No "más tarde": a contact left alone comes back next
-     * week by itself, which is the same answer without having to give it. Posted on the ring's
-     * own id so [cancel] takes it down with everything else.
+     * [nudge] is the safety net's word the next day about a telling nobody answered: the same card
+     * under "ICYMI:", posted over the telling's own rather than beside it — two cards asking the
+     * one question would be the nagging the net is not. On the ring's id, so [cancel] takes it down.
      */
-    fun contact(context: Context, reminder: Reminder, elapsed: Duration) {
+    fun contact(context: Context, reminder: Reminder, elapsed: Duration, nudge: Boolean = false) {
         ensureQuietChannels(context)
+        val question = context.getString(R.string.notif_contact_title, reminder.text)
         val builder = NotificationCompat.Builder(context, CHANNEL_CONTACT)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(context.getString(R.string.notif_contact_title, reminder.text))
+            .setContentTitle(if (nudge) context.getString(R.string.notif_net_prefix, question) else question)
             .setContentText(context.getString(R.string.countdown_ago, spanWords(context, elapsed)))
             .setContentIntent(routinesIntent(context, notificationId(reminder.id), reminder.id))
             .setAutoCancel(true)
@@ -313,6 +317,7 @@ object AlertNotifications {
             .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
             .setColor(ROUTINE_ARGB)
             .addAction(0, context.getString(R.string.notif_contact_done), actionIntent(context, reminder.id, AlertActionReceiver.ACTION_DONE, null))
+            .addAction(0, context.getString(R.string.notif_contact_put_off), actionIntent(context, reminder.id, AlertActionReceiver.ACTION_PUT_OFF_WEEK, null))
         if (reminder.tags.isNotEmpty()) builder.setSubText(reminder.tags.joinToString(context.getString(R.string.common_separator)))
         runCatching { NotificationManagerCompat.from(context).notify(notificationId(reminder.id), builder.build()) }
     }
@@ -334,7 +339,9 @@ object AlertNotifications {
      * (the routines screen has its snackbar, the launcher refuses to mark done at all).
      */
     fun doneNotice(context: Context, reminder: Reminder, previous: Instant?) {
-        undoableNotice(context, reminder, previous, context.getString(R.string.notif_done_title, reminder.text), context.getString(R.string.notif_done_body))
+        // «Hecha: Ana» is a word about a chore; somebody spoken to is said as that.
+        val title = context.getString(if (reminder.isContact) R.string.notif_contact_done_title else R.string.notif_done_title, reminder.text)
+        undoableNotice(context, reminder, previous, title, context.getString(R.string.notif_done_body))
     }
 
     /** The mute card with "deshacer" on the net's channel; [previous] is where the count goes back to. */

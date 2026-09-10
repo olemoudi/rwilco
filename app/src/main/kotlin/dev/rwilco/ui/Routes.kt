@@ -32,6 +32,8 @@ object Routes {
          * already does not.
          */
         val contactKind: String? = null,
+        /** And how close, by name: with the kind, what Settings' defaults for the form are read by. */
+        val contactCloseness: String? = null,
     )
 
     @Serializable

@@ -1,8 +1,10 @@
 package dev.rwilco.ui.routines
 
 import dev.rwilco.model.ContactKind
-import dev.rwilco.model.ContactSlot
+import dev.rwilco.model.ContactSchedule
 import dev.rwilco.model.DEFAULT_DAY_START
+import dev.rwilco.model.DEFAULT_PERSONAL_CONTACTS
+import dev.rwilco.model.DEFAULT_WORK_CONTACTS
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.contactOwed
 import dev.rwilco.model.contactQueue
@@ -62,9 +64,8 @@ data class RoutineRowUi(
     /** Which kind of contact this is; null for an ordinary routine. */
     val contactKind: ContactKind? = null,
     /**
-     * When a contact's turn comes round. Null on an ordinary routine — and on a contact with no
-     * turn inside the year the queue looks over, which is what "sin turno" says: there are more
-     * contacts than there are openings to tell you about them in.
+     * When a contact is next told about. Null on an ordinary routine — and on a contact with no
+     * turn inside the year the draw looks over, which is what "sin turno" says.
      */
     val turnAt: Instant? = null,
 )
@@ -95,10 +96,10 @@ fun buildRoutinesState(
     zone: ZoneId,
     dayStart: LocalTime = DEFAULT_DAY_START,
     query: String = "",
-    slots: (ContactKind) -> List<ContactSlot> = { emptyList() },
+    schedules: (ContactKind) -> ContactSchedule = { kind -> if (kind == ContactKind.WORK) DEFAULT_WORK_CONTACTS else DEFAULT_PERSONAL_CONTACTS },
 ): RoutinesUiState {
     // Worked out once for the list, because that is what it is a function of (`Contacts.kt`).
-    val turns = contactQueue(reminders, now, zone, slots, dayStart)
+    val turns = contactQueue(reminders, now, zone, schedules, dayStart)
     val filters = routineFilters(reminders, now, zone, dayStart)
     // A filter on something no longer offered is no filter: the last overdue one was done, the
     // last routine wearing that tag was deleted. By the spelling on offer, as Home's chips do.

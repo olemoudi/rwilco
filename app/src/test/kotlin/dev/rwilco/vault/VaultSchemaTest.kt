@@ -77,6 +77,8 @@ class VaultSchemaTest {
             "pausedAt",
             // Room v15: which kind of contact a routine is; older rows belong to nobody.
             "contactKind",
+            // Room v16: how close a contact is, and what on it was set by hand; older rows follow Settings.
+            "contactCloseness", "contactCadenceByHand", "contactDays", "contactWindow",
         )
     }
 }

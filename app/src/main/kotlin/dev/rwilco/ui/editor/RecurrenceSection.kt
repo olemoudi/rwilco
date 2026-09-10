@@ -150,6 +150,8 @@ internal fun RecurrenceSection(
     /** The repeat the words themselves say ("cada martes a las 8"), while "Vuelve" is unanswered. */
     understood: Recurrence? = null,
     onUnderstood: (Recurrence) -> Unit = {},
+    /** A contact's cadence (`Contacts.kt`): the same card, with a note that neither rings nor asks "¿lo has hecho?". */
+    contact: Boolean = false,
 ) {
     var listing by rememberSaveable { mutableStateOf(false) }
     val readWords = rememberWords()
@@ -358,7 +360,7 @@ internal fun RecurrenceSection(
             )
             Spacer(Modifier.height(spacing.xs))
             Text(
-                text = stringResource(R.string.recur_since_note),
+                text = stringResource(if (contact) R.string.recur_contact_note else R.string.recur_since_note),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -431,6 +433,7 @@ internal fun RecurrenceSection(
                     // an `After`, what the card writes is this routine's `Since` (withSpanOf),
                     // and the note has to say what the reminder will do rather than what the
                     // dialog happens to be holding.
+                    contact -> R.string.recur_contact_note
                     since || routine -> R.string.recur_since_note
                     after.from == RecurrenceFrom.RANG -> R.string.recur_after_rang_note
                     else -> R.string.recur_after_done

@@ -91,13 +91,13 @@ data class AppSettings(
      */
     val dayStart: LocalTime = DEFAULT_DAY_START,
     /**
-     * When contacts are raised, per kind (see `Contacts.kt`). **These lists are the weekly
-     * budget**: one contact to a slot, so two openings a week is two people a week and the rest
-     * wait. Shortening a list is how somebody says "ask me about work less often"; emptying one
-     * stops that kind being raised at all.
+     * How contacts are told about, per kind (see `Contacts.kt`): on which days, inside which
+     * stretch of them, and every how many months somebody close and somebody sporadic comes
+     * round. **Every contact follows these**, including the ones already written — except what
+     * was changed by hand on a contact itself. No days at all is a kind never told about.
      */
-    val workContactSlots: List<ContactSlot> = DEFAULT_WORK_SLOTS,
-    val personalContactSlots: List<ContactSlot> = DEFAULT_PERSONAL_SLOTS,
+    val workContacts: ContactSchedule = DEFAULT_WORK_CONTACTS,
+    val personalContacts: ContactSchedule = DEFAULT_PERSONAL_CONTACTS,
     /** Recurrences kept under a name, plus the four everybody needs before they need any others. */
     val recurrencePresets: List<RecurrencePreset> = defaultRecurrencePresets(),
     /**

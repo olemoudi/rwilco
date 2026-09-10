@@ -518,42 +518,62 @@ anything repeats**:
   routine never armed, never asked, and the net had already said its word. `AppSettings.routineActions` is what a blank routine's
   deadline does, beside `defaultActions`. `RoutinesTest` pins all of it, a year of the car
   through `Simulation` included.
-  **A contact is a routine that belongs to somebody** (0.117.0, `Contacts.kt`): the same `Since`
-  count wearing a `contactKind` (Room v15, WORK or PERSONAL, null on every routine there has ever
-  been). `Reminder.isContact` is the predicate, and two things about it are its own.
-  **Nothing else triggers it** — only "cada X semanas / X meses"; the form drops "Y además" and
-  the actions card outright, because asking "¿has llamado a tu madre?" at the door of the
-  supermarket is not the shape of this, and how it is told is not a preference inside the feature
-  but the feature itself (`CONTACT_PLAN`, fixed in `ReminderFiring.fire` rather than read from the
-  row, so a vault row carrying `FULL_SCREEN` still cannot take the screen).
-  **And it is told at a slot, not at its deadline.** A `ContactSlot` is a weekday and a
-  `DayWindow`; a kind owns a handful of them (`AppSettings.workContactSlots` /
-  `personalContactSlots`, Wednesday and Thursday mornings, Friday and Saturday afternoons), and
-  `contactQueue` rounds each deadline forward to that kind's next free one. **One contact per
-  slot, which *is* the weekly budget** — two of each kind a week because that is how many
-  openings there are, and the rest wait. The cadence is shaken ±`CONTACT_JITTER_PERCENT` from
-  `(id, anchor)` so two contacts on "cada 8 semanas" drift apart instead of marching in step, and
-  is drawn afresh exactly once a round because the anchor *is* the round.
+  **A contact — "keep in touch" — is a routine that belongs to somebody** (0.117.0, reworked in
+  0.118.0; `Contacts.kt`): the same `Since` count wearing a `contactKind` (Room v15, WORK or
+  PERSONAL) and a `contactCloseness` (Room v16, CLOSE or DISTANT; null, read as close, on a 0.117.0
+  contact). `Reminder.isContact` is the predicate, and three things about it are its own.
+  **Nothing else triggers it** — only its cadence; the form drops "Y además" and the actions card
+  outright, because asking "¿has llamado a tu madre?" at the door of the supermarket is not the
+  shape of this, and how it is told is not a preference inside the feature but the feature itself
+  (`CONTACT_PLAN`, fixed in `ReminderFiring.fire` rather than read from the row, so a vault row
+  carrying `FULL_SCREEN` still cannot take the screen). Everywhere it is asked about it reads
+  «¿Has llamado a Ana?», never «¿He hecho «Ana»?».
+  **Its cadence, days and window come from Settings, and follow them** — one `ContactSchedule`
+  per kind (`AppSettings.workContacts`/`personalContacts`: days, a `DayWindow`, months for close
+  and for sporadic; Wednesdays 9–12 at 3/5 months and Fridays–Saturdays 17–19 at 2/5 by default),
+  reaching **the contacts already written too, except what was set by hand on one**. Days and
+  window are nullable overrides on the row (`contactDays`, `contactWindow`), read through at draw
+  time. The cadence lives in the recurrence, where everything that reads a routine's span already
+  looks, so a change in Settings is *carried into the rows*: `contactsOutOfStep` finds the
+  contacts with `contactCadenceByHand` false whose months no longer match, and a collector in
+  `RwilcoApplication` writes their recurrence alone (`ReminderDao.setFollowedCadence`, guarded by
+  the flag, so neither a ring written in between nor a cadence set by hand meanwhile is put back).
+  The editor sets the flag on any change of how often, and "Volver a Ajustes" clears it.
+  **And it is told at a drawn moment, one of each kind a day at most** (`contactQueue`). Walked a
+  day at a time: for each kind not yet told about that day, every window its contacts use gets a
+  moment drawn inside it (seeded by kind, window and day, so it holds still across passes), and
+  at the first moment where a contact is due and its own window holds the moment, the best of
+  them is that kind's turn — the close before the sporadic, then the one told about longest ago
+  (`lastFiredAt`, or its anchor when never told), then chance seeded by id and day. When both
+  kinds' turns fall in coinciding windows, the earlier moment goes to whoever ranks first,
+  personal before work at equal closeness (`inOwnersOrder`): one of each, in the owner's order.
   **The queue is worked out and never written down.** It is a function of the whole set, so a
   stored answer would be a second truth to keep in step with "hablado"; `nextFire`/`nextWake`
-  answer **null** for a contact on purpose (no per-reminder function can know it) and the three
-  callers that already hold the list ask for it — `ReminderScheduler.rearmAll`, `buildRoutinesState`,
-  and nobody on Home, which needs no queue at all. Two invariants carry the behaviour the owner
-  asked for. Every turn is **strictly ahead of now**: without that, marking one contact done at
-  ten past nine hands the next one this morning's opening, a moment already gone, delivered at
-  once, two people in a slot built for one. And a contact told about and unanswered has its floor
-  moved to **the Monday after it rang** (`contactFloor`) — so it comes back next week rather than
-  tomorrow, and because its anchor never moved it is still the longest waiting and takes that
-  week's first opening. "It returns weekly and goes first" is those two lines, not a retry field.
-  Home shows a contact only once `contactOwed` — which is `awaitingAnswer`, the same reading every
-  other door takes — so somebody the budget has pushed three weeks out is invisible there rather
-  than red, and `overdueRoutines`/`nextDueRoutine` exclude contacts for the same reason. The card
-  is `ContactRow`, deliberately **not** in the error wash: a routine that ran out is a thing you
+  answer **null** for a contact on purpose and the two callers that hold the list ask for it —
+  `ReminderScheduler.rearmAll` and `buildRoutinesState`. Every turn is **strictly ahead of now**,
+  and a kind that already rang today (`lastFiredAt` on today's date) has no turn left today:
+  without both, marking one contact done at ten past nine hands the next one what is left of the
+  morning. Past the first turn the walk assumes each telling is answered; every ring re-arms from
+  the rows as they are. A telling nobody answered keeps its contact out of the draw until the
+  start of the day a week later; "Posponer 1 semana" (`contactPutOffUntil`,
+  `AlertActionReceiver.ACTION_PUT_OFF_WEEK`) writes that same moment as a snooze, which also
+  silences the net. `ReminderFiring.fire` drops a second contact of a kind on a day one already
+  rang — only a catch-up after the phone was off across two turns can get there.
+  **The safety net's word about a contact is its own** (`netDue`'s first branch): the next day at
+  the same wall-clock time (`contactNetAt`), about a telling nobody answered, never after a
+  put-off, on the contact's own mute card under "ICYMI:" posted over the telling rather than
+  beside it, and not counted against the day's budget. None of the generic reasoning fits — a
+  contact has no rhythm of rings, and "never rang" is what every contact is until its turn, which
+  in 0.117.0 put a card in the shade the day after every contact was written.
+  Home shows a contact only once `contactOwed` — `awaitingAnswer`, with no put-off since the
+  telling — so somebody waiting their turn is invisible there rather than red, and
+  `overdueRoutines`/`nextDueRoutine` exclude contacts for the same reason. The card is
+  `ContactRow`, deliberately **not** in the error wash: a routine that ran out is a thing you
   failed to do, a contact whose turn came is an invitation. The alarm is the ring's own URI and
   `armedFor` (so `missedFire` and the catch-up work unchanged) but always **inexact** — a
   `setAlarmClock` would announce the quietest thing the app does on the lock screen. The card goes
-  out on `CHANNEL_CONTACT`, mute at the channel and at the card. `ContactsTest` pins the queue,
-  `ContactsWiringTest` the two screens.
+  out on `CHANNEL_CONTACT`, mute at the channel and at the card. `ContactsTest` pins the draw, the
+  net and the carrying into step; `ContactsWiringTest` the two screens.
 - `ByTrigger` — hands the question back to a trigger that names its own dates, which is now only
   a random window ("tres veces al día" is its own answer to "¿y vuelve?").
 - `MonthlyWeekday(ordinal, day)` — read-only. It is `Calendar` of a month with a `MonthlyOn.Nth`

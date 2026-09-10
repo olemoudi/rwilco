@@ -122,10 +122,12 @@
     <string name="routines_filter_personal">Personales</string>
     <string name="routines_contact_turn">le toca en %1$s</string>
     <string name="routines_contact_unanswered">avisado, y esperándote</string>
-    <string name="routines_contact_no_turn">sin turno: hay más contactos que huecos</string>
+    <string name="routines_contact_no_turn">sin turno en el próximo año</string>
+    <string name="routines_contact_question">¿Has llamado a %1$s?</string>
     <string name="routines_paused">en pausa</string>
     <string name="routines_put_off">pospuesta</string>
     <string name="routines_mark_done">Marcar «%1$s» como hecha</string>
+    <string name="routines_contact_mark_done">Marcar que has hablado con %1$s</string>
     <string name="home_routines_next">%1$s · vence %2$s</string>
     <string name="alert_routine_span">Su plazo: %1$s</string>
     <string name="alert_not_yet">Todavía no</string>
@@ -142,10 +144,19 @@
     <string name="routines_new">Nueva rutina</string>
     <string name="routines_new_routine">Rutina</string>
     <string name="routines_new_routine_hint">Algo que haces cada cierto tiempo: mover el coche, regar las plantas.</string>
-    <string name="routines_new_contact_work">Contacto de trabajo</string>
-    <string name="routines_new_contact_work_hint">Te aviso una mañana de labor, de uno en uno.</string>
-    <string name="routines_new_contact_personal">Contacto personal</string>
-    <string name="routines_new_contact_personal_hint">Te aviso el fin de semana, cuando hay tiempo de llamar a alguien.</string>
+    <string name="routines_new_title">¿Qué quieres añadir?</string>
+    <string name="routines_new_kit">Keep in touch</string>
+    <string name="routines_new_kit_hint">Alguien con quien no quieres perder el contacto. Te lo recuerdo de vez en cuando, sin sonido.</string>
+    <string name="routines_new_kind_title">¿De qué parte de tu vida?</string>
+    <string name="routines_new_work">Trabajo</string>
+    <string name="routines_new_work_hint">Compañeros, clientes, gente del oficio.</string>
+    <string name="routines_new_personal">Personal</string>
+    <string name="routines_new_personal_hint">Familia y amigos.</string>
+    <string name="routines_new_closeness_title">¿Cómo de cercano?</string>
+    <string name="routines_new_close">Cercano de verdad</string>
+    <string name="routines_new_close_hint">Alguien con quien de verdad quieres hablar a menudo.</string>
+    <string name="routines_new_distant">Contacto esporádico</string>
+    <string name="routines_new_distant_hint">Alguien con quien mantener el contacto, al menos una vez al año.</string>
     <string name="routines_done">Hecha</string>
     <string name="routines_done_returns">Hecha · vuelve a preguntar %1$s</string>
     <string name="routines_empty_title">Ninguna rutina todavía</string>
@@ -277,6 +288,19 @@
     <string name="editor_title_new_contact">Nuevo contacto</string>
     <string name="editor_title_edit_contact">Editar contacto</string>
     <string name="editor_contact_kind">Quién es</string>
+    <string name="editor_contact_close">Cercano</string>
+    <string name="editor_contact_distant">Esporádico</string>
+    <string name="editor_contact_when">Cuándo te aviso</string>
+    <string name="editor_contact_follows">Según Ajustes</string>
+    <string name="editor_contact_by_hand">Cambiado a mano: los Ajustes ya no lo mueven</string>
+    <string name="editor_contact_reset">Volver a Ajustes</string>
+    <string name="editor_contact_title">Contacto</string>
+    <string name="editor_contact_write">Escribir el nombre</string>
+    <string name="editor_contact_placeholder">¿Con quién quieres mantener el contacto?</string>
+    <string name="editor_error_contact_text">Escribe con quién.</string>
+    <string name="editor_delete_contact">Eliminar el contacto</string>
+    <string name="recur_contact_note">Cuenta desde la última vez que hablasteis. Cuando pasa ese tiempo te aviso en tu próxima franja, sin sonido.</string>
+    <string name="editor_net_contact_note">Si no contestas el aviso, vuelve al día siguiente a la misma hora, también sin sonido.</string>
     <string name="editor_preview">Previsualizar el aviso</string>
     <string name="editor_delete">Eliminar recordatorio</string>
     <string name="editor_tags_title">Etiquetas</string>
@@ -599,8 +623,10 @@
     <string name="notif_channel_net_description">Un aviso discreto sobre un recordatorio que sonó y que nadie atendió.</string>
     <string name="notif_channel_contact">Contactos</string>
     <string name="notif_channel_contact_description">Una tarjeta discreta cuando hace tiempo que no hablas con alguien de tu lista. Nunca suena.</string>
-    <string name="notif_contact_title">Toca escribir a %1$s</string>
+    <string name="notif_contact_title">¿Has llamado a %1$s?</string>
     <string name="notif_contact_done">Hablado</string>
+    <string name="notif_contact_put_off">Posponer 1 semana</string>
+    <string name="notif_contact_done_title">Hablado con %1$s</string>
     <string name="notif_channel_ask">Preguntas de las rutinas</string>
     <string name="notif_channel_ask_description">Una rutina preguntando si lo has hecho: a una hora del día, o al llegar a un sitio o salir de él.</string>
     <string name="notif_ask_yes">Sí, ahora</string>
@@ -1416,6 +1442,19 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_118_0">
+
+        <item>Keep in touch, afinado. «Nueva rutina» pregunta ahora paso a paso: rutina o keep in touch; si es keep in touch, de trabajo o personal; y si es alguien cercano de verdad o un contacto esporádico. El formulario se abre con lo que digan los Ajustes para esa combinación.</item>
+
+        <item>Por defecto, los de trabajo salen los miércoles de 9:00 a 12:00, cada 3 meses si son cercanos y cada 5 si no; los personales, viernes y sábados de 17:00 a 19:00, cada 2 meses si son cercanos y cada 5 si no. Todo se cambia en Ajustes → Contactos, y el cambio llega a todos los contactos que ya tienes, salvo lo que hayas cambiado a mano en uno: el formulario dice qué sigue a los Ajustes y deja volver a ellos. Los contactos que ya tenías pasan a cercanos y a seguir los Ajustes.</item>
+
+        <item>Cómo se avisa: en cada ventana se sortea un momento, y en ese momento sale el contacto al que le toca — primero los cercanos, luego quien lleve más tiempo sin aviso, y el azar si empatan. Como mucho uno de trabajo y uno personal al día; si sus ventanas coinciden, uno de cada, y el primero para quien vaya antes: un amigo cercano, un compañero cercano, un amigo esporádico, un compañero esporádico.</item>
+
+        <item>La tarjeta pregunta «¿Has llamado a Ana?», nunca suena, y trae «Hablado» y «Posponer 1 semana». Si no la contestas, vuelve al día siguiente a la misma hora como red de seguridad, y ese contacto no entra en el sorteo hasta la semana siguiente.</item>
+
+        <item>Arreglado: la red de seguridad de un contacto sonaba, y cada contacto nuevo recibía un aviso de «no sonó» al día siguiente de crearlo.</item>
+
+    </string-array>
     <string-array name="whats_new_0_117_0">
 
         <item>Contactos: la gente con la que dejarías de hablar si nadie llevara la cuenta.</item>
@@ -2017,13 +2056,14 @@
     <string name="sheet_in_window_hint">Suena cuando se abre la franja, y sigue valiendo hasta que cierra.</string>
     <string name="settings_windows">Franjas del día</string>
     <string name="settings_contacts_title">Contactos</string>
-    <string name="settings_contacts_summary">%1$d de trabajo · %2$d personales por semana</string>
-    <string name="settings_contacts_hint">Un contacto por hueco — así que esta lista es también el límite: los huecos que haya son las personas por semana de las que te avisaré. El resto esperan turno.</string>
-    <string name="settings_contacts_slot">Hueco %1$d</string>
-    <string name="settings_contacts_slot_remove">Quitar este hueco</string>
+    <string name="settings_contacts_summary">Trabajo %1$s · Personales %2$s</string>
+    <string name="settings_contacts_hint">Como mucho un aviso al día de cada tipo, en un momento al azar dentro de la franja y nunca con sonido. Lo que cambies aquí vale para todos los contactos, también los que ya tienes, salvo lo que hayas cambiado a mano en uno.</string>
+    <string name="settings_contacts_days">Días</string>
     <string name="settings_contacts_from">Desde</string>
     <string name="settings_contacts_to">Hasta</string>
-    <string name="settings_contacts_add">Añadir un hueco</string>
+    <string name="settings_contacts_close">Cercanos</string>
+    <string name="settings_contacts_distant">Esporádicos</string>
+    <string name="settings_contacts_never">nunca</string>
     <string name="settings_windows_hint">Ratos del día guardados con nombre, que se ofrecen allí donde hace falta uno: a la hora de comer, por la tarde.</string>
     <string name="settings_windows_empty">Todavía no hay ninguna.</string>
     <string name="settings_add_window">Nombrar una franja</string>

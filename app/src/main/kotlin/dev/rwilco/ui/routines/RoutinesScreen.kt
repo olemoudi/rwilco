@@ -38,6 +38,19 @@ import androidx.compose.material.icons.outlined.UnfoldMore
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.WorkOutline
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.Update
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.unit.IntOffset
+import dev.rwilco.model.Closeness
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -129,7 +142,8 @@ fun RoutinesScreen(
     focus: String? = null,
     onBack: () -> Unit,
     onOpen: (String) -> Unit,
-    onNew: (ContactKind?) -> Unit,
+    /** A routine when both are null; otherwise a contact of this kind and closeness. */
+    onNew: (ContactKind?, Closeness?) -> Unit,
     onClone: (String) -> Unit,
     onKeepAsPreset: (String) -> Unit,
 ) {
@@ -370,7 +384,7 @@ fun RoutinesScreen(
 
     if (choosing) {
         NewRoutineChooser(
-            onPick = { kind -> choosing = false; onNew(kind) },
+            onPick = { kind, closeness -> choosing = false; onNew(kind, closeness) },
             onDismiss = { choosing = false },
         )
     }
@@ -481,7 +495,8 @@ private fun RoutineCard(
         row.done -> scheme.onSurfaceVariant
         else -> scheme.error
     }
-    val question = stringResource(R.string.routines_question, row.text)
+    // Somebody is not a chore: «¿Has llamado a Ana?», never «¿He hecho «Ana»?».
+    val question = stringResource(if (row.contactKind != null) R.string.routines_contact_question else R.string.routines_question, row.text)
     // Resting or put off, the answer is neither: the state is said in its place (see below).
     val answer = when {
         row.paused -> stringResource(R.string.routines_paused)
@@ -647,7 +662,7 @@ private fun RoutineCard(
                 // Nor before the count begins: a "sí" on "empieza el 1 de octubre" would throw
                 // the start away for a "hecho" nobody meant.
                 if (!row.paused && !row.startsLater) {
-                    val markDone = stringResource(R.string.routines_mark_done, row.text)
+                    val markDone = stringResource(if (row.contactKind != null) R.string.routines_contact_mark_done else R.string.routines_mark_done, row.text)
                     OutlinedButton(
                         onClick = { haptics.perform(HapticFeedbackType.Confirm); onDone() },
                         shape = MaterialTheme.shapes.medium,
@@ -693,27 +708,94 @@ private fun RoutineCard(
 private const val OVERDUE_WASH_ALPHA = 0.3f
 
 /**
- * What the + on the routines screen makes: a routine, or a contact of either kind.
+ * What the + on the routines screen makes, asked a step at a time: a routine, or somebody to keep
+ * in touch with — and then which half of a life, and how close. Every answer after the first is
+ * one Settings has defaults for (`Contacts.kt`), so the form opens with them already applied and
+ * nothing left to write but the name.
  *
- * A sheet rather than three buttons because two of the three are the same thing wearing a
- * different half of a life, and a row of three primaries would say they were three features.
+ * One sheet whose rows change under the thumb rather than three sheets in a row: the second and
+ * third questions are two more words about the same new thing, and a sheet closing and another
+ * opening would read as three separate decisions.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun NewRoutineChooser(onPick: (ContactKind?) -> Unit, onDismiss: () -> Unit) {
+private fun NewRoutineChooser(onPick: (ContactKind?, Closeness?) -> Unit, onDismiss: () -> Unit) {
+    var keepInTouch by rememberSaveable { mutableStateOf(false) }
+    var kind by rememberSaveable { mutableStateOf<ContactKind?>(null) }
+    val step = when {
+        !keepInTouch -> ChooserStep.WHAT
+        kind == null -> ChooserStep.KIND
+        else -> ChooserStep.CLOSENESS
+    }
+    val motion = Tokens.motion
+    val accent = routineColor()
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = Tokens.spacing.screen)
-                .padding(bottom = Tokens.spacing.xl)
-                .navigationBarsPadding(),
-        ) {
-            ChooserRow(Icons.Outlined.Autorenew, stringResource(R.string.routines_new_routine), stringResource(R.string.routines_new_routine_hint), routineColor()) { onPick(null) }
-            ChooserRow(Icons.Outlined.WorkOutline, stringResource(R.string.routines_new_contact_work), stringResource(R.string.routines_new_contact_work_hint), routineColor()) { onPick(ContactKind.WORK) }
-            ChooserRow(Icons.Outlined.Person, stringResource(R.string.routines_new_contact_personal), stringResource(R.string.routines_new_contact_personal_hint), routineColor()) { onPick(ContactKind.PERSONAL) }
+        AnimatedContent(
+            targetState = step,
+            transitionSpec = {
+                // Forward slides in from the trailing side, back from the leading one: the sheet
+                // reads as a path you can walk both ways, and it is over inside the motion budget.
+                val forward = targetState.ordinal > initialState.ordinal
+                val slide = tween<IntOffset>(motion.medium, easing = motion.emphasized)
+                (fadeIn(tween(motion.medium)) + slideInHorizontally(slide) { width -> if (forward) width / 8 else -width / 8 }) togetherWith
+                    fadeOut(tween(motion.fast))
+            },
+            label = "newRoutineStep",
+        ) { shown ->
+            Column(
+                verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Tokens.spacing.screen)
+                    .padding(bottom = Tokens.spacing.xl)
+                    .navigationBarsPadding(),
+            ) {
+                when (shown) {
+                    ChooserStep.WHAT -> {
+                        ChooserHeader(stringResource(R.string.routines_new_title), onBack = null)
+                        ChooserRow(Icons.Outlined.Autorenew, stringResource(R.string.routines_new_routine), stringResource(R.string.routines_new_routine_hint), accent) { onPick(null, null) }
+                        ChooserRow(Icons.Outlined.Group, stringResource(R.string.routines_new_kit), stringResource(R.string.routines_new_kit_hint), accent) { keepInTouch = true }
+                    }
+                    ChooserStep.KIND -> {
+                        ChooserHeader(stringResource(R.string.routines_new_kind_title), onBack = { keepInTouch = false })
+                        ChooserRow(Icons.Outlined.WorkOutline, stringResource(R.string.routines_new_work), stringResource(R.string.routines_new_work_hint), accent) { kind = ContactKind.WORK }
+                        ChooserRow(Icons.Outlined.Person, stringResource(R.string.routines_new_personal), stringResource(R.string.routines_new_personal_hint), accent) { kind = ContactKind.PERSONAL }
+                    }
+                    ChooserStep.CLOSENESS -> {
+                        ChooserHeader(stringResource(R.string.routines_new_closeness_title), onBack = { kind = null })
+                        ChooserRow(Icons.Outlined.FavoriteBorder, stringResource(R.string.routines_new_close), stringResource(R.string.routines_new_close_hint), accent) { onPick(kind, Closeness.CLOSE) }
+                        ChooserRow(Icons.Outlined.Update, stringResource(R.string.routines_new_distant), stringResource(R.string.routines_new_distant_hint), accent) { onPick(kind, Closeness.DISTANT) }
+                    }
+                }
+            }
         }
+    }
+}
+
+private enum class ChooserStep { WHAT, KIND, CLOSENESS }
+
+/** The question the sheet is asking, and the way back to the one before it. */
+@Composable
+private fun ChooserHeader(title: String, onBack: (() -> Unit)?) {
+    val haptics = Tokens.haptics
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = Tokens.sizes.touch),
+    ) {
+        if (onBack != null) {
+            IconButton(onClick = { haptics.perform(HapticFeedbackType.ContextClick); onBack() }) {
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.common_back))
+            }
+            Spacer(Modifier.width(Tokens.spacing.xs))
+        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.semantics { heading() },
+        )
     }
 }
 

@@ -217,8 +217,8 @@ class ReminderCodecTest {
                 """"lastSeenVersionCode":0,"savedPlaces":[],"savedWindows":[],""" +
                 """"defaultActions":["NOTIFICATION","SOUND","VIBRATE"],"routineActions":["NOTIFICATION","SOUND","VIBRATE"],"presets":[],"hiddenTexts":[],"tagPrefs":[],""" +
                 """"dayStart":"09:00",""" +
-                """"workContactSlots":[{"day":"WEDNESDAY","window":{"from":"09:00","to":"12:00"}},{"day":"THURSDAY","window":{"from":"09:00","to":"12:00"}}],""" +
-                """"personalContactSlots":[{"day":"FRIDAY","window":{"from":"16:00","to":"19:00"}},{"day":"SATURDAY","window":{"from":"12:00","to":"19:00"}}],""" +
+                """"workContacts":{"days":["WEDNESDAY"],"window":{"from":"09:00","to":"12:00"},"closeMonths":3,"distantMonths":5},""" +
+                """"personalContacts":{"days":["FRIDAY","SATURDAY"],"window":{"from":"17:00","to":"19:00"},"closeMonths":2,"distantMonths":5},""" +
                 """"recurrencePresets":[""" +
                 """{"id":"builtin-day","recurrence":{"type":"after","amount":1,"unit":"DAYS","from":"DEALT","hour":{"type":"day_start"},"landing":"NEXT"},"name":"","uses":0,"lastUsedAt":null},""" +
                 """{"id":"builtin-6h","recurrence":{"type":"after","amount":6,"unit":"HOURS","from":"DEALT","hour":{"type":"day_start"},"landing":"NEXT"},"name":"","uses":0,"lastUsedAt":null},""" +

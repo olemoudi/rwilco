@@ -64,7 +64,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.rwilco.R
+import dev.rwilco.model.Closeness
 import dev.rwilco.model.ContactKind
+import dev.rwilco.model.monthsFor
+import androidx.compose.ui.res.pluralStringResource
 import dev.rwilco.model.RecurrenceWarning
 import dev.rwilco.model.decidesItsOwnDates
 import dev.rwilco.model.recurrenceWarning
@@ -153,7 +156,13 @@ fun EditorScreen(
     val scrollState = rememberScrollState()
     // Bumped when a refused save wants the words: TextSection takes it as a key to focus on.
     var focusNonce by remember { mutableIntStateOf(0) }
-    val textBlankMessage = stringResource(if (routine) R.string.editor_error_routine_text else R.string.editor_error_text)
+    val textBlankMessage = stringResource(
+        when {
+            contact -> R.string.editor_error_contact_text
+            routine -> R.string.editor_error_routine_text
+            else -> R.string.editor_error_text
+        },
+    )
     val textLongMessage = stringResource(R.string.editor_error_text_long)
     val triggerMessage = stringResource(R.string.editor_error_trigger)
     val recurrenceMessage = stringResource(R.string.editor_error_recurrence)
@@ -331,6 +340,7 @@ fun EditorScreen(
                     deleteDescription = stringResource(
                         when {
                             state.editingPreset != null -> R.string.editor_delete_preset
+                            contact -> R.string.editor_delete_contact
                             routine -> R.string.editor_delete_routine
                             else -> R.string.editor_delete
                         },
@@ -386,6 +396,8 @@ fun EditorScreen(
                     title = stringResource(
                         when {
                             state.asPreset -> R.string.editor_preset_title
+                            // A person's name is what is written on a contact's form, not a chore.
+                            contact -> R.string.editor_contact_title
                             routine -> R.string.editor_routine_title
                             else -> R.string.editor_text_title
                         },
@@ -409,15 +421,21 @@ fun EditorScreen(
                         error = state.showErrors && ValidationError.TextBlank in state.errors,
                         placeholderRes = when {
                             state.asPreset -> R.string.editor_preset_name_placeholder
+                            contact -> R.string.editor_contact_placeholder
                             routine -> R.string.editor_routine_placeholder
                             else -> R.string.editor_text_placeholder
                         },
                         writeRes = when {
                             state.asPreset -> R.string.editor_name_preset
+                            contact -> R.string.editor_contact_write
                             routine -> R.string.editor_routine_write
                             else -> R.string.editor_write
                         },
-                        errorRes = if (routine) R.string.editor_error_routine_text else R.string.editor_error_text,
+                        errorRes = when {
+                            contact -> R.string.editor_error_contact_text
+                            routine -> R.string.editor_error_routine_text
+                            else -> R.string.editor_error_text
+                        },
                         onCurate = { viewModel.curateTexts(true) },
                         autoFocus = state.focusText,
                         focusKey = focusNonce,
@@ -455,6 +473,20 @@ fun EditorScreen(
                                     ),
                                     selected = option == kind,
                                     onClick = { viewModel.setContactKind(option) },
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(spacing.sm))
+                        // And how close, which decides how often they come round and who goes first.
+                        val closeness = state.draft.contactCloseness ?: Closeness.CLOSE
+                        Row(horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm)) {
+                            for (option in Closeness.entries) {
+                                PresetChip(
+                                    label = stringResource(
+                                        if (option == Closeness.CLOSE) R.string.editor_contact_close else R.string.editor_contact_distant,
+                                    ),
+                                    selected = option == closeness,
+                                    onClick = { viewModel.setContactCloseness(option) },
                                 )
                             }
                         }
@@ -588,7 +620,36 @@ fun EditorScreen(
                         onRemoveCondition = viewModel::removeRecurrenceCondition,
                         onSavePreset = viewModel::saveRecurrencePreset,
                         onDeletePreset = viewModel::deleteRecurrencePreset,
+                        contact = contact,
                     )
+                    // A contact's cadence is Settings' or its own, and the form says which.
+                    state.draft.contactKind?.let { kind ->
+                        val months = state.contactSchedule(kind).monthsFor(state.draft.contactCloseness ?: Closeness.CLOSE)
+                        SettingsFollowRow(
+                            byHand = state.draft.contactCadenceByHand,
+                            follows = stringResource(R.string.editor_contact_follows) + stringResource(R.string.common_separator) +
+                                pluralStringResource(R.plurals.trigger_repeat_months, months, months),
+                            onReset = viewModel::resetContactCadence,
+                        )
+                    }
+                }
+                // **When a contact is told about** — its kind's days and window in Settings, or
+                // its own once changed here, which stops Settings reaching them (`Contacts.kt`).
+                state.draft.contactKind?.let { kind ->
+                    val schedule = state.contactSchedule(kind)
+                    EditorSection(
+                        title = stringResource(R.string.editor_contact_when),
+                        icon = Icons.Outlined.Schedule,
+                    ) {
+                        ContactWhenSection(
+                            days = state.draft.contactDays ?: schedule.days,
+                            window = state.draft.contactWindow ?: schedule.window,
+                            byHand = state.draft.contactDays != null || state.draft.contactWindow != null,
+                            onToggleDay = viewModel::toggleContactDay,
+                            onWindow = viewModel::setContactWindow,
+                            onReset = viewModel::resetContactWhen,
+                        )
+                    }
                 }
                 // **After the "when" and the "vuelve"** (0.94.0). Tags are the part of a
                 // reminder most people leave alone, and the card sat between the words and
@@ -631,7 +692,19 @@ fun EditorScreen(
                 // What happens if none of the four cards above it lands: the last word on the
                 // form, and the only one the person did not have to answer.
                 Spacer(Modifier.height(spacing.lg))
-                SafetyNetNote(cadence = netCadence, settings = state.safetyNetSettings)
+                if (contact) {
+                    // A contact's net is its own (`Contacts.kt`): the next day at the same time,
+                    // and silent like the telling. The generic note says "si suena", which a
+                    // contact never does.
+                    Text(
+                        text = stringResource(R.string.editor_net_contact_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg),
+                    )
+                } else {
+                    SafetyNetNote(cadence = netCadence, settings = state.safetyNetSettings)
+                }
                 Spacer(Modifier.height(spacing.xxl))
             }
         }

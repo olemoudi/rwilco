@@ -36,6 +36,9 @@ import java.time.LocalTime
 import java.time.ZoneId
 import dev.rwilco.model.Deadline
 import dev.rwilco.model.withSpanOf
+import dev.rwilco.model.Closeness
+import dev.rwilco.model.ContactKind
+import dev.rwilco.model.DayWindow
 
 class EditorStateTest {
 
@@ -667,5 +670,75 @@ class EditorStateTest {
         assertFalse(asks.draft.rules.single().resets)
         // A place added with no role at all asks, which is the reading every rule has by default.
         assertFalse(routine.commitTrigger(null, garage).draft.rules.single().resets)
+    }
+
+    /** A close work contact's form as the chooser opens it: Settings' three months, nothing set by hand. */
+    private fun contactForm() = EditorUiState(
+        loaded = true,
+        draft = Draft(
+            actions = emptySet(),
+            recurrence = Recurrence.Since(3, RecurrenceUnit.MONTHS),
+            contactKind = ContactKind.WORK,
+            contactCloseness = Closeness.CLOSE,
+        ),
+    )
+
+    @Test
+    fun `a contact's cadence follows Settings through a change of kind or closeness, until it is set by hand`() {
+        val form = contactForm()
+        assertEquals(Recurrence.Since(5, RecurrenceUnit.MONTHS), form.setContactCloseness(Closeness.DISTANT).draft.recurrence)
+        assertEquals(Recurrence.Since(2, RecurrenceUnit.MONTHS), form.setContactKind(ContactKind.PERSONAL).draft.recurrence)
+        // Picked by hand: Settings stop reaching it, and closeness no longer moves it.
+        val byHand = form.setRecurrence(Recurrence.Since(6, RecurrenceUnit.WEEKS))
+        assertTrue(byHand.draft.contactCadenceByHand)
+        val sporadic = byHand.setContactCloseness(Closeness.DISTANT)
+        assertEquals(Recurrence.Since(6, RecurrenceUnit.WEEKS), sporadic.draft.recurrence)
+        // "Volver a Ajustes": following them again, at what they say for it now.
+        val reset = sporadic.resetContactCadence()
+        assertFalse(reset.draft.contactCadenceByHand)
+        assertEquals(Recurrence.Since(5, RecurrenceUnit.MONTHS), reset.draft.recurrence)
+    }
+
+    @Test
+    fun `where a contact's count starts is not its cadence set by hand, and a routine is never a contact`() {
+        val form = contactForm()
+        assertFalse(form.setRoutineStart(Instant.parse("2026-10-01T07:00:00Z")).draft.contactCadenceByHand)
+        assertFalse(form.setRecurrence(Recurrence.Since(3, RecurrenceUnit.MONTHS)).draft.contactCadenceByHand, "the same span again changes nothing")
+        val routine = blank.setRecurrence(Recurrence.Since(1, RecurrenceUnit.WEEKS))
+        assertFalse(routine.setRecurrence(Recurrence.Since(2, RecurrenceUnit.WEEKS)).draft.contactCadenceByHand)
+        assertEquals(routine, routine.setContactCloseness(Closeness.DISTANT), "nothing to set on a routine")
+    }
+
+    @Test
+    fun `a contact's days and window become its own once changed, never no day, and go back to Settings`() {
+        val form = contactForm()
+        val monday = form.toggleContactDay(DayOfWeek.MONDAY)
+        assertEquals(setOf(DayOfWeek.WEDNESDAY, DayOfWeek.MONDAY), monday.draft.contactDays, "starting from Settings' Wednesday")
+        assertEquals(form, form.toggleContactDay(DayOfWeek.WEDNESDAY), "the last day stays on")
+        val evening = DayWindow(LocalTime.of(18, 0), LocalTime.of(20, 0))
+        val later = monday.setContactWindow(evening)
+        assertEquals(evening, later.draft.contactWindow)
+        assertEquals(later, later.setContactWindow(DayWindow(LocalTime.of(19, 0), LocalTime.of(19, 0))), "a window with no length is refused")
+        val reset = later.resetContactWhen()
+        assertNull(reset.draft.contactDays)
+        assertNull(reset.draft.contactWindow)
+    }
+
+    @Test
+    fun `what only a contact has is saved with it, and goes when the count does`() {
+        val zone = ZoneId.of("Europe/Madrid")
+        val at = Instant.parse("2026-08-31T07:00:00Z")
+        val draft = contactForm().toggleContactDay(DayOfWeek.MONDAY).setRecurrence(Recurrence.Since(4, RecurrenceUnit.MONTHS)).withText("Ana").draft
+        val saved = draft.toReminder(id = "c1", createdAt = at, now = at, status = Status.ACTIVE, zone = zone)
+        assertEquals(ContactKind.WORK, saved.contactKind)
+        assertEquals(Closeness.CLOSE, saved.contactCloseness)
+        assertTrue(saved.contactCadenceByHand)
+        assertEquals(setOf(DayOfWeek.WEDNESDAY, DayOfWeek.MONDAY), saved.contactDays)
+        assertEquals(draft, saved.toDraft())
+        val plain = draft.copy(recurrence = Recurrence.None).toReminder(id = "c1", createdAt = at, now = at, status = Status.ACTIVE, zone = zone)
+        assertNull(plain.contactKind)
+        assertNull(plain.contactCloseness)
+        assertFalse(plain.contactCadenceByHand)
+        assertNull(plain.contactDays)
     }
 }

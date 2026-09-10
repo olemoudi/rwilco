@@ -22,6 +22,8 @@ import dev.rwilco.geo.hasBackgroundLocation
 import dev.rwilco.model.dayShape
 import dev.rwilco.R
 import dev.rwilco.model.AppSettings
+import dev.rwilco.model.ContactKind
+import dev.rwilco.model.contactsOutOfStep
 import dev.rwilco.model.overdueRoutines
 import dev.rwilco.notify.AlertNotifications
 import dev.rwilco.notify.SoundStore
@@ -43,6 +45,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
@@ -172,6 +175,24 @@ class RwilcoApplication : Application() {
                         geofences.sync()
                         placeWatcher.sync()
                     }.onFailure { Log.e(TAG, "re-arm after a change failed", it) }
+                }
+        }
+        appScope.launch {
+            // **A contact follows Settings** (`Contacts.kt`): change the months there and every
+            // contact not changed by hand is carried into step — the ones already written, not
+            // only the next. Into the rows, where everything that reads a routine's span already
+            // looks, and one column at a time, so a ring written in between is not put back. The
+            // write re-emits the list, which is then in step and filtered out: no loop.
+            combine(
+                repository.open,
+                settingsStore.settings.map { it.workContacts to it.personalContacts }.distinctUntilChanged(),
+            ) { open, (work, personal) ->
+                contactsOutOfStep(open) { kind -> if (kind == ContactKind.WORK) work else personal }
+            }
+                .filter { it.isNotEmpty() }
+                .collect { stale ->
+                    runCatching { repository.followSettingsCadence(stale) }
+                        .onFailure { Log.e(TAG, "could not carry the contact cadences into step", it) }
                 }
         }
         appScope.launch {

@@ -67,6 +67,11 @@ class ReminderRepository(
     /** When the deadline on the round under way runs out; null takes it away. */
     suspend fun setExpiresAt(id: String, at: Instant?) = dao.setExpiresAt(id, at?.toEpochMilli())
 
+    /** Contacts whose cadence follows Settings, carried into step with them: see [ReminderDao.setFollowedCadence]. */
+    suspend fun followSettingsCadence(contacts: List<Reminder>) {
+        for (contact in contacts) dao.setFollowedCadence(contact.id, ReminderCodec.encodeRecurrence(contact.recurrence))
+    }
+
     /** Upsert as given; the caller decides `updatedAt`. */
     suspend fun save(reminder: Reminder) = dao.upsert(reminder.toEntity())
 

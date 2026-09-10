@@ -284,6 +284,17 @@ fun Reminder.netDue(
     shape: DayShape = DayShape.DEFAULT,
 ): NetDue? {
     if (status != Status.ACTIVE) return null
+    // **A contact's word is its own** (`Contacts.kt`): the next day at the same time, about a
+    // telling nobody answered, and nothing else. None of the reasoning below fits one — it has no
+    // rhythm of rings to take a share of, and "never rang" is what every contact is until its
+    // turn, which put a card about a contact in the shade the day after it was written (0.117.0).
+    if (isContact) {
+        val rang = lastFiredAt ?: return null
+        // Put off is an answer, and stays one once its week is up: only the next telling clears it.
+        if (!awaitingAnswer(now) || snoozedUntil != null) return null
+        nudgedAt?.let { if (!it.isBefore(rang)) return null }
+        return NetDue(contactNetAt(rang, zone), rang, NetWord.LET_GO)
+    }
     val about: Instant
     val word: NetWord
     when {

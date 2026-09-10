@@ -1,7 +1,11 @@
 package dev.rwilco.data
 
 import dev.rwilco.model.Action
+import dev.rwilco.model.Closeness
+import dev.rwilco.model.ContactKind
+import dev.rwilco.model.DayWindow
 import dev.rwilco.model.Recurrence
+import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RepeatUnit
 import dev.rwilco.model.Status
@@ -106,6 +110,36 @@ class ReminderEntityMappingTest {
         // too — and says nothing to anybody now: the net holds for every reminder.
         assertEquals(false, row.safetyNet, "nothing writes anything else any more")
         assertEquals(watched, row.copy(safetyNet = true).toDomain(), "and nothing reads it")
+    }
+
+    @Test
+    fun `a contact and what was set on it by hand survive the trip, and an older row follows Settings`() {
+        val contact = reminder.copy(
+            status = Status.ACTIVE,
+            recurrence = Recurrence.Since(4, RecurrenceUnit.MONTHS),
+            contactKind = ContactKind.PERSONAL,
+            contactCloseness = Closeness.DISTANT,
+            contactCadenceByHand = true,
+            contactDays = setOf(DayOfWeek.SUNDAY, DayOfWeek.MONDAY),
+            contactWindow = DayWindow(LocalTime.of(18, 30), LocalTime.of(20, 0)),
+        )
+        val row = contact.toEntity()
+        assertEquals(contact, row.toDomain())
+        assertEquals("DISTANT", row.contactCloseness)
+        assertEquals("MONDAY,SUNDAY", row.contactDays)
+        assertEquals("18:30-20:00", row.contactWindow)
+        // A 0.117.0 row: none of the four columns, and nothing set apart from Settings.
+        val older = row.copy(contactCloseness = null, contactCadenceByHand = false, contactDays = null, contactWindow = null).toDomain()
+        assertEquals(null, older.contactCloseness)
+        assertEquals(false, older.contactCadenceByHand)
+        assertEquals(null, older.contactDays)
+        assertEquals(null, older.contactWindow)
+        // What this build cannot read follows Settings rather than failing the row.
+        val garbled = row.copy(contactCloseness = "INTIMATE", contactDays = "FUNDAY", contactWindow = "whenever").toDomain()
+        assertEquals(null, garbled.contactCloseness)
+        assertEquals(null, garbled.contactDays)
+        assertEquals(null, garbled.contactWindow)
+        assertEquals(setOf(DayOfWeek.FRIDAY), row.copy(contactDays = "FRIDAY,FUNDAY").toDomain().contactDays)
     }
 
     @Test

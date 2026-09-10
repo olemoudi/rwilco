@@ -81,6 +81,15 @@ interface ReminderDao {
     suspend fun resumeRoutineStart(id: String, at: Long, recurrence: String)
 
     /**
+     * A contact's cadence carried over from Settings (`contactsOutOfStep`). The recurrence alone,
+     * so a ring or a "hablado" written in between is not put back; and only while the contact
+     * still follows Settings, so a cadence somebody set by hand in the meantime stays theirs.
+     * Deliberately not `updatedAt`: nobody edited it.
+     */
+    @Query("UPDATE reminder SET recurrence = :recurrence WHERE id = :id AND contactCadenceByHand = 0")
+    suspend fun setFollowedCadence(id: String, recurrence: String)
+
+    /**
      * A snooze is the person's word: to a clock or to a place, never both, and the two are
      * written together so whichever is given clears the other.
      */

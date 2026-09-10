@@ -3,7 +3,9 @@ package dev.rwilco.data
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import dev.rwilco.model.Closeness
 import dev.rwilco.model.ContactKind
+import dev.rwilco.model.DayWindow
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.ReminderCodec
 import dev.rwilco.model.Trigger
@@ -11,7 +13,9 @@ import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
 import dev.rwilco.model.foldRepeats
 import kotlinx.serialization.Serializable
+import java.time.DayOfWeek
 import java.time.Instant
+import java.time.LocalTime
 import java.time.ZoneId
 
 /**
@@ -85,6 +89,18 @@ data class ReminderEntity(
      * routine it also is than refused.
      */
     val contactKind: String? = null,
+    /** How close a contact is, by name; null (every older row, and every 0.117.0 contact) reads as close. */
+    val contactCloseness: String? = null,
+    /** Whether a contact's cadence was changed by hand; false (every older row) follows Settings. */
+    val contactCadenceByHand: Boolean = false,
+    /**
+     * The days a contact is told on when changed by hand, as day names ("WEDNESDAY,FRIDAY"); null
+     * (every older row) follows Settings. A name this build does not know is dropped, and nothing
+     * left reads as following Settings rather than as a contact told on no day at all.
+     */
+    val contactDays: String? = null,
+    /** The stretch of those days when changed by hand, as "09:00-12:00"; null, or unreadable, follows Settings. */
+    val contactWindow: String? = null,
 )
 
 /** The stored form of no recurrence, and what every row written before v5 gets. */
@@ -134,6 +150,10 @@ fun ReminderEntity.toDomain(zone: ZoneId = ZoneId.systemDefault()): Reminder = R
     resumedAt = resumedAt?.let(Instant::ofEpochMilli),
     pausedAt = pausedAt?.let(Instant::ofEpochMilli),
     contactKind = contactKind?.let { name -> ContactKind.entries.firstOrNull { it.name == name } },
+    contactCloseness = contactCloseness?.let { name -> Closeness.entries.firstOrNull { it.name == name } },
+    contactCadenceByHand = contactCadenceByHand,
+    contactDays = decodeDays(contactDays),
+    contactWindow = decodeWindow(contactWindow),
 ).foldRepeats(zone)
 
 fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
@@ -164,7 +184,31 @@ fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
     resumedAt = resumedAt?.toEpochMilli(),
     pausedAt = pausedAt?.toEpochMilli(),
     contactKind = contactKind?.name,
+    contactCloseness = contactCloseness?.name,
+    contactCadenceByHand = contactCadenceByHand,
+    contactDays = contactDays?.let(::encodeDays),
+    contactWindow = contactWindow?.let(::encodeWindow),
 )
+
+/** Day names, "WEDNESDAY,FRIDAY": plain text for the same reason [encodeIndices] is. */
+fun encodeDays(days: Set<DayOfWeek>): String = days.sorted().joinToString(",") { it.name }
+
+/** Null for none — or for nothing this build can read, which is a contact following Settings. */
+fun decodeDays(raw: String?): Set<DayOfWeek>? =
+    raw?.split(',')
+        ?.mapNotNullTo(LinkedHashSet()) { name -> DayOfWeek.entries.firstOrNull { it.name == name.trim() } }
+        ?.takeIf { it.isNotEmpty() }
+
+/** "09:00-12:00". */
+fun encodeWindow(window: DayWindow): String = "${window.from}-${window.to}"
+
+/** Null for none, and for anything unreadable: a window nobody can read is Settings' window. */
+fun decodeWindow(raw: String?): DayWindow? = raw?.let {
+    runCatching {
+        val (from, to) = it.split('-')
+        DayWindow(LocalTime.parse(from), LocalTime.parse(to))
+    }.getOrNull()
+}
 
 /**
  * A handful of small non-negative integers: "0,2". Plain text rather than JSON because that is
