@@ -1457,6 +1457,13 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_120_0">
+
+        <item>Contacts added in one go no longer all come due together. Until you first mark somebody «Spoken», their first turn is drawn anywhere inside their first cadence, so a batch typed in one evening starts coming up little by little from now, instead of all at once the day their cadence runs out.</item>
+
+        <item>And after every «Spoken», the cadence moves up to 10% either way, drawn again each time: the people you spoke to on the same day do not all come back on the same one.</item>
+
+    </string-array>
     <string-array name="whats_new_0_119_0">
 
         <item>Adding a contact now asks for the name and nothing else. Kind and closeness are picked on the way in, and the cadence, days and window come from Settings, so the form opens with the keyboard ready and nothing more. Everything else is still there when you open the contact to change it by hand.</item>

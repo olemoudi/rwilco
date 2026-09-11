@@ -550,6 +550,13 @@ anything repeats**:
   (`lastFiredAt`, or its anchor when never told), then chance seeded by id and day. When both
   kinds' turns fall in coinciding windows, the earlier moment goes to whoever ranks first,
   personal before work at equal closeness (`inOwnersOrder`): one of each, in the owner's order.
+  **"Due" is itself shaken** (`contactDeadline`, 0.120.0, the owner's choice): a contact never
+  spoken to (`lastDealtAt` null) is due anywhere inside its first cadence, drawn from its id —
+  contacts get typed in bursts, and half an address book counted from one evening would come due
+  on one day and be told about a turn at a time for months — and once spoken to, the cadence
+  give or take `CONTACT_JITTER_PERCENT` (10), drawn from the id and the day of the last "hablado",
+  so it holds for the round and is drawn afresh by the next. The plain `routineDeadline` is left
+  as it is; the draw reads the shaken one, and so does a contact's row when it has no turn.
   **The queue is worked out and never written down.** It is a function of the whole set, so a
   stored answer would be a second truth to keep in step with "hablado"; `nextFire`/`nextWake`
   answer **null** for a contact on purpose and the two callers that hold the list ask for it —

@@ -1442,6 +1442,13 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_120_0">
+
+        <item>Los contactos añadidos de golpe ya no vencen todos a la vez. Hasta que marcas «Hablado» por primera vez, su primer aviso se sortea en cualquier punto de su primer ciclo, así que una tanda metida en una tarde empieza a salir poco a poco desde ya, en vez de toda junta el día que se cumple el plazo.</item>
+
+        <item>Y después de cada «Hablado», el ciclo se mueve hasta un 10 % arriba o abajo, sorteado de nuevo cada vez: a quienes hablaste el mismo día no te los vuelve a sacar a todos el mismo día.</item>
+
+    </string-array>
     <string-array name="whats_new_0_119_0">
 
         <item>Crear un contacto ya solo pide el nombre. El tipo y la cercanía se eligen al entrar, y la cadencia, los días y la franja salen de Ajustes, así que el formulario se abre con el teclado listo y nada más. Todo lo demás sigue ahí al abrir el contacto para cambiarlo a mano.</item>

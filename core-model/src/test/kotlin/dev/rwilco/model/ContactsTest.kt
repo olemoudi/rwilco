@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -243,11 +244,55 @@ class ContactsTest {
 
     @Test
     fun `a contact is only drawn once it is due by the moment`() {
-        // Three months from a Thursday in June run out that Friday: this Wednesday is too early.
-        val ana = contact("ana", lastDealtAt = local(2026, 6, 4, 10, 0))
+        // Spoken to on a Thursday in June: three months, even shaken a tenth early, run out after
+        // this Wednesday's window.
+        val ana = contact("ana", lastDealtAt = local(2026, 6, 18, 10, 0))
+        val due = ana.contactDeadline(zone, dayStart)!!
         val turn = queue(ana).getValue("ana")
-        assertEquals(wednesday.plusWeeks(1), dayOf(turn))
-        assertTrue(turn >= ana.routineDeadline(zone, dayStart)!!)
+        assertTrue(dayOf(turn) > wednesday, "this Wednesday is too early")
+        assertTrue(turn >= due, "not before it is due: $turn, due $due")
+        assertTrue(dayOf(turn) <= dayOf(due).plusWeeks(1), "and at the first window after")
+    }
+
+    @Test
+    fun `contacts written in one go come due across their first cadence, not all on one day`() {
+        // Forty colleagues typed in on this Monday, all close, all on three months. Counted from
+        // that day they would all run out on the last day of November, and be told about a
+        // Wednesday at a time from December well into the next summer.
+        val burst = (1..40).map { contact("c$it", createdAt = monday) }
+        val plain = burst.first().routineDeadline(zone, dayStart)!!
+        val span = Duration.between(monday, plain)
+        val dues = burst.map { it.contactDeadline(zone, dayStart)!! }
+        assertTrue(dues.all { it >= monday && it < plain }, "inside the first cadence")
+        val thirds = dues.groupingBy { Duration.between(monday, it).seconds * 3 / span.seconds }.eachCount()
+        assertEquals(setOf(0L, 1L, 2L), thirds.keys, "every third of it gets some: $thirds")
+        assertTrue(thirds.values.all { it < 24 }, "and none gets most of them: $thirds")
+        assertEquals(dues, burst.map { it.contactDeadline(zone, dayStart) }, "drawn once, and held")
+        // So the draw starts on them within the month, not in December.
+        assertTrue(queue(*burst.toTypedArray()).values.min() < monday.plus(28, ChronoUnit.DAYS))
+        // A start named by hand is where that first cadence begins: nobody is told before it.
+        val later = monday.plus(30, ChronoUnit.DAYS)
+        val named = contact("ana", createdAt = monday).copy(recurrence = Recurrence.Since(3, RecurrenceUnit.MONTHS, startsAt = later))
+        assertTrue(named.contactDeadline(zone, dayStart)!! >= later)
+    }
+
+    @Test
+    fun `once spoken to, the cadence is shaken a tenth either way, and drawn afresh each round`() {
+        // Forty people spoken to the same morning.
+        val spoken = (1..40).map { contact("c$it", lastDealtAt = monday) }
+        val plain = spoken.first().routineDeadline(zone, dayStart)!!
+        val tenth = Duration.between(monday, plain).multipliedBy(CONTACT_JITTER_PERCENT.toLong()).dividedBy(100)
+        val offsets = spoken.map { Duration.between(plain, it.contactDeadline(zone, dayStart)!!) }
+        assertTrue(offsets.all { it.abs() <= tenth }, "within a tenth of the cadence: $offsets")
+        assertTrue(offsets.any { it.isNegative } && offsets.any { it > Duration.ZERO }, "either way")
+        assertTrue(offsets.map { dayOf(plain.plus(it)) }.toSet().size > 10, "not all back on one day")
+        // The next "hablado" draws again: the shake is the round's, not the contact's for life.
+        val weekOn = monday.plus(7, ChronoUnit.DAYS)
+        val again = spoken.map { it.copy(lastDealtAt = weekOn) }
+        val againPlain = again.first().routineDeadline(zone, dayStart)!!
+        assertEquals(Duration.between(monday, plain), Duration.between(weekOn, againPlain), "the same cadence, to the second")
+        val redrawn = again.map { Duration.between(againPlain, it.contactDeadline(zone, dayStart)!!) }
+        assertTrue(offsets.zip(redrawn).count { (before, after) -> before != after } > 30, "drawn again")
     }
 
     @Test

@@ -9,6 +9,7 @@ import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RoutineFilter
+import dev.rwilco.model.contactDeadline
 import dev.rwilco.ui.home.buildHomeState
 import dev.rwilco.ui.routines.buildRoutinesState
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -108,6 +109,8 @@ class ContactsWiringTest {
         // With no day at all there is no turn to name.
         val never = buildRoutinesState(listOf(contact("ana")), RoutineFilter.All, now, zone, dayStart, schedules = { thursdays.copy(days = emptySet()) }).rows.single()
         assertNull(never.turnAt)
+        // And without a turn it reads its own shaken due, as the draw would, not the plain count.
+        assertEquals(contact("ana").contactDeadline(zone, dayStart), never.deadline)
     }
 
     @Test

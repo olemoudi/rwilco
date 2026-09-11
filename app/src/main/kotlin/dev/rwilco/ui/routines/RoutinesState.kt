@@ -6,6 +6,7 @@ import dev.rwilco.model.DEFAULT_DAY_START
 import dev.rwilco.model.DEFAULT_PERSONAL_CONTACTS
 import dev.rwilco.model.DEFAULT_WORK_CONTACTS
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.contactDeadline
 import dev.rwilco.model.contactOwed
 import dev.rwilco.model.contactQueue
 import dev.rwilco.model.isContact
@@ -114,7 +115,7 @@ fun buildRoutinesState(
         // A contact's row is about its turn, not its plazo: one whose cadence ran out three
         // weeks ago is waiting quite properly, and reading it against the plazo would draw a
         // full red track over somebody the budget is simply pacing.
-        val deadline = (if (reminder.isContact) turn else null)
+        val deadline = (if (reminder.isContact) turn ?: reminder.contactDeadline(zone, dayStart) else null)
             ?: reminder.routineDeadline(zone, dayStart) ?: return@mapNotNull null
         RoutineRowUi(
             id = reminder.id,

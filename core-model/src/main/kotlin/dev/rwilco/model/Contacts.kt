@@ -29,6 +29,9 @@ import java.time.ZoneId
  *   whose window holds it are drawn between — the close before the sporadic, the one told about
  *   longest ago first, chance after that — and when a work window and a personal one coincide,
  *   the first of their two moments goes to whoever ranks first and the second to the other kind.
+ *   When somebody is due is drawn as well ([contactDeadline]): the first time anywhere inside the
+ *   first cadence, after that the cadence a tenth either way — so people typed in together, or
+ *   spoken to on the same day, do not come due together.
  *
  * The queue is worked out and never written down: it is a function of the whole set, and a
  * stored answer would be a second truth to keep in step with "hablado".
@@ -119,6 +122,42 @@ fun Reminder.contactDaysIn(schedule: ContactSchedule): Set<DayOfWeek> = contactD
 
 /** And the stretch of them, the same way. */
 fun Reminder.contactWindowIn(schedule: ContactSchedule): DayWindow = contactWindow ?: schedule.window
+
+/** How far either way the cadence is shaken once somebody has been spoken to. See [contactDeadline]. */
+const val CONTACT_JITTER_PERCENT = 10
+
+/**
+ * When this contact is due by its cadence, which is not quite where the plain count lands
+ * ([routineDeadline]): it is shaken, so that people do not come due together.
+ *
+ * - **Never spoken to** ([Reminder.lastDealtAt] null): anywhere inside the first cadence, from where
+ *   the count starts to where it runs out. Contacts get typed in bursts — half an address book in an
+ *   evening — and every one of them counting from that evening would bring them all due on one day,
+ *   to be told about a turn at a time behind each other for months. Drawn from the id alone, so it
+ *   holds still across re-arms, and a pause that moves the start carries it along.
+ * - **Spoken to**: the cadence, give or take [CONTACT_JITTER_PERCENT], drawn from the id and the day
+ *   of the last "hablado" — the same for the whole round, drawn afresh by the next.
+ *
+ * The owner's choice (2026-09-11), over a first turn in the second half of the cadence and over
+ * shaking the first round only. Null for anything that is not a contact.
+ */
+fun Reminder.contactDeadline(zone: ZoneId, dayStart: LocalTime = DEFAULT_DAY_START): Instant? {
+    if (!isContact) return null
+    val plain = routineDeadline(zone, dayStart) ?: return null
+    val anchor = routineAnchor()
+    val span = Duration.between(anchor, plain).seconds
+    if (span <= 0L) return plain
+    // Both draws are in thousandths of the span, so they have room to tell two contacts apart.
+    val spoken = lastDealtAt
+    if (spoken == null) {
+        val thousandths = RandomDraw.SplitMix64(RandomDraw.seed("contact-first:$id", 0L, Period.DAY)).nextInt(1000)
+        return anchor.plusSeconds(span * thousandths / 1000L)
+    }
+    val tenths = CONTACT_JITTER_PERCENT * 10
+    val seed = RandomDraw.seed("contact-shake:$id", spoken.atZone(zone).toLocalDate().toEpochDay(), Period.DAY)
+    val shake = RandomDraw.SplitMix64(seed).nextInt(tenths * 2 + 1) - tenths
+    return plain.plusSeconds(span * shake / 1000L)
+}
 
 /**
  * This contact with its cadence rewritten to what [schedule] says now, or null when there is
@@ -231,7 +270,7 @@ private fun Reminder.inTheDraw(
     val days = contactDaysIn(schedule).takeIf { it.isNotEmpty() } ?: return null
     // A window with no length has no moment in it (and [DayWindow.on] would read it as a whole day).
     val window = contactWindowIn(schedule).takeIf { it.from != it.to } ?: return null
-    val deadline = routineDeadline(zone, dayStart) ?: return null
+    val deadline = contactDeadline(zone, dayStart) ?: return null
     val putOff = snoozedUntil?.takeIf { it > now }
     // Told about and not answered: it had its turn, and sits the week out.
     val ignored = lastFiredAt?.takeIf { awaitingAnswer(now) }?.let { startOfDayAfter(it, CONTACT_RETURN_DAYS, zone) }
