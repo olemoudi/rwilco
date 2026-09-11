@@ -72,6 +72,8 @@ import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.SegmentedChoice
 import dev.rwilco.ui.components.TagChip
 import dev.rwilco.ui.components.TimeField
+import dev.rwilco.ui.components.UpdateReadyBadge
+import dev.rwilco.ui.components.rememberStagedUpdate
 import dev.rwilco.ui.editor.ActionsSection
 import dev.rwilco.ui.editor.sheets.LocationSheet
 import dev.rwilco.ui.editor.titleRes
@@ -596,6 +598,9 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
             Spacer(Modifier.height(spacing.md))
             BackupCard(onOpen = onBackup)
 
+            // Read once for the row's mark and the card under it: a new version downloaded and
+            // waiting is marked on the fold, so it is seen before anybody opens it.
+            val staged = rememberStagedUpdate()
             SettingsGroup(
                 icon = Icons.Outlined.SystemUpdate,
                 title = stringResource(R.string.settings_updates),
@@ -604,8 +609,9 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
                 ),
                 expanded = Group.UPDATES in open,
                 onToggle = { toggle(Group.UPDATES) },
+                corner = { ground -> UpdateReadyBadge(visible = staged != null, ground = ground) },
             ) {
-                AppUpdateCard()
+                AppUpdateCard(staged = staged)
                 UpdateChannelCard(channel = current.updateChannel, onChannel = viewModel::setUpdateChannel)
                 RwilcoCard {
                     Column(Modifier.padding(spacing.lg)) {

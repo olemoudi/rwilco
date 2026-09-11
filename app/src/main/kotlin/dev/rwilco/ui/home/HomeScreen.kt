@@ -80,7 +80,9 @@ import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.ui.components.MomentSheet
 import dev.rwilco.ui.components.SectionHeader
 import dev.rwilco.ui.components.TagChip
+import dev.rwilco.ui.components.UpdateReadyBadge
 import dev.rwilco.ui.components.rememberNow
+import dev.rwilco.ui.components.rememberStagedUpdate
 import dev.rwilco.ui.format.currentLocale
 import dev.rwilco.model.TriggerFamily
 import dev.rwilco.ui.theme.LocalDarkTheme
@@ -957,13 +959,23 @@ private fun Header(
                 modifier = Modifier.weight(1f, fill = false),
             )
             Spacer(Modifier.width(Tokens.spacing.sm))
-            Icon(
-                imageVector = Icons.Outlined.Settings,
-                // The row merges its children, so this is what names the whole control: a
-                // reader hears "RWILCO, ajustes, botón", which is the truth about it.
-                contentDescription = stringResource(R.string.home_settings),
-                modifier = Modifier.size(Tokens.sizes.cog),
-            )
+            // A new version downloaded and waiting marks the way in to it, so it is not left
+            // unseen until somebody happens to open Settings. The ring is the header's ground.
+            val staged = rememberStagedUpdate()
+            Box {
+                Icon(
+                    imageVector = Icons.Outlined.Settings,
+                    // The row merges its children, so this is what names the whole control: a
+                    // reader hears "RWILCO, ajustes, botón", which is the truth about it.
+                    contentDescription = stringResource(R.string.home_settings),
+                    modifier = Modifier.size(Tokens.sizes.cog),
+                )
+                UpdateReadyBadge(
+                    visible = staged != null,
+                    ground = MaterialTheme.colorScheme.background,
+                    modifier = Modifier.align(Alignment.TopEnd),
+                )
+            }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             // Twenty cards down a filtered list nothing said the list was filtered, and the

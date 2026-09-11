@@ -601,6 +601,7 @@
     <string name="update_state_installing">Instalando %1$s…</string>
     <string name="update_state_pending">Esperando a que confirmes la instalación</string>
     <string name="update_state_staged">%1$s está descargada y lista para instalar</string>
+    <string name="update_ready_badge">Actualización lista para instalar</string>
     <string name="update_state_failed">La última comprobación falló (%1$s)</string>
     <string name="perm_install_missing">Para instalar actualizaciones hace falta permiso para instalar apps desconocidas.</string>
     <string name="perm_install_fix">Permitir</string>
@@ -1442,6 +1443,11 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_121_0">
+
+        <item>Cuando hay una versión nueva descargada esperando a instalarse, aparece una flechita verde sobre la rueda que hay junto al nombre en Home, y sobre la fila de Actualizaciones en Ajustes aunque esté plegada: una actualización ya no espera sin que la veas hasta que abres Ajustes por casualidad.</item>
+
+    </string-array>
     <string-array name="whats_new_0_120_0">
 
         <item>Los contactos añadidos de golpe ya no vencen todos a la vez. Hasta que marcas «Hablado» por primera vez, su primer aviso se sortea en cualquier punto de su primer ciclo, así que una tanda metida en una tarde empieza a salir poco a poco desde ya, en vez de toda junta el día que se cumple el plazo.</item>

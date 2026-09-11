@@ -21,8 +21,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -38,14 +36,12 @@ import dev.rwilco.BuildConfig
 import dev.rwilco.R
 import dev.rwilco.ui.components.PermissionFixRow
 import dev.rwilco.ui.components.RwilcoCard
+import dev.rwilco.ui.components.rememberStagedUpdate
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.update.UpdateCenter
 import dev.rwilco.update.UpdateInfo
 import dev.rwilco.update.UpdateUiState
 import dev.rwilco.update.UpdateWorker
-import dev.rwilco.update.Updater
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 
@@ -55,7 +51,14 @@ import androidx.compose.runtime.setValue
  * an update was dismissed: the APK already on disk is offered, with no network needed.
  */
 @Composable
-fun AppUpdateCard() {
+fun AppUpdateCard(
+    /**
+     * The update already downloaded and waiting, if there is one ([rememberStagedUpdate]). Handed
+     * in rather than read here: the group this card folds under reads it for its own mark, and
+     * one screen parsing the same archive twice is once too many.
+     */
+    staged: UpdateInfo?,
+) {
     val spacing = Tokens.spacing
     val context = LocalContext.current
     val snackbar = LocalSnackbar.current
@@ -64,24 +67,13 @@ fun AppUpdateCard() {
 
     // Re-check permissions when the person comes back from the settings screens we open.
     var canInstall by remember { mutableStateOf(true) }
-    var resumeTick by remember { mutableIntStateOf(0) }
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                canInstall = context.packageManager.canRequestPackageInstalls()
-                resumeTick++
-            }
+            if (event == Lifecycle.Event.ON_RESUME) canInstall = context.packageManager.canRequestPackageInstalls()
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
-    // The update already downloaded and waiting, if there is one. Re-read whenever the status
-    // moves and whenever the screen comes back. Off the main thread: it parses a big archive.
-    var staged by remember { mutableStateOf<UpdateInfo?>(null) }
-    LaunchedEffect(updateState, resumeTick) {
-        staged = withContext(Dispatchers.IO) { Updater(context).let { it.stagedUpdate(it.channel()) } }
     }
 
     RwilcoCard {

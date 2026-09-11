@@ -612,6 +612,7 @@
     <string name="update_state_installing">Installing %1$s…</string>
     <string name="update_state_pending">Waiting for you to confirm the install</string>
     <string name="update_state_staged">%1$s is downloaded and ready to install</string>
+    <string name="update_ready_badge">Update ready to install</string>
     <string name="update_state_failed">Last check failed (%1$s)</string>
     <string name="perm_install_missing">Installing updates needs permission to install unknown apps.</string>
     <string name="perm_install_fix">Allow</string>
@@ -1457,6 +1458,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_121_0">
+
+        <item>When a new version has downloaded and is waiting to be installed, a small green arrow now sits on the cog beside the name on Home, and on the Updates row in Settings even while it is folded — so an update no longer waits unseen until you happen to open Settings.</item>
+
+    </string-array>
     <string-array name="whats_new_0_120_0">
 
         <item>Contacts added in one go no longer all come due together. Until you first mark somebody «Spoken», their first turn is drawn anywhere inside their first cadence, so a batch typed in one evening starts coming up little by little from now, instead of all at once the day their cadence runs out.</item>

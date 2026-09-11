@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
@@ -70,6 +71,11 @@ fun SettingsGroup(
     modifier: Modifier = Modifier,
     /** Something inside is broken, which is the one thing a fold must never hide. */
     attention: Boolean = false,
+    /**
+     * A mark on the corner of the group's icon, handed the colour of the card under it: something
+     * inside worth seeing before the fold is opened — a downloaded update waiting, say.
+     */
+    corner: (@Composable (ground: Color) -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val spacing = Tokens.spacing
@@ -95,16 +101,17 @@ fun SettingsGroup(
         }
         wasExpanded = expanded
     }
+    // Open is a step brighter, which is what ties the cards underneath to this row.
+    val ground = if (expanded) scheme.surfaceContainerHigh else scheme.surfaceContainer
     Column(modifier.padding(top = spacing.md)) {
         RwilcoCard(
             onClick = {
                 haptics.perform(HapticFeedbackType.SegmentTick)
                 onToggle()
             },
-            // Open is a step brighter, which is what ties the cards underneath to this row.
-            color = if (expanded) scheme.surfaceContainerHigh else scheme.surfaceContainer,
+            color = ground,
         ) {
-            SettingsRow(icon = icon, attention = attention) {
+            SettingsRow(icon = icon, attention = attention, corner = corner?.let { mark -> @Composable { mark(ground) } }) {
                 Column(Modifier.weight(1f)) {
                     Text(
                         text = title,
@@ -241,6 +248,7 @@ fun SettingSwitchRow(
 private fun SettingsRow(
     icon: ImageVector?,
     attention: Boolean,
+    corner: (@Composable () -> Unit)? = null,
     content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit,
 ) {
     val spacing = Tokens.spacing
@@ -251,7 +259,7 @@ private fun SettingsRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
-            GroupBadge(icon, attention)
+            GroupBadge(icon, attention, corner)
             Spacer(Modifier.width(spacing.md))
         }
         content()
@@ -261,23 +269,27 @@ private fun SettingsRow(
 /**
  * The small square that carries a group's icon — the same one the editor gives a section, so
  * the two screens read as one app. Neutral by design: amber means "what fires next" and the
- * family hues mean a kind of trigger, and a group of settings is neither.
+ * family hues mean a kind of trigger, and a group of settings is neither. [corner], when there is
+ * one, is laid on its top-end corner.
  */
 @Composable
-private fun GroupBadge(icon: ImageVector, attention: Boolean) {
+private fun GroupBadge(icon: ImageVector, attention: Boolean, corner: (@Composable () -> Unit)?) {
     val scheme = MaterialTheme.colorScheme
-    Surface(
-        shape = RoundedCornerShape(Tokens.sizes.badge / 3),
-        color = if (attention) scheme.errorContainer else scheme.surfaceContainerHighest,
-        modifier = Modifier.size(Tokens.sizes.badge),
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (attention) scheme.onErrorContainer else scheme.onSurfaceVariant,
-                modifier = Modifier.size(Tokens.sizes.glyph),
-            )
+    Box {
+        Surface(
+            shape = RoundedCornerShape(Tokens.sizes.badge / 3),
+            color = if (attention) scheme.errorContainer else scheme.surfaceContainerHighest,
+            modifier = Modifier.size(Tokens.sizes.badge),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = if (attention) scheme.onErrorContainer else scheme.onSurfaceVariant,
+                    modifier = Modifier.size(Tokens.sizes.glyph),
+                )
+            }
         }
+        if (corner != null) Box(Modifier.align(Alignment.TopEnd)) { corner() }
     }
 }
