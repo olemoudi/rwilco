@@ -19,10 +19,13 @@ import dev.rwilco.model.RepeatUnit
 import dev.rwilco.model.monthlyRule
 import dev.rwilco.model.weekDays
 import dev.rwilco.model.CountdownParts
+import dev.rwilco.model.DayPart
 import dev.rwilco.model.Period
 import dev.rwilco.model.Trigger
+import dev.rwilco.model.dayPartOf
 import dev.rwilco.model.dwell
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
 import dev.rwilco.ui.localToday
 import dev.rwilco.ui.LocalClock
@@ -101,6 +104,30 @@ fun countdownText(parts: CountdownParts): String {
         else -> seconds
     }
     return if (parts.overdue) stringResource(R.string.countdown_ago, body) else stringResource(R.string.countdown_in, body)
+}
+
+/**
+ * When a contact's turn is, said as a day: «le toca el viernes por la tarde».
+ *
+ * A countdown ("en 6 d") is a number somebody has to turn into a plan, and a turn is not a
+ * deadline: it lands inside a window on a day they chose, so the day and the stretch of it are
+ * the whole of what there is to say. Inside the coming week that is the weekday, which is what
+ * anybody plans by; past it a weekday is a lie — a turn can be months out — so it is the date,
+ * in the same stretch of its day.
+ */
+@Composable
+fun turnPhrase(turn: Instant, today: LocalDate, zone: ZoneId): String {
+    val words = rememberWords()
+    val at = turn.atZone(zone)
+    val day = if (at.toLocalDate().isAfter(today.plusDays(6))) TimeText.dayDate(at.toLocalDate(), words.locale, today)
+    else TimeText.weekday(at.dayOfWeek, words.locale)
+    val partRes = when (dayPartOf(at.toLocalTime())) {
+        DayPart.MORNING -> R.string.weekday_morning
+        DayPart.AFTERNOON -> R.string.weekday_afternoon
+        DayPart.EVENING -> R.string.weekday_evening
+        DayPart.NIGHT -> R.string.weekday_night
+    }
+    return stringResource(partRes, day)
 }
 
 /**

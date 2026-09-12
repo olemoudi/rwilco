@@ -7,6 +7,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -16,7 +21,9 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import dev.rwilco.R
 import dev.rwilco.model.CONTACT_MONTHS
+import dev.rwilco.model.ContactLoad
 import dev.rwilco.model.ContactSchedule
+import dev.rwilco.model.ContactWarning
 import dev.rwilco.ui.components.DayToggles
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.Stepper
@@ -41,6 +48,10 @@ fun ContactScheduleCard(
     schedule: ContactSchedule,
     onChange: (ContactSchedule) -> Unit,
     modifier: Modifier = Modifier,
+    /** What is worth saying about this schedule, if anything ([contactWarning]). */
+    warning: ContactWarning = ContactWarning.NONE,
+    /** The numbers behind an over-capacity warning, which is where its way out is worked out. */
+    load: ContactLoad? = null,
 ) {
     val spacing = Tokens.spacing
     RwilcoCard(modifier = modifier) {
@@ -55,6 +66,7 @@ fun ContactScheduleCard(
                 selected = schedule.days,
                 onToggle = { day -> onChange(schedule.copy(days = if (day in schedule.days) schedule.days - day else schedule.days + day)) },
             )
+            ContactScheduleWarning(warning, load)
             Spacer(Modifier.height(spacing.md))
             // A window with no length has no moment in it, so an end set on its start is refused
             // rather than saved as a kind that can never be told about.
@@ -102,6 +114,40 @@ private fun MonthsRow(label: String, months: Int, onChange: (Int) -> Unit) {
             decrementEnabled = months > CONTACT_MONTHS.first,
             incrementEnabled = months < CONTACT_MONTHS.last,
         )
+    }
+}
+
+/**
+ * The two things this card can be wrong about in a way nobody would notice.
+ *
+ * A kind with no day at all goes silent for ever, and one with more people than its days can
+ * carry never reaches the back of its own queue — the only symptom being a row, on another
+ * screen, reading "sin turno en el próximo año", which names the fact and not the cause. Neither
+ * is forbidden (the first is how a kind is turned off), so both are said, in the error ink, right
+ * under the days that decide them.
+ */
+@Composable
+private fun ContactScheduleWarning(warning: ContactWarning, load: ContactLoad?) {
+    val words = when (warning) {
+        ContactWarning.NONE -> return
+        ContactWarning.NEVER -> stringResource(R.string.settings_contacts_never_warning)
+        ContactWarning.OVER_CAPACITY ->
+            stringResource(R.string.settings_contacts_over_body, load?.people ?: 0, load?.monthsNeeded ?: 0)
+    }
+    val scheme = MaterialTheme.colorScheme
+    val spacing = Tokens.spacing
+    Spacer(Modifier.height(spacing.md))
+    Row(verticalAlignment = Alignment.Top) {
+        Icon(
+            imageVector = Icons.Outlined.ErrorOutline,
+            // The sentence beside it says the whole of it; a reader hearing "warning" first
+            // would be hearing the same thing twice.
+            contentDescription = null,
+            tint = scheme.error,
+            modifier = Modifier.size(Tokens.sizes.glyphSmall),
+        )
+        Spacer(Modifier.width(spacing.sm))
+        Text(text = words, style = MaterialTheme.typography.bodySmall, color = scheme.error)
     }
 }
 

@@ -14,7 +14,7 @@ import dev.rwilco.model.RoutineFilter
 import dev.rwilco.model.Status
 import dev.rwilco.model.awaitingAnswer
 import dev.rwilco.model.isRoutine
-import dev.rwilco.model.overdueRoutines
+import dev.rwilco.model.listedAsOwed
 import dev.rwilco.model.routineAnchor
 import dev.rwilco.model.routineDeadline
 import dev.rwilco.model.routineDone
@@ -109,7 +109,9 @@ fun buildRoutinesState(
         RoutineFilter.Overdue, RoutineFilter.Paused, RoutineFilter.Waiting, is RoutineFilter.Kind -> selected.takeIf { it in filters } ?: RoutineFilter.All
         is RoutineFilter.Tag -> filters.firstOrNull { it is RoutineFilter.Tag && it.tag.equals(selected.tag, ignoreCase = true) } ?: RoutineFilter.All
     }
-    val rows = routinesFor(reminders, filter, now, zone, dayStart, query).mapNotNull { reminder ->
+    // The turns go in, so the list is ordered by the same reading each row shows: a contact by
+    // its drawn turn, everything else by its plazo.
+    val rows = routinesFor(reminders, filter, now, zone, dayStart, query, turns).mapNotNull { reminder ->
         val anchor = reminder.routineAnchor()
         val turn = turns[reminder.id]
         // A contact's row is about its turn, not its plazo: one whose cadence ran out three
@@ -146,6 +148,10 @@ fun buildRoutinesState(
         // Counted, not listed: how many there are does not need them sorted, and this is
         // asked again every minute. The same count Home's line is built from.
         total = reminders.count { it.isRoutine && it.status != Status.DONE },
-        overdue = overdueRoutines(reminders, now, zone, dayStart).size,
+        // The reading the chip and the order now share: a contact is owed once it has been told
+        // about and nobody answered, never because its plazo ran out. Counted here rather than
+        // through `overdueRoutines`, which answers Home's question and leaves contacts out
+        // altogether — on this screen they are half the list.
+        overdue = reminders.count { it.isRoutine && it.status != Status.DONE && it.listedAsOwed(now, zone, dayStart) },
     )
 }

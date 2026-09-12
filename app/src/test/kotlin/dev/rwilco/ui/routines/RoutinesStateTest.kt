@@ -1,5 +1,7 @@
 package dev.rwilco.ui.routines
 
+import dev.rwilco.model.Closeness
+import dev.rwilco.model.ContactKind
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
@@ -51,6 +53,29 @@ class RoutinesStateTest {
         assertEquals(2, state.total)
         assertEquals(1, state.overdue)
         assertFalse(state.empty)
+    }
+
+    @Test
+    fun `a contact is ordered by its turn, and being paced is not being owed`() {
+        // The wiring, not the arithmetic (`ContactsTest` pins that): the rows come back in the
+        // order the turns give, and the count over them leaves out somebody who is being paced —
+        // whose own row reads "Sí" while its plazo ran out months ago.
+        val ana = Reminder(
+            id = "ana",
+            text = "Ana",
+            recurrence = Recurrence.Since(3, RecurrenceUnit.MONTHS),
+            contactKind = ContactKind.WORK,
+            contactCloseness = Closeness.CLOSE,
+            createdAt = now.minus(Duration.ofDays(300)),
+            updatedAt = now.minus(Duration.ofDays(300)),
+        )
+        val late = routine("late", daysAgo = 30)
+        val state = buildRoutinesState(listOf(ana, late), RoutineFilter.All, now, zone, dayStart)
+        assertEquals(listOf("late", "ana"), state.rows.map { it.id })
+        assertEquals(1, state.overdue, "the routine, and not the contact waiting its turn")
+        val row = state.rows.single { it.id == "ana" }
+        assertTrue(row.done, "waiting its turn is not a No")
+        assertEquals(row.turnAt, row.deadline, "and the row reads against that turn")
     }
 
     @Test

@@ -127,6 +127,10 @@
     <string name="routines_contact_turn">its turn %1$s</string>
     <string name="routines_contact_unanswered">told, and waiting on you</string>
     <string name="routines_contact_no_turn">no turn in the coming year</string>
+    <string name="weekday_morning">on %1$s morning</string>
+    <string name="weekday_afternoon">on %1$s afternoon</string>
+    <string name="weekday_evening">on %1$s evening</string>
+    <string name="weekday_night">on %1$s, in the small hours</string>
     <string name="routines_contact_question">Have you called %1$s?</string>
     <string name="routines_paused">paused</string>
     <string name="routines_put_off">put off</string>
@@ -1468,6 +1472,15 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_123_0">
+
+        <item>The routines screen and its own rows now agree about contacts. The list is ordered by the turn each row shows — somebody whose cadence ran out is waiting their turn, not late — and the «overdue» chip is about having been told and left unanswered, so it can no longer hand you a list of contacts each reading «Yes».</item>
+
+        <item>A contact\'s turn is said as a day: «its turn on Friday afternoon» instead of «its turn in 6 d». The weekday inside the week, the date past it.</item>
+
+        <item>Settings says when there are more people than turns. One person of a kind comes up on each day you pick, so past that some of them would never come up at all — and the only sign was a row saying «no turn in the coming year». Now the row asks for attention and the card says the way out: another day, or cadences of about so many months. A kind with no day left says that too.</item>
+
+    </string-array>
     <string-array name="whats_new_0_122_0">
 
         <item>«See» on a locked phone now asks to unlock first, and the reminder stays on the alert until that goes through. It used to take the alert away and leave you looking at the lock screen.</item>
@@ -2116,6 +2129,9 @@
     <string name="settings_contacts_title">Contacts</string>
     <string name="settings_contacts_summary">Work %1$s · Personal %2$s</string>
     <string name="settings_contacts_hint">At most one a day of each kind, at a random moment inside the window, and never with a sound. What you change here applies to every contact, the ones you already have included, except what you changed by hand on one.</string>
+    <string name="settings_contacts_over_summary">More people than turns</string>
+    <string name="settings_contacts_over_body">One person of this kind comes up on each day you pick, so %1$d people need more room than these days give — some of them would never come up at all. Add a day, or put their cadences at about every %2$d months.</string>
+    <string name="settings_contacts_never_warning">No day picked: nobody of this kind will ever come up.</string>
     <string name="settings_contacts_days">Days</string>
     <string name="settings_contacts_from">From</string>
     <string name="settings_contacts_to">To</string>

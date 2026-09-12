@@ -406,6 +406,109 @@ class ContactsTest {
     }
 
     @Test
+    fun `the list is ordered by the turn each row shows, not by the plazo behind it`() {
+        // Beto is somebody to keep up with now and then and his cadence ran out long ago; Ana is
+        // close and hers ran out later. The draw gives Ana the first Wednesday — the close before
+        // the sporadic — and the plazos say the exact opposite, which is the order the list used
+        // to take while every row on it showed the other one.
+        val ana = contact("ana")
+        val beto = contact("beto", closeness = Closeness.DISTANT, months = 5, createdAt = monday.minus(400, ChronoUnit.DAYS))
+        val turns = queue(ana, beto)
+        assertTrue(turns.getValue("ana") < turns.getValue("beto"), "the draw puts the close one first")
+        assertTrue(beto.routineDeadline(zone, dayStart)!! < ana.routineDeadline(zone, dayStart)!!, "and the plazos say the opposite")
+        val rows = routinesFor(listOf(beto, ana), RoutineFilter.All, monday, zone, dayStart, turns = turns)
+        assertEquals(listOf("ana", "beto"), rows.map { it.id })
+    }
+
+    @Test
+    fun `a contact with no turn sorts behind the ones that have one`() {
+        val ana = contact("ana")
+        val nobody = contact("beto", days = emptySet())
+        val turns = queue(ana, nobody)
+        assertNull(turns["beto"], "no day, no turn")
+        val rows = routinesFor(listOf(nobody, ana), RoutineFilter.All, monday, zone, dayStart, turns = turns)
+        assertEquals(listOf("ana", "beto"), rows.map { it.id }, "no turn is the back of the queue, not the front of it")
+    }
+
+    @Test
+    fun `the overdue chip is about being told and unanswered, never about the plazo`() {
+        // What made the screen disagree with itself: the chip offered a list of contacts whose
+        // own cards all read "Sí".
+        val waiting = contact("ana")
+        assertTrue(waiting.routineOwed(monday, zone, dayStart), "as a plain routine it would be owed")
+        assertFalse(waiting.listedAsOwed(monday, zone, dayStart))
+        assertFalse(RoutineFilter.Overdue in routineFilters(listOf(waiting), monday, zone, dayStart))
+        assertTrue(routinesFor(listOf(waiting), RoutineFilter.Overdue, monday, zone, dayStart).isEmpty())
+        val told = waiting.copy(lastFiredAt = monday.minus(1, ChronoUnit.DAYS))
+        assertTrue(told.listedAsOwed(monday, zone, dayStart), "told about, and nobody answered")
+        assertTrue(RoutineFilter.Overdue in routineFilters(listOf(told), monday, zone, dayStart))
+        assertEquals(listOf("ana"), routinesFor(listOf(told), RoutineFilter.Overdue, monday, zone, dayStart).map { it.id })
+    }
+
+    @Test
+    fun `an ordinary routine is owed by its plazo, as it always was`() {
+        val plants = Reminder(
+            id = "plants", text = "Regar",
+            recurrence = Recurrence.Since(3, RecurrenceUnit.DAYS),
+            createdAt = monday.minus(30, ChronoUnit.DAYS), updatedAt = monday.minus(30, ChronoUnit.DAYS),
+        )
+        assertTrue(plants.listedAsOwed(monday, zone, dayStart))
+        assertTrue(RoutineFilter.Overdue in routineFilters(listOf(plants), monday, zone, dayStart))
+    }
+
+    @Test
+    fun `one day a week is fifty-two turns a year, and a close contact asks for four`() {
+        val load = contactLoad(listOf(contact("ana")), ContactKind.WORK, DEFAULT_WORK_CONTACTS, zone, dayStart)
+        assertEquals(52.0, load.capacity, 0.001)
+        assertEquals(4.0, load.demand, 0.2, "every three months")
+        assertEquals(1, load.people)
+        assertFalse(load.over)
+    }
+
+    @Test
+    fun `twenty people at three months on one day a week is more than it can carry`() {
+        val many = (1..20).map { contact("c$it") }
+        val load = contactLoad(many, ContactKind.WORK, DEFAULT_WORK_CONTACTS, zone, dayStart)
+        assertTrue(load.over, "eighty turns a year asked of fifty-two")
+        // And the way out, in the two terms somebody can act on rather than as a ratio.
+        assertEquals(2, load.daysNeeded, "two days a week would carry them")
+        assertEquals(5, load.monthsNeeded, "or every five months on the day they already have")
+        assertEquals(ContactWarning.OVER_CAPACITY, contactWarning(load, DEFAULT_WORK_CONTACTS.days))
+    }
+
+    @Test
+    fun `a resting contact asks for nothing`() {
+        val paused = contact("ana", status = Status.PAUSED, pausedAt = monday.minusSeconds(3600))
+        val load = contactLoad(listOf(paused), ContactKind.WORK, DEFAULT_WORK_CONTACTS, zone, dayStart)
+        assertEquals(0, load.people)
+        assertEquals(0.0, load.demand, 0.001)
+    }
+
+    @Test
+    fun `a cadence set by hand counts as what it is`() {
+        val fortnightly = contact("ana").copy(recurrence = Recurrence.Since(2, RecurrenceUnit.WEEKS), contactCadenceByHand = true)
+        val load = contactLoad(listOf(fortnightly), ContactKind.WORK, DEFAULT_WORK_CONTACTS, zone, dayStart)
+        assertEquals(26.0, load.demand, 0.5, "a fortnight is twenty-six turns a year")
+        assertFalse(load.over, "which one day a week carries easily")
+    }
+
+    @Test
+    fun `a kind with no day is a warning only while somebody is of that kind`() {
+        val none = DEFAULT_WORK_CONTACTS.copy(days = emptySet())
+        val nobody = contactLoad(emptyList(), ContactKind.WORK, none, zone, dayStart)
+        assertEquals(ContactWarning.NONE, contactWarning(nobody, none.days), "no day and nobody to silence")
+        val somebody = contactLoad(listOf(contact("ana")), ContactKind.WORK, none, zone, dayStart)
+        assertEquals(ContactWarning.NEVER, contactWarning(somebody, none.days))
+    }
+
+    @Test
+    fun `the other kind's people are somebody else's load`() {
+        val load = contactLoad(listOf(contact("mama", kind = ContactKind.PERSONAL)), ContactKind.WORK, DEFAULT_WORK_CONTACTS, zone, dayStart)
+        assertEquals(0, load.people)
+        assertEquals(ContactWarning.NONE, contactWarning(load, DEFAULT_WORK_CONTACTS.days))
+    }
+
+    @Test
     fun `a contact never reaches the routines own line on Home`() {
         // Its cadence running out is not red; the routines' surfaces must not claim it.
         val ana = contact("ana", lastDealtAt = monday.minus(200, ChronoUnit.DAYS))

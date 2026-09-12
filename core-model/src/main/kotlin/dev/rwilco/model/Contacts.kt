@@ -10,6 +10,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
+import kotlin.math.ceil
 
 /*
  * Contacts — "keep in touch": the people you would stop speaking to if nobody kept count.
@@ -362,6 +363,73 @@ fun contactNetAt(rang: Instant, zone: ZoneId): Instant = rang.atZone(zone).plusD
  * the contact back is the next telling, not the calendar.
  */
 fun Reminder.contactOwed(now: Instant): Boolean = isContact && awaitingAnswer(now) && snoozedUntil == null
+
+/**
+ * What one kind's schedule can carry and what its people ask of it, both in turns a year.
+ *
+ * **Capacity is days a week × 52**: the draw tells about at most one person of a kind a day, and
+ * only on the days that kind is told on ([contactQueue]). **Demand is the sum of one over each
+ * cadence** — a close colleague at three months is four turns a year on his own — read off each
+ * row's own recurrence, so a cadence set by hand counts as what it is.
+ *
+ * Past capacity the app says nothing and simply never reaches the back of its own queue: the only
+ * symptom is a row reading "sin turno en el próximo año", which names the fact and not the cause
+ * and offers no way out of it. This is the cause, in the two terms somebody can act on —
+ * [ContactLoad.daysNeeded] and [ContactLoad.monthsNeeded].
+ */
+data class ContactLoad(
+    val kind: ContactKind,
+    /** Turns a year the chosen days give. */
+    val capacity: Double,
+    /** Turns a year the people of this kind ask for. */
+    val demand: Double,
+    /** How many of them there are, which is what the sentence is about. */
+    val people: Int,
+) {
+    val over: Boolean get() = demand > capacity
+
+    /** How many days a week would carry them: "add a day", measured. */
+    val daysNeeded: Int get() = ceil(demand / WEEKS_A_YEAR).toInt()
+
+    /** And the cadence, in whole months, that the days already chosen could carry. */
+    val monthsNeeded: Int get() = if (capacity <= 0.0) 0 else ceil(MONTHS_A_YEAR * people / capacity).toInt()
+}
+
+private const val WEEKS_A_YEAR = 52.0
+private const val MONTHS_A_YEAR = 12.0
+
+/** The year the load is counted over, leap years and all. */
+private const val DAYS_A_YEAR = 365.2425
+
+/** What [kind] asks of [schedule], counting only the contacts that are actually waiting a turn. */
+fun contactLoad(
+    reminders: List<Reminder>,
+    kind: ContactKind,
+    schedule: ContactSchedule,
+    zone: ZoneId,
+    dayStart: LocalTime = DEFAULT_DAY_START,
+): ContactLoad {
+    // A resting contact takes no turn (see [inTheDraw]), so it asks for nothing either.
+    val people = reminders.filter { it.contactKind == kind && it.status == Status.ACTIVE && it.pausedAt == null }
+    val demand = people.sumOf { contact ->
+        val days = contact.routineSpan(zone, dayStart)?.toDays()?.toDouble() ?: 0.0
+        if (days <= 0.0) 0.0 else DAYS_A_YEAR / days
+    }
+    return ContactLoad(kind = kind, capacity = schedule.days.size * WEEKS_A_YEAR, demand = demand, people = people.size)
+}
+
+/** What is worth saying about a kind's schedule, if anything. */
+enum class ContactWarning { NONE, NEVER, OVER_CAPACITY }
+
+/**
+ * No day at all is a legitimate thing to want — it is how a kind is turned off — so it is said
+ * rather than forbidden, and only while there is somebody it would silence.
+ */
+fun contactWarning(load: ContactLoad, days: Set<DayOfWeek>): ContactWarning = when {
+    days.isEmpty() && load.people > 0 -> ContactWarning.NEVER
+    load.over -> ContactWarning.OVER_CAPACITY
+    else -> ContactWarning.NONE
+}
 
 /** The contacts told about and left unanswered, the one that rang longest ago first. Home's line. */
 fun overdueContacts(reminders: List<Reminder>, now: Instant): List<Reminder> = reminders

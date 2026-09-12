@@ -21,6 +21,27 @@ class DayTimingTest {
     private fun timingOf(vararg triggers: Trigger) = dayTimingOf(triggers.map { TriggerRule(it) })
 
     @Test
+    fun `the day has the four stretches people name a time by`() {
+        assertEquals(DayPart.NIGHT, dayPartOf(LocalTime.of(4, 0)))
+        assertEquals(DayPart.MORNING, dayPartOf(LocalTime.of(9, 0)))
+        assertEquals(DayPart.AFTERNOON, dayPartOf(LocalTime.of(18, 0)))
+        assertEquals(DayPart.EVENING, dayPartOf(LocalTime.of(22, 30)))
+        // The edges, which is the only part of a band worth pinning.
+        assertEquals(DayPart.NIGHT, dayPartOf(LocalTime.of(5, 59)))
+        assertEquals(DayPart.MORNING, dayPartOf(LocalTime.of(6, 0)))
+        assertEquals(DayPart.MORNING, dayPartOf(LocalTime.of(13, 59)))
+        assertEquals(DayPart.AFTERNOON, dayPartOf(LocalTime.of(14, 0)))
+        assertEquals(DayPart.EVENING, dayPartOf(LocalTime.of(20, 0)))
+    }
+
+    @Test
+    fun `a work contact comes up in a morning and a personal one in an afternoon`() {
+        // The owner's own windows, read back as the words anybody would use for them.
+        assertEquals(DayPart.MORNING, dayPartOf(DEFAULT_WORK_CONTACTS.window.from))
+        assertEquals(DayPart.AFTERNOON, dayPartOf(DEFAULT_PERSONAL_CONTACTS.window.from))
+    }
+
+    @Test
     fun `an hour somebody typed comes across as that hour`() {
         assertEquals(DayTiming.At(LocalTime.of(20, 0)), timingOf(Trigger.AtDateTime(friday.atTime(20, 0))))
         assertEquals(DayTiming.At(LocalTime.of(9, 0)), timingOf(Trigger.AtTime(LocalTime.of(9, 0), setOf(DayOfWeek.MONDAY))))

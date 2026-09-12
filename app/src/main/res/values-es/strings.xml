@@ -123,6 +123,10 @@
     <string name="routines_contact_turn">le toca %1$s</string>
     <string name="routines_contact_unanswered">avisado, y esperándote</string>
     <string name="routines_contact_no_turn">sin turno en el próximo año</string>
+    <string name="weekday_morning">el %1$s por la mañana</string>
+    <string name="weekday_afternoon">el %1$s por la tarde</string>
+    <string name="weekday_evening">el %1$s por la noche</string>
+    <string name="weekday_night">el %1$s de madrugada</string>
     <string name="routines_contact_question">¿Has llamado a %1$s?</string>
     <string name="routines_paused">en pausa</string>
     <string name="routines_put_off">pospuesta</string>
@@ -1453,6 +1457,15 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_123_0">
+
+        <item>La pantalla de rutinas y sus propias filas ya dicen lo mismo de los contactos. La lista se ordena por el turno que enseña cada fila —a quien se le pasó el plazo le toca esperar, no va tarde— y el chip «vencidas» va de haber avisado y no haber respuesta, así que ya no puede darte una lista de contactos que dicen «Sí».</item>
+
+        <item>El turno de un contacto se dice como un día: «le toca el viernes por la tarde» en vez de «le toca en 6 d». El día de la semana si es esta semana, y la fecha si está más lejos.</item>
+
+        <item>Ajustes avisa cuando hay más gente que turnos. De cada tipo sale una persona en cada día que elijas, así que pasado ese número a algunas no les tocaría nunca, y lo único que lo decía era una fila con «sin turno en el próximo año». Ahora la fila pide atención y la tarjeta dice la salida: otro día, o plazos de unos tantos meses. Un tipo que se ha quedado sin días también lo dice.</item>
+
+    </string-array>
     <string-array name="whats_new_0_122_0">
 
         <item>«Ver» con el móvil bloqueado pide ahora desbloquear primero, y el recordatorio se queda en el aviso hasta que lo haces. Antes quitaba el aviso y te dejaba mirando la pantalla de bloqueo.</item>
@@ -2101,6 +2114,9 @@
     <string name="settings_contacts_title">Contactos</string>
     <string name="settings_contacts_summary">Trabajo %1$s · Personales %2$s</string>
     <string name="settings_contacts_hint">Como mucho un aviso al día de cada tipo, en un momento al azar dentro de la franja y nunca con sonido. Lo que cambies aquí vale para todos los contactos, también los que ya tienes, salvo lo que hayas cambiado a mano en uno.</string>
+    <string name="settings_contacts_over_summary">Más gente que turnos</string>
+    <string name="settings_contacts_over_body">De este tipo sale una persona en cada día que elijas, así que %1$d personas necesitan más sitio del que dan estos días: a algunas no les tocaría nunca. Añade un día, o pon sus plazos en unos %2$d meses.</string>
+    <string name="settings_contacts_never_warning">Ningún día elegido: nadie de este tipo saldrá nunca.</string>
     <string name="settings_contacts_days">Días</string>
     <string name="settings_contacts_from">Desde</string>
     <string name="settings_contacts_to">Hasta</string>

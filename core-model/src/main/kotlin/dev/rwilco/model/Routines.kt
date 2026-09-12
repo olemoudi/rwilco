@@ -170,6 +170,22 @@ sealed interface RoutineFilter {
 }
 
 /**
+ * The "this is owed" **the routines screen** hangs off, which for a contact is not its plazo.
+ *
+ * A contact whose cadence ran out is not late: it is waiting its turn, which is the whole of what
+ * the draw is for. Read against the plazo, one written months ago sorted to the top of the list as
+ * overdue while its own card read "Sí", and the "vencidas" chip could offer a list made entirely
+ * of contacts saying yes — the screen disagreeing with itself in two places at once. What is owed
+ * about a contact is what Home already asks: it was told about, and nobody answered.
+ */
+fun Reminder.listedAsOwed(now: Instant, zone: ZoneId, dayStart: LocalTime = DEFAULT_DAY_START): Boolean =
+    if (isContact) contactOwed(now) else routineOwed(now, zone, dayStart)
+
+/** What a row is ordered by: a contact's drawn turn, anything else's plazo. Null when it has none. */
+private fun Reminder.listOrder(zone: ZoneId, dayStart: LocalTime, turns: Map<String, Instant>): Instant? =
+    if (isContact) turns[id] else routineDeadline(zone, dayStart)
+
+/**
  * The routines under [filter], **overdue ones first** — the one that has waited longest on top —
  * then the rest by how soon their span is up, and the paused ones last: a paused routine is
  * still a routine, but nothing is owed while it rests.
@@ -187,13 +203,20 @@ fun routinesFor(
      * answer a different question from the one the screen is for.
      */
     query: String = "",
+    /**
+     * When each contact's turn is ([contactQueue]). Handed in rather than worked out here: the
+     * queue is a function of the whole set plus the schedules, which this cannot see, and the
+     * screen has already asked for it to build the rows. Without it a contact sorts last among
+     * the ones not owed, which is also what one with no turn inside the year does.
+     */
+    turns: Map<String, Instant> = emptyMap(),
 ): List<Reminder> = reminders
     .filter { it.isRoutine && it.status != Status.DONE }
     .filter { matchesWords(it, query) }
     .filter {
         when (filter) {
             RoutineFilter.All -> true
-            RoutineFilter.Overdue -> it.routineOwed(now, zone, dayStart)
+            RoutineFilter.Overdue -> it.listedAsOwed(now, zone, dayStart)
             RoutineFilter.Paused -> it.status == Status.PAUSED
             RoutineFilter.Waiting -> it.status == Status.ACTIVE && it.routineWaitingToStart(now)
             is RoutineFilter.Kind -> it.contactKind == filter.kind
@@ -202,15 +225,17 @@ fun routinesFor(
     }
     .sortedWith(
         // What is owed first; then the rest inside their plazo and the ones put off (an answer
-        // given), by how soon; the paused ones last.
+        // given), by how soon; the paused ones last. **By the same reading the row shows**: a
+        // contact by the turn on its card, everything else by its plazo, and anything with
+        // neither at the end of its group rather than at the top of it.
         compareBy<Reminder> {
             when {
                 it.status != Status.ACTIVE -> 2
-                it.routineOwed(now, zone, dayStart) -> 0
+                it.listedAsOwed(now, zone, dayStart) -> 0
                 else -> 1
             }
         }
-            .thenBy { it.routineDeadline(zone, dayStart) }
+            .thenBy { it.listOrder(zone, dayStart, turns) ?: Instant.MAX }
             .thenBy { it.createdAt },
     )
 
@@ -227,7 +252,7 @@ private fun matchesWords(reminder: Reminder, query: String): Boolean {
 fun routineFilters(reminders: List<Reminder>, now: Instant, zone: ZoneId, dayStart: LocalTime = DEFAULT_DAY_START): List<RoutineFilter> {
     val routines = reminders.filter { it.isRoutine && it.status != Status.DONE }
     val own = listOfNotNull(
-        RoutineFilter.Overdue.takeIf { routines.any { it.routineOwed(now, zone, dayStart) } },
+        RoutineFilter.Overdue.takeIf { routines.any { it.listedAsOwed(now, zone, dayStart) } },
         RoutineFilter.Paused.takeIf { routines.any { it.status == Status.PAUSED } },
         RoutineFilter.Waiting.takeIf { routines.any { it.status == Status.ACTIVE && it.routineWaitingToStart(now) } },
     ) + ContactKind.entries.mapNotNull { kind -> RoutineFilter.Kind(kind).takeIf { routines.any { r -> r.contactKind == kind } } }

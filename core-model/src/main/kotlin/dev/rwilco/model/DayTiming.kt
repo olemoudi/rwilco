@@ -11,6 +11,25 @@ import java.time.LocalTime
  * its own answer in its own fields, and a fourth copy of "14:00 to 16:00" would be a fourth
  * place for them to disagree.
  */
+/**
+ * The four stretches people name a time of day by: what "el viernes por la tarde" is saying.
+ *
+ * For saying a moment, never for choosing one — the hours a stretch is *written* as live in
+ * `WhenInText` (nine in the morning, eight at night), and these are the bands the same words are
+ * *read* back in. A day begins at six because the small hours are their own word in both
+ * languages (madrugada), and the afternoon runs to eight, which is when the evening is called
+ * one.
+ */
+enum class DayPart { MORNING, AFTERNOON, EVENING, NIGHT }
+
+/** Which stretch [time] falls in. */
+fun dayPartOf(time: LocalTime): DayPart = when {
+    time < LocalTime.of(6, 0) -> DayPart.NIGHT
+    time < LocalTime.of(14, 0) -> DayPart.MORNING
+    time < LocalTime.of(20, 0) -> DayPart.AFTERNOON
+    else -> DayPart.EVENING
+}
+
 sealed interface DayTiming {
     /** An hour somebody typed. Nothing else may argue with it. */
     data class At(val time: LocalTime) : DayTiming

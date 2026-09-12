@@ -577,7 +577,26 @@ anything repeats**:
   in 0.117.0 put a card in the shade the day after every contact was written.
   Home shows a contact only once `contactOwed` — `awaitingAnswer`, with no put-off since the
   telling — so somebody waiting their turn is invisible there rather than red, and
-  `overdueRoutines`/`nextDueRoutine` exclude contacts for the same reason. The card is
+  `overdueRoutines`/`nextDueRoutine` exclude contacts for the same reason.
+  **And since 0.123.0 the routines screen reads the same way** (`listedAsOwed`): its "vencidas"
+  chip, its filter and its order all used to ask the *plazo*, which for a contact is not what its
+  own row shows — one written months ago sorted to the top as overdue while its card read "Sí",
+  and the chip could offer a list made entirely of contacts saying yes. One predicate now answers
+  all three. **The order is the turn each row shows** (`routinesFor(turns = …)`, handed the queue
+  `buildRoutinesState` already computes for the rows); a contact with no turn inside the year
+  sorts to the back of its group rather than the front of it. **The turn is said as a day** —
+  «le toca el viernes por la tarde» (`turnPhrase`, `dayPartOf` in `DayTiming.kt`): the weekday
+  inside the week, the date past it, because a turn months out has no weekday anybody can plan
+  by, and a countdown ("en 6 d") is a number somebody has to turn into a plan for themselves.
+  **And Settings says when there are more people than turns** (`contactLoad`, `contactWarning`,
+  pure): capacity is days a week × 52 — the draw tells about one person of a kind a day, on that
+  kind's days — and demand is the sum of one over each contact's own cadence, so twenty close
+  colleagues on one Wednesday ask eighty turns of fifty-two. Past that the queue never reaches
+  its own back, and the only thing that ever said so was a row reading "sin turno en el próximo
+  año", which names the fact and not the cause. The card says it under the days that decide it,
+  with the way out in the two terms somebody can act on (`daysNeeded`, `monthsNeeded`), the fold
+  wears an `AttentionDot` so it is not something you have to open the group to find, and a kind
+  with **no day at all** — which is how a kind is turned off, and stays allowed — says that too. The card is
   `ContactRow`, deliberately **not** in the error wash: a routine that ran out is a thing you
   failed to do, a contact whose turn came is an invitation. The alarm is the ring's own URI and
   `armedFor` (so `missedFire` and the catch-up work unchanged) but always **inexact** — a

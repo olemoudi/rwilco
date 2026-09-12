@@ -23,6 +23,12 @@ import dev.rwilco.RwilcoApplication
 import dev.rwilco.debug.DemoData
 import dev.rwilco.model.AlertSound
 import dev.rwilco.model.Chime
+import dev.rwilco.model.Closeness
+import dev.rwilco.model.ContactKind
+import dev.rwilco.model.DEFAULT_WORK_CONTACTS
+import dev.rwilco.model.Recurrence
+import dev.rwilco.model.RecurrenceUnit
+import dev.rwilco.model.Reminder
 import dev.rwilco.model.ThemeMode
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
@@ -72,6 +78,9 @@ class SettingsTourTest {
                 // The two tones, already told apart: the switch itself is a switch, and what is
                 // worth a picture is the second row of chimes it brings with it.
                 insistentSound = AlertSound.Bundled(Chime.ALERT),
+                // The owner's own numbers, whatever a case before this one left behind: one of
+                // them takes the days away to see what the card says about that.
+                workContacts = DEFAULT_WORK_CONTACTS,
             )
         }
         // The tone is offered whether or not anything is asking (SettingsInsistentToneTest);
@@ -156,6 +165,38 @@ class SettingsTourTest {
         rule.onAllNodesWithText(s(R.string.settings_contacts_distant), useUnmergedTree = true).assertCountEquals(2)
         rule.onNodeWithText(s(R.string.routines_filter_personal), useUnmergedTree = true).performScrollTo()
         shot("settings-contacts-personal")
+    }
+
+    /**
+     * A kind with nobody's day left in it goes silent for ever, and the card says so.
+     *
+     * Not forbidden — taking every day away is how a kind is turned off — so what matters is that
+     * it is visible: on the card in the error ink, and on the fold itself as a dot, which is the
+     * part a picture is for.
+     */
+    @Test
+    fun aKindWithNoDayLeftSaysSo() = runBlocking {
+        app.repository.save(
+            Reminder(
+                id = "contact-ana",
+                text = "Ana",
+                recurrence = Recurrence.Since(3, RecurrenceUnit.MONTHS),
+                contactKind = ContactKind.WORK,
+                contactCloseness = Closeness.CLOSE,
+                createdAt = app.clock.instant(),
+                updatedAt = app.clock.instant(),
+            ),
+        )
+        app.settingsStore.update { it.copy(workContacts = it.workContacts.copy(days = emptySet())) }
+        rule.onNodeWithContentDescription(s(R.string.home_settings)).performClick()
+        rule.waitUntilShown(s(R.string.settings_contacts_title))
+        // The folded row itself, with the dot on its icon: what somebody sees without opening it.
+        rule.onNodeWithText(s(R.string.settings_contacts_title), useUnmergedTree = true).performScrollTo()
+        shot("settings-contacts-dot")
+        rule.onNodeWithText(s(R.string.settings_contacts_title), useUnmergedTree = true).performClick()
+        rule.waitUntilShown(s(R.string.settings_contacts_never_warning))
+        rule.onNodeWithText(s(R.string.settings_contacts_never_warning), useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        shot("settings-contacts-warning")
     }
 
     /** The rows, in the order the screen puts them. */

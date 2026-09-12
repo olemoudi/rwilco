@@ -62,6 +62,9 @@ object TimeText {
     fun monthYear(month: YearMonth, locale: Locale): String =
         month.format(formatter("LLLL yyyy", locale)).replaceFirstChar { it.titlecase(locale) }
 
+    /** "viernes" / "Friday": a day named in full, for a moment said as a day rather than as a date. */
+    fun weekday(day: DayOfWeek, locale: Locale): String = day.getDisplayName(TextStyle.FULL, locale)
+
     /** "L" / "M" for the calendar header and the day toggles. */
     fun dayInitial(day: DayOfWeek, locale: Locale): String =
         day.getDisplayName(TextStyle.NARROW, locale).replaceFirstChar { it.titlecase(locale) }

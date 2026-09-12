@@ -42,6 +42,10 @@ import java.time.DayOfWeek
 import java.time.LocalTime
 import dev.rwilco.model.Snooze
 import dev.rwilco.model.SnoozeLimits
+import dev.rwilco.model.ContactKind
+import dev.rwilco.model.ContactLoad
+import dev.rwilco.model.contactLoad
+import dev.rwilco.model.contactScheduleOf
 import dev.rwilco.model.pickNotificationSnoozes
 import dev.rwilco.alarm.TestAlert
 import dev.rwilco.model.notificationSnoozeOffers
@@ -59,6 +63,19 @@ class SettingsViewModel(
     val hasPlaceReminders: StateFlow<Boolean> = repository.open
         .map { reminders -> reminders.any { reminder -> reminder.rules.any { it.trigger is Trigger.Location } } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    /**
+     * What each kind of contact asks of its schedule against what that schedule can carry
+     * (`contactLoad`): the one place the app says out loud that there are more people than turns.
+     * Past capacity nothing was ever said — the queue simply never reached the back of itself.
+     */
+    val contactLoads: StateFlow<Map<ContactKind, ContactLoad>> = combine(repository.open, settings) { reminders, current ->
+        if (current == null) {
+            emptyMap()
+        } else {
+            ContactKind.entries.associateWith { kind -> contactLoad(reminders, kind, current.contactScheduleOf(kind), clock.zone) }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     /** What the place watch last saw and when it looks next, for the Location card. */
     val placeWatch: StateFlow<PlaceWatchState?> = placeWatch

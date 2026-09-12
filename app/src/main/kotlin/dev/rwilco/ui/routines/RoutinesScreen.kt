@@ -110,6 +110,7 @@ import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.countdownText
 import dev.rwilco.ui.format.dayWord
 import dev.rwilco.ui.format.rememberWords
+import dev.rwilco.ui.format.turnPhrase
 import dev.rwilco.ui.home.ReminderActionsMenu
 import dev.rwilco.ui.home.SearchField
 import dev.rwilco.ui.home.SwipeableCard
@@ -525,7 +526,12 @@ private fun RoutineCard(
         row.contactKind == null -> elapsed + separator + stringResource(if (row.done) R.string.routines_due else R.string.routines_overdue, due)
         !row.done -> elapsed + separator + stringResource(R.string.routines_contact_unanswered)
         row.turnAt == null -> elapsed + separator + stringResource(R.string.routines_contact_no_turn)
-        else -> elapsed + separator + stringResource(R.string.routines_contact_turn, due)
+        // Not a countdown: the day the turn lands on, which is what anybody plans by. For a
+        // contact the row's deadline IS its turn (see buildRoutinesState).
+        else -> elapsed + separator + stringResource(
+            R.string.routines_contact_turn,
+            turnPhrase(row.deadline, now.atZone(zone).toLocalDate(), zone),
+        )
     }
     // How far through the span it is: a full track is a "No".
     val progress = if (row.span.isZero) 1f else (Duration.between(row.anchor, clock).toMillis().toFloat() / row.span.toMillis()).coerceIn(0f, 1f)

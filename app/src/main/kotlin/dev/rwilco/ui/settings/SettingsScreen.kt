@@ -58,6 +58,9 @@ import dev.rwilco.R
 import dev.rwilco.model.AlertSound
 import dev.rwilco.model.AlertStacking
 import dev.rwilco.model.AppSettings
+import dev.rwilco.model.ContactKind
+import dev.rwilco.model.ContactWarning
+import dev.rwilco.model.contactWarning
 import dev.rwilco.model.OFFERED_KINDS
 import dev.rwilco.model.Presence
 import dev.rwilco.model.SavedPlace
@@ -71,6 +74,7 @@ import dev.rwilco.ui.components.PermissionFixRow
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.SegmentedChoice
 import dev.rwilco.ui.components.TagChip
+import dev.rwilco.ui.components.AttentionDot
 import dev.rwilco.ui.components.TimeField
 import dev.rwilco.ui.components.UpdateReadyBadge
 import dev.rwilco.ui.components.rememberStagedUpdate
@@ -444,16 +448,34 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
 
             // Its own group rather than a corner of "el día": the day's shape is when you are
             // up, and this is when — and how often — the app brings somebody up.
+            // What each kind's people ask of its days, which nothing said out loud before: past
+            // capacity the queue simply never reached the back of itself, and a kind with no day
+            // went quiet for ever. Said on the fold, so it is not something you have to open it
+            // to find out.
+            val loads by viewModel.contactLoads.collectAsStateWithLifecycle()
+            val workWarning = loads[ContactKind.WORK]?.let { contactWarning(it, current.workContacts.days) } ?: ContactWarning.NONE
+            val personalWarning = loads[ContactKind.PERSONAL]?.let { contactWarning(it, current.personalContacts.days) } ?: ContactWarning.NONE
+            val contactsWarned = workWarning != ContactWarning.NONE || personalWarning != ContactWarning.NONE
+            val tooMany = workWarning == ContactWarning.OVER_CAPACITY || personalWarning == ContactWarning.OVER_CAPACITY
             SettingsGroup(
                 icon = Icons.Outlined.Group,
                 title = stringResource(R.string.settings_contacts_title),
-                summary = stringResource(
-                    R.string.settings_contacts_summary,
-                    contactScheduleSummary(current.workContacts),
-                    contactScheduleSummary(current.personalContacts),
-                ),
+                // The schedules are what this row is for; more people than turns outranks them,
+                // because a schedule that reads perfectly well is exactly what that looks like.
+                // "Nunca" the ordinary summary already says on its own.
+                summary = if (tooMany) {
+                    stringResource(R.string.settings_contacts_over_summary)
+                } else {
+                    stringResource(
+                        R.string.settings_contacts_summary,
+                        contactScheduleSummary(current.workContacts),
+                        contactScheduleSummary(current.personalContacts),
+                    )
+                },
                 expanded = Group.CONTACTS in open,
                 onToggle = { toggle(Group.CONTACTS) },
+                attention = contactsWarned,
+                corner = { ground -> AttentionDot(visible = contactsWarned, ground = ground) },
             ) {
                 Column {
                     Text(
@@ -464,11 +486,21 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
                     Spacer(Modifier.height(spacing.lg))
                     SettingTitle(title = stringResource(R.string.routines_filter_work))
                     Spacer(Modifier.height(spacing.sm))
-                    ContactScheduleCard(schedule = current.workContacts, onChange = viewModel::setWorkContacts)
+                    ContactScheduleCard(
+                        schedule = current.workContacts,
+                        onChange = viewModel::setWorkContacts,
+                        warning = workWarning,
+                        load = loads[ContactKind.WORK],
+                    )
                     Spacer(Modifier.height(spacing.lg))
                     SettingTitle(title = stringResource(R.string.routines_filter_personal))
                     Spacer(Modifier.height(spacing.sm))
-                    ContactScheduleCard(schedule = current.personalContacts, onChange = viewModel::setPersonalContacts)
+                    ContactScheduleCard(
+                        schedule = current.personalContacts,
+                        onChange = viewModel::setPersonalContacts,
+                        warning = personalWarning,
+                        load = loads[ContactKind.PERSONAL],
+                    )
                 }
             }
 
