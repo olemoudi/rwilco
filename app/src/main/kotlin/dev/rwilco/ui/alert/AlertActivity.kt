@@ -1,5 +1,6 @@
 package dev.rwilco.ui.alert
 
+import android.app.KeyguardManager
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -261,13 +262,13 @@ class AlertActivity : ComponentActivity() {
                 if (stacked && focusedItem == null) {
                     AlertStackScreen(
                         items = items,
-                        onDone = { id -> answer(id) { app.firing.dismiss(id) } },
+                        onDone = { id -> answer(id) { app.firing.dismiss(id, notice = true) } },
                         onSnooze = { id, snooze -> answer(id) { app.firing.snooze(id, snooze) } },
                         // Not the form: this one reminder, on the whole screen. See [focused].
                         onView = { id -> focused = id },
                         snoozes = current.notificationSnoozeOffers,
                         customMinutes = current.snoozeCustomMinutes,
-                        onDoneAll = { answerAll(items.map { it.id }) { id -> app.firing.dismiss(id) } },
+                        onDoneAll = { answerAll(items.map { it.id }) { id -> app.firing.dismiss(id, notice = true) } },
                         onSnoozeAll = { snooze -> answerAll(items.map { it.id }) { id -> app.firing.snooze(id, snooze) } },
                         ringing = noise,
                         onSilence = ::silence,
@@ -278,7 +279,7 @@ class AlertActivity : ComponentActivity() {
                         content = first.content,
                         preview = false,
                         waiting = items.size - 1,
-                        onDone = { answer(first.id) { app.firing.dismiss(first.id) } },
+                        onDone = { answer(first.id) { app.firing.dismiss(first.id, notice = true) } },
                         onSnooze = { snooze: Snooze -> answer(first.id) { app.firing.snooze(first.id, snooze) } },
                         onView = { view(first.id, first.content.routine) },
                         customMinutes = current.snoozeCustomMinutes,
@@ -405,7 +406,47 @@ class AlertActivity : ComponentActivity() {
         app.appScope.launch { for (id in ids) work(id) }
     }
 
+    /** One unlock at a time: the bouncer takes seconds, and a second "Ver" must not ask twice. */
+    private var askingUnlock = false
+
+    /**
+     * "Ver": the app, with this reminder in it — through the lock screen when there is one.
+     *
+     * This alert draws over the keyguard and MainActivity does not, and must not: the whole app
+     * over a locked phone is every reminder readable by whoever picks it up. So a locked phone is
+     * asked to unlock first and **the reminder is let go only once that goes through** ([openApp]).
+     * It used to be let go before the start, so "Ver" at three in the morning took the alert away
+     * and left the lock screen, with nothing to come back to but the notification.
+     */
     private fun view(id: String, routine: Boolean = false) {
+        val keyguard = getSystemService(KeyguardManager::class.java)
+        when (viewStep(locked = keyguard?.isKeyguardLocked == true)) {
+            ViewStep.OPEN -> openApp(id, routine)
+            ViewStep.ASK_TO_UNLOCK -> {
+                if (askingUnlock) return
+                askingUnlock = true
+                keyguard?.requestDismissKeyguard(
+                    this,
+                    object : KeyguardManager.KeyguardDismissCallback() {
+                        override fun onDismissSucceeded() = unlocked(id, routine, UnlockAnswer.SUCCEEDED)
+                        override fun onDismissCancelled() = unlocked(id, routine, UnlockAnswer.CANCELLED)
+                        override fun onDismissError() = unlocked(id, routine, UnlockAnswer.ERROR)
+                    },
+                )
+            }
+            ViewStep.STAY -> Unit
+        }
+    }
+
+    /** What the keyguard answered. Only [ViewStep.OPEN] moves anything; the rest leave the alert alone. */
+    private fun unlocked(id: String, routine: Boolean, answer: UnlockAnswer) {
+        askingUnlock = false
+        if (viewStep(locked = true, unlock = answer) != ViewStep.OPEN) return
+        runOnUiThread { openApp(id, routine) }
+    }
+
+    /** The way in, and the one place the reminder is let go: it is off the alert because it is elsewhere. */
+    private fun openApp(id: String, routine: Boolean) {
         // A routine's home is the routines list, with it in view — the same door its question
         // card opens — not the form; the form is a tap further, behind the pencil.
         val destination = if (routine) MainActivity.routineDestination(id) else MainActivity.reminderDestination(id)
@@ -444,6 +485,9 @@ class AlertActivity : ComponentActivity() {
         super.onStop()
         // Left the screen without answering: the notification is still there, so go quiet.
         hush()
+        // A bouncer whose callback never came back (it happens on some skins) must not leave
+        // "Ver" deaf for the rest of the screen's life.
+        askingUnlock = false
     }
 
     override fun onDestroy() {

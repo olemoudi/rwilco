@@ -3,7 +3,9 @@ package dev.rwilco.alarm
 import android.content.Context
 import android.util.Log
 import dev.rwilco.data.FiringKind
+import dev.rwilco.data.ReminderEntity
 import dev.rwilco.data.ReminderRepository
+import dev.rwilco.data.toDomain
 import dev.rwilco.diag.Diag
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.dayShape
@@ -481,11 +483,16 @@ class ReminderFiring(
      * deleted from Home with the card still in the shade), and "Hecho" on one of those has to
      * take it down rather than leave a button that does nothing.
      */
-    suspend fun dismiss(id: String) = lock.withLock {
+    suspend fun dismiss(id: String, notice: Boolean = false) = lock.withLock {
         Diag.note(TAG_DIAG, "r=${short(id)} dealt with")
         repeater.cancel(id)
         AlertNotifications.cancel(context, id)
-        val reminder = repository.get(id) ?: return@withLock
+        // The row itself, not only what it says: with [notice] it is handed to the card that can
+        // take this "hecho" back, and nothing short of the whole row puts one back (the write
+        // below is nine columns). Read here, inside the lock, so what is offered back is what
+        // this very "hecho" is about to replace.
+        val row = repository.rowOf(id) ?: return@withLock
+        val reminder = row.toDomain()
         // A rehearsal ("probar una alerta") is not a thing that got done: it goes, rather than
         // landing in "Hechos" where the week is counted.
         if (TestAlert.isTest(id)) {
@@ -528,6 +535,9 @@ class ReminderFiring(
         // back let pass ahead of it. A one-off finished ahead of its moment is still "hecho".
         val skipped = consumed != null && reminder.recurrence != Recurrence.None && !reminder.awaitingAnswer(now)
         repository.record(id, if (skipped) FiringKind.SKIPPED else FiringKind.DEALT, now)
+        // The way back, from the two doors that have no snackbar to give one: the alert screen
+        // and the shade. Home and the routines list ask for no notice — they answer for themselves.
+        if (notice) AlertNotifications.doneNotice(context, reminder, row)
         scheduler.rearmAll()
     }
 
@@ -793,6 +803,29 @@ class ReminderFiring(
         Diag.note(TAG_DIAG, "r=${short(id)} reset undone: back to $previous")
         repository.setLastDealtAt(id, previous)
         repository.record(id, FiringKind.UNRESET, now)
+        scheduler.rearmAll()
+    }
+
+    /**
+     * "Deshacer" on a "hecho" given from the alert screen or from the shade: the row goes back
+     * exactly as it stood a moment before, which is the only undo a nine-column write has.
+     *
+     * **Never from under a delete.** A card outlives the row it was posted for, and what the
+     * button says is "take that back", not "bring it back".
+     *
+     * Nothing is written to the history, for the same reason Home's own undo writes nothing: the
+     * row is as it was, and a line saying so would be a line about the app rather than about the
+     * reminder. (Not [FiringKind.UNRESET] in particular — that word belongs to a place's own
+     * "hecho", and `HistorySummary` reads it as cancelling the reset before it.)
+     */
+    suspend fun undoDismiss(id: String, row: ReminderEntity) = lock.withLock {
+        AlertNotifications.cancelReset(context, id)
+        if (repository.get(id) == null) {
+            Diag.note(TAG_DIAG, "r=${short(id)} undo of a hecho refused: the reminder is gone")
+            return@withLock
+        }
+        Diag.note(TAG_DIAG, "r=${short(id)} hecho undone")
+        repository.restoreRow(row)
         scheduler.rearmAll()
     }
 

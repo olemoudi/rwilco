@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +38,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
+import dev.rwilco.model.BackupFreshness
+import dev.rwilco.model.backupFreshness
+import dev.rwilco.ui.components.rememberNow
 import dev.rwilco.ui.theme.LocalDarkTheme
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.MonoStyles
@@ -92,6 +96,13 @@ fun BackupBadge(modifier: Modifier = Modifier) {
         }
     }
 
+    // Waiting is one thing; waiting for weeks is another, and the number alone never says which:
+    // the run that fails on the network retries in silence, so the disc sat there reading "3" for
+    // a month and meant something different by the end of it.
+    val vault by app.vaultStore.state.collectAsStateWithLifecycle(initialValue = null)
+    val now by rememberNow(60_000, app.clock)
+    val stale = vault?.let { backupFreshness(it.enabled, it.lastRunAt, pending, it.cadence, now) } == BackupFreshness.STALE
+
     val shown = activity.working || justDone || pending > 0
     AnimatedVisibility(
         visible = shown,
@@ -109,6 +120,7 @@ fun BackupBadge(modifier: Modifier = Modifier) {
         val label = when {
             settled -> stringResource(R.string.home_backup_done)
             activity.working -> stringResource(R.string.home_backup_working)
+            stale -> stringResource(R.string.home_backup_stale)
             else -> pluralStringResource(R.plurals.home_backup_pending, pending, pending)
         }
         Box(
@@ -138,6 +150,14 @@ fun BackupBadge(modifier: Modifier = Modifier) {
                     activity.working -> CircularProgressIndicator(
                         color = scheme.onError,
                         strokeWidth = 2.dp,
+                        modifier = Modifier.size(GLYPH),
+                    )
+                    // Not a count any more: a count that has stopped moving. Filled, like the
+                    // tick, because both are a state this disc is in rather than a control.
+                    stale -> Icon(
+                        imageVector = Icons.Filled.PriorityHigh,
+                        contentDescription = null,
+                        tint = scheme.onError,
                         modifier = Modifier.size(GLYPH),
                     )
                     else -> Text(

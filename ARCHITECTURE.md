@@ -828,8 +828,17 @@ each a `SwipeableCard` like every card (done / delete), and counts the rest in o
 (`MoreOverdueRoutinesRow`); the door names the next one due; the count ticks by the minute. The
 widget's overdue count includes the routines owed; the launcher gives them `ROUTINE_SLOTS` (two)
 so the pinned presets keep theirs. The ask card and the undo cards join the app's bundle and
-wear `routineColor`; a "hecho" given from the shade on a routine gets an undo card
-(`AlertNotifications.doneNotice`, the same `undoReset` door a place's "done" has); "Ver" on a
+wear `routineColor`; a "hecho" given from the shade gets an undo card
+(`AlertNotifications.doneNotice`) — **every reminder's, not only a routine's, and from the alert
+screen too, since 0.122.0**: those two are exactly the doors with no snackbar to take an answer
+back with, and a mis-held thumb finishes a one-off as thoroughly as it moves a count. The card
+carries the **row as it stood** (`ReminderFiring.dismiss(notice = true)` reads it inside the same
+lock; `undoDismiss` writes it back), because a "hecho" writes nine columns in one statement and
+putting the anchor back alone is not an undo. It refuses a reminder deleted since (a card
+outlives its row), it goes in ten minutes — past that the undo is "Hechos" — and it writes
+nothing to the history, which is the silence Home's own undo already keeps and deliberately not
+`UNRESET`: that word is a place's, and `HistorySummary` reads it as cancelling the reset before
+it. A place's own "done" keeps `resetNotice`/`undoReset` exactly as they were. "Ver" on a
 routine's ring and its question card both land on the routines with it in view. The alert says
 the plazo where a rule's line would be ("su plazo: cada 21 días desde la última vez"), heads its
 offers "todavía no" and puts "a una fecha" first; the ring card's reason line says the span even
@@ -1828,7 +1837,12 @@ loud what DST and a change of zone do to a landing.
   «¿He hecho «X»?» on `CHANNEL_ASK`, IMPORTANCE_DEFAULT with the phone's own sound, silent
   outside waking hours, "sí, ahora" = `ACTION_DONE`, "todavía no" = `ACTION_LATER` which takes
   the card down and records `SNOOZED`/`LATER_DETAIL` so the history tells it from a card never
-  seen, the body opening the routines through `DESTINATION_ROUTINES`). **An unanswered
+  seen, the body opening the routines through `DESTINATION_ROUTINES`). **And the history says
+  what that was** (0.122.0, `snoozeWordOf`/`SnoozeWord`): it is filed as a snooze because there
+  is nothing else to file it as, but nothing was postponed, and the line read «pospuesto» all the
+  same — now it reads «dijo que todavía no», while a detail that is a place still says the place
+  and one that is a moment still says the moment. Read at the render rather than stored as a kind
+  of its own, which is also what fixes the lines already written. **An unanswered
   deadline is the ring once and the net's one word** — `max(30 min, span/10)` after it, capped by
   the net's longest wait — and nothing else: no re-ring, no re-ask (the owner's expectation,
   2026-09-07; `RoutinesTest` pins it). The word keeps the question form ("ICYMI: ¿Has hecho
@@ -2060,7 +2074,15 @@ loud what DST and a change of zone do to a landing.
   mark goes in the title and in the expanded text, where nothing can crop it, and only for the
   words that mean something was missed (`NetWord.saysItGotAway`, pure): `WAITING` is a reminder
   still waiting at its place, and telling somebody they missed it would be the net's one job
-  done backwards. What it waits for is `nudgeAt`: the whole wait (`afterHours`, a day) when the
+  done backwards. **`CANNOT_RING` has a first word of its own** (0.122.0,
+  `notif_net_prefix_cannot`, «No suena nunca»): it is neither late nor waiting — its hours and its
+  moments never meet, which is the one thing here the app has *proved* — and it used to be the
+  only word with no prefix and no subtext at all, so the card the app was surest about was the one
+  it explained least. **And the two buttons beside "Hecho" are now what each word needs**:
+  `CANNOT_RING` and `NEVER_RANG` get «Arreglarlo», which opens that reminder's form, because a
+  snooze cannot help a moment that is not coming; `WAITING` gets «Quitar el posponer»
+  (`ACTION_UNSNOOZE` → `ReminderFiring.unsnooze`) — the answer that card is *for*, and until now
+  the only door to it was Home's long-press menu; `LET_GO` keeps the two snoozes it always had. What it waits for is `nudgeAt`: the whole wait (`afterHours`, a day) when the
   reminder has nothing left to ring, and otherwise a **tenth** (`fraction`) of the gap to its
   next ring, whichever is shorter — the point being to catch it before the next one buries it.
   Under `minCadenceMinutes` (an hour) it cannot be armed at all: there the next ring already is
@@ -2342,7 +2364,18 @@ loud what DST and a change of zone do to a landing.
   down to nothing — the 0.48.1 bug on the screen that never got the fix. The offers are a
   `FlowRow` that wraps above "Hecho" when they do not fit beside it, and every pill keeps one line.
 - `AlertActivity` shows over the lock screen and turns it on; it is its own task so dismissing
-  an alarm at three in the morning does not drop anybody into the app's back stack. "Hecho" is
+  an alarm at three in the morning does not drop anybody into the app's back stack.
+  **"Ver" on a locked phone asks for the unlock first** (0.122.0, `AlertView.viewStep`, pure and
+  JVM-tested): `MainActivity` is not `showWhenLocked` and must not be — the whole app over a
+  locked phone is every reminder readable by whoever picks it up — so the step is OPEN, ASK, or
+  STAY, and **the reminder is let go only inside the step that opens** (`openApp`). It used to be
+  let go before the start, so "Ver" at three in the morning took the alert away and left the lock
+  screen, with nothing to come back to but the notification. A refused or failed unlock leaves
+  the alert exactly as it was, which is the honest answer and needs no words of its own; one
+  bouncer at a time (`askingUnlock`, cleared in `onStop` for the skins whose callback never
+  comes). The keyguard is the one thing here no test on the emulator can answer: the image has
+  none, and `requestDismissKeyguard` on an unlocked phone answers "succeeded" before the call
+  returns. "Hecho" is
   the bottom-most control on it, because the bottom of the screen is where a half-awake thumb
   lands and it belongs to the one answer the screen is asking for; "Ver" (which opens the form)
   sits above it, having once sat below.
@@ -3064,6 +3097,23 @@ history is the backup's history for free — with a fine-grained token scoped to
   is owed, because a deletion leaves nothing to count. It is the red disc in the corner of Home
   (`BackupBadge`), which exists only while it has something to say: a tap makes the copy on the
   spot, turns into a ring while it goes up and a tick when it lands, and then goes away.
+- **And how long it has been waiting** (0.122.0, `backupFreshness`/`backupNoticeDue`, pure and
+  JVM-tested): a copy is behind when **changes are waiting**, not when it is old — an old copy of
+  a phone nobody has written on is no fault at all, since the remote has everything, which is what
+  `pendingChanges` already answers. Behind is past three cadences with something waiting, and
+  never before `BACKUP_STALE_FLOOR` (48 h), so three hours of a poor connection is not worth a
+  word. It matters because the outcome this happens under is `TRANSIENT` — the one every run is
+  right to retry in silence: `needsAttention` never covered it, the Settings row went on reading
+  "the last attempt failed; it will try again" for however long that lasted, and the disc on Home
+  showed a number that had quietly stopped moving. Now the row asks for attention and says since
+  when (`vault_card_stale`), the disc becomes a warning glyph rather than a count, and
+  `VaultBackup.record` says it **once per staleness window** through `onStale` →
+  `VaultNotifications.notifyStale`, on the vault's own notification id so it replaces rather than
+  piles up and the next copy that lands takes it down with everything else.
+  `VaultState.lastStaleNoticeAt` is only what keeps it to once — it records nothing about the
+  copy, and its KDoc says so. The Settings row reads "something is waiting" off the last outcome
+  instead of hashing every reminder again for one line in a list; Home's badge has the real count
+  and asks the same question with it.
 - **Versions**: `VAULT_SCHEMA` for the data, `VAULT_FORMAT` for the container; a newer either is
   refused. `VaultSchemaTest` freezes the row's column list and demands a fixture per data
   version, so a change that would make old vaults unreadable fails in CI (the rule is in

@@ -138,6 +138,8 @@
     <string name="editor_warning_not_a_question">Under a routine this is not a question: it asks once, or never.</string>
     <string name="notif_done_title">Done: %1$s</string>
     <string name="notif_done_body">The count starts again from now.</string>
+    <string name="notif_done_title_plain">Done: %1$s</string>
+    <string name="notif_done_body_plain">Marked done.</string>
     <plurals name="history_routine_done">
         <item quantity="one">done once</item>
         <item quantity="other">done %d times</item>
@@ -535,6 +537,7 @@
     <string name="history_unreset">the place\'s «done» was undone</string>
     <string name="history_skipped">next round skipped</string>
     <string name="history_snoozed">put off</string>
+    <string name="history_not_yet">said not yet</string>
     <string name="history_snoozed_until">put off until %1$s</string>
     <string name="history_unticked">came undone</string>
     <string name="alert_snooze_all">Snooze all</string>
@@ -650,6 +653,9 @@
          is sits in the smallest type the shade has and is the first thing a narrow row drops. -->
     <string name="notif_net_prefix">ICYMI: %1$s</string>
     <string name="notif_net_subtext">You may have let this one go</string>
+    <string name="notif_net_prefix_cannot">Never rings: %1$s</string>
+    <string name="notif_net_subtext_cannot">Its hours and its moments never meet</string>
+    <string name="notif_net_fix">Fix it</string>
     <string name="notif_net_subtext_never">This never reached you</string>
     <string name="notif_net_subtext_waiting_arrive">Still waiting for you to reach %1$s</string>
     <string name="notif_net_subtext_waiting_leave">Still waiting for you to leave %1$s</string>
@@ -1208,6 +1214,9 @@
     <string name="vault_card_last">Last copy %1$s</string>
     <string name="vault_card_working">Copying…</string>
     <string name="vault_card_transient">The last attempt failed; it will try again</string>
+    <string name="vault_card_stale">Nothing copied since %1$s, and changes waiting</string>
+    <string name="vault_notice_stale_title">The backup has not gone through</string>
+    <string name="vault_notice_stale_text">Nothing has been copied since %1$s, and there are changes waiting. Open the backup to see why.</string>
     <string name="vault_card_attention_auth">Stopped: GitHub refused the token</string>
     <string name="vault_card_attention_repo">Stopped: the repository is gone</string>
     <string name="vault_card_attention_conflict">Stopped: another phone wrote the copy</string>
@@ -1383,6 +1392,7 @@
     <string name="settings_updates_wifi_hint">The app is about fifty megabytes, and an update downloads all of it. With this on, checks and downloads wait for wifi; «Check now» goes over whatever there is, because you asked for it.</string>
     <string name="home_backup_working">Making the encrypted copy…</string>
     <string name="home_backup_done">Copy made</string>
+    <string name="home_backup_stale">Changes waiting, and the copy is not going through</string>
     <plurals name="home_backup_pending">
         <item quantity="one">%1$d change waiting to be copied. Tap to copy now.</item>
         <item quantity="other">%1$d changes waiting to be copied. Tap to copy now.</item>
@@ -1458,6 +1468,19 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_122_0">
+
+        <item>«See» on a locked phone now asks to unlock first, and the reminder stays on the alert until that goes through. It used to take the alert away and leave you looking at the lock screen.</item>
+
+        <item>A «done» can be taken back from the two places that had no way back: the alert screen and the notification. It was a routine\'s alone; now it is any reminder, and the card carries the row it would put back — for ten minutes, after which «Hechos» is where an undo belongs.</item>
+
+        <item>The safety net\'s cards now say what they know and offer what they are for. One about a reminder that can never ring says so, and takes you to its form; one waiting at a place offers to lift the wait, which until now lived only in Home\'s long-press menu.</item>
+
+        <item>The backup says when it has stopped going through. A network failure is retried in silence, so changes could wait for weeks with nothing but a line inside a folded group to say so: now the row asks for attention, the disc on Home becomes a warning, and one quiet card says since when.</item>
+
+        <item>In a reminder\'s history, «not yet» no longer reads as «put off». Nothing was postponed, and the line said there was.</item>
+
+    </string-array>
     <string-array name="whats_new_0_121_0">
 
         <item>When a new version has downloaded and is waiting to be installed, a small green arrow now sits on the cog beside the name on Home, and on the Updates row in Settings even while it is folded — so an update no longer waits unseen until you happen to open Settings.</item>

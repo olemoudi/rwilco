@@ -72,6 +72,18 @@ class ReminderRepository(
         for (contact in contacts) dao.setFollowedCadence(contact.id, ReminderCodec.encodeRecurrence(contact.recurrence))
     }
 
+    /**
+     * The row exactly as stored — the snapshot a "hecho" can be undone by.
+     *
+     * A "hecho" writes nine columns in one statement ([ReminderDao.dealtWith]) and the count's
+     * anchor is one of them, so nothing short of the whole row puts it back; this is what the
+     * alert and the shade carry in their "deshacer".
+     */
+    suspend fun rowOf(id: String): ReminderEntity? = dao.get(id)
+
+    /** That snapshot put back, column for column. */
+    suspend fun restoreRow(row: ReminderEntity) = dao.upsert(row)
+
     /** Upsert as given; the caller decides `updatedAt`. */
     suspend fun save(reminder: Reminder) = dao.upsert(reminder.toEntity())
 

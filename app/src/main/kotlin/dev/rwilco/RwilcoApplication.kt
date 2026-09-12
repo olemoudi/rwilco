@@ -279,6 +279,7 @@ class RwilcoApplication : Application() {
         dbVersion = RwilcoDatabase.VERSION,
         onAttention = { VaultNotifications.notifyAttention(this, it) },
         onResolved = { VaultNotifications.cancel(this) },
+        onStale = { since -> VaultNotifications.notifyStale(this, since) },
         log = { Log.i("RwilcoVault", it) },
     )
 

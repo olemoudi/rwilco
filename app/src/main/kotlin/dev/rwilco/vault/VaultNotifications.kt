@@ -9,6 +9,10 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import dev.rwilco.MainActivity
 import dev.rwilco.R
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 /**
  * The one thing the backup says out loud: that it has stopped and why. Low importance, silent,
@@ -27,6 +31,27 @@ object VaultNotifications {
             VaultOutcome.CONFLICT -> R.string.vault_notice_conflict_title to R.string.vault_notice_conflict_text
             else -> return
         }
+        post(context, context.getString(title), context.getString(text))
+    }
+
+    /**
+     * Nothing has gone through for a long time and changes are waiting — which no outcome says,
+     * because the one this happens under (a network failure) is the one the vault retries in
+     * silence. On the same id as the rest, so it replaces rather than piles on, and the next copy
+     * that lands takes it down with everything else ([cancel]).
+     *
+     * [since] is when the remote last had this phone's data.
+     */
+    fun notifyStale(context: Context, since: Instant) {
+        val stamp = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).format(since.atZone(ZoneId.systemDefault()))
+        post(
+            context,
+            context.getString(R.string.vault_notice_stale_title),
+            context.getString(R.string.vault_notice_stale_text, stamp),
+        )
+    }
+
+    private fun post(context: Context, title: String, text: String) {
         val open = Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
             .putExtra(MainActivity.EXTRA_DESTINATION, MainActivity.DESTINATION_BACKUP)
@@ -40,9 +65,9 @@ object VaultNotifications {
         )
         val notification = NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(context.getString(title))
-            .setContentText(context.getString(text))
-            .setStyle(NotificationCompat.BigTextStyle().bigText(context.getString(text)))
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setContentIntent(tap)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)

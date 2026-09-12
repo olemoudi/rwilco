@@ -32,6 +32,8 @@ import dev.rwilco.model.Snooze
 import dev.rwilco.model.VibrationPattern
 import dev.rwilco.model.key
 import dev.rwilco.model.notificationPattern
+import dev.rwilco.data.ReminderEntity
+import dev.rwilco.model.ReminderCodec
 import dev.rwilco.ui.theme.AMBER_ARGB
 import androidx.compose.ui.graphics.toArgb
 import dev.rwilco.ui.theme.routineColor
@@ -107,6 +109,20 @@ object AlertNotifications {
     /** The routines' colour as the shade shows it: the light scheme's, which reads on either system surface. */
     private val ROUTINE_ARGB: Int = routineColor(dark = false).toArgb()
     private const val SUMMARY_ID = 1
+
+    /**
+     * How long a "deshacer" card stays. Long enough to catch a thumb that went where it did not
+     * mean to, short enough that the shade is not carrying yesterday's answers; past it the
+     * reminder is still in "Hechos", which is where an undo an hour later belongs.
+     */
+    private const val UNDO_NOTICE_MS = 10 * 60_000L
+
+    /**
+     * The most row a "deshacer" button will carry. Extras cross a binder with a budget for the
+     * whole transaction, and one very long note with a great many rules is not worth a
+     * TransactionTooLargeException: past this the card is posted without the button.
+     */
+    private const val MOST_UNDO_CHARS = 8_000
     // v2: every alert channel carries alarm audio attributes, silent ones included, and the
     // live alert is CATEGORY_ALARM — which is what lets Do Not Disturb tell an alarm from a chat.
     private const val VERSION = "v2"
@@ -329,33 +345,67 @@ object AlertNotifications {
      */
     fun resetNotice(context: Context, reminder: Reminder, place: Trigger.Location, previous: Instant?) {
         val doorRes = if (place.presence == Presence.INSIDE) R.string.notif_reset_arrive else R.string.notif_reset_leave
-        undoableNotice(context, reminder, previous, context.getString(R.string.notif_reset_title, reminder.text), context.getString(doorRes, place.label))
-    }
-
-    /**
-     * A routine's "hecho" given from the shade — "sí, ahora" on a question, "hecho" on the ring
-     * — said back with "deshacer", the way a place's own "done" is. A mis-tap in the shade
-     * moved a three-week count for good, and the shade was the one door with no way back
-     * (the routines screen has its snackbar, the launcher refuses to mark done at all).
-     */
-    fun doneNotice(context: Context, reminder: Reminder, previous: Instant?) {
-        // «Hecha: Ana» is a word about a chore; somebody spoken to is said as that.
-        val title = context.getString(if (reminder.isContact) R.string.notif_contact_done_title else R.string.notif_done_title, reminder.text)
-        undoableNotice(context, reminder, previous, title, context.getString(R.string.notif_done_body))
-    }
-
-    /** The mute card with "deshacer" on the net's channel; [previous] is where the count goes back to. */
-    private fun undoableNotice(context: Context, reminder: Reminder, previous: Instant?, title: String, body: String) {
-        ensureQuietChannels(context)
         val undo = Intent(context, AlertActionReceiver::class.java)
             .setAction(AlertActionReceiver.ACTION_UNDO_RESET)
             .setData(ReminderScheduler.reminderUri(reminder.id))
             .putExtra(AlertActionReceiver.EXTRA_PREVIOUS, previous?.toEpochMilli() ?: -1L)
+        undoableNotice(
+            context,
+            reminder,
+            undo,
+            context.getString(R.string.notif_reset_title, reminder.text),
+            context.getString(doorRes, place.label),
+        )
+    }
+
+    /**
+     * A "hecho" given where there is no snackbar to take it back with — the alert screen and the
+     * shade — said back with "deshacer".
+     *
+     * It used to be a routine's alone, on the reasoning that what a routine's "hecho" moves is a
+     * count; but a mis-held thumb on the alert at three in the morning finishes a one-off just as
+     * thoroughly, and those two doors are exactly the two with no way back (Home and the routines
+     * screen have their snackbars, the launcher refuses to mark anything done at all).
+     *
+     * [row] is the row as it stood a moment before, carried in the button: a "hecho" writes nine
+     * columns in one statement and the anchor is one of them, so the whole row is the only honest
+     * undo — the same one Home's own puts back. A row too long to carry is posted without the
+     * button rather than risking the binder: the word still lands, and "Hechos" still has it.
+     */
+    fun doneNotice(context: Context, reminder: Reminder, row: ReminderEntity?) {
+        val snapshot = row
+            ?.let { runCatching { ReminderCodec.json.encodeToString(ReminderEntity.serializer(), it) }.getOrNull() }
+            ?.takeIf { it.length <= MOST_UNDO_CHARS }
+        val undo = snapshot?.let {
+            Intent(context, AlertActionReceiver::class.java)
+                .setAction(AlertActionReceiver.ACTION_UNDO_DONE)
+                .setData(ReminderScheduler.reminderUri(reminder.id))
+                .putExtra(AlertActionReceiver.EXTRA_ROW, it)
+        }
+        // «Hecha: Ana» is a word about a chore; somebody spoken to is said as that, and a plain
+        // reminder is neither a chore whose count restarts nor a person.
+        val title = when {
+            reminder.isContact -> context.getString(R.string.notif_contact_done_title, reminder.text)
+            reminder.isRoutine -> context.getString(R.string.notif_done_title, reminder.text)
+            else -> context.getString(R.string.notif_done_title_plain, reminder.text)
+        }
+        val body = context.getString(if (reminder.isRoutine) R.string.notif_done_body else R.string.notif_done_body_plain)
+        undoableNotice(context, reminder, undo, title, body)
+    }
+
+    /** The mute card with "deshacer" on the net's channel; [undo] is what the button does. */
+    private fun undoableNotice(context: Context, reminder: Reminder, undo: Intent?, title: String, body: String) {
+        ensureQuietChannels(context)
         val builder = NotificationCompat.Builder(context, CHANNEL_NET)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(body)
-            .setContentIntent(routinesIntent(context, resetNotificationId(reminder.id), reminder.id))
+            // A routine's home is its list; anything else is its own form, which is where
+            // somebody who did not mean to tick it off is going anyway.
+            .setContentIntent(
+                if (reminder.isRoutine) routinesIntent(context, resetNotificationId(reminder.id), reminder.id)
+                else editorIntent(context, resetNotificationId(reminder.id), reminder.id),
+            )
             .setAutoCancel(true)
             .setSilent(true)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
@@ -363,11 +413,31 @@ object AlertNotifications {
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setGroup(BUNDLE)
             .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
-            .setColor(ROUTINE_ARGB)
-            .addAction(0, context.getString(R.string.common_undo), PendingIntent.getBroadcast(context, 0, undo, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+            // Long enough to notice a mis-tap, short enough that the shade is not carrying
+            // yesterday's answers. It used to stay until it was swiped, which for a card that
+            // says "done" is a card saying nothing anybody still needs.
+            .setTimeoutAfter(UNDO_NOTICE_MS)
+            .setColor(if (reminder.isRoutine) ROUTINE_ARGB else AMBER_ARGB)
+        if (undo != null) {
+            builder.addAction(
+                0,
+                context.getString(R.string.common_undo),
+                PendingIntent.getBroadcast(context, 0, undo, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE),
+            )
+        }
         if (reminder.tags.isNotEmpty()) builder.setSubText(reminder.tags.joinToString(context.getString(R.string.common_separator)))
         runCatching { NotificationManagerCompat.from(context).notify(resetNotificationId(reminder.id), builder.build()) }
     }
+
+    /** The reminder's own form, for a card whose answer is to change the thing: [requestCode] tells them apart. */
+    private fun editorIntent(context: Context, requestCode: Int, id: String): PendingIntent = PendingIntent.getActivity(
+        context,
+        requestCode,
+        Intent(context, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            .putExtra(MainActivity.EXTRA_DESTINATION, MainActivity.reminderDestination(id)),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
 
     /** "Todavía no": the question goes, and nothing is written. */
     fun cancelAsk(context: Context, reminderId: String) {
@@ -483,7 +553,15 @@ object AlertNotifications {
         // ring that got away, the question is what the ring was for, and a routine's one word
         // from the net is the last thing it will say about that ring — it should say both.
         val words = if (reminder.isRoutine) context.getString(R.string.notif_routine_question, reminder.text) else reminder.text
-        val title = if (nudge?.saysItGotAway == true) context.getString(R.string.notif_net_prefix, words) else words
+        // And the one word the net has that is not about a ring at all: a reminder whose hours and
+        // whose moments never meet has not got away — it cannot arrive. That is a different
+        // sentence, and it has to be a different first word, or the card the app is most sure
+        // about is the one that reads like every other.
+        val title = when {
+            nudge?.saysItGotAway == true -> context.getString(R.string.notif_net_prefix, words)
+            nudge == NetWord.CANNOT_RING -> context.getString(R.string.notif_net_prefix_cannot, words)
+            else -> words
+        }
         val builder = NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
@@ -524,14 +602,32 @@ object AlertNotifications {
             )
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .addAction(0, context.getString(R.string.alert_done), actionIntent(context, reminder.id, AlertActionReceiver.ACTION_DONE, null))
-        // Three is what a notification shows, so two snoozes — which two is a setting; the rest
-        // of the offers are on the alert screen, which the banner opens.
-        for (snooze in snoozes.take(NOTIFICATION_SNOOZES)) {
-            builder.addAction(
+        // Three is what a notification shows, so two more — and which two depends on what this
+        // card is. **A word from the net about a reminder that cannot arrive has nothing to
+        // postpone**: its hours and its moments never meet, or its moment came and went while a
+        // fence was shut, and ten minutes more of the same is the one answer that cannot help
+        // either of them. What they need is the form. One still waiting at a place needs the wait
+        // lifted, which until now was only in Home's long-press menu — the tap opened a screen
+        // where none of the offers undid the wait. Everything else gets the snoozes, which two
+        // being a setting; the rest of the offers are on the alert screen, which the banner opens.
+        when (nudge) {
+            NetWord.CANNOT_RING, NetWord.NEVER_RANG -> builder.addAction(
                 0,
-                snoozeLabel(context, snooze, customMinutes),
-                actionIntent(context, reminder.id, AlertActionReceiver.ACTION_SNOOZE, snooze),
+                context.getString(R.string.notif_net_fix),
+                editorIntent(context, nudgeNotificationId(reminder.id), reminder.id),
             )
+            NetWord.WAITING -> builder.addAction(
+                0,
+                context.getString(R.string.home_cancel_snooze),
+                actionIntent(context, reminder.id, AlertActionReceiver.ACTION_UNSNOOZE, null),
+            )
+            NetWord.LET_GO, null -> for (snooze in snoozes.take(NOTIFICATION_SNOOZES)) {
+                builder.addAction(
+                    0,
+                    snoozeLabel(context, snooze, customMinutes),
+                    actionIntent(context, reminder.id, AlertActionReceiver.ACTION_SNOOZE, snooze),
+                )
+            }
         }
         // Collapsed, a notification shows one line under the title, and the reason is what that
         // line is for. The tags are the reminder's own filing and go beside the app's name, where
@@ -544,6 +640,10 @@ object AlertNotifications {
             // The other way one gets away, and a different thing to be told: this one never
             // reached you at all, because its moment came while something was shut.
             nudge == NetWord.NEVER_RANG -> builder.setSubText(context.getString(R.string.notif_net_subtext_never))
+            // And the one the app can prove: not late, not waiting — never. Its card used to say
+            // nothing at all here, which made the only reminder the app is certain about the one
+            // it explained least.
+            nudge == NetWord.CANNOT_RING -> builder.setSubText(context.getString(R.string.notif_net_subtext_cannot))
             // Not away at all: put off until a place whose crossing has been a long time
             // coming. Which way it waits decides the sentence, and the label is the person's
             // own word for the place ("here" included).

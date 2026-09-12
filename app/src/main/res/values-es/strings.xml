@@ -134,6 +134,8 @@
     <string name="editor_warning_not_a_question">Bajo una rutina esto no es una pregunta: pregunta una vez, o nunca.</string>
     <string name="notif_done_title">Hecha: %1$s</string>
     <string name="notif_done_body">La cuenta vuelve a empezar desde ahora.</string>
+    <string name="notif_done_title_plain">Hecho: %1$s</string>
+    <string name="notif_done_body_plain">Marcado como hecho.</string>
     <plurals name="history_routine_done">
         <item quantity="one">hecha una vez</item>
         <item quantity="other">hecha %d veces</item>
@@ -524,6 +526,7 @@
     <string name="history_unreset">se deshizo el hecho del lugar</string>
     <string name="history_skipped">saltada la siguiente</string>
     <string name="history_snoozed">pospuesto</string>
+    <string name="history_not_yet">dijo que todavía no</string>
     <string name="history_snoozed_until">pospuesto hasta %1$s</string>
     <string name="history_unticked">se deshizo</string>
     <string name="alert_snooze_all">Posponer todos</string>
@@ -637,6 +640,9 @@
     <string name="notif_reset_arrive">Contada como hecha al llegar a %1$s</string>
     <string name="notif_net_prefix">ICYMI: %1$s</string>
     <string name="notif_net_subtext">Puede que se te haya pasado</string>
+    <string name="notif_net_prefix_cannot">No suena nunca: %1$s</string>
+    <string name="notif_net_subtext_cannot">Sus horas y sus momentos no se cruzan</string>
+    <string name="notif_net_fix">Arreglarlo</string>
     <string name="notif_net_subtext_never">Esto no llegó a sonar</string>
     <string name="notif_net_subtext_waiting_arrive">Sigue esperando a que llegues a %1$s</string>
     <string name="notif_net_subtext_waiting_leave">Sigue esperando a que salgas de %1$s</string>
@@ -1193,6 +1199,9 @@
     <string name="vault_card_last">Última copia %1$s</string>
     <string name="vault_card_working">Copiando…</string>
     <string name="vault_card_transient">El último intento falló; volverá a intentarlo</string>
+    <string name="vault_card_stale">Sin copiar desde %1$s, y hay cambios esperando</string>
+    <string name="vault_notice_stale_title">La copia no está saliendo</string>
+    <string name="vault_notice_stale_text">No se copia nada desde %1$s y hay cambios esperando. Abre la copia de seguridad para ver por qué.</string>
     <string name="vault_card_attention_auth">Detenida: GitHub rechazó el token</string>
     <string name="vault_card_attention_repo">Detenida: el repositorio no está</string>
     <string name="vault_card_attention_conflict">Detenida: otro teléfono escribió la copia</string>
@@ -1368,6 +1377,7 @@
     <string name="settings_updates_wifi_hint">La app son unos cincuenta megas, y una actualización se los descarga enteros. Con esto activado las comprobaciones y las descargas esperan al wifi; «Buscar ahora» sale por donde haya, porque lo has pedido tú.</string>
     <string name="home_backup_working">Haciendo la copia cifrada…</string>
     <string name="home_backup_done">Copia hecha</string>
+    <string name="home_backup_stale">Cambios esperando, y la copia no está saliendo</string>
     <plurals name="home_backup_pending">
         <item quantity="one">%1$d cambio esperando a copiarse. Toca para copiar ahora.</item>
         <item quantity="other">%1$d cambios esperando a copiarse. Toca para copiar ahora.</item>
@@ -1443,6 +1453,19 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_122_0">
+
+        <item>«Ver» con el móvil bloqueado pide ahora desbloquear primero, y el recordatorio se queda en el aviso hasta que lo haces. Antes quitaba el aviso y te dejaba mirando la pantalla de bloqueo.</item>
+
+        <item>Un «hecho» se puede deshacer desde los dos sitios que no tenían vuelta atrás: la pantalla de aviso y la notificación. Era cosa solo de las rutinas; ahora vale para cualquier recordatorio, y la tarjeta lleva encima la fila que devolvería — durante diez minutos, pasados los cuales el sitio para deshacer es «Hechos».</item>
+
+        <item>Las tarjetas de la red de seguridad dicen lo que saben y ofrecen lo que hace falta. La de un recordatorio que no puede sonar nunca lo dice y te lleva a su formulario; la de uno que espera en un lugar ofrece quitar esa espera, que hasta ahora solo estaba en el menú de mantener pulsado en Home.</item>
+
+        <item>La copia de seguridad avisa cuando ha dejado de salir. Un fallo de red se reintenta en silencio, así que los cambios podían esperar semanas sin más señal que una línea dentro de un grupo plegado: ahora la fila pide atención, el disco de Home pasa a ser un aviso y una tarjeta discreta dice desde cuándo.</item>
+
+        <item>En el historial de un recordatorio, «todavía no» ya no se lee como «pospuesto». No se pospuso nada, y la línea decía que sí.</item>
+
+    </string-array>
     <string-array name="whats_new_0_121_0">
 
         <item>Cuando hay una versión nueva descargada esperando a instalarse, aparece una flechita verde sobre la rueda que hay junto al nombre en Home, y sobre la fila de Actualizaciones en Ajustes aunque esté plegada: una actualización ya no espera sin que la veas hasta que abres Ajustes por casualidad.</item>

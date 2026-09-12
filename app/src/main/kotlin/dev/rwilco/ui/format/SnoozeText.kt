@@ -3,10 +3,13 @@ package dev.rwilco.ui.format
 import android.content.Context
 import androidx.compose.runtime.Composable
 import dev.rwilco.R
+import dev.rwilco.alarm.LATER_DETAIL
 import dev.rwilco.model.Presence
 import dev.rwilco.model.Snooze
 import dev.rwilco.model.SnoozePlace
 import dev.rwilco.model.Trigger
+import dev.rwilco.model.snoozeDetailOf
+import java.time.Instant
 
 /**
  * What each snooze offer is called. The words are the person's, not the duration's — "mañana
@@ -40,6 +43,24 @@ fun placeOfferLabel(words: Words, offer: SnoozePlace): String = when (offer) {
 
 @Composable
 fun placeOfferLabel(offer: SnoozePlace): String = placeOfferLabel(rememberWords(), offer)
+
+/**
+ * Which word a line of history filed as a snooze gets: the answer somebody gave, not the
+ * machinery under it.
+ *
+ * "Todavía no" to a routine's question is written down as a snooze with [LATER_DETAIL] for its
+ * detail — there is nothing else to write it as, and an answer nobody wrote down was the same
+ * nothing as never having seen the card. But it postponed nothing, and the history said it had.
+ */
+enum class SnoozeWord { NOT_YET, UNTIL_PLACE, UNTIL_MOMENT, PLAIN }
+
+fun snoozeWordOf(detail: String?): SnoozeWord = when {
+    detail == null -> SnoozeWord.PLAIN
+    detail == LATER_DETAIL -> SnoozeWord.NOT_YET
+    snoozeDetailOf(detail) != null -> SnoozeWord.UNTIL_PLACE
+    runCatching { Instant.parse(detail) }.isSuccess -> SnoozeWord.UNTIL_MOMENT
+    else -> SnoozeWord.PLAIN
+}
 
 /** "llegar a Casa" · "salir de aquí": what follows "pospuesto hasta" on a card, a line of history, a snackbar. */
 fun snoozePlacePhrase(words: Words, place: Trigger.Location): String =

@@ -18,9 +18,11 @@ import androidx.compose.ui.text.style.TextAlign
 import dev.rwilco.R
 import dev.rwilco.data.FiringEvent
 import dev.rwilco.data.FiringKind
+import dev.rwilco.ui.format.SnoozeWord
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.dayWord
 import dev.rwilco.ui.format.rememberWords
+import dev.rwilco.ui.format.snoozeWordOf
 import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
 import java.time.Instant
@@ -100,18 +102,29 @@ private fun eventWords(event: FiringEvent, today: LocalDate, zone: ZoneId): Stri
                 else -> stringResource(R.string.history_reset_leave, place.second)
             }
         }
-        FiringKind.SNOOZED -> {
+        FiringKind.SNOOZED -> when (snoozeWordOf(event.detail)) {
+            // A routine answered "todavía no" is filed as a snooze because there is nothing else
+            // to file it as — but nothing was postponed, and this line used to say there was.
+            SnoozeWord.NOT_YET -> stringResource(R.string.history_not_yet)
             // "Until" is the part worth saying: which offer it was matters less than when it came back.
-            val place = event.detail?.let(::snoozeDetailOf)
-            val until = event.detail?.let { runCatching { Instant.parse(it) }.getOrNull() }?.atZone(zone)
-            when {
-                place != null -> stringResource(
+            SnoozeWord.UNTIL_PLACE -> {
+                val place = event.detail?.let(::snoozeDetailOf)
+                stringResource(
                     R.string.history_snoozed_until,
-                    stringResource(if (place.first == Presence.INSIDE) R.string.snooze_until_arrive else R.string.snooze_until_leave, place.second),
+                    stringResource(
+                        if (place?.first == Presence.INSIDE) R.string.snooze_until_arrive else R.string.snooze_until_leave,
+                        place?.second.orEmpty(),
+                    ),
                 )
-                until == null -> stringResource(R.string.history_snoozed)
-                else -> stringResource(R.string.history_snoozed_until, dayWord(words, until.toLocalDate(), today) + " " + TimeText.time(until.toLocalTime(), words.is24h, words.locale))
             }
+            SnoozeWord.UNTIL_MOMENT -> {
+                val until = Instant.parse(event.detail).atZone(zone)
+                stringResource(
+                    R.string.history_snoozed_until,
+                    dayWord(words, until.toLocalDate(), today) + " " + TimeText.time(until.toLocalTime(), words.is24h, words.locale),
+                )
+            }
+            SnoozeWord.PLAIN -> stringResource(R.string.history_snoozed)
         }
     }
 }

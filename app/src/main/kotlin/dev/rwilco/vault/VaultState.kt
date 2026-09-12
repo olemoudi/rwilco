@@ -61,6 +61,14 @@ data class VaultState(
     val lastAttemptSha: String? = null,
     val lastOutcome: VaultOutcome? = null,
     @Serializable(with = InstantSerializer::class) val lastOutcomeAt: Instant? = null,
+    /**
+     * When it was last said out loud that the copy has stopped going through.
+     *
+     * Not a record of anything — [lastRunAt] is when the remote last had this phone's data — but
+     * the thing that keeps the saying to once per staleness window, so a fortnight of failing runs
+     * is a word every few days instead of one every time the worker wakes up.
+     */
+    @Serializable(with = InstantSerializer::class) val lastStaleNoticeAt: Instant? = null,
 ) {
     val hasKey: Boolean get() = key.isNotEmpty() && salt.isNotEmpty()
 

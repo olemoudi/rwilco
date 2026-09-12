@@ -6,7 +6,8 @@ import android.content.Intent
 import android.util.Log
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.data.FiringKind
-import dev.rwilco.model.isRoutine
+import dev.rwilco.data.ReminderEntity
+import dev.rwilco.model.ReminderCodec
 import dev.rwilco.model.Snooze
 import dev.rwilco.notify.AlertNotifications
 import java.time.Instant
@@ -25,14 +26,23 @@ class AlertActionReceiver : BroadcastReceiver() {
                 // system finishes the receiver itself, and a finish() of ours on top throws.
                 val done = withTimeoutOrNull(BUDGET_MS) {
                     when (intent.action) {
-                        ACTION_DONE -> {
-                            // A routine's "hecho" from the shade can be taken back: the count
-                            // it moved is said back with "deshacer" (AlertNotifications.doneNotice).
-                            val before = app.repository.get(id)
-                            app.firing.dismiss(id)
-                            if (before != null && before.isRoutine) AlertNotifications.doneNotice(context, before, before.lastDealtAt)
+                        // Every "hecho" from the shade can be taken back, not only a routine's:
+                        // the notice is posted by the firing itself, which is where the row it
+                        // would be taken back to is read (ReminderFiring.dismiss).
+                        ACTION_DONE -> app.firing.dismiss(id, notice = true)
+                        ACTION_UNDO_DONE -> {
+                            val row = intent.getStringExtra(EXTRA_ROW)
+                                ?.let { runCatching { ReminderCodec.json.decodeFromString(ReminderEntity.serializer(), it) }.getOrNull() }
+                            if (row != null) app.firing.undoDismiss(id, row)
                         }
                         ACTION_PUT_OFF_WEEK -> app.firing.putOffContact(id)
+                        // "Quitar el posponer" on the net's word about a wait at a place: the one
+                        // answer that card needs, and until now the only door to it was Home's
+                        // long-press menu. The card goes with the wait it was about.
+                        ACTION_UNSNOOZE -> {
+                            AlertNotifications.cancel(context, id)
+                            app.firing.unsnooze(id)
+                        }
                         ACTION_SNOOZE -> {
                             val snooze = intent.getStringExtra(EXTRA_SNOOZE)
                                 ?.let { name -> Snooze.entries.firstOrNull { it.name == name } }
@@ -68,10 +78,15 @@ class AlertActionReceiver : BroadcastReceiver() {
         const val ACTION_PUT_OFF_WEEK = "dev.rwilco.alert.PUT_OFF_WEEK"
         /** "Todavía no" on a routine's question. */
         const val ACTION_LATER = "dev.rwilco.alert.LATER"
+        /** "Quitar el posponer" on the net's word about a reminder waiting at a place. */
+        const val ACTION_UNSNOOZE = "dev.rwilco.alert.UNSNOOZE"
         /** "Deshacer" on a routine counted as done by a place; [EXTRA_PREVIOUS] is where the count goes back to. */
         const val ACTION_UNDO_RESET = "dev.rwilco.alert.UNDO_RESET"
+        /** "Deshacer" on a "hecho"; [EXTRA_ROW] is the row as it stood the moment before it. */
+        const val ACTION_UNDO_DONE = "dev.rwilco.alert.UNDO_DONE"
         const val EXTRA_SNOOZE = "snooze"
         const val EXTRA_PREVIOUS = "previous"
+        const val EXTRA_ROW = "row"
         private const val BUDGET_MS = 9_000L
     }
 }

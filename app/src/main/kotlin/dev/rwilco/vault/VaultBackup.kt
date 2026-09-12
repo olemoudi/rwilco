@@ -1,6 +1,9 @@
 package dev.rwilco.vault
 
 import dev.rwilco.data.ReminderEntity
+import dev.rwilco.model.backupFreshness
+import dev.rwilco.model.backupNoticeDue
+import java.time.Instant
 import kotlinx.coroutines.sync.Mutex
 import java.time.Clock
 
@@ -35,6 +38,13 @@ class VaultBackup(
     private val onAttention: (VaultOutcome) -> Unit = {},
     /** The last upload went through: whatever was being said can come down. */
     private val onResolved: () -> Unit = {},
+    /**
+     * Nothing has gone through for a long time and changes are waiting. Not an outcome — the one
+     * this happens under is a network failure, which every single run is right to retry in
+     * silence; what is worth saying is that the silence has gone on. [Instant] is when the remote
+     * last had this phone's data.
+     */
+    private val onStale: (Instant) -> Unit = {},
     private val log: (String) -> Unit = {},
 ) {
 
@@ -164,6 +174,16 @@ class VaultBackup(
             if (!it.enabled) it
             else it.copy(lastOutcome = outcome, lastOutcomeAt = now, lastRunAt = if (ran) now else it.lastRunAt)
         }
+        if (ran) return
+        // A run that came to nothing leaves changes waiting — it only got this far because the
+        // fingerprint said there were some — so this is the one place that can see how long they
+        // have been waiting. Said once per window, and written down so it stays once.
+        val state = store.read()
+        if (!state.enabled) return
+        val freshness = backupFreshness(state.enabled, state.lastRunAt, pending = 1, cadence = state.cadence, now = now)
+        if (!backupNoticeDue(freshness, state.lastStaleNoticeAt, state.cadence, now)) return
+        store.update { if (it.enabled) it.copy(lastStaleNoticeAt = now) else it }
+        onStale(state.lastRunAt ?: now)
     }
 
     companion object {

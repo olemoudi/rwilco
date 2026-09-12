@@ -36,6 +36,50 @@ fun nextBackupDue(lastRunAt: Instant?, cadence: BackupCadence, now: Instant): In
     return if (due.isBefore(now)) now else due
 }
 
+/** How the copy is standing: turned off, never made, keeping up, or behind with changes waiting. */
+enum class BackupFreshness { OFF, NEVER, FRESH, STALE }
+
+/** Nothing counts as behind before this, whatever the cadence: a nag is not a backup. */
+val BACKUP_STALE_FLOOR: Duration = Duration.ofHours(48)
+
+/** How long changes may go on waiting before the copy is worth saying something about. */
+fun backupStaleAfter(cadence: BackupCadence): Duration = maxOf(cadence.span.multipliedBy(3), BACKUP_STALE_FLOOR)
+
+/**
+ * Whether the copy is keeping up — **asked of what is waiting, not of the copy's age**.
+ *
+ * A copy made a month ago with nothing written since is not a problem: the remote has everything,
+ * which is what the fingerprint in `pendingChanges` already answers. What is a problem is a phone
+ * carrying changes it has not managed to send, which is the shape a run failing on the network for
+ * weeks takes — and the shape nothing said out loud, because only three outcomes raise attention
+ * and a network failure is not one of them.
+ */
+fun backupFreshness(
+    enabled: Boolean,
+    lastRunAt: Instant?,
+    pending: Int,
+    cadence: BackupCadence,
+    now: Instant,
+): BackupFreshness = when {
+    !enabled -> BackupFreshness.OFF
+    lastRunAt == null -> BackupFreshness.NEVER
+    pending <= 0 -> BackupFreshness.FRESH
+    now > lastRunAt.plus(backupStaleAfter(cadence)) -> BackupFreshness.STALE
+    else -> BackupFreshness.FRESH
+}
+
+/**
+ * Whether being behind is worth saying out loud again: once per staleness window, so a fortnight
+ * of failing runs is a word every few days and not one every time the worker wakes up.
+ */
+fun backupNoticeDue(
+    freshness: BackupFreshness,
+    lastNoticeAt: Instant?,
+    cadence: BackupCadence,
+    now: Instant,
+): Boolean = freshness == BackupFreshness.STALE &&
+    (lastNoticeAt == null || now > lastNoticeAt.plus(backupStaleAfter(cadence)))
+
 /** The wait from [now] until the next copy is due; zero when it is owed already. */
 fun backupDelay(lastRunAt: Instant?, cadence: BackupCadence, now: Instant): Duration {
     val due = nextBackupDue(lastRunAt, cadence, now)

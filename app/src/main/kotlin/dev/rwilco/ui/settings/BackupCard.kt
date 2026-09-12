@@ -10,6 +10,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
+import dev.rwilco.model.BackupFreshness
+import dev.rwilco.model.backupFreshness
+import dev.rwilco.ui.components.rememberNow
 import dev.rwilco.vault.VaultCenter
 import dev.rwilco.vault.VaultOutcome
 import dev.rwilco.vault.VaultState
@@ -29,12 +32,28 @@ fun BackupCard(onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val state by app.vaultStore.state.collectAsStateWithLifecycle(initialValue = null)
     val activity by VaultCenter.activity.collectAsStateWithLifecycle()
     val current = state
+    // **Behind, and nothing would have said so.** The failure this happens under is a network
+    // one, which every run is right to retry in silence — and the row went on reading "the last
+    // attempt failed; it will try again" for as long as that lasted, which could be a month.
+    // Asked of the state alone: a run that came to nothing left what it was carrying waiting,
+    // which is what `pending` means here, rather than hashing every reminder again for one line
+    // in a list (Home's badge has the real count and hands it the same question).
+    val now by rememberNow(60_000, app.clock)
+    val freshness = current?.let {
+        backupFreshness(
+            enabled = it.enabled,
+            lastRunAt = it.lastRunAt,
+            pending = if (it.lastOutcome == VaultOutcome.UPLOADED || it.lastOutcome == VaultOutcome.UP_TO_DATE) 0 else 1,
+            cadence = it.cadence,
+            now = now,
+        )
+    } ?: BackupFreshness.OFF
 
     SettingsLinkRow(
         title = stringResource(R.string.vault_card_title),
-        summary = if (current == null) "" else vaultStatusText(current, activity.working),
+        summary = if (current == null) "" else vaultStatusText(current, activity.working, freshness),
         icon = Icons.Outlined.Lock,
-        attention = current?.needsAttention == true,
+        attention = current?.needsAttention == true || freshness == BackupFreshness.STALE,
         // It sits in the index beside the folding groups, so it is set like one of them.
         topLevel = true,
         onClick = onOpen,
@@ -44,12 +63,20 @@ fun BackupCard(onOpen: () -> Unit, modifier: Modifier = Modifier) {
 
 /** Off / working / stopped and why / when the last copy was made. Shared by the row and the screen. */
 @Composable
-internal fun vaultStatusText(state: VaultState, working: Boolean): String = when {
+internal fun vaultStatusText(
+    state: VaultState,
+    working: Boolean,
+    freshness: BackupFreshness = BackupFreshness.FRESH,
+): String = when {
     !state.enabled -> stringResource(R.string.vault_card_off)
     working -> stringResource(R.string.vault_card_working)
     state.lastOutcome == VaultOutcome.AUTH -> stringResource(R.string.vault_card_attention_auth)
     state.lastOutcome == VaultOutcome.REPO_MISSING -> stringResource(R.string.vault_card_attention_repo)
     state.lastOutcome == VaultOutcome.CONFLICT -> stringResource(R.string.vault_card_attention_conflict)
+    // Before "the last attempt failed; it will try again", which is true and which somebody can
+    // read for a month without it ever meaning anything. This says how long it has been.
+    freshness == BackupFreshness.STALE && state.lastRunAt != null ->
+        stringResource(R.string.vault_card_stale, dateTimeText(state.lastRunAt))
     state.lastOutcome == VaultOutcome.TRANSIENT && state.lastUploadedAt == null -> stringResource(R.string.vault_card_transient)
     state.lastUploadedAt == null -> stringResource(R.string.vault_card_never)
     else -> stringResource(R.string.vault_card_last, dateTimeText(state.lastUploadedAt))
