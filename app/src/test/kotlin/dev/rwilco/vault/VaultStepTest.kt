@@ -25,6 +25,14 @@ class VaultStepTest {
     }
 
     @Test
+    fun `something that went to nothing is a collapse, and less of it is not`() {
+        assertTrue(wentEmpty(was = 312, now = 0))
+        assertFalse(wentEmpty(was = 312, now = 1), "a deletion is not a collapse")
+        assertFalse(wentEmpty(was = 0, now = 0))
+        assertFalse(wentEmpty(was = null, now = 0), "a copy that never carried this part says nothing about it")
+    }
+
+    @Test
     fun `a conflict whose remote is our own last attempt is ours`() {
         assertEquals(ConflictVerdict.OURS_LANDED, judgeConflict(remoteSha = "abc", lastAttemptSha = "abc"))
         assertEquals(ConflictVerdict.OTHER_WRITER, judgeConflict(remoteSha = "abc", lastAttemptSha = "def"))

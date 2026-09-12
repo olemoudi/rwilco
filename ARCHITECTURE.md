@@ -3146,6 +3146,31 @@ history is the backup's history for free — with a fine-grained token scoped to
   copy, and its KDoc says so. The Settings row reads "something is waiting" off the last outcome
   instead of hashing every reminder again for one line in a list; Home's badge has the real count
   and asks the same question with it.
+- **What it will not copy** (0.125.0, `wentEmpty`, pure and JVM-tested): a run decides what to send
+  by comparing fingerprints, and a fingerprint cannot tell a reminder deleted on purpose from every
+  reminder gone at once. Two things empty this phone without anybody asking — the database dropped
+  by `fallbackToDestructiveMigrationOnDowngrade` when an older build is installed by hand over a
+  newer one, and a settings file `ReplaceFileCorruptionHandler` replaced with an empty one because
+  it would not parse — and the next run would have copied that faithfully over the one copy that
+  still had everything. So the run stops before it seals anything: `VaultOutcome.COLLAPSED`,
+  `needsAttention`, a notice, and GitHub exactly as it was. What it compares against is
+  `lastUploadedRows` / `lastUploadedSettingsLength`, written down by each upload; null — a vault
+  that has not uploaded since these existed — says nothing, never "it was zero". **Only nothing,
+  never "less"**: zero is not somewhere ordinary use gets to (a reminder dealt with stays as a row,
+  the settings blob is rewritten on the first launch of every build), so there is no honest number
+  between "fewer" and "gone", and a fraction would only buy false alarms. The two ways on are the
+  conflict's: bring the copy here, or say it was a person who emptied it (`uploadAnyway`, which
+  forgets the two sizes so the next run has nothing left to refuse).
+- **The passphrase, asked of yourself**: the phone keeps the key and never the phrase, so the day
+  somebody found out whether they still knew it was the day it was the only way in. The Backup
+  screen derives what is typed with the vault's own salt and compares it to the key
+  (`checkPassphrase`, `MessageDigest.isEqual`): nothing is read, written or sent, and the token has
+  had its own rehearsal (`testConnection`) since the beginning.
+- **Off, or lost**: the vault's store is replaced by an empty one when its file will not parse —
+  the right trade, a screen that says the backup is off beats one that crashes — but an empty store
+  reads exactly like a backup nobody ever set up, and the copies stop with nobody told. A zero-byte
+  mark beside the undo copy (`files/vault/on`, written by `VaultStore.update`, deleted by `clear`)
+  outlives it: off *with* the mark is a loss, and the screen says so and offers the form.
 - **Versions**: `VAULT_SCHEMA` for the data, `VAULT_FORMAT` for the container; a newer either is
   refused. `VaultSchemaTest` freezes the row's column list and demands a fixture per data
   version, so a change that would make old vaults unreadable fails in CI (the rule is in

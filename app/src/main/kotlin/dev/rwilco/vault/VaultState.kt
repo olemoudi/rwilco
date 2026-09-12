@@ -17,6 +17,11 @@ enum class VaultOutcome {
     REPO_MISSING,
     /** Somebody else wrote the vault: the phone stopped rather than write over it. */
     CONFLICT,
+    /**
+     * What this phone holds went from something to nothing (see [wentEmpty]): the run stopped
+     * rather than copy the emptiness over a copy that still has everything.
+     */
+    COLLAPSED,
     /** Network or server trouble; the next run tries again. */
     TRANSIENT,
 }
@@ -55,6 +60,13 @@ data class VaultState(
     val lastUploadedBytes: Long? = null,
     /** The settings blob as it was in the last copy, for counting what has changed since. */
     val lastUploadedSettingsHash: String? = null,
+    /**
+     * How many rows and how many characters of settings the last copy carried — what [wentEmpty]
+     * compares against, so a phone that has lost everything does not copy that up. Null on a vault
+     * that has not uploaded since these were written down, which the guard reads as "say nothing".
+     */
+    val lastUploadedRows: Int? = null,
+    val lastUploadedSettingsLength: Int? = null,
     /** The blob sha the remote file had after our last successful write; what the next PUT replaces. */
     val remoteSha: String? = null,
     /** The blob sha of the bytes last sent, written down before sending (see [judgeConflict]). */
@@ -73,7 +85,8 @@ data class VaultState(
     val hasKey: Boolean get() = key.isNotEmpty() && salt.isNotEmpty()
 
     /** Something a run cannot fix by running again. */
-    val needsAttention: Boolean get() = lastOutcome == VaultOutcome.AUTH || lastOutcome == VaultOutcome.REPO_MISSING || lastOutcome == VaultOutcome.CONFLICT
+    val needsAttention: Boolean get() = lastOutcome == VaultOutcome.AUTH || lastOutcome == VaultOutcome.REPO_MISSING ||
+        lastOutcome == VaultOutcome.CONFLICT || lastOutcome == VaultOutcome.COLLAPSED
 
     fun keyBytes(): ByteArray = Base64.getDecoder().decode(key)
 

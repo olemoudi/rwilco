@@ -1327,6 +1327,8 @@
     <string name="vault_notice_repo_text">GitHub does not find the repository the backup writes to. Check its name in Settings › Backup.</string>
     <string name="vault_notice_conflict_title">Another phone wrote the backup</string>
     <string name="vault_notice_conflict_text">The copy on GitHub is not the one this phone last wrote, so it stopped rather than write over it. Choose in Settings › Backup which one to keep.</string>
+    <string name="vault_notice_collapsed_title">The backup stopped rather than empty the copy</string>
+    <string name="vault_notice_collapsed_text">This phone now has nothing where the last copy had something, so nothing was sent and the copy on GitHub is untouched. Open Settings › Backup.</string>
     <string name="vault_title">Backup</string>
     <string name="vault_card_title">Encrypted backup</string>
     <string name="vault_card_off">Off. Everything stays on this phone.</string>
@@ -1340,6 +1342,7 @@
     <string name="vault_card_attention_auth">Stopped: GitHub refused the token</string>
     <string name="vault_card_attention_repo">Stopped: the repository is gone</string>
     <string name="vault_card_attention_conflict">Stopped: another phone wrote the copy</string>
+    <string name="vault_card_attention_collapsed">Stopped: this phone went empty</string>
     <string name="vault_intro">An encrypted copy of your reminders, presets and places in a private GitHub repository of yours, made again every few hours — you choose how often. Everything is sealed with your passphrase before it leaves the phone: GitHub sees a file and its size, never a word of what is in it. The app keeps working without it.</string>
     <string name="vault_intro_warning">Nobody can recover the passphrase, Rwilco included. Without it, the copy is a locked box.</string>
     <string name="vault_field_repo">Repository</string>
@@ -1359,6 +1362,18 @@
     <string name="vault_conflict_body">The copy on GitHub is not the one this phone last wrote — another phone, or a restore, wrote it since. Nothing has been overwritten. Bring that copy here, or keep this phone\'s and replace it.</string>
     <string name="vault_conflict_take_remote">Bring the copy from GitHub here</string>
     <string name="vault_conflict_keep_phone">Keep this phone\'s, replace the copy</string>
+    <string name="vault_collapsed_body">The last copy had reminders, or settings, that are not on this phone any more — everything of one kind, not some of it. Nothing was sent: the copy on GitHub is exactly as it was, and every older one is still in the repository\'s history. If it is this phone that is wrong, bring that copy back. If you emptied it yourself, say so and the next copy carries it.</string>
+    <string name="vault_collapsed_upload_anyway">I emptied it; copy it anyway</string>
+    <string name="vault_check">Check the passphrase</string>
+    <string name="vault_check_hint">Nobody can recover it. This says whether you still know it, and changes nothing.</string>
+    <string name="vault_check_title">Do you still know it?</string>
+    <string name="vault_check_body">Type the passphrase this copy is sealed with. It is checked against the key on this phone: nothing is read, written or sent.</string>
+    <string name="vault_check_action">Check</string>
+    <string name="vault_check_ok">That is the passphrase.</string>
+    <string name="vault_check_wrong">That is not the passphrase this copy is sealed with.</string>
+    <string name="vault_lost_title">The backup\'s own settings were lost</string>
+    <string name="vault_lost_body">The backup was on, and the file holding its token and its key could not be read, so the phone replaced it with an empty one. Nothing has been copied since. The copy on GitHub is untouched: set it up again with the same repository and the same passphrase and this phone rejoins it.</string>
+    <string name="vault_lost_dismiss">Leave it off</string>
     <string name="vault_update_credentials">Change the repository or the token…</string>
     <string name="vault_update_credentials_title">Repository and token</string>
     <string name="vault_export">Export to a file</string>
@@ -1586,6 +1601,16 @@
         <item>A reminder with sound now goes to your headphones when you are wearing any, instead of out of the phone\'s speaker as an alarm otherwise would. It is a setting, in Sound, and it is worth turning off if your earbuds live in a drawer: a reminder played to nobody is a reminder missed.</item>
         <item>And it no longer stops your music. What was playing drops a few decibels and carries on underneath while the reminder sounds over it — the reminder is on the alarm channel and the music is not, so neither has to fight the other — and comes back by itself. It used to ask for the audio outright, which ended podcasts for a ten-second chime.</item>
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_125_0">
+
+        <item>The backup will not copy an emptiness up. It decided what to send by comparing content, which cannot tell a reminder you deleted from every reminder gone at once — so a phone that lost its database (installing an older build by hand drops it) or its settings (a file the system replaced because it would not parse) would have copied that faithfully over the one copy that still had everything. Now a run that finds nothing where the last copy had something stops, says so, and leaves GitHub as it was. Two ways on: bring the copy back, or say it was you who emptied it.</item>
+
+        <item>You can check the passphrase. Nobody can recover it, and until now the only day you found out whether you still knew it was the day it was the only way in. In Settings → Backup: it is checked against the key on this phone, and nothing is read, written or sent.</item>
+
+        <item>If the backup\'s own settings are lost — the file with its token and its key would not be read — the screen says so instead of looking like a backup that was never set up. It had been the one failure that cost everything by being quiet.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_124_0">

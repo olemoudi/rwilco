@@ -26,6 +26,8 @@ import dev.rwilco.vault.VaultTransportException
 import dev.rwilco.vault.VaultWorker
 import dev.rwilco.vault.fingerprint
 import dev.rwilco.vault.isRepoName
+import dev.rwilco.vault.settingsHash
+import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -67,6 +69,8 @@ sealed interface BackupPhase {
     data class Confirm(val opened: OpenedVault, val source: RestoreSource) : BackupPhase
     /** A vault this phone's key does not open: ask for the passphrase it was sealed with. */
     data class AskPassphrase(val bytes: ByteArray, val source: RestoreSource) : BackupPhase
+    /** A rehearsal of the one thing that has no way back: do you still know the passphrase? */
+    data object AskCheckPassphrase : BackupPhase
     /** An export with no vault on: the file needs a passphrase of its own. */
     data class AskExportPassphrase(val uri: Uri) : BackupPhase
     /** A file opened to see whether it would work, and nothing else. */
@@ -97,6 +101,15 @@ class BackupViewModel(private val app: RwilcoApplication) : ViewModel() {
 
     private val mutableHasUndo = MutableStateFlow(restore.hasUndoCopy())
     val hasUndo: StateFlow<Boolean> = mutableHasUndo
+
+    /**
+     * The backup reads as off, and the mark outside the store says it was on: its file was
+     * replaced because it would not parse, and the key and the token went with it. Worth a word,
+     * because otherwise this screen is the blank setup form and the copies have simply stopped.
+     */
+    val lost: StateFlow<Boolean> = app.vaultStore.state
+        .map { !it.enabled && app.vaultStore.wasEnabled() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     val form = MutableStateFlow(BackupForm())
 
@@ -189,7 +202,16 @@ class BackupViewModel(private val app: RwilcoApplication) : ViewModel() {
                                 key = VaultState.encode(opened.key), salt = VaultState.encode(opened.salt), iterations = opened.iterations,
                                 deviceId = state.deviceId.ifEmpty { UUID.randomUUID().toString() },
                                 remoteSha = source.sha, lastAttemptSha = null,
-                                lastUploadedFingerprint = opened.snapshot.fingerprint(), lastUploadedAt = state.lastUploadedAt,
+                                // Every cursor the copy up there answers for, not just the
+                                // fingerprint: when it was made, what it weighed in rows and in
+                                // settings. Left behind, the badge counted the first edit
+                                // afterwards as every reminder on the phone, and the guard had
+                                // nothing to compare a collapse against.
+                                lastUploadedFingerprint = opened.snapshot.fingerprint(),
+                                lastUploadedAt = opened.snapshot.exportedAt,
+                                lastUploadedSettingsHash = settingsHash(opened.snapshot.settingsJson),
+                                lastUploadedRows = opened.snapshot.reminders.size,
+                                lastUploadedSettingsLength = opened.snapshot.settingsJson.length,
                                 lastOutcome = VaultOutcome.UP_TO_DATE, lastOutcomeAt = now,
                             )
                         }
@@ -297,6 +319,45 @@ class BackupViewModel(private val app: RwilcoApplication) : ViewModel() {
             VaultWorker.runNow(app)
             dismiss()
         }
+    }
+
+    /**
+     * The vault on and stopped because what this phone holds went empty: yes, the phone is right
+     * and the copy is what is out of date. Forgets the two sizes the guard compares against, so
+     * the next run has nothing left to refuse.
+     */
+    fun uploadAnyway() {
+        viewModelScope.launch {
+            app.vaultStore.update { it.copy(lastUploadedRows = null, lastUploadedSettingsLength = null, lastOutcome = null) }
+            VaultNotifications.cancel(app)
+            VaultWorker.runNow(app)
+            dismiss()
+        }
+    }
+
+    /** The one thing with no way back, asked of yourself while it still costs nothing to find out. */
+    fun askPassphraseCheck() {
+        mutablePhase.value = BackupPhase.AskCheckPassphrase
+    }
+
+    /**
+     * Does [passphrase] still derive the key this phone holds? Derived with the vault's own salt
+     * and compared to the key, so the answer is the real one — and nothing is read, written or
+     * sent to find it out.
+     */
+    fun checkPassphrase(passphrase: String) {
+        val current = state.value
+        if (current == null || !current.hasKey) return
+        viewModelScope.launch {
+            busy(R.string.vault_busy_deriving)
+            val derived = derive(passphrase, current.saltBytes(), current.iterations)
+            if (MessageDigest.isEqual(derived, current.keyBytes())) done(R.string.vault_check_ok) else fail(R.string.vault_check_wrong)
+        }
+    }
+
+    /** The backup's store was lost and the answer is "leave it off": the mark goes with it. */
+    fun forgetLost() {
+        viewModelScope.launch { app.vaultStore.clear() }
     }
 
     /** A new token, or a repository that moved: checked before it is kept. */

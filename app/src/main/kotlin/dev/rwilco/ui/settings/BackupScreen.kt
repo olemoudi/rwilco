@@ -97,6 +97,7 @@ fun BackupScreen(viewModel: BackupViewModel, onBack: () -> Unit) {
     val phase by viewModel.phase.collectAsStateWithLifecycle()
     val working by viewModel.working.collectAsStateWithLifecycle()
     val hasUndo by viewModel.hasUndo.collectAsStateWithLifecycle()
+    val lost by viewModel.lost.collectAsStateWithLifecycle()
     val localCount by viewModel.localCount.collectAsStateWithLifecycle()
     val spacing = Tokens.spacing
     val snackbar = LocalSnackbar.current
@@ -149,6 +150,7 @@ fun BackupScreen(viewModel: BackupViewModel, onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
             if (!vault.enabled) {
+                if (lost) LostCard(viewModel::forgetLost)
                 SetupCard(viewModel)
                 FileRows(
                     hasKey = false,
@@ -254,6 +256,18 @@ private fun StatusCard(vault: VaultState, working: Boolean, viewModel: BackupVie
                         Text(stringResource(R.string.vault_conflict_keep_phone))
                     }
                 }
+                // Something on this phone went from everything to nothing, so no copy was made.
+                // The way back is the same as a conflict's — bring the copy here — and the way
+                // on says out loud that it was a person who emptied it, not a phone that lost it.
+                VaultOutcome.COLLAPSED -> {
+                    Text(stringResource(R.string.vault_collapsed_body), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedButton(onClick = viewModel::restoreFromRemote, shape = MaterialTheme.shapes.medium, modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.sizes.control)) {
+                        Text(stringResource(R.string.vault_conflict_take_remote))
+                    }
+                    OutlinedButton(onClick = viewModel::uploadAnyway, shape = MaterialTheme.shapes.medium, modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.sizes.control)) {
+                        Text(stringResource(R.string.vault_collapsed_upload_anyway), color = MaterialTheme.colorScheme.error)
+                    }
+                }
                 VaultOutcome.AUTH, VaultOutcome.REPO_MISSING -> {
                     OutlinedButton(onClick = { editingCredentials = true }, shape = MaterialTheme.shapes.medium, modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.sizes.control)) {
                         Text(stringResource(R.string.vault_update_credentials))
@@ -274,10 +288,18 @@ private fun StatusCard(vault: VaultState, working: Boolean, viewModel: BackupVie
                 shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.sizes.control),
             ) { Text(stringResource(R.string.vault_backup_now)) }
-            if (vault.lastOutcome != VaultOutcome.CONFLICT) {
+            // The two states that already offer it above, in the words their own decision needs.
+            if (vault.lastOutcome != VaultOutcome.CONFLICT && vault.lastOutcome != VaultOutcome.COLLAPSED) {
                 NavRow(stringResource(R.string.vault_restore_remote), onClick = viewModel::restoreFromRemote)
             }
             NavRow(stringResource(R.string.vault_test), onClick = viewModel::testConnection)
+            // The token can be tested; until now the passphrase — the half with no way back —
+            // could only be found out about on the day it was the only way in.
+            NavRow(
+                stringResource(R.string.vault_check),
+                subtitle = stringResource(R.string.vault_check_hint),
+                onClick = viewModel::askPassphraseCheck,
+            )
         }
     }
     Spacer(Modifier.height(Tokens.spacing.sm))
@@ -317,6 +339,24 @@ private fun FileRows(
             // that can be looked at, pasted, sent — and it says so, because it is not sealed.
             NavRow(stringResource(R.string.vault_export_text), subtitle = stringResource(R.string.vault_export_text_hint), onClick = onExportText)
             NavRow(stringResource(R.string.vault_share_text), onClick = onShareText)
+        }
+    }
+}
+
+/**
+ * The backup reads as off, and the mark outside its store says it was on: the file holding the
+ * token and the key would not parse and was replaced by an empty one. Without this the screen is
+ * the setup form and nothing anywhere says the copies stopped — which is the one failure that
+ * costs everything by being quiet.
+ */
+@Composable
+private fun LostCard(onForget: () -> Unit) {
+    val spacing = Tokens.spacing
+    RwilcoCard {
+        Column(Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+            Text(stringResource(R.string.vault_lost_title), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error)
+            Text(stringResource(R.string.vault_lost_body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton(onClick = onForget) { Text(stringResource(R.string.vault_lost_dismiss)) }
         }
     }
 }
@@ -365,6 +405,13 @@ private fun PhaseDialogs(phase: BackupPhase, localCount: Int, viewModel: BackupV
             body = stringResource(R.string.vault_passphrase_body),
             action = stringResource(R.string.vault_open_action),
             onConfirm = viewModel::openWith,
+            onDismiss = viewModel::dismiss,
+        )
+        BackupPhase.AskCheckPassphrase -> PassphraseDialog(
+            title = stringResource(R.string.vault_check_title),
+            body = stringResource(R.string.vault_check_body),
+            action = stringResource(R.string.vault_check_action),
+            onConfirm = viewModel::checkPassphrase,
             onDismiss = viewModel::dismiss,
         )
         is BackupPhase.AskExportPassphrase -> PassphraseDialog(

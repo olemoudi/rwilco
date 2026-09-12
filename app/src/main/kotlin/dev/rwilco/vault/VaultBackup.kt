@@ -24,7 +24,10 @@ enum class VaultRunResult {
  * Everything it touches comes in through the constructor so the whole run — the conflict
  * path included — is a JVM test. A run that finds nothing changed makes no call at all; one
  * that uploads writes the blob sha down *before* sending, so a reply lost on the way back is
- * recognised on the next attempt instead of being read as somebody else's write.
+ * recognised on the next attempt instead of being read as somebody else's write. And a run whose
+ * snapshot has gone empty where the last copy was not stops without a call at all ([wentEmpty]):
+ * the copy is the thing that outlives the phone, so a phone that has lost everything must not be
+ * able to say so on its own.
  */
 class VaultBackup(
     private val store: VaultStateStore,
@@ -73,6 +76,14 @@ class VaultBackup(
             }
             VaultStep.UPLOAD -> Unit
         }
+        val sent = Sent(print, settingsHash(settings), snapshot.reminders.size, settings.length)
+        // Something became nothing. A fingerprint cannot tell that from a deletion, so this is
+        // the only place it can be caught — before the bytes are sealed, and before the one copy
+        // that still has everything is replaced by the phone that has lost it.
+        if (wentEmpty(state.lastUploadedRows, sent.rows) || wentEmpty(state.lastUploadedSettingsLength, sent.settingsLength)) {
+            log("what this phone holds went empty (${state.lastUploadedRows} rows to ${sent.rows}, ${state.lastUploadedSettingsLength} to ${sent.settingsLength} of settings); not copying that up")
+            return attention(VaultOutcome.COLLAPSED)
+        }
         VaultCenter.report(working = true)
         try {
             val bytes = VaultCrypto.seal(encodeSnapshot(snapshot), state.keyBytes(), state.saltBytes(), state.iterations)
@@ -81,13 +92,13 @@ class VaultBackup(
             // ever compared, a PUT whose reply was lost read as somebody else's write next time.
             val earlier = state.lastAttemptSha
             store.update { if (it.enabled) it.copy(lastAttemptSha = sha) else it }
-            return upload(transportFor(state), bytes, sha, state.remoteSha, print, settingsHash(settings), earlier)
+            return upload(transportFor(state), bytes, sha, state.remoteSha, sent, earlier)
         } finally {
             VaultCenter.report(working = false)
         }
     }
 
-    private suspend fun upload(transport: VaultTransport, bytes: ByteArray, sha: String, replacing: String?, print: String, settingsHash: String, earlier: String?): VaultRunResult {
+    private suspend fun upload(transport: VaultTransport, bytes: ByteArray, sha: String, replacing: String?, sent: Sent, earlier: String?): VaultRunResult {
         try {
             val stored = transport.write(bytes, replacing)
             if (stored != sha) {
@@ -97,12 +108,12 @@ class VaultBackup(
                 record(VaultOutcome.TRANSIENT)
                 return VaultRunResult.RETRY
             }
-            uploaded(print, stored, bytes.size.toLong(), settingsHash)
+            uploaded(sent, stored, bytes.size.toLong())
             return VaultRunResult.DONE
         } catch (e: VaultTransportException) {
             log("upload refused: ${e.failure} (${e.message})")
             return when (e.failure) {
-                TransportFailure.CONFLICT -> conflict(transport, bytes, sha, earlier, print, settingsHash)
+                TransportFailure.CONFLICT -> conflict(transport, bytes, sha, earlier, sent)
                 TransportFailure.AUTH -> attention(VaultOutcome.AUTH)
                 TransportFailure.REPO_MISSING -> attention(VaultOutcome.REPO_MISSING)
                 TransportFailure.TRANSIENT -> {
@@ -114,7 +125,7 @@ class VaultBackup(
     }
 
     /** The file moved under us. Ours after all, or somebody else's — the sha says which. */
-    private suspend fun conflict(transport: VaultTransport, bytes: ByteArray, sha: String, earlier: String?, print: String, settingsHash: String): VaultRunResult {
+    private suspend fun conflict(transport: VaultTransport, bytes: ByteArray, sha: String, earlier: String?, sent: Sent): VaultRunResult {
         val remote = try {
             transport.read()
         } catch (e: VaultTransportException) {
@@ -125,7 +136,7 @@ class VaultBackup(
         return when (judgeConflict(remote?.sha, sha, earlier)) {
             ConflictVerdict.OURS_LANDED -> {
                 log("conflict was our own earlier upload landing; adopting it")
-                uploaded(print, remote!!.sha, bytes.size.toLong(), settingsHash)
+                uploaded(sent, remote!!.sha, bytes.size.toLong())
                 VaultRunResult.DONE
             }
             ConflictVerdict.EARLIER_LANDED -> {
@@ -135,22 +146,24 @@ class VaultBackup(
                 log("conflict was the previous run's upload landing after its reply was lost; writing over it")
                 val remoteSha = remote!!.sha
                 store.update { if (it.enabled) it.copy(remoteSha = remoteSha) else it }
-                upload(transport, bytes, sha, remoteSha, print, settingsHash, earlier = null)
+                upload(transport, bytes, sha, remoteSha, sent, earlier = null)
             }
             ConflictVerdict.OTHER_WRITER -> attention(VaultOutcome.CONFLICT)
         }
     }
 
-    private suspend fun uploaded(print: String, sha: String, bytes: Long, settingsHash: String) {
+    private suspend fun uploaded(sent: Sent, sha: String, bytes: Long) {
         val now = clock.instant()
         store.update {
             if (!it.enabled) it
             else it.copy(
-                lastUploadedFingerprint = print,
+                lastUploadedFingerprint = sent.print,
                 lastUploadedAt = now,
                 lastRunAt = now,
                 lastUploadedBytes = bytes,
-                lastUploadedSettingsHash = settingsHash,
+                lastUploadedSettingsHash = sent.settingsHash,
+                lastUploadedRows = sent.rows,
+                lastUploadedSettingsLength = sent.settingsLength,
                 remoteSha = sha,
                 lastOutcome = VaultOutcome.UPLOADED,
                 lastOutcomeAt = now,
@@ -185,6 +198,9 @@ class VaultBackup(
         store.update { if (it.enabled) it.copy(lastStaleNoticeAt = now) else it }
         onStale(state.lastRunAt ?: now)
     }
+
+    /** What one run is carrying: everything a successful upload writes down about the content. */
+    private class Sent(val print: String, val settingsHash: String, val rows: Int, val settingsLength: Int)
 
     companion object {
         /** Process-wide: runs come from the worker, the button and a restore, and must not overlap. */

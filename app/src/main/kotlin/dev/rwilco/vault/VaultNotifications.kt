@@ -29,6 +29,7 @@ object VaultNotifications {
             VaultOutcome.AUTH -> R.string.vault_notice_auth_title to R.string.vault_notice_auth_text
             VaultOutcome.REPO_MISSING -> R.string.vault_notice_repo_title to R.string.vault_notice_repo_text
             VaultOutcome.CONFLICT -> R.string.vault_notice_conflict_title to R.string.vault_notice_conflict_text
+            VaultOutcome.COLLAPSED -> R.string.vault_notice_collapsed_title to R.string.vault_notice_collapsed_text
             else -> return
         }
         post(context, context.getString(title), context.getString(text))

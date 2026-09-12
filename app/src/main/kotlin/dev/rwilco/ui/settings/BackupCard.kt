@@ -75,6 +75,7 @@ internal fun vaultStatusText(
     state.lastOutcome == VaultOutcome.AUTH -> stringResource(R.string.vault_card_attention_auth)
     state.lastOutcome == VaultOutcome.REPO_MISSING -> stringResource(R.string.vault_card_attention_repo)
     state.lastOutcome == VaultOutcome.CONFLICT -> stringResource(R.string.vault_card_attention_conflict)
+    state.lastOutcome == VaultOutcome.COLLAPSED -> stringResource(R.string.vault_card_attention_collapsed)
     // Before "the last attempt failed; it will try again", which is true and which somebody can
     // read for a month without it ever meaning anything. This says how long it has been.
     freshness == BackupFreshness.STALE && state.lastRunAt != null ->

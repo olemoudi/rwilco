@@ -15,6 +15,25 @@ fun nextVaultStep(enabled: Boolean, fingerprint: String, lastUploaded: String?):
 }
 
 /**
+ * Whether a part of the copy has gone from something to nothing: the one shape a run must not
+ * carry up on its own.
+ *
+ * A run decides what to send by comparing fingerprints, and a fingerprint cannot tell a reminder
+ * deleted on purpose from every reminder gone at once. Two things can empty this phone without
+ * anybody asking: a database dropped by `fallbackToDestructiveMigrationOnDowngrade` when an older
+ * build is installed by hand over a newer one, and a settings file the platform replaced with an
+ * empty one because it would not parse. Either way the next run would copy the emptiness
+ * faithfully over the one copy that still had everything.
+ *
+ * **Only nothing, never "less".** Zero is not somewhere ordinary use gets to — a reminder dealt
+ * with stays as a row, and the settings blob is rewritten on the first launch of every build — so
+ * there is no honest number between "fewer" and "gone" to put here, and a fraction would only buy
+ * a class of false alarms. [was] null is a copy that never carried this part, which nothing can be
+ * said about: the guard is inert until the first upload that writes the size down.
+ */
+fun wentEmpty(was: Int?, now: Int): Boolean = was != null && was > 0 && now == 0
+
+/**
  * What a refused upload means. The remote's blob sha is `git hash-object` of the bytes, which the
  * phone computed before sending them: equal to this attempt's means the PUT landed after its
  * reply was lost (OkHttp sent it twice); equal to the *previous run's* attempt means that run's

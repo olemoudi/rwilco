@@ -1312,6 +1312,8 @@
     <string name="vault_notice_repo_text">GitHub no encuentra el repositorio donde se guarda la copia. Revisa su nombre en Ajustes › Copia de seguridad.</string>
     <string name="vault_notice_conflict_title">Otro teléfono ha escrito la copia</string>
     <string name="vault_notice_conflict_text">La copia de GitHub no es la última que escribió este teléfono, así que se ha detenido en vez de sobrescribirla. Elige en Ajustes › Copia de seguridad cuál conservar.</string>
+    <string name="vault_notice_collapsed_title">La copia se ha detenido en vez de vaciarse</string>
+    <string name="vault_notice_collapsed_text">Este teléfono ya no tiene nada donde la última copia tenía algo, así que no se ha enviado nada y la copia de GitHub sigue intacta. Abre Ajustes › Copia de seguridad.</string>
     <string name="vault_title">Copia de seguridad</string>
     <string name="vault_card_title">Copia cifrada</string>
     <string name="vault_card_off">Desactivada. Todo se queda en este teléfono.</string>
@@ -1325,6 +1327,7 @@
     <string name="vault_card_attention_auth">Detenida: GitHub rechazó el token</string>
     <string name="vault_card_attention_repo">Detenida: el repositorio no está</string>
     <string name="vault_card_attention_conflict">Detenida: otro teléfono escribió la copia</string>
+    <string name="vault_card_attention_collapsed">Detenida: este teléfono se ha quedado vacío</string>
     <string name="vault_intro">Una copia cifrada de tus recordatorios, preajustes y lugares en un repositorio privado tuyo de GitHub, rehecha cada pocas horas — tú eliges cada cuánto. Todo se cifra con tu contraseña antes de salir del teléfono: GitHub ve un archivo y su tamaño, nunca una palabra de lo que contiene. La app funciona igual sin ella.</string>
     <string name="vault_intro_warning">Nadie puede recuperar la contraseña, Rwilco incluida. Sin ella, la copia es una caja cerrada.</string>
     <string name="vault_field_repo">Repositorio</string>
@@ -1344,6 +1347,18 @@
     <string name="vault_conflict_body">La copia de GitHub no es la última que escribió este teléfono: otro teléfono, o una restauración, la ha escrito desde entonces. No se ha sobrescrito nada. Trae aquí esa copia, o conserva la de este teléfono y reemplázala.</string>
     <string name="vault_conflict_take_remote">Traer aquí la copia de GitHub</string>
     <string name="vault_conflict_keep_phone">Conservar la de este teléfono y reemplazar la copia</string>
+    <string name="vault_collapsed_body">La última copia tenía recordatorios, o ajustes, que ya no están en este teléfono: todos los de una clase, no unos cuantos. No se ha enviado nada: la copia de GitHub está exactamente como estaba, y todas las anteriores siguen en el historial del repositorio. Si el que se equivoca es este teléfono, trae esa copia de vuelta. Si lo has vaciado tú, dilo y la próxima copia lo llevará.</string>
+    <string name="vault_collapsed_upload_anyway">Lo he vaciado yo; copia igual</string>
+    <string name="vault_check">Comprobar la contraseña</string>
+    <string name="vault_check_hint">Nadie puede recuperarla. Esto dice si aún la recuerdas, y no cambia nada.</string>
+    <string name="vault_check_title">¿Todavía la recuerdas?</string>
+    <string name="vault_check_body">Escribe la contraseña con la que está cifrada esta copia. Se comprueba contra la clave de este teléfono: no se lee, ni se escribe, ni se envía nada.</string>
+    <string name="vault_check_action">Comprobar</string>
+    <string name="vault_check_ok">Esa es la contraseña.</string>
+    <string name="vault_check_wrong">Esa no es la contraseña con la que está cifrada esta copia.</string>
+    <string name="vault_lost_title">Se han perdido los ajustes de la copia</string>
+    <string name="vault_lost_body">La copia estaba activada y el fichero que guardaba su token y su clave no se ha podido leer, así que el teléfono lo ha reemplazado por uno vacío. Desde entonces no se ha copiado nada. La copia de GitHub sigue intacta: vuelve a configurarla con el mismo repositorio y la misma contraseña y este teléfono se reengancha.</string>
+    <string name="vault_lost_dismiss">Dejarla desactivada</string>
     <string name="vault_update_credentials">Cambiar el repositorio o el token…</string>
     <string name="vault_update_credentials_title">Repositorio y token</string>
     <string name="vault_export">Exportar a un archivo</string>
@@ -1571,6 +1586,16 @@
         <item>Un aviso con sonido va ahora a tus auriculares cuando los llevas puestos, en vez de salir por el altavoz del móvil como haría cualquier alarma. Es un ajuste, en Sonido, y merece la pena desactivarlo si tus auriculares viven en un cajón: un aviso que suena para nadie es un aviso perdido.</item>
         <item>Y ya no te corta la música. Lo que estuvieras escuchando baja unos decibelios y sigue por debajo mientras el aviso suena por encima —el aviso va por el canal de alarma y la música no, así que ninguno tiene que pelear con el otro— y vuelve solo a su volumen. Antes pedía el audio en exclusiva, lo que mataba un podcast por un tono de diez segundos.</item>
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_125_0">
+
+        <item>La copia de seguridad ya no sube un vacío. Decidía qué enviar comparando contenido, y eso no distingue un recordatorio que has borrado de todos los recordatorios desaparecidos a la vez: un teléfono que perdiera su base de datos (instalar a mano una versión anterior la tira) o sus ajustes (un fichero que el sistema reemplaza porque no se puede leer) habría copiado eso fielmente encima de la única copia que aún lo tenía todo. Ahora una ejecución que encuentra nada donde la última copia tenía algo se detiene, lo dice, y deja GitHub como estaba. Dos salidas: traer la copia de vuelta, o decir que lo has vaciado tú.</item>
+
+        <item>Puedes comprobar la contraseña. Nadie puede recuperarla, y hasta ahora el único día en que descubrías si aún la recordabas era el día en que era la única puerta. En Ajustes → Copia de seguridad: se comprueba contra la clave de este teléfono, y no se lee, ni se escribe, ni se envía nada.</item>
+
+        <item>Si se pierden los ajustes de la propia copia — el fichero con su token y su clave que no se ha podido leer — la pantalla lo dice, en vez de parecer una copia que nunca se configuró. Era el único fallo que costaba todo por ser silencioso.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_124_0">

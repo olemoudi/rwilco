@@ -56,10 +56,15 @@ class VaultBackupTest {
     private val attention = mutableListOf<VaultOutcome>()
     private var resolved = 0
 
-    private fun backup(store: MemoryStore, transport: FakeTransport) = VaultBackup(
+    private fun backup(
+        store: MemoryStore,
+        transport: FakeTransport,
+        rows: List<ReminderEntity> = listOf(row),
+        settingsJson: String = settings,
+    ) = VaultBackup(
         store = store,
-        rows = { listOf(row) },
-        settingsJson = { settings },
+        rows = { rows },
+        settingsJson = { settingsJson },
         transportFor = { transport },
         clock = clock,
         appVersionCode = 33,
@@ -109,6 +114,55 @@ class VaultBackupTest {
         assertEquals(now, state.lastUploadedAt)
         assertEquals(VaultOutcome.UPLOADED, state.lastOutcome)
         assertEquals(1, resolved)
+        assertTrue(attention.isEmpty())
+    }
+
+    @Test
+    fun `a phone whose reminders have all gone does not copy that up`() = runBlocking {
+        val store = MemoryStore(enabled.copy(lastUploadedRows = 3, lastUploadedSettingsLength = settings.length))
+        val transport = FakeTransport()
+
+        assertEquals(VaultRunResult.FAILED, backup(store, transport, rows = emptyList()).run())
+
+        assertTrue(transport.writes.isEmpty(), "nothing is sealed and nothing is sent")
+        assertEquals(VaultOutcome.COLLAPSED, store.state.lastOutcome)
+        assertEquals(listOf(VaultOutcome.COLLAPSED), attention)
+        assertEquals(3, store.state.lastUploadedRows, "what the copy holds is not forgotten by a refusal")
+    }
+
+    @Test
+    fun `a phone whose settings have gone does not copy that up either`() = runBlocking {
+        val store = MemoryStore(enabled.copy(lastUploadedRows = 1, lastUploadedSettingsLength = settings.length))
+        val transport = FakeTransport()
+
+        assertEquals(VaultRunResult.FAILED, backup(store, transport, settingsJson = "").run())
+
+        assertTrue(transport.writes.isEmpty())
+        assertEquals(VaultOutcome.COLLAPSED, store.state.lastOutcome)
+    }
+
+    @Test
+    fun `fewer reminders than the last copy is a deletion, and goes up`() = runBlocking {
+        val store = MemoryStore(enabled.copy(lastUploadedRows = 9, lastUploadedSettingsLength = settings.length))
+        val transport = FakeTransport(onWrite = { bytes, _ -> VaultCrypto.gitBlobSha(bytes) })
+
+        assertEquals(VaultRunResult.DONE, backup(store, transport).run())
+
+        assertEquals(1, store.state.lastUploadedRows)
+        assertTrue(attention.isEmpty())
+    }
+
+    @Test
+    fun `a copy that has not written its sizes down yet refuses nothing`() = runBlocking {
+        // Every vault enabled before the guard existed arrives here: null is "say nothing about
+        // this", never "it was zero" — and this run is what gives the next one something to say.
+        val store = MemoryStore(enabled)
+        val transport = FakeTransport(onWrite = { bytes, _ -> VaultCrypto.gitBlobSha(bytes) })
+
+        assertEquals(VaultRunResult.DONE, backup(store, transport, rows = emptyList()).run())
+
+        assertEquals(0, store.state.lastUploadedRows)
+        assertEquals(settings.length, store.state.lastUploadedSettingsLength)
         assertTrue(attention.isEmpty())
     }
 
