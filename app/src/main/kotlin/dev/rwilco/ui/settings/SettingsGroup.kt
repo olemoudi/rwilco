@@ -76,8 +76,15 @@ fun SettingsGroup(
      * inside worth seeing before the fold is opened — a downloaded update waiting, say.
      */
     corner: (@Composable (ground: Color) -> Unit)? = null,
+    /**
+     * The rows a search in Settings came back with, or null while nobody is searching
+     * ([settingsMatches]). A row that is not among them is not drawn at all: narrowing eleven
+     * rows down to the one that answers is the whole of what the search is for.
+     */
+    matches: Set<String>? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    if (matches != null && title !in matches) return
     val spacing = Tokens.spacing
     val motion = Tokens.motion
     val haptics = Tokens.haptics
@@ -180,7 +187,14 @@ fun SettingsLinkRow(
      * lighter face, which looks like a mistake because it is one.
      */
     topLevel: Boolean = false,
+    /**
+     * As [SettingsGroup]'s, and read only by a [topLevel] row: one that stands in the index is a
+     * thing the search narrows, while one inside a group is that group's own content and goes
+     * wherever its fold goes.
+     */
+    matches: Set<String>? = null,
 ) {
+    if (topLevel && matches != null && title !in matches) return
     val scheme = MaterialTheme.colorScheme
     RwilcoCard(onClick = onClick, modifier = modifier) {
         SettingsRow(icon = icon, attention = attention) {

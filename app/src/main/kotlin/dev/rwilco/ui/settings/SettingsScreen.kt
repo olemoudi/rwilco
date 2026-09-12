@@ -5,7 +5,9 @@ import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -36,6 +38,11 @@ import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.ui.res.stringArrayResource
+import dev.rwilco.ui.components.EmptyState
+import dev.rwilco.ui.home.SearchField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -118,16 +125,71 @@ private val OpenGroups = listSaver<Set<Group>, String>(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog: () -> Unit, onBackup: () -> Unit, onDiagnostics: () -> Unit) {
+fun SettingsScreen(
+    viewModel: SettingsViewModel,
+    onBack: () -> Unit,
+    onWatchLog: () -> Unit,
+    onBackup: () -> Unit,
+    onDiagnostics: () -> Unit,
+    /** "Cómo funciona esto": the one place the app explains itself. */
+    onGuide: () -> Unit,
+) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val spacing = Tokens.spacing
     val context = LocalContext.current
     val snackbar = LocalSnackbar.current
 
+    // The way in for somebody who has a word for the thing but not the name of the row it is on:
+    // "no molestar" lives inside Avisos, the quiet hours inside "Tu día", and this screen never
+    // said so. The index is titles and the words people look for them by (`SettingsSearch.kt`);
+    // every row reads the answer and draws itself or does not.
+    var searching by rememberSaveable { mutableStateOf(false) }
+    var query by rememberSaveable { mutableStateOf("") }
+    val entries = SETTINGS_INDEX.map { (titleRes, keywordsRes) ->
+        SettingsEntry(title = stringResource(titleRes), keywords = stringArrayResource(keywordsRes).toList())
+    }
+    val matches = if (searching) settingsMatches(entries, query) else null
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing,
-        topBar = { RwilcoTopBar(title = stringResource(R.string.settings_title), onBack = onBack) },
+        topBar = {
+            if (searching) {
+                // Home's own field, with this screen's question in it. Its Back closes the
+                // search rather than the screen, which is what a field that took the place of
+                // the title owes the arrow it took the place of.
+                // The room the status bar is owed, which `RwilcoTopBar` gives itself and a bare
+                // field does not: without it the field sits over the clock and the first row of
+                // the index sits under the field.
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.background)
+                        .statusBarsPadding()
+                        .padding(horizontal = spacing.sm),
+                ) {
+                    SearchField(
+                        query = query,
+                        onQueryChange = { query = it },
+                        onClose = {
+                            searching = false
+                            query = ""
+                        },
+                        hint = stringResource(R.string.settings_search_hint),
+                    )
+                }
+            } else {
+                RwilcoTopBar(
+                    title = stringResource(R.string.settings_title),
+                    onBack = onBack,
+                    action = {
+                        IconButton(onClick = { searching = true }) {
+                            Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.settings_search))
+                        }
+                    },
+                )
+            }
+        },
     ) { padding ->
         val current = settings ?: return@Scaffold
         val alerts = rememberAlertReadiness()
@@ -151,15 +213,28 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
             }
         }
 
+        // Held rather than left inside the modifier: a narrowed index has to start at its own
+        // top, and a scroll position from before the search is a row shown half way up.
+        val scroll = rememberScrollState()
+        LaunchedEffect(matches) { if (matches != null) scroll.scrollTo(0) }
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scroll)
                 .padding(horizontal = spacing.screen)
                 .padding(bottom = spacing.xxl),
         ) {
+            // Nothing answered: said outright, rather than leaving somebody looking at an index
+            // with every row gone and no word about why.
+            if (matches != null && matches.isEmpty()) {
+                EmptyState(
+                    title = stringResource(R.string.settings_search_none_title),
+                    body = stringResource(R.string.settings_search_none_body),
+                )
+            }
             SettingsGroup(
+                matches = matches,
                 icon = Icons.Outlined.NotificationsActive,
                 title = stringResource(R.string.settings_alerts),
                 summary = if (alerts.allGood) {
@@ -212,6 +287,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
 
             val insistent by viewModel.insistentInUse.collectAsStateWithLifecycle()
             SettingsGroup(
+                matches = matches,
                 icon = Icons.AutoMirrored.Outlined.VolumeUp,
                 title = stringResource(R.string.settings_sound_title),
                 summary = soundName(current.alertSound),
@@ -234,6 +310,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
             }
 
             SettingsGroup(
+                matches = matches,
                 icon = Icons.Outlined.Vibration,
                 title = stringResource(R.string.settings_vibration_strength),
                 summary = join(
@@ -259,6 +336,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
             }
 
             SettingsGroup(
+                matches = matches,
                 icon = Icons.Outlined.HealthAndSafety,
                 title = stringResource(R.string.settings_net_title),
                 summary = join(
@@ -272,6 +350,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
             }
 
             SettingsGroup(
+                matches = matches,
                 icon = Icons.Outlined.AddAlert,
                 title = stringResource(R.string.settings_group_new),
                 summary = join(
@@ -348,6 +427,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
             }
 
             SettingsGroup(
+                matches = matches,
                 icon = Icons.Outlined.Schedule,
                 title = stringResource(R.string.settings_group_day),
                 summary = TimeText.window(current.awake.wake, current.awake.sleep, rememberIs24h(), currentLocale()) +
@@ -458,6 +538,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
             val contactsWarned = workWarning != ContactWarning.NONE || personalWarning != ContactWarning.NONE
             val tooMany = workWarning == ContactWarning.OVER_CAPACITY || personalWarning == ContactWarning.OVER_CAPACITY
             SettingsGroup(
+                matches = matches,
                 icon = Icons.Outlined.Group,
                 title = stringResource(R.string.settings_contacts_title),
                 // The schedules are what this row is for; more people than turns outranks them,
@@ -509,6 +590,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
             val watch by viewModel.placeWatch.collectAsStateWithLifecycle()
             var editingPlace by rememberSaveable { mutableStateOf<Int?>(null) }
             SettingsGroup(
+                matches = matches,
                 icon = Icons.Outlined.Place,
                 title = stringResource(R.string.settings_places),
                 summary = when {
@@ -562,6 +644,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
             }
 
             SettingsGroup(
+                matches = matches,
                 icon = Icons.Outlined.Palette,
                 title = stringResource(R.string.settings_group_look),
                 summary = stringResource(
@@ -628,12 +711,13 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
             }
 
             Spacer(Modifier.height(spacing.md))
-            BackupCard(onOpen = onBackup)
+            BackupCard(onOpen = onBackup, matches = matches)
 
             // Read once for the row's mark and the card under it: a new version downloaded and
             // waiting is marked on the fold, so it is seen before anybody opens it.
             val staged = rememberStagedUpdate()
             SettingsGroup(
+                matches = matches,
                 icon = Icons.Outlined.SystemUpdate,
                 title = stringResource(R.string.settings_updates),
                 summary = stringResource(
@@ -659,6 +743,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
 
             var showNotes by rememberSaveable { mutableStateOf(false) }
             SettingsGroup(
+                matches = matches,
                 icon = Icons.Outlined.Info,
                 title = stringResource(R.string.settings_about),
                 summary = BuildConfig.VERSION_NAME,
@@ -680,6 +765,14 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onWatchLog:
                         )
                     }
                 }
+                // For somebody who did not write the app: the gestures, and what each of the
+                // things it can hold actually is. Nothing else says any of it once the empty
+                // Home is gone.
+                SettingsLinkRow(
+                    title = stringResource(R.string.guide_title),
+                    summary = stringResource(R.string.guide_hint),
+                    onClick = onGuide,
+                )
                 SettingsLinkRow(
                     title = stringResource(R.string.settings_release_notes),
                     summary = stringResource(R.string.settings_release_notes_hint, BuildConfig.VERSION_NAME),

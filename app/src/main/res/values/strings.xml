@@ -176,6 +176,22 @@
     <string name="routines_filter_none_title">Nothing under this filter</string>
     <string name="routines_filter_none_body">Every routine is elsewhere. Tap the chip again to see them all.</string>
     <string name="home_settings">Settings</string>
+    <string name="guide_title">How this works</string>
+    <string name="guide_hint">The gestures, and what each kind of reminder is</string>
+    <string name="guide_cards_title">The cards</string>
+    <string name="guide_cards_body">Swipe a card to the right and hold to mark it done; to the left and hold to delete it — a delete can be taken back for a minute. A long press opens its menu: put off, pause, skip the next one, clone, keep as a preset. A tap folds a card away; the big one at the top opens instead, because that is the one you are being told about.</string>
+    <string name="guide_routines_title">Routines</string>
+    <string name="guide_routines_body">A routine is not an appointment. What matters is how long it has been since the last time, and the only thing that starts the count again is doing it: «move the car, every 3 weeks since the last time». They live on their own screen, behind the door on Home, and they ask whether you have done it rather than ringing about a moment.</string>
+    <string name="guide_contacts_title">Keep in touch</string>
+    <string name="guide_contacts_body">The people you would drift away from if nobody kept count. Say whether somebody is work or personal and how close they are, and Rwilco brings one of them up on the days you picked in Settings — at most one a day of each kind, as a quiet card, never with a sound and never taking the screen.</string>
+    <string name="guide_presets_title">Presets</string>
+    <string name="guide_presets_body">A reminder you write over and over, kept as a shape. One tap on Home writes it, and a long press on the app\'s icon has them too. Any reminder can be kept as one from its own menu.</string>
+    <string name="guide_places_title">Places</string>
+    <string name="guide_places_body">«When I get home», «when I leave the office». Save a place once and reminders point at it by name. It needs location «all the time» to work in the background, and Settings says so plainly when that is missing.</string>
+    <string name="guide_backup_title">The backup</string>
+    <string name="guide_backup_body">Off until you turn it on. It seals everything with a passphrase only you know and keeps the copy in a GitHub repository of your own. Nothing else ever leaves the phone: no account, no server, nothing counted about you.</string>
+    <string name="guide_net_title">The safety net</string>
+    <string name="guide_net_body">When a reminder rings and nothing is answered, one quiet word comes back later — once, and never twice about the same moment. It also speaks when a reminder could not ring at all, and takes you to its form to put that right.</string>
     <string name="home_all_tags">All</string>
     <string name="home_tags_manage">Manage tags</string>
     <string name="home_tags_hint">Tap a tag to bring it to the front of the row. Renaming or removing one reaches every reminder that carries it.</string>
@@ -564,6 +580,106 @@
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
+    <string name="settings_search">Search settings</string>
+    <string name="settings_search_hint">What are you looking for?</string>
+    <string name="settings_search_none_title">Nothing by that name</string>
+    <string name="settings_search_none_body">Try the thing itself: «battery», «quiet hours», «places».</string>
+    <string-array name="settings_keywords_alerts">
+        <item>battery</item>
+        <item>exact alarms</item>
+        <item>do not disturb</item>
+        <item>permissions</item>
+        <item>full screen</item>
+        <item>volume</item>
+    </string-array>
+    <string-array name="settings_keywords_sound">
+        <item>tone</item>
+        <item>chime</item>
+        <item>ringtone</item>
+        <item>insistent</item>
+        <item>headphones</item>
+        <item>volume</item>
+    </string-array>
+    <string-array name="settings_keywords_vibration">
+        <item>buzz</item>
+        <item>haptics</item>
+        <item>strength</item>
+        <item>rhythm</item>
+        <item>silent</item>
+        <item>motor</item>
+    </string-array>
+    <string-array name="settings_keywords_net">
+        <item>missed</item>
+        <item>icymi</item>
+        <item>second chance</item>
+        <item>got away</item>
+        <item>nudge</item>
+        <item>quiet word</item>
+    </string-array>
+    <string-array name="settings_keywords_new">
+        <item>default time</item>
+        <item>favourite trigger</item>
+        <item>what a new reminder starts with</item>
+        <item>default actions</item>
+        <item>nine o\'clock</item>
+        <item>blank reminder</item>
+    </string-array>
+    <string-array name="settings_keywords_day">
+        <item>quiet hours</item>
+        <item>sleep</item>
+        <item>bedtime</item>
+        <item>awake</item>
+        <item>weekend</item>
+        <item>windows by name</item>
+    </string-array>
+    <string-array name="settings_keywords_contacts">
+        <item>keep in touch</item>
+        <item>people</item>
+        <item>friends</item>
+        <item>colleagues</item>
+        <item>call somebody</item>
+        <item>turns</item>
+    </string-array>
+    <string-array name="settings_keywords_places">
+        <item>location</item>
+        <item>gps</item>
+        <item>geofence</item>
+        <item>home</item>
+        <item>office</item>
+        <item>background location</item>
+    </string-array>
+    <string-array name="settings_keywords_look">
+        <item>theme</item>
+        <item>dark</item>
+        <item>light</item>
+        <item>language</item>
+        <item>vibration on touch</item>
+        <item>colours</item>
+    </string-array>
+    <string-array name="settings_keywords_backup">
+        <item>copy</item>
+        <item>github</item>
+        <item>passphrase</item>
+        <item>restore</item>
+        <item>export</item>
+        <item>vault</item>
+    </string-array>
+    <string-array name="settings_keywords_updates">
+        <item>version</item>
+        <item>alpha</item>
+        <item>beta</item>
+        <item>install</item>
+        <item>wifi</item>
+        <item>channel</item>
+    </string-array>
+    <string-array name="settings_keywords_about">
+        <item>version</item>
+        <item>release notes</item>
+        <item>licences</item>
+        <item>diagnostics</item>
+        <item>how this works</item>
+        <item>guide</item>
+    </string-array>
     <string name="settings_appearance">Appearance</string>
     <string name="settings_theme_system">System</string>
     <string name="settings_theme_light">Light</string>
@@ -1472,6 +1588,13 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_124_0">
+
+        <item>«How this works»: one screen with the gestures and what each thing in the app actually is — the cards, routines, keep in touch, presets, places, the backup and the safety net. It is in Settings → About, and under the invitation on an empty Home, which until now was the only place a gesture was ever explained and which disappears with the first reminder.</item>
+
+        <item>Settings has a search. Eleven folding rows and no way in but knowing where things live: now the magnifier narrows the index to the rows that answer, by their title or by the words people actually use for them — «do not disturb», «battery», «quiet hours».</item>
+
+    </string-array>
     <string-array name="whats_new_0_123_0">
 
         <item>The routines screen and its own rows now agree about contacts. The list is ordered by the turn each row shows — somebody whose cadence ran out is waiting their turn, not late — and the «overdue» chip is about having been told and left unanswered, so it can no longer hand you a list of contacts each reading «Yes».</item>

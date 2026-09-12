@@ -172,6 +172,22 @@
     <string name="routines_filter_none_title">Nada con este filtro</string>
     <string name="routines_filter_none_body">Todas las rutinas están en otro sitio. Toca el chip otra vez para verlas todas.</string>
     <string name="home_settings">Ajustes</string>
+    <string name="guide_title">Cómo funciona esto</string>
+    <string name="guide_hint">Los gestos, y qué es cada tipo de recordatorio</string>
+    <string name="guide_cards_title">Las tarjetas</string>
+    <string name="guide_cards_body">Desliza una tarjeta a la derecha y mantén para marcarla hecha; a la izquierda y mantén para borrarla — un borrado se puede deshacer durante un minuto. Mantener pulsado abre su menú: posponer, pausar, saltar la próxima, clonar, guardar como preset. Un toque pliega la tarjeta; la grande de arriba se abre en vez de plegarse, porque es de la que te está hablando la pantalla.</string>
+    <string name="guide_routines_title">Rutinas</string>
+    <string name="guide_routines_body">Una rutina no es una cita. Lo que importa es cuánto hace desde la última vez, y lo único que vuelve a empezar la cuenta es hacerla: «mover el coche, cada 3 semanas desde la última vez». Viven en su propia pantalla, detrás de la puerta de Home, y preguntan si lo has hecho en vez de sonar por un momento concreto.</string>
+    <string name="guide_contacts_title">Keep in touch</string>
+    <string name="guide_contacts_body">La gente con la que dejarías de hablar si nadie llevara la cuenta. Di si alguien es de trabajo o personal y cómo de cercano, y Rwilco te saca a uno en los días que elijas en Ajustes — como mucho uno al día de cada tipo, como tarjeta discreta, nunca con sonido y nunca tomando la pantalla.</string>
+    <string name="guide_presets_title">Presets</string>
+    <string name="guide_presets_body">Un recordatorio que escribes una y otra vez, guardado como forma. Un toque en Home lo escribe, y manteniendo pulsado el icono de la app también están ahí. Cualquier recordatorio se guarda como preset desde su propio menú.</string>
+    <string name="guide_places_title">Lugares</string>
+    <string name="guide_places_body">«Cuando llegue a casa», «al salir de la oficina». Guarda un lugar una vez y los recordatorios lo señalan por su nombre. Necesita la ubicación «todo el tiempo» para funcionar en segundo plano, y Ajustes lo dice claro cuando falta.</string>
+    <string name="guide_backup_title">La copia de seguridad</string>
+    <string name="guide_backup_body">Apagada hasta que la enciendes. Sella todo con una contraseña que solo sabes tú y guarda la copia en un repositorio de GitHub tuyo. Nada más sale del teléfono: sin cuenta, sin servidor, sin que se cuente nada de ti.</string>
+    <string name="guide_net_title">La red de seguridad</string>
+    <string name="guide_net_body">Cuando un recordatorio suena y nadie responde, más tarde vuelve una palabra discreta — una vez, y nunca dos por el mismo momento. También avisa cuando un recordatorio no ha podido sonar siquiera, y te lleva a su formulario para arreglarlo.</string>
     <string name="home_all_tags">Todo</string>
     <string name="home_tags_manage">Gestionar etiquetas</string>
     <string name="home_tags_hint">Toca una etiqueta para ponerla al principio de la fila. Renombrarla o quitarla alcanza a todos los recordatorios que la llevan.</string>
@@ -553,6 +569,106 @@
 
     <!-- Settings -->
     <string name="settings_title">Ajustes</string>
+    <string name="settings_search">Buscar en los ajustes</string>
+    <string name="settings_search_hint">¿Qué estás buscando?</string>
+    <string name="settings_search_none_title">Nada con ese nombre</string>
+    <string name="settings_search_none_body">Prueba con la cosa misma: «batería», «horas de silencio», «lugares».</string>
+    <string-array name="settings_keywords_alerts">
+        <item>batería</item>
+        <item>alarmas exactas</item>
+        <item>no molestar</item>
+        <item>permisos</item>
+        <item>pantalla completa</item>
+        <item>volumen</item>
+    </string-array>
+    <string-array name="settings_keywords_sound">
+        <item>tono</item>
+        <item>sonido</item>
+        <item>melodía</item>
+        <item>insistente</item>
+        <item>auriculares</item>
+        <item>volumen</item>
+    </string-array>
+    <string-array name="settings_keywords_vibration">
+        <item>vibrar</item>
+        <item>hápticos</item>
+        <item>fuerza</item>
+        <item>ritmo</item>
+        <item>silencio</item>
+        <item>motor</item>
+    </string-array>
+    <string-array name="settings_keywords_net">
+        <item>perdido</item>
+        <item>icymi</item>
+        <item>segunda oportunidad</item>
+        <item>se me pasó</item>
+        <item>aviso tardío</item>
+        <item>palabra discreta</item>
+    </string-array>
+    <string-array name="settings_keywords_new">
+        <item>hora por defecto</item>
+        <item>disparador favorito</item>
+        <item>con qué empieza un recordatorio nuevo</item>
+        <item>acciones por defecto</item>
+        <item>las nueve</item>
+        <item>recordatorio en blanco</item>
+    </string-array>
+    <string-array name="settings_keywords_day">
+        <item>horas de silencio</item>
+        <item>dormir</item>
+        <item>acostarse</item>
+        <item>despierto</item>
+        <item>fin de semana</item>
+        <item>franjas con nombre</item>
+    </string-array>
+    <string-array name="settings_keywords_contacts">
+        <item>keep in touch</item>
+        <item>gente</item>
+        <item>amigos</item>
+        <item>compañeros</item>
+        <item>llamar a alguien</item>
+        <item>turnos</item>
+    </string-array>
+    <string-array name="settings_keywords_places">
+        <item>ubicación</item>
+        <item>gps</item>
+        <item>geovalla</item>
+        <item>casa</item>
+        <item>oficina</item>
+        <item>ubicación en segundo plano</item>
+    </string-array>
+    <string-array name="settings_keywords_look">
+        <item>tema</item>
+        <item>oscuro</item>
+        <item>claro</item>
+        <item>idioma</item>
+        <item>vibración al tocar</item>
+        <item>colores</item>
+    </string-array>
+    <string-array name="settings_keywords_backup">
+        <item>copia</item>
+        <item>github</item>
+        <item>contraseña</item>
+        <item>restaurar</item>
+        <item>exportar</item>
+        <item>caja fuerte</item>
+    </string-array>
+    <string-array name="settings_keywords_updates">
+        <item>versión</item>
+        <item>alpha</item>
+        <item>beta</item>
+        <item>instalar</item>
+        <item>wifi</item>
+        <item>canal</item>
+    </string-array>
+    <string-array name="settings_keywords_about">
+        <item>versión</item>
+        <item>novedades</item>
+        <item>licencias</item>
+        <item>diagnóstico</item>
+        <item>cómo funciona esto</item>
+        <item>guía</item>
+    </string-array>
     <string name="settings_appearance">Apariencia</string>
     <string name="settings_theme_system">Sistema</string>
     <string name="settings_theme_light">Claro</string>
@@ -1457,6 +1573,13 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_124_0">
+
+        <item>«Cómo funciona esto»: una pantalla con los gestos y con qué es cada cosa de la app — las tarjetas, las rutinas, keep in touch, los presets, los lugares, la copia de seguridad y la red de seguridad. Está en Ajustes → Acerca de, y debajo de la invitación del Home vacío, que hasta ahora era el único sitio donde se explicaba un gesto y que desaparece con el primer recordatorio.</item>
+
+        <item>Ajustes tiene buscador. Once filas plegadas y ninguna forma de entrar salvo saber dónde vive cada cosa: ahora la lupa deja solo las filas que responden, por su título o por las palabras que usa la gente — «no molestar», «batería», «horas de silencio».</item>
+
+    </string-array>
     <string-array name="whats_new_0_123_0">
 
         <item>La pantalla de rutinas y sus propias filas ya dicen lo mismo de los contactos. La lista se ordena por el turno que enseña cada fila —a quien se le pasó el plazo le toca esperar, no va tarde— y el chip «vencidas» va de haber avisado y no haber respuesta, así que ya no puede darte una lista de contactos que dicen «Sí».</item>

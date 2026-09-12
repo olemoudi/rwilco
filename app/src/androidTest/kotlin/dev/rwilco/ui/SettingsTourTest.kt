@@ -8,10 +8,13 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
+import dev.rwilco.ui.home.HOME_SEARCH_TAG
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -197,6 +200,44 @@ class SettingsTourTest {
         rule.waitUntilShown(s(R.string.settings_contacts_never_warning))
         rule.onNodeWithText(s(R.string.settings_contacts_never_warning), useUnmergedTree = true).performScrollTo().assertIsDisplayed()
         shot("settings-contacts-warning")
+    }
+
+    /**
+     * The one screen that explains the app, and the door to it.
+     *
+     * A picture because it is prose and prose is judged by looking at it: seven cards a person
+     * who did not write the app can read start to finish.
+     */
+    @Test
+    fun theGuideSaysHowTheAppWorks() {
+        rule.onNodeWithContentDescription(s(R.string.home_settings)).performClick()
+        rule.waitUntilShown(s(R.string.settings_about))
+        rule.onNodeWithText(s(R.string.settings_about), useUnmergedTree = true).performScrollTo().performClick()
+        rule.waitUntilShown(s(R.string.guide_title))
+        rule.onNodeWithText(s(R.string.guide_title), useUnmergedTree = true).performScrollTo().performClick()
+        rule.waitUntilShown(s(R.string.guide_cards_title))
+        rule.onNodeWithText(s(R.string.guide_routines_title), useUnmergedTree = true).assertIsDisplayed()
+        shot("guide")
+    }
+
+    /**
+     * The words somebody has for a thing, against the names the rows carry.
+     *
+     * "No molestar" is a permission inside "Avisos" and appears nowhere on the closed index; the
+     * search is the only way to it that does not involve knowing where it lives.
+     */
+    @Test
+    fun searchingTheSettingsNarrowsTheIndexToWhatAnswers() {
+        rule.onNodeWithContentDescription(s(R.string.home_settings)).performClick()
+        rule.waitUntilShown(s(R.string.settings_group_day))
+        rule.onNodeWithContentDescription(s(R.string.settings_search)).performClick()
+        rule.waitForIdle()
+        rule.onNodeWithTag(HOME_SEARCH_TAG).performTextInput("no molestar")
+        // What does not answer is not there to scroll past, and what does is — under a title
+        // that never says those words.
+        rule.waitUntilGone(s(R.string.settings_group_day))
+        shot("settings-search")
+        rule.onNodeWithText(s(R.string.settings_alerts), useUnmergedTree = true).performScrollTo().assertIsDisplayed()
     }
 
     /** The rows, in the order the screen puts them. */

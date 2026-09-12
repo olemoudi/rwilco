@@ -153,6 +153,8 @@ fun HomeScreen(
     onDoneList: () -> Unit,
     onSettings: () -> Unit,
     onDiagnostics: () -> Unit,
+    /** "Cómo funciona esto", offered under the invitation on an empty Home. */
+    onGuide: () -> Unit = {},
     /** The routines screen, behind the one line Home keeps about them (see RoutinesLine). */
     /** The routines screen; the id is the one to scroll to, when the tap came from its row. */
     onRoutines: (String?) -> Unit = {},
@@ -880,6 +882,11 @@ fun HomeScreen(
                             actionLabel = stringResource(R.string.home_empty_action),
                             // The same door as "Nuevo", asking the same question or not asking it.
                             onAction = { if (asksWhichKind) choosing = true else onNew() },
+                            // The gestures this paragraph teaches are the only place they were
+                            // ever taught, and this screen is gone with the first reminder: the
+                            // guide is where they keep being said.
+                            secondaryLabel = stringResource(R.string.guide_title),
+                            onSecondary = onGuide,
                         )
                     }
                 }

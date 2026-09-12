@@ -16,6 +16,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +37,9 @@ fun EmptyState(
     icon: ImageVector? = null,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
+    /** A quieter second way out, under the invitation: "how this works", where there is one. */
+    secondaryLabel: String? = null,
+    onSecondary: (() -> Unit)? = null,
 ) {
     val sizes = Tokens.sizes
     Column(
@@ -74,6 +78,15 @@ fun EmptyState(
                 modifier = Modifier.heightIn(min = sizes.control),
             ) {
                 Text(actionLabel, style = MaterialTheme.typography.titleMedium)
+            }
+        }
+        // A second way out, quieter than the first: the invitation is still the button above it.
+        if (secondaryLabel != null && onSecondary != null) {
+            TextButton(
+                onClick = onSecondary,
+                modifier = Modifier.heightIn(min = sizes.touch),
+            ) {
+                Text(secondaryLabel, style = MaterialTheme.typography.titleSmall)
             }
         }
     }

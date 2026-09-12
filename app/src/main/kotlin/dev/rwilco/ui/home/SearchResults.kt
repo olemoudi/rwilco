@@ -58,7 +58,13 @@ const val HOME_SEARCH_TAG = "homeSearch"
  * keyboard is exactly what was asked for, unlike in the editor.
  */
 @Composable
-fun SearchField(query: String, onQueryChange: (String) -> Unit, onClose: () -> Unit) {
+fun SearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClose: () -> Unit,
+    /** What the empty field asks for. Home's own question, unless somewhere else asks another. */
+    hint: String = stringResource(R.string.home_search_hint),
+) {
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
@@ -93,7 +99,7 @@ fun SearchField(query: String, onQueryChange: (String) -> Unit, onClose: () -> U
                 field = it
                 onQueryChange(it.text)
             },
-            placeholder = { Text(stringResource(R.string.home_search_hint)) },
+            placeholder = { Text(hint) },
             singleLine = true,
             leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
             trailingIcon = {

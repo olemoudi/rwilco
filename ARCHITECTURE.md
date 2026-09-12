@@ -1019,6 +1019,19 @@ loud what DST and a change of zone do to a landing.
   meaning rather than by what happened to be adjacent: `NEW` is what a blank reminder starts
   as, `DAY` is the shape of the week, `PLACES` folds the permission and the saved places
   together because they were two sections saying the same thing.
+  **And it can be searched** (0.124.0, `SettingsSearch.kt`): an index is only an index to
+  somebody who knows where things live, and "no molestar" is a permission inside `ALERTS`, the
+  quiet hours are inside `DAY`, and neither word is on the closed screen anywhere. The magnifier
+  in the top bar swaps the title for Home's own `SearchField` (with this screen's question in it),
+  and what does not answer is **not drawn at all** — every row takes a `matches` set and returns
+  before it draws, which is one parameter at eleven call sites rather than eleven conditionals
+  around them. `settingsMatches` is pure and JVM-tested, over the app's own `fuzzyScore`/`fold`
+  (so accents and case do not matter), asked of the row's title and of a `<string-array>` of the
+  words people actually use for it — the summaries are deliberately not indexed, because each is
+  worked out where its row is drawn and a second copy would be eleven sentences to keep in step.
+  `SETTINGS_INDEX` is the one place a new row can be forgotten, so a test counts it.
+  Rows come back **closed**: what the search does is narrow eleven rows to the one that answers,
+  and opening it is the tap it has always been.
 - **A fold may never hide a phone that will not ring.** `AlertReadiness` (ten grants and
   blocks) and `PlaceReadiness` are held outside their cards so a closed row can say "3 cosas
   por arreglar" in the error colour with the badge to match, and the groups in trouble open
@@ -3218,6 +3231,17 @@ text button is the one that sets `AppSettings.disclaimerRead` and stops it for g
 the flag defaults to false: a phone that already has the app is shown the notice too. The
 instrumented suite answers it once for the whole run in `RwilcoTestRunner`; `DisclaimerTest`
 unanswers it for itself.
+
+**And one screen that explains the app** (0.124.0, `ui/guide/GuideScreen.kt`). There is still no
+onboarding and there is not going to be one — a wizard in front of somebody who wants to write a
+reminder is a toll — but until now the *only* place a gesture was ever taught was the paragraph in
+Home's empty state, which is gone the moment the first reminder exists, and nothing anywhere said
+that routines, keep-in-touch, presets, places or the backup were things at all. So: a screen you
+go to, prose in cards, seven pieces (the cards and their gestures, routines, keep in touch,
+presets, places, the backup, the net), no pictures and no "next". Two doors, both quiet: a row in
+Settings → Acerca de, and a text button under the invitation on the empty Home (`EmptyState`'s
+`secondaryLabel`, which every other caller leaves null). It matters most for the people the owner
+hands the app to, who are on the beta channel and did not write any of it.
 
 ## Performance
 

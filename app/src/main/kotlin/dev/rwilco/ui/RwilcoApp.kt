@@ -46,6 +46,7 @@ import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.ui.components.rememberSnackbarController
 import dev.rwilco.ui.done.DoneScreen
 import dev.rwilco.ui.done.DoneViewModel
+import dev.rwilco.ui.guide.GuideScreen
 import dev.rwilco.ui.routines.RoutinesScreen
 import dev.rwilco.ui.routines.RoutinesViewModel
 import dev.rwilco.ui.editor.EditorScreen
@@ -179,6 +180,7 @@ fun RwilcoApp(
                         onDoneList = { navController.navigateOnce(Routes.Done) },
                         onRoutines = { focus -> navController.navigateOnce(Routes.Routines(focus)) },
                         onSettings = { navController.navigateOnce(Routes.Settings) },
+                        onGuide = { navController.navigateOnce(Routes.Guide) },
                         // Built here rather than in the ViewModel: a report is a snapshot of the
                         // whole app — permissions, settings, the alarm log, the place watch —
                         // and Home's ViewModel knows about none of that. Collected fresh on
@@ -264,10 +266,14 @@ fun RwilcoApp(
                         onWatchLog = { navController.navigateOnce(Routes.WatchLog) },
                         onBackup = { navController.navigateOnce(Routes.Backup) },
                         onDiagnostics = { navController.navigateOnce(Routes.Diagnostics) },
+                        onGuide = { navController.navigateOnce(Routes.Guide) },
                     )
                 }
                 composable<Routes.Diagnostics> {
                     DiagnosticsScreen(app = app, onBack = { navController.popBackStack() })
+                }
+                composable<Routes.Guide> {
+                    GuideScreen(onBack = { navController.popBackStack() })
                 }
                 composable<Routes.Backup> {
                     BackupScreen(

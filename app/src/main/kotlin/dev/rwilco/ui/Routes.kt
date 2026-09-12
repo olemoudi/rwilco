@@ -62,4 +62,8 @@ object Routes {
     /** What the app knows about itself, for when something did not happen. */
     @Serializable
     data object Diagnostics
+
+    /** How the app works, for somebody who did not write it: the gestures and what each thing is. */
+    @Serializable
+    data object Guide
 }

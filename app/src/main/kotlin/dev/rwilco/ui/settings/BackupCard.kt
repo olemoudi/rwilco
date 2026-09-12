@@ -27,7 +27,7 @@ import java.time.format.FormatStyle
  * is a fold that costs a tap and hides one row — so it stays a row of its own.
  */
 @Composable
-fun BackupCard(onOpen: () -> Unit, modifier: Modifier = Modifier) {
+fun BackupCard(onOpen: () -> Unit, modifier: Modifier = Modifier, matches: Set<String>? = null) {
     val app = LocalContext.current.applicationContext as RwilcoApplication
     val state by app.vaultStore.state.collectAsStateWithLifecycle(initialValue = null)
     val activity by VaultCenter.activity.collectAsStateWithLifecycle()
@@ -54,8 +54,10 @@ fun BackupCard(onOpen: () -> Unit, modifier: Modifier = Modifier) {
         summary = if (current == null) "" else vaultStatusText(current, activity.working, freshness),
         icon = Icons.Outlined.Lock,
         attention = current?.needsAttention == true || freshness == BackupFreshness.STALE,
-        // It sits in the index beside the folding groups, so it is set like one of them.
+        // It sits in the index beside the folding groups, so it is set like one of them — and a
+        // search narrows it like one of them too.
         topLevel = true,
+        matches = matches,
         onClick = onOpen,
         modifier = modifier,
     )
