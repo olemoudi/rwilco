@@ -847,12 +847,11 @@ each a `SwipeableCard` like every card (done / delete), and counts the rest in o
 (`MoreOverdueRoutinesRow`); the door names the next one due; the count ticks by the minute. The
 widget's overdue count includes the routines owed; the launcher gives them `ROUTINE_SLOTS` (two)
 so the pinned presets keep theirs. The ask card and the undo cards join the app's bundle and
-wear `routineColor`; a "hecho" given from the shade gets an undo card
-(`AlertNotifications.doneNotice`) — **every reminder's, not only a routine's**: the shade is the
-door with no snackbar to take an answer back with, and a mis-tap finishes a one-off as thoroughly
-as it moves a count. **The alert screen posted one too from 0.122.0 and posts none since
-0.126.0**, at the owner's word: a card saying "Hecho" right after the screen that was just told
-"Hecho" repeats the answer rather than offering anything. The card
+wear `routineColor`. A "hecho" given from the shade or the alert screen used to get an undo card
+(`AlertNotifications.doneNotice`), every reminder's since 0.122.0; **neither door posts one any
+more** — the alert stopped in 0.126.0 and the shade in 0.128.0, at the owner's word: a card saying
+"Hecho" right after the thing that was just told "Hecho" repeats the answer rather than offering
+anything. The card
 carries the **row as it stood** (`ReminderFiring.dismiss(notice = true)` reads it inside the same
 lock; `undoDismiss` writes it back), because a "hecho" writes nine columns in one statement and
 putting the anchor back alone is not an undo. It refuses a reminder deleted since (a card

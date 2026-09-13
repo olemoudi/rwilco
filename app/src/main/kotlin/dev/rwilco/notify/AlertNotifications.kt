@@ -308,7 +308,7 @@ object AlertNotifications {
     /**
      * A contact whose turn has come: «¿Has llamado a Ana?», how long it has been, and two answers
      * — "hablado", through the same "hecho" door every other surface uses
-     * ([AlertActionReceiver.ACTION_DONE], so the undo card comes with it), and "posponer 1
+     * ([AlertActionReceiver.ACTION_DONE], which leaves no card behind since 0.128.0), and "posponer 1
      * semana" ([AlertActionReceiver.ACTION_PUT_OFF_WEEK]). Never a sound, never the screen.
      *
      * [nudge] is the safety net's word the next day about a telling nobody answered: the same card
@@ -367,9 +367,9 @@ object AlertNotifications {
      * way back of its own (Home and the routines screen have their snackbars, the launcher refuses
      * to mark anything done at all).
      *
-     * The alert screen posted it too from 0.122.0, and posts nothing since 0.126.0, at the owner's
-     * word: a card saying "Hecho" a moment after the screen that was just told "Hecho" repeats the
-     * answer rather than offering anything.
+     * **Nothing posts it since 0.128.0.** The alert screen stopped in 0.126.0 and the shade in
+     * 0.128.0, at the owner's word: a card saying "Hecho" a moment after the thing that was just
+     * told "Hecho" repeats the answer rather than offering anything.
      *
      * [row] is the row as it stood a moment before, carried in the button: a "hecho" writes nine
      * columns in one statement and the anchor is one of them, so the whole row is the only honest

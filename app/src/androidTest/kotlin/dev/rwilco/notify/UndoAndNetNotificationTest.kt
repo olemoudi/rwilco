@@ -2,14 +2,18 @@ package dev.rwilco.notify
 
 import android.app.Notification
 import android.app.NotificationManager
+import android.content.Intent
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.GrantPermissionRule
 import dev.rwilco.R
+import dev.rwilco.alarm.AlertActionReceiver
+import dev.rwilco.alarm.ReminderScheduler
 import dev.rwilco.data.ReminderEntity
 import dev.rwilco.model.FiringPlan
 import dev.rwilco.model.NetWord
 import dev.rwilco.model.Reminder
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -84,6 +88,34 @@ class UndoAndNetNotificationTest {
         Thread.sleep(600)
         val card = cardsOn(AlertNotifications.CHANNEL_NET).single().notification
         assertEquals(emptyList<String>(), card.words())
+    }
+
+    @Test
+    fun aHechoFromTheShadeLeavesNoCardBehind() {
+        // 0.128.0: the card that was answered going away already says the answer landed, so the
+        // shade's "hecho" posts nothing after it — as the alert screen's has not since 0.126.0.
+        // Its own words, so a net card about some other reminder cannot be mistaken for one.
+        val app = context.applicationContext as dev.rwilco.RwilcoApplication
+        val ficus = bins.copy(id = "shade-done", text = "Regar el ficus (prueba)")
+        runBlocking { app.repository.save(ficus) }
+        try {
+            context.sendBroadcast(
+                Intent(context, AlertActionReceiver::class.java)
+                    .setAction(AlertActionReceiver.ACTION_DONE)
+                    .setData(ReminderScheduler.reminderUri(ficus.id)),
+            )
+            val deadline = System.currentTimeMillis() + 10_000
+            while (runBlocking { app.repository.get(ficus.id)?.lastDealtAt } == null) {
+                check(System.currentTimeMillis() < deadline) { "the hecho never landed" }
+                Thread.sleep(100)
+            }
+            // The card used to be posted after the row was written, so the row alone is no proof.
+            Thread.sleep(600)
+            val about = cardsOn(AlertNotifications.CHANNEL_NET).map { it.notification.title() }.filter { ficus.text in it }
+            assertEquals(emptyList<String>(), about)
+        } finally {
+            runBlocking { app.repository.delete(ficus.id) }
+        }
     }
 
     @Test
