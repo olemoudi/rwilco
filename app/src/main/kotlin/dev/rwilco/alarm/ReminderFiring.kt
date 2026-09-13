@@ -535,8 +535,8 @@ class ReminderFiring(
         // back let pass ahead of it. A one-off finished ahead of its moment is still "hecho".
         val skipped = consumed != null && reminder.recurrence != Recurrence.None && !reminder.awaitingAnswer(now)
         repository.record(id, if (skipped) FiringKind.SKIPPED else FiringKind.DEALT, now)
-        // The way back, from the two doors that have no snackbar to give one: the alert screen
-        // and the shade. Home and the routines list ask for no notice — they answer for themselves.
+        // The way back, from the one door that has no snackbar to give one: the shade. Home and
+        // the routines list answer for themselves, and the alert screen asks for none (0.126.0).
         if (notice) AlertNotifications.doneNotice(context, reminder, row)
         scheduler.rearmAll()
     }

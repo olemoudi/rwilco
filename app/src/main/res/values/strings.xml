@@ -1603,6 +1603,12 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_126_0">
+
+        <item>«Done» on the full-screen alert no longer leaves a «Done: …» notification behind. The alert going away already tells you the answer landed, and the card only said it again. «Done» on the notification itself still leaves its card with «Undo», because from there that card is the only way back.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_125_0">
 
         <item>The backup will not copy an emptiness up. It decided what to send by comparing content, which cannot tell a reminder you deleted from every reminder gone at once — so a phone that lost its database (installing an older build by hand drops it) or its settings (a file the system replaced because it would not parse) would have copied that faithfully over the one copy that still had everything. Now a run that finds nothing where the last copy had something stops, says so, and leaves GitHub as it was. Two ways on: bring the copy back, or say it was you who emptied it.</item>

@@ -1,5 +1,7 @@
 package dev.rwilco.ui
 
+import android.app.Notification
+import android.app.NotificationManager
 import android.content.Intent
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -13,6 +15,7 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.rule.GrantPermissionRule
 import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.alarm.ReminderScheduler
@@ -21,9 +24,11 @@ import dev.rwilco.model.AlertStacking
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
+import dev.rwilco.notify.AlertNotifications
 import dev.rwilco.ui.alert.AlertActivity
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -42,6 +47,10 @@ class AlertStackTest {
     @get:Rule
     val rule = createEmptyComposeRule()
 
+    // Without it the shade stays empty whatever the alert does, and "no card" proves nothing.
+    @get:Rule
+    val notifications: GrantPermissionRule = GrantPermissionRule.grant(android.Manifest.permission.POST_NOTIFICATIONS)
+
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
     private val app get() = context.applicationContext as RwilcoApplication
     private val textA = "Llamar a Marta (prueba A)"
@@ -55,6 +64,8 @@ class AlertStackTest {
     fun seed() = runBlocking {
         val now = app.clock.instant()
         for ((id, text) in listOf("stack-a" to textA, "stack-b" to textB, "stack-c" to textC)) {
+            // A "hecho" card left by an earlier build would read as this one's.
+            AlertNotifications.cancelReset(context, id)
             app.repository.save(
                 Reminder(
                     id = id,
@@ -109,6 +120,8 @@ class AlertStackTest {
             // A finished activity has no hierarchy to ask, which the test rule reports by throwing.
             runCatching { rule.onAllNodesWithText(doneAll).fetchSemanticsNodes().isEmpty() }.getOrDefault(true)
         }
+        assertNoDoneCard(textA)
+        assertNoDoneCard(textB)
     }
 
     @Test
@@ -170,6 +183,22 @@ class AlertStackTest {
 
         rule.waitUntilShown(textB)
         rule.onAllNodesWithText(waiting).assertCountEquals(0)
+        assertNoDoneCard(textA)
+    }
+
+    /**
+     * A "hecho" on the alert leaves nothing in the shade (0.126.0): the screen answered is the
+     * word that it landed. The card is posted after the row is written, so the row alone is not
+     * proof it will not come — hence the wait before looking.
+     */
+    private fun assertNoDoneCard(text: String) {
+        Thread.sleep(600)
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val cards = manager.activeNotifications.filter {
+            it.notification.channelId == AlertNotifications.CHANNEL_NET &&
+                it.notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.contains(text) == true
+        }
+        assertEquals("a card about «$text» in the shade", 0, cards.size)
     }
 
     private fun shot(name: String) {

@@ -359,13 +359,17 @@ object AlertNotifications {
     }
 
     /**
-     * A "hecho" given where there is no snackbar to take it back with — the alert screen and the
-     * shade — said back with "deshacer".
+     * A "hecho" given from the shade, where there is no snackbar to take it back with, said back
+     * with "deshacer".
      *
      * It used to be a routine's alone, on the reasoning that what a routine's "hecho" moves is a
-     * count; but a mis-held thumb on the alert at three in the morning finishes a one-off just as
-     * thoroughly, and those two doors are exactly the two with no way back (Home and the routines
-     * screen have their snackbars, the launcher refuses to mark anything done at all).
+     * count; but a mis-tap in the shade finishes a one-off just as thoroughly, and the shade has no
+     * way back of its own (Home and the routines screen have their snackbars, the launcher refuses
+     * to mark anything done at all).
+     *
+     * The alert screen posted it too from 0.122.0, and posts nothing since 0.126.0, at the owner's
+     * word: a card saying "Hecho" a moment after the screen that was just told "Hecho" repeats the
+     * answer rather than offering anything.
      *
      * [row] is the row as it stood a moment before, carried in the button: a "hecho" writes nine
      * columns in one statement and the anchor is one of them, so the whole row is the only honest

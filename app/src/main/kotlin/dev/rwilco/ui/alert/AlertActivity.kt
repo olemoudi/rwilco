@@ -259,16 +259,18 @@ class AlertActivity : ComponentActivity() {
                 val stacked = items.size > 1 && current.alertStacking == AlertStacking.STRIPS
                 val focusedItem = focused?.takeIf { stacked }?.let { id -> items.firstOrNull { it.id == id } }
                 BackHandler(enabled = focusedItem != null) { focused = null }
+                // "Hecho" here leaves no undo card behind (0.126.0): the screen going away is
+                // already the word that it landed, and a card saying "Hecho" again was noise.
                 if (stacked && focusedItem == null) {
                     AlertStackScreen(
                         items = items,
-                        onDone = { id -> answer(id) { app.firing.dismiss(id, notice = true) } },
+                        onDone = { id -> answer(id) { app.firing.dismiss(id) } },
                         onSnooze = { id, snooze -> answer(id) { app.firing.snooze(id, snooze) } },
                         // Not the form: this one reminder, on the whole screen. See [focused].
                         onView = { id -> focused = id },
                         snoozes = current.notificationSnoozeOffers,
                         customMinutes = current.snoozeCustomMinutes,
-                        onDoneAll = { answerAll(items.map { it.id }) { id -> app.firing.dismiss(id, notice = true) } },
+                        onDoneAll = { answerAll(items.map { it.id }) { id -> app.firing.dismiss(id) } },
                         onSnoozeAll = { snooze -> answerAll(items.map { it.id }) { id -> app.firing.snooze(id, snooze) } },
                         ringing = noise,
                         onSilence = ::silence,
@@ -279,7 +281,7 @@ class AlertActivity : ComponentActivity() {
                         content = first.content,
                         preview = false,
                         waiting = items.size - 1,
-                        onDone = { answer(first.id) { app.firing.dismiss(first.id, notice = true) } },
+                        onDone = { answer(first.id) { app.firing.dismiss(first.id) } },
                         onSnooze = { snooze: Snooze -> answer(first.id) { app.firing.snooze(first.id, snooze) } },
                         onView = { view(first.id, first.content.routine) },
                         customMinutes = current.snoozeCustomMinutes,
