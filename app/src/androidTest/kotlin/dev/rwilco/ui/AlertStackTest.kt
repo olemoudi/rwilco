@@ -120,8 +120,8 @@ class AlertStackTest {
             // A finished activity has no hierarchy to ask, which the test rule reports by throwing.
             runCatching { rule.onAllNodesWithText(doneAll).fetchSemanticsNodes().isEmpty() }.getOrDefault(true)
         }
-        assertNoDoneCard(textA)
-        assertNoDoneCard(textB)
+        assertUndoCardForAMinute(textA)
+        assertUndoCardForAMinute(textB)
     }
 
     @Test
@@ -183,22 +183,25 @@ class AlertStackTest {
 
         rule.waitUntilShown(textB)
         rule.onAllNodesWithText(waiting).assertCountEquals(0)
-        assertNoDoneCard(textA)
+        assertUndoCardForAMinute(textA)
     }
 
     /**
-     * A "hecho" on the alert leaves nothing in the shade (0.126.0): the screen answered is the
-     * word that it landed. The card is posted after the row is written, so the row alone is not
-     * proof it will not come — hence the wait before looking.
+     * A "hecho" on the alert leaves its undo card for a minute (0.129.0): the alert has no snackbar,
+     * and a mis-held thumb there is what the card is for. It is posted after the row is written,
+     * so it is waited for rather than looked for once.
      */
-    private fun assertNoDoneCard(text: String) {
-        Thread.sleep(600)
+    private fun assertUndoCardForAMinute(text: String) {
         val manager = context.getSystemService(NotificationManager::class.java)
-        val cards = manager.activeNotifications.filter {
+        val about = { manager.activeNotifications.filter {
             it.notification.channelId == AlertNotifications.CHANNEL_NET &&
                 it.notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.contains(text) == true
-        }
-        assertEquals("a card about «$text» in the shade", 0, cards.size)
+        } }
+        val deadline = System.currentTimeMillis() + 5_000
+        while (about().isEmpty() && System.currentTimeMillis() < deadline) Thread.sleep(100)
+        val cards = about()
+        assertEquals("one card about «$text» in the shade", 1, cards.size)
+        assertEquals("a minute, then it goes by itself", AlertNotifications.DONE_NOTICE_MS, cards.single().notification.timeoutAfter)
     }
 
     private fun shot(name: String) {

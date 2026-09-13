@@ -15,7 +15,6 @@ import dev.rwilco.model.NetWord
 import dev.rwilco.model.Reminder
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -77,7 +76,7 @@ class UndoAndNetNotificationTest {
         val card = cardsOn(AlertNotifications.CHANNEL_NET).single().notification
         assertEquals(context.getString(R.string.notif_done_title_plain, bins.text), card.title())
         assertEquals(listOf(context.getString(R.string.common_undo)), card.words())
-        assertTrue("it does not sit in the shade for ever", card.timeoutAfter > 0)
+        assertEquals("a minute, then it goes by itself", AlertNotifications.DONE_NOTICE_MS, card.timeoutAfter)
     }
 
     @Test
@@ -91,10 +90,11 @@ class UndoAndNetNotificationTest {
     }
 
     @Test
-    fun aHechoFromTheShadeLeavesNoCardBehind() {
-        // 0.128.0: the card that was answered going away already says the answer landed, so the
-        // shade's "hecho" posts nothing after it — as the alert screen's has not since 0.126.0.
-        // Its own words, so a net card about some other reminder cannot be mistaken for one.
+    fun aHechoFromTheShadeLeavesAMinutesUndo() {
+        // 0.129.0: the shade's "hecho" — the button on a ring's card, a contact's and a routine's
+        // question alike — leaves the undo card again, and for a minute. Found by its own words,
+        // so a net card about some other reminder cannot be mistaken for it; the title's wording
+        // is the receiver's locale, so only the reminder's text is matched.
         val app = context.applicationContext as dev.rwilco.RwilcoApplication
         val ficus = bins.copy(id = "shade-done", text = "Regar el ficus (prueba)")
         runBlocking { app.repository.save(ficus) }
@@ -104,16 +104,17 @@ class UndoAndNetNotificationTest {
                     .setAction(AlertActionReceiver.ACTION_DONE)
                     .setData(ReminderScheduler.reminderUri(ficus.id)),
             )
+            val about = { cardsOn(AlertNotifications.CHANNEL_NET).map { it.notification }.filter { ficus.text in it.title() } }
             val deadline = System.currentTimeMillis() + 10_000
-            while (runBlocking { app.repository.get(ficus.id)?.lastDealtAt } == null) {
-                check(System.currentTimeMillis() < deadline) { "the hecho never landed" }
+            while (about().isEmpty()) {
+                check(System.currentTimeMillis() < deadline) { "no undo card came" }
                 Thread.sleep(100)
             }
-            // The card used to be posted after the row was written, so the row alone is no proof.
-            Thread.sleep(600)
-            val about = cardsOn(AlertNotifications.CHANNEL_NET).map { it.notification.title() }.filter { ficus.text in it }
-            assertEquals(emptyList<String>(), about)
+            val card = about().single()
+            assertEquals("one button, the undo", 1, card.actions.orEmpty().size)
+            assertEquals("a minute, then it goes by itself", AlertNotifications.DONE_NOTICE_MS, card.timeoutAfter)
         } finally {
+            AlertNotifications.cancelReset(context, ficus.id)
             runBlocking { app.repository.delete(ficus.id) }
         }
     }

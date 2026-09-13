@@ -26,9 +26,10 @@ class AlertActionReceiver : BroadcastReceiver() {
                 // system finishes the receiver itself, and a finish() of ours on top throws.
                 val done = withTimeoutOrNull(BUDGET_MS) {
                     when (intent.action) {
-                        // No card saying "hecho" after it (0.128.0, the owner's word): the card
-                        // that was answered going away already says it landed, as on the alert.
-                        ACTION_DONE -> app.firing.dismiss(id)
+                        // Every "hecho" from the shade leaves a minute's undo card (0.129.0): the
+                        // notice is posted by the firing itself, which is where the row it would
+                        // be taken back to is read (ReminderFiring.dismiss).
+                        ACTION_DONE -> app.firing.dismiss(id, notice = true)
                         ACTION_UNDO_DONE -> {
                             val row = intent.getStringExtra(EXTRA_ROW)
                                 ?.let { runCatching { ReminderCodec.json.decodeFromString(ReminderEntity.serializer(), it) }.getOrNull() }

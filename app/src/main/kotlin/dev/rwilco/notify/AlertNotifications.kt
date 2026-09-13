@@ -111,9 +111,15 @@ object AlertNotifications {
     private const val SUMMARY_ID = 1
 
     /**
-     * How long a "deshacer" card stays. Long enough to catch a thumb that went where it did not
-     * mean to, short enough that the shade is not carrying yesterday's answers; past it the
-     * reminder is still in "Hechos", which is where an undo an hour later belongs.
+     * How long a "hecho" somebody gave leaves its "deshacer" card (0.129.0, the owner's minute):
+     * long enough to catch a thumb that went where it did not mean to, gone before the card is one
+     * more thing in the shade. Past it the reminder is in "Hechos", where a later undo belongs.
+     */
+    const val DONE_NOTICE_MS = 60_000L
+
+    /**
+     * How long the card stays when a place counts a routine as done: the app gave that "hecho"
+     * with nobody looking, so the card has to outlast a glance at the phone, not only a thumb.
      */
     private const val UNDO_NOTICE_MS = 10 * 60_000L
 
@@ -308,7 +314,7 @@ object AlertNotifications {
     /**
      * A contact whose turn has come: «¿Has llamado a Ana?», how long it has been, and two answers
      * — "hablado", through the same "hecho" door every other surface uses
-     * ([AlertActionReceiver.ACTION_DONE], which leaves no card behind since 0.128.0), and "posponer 1
+     * ([AlertActionReceiver.ACTION_DONE], so the minute's undo card comes with it), and "posponer 1
      * semana" ([AlertActionReceiver.ACTION_PUT_OFF_WEEK]). Never a sound, never the screen.
      *
      * [nudge] is the safety net's word the next day about a telling nobody answered: the same card
@@ -355,21 +361,23 @@ object AlertNotifications {
             undo,
             context.getString(R.string.notif_reset_title, reminder.text),
             context.getString(doorRes, place.label),
+            UNDO_NOTICE_MS,
         )
     }
 
     /**
-     * A "hecho" given from the shade, where there is no snackbar to take it back with, said back
-     * with "deshacer".
+     * A "hecho" given where there is no snackbar to take it back with — the alert screen and the
+     * shade — said back with "deshacer", for a minute.
      *
      * It used to be a routine's alone, on the reasoning that what a routine's "hecho" moves is a
-     * count; but a mis-tap in the shade finishes a one-off just as thoroughly, and the shade has no
-     * way back of its own (Home and the routines screen have their snackbars, the launcher refuses
-     * to mark anything done at all).
+     * count; but a mis-held thumb on the alert at three in the morning finishes a one-off just as
+     * thoroughly, and those two doors are exactly the two with no way back (Home and the routines
+     * screen have their snackbars, the launcher refuses to mark anything done at all).
      *
-     * **Nothing posts it since 0.128.0.** The alert screen stopped in 0.126.0 and the shade in
-     * 0.128.0, at the owner's word: a card saying "Hecho" a moment after the thing that was just
-     * told "Hecho" repeats the answer rather than offering anything.
+     * **A minute, then it goes by itself** ([DONE_NOTICE_MS], 0.129.0). The owner took the card off
+     * the alert in 0.126.0 and off the shade in 0.128.0 — a card saying "Hecho" after the thing just
+     * told "Hecho" repeats the answer — and brought it back as a minute's grace: long enough for
+     * the thumb that went wrong, gone before it is one more thing in the shade.
      *
      * [row] is the row as it stood a moment before, carried in the button: a "hecho" writes nine
      * columns in one statement and the anchor is one of them, so the whole row is the only honest
@@ -394,11 +402,11 @@ object AlertNotifications {
             else -> context.getString(R.string.notif_done_title_plain, reminder.text)
         }
         val body = context.getString(if (reminder.isRoutine) R.string.notif_done_body else R.string.notif_done_body_plain)
-        undoableNotice(context, reminder, undo, title, body)
+        undoableNotice(context, reminder, undo, title, body, DONE_NOTICE_MS)
     }
 
-    /** The mute card with "deshacer" on the net's channel; [undo] is what the button does. */
-    private fun undoableNotice(context: Context, reminder: Reminder, undo: Intent?, title: String, body: String) {
+    /** The mute card with "deshacer" on the net's channel; [undo] is what the button does, and it goes after [timeoutMs]. */
+    private fun undoableNotice(context: Context, reminder: Reminder, undo: Intent?, title: String, body: String, timeoutMs: Long) {
         ensureQuietChannels(context)
         val builder = NotificationCompat.Builder(context, CHANNEL_NET)
             .setSmallIcon(R.drawable.ic_notification)
@@ -417,10 +425,10 @@ object AlertNotifications {
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setGroup(BUNDLE)
             .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
-            // Long enough to notice a mis-tap, short enough that the shade is not carrying
-            // yesterday's answers. It used to stay until it was swiped, which for a card that
-            // says "done" is a card saying nothing anybody still needs.
-            .setTimeoutAfter(UNDO_NOTICE_MS)
+            // Gone by itself: it used to stay until it was swiped, which for a card that says
+            // "done" is a card saying nothing anybody still needs. How soon is the caller's — a
+            // minute for a "hecho" somebody gave, longer for one a place gave with nobody looking.
+            .setTimeoutAfter(timeoutMs)
             .setColor(if (reminder.isRoutine) ROUTINE_ARGB else AMBER_ARGB)
         if (undo != null) {
             builder.addAction(

@@ -847,15 +847,17 @@ each a `SwipeableCard` like every card (done / delete), and counts the rest in o
 (`MoreOverdueRoutinesRow`); the door names the next one due; the count ticks by the minute. The
 widget's overdue count includes the routines owed; the launcher gives them `ROUTINE_SLOTS` (two)
 so the pinned presets keep theirs. The ask card and the undo cards join the app's bundle and
-wear `routineColor`. A "hecho" given from the shade or the alert screen used to get an undo card
-(`AlertNotifications.doneNotice`), every reminder's since 0.122.0; **neither door posts one any
-more** — the alert stopped in 0.126.0 and the shade in 0.128.0, at the owner's word: a card saying
-"Hecho" right after the thing that was just told "Hecho" repeats the answer rather than offering
-anything. The card
+wear `routineColor`. A "hecho" given from the shade or the alert screen gets an undo card
+(`AlertNotifications.doneNotice`) — every reminder's, not only a routine's, since 0.122.0: those
+are the two doors with no snackbar to take an answer back with. It went from the alert in 0.126.0
+and from the shade in 0.128.0 (a card saying "Hecho" after the thing just told "Hecho" repeats the
+answer) and came back to both in 0.129.0 **for one minute** (`DONE_NOTICE_MS`), at the owner's
+word: long enough for a mis-held thumb, gone before it is clutter. The card
 carries the **row as it stood** (`ReminderFiring.dismiss(notice = true)` reads it inside the same
 lock; `undoDismiss` writes it back), because a "hecho" writes nine columns in one statement and
 putting the anchor back alone is not an undo. It refuses a reminder deleted since (a card
-outlives its row), it goes in ten minutes — past that the undo is "Hechos" — and it writes
+outlives its row), it goes in a minute — past that the undo is "Hechos"; a place's own reset card
+keeps ten (`UNDO_NOTICE_MS`), because nobody was looking when it was given — and it writes
 nothing to the history, which is the silence Home's own undo already keeps and deliberately not
 `UNRESET`: that word is a place's, and `HistorySummary` reads it as cancelling the reset before
 it. A place's own "done" keeps `resetNotice`/`undoReset` exactly as they were. "Ver" on a
