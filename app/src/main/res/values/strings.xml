@@ -1603,6 +1603,18 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_127_0">
+
+        <item>New since the last update: a way to keep in touch with the people you would stop speaking to if nobody kept count. Add someone in «Periodic routines», say whether they are work or personal and how close, and Rwilco tells you when it has been too long — a quiet card, «Have you called Ana?», never a sound, at a moment drawn inside a window rather than on a clock. It paces you too: at most one work and one personal contact a day. «Spoken» or «Put off a week», and the days, hours and cadences are yours to change in Settings.</item>
+
+        <item>«How this works» explains the gestures and what each thing in the app actually is, and Settings can now be searched.</item>
+
+        <item>The backup is harder to lose: it says when it has stopped going through, it will not copy an emptied phone over a good copy, and you can check that you still know the passphrase.</item>
+
+        <item>And the alerts: «See» on a locked phone asks you to unlock instead of taking the alert away; a «Done» from the notification can be undone for ten minutes; and an update that is ready puts a small arrow on the cog on Home.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_126_0">
 
         <item>«Done» on the full-screen alert no longer leaves a «Done: …» notification behind. The alert going away already tells you the answer landed, and the card only said it again. «Done» on the notification itself still leaves its card with «Undo», because from there that card is the only way back.</item>
