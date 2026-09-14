@@ -1,6 +1,15 @@
 package dev.rwilco.ui.editor
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -99,12 +108,14 @@ import dev.rwilco.model.namedDays
 import dev.rwilco.model.namesAnHour
 import dev.rwilco.model.ringCadence
 import dev.rwilco.ui.format.currentLocale
+import dev.rwilco.ui.theme.Motion
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.Tracking
 import java.time.LocalDate
 import java.time.LocalTime
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.model.upcomingMoments
 import dev.rwilco.model.NextFire
@@ -245,6 +256,7 @@ fun EditorScreen(
     val zone = viewModel.clock.zone
     val today = now.atZone(zone).toLocalDate()
     val spacing = Tokens.spacing
+    val motion = Tokens.motion
     // One line per rule, the worst thing there is to say about it. Remembered rather than
     // recomputed: working out that a rule can never fire means walking its next sixty-four
     // moments (nextFireOfRule), and that is not work for a recomposition. Asked with the id the
@@ -449,17 +461,27 @@ fun EditorScreen(
                     // What the words say about when, one tap away from where they are being
                     // typed; the same chip the "Cuándo" card offers.
                     val read = if (state.asPreset || routine) null else state.understoodOffer()
-                    if (read != null) {
-                        Spacer(Modifier.height(spacing.sm))
-                        UnderstoodChip(read, today, state.defaultTime) {
-                            focusManager.clearFocus()
-                            viewModel.commitUnderstood(it)
+                    // Held past its own going, so the chip folds away with its words still on
+                    // it instead of vanishing a frame before the space it took has closed.
+                    var lastRead by remember { mutableStateOf(read) }
+                    if (read != null) lastRead = read
+                    AnimatedVisibility(visible = read != null, enter = partEnter(motion), exit = partExit(motion)) {
+                        Column {
+                            Spacer(Modifier.height(spacing.sm))
+                            lastRead?.let { offer ->
+                                UnderstoodChip(offer, today, state.defaultTime) {
+                                    focusManager.clearFocus()
+                                    viewModel.commitUnderstood(it)
+                                }
+                            }
                         }
                     }
                     // A preset carries optional wording; a reminder is its wording.
-                    if (state.asPreset) {
-                        Spacer(Modifier.height(spacing.lg))
-                        PresetTextField(text = state.presetText, onChange = viewModel::setPresetText)
+                    AnimatedVisibility(visible = state.asPreset, enter = partEnter(motion), exit = partExit(motion)) {
+                        Column {
+                            Spacer(Modifier.height(spacing.lg))
+                            PresetTextField(text = state.presetText, onChange = viewModel::setPresetText)
+                        }
                     }
                 }
                 // Which half of a life this person belongs to, which is the whole of what
@@ -1011,6 +1033,7 @@ private fun EditorSection(
 ) {
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
+    val motion = Tokens.motion
     // The same step off the ground as a card on Home: at "low" the card was only its outline.
     Surface(
         shape = MaterialTheme.shapes.large,
@@ -1018,7 +1041,11 @@ private fun EditorSection(
         border = BorderStroke(Tokens.strokes.edge, scheme.outlineVariant),
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = spacing.md),
+            .padding(top = spacing.md)
+            // A rule added, a chip taken away, the words opened: the card grows or shrinks to
+            // what it holds rather than being a different size on the next frame. Nothing
+            // under it pops, because nothing under it is placed until this has moved.
+            .animateContentSize(tween(motion.medium, easing = motion.emphasized)),
     ) {
         Column(modifier = Modifier.padding(spacing.lg)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1131,3 +1158,10 @@ internal fun FieldWarning(text: String, modifier: Modifier = Modifier, severe: B
 /** Keys of the cards a refusal can be sent to; see the `Invalid` event. */
 private const val SECTION_WHEN = "when"
 private const val SECTION_RETURNS = "returns"
+
+/** How a part of a card comes and goes: the fold Settings' groups use, so the form moves like the rest. */
+private fun partEnter(motion: Motion): EnterTransition =
+    expandVertically(tween(motion.medium, easing = motion.emphasized)) + fadeIn(tween(motion.fast))
+
+private fun partExit(motion: Motion): ExitTransition =
+    shrinkVertically(tween(motion.fast, easing = motion.emphasized)) + fadeOut(tween(motion.fast))

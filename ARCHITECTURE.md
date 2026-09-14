@@ -2189,6 +2189,17 @@ loud what DST and a change of zone do to a landing.
   point of that notification, and a bare timestamp makes somebody work it out. One asked to
   insist (`SOUND_UNTIL_ANSWERED`) is `setOngoing`, so the half-asleep swipe that clears the shade
   cannot take it; everything else stays swipeable, because most reminders are read and let go.
+- **The size of the buttons is the system's, not ours.** Every card adds its actions the same
+  way (`addAction(0, words, intent)`), and Android draws them as full-height pills across the
+  width — its "emphasized mode" — only on a notification that carries a full-screen intent (or
+  is a `CallStyle`): `Notification.java`, `applyStandardTemplateWithActions`, `emphasizedMode =
+  mN.fullScreenIntent != null || p.mCallStyleActions || FLAG_FSI_REQUESTED_BUT_DENIED`. So the
+  ring's "Hecho" and snoozes are big, and the "deshacer" card's, a routine's question's, a
+  contact's, a missed ring's and the ring's own when the app is in front are the small text
+  ones. Asked and answered on 2026-09-14: it stays that way. The two ways to even it out were a
+  full-screen intent the quiet cards never launch (a channel raised to "urgent" by hand would
+  launch it) or a custom `RemoteViews` layout under `DecoratedCustomViewStyle` (an approximation
+  the OEMs each draw their own way), and neither was worth it.
 - **The line under the title is why it arrived, not the title again.** It was the reminder's own
   words in the title and the same words underneath — one sentence twice, and the second one
   carrying nothing at the moment somebody most needs telling *why their phone just went off*. It

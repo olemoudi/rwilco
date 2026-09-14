@@ -571,6 +571,8 @@
     <string name="done_kept_note">The history keeps the last three months.</string>
     <string name="done_this_week">done this week</string>
     <string name="done_chart_label">The last %1$d days: %2$d done.</string>
+    <string name="done_chart_start">%1$d days ago</string>
+    <string name="done_chart_today">today</string>
     <string name="done_purge_title">Clear done reminders?</string>
     <string name="done_purge_body">They are removed for good. Reminders you bring back first are kept.</string>
     <string name="done_empty_title">Nothing done yet</string>
@@ -1603,6 +1605,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_130_0">
+
+        <item>Five small things on the screen. In Settings, the button that fixes a permission now sits under its sentence instead of squeezing it into a column. The cards of the form grow and shrink smoothly when a rule, a chip or the words come and go. A «done» you bring back, a strip answered while others ring, and the presets under the header now move instead of jumping. Settings and the backup show their waiting cards while they load, instead of a blank screen. And the fortnight of bars in «Done» says which end is today.</item>
+
+    </string-array>
     <string-array name="whats_new_0_129_0">
 
         <item>The «Done» card is back, for a minute. «Done» on the full-screen alert or on a notification — and «Spoken», and «Yes, just now» — leaves a quiet card with «Undo» again, in case the thumb went where it did not mean to, and the card goes by itself after a minute instead of ten. The one a place leaves when it counts a routine as done keeps its ten minutes: nobody was looking when it happened.</item>

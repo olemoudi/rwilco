@@ -1,6 +1,7 @@
 package dev.rwilco.ui.editor
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -274,7 +275,9 @@ internal fun TextSection(
                 .fillMaxWidth()
                 // Not writing, the field is only here to be focused by the button above: it
                 // takes no room, so the suggestions sit right under it instead of behind a gap
-                // the size of a line of text nobody can see.
+                // the size of a line of text nobody can see. It grows to its size rather than
+                // being there all at once, so the suggestions under it are seen to move down.
+                .animateContentSize(tween(Tokens.motion.medium, easing = Tokens.motion.emphasized))
                 .then(if (writing) Modifier.heightIn(min = 96.dp).padding(top = Tokens.spacing.md) else Modifier.height(0.dp))
                 .onFocusChanged { focused = it.isFocused }
                 .focusRequester(focusRequester)

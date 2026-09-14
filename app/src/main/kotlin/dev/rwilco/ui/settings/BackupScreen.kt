@@ -68,6 +68,7 @@ import dev.rwilco.model.MIN_PASSPHRASE_LENGTH
 import dev.rwilco.model.PassphraseStrength
 import dev.rwilco.model.TriggerFamily
 import dev.rwilco.model.passphraseStrength
+import dev.rwilco.ui.components.ListPlaceholder
 import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.TagChip
@@ -139,7 +140,17 @@ fun BackupScreen(viewModel: BackupViewModel, onBack: () -> Unit) {
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = { RwilcoTopBar(title = stringResource(R.string.vault_title), onBack = onBack) },
     ) { padding ->
-        val vault = state ?: return@Scaffold
+        // The shapes of the cards while the vault's state is read, not a bar over nothing.
+        val vault = state
+        if (vault == null) {
+            ListPlaceholder(
+                modifier = Modifier
+                    .padding(padding)
+                    .padding(horizontal = spacing.screen)
+                    .padding(top = spacing.lg),
+            )
+            return@Scaffold
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()

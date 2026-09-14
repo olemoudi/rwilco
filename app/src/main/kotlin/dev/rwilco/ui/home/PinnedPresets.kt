@@ -91,14 +91,14 @@ fun PinnedPresetsRow(
         horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        items(presets, key = { it.id }, contentType = { "preset" }) { preset -> PinnedPresetButton(preset, onPick) }
+        items(presets, key = { it.id }, contentType = { "preset" }) { preset -> PinnedPresetButton(preset, onPick, Modifier.animateItem()) }
         item(key = "add", contentType = "add") { AddPinnedButton(onManage) }
     }
 }
 
 /** Small enough for a row of them, tall enough for a thumb: its colour, then its name. */
 @Composable
-private fun PinnedPresetButton(preset: Preset, onPick: (Preset) -> Unit) {
+private fun PinnedPresetButton(preset: Preset, onPick: (Preset) -> Unit, modifier: Modifier = Modifier) {
     val haptics = Tokens.haptics
     val color = presetColor(preset.colorIndex)
     Surface(
@@ -109,7 +109,7 @@ private fun PinnedPresetButton(preset: Preset, onPick: (Preset) -> Unit) {
         shape = MaterialTheme.shapes.small,
         color = presetWash(preset.colorIndex),
         border = BorderStroke(Tokens.strokes.control, color.copy(alpha = MUTED_ALPHA)),
-        modifier = Modifier.heightIn(min = Tokens.sizes.touch),
+        modifier = modifier.heightIn(min = Tokens.sizes.touch),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,

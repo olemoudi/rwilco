@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -151,6 +152,8 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
                 }
                 items(reminders, key = { it.id }) { reminder ->
                     DoneCard(
+                        // A row brought back closes up over its place, as Home's rows do.
+                        modifier = Modifier.animateItem(),
                         reminder = reminder,
                         doneLabel = reminder.doneAt?.let { doneAt ->
                             val at = doneAt.atZone(clock.zone)
@@ -217,12 +220,27 @@ private fun DoneHeadline(counts: List<Int>, week: Int) {
         )
         Spacer(Modifier.height(spacing.lg))
         DayBars(counts = counts, label = stringResource(R.string.done_chart_label, counts.size, counts.sum()))
+        // Which end is today. Fourteen bars with nothing under them were a shape without a
+        // direction: the eye could not tell the week that just happened from the one before.
+        Spacer(Modifier.height(spacing.xs))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(
+                text = stringResource(R.string.done_chart_start, counts.size - 1),
+                style = MonoStyles.tally,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = stringResource(R.string.done_chart_today),
+                style = MonoStyles.tally,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
 @Composable
-private fun DoneCard(reminder: Reminder, doneLabel: String?, onOpen: () -> Unit, onRestore: () -> Unit) {
-    RwilcoCard(onClick = onOpen) {
+private fun DoneCard(reminder: Reminder, doneLabel: String?, onOpen: () -> Unit, onRestore: () -> Unit, modifier: Modifier = Modifier) {
+    RwilcoCard(onClick = onOpen, modifier = modifier) {
         Row(
             modifier = Modifier.padding(start = Tokens.spacing.lg, top = Tokens.spacing.md, bottom = Tokens.spacing.md, end = Tokens.spacing.xs),
             verticalAlignment = Alignment.CenterVertically,

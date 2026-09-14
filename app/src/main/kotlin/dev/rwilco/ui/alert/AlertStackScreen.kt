@@ -156,7 +156,7 @@ fun AlertStackScreen(
             } else {
                 LazyColumn(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
                     items(items, key = { it.id }) { item ->
-                        Strip(item, guard, onDone, onSnooze, onView, snoozes, customMinutes, Modifier.heightIn(min = STRIP_MIN_HEIGHT))
+                        Strip(item, guard, onDone, onSnooze, onView, snoozes, customMinutes, Modifier.animateItem().heightIn(min = STRIP_MIN_HEIGHT))
                     }
                 }
             }

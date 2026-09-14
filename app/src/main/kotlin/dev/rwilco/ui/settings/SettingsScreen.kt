@@ -77,6 +77,7 @@ import dev.rwilco.model.VibrationRhythm
 import dev.rwilco.model.VibrationStrength
 import dev.rwilco.ui.components.DayToggles
 import dev.rwilco.ui.components.InfoBadge
+import dev.rwilco.ui.components.ListPlaceholder
 import dev.rwilco.ui.components.PermissionFixRow
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.SegmentedChoice
@@ -108,6 +109,9 @@ import androidx.compose.runtime.setValue
  * shape of the day, then the standing things — places, looks, the copy, updates, the app.
  */
 private enum class Group { ALERTS, SOUND, VIBRATION, NET, NEW, DAY, CONTACTS, PLACES, LOOK, UPDATES, ABOUT }
+
+/** Card shapes shown while the settings load: about what the index's first screen holds. */
+private const val LOADING_ROWS = 4
 
 /** Which groups are open, kept across a rotation. Enums are not Bundle-able; their names are. */
 private val OpenGroups = listSaver<Set<Group>, String>(
@@ -191,7 +195,19 @@ fun SettingsScreen(
             }
         },
     ) { padding ->
-        val current = settings ?: return@Scaffold
+        // Before the store has answered, the shapes of the rows rather than a bar over nothing:
+        // arriving here from "Arreglar" or a notification, the blank read as a screen that broke.
+        val current = settings
+        if (current == null) {
+            ListPlaceholder(
+                modifier = Modifier
+                    .padding(padding)
+                    .padding(horizontal = spacing.screen)
+                    .padding(top = spacing.md),
+                count = LOADING_ROWS,
+            )
+            return@Scaffold
+        }
         val alerts = rememberAlertReadiness()
         val places = rememberPlaceReadiness()
         val hasPlaces by viewModel.hasPlaceReminders.collectAsStateWithLifecycle()
