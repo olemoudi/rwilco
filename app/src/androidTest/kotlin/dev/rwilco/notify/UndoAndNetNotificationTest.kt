@@ -12,13 +12,20 @@ import dev.rwilco.alarm.ReminderScheduler
 import dev.rwilco.data.ReminderEntity
 import dev.rwilco.model.FiringPlan
 import dev.rwilco.model.NetWord
+import dev.rwilco.model.Presence
+import dev.rwilco.model.Recurrence
+import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.Status
+import dev.rwilco.model.Trigger
+import dev.rwilco.model.TriggerRule
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.Duration
 import java.time.Instant
 
 /**
@@ -55,6 +62,18 @@ class UndoAndNetNotificationTest {
         createdAt = 1_700_000_000_000L,
         updatedAt = 1_700_000_000_000L,
         doneAt = null,
+    )
+
+    private val garage = Trigger.Location(40.4169, -3.7035, 200, Presence.OUTSIDE, "Garaje", onCrossing = true)
+
+    private val car = Reminder(
+        id = "routine-car",
+        text = "Mover el coche (prueba)",
+        rules = listOf(TriggerRule(garage, resets = true)),
+        recurrence = Recurrence.Since(21, RecurrenceUnit.DAYS),
+        actions = emptySet(),
+        createdAt = Instant.now(),
+        updatedAt = Instant.now(),
     )
 
     @Before
@@ -144,6 +163,61 @@ class UndoAndNetNotificationTest {
             listOf(context.getString(R.string.alert_done), context.getString(R.string.home_cancel_snooze)),
             card.words(),
         )
+    }
+
+    @Test
+    fun aRoutineCountedDoneByAPlaceCanBeAgreedWithBeforeItCanBeUndone() {
+        // 0.131.0: the app counted this one done on its own, so the card is a question. Agreeing
+        // with it used to be a swipe — the same gesture as ignoring it — next to the one button
+        // that would take it back. Now "confirmar" comes first and "deshacer" after it.
+        AlertNotifications.resetNotice(context, car, garage, previous = Instant.now().minus(Duration.ofDays(21)))
+        Thread.sleep(600)
+        val card = cardsOn(AlertNotifications.CHANNEL_NET).single().notification
+        assertEquals(context.getString(R.string.notif_reset_title, car.text), card.title())
+        assertEquals(
+            listOf(context.getString(R.string.notif_reset_confirm), context.getString(R.string.common_undo)),
+            card.words(),
+        )
+    }
+
+    @Test
+    fun confirmingTakesTheCardAwayAndLeavesTheCountWhereTheResetPutIt() {
+        val app = context.applicationContext as dev.rwilco.RwilcoApplication
+        // The count as the reset left it: what "confirmar" must not move, and what "deshacer"
+        // would have rolled back to [previous].
+        val counted = Instant.now()
+        val previous = counted.minus(Duration.ofDays(21))
+        runBlocking {
+            app.repository.save(car)
+            app.repository.dealtWith(car.id, counted, Status.ACTIVE, null, null)
+        }
+        try {
+            AlertNotifications.resetNotice(context, car, garage, previous)
+            val about = { cardsOn(AlertNotifications.CHANNEL_NET).map { it.notification }.filter { car.text in it.title() } }
+            waitFor("no reset card came") { about().isNotEmpty() }
+            context.sendBroadcast(
+                Intent(context, AlertActionReceiver::class.java)
+                    .setAction(AlertActionReceiver.ACTION_CONFIRM_RESET)
+                    .setData(ReminderScheduler.reminderUri(car.id)),
+            )
+            waitFor("the card stayed") { about().isEmpty() }
+            assertEquals(
+                "the count stays where the reset put it",
+                counted.toEpochMilli(),
+                runBlocking { app.repository.get(car.id) }?.lastDealtAt?.toEpochMilli(),
+            )
+        } finally {
+            AlertNotifications.cancelReset(context, car.id)
+            runBlocking { app.repository.delete(car.id) }
+        }
+    }
+
+    private fun waitFor(said: String, until: () -> Boolean) {
+        val deadline = System.currentTimeMillis() + 10_000
+        while (!until()) {
+            check(System.currentTimeMillis() < deadline) { said }
+            Thread.sleep(100)
+        }
     }
 
     private companion object {

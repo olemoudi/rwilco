@@ -771,6 +771,7 @@
     <string name="notif_reset_title">Routine done: %1$s</string>
     <string name="notif_reset_leave">Counted as done on leaving %1$s</string>
     <string name="notif_reset_arrive">Counted as done on arriving at %1$s</string>
+    <string name="notif_reset_confirm">Confirm as done</string>
     <!-- The net's mark on the words themselves: the sub-line that says which kind of card this
          is sits in the smallest type the shade has and is the first thing a narrow row drops. -->
     <string name="notif_net_prefix">ICYMI: %1$s</string>
@@ -1605,6 +1606,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_131_0">
+
+        <item>The card a place leaves when it counts a routine as done now has «Confirm as done» before its «Undo». The app acted on its own there, so the card is a question, and agreeing with it was a swipe — the same gesture as ignoring it — right next to the one button that would take it back. Confirming writes nothing: the count stays where the place put it and the card goes.</item>
+
+    </string-array>
     <string-array name="whats_new_0_130_0">
 
         <item>Five small things on the screen. In Settings, the button that fixes a permission now sits under its sentence instead of squeezing it into a column. The cards of the form grow and shrink smoothly when a rule, a chip or the words come and go. A «done» you bring back, a strip answered while others ring, and the presets under the header now move instead of jumping. Settings and the backup show their waiting cards while they load, instead of a blank screen. And the fortnight of bars in «Done» says which end is today.</item>

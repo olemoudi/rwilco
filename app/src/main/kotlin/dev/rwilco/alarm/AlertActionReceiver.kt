@@ -60,6 +60,11 @@ class AlertActionReceiver : BroadcastReceiver() {
                             id,
                             intent.getLongExtra(EXTRA_PREVIOUS, -1L).takeIf { it >= 0 }?.let(Instant::ofEpochMilli),
                         )
+                        // "Confirmar como hecha": the card goes and nothing is written. The reset
+                        // is already done and already in the history; what this answers is the
+                        // card itself, so that saying yes to the app's own word is a button and
+                        // not a swipe next to the one button that would undo it.
+                        ACTION_CONFIRM_RESET -> AlertNotifications.cancelReset(context, id)
                     }
                 }
                 if (done == null) Log.e("RwilcoAlarms", "action ${intent.action} on $id ran out of time")
@@ -82,6 +87,8 @@ class AlertActionReceiver : BroadcastReceiver() {
         const val ACTION_UNSNOOZE = "dev.rwilco.alert.UNSNOOZE"
         /** "Deshacer" on a routine counted as done by a place; [EXTRA_PREVIOUS] is where the count goes back to. */
         const val ACTION_UNDO_RESET = "dev.rwilco.alert.UNDO_RESET"
+        /** "Confirmar como hecha" on that same card: it takes the card away and nothing else. */
+        const val ACTION_CONFIRM_RESET = "dev.rwilco.alert.CONFIRM_RESET"
         /** "Deshacer" on a "hecho"; [EXTRA_ROW] is the row as it stood the moment before it. */
         const val ACTION_UNDO_DONE = "dev.rwilco.alert.UNDO_DONE"
         const val EXTRA_SNOOZE = "snooze"

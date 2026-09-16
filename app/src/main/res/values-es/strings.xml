@@ -760,6 +760,7 @@
     <string name="notif_reset_title">Rutina hecha: %1$s</string>
     <string name="notif_reset_leave">Contada como hecha al salir de %1$s</string>
     <string name="notif_reset_arrive">Contada como hecha al llegar a %1$s</string>
+    <string name="notif_reset_confirm">Confirmar como hecha</string>
     <string name="notif_net_prefix">ICYMI: %1$s</string>
     <string name="notif_net_subtext">Puede que se te haya pasado</string>
     <string name="notif_net_prefix_cannot">No suena nunca: %1$s</string>
@@ -1590,6 +1591,11 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_131_0">
+
+        <item>La tarjeta que deja un lugar cuando da una rutina por hecha lleva ahora «Confirmar como hecha» delante de su «Deshacer». Ahí la app ha actuado sola, así que la tarjeta es una pregunta, y darle la razón era un desliz — el mismo gesto que ignorarla — justo al lado del único botón que la desharía. Confirmar no escribe nada: la cuenta se queda donde la dejó el lugar y la tarjeta se va.</item>
+
+    </string-array>
     <string-array name="whats_new_0_130_0">
 
         <item>Cinco cosas pequeñas en pantalla. En Ajustes, el botón que arregla un permiso va ahora debajo de su frase en vez de estrujarla en una columna. Las tarjetas del formulario crecen y encogen suave cuando entra o sale una regla, un chip o las palabras. Un «hecho» que recuperas, una tira contestada mientras suenan otras y los presets bajo la cabecera se mueven en vez de saltar. Ajustes y la copia de seguridad enseñan sus tarjetas de espera mientras cargan, en vez de una pantalla en blanco. Y la quincena de barras de «Hechos» dice en qué extremo está hoy.</item>

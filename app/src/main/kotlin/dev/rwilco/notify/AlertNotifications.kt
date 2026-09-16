@@ -348,6 +348,11 @@ object AlertNotifications {
      * A routine counted as done by a place, said in the shade without a sound — on the net's
      * channel, the quietest there is — with "deshacer", because a thing the app did on its own
      * has to be visible and reversible. [previous] is where the count goes back to.
+     *
+     * It is the one notice that also carries "confirmar como hecha", and that button does nothing
+     * but take the card away. The app acted on its own here, so the card is a question; a card
+     * whose only button undoes the thing leaves agreeing with it as a swipe, which is the same
+     * gesture as ignoring it. Saying yes deserves a button of its own, and it goes first.
      */
     fun resetNotice(context: Context, reminder: Reminder, place: Trigger.Location, previous: Instant?) {
         val doorRes = if (place.presence == Presence.INSIDE) R.string.notif_reset_arrive else R.string.notif_reset_leave
@@ -362,6 +367,7 @@ object AlertNotifications {
             context.getString(R.string.notif_reset_title, reminder.text),
             context.getString(doorRes, place.label),
             UNDO_NOTICE_MS,
+            confirm = true,
         )
     }
 
@@ -405,8 +411,20 @@ object AlertNotifications {
         undoableNotice(context, reminder, undo, title, body, DONE_NOTICE_MS)
     }
 
-    /** The mute card with "deshacer" on the net's channel; [undo] is what the button does, and it goes after [timeoutMs]. */
-    private fun undoableNotice(context: Context, reminder: Reminder, undo: Intent?, title: String, body: String, timeoutMs: Long) {
+    /**
+     * The mute card with "deshacer" on the net's channel; [undo] is what the button does, and it
+     * goes after [timeoutMs]. [confirm] puts a do-nothing "confirmar como hecha" before it, for a
+     * card about something the app did without being asked; see [resetNotice].
+     */
+    private fun undoableNotice(
+        context: Context,
+        reminder: Reminder,
+        undo: Intent?,
+        title: String,
+        body: String,
+        timeoutMs: Long,
+        confirm: Boolean = false,
+    ) {
         ensureQuietChannels(context)
         val builder = NotificationCompat.Builder(context, CHANNEL_NET)
             .setSmallIcon(R.drawable.ic_notification)
@@ -430,6 +448,13 @@ object AlertNotifications {
             // minute for a "hecho" somebody gave, longer for one a place gave with nobody looking.
             .setTimeoutAfter(timeoutMs)
             .setColor(if (reminder.isRoutine) ROUTINE_ARGB else AMBER_ARGB)
+        if (confirm) {
+            builder.addAction(
+                0,
+                context.getString(R.string.notif_reset_confirm),
+                actionIntent(context, reminder.id, AlertActionReceiver.ACTION_CONFIRM_RESET, null),
+            )
+        }
         if (undo != null) {
             builder.addAction(
                 0,
