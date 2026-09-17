@@ -16,6 +16,7 @@ import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.monthsFor
 import java.time.DayOfWeek
 import dev.rwilco.model.Deadline
+import dev.rwilco.model.DayParts
 import dev.rwilco.model.DayShape
 import dev.rwilco.model.DEFAULT_ACTIONS
 import dev.rwilco.model.MAX_PRESET_NAME
@@ -248,6 +249,8 @@ data class EditorUiState(
      * settings say the day starts at.
      */
     val dayStart: LocalTime = DEFAULT_DAY_START,
+    /** The hours "por la mañana", "por la tarde" and "por la noche" stand for, for the words and the quick chips. */
+    val dayParts: DayParts = DayParts(),
     /** What the safety net waits for, so the card can say it in this reminder's own numbers. */
     val safetyNetSettings: SafetyNetSettings = SafetyNetSettings(),
     /** The kind the picker offers first, from the settings; null when there is no favourite. */

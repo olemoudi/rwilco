@@ -878,6 +878,9 @@ sheets sliding out on Confirm (`hide()` vs `confirmValueChange`)~~ — both done
 the dead code listed under 0.67.0 — asked about, not deleted.
 
 ## Still to prove on the real phone (Pixel 8 Pro)
+- The parts of the day (0.136.0): type "llamar a Marta mañana por la tarde" and take the chip;
+  move the afternoon in Settings → Tu día and type it again; and keep noting sentences the chip
+  reads wrong or not at all — `WhenInTextTest` is where they go.
 - The words (0.135.0): a reminder "Llamar al dentista 912 345 678" left to ring with the phone
   **locked** — hold "Llamar al…", unlock, and the dialer must open with the number in it, the
   call not made, and the alert still there with "Hecho" on it afterwards; the same with a link.

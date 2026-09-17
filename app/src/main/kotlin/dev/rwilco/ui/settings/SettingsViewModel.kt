@@ -178,6 +178,9 @@ class SettingsViewModel(
 
     /** What "the next day" means to this person: where a recurrence in days or months lands. */
     fun setDayStart(time: LocalTime) = update { it.copy(dayStart = time) }
+    /** The hours "por la tarde" and "por la noche" stand for: see [dev.rwilco.model.DayParts]. */
+    fun setAfternoon(time: LocalTime) = update { it.copy(afternoon = time) }
+    fun setEvening(time: LocalTime) = update { it.copy(evening = time) }
     fun setHaptics(enabled: Boolean) = update { it.copy(haptics = enabled) }
 
     /** What a reminder feels like. Unrelated to [setHaptics], which is the UI's own touch feedback. */

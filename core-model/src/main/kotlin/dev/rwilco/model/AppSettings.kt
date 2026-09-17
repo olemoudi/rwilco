@@ -91,6 +91,14 @@ data class AppSettings(
      */
     val dayStart: LocalTime = DEFAULT_DAY_START,
     /**
+     * The hour "por la tarde" stands for, and "por la noche": with [dayStart] for the morning,
+     * the three parts of a day as this person keeps them ([DayParts], 0.136.0). Read by the words
+     * of a reminder, by the quick chips under "Cuándo" and by the snoozes that name a part of
+     * the day.
+     */
+    val afternoon: LocalTime = DEFAULT_AFTERNOON,
+    val evening: LocalTime = DEFAULT_EVENING,
+    /**
      * How contacts are told about, per kind (see `Contacts.kt`): on which days, inside which
      * stretch of them, and every how many months somebody close and somebody sporadic comes
      * round. **Every contact follows these**, including the ones already written — except what

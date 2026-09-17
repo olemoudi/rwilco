@@ -117,6 +117,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.util.Locale
+import dev.rwilco.model.DayParts
 import dev.rwilco.model.Deadline
 import dev.rwilco.ui.format.deadlineButtonLabel
 import dev.rwilco.model.MAX_TEXT_LENGTH
@@ -525,6 +526,8 @@ internal fun TriggersSection(
     defaultTime: LocalTime,
     /** The hour "the next day" starts at, which is what "mañana por la mañana" means. */
     dayStart: LocalTime,
+    /** The hours "esta tarde", "esta noche" and "mañana por la mañana" stand for: the person's own. */
+    dayParts: DayParts = DayParts(),
     /** What is worth saying about each rule, by index: one string resource, the worst one. */
     ruleWarnings: Map<Int, Int>,
     /** The rules a save refused, by index, once "Guardar" has been tried: the refusal on the row it is about. */
@@ -589,7 +592,7 @@ internal fun TriggersSection(
                     suggestions = suggestions,
                     understood = understood,
                     defaultTime = defaultTime,
-                    dayStart = dayStart,
+                    dayParts = dayParts,
                     onPick = onQuickAdd,
                     onUnderstood = onUnderstood,
                 )
@@ -667,7 +670,7 @@ private fun QuickWhenRow(
     suggestions: List<Trigger>,
     understood: Understood?,
     defaultTime: LocalTime,
-    dayStart: LocalTime,
+    dayParts: DayParts,
     onPick: (Trigger) -> Unit,
     onUnderstood: (Understood) -> Unit,
 ) {
@@ -675,20 +678,20 @@ private fun QuickWhenRow(
     val is24h = rememberIs24h()
     val now = clock.instant().atZone(clock.zone)
     val today = now.toLocalDate()
-    // **"Mañana por la mañana" is a setting, and it was a number.** `dayStart` is the hour
+    // **"Mañana por la mañana" is a setting, and it was a number.** The morning is the hour
     // this person's next day begins at — it is what `Snooze.TOMORROW_MORNING` lands on, said in
     // the same three words — and this chip hardcoded nine o'clock, so the two controls
-    // disagreed the moment anybody moved their morning. `tonight` has nothing to read: there
-    // is no evening setting, `awake`'s far end is bedtime rather than the evening, and
-    // inventing one is a bigger question than this chip.
-    val tonight = EVENING
-    val morning = dayStart
-    val offered = remember(suggestions, understood, today, dayStart) {
+    // disagreed the moment anybody moved their morning (0.63.0). "Esta noche" had nothing to
+    // read then, and "esta tarde" was not offered at all; both are the person's own hours now
+    // ([DayParts], 0.136.0), the same ones the words are read with.
+    val offered = remember(suggestions, understood, today, dayParts) {
         val starters = listOfNotNull(
             // A length, so it starts when the reminder does rather than at some fixed minute.
             Trigger.Countdown(QUICK_MINUTES),
-            Trigger.AtDateTime(LocalDateTime.of(today, tonight)).takeIf { now.toLocalTime().isBefore(tonight) },
-            Trigger.AtDateTime(LocalDateTime.of(today.plusDays(1), morning)),
+            // The parts of today still ahead, then tomorrow's first.
+            Trigger.AtDateTime(LocalDateTime.of(today, dayParts.afternoon)).takeIf { now.toLocalTime().isBefore(dayParts.afternoon) },
+            Trigger.AtDateTime(LocalDateTime.of(today, dayParts.evening)).takeIf { now.toLocalTime().isBefore(dayParts.evening) },
+            Trigger.AtDateTime(LocalDateTime.of(today.plusDays(1), dayParts.morning)),
         )
         // What the words say goes first and is not said twice: a suggestion of the same shape
         // steps aside for it, because the chip that came from this sentence is the one meant.
@@ -771,9 +774,6 @@ private fun quickLabel(trigger: Trigger, today: LocalDate, defaultTime: LocalTim
 }
 
 private const val QUICK_MINUTES = 30
-
-/** What "esta noche" means, until there is a setting that means it. */
-private val EVENING: LocalTime = LocalTime.of(20, 0)
 
 /** How many quick "when" chips the row shows: the suggestions and the starters they leave room for. */
 private const val QUICK_CHIPS = 6

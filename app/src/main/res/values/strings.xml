@@ -446,6 +446,10 @@
     </string-array>
     <string name="settings_day_start">What "the next day" means</string>
     <string name="settings_day_start_hint">The hour a recurrence measured in days, weeks or months lands on. Never earlier: something dealt with at midnight comes back in the morning.</string>
+    <string name="settings_afternoon">What «in the afternoon» means</string>
+    <string name="settings_afternoon_hint">The hour «por la tarde» and «this afternoon» stand for — in the words of a reminder, on the quick chips and in a snooze. The morning is the hour above.</string>
+    <string name="settings_evening">What «in the evening» means</string>
+    <string name="settings_evening_hint">The hour «por la noche», «esta noche» and «tonight» stand for. Whether anything makes a noise then is still up to the hours you are up, further down.</string>
     <string name="editor_error_text">Write what you want to remember.</string>
     <string name="editor_error_text_long">The text is too long.</string>
     <string name="editor_revives">Saving puts it back on the list.</string>
@@ -662,6 +666,9 @@
         <item>awake</item>
         <item>weekend</item>
         <item>windows by name</item>
+        <item>afternoon</item>
+        <item>evening</item>
+        <item>tonight</item>
     </string-array>
     <string-array name="settings_keywords_contacts">
         <item>keep in touch</item>
@@ -1637,6 +1644,17 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_136_0">
+
+        <item>«In the afternoon» and «in the evening» have hours of their own now, in Settings → Your day, beside the hour your day starts at. The afternoon had none at all, so a sentence that named it was refused whole: «mañana por la tarde» gave no chip — not even for «mañana» — which is about the commonest way there is of saying when. It reads as tomorrow at five now, or at whatever hour you keep for it.</item>
+
+        <item>The morning in the words is your morning. The quick chip under «When» has followed the hour your day starts at for a long time, but the words went on meaning nine o\'clock whatever Settings said — so the same three words were two different hours depending on whether you tapped them or typed them. «Esta noche» was eight o\'clock in two unconnected places; it is one setting now.</item>
+
+        <item>«Esta mañana» no longer reads as tomorrow. The word for the morning is the word for the next day, and «esta» was missing from the list of things that keep them apart: «lo dejé hecho esta mañana» offered a chip for tomorrow. A part of today that has already gone offers nothing; one still ahead is today.</item>
+
+        <item>And the quick chips under «When» gained «this afternoon», between «in 30 min» and «tonight», while it is still ahead.</item>
+
+    </string-array>
     <string-array name="whats_new_0_135_0">
 
         <item>The words are good for something more than being read. A telephone number in a reminder could only be carried by eye into the dialer, and a link could not be opened from anywhere. Now the ⋯ menu of a card offers «Call 912 345 678» and «Open example.com» when the words hold one — and «Copy the words» always — and the full-screen alert has the same two, held like every other button there. «Call» opens the dialer with the number in it and rings nobody.</item>

@@ -1956,6 +1956,23 @@ loud what DST and a change of zone do to a landing.
   the link alone in `EXTRA_TEXT` and the page's name in `EXTRA_SUBJECT`, which was never read, so
   the reminder was a bare URL. Only when the text is a link and nothing else: words of somebody's
   own *are* the reminder. The title gives way to the 500 cap, never the link.
+- **The parts of a day are the person's own** (0.136.0, `core-model/DayParts.kt`). `DayParts(morning,
+  afternoon, evening)`, where the morning is `AppSettings.dayStart` and the other two are new
+  settings (`afternoon` 17:00, `evening` 20:00, in Settings → Tu día; additive, so a blob from
+  before reads the defaults — which are what the words already meant). Three things it puts
+  right. **The afternoon had no hour**, so `whenInText` refused any sentence that named it
+  (`Hour.refused`, gone) and took the day with it: "mañana por la tarde" gave no chip, not even
+  for "mañana". **The morning in the words was nine o'clock whatever Settings said**, while the
+  quick chip had followed `dayStart` since 0.63.0 — the same three words, two hours, depending on
+  whether they were tapped or typed — and the evening was eight o'clock in two unconnected
+  constants (`WhenInText.NIGHT_HOUR`, `Sections.EVENING`, both gone). `whenInText(text, now, zone,
+  parts)` and `QuickWhenRow(dayParts)` read the one thing now, and the row gained "esta tarde".
+  **And "esta mañana" read as tomorrow**: the word for the morning is the word for the next day,
+  and `TOMORROW`'s lookbehinds kept "por la", "de la", "en la" and "pasado" from it but not
+  "esta". A part of today is today (`THIS_PART`), offered while it is still ahead and not at all
+  once it has gone. The three hours are **not ordered against each other** on purpose: every
+  reader takes one on its own, and somebody who works nights is allowed an evening before their
+  morning. The snoozes that name a part of the day (0.138.0) read the same three.
 
 ## Firing
 

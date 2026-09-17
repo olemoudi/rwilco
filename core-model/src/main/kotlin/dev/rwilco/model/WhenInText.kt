@@ -38,15 +38,13 @@ sealed interface Understood {
  * a daily), a length outranks an hour beside it, and an hour alone is today while it is still
  * ahead and tomorrow once it is past — the same reading the suggestions give a past hour.
  */
-fun whenInText(text: String, now: Instant, zone: ZoneId): Understood? {
+fun whenInText(text: String, now: Instant, zone: ZoneId, parts: DayParts = DayParts()): Understood? {
     val words = " " + fold(text).replace(PUNCTUATION, " ").replace(SPACES, " ").trim() + " "
     if (words.isBlank()) return null
     val here = now.atZone(zone)
     val today = here.toLocalDate()
     val nowTime = here.toLocalTime().withSecond(0).withNano(0)
-    val hour = hourIn(words)
-    // "Por la tarde" names a stretch the app has no hour for. Half an answer is a wrong chip.
-    if (hour.refused) return null
+    val hour = hourIn(words, parts)
 
     recurrenceIn(words, today, nowTime, hour.time)?.let { return Understood.Comes(it) }
     countdownIn(words)?.let { return Understood.Once(Trigger.Countdown(it)) }
@@ -65,14 +63,16 @@ fun whenInText(text: String, now: Instant, zone: ZoneId): Understood? {
 // --- the hour ---
 
 /**
- * An hour read from the words, whether the words also said "today", and [refused]: a part of
- * the day the app has no hour for ("por la tarde"), which is a sentence to leave alone rather
- * than answer half of.
+ * An hour read from the words, and whether the words also said "today" — which "esta tarde",
+ * "esta noche" and "esta mañana" all do.
+ *
+ * It used to carry a third thing, `refused`: a part of the day the app had no hour for ("por la
+ * tarde"), which took the whole sentence with it. Every part has an hour now ([DayParts]).
  */
-private class Hour(val time: LocalTime?, val today: Boolean, val refused: Boolean = false)
+private class Hour(val time: LocalTime?, val today: Boolean)
 
-private fun hourIn(words: String): Hour {
-    val today = TODAY.containsMatchIn(words) || TONIGHT.containsMatchIn(words)
+private fun hourIn(words: String, parts: DayParts): Hour {
+    val today = TODAY.containsMatchIn(words) || THIS_PART.containsMatchIn(words)
     // "Esta noche a las 9" is nine in the evening, "por la tarde a las 5" is five in the
     // afternoon: a part of the day reaches an hour said with no am/pm.
     val night = NIGHT.containsMatchIn(words)
@@ -85,10 +85,10 @@ private fun hourIn(words: String): Hour {
     EN_PM.find(words)?.let { m -> return Hour(timeOf(m.groupValues[1], m.groupValues[2], "", m.groupValues[3], late), today) }
     if (NOON.containsMatchIn(words)) return Hour(LocalTime.NOON, today)
     CLOCK.find(words)?.let { m -> return Hour(timeOf(m.groupValues[1], m.groupValues[2], "", "", late), today) }
-    if (afternoon) return Hour(null, today, refused = true)
-    // A part of the day with no number in it: the two hours the quick chips already stand for.
-    if (MORNING.containsMatchIn(words)) return Hour(MORNING_HOUR, today)
-    if (night) return Hour(NIGHT_HOUR, today)
+    // A part of the day with no number in it: the hour this person keeps for it.
+    if (afternoon) return Hour(parts.afternoon, today)
+    if (MORNING.containsMatchIn(words)) return Hour(parts.morning, today)
+    if (night) return Hour(parts.evening, today)
     return Hour(null, today)
 }
 
@@ -281,18 +281,17 @@ private val MONTH_ES = "(" + MONTHS_ES.keys.joinToString("|") + ")"
 private val MONTH_EN = "(" + MONTHS_EN.keys.joinToString("|") + ")"
 
 private val TODAY = Regex("\\bhoy\\b|\\btoday\\b")
-private val TONIGHT = Regex("\\besta noche\\b|\\btonight\\b")
+/** "Esta tarde" is this afternoon: a part of *today*, whichever part it is. */
+private val THIS_PART = Regex("\\besta (?:manana|tarde|noche)\\b|\\btonight\\b|\\bthis (?:morning|afternoon|evening)\\b")
 private val ES_TIME = Regex("\\ba las? $ES_HOUR_PATTERN${MINUTES}h?(?: y (media|cuarto))?(?: de la (manana|tarde|noche))?\\b")
 private val EN_AT = Regex("\\bat $EN_HOUR_PATTERN$MINUTES ?(am|pm)?\\b")
 private val EN_PM = Regex("\\b(\\d{1,2})$MINUTES ?(am|pm)\\b")
 /** A bare clock needs the colon (or the h): "12.50" is a price. The dot only counts after "a las"/"at". */
 private val CLOCK = Regex("\\b(\\d{1,2})[:h](\\d{2})\\b")
 private val NOON = Regex("\\bat (?:noon|midday)\\b|\\ba(?:l)? mediodia\\b")
-private val MORNING = Regex("\\bpor la manana\\b|\\bmorning\\b")
+private val MORNING = Regex("\\bpor la manana\\b|\\besta manana\\b|\\bmorning\\b")
 private val AFTERNOON = Regex("\\bpor la tarde\\b|\\besta tarde\\b|\\bafternoon\\b")
 private val NIGHT = Regex("\\bpor la noche\\b|\\besta noche\\b|\\btonight\\b|\\bnight\\b|\\bevening\\b")
-private val MORNING_HOUR: LocalTime = LocalTime.of(9, 0)
-private val NIGHT_HOUR: LocalTime = LocalTime.of(20, 0)
 
 private val EVERY_HOURS = Regex("\\b(?:cada|every) $AMOUNT_PATTERN ?(?:horas?|h|hours?|hrs?)\\b")
 private val HOURLY = Regex("\\bcada hora\\b|\\bevery hour\\b|\\bhourly\\b")
@@ -309,7 +308,10 @@ private val IN_MINUTES = Regex("\\b(?:en|dentro de|in) $AMOUNT_PATTERN ?(?:min|m
 private val IN_HOURS = Regex("\\b(?:en|dentro de|in) $AMOUNT_PATTERN ?(?:h|hora|horas|hour|hours|hr|hrs)\\b")
 private val IN_DAYS = Regex("\\b(?:en|dentro de|in) $AMOUNT_PATTERN (dia|dias|day|days|semana|semanas|week|weeks|mes|meses|month|months)\\b")
 private val DAY_AFTER_TOMORROW = Regex("\\bpasado manana\\b|\\bday after tomorrow\\b")
-private val TOMORROW = Regex("(?<!pasado )(?<!por la )(?<!de la )(?<!en la )\\bmanana\\b|\\btomorrow\\b")
+// The word for the morning is the word for the next day, so everything that makes it a morning
+// keeps it from being one: "por la", "de la", "en la" — and "esta", which was missing, so "lo
+// dejé hecho esta mañana" offered a chip for tomorrow (0.136.0).
+private val TOMORROW = Regex("(?<!pasado )(?<!por la )(?<!de la )(?<!en la )(?<!esta )\\bmanana\\b|\\btomorrow\\b")
 
 private val DATE_ES = Regex("\\b(\\d{1,2}) de $MONTH_ES\\b")
 private val DATE_EN_DAY_FIRST = Regex("\\b(\\d{1,2})(?:st|nd|rd|th)?(?: of)? $MONTH_EN\\b")

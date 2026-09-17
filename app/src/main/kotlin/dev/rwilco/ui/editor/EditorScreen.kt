@@ -603,6 +603,7 @@ fun EditorScreen(
                         today = today,
                         defaultTime = state.defaultTime,
                         dayStart = state.dayStart,
+                        dayParts = state.dayParts,
                         ruleWarnings = ruleWarnings,
                         ruleErrors = if (state.showErrors) {
                             state.errors.filterIsInstance<ValidationError.BadTrigger>().associate { it.index to R.string.editor_error_trigger }

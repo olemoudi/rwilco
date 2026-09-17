@@ -156,7 +156,7 @@ fun Diagnostics.report(): String = buildString {
 
     appendLine("-- settings that decide when things ring --")
     with(settings) {
-        appendLine("defaultTime=$defaultTime dayStart=$dayStart weekend=$weekendDay@$weekendTime")
+        appendLine("defaultTime=$defaultTime dayStart=$dayStart afternoon=$afternoon evening=$evening weekend=$weekendDay@$weekendTime")
         appendLine("actions=${defaultActions.joinToString("+") { it.name.take(2) }} sound=${alertSound.javaClass.simpleName}${insistentSound?.let { "/${it.javaClass.simpleName}" } ?: ""} plays=$soundPlays gap=${soundGapMinutes}m vibration=${vibration.strength}/${vibration.rhythm}")
         appendLine("stacking=$alertStacking updatesWifiOnly=${yes(updatesWifiOnly)} presets=${presets.size} places=${savedPlaces.size}")
     }

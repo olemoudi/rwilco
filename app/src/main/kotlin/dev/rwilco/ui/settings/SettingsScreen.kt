@@ -465,6 +465,25 @@ fun SettingsScreen(
                             Spacer(Modifier.height(spacing.sm))
                             TimeField(time = current.dayStart, onChange = viewModel::setDayStart, modifier = Modifier.fillMaxWidth())
                         }
+                        // The other two parts of a day, beside the one that already had an hour
+                        // (0.136.0): what "por la tarde" and "por la noche" mean when the words of a
+                        // reminder, a quick chip or a snooze say them. The morning is the day's start.
+                        Column {
+                            SettingTitle(
+                                title = stringResource(R.string.settings_afternoon),
+                                info = stringResource(R.string.settings_afternoon_hint),
+                            )
+                            Spacer(Modifier.height(spacing.sm))
+                            TimeField(time = current.afternoon, onChange = viewModel::setAfternoon, modifier = Modifier.fillMaxWidth())
+                        }
+                        Column {
+                            SettingTitle(
+                                title = stringResource(R.string.settings_evening),
+                                info = stringResource(R.string.settings_evening_hint),
+                            )
+                            Spacer(Modifier.height(spacing.sm))
+                            TimeField(time = current.evening, onChange = viewModel::setEvening, modifier = Modifier.fillMaxWidth())
+                        }
                         Column {
                             SettingTitle(
                                 title = stringResource(R.string.settings_weekend),

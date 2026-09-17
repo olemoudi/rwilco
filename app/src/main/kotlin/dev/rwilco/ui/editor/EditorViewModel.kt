@@ -13,6 +13,7 @@ import dev.rwilco.data.FiringEvent
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.OFFERED_KINDS
+import dev.rwilco.model.dayParts
 import dev.rwilco.model.dayShape
 import dev.rwilco.model.Action
 import dev.rwilco.model.clearCountdowns
@@ -250,6 +251,7 @@ class EditorViewModel(
                 defaultTime = current.defaultTime,
                 snoozeCustomMinutes = current.snoozeCustomMinutes,
                 dayStart = current.dayStart,
+                dayParts = current.dayParts,
                 dayShape = current.dayShape,
                 safetyNetSettings = current.safetyNet,
                 defaultKind = if (current.popularTriggersFirst) null else current.defaultTriggerKind,
@@ -258,7 +260,7 @@ class EditorViewModel(
                 suggestedTriggers = suggestedTriggers(past, now, clock.zone),
                 // The words may already carry their own "when" (a line shared from another app
                 // does, often): read once here, and again on every keystroke.
-                understood = whenInText(draft.text, now, clock.zone),
+                understood = whenInText(draft.text, now, clock.zone, current.dayParts),
                 kindOrder = if (current.popularTriggersFirst) triggerKindsByUse(past, now) else OFFERED_KINDS,
                 savedPlaces = current.savedPlaces,
                 savedWindows = current.savedWindows,
@@ -307,7 +309,7 @@ class EditorViewModel(
     /** The words re-read for the "when" they carry, wherever they change. */
     private fun readWords(state: EditorUiState): EditorUiState =
         state.copy(
-            understood = whenInText(state.draft.text, clock.instant(), clock.zone),
+            understood = whenInText(state.draft.text, clock.instant(), clock.zone, state.dayParts),
             // What has been written before that these letters are on their way to. A hundred
             // phrases and a handful of words: nothing a keystroke notices.
             matchingTexts = textsMatching(state.allTexts, state.draft.text),

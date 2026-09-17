@@ -284,7 +284,6 @@ class WhenInTextTest {
         assertNull(read("   "))
         assertNull(read("comprar filtros para la cafetera"))
         assertNull(read("llamar a mi madre"))
-        assertNull(read("esta tarde"))
     }
 
     @Test
@@ -334,12 +333,48 @@ class WhenInTextTest {
         assertEquals(Recurrence.After(6, RecurrenceUnit.HOURS), comes("cada 6h"))
     }
 
+    // --- the parts of the day are the person's own (0.136.0) ---
+
     @Test
-    fun `the afternoon has no hour here, so the sentence is left alone`() {
-        assertNull(read("mañana por la tarde"))
-        assertNull(read("tomorrow afternoon"))
-        assertNull(read("todos los días por la tarde"))
-        assertEquals(tomorrow(t(17)), once("mañana por la tarde a las 5"), "unless it names one")
+    fun `the afternoon has an hour now, and the day beside it is no longer thrown away with it`() {
+        // It used to be refused outright — the app had no hour for "la tarde" — and the refusal
+        // took the whole sentence: "mañana por la tarde" gave no chip at all, not even "mañana".
+        assertEquals(tomorrow(t(17)), once("mañana por la tarde"))
+        assertEquals(tomorrow(t(17)), once("tomorrow afternoon"))
+        assertEquals(daily(today, t(17)), comes("todos los días por la tarde"))
+        assertEquals(tomorrow(t(17)), once("mañana por la tarde a las 5"), "and an hour that is named still wins")
+        assertEquals(tomorrow(t(18, 30)), once("mañana por la tarde a las 6 y media"))
+    }
+
+    @Test
+    fun `this afternoon and this morning are today, while they are still ahead`() {
+        // Fixtures.now is 15:00: the afternoon is still coming, the morning has gone.
+        assertEquals(at(2026, 8, 27, 17), once("llamar a Marta esta tarde"))
+        assertEquals(at(2026, 8, 27, 17), once("call Marta this afternoon"))
+        // "Esta mañana" read as *tomorrow*: the word for the morning is the word for the next
+        // day, and only "por la", "de la" and "pasado" were kept from it. Gone is gone — never
+        // tomorrow, which nobody said.
+        assertNull(read("lo dejé hecho esta mañana"))
+        assertNull(read("this morning"))
+        val early = Fixtures.local(2026, 8, 27, 7, 0)
+        assertEquals(at(2026, 8, 27, 9), (whenInText("regar esta mañana", early, zone) as Understood.Once).trigger)
+        // And past its hour, this afternoon is not offered as tomorrow's either.
+        assertNull(whenInText("esta tarde", Fixtures.local(2026, 8, 27, 18, 0), zone))
+    }
+
+    @Test
+    fun `morning, afternoon and evening land on the hours the person keeps, not on the app's`() {
+        // The quick chip under "Cuándo" has followed the day's start since 0.63.0; the words
+        // went on meaning nine o'clock whatever Settings said, so the same three words were two
+        // different hours depending on whether they were tapped or typed.
+        val mine = DayParts(morning = t(7, 30), afternoon = t(16), evening = t(21, 30))
+        fun mineOnce(text: String) = (whenInText(text, now, zone, mine) as Understood.Once).trigger
+        assertEquals(tomorrow(t(7, 30)), mineOnce("mañana por la mañana"))
+        assertEquals(tomorrow(t(16)), mineOnce("mañana por la tarde"))
+        assertEquals(at(2026, 8, 27, 21, 30), mineOnce("esta noche"))
+        assertEquals(at(2026, 8, 27, 21, 30), mineOnce("tonight"))
+        // The defaults are what the words always meant, so nothing already typed moves.
+        assertEquals(DayParts(), DayParts(morning = t(9), afternoon = t(17), evening = t(20)))
     }
 
     @Test

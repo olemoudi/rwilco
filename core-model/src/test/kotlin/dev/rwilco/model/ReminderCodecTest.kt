@@ -207,6 +207,17 @@ class ReminderCodecTest {
     }
 
     @Test
+    fun `settings written before the afternoon and the evening had hours read them as what the words always meant`() {
+        // Additive, so no migration: a blob from 0.135.0 has neither key, and "esta noche" goes on
+        // meaning eight o'clock — and "por la tarde", which meant nothing, means five.
+        val old = ReminderCodec.decodeSettings("""{"dayStart":"07:30"}""")
+        assertEquals(DayParts(morning = java.time.LocalTime.of(7, 30), afternoon = DEFAULT_AFTERNOON, evening = DEFAULT_EVENING), old.dayParts)
+        val mine = ReminderCodec.decodeSettings("""{"afternoon":"16:00","evening":"21:30"}""")
+        assertEquals(java.time.LocalTime.of(16, 0), mine.dayParts.afternoon)
+        assertEquals(java.time.LocalTime.of(21, 30), mine.dayParts.evening)
+    }
+
+    @Test
     fun `settings encode every field so a reader can rely on presence`() {
         val encoded = ReminderCodec.encodeSettings(AppSettings())
         assertEquals(
@@ -216,7 +227,7 @@ class ReminderCodecTest {
                 """"awake":{"wake":"08:00","sleep":"23:30","weekendWake":"10:00","weekendSleep":"01:30"},""" +
                 """"lastSeenVersionCode":0,"savedPlaces":[],"savedWindows":[],""" +
                 """"defaultActions":["NOTIFICATION","SOUND","VIBRATE"],"routineActions":["NOTIFICATION","SOUND","VIBRATE"],"presets":[],"hiddenTexts":[],"tagPrefs":[],""" +
-                """"dayStart":"09:00",""" +
+                """"dayStart":"09:00","afternoon":"17:00","evening":"20:00",""" +
                 """"workContacts":{"days":["WEDNESDAY"],"window":{"from":"09:00","to":"12:00"},"closeMonths":3,"distantMonths":5},""" +
                 """"personalContacts":{"days":["FRIDAY","SATURDAY"],"window":{"from":"17:00","to":"19:00"},"closeMonths":2,"distantMonths":5},""" +
                 """"recurrencePresets":[""" +

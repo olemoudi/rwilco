@@ -432,6 +432,10 @@
     </string-array>
     <string name="settings_day_start">Qué significa «al día siguiente»</string>
     <string name="settings_day_start_hint">La hora en la que cae una recurrencia medida en días, semanas o meses. Nunca antes: algo hecho a medianoche vuelve por la mañana.</string>
+    <string name="settings_afternoon">Qué significa «por la tarde»</string>
+    <string name="settings_afternoon_hint">La hora a la que equivalen «por la tarde» y «esta tarde»: en las palabras de un recordatorio, en los chips rápidos y al posponer. La mañana es la hora de arriba.</string>
+    <string name="settings_evening">Qué significa «por la noche»</string>
+    <string name="settings_evening_hint">La hora a la que equivalen «por la noche» y «esta noche». Que algo haga ruido a esa hora sigue dependiendo de las horas en que estás levantado, más abajo.</string>
     <string name="editor_error_text">Escribe qué quieres recordar.</string>
     <string name="editor_error_text_long">El texto es demasiado largo.</string>
     <string name="editor_edit_trigger_named">Editar «%1$s»</string>
@@ -651,6 +655,9 @@
         <item>despierto</item>
         <item>fin de semana</item>
         <item>franjas con nombre</item>
+        <item>por la tarde</item>
+        <item>por la noche</item>
+        <item>esta noche</item>
     </string-array>
     <string-array name="settings_keywords_contacts">
         <item>keep in touch</item>
@@ -1622,6 +1629,17 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_136_0">
+
+        <item>«Por la tarde» y «por la noche» tienen ya su propia hora, en Ajustes → Tu día, junto a la hora en que empieza tu día. La tarde no tenía ninguna, así que una frase que la nombrara se rechazaba entera: «mañana por la tarde» no daba ningún chip —ni siquiera por «mañana»—, y es de las formas más corrientes de decir cuándo. Ahora se lee como mañana a las cinco, o a la hora que tú tengas para eso.</item>
+
+        <item>La mañana de las palabras es tu mañana. El chip rápido bajo «Cuándo» sigue desde hace mucho la hora en que empieza tu día, pero las palabras seguían significando las nueve dijera lo que dijera Ajustes — así que las mismas tres palabras eran dos horas distintas según las tocaras o las escribieras. «Esta noche» eran las ocho en dos sitios sin relación; ahora es un solo ajuste.</item>
+
+        <item>«Esta mañana» deja de leerse como mañana. La palabra para la mañana es la palabra para el día siguiente, y en la lista de cosas que las separan faltaba «esta»: «lo dejé hecho esta mañana» ofrecía un chip para mañana. Una parte de hoy que ya pasó no ofrece nada; una que aún no ha llegado es hoy.</item>
+
+        <item>Y los chips rápidos bajo «Cuándo» ganan «esta tarde», entre «en 30 min» y «esta noche», mientras aún no haya llegado.</item>
+
+    </string-array>
     <string-array name="whats_new_0_135_0">
 
         <item>Las palabras sirven para algo más que para leerlas. Un teléfono en un recordatorio solo se podía llevar a ojo hasta el marcador, y un enlace no se podía abrir desde ningún sitio. Ahora el menú ⋯ de una tarjeta ofrece «Llamar al 912 345 678» y «Abrir example.com» cuando las palabras llevan uno —y «Copiar el texto» siempre—, y el aviso a pantalla completa tiene los dos mismos, mantenidos como cualquier otro botón de ahí. «Llamar» abre el teléfono con el número ya puesto y no llama a nadie.</item>
