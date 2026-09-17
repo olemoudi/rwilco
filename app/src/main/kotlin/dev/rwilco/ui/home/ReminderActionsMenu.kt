@@ -18,7 +18,10 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.CopyAll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -52,6 +55,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import dev.rwilco.model.Snooze
 import dev.rwilco.ui.components.SnoozeOffers
+import dev.rwilco.ui.components.WordActions
+import dev.rwilco.model.Actionable
 import dev.rwilco.model.SnoozePlace
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -106,6 +111,8 @@ fun ReminderActionsMenu(
     onDoneEarlier: (() -> Unit)? = null,
     /** A contact, whose deed is a conversation: "hablamos otro día". */
     contact: Boolean = false,
+    /** What can be done with the words themselves — ring the number, open the link, copy them. */
+    wordActions: WordActions? = null,
 ) {
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
@@ -214,6 +221,33 @@ fun ReminderActionsMenu(
                             label = stringResource(R.string.home_cancel_snooze),
                             hint = stringResource(R.string.home_cancel_snooze_hint),
                             onClick = onCancelSnooze,
+                        )
+                    }
+                    // **The words are good for something** (0.135.0). A number in them could only be
+                    // carried by eye into the dialer, and a link shared into the app could not be
+                    // opened from anywhere. Rows only for what is actually there; the copy always.
+                    if (wordActions != null) {
+                        for (actionable in wordActions.found) {
+                            when (actionable) {
+                                is Actionable.Phone -> ActionRow(
+                                    icon = Icons.Outlined.Call,
+                                    label = stringResource(R.string.menu_call, actionable.raw),
+                                    hint = stringResource(R.string.menu_call_hint),
+                                    onClick = { wordActions.open(actionable) },
+                                )
+                                is Actionable.Link -> ActionRow(
+                                    icon = Icons.AutoMirrored.Outlined.OpenInNew,
+                                    label = stringResource(R.string.menu_open_link, actionable.host),
+                                    hint = stringResource(R.string.menu_open_link_hint),
+                                    onClick = { wordActions.open(actionable) },
+                                )
+                            }
+                        }
+                        ActionRow(
+                            icon = Icons.Outlined.CopyAll,
+                            label = stringResource(R.string.menu_copy_text),
+                            hint = stringResource(R.string.menu_copy_text_hint),
+                            onClick = wordActions.copy,
                         )
                     }
                     ActionRow(

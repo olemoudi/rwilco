@@ -106,6 +106,38 @@ class HomeMenuTest {
         rule.onNodeWithText(s(R.string.home_keep_preset), useUnmergedTree = true).assertIsDisplayed()
     }
 
+    /**
+     * The words are good for something (0.135.0): a number in them is a row that rings it, a
+     * link a row that opens it, and any words at all can be copied — and a card with neither
+     * number nor link offers only the copy, because a row for nothing is a row that lies.
+     */
+    @Test
+    fun theMenuOffersWhatTheWordsCanDo() {
+        val callThem = "Llamar al dentista 912 345 678 o mirar www.example.com"
+        runBlocking {
+            val now = app.clock.instant()
+            app.repository.save(
+                Reminder(id = UUID.randomUUID().toString(), text = callThem, actions = setOf(Action.NOTIFICATION), createdAt = now, updatedAt = now),
+            )
+        }
+        rule.waitUntilShown(callThem)
+        rule.onNodeWithContentDescription(rule.activity.getString(R.string.card_more, callThem)).performClick()
+        rule.waitUntilShown(s(R.string.menu_copy_text))
+        rule.onNodeWithText(rule.activity.getString(R.string.menu_call, "912 345 678"), useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithText(rule.activity.getString(R.string.menu_open_link, "example.com"), useUnmergedTree = true).assertIsDisplayed()
+        shot("home-menu-words")
+        // Taking the copy closes the menu, like every other answer on it.
+        rule.onNodeWithText(s(R.string.menu_copy_text), useUnmergedTree = true).performClick()
+        rule.waitUntilGone(s(R.string.menu_copy_text))
+
+        // "Sacar la basura" has nothing to ring and nothing to open.
+        rule.onNodeWithContentDescription(rule.activity.getString(R.string.card_more, words)).performClick()
+        rule.waitUntilShown(s(R.string.menu_copy_text))
+        check(rule.onAllNodesWithText(rule.activity.getString(R.string.menu_call, ""), substring = true, useUnmergedTree = true).fetchSemanticsNodes().isEmpty()) {
+            "no number in the words, no row to ring one"
+        }
+    }
+
     @Test
     fun aHeldCardCanBePutOffLetBackAndKeptAsAPreset() {
         // Put off: the offer is there because the reminder rang and was let go.
@@ -221,5 +253,9 @@ class HomeMenuTest {
 
     private fun androidx.compose.ui.test.junit4.ComposeTestRule.waitUntilShown(text: String) {
         waitUntil(timeoutMillis = 10_000) { onAllNodesWithText(text, substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    private fun androidx.compose.ui.test.junit4.ComposeTestRule.waitUntilGone(text: String) {
+        waitUntil(timeoutMillis = 10_000) { onAllNodesWithText(text, substring = true, useUnmergedTree = true).fetchSemanticsNodes().isEmpty() }
     }
 }

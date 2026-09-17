@@ -926,6 +926,10 @@ fun EditorScreen(
                 onDone = { viewModel.setPreviewing(false) },
                 onSnooze = { _ -> viewModel.setPreviewing(false) },
                 onView = { viewModel.setPreviewing(false) },
+                // Shown as the real screen will show them, and doing what every answer on a
+                // preview does: a number typed into the words is a row somebody should see
+                // coming, and a rehearsal is not the place to ring it.
+                onAct = { viewModel.setPreviewing(false) },
                 customMinutes = state.snoozeCustomMinutes,
             )
         }

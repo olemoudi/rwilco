@@ -1931,6 +1931,31 @@ loud what DST and a change of zone do to a landing.
   sentence — so two reminders with the same words are told apart. Not on a finished one.
   `reminderSummary` had opened a rule-less routine's line with ", y vuelve cada 21 días": with
   nothing in front of it the span is the whole sentence now.
+- **The words are good for something** (0.135.0, `core-model/Actionables.kt`,
+  `ui/components/WordActions.kt`). A reminder's words were text and nothing else, everywhere: a
+  number in "llamar al dentista 912 345 678" was carried by eye into the dialer, and a link
+  shared into the app could be opened from nowhere. `actionablesIn(text)` finds telephones and
+  links — **offered, never acted on**, and with the words-reading chip's own bias: a missed
+  number costs the typing somebody was going to do anyway, a date offered as a telephone costs
+  the trust in every row after it. So links go first and are blanked out (an order number inside
+  one is not a telephone), then **dates, hours and prices** ("27.08.2026 10.30" is twelve digits
+  with dots between them), and a telephone is the *whole* run of 9–15 digits in groups: not the
+  tail of an IBAN, not the first fifteen of a card, not glued to a letter. **Only `http`/`https`
+  open** — the words may have arrived from another app's share, and a row that opened whatever
+  scheme it was handed would be that app's way into every other one. Two surfaces, one opener
+  (`Context.open`: `ACTION_DIAL`, which needs no permission and rings nobody, or `ACTION_VIEW`;
+  tried and caught, since the manifest declares no `<queries>`): rows in `ReminderActionsMenu`
+  — only for what is there, and "Copiar el texto" always, through `rememberWordActions` so Home
+  and the routines say it one way (no "copiado" of the app's own from Android 13 on: the system
+  says so itself) — and up to two quiet, **held** rows over "Ver" on the alert. `AlertActivity`'s
+  unlock became `throughTheLock(then)`, which "Ver" and `act` both go through; **`act` does not
+  let the reminder go**: ringing somebody is how a thing gets done, not the same as having done
+  it, so the alert is still there when the call is over. Not on a notification (three actions,
+  all spoken for) and not on the strips.
+- **A shared page keeps its title** (0.135.0, `Destinations.sharedWords`). A browser's share puts
+  the link alone in `EXTRA_TEXT` and the page's name in `EXTRA_SUBJECT`, which was never read, so
+  the reminder was a bare URL. Only when the text is a link and nothing else: words of somebody's
+  own *are* the reminder. The title gives way to the 500 cap, never the link.
 
 ## Firing
 

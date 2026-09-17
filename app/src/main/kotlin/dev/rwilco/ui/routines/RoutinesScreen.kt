@@ -103,6 +103,7 @@ import dev.rwilco.model.partsBetween
 import dev.rwilco.ui.components.EmptyState
 import dev.rwilco.ui.components.ListPlaceholder
 import dev.rwilco.ui.components.LocalSnackbar
+import dev.rwilco.ui.components.rememberWordActions
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.RwilcoTopBar
 import dev.rwilco.ui.components.MomentSheet
@@ -396,6 +397,7 @@ fun RoutinesScreen(
         val held = state.rows.firstOrNull { it.id == id } ?: run { actingOn = null; return@let }
         ReminderActionsMenu(
             words = held.text,
+            wordActions = rememberWordActions(held.text) { actingOn = null },
             paused = held.paused,
             snoozeOffered = held.snoozeOffered,
             snoozed = held.snoozed,

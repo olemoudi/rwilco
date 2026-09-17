@@ -49,6 +49,8 @@ import dev.rwilco.model.snoozePlaceOffers
 import dev.rwilco.model.speaksForHere
 import dev.rwilco.geo.hasBackgroundLocation
 import dev.rwilco.R
+import dev.rwilco.model.Actionable
+import dev.rwilco.ui.components.open
 
 /**
  * The reminder — or reminders — taking over the screen.
@@ -284,6 +286,7 @@ class AlertActivity : ComponentActivity() {
                         onDone = { answer(first.id) { app.firing.dismiss(first.id, notice = true) } },
                         onSnooze = { snooze: Snooze -> answer(first.id) { app.firing.snooze(first.id, snooze) } },
                         onView = { view(first.id, first.content.routine) },
+                        onAct = ::act,
                         customMinutes = current.snoozeCustomMinutes,
                         places = places,
                         onSnoozeToPlace = { offer -> snoozeToPlace(first.id, offer) },
@@ -420,19 +423,35 @@ class AlertActivity : ComponentActivity() {
      * It used to be let go before the start, so "Ver" at three in the morning took the alert away
      * and left the lock screen, with nothing to come back to but the notification.
      */
-    private fun view(id: String, routine: Boolean = false) {
+    private fun view(id: String, routine: Boolean = false) = throughTheLock { openApp(id, routine) }
+
+    /**
+     * The number or the link in the words (0.135.0): the dialer with it in, or the browser —
+     * through the lock, as "Ver" goes, because neither draws over a keyguard. **The reminder is
+     * not let go**: ringing somebody is how a thing gets done, not the same as having done it,
+     * so the alert is still here, with every answer on it, when the call is over.
+     */
+    private fun act(actionable: Actionable) = throughTheLock {
+        if (!open(actionable)) Toast.makeText(this, R.string.menu_nothing_opens_it, Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * Runs [then] with the phone unlocked: at once when it already is, after the system's own
+     * bouncer when it is not, and never when that is refused — the alert stays as it was.
+     */
+    private fun throughTheLock(then: () -> Unit) {
         val keyguard = getSystemService(KeyguardManager::class.java)
         when (viewStep(locked = keyguard?.isKeyguardLocked == true)) {
-            ViewStep.OPEN -> openApp(id, routine)
+            ViewStep.OPEN -> then()
             ViewStep.ASK_TO_UNLOCK -> {
                 if (askingUnlock) return
                 askingUnlock = true
                 keyguard?.requestDismissKeyguard(
                     this,
                     object : KeyguardManager.KeyguardDismissCallback() {
-                        override fun onDismissSucceeded() = unlocked(id, routine, UnlockAnswer.SUCCEEDED)
-                        override fun onDismissCancelled() = unlocked(id, routine, UnlockAnswer.CANCELLED)
-                        override fun onDismissError() = unlocked(id, routine, UnlockAnswer.ERROR)
+                        override fun onDismissSucceeded() = unlocked(UnlockAnswer.SUCCEEDED, then)
+                        override fun onDismissCancelled() = unlocked(UnlockAnswer.CANCELLED, then)
+                        override fun onDismissError() = unlocked(UnlockAnswer.ERROR, then)
                     },
                 )
             }
@@ -441,10 +460,10 @@ class AlertActivity : ComponentActivity() {
     }
 
     /** What the keyguard answered. Only [ViewStep.OPEN] moves anything; the rest leave the alert alone. */
-    private fun unlocked(id: String, routine: Boolean, answer: UnlockAnswer) {
+    private fun unlocked(answer: UnlockAnswer, then: () -> Unit) {
         askingUnlock = false
         if (viewStep(locked = true, unlock = answer) != ViewStep.OPEN) return
-        runOnUiThread { openApp(id, routine) }
+        runOnUiThread(then)
     }
 
     /** The way in, and the one place the reminder is let go: it is off the alert because it is elsewhere. */

@@ -54,6 +54,14 @@
     <string name="home_card_actions">Reminder actions</string>
     <string name="home_clone">Clone reminder</string>
     <string name="home_clone_hint">The same again, with the words blank</string>
+    <string name="menu_call">Call %1$s</string>
+    <string name="menu_call_hint">Opens the dialer with the number in it</string>
+    <string name="menu_open_link">Open %1$s</string>
+    <string name="menu_open_link_hint">In the browser</string>
+    <string name="menu_copy_text">Copy the words</string>
+    <string name="menu_copy_text_hint">To the clipboard, to paste somewhere else</string>
+    <string name="menu_text_copied">Copied</string>
+    <string name="menu_nothing_opens_it">Nothing on this phone opens that</string>
     <string name="routines_done_earlier">I did it another day…</string>
     <string name="routines_done_earlier_hint">The count runs from the day you say, not from today</string>
     <string name="routines_done_earlier_title">When did you do it?</string>
@@ -1629,6 +1637,17 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_135_0">
+
+        <item>The words are good for something more than being read. A telephone number in a reminder could only be carried by eye into the dialer, and a link could not be opened from anywhere. Now the ⋯ menu of a card offers «Call 912 345 678» and «Open example.com» when the words hold one — and «Copy the words» always — and the full-screen alert has the same two, held like every other button there. «Call» opens the dialer with the number in it and rings nobody.</item>
+
+        <item>Calling from the alert does not answer it. Ringing the dentist is how the thing gets done, not the same as having done it, so the alert is still there when the call is over, with «Done» and every snooze on it. On a locked phone it asks for the unlock first, the way «View» does.</item>
+
+        <item>What is found is strict on purpose. A date, an hour and a price are taken out before telephones are looked for — «27.08.2026 10.30» is twelve digits with dots between them, which is exactly what a number looks like — and a card number, an IBAN or a reference glued to letters is left alone. Only http and https links open: the words may have come from another app.</item>
+
+        <item>A page shared from the browser keeps its title. The browser sends the link alone in the text and the page\'s name beside it, which was never read, so the reminder was a bare address that said nothing three days later. It is «Title — link» now, and if there is no room for both the title gives way, never the link.</item>
+
+    </string-array>
     <string-array name="whats_new_0_134_0">
 
         <item>«I did it another day…» — on a routine, and «We talked another day…» on a contact. «Done» is always this second, which is right for the tap and wrong for the day after: water the plants on Saturday, remember on Tuesday, and the count was three days out for the next three weeks — and once a routine has been done, the start chip on its form no longer moves anything. It is in the row\'s ⋯ menu, the calendar opens on yesterday, and the count runs from the day you say.</item>

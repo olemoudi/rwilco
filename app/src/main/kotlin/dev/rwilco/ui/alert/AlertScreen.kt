@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -41,6 +42,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import dev.rwilco.R
+import dev.rwilco.model.Actionable
+import dev.rwilco.model.actionablesIn
 import dev.rwilco.model.Snooze
 import dev.rwilco.model.kind
 import dev.rwilco.ui.components.GuardIndicator
@@ -75,6 +78,9 @@ import androidx.compose.runtime.setValue
 import java.time.Instant
 import java.time.ZonedDateTime
 
+/** How many rows the words may add over "Ver": each one is room taken from the words themselves. */
+private const val ALERT_ACTIONABLES = 2
+
 /**
  * The lamp at full brightness. The reminder's words as big as they fit, and one button the
  * thumb cannot miss. In phase 1 it is reached only as a preview; phase 2 hosts the same
@@ -97,6 +103,12 @@ fun AlertScreen(
     waiting: Int = 0,
     onSnooze: (Snooze) -> Unit,
     onView: () -> Unit,
+    /**
+     * The number or the link in the words, acted on (0.135.0): held like every other answer, and
+     * **not** an answer — the reminder stays exactly where it is, because ringing somebody is how
+     * a thing gets done and not the same as having done it. Null draws no such row.
+     */
+    onAct: ((Actionable) -> Unit)? = null,
     /** How long the custom offer is, for its label. */
     customMinutes: Int = DEFAULT_SNOOZE_MINUTES,
     /** The place answers this phone can give: "al llegar a casa", "al salir de aquí". */
@@ -270,6 +282,29 @@ fun AlertScreen(
             // thumb lands, and it belongs to the one answer this screen is asking for — an
             // alarm answered half awake must not be able to hand somebody the edit form
             // instead. Which is exactly what it did.
+            // What the words themselves offer, over "Ver" and as quiet as it is: "Llamar al 912
+            // 345 678" on the ring of "llamar al dentista" is the whole reason it rang. Two at
+            // most — every row here is taken from the words above it, which are the point.
+            if (onAct != null) {
+                val actionables = remember(content.text) { actionablesIn(content.text, limit = ALERT_ACTIONABLES) }
+                for (actionable in actionables) {
+                    val label = when (actionable) {
+                        is Actionable.Phone -> stringResource(R.string.menu_call, actionable.raw)
+                        is Actionable.Link -> stringResource(R.string.menu_open_link, actionable.host)
+                    }
+                    val glyph = if (actionable is Actionable.Phone) Icons.Outlined.Call else Icons.AutoMirrored.Outlined.OpenInNew
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = Tokens.sizes.touch)
+                            .clip(MaterialTheme.shapes.medium)
+                            .guarded(guard, GuardedAction(icon = glyph, holding = label), onConfirmed = { onAct(actionable) }),
+                    ) {
+                        Text(text = label, style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant)
+                    }
+                }
+            }
             val viewLabel = stringResource(if (preview) R.string.alert_close_preview else R.string.alert_view)
             Box(
                 contentAlignment = Alignment.Center,

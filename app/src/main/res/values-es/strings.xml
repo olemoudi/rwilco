@@ -50,6 +50,14 @@
     <string name="home_card_actions">Acciones del recordatorio</string>
     <string name="home_clone">Clonar recordatorio</string>
     <string name="home_clone_hint">Lo mismo otra vez, con las palabras en blanco</string>
+    <string name="menu_call">Llamar al %1$s</string>
+    <string name="menu_call_hint">Abre el teléfono con el número ya puesto</string>
+    <string name="menu_open_link">Abrir %1$s</string>
+    <string name="menu_open_link_hint">En el navegador</string>
+    <string name="menu_copy_text">Copiar el texto</string>
+    <string name="menu_copy_text_hint">Al portapapeles, para pegarlo en otro sitio</string>
+    <string name="menu_text_copied">Copiado</string>
+    <string name="menu_nothing_opens_it">No hay nada en este móvil que abra eso</string>
     <string name="routines_done_earlier">Lo hice otro día…</string>
     <string name="routines_done_earlier_hint">La cuenta sale del día que digas, no de hoy</string>
     <string name="routines_done_earlier_title">¿Cuándo lo hiciste?</string>
@@ -1614,6 +1622,17 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_135_0">
+
+        <item>Las palabras sirven para algo más que para leerlas. Un teléfono en un recordatorio solo se podía llevar a ojo hasta el marcador, y un enlace no se podía abrir desde ningún sitio. Ahora el menú ⋯ de una tarjeta ofrece «Llamar al 912 345 678» y «Abrir example.com» cuando las palabras llevan uno —y «Copiar el texto» siempre—, y el aviso a pantalla completa tiene los dos mismos, mantenidos como cualquier otro botón de ahí. «Llamar» abre el teléfono con el número ya puesto y no llama a nadie.</item>
+
+        <item>Llamar desde el aviso no lo contesta. Llamar al dentista es cómo se hace la cosa, no es haberla hecho, así que el aviso sigue ahí cuando cuelgas, con «Hecho» y todos los posponer. Con el móvil bloqueado pide desbloquear primero, igual que «Ver».</item>
+
+        <item>Lo que se detecta es estricto a propósito. Una fecha, una hora y un precio se quitan antes de buscar teléfonos —«27.08.2026 10.30» son doce dígitos con puntos entre medias, que es justo la pinta de un número— y un número de tarjeta, un IBAN o una referencia pegada a letras se dejan en paz. Solo se abren enlaces http y https: las palabras pueden haber llegado de otra app.</item>
+
+        <item>Una página compartida desde el navegador conserva su título. El navegador manda el enlace solo en el texto y el nombre de la página al lado, que nunca se leía, así que el recordatorio era una dirección pelada que tres días después no decía nada. Ahora es «Título — enlace», y si no caben los dos cede el título, nunca el enlace.</item>
+
+    </string-array>
     <string-array name="whats_new_0_134_0">
 
         <item>«Lo hice otro día…» en una rutina, y «Hablamos otro día…» en un contacto. «Hecho» es siempre este segundo, que está bien para el toque y mal para el día siguiente: riegas el sábado, te acuerdas el martes, y la cuenta iba tres días desviada durante las tres semanas siguientes — y una vez hecha una rutina, la ficha de inicio de su formulario ya no mueve nada. Está en el menú ⋯ de la fila, el calendario se abre en ayer, y la cuenta sale del día que digas.</item>

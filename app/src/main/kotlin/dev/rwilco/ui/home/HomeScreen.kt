@@ -80,6 +80,7 @@ import dev.rwilco.model.TagFilter
 import dev.rwilco.ui.components.EmptyState
 import dev.rwilco.ui.components.ListPlaceholder
 import dev.rwilco.ui.components.LocalSnackbar
+import dev.rwilco.ui.components.rememberWordActions
 import dev.rwilco.ui.components.MomentSheet
 import dev.rwilco.ui.components.SectionHeader
 import dev.rwilco.ui.components.TagChip
@@ -393,6 +394,7 @@ fun HomeScreen(
         if (held != null) {
             ReminderActionsMenu(
                 words = held.text,
+                wordActions = rememberWordActions(held.text) { actingOn = null },
                 paused = held.paused,
                 snoozeOffered = held.snoozeOffered,
                 snoozed = held.snoozedUntil != null || held.snoozedToPlace != null,

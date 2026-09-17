@@ -94,6 +94,8 @@ class MainActivity : ComponentActivity() {
             intent.getStringExtra(EXTRA_DESTINATION),
             intent.getStringExtra(Intent.EXTRA_TEXT),
             intent.getStringExtra(PresetShortcuts.EXTRA_PRESET_ID),
+            // Where a browser puts the page's title: a shared link used to arrive as a bare URL.
+            subject = intent.getStringExtra(Intent.EXTRA_SUBJECT),
         )
 
     override fun onResume() {

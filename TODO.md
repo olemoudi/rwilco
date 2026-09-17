@@ -878,6 +878,11 @@ sheets sliding out on Confirm (`hide()` vs `confirmValueChange`)~~ — both done
 the dead code listed under 0.67.0 — asked about, not deleted.
 
 ## Still to prove on the real phone (Pixel 8 Pro)
+- The words (0.135.0): a reminder "Llamar al dentista 912 345 678" left to ring with the phone
+  **locked** — hold "Llamar al…", unlock, and the dialer must open with the number in it, the
+  call not made, and the alert still there with "Hecho" on it afterwards; the same with a link.
+  And share a page from Chrome into the app: the words must be "Título — enlace". Note any
+  number the rows get wrong either way — the table in `ActionablesTest` is where they go.
 - Routines and search (0.134.0): let a routine's deadline ring, leave it, and the next day say
   "lo hice otro día" with a day *before* the ring — the alert and its card must go, Home's red
   row with them, and nothing may ring late afterwards; the same on a contact with a day months
