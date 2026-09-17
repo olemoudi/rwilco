@@ -349,6 +349,59 @@ class EditorStateTest {
         assertNull(dropped.snoozedUntil)
     }
 
+    // --- the small removals get the undo a removed rule already had (0.133.0) ---
+
+    @Test
+    fun `a condition taken off a rule goes back where it was, while that rule is still that rule`() {
+        val hours = Condition.TimeWindow(LocalTime.of(18, 0), LocalTime.of(22, 0))
+        val fenced = blank.withText("sacar la basura")
+            .commitTrigger(null, garage, fence = driving)
+            .commitCondition(0, null, hours)
+        val removed = fenced.removeCondition(0, 0)
+        assertEquals(listOf<Condition>(hours), removed.draft.rules.single().conditions)
+
+        val back = removed.restoreCondition(0, 0, garage, driving)
+        assertEquals(listOf(driving, hours), back.draft.rules.single().conditions, "in the place it left")
+        assertEquals(back, back.restoreCondition(0, 0, garage, driving), "an undo pressed twice puts one back, not two")
+
+        // The snackbar outlives edits. A rule that is another rule by now is nobody's to fence:
+        // landing "y sólo si voy en coche" on tonight's alarm would be worse than losing it.
+        val swapped = removed.commitTrigger(0, tonight)
+        assertEquals(swapped, swapped.restoreCondition(0, 0, garage, driving))
+        assertEquals(removed.removeTrigger(0), removed.removeTrigger(0).restoreCondition(0, 0, garage, driving))
+    }
+
+    @Test
+    fun `a fence taken off the calendar in Vuelve goes back, while Vuelve is still a calendar`() {
+        val august = Condition.DateRange(LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 31))
+        val evenings = Condition.TimeWindow(LocalTime.of(18, 0), LocalTime.of(22, 0))
+        val calendar = blank.withText("regar").commitCalendar(mondays)
+            .commitRecurrenceCondition(null, august)
+            .commitRecurrenceCondition(null, evenings)
+        val removed = calendar.removeRecurrenceCondition(0)
+        assertEquals(calendar, removed.restoreRecurrenceCondition(0, august))
+        // Once "Vuelve" is something else there is no calendar left to fence.
+        val span = removed.copy(draft = removed.draft.copy(recurrence = Recurrence.After(2, RecurrenceUnit.DAYS)))
+        assertEquals(span, span.restoreRecurrenceCondition(0, august))
+    }
+
+    @Test
+    fun `a deadline that was cleared comes back only onto a set it still applies to`() {
+        val home = Trigger.Location(40.4168, -3.7038, 150, Presence.INSIDE, "casa")
+        val set = blank.withText("Llamar a Marta").commitTrigger(null, tonight).commitTrigger(null, home).setRuleMatch(RuleMatch.ALL)
+        val timer = Deadline.Timer(90)
+        val cleared = set.commitDeadline(timer).clearDeadline()
+        assertEquals(timer, cleared.restoreDeadline(timer).draft.deadline)
+
+        // A timer has no first trigger under "a la vez", and one rule is not a set at all: a
+        // value the form cannot show is not a value worth putting back.
+        assertNull(cleared.setRuleMatch(RuleMatch.TOGETHER).restoreDeadline(timer).draft.deadline)
+        assertNull(cleared.removeTrigger(1).restoreDeadline(timer).draft.deadline)
+        // And one set by hand since is not written over by an undo that arrived late.
+        val window = Deadline.Window(LocalTime.of(18, 0), LocalTime.of(22, 0))
+        assertEquals(window, cleared.commitDeadline(window).restoreDeadline(timer).draft.deadline)
+    }
+
     // --- what the form is called, before and after the row has been read (0.132.0) ---
 
     @Test

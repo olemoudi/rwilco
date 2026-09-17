@@ -1843,7 +1843,8 @@ loud what DST and a change of zone do to a landing.
   through `common_join`/`common_separator` (`ui/format/Join.kt`). Left alone, judged on the
   screenshot: "Qué pasa"'s fifth tile at full width (three columns leave a hole too, and the
   pips lose their words), and the sheets vanishing rather than sliding on Confirm — `hide()`
-  against a sheet that refuses `Hidden` is not a change to make blind.
+  against a sheet that refuses `Hidden` is not a change to make blind (made, with its eyes
+  open, in 0.133.0: see **The editor round** below).
 - **The truth round (0.132.0): six places where a screen said something the app did not do.**
   **The line over "Guardar" reads the row a save would write** (`EditorUiState.rowToSave`, pure,
   in `EditorState.kt`; `EditorViewModel.save()` is a call to it). What is carried across an edit
@@ -1875,6 +1876,48 @@ loud what DST and a change of zone do to a landing.
   offline one does — all used to be the empty list that means "no such address". And
   Settings' paragraph about the safety net stopped describing the per-reminder switch that
   went long ago (see **It is not asked for**, under Firing).
+- **The editor round (0.133.0): six frictions, none of them a redesign.**
+  **A half-written form outlives the process** (`SavedEditor.kt`). The draft lived in a
+  `MutableStateFlow` and nowhere else — a rotation never lost it, the ViewModel survives that —
+  so a process reclaimed while somebody looked up an address came back as a blank form (noted as
+  open since 0.93.0). `EditorViewModel` takes a `SavedStateHandle` (`Factory.create(modelClass,
+  extras)` → `createSavedStateHandle()`) and registers one saved-state *provider*: the form is
+  encoded only when the system asks, so a keystroke costs nothing, and only when it is loaded and
+  dirty. **The saved shape is the row's own** — `SavedEditor(row: ReminderEntity, asPreset,
+  presetText)` — because a draft is a reminder minus its bookkeeping and a second serial form
+  would be a second thing to keep frozen; it gets every tolerance a read has. `toSavedJson` does
+  **not** go through `toReminder`, which is for a save: a trailing space stays, a countdown that
+  has not started stays not started. `withRestored` puts back only what somebody types into, so
+  `initial` stays the row's and the form comes back *dirty* — Back asks before the words are
+  thrown away a second time — and the keyboard does not open by itself. `restored` is declared
+  before `init` on purpose: the load starts running on the spot (`Main.immediate`), and a
+  property further down the class would still be null when it got there. `SavedEditorTest` (JVM)
+  pins the round trip; `EditorDraftRestoreTest` (device) hands one ViewModel's saved state to a
+  second over the real repository, which is what process death is.
+  **The offers under the words do not leave with the first letter** (`textsMatching`,
+  `Suggestions.kt`; `EditorUiState.matchingTexts`): every word typed has to *start* a word of the
+  phrase, accents and case aside, in any order; the row sits under the field with no heading
+  (the keyboard is up), gives way to the words-reading chip when there is one, and taking a
+  phrase lets go of the field — the text is a `String`, and the caret would be left standing in
+  the middle of it. **Tags wear their colour in the form** (`tagColor`, the one place they had
+  none), and **"Etiqueta nueva" says what already exists** (`tagsLike`, `Tags.kt`): the tags the
+  name is on its way to *or has just gone past* — "Compras" beside "Compra" — under the field,
+  and taking one puts that tag on (never off) instead of making another. **The three small
+  removals got the undo a removed rule had** (`restoreCondition`, `restoreRecurrenceCondition`,
+  `restoreDeadline`): a condition only back onto the rule it left (the event carries its
+  trigger; the snackbar outlives edits), a fence only while "Vuelve" is still a calendar, a
+  deadline only onto a set it still applies to (`deadlineApplies`) and never over one set since.
+  **And the sheets slide away when they are answered** (`SheetScaffold.leave`). `hide()` could
+  not simply be called: in Material 3 1.4.0 it asks `confirmValueChange` first, and this sheet's
+  refuses `Hidden` — the refusal that stops a fling from throwing a form away. So the refusal
+  steps aside while somebody has *asked* to leave (`leaving`, read by a remembered lambda,
+  because that lambda is a key of the sheet state): Confirm, Cancel, Back and "descartar" go
+  through `leave`, which slides the sheet out and then tells the caller — in a `finally`, so a
+  finger that catches the sheet on its way down has still pressed the button. A drag never sets
+  the flag and still meets a no. **Found reading Material's source: the scrim was never a way
+  out of these sheets.** `Scrim` calls `animateToDismiss`, which is gated by the same
+  `confirmValueChange`, so a tap outside has always done nothing — this file and the sheet's own
+  KDoc said otherwise, and both are corrected. Whether it *should* close is a question left open.
 
 ## Firing
 

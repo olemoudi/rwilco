@@ -68,6 +68,20 @@ fun knownTags(tags: List<String>, prefs: List<TagPref>): List<String> =
     pinnedFirst(normalizeTags(tags + prefs.map { it.name }), prefs)
 
 /**
+ * The tags already in existence that what is being [typed] into "etiqueta nueva" looks like: the
+ * ones it is on its way to ("comp" → "Compra") and the ones it has just gone past ("Compras" →
+ * "Compra"), which is how a second tag for the same thing gets made without anybody deciding to.
+ * Case and accents aside, in the order [existing] came in — most used first — and few enough to
+ * sit under a field. The start of the word only: "asa" is not somebody typing "casa".
+ */
+fun tagsLike(existing: List<String>, typed: String, limit: Int = 4): List<String> {
+    val needle = fold(normalizeTag(typed) ?: return emptyList())
+    return existing
+        .filter { tag -> fold(tag).let { it.startsWith(needle) || needle.startsWith(it) } }
+        .take(limit)
+}
+
+/**
  * A tag's row, written or rewritten.
  *
  * Also how a tag is created: written down unpinned, it exists — it is offered by the editor and

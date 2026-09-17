@@ -3,6 +3,7 @@ package dev.rwilco.ui.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,7 +37,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.rwilco.R
+import dev.rwilco.model.tagsLike
 import dev.rwilco.ui.theme.Tokens
+import dev.rwilco.ui.theme.tagColor
 
 /** The field a new tag is typed into, for the instrumented tests. */
 const val TAG_NAME_FIELD_TAG = "tagNameField"
@@ -48,10 +51,23 @@ const val TAG_NAME_FIELD_TAG = "tagNameField"
  * The field had to be shut again by whatever the person did next — and a half-typed word left
  * in it was a tag lost on the way to "Guardar" (see the commit that took `pendingTag` out).
  * A dialog has one way in and two ways out, and neither of them can be taken by accident.
+ *
+ * **And it says what already exists while the name is typed** (0.133.0, [tagsLike]). The field
+ * was bare, so "Compras" typed beside an existing "Compra" made a second tag for the same thing
+ * with nobody deciding to — the spelling is only reused when it matches whole. The tags it is
+ * turning into, or has just gone past, sit under the field in their own colours; [onPickExisting]
+ * takes one instead of making another.
  */
 @Composable
-fun TagNameDialog(onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
+fun TagNameDialog(
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+    /** Every tag there is, most used first; empty where there is nothing to offer. */
+    existing: List<String> = emptyList(),
+    onPickExisting: (String) -> Unit = {},
+) {
     var name by rememberSaveable { mutableStateOf("") }
+    val alike = remember(existing, name) { tagsLike(existing, name) }
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val spacing = Tokens.spacing
@@ -94,6 +110,23 @@ fun TagNameDialog(onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
                         .testTag(TAG_NAME_FIELD_TAG)
                         .focusRequester(focusRequester),
                 )
+                if (alike.isNotEmpty()) {
+                    Spacer(Modifier.height(spacing.sm))
+                    Text(
+                        text = stringResource(R.string.editor_new_tag_exists),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = scheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(spacing.xs))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                        verticalArrangement = Arrangement.spacedBy(spacing.sm),
+                    ) {
+                        for (tag in alike) {
+                            TagChip(label = tag, selected = false, onClick = { onPickExisting(tag) }, tint = tagColor(tag))
+                        }
+                    }
+                }
                 Spacer(Modifier.height(spacing.md))
                 Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm), modifier = Modifier.fillMaxWidth()) {
                     TextButton(

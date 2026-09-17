@@ -334,6 +334,7 @@
     <string name="editor_tags_title">Etiquetas</string>
     <string name="editor_new_tag">Nueva etiqueta</string>
     <string name="editor_new_tag_hint">Nombre de la etiqueta</string>
+    <string name="editor_new_tag_exists">Ya existe</string>
     <string name="editor_when_title">Cuándo</string>
     <string name="editor_when_ask_title">Y además</string>
     <string name="editor_start_title">Cuándo empieza</string>
@@ -341,6 +342,8 @@
     <string name="editor_period_title">Cada cuánto</string>
     <string name="editor_add_trigger">Añadir disparador</string>
     <string name="editor_trigger_removed">Disparador quitado</string>
+    <string name="editor_condition_removed">Condición quitada</string>
+    <string name="editor_deadline_removed">Plazo quitado</string>
     <string name="editor_what_title">Qué pasa</string>
     <string name="editor_recurrence_title">Vuelve</string>
     <string name="recur_none">No repetir</string>
@@ -1602,6 +1605,19 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_133_0">
+
+        <item>Un recordatorio que dejaste a medio escribir sigue ahí cuando vuelves. El formulario vivía solo en memoria, así que si el móvil necesitaba esa memoria mientras estabas en otra app —buscando la dirección, atendiendo una llamada— volvías a un formulario en blanco. Ahora se le entrega al sistema cuando la app se aparta, y vuelve como lo dejaste, con sus cambios sin guardar.</item>
+
+        <item>Lo que ya has escrito otras veces deja de desaparecer con la primera letra. Las frases bajo las palabras solo se mostraban con el campo vacío, así que teclear «com» se llevaba «Comprar filtros» justo cuando te habría ahorrado escribirlo. Mientras escribes, las frases hacia las que van tus letras se quedan bajo el campo.</item>
+
+        <item>Las etiquetas llevan su color en el formulario, como en todas partes. Y «Etiqueta nueva» enseña las que ya existen mientras escribes el nombre, para que «Compras» no se convierta sin querer en una segunda etiqueta junto a «Compra».</item>
+
+        <item>Quitar un «y sólo si», una condición del calendario de «Vuelve» o el plazo de un conjunto se puede deshacer, como ya se podía al quitar una regla entera. Su × está dentro de la misma ficha que los edita.</item>
+
+        <item>Las hojas se deslizan al contestarlas, en vez de estar en un fotograma y haber desaparecido en el siguiente. Era lo último de la app que aún saltaba.</item>
+
+    </string-array>
     <string-array name="whats_new_0_132_0">
 
         <item>El formulario dice la verdad sobre el recordatorio que tiene abierto. La línea sobre «Guardar» salía solo del borrador —escrito ahora, nunca sonado, siempre activo—, así que uno en pausa prometía «Suena mañana 09:00», uno pospuesto hasta el viernes prometía su propia hora, y una rutina que ya existía contaba sus tres semanas desde el segundo en que se abría el formulario. Ahora lee la misma fila que escribiría un guardado: «En pausa: no sonará hasta que lo reanudes», «Pospuesto hasta…» con una línea debajo que dice qué cambio lo quitaría, y «Vence…» contado desde la última vez que lo hiciste.</item>

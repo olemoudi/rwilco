@@ -40,6 +40,31 @@ fun suggestedTexts(
     exclude = exclude?.trim(),
 )
 
+/**
+ * The phrases written before that what is being [typed] is on its way to: every word typed has
+ * to start a word of the phrase, case and accents aside, in any order.
+ *
+ * The offers under the words used to vanish with the first letter — they were drawn only while
+ * the field was empty — so "com" took "Comprar filtros" away at the very moment it would have
+ * saved the typing (0.133.0). The start of a word and never its middle: a list that answers
+ * "asura" with "Sacar la basura" is matching letters, not reading along. [texts] comes in best
+ * first and leaves in that order; the phrase already typed whole is not handed back.
+ */
+fun textsMatching(texts: List<String>, typed: String, limit: Int = 3): List<String> {
+    val needles = fold(typed).split(WORD_BREAK).filter { it.isNotEmpty() }
+    if (needles.isEmpty()) return emptyList()
+    val whole = needles.joinToString(" ")
+    return texts.asSequence()
+        .filter { text ->
+            val words = fold(text).split(WORD_BREAK).filter { it.isNotEmpty() }
+            words.joinToString(" ") != whole && needles.all { needle -> words.any { it.startsWith(needle) } }
+        }
+        .take(limit)
+        .toList()
+}
+
+private val WORD_BREAK = Regex("[^\\p{L}\\p{N}]+")
+
 /** Tags in use, best first — the same ranking, so the editor and the filter row agree. */
 fun suggestedTags(reminders: List<Reminder>, now: Instant, limit: Int = 24): List<String> = rank(
     uses = reminders.flatMap { reminder -> reminder.tags.map { it to reminder.updatedAt } },

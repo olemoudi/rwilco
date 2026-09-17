@@ -56,6 +56,7 @@ import dev.rwilco.model.DEFAULT_DAY_START
 import dev.rwilco.model.settleRelativeDates
 import dev.rwilco.model.Understood
 import dev.rwilco.model.roundExpiry
+import dev.rwilco.model.deadlineApplies
 
 /** What the editor is editing: the reminder minus its identity and bookkeeping. */
 data class Draft(
@@ -225,6 +226,11 @@ data class EditorUiState(
     val existingTags: List<String> = emptyList(),
     /** Reminder texts written before, most-used-recently first: the offer instead of a keyboard. */
     val suggestedTexts: List<String> = emptyList(),
+    /**
+     * And once there are letters in the field, the ones those letters are on their way to
+     * ([dev.rwilco.model.textsMatching]): the offer used to vanish with the first keystroke.
+     */
+    val matchingTexts: List<String> = emptyList(),
     val sheet: EditorSheet = EditorSheet.None,
     val previewing: Boolean = false,
     /** Errors are only shown once a save was attempted; before that the form stays quiet. */
@@ -660,6 +666,16 @@ fun EditorUiState.editRecurrenceCondition(index: Int): EditorUiState {
 fun EditorUiState.removeRecurrenceCondition(index: Int): EditorUiState =
     withRecurrenceConditions { it.filterIndexed { at, _ -> at != index } }
 
+/**
+ * A fence taken off the calendar, back where it was — while "Vuelve" is still a calendar, which
+ * is the only shape that carries one ([withConditions] leaves every other alone, and the undo
+ * outlives whatever was picked since). See [restoreCondition].
+ */
+fun EditorUiState.restoreRecurrenceCondition(index: Int, condition: Condition): EditorUiState {
+    if (draft.recurrence !is Recurrence.Calendar || condition in draft.recurrence.conditions) return this
+    return withRecurrenceConditions { conditions -> conditions.toMutableList().apply { add(index.coerceIn(0, size), condition) } }
+}
+
 fun EditorUiState.commitRecurrenceCondition(index: Int?, condition: Condition): EditorUiState =
     withRecurrenceConditions { conditions ->
         if (index != null && index in conditions.indices) {
@@ -697,6 +713,15 @@ fun EditorUiState.commitDeadline(deadline: Deadline): EditorUiState =
     copy(draft = draft.copy(deadline = deadline), sheet = EditorSheet.None)
 
 fun EditorUiState.clearDeadline(): EditorUiState = copy(draft = draft.copy(deadline = null))
+
+/**
+ * A cleared deadline, back — onto a set it still applies to ([deadlineApplies]: two rules or
+ * more, not "cualquiera", and no timer under "a la vez"), and never over one set by hand since.
+ * A value the form cannot show is not a value worth putting back.
+ */
+fun EditorUiState.restoreDeadline(deadline: Deadline): EditorUiState =
+    if (draft.deadline != null || !deadlineApplies(deadline, draft.rules, draft.ruleMatch)) this
+    else copy(draft = draft.copy(deadline = deadline))
 
 /**
  * A tile on or off — except that the two sound tiles are one choice. Asking for a sound once
@@ -875,6 +900,21 @@ fun EditorUiState.editCondition(ruleIndex: Int, conditionIndex: Int): EditorUiSt
 
 fun EditorUiState.removeCondition(ruleIndex: Int, conditionIndex: Int): EditorUiState =
     mapRule(ruleIndex) { rule -> rule.copy(conditions = rule.conditions.filterIndexed { i, _ -> i != conditionIndex }) }
+
+/**
+ * A removed "y sólo si", back where it was.
+ *
+ * A removed *rule* has had this since 0.63.0, for the argument that its bin sits one button from
+ * its pencil. A condition's × sits *inside* the chip that edits it, and what a slip costs is a
+ * whole sheet — "y sólo si voy en coche", a place with its radius — so it gets the same (0.133.0).
+ * [trigger] is the rule it was taken from: the snackbar outlives edits, and a condition is only
+ * put back on the rule it left — never on whatever sits at that index by now — and never twice.
+ */
+fun EditorUiState.restoreCondition(ruleIndex: Int, conditionIndex: Int, trigger: Trigger, condition: Condition): EditorUiState {
+    val rule = draft.rules.getOrNull(ruleIndex) ?: return this
+    if (rule.trigger != trigger || condition in rule.conditions) return this
+    return mapRule(ruleIndex) { it.copy(conditions = it.conditions.toMutableList().apply { add(conditionIndex.coerceIn(0, size), condition) }) }
+}
 
 fun EditorUiState.commitCondition(ruleIndex: Int, conditionIndex: Int?, condition: Condition): EditorUiState =
     mapRule(ruleIndex) { rule ->

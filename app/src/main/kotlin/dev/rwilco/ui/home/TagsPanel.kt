@@ -174,6 +174,10 @@ fun TagsPanel(
                 onCreate(name)
             },
             onDismiss = { naming = false },
+            // The ones already here, as the name is typed: taking one makes nothing, because it
+            // exists — which is the point of showing it before "Compras" joins "Compra".
+            existing = tags.map { it.name },
+            onPickExisting = { naming = false },
         )
     }
     removing?.let { tag ->

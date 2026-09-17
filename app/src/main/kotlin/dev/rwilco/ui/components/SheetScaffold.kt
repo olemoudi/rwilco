@@ -23,6 +23,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
@@ -56,8 +58,8 @@ import androidx.compose.foundation.layout.BoxWithConstraints
  * half-filled place, radius and all, with it. Nothing about that gesture said "throw this
  * away": it was somebody going back to check what they had typed. So the sheet refuses to
  * *settle* into hidden, which is the state a drag or a fling asks for; it still follows a
- * finger on the handle and springs back, and every deliberate way out — the back gesture, the
- * scrim, "Cancelar" — is programmatic and untouched. It is the same rule as Home's swipes and
+ * finger on the handle and springs back, and the deliberate ways out — the back gesture,
+ * "Cancelar" — are programmatic and untouched. It is the same rule as Home's swipes and
  * the hold buttons: the gestures that destroy something have to mean it.
  *
  * **And it does not bounce.** A sheet that is already as far up as it goes has two things that
@@ -68,6 +70,18 @@ import androidx.compose.foundation.layout.BoxWithConstraints
  * screen answers a swipe with a bounce) it is a screen that looks broken. The factory is turned
  * off for the whole sheet, drag included. Nothing else changes: the refusal to settle into
  * hidden is untouched, and it is still what a downward fling meets.
+ *
+ * **And it slides away when it is answered** (0.133.0). Every way out used to flip the state that
+ * keeps the sheet in composition, so it was there on one frame and gone on the next — the one
+ * thing in the app that still popped. It could not simply `hide()`: in Material 3 `hide()` asks
+ * `confirmValueChange` first, and this sheet's says no to `Hidden`, which is the refusal above.
+ * So the refusal steps aside for exactly as long as somebody has *asked* to leave ([leaving]):
+ * "Añadir", "Cancelar", Back and "descartar" all go through [leave], which slides the sheet out
+ * and only then tells the caller. A drag or a fling never sets the flag, so it still meets a no.
+ * The answer is delivered whatever becomes of the animation — a finger that catches the sheet on
+ * its way down has still pressed the button — and a second tap meanwhile is not a second answer.
+ * (A tap on the scrim does nothing here, and did not before either: Material's own scrim asks
+ * `confirmValueChange` too, so the refusal has always covered it, whatever this file once said.)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,26 +92,45 @@ fun SheetScaffold(
     confirmLabel: String = stringResource(R.string.sheet_done),
     confirmEnabled: Boolean = true,
     /**
-     * Whether the sheet holds work worth a question: back and the scrim then ask before
-     * throwing it away (0.68.0), as the editor behind the sheet always has for a one-letter
-     * typo. "Cancelar" stays direct: it says what it does.
+     * Whether the sheet holds work worth a question: Back then asks before throwing it away
+     * (0.68.0), as the editor behind the sheet always has for a one-letter typo. "Cancelar"
+     * stays direct: it says what it does. (The scrim was named here too, and never was a way
+     * out: see the last paragraph above.)
      */
     dirty: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true,
-        confirmValueChange = { it != SheetValue.Hidden },
-    )
+    // Somebody asked to leave: the one time `Hidden` is allowed. Held in a state object and read
+    // by a remembered lambda, because the lambda is a key of the sheet state — a fresh one on
+    // every recomposition would be a fresh sheet.
+    val leaving = remember { mutableStateOf(false) }
+    val mayHide = remember { { value: SheetValue -> leaving.value || value != SheetValue.Hidden } }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true, confirmValueChange = mayHide)
+    val scope = rememberCoroutineScope()
     val haptics = Tokens.haptics
     val spacing = Tokens.spacing
     var askingToDiscard by remember { mutableStateOf(false) }
+
+    /** Slides the sheet out, then says so. Once: a second tap while it goes is not a second answer. */
+    fun leave(then: () -> Unit) {
+        if (leaving.value) return
+        leaving.value = true
+        scope.launch {
+            try {
+                sheetState.hide()
+            } finally {
+                then()
+            }
+        }
+    }
     if (askingToDiscard) {
-        DiscardDialog(onKeep = { askingToDiscard = false }, onDiscard = { askingToDiscard = false; onDismiss() })
+        DiscardDialog(onKeep = { askingToDiscard = false }, onDiscard = { askingToDiscard = false; leave(onDismiss) })
     }
     NoBounce {
         ModalBottomSheet(
-            onDismissRequest = { if (dirty) askingToDiscard = true else onDismiss() },
+            // Back arrives here (Material tries its own `hide()` first, which the refusal turns
+            // into nothing). While the sheet is already on its way out there is nothing to ask.
+            onDismissRequest = { if (!leaving.value) { if (dirty) askingToDiscard = true else leave(onDismiss) } },
             sheetState = sheetState,
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             contentColor = MaterialTheme.colorScheme.onSurface,
@@ -130,7 +163,7 @@ fun SheetScaffold(
                     horizontalArrangement = Arrangement.spacedBy(spacing.sm),
                 ) {
                     TextButton(
-                        onClick = onDismiss,
+                        onClick = { leave(onDismiss) },
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant),
                         modifier = Modifier.heightIn(min = Tokens.sizes.control),
                     ) {
@@ -139,7 +172,7 @@ fun SheetScaffold(
                     Button(
                         onClick = {
                             haptics.perform(HapticFeedbackType.Confirm)
-                            onConfirm()
+                            leave(onConfirm)
                         },
                         enabled = confirmEnabled,
                         shape = MaterialTheme.shapes.medium,

@@ -1,8 +1,13 @@
 package dev.rwilco.ui.editor
 
+import android.os.Bundle
+import androidx.core.os.bundleOf
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.data.FiringEvent
 import dev.rwilco.data.ReminderRepository
@@ -33,6 +38,7 @@ import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
 import dev.rwilco.model.Condition
+import dev.rwilco.model.conditions
 import dev.rwilco.model.Deadline
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerKind
@@ -45,6 +51,7 @@ import dev.rwilco.model.Understood
 import dev.rwilco.model.whenInText
 import dev.rwilco.model.triggerKindsByUse
 import dev.rwilco.model.suggestedTexts
+import dev.rwilco.model.textsMatching
 import dev.rwilco.model.visibleTexts
 import dev.rwilco.model.withHiddenText
 import kotlinx.coroutines.channels.Channel
@@ -61,6 +68,9 @@ import java.time.Instant
 import java.util.UUID
 import dev.rwilco.model.ValidationError
 import dev.rwilco.model.MAX_TEXT_LENGTH
+
+/** The key a half-written form is kept under in the saved state, and inside its own bundle. */
+private const val SAVED_FORM = "editor.form"
 
 /** How many lines of history the form shows: a fortnight of a daily, which is what "¿sonó ayer?" needs. */
 private const val HISTORY_SHOWN = 14
@@ -84,6 +94,12 @@ sealed interface EditorEvent {
     data class RecurrencePresetDeleted(val preset: RecurrencePreset) : EditorEvent
     /** A rule left the form; [index] and [recurrence] are what putting it back needs. */
     data class TriggerRemoved(val index: Int, val rule: TriggerRule, val recurrence: Recurrence) : EditorEvent
+    /** A "y sólo si" left a rule; [trigger] is the rule it left, so it is never put back on another. */
+    data class ConditionRemoved(val ruleIndex: Int, val conditionIndex: Int, val trigger: Trigger, val condition: Condition) : EditorEvent
+    /** A fence left the calendar in "Vuelve". */
+    data class RecurrenceConditionRemoved(val index: Int, val condition: Condition) : EditorEvent
+    /** The set's deadline was cleared. */
+    data class DeadlineCleared(val deadline: Deadline) : EditorEvent
     data object Close : EditorEvent
 
     /** "Guardar" was pressed on a draft that cannot be saved; [error] is the first reason why. */
@@ -120,6 +136,8 @@ class EditorViewModel(
      */
     private val rearm: suspend () -> Unit,
     val clock: Clock,
+    /** Where a half-written form is handed to the system, and found again: see [SavedEditor]. */
+    private val saved: SavedStateHandle = SavedStateHandle(),
 ) : ViewModel() {
 
     // Born knowing what the way in already says — whether there is a row behind it, and whether
@@ -155,6 +173,14 @@ class EditorViewModel(
      * Nothing is reserved by holding one: an abandoned draft leaves a UUID nobody ever uses.
      */
     val draftId: String = reminderId ?: UUID.randomUUID().toString()
+
+    /**
+     * The form put away by a process that has since died (0.133.0), read once. Declared before
+     * `init` on purpose: the load below starts running on the spot, and a property further down
+     * the class would still be null when it got there.
+     */
+    private val restored: RestoredEditor? =
+        savedEditorOf(saved.get<Bundle>(SAVED_FORM)?.getString(SAVED_FORM), clock.zone)
 
     init {
         viewModelScope.launch {
@@ -262,6 +288,17 @@ class EditorViewModel(
                 focusText = editedPreset == null &&
                     ((cloned != null && !newPreset) || (source != null && source.text.isBlank()) || (loaded == null && contactKind != null)),
             )
+                // What was being written when the process was let go, back on the form that was
+                // just built from the row: the yardstick stays the row's, so it comes back dirty.
+                .withRestored(restored)
+                .let { if (restored == null) it else readWords(it) }
+        }
+        // Handed over only when the system asks (a process about to be put away), so a keystroke
+        // costs nothing; and only a form that holds something — one still loading, or untouched,
+        // comes back from its row or its route exactly as it would have anyway.
+        saved.setSavedStateProvider(SAVED_FORM) {
+            val current = _state.value
+            if (current.loaded && current.dirty) bundleOf(SAVED_FORM to current.toSavedJson(draftId, clock.instant())) else Bundle()
         }
     }
 
@@ -269,7 +306,12 @@ class EditorViewModel(
 
     /** The words re-read for the "when" they carry, wherever they change. */
     private fun readWords(state: EditorUiState): EditorUiState =
-        state.copy(understood = whenInText(state.draft.text, clock.instant(), clock.zone))
+        state.copy(
+            understood = whenInText(state.draft.text, clock.instant(), clock.zone),
+            // What has been written before that these letters are on their way to. A hundred
+            // phrases and a handful of words: nothing a keystroke notices.
+            matchingTexts = textsMatching(state.allTexts, state.draft.text),
+        )
 
     /** The quick chip that says what the words say: taken through the same doors a sheet uses. */
     fun commitUnderstood(read: Understood) = _state.update { it.commitUnderstood(read) }
@@ -279,7 +321,15 @@ class EditorViewModel(
     fun setRuleMatch(match: RuleMatch) = _state.update { it.setRuleMatch(match) }
     fun openDeadline() = _state.update { it.openDeadline() }
     fun commitDeadline(deadline: Deadline) = _state.update { it.commitDeadline(deadline) }
-    fun clearDeadline() = _state.update { it.clearDeadline() }
+    // Read before the change and announced after it, like [removeTrigger]: the undo carries what
+    // was actually there (0.133.0).
+    fun clearDeadline() {
+        val was = _state.value.draft.deadline ?: return
+        _state.update { it.clearDeadline() }
+        events.trySend(EditorEvent.DeadlineCleared(was))
+    }
+
+    fun restoreDeadline(deadline: Deadline) = _state.update { it.restoreDeadline(deadline) }
     fun setRecurrence(recurrence: Recurrence) = _state.update { it.setRecurrence(recurrence) }
 
     /** Which half of a life this person is in. Only ever asked of a contact. */
@@ -306,7 +356,14 @@ class EditorViewModel(
 
     fun editRecurrenceCondition(index: Int) = _state.update { it.editRecurrenceCondition(index) }
 
-    fun removeRecurrenceCondition(index: Int) = _state.update { it.removeRecurrenceCondition(index) }
+    fun removeRecurrenceCondition(index: Int) {
+        val was = _state.value.draft.recurrence.conditions.getOrNull(index) ?: return
+        _state.update { it.removeRecurrenceCondition(index) }
+        events.trySend(EditorEvent.RecurrenceConditionRemoved(index, was))
+    }
+
+    fun restoreRecurrenceCondition(index: Int, condition: Condition) =
+        _state.update { it.restoreRecurrenceCondition(index, condition) }
 
     fun commitRecurrenceCondition(index: Int?, condition: Condition) =
         _state.update { it.commitRecurrenceCondition(index, condition) }
@@ -402,7 +459,15 @@ class EditorViewModel(
         _state.update { it.commitTrigger(index, trigger, resets, fence, clock.instant(), clock.zone, draftId) }
     fun addCondition(ruleIndex: Int) = _state.update { it.addCondition(ruleIndex) }
     fun editCondition(ruleIndex: Int, conditionIndex: Int) = _state.update { it.editCondition(ruleIndex, conditionIndex) }
-    fun removeCondition(ruleIndex: Int, conditionIndex: Int) = _state.update { it.removeCondition(ruleIndex, conditionIndex) }
+    fun removeCondition(ruleIndex: Int, conditionIndex: Int) {
+        val rule = _state.value.draft.rules.getOrNull(ruleIndex) ?: return
+        val was = rule.conditions.getOrNull(conditionIndex) ?: return
+        _state.update { it.removeCondition(ruleIndex, conditionIndex) }
+        events.trySend(EditorEvent.ConditionRemoved(ruleIndex, conditionIndex, rule.trigger, was))
+    }
+
+    fun restoreCondition(ruleIndex: Int, conditionIndex: Int, trigger: Trigger, condition: Condition) =
+        _state.update { it.restoreCondition(ruleIndex, conditionIndex, trigger, condition) }
     fun commitCondition(ruleIndex: Int, conditionIndex: Int?, condition: Condition) =
         _state.update { it.commitCondition(ruleIndex, conditionIndex, condition) }
     fun closeSheet() = _state.update { it.closeSheet() }
@@ -548,7 +613,9 @@ class EditorViewModel(
         private val contactCloseness: Closeness? = null,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T =
+        // With the extras, for the saved state that belongs to this screen's place on the back
+        // stack: it is what lets a half-written form outlive the process.
+        override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T =
             EditorViewModel(
                 reminderId,
                 fromPresetId,
@@ -564,6 +631,7 @@ class EditorViewModel(
                 app.settings,
                 { app.scheduler.rearmAll() },
                 app.clock,
+                extras.createSavedStateHandle(),
             ) as T
     }
 }

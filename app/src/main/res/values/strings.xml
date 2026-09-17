@@ -338,6 +338,7 @@
     <string name="editor_tags_title">Tags</string>
     <string name="editor_new_tag">New tag</string>
     <string name="editor_new_tag_hint">Tag name</string>
+    <string name="editor_new_tag_exists">Already there</string>
     <string name="editor_when_title">When</string>
     <string name="editor_when_ask_title">And also</string>
     <string name="editor_start_title">When it starts</string>
@@ -348,6 +349,8 @@
     <string name="editor_remove_trigger_named">Remove «%1$s»</string>
     <string name="editor_text_count">%1$d/%2$d</string>
     <string name="editor_trigger_removed">Trigger removed</string>
+    <string name="editor_condition_removed">Condition removed</string>
+    <string name="editor_deadline_removed">Deadline removed</string>
     <string name="editor_what_title">What happens</string>
     <string name="editor_recurrence_title">Comes back</string>
     <string name="recur_none">Don\'t repeat</string>
@@ -1617,6 +1620,19 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_133_0">
+
+        <item>A reminder you were halfway through writing is still there when you come back. The form lived only in memory, so if the phone wanted that memory while you were in another app — looking up the address, taking a call — you returned to a blank form. It is handed to the system when the app is put away now, and comes back as you left it, unsaved changes and all.</item>
+
+        <item>What you have written before no longer vanishes with the first letter. The phrases under the words were shown only while the field was empty, so typing «com» took «Comprar filtros» away at the very moment it would have saved the typing. While you type, the ones your letters are on their way to stay under the field.</item>
+
+        <item>Tags wear their colour in the form, as they do everywhere else. And «New tag» shows the tags that already exist as you type the name, so «Compras» does not quietly become a second tag beside «Compra».</item>
+
+        <item>Taking off a «y sólo si», a fence on the calendar in «Vuelve», or the deadline of a set can be undone, the way taking off a whole rule already could. Their × sits inside the very chip that edits them.</item>
+
+        <item>The sheets slide away when you answer them, instead of being there on one frame and gone on the next. It was the last thing in the app that still popped.</item>
+
+    </string-array>
     <string-array name="whats_new_0_132_0">
 
         <item>The form tells the truth about the reminder it was opened on. The line over «Save» was worked out from the draft alone — written now, never rung, always active — so a paused reminder promised «Rings tomorrow 09:00», one put off until Friday promised its own hour, and a routine that already existed counted its three weeks from the second the form opened. It reads the very row a save would write now: «Paused: it will not ring until you resume it», «Snoozed until…» with a line under it saying which edit would take that away, and «Due…» counted from the last time you did it.</item>

@@ -873,11 +873,17 @@ The second half of the fifth review (see 0.93.0 above). Worth not re-deriving:
   `CARD_EDIT_TAG` now.
 
 Still open after the two halves: the "every day at 8" tap count (the hour controls only after
-the span in "Vuelve"), the editor's draft across process death (`SavedStateHandle`), the sheets
-sliding out on Confirm (`hide()` vs `confirmValueChange`), and the dead code listed under
-0.67.0 — asked about, not deleted.
+the span in "Vuelve"), ~~the editor's draft across process death (`SavedStateHandle`)~~ and ~~the
+sheets sliding out on Confirm (`hide()` vs `confirmValueChange`)~~ — both done in 0.133.0 — and
+the dead code listed under 0.67.0 — asked about, not deleted.
 
 ## Still to prove on the real phone (Pixel 8 Pro)
+- The editor round (0.133.0): with Developer options → "No mantener actividades" on, write half
+  a reminder, go to another app and come back — the words, the rule and the unsaved-changes
+  question on Back must all be there (the device test proves the seam, only the phone proves
+  the system really asks); the sheets sliding out on "Añadir" and on Back, and whether the
+  quarter second it adds before the rule appears is felt as a wait; and a tap outside a sheet,
+  which does nothing and always did — say whether it should close.
 - The truth round (0.132.0): open a paused reminder and one put off until tomorrow, and read the
   line over "Guardar" — then change the hour of the second and watch the line say the snooze
   goes; open a finished one from Hechos and see "Guardar lo devuelve a la lista", which had never

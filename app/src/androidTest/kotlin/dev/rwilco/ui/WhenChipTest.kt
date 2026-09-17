@@ -8,9 +8,9 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -84,7 +84,9 @@ class WhenChipTest {
         rule.waitUntilShown(fromWords)
         shot("editor-when-chip")
         // Into view first: the keyboard is up, and a tap on a chip under it lands on a key.
-        rule.onNodeWithContentDescription(fromWords).performScrollTo().performClick()
+        // The first of the two: since 0.69.0 the reading is offered under the words as well as
+        // at the head of "Cuándo", and this test went on asking for the only one (found 0.133.0).
+        rule.onAllNodesWithContentDescription(fromWords).onFirst().performScrollTo().performClick()
 
         // One tap and it is a rule: the chip has nothing left to offer, and the sentence under
         // the form — always on screen, unlike the rule's row under the keyboard — names the hour.
@@ -102,7 +104,7 @@ class WhenChipTest {
 
         val fromWords = s(R.string.editor_when_from_words)
         rule.waitUntilShown(fromWords)
-        rule.onNodeWithContentDescription(fromWords).performScrollTo().performClick()
+        rule.onAllNodesWithContentDescription(fromWords).onFirst().performScrollTo().performClick()
 
         // "Vuelve" now says the weekly calendar, and "No repetir" is no longer the answer.
         val weekly = rule.activity.resources.getQuantityString(R.plurals.trigger_repeat_weeks, 1)

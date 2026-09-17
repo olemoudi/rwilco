@@ -61,6 +61,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -109,6 +110,7 @@ import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.edge
 import dev.rwilco.ui.theme.icon
+import dev.rwilco.ui.theme.tagColor
 import dev.rwilco.ui.theme.wash
 import java.time.Clock
 import java.time.LocalDate
@@ -217,6 +219,8 @@ internal fun TextSection(
     suggestions: List<String>,
     /** Everything ever written, for the list behind the dots; the row shows the best few. */
     allSuggestions: List<String> = suggestions,
+    /** What the letters typed so far are on their way to; empty while the field is. */
+    matching: List<String> = emptyList(),
     onTextChange: (String) -> Unit,
     error: Boolean,
     placeholderRes: Int = R.string.editor_text_placeholder,
@@ -231,6 +235,7 @@ internal fun TextSection(
     cap: Int = MAX_TEXT_LENGTH,
 ) {
     val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     var focused by remember { mutableStateOf(false) }
     var listing by rememberSaveable { mutableStateOf(false) }
@@ -307,6 +312,29 @@ internal fun TextSection(
                 color = if (text.length >= cap) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = Tokens.spacing.xs),
             )
+        }
+        // **The offers do not leave with the first letter** (0.133.0). They were drawn only while
+        // the field was empty, so typing "com" took "Comprar filtros" away at the very moment it
+        // would have saved the typing. While there are letters, the phrases those letters are on
+        // their way to sit here instead — no heading: the keyboard is up and the room is short.
+        // Taking one lets go of the field, because the text is set whole and the caret would be
+        // left standing in the middle of it.
+        if (text.isNotEmpty() && matching.isNotEmpty()) {
+            Spacer(Modifier.height(Tokens.spacing.md))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
+                verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
+            ) {
+                for (phrase in matching) {
+                    PresetChip(
+                        label = phrase,
+                        onClick = {
+                            onTextChange(phrase)
+                            focusManager.clearFocus()
+                        },
+                    )
+                }
+            }
         }
         if (text.isEmpty() && suggestions.isNotEmpty()) {
             Spacer(Modifier.height(Tokens.spacing.lg))
@@ -389,6 +417,9 @@ internal fun TagsSection(
                 label = tag,
                 selected = selected.any { it.equals(tag, ignoreCase = true) },
                 onClick = { onToggle(tag) },
+                // In its own colour, as on Home's row, the cards' rails and the panel: a tag is
+                // found by colour before it is read, and here was the one place it had none (0.133.0).
+                tint = tagColor(tag),
             )
         }
         if (offered.size > shown.size) MoreChip(onClick = { listing = true })
@@ -402,6 +433,14 @@ internal fun TagsSection(
                 onAdd(name)
             },
             onDismiss = { naming = false },
+            // What is being typed may already exist under a spelling a letter away; taking it
+            // puts *that* tag on the reminder. Never off: one already on stays on.
+            existing = offered,
+            onPickExisting = { tag ->
+                naming = false
+                haptics.perform(HapticFeedbackType.Confirm)
+                if (selected.none { it.equals(tag, ignoreCase = true) }) onToggle(tag)
+            },
         )
     }
     // Tags stay open: turning three on from the list is one visit, not three.

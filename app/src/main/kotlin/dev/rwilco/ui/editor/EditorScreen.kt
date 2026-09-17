@@ -187,6 +187,8 @@ fun EditorScreen(
     // Where each card sits in the scrolling column, so a refusal can go to the one it is about.
     val sectionTops = remember { mutableStateMapOf<String, Int>() }
     val triggerRemovedMessage = stringResource(R.string.editor_trigger_removed)
+    val conditionRemovedMessage = stringResource(R.string.editor_condition_removed)
+    val deadlineRemovedMessage = stringResource(R.string.editor_deadline_removed)
     val undoLabel = stringResource(R.string.common_undo)
     LaunchedEffect(viewModel) {
         viewModel.eventFlow.collect { event ->
@@ -213,6 +215,17 @@ fun EditorScreen(
                 // The one destructive act on this form, and the bin sits beside the pencil.
                 is EditorEvent.TriggerRemoved -> snackbar.show(triggerRemovedMessage, undoLabel) {
                     viewModel.restoreTrigger(event.index, event.rule, event.recurrence)
+                }
+                // And the three smaller ones beside it, whose × sits inside the very chip that
+                // edits them: a fence on a rule, a fence on the calendar, the set's deadline.
+                is EditorEvent.ConditionRemoved -> snackbar.show(conditionRemovedMessage, undoLabel) {
+                    viewModel.restoreCondition(event.ruleIndex, event.conditionIndex, event.trigger, event.condition)
+                }
+                is EditorEvent.RecurrenceConditionRemoved -> snackbar.show(conditionRemovedMessage, undoLabel) {
+                    viewModel.restoreRecurrenceCondition(event.index, event.condition)
+                }
+                is EditorEvent.DeadlineCleared -> snackbar.show(deadlineRemovedMessage, undoLabel) {
+                    viewModel.restoreDeadline(event.deadline)
                 }
                 EditorEvent.Close -> onClose()
                 is EditorEvent.Invalid -> {
@@ -457,6 +470,9 @@ fun EditorScreen(
                         // A person's name is not one of the words written before: no offers.
                         suggestions = if (state.asPreset || contact) emptyList() else state.suggestedTexts,
                         allSuggestions = if (state.asPreset || contact) emptyList() else state.allTexts,
+                        // And while there are letters, the phrases they are on their way to —
+                        // unless the words already say a "when", whose chip has that spot.
+                        matching = if (state.asPreset || contact || state.understoodOffer() != null) emptyList() else state.matchingTexts,
                         onTextChange = viewModel::setText,
                         error = state.showErrors && ValidationError.TextBlank in state.errors,
                         placeholderRes = when {
