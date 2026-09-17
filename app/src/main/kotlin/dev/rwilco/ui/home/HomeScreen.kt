@@ -44,6 +44,9 @@ import androidx.compose.material.icons.outlined.UnfoldMore
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
@@ -340,10 +343,30 @@ fun HomeScreen(
         TagsPanel(
             tags = tagRows,
             onTogglePin = viewModel::toggleTagPin,
-            onRename = viewModel::renameTag,
+            onRename = { from, to -> viewModel.renameTag(from, to) },
             onDelete = viewModel::deleteTag,
             onCreate = viewModel::createTag,
             onDismiss = { managingTags = false },
+        )
+    }
+    // A rename onto a tag that already exists merges the two, and that has no way back: asked,
+    // in the same dialog a removal is asked in, over the panel it came from (0.132.0).
+    val tagMerge by viewModel.tagMerge.collectAsStateWithLifecycle()
+    tagMerge?.let { ask ->
+        AlertDialog(
+            onDismissRequest = viewModel::cancelTagMerge,
+            title = { Text(stringResource(R.string.curate_tag_merge_title, ask.from, ask.to)) },
+            text = { Text(pluralStringResource(R.plurals.curate_tag_merge_body, ask.count, ask.count, ask.to)) },
+            confirmButton = {
+                TextButton(onClick = viewModel::confirmTagMerge) {
+                    Text(stringResource(R.string.curate_tag_merge_confirm), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::cancelTagMerge) { Text(stringResource(R.string.sheet_cancel)) }
+            },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            shape = MaterialTheme.shapes.extraLarge,
         )
     }
     askingWordsFor?.let { id ->

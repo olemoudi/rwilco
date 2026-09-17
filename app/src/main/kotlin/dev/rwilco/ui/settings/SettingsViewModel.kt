@@ -189,7 +189,7 @@ class SettingsViewModel(
     /** Null puts the two back together: the insistent reminders go back to the one above. */
     fun setInsistentSound(sound: AlertSound?) = update { it.copy(insistentSound = sound) }
 
-    /** The three numbers the safety net is made of; the switch itself is per reminder. */
+    /** The three numbers the safety net is made of. There is no switch: it holds for every reminder. */
     fun setSafetyNet(net: SafetyNetSettings) = update { it.copy(safetyNet = net) }
     fun setSnoozeCustomMinutes(minutes: Int) = update { it.copy(snoozeCustomMinutes = minutes.coerceIn(SnoozeLimits.CUSTOM_MINUTES)) }
     fun pickNotificationSnooze(snooze: Snooze) = update {

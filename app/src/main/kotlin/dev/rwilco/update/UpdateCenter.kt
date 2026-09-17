@@ -8,7 +8,8 @@ sealed interface UpdateUiState {
     data object Idle : UpdateUiState
     data object Checking : UpdateUiState
     data class UpToDate(val installedVersionCode: Int) : UpdateUiState
-    data class Downloading(val target: UpdateInfo) : UpdateUiState
+    /** [percent] is how far along it is, when the server said how much there is: see [downloadPercent]. */
+    data class Downloading(val target: UpdateInfo, val percent: Int? = null) : UpdateUiState
     /** The bytes are here and checked; the install session is being committed. */
     data class Installing(val target: UpdateInfo) : UpdateUiState
     /** Waiting for the person to accept the system install dialog. */

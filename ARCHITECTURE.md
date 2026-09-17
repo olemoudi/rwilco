@@ -1293,7 +1293,9 @@ loud what DST and a change of zone do to a landing.
   restored done reminder goes back *as the row it was* (`repository.restore`), not as one done
   now. Emptying a log asks (`ClearDialog`), and so does removing a tag from every reminder or
   hiding a phrase — there is no row to put back from a rewrite of forty rows, and a hidden
-  phrase has no door back through. A rename asks nothing: rename it back.
+  phrase has no door back through. A rename asks nothing: rename it back — **unless it lands
+  on a tag that already exists**, which is a merge and has no way back, so it asks (0.132.0,
+  `tagMergeCount`).
 - **Home folds away** (0.64.0, `AppSettings.compactHome`). A small button over "Nuevo" takes
   every card down to a line: the words, one row of 16dp glyphs for what rings it and what it
   does, and the tags against the right edge. It is a way of reading the *list* — thirty cards at
@@ -1528,7 +1530,8 @@ loud what DST and a change of zone do to a landing.
   `AtDateTime`; the place
   sheet offers the places kept by name in Settings (`AppSettings.savedPlaces`, managed by
   `SavedPlacesCard` through the same sheet without the arriving/leaving choice) as one-tap
-  chips, searches addresses through the platform `Geocoder` (`PlaceSearch.kt`), and asks every
+  chips, searches addresses through the platform `Geocoder` (`PlaceSearch.kt` — which tells
+  "no such address" from "could not look", 0.132.0, since the geocoder needs a network), and asks every
   enabled provider at once for a fix (`CurrentLocation.kt`: fine *or* coarse is enough, the
   freshest last-known answers instantly, and nothing is refused because GPS alone had nothing
   to say indoors) and shows an
@@ -1733,7 +1736,9 @@ loud what DST and a change of zone do to a landing.
   tested) — `nextFire`, then the same question again with that moment spent the way the firing
   spends it (`lastFiredAt`), up to three times. The sentence says what was asked for; this says
   what will happen, which for a rule with fences and a recurrence behind it is the only way to
-  check the arrangement without saving it and waiting. The walk stops where the next moment is
+  check the arrangement without saving it and waiting. **Asked of the row a save would write**
+  (`rowToSave`, 0.132.0), not of a bare draft, so it knows a pause, a snooze and the anchor a
+  routine counts from. The walk stops where the next moment is
   not the model's to know: after a random draw (the window is shown, never the draw), after a
   snooze, after the ring of an "all of them" set, and a span from the "hecho" stops on its own
   because nothing has been dealt with. A place is no moment at all and a list starting with one
@@ -1839,6 +1844,37 @@ loud what DST and a change of zone do to a landing.
   screenshot: "Qué pasa"'s fifth tile at full width (three columns leave a hole too, and the
   pips lose their words), and the sheets vanishing rather than sliding on Confirm — `hide()`
   against a sheet that refuses `Hidden` is not a change to make blind.
+- **The truth round (0.132.0): six places where a screen said something the app did not do.**
+  **The line over "Guardar" reads the row a save would write** (`EditorUiState.rowToSave`, pure,
+  in `EditorState.kt`; `EditorViewModel.save()` is a call to it). What is carried across an edit
+  and what is not — the anchor, the last ring, a pause, a snooze unless the "when" changed, the
+  round's deadline — was the body of `save()`, and the line was worked out from a bare draft
+  instead: written now, never rung, always active. So a paused reminder's form promised "Suena
+  mañana 09:00", one put off until Friday promised its rule's own hour, and an existing routine's
+  "Vence…" counted its three weeks from the second the form opened. `EditorUiState.existing` is
+  the row as it stood at load, and `standing(row, now)` (`Standing`: `Plain`, `Paused`,
+  `SnoozeKept`, `SnoozeDropped`) is what the row says that a draft cannot: a pause is said
+  *instead of* any moment, in the plain ink because nothing there is next; a snooze that stands
+  is the first moment in its own words ("Pospuesto hasta…") with a line under it saying which
+  edit would take it away; one this edit drops is said before the button, even when nothing
+  else is coming — which is when losing it matters most. `cannotRing` is still asked of the bare
+  shape, and not of a row that rests. **`revives` had never once been true on screen**: it was
+  set in an update of its own a line before the state was rebuilt whole, which wiped it, so
+  "Guardar lo devuelve a la lista" (0.94.0) was dead code with a string; it is part of that
+  state now. **A form is not called "Nuevo recordatorio" while it loads** (`titleFromRoute`,
+  `editorTitle`, `EditorTitle`): the state is born knowing what the way in says (`isNew`,
+  `asPreset`), the title is null — blank — where only the row can say whether it is a reminder,
+  a routine or a contact, and the body is `ListPlaceholder` until `loaded`, with the preview and
+  the bin held back. **A rename onto a tag that exists is a merge, and a merge is asked about**
+  (`tagMergeCount`, `Curation.kt`; `HomeViewModel.tagMerge`): it has no inverse, and it used to
+  be neither asked nor undoable. A respelling lands on itself and is a rename — the old check
+  ignored case and so took the undo away from "casa" → "Casa" too. `known` is the tags that
+  exist without being worn: the panel's own rows and the presets'. **An address search that
+  got no answer says so** (`PlaceSearch.Unavailable`, `placeSearchOutcome`): the geocoder
+  missing, erroring, timing out — or answering "nothing" with no network, which is what an
+  offline one does — all used to be the empty list that means "no such address". And
+  Settings' paragraph about the safety net stopped describing the per-reminder switch that
+  went long ago (see **It is not asked for**, under Firing).
 
 ## Firing
 
@@ -3220,7 +3256,10 @@ hundred bytes and shares none of that problem. Three answers the server can give
 tested: 206 continues what is on disk (`continuesPart`), 200 means the range was ignored and the
 part is written over, and 416 means there is nothing past what we hold — the part IS the file
 (`partIsWhole`), which is the trap that would otherwise be permanent, since a part completed a
-moment before the process died would be refused for ever.
+moment before the process died would be refused for ever. **The line in Settings says how far it
+has got** (0.132.0, `downloadPercent`, `UpdateUiState.Downloading(target, percent)`): the copy is
+a loop of its own rather than `copyTo`, reporting only when the whole number moves, and a resumed
+download counts the part already on disk — a body with no length gets no number at all.
 
 The bytes land in `update-<versionCode>.part` and are only given the staged name once the body
 ended where it said it would. Keyed by the build, so a release that moves on mid-download starts a

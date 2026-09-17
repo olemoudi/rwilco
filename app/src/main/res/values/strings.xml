@@ -22,6 +22,12 @@
     <string name="curate_tag_remove">Remove this tag everywhere</string>
     <string name="curate_tag_remove_title">Remove «%1$s» from everything?</string>
     <string name="curate_tag_remove_body">It goes from every reminder that carries it. There is no undo.</string>
+    <string name="curate_tag_merge_title">Merge «%1$s» into «%2$s»?</string>
+    <plurals name="curate_tag_merge_body">
+        <item quantity="one">«%2$s» already exists, so the two become one tag, on %1$d reminder. There is no undo: afterwards nothing says which of them it wore.</item>
+        <item quantity="other">«%2$s» already exists, so the two become one tag, on %1$d reminders. There is no undo: afterwards nothing says which of them each one wore.</item>
+    </plurals>
+    <string name="curate_tag_merge_confirm">Merge</string>
     <string name="curate_text_remove_title">Stop offering «%1$s»?</string>
     <string name="curate_text_remove_body">The reminders that use it do not change; it just stops being suggested.</string>
     <string name="curate_remove_confirm">Remove</string>
@@ -430,6 +436,9 @@
     <string name="editor_will_ring_hushed">Rings %1$s · silently, you\'ll be asleep</string>
     <string name="editor_will_be_due_hushed">Due %1$s · silently, you\'ll be asleep</string>
     <string name="editor_will_never_ring">This will never ring</string>
+    <string name="editor_standing_paused">Paused: it will not ring until you resume it</string>
+    <string name="editor_standing_keeps">Changing the «when» takes the snooze off</string>
+    <string name="editor_standing_drops">Saving takes the snooze off — it was until %1$s</string>
     <string name="editor_will_be_due">Due %1$s</string>
     <string name="editor_will_ring_then">then %1$s</string>
     <string name="editor_will_ring_sometime">sometime %1$s, %2$s</string>
@@ -734,6 +743,7 @@
     <string name="update_state_checking">Checking…</string>
     <string name="update_state_up_to_date">Up to date</string>
     <string name="update_state_downloading">Downloading %1$s…</string>
+    <string name="update_state_downloading_percent">Downloading %1$s · %2$d %%</string>
     <string name="update_state_installing">Installing %1$s…</string>
     <string name="update_state_pending">Waiting for you to confirm the install</string>
     <string name="update_state_staged">%1$s is downloaded and ready to install</string>
@@ -783,7 +793,7 @@
     <string name="notif_net_subtext_waiting_arrive">Still waiting for you to reach %1$s</string>
     <string name="notif_net_subtext_waiting_leave">Still waiting for you to leave %1$s</string>
     <string name="settings_net_title">Safety net</string>
-    <string name="settings_net_about">A reminder can be asked to keep one eye on you. There are two ways one gets away — it rings and you never answer it, or its moment comes while a fence is shut and there is none left for it to ring at — and one switch for both, since nobody knows in advance which way it will be. Either way you get one quiet word about it: no sound, no screen, once. The switch is on each reminder, under «what happens»; these are what it means by «later».</string>
+    <string name="settings_net_about">The safety net watches every reminder; there is nothing to switch on, because nobody knows in advance which one will get away. One gets away when it rings and is never answered, when its moment comes while a fence is shut and there is none left for it to ring at, when its hours and its moments never meet at all, or when a wait at a place goes on too long. Whichever it is, you get one quiet word about it, once: a card and never the screen, at half volume while you are up and silent while you sleep. These numbers are what «later» means.</string>
     <string name="settings_net_after">At most it waits</string>
     <string name="settings_net_after_hint">And this is the whole wait when the reminder has nothing left to ring: a date that has been, a countdown that ran out. Nothing else is coming, so there is no hurry.</string>
     <string name="settings_net_after_value">%1$d h</string>
@@ -791,7 +801,7 @@
     <string name="settings_net_fraction_hint">When the reminder does come back, the word arrives after this share of the time until the next ring — whichever is sooner. The point is to catch it before the next one buries it: a tenth is 2 h 24 min on something daily, and a quarter of an hour on something six-hourly.</string>
     <string name="settings_net_fraction_value">1/%1$d</string>
     <string name="settings_net_floor">Never when it comes back sooner than</string>
-    <string name="settings_net_floor_hint">Below this the net cannot be switched on at all. A reminder that comes back every twenty minutes needs no net: the next ring is already one, and a second notification between two of them is noise.</string>
+    <string name="settings_net_floor_hint">Below this the net says nothing at all. A reminder that comes back every twenty minutes needs no net: the next ring is already one, and a second notification between two of them is noise.</string>
     <string name="settings_net_floor_value">%1$d min</string>
 
     <!-- Permissions for alerts -->
@@ -859,6 +869,7 @@
     <string name="editor_reuse">Or reuse one</string>
     <string name="place_search">Search an address</string>
     <string name="place_search_none">No address found. Try fewer words, or long-press the map.</string>
+    <string name="place_search_unavailable">Could not search: looking up an address needs a connection. Long-press the map to drop the pin by hand.</string>
     <string name="place_my_location">Centre on my location</string>
     <string-array name="whats_new_0_2_0">
         <item>Reminders ring: exact alarms, a full-screen alert over the lock screen, and Done and Snooze on the notification.</item>
@@ -1606,6 +1617,21 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_132_0">
+
+        <item>The form tells the truth about the reminder it was opened on. The line over «Save» was worked out from the draft alone — written now, never rung, always active — so a paused reminder promised «Rings tomorrow 09:00», one put off until Friday promised its own hour, and a routine that already existed counted its three weeks from the second the form opened. It reads the very row a save would write now: «Paused: it will not ring until you resume it», «Snoozed until…» with a line under it saying which edit would take that away, and «Due…» counted from the last time you did it.</item>
+
+        <item>And «Saving puts it back on the list», over a finished reminder you open again, finally appears. It was set a moment before the form finished loading and wiped by that very load, every time, since 0.94.0.</item>
+
+        <item>An existing reminder no longer opens as «New reminder» over an empty form for an instant. The title says only what the way in already knows, the cards wait as shapes until the row has been read, and the preview and the bin stay away until then.</item>
+
+        <item>Renaming a tag onto one that already exists asks first. That is a merge, and it has no way back — afterwards nothing says which reminders wore which — yet it went ahead in silence and quietly withheld the undo. A change of capitals alone is still a rename, and gets back the undo it had been losing.</item>
+
+        <item>Settings → Safety net described a switch on each reminder that was taken away long ago, counted two ways a reminder gets away when there are four, and called its word silent when it is said at half volume while you are up. It says what happens now.</item>
+
+        <item>Looking up an address with no connection says so, instead of «No address found» about an address it never looked for. And an update that is downloading says how far along it is.</item>
+
+    </string-array>
     <string-array name="whats_new_0_131_0">
 
         <item>The card a place leaves when it counts a routine as done now has «Confirm as done» before its «Undo». The app acted on its own there, so the card is a question, and agreeing with it was a swipe — the same gesture as ignoring it — right next to the one button that would take it back. Confirming writes nothing: the count stays where the place put it and the card goes.</item>

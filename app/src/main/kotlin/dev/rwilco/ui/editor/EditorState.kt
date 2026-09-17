@@ -55,6 +55,7 @@ import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
 import dev.rwilco.model.DEFAULT_DAY_START
 import dev.rwilco.model.settleRelativeDates
 import dev.rwilco.model.Understood
+import dev.rwilco.model.roundExpiry
 
 /** What the editor is editing: the reminder minus its identity and bookkeeping. */
 data class Draft(
@@ -211,6 +212,12 @@ data class EditorUiState(
     val isNew: Boolean = true,
     /** Opened on a finished reminder: a save puts it back on the list, and the form says so (0.94.0). */
     val revives: Boolean = false,
+    /**
+     * The row this form was opened on, as it stood then; null for anything new. Not part of the
+     * draft — nothing here is edited — but what [rowToSave] carries across the edit is read off
+     * it, so the line over "Guardar" can say "en pausa" or "pospuesto hasta…" (0.132.0).
+     */
+    val existing: Reminder? = null,
     val draft: Draft = Draft(),
     /** What was loaded (or the blank draft): the yardstick for "unsaved changes". */
     val initial: Draft = Draft(),
@@ -295,6 +302,50 @@ data class EditorUiState(
     val dirty: Boolean get() = draft != initial || asPreset != initialAsPreset || presetText != initialPresetText
     val errors: List<ValidationError> get() = validate(draft.text, draft.rules, draft.recurrence)
     val canSave: Boolean get() = errors.isEmpty()
+}
+
+/** What the form is called: the thing being written, and whether it is new. */
+enum class EditorTitle { NEW, EDIT, NEW_PRESET, EDIT_PRESET, NEW_ROUTINE, EDIT_ROUTINE, NEW_CONTACT, EDIT_CONTACT }
+
+/** The name of a form that has loaded. The words follow the thing: a routine's form is not "Nuevo recordatorio". */
+fun editorTitle(state: EditorUiState): EditorTitle {
+    val contact = state.draft.contactKind != null
+    val routine = state.draft.recurrence is Recurrence.Since
+    return when {
+        state.asPreset && state.editingPreset != null -> EditorTitle.EDIT_PRESET
+        state.asPreset -> EditorTitle.NEW_PRESET
+        contact -> if (state.isNew) EditorTitle.NEW_CONTACT else EditorTitle.EDIT_CONTACT
+        routine -> if (state.isNew) EditorTitle.NEW_ROUTINE else EditorTitle.EDIT_ROUTINE
+        state.isNew -> EditorTitle.NEW
+        else -> EditorTitle.EDIT
+    }
+}
+
+/**
+ * What the way the form was opened says about it, **before anything has been read** — or null
+ * where only the row can say.
+ *
+ * The state is born blank and the load takes a moment, and for that moment every form was headed
+ * "Nuevo recordatorio": an existing reminder's, a routine's, a preset's. The openings that carry
+ * their own answer say it from the first frame; an existing row, a copy of one and a shape kept
+ * under a name may each be a reminder, a routine or a contact, so they say nothing until the row
+ * is in — a blank for two frames, never a title that was false (0.132.0).
+ */
+fun titleFromRoute(
+    reminderId: String?,
+    fromPresetId: String?,
+    cloneOfId: String?,
+    editPresetId: String?,
+    newPreset: Boolean,
+    routine: Boolean,
+    contactKind: ContactKind?,
+): EditorTitle? = when {
+    editPresetId != null -> EditorTitle.EDIT_PRESET
+    newPreset -> EditorTitle.NEW_PRESET
+    reminderId != null || cloneOfId != null || fromPresetId != null -> null
+    contactKind != null -> EditorTitle.NEW_CONTACT
+    routine -> EditorTitle.NEW_ROUTINE
+    else -> EditorTitle.NEW
 }
 
 /**
@@ -411,6 +462,116 @@ fun Draft.rulesNotQuestions(): List<Int> =
  */
 fun becomesRoutine(before: Reminder?, draft: Draft): Boolean =
     before != null && before.recurrence !is Recurrence.Since && draft.recurrence is Recurrence.Since
+
+/**
+ * Whether an edit left "the when" alone: the rules, how they combine, the recurrence and the
+ * deadline. It is what decides whether a snooze survives the save ([rowToSave]), and what the
+ * line over "Guardar" reads to say so before the button is pressed.
+ */
+fun whenUntouched(before: Reminder?, draft: Draft): Boolean =
+    before != null &&
+        before.rules == draft.rules &&
+        before.ruleMatch == draft.ruleMatch &&
+        before.recurrence == draft.recurrence &&
+        before.deadline == draft.deadline
+
+/**
+ * What the line over "Guardar" has to say about the row beyond its next moments: the two things
+ * an edit does not decide and the form never used to mention.
+ */
+sealed interface Standing {
+    data object Plain : Standing
+
+    /** Nothing rings until it is resumed, whatever the rules on the form say. */
+    data object Paused : Standing
+
+    /** Put off, and this edit leaves that answer where it is: the first moment IS the snooze. */
+    data object SnoozeKept : Standing
+
+    /** Put off until [until] or [place], and saving this edit takes that answer away. */
+    data class SnoozeDropped(val until: Instant?, val place: Trigger.Location?) : Standing
+}
+
+/**
+ * How [row] — what [rowToSave] would write — stands against the row the form was opened on.
+ * A snooze already behind the clock is not one: it rang, and what is owed now is an answer.
+ */
+fun EditorUiState.standing(row: Reminder, now: Instant): Standing {
+    if (asPreset) return Standing.Plain
+    if (row.status == Status.PAUSED) return Standing.Paused
+    val before = existing ?: return Standing.Plain
+    val until = before.snoozedUntil?.takeIf { it.isAfter(now) }
+    val place = before.snoozedToPlace
+    if (until == null && place == null) return Standing.Plain
+    val kept = row.snoozedUntil == before.snoozedUntil && row.snoozedToPlace == before.snoozedToPlace
+    return if (kept) Standing.SnoozeKept else Standing.SnoozeDropped(until, place)
+}
+
+/**
+ * The row a save writes, given the row as it stands — [before], null for a new reminder.
+ *
+ * Pure, and out of the ViewModel (0.132.0), because two things have to agree on it: the button
+ * that writes it and the line over that button that says what will happen. The line used to be
+ * worked out from a bare draft — written now, never dealt with, never rung, always active — so
+ * a paused reminder's form promised "Suena mañana 09:00", one put off until Friday promised its
+ * rule's own moment, and an existing routine's "Vence…" counted its three weeks from the second
+ * the form opened. What the screen says and what is written come off the same function now.
+ */
+fun EditorUiState.rowToSave(before: Reminder?, draftId: String, now: Instant, zone: ZoneId): Reminder {
+    val whenUntouched = whenUntouched(before, draft)
+    // The round under way survives an edit that leaves the set alone — the rules, the
+    // reading and the deadline — and its clock with it; anything else, or a reminder
+    // brought back from "hecho", is a round starting now, and a window's close is
+    // worked out again below for the day the round falls on. A timer's clock starts
+    // with the round's first moment, and is nothing until then.
+    val roundUntouched = before != null && before.status != Status.DONE &&
+        before.rules == draft.rules &&
+        before.ruleMatch == draft.ruleMatch &&
+        before.deadline == draft.deadline
+    val becomesRoutine = becomesRoutine(before, draft)
+    val built = draft.toReminder(
+        id = before?.id ?: draftId,
+        createdAt = before?.createdAt ?: now,
+        now = now,
+        // Editing something already done brings it back; otherwise the status is not
+        // the editor's business.
+        status = if (before == null || before.status == Status.DONE) Status.ACTIVE else before.status,
+        // The recurrence's anchor and the last ring survive an edit; the armed moment
+        // does not. See Draft.toReminder.
+        //
+        // **Except across the edit that makes it a routine.** A routine's deadline is
+        // `anchor + span`, and `recurrenceMoment` spends any moment at or before the
+        // last ring — so a reminder that rang last week, turned into "cada 21 días
+        // desde la última vez" today, had a first deadline older than its own last
+        // ring: nothing armed, no questions (`awaitingAnswer` held), and the net cut
+        // by the word it had already said. The ring, the round and the net's word
+        // belonged to a reminder that no longer exists; the anchor ("hecho") stays.
+        lastDealtAt = before?.lastDealtAt,
+        lastFiredAt = before?.lastFiredAt.takeUnless { becomesRoutine },
+        dealtThrough = before?.dealtThrough,
+        // The round under way survives a typo; a change to the rules themselves is
+        // the one edit that starts it again (the indices would name other rules).
+        firedRules = if (before != null && before.rules == draft.rules && !becomesRoutine) before.firedRules else emptySet(),
+        lastFiredRule = if (before != null && before.rules == draft.rules && !becomesRoutine) before.lastFiredRule else null,
+        nudgedAt = before?.nudgedAt.takeUnless { becomesRoutine },
+        askedAt = before?.askedAt,
+        resumedAt = before?.resumedAt,
+        pausedAt = before?.pausedAt,
+        // **Only a change to the "when" un-answers a snooze.** Somebody who put a ring
+        // off until tomorrow has answered it; fixing a word in the text does not take
+        // that back, and dropping it did two visible things — the card left the section
+        // the snooze put it in for the bottom of Home, and the reminder read as
+        // rung-and-ignored again, which is a safety net going off about an alert that
+        // was answered. A change to the rules, the reading or the recurrence IS a
+        // re-decision of when it rings, and there the old answer really is meaningless.
+        snoozedUntil = if (whenUntouched) before?.snoozedUntil else null,
+        snoozedToPlace = if (whenUntouched) before?.snoozedToPlace else null,
+        expiresAt = if (roundUntouched) before?.expiresAt else null,
+        zone = zone,
+        shape = dayShape,
+    )
+    return if (roundUntouched) built else built.copy(expiresAt = built.roundExpiry(now, zone, defaultTime, dayStart, dayShape))
+}
 
 /**
  * Which half of a life a contact belongs to; anything that is not one is left alone. A cadence

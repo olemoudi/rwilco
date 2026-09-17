@@ -2,6 +2,7 @@ package dev.rwilco.model
 
 import dev.rwilco.model.Fixtures.now
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -36,6 +37,29 @@ class CurationTest {
         assertEquals(listOf("1", "4"), changed.map { it.id })
         assertEquals(listOf("Casa"), changed[0].tags, "the reminder had both; now it has one")
         assertEquals(listOf("Casa"), changed[1].tags)
+    }
+
+    @Test
+    fun `a new name is a rename, and so is a respelling of the same tag`() {
+        assertNull(tagMergeCount(all, emptyList(), "casa", "hogar"))
+        // The carriers of "casa" match "Casa" once case is ignored, which is exactly what made a
+        // respelling read as a merge — and lose the undo a rename is owed.
+        assertNull(tagMergeCount(all, emptyList(), "casa", "CASA"))
+        assertNull(tagMergeCount(all, emptyList(), "casa", "   "), "a rename to nothing is not anything")
+    }
+
+    @Test
+    fun `renaming onto a tag already worn is a merge, and counts each reminder once`() {
+        // "compra" is on 1 and 4, "casa" on 1 and 2: three reminders end up under the one tag,
+        // and the first of them was wearing both.
+        assertEquals(3, tagMergeCount(all, emptyList(), "compra", "Casa"))
+    }
+
+    @Test
+    fun `renaming onto a tag that is only written down, or only on a preset, still asks`() {
+        // Nothing wears "viaje" yet, but it exists — it has a row in the panel — and after the
+        // rename there is one tag where the panel showed two. No inverse, so it is a question.
+        assertEquals(2, tagMergeCount(all, listOf("viaje"), "compra", "Viaje"))
     }
 
     @Test

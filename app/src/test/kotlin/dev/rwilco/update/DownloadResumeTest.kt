@@ -2,6 +2,7 @@ package dev.rwilco.update
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -22,6 +23,22 @@ class DownloadResumeTest {
         // The two names never collide, which is the whole of why a cut-short download can no
         // longer look like an update waiting to be installed (see Updater.stagedUpdate).
         assertFalse(partName(169) == Updater.APK_FILE)
+    }
+
+    @Test
+    fun `how far along a download is counts the bytes already held, and says nothing it cannot know`() {
+        // A fresh download: what has been read, of what the body says it is.
+        assertEquals(25, downloadPercent(alreadyHave = 0, read = 15_000_000, bodyLength = 60_000_000))
+        // A resumed one: the body is only the rest, and the part already on disk counts —
+        // or the line would start again from nought on every retry of the same file.
+        assertEquals(50, downloadPercent(alreadyHave = 20_000_000, read = 10_000_000, bodyLength = 40_000_000))
+        assertEquals(100, downloadPercent(alreadyHave = 20_000_000, read = 40_000_000, bodyLength = 40_000_000))
+        assertEquals(0, downloadPercent(alreadyHave = 0, read = 0, bodyLength = 60_000_000))
+        // No length (a chunked body) is no percentage: a number made up is worse than none.
+        assertNull(downloadPercent(alreadyHave = 0, read = 5_000_000, bodyLength = -1))
+        assertNull(downloadPercent(alreadyHave = 0, read = 0, bodyLength = 0))
+        // More than was promised is still not more than all of it.
+        assertEquals(100, downloadPercent(alreadyHave = 0, read = 61_000_000, bodyLength = 60_000_000))
     }
 
     @Test

@@ -39,6 +39,8 @@ import dev.rwilco.model.withSpanOf
 import dev.rwilco.model.Closeness
 import dev.rwilco.model.ContactKind
 import dev.rwilco.model.DayWindow
+import dev.rwilco.model.moment
+import dev.rwilco.model.upcomingMoments
 
 class EditorStateTest {
 
@@ -345,6 +347,158 @@ class EditorStateTest {
             lastFiredAt = rang, snoozedUntil = null, zone = zone,
         )
         assertNull(dropped.snoozedUntil)
+    }
+
+    // --- what the form is called, before and after the row has been read (0.132.0) ---
+
+    @Test
+    fun `the way a form was opened names it at once, except where only the row can say`() {
+        fun opened(
+            reminderId: String? = null, fromPresetId: String? = null, cloneOfId: String? = null, editPresetId: String? = null,
+            newPreset: Boolean = false, routine: Boolean = false, contactKind: ContactKind? = null,
+        ) = titleFromRoute(reminderId, fromPresetId, cloneOfId, editPresetId, newPreset, routine, contactKind)
+
+        assertEquals(EditorTitle.NEW, opened())
+        assertEquals(EditorTitle.NEW_ROUTINE, opened(routine = true))
+        assertEquals(EditorTitle.NEW_CONTACT, opened(routine = true, contactKind = ContactKind.WORK))
+        assertEquals(EditorTitle.EDIT_PRESET, opened(editPresetId = "p"))
+        assertEquals(EditorTitle.NEW_PRESET, opened(newPreset = true))
+        assertEquals(EditorTitle.NEW_PRESET, opened(cloneOfId = "r", newPreset = true), "a card kept as a preset")
+        // A row may be a reminder, a routine or a contact, and so may a copy of one or a shape
+        // kept under a name: said once it is read, and nothing false in the meantime.
+        assertNull(opened(reminderId = "r"))
+        assertNull(opened(cloneOfId = "r"))
+        assertNull(opened(fromPresetId = "p"))
+    }
+
+    @Test
+    fun `a loaded form is named after what is being written`() {
+        val routine = Draft(text = "Mover el coche", recurrence = Recurrence.Since(21, RecurrenceUnit.DAYS))
+        val contact = routine.copy(contactKind = ContactKind.PERSONAL)
+        assertEquals(EditorTitle.NEW, editorTitle(blank))
+        assertEquals(EditorTitle.EDIT, editorTitle(blank.copy(isNew = false)))
+        assertEquals(EditorTitle.NEW_ROUTINE, editorTitle(blank.copy(draft = routine)))
+        assertEquals(EditorTitle.EDIT_ROUTINE, editorTitle(blank.copy(draft = routine, isNew = false)))
+        assertEquals(EditorTitle.NEW_CONTACT, editorTitle(blank.copy(draft = contact)))
+        assertEquals(EditorTitle.EDIT_CONTACT, editorTitle(blank.copy(draft = contact, isNew = false)))
+        assertEquals(EditorTitle.NEW_PRESET, editorTitle(blank.copy(asPreset = true)))
+        assertEquals(EditorTitle.EDIT_PRESET, editorTitle(blank.copy(asPreset = true, editingPreset = dev.rwilco.model.Preset(id = "p", name = "Compra", createdAt = now))))
+    }
+
+    // --- the row a save writes (0.132.0): the same function the line over "Guardar" reads ---
+
+    private fun formOn(row: Reminder) = EditorUiState(loaded = true, isNew = false, draft = row.toDraft(), initial = row.toDraft())
+
+    @Test
+    fun `the row a save writes keeps a snooze across a typo and drops it when the when changes`() {
+        val rang = now.minusSeconds(3600)
+        val until = now.plusSeconds(24 * 3600)
+        val before = Reminder(
+            id = "r", text = "Licencia teclado", rules = listOf(TriggerRule(tonight)),
+            createdAt = rang.minusSeconds(3600), updatedAt = rang, lastFiredAt = rang, snoozedUntil = until,
+        )
+        val form = formOn(before)
+
+        val typo = form.withText("Licencia del teclado").rowToSave(before, "unused", now, zone)
+        assertEquals("r", typo.id, "an existing row keeps its id, whatever the draft was minted under")
+        assertEquals(before.createdAt, typo.createdAt)
+        assertEquals(until, typo.snoozedUntil, "a word changed and nothing else: the answer stands")
+        assertTrue(whenUntouched(before, form.withText("Licencia del teclado").draft))
+
+        val rerules = form.commitTrigger(0, Trigger.AtDateTime(LocalDateTime.of(2026, 8, 29, 8, 0)))
+        assertFalse(whenUntouched(before, rerules.draft))
+        assertNull(rerules.rowToSave(before, "unused", now, zone).snoozedUntil, "the when was re-decided, and the old answer with it")
+    }
+
+    @Test
+    fun `the row a save writes leaves a paused reminder paused, with its rest`() {
+        val rested = now.minusSeconds(7200)
+        val before = Reminder(
+            id = "r", text = "Regar", rules = listOf(TriggerRule(tonight)), status = Status.PAUSED,
+            createdAt = rested.minusSeconds(60), updatedAt = rested, pausedAt = rested,
+        )
+        val saved = formOn(before).withText("Regar las plantas").rowToSave(before, "unused", now, zone)
+        assertEquals(Status.PAUSED, saved.status, "the status is not the editor's business")
+        assertEquals(rested, saved.pausedAt)
+    }
+
+    @Test
+    fun `the row a save writes carries the anchor and the last ring, except across becoming a routine`() {
+        val dealt = now.minusSeconds(10 * 86_400)
+        val rang = now.minusSeconds(3600)
+        val before = Reminder(
+            id = "r", text = "Mover el coche", recurrence = Recurrence.After(6, RecurrenceUnit.HOURS),
+            createdAt = dealt.minusSeconds(86_400), updatedAt = dealt, lastDealtAt = dealt, lastFiredAt = rang, nudgedAt = rang,
+        )
+        val form = formOn(before)
+
+        val typo = form.withText("Mover el coche de sitio").rowToSave(before, "unused", now, zone)
+        assertEquals(dealt, typo.lastDealtAt)
+        assertEquals(rang, typo.lastFiredAt)
+        assertEquals(rang, typo.nudgedAt)
+
+        // The ring, the round and the net's word belonged to a reminder that no longer exists;
+        // the anchor ("hecho") stays.
+        val routine = form.copy(draft = form.draft.copy(recurrence = Recurrence.Since(21, RecurrenceUnit.DAYS)))
+            .rowToSave(before, "unused", now, zone)
+        assertEquals(dealt, routine.lastDealtAt)
+        assertNull(routine.lastFiredAt)
+        assertNull(routine.nudgedAt)
+    }
+
+    @Test
+    fun `the row a save writes brings a finished reminder back, and a new one is born active under the draft's id`() {
+        val before = Reminder(
+            id = "r", text = "Comprar filtros", status = Status.DONE,
+            createdAt = now.minusSeconds(86_400), updatedAt = now.minusSeconds(3600), doneAt = now.minusSeconds(3600),
+        )
+        assertEquals(Status.ACTIVE, formOn(before).rowToSave(before, "unused", now, zone).status)
+
+        val fresh = blank.withText("Comprar pan").rowToSave(null, "minted", now, zone)
+        assertEquals("minted", fresh.id)
+        assertEquals(Status.ACTIVE, fresh.status)
+        assertEquals(now, fresh.createdAt)
+    }
+
+    @Test
+    fun `the line over the button knows a pause, a snooze that stays and a snooze the edit takes away`() {
+        val until = now.plusSeconds(24 * 3600)
+        val snoozed = Reminder(
+            id = "r", text = "Licencia teclado", rules = listOf(TriggerRule(tonight)),
+            createdAt = now.minusSeconds(7200), updatedAt = now.minusSeconds(3600),
+            lastFiredAt = now.minusSeconds(3600), snoozedUntil = until,
+        )
+        val form = formOn(snoozed).copy(existing = snoozed)
+        fun standingOf(state: EditorUiState) = state.standing(state.rowToSave(state.existing, "unused", now, zone), now)
+
+        assertEquals(Standing.SnoozeKept, standingOf(form.withText("Licencia del teclado")))
+        val rerules = form.commitTrigger(0, Trigger.AtDateTime(LocalDateTime.of(2026, 8, 29, 8, 0)))
+        assertEquals(Standing.SnoozeDropped(until, null), standingOf(rerules))
+
+        // A snooze already behind the clock rang: there is nothing left of it to keep or lose.
+        val spent = snoozed.copy(snoozedUntil = now.minusSeconds(60))
+        assertEquals(Standing.Plain, standingOf(formOn(spent).copy(existing = spent)))
+
+        val paused = snoozed.copy(status = Status.PAUSED, snoozedUntil = null)
+        assertEquals(Standing.Paused, standingOf(formOn(paused).copy(existing = paused)))
+        // And a shape kept under a name rings nothing, so it has no standing to speak of.
+        assertEquals(Standing.Plain, standingOf(formOn(paused).copy(existing = paused, asPreset = true)))
+        assertEquals(Standing.Plain, standingOf(blank.withText("Comprar pan")))
+    }
+
+    @Test
+    fun `a routine's deadline is read from its last hecho, not from the moment the form was opened`() {
+        // The line over "Guardar" used to be worked out from a bare draft — written now, never
+        // dealt with — so an existing routine's "Vence…" counted its three weeks from the second
+        // the form opened, whatever the list outside said.
+        val dealt = now.minusSeconds(10 * 86_400L)
+        val before = Reminder(
+            id = "car", text = "Mover el coche", recurrence = Recurrence.Since(21, RecurrenceUnit.DAYS),
+            createdAt = dealt.minusSeconds(30 * 86_400L), updatedAt = dealt, lastDealtAt = dealt,
+        )
+        val row = formOn(before).rowToSave(before, "unused", now, zone)
+        val due = upcomingMoments(row, now, zone, LocalTime.of(9, 0)).first().moment!!
+        assertEquals(dealt.atZone(zone).toLocalDate().plusDays(21), due.atZone(zone).toLocalDate())
     }
 
     @Test

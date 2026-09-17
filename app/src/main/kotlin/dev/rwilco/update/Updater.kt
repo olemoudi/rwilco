@@ -209,7 +209,11 @@ class Updater(private val context: Context) {
             UpdateStep.DOWNLOAD -> Unit
         }
         UpdateCenter.report(UpdateUiState.Downloading(info))
-        val downloaded = runCatching { download(info.apk, info.versionCode) }
+        // Sixty megabytes over a weak link is minutes of one unchanging word, and a stalled
+        // download read exactly like a slow one. Said as it goes (0.132.0).
+        val downloaded = runCatching {
+            download(info.apk, info.versionCode) { percent -> UpdateCenter.report(UpdateUiState.Downloading(info, percent)) }
+        }
             .onFailure { Log.w(TAG, "download failed", it) }
             .isSuccess
         if (!downloaded) {
@@ -292,7 +296,7 @@ class Updater(private val context: Context) {
      * an update ready to install, and what keeps a failed attempt from leaving sixty megabytes
      * behind under a name nothing sweeps.
      */
-    private fun download(url: String, versionCode: Int) {
+    private fun download(url: String, versionCode: Int, onPercent: (Int) -> Unit = {}) {
         val part = File(context.cacheDir, partName(versionCode))
         sweepParts(keep = part.name)
         val have = part.length()
@@ -309,8 +313,30 @@ class Updater(private val context: Context) {
             require(resp.isSuccessful) { "download failed: ${resp.code}" }
             val append = continuesPart(resp.code, have)
             if (have > 0) Log.i(TAG, if (append) "resuming at $have bytes" else "server ignored the range; starting again")
+            // What this body is the rest OF: the part on disk when the server is continuing it,
+            // nothing when it ignored the range and is sending the file from the top.
+            val startedWith = if (append) have else 0L
+            val bodyLength = resp.body.contentLength()
             resp.body.byteStream().use { input ->
-                java.io.FileOutputStream(part, append).use { input.copyTo(it) }
+                java.io.FileOutputStream(part, append).use { output ->
+                    // `copyTo`, by hand, so the line in Settings can say how far it has got. Only
+                    // when the whole number moves: a report per buffer would be seven thousand
+                    // state changes for one file.
+                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                    var read = 0L
+                    var said = -1
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        output.write(buffer, 0, count)
+                        read += count
+                        val percent = downloadPercent(startedWith, read, bodyLength) ?: continue
+                        if (percent != said) {
+                            said = percent
+                            onPercent(percent)
+                        }
+                    }
+                }
             }
         }
         val target = apkFile()

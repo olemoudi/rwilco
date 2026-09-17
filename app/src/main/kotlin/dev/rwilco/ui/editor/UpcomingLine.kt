@@ -1,5 +1,6 @@
 package dev.rwilco.ui.editor
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,6 +25,7 @@ import dev.rwilco.ui.format.Words
 import dev.rwilco.ui.format.dayWord
 import dev.rwilco.ui.format.placePhraseOf
 import dev.rwilco.ui.format.rememberWords
+import dev.rwilco.ui.format.snoozePlacePhrase
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -48,6 +50,14 @@ import java.time.ZoneId
  * four in the morning came as a card and nothing else. Said on the first moment only — it is
  * the one that reads as the promise — and only when the draft asked for a noise in the first
  * place, since "en silencio" is not news about a reminder that was never going to make one.
+ *
+ * **And a third (0.132.0): what the row has been through.** The moments used to be worked out
+ * from a bare draft, so the form of a reminder that was resting promised "Suena mañana 09:00",
+ * and one put off until Friday promised its rule's own hour. [standing] is what the row says
+ * that a draft cannot: a pause is said instead of any moment — in the plain ink, because
+ * nothing here is next — a snooze that stands is the first moment, in its own words, with a
+ * line under it saying which edit would take it away; and a snooze this very edit drops is
+ * said before the button is pressed rather than found out on Home afterwards.
  */
 @Composable
 fun UpcomingLine(
@@ -63,23 +73,50 @@ fun UpcomingLine(
     dayShape: DayShape = DayShape.DEFAULT,
     /** What the draft asked to happen, so silence is only mentioned where it takes something away. */
     actions: Set<Action> = emptySet(),
+    /** A pause, or a snooze this edit keeps or drops: see [Standing]. */
+    standing: Standing = Standing.Plain,
 ) {
-    if (upcoming.isEmpty()) {
-        if (cannotRing) {
-            Text(
-                text = stringResource(R.string.editor_will_never_ring),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.error,
-                modifier = modifier,
-            )
-        }
+    if (standing == Standing.Paused) {
+        Text(
+            text = stringResource(R.string.editor_standing_paused),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = modifier,
+        )
         return
     }
     val words = rememberWords()
+    val rest = MaterialTheme.colorScheme.onSurfaceVariant
+    // What the edit does to a snooze, under the line: kept until the "when" is touched, or
+    // already on its way out with this save — said even when nothing else is coming, which is
+    // when losing it matters most.
+    val note = when (standing) {
+        Standing.SnoozeKept -> stringResource(R.string.editor_standing_keeps)
+        is Standing.SnoozeDropped -> stringResource(
+            R.string.editor_standing_drops,
+            standing.place?.let { snoozePlacePhrase(words, it) }
+                ?: standing.until?.let { momentReading(words, NextFire.Scheduled(it, null), today, zone) }.orEmpty(),
+        )
+        else -> null
+    }
+    if (upcoming.isEmpty()) {
+        if (!cannotRing && note == null) return
+        Column(modifier = modifier) {
+            if (cannotRing) {
+                Text(
+                    text = stringResource(R.string.editor_will_never_ring),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+            if (note != null) Text(text = note, style = MaterialTheme.typography.labelMedium, color = rest)
+        }
+        return
+    }
     val sep = words.get(R.string.common_separator)
     val first = MaterialTheme.colorScheme.primary
-    val rest = MaterialTheme.colorScheme.onSurfaceVariant
     val readings = upcoming.map { momentReading(words, it, today, zone) }
     // A routine's one moment is its span running out — "vence", not "suena" — because the
     // rules on the form are questions and none of them is what this line is about.
@@ -89,39 +126,49 @@ fun UpcomingLine(
     val plan = firingPlan(actions)
     val hushed = (plan.sound || plan.vibrate) &&
         (upcoming.first().moment?.let { !dayShape.awakeAt(it, zone) } == true)
-    val firstLine = stringResource(
-        when {
-            due && hushed -> R.string.editor_will_be_due_hushed
-            due -> R.string.editor_will_be_due
-            hushed -> R.string.editor_will_ring_hushed
-            else -> R.string.editor_will_ring
-        },
-        readings.first(),
-    )
+    // A snooze that stands is the next thing this rings at, and it is said as what it is: the
+    // moment is somebody's answer to a ring, not the rules' own.
+    val next = upcoming.first()
+    val putOff = (next is NextFire.Scheduled && next.snoozed) || (next is NextFire.WhenAt && next.snoozed)
+    val firstLine = when {
+        putOff && next is NextFire.WhenAt -> stringResource(R.string.home_snoozed_until, snoozePlacePhrase(words, next.trigger))
+        putOff -> stringResource(R.string.home_snoozed_until, readings.first())
+        else -> stringResource(
+            when {
+                due && hushed -> R.string.editor_will_be_due_hushed
+                due -> R.string.editor_will_be_due
+                hushed -> R.string.editor_will_ring_hushed
+                else -> R.string.editor_will_ring
+            },
+            readings.first(),
+        )
+    }
     // **A span counted from the "hecho" is said as one** (0.68.0). Its next moments are the
     // rules' own — "a las 20:45", every day — because nothing has been dealt with yet, and
     // the line read "luego vie 4 sept · luego sáb 5 sept" under a reminder that says "vuelve
     // cada 4 años": true, and read as the years being missing. So after the first moment it
     // says what actually happens: the rules go on until it is done, and then the span.
     val untilDone = recurrence is Recurrence.After && !recurrence.countsFromRinging && readings.size > 1
-    Text(
-        text = buildAnnotatedString {
-            withStyle(SpanStyle(color = first, fontWeight = FontWeight.SemiBold)) { append(firstLine) }
-            if (untilDone) {
-                withStyle(SpanStyle(color = rest)) {
-                    append(sep + words.get(R.string.editor_will_ring_then, readings[1]))
-                    append(sep + words.get(R.string.editor_will_ring_until_done))
-                    append(sep + words.get(R.string.editor_will_ring_then_returns, recurrenceLabel(words, recurrence, today)))
+    Column(modifier = modifier) {
+        Text(
+            text = buildAnnotatedString {
+                withStyle(SpanStyle(color = first, fontWeight = FontWeight.SemiBold)) { append(firstLine) }
+                if (untilDone) {
+                    withStyle(SpanStyle(color = rest)) {
+                        append(sep + words.get(R.string.editor_will_ring_then, readings[1]))
+                        append(sep + words.get(R.string.editor_will_ring_until_done))
+                        append(sep + words.get(R.string.editor_will_ring_then_returns, recurrenceLabel(words, recurrence, today)))
+                    }
+                } else {
+                    for (reading in readings.drop(1)) {
+                        withStyle(SpanStyle(color = rest)) { append(sep + words.get(R.string.editor_will_ring_then, reading)) }
+                    }
                 }
-            } else {
-                for (reading in readings.drop(1)) {
-                    withStyle(SpanStyle(color = rest)) { append(sep + words.get(R.string.editor_will_ring_then, reading)) }
-                }
-            }
-        },
-        style = MaterialTheme.typography.bodyMedium,
-        modifier = modifier,
-    )
+            },
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        if (note != null) Text(text = note, style = MaterialTheme.typography.labelMedium, color = rest)
+    }
 }
 
 private fun momentReading(words: Words, next: NextFire, today: LocalDate, zone: ZoneId): String = when (next) {

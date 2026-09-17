@@ -3,6 +3,8 @@ package dev.rwilco.ui.editor.sheets
 import android.content.Context
 import android.location.Address
 import android.location.Geocoder
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Build
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
@@ -16,17 +18,44 @@ import kotlin.coroutines.resume
 data class FoundPlace(val label: String, val detail: String?, val lat: Double, val lng: Double)
 
 /**
+ * What a search came to: places — possibly none, which is an answer — or no answer at all.
+ *
+ * They are different sentences. "No such address" sends somebody back to the words they typed;
+ * "could not look" is about the phone, and the thing to do is drop the pin by hand. They used
+ * to be one empty list, so a search made on the metro said the address did not exist (0.132.0).
+ */
+sealed interface PlaceSearch {
+    data class Found(val places: List<FoundPlace>) : PlaceSearch
+
+    /** The geocoder could not be asked: missing, failed, timed out, or the phone is offline. */
+    data object Unavailable : PlaceSearch
+}
+
+/**
+ * [found] is null when the geocoder gave no answer. An empty answer while [online] is false is
+ * the network talking, not the address: a geocoder with no connection tends to say "nothing"
+ * rather than fail.
+ */
+fun placeSearchOutcome(found: List<FoundPlace>?, online: Boolean): PlaceSearch = when {
+    found == null -> PlaceSearch.Unavailable
+    found.isEmpty() && !online -> PlaceSearch.Unavailable
+    else -> PlaceSearch.Found(found)
+}
+
+/**
  * Turning "calle mayor 3" into a point on the map, through the platform's own geocoder — the
  * phone already has one, and it speaks the language the phone is set to. Where it is missing or
- * offline the search comes back empty and the map is still there to long-press.
+ * offline the search says so ([PlaceSearch.Unavailable]) and the map is still there to long-press.
  */
-suspend fun searchPlaces(context: Context, query: String, locale: Locale, limit: Int = 5): List<FoundPlace> {
+suspend fun searchPlaces(context: Context, query: String, locale: Locale, limit: Int = 5): PlaceSearch {
     val text = query.trim()
-    if (text.isEmpty() || !Geocoder.isPresent()) return emptyList()
+    if (text.isEmpty()) return PlaceSearch.Found(emptyList())
+    if (!Geocoder.isPresent()) return PlaceSearch.Unavailable
     val geocoder = Geocoder(context, locale)
-    val addresses = withTimeoutOrNull(GEOCODE_TIMEOUT_MS) {
+    // Null is "no answer": a timeout, an error, a throw. An empty list is the geocoder's own.
+    val addresses: List<Address>? = withTimeoutOrNull(GEOCODE_TIMEOUT_MS) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            suspendCancellableCoroutine<List<Address>> { continuation ->
+            suspendCancellableCoroutine<List<Address>?> { continuation ->
                 geocoder.getFromLocationName(text, limit, object : Geocoder.GeocodeListener {
                     override fun onGeocode(results: MutableList<Address>) {
                         if (continuation.isActive) continuation.resume(results)
@@ -34,7 +63,7 @@ suspend fun searchPlaces(context: Context, query: String, locale: Locale, limit:
 
                     override fun onError(errorMessage: String?) {
                         Log.w(TAG, "geocoder said: $errorMessage")
-                        if (continuation.isActive) continuation.resume(emptyList())
+                        if (continuation.isActive) continuation.resume(null)
                     }
                 })
             }
@@ -43,12 +72,23 @@ suspend fun searchPlaces(context: Context, query: String, locale: Locale, limit:
                 @Suppress("DEPRECATION")
                 runCatching { geocoder.getFromLocationName(text, limit).orEmpty() }
                     .onFailure { Log.w(TAG, "geocoding failed", it) }
-                    .getOrDefault(emptyList())
+                    .getOrNull()
             }
         }
-    }.orEmpty()
-    return addresses.mapNotNull { it.toFoundPlace() }
+    }
+    return placeSearchOutcome(addresses?.mapNotNull { it.toFoundPlace() }, online = context.isOnline())
 }
+
+/**
+ * Whether the phone has a network that reaches the internet right now. No active network is
+ * offline; a question that could not be asked at all counts as online, so that an answer the
+ * geocoder did give is believed rather than second-guessed.
+ */
+private fun Context.isOnline(): Boolean = runCatching {
+    val connectivity = getSystemService(ConnectivityManager::class.java) ?: return@runCatching true
+    val capabilities = connectivity.getNetworkCapabilities(connectivity.activeNetwork) ?: return@runCatching false
+    capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+}.getOrDefault(true)
 
 private fun Address.toFoundPlace(): FoundPlace? {
     if (!hasLatitude() || !hasLongitude()) return null

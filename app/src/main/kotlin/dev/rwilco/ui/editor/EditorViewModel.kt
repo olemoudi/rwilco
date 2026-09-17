@@ -33,7 +33,6 @@ import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
 import dev.rwilco.model.Condition
-import dev.rwilco.model.roundExpiry
 import dev.rwilco.model.Deadline
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerKind
@@ -123,8 +122,20 @@ class EditorViewModel(
     val clock: Clock,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(EditorUiState())
+    // Born knowing what the way in already says — whether there is a row behind it, and whether
+    // it is a shape kept under a name — rather than as a blank new reminder: the title, the bin
+    // and the preset toggle all read these before the load has come back.
+    private val _state = MutableStateFlow(
+        EditorUiState(
+            isNew = reminderId == null,
+            asPreset = editPresetId != null || newPreset,
+            initialAsPreset = editPresetId != null || newPreset,
+        ),
+    )
     val state: StateFlow<EditorUiState> = _state
+
+    /** What the form can be called before it has loaded; null where only the row knows. See [titleFromRoute]. */
+    val openingTitle: EditorTitle? = titleFromRoute(reminderId, fromPresetId, cloneOfId, editPresetId, newPreset, routine, contactKind)
 
     private val events = Channel<EditorEvent>(Channel.BUFFERED)
     val eventFlow: Flow<EditorEvent> = events.receiveAsFlow()
@@ -150,7 +161,6 @@ class EditorViewModel(
             val current = settings.filterNotNull().first()
             val loaded = reminderId?.let { repository.get(it) }
             existing = loaded
-            if (loaded?.status == Status.DONE) _state.update { it.copy(revives = true) }
             // One of six openings: an existing reminder, a preset being edited, a new reminder
             // wearing a preset's shape, a copy of another reminder, that copy kept as a preset,
             // or a blank one.
@@ -199,6 +209,13 @@ class EditorViewModel(
             _state.value = EditorUiState(
                 loaded = true,
                 isNew = loaded == null,
+                // Said here and not in an update of its own before this: the state below is built
+                // whole, so a flag set ahead of it was overwritten the moment the form loaded, and
+                // "Guardar lo devuelve a la lista" never once appeared (0.94.0 to 0.131.0).
+                revives = loaded?.status == Status.DONE,
+                // The row as it stood, for the line over "Guardar": what a save carries across
+                // — a pause, a snooze, the anchor a routine counts from — is read off it.
+                existing = loaded,
                 draft = draft,
                 initial = draft,
                 existingTags = knownTags(suggestedTags(past, now), current.tagPrefs),
@@ -448,66 +465,9 @@ class EditorViewModel(
             // been dealt with from the notification in between, and a save built on the
             // snapshot would hand back the status and the anchor from before that.
             val before = existing?.let { repository.get(it.id) ?: it }
-            // What "the when" means here: the rules, how they combine, and the recurrence.
-            val whenUntouched = before != null &&
-                before.rules == current.draft.rules &&
-                before.ruleMatch == current.draft.ruleMatch &&
-                before.recurrence == current.draft.recurrence &&
-                before.deadline == current.draft.deadline
-            // The round under way survives an edit that leaves the set alone — the rules, the
-            // reading and the deadline — and its clock with it; anything else, or a reminder
-            // brought back from "hecho", is a round starting now, and a window's close is
-            // worked out again below for the day the round falls on. A timer's clock starts
-            // with the round's first moment, and is nothing until then.
-            val roundUntouched = before != null && before.status != Status.DONE &&
-                before.rules == current.draft.rules &&
-                before.ruleMatch == current.draft.ruleMatch &&
-                before.deadline == current.draft.deadline
-            val becomesRoutine = becomesRoutine(before, current.draft)
-            val reminder = current.draft.toReminder(
-                id = before?.id ?: draftId,
-                createdAt = before?.createdAt ?: now,
-                now = now,
-                // Editing something already done brings it back; otherwise the status is not
-                // the editor's business.
-                status = if (before == null || before.status == Status.DONE) Status.ACTIVE else before.status,
-                // The recurrence's anchor and the last ring survive an edit; the armed moment
-                // does not. See Draft.toReminder.
-                //
-                // **Except across the edit that makes it a routine.** A routine's deadline is
-                // `anchor + span`, and `recurrenceMoment` spends any moment at or before the
-                // last ring — so a reminder that rang last week, turned into "cada 21 días
-                // desde la última vez" today, had a first deadline older than its own last
-                // ring: nothing armed, no questions (`awaitingAnswer` held), and the net cut
-                // by the word it had already said. The ring, the round and the net's word
-                // belonged to a reminder that no longer exists; the anchor ("hecho") stays.
-                lastDealtAt = before?.lastDealtAt,
-                lastFiredAt = before?.lastFiredAt.takeUnless { becomesRoutine },
-                dealtThrough = before?.dealtThrough,
-                // The round under way survives a typo; a change to the rules themselves is
-                // the one edit that starts it again (the indices would name other rules).
-                firedRules = if (before != null && before.rules == current.draft.rules && !becomesRoutine) before.firedRules else emptySet(),
-                lastFiredRule = if (before != null && before.rules == current.draft.rules && !becomesRoutine) before.lastFiredRule else null,
-                nudgedAt = before?.nudgedAt.takeUnless { becomesRoutine },
-                askedAt = before?.askedAt,
-                resumedAt = before?.resumedAt,
-                pausedAt = before?.pausedAt,
-                // **Only a change to the "when" un-answers a snooze.** Somebody who put a ring
-                // off until tomorrow has answered it; fixing a word in the text does not take
-                // that back, and dropping it did two visible things — the card left the section
-                // the snooze put it in for the bottom of Home, and the reminder read as
-                // rung-and-ignored again, which is a safety net going off about an alert that
-                // was answered. A change to the rules, the reading or the recurrence IS a
-                // re-decision of when it rings, and there the old answer really is meaningless.
-                snoozedUntil = if (whenUntouched) before?.snoozedUntil else null,
-                snoozedToPlace = if (whenUntouched) before?.snoozedToPlace else null,
-                expiresAt = if (roundUntouched) before?.expiresAt else null,
-                zone = clock.zone,
-                shape = current.dayShape,
-            ).let { built ->
-                if (roundUntouched) built
-                else built.copy(expiresAt = built.roundExpiry(now, clock.zone, current.defaultTime, current.dayStart, current.dayShape))
-            }
+            // What is carried across the edit and what is not is [rowToSave]'s to say: the line
+            // over "Guardar" reads the same function, so it cannot promise another row.
+            val reminder = current.rowToSave(before, draftId, now, clock.zone)
             repository.save(reminder)
             rearm()
             events.send(EditorEvent.Saved(reminder.id, created = before == null))

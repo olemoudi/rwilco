@@ -139,5 +139,20 @@ fun continuesPart(code: Int, alreadyHave: Long): Boolean = code == HTTP_PARTIAL 
  */
 fun partIsWhole(code: Int, alreadyHave: Long): Boolean = code == HTTP_RANGE_NOT_SATISFIABLE && alreadyHave > 0
 
+/**
+ * How far along the download is, as a whole number of hundredths — or null when nobody can say.
+ *
+ * [alreadyHave] is the part a resumed download started from (nought when the server ignored the
+ * range and is sending the file from the top), [read] what this attempt has written since, and
+ * [bodyLength] the length the response gave for *its* body, which for a resumed one is only the
+ * rest. A body with no length — chunked — gets no percentage: a number made up is worse than
+ * the plain "descargando" it replaces.
+ */
+fun downloadPercent(alreadyHave: Long, read: Long, bodyLength: Long): Int? {
+    if (bodyLength <= 0) return null
+    val total = alreadyHave + bodyLength
+    return ((alreadyHave + read) * 100 / total).toInt().coerceIn(0, 100)
+}
+
 private const val HTTP_PARTIAL = 206
 private const val HTTP_RANGE_NOT_SATISFIABLE = 416

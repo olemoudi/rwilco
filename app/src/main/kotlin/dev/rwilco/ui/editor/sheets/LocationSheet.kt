@@ -172,6 +172,8 @@ fun LocationSheet(
     var results by remember { mutableStateOf<List<FoundPlace>>(emptyList()) }
     var searching by remember { mutableStateOf(false) }
     var searched by remember { mutableStateOf(false) }
+    /** The last search got no answer at all — no connection, no geocoder — rather than none found. */
+    var unreachable by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val haptics = Tokens.haptics
@@ -184,7 +186,10 @@ fun LocationSheet(
         focusManager.clearFocus()
         searching = true
         scope.launch {
-            results = searchPlaces(context, text, locale)
+            val outcome = searchPlaces(context, text, locale)
+            results = (outcome as? PlaceSearch.Found)?.places.orEmpty()
+            // "Could not look" and "no such address" are different sentences (0.132.0).
+            unreachable = outcome is PlaceSearch.Unavailable
             searching = false
             searched = true
         }
@@ -479,7 +484,7 @@ fun LocationSheet(
             }
         } else if (searched && !searching) {
             Text(
-                text = stringResource(R.string.place_search_none),
+                text = stringResource(if (unreachable) R.string.place_search_unavailable else R.string.place_search_none),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

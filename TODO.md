@@ -878,6 +878,11 @@ sliding out on Confirm (`hide()` vs `confirmValueChange`), and the dead code lis
 0.67.0 — asked about, not deleted.
 
 ## Still to prove on the real phone (Pixel 8 Pro)
+- The truth round (0.132.0): open a paused reminder and one put off until tomorrow, and read the
+  line over "Guardar" — then change the hour of the second and watch the line say the snooze
+  goes; open a finished one from Hechos and see "Guardar lo devuelve a la lista", which had never
+  appeared; search an address in airplane mode; and watch an update download count up over
+  mobile data (the percentage only exists when GitHub's CDN sends a length, which it does).
 - The interface half (0.109.0), and **none of it has been seen on a screen yet**: `EditorTourTest`
   passes, so the editor still composes and walks, but the tour's flow never reaches any of the new
   states, and writing tour steps for them was not this release. Four looks: the red line over

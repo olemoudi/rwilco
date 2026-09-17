@@ -25,10 +25,12 @@ import dev.rwilco.ui.theme.Tokens
  * to its next ring** or **the longest wait**, whichever comes first — and nothing at all when
  * the rings are closer together than the floor, because there the next ring is already the net.
  *
- * They are defaults in the honest sense: the switch is per reminder (in "qué pasa"), and these
- * say how long it means. Changing them changes every reminder that carries one, which is the
- * point — the alternative is three numbers on every reminder, and nobody wants to answer that
- * twice.
+ * There is no switch to go with them, on a reminder or here: the net holds for every reminder
+ * (it began as a tile under "qué pasa", which asked the one thing nobody can answer in advance —
+ * which reminder will be the one that gets away). So these are the whole of what there is to
+ * decide, and changing them changes every reminder at once, which is the point — the alternative
+ * is three numbers on every reminder, and nobody wants to answer that twice. The paragraph over
+ * them went on describing that switch until 0.132.0.
  */
 @Composable
 fun SafetyNetCard(settings: SafetyNetSettings, onChange: (SafetyNetSettings) -> Unit) {

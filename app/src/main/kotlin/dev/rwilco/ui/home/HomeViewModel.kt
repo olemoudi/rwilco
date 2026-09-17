@@ -21,6 +21,7 @@ import dev.rwilco.model.knownTags
 import dev.rwilco.model.removeTagIn
 import dev.rwilco.model.removeTagInPresets
 import dev.rwilco.model.renameTagIn
+import dev.rwilco.model.tagMergeCount
 import dev.rwilco.model.renameTagInPresets
 import dev.rwilco.model.tagsEverUsed
 import dev.rwilco.model.tagsInUse
@@ -314,6 +315,12 @@ class HomeViewModel(
         }
     }
 
+    /** A rename that would merge two tags into one, waiting for its answer: see [tagMergeCount]. */
+    data class TagMergeAsk(val from: String, val to: String, val count: Int)
+
+    private val _tagMerge = MutableStateFlow<TagMergeAsk?>(null)
+    val tagMerge: StateFlow<TagMergeAsk?> = _tagMerge
+
     /**
      * Renaming and removing reach the reminders themselves — a tag is what they carry, not a
      * record on its own — and then the row here, so a pinned tag is not left pinned under a
@@ -321,10 +328,22 @@ class HomeViewModel(
      * says how far it reached and offers itself the other way round (0.93.0) — it used to
      * rewrite forty rows and say nothing whatever.
      */
-    fun renameTag(from: String, to: String) {
+    fun renameTag(from: String, to: String, confirmed: Boolean = false) {
         viewModelScope.launch {
             val all = repository.allNow()
-            val merged = all.any { reminder -> reminder.tags.any { it.equals(to, ignoreCase = true) } }
+            // **A rename onto a tag that already exists is a merge, and a merge is asked about**
+            // (0.132.0). It has no inverse — afterwards nothing says which reminders wore which —
+            // and it used to be neither asked nor undoable: the rows were rewritten and the undo
+            // quietly withheld. A respelling is not one ("casa" to "Casa" lands on itself), which
+            // the old check got wrong too, so that rename lost the undo it is owed.
+            val current = store.settings.first()
+            val known = current.tagPrefs.map { it.name } + current.presets.flatMap { it.tags }
+            val merge = tagMergeCount(all, known, from, to)
+            if (merge != null && !confirmed) {
+                _tagMerge.value = TagMergeAsk(from, to, merge)
+                return@launch
+            }
+            val merged = merge != null
             val changed = renameTagIn(all, from, to)
             repository.saveAll(changed)
             store.update { settings ->
@@ -335,6 +354,17 @@ class HomeViewModel(
             }
             events.send(HomeEvent.TagRenamed(from, to, changed.size, undoable = !merged))
         }
+    }
+
+    /** The merge somebody was asked about, and said yes to. */
+    fun confirmTagMerge() {
+        val ask = _tagMerge.value ?: return
+        _tagMerge.value = null
+        renameTag(ask.from, ask.to, confirmed = true)
+    }
+
+    fun cancelTagMerge() {
+        _tagMerge.value = null
     }
 
     fun deleteTag(tag: String) {

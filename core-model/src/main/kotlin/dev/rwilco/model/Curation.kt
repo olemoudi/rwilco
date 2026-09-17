@@ -27,6 +27,29 @@ fun renameTagIn(reminders: List<Reminder>, tag: String, to: String): List<Remind
     }
 }
 
+/**
+ * Whether renaming [from] to [to] would **merge two tags into one**, and how many reminders the
+ * one left would be on — or null when it is only a rename.
+ *
+ * A rename has an inverse (rename it back) and so it asks nothing; a merge has none, because
+ * afterwards nothing says which reminders wore which, and the house rule is a question where
+ * there is no way back. It used to be neither: the rows were rewritten, the snackbar said how
+ * many, and the undo was quietly withheld. [known] is every tag that exists without being worn
+ * — written down in the panel, or carried by a preset — since merging onto one of those leaves
+ * one row where there were two just the same.
+ *
+ * A respelling ("casa" to "Casa") is a rename: the tag it lands on is itself.
+ */
+fun tagMergeCount(reminders: List<Reminder>, known: List<String>, from: String, to: String): Int? {
+    val target = normalizeTag(to)?.lowercase(Locale.ROOT) ?: return null
+    val source = from.lowercase(Locale.ROOT)
+    if (target == source) return null
+    val exists = known.any { it.lowercase(Locale.ROOT) == target } ||
+        reminders.any { reminder -> reminder.tags.any { it.lowercase(Locale.ROOT) == target } }
+    if (!exists) return null
+    return reminders.count { reminder -> reminder.tags.any { it.lowercase(Locale.ROOT).let { tag -> tag == source || tag == target } } }
+}
+
 /** Every reminder carrying [tag], without it. */
 fun removeTagIn(reminders: List<Reminder>, tag: String): List<Reminder> {
     val key = tag.lowercase(Locale.ROOT)

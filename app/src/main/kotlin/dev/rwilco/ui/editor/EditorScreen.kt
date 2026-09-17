@@ -91,6 +91,7 @@ import dev.rwilco.model.warnings
 import dev.rwilco.ui.alert.AlertContent
 import dev.rwilco.ui.alert.AlertScreen
 import dev.rwilco.ui.components.PresetChip
+import dev.rwilco.ui.components.ListPlaceholder
 import dev.rwilco.ui.components.DiscardDialog
 import dev.rwilco.ui.editor.sheets.ConditionSheet
 import dev.rwilco.ui.editor.sheets.CountdownSheet
@@ -128,7 +129,6 @@ import kotlinx.coroutines.launch
 import java.time.ZoneId
 import dev.rwilco.model.Understood
 import dev.rwilco.ui.editor.sheets.DeadlineSheet
-import dev.rwilco.model.roundExpiry
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.material.icons.outlined.WarningAmber
@@ -292,25 +292,31 @@ fun EditorScreen(
             .toReminder(viewModel.draftId, now, now, Status.ACTIVE, zone = zone, shape = state.dayShape)
             .ringCadence(now, zone, state.defaultTime, state.dayStart, state.dayShape)
     }
+    // **The row a save would write, and not a bare draft** (0.132.0): the pause, the snooze and the
+    // anchor a routine counts from all live on the row the form was opened on, and a line worked
+    // out without them promised "Suena mañana 09:00" over a reminder that was resting. With the
+    // deadline's close a save would write, too, so the moments read back are the ones the alarm
+    // will be set for. Remembered like the cadence above, on what it is made of.
+    val rowToSave = remember(state.draft.rules, state.draft.ruleMatch, state.draft.recurrence, state.draft.deadline, state.defaultTime, state.dayStart, state.dayShape, state.existing) {
+        state.rowToSave(state.existing, viewModel.draftId, now, zone)
+    }
+    val standing = remember(rowToSave, state.asPreset) { state.standing(rowToSave, now) }
     // What the draft will actually do, read back beside the sentence that says what was asked
-    // for. Remembered like the cadence above: it walks up to three moments. Not for a preset,
-    // which is a shape and rings nothing.
-    val upcoming = remember(state.draft.rules, state.draft.ruleMatch, state.draft.recurrence, state.draft.deadline, state.defaultTime, state.dayStart, state.dayShape, state.asPreset) {
-        if (state.asPreset) emptyList()
-        else upcomingMoments(
-            // With the deadline's close a save would write, so the moments read back are the
-            // ones the alarm will be set for and not the ones outside the window.
-            state.draft.toReminder(viewModel.draftId, now, now, Status.ACTIVE, zone = zone, shape = state.dayShape)
-                .let { it.copy(expiresAt = it.roundExpiry(now, zone, state.defaultTime, state.dayStart, state.dayShape)) },
-            now, zone, state.defaultTime, state.dayStart, state.dayShape,
-        )
+    // for: it walks up to three moments. Not for a preset, which is a shape and rings nothing,
+    // and not for one that rests, which rings nothing either until somebody lifts the pause.
+    val upcoming = remember(rowToSave, state.defaultTime, state.dayStart, state.dayShape, state.asPreset, standing) {
+        if (state.asPreset || standing == Standing.Paused) emptyList()
+        else upcomingMoments(rowToSave, now, zone, state.defaultTime, state.dayStart, state.dayShape)
     }
     // Nothing at all is coming. Only asked when the walk above already came back empty — which
     // is the only way it can be true, and the walk behind this one is not free either
     // ([lastMomentGone] steps through a thousand moments before giving up). A preset rings
     // nothing by nature and is never this.
-    val cannotRing = remember(upcoming, state.draft.rules, state.draft.recurrence, state.defaultTime, state.dayStart, state.dayShape, state.asPreset) {
-        !state.asPreset && upcoming.isEmpty() &&
+    val cannotRing = remember(upcoming, state.draft.rules, state.draft.recurrence, state.defaultTime, state.dayStart, state.dayShape, state.asPreset, standing) {
+        // Asked of the bare shape, as it always was: whether an arrangement can ever produce a
+        // moment has nothing to do with what this row has been through. Not of one that rests —
+        // its list is empty because of the pause, which is what the line says instead.
+        !state.asPreset && standing != Standing.Paused && upcoming.isEmpty() &&
             state.draft.toReminder(viewModel.draftId, now, now, Status.ACTIVE, zone = zone, shape = state.dayShape)
                 .cannotRing(now, zone, state.defaultTime, state.dayStart, state.dayShape)
     }
@@ -330,29 +336,31 @@ fun EditorScreen(
             contentWindowInsets = WindowInsets.safeDrawing,
             topBar = {
                 EditorTopBar(
-                    title = stringResource(
-                        when {
-                            state.asPreset && state.editingPreset != null -> R.string.editor_title_edit_preset
-                            state.asPreset -> R.string.editor_title_new_preset
-                            // "Nueva rutina" opened a form called "Nuevo recordatorio": true of
-                            // the model — a routine is a reminder — and a lie about what the
-                            // screen is for. The words follow the thing being written.
-                            contact && state.isNew -> R.string.editor_title_new_contact
-                            contact -> R.string.editor_title_edit_contact
-                            routine && state.isNew -> R.string.editor_title_new_routine
-                            routine -> R.string.editor_title_edit_routine
-                            state.isNew -> R.string.editor_title_new
-                            else -> R.string.editor_title_edit
-                        },
-                    ),
-                    // A preset has nothing to ring, so there is no alert to look at.
-                    onPreview = if (state.asPreset) null else {
+                    // "Nueva rutina" opened a form called "Nuevo recordatorio": true of the model —
+                    // a routine is a reminder — and a lie about what the screen is for. The words
+                    // follow the thing being written ([editorTitle]) — and until the row has been
+                    // read, only what the way in already says ([titleFromRoute]): every form used
+                    // to be "Nuevo recordatorio" for the moment the load took (0.132.0).
+                    title = when (if (state.loaded) editorTitle(state) else viewModel.openingTitle) {
+                        EditorTitle.EDIT_PRESET -> stringResource(R.string.editor_title_edit_preset)
+                        EditorTitle.NEW_PRESET -> stringResource(R.string.editor_title_new_preset)
+                        EditorTitle.NEW_CONTACT -> stringResource(R.string.editor_title_new_contact)
+                        EditorTitle.EDIT_CONTACT -> stringResource(R.string.editor_title_edit_contact)
+                        EditorTitle.NEW_ROUTINE -> stringResource(R.string.editor_title_new_routine)
+                        EditorTitle.EDIT_ROUTINE -> stringResource(R.string.editor_title_edit_routine)
+                        EditorTitle.NEW -> stringResource(R.string.editor_title_new)
+                        EditorTitle.EDIT -> stringResource(R.string.editor_title_edit)
+                        null -> ""
+                    },
+                    // A preset has nothing to ring, so there is no alert to look at — and nothing
+                    // is looked at, or thrown away, before it has been read.
+                    onPreview = if (state.asPreset || !state.loaded) null else {
                         {
                             focusManager.clearFocus()
                             viewModel.setPreviewing(true)
                         }
                     },
-                    onDelete = if (state.isNew && state.editingPreset == null) null else viewModel::delete,
+                    onDelete = if (!state.loaded || (state.isNew && state.editingPreset == null)) null else viewModel::delete,
                     deleteDescription = stringResource(
                         when {
                             state.editingPreset != null -> R.string.editor_delete_preset
@@ -385,6 +393,7 @@ fun EditorScreen(
                     today = today,
                     defaultTime = state.defaultTime,
                     upcoming = upcoming,
+                    standing = standing,
                     recurrence = state.draft.recurrence,
                     cannotRing = cannotRing,
                     dayShape = state.dayShape,
@@ -398,6 +407,20 @@ fun EditorScreen(
                 )
             },
         ) { padding ->
+            // Before the row has been read, the shapes of the cards rather than the form of a
+            // blank new reminder: opening an existing one showed an empty "¿Qué quieres
+            // recordar?" for a moment and then swapped it for the real thing, which is exactly
+            // the pop the rest of the app's lists stopped making (0.130.0).
+            if (!state.loaded) {
+                ListPlaceholder(
+                    modifier = Modifier
+                        .padding(padding)
+                        .padding(horizontal = spacing.screen)
+                        .padding(top = spacing.md),
+                    count = LOADING_CARDS,
+                )
+                return@Scaffold
+            }
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -945,6 +968,8 @@ private fun SaveBar(
     defaultTime: LocalTime,
     onSave: () -> Unit,
     upcoming: List<NextFire> = emptyList(),
+    /** A pause, or a snooze the edit keeps or drops: what the row says that the draft cannot. */
+    standing: Standing = Standing.Plain,
     zone: ZoneId = ZoneId.systemDefault(),
     recurrence: Recurrence = Recurrence.None,
     revives: Boolean = false,
@@ -991,6 +1016,7 @@ private fun SaveBar(
                 upcoming = upcoming,
                 today = today,
                 zone = zone,
+                standing = standing,
                 recurrence = recurrence,
                 cannotRing = cannotRing,
                 dayShape = dayShape,
@@ -1156,6 +1182,9 @@ internal fun FieldWarning(text: String, modifier: Modifier = Modifier, severe: B
 }
 
 /** Keys of the cards a refusal can be sent to; see the `Invalid` event. */
+/** How many card shapes stand in for the form while its row is read: the four parts a form has. */
+private const val LOADING_CARDS = 4
+
 private const val SECTION_WHEN = "when"
 private const val SECTION_RETURNS = "returns"
 

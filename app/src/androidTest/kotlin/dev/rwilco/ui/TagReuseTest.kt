@@ -154,6 +154,39 @@ class TagReuseTest {
         }
     }
 
+    /**
+     * Onto a tag that already exists the rename is a merge, which has no way back — so it asks,
+     * and nothing is written until somebody says yes (0.132.0). It used to go straight through
+     * with the undo quietly withheld.
+     */
+    @Test
+    fun aRenameOntoATagThatExistsAsksBeforeItMergesThem() {
+        val other = "casa"
+        runBlocking {
+            val now = app.clock.instant()
+            app.repository.save(
+                Reminder(id = UUID.randomUUID().toString(), text = "Regar las plantas", tags = listOf(other), createdAt = now, updatedAt = now),
+            )
+        }
+        rule.waitUntilShown(rule.activity.getString(R.string.home_new))
+        rule.waitUntilShown(tag)
+        rule.onNodeWithContentDescription(rule.activity.getString(R.string.home_tags_manage)).performClick()
+        rule.waitUntilShown(rule.activity.getString(R.string.curate_tags_title))
+
+        rule.onNodeWithContentDescription(rule.activity.getString(R.string.curate_rename_named, tag)).performClick()
+        rule.onNode(hasSetTextAction() and hasText(tag), useUnmergedTree = true).performTextReplacement(other)
+        rule.onNodeWithContentDescription(rule.activity.getString(R.string.curate_rename_confirm)).performClick()
+
+        // The question, and until it is answered both tags are still what they were.
+        rule.waitUntilShown(rule.activity.getString(R.string.curate_tag_merge_title, tag, other))
+        check(runBlocking { app.repository.allNow().any { it.tags == listOf(tag) } }) { "nothing is rewritten before the answer" }
+
+        rule.onNodeWithText(rule.activity.getString(R.string.curate_tag_merge_confirm), useUnmergedTree = true).performClick()
+        rule.waitUntil(timeoutMillis = 10_000) {
+            runBlocking { app.repository.allNow().all { it.tags == listOf(other) } }
+        }
+    }
+
     private fun androidx.compose.ui.test.junit4.ComposeTestRule.waitUntilGone(text: String) {
         waitUntil(timeoutMillis = 10_000) { onAllNodesWithText(text, useUnmergedTree = true).fetchSemanticsNodes().isEmpty() }
     }

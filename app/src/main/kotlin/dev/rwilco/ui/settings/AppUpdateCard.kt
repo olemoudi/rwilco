@@ -153,7 +153,10 @@ private fun updateStatusText(state: UpdateUiState, staged: UpdateInfo?): String 
         is UpdateUiState.Idle -> stringResource(R.string.update_state_idle)
         is UpdateUiState.Checking -> stringResource(R.string.update_state_checking)
         is UpdateUiState.UpToDate -> stringResource(R.string.update_state_up_to_date)
-        is UpdateUiState.Downloading -> stringResource(R.string.update_state_downloading, state.target.versionName)
+        // With how far along it is, once the server has said how much there is (0.132.0).
+        is UpdateUiState.Downloading -> state.percent
+            ?.let { stringResource(R.string.update_state_downloading_percent, state.target.versionName, it) }
+            ?: stringResource(R.string.update_state_downloading, state.target.versionName)
         is UpdateUiState.Installing -> stringResource(R.string.update_state_installing, state.target.versionName)
         is UpdateUiState.PendingConfirmation -> stringResource(R.string.update_state_pending)
         is UpdateUiState.Failed -> stringResource(R.string.update_state_failed, state.step)
