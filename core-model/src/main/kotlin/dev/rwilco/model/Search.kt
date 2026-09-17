@@ -34,8 +34,9 @@ sealed interface SearchHit {
  * Everything [query] matches among the reminders and the tags the open ones use, best first.
  * A blank query matches nothing: an empty list is what "not searching" looks like.
  *
- * A reminder is matched on its own words only. Its tags are matched as tags — one row for
- * "compra" beats five identical-looking reminder rows that all happen to carry it.
+ * A reminder is matched on its own words, and — below that — on the names of its places
+ * ([placeScore]). Its tags are matched as tags — one row for "compra" beats five
+ * identical-looking reminder rows that all happen to carry it.
  *
  * What was done is found too, after everything that is open: the history kept three months of
  * it and the only way through was scrolling, so "¿cambié el filtro?" had no answer here. It
@@ -51,7 +52,7 @@ fun search(reminders: List<Reminder>, query: String, limit: Int = SEARCH_LIMIT):
 
     val hits = ArrayList<SearchHit>()
     for (reminder in reminders) {
-        val score = fuzzyScore(needle, fold(reminder.text)) ?: continue
+        val score = listOfNotNull(fuzzyScore(needle, fold(reminder.text)), placeScore(needle, reminder)).maxOrNull() ?: continue
         hits += SearchHit.OfReminder(reminder, score)
     }
     for ((tag, count) in tagCounts(reminders)) {
@@ -68,6 +69,32 @@ fun search(reminders: List<Reminder>, query: String, limit: Int = SEARCH_LIMIT):
                 .thenBy { it.label().lowercase(Locale.ROOT) },
         )
         .take(limit)
+}
+
+/**
+ * A reminder found by **where** it rings rather than by what it says (0.134.0): "casa" used to
+ * find the word in a sentence and never the pin called Casa, because a place's name lives on the
+ * rule and not in the words — and the "lugar" chip finds every place reminder or none.
+ *
+ * A real match only — the name, the start of it, a word in it, a run of it — and never the
+ * letters-in-order band: "cs" abbreviates words somebody wrote, it does not abbreviate the name
+ * of a pin. And always below the same match in the words themselves: somebody typing on Home is
+ * looking for what a reminder says before where it rings.
+ */
+private fun placeScore(needle: String, reminder: Reminder): Int? =
+    reminder.placeLabels()
+        .mapNotNull { label -> fuzzyScore(needle, fold(label))?.takeIf { it >= CONTAINS } }
+        .maxOrNull()
+        ?.let { PLACE + (it - CONTAINS) / PLACE_SQUEEZE }
+
+/** Every place a reminder names: the ones it rings at, the ones it is fenced to, the one it waits for. */
+private fun Reminder.placeLabels(): List<String> = buildList {
+    for (rule in rules) {
+        (rule.trigger as? Trigger.Location)?.let { add(it.label) }
+        rule.conditions.filterIsInstance<Condition.AtPlace>().forEach { add(it.label) }
+    }
+    recurrence.conditions.filterIsInstance<Condition.AtPlace>().forEach { add(it.label) }
+    snoozedToPlace?.let { add(it.label) }
 }
 
 private fun SearchHit.label(): String = when (this) {
@@ -160,6 +187,10 @@ private const val EXACT = 1_000
 private const val PREFIX = 800
 private const val WORD = 600
 private const val CONTAINS = 400
+/** Where a match on a place's name sits: under every real match in the words, over a scatter of letters. */
+private const val PLACE = 300
+/** The real bands span six hundred-odd points; a place's share of them is squeezed into under a hundred. */
+private const val PLACE_SQUEEZE = 8
 private const val SUBSEQUENCE = 200
 private const val WORD_START_BONUS = 12
 private const val JUMP_COST = 8

@@ -76,4 +76,10 @@ class SearchStateTest {
         assertEquals(listOf("bread", "milk"), hits.map { it.id })
         assertEquals(listOf(false, true), hits.map { it.done })
     }
+
+    @Test
+    fun `a hit carries the reminder it is about, so the row can say when it rings`() {
+        val hit = buildSearchState(reminders, "compra", open = true).hits.filterIsInstance<SearchHitUi.OfReminder>().first()
+        assertEquals(hit.id, hit.source?.id)
+    }
 }

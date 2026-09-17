@@ -52,8 +52,12 @@ fun reminderSummary(words: Words, reminder: Reminder, today: LocalDate, defaultT
         // A routine with no rules — the commonest kind — is its span and nothing else, and the
         // card that said nothing for it was a ring with no reason on it.
         if (reminder.recurrence.isAnchored && (isNotEmpty() || reminder.isRoutine)) {
-            append(", " + words.get(R.string.editor_sentence_returns) + " ")
-            append(recurrenceLabel(words, reminder.recurrence, today).replaceFirstChar { it.lowercase(words.locale) })
+            val label = recurrenceLabel(words, reminder.recurrence, today)
+            // With nothing in front of it the span is the whole sentence. Joined on regardless, a
+            // routine with no rules read ", y vuelve cada 21 días" — a comma and a conjunction
+            // after nothing — on its notification, and now in a search result too (0.134.0).
+            if (isEmpty()) append(label)
+            else append(", " + words.get(R.string.editor_sentence_returns) + " " + label.replaceFirstChar { it.lowercase(words.locale) })
         }
         // Waiting at a place: the one thing that says when it rings next, and the reason the
         // notification gives when it does.

@@ -14,6 +14,7 @@ import dev.rwilco.ui.components.calendar.MonthCalendar
 import dev.rwilco.ui.editor.sheets.rememberDate
 import dev.rwilco.ui.editor.sheets.rememberTime
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZonedDateTime
 
@@ -27,6 +28,9 @@ import java.time.ZonedDateTime
  * past is a ring that arrives the instant the sheet closes. And **where a routine's count runs
  * from** ([Recurrence.Since.startsAt]) — "la última vez fue el lunes", "empieza el 1 de
  * octubre" — which is an anchor and not a ring, and so takes either side of now ([allowPast]).
+ * And a third since 0.134.0: **"lo hice otro día"**, a routine's "hecho" dated back, which takes
+ * the past and refuses the future — and two more things only the routine knows, so the asker
+ * hands in its own veto ([refuse]) rather than this sheet learning what a routine is.
  * Same calendar, same hour field; one sheet, wearing whichever [title] asked for it.
  *
  * It opens on today at the reminders' own hour — on the first day that hour is still ahead on,
@@ -44,26 +48,35 @@ fun MomentSheet(
     pastNote: String = stringResource(R.string.snooze_until_past),
     /** Whether a moment behind us is an answer: an anchor's is, a snooze's is not. */
     allowPast: Boolean = false,
+    /** The day it opens on, where the question has a likelier answer than today: "¿cuándo lo hiciste?" is yesterday. */
+    initialDate: LocalDate? = null,
+    /**
+     * The asker's own veto: the sentence why the moment chosen will not do, or null when it
+     * will. Shown under the hour with the button greyed, the way the past is for a snooze.
+     */
+    refuse: ((Instant) -> String?)? = null,
 ) {
     val today = now.toLocalDate()
-    val opensOn = if (allowPast || today.atTime(defaultTime).atZone(now.zone).toInstant() > now.toInstant()) today else today.plusDays(1)
+    val opensOn = initialDate
+        ?: if (allowPast || today.atTime(defaultTime).atZone(now.zone).toInstant() > now.toInstant()) today else today.plusDays(1)
     var date by rememberDate(opensOn)
     var time by rememberTime(defaultTime)
     val untouched = remember { listOf(date, time) }
     val chosen = date.atTime(time).atZone(now.zone).toInstant()
     val past = !allowPast && !chosen.isAfter(now.toInstant())
+    val refusal = refuse?.invoke(chosen)
     SheetScaffold(
         title = title,
         onDismiss = onDismiss,
         onConfirm = { onConfirm(chosen) },
-        confirmEnabled = !past,
+        confirmEnabled = !past && refusal == null,
         dirty = listOf(date, time) != untouched,
     ) {
         MonthCalendar(selected = date, today = today, onSelect = { date = it })
         TimeField(time = time, onChange = { time = it }, label = stringResource(R.string.sheet_time), modifier = Modifier.fillMaxWidth())
-        if (past) {
+        if (past || refusal != null) {
             Text(
-                text = pastNote,
+                text = refusal ?: pastNote,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.error,
             )

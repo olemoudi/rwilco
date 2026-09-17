@@ -50,6 +50,15 @@
     <string name="home_card_actions">Acciones del recordatorio</string>
     <string name="home_clone">Clonar recordatorio</string>
     <string name="home_clone_hint">Lo mismo otra vez, con las palabras en blanco</string>
+    <string name="routines_done_earlier">Lo hice otro día…</string>
+    <string name="routines_done_earlier_hint">La cuenta sale del día que digas, no de hoy</string>
+    <string name="routines_done_earlier_title">¿Cuándo lo hiciste?</string>
+    <string name="routines_talked_earlier">Hablamos otro día…</string>
+    <string name="routines_talked_earlier_hint">Su turno se cuenta desde ese día</string>
+    <string name="routines_talked_earlier_title">¿Cuándo hablasteis?</string>
+    <string name="routines_done_earlier_future">Eso todavía no ha pasado</string>
+    <string name="routines_done_earlier_before_last">Eso es antes de la última vez que consta, %1$s</string>
+    <string name="routines_done_earlier_due">Contando desde entonces ya estaría vencida. Márcala hecha cuando la hagas.</string>
     <string name="home_menu_done">Hecho</string>
     <string name="home_menu_delete">Eliminar</string>
     <string name="home_snooze">Posponer</string>
@@ -1605,6 +1614,19 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_134_0">
+
+        <item>«Lo hice otro día…» en una rutina, y «Hablamos otro día…» en un contacto. «Hecho» es siempre este segundo, que está bien para el toque y mal para el día siguiente: riegas el sábado, te acuerdas el martes, y la cuenta iba tres días desviada durante las tres semanas siguientes — y una vez hecha una rutina, la ficha de inicio de su formulario ya no mueve nada. Está en el menú ⋯ de la fila, el calendario se abre en ayer, y la cuenta sale del día que digas.</item>
+
+        <item>Dice que no a tres cosas, bajo la hora y antes del botón: un día que todavía no ha pasado; un día igual o anterior a la última vez que ya consta, que sería deshacerla y no hacerla; y un día tan atrás que la rutina volvería a estar vencida en el momento de decirlo. A un contacto se le perdona esto último, porque un contacto con el plazo cumplido no es una alarma sino un turno en el sorteo: «hablamos en mayo» es justo lo que vuelve a meter a alguien en él.</item>
+
+        <item>Si la rutina ya había sonado por un plazo que ahora dices que nunca se cumplió, ese aviso se suelta, junto con lo que le hubieras contestado. Conservado, habría seguido leyéndose como sonado y sin contestar — el «hecho» es anterior a él — y el móvil habría encontrado una alarma que creía haberse dormido.</item>
+
+        <item>Buscar encuentra un recordatorio por el nombre de su lugar. «Casa» encontraba la palabra en una frase y nunca el punto llamado Casa, porque el nombre de un lugar vive en la regla y no en las palabras. Una coincidencia en las palabras sigue yendo primero.</item>
+
+        <item>Y cada resultado dice cuándo suena, con la misma frase que usan el formulario y la notificación, así que dos recordatorios con las mismas palabras se distinguen. De paso: una rutina sin reglas propias tenía en su notificación una línea que empezaba con una coma, «, y vuelve cada 21 días»; ahora dice el plazo y ya.</item>
+
+    </string-array>
     <string-array name="whats_new_0_133_0">
 
         <item>Un recordatorio que dejaste a medio escribir sigue ahí cuando vuelves. El formulario vivía solo en memoria, así que si el móvil necesitaba esa memoria mientras estabas en otra app —buscando la dirección, atendiendo una llamada— volvías a un formulario en blanco. Ahora se le entrega al sistema cuando la app se aparta, y vuelve como lo dejaste, con sus cambios sin guardar.</item>

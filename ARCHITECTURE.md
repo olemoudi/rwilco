@@ -1918,9 +1918,47 @@ loud what DST and a change of zone do to a landing.
   out of these sheets.** `Scrim` calls `animateToDismiss`, which is gated by the same
   `confirmValueChange`, so a tap outside has always done nothing — this file and the sheet's own
   KDoc said otherwise, and both are corrected. Whether it *should* close is a question left open.
+- **Search finds a place, and a result says when** (0.134.0). `search` matched a reminder's words
+  and the tags and nothing else, so "casa" found the word in a sentence and never the pin called
+  Casa — a place's name lives on the rule. `placeScore` (`Search.kt`) reads every place a
+  reminder names (`placeLabels`: the ones it rings at, the ones it is fenced to — the calendar's
+  fences too — and the one it is waiting for), takes a *real* match only — never the
+  letters-in-order band: "cs" abbreviates words somebody wrote, not the name of a pin — and
+  squeezes it into a band of its own (`PLACE`) under every real match in the words: somebody
+  typing on Home is looking for what a reminder says before where it rings. And the row gained
+  the line left open since 0.69.0: `SearchHitUi.OfReminder.source` carries the reminder, and
+  `SearchResultRow` words it with `reminderSummary` — the editor's and the notification's own
+  sentence — so two reminders with the same words are told apart. Not on a finished one.
+  `reminderSummary` had opened a rule-less routine's line with ", y vuelve cada 21 días": with
+  nothing in front of it the span is the whole sentence now.
 
 ## Firing
 
+- **A "hecho" can be dated: "lo hice otro día"** (0.134.0, `ReminderFiring.doneEarlier`,
+  `Reminder.doneEarlier`/`doneEarlierRefusal` in `Routines.kt`). "Hecho" on a routine is always
+  *now*, which is right for the tap and wrong for the day after — and once a routine has been
+  done, the start chip moves nothing (`routineAnchor` reads `lastDealtAt` first). It is a row in
+  the routines' `⋯` menu (not on a routine that rests: a day named into a frozen count is a
+  sentence nobody can read back), and `MomentSheet(allowPast, initialDate = yesterday, refuse)`
+  asks the day; `refuse` is the asker's own veto, so the sheet did not have to learn what a
+  routine is. **Three fences**: not the future (a plan is not a deed); not at or before the last
+  "hecho" (that is un-doing, which has its own door); not onto a span already up — except for a
+  **contact**, whose plazo running out is a turn in the draw and not an alarm, so "hablamos en
+  mayo" is exactly what puts somebody back in it. **A door of its own, not `dismiss` with a date
+  on it**, for two reasons found in the code: `dealtWith` stamps `updatedAt` with the moment it
+  is given, and a row that claimed to have been written last Saturday is owed every question
+  since (`promptLookFrom` reads it) and gets the first the second it lands; and its nine columns
+  do not include the last ring — which is the one a dated "hecho" may have to let go of. **A
+  ring that came after the day named is shed**, with the net's word about it and the armed
+  moment: it rang for a span that was never up, and kept it would read as rung-and-never-answered
+  for ever (`awaitingAnswer` wants a "hecho" *after* the ring) while `missedFire` found a firing
+  the phone "slept through". The same shedding an edit does across `becomesRoutine`. A ring older
+  than the day belongs to a round already over and stays. So the whole row is written, under
+  the lock, with the refusal asked again there; the history's word is the ordinary `DEALT`, on
+  the day it was done. `RoutinesTest` pins the fences and the shedding, and a `Simulation`
+  journey (`doneEarlier`) walks rung-Wednesday / done-Monday / said-Thursday to the next ring.
+  Known edge: a contact told today and then dated back frees its kind's turn for the day
+  (`anotherContactToldThatDay` reads the ring that was shed).
 - **A routine's rules never ring** (0.95.0, `Reminder.isRoutine`). `nextWake` arms a routine's
   deadline and nothing else, so no clock rule of one is ever armed; a place rule's circle still
   reports crossings, and a stale alarm can still carry a rule index, so `ReminderFiring.fire`

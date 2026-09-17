@@ -693,6 +693,7 @@ fun HomeScreen(
                         onOpenRoutine = { id -> onRoutines(id) },
                         onFilterByTag = viewModel::filterByTag,
                         modifier = Modifier.animateItem(),
+                        defaultTime = state.defaultTime,
                     )
                 }
                 // Capped at twenty with nothing to say so: a search that found more read as a

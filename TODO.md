@@ -878,6 +878,11 @@ sheets sliding out on Confirm (`hide()` vs `confirmValueChange`)~~ — both done
 the dead code listed under 0.67.0 — asked about, not deleted.
 
 ## Still to prove on the real phone (Pixel 8 Pro)
+- Routines and search (0.134.0): let a routine's deadline ring, leave it, and the next day say
+  "lo hice otro día" with a day *before* the ring — the alert and its card must go, Home's red
+  row with them, and nothing may ring late afterwards; the same on a contact with a day months
+  back. And search "casa" (or any saved place's name) from Home, and read the line under each
+  result.
 - The editor round (0.133.0): with Developer options → "No mantener actividades" on, write half
   a reminder, go to another app and come back — the words, the rule and the unsaved-changes
   question on Back must all be there (the device test proves the seam, only the phone proves

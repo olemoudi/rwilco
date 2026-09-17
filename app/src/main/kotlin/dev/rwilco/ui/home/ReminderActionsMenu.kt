@@ -43,6 +43,7 @@ import androidx.compose.material.icons.outlined.AlarmOff
 import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.EventAvailable
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.SkipNext
@@ -98,6 +99,13 @@ fun ReminderActionsMenu(
     onDismiss: () -> Unit,
     /** About a routine: the rows that name the thing name it as one. */
     routine: Boolean = false,
+    /**
+     * "Lo hice otro día…": a routine's "hecho" dated to a day that is not today. Null wherever it
+     * is not an answer — anything that is not a routine, and a routine that rests.
+     */
+    onDoneEarlier: (() -> Unit)? = null,
+    /** A contact, whose deed is a conversation: "hablamos otro día". */
+    contact: Boolean = false,
 ) {
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
@@ -152,6 +160,17 @@ fun ReminderActionsMenu(
                             modifier = Modifier.weight(1f),
                         )
                         ActionTile(Icons.Outlined.Delete, stringResource(R.string.home_menu_delete), onDelete, Modifier.weight(1f))
+                    }
+                    // "Hecho" is always *now*, which is right for the tap and wrong for the day
+                    // after: watered on Saturday, remembered on Tuesday, and the count was three
+                    // days off for three weeks. The same answer, about another day (0.134.0).
+                    if (onDoneEarlier != null) {
+                        ActionRow(
+                            icon = Icons.Outlined.EventAvailable,
+                            label = stringResource(if (contact) R.string.routines_talked_earlier else R.string.routines_done_earlier),
+                            hint = stringResource(if (contact) R.string.routines_talked_earlier_hint else R.string.routines_done_earlier_hint),
+                            onClick = onDoneEarlier,
+                        )
                     }
                     if (snoozeOffered) {
                         if (choosingSnooze) {

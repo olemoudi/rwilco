@@ -54,6 +54,15 @@
     <string name="home_card_actions">Reminder actions</string>
     <string name="home_clone">Clone reminder</string>
     <string name="home_clone_hint">The same again, with the words blank</string>
+    <string name="routines_done_earlier">I did it another day…</string>
+    <string name="routines_done_earlier_hint">The count runs from the day you say, not from today</string>
+    <string name="routines_done_earlier_title">When did you do it?</string>
+    <string name="routines_talked_earlier">We talked another day…</string>
+    <string name="routines_talked_earlier_hint">Their turn is counted from that day</string>
+    <string name="routines_talked_earlier_title">When did you talk?</string>
+    <string name="routines_done_earlier_future">That has not happened yet</string>
+    <string name="routines_done_earlier_before_last">That is before the last time on record, %1$s</string>
+    <string name="routines_done_earlier_due">Counted from then it would already be due. Mark it done when you do it.</string>
     <string name="home_menu_done">Done</string>
     <string name="home_menu_delete">Delete</string>
     <string name="home_snooze">Snooze</string>
@@ -1620,6 +1629,19 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_134_0">
+
+        <item>«I did it another day…» — on a routine, and «We talked another day…» on a contact. «Done» is always this second, which is right for the tap and wrong for the day after: water the plants on Saturday, remember on Tuesday, and the count was three days out for the next three weeks — and once a routine has been done, the start chip on its form no longer moves anything. It is in the row\'s ⋯ menu, the calendar opens on yesterday, and the count runs from the day you say.</item>
+
+        <item>It says no to three things, under the hour and before the button: a day that has not happened yet; a day at or before the last time already on record, which would be un-doing it rather than doing it; and a day so far back that the routine would be due again the moment you said it. A contact is spared that last one, because a contact whose time is up is not an alarm but a turn in the draw — «we talked in May» is exactly what puts somebody back in it.</item>
+
+        <item>If the routine had already rung for the span you are now saying was never up, that ring is let go of along with whatever you answered it with. Kept, it would have gone on reading as rung and never answered — the «done» is older than it — and the phone would have found an alarm it thought it had slept through.</item>
+
+        <item>Search finds a reminder by the name of its place. «Casa» used to find the word in a sentence and never the pin called Casa, because a place\'s name lives on the rule and not in the words. A match in the words still comes first.</item>
+
+        <item>And every result says when it rings, in the same sentence the form and the notification use — so two reminders with the same words can be told apart. While there: a routine with no rules of its own had a line that opened with a comma, «, and comes back every 21 days», on its notification; it just says the span now.</item>
+
+    </string-array>
     <string-array name="whats_new_0_133_0">
 
         <item>A reminder you were halfway through writing is still there when you come back. The form lived only in memory, so if the phone wanted that memory while you were in another app — looking up the address, taking a call — you returned to a blank form. It is handed to the system when the app is put away now, and comes back as you left it, unsaved changes and all.</item>

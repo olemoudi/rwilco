@@ -14,6 +14,36 @@ class SearchTest {
     private fun texts(hits: List<SearchHit>) = hits.filterIsInstance<SearchHit.OfReminder>().map { it.reminder.text }
     private fun tags(hits: List<SearchHit>) = hits.filterIsInstance<SearchHit.OfTag>().map { it.tag }
 
+    // --- a place is searchable by its name (0.134.0) ---
+
+    private val home = Trigger.Location(40.4168, -3.7038, 150, Presence.INSIDE, "Casa", onCrossing = true)
+    private val office = Condition.AtPlace(40.45, -3.69, 200, "Oficina Castellana")
+
+    @Test
+    fun `a reminder is found by the place it rings at, waits at, or is fenced to`() {
+        val reminders = listOf(
+            reminder("Sacar la basura").copy(rules = listOf(TriggerRule(home))),
+            reminder("Pedir las llaves").copy(rules = listOf(TriggerRule(Trigger.TimeOfDay(java.time.LocalTime.of(9, 0)), listOf(office)))),
+            reminder("Devolver el libro").copy(snoozedToPlace = home.copy(label = "Biblioteca")),
+            reminder("Comprar pan"),
+        )
+        assertEquals(listOf("Sacar la basura"), texts(search(reminders, "casa")))
+        assertEquals(listOf("Pedir las llaves"), texts(search(reminders, "castellana")), "a word of the name is enough")
+        assertEquals(listOf("Devolver el libro"), texts(search(reminders, "biblio")))
+    }
+
+    @Test
+    fun `the words outrank the place, and a place is never matched by a scatter of its letters`() {
+        val reminders = listOf(
+            reminder("Sacar la basura").copy(rules = listOf(TriggerRule(home))),
+            reminder("Pintar la casa"),
+        )
+        // Somebody typing on Home is looking for what a reminder says before where it rings.
+        assertEquals(listOf("Pintar la casa", "Sacar la basura"), texts(search(reminders, "casa")))
+        // "cs" abbreviates words somebody wrote; it does not abbreviate the name of a pin.
+        assertEquals(emptyList<String>(), texts(search(listOf(reminders[0].copy(text = "Tirar el vidrio")), "cs")))
+    }
+
     @Test
     fun `a blank query is not a search`() {
         val reminders = listOf(reminder("Comprar pan"))

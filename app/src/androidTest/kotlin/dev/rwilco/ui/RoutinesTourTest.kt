@@ -114,6 +114,34 @@ class RoutinesTourTest {
         )
     }
 
+    /**
+     * "Lo hice otro día" (0.134.0): the car moved yesterday and nobody said so. The row's own
+     * menu has the answer, the calendar opens on yesterday, and the count runs from *that* day —
+     * where "Sí" would have started it from this second.
+     */
+    @Test
+    fun aHechoCanBeDatedToAnotherDay() {
+        rule.waitUntil(timeoutMillis = 10_000) { rule.activity.resources.configuration.locales[0].language == "es" }
+        rule.waitUntilShown(s(R.string.home_routines_overdue_title))
+        rule.onNodeWithContentDescription(s(R.string.home_routines_open), substring = true).performClick()
+        rule.waitUntilShown(s(R.string.routines_question, car))
+
+        rule.onNodeWithContentDescription(s(R.string.card_more, car)).performClick()
+        rule.waitUntilShown(s(R.string.routines_done_earlier))
+        rule.onNodeWithText(s(R.string.routines_done_earlier), useUnmergedTree = true).performClick()
+        rule.waitUntilShown(s(R.string.routines_done_earlier_title))
+        shot("routines-done-earlier")
+        rule.onNodeWithText(s(R.string.sheet_done), useUnmergedTree = true).performClick()
+
+        rule.waitUntil(timeoutMillis = 10_000) { runBlocking { app.repository.get(carId) }?.lastDealtAt != null }
+        val saved = runBlocking { app.repository.get(carId) }!!
+        val yesterday = app.clock.instant().atZone(app.clock.zone).toLocalDate().minusDays(1)
+        check(saved.lastDealtAt!!.atZone(app.clock.zone).toLocalDate() == yesterday) { "the count should run from yesterday, not from now: ${saved.lastDealtAt}" }
+        check(saved.routineDone(app.clock.instant(), app.clock.zone)) { "and with twenty days left of its twenty-one it is done for now" }
+        // Said and undone like any other "hecho".
+        rule.waitUntilShown(s(R.string.common_undo))
+    }
+
     @Test
     fun theLineIsTheDoorAndTheSwipeIsTheAnswer() {
         rule.waitUntil(timeoutMillis = 10_000) { rule.activity.resources.configuration.locales[0].language == "es" }

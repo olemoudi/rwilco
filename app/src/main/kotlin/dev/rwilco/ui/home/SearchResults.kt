@@ -27,6 +27,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import dev.rwilco.ui.format.reminderSummary
+import dev.rwilco.ui.format.rememberWords
+import java.time.LocalDate
+import java.time.LocalTime
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
@@ -138,7 +142,10 @@ fun SearchResultRow(
     modifier: Modifier = Modifier,
     /** A routine's door: the routines with it in view, not the form. */
     onOpenRoutine: (String) -> Unit = onOpen,
+    /** The hour a date with no time of its own means, for the line that says when. */
+    defaultTime: LocalTime = LocalTime.of(9, 0),
 ) {
+    val words = rememberWords()
     when (hit) {
         // A routine is found like anything else and said as what it is — its own glyph in its
         // own colour, "Rutina" in the corner — and opens where it lives.
@@ -149,6 +156,12 @@ fun SearchResultRow(
             },
             title = hit.text,
             subtitle = joinAll(hit.tags.take(3)).takeIf { it.isNotEmpty() },
+            // When it rings, in the sentence the editor and the notification already say: the
+            // line that was missing since the search arrived (left open after 0.69.0). Not for a
+            // finished one — what it *would* have rung at is not news about something done.
+            whenLine = hit.source?.takeIf { !hit.done }?.let { reminder ->
+                remember(reminder, words) { reminderSummary(words, reminder, LocalDate.now(), defaultTime) }.takeIf { it.isNotEmpty() }
+            },
             kind = stringResource(
                 when {
                     hit.done -> R.string.home_search_kind_done
@@ -178,6 +191,7 @@ private fun ResultCard(
     kind: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    whenLine: String? = null,
 ) {
     RwilcoCard(onClick = onClick, shape = MaterialTheme.shapes.medium, modifier = modifier) {
         Row(
@@ -193,6 +207,15 @@ private fun ResultCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (whenLine != null) {
+                    Text(
+                        text = whenLine,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 if (subtitle != null) {
                     Text(
                         text = subtitle,

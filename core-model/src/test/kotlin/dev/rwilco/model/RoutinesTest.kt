@@ -57,6 +57,69 @@ class RoutinesTest {
     private fun Reminder.next() = nextFire(this, now, zone, defaultTime, dayStart)
     private fun Reminder.wake() = nextWake(this, now, zone, defaultTime, dayStart)
 
+    // --- "lo hice otro día": a hecho given after the fact (0.134.0) ---
+
+    private val day: Duration = Duration.ofDays(1)
+
+    @Test
+    fun `a hecho can be dated back, but not into the future, not behind the last one, and not onto a span already up`() {
+        val lastTime = now.minus(day.multipliedBy(10))
+        val routine = car(nine, createdAt = now.minus(day.multipliedBy(40)), lastDealtAt = lastTime)
+
+        assertNull(routine.doneEarlierRefusal(now.minus(day), now, zone, dayStart), "yesterday is what this is for")
+        assertNull(routine.doneEarlierRefusal(now, now, zone, dayStart), "and so is a moment ago")
+        assertEquals(DoneEarlierRefusal.FUTURE, routine.doneEarlierRefusal(now.plusSeconds(60), now, zone, dayStart))
+        // The count cannot run backwards past where it already stands: that is not "I did it
+        // earlier", it is un-doing the last time, and there is a history to keep straight.
+        assertEquals(DoneEarlierRefusal.BEFORE_LAST, routine.doneEarlierRefusal(lastTime, now, zone, dayStart))
+        assertEquals(DoneEarlierRefusal.BEFORE_LAST, routine.doneEarlierRefusal(lastTime.minus(day), now, zone, dayStart))
+
+        // Three weeks from a day a month ago is a deadline already behind us: the routine would
+        // be owed the second it was written, which is not an answer to anything.
+        val never = car(nine, createdAt = now.minus(day.multipliedBy(60)))
+        assertEquals(DoneEarlierRefusal.ALREADY_DUE, never.doneEarlierRefusal(now.minus(day.multipliedBy(30)), now, zone, dayStart))
+        // One never done may be dated before it was even written: "la última vez fue en junio".
+        assertNull(car(nine, createdAt = now.minus(day)).doneEarlierRefusal(now.minus(day.multipliedBy(5)), now, zone, dayStart))
+        // And nothing that is not a routine has a count to move.
+        assertEquals(DoneEarlierRefusal.NOT_A_ROUTINE, reminderOf(Recurrence.None).doneEarlierRefusal(now.minus(day), now, zone, dayStart))
+    }
+
+    @Test
+    fun `a hecho dated back moves the count to that day and lets go of a ring that came after it`() {
+        // Due and rung on Monday; watered on Saturday, and said so on Tuesday.
+        val saturday = now.minus(day.multipliedBy(3))
+        val monday = now.minus(day)
+        val rung = car(nine, createdAt = now.minus(day.multipliedBy(40)), lastDealtAt = now.minus(day.multipliedBy(22)), lastFiredAt = monday)
+            .copy(armedFor = monday, nudgedAt = monday.plusSeconds(3600), snoozedUntil = now.plusSeconds(3600), askedAt = monday.minus(day))
+        assertTrue(rung.copy(snoozedUntil = null).awaitingAnswer(now), "the ring is waiting for an answer")
+
+        val said = rung.doneEarlier(saturday, now)
+        assertEquals(saturday, said.lastDealtAt)
+        assertEquals(now, said.updatedAt, "written now: a question owed from before is not put the second this lands")
+        // The ring was about a span that, it turns out, was never up. Kept, it would read as
+        // rung-and-never-answered for ever (the hecho is older than it), and with the armed
+        // moment kept beside no ring at all the catch-up would find a firing the phone "missed".
+        assertNull(said.lastFiredAt)
+        assertNull(said.nudgedAt)
+        assertNull(said.armedFor)
+        assertNull(said.snoozedUntil, "and a put-off of that ring goes with it")
+        assertFalse(said.awaitingAnswer(now))
+        assertNull(missedFire(said, now))
+        assertTrue(said.routineDone(now, zone, dayStart))
+        assertEquals(saturday.atZone(zone).toLocalDate().plusDays(21), said.routineDeadline(zone, dayStart)!!.atZone(zone).toLocalDate())
+        assertTrue(said.promptLookFrom(now, zone, dayStart) >= now, "nothing is asked at once")
+    }
+
+    @Test
+    fun `a ring older than the day named is an old round's, and stays in the row`() {
+        // Rang three weeks ago, was answered then; today's "lo hice ayer" is about this round.
+        val oldRing = now.minus(day.multipliedBy(21))
+        val routine = car(nine, createdAt = now.minus(day.multipliedBy(60)), lastDealtAt = oldRing.plusSeconds(600), lastFiredAt = oldRing)
+        val said = routine.doneEarlier(now.minus(day), now)
+        assertEquals(oldRing, said.lastFiredAt)
+        assertFalse(said.awaitingAnswer(now))
+    }
+
     /** What `ReminderFiring.dismiss` writes, as `Simulation.deal(Done)` mirrors it. */
     private fun Reminder.done(at: Instant): Reminder {
         val consumed = momentDealtWith(at, zone, defaultTime, dayStart)
@@ -366,6 +429,42 @@ class RoutinesTest {
         assertNull(sim.arrive(0), "leaving the garage is not the alarm")
         assertTrue(sim.rings.isEmpty())
         assertEquals(Wake(local(2026, 9, 16, 9, 0), null), sim.arm(), "the deadline is still what is armed")
+    }
+
+    @Test
+    fun `rung on Wednesday, done the Monday before, said on Thursday — and nothing rings late`() {
+        val sim = Simulation(car(garage, nine), now, dayStart = dayStart)
+        // Written Wednesday 26 Aug; the three weeks are up on Wednesday 16 Sept at nine.
+        assertEquals(listOf(local(2026, 9, 16, 9, 0)), sim.run(local(2026, 9, 17, 0, 0)).map { it.at })
+        assertTrue(sim.reminder.awaitingAnswer(sim.now), "it rang, and is waiting")
+
+        // Thursday evening: "pero si lo moví el lunes".
+        sim.now = local(2026, 9, 17, 19, 0)
+        val monday = local(2026, 9, 14, 18, 0)
+        assertTrue(sim.doneEarlier(monday))
+
+        assertFalse(sim.reminder.awaitingAnswer(sim.now), "the ring was about a span that was never up")
+        assertNull(missedFire(sim.reminder, sim.now), "and no firing is 'owed' for the moment it was armed for")
+        assertEquals(Wake(local(2026, 10, 5, 9, 0), null), sim.arm(), "twenty-one days from the Monday, not from the Thursday")
+        assertNull(sim.promptAt()?.takeIf { it.at <= sim.now }, "nothing is asked the second it lands")
+        // And from there it is an ordinary routine again: one ring, on its day.
+        val next = sim.run(local(2026, 10, 6, 0, 0))
+        assertEquals(listOf(local(2026, 10, 5, 9, 0)), next.map { it.at })
+
+        // What it will not take: tomorrow, or a day behind the Monday it now counts from.
+        assertFalse(sim.doneEarlier(sim.now.plusSeconds(3600)))
+        assertFalse(sim.doneEarlier(monday.minusSeconds(3600)))
+    }
+
+    @Test
+    fun `a contact may be dated back past its plazo, because a plazo up is a turn and not an alarm`() {
+        val ana = car(span = Recurrence.Since(3, RecurrenceUnit.MONTHS), createdAt = now.minus(day.multipliedBy(200)), text = "Ana")
+            .copy(contactKind = ContactKind.PERSONAL, actions = emptySet())
+        // "Hablamos en mayo": four months ago, on a three-month plazo. A routine would be refused.
+        val may = now.minus(day.multipliedBy(120))
+        assertNull(ana.doneEarlierRefusal(may, now, zone, dayStart))
+        assertEquals(DoneEarlierRefusal.ALREADY_DUE, ana.copy(contactKind = null).doneEarlierRefusal(may, now, zone, dayStart))
+        assertEquals(may, ana.doneEarlier(may, now).lastDealtAt)
     }
 
     // ---- a year of the car --------------------------------------------------------------

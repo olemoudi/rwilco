@@ -95,6 +95,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.graphics.vector.ImageVector
 import dev.rwilco.R
 import dev.rwilco.model.ContactKind
+import dev.rwilco.model.DoneEarlierRefusal
+import dev.rwilco.model.doneEarlierRefusal
+import dev.rwilco.model.isContact
 import dev.rwilco.model.RoutineFilter
 import dev.rwilco.model.partsBetween
 import dev.rwilco.ui.components.EmptyState
@@ -407,6 +410,41 @@ fun RoutinesScreen(
             onKeepAsPreset = { actingOn = null; onKeepAsPreset(held.id) },
             onDismiss = { actingOn = null },
             routine = true,
+            // Not of one that rests: its count is frozen, and a day named into a frozen count
+            // is a sentence nobody can read back.
+            onDoneEarlier = { actingOn = null; viewModel.askWhenDone(held.id) }.takeIf { !held.paused },
+            contact = held.contactKind != null,
+        )
+    }
+
+    // "Lo hice otro día": the calendar, opening on yesterday, with the routine's own three
+    // refusals said under the hour before the button can be pressed (0.134.0).
+    val dating by viewModel.dating.collectAsStateWithLifecycle()
+    dating?.let { asked ->
+        val here = clock.instant().atZone(zone)
+        val contact = asked.reminder.isContact
+        MomentSheet(
+            now = here,
+            defaultTime = defaultTime,
+            onConfirm = viewModel::doneEarlier,
+            onDismiss = viewModel::cancelDating,
+            title = stringResource(if (contact) R.string.routines_talked_earlier_title else R.string.routines_done_earlier_title),
+            allowPast = true,
+            initialDate = here.toLocalDate().minusDays(1),
+            refuse = { at ->
+                when (asked.reminder.doneEarlierRefusal(at, here.toInstant(), zone, asked.dayStart)) {
+                    null -> null
+                    DoneEarlierRefusal.FUTURE -> words.get(R.string.routines_done_earlier_future)
+                    DoneEarlierRefusal.BEFORE_LAST -> words.get(
+                        R.string.routines_done_earlier_before_last,
+                        asked.reminder.lastDealtAt?.atZone(zone)?.let {
+                            dayWord(words, it.toLocalDate(), here.toLocalDate()) + " " + TimeText.time(it.toLocalTime(), words.is24h, words.locale)
+                        }.orEmpty(),
+                    )
+                    DoneEarlierRefusal.ALREADY_DUE -> words.get(R.string.routines_done_earlier_due)
+                    DoneEarlierRefusal.NOT_A_ROUTINE -> words.get(R.string.routines_done_earlier_due)
+                }
+            },
         )
     }
 

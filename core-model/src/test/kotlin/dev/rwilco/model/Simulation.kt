@@ -282,6 +282,17 @@ class Simulation(
      */
     fun arrive(ruleIndex: Int, deal: (Ring) -> Deal = { Deal.Ignore }): Ring? = fire(ruleIndex, late = null, deal = deal)
 
+    /**
+     * "Lo hice otro día": what `ReminderFiring.doneEarlier` writes — the refusal asked again at
+     * the door, then the whole row, then the alarms. False when it was refused.
+     */
+    fun doneEarlier(at: Instant): Boolean {
+        if (reminder.status != Status.ACTIVE || reminder.doneEarlierRefusal(at, now, zone, dayStart) != null) return false
+        reminder = reminder.doneEarlier(at, now)
+        arm()
+        return true
+    }
+
     /** The person answers at [now], writing what `ReminderFiring.dismiss`/`snooze` write. */
     fun deal(deal: Deal) {
         when (deal) {

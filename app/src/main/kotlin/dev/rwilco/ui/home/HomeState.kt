@@ -488,8 +488,20 @@ sealed interface SearchHitUi {
     /** Stable across queries so the list animates rows instead of rebuilding them. */
     val key: String
 
-    /** [done] when it is one already dealt with: found all the same, and said so on the row. */
-    data class OfReminder(val id: String, val text: String, val tags: List<String>, val done: Boolean = false, val routine: Boolean = false) : SearchHitUi {
+    /**
+     * [done] when it is one already dealt with: found all the same, and said so on the row.
+     * [source] is the reminder itself, for the one line only a composition can word — *when* it
+     * rings (0.134.0): a search for "casa" that finds a reminder by its place has to show the
+     * place, and two reminders with the same words are told apart by their hour and nothing else.
+     */
+    data class OfReminder(
+        val id: String,
+        val text: String,
+        val tags: List<String>,
+        val done: Boolean = false,
+        val routine: Boolean = false,
+        val source: Reminder? = null,
+    ) : SearchHitUi {
         override val key: String get() = "reminder-$id"
     }
 
@@ -505,7 +517,10 @@ fun buildSearchState(reminders: List<Reminder>, query: String, open: Boolean): S
     query = query,
     hits = if (!open) emptyList() else search(reminders, query).map { hit ->
         when (hit) {
-            is SearchHit.OfReminder -> SearchHitUi.OfReminder(hit.reminder.id, hit.reminder.text, hit.reminder.tags, done = hit.reminder.status == Status.DONE, routine = hit.reminder.isRoutine)
+            is SearchHit.OfReminder -> SearchHitUi.OfReminder(
+                hit.reminder.id, hit.reminder.text, hit.reminder.tags,
+                done = hit.reminder.status == Status.DONE, routine = hit.reminder.isRoutine, source = hit.reminder,
+            )
             is SearchHit.OfTag -> SearchHitUi.OfTag(hit.tag, hit.count)
         }
     },

@@ -83,6 +83,8 @@ import dev.rwilco.model.Presence
 import dev.rwilco.model.asks
 import dev.rwilco.model.awakeAt
 import dev.rwilco.model.isRoutine
+import dev.rwilco.model.doneEarlier
+import dev.rwilco.model.doneEarlierRefusal
 import dev.rwilco.model.closesFrom
 import dev.rwilco.model.windows
 import dev.rwilco.model.promptLookFrom
@@ -539,6 +541,36 @@ class ReminderFiring(
         // and the shade, for a minute (0.129.0). Home and the routines list answer for themselves.
         if (notice) AlertNotifications.doneNotice(context, reminder, row)
         scheduler.rearmAll()
+    }
+
+    /**
+     * "Lo hice otro día": a routine's "hecho" — or a contact's "hablado" — dated to [at] instead
+     * of to this second (0.134.0). False when it was refused, which is asked again here rather
+     * than trusted from the sheet: the row may have been answered from the shade in between.
+     *
+     * **A door of its own, not [dismiss] with a date on it.** `dealtWith` stamps the row as
+     * written at the moment it is given, and a row that claimed to have been written last
+     * Saturday is owed every question since ([promptLookFrom] reads `updatedAt`) and gets the
+     * first of them the second this lands. And it writes nine columns of which none is the last
+     * ring — which is exactly the one a dated "hecho" may have to let go of: see
+     * [Reminder.doneEarlier]. So this writes the whole row, under the same lock as every other
+     * answer, and the word in the history is the ordinary "hecho", on the day it was done.
+     */
+    suspend fun doneEarlier(id: String, at: Instant): Boolean = lock.withLock {
+        val reminder = repository.get(id) ?: return@withLock false
+        val now = clock.instant()
+        val refusal = reminder.doneEarlierRefusal(at, now, clock.zone, settings().dayStart)
+        if (reminder.status != Status.ACTIVE || refusal != null) {
+            Diag.note(TAG_DIAG, "r=${short(id)} hecho dated back refused: ${refusal ?: reminder.status}")
+            return@withLock false
+        }
+        Diag.note(TAG_DIAG, "r=${short(id)} dealt with, dated back to $at")
+        repeater.cancel(id)
+        AlertNotifications.cancel(context, id)
+        repository.save(reminder.doneEarlier(at, now))
+        repository.record(id, FiringKind.DEALT, at)
+        scheduler.rearmAll()
+        true
     }
 
     /**

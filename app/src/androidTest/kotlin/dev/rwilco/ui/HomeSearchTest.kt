@@ -17,6 +17,7 @@ import dev.rwilco.MainActivity
 import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.debug.DemoData
+import dev.rwilco.model.Presence
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
 import dev.rwilco.model.Trigger
@@ -106,6 +107,36 @@ class HomeSearchTest {
         rule.onAllNodesWithText(s(R.string.home_search_kind_tag), useUnmergedTree = true)[0].performClick()
         rule.waitUntilGone(s(R.string.home_search_hint))
         rule.waitUntilShown("Comprar pan")
+    }
+
+    /**
+     * A reminder is found by the name of its place, and the row says where (0.134.0). "Taller"
+     * is in nobody's words here: before, the search matched a reminder's sentence and its tags
+     * and nothing else, and a result said what it was but never when.
+     */
+    @Test
+    fun aReminderIsFoundByItsPlaceAndTheRowSaysWhen() {
+        val app = context.applicationContext as RwilcoApplication
+        runBlocking {
+            val now = app.clock.instant()
+            app.repository.save(
+                Reminder(
+                    id = "search-place",
+                    text = "Recoger la bici",
+                    rules = listOf(TriggerRule(Trigger.Location(40.4168, -3.7038, 150, Presence.INSIDE, "Taller", onCrossing = true))),
+                    status = Status.ACTIVE,
+                    createdAt = now,
+                    updatedAt = now,
+                ),
+            )
+        }
+        rule.waitUntilShown(s(R.string.home_next_up))
+        rule.onNodeWithContentDescription(s(R.string.home_search)).performClick()
+        rule.onNodeWithTag(HOME_SEARCH_TAG).performTextInput("taller")
+
+        rule.waitUntilShown("Recoger la bici")
+        // The line under the words is the editor's own sentence, so it names the place.
+        assertTrue(rule.onAllNodesWithText("Taller", substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
     }
 
     /**

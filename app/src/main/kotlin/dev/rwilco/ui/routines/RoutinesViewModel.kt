@@ -158,6 +158,41 @@ class RoutinesViewModel(
         }
     }
 
+    /**
+     * The routine a "lo hice otro día" is being dated for — the row itself and the hour the day
+     * starts at, so the sheet can say why a day will not do before the button does
+     * ([doneEarlierRefusal]). ViewModel state: it has to outlive a rotation with the sheet up.
+     */
+    data class Dating(val reminder: Reminder, val dayStart: LocalTime)
+
+    private val _dating = MutableStateFlow<Dating?>(null)
+    val dating: StateFlow<Dating?> = _dating
+
+    fun askWhenDone(id: String) {
+        viewModelScope.launch {
+            val reminder = repository.get(id) ?: return@launch
+            _dating.value = Dating(reminder, store.settings.first().dayStart)
+        }
+    }
+
+    fun cancelDating() {
+        _dating.value = null
+    }
+
+    /**
+     * "Sí — pero fue el lunes": [ReminderFiring.doneEarlier], which asks the refusal again under
+     * its own lock. Said and undone exactly as a "hecho" is: the word is the same, only the day
+     * is not.
+     */
+    fun doneEarlier(at: Instant) {
+        val asked = _dating.value ?: return
+        _dating.value = null
+        viewModelScope.launch {
+            val before = repository.get(asked.reminder.id) ?: return@launch
+            if (firing.doneEarlier(before.id, at)) events.send(RoutinesEvent.Done(before, comesBack(before.id)))
+        }
+    }
+
     /** When [id] next rings, read off the row the dismissal left. */
     private suspend fun comesBack(id: String): Instant? {
         val after = repository.get(id)?.takeIf { it.status == Status.ACTIVE } ?: return null

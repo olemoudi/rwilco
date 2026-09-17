@@ -112,6 +112,63 @@ fun Reminder.routineDone(now: Instant, zone: ZoneId, dayStart: LocalTime = DEFAU
     return deadline > routineClock(now)
 }
 
+/** Why a "hecho" cannot be dated to the moment somebody named. See [doneEarlierRefusal]. */
+enum class DoneEarlierRefusal { NOT_A_ROUTINE, FUTURE, BEFORE_LAST, ALREADY_DUE }
+
+/**
+ * Whether "lo hice otro día" may land on [at] — null when it may.
+ *
+ * "Hecho" on a routine is always *now* ([Reminder.momentDealtWith]), which is right for the tap
+ * and wrong for the day after: water the plants on Saturday, remember on Tuesday, and the count
+ * was three days off for the next three weeks — and once a routine has been done the start chip
+ * no longer moves anything ([routineAnchor] reads `lastDealtAt` first). So a "hecho" can be dated
+ * (0.134.0), inside three fences. Not the future: that is a plan, not a deed. Not at or before
+ * the last "hecho": the count would run backwards past a day the history already holds, and that
+ * is un-doing, which has its own door. And not onto a span already up — done so long ago that
+ * the routine would be owed again the second it was written, which answers nothing. A **contact**
+ * is spared that last one: its plazo running out is not an alarm but a turn in the draw, and
+ * "hablamos en mayo" is exactly what puts somebody back in it.
+ */
+fun Reminder.doneEarlierRefusal(at: Instant, now: Instant, zone: ZoneId, dayStart: LocalTime = DEFAULT_DAY_START): DoneEarlierRefusal? = when {
+    !isRoutine -> DoneEarlierRefusal.NOT_A_ROUTINE
+    at > now -> DoneEarlierRefusal.FUTURE
+    lastDealtAt?.let { at <= it } == true -> DoneEarlierRefusal.BEFORE_LAST
+    !isContact && doneEarlier(at, now).routineDeadline(zone, dayStart)?.let { it <= now } == true -> DoneEarlierRefusal.ALREADY_DUE
+    else -> null
+}
+
+/**
+ * The row after a "hecho" dated to [at], said at [now].
+ *
+ * The anchor moves to [at] and the row is stamped as written *now* — a question owed from
+ * before is looked for from the last edit ([promptLookFrom]), and a row that claimed to have
+ * been written last Saturday would be asked it the moment this landed. Whatever answered the
+ * round goes, as any "hecho" takes it: a snooze, the round's ticks, its deadline, the armed moment.
+ *
+ * **And a ring that came after [at] goes too**, with the net's word about it. It rang for a span
+ * that, it turns out, was never up. Kept, the row would read as rung-and-never-answered for ever
+ * — `awaitingAnswer` wants a "hecho" *after* the ring, and this one is before it — and with the
+ * armed moment kept beside no ring at all, the catch-up would find a firing the phone "slept
+ * through" and ring it late ([missedFire]). The same shedding an edit does when it turns a
+ * reminder into a routine. A ring older than [at] belongs to a round already over, and stays.
+ */
+fun Reminder.doneEarlier(at: Instant, now: Instant): Reminder {
+    val rangAfter = lastFiredAt?.let { it > at } == true
+    return copy(
+        lastDealtAt = at,
+        updatedAt = now,
+        snoozedUntil = null,
+        snoozedToPlace = null,
+        firedRules = emptySet(),
+        expiresAt = null,
+        armedFor = null,
+        armedRule = null,
+        lastFiredAt = lastFiredAt.takeUnless { rangAfter },
+        lastFiredRule = lastFiredRule.takeUnless { rangAfter },
+        nudgedAt = nudgedAt.takeUnless { rangAfter },
+    )
+}
+
 /**
  * Whether the routine has been put off — to a clock still ahead, or to a place — which is an
  * answer: "not now" was said about this very thing, and until it comes back the routine is not
