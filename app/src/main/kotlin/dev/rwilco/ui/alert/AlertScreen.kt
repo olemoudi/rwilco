@@ -45,6 +45,11 @@ import dev.rwilco.R
 import dev.rwilco.model.Actionable
 import dev.rwilco.model.actionablesIn
 import dev.rwilco.model.Snooze
+import dev.rwilco.model.SnoozeBoard
+import dev.rwilco.model.SnoozeTerms
+import dev.rwilco.model.AppSettings
+import dev.rwilco.model.snoozeTerms
+import dev.rwilco.ui.components.SnoozeMoreSheet
 import dev.rwilco.model.kind
 import dev.rwilco.ui.components.GuardIndicator
 import dev.rwilco.ui.components.GuardedAction
@@ -111,6 +116,13 @@ fun AlertScreen(
     onAct: ((Actionable) -> Unit)? = null,
     /** How long the custom offer is, for its label. */
     customMinutes: Int = DEFAULT_SNOOZE_MINUTES,
+    /**
+     * Which offers are on the screen and which wait behind "a otro momento" (0.137.0): the
+     * person's own choice, and every one of them by default. [terms] is what each offer's moment
+     * is worked out from, for the list that says when it would come back.
+     */
+    board: SnoozeBoard = SnoozeBoard(Snooze.entries, emptyList(), placesShown = true),
+    terms: SnoozeTerms = AppSettings().snoozeTerms,
     /** The place answers this phone can give: "al llegar a casa", "al salir de aquí". */
     places: List<SnoozePlace> = emptyList(),
     onSnoozeToPlace: (SnoozePlace) -> Unit = {},
@@ -145,6 +157,7 @@ fun AlertScreen(
     // The calendar behind "posponer · a una fecha", which is the one offer that asks a second
     // question rather than writing a length.
     var pickingDate by remember { mutableStateOf(false) }
+    var choosingMore by remember { mutableStateOf(false) }
     // **A routine does not ring in amber.** Amber is what fires next, and a routine's ring is
     // not an appointment arriving but a span running out — a different thing to wake up to, and
     // the one the phone shows least often. So the lamp and the word above it wear the routines'
@@ -264,17 +277,18 @@ fun AlertScreen(
             // at. They sit clear of the Done button, because the two mean opposite things and a
             // half-awake hand should not be able to confuse them.
             SnoozeOffers(
-                offers = Snooze.entries,
+                offers = board.shown,
                 customMinutes = customMinutes,
                 onPick = onSnooze,
-                places = places,
+                places = if (board.placesShown) places else emptyList(),
                 onPickPlace = onSnoozeToPlace,
-                // Held like the rest, and then it asks its question: the calendar comes up over
-                // the alert, which by then has stopped being an alarm and become a form.
-                onPickDate = onSnoozeUntil?.let { { pickingDate = true } },
+                // Held like the rest, and then it asks its question: the list of every other
+                // answer comes up over the alert, which by then has stopped being an alarm and
+                // become a form. The calendar is its first row — this button *was* "a una fecha".
+                onMore = onSnoozeUntil?.let { { choosingMore = true } },
                 // First on a routine: "ten minutes" is not an answer to a three-week plazo, and
-                // "a una fecha" is the one that is.
-                dateFirst = content.routine,
+                // the door with the calendar behind it is the one that is.
+                moreFirst = content.routine,
                 guard = guard,
             )
             Spacer(Modifier.height(spacing.lg))
@@ -392,6 +406,18 @@ fun AlertScreen(
                 }
             }
             Spacer(Modifier.height(spacing.sm))
+        }
+        if (choosingMore && onSnoozeUntil != null) {
+            SnoozeMoreSheet(
+                board = board,
+                terms = terms,
+                now = ZonedDateTime.now(),
+                onPick = { snooze -> choosingMore = false; onSnooze(snooze) },
+                onPickDate = { choosingMore = false; pickingDate = true },
+                onDismiss = { choosingMore = false },
+                places = places,
+                onPickPlace = { place -> choosingMore = false; onSnoozeToPlace(place) },
+            )
         }
         if (pickingDate && onSnoozeUntil != null) {
             MomentSheet(

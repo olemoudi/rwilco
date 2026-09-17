@@ -11,6 +11,10 @@ import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.snoozeTerms
+import dev.rwilco.model.snoozeBoard
+import dev.rwilco.model.SnoozeTerms
+import dev.rwilco.model.SnoozeBoard
 import dev.rwilco.model.contactScheduleOf
 import dev.rwilco.model.RoutineFilter
 import dev.rwilco.model.Snooze
@@ -103,6 +107,12 @@ class RoutinesViewModel(
     /** How long "un rato" is on the menu's snooze offers: the person's own length. */
     val snoozeCustomMinutes: StateFlow<Int> = settings.filterNotNull().map { it.snoozeCustomMinutes }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings().snoozeCustomMinutes)
+
+    /** The same board a card's menu and the alert read: which offers show, and which wait behind the door. */
+    val snoozeBoard: StateFlow<SnoozeBoard> = settings.filterNotNull().map { snoozeBoard(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), snoozeBoard(AppSettings()))
+    val snoozeTerms: StateFlow<SnoozeTerms> = settings.filterNotNull().map { it.snoozeTerms }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings().snoozeTerms)
 
     /** The hour a date with no time of its own means, which is what the calendar opens on. */
     val defaultTime: StateFlow<LocalTime> = settings.filterNotNull().map { it.defaultTime }

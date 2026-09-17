@@ -875,7 +875,9 @@
     <string name="place_speed_label">Only at a certain speed</string>
     <string name="place_speed_hint">Only counts if the phone was going that fast at the line. When nothing can say, it rings anyway.</string>
     <string name="alert_routine_label">Routine</string>
-    <string name="snooze_pick_date">To a date</string>
+    <string name="snooze_more">Another time…</string>
+    <string name="snooze_more_title">Snooze to another time</string>
+    <string name="snooze_more_pick">Pick a day and an hour…</string>
     <string name="snooze_until_title">Snooze until</string>
     <string name="snooze_until_past">That moment has already passed.</string>
     <string name="notif_routine_question">Have you done «%1$s»?</string>
@@ -1481,7 +1483,10 @@
     <string name="settings_test_alert_text">Test alert</string>
     <string name="settings_test_alert_started">It rings in 10 s</string>
     <string name="settings_language">Language</string>
-    <string name="settings_snooze_notification_hint">A notification has room for three buttons and "Done" is one, so it carries two snoozes. The full-screen alert offers all of them.</string>
+    <string name="settings_snooze_notification_hint">A notification has room for three buttons and "Done" is one, so it carries two snoozes. The rest are on the full-screen alert.</string>
+    <string name="settings_snooze_shown">On the alert</string>
+    <string name="settings_snooze_shown_hint">The offers the full-screen alert and a card\'s menu show. One switched off is not gone: it waits behind «Another time…», where the ones you use most come first.</string>
+    <string name="settings_snooze_shown_places">Places</string>
     <plurals name="alert_waiting">
         <item quantity="one">%1$d more waiting</item>
         <item quantity="other">%1$d more waiting</item>
@@ -1644,6 +1649,17 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_137_0">
+
+        <item>You choose which snoozes the alert shows. It used to carry every answer there is, every time — seven lengths, the places, the calendar: up to ten held buttons on the one screen that gets answered half awake, whether or not you had ever once pressed «Next week». Settings → Alerts → Snooze has a row «On the alert» now; what you switch off there leaves the alert and the menu of a card.</item>
+
+        <item>Nothing switched off is gone. «Another time…» is always the last button — it takes the place «To a date» had — and opens every way there is of putting a reminder off, in one list: the calendar first, then what you keep off the alert with **the ones you actually use at the top**, then the rest. Each row says the moment it would come back at, «tomorrow 09:00», because «the weekend» is a word and the hour it means is a setting three screens away.</item>
+
+        <item>On the alert that button is held like every other; the list behind it is plain taps, because by then the eyes have arrived. On a routine it still comes first, where the calendar did: ten minutes is not an answer to a three-week span.</item>
+
+        <item>Until you hide something, the alert is exactly the one you had.</item>
+
+    </string-array>
     <string-array name="whats_new_0_136_0">
 
         <item>«In the afternoon» and «in the evening» have hours of their own now, in Settings → Your day, beside the hour your day starts at. The afternoon had none at all, so a sentence that named it was refused whole: «mañana por la tarde» gave no chip — not even for «mañana» — which is about the commonest way there is of saying when. It reads as tomorrow at five now, or at whatever hour you keep for it.</item>

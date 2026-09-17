@@ -179,7 +179,7 @@ data class AppSettings(
     val snoozeCustomMinutes: Int = DEFAULT_SNOOZE_MINUTES,
     /**
      * The two offers on the notification, which has room for no more (three actions, and
-     * "hecho" is one). The alert screen offers every [Snooze] regardless.
+     * "hecho" is one). What the alert screen offers is [hiddenSnoozes]' business, not this one's.
      *
      * **Names, not the enum.** A settings blob is decoded all at once, so an unreadable member
      * here — a vault taken to an older build, a name that changes one day — would not cost a
@@ -187,6 +187,14 @@ data class AppSettings(
      * [notificationSnoozeOffers], which drops what it does not recognise.
      */
     val notificationSnoozes: List<String> = DEFAULT_NOTIFICATION_SNOOZES.map { it.name },
+    /**
+     * The snooze offers kept off the alert and behind "a otro momento" instead, by name — and
+     * [SNOOZE_PLACES] for the place answers as one. Names and not the enum, for the reason
+     * [notificationSnoozes] is: one this build does not know hides nothing. See [snoozeBoard].
+     */
+    val hiddenSnoozes: Set<String> = emptySet(),
+    /** How many times each offer has been taken: what orders the ones behind "a otro momento". */
+    val snoozeUses: Map<String, Int> = emptyMap(),
     /**
      * The alert problems Home's strip has been told "not now" about, by name. Cleared whenever
      * everything is granted, so a phone fixed and then broken again is told again.

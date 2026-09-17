@@ -50,6 +50,8 @@ import dev.rwilco.model.speaksForHere
 import dev.rwilco.geo.hasBackgroundLocation
 import dev.rwilco.R
 import dev.rwilco.model.Actionable
+import dev.rwilco.model.snoozeBoard
+import dev.rwilco.model.snoozeTerms
 import dev.rwilco.ui.components.open
 
 /**
@@ -288,6 +290,9 @@ class AlertActivity : ComponentActivity() {
                         onView = { view(first.id, first.content.routine) },
                         onAct = ::act,
                         customMinutes = current.snoozeCustomMinutes,
+                        // Which answers are on the screen and which wait behind "a otro momento".
+                        board = snoozeBoard(current),
+                        terms = current.snoozeTerms,
                         places = places,
                         onSnoozeToPlace = { offer -> snoozeToPlace(first.id, offer) },
                         onSnoozeUntil = { until -> answer(first.id) { app.firing.snoozeUntil(first.id, until) } },

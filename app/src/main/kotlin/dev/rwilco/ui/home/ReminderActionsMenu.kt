@@ -54,6 +54,7 @@ import androidx.compose.material.icons.outlined.Snooze
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import dev.rwilco.model.Snooze
+import dev.rwilco.model.SnoozeBoard
 import dev.rwilco.ui.components.SnoozeOffers
 import dev.rwilco.ui.components.WordActions
 import dev.rwilco.model.Actionable
@@ -93,8 +94,13 @@ fun ReminderActionsMenu(
     onPause: () -> Unit,
     onDelete: () -> Unit,
     onSnooze: (Snooze) -> Unit,
-    /** "A una fecha concreta": the menu closes and the screen behind it opens the calendar. */
-    onSnoozeToDate: () -> Unit = {},
+    /**
+     * "A otro momento…": the menu closes and the screen behind it opens the list of every other
+     * answer, the calendar first among them (it was "a una fecha" until 0.137.0).
+     */
+    onSnoozeMore: () -> Unit = {},
+    /** Which offers the row shows; the rest are behind [onSnoozeMore]. Every one, by default. */
+    board: SnoozeBoard = SnoozeBoard(Snooze.entries, emptyList(), placesShown = true),
     onCancelSnooze: () -> Unit,
     /** The place answers, after the clock ones; empty on a phone that cannot give them. */
     places: List<SnoozePlace> = emptyList(),
@@ -188,12 +194,13 @@ fun ReminderActionsMenu(
                                 modifier = Modifier.padding(top = spacing.sm),
                             )
                             SnoozeOffers(
-                                offers = Snooze.entries,
+                                offers = board.shown,
                                 customMinutes = customMinutes,
                                 onPick = onSnooze,
-                                places = places,
+                                places = if (board.placesShown) places else emptyList(),
                                 onPickPlace = onSnoozeToPlace,
-                                onPickDate = onSnoozeToDate,
+                                onMore = onSnoozeMore,
+                                moreFirst = routine,
                             )
                         } else {
                             ActionRow(

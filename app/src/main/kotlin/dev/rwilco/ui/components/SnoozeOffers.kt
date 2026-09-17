@@ -11,7 +11,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material.icons.outlined.MoreTime
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Snooze
 import androidx.compose.ui.Modifier
@@ -47,12 +47,13 @@ fun SnoozeOffers(
     places: List<SnoozePlace> = emptyList(),
     onPickPlace: (SnoozePlace) -> Unit = {},
     /**
-     * "A una fecha concreta": always the last offer, where there is a calendar to open. Every
-     * other one is a step from now, which is the wrong shape for an answer given a week ahead.
+     * "A otro momento…": always the last offer, and the door to every answer that is not on
+     * this row — the calendar first among them, which is what this button *was* until 0.137.0
+     * ("a una fecha"). See [SnoozeMoreSheet].
      */
-    onPickDate: (() -> Unit)? = null,
-    /** The calendar before the lengths: where the lengths are the wrong shape (a routine's plazo). */
-    dateFirst: Boolean = false,
+    onMore: (() -> Unit)? = null,
+    /** That door before the lengths: where the lengths are the wrong shape (a routine's plazo). */
+    moreFirst: Boolean = false,
     guard: PressGuard? = null,
 ) {
     val spacing = Tokens.spacing
@@ -61,8 +62,8 @@ fun SnoozeOffers(
         verticalArrangement = Arrangement.spacedBy(spacing.sm),
         modifier = modifier.fillMaxWidth(),
     ) {
-        if (dateFirst && onPickDate != null) {
-            SnoozeButton(label = stringResource(R.string.snooze_pick_date), onClick = onPickDate, guard = guard, icon = Icons.Outlined.Event)
+        if (moreFirst && onMore != null) {
+            SnoozeButton(label = stringResource(R.string.snooze_more), onClick = onMore, guard = guard, icon = Icons.Outlined.MoreTime)
         }
         for (snooze in offers) {
             SnoozeButton(label = snoozeLabel(snooze, customMinutes), onClick = { onPick(snooze) }, guard = guard)
@@ -79,12 +80,12 @@ fun SnoozeOffers(
             )
         }
         // Last, and after the places: it is the only one that asks a second question.
-        if (onPickDate != null && !dateFirst) {
+        if (onMore != null && !moreFirst) {
             SnoozeButton(
-                label = stringResource(R.string.snooze_pick_date),
-                onClick = onPickDate,
+                label = stringResource(R.string.snooze_more),
+                onClick = onMore,
                 guard = guard,
-                icon = Icons.Outlined.Event,
+                icon = Icons.Outlined.MoreTime,
             )
         }
     }

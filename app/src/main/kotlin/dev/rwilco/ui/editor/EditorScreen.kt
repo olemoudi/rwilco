@@ -932,6 +932,7 @@ fun EditorScreen(
                 // coming, and a rehearsal is not the place to ring it.
                 onAct = { viewModel.setPreviewing(false) },
                 customMinutes = state.snoozeCustomMinutes,
+                board = state.snoozeBoard,
             )
         }
     }

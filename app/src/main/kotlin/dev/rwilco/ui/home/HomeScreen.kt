@@ -82,6 +82,7 @@ import dev.rwilco.ui.components.ListPlaceholder
 import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.ui.components.rememberWordActions
 import dev.rwilco.ui.components.MomentSheet
+import dev.rwilco.ui.components.SnoozeMoreSheet
 import dev.rwilco.ui.components.SectionHeader
 import dev.rwilco.ui.components.TagChip
 import dev.rwilco.ui.components.UpdateReadyBadge
@@ -200,6 +201,10 @@ fun HomeScreen(
     var actingOn by rememberSaveable { mutableStateOf<String?>(null) }
     // The card a calendar is open for: "posponer · a una fecha concreta" (see MomentSheet).
     var pickingDateFor by rememberSaveable { mutableStateOf<String?>(null) }
+    /** The card "a otro momento" was asked for: the list of every other way of putting it off. */
+    var choosingMoreFor by rememberSaveable { mutableStateOf<String?>(null) }
+    val snoozeBoard by viewModel.snoozeBoard.collectAsStateWithLifecycle()
+    val snoozeTerms by viewModel.snoozeTerms.collectAsStateWithLifecycle()
     val snackbar = LocalSnackbar.current
     val doneMessage = stringResource(R.string.home_marked_done)
     val deletedMessage = stringResource(R.string.home_deleted)
@@ -430,10 +435,12 @@ fun HomeScreen(
                     actingOn = null
                     viewModel.snooze(held.id, snooze)
                 },
-                // A second question, so the menu gets out of the way and the calendar takes over.
-                onSnoozeToDate = {
+                // A second question, so the menu gets out of the way and the list of every other
+                // answer takes over — the calendar is its first row.
+                board = snoozeBoard,
+                onSnoozeMore = {
                     actingOn = null
-                    pickingDateFor = held.id
+                    choosingMoreFor = held.id
                 },
                 onCancelSnooze = {
                     actingOn = null
@@ -452,6 +459,18 @@ fun HomeScreen(
         }
     }
 
+    choosingMoreFor?.let { id ->
+        SnoozeMoreSheet(
+            board = snoozeBoard,
+            terms = snoozeTerms,
+            now = viewModel.clock.instant().atZone(zone),
+            onPick = { snooze -> choosingMoreFor = null; viewModel.snooze(id, snooze) },
+            onPickDate = { choosingMoreFor = null; pickingDateFor = id },
+            onDismiss = { choosingMoreFor = null },
+            places = placeOffers,
+            onPickPlace = { offer -> choosingMoreFor = null; viewModel.snoozeToPlace(id, offer, hereLabel) },
+        )
+    }
     pickingDateFor?.let { id ->
         MomentSheet(
             now = viewModel.clock.instant().atZone(zone),

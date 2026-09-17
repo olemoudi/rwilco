@@ -862,7 +862,9 @@
     <string name="place_speed_label">Sólo a cierta velocidad</string>
     <string name="place_speed_hint">Sólo cuenta si el móvil iba a esa velocidad al cruzar la línea. Cuando nadie puede decirlo, suena igual.</string>
     <string name="alert_routine_label">Rutina</string>
-    <string name="snooze_pick_date">A una fecha</string>
+    <string name="snooze_more">A otro momento…</string>
+    <string name="snooze_more_title">Posponer a otro momento</string>
+    <string name="snooze_more_pick">Elegir día y hora…</string>
     <string name="snooze_until_title">Posponer hasta</string>
     <string name="snooze_until_past">Ese momento ya ha pasado.</string>
     <string name="notif_routine_question">¿Has hecho «%1$s»?</string>
@@ -1466,7 +1468,10 @@
     <string name="settings_test_alert_text">Alerta de prueba</string>
     <string name="settings_test_alert_started">Suena en 10 s</string>
     <string name="settings_language">Idioma</string>
-    <string name="settings_snooze_notification_hint">En una notificación caben tres botones y "Hecho" es uno, así que lleva dos posponer. La alerta a pantalla completa los ofrece todos.</string>
+    <string name="settings_snooze_notification_hint">En una notificación caben tres botones y "Hecho" es uno, así que lleva dos posponer. El resto están en la alerta a pantalla completa.</string>
+    <string name="settings_snooze_shown">En el aviso</string>
+    <string name="settings_snooze_shown_hint">Los posponer que enseñan la alerta a pantalla completa y el menú de una tarjeta. Uno apagado no desaparece: espera detrás de «A otro momento…», donde salen primero los que más usas.</string>
+    <string name="settings_snooze_shown_places">Lugares</string>
     <plurals name="alert_waiting">
         <item quantity="one">%1$d más esperando</item>
         <item quantity="other">%1$d más esperando</item>
@@ -1629,6 +1634,17 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_137_0">
+
+        <item>Tú eliges qué posponer enseña el aviso. Hasta ahora llevaba todas las respuestas que existen, todas las veces —siete duraciones, los lugares, el calendario: hasta diez botones de mantener pulsado en la única pantalla que se contesta medio dormido—, hubieras pulsado o no alguna vez «La semana que viene». En Ajustes → Avisos → Posponer hay ahora una fila «En el aviso»; lo que apagues ahí sale del aviso y del menú de una tarjeta.</item>
+
+        <item>Nada de lo apagado desaparece. «A otro momento…» es siempre el último botón —ocupa el sitio de «A una fecha»— y abre todas las formas que hay de posponer un recordatorio, en una lista: el calendario primero, luego lo que tienes fuera del aviso con **los que de verdad usas arriba del todo**, luego el resto. Cada fila dice el momento en que volvería, «mañana 09:00», porque «el finde» es una palabra y la hora que significa es un ajuste a tres pantallas de distancia.</item>
+
+        <item>En el aviso ese botón se mantiene pulsado como todos; la lista que abre son toques normales, porque para entonces los ojos ya han llegado. En una rutina sigue yendo el primero, donde iba el calendario: diez minutos no es respuesta a un plazo de tres semanas.</item>
+
+        <item>Mientras no escondas nada, el aviso es exactamente el que tenías.</item>
+
+    </string-array>
     <string-array name="whats_new_0_136_0">
 
         <item>«Por la tarde» y «por la noche» tienen ya su propia hora, en Ajustes → Tu día, junto a la hora en que empieza tu día. La tarde no tenía ninguna, así que una frase que la nombrara se rechazaba entera: «mañana por la tarde» no daba ningún chip —ni siquiera por «mañana»—, y es de las formas más corrientes de decir cuándo. Ahora se lee como mañana a las cinco, o a la hora que tú tengas para eso.</item>

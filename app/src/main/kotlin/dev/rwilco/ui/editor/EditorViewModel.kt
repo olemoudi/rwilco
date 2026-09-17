@@ -14,6 +14,7 @@ import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.OFFERED_KINDS
 import dev.rwilco.model.dayParts
+import dev.rwilco.model.snoozeBoard
 import dev.rwilco.model.dayShape
 import dev.rwilco.model.Action
 import dev.rwilco.model.clearCountdowns
@@ -250,6 +251,7 @@ class EditorViewModel(
                 allTexts = visibleTexts(suggestedTexts(past, now, limit = 100), current.hiddenTexts),
                 defaultTime = current.defaultTime,
                 snoozeCustomMinutes = current.snoozeCustomMinutes,
+                snoozeBoard = snoozeBoard(current),
                 dayStart = current.dayStart,
                 dayParts = current.dayParts,
                 dayShape = current.dayShape,

@@ -16,7 +16,10 @@ import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.monthsFor
 import java.time.DayOfWeek
 import dev.rwilco.model.Deadline
+import dev.rwilco.model.AppSettings
 import dev.rwilco.model.DayParts
+import dev.rwilco.model.SnoozeBoard
+import dev.rwilco.model.snoozeBoard
 import dev.rwilco.model.DayShape
 import dev.rwilco.model.DEFAULT_ACTIONS
 import dev.rwilco.model.MAX_PRESET_NAME
@@ -243,6 +246,8 @@ data class EditorUiState(
     val dayShape: DayShape = DayShape.DEFAULT,
     /** How long the custom snooze is, for the preview's buttons to read the way the real screen will. */
     val snoozeCustomMinutes: Int = DEFAULT_SNOOZE_MINUTES,
+    /** Which snooze offers the real alert shows, so the preview shows those and no others. */
+    val snoozeBoard: SnoozeBoard = snoozeBoard(AppSettings()),
     /**
      * Where "the next day" lands. Every other caller of nextFire passes it; without it the
      * editor's "Suena…" line answered 09:00 for a recurrence that rings at whatever hour the

@@ -107,6 +107,7 @@ import dev.rwilco.ui.components.rememberWordActions
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.RwilcoTopBar
 import dev.rwilco.ui.components.MomentSheet
+import dev.rwilco.ui.components.SnoozeMoreSheet
 import dev.rwilco.ui.components.TagChip
 import dev.rwilco.ui.components.TagLabel
 import dev.rwilco.ui.components.rememberNow
@@ -176,6 +177,10 @@ fun RoutinesScreen(
     // And the one a calendar is open for: "posponer · a una fecha concreta" asks a second
     // question, so the menu closes and the sheet takes over.
     var pickingDateFor by rememberSaveable { mutableStateOf<String?>(null) }
+    /** The routine "a otro momento" was asked for; the calendar is that list's first row. */
+    var choosingMoreFor by rememberSaveable { mutableStateOf<String?>(null) }
+    val snoozeBoard by viewModel.snoozeBoard.collectAsStateWithLifecycle()
+    val snoozeTerms by viewModel.snoozeTerms.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     // The magnifier in the bar opens a field in its place, the way Home's does — the same
     // control, so the gesture and the keyboard behave the same on both screens.
@@ -406,7 +411,8 @@ fun RoutinesScreen(
             onPause = { actingOn = null; viewModel.togglePause(held.id, held.paused) },
             onDelete = { actingOn = null; viewModel.delete(held.id) },
             onSnooze = { snooze -> actingOn = null; viewModel.snooze(held.id, snooze) },
-            onSnoozeToDate = { actingOn = null; pickingDateFor = held.id },
+            board = snoozeBoard,
+            onSnoozeMore = { actingOn = null; choosingMoreFor = held.id },
             onCancelSnooze = { actingOn = null; viewModel.cancelSnooze(held.id) },
             onClone = { actingOn = null; onClone(held.id) },
             onKeepAsPreset = { actingOn = null; onKeepAsPreset(held.id) },
@@ -450,6 +456,16 @@ fun RoutinesScreen(
         )
     }
 
+    choosingMoreFor?.let { id ->
+        SnoozeMoreSheet(
+            board = snoozeBoard,
+            terms = snoozeTerms,
+            now = clock.instant().atZone(zone),
+            onPick = { snooze -> choosingMoreFor = null; viewModel.snooze(id, snooze) },
+            onPickDate = { choosingMoreFor = null; pickingDateFor = id },
+            onDismiss = { choosingMoreFor = null },
+        )
+    }
     pickingDateFor?.let { id ->
         MomentSheet(
             now = clock.instant().atZone(zone),

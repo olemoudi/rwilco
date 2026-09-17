@@ -83,6 +83,7 @@ import dev.rwilco.model.Presence
 import dev.rwilco.model.asks
 import dev.rwilco.model.awakeAt
 import dev.rwilco.model.isRoutine
+import dev.rwilco.model.withSnoozeUsed
 import dev.rwilco.model.doneEarlier
 import dev.rwilco.model.doneEarlierRefusal
 import dev.rwilco.model.closesFrom
@@ -933,6 +934,11 @@ class ReminderFiring(
         repeater.cancel(id)
         AlertNotifications.cancel(context, id)
         scheduler.rearmAll()
+        // Which answer it was, counted (0.137.0): what orders the offers kept behind "a otro
+        // momento", so the one somebody gives once a month is at the top of the list it is looked
+        // for in. Last, and never in the way: a settings write that fails costs a ranking, not
+        // the snooze — and `settingsKey` does not read it, so nothing is re-armed for it.
+        runCatching { settingsStore.update { it.withSnoozeUsed(said) } }
     }
 
     /**

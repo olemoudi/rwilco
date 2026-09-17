@@ -61,6 +61,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Clock
 import dev.rwilco.model.Snooze
+import dev.rwilco.model.snoozeTerms
+import dev.rwilco.model.snoozeBoard
+import dev.rwilco.model.SnoozeTerms
+import dev.rwilco.model.SnoozeBoard
 import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
 import java.time.Instant
 import dev.rwilco.ui.settings.AlertReadiness
@@ -264,6 +268,20 @@ class HomeViewModel(
         .filterNotNull()
         .map { it.snoozeCustomMinutes }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DEFAULT_SNOOZE_MINUTES)
+
+    /**
+     * Which snooze offers a card's menu shows and which wait behind "a otro momento", and what
+     * their moments are worked out from: the alert's own board ([snoozeBoard]), so the same
+     * answers sit in the same places wherever the question is asked.
+     */
+    val snoozeBoard: StateFlow<SnoozeBoard> = settings
+        .filterNotNull()
+        .map { snoozeBoard(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), snoozeBoard(AppSettings()))
+    val snoozeTerms: StateFlow<SnoozeTerms> = settings
+        .filterNotNull()
+        .map { it.snoozeTerms }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings().snoozeTerms)
 
     /** The ones with a button on Home, in the same order: most reached for, first. */
     val pinnedPresets: StateFlow<List<Preset>> = presets

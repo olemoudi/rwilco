@@ -41,6 +41,7 @@ import java.time.Duration
 import java.time.DayOfWeek
 import java.time.LocalTime
 import dev.rwilco.model.Snooze
+import dev.rwilco.model.withSnoozeShown
 import dev.rwilco.model.SnoozeLimits
 import dev.rwilco.model.ContactKind
 import dev.rwilco.model.ContactLoad
@@ -195,6 +196,8 @@ class SettingsViewModel(
     /** The three numbers the safety net is made of. There is no switch: it holds for every reminder. */
     fun setSafetyNet(net: SafetyNetSettings) = update { it.copy(safetyNet = net) }
     fun setSnoozeCustomMinutes(minutes: Int) = update { it.copy(snoozeCustomMinutes = minutes.coerceIn(SnoozeLimits.CUSTOM_MINUTES)) }
+    /** An offer on the alert, or one door further behind "a otro momento": see [dev.rwilco.model.snoozeBoard]. */
+    fun setSnoozeShown(key: String, shown: Boolean) = update { it.withSnoozeShown(key, shown) }
     fun pickNotificationSnooze(snooze: Snooze) = update {
         // Kept as names: see AppSettings.notificationSnoozes.
         it.copy(notificationSnoozes = pickNotificationSnoozes(it.notificationSnoozeOffers, snooze).map { offer -> offer.name })

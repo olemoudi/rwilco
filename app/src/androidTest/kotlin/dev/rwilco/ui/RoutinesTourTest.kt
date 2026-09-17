@@ -200,9 +200,14 @@ class RoutinesTourTest {
         rule.onNodeWithContentDescription(s(R.string.card_more, car)).performClick()
         rule.waitUntilShown(s(R.string.home_snooze))
         rule.onNodeWithText(s(R.string.home_snooze), useUnmergedTree = true).performClick()
-        rule.waitUntilShown(s(R.string.snooze_pick_date))
+        rule.waitUntilShown(s(R.string.snooze_more))
         shot("routines-menu")
-        rule.onNodeWithText(s(R.string.snooze_pick_date), useUnmergedTree = true).performClick()
+        // "A otro momento…" is the door to every answer that is not on the row (0.137.0), and the
+        // calendar — which this button used to be — is the first thing behind it.
+        rule.onNodeWithText(s(R.string.snooze_more), useUnmergedTree = true).performClick()
+        rule.waitUntilShown(s(R.string.snooze_more_title))
+        shot("routines-snooze-more")
+        rule.onNodeWithText(s(R.string.snooze_more_pick), useUnmergedTree = true).performClick()
         rule.waitUntilShown(s(R.string.snooze_until_title))
         shot("routines-snooze-date")
         rule.onNodeWithText(s(R.string.sheet_cancel), useUnmergedTree = true).performClick()

@@ -878,6 +878,10 @@ sheets sliding out on Confirm (`hide()` vs `confirmValueChange`)~~ — both done
 the dead code listed under 0.67.0 — asked about, not deleted.
 
 ## Still to prove on the real phone (Pixel 8 Pro)
+- The snooze board (0.137.0): hide three or four offers in Settings → Avisos → Posponer, let a
+  reminder ring, and answer it through "A otro momento…" a few times over a week — the list has
+  to reorder itself by what was actually taken; and whether "A otro momento…" held and then a
+  list tapped feels right with the phone in one hand at three in the morning.
 - The parts of the day (0.136.0): type "llamar a Marta mañana por la tarde" and take the chip;
   move the afternoon in Settings → Tu día and type it again; and keep noting sentences the chip
   reads wrong or not at all — `WhenInTextTest` is where they go.

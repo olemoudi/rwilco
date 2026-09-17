@@ -133,8 +133,13 @@ class HomeMenuTest {
         // "Sacar la basura" has nothing to ring and nothing to open.
         rule.onNodeWithContentDescription(rule.activity.getString(R.string.card_more, words)).performClick()
         rule.waitUntilShown(s(R.string.menu_copy_text))
-        check(rule.onAllNodesWithText(rule.activity.getString(R.string.menu_call, ""), substring = true, useUnmergedTree = true).fetchSemanticsNodes().isEmpty()) {
+        // The rows by their whole label, never by a piece of it: the other card's own words
+        // begin "Llamar al…", and it may well be composed behind this menu.
+        check(rule.onAllNodesWithText(rule.activity.getString(R.string.menu_call, "912 345 678"), useUnmergedTree = true).fetchSemanticsNodes().isEmpty()) {
             "no number in the words, no row to ring one"
+        }
+        check(rule.onAllNodesWithText(rule.activity.getString(R.string.menu_open_link, "example.com"), useUnmergedTree = true).fetchSemanticsNodes().isEmpty()) {
+            "and no link, no row to open one"
         }
     }
 

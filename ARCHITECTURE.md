@@ -689,7 +689,8 @@ overdue. `Snooze` offers ten minutes, a length of the person's own (`CUSTOM`,
 time, the weekend (a setting: Friday at 20:30 by default) and next week — the wall-clock ones
 keeping the time rather than adding hours. The notification has room for two of them
 (`AppSettings.notificationSnoozes`, chosen in Settings → Alertas; `pickNotificationSnoozes` keeps
-it at exactly two); the alert screen offers them all. It travels as a **name** everywhere it is
+it at exactly two); the alert screen offered them all until 0.137.0, and offers the ones the
+person keeps on it since (`snoozeBoard`, below). It travels as a **name** everywhere it is
 kept or sent — the intent extra, and those two in the settings — and never as the enum: a
 settings blob is decoded all at once, so a member an older build has no word for would not cost a
 snooze offer, it would reset the theme, the sound, the presets and the saved places with it.
@@ -863,7 +864,8 @@ nothing to the history, which is the silence Home's own undo already keeps and d
 it. A place's own "done" keeps `resetNotice`/`undoReset` exactly as they were. "Ver" on a
 routine's ring and its question card both land on the routines with it in view. The alert says
 the plazo where a rule's line would be ("su plazo: cada 21 días desde la última vez"), heads its
-offers "todavía no" and puts "a una fecha" first; the ring card's reason line says the span even
+offers "todavía no" and puts "a una fecha" first ("a otro momento…" since 0.137.0, with the
+calendar as its first row); the ring card's reason line says the span even
 with no rules. The form warns on a rule that is not a question under a routine
 (`Draft.rulesNotQuestions`), a preset kept from a routine drops its `startsAt`, and the history
 card under a routine drops the questions and opens with "hecha N veces · cada X de media"
@@ -1976,6 +1978,30 @@ loud what DST and a change of zone do to a landing.
 
 ## Firing
 
+- **The alert shows the snoozes somebody chose, and "a otro momento" is the door to the rest**
+  (0.137.0, `core-model/SnoozeBoard.kt`, `ui/components/SnoozeMoreSheet.kt`). The alert carried
+  every answer there is, every time — seven lengths, the places, the calendar: up to ten *held*
+  buttons on the one screen answered half awake. `snoozeBoard(settings)` splits the `Snooze`s
+  into `shown` (not in `AppSettings.hiddenSnoozes`, in the order they always had) and `more`
+  (hidden, **by how often they are used** — `AppSettings.snoozeUses`, stable among the unused),
+  and `SNOOZE_PLACES` hides the place answers as one: they are the phone's offers rather than
+  the person's. **Nothing hidden is gone**: `SnoozeOffers`' last button is "A otro momento…"
+  (`onMore`/`moreFirst`; it *was* "a una fecha", `onPickDate`/`dateFirst`), always there, first
+  on a routine as the calendar was. It opens `SnoozeMoreSheet`: the calendar first (it is
+  literally "another moment"), then `more`, then `shown` — so nobody has to remember which list
+  an answer lives in — then the places when they are kept off the alert; every row says the
+  moment it would come back at, because "el finde" is a word and the hour it means is a setting
+  three screens away (`SnoozeTerms`, the four settings a snooze's moment is worked out from, as
+  one value). Held on the alert like every answer there; the rows behind it are plain taps, by
+  the same reasoning as the calendar's own "Listo". One board for the alert, a card's menu on
+  Home and the routines' (`HomeViewModel.snoozeBoard`, `RoutinesViewModel.snoozeBoard`), and
+  the editor's preview. **Counted in one place** — `ReminderFiring.putOff`, by the name it was
+  already handed (`withSnoozeUsed` ignores "a date" and "a week"), *after* the row and the
+  re-arm and inside a `runCatching`: a settings write that fails costs a ranking, never the
+  snooze. `settingsKey` does not read it, so nothing re-arms for it. **With nothing hidden the
+  board is exactly what the alert was**, which is what an update has to be. The strips and the
+  notification are untouched: they carry the notification's two. No wire changed — the keys are
+  the enum's names; the person's own snoozes, and the wire that carries them, are 0.138.0.
 - **A "hecho" can be dated: "lo hice otro día"** (0.134.0, `ReminderFiring.doneEarlier`,
   `Reminder.doneEarlier`/`doneEarlierRefusal` in `Routines.kt`). "Hecho" on a routine is always
   *now*, which is right for the tap and wrong for the day after — and once a routine has been
