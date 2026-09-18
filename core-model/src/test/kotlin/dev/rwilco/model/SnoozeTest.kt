@@ -68,11 +68,17 @@ class SnoozeTest {
 
     @Test
     fun `the notification keeps exactly two offers, the newest replacing the older`() {
-        val start = listOf(Snooze.TEN_MINUTES, Snooze.TWO_HOURS)
-        assertEquals(listOf(Snooze.TWO_HOURS, Snooze.TOMORROW_MORNING), pickNotificationSnoozes(start, Snooze.TOMORROW_MORNING))
-        assertEquals(start, pickNotificationSnoozes(start, Snooze.TWO_HOURS))
-        assertEquals(listOf(Snooze.CUSTOM, Snooze.WEEKEND), pickNotificationSnoozes(listOf(Snooze.CUSTOM), Snooze.WEEKEND))
-        assertEquals(listOf(Snooze.CUSTOM, Snooze.TWO_HOURS), pickNotificationSnoozes(listOf(Snooze.TEN_MINUTES, Snooze.TEN_MINUTES, Snooze.CUSTOM), Snooze.TWO_HOURS))
+        fun AppSettings.pair() = notificationOffers.map { (it as SnoozeOffer.BuiltIn).snooze }
+        val start = AppSettings()
+        assertEquals(listOf(Snooze.TEN_MINUTES, Snooze.TWO_HOURS), start.pair())
+        assertEquals(listOf(Snooze.TWO_HOURS, Snooze.TOMORROW_MORNING), start.withNotificationSnooze("TOMORROW_MORNING").pair())
+        assertEquals(start, start.withNotificationSnooze("TWO_HOURS"))
+        // One stored alone is filled to two from the defaults, and that pair is what a tap changes.
+        val alone = AppSettings(notificationSnoozes = listOf("CUSTOM"))
+        assertEquals(listOf(Snooze.CUSTOM, Snooze.TEN_MINUTES), alone.pair())
+        assertEquals(listOf(Snooze.TEN_MINUTES, Snooze.WEEKEND), alone.withNotificationSnooze("WEEKEND").pair())
+        val repeated = AppSettings(notificationSnoozes = listOf("TEN_MINUTES", "TEN_MINUTES", "CUSTOM"))
+        assertEquals(listOf(Snooze.CUSTOM, Snooze.TWO_HOURS), repeated.withNotificationSnooze("TWO_HOURS").pair())
     }
 
     @Test

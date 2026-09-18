@@ -438,6 +438,7 @@ fun HomeScreen(
                 // A second question, so the menu gets out of the way and the list of every other
                 // answer takes over — the calendar is its first row.
                 board = snoozeBoard,
+                terms = snoozeTerms,
                 onSnoozeMore = {
                     actingOn = null
                     choosingMoreFor = held.id

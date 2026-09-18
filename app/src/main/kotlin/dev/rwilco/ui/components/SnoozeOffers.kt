@@ -20,7 +20,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
 import dev.rwilco.R
-import dev.rwilco.model.Snooze
+import dev.rwilco.model.SnoozeOffer
 import dev.rwilco.ui.format.snoozeLabel
 import dev.rwilco.ui.theme.Tokens
 import androidx.compose.ui.graphics.Color
@@ -39,9 +39,10 @@ import dev.rwilco.ui.theme.color
  */
 @Composable
 fun SnoozeOffers(
-    offers: List<Snooze>,
+    /** The app's and the person's own, as one list in one order ([dev.rwilco.model.snoozeBoard]). */
+    offers: List<SnoozeOffer>,
     customMinutes: Int,
-    onPick: (Snooze) -> Unit,
+    onPick: (SnoozeOffer) -> Unit,
     modifier: Modifier = Modifier,
     /** The place answers, after the clock ones: "al llegar a casa", "al salir de aquí". */
     places: List<SnoozePlace> = emptyList(),

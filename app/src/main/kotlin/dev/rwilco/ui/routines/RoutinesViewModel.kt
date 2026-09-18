@@ -17,7 +17,7 @@ import dev.rwilco.model.SnoozeTerms
 import dev.rwilco.model.SnoozeBoard
 import dev.rwilco.model.contactScheduleOf
 import dev.rwilco.model.RoutineFilter
-import dev.rwilco.model.Snooze
+import dev.rwilco.model.SnoozeOffer
 import dev.rwilco.model.Status
 import dev.rwilco.model.dayShape
 import dev.rwilco.model.nextFire
@@ -256,7 +256,7 @@ class RoutinesViewModel(
     }
 
     /** "Posponer" from a held row: the same door the notification and the alert screen use. */
-    fun snooze(id: String, snooze: Snooze) {
+    fun snooze(id: String, snooze: SnoozeOffer) {
         viewModelScope.launch {
             val before = repository.get(id) ?: return@launch
             firing.snooze(id, snooze)

@@ -625,6 +625,7 @@
         <item>do not disturb</item>
         <item>permissions</item>
         <item>full screen</item>
+        <item>snooze</item>
         <item>volume</item>
     </string-array>
     <string-array name="settings_keywords_sound">
@@ -993,6 +994,45 @@
     <string name="snooze_weekend">The weekend</string>
     <string name="snooze_next_week">Next week</string>
     <string name="snooze_tomorrow_morning">Tomorrow morning</string>
+    <!-- The snoozes that are the person\'s own (0.138.0). No name is typed: the label is worked
+         out from the snooze itself, so it still reads right after the hours behind "afternoon"
+         and "evening" are moved under Your day. -->
+    <string name="snooze_own_this_morning">This morning</string>
+    <string name="snooze_own_this_afternoon">This afternoon</string>
+    <string name="snooze_own_this_evening">Tonight</string>
+    <string name="snooze_own_tomorrow_afternoon">Tomorrow afternoon</string>
+    <string name="snooze_own_tomorrow_evening">Tomorrow evening</string>
+    <string name="snooze_own_weekend_morning">The weekend, in the morning</string>
+    <string name="snooze_own_weekend_afternoon">The weekend, in the afternoon</string>
+    <string name="snooze_own_weekend_evening">The weekend, in the evening</string>
+    <string name="snooze_own_weekday_morning">%1$s morning</string>
+    <string name="snooze_own_weekday_afternoon">%1$s afternoon</string>
+    <string name="snooze_own_weekday_evening">%1$s evening</string>
+    <string name="snooze_own_today_at">Today at %1$s</string>
+    <string name="snooze_own_tomorrow_at">Tomorrow at %1$s</string>
+    <string name="snooze_own_weekend_at">The weekend, at %1$s</string>
+    <string name="snooze_own_weekday_at">%1$s at %2$s</string>
+    <!-- Building one -->
+    <string name="snooze_builder_title">A snooze of your own</string>
+    <string name="snooze_builder_on">A day</string>
+    <string name="snooze_builder_after">In…</string>
+    <string name="snooze_builder_which_day">Which day</string>
+    <string name="snooze_builder_which_hour">What time of it</string>
+    <string name="snooze_builder_today">Today</string>
+    <string name="snooze_builder_tomorrow">Tomorrow</string>
+    <string name="snooze_builder_morning">Morning</string>
+    <string name="snooze_builder_afternoon">Afternoon</string>
+    <string name="snooze_builder_evening">Evening</string>
+    <string name="snooze_builder_at">At an hour</string>
+    <string name="snooze_builder_parts_hint">These three follow the hours under "Your day", so moving them moves this too.</string>
+    <string name="snooze_builder_unit_minutes">minutes</string>
+    <string name="snooze_builder_unit_hours">hours</string>
+    <string name="snooze_builder_unit_days">days</string>
+    <string name="snooze_builder_would">Right now that would be %1$s</string>
+    <string name="snooze_builder_gone">That moment has gone for today; it will be on the alert again tomorrow.</string>
+    <string name="snooze_builder_refused_offered">That is what "%1$s" already does.</string>
+    <string name="snooze_builder_refused_yours">You already have this one.</string>
+    <string name="snooze_builder_refused_many">%1$d is as many as the alert has room for. Delete one first.</string>
     <string name="snooze_arrive_at">When I get to %1$s</string>
     <!-- The circle "here" means is a fixed size around where you stand; saying so is the
          difference between "the doorstep" and the hundred and fifty metres it really is. -->
@@ -1487,6 +1527,14 @@
     <string name="settings_snooze_shown">On the alert</string>
     <string name="settings_snooze_shown_hint">The offers the full-screen alert and a card\'s menu show. One switched off is not gone: it waits behind «Another time…», where the ones you use most come first.</string>
     <string name="settings_snooze_shown_places">Places</string>
+    <string name="settings_snooze_own">Snoozes of your own</string>
+    <string name="settings_snooze_own_hint">Beyond the ones the app comes with: "tonight", "tomorrow afternoon", "the weekend, in the evening", "in three days". They sit on the alert beside the rest, and each says when it would come back.</string>
+    <string name="settings_snooze_own_empty">None yet.</string>
+    <string name="settings_snooze_own_add">Add a snooze</string>
+    <string name="settings_snooze_own_remove">Delete %1$s</string>
+    <string name="settings_snooze_own_removed">Snooze deleted</string>
+    <string name="settings_snooze_own_now">Right now: %1$s</string>
+    <string name="settings_snooze_own_gone">Gone for today; back tomorrow</string>
     <plurals name="alert_waiting">
         <item quantity="one">%1$d more waiting</item>
         <item quantity="other">%1$d more waiting</item>
@@ -1649,6 +1697,21 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_138_0">
+
+        <item>Snoozes of your own. Settings → Alerts → Snooze → "Snoozes of your own" builds the answers the app never had: "tonight", "tomorrow afternoon", "the weekend, in the evening", "on Monday at 08:00", "in three days". They sit on the alert beside the seven it comes with, in one order that does not move with the clock, and they can be hidden, put on the notification and used from a card\'s menu exactly as those are.</item>
+
+        <item>Two kinds, and nothing to name: a length ("in…") or a day and a moment of it. What the button will say is worked out from the snooze itself, and the sheet shows it along with where it would land if you pressed it right now — which is how you find out that your "the weekend, in the evening" is Saturday\'s, because your weekend starts on Friday at 20:30.</item>
+
+        <item>Morning, afternoon and evening follow the hours under "Your day", so moving them there moves every snooze that names one. An hour of its own is for everything else.</item>
+
+        <item>Nothing that means what something else already means: a snooze that says what one of the app\'s own says is refused with the name of the one that already does it.</item>
+
+        <item>"This afternoon" at nine at night is not an answer, so it is not on the alert — it comes back tomorrow. The notification is not offered one of those at all: a card can sit in the shade for hours, and the button would be about an afternoon already gone.</item>
+
+        <item>A snooze button in the shade keeps its word. It carries what it is rather than where it was, so it still does what it says after the snooze it came from was deleted here — and a button that cannot be read, or whose moment has gone, puts the reminder off ten minutes rather than leaving a ring unanswered.</item>
+
+    </string-array>
     <string-array name="whats_new_0_137_0">
 
         <item>You choose which snoozes the alert shows. It used to carry every answer there is, every time — seven lengths, the places, the calendar: up to ten held buttons on the one screen that gets answered half awake, whether or not you had ever once pressed «Next week». Settings → Alerts → Snooze has a row «On the alert» now; what you switch off there leaves the alert and the menu of a card.</item>

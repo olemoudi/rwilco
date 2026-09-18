@@ -127,7 +127,7 @@ class SnoozePlaceFiringTest {
     @Test
     fun aClockSnoozeGivenAfterwardsTakesThePlaceBack() = runBlocking {
         app.firing.snoozeToPlace(id, home, outside(), app.placeWatcher::remember)
-        app.firing.snooze(id, dev.rwilco.model.Snooze.TEN_MINUTES)
+        app.firing.snoozeBy(id, dev.rwilco.model.Snooze.TEN_MINUTES.name)
         val row = app.repository.get(id)!!
         assertNull(row.snoozedToPlace)
         assertNotNull(row.snoozedUntil)

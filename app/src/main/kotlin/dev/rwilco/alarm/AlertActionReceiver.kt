@@ -8,7 +8,6 @@ import dev.rwilco.RwilcoApplication
 import dev.rwilco.data.FiringKind
 import dev.rwilco.data.ReminderEntity
 import dev.rwilco.model.ReminderCodec
-import dev.rwilco.model.Snooze
 import dev.rwilco.notify.AlertNotifications
 import java.time.Instant
 import kotlinx.coroutines.launch
@@ -43,12 +42,10 @@ class AlertActionReceiver : BroadcastReceiver() {
                             AlertNotifications.cancel(context, id)
                             app.firing.unsnooze(id)
                         }
-                        ACTION_SNOOZE -> {
-                            val snooze = intent.getStringExtra(EXTRA_SNOOZE)
-                                ?.let { name -> Snooze.entries.firstOrNull { it.name == name } }
-                                ?: Snooze.TEN_MINUTES
-                            app.firing.snooze(id, snooze)
-                        }
+                        // By the key the button carries: one of the app's names or one of the
+                        // person's own. What nothing can read is ten minutes, never nothing —
+                        // that is the firing's to decide ([ReminderFiring.snoozeBy]).
+                        ACTION_SNOOZE -> app.firing.snoozeBy(id, intent.getStringExtra(EXTRA_SNOOZE))
                         // "Todavía no" to a routine's question: the card goes and the count does
                         // not move — but the answer is written down, or "todavía no" and "never
                         // saw the card" were the same nothing in the history.

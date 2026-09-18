@@ -688,14 +688,17 @@ overdue. `Snooze` offers ten minutes, a length of the person's own (`CUSTOM`,
 `dayStart` — a 23:40 alarm put off to "tomorrow" was coming back at 23:40), tomorrow at the same
 time, the weekend (a setting: Friday at 20:30 by default) and next week — the wall-clock ones
 keeping the time rather than adding hours. The notification has room for two of them
-(`AppSettings.notificationSnoozes`, chosen in Settings → Alertas; `pickNotificationSnoozes` keeps
+(`AppSettings.notificationSnoozes`, chosen in Settings → Alertas; `withNotificationSnooze` keeps
 it at exactly two); the alert screen offered them all until 0.137.0, and offers the ones the
-person keeps on it since (`snoozeBoard`, below). It travels as a **name** everywhere it is
-kept or sent — the intent extra, and those two in the settings — and never as the enum: a
-settings blob is decoded all at once, so a member an older build has no word for would not cost a
-snooze offer, it would reset the theme, the sound, the presets and the saved places with it.
-`notificationSnoozeOffers` drops what it does not recognise and falls back to the two defaults
-rather than leaving a notification with no way to postpone.
+person keeps on it since (`snoozeBoard`, below). Since 0.138.0 these seven are not all there is:
+a snooze of the person's own is a `SnoozeSpec`, and both kinds are one `SnoozeOffer` everywhere.
+It travels as a **key** everywhere it is kept or sent — the intent extra, those two in the
+settings, the hidden set, the uses — which is the enum's name for the app's own and a key that
+says what it is for the person's, and never the enum itself: a settings blob is decoded all at
+once, so a member an older build has no word for would not cost a snooze offer, it would reset
+the theme, the sound, the presets and the saved places with it. `notificationOffers` drops what
+it does not recognise and falls back to the two defaults rather than leaving a notification with
+no way to postpone.
 
 **Three things the review round after 0.57.0 changed in the machinery (0.58.0).** `accept`'s
 *strict* reading — a doorway that has rung is owed the other side before it rings again — is
@@ -2002,6 +2005,43 @@ loud what DST and a change of zone do to a landing.
   board is exactly what the alert was**, which is what an update has to be. The strips and the
   notification are untouched: they carry the notification's two. No wire changed — the keys are
   the enum's names; the person's own snoozes, and the wire that carries them, are 0.138.0.
+- **Snoozes of the person's own** (0.138.0, `core-model/SnoozeSpec.kt`, the rest of
+  `SnoozeBoard.kt`, `ui/settings/SnoozeDraft.kt` + `SnoozeBuilderSheet.kt`). The app's seven are
+  the answers most people give an alarm; "esta noche", "mañana por la tarde" and "el finde por la
+  noche" are answers too, and which of them somebody actually gives is theirs to say. A
+  `SnoozeSpec` is one of two shapes — `After(minutes)` (whole days on the wall, the rest on the
+  clock) or `On(day, hour)` where the day is today, tomorrow, the weekend as this person drew it
+  or a day of the week (strictly after today) and the hour is one of `DayParts`' three or a fixed
+  one. `until` returns **null** for a part of today that has gone, which is the only offer that
+  can stop being one; everything else is always ahead. The weekend's hour is the first such hour
+  *inside* the weekend and still ahead, which is why "el finde por la noche" is Saturday's when
+  the weekend starts on Friday at 20:30 (walked over today and the seven days after it, so every
+  hour of a week is asked once).
+  **The key is the contract**: `after:45`, `on:tomorrow:evening`, `on:weekend:evening`,
+  `on:mon:08:00` — parsed with `split(":", limit = 3)` so an hour keeps its own colon, refused
+  (null, never an exception) for anything else, and `snoozeOfferOf(key)` reads either kind
+  *without asking the settings*, because a button in the shade has to keep its word after the
+  snooze it came from was deleted. `AppSettings.customSnoozes` holds the keys in the order they
+  were added; `snoozeOffers` is every offer there is in one **hour-independent** order (lengths
+  by length, then today, tomorrow, the weekend, the days of the week, next week — the app's own
+  keeping the places they always had among themselves, so an update does not rearrange the alert
+  somebody knows). `customSnoozeRefusal` says why one is not added — a copy of what the app
+  already offers (with *its* name: `builtInSaying`), one already there, more than
+  `MAX_CUSTOM_SNOOZES` — and `removedCustomSnooze`/`withCustomSnoozeBack` make the delete a whole
+  undo (place in the list, hidden, uses, the notification's pair). `SnoozeBoard.standingAt` is
+  what a screen draws: the board minus the parts of today that have gone.
+  **The wire.** `ReminderFiring.snoozeBy(id, key)` is the one door (the old `snooze(id, offer)`
+  delegates); a key nothing can read, or one whose moment has gone while the card sat in the
+  shade, puts the reminder off ten minutes — an alert that was answered must never ring on as if
+  it had not been. The `PendingIntent`'s request code is `SnoozeOffer.code`, worked out from what
+  the offer *is* rather than where it sat on the card (the app's own keep `ordinal + 1`, so a card
+  posted by an older build still means what it says); a position would have been shorter and wrong
+  the day the notification's pair changes while a card is in the shade. `notificationOffers`
+  leaves out anything that `expires`: a part of today on a notification is a button about an
+  afternoon already gone. Labels are **generated**, never typed (`ui/format/SnoozeText.kt`), so
+  there is no name to keep in step with the hours under "Tu día"; the builder is a pure
+  `SnoozeDraft` (both halves kept whichever is showing) and a sheet that only draws, showing the
+  label and the moment it would come back at as it is built.
 - **A "hecho" can be dated: "lo hice otro día"** (0.134.0, `ReminderFiring.doneEarlier`,
   `Reminder.doneEarlier`/`doneEarlierRefusal` in `Routines.kt`). "Hecho" on a routine is always
   *now*, which is right for the tap and wrong for the day after — and once a routine has been

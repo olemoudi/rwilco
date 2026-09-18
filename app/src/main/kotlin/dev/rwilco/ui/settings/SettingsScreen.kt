@@ -288,6 +288,9 @@ fun SettingsScreen(
                     onCustomMinutes = viewModel::setSnoozeCustomMinutes,
                     onPick = viewModel::pickNotificationSnooze,
                     onShown = viewModel::setSnoozeShown,
+                    onAddOwn = viewModel::addCustomSnooze,
+                    onRemoveOwn = viewModel::removeCustomSnooze,
+                    onRestoreOwn = viewModel::restoreCustomSnooze,
                 )
                 // The proof: a real alert in ten seconds, through everything the rows above
                 // are about. The tone and the buzz have previews of their own further down;

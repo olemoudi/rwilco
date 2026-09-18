@@ -184,7 +184,8 @@ data class AppSettings(
      * **Names, not the enum.** A settings blob is decoded all at once, so an unreadable member
      * here — a vault taken to an older build, a name that changes one day — would not cost a
      * snooze offer, it would reset every setting there is. Read back through
-     * [notificationSnoozeOffers], which drops what it does not recognise.
+     * [notificationOffers], which drops what it does not recognise. One of the person's own
+     * ([customSnoozes]) may be here too, under its key.
      */
     val notificationSnoozes: List<String> = DEFAULT_NOTIFICATION_SNOOZES.map { it.name },
     /**
@@ -195,6 +196,13 @@ data class AppSettings(
     val hiddenSnoozes: Set<String> = emptySet(),
     /** How many times each offer has been taken: what orders the ones behind "a otro momento". */
     val snoozeUses: Map<String, Int> = emptyMap(),
+    /**
+     * The snoozes that are the person's own — "esta noche", "mañana por la tarde", "dentro de 3
+     * días" — each as the key that says what it is ([SnoozeSpec.key]), in the order they were
+     * added. Keys and not objects, for the reason [notificationSnoozes] are names: one this build
+     * cannot read is not an offer ([snoozeSpecOf]), and costs nothing else.
+     */
+    val customSnoozes: List<String> = emptyList(),
     /**
      * The alert problems Home's strip has been told "not now" about, by name. Cleared whenever
      * everything is granted, so a phone fixed and then broken again is told again.

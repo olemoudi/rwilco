@@ -60,7 +60,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Clock
-import dev.rwilco.model.Snooze
+import dev.rwilco.model.SnoozeOffer
 import dev.rwilco.model.snoozeTerms
 import dev.rwilco.model.snoozeBoard
 import dev.rwilco.model.SnoozeTerms
@@ -698,7 +698,7 @@ class HomeViewModel(
      * ([ReminderFiring.snooze]), so it takes the notification down and re-arms the same way.
      * Offered only where the card says it is an answer (`ReminderCardUi.snoozeOffered`).
      */
-    fun snooze(id: String, snooze: Snooze) {
+    fun snooze(id: String, snooze: SnoozeOffer) {
         viewModelScope.launch {
             val reminder = repository.get(id) ?: return@launch
             val sideBefore = sideOf(reminder)

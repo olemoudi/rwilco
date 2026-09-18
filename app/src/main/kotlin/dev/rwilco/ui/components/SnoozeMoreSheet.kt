@@ -34,8 +34,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import dev.rwilco.R
-import dev.rwilco.model.Snooze
 import dev.rwilco.model.SnoozeBoard
+import dev.rwilco.model.SnoozeOffer
 import dev.rwilco.model.SnoozePlace
 import dev.rwilco.model.SnoozeTerms
 import dev.rwilco.model.TriggerFamily
@@ -70,7 +70,7 @@ fun SnoozeMoreSheet(
     board: SnoozeBoard,
     terms: SnoozeTerms,
     now: ZonedDateTime,
-    onPick: (Snooze) -> Unit,
+    onPick: (SnoozeOffer) -> Unit,
     onPickDate: () -> Unit,
     onDismiss: () -> Unit,
     /** The place answers this phone can give right now; drawn here only when they are kept off the alert. */
@@ -104,7 +104,8 @@ fun SnoozeMoreSheet(
                 ) {
                     MoreRow(icon = Icons.Outlined.Event, label = stringResource(R.string.snooze_more_pick), moment = null, onClick = onPickDate)
                     for (snooze in board.more + board.shown) {
-                        val back = snooze.until(now.toInstant(), now.zone, terms).atZone(now.zone)
+                        // A part of today that has gone is not an answer, so it is not a row.
+                        val back = snooze.until(now.toInstant(), now.zone, terms)?.atZone(now.zone) ?: continue
                         MoreRow(
                             icon = Icons.Outlined.Snooze,
                             label = snoozeLabel(snooze, terms.customMinutes),

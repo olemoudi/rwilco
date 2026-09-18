@@ -51,7 +51,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.rwilco.R
-import dev.rwilco.model.Snooze
+import dev.rwilco.model.SnoozeOffer
 import dev.rwilco.model.kind
 import dev.rwilco.ui.components.GuardIndicator
 import dev.rwilco.ui.components.GuardedAction
@@ -71,7 +71,7 @@ import dev.rwilco.model.AppSettings
 import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
 import dev.rwilco.model.NOTIFICATION_SNOOZES
 import dev.rwilco.ui.format.snoozeLabel
-import dev.rwilco.model.notificationSnoozeOffers
+import dev.rwilco.model.notificationOffers
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.traversalIndex
@@ -97,7 +97,7 @@ data class AlertItem(val id: String, val content: AlertContent)
 fun AlertStackScreen(
     items: List<AlertItem>,
     onDone: (String) -> Unit,
-    onSnooze: (String, Snooze) -> Unit,
+    onSnooze: (String, SnoozeOffer) -> Unit,
     /**
      * "Ver" on a strip: this one reminder given the whole screen, so it can be dealt with the
      * way a single alert is — every snooze, the place answers, the words at full size. Not the
@@ -106,11 +106,11 @@ fun AlertStackScreen(
      */
     onView: (String) -> Unit,
     /** The two offers a strip has room for — the notification's own — and the custom one's length. */
-    snoozes: List<Snooze> = AppSettings().notificationSnoozeOffers,
+    snoozes: List<SnoozeOffer> = AppSettings().notificationOffers,
     customMinutes: Int = DEFAULT_SNOOZE_MINUTES,
     /** One answer for all of them: five ringing at once used to be five taps down a scroll. */
     onDoneAll: () -> Unit = {},
-    onSnoozeAll: (Snooze) -> Unit = {},
+    onSnoozeAll: (SnoozeOffer) -> Unit = {},
     /** Whether it is making a noise right this second; see [SilenceRow]. */
     ringing: Boolean = false,
     onSilence: () -> Unit = {},
@@ -216,7 +216,7 @@ private fun SilenceRow(ringing: Boolean, onSilence: () -> Unit) {
  * through the countdown with the rest.
  */
 @Composable
-private fun AllRow(guard: PressGuard, snoozes: List<Snooze>, customMinutes: Int, onDoneAll: () -> Unit, onSnoozeAll: (Snooze) -> Unit) {
+private fun AllRow(guard: PressGuard, snoozes: List<SnoozeOffer>, customMinutes: Int, onDoneAll: () -> Unit, onSnoozeAll: (SnoozeOffer) -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val spacing = Tokens.spacing
     var snoozingAll by rememberSaveable { mutableStateOf(false) }
@@ -268,9 +268,9 @@ private fun Strip(
     item: AlertItem,
     guard: PressGuard,
     onDone: (String) -> Unit,
-    onSnooze: (String, Snooze) -> Unit,
+    onSnooze: (String, SnoozeOffer) -> Unit,
     onView: (String) -> Unit,
-    snoozes: List<Snooze>,
+    snoozes: List<SnoozeOffer>,
     customMinutes: Int,
     modifier: Modifier = Modifier,
 ) {

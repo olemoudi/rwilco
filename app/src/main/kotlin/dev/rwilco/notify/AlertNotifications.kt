@@ -28,7 +28,8 @@ import dev.rwilco.model.isContact
 import dev.rwilco.model.isRoutine
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.AlertSound
-import dev.rwilco.model.Snooze
+import dev.rwilco.model.SnoozeOffer
+import dev.rwilco.model.code
 import dev.rwilco.model.VibrationPattern
 import dev.rwilco.model.key
 import dev.rwilco.model.notificationPattern
@@ -43,7 +44,7 @@ import java.time.Duration
 import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
 import dev.rwilco.model.NOTIFICATION_SNOOZES
 import dev.rwilco.ui.format.snoozeLabel
-import dev.rwilco.model.notificationSnoozeOffers
+import dev.rwilco.model.notificationOffers
 
 /**
  * How many alerts the bundle actually has: what the system lists, plus or minus what this call
@@ -524,7 +525,7 @@ object AlertNotifications {
         /** The hour a bare date rings at, which is the one thing the reason line cannot read off the rule. */
         defaultTime: LocalTime = AppSettings().defaultTime,
         /** The two snooze offers the buttons carry (three actions is the cap, and "hecho" is one), and how long the custom one is. */
-        snoozes: List<Snooze> = AppSettings().notificationSnoozeOffers,
+        snoozes: List<SnoozeOffer> = AppSettings().notificationOffers,
         customMinutes: Int = DEFAULT_SNOOZE_MINUTES,
         /**
          * The safety net's word about a reminder that got away, and which way it got away: the
@@ -874,20 +875,23 @@ object AlertNotifications {
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
 
-    private fun actionIntent(context: Context, reminderId: String, action: String, snooze: Snooze?): PendingIntent {
+    private fun actionIntent(context: Context, reminderId: String, action: String, snooze: SnoozeOffer?): PendingIntent {
         val intent = Intent(context, AlertActionReceiver::class.java)
             .setAction(action)
             // The action is part of what tells two PendingIntents apart; the data is what tells
             // two reminders apart. Both, or "Hecho" on one reminder finishes another.
             .setData(ReminderScheduler.reminderUri(reminderId))
-        if (snooze != null) intent.putExtra(AlertActionReceiver.EXTRA_SNOOZE, snooze.name)
+        // The key, which says what the offer is: one of the person's own may be gone from Settings
+        // by the time this button is pressed, and the button still has to do what it says.
+        if (snooze != null) intent.putExtra(AlertActionReceiver.EXTRA_SNOOZE, snooze.key)
         return PendingIntent.getBroadcast(
             context,
             // Which snooze it is lives in an extra, and extras are NOT part of what makes two
             // PendingIntents the same — two snooze buttons on one notification would be one
             // PendingIntent, and FLAG_UPDATE_CURRENT would quietly make both of them the last
-            // one built. The request code is part of the identity, so it carries the difference.
-            snooze?.let { it.ordinal + 1 } ?: 0,
+            // one built. The request code is part of the identity, so it carries the difference:
+            // a number that is the offer's own ([SnoozeOffer.code]), never its place on the card.
+            snooze?.code ?: 0,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )

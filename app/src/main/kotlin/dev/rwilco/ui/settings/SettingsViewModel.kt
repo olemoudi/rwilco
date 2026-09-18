@@ -40,16 +40,19 @@ import java.time.Clock
 import java.time.Duration
 import java.time.DayOfWeek
 import java.time.LocalTime
-import dev.rwilco.model.Snooze
+import dev.rwilco.model.RemovedCustomSnooze
+import dev.rwilco.model.SnoozeSpec
 import dev.rwilco.model.withSnoozeShown
 import dev.rwilco.model.SnoozeLimits
 import dev.rwilco.model.ContactKind
 import dev.rwilco.model.ContactLoad
 import dev.rwilco.model.contactLoad
 import dev.rwilco.model.contactScheduleOf
-import dev.rwilco.model.pickNotificationSnoozes
+import dev.rwilco.model.withCustomSnooze
+import dev.rwilco.model.withCustomSnoozeBack
+import dev.rwilco.model.withNotificationSnooze
+import dev.rwilco.model.withoutCustomSnooze
 import dev.rwilco.alarm.TestAlert
-import dev.rwilco.model.notificationSnoozeOffers
 
 class SettingsViewModel(
     private val store: SettingsStore,
@@ -198,10 +201,17 @@ class SettingsViewModel(
     fun setSnoozeCustomMinutes(minutes: Int) = update { it.copy(snoozeCustomMinutes = minutes.coerceIn(SnoozeLimits.CUSTOM_MINUTES)) }
     /** An offer on the alert, or one door further behind "a otro momento": see [dev.rwilco.model.snoozeBoard]. */
     fun setSnoozeShown(key: String, shown: Boolean) = update { it.withSnoozeShown(key, shown) }
-    fun pickNotificationSnooze(snooze: Snooze) = update {
-        // Kept as names: see AppSettings.notificationSnoozes.
-        it.copy(notificationSnoozes = pickNotificationSnoozes(it.notificationSnoozeOffers, snooze).map { offer -> offer.name })
-    }
+    /** One of the notification's two, by its key: one of the app's or one of the person's own. */
+    fun pickNotificationSnooze(key: String) = update { it.withNotificationSnooze(key) }
+
+    /**
+     * The snoozes that are the person's own ([SnoozeSpec]). One that is refused changes nothing —
+     * the builder has already said why — and one that is deleted goes from everywhere it was
+     * named, which is why the undo is handed back everything that went with it.
+     */
+    fun addCustomSnooze(spec: SnoozeSpec) = update { it.withCustomSnooze(spec) }
+    fun removeCustomSnooze(key: String) = update { it.withoutCustomSnooze(key) }
+    fun restoreCustomSnooze(removed: RemovedCustomSnooze) = update { it.withCustomSnoozeBack(removed) }
     fun setSoundPlays(plays: Int) = update { it.copy(soundPlays = plays.coerceIn(SoundLimits.PLAYS)) }
     fun setSoundGap(minutes: Int) = update { it.copy(soundGapMinutes = minutes.coerceIn(SoundLimits.GAP_MINUTES)) }
 

@@ -22,6 +22,7 @@ import dev.rwilco.notify.Sounds
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.spanHasTakenOver
 import dev.rwilco.model.Snooze
+import dev.rwilco.model.SnoozeOffer
 import dev.rwilco.model.Status
 import dev.rwilco.model.Trigger
 import dev.rwilco.geo.PlaceWatchStore
@@ -72,12 +73,15 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
-import dev.rwilco.model.notificationSnoozeOffers
+import dev.rwilco.model.notificationOffers
 import dev.rwilco.model.Fix
 import dev.rwilco.model.GeofenceIds
 import dev.rwilco.model.Transition
 import dev.rwilco.model.distanceMeters
 import dev.rwilco.model.snoozeDetail
+import dev.rwilco.model.snoozeOfferOf
+import dev.rwilco.model.snoozeTerms
+import dev.rwilco.model.until
 import dev.rwilco.model.PLACE_ECHO
 import dev.rwilco.model.Presence
 import dev.rwilco.model.asks
@@ -356,7 +360,7 @@ class ReminderFiring(
                     // Never the screen, never a sound: its own quiet card, and one answer.
                     AlertNotifications.contact(context, reminder, Duration.between(reminder.routineAnchor(), rangFor))
                 } else {
-                    AlertPresenter.show(context, if (viaSnoozePlace) reminder.copy(snoozedToPlace = null) else reminder, plan, presentedLate, settings.vibration, settings.soundFor(plan), ruleIndex = ruleIndex, defaultTime = settings.defaultTime, snoozes = settings.notificationSnoozeOffers, customMinutes = settings.snoozeCustomMinutes)
+                    AlertPresenter.show(context, if (viaSnoozePlace) reminder.copy(snoozedToPlace = null) else reminder, plan, presentedLate, settings.vibration, settings.soundFor(plan), ruleIndex = ruleIndex, defaultTime = settings.defaultTime, snoozes = settings.notificationOffers, customMinutes = settings.snoozeCustomMinutes)
                 }
                 // "Hasta que reciba caso": the first play has gone out, so line up the second.
                 if (plan.insistent) {
@@ -405,7 +409,7 @@ class ReminderFiring(
             return@withLock
         }
         Log.i(TAG, "$id has not been dealt with; play ${played + 1} of ${settings.soundPlays}")
-        AlertPresenter.show(context, reminder, plan, late = null, vibration = settings.vibration, sound = settings.soundFor(plan), takeScreen = false, ruleIndex = ruleIndex, defaultTime = settings.defaultTime, snoozes = settings.notificationSnoozeOffers, customMinutes = settings.snoozeCustomMinutes)
+        AlertPresenter.show(context, reminder, plan, late = null, vibration = settings.vibration, sound = settings.soundFor(plan), takeScreen = false, ruleIndex = ruleIndex, defaultTime = settings.defaultTime, snoozes = settings.notificationOffers, customMinutes = settings.snoozeCustomMinutes)
         nextSoundIn(played + 1, settings.soundPlays, settings.soundGapMinutes)
             ?.let { gap -> repeater.schedule(id, played + 1, rangAt, now + gap, ruleIndex) }
     }
@@ -676,7 +680,7 @@ class ReminderFiring(
             nudge = due.word,
             nudgeAbout = due.about,
             defaultTime = settings.defaultTime,
-            snoozes = settings.notificationSnoozeOffers,
+            snoozes = settings.notificationOffers,
             customMinutes = settings.snoozeCustomMinutes,
         )
         // **And it says it out loud, quietly.** The card goes on the mutest channel there is
@@ -875,10 +879,25 @@ class ReminderFiring(
      * all. An alert still in the shade is an answer somebody can give again; a silent reminder
      * that ignored the answer is not.
      */
-    suspend fun snooze(id: String, snooze: Snooze) = lock.withLock {
-        val settings = settings()
-        val until = snooze.until(clock.instant(), clock.zone, settings.weekendDay, settings.weekendTime, settings.dayStart, settings.snoozeCustomMinutes)
-        putOff(id, until, said = snooze.name)
+    suspend fun snooze(id: String, offer: SnoozeOffer) = snoozeBy(id, offer.key)
+
+    /**
+     * The same, by the key an offer travels as — which is all a notification's button has
+     * ([snoozeOfferOf]): one of the app's names, or one of the person's own, which says what it is
+     * and so still works after the snooze it named was deleted in Settings.
+     *
+     * **A button that was pressed always puts the reminder off.** A key nothing can read — a card
+     * posted by a newer build — or a part of today that ran out while the screen was up ("esta
+     * tarde", held at one minute past) gets the ten minutes an unknown name always got: the
+     * alternative is an alert that was answered and rings on as if it had not been.
+     */
+    suspend fun snoozeBy(id: String, key: String?) = lock.withLock {
+        val now = clock.instant()
+        val terms = settings().snoozeTerms
+        val offer = key?.let(::snoozeOfferOf)
+        val until = offer?.until(now, clock.zone, terms)
+        if (offer != null && until != null) putOff(id, until, said = offer.key)
+        else putOff(id, Snooze.TEN_MINUTES.until(now, clock.zone, terms), said = "$key, which is no answer now: ten minutes")
     }
 
     /**

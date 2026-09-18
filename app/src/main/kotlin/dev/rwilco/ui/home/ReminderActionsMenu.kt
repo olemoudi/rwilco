@@ -53,8 +53,15 @@ import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.Snooze
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import dev.rwilco.model.Snooze
+import dev.rwilco.model.AppSettings
+import java.time.Instant
+import java.time.ZoneId
 import dev.rwilco.model.SnoozeBoard
+import dev.rwilco.model.SnoozeOffer
+import dev.rwilco.model.SnoozeTerms
+import dev.rwilco.model.snoozeBoard
+import dev.rwilco.model.snoozeTerms
+import dev.rwilco.model.standingAt
 import dev.rwilco.ui.components.SnoozeOffers
 import dev.rwilco.ui.components.WordActions
 import dev.rwilco.model.Actionable
@@ -93,14 +100,16 @@ fun ReminderActionsMenu(
     onSkip: () -> Unit = {},
     onPause: () -> Unit,
     onDelete: () -> Unit,
-    onSnooze: (Snooze) -> Unit,
+    onSnooze: (SnoozeOffer) -> Unit,
     /**
      * "A otro momento…": the menu closes and the screen behind it opens the list of every other
      * answer, the calendar first among them (it was "a una fecha" until 0.137.0).
      */
     onSnoozeMore: () -> Unit = {},
     /** Which offers the row shows; the rest are behind [onSnoozeMore]. Every one, by default. */
-    board: SnoozeBoard = SnoozeBoard(Snooze.entries, emptyList(), placesShown = true),
+    board: SnoozeBoard = snoozeBoard(AppSettings()),
+    /** What a part of today is read against: one that has gone ("esta tarde", at nine) is not offered. */
+    terms: SnoozeTerms = AppSettings().snoozeTerms,
     onCancelSnooze: () -> Unit,
     /** The place answers, after the clock ones; empty on a phone that cannot give them. */
     places: List<SnoozePlace> = emptyList(),
@@ -123,6 +132,8 @@ fun ReminderActionsMenu(
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
     var choosingSnooze by rememberSaveable { mutableStateOf(false) }
+    // The menu is composed when it is opened, so this is the board as it stands at that moment.
+    val standing = remember(board, terms) { board.standingAt(Instant.now(), ZoneId.systemDefault(), terms) }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         // The dialog's own window covers the screen, so "outside" has to be made by hand: the
         // box takes the taps that miss the menu and answers them with a dismissal.
@@ -194,7 +205,7 @@ fun ReminderActionsMenu(
                                 modifier = Modifier.padding(top = spacing.sm),
                             )
                             SnoozeOffers(
-                                offers = board.shown,
+                                offers = standing.shown,
                                 customMinutes = customMinutes,
                                 onPick = onSnooze,
                                 places = if (board.placesShown) places else emptyList(),

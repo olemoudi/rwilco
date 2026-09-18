@@ -6,7 +6,12 @@ import dev.rwilco.R
 import dev.rwilco.alarm.LATER_DETAIL
 import dev.rwilco.model.Presence
 import dev.rwilco.model.Snooze
+import dev.rwilco.model.SnoozeDay
+import dev.rwilco.model.SnoozeHour
+import dev.rwilco.model.SnoozeOffer
+import dev.rwilco.model.SnoozePart
 import dev.rwilco.model.SnoozePlace
+import dev.rwilco.model.SnoozeSpec
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.snoozeDetailOf
 import java.time.Instant
@@ -25,10 +30,69 @@ fun snoozeLabel(words: Words, snooze: Snooze, customMinutes: Int): String = when
     Snooze.NEXT_WEEK -> words.get(R.string.snooze_next_week)
 }
 
-fun snoozeLabel(context: Context, snooze: Snooze, customMinutes: Int): String = snoozeLabel(context.words(), snooze, customMinutes)
+/**
+ * One of the person's own (0.138.0), said the way they would say it: "Esta noche", "Mañana por la
+ * tarde", "El finde por la noche", "El lunes a las 08:00" — and a length as nothing but its
+ * length, like the one the app always had. Worked out from the snooze itself, so there is no
+ * name to type and none to go stale when the hour behind "por la tarde" is moved in Settings.
+ */
+fun snoozeLabel(words: Words, spec: SnoozeSpec): String = when (spec) {
+    is SnoozeSpec.After -> durationText(words, spec.minutes)
+    is SnoozeSpec.On -> when (val hour = spec.hour) {
+        is SnoozeHour.Part -> {
+            val ids = when (spec.day) {
+                SnoozeDay.Today -> TODAY_PARTS
+                SnoozeDay.Tomorrow -> TOMORROW_PARTS
+                SnoozeDay.Weekend -> WEEKEND_PARTS
+                is SnoozeDay.Weekday -> WEEKDAY_PARTS
+            }
+            val day = spec.day
+            if (day is SnoozeDay.Weekday) words.get(ids.getValue(hour.part), TimeText.weekday(day.day, words.locale))
+            else words.get(ids.getValue(hour.part))
+        }
+        is SnoozeHour.At -> {
+            val time = TimeText.time(hour.time, words.is24h, words.locale)
+            when (val day = spec.day) {
+                SnoozeDay.Today -> words.get(R.string.snooze_own_today_at, time)
+                SnoozeDay.Tomorrow -> words.get(R.string.snooze_own_tomorrow_at, time)
+                SnoozeDay.Weekend -> words.get(R.string.snooze_own_weekend_at, time)
+                is SnoozeDay.Weekday -> words.get(R.string.snooze_own_weekday_at, TimeText.weekday(day.day, words.locale), time)
+            }
+        }
+    }
+}
+
+private val TODAY_PARTS = mapOf(
+    SnoozePart.MORNING to R.string.snooze_own_this_morning,
+    SnoozePart.AFTERNOON to R.string.snooze_own_this_afternoon,
+    SnoozePart.EVENING to R.string.snooze_own_this_evening,
+)
+private val TOMORROW_PARTS = mapOf(
+    SnoozePart.MORNING to R.string.snooze_tomorrow_morning,
+    SnoozePart.AFTERNOON to R.string.snooze_own_tomorrow_afternoon,
+    SnoozePart.EVENING to R.string.snooze_own_tomorrow_evening,
+)
+private val WEEKEND_PARTS = mapOf(
+    SnoozePart.MORNING to R.string.snooze_own_weekend_morning,
+    SnoozePart.AFTERNOON to R.string.snooze_own_weekend_afternoon,
+    SnoozePart.EVENING to R.string.snooze_own_weekend_evening,
+)
+private val WEEKDAY_PARTS = mapOf(
+    SnoozePart.MORNING to R.string.snooze_own_weekday_morning,
+    SnoozePart.AFTERNOON to R.string.snooze_own_weekday_afternoon,
+    SnoozePart.EVENING to R.string.snooze_own_weekday_evening,
+)
+
+/** What an offer's button says, whoever's it is. */
+fun snoozeLabel(words: Words, offer: SnoozeOffer, customMinutes: Int): String = when (offer) {
+    is SnoozeOffer.BuiltIn -> snoozeLabel(words, offer.snooze, customMinutes)
+    is SnoozeOffer.Custom -> snoozeLabel(words, offer.spec)
+}
+
+fun snoozeLabel(context: Context, offer: SnoozeOffer, customMinutes: Int): String = snoozeLabel(context.words(), offer, customMinutes)
 
 @Composable
-fun snoozeLabel(snooze: Snooze, customMinutes: Int): String = snoozeLabel(rememberWords(), snooze, customMinutes)
+fun snoozeLabel(offer: SnoozeOffer, customMinutes: Int): String = snoozeLabel(rememberWords(), offer, customMinutes)
 
 /** "Al llegar a Casa" · "Al salir de aquí": the two place offers, as buttons say them. */
 fun placeOfferLabel(words: Words, offer: SnoozePlace): String = when (offer) {

@@ -23,7 +23,7 @@ import dev.rwilco.RwilcoApplication
 import dev.rwilco.alarm.ReminderScheduler
 import dev.rwilco.model.AlertStacking
 import dev.rwilco.model.Reminder
-import dev.rwilco.model.Snooze
+import dev.rwilco.model.SnoozeOffer
 import dev.rwilco.model.VibrationLimits
 import dev.rwilco.model.asksToBeSilenced
 import dev.rwilco.model.awaitingAnswer
@@ -38,7 +38,7 @@ import dev.rwilco.ui.theme.resolvesToDark
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import dev.rwilco.model.notificationSnoozeOffers
+import dev.rwilco.model.notificationOffers
 import android.widget.Toast
 import androidx.compose.runtime.produceState
 import dev.rwilco.geo.hereFix
@@ -272,7 +272,7 @@ class AlertActivity : ComponentActivity() {
                         onSnooze = { id, snooze -> answer(id) { app.firing.snooze(id, snooze) } },
                         // Not the form: this one reminder, on the whole screen. See [focused].
                         onView = { id -> focused = id },
-                        snoozes = current.notificationSnoozeOffers,
+                        snoozes = current.notificationOffers,
                         customMinutes = current.snoozeCustomMinutes,
                         onDoneAll = { answerAll(items.map { it.id }) { id -> app.firing.dismiss(id, notice = true) } },
                         onSnoozeAll = { snooze -> answerAll(items.map { it.id }) { id -> app.firing.snooze(id, snooze) } },
@@ -286,7 +286,7 @@ class AlertActivity : ComponentActivity() {
                         preview = false,
                         waiting = items.size - 1,
                         onDone = { answer(first.id) { app.firing.dismiss(first.id, notice = true) } },
-                        onSnooze = { snooze: Snooze -> answer(first.id) { app.firing.snooze(first.id, snooze) } },
+                        onSnooze = { snooze: SnoozeOffer -> answer(first.id) { app.firing.snooze(first.id, snooze) } },
                         onView = { view(first.id, first.content.routine) },
                         onAct = ::act,
                         customMinutes = current.snoozeCustomMinutes,

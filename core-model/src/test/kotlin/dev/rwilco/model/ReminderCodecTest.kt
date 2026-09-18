@@ -183,11 +183,12 @@ class ReminderCodecTest {
         // The whole blob is decoded at once, so a name this build has no member for used to
         // take the theme, the sound, the presets and the saved places down with it.
         assertEquals(ThemeMode.DARK, settings.theme)
-        assertEquals(listOf(Snooze.TEN_MINUTES), settings.notificationSnoozeOffers)
+        // Filled back to two: a notification with one way to postpone is not a choice anybody made.
+        assertEquals(listOf(Snooze.TEN_MINUTES, Snooze.TWO_HOURS).map(SnoozeOffer::BuiltIn), settings.notificationOffers)
         // And nothing recognisable at all falls back rather than leaving a notification with
         // no way to postpone.
         val none = ReminderCodec.decodeSettings("""{"notificationSnoozes":["SOMETHING_ELSE"]}""")
-        assertEquals(DEFAULT_NOTIFICATION_SNOOZES, none.notificationSnoozeOffers)
+        assertEquals(DEFAULT_NOTIFICATION_SNOOZES.map(SnoozeOffer::BuiltIn), none.notificationOffers)
     }
 
     @Test
@@ -218,6 +219,25 @@ class ReminderCodecTest {
     }
 
     @Test
+    fun `the person's own snoozes cost nothing to a blob without them, and a key nobody can read costs only itself`() {
+        // Additive: a blob from 0.137.0 has no such key, and the alert is what it was.
+        val old = ReminderCodec.decodeSettings("""{"hiddenSnoozes":["WEEKEND"]}""")
+        assertEquals(emptyList<String>(), old.customSnoozes)
+        assertEquals(Snooze.entries.size - 1, snoozeBoard(old).shown.size)
+        // Keys, not objects: one from a newer build (or a hand that slipped) is not an offer, and
+        // the theme, the places and every other snooze are still there.
+        val newer = ReminderCodec.decodeSettings(
+            """{"theme":"DARK","customSnoozes":["on:tomorrow:evening","on:full_moon:midnight","after:45"],"notificationSnoozes":["on:full_moon:midnight","after:45"]}""",
+        )
+        assertEquals(ThemeMode.DARK, newer.theme)
+        assertEquals(listOf("after:45", "on:tomorrow:evening"), snoozeBoard(newer).shown.filterIsInstance<SnoozeOffer.Custom>().map { it.key })
+        assertEquals(listOf("after:45", "TEN_MINUTES"), newer.notificationOffers.map { it.key })
+        // And it survives the trip as it was written, the unreadable one included: a newer build
+        // reading this blob back still finds its own.
+        assertEquals(newer, ReminderCodec.decodeSettings(ReminderCodec.encodeSettings(newer)))
+    }
+
+    @Test
     fun `settings encode every field so a reader can rely on presence`() {
         val encoded = ReminderCodec.encodeSettings(AppSettings())
         assertEquals(
@@ -237,7 +257,7 @@ class ReminderCodecTest {
                 """{"id":"builtin-month","recurrence":{"type":"after","amount":1,"unit":"MONTHS","from":"DEALT","hour":{"type":"day_start"},"landing":"NEXT"},"name":"","uses":0,"lastUsedAt":null}],""" +
                 """"busyWatchNotice":false,"vibration":{"strength":"STRONG","rhythm":"PULSED"},""" +
                 """"alertSound":{"type":"system"},"insistentSound":null,"soundPlays":5,"soundGapMinutes":5,"alertStacking":"SEQUENTIAL","updatesWifiOnly":false,"updateChannel":"BETA","alertToHeadphones":true,"safetyNet":{"afterHours":24,"minCadenceMinutes":60,"fraction":10},""" +
-                """"snoozeCustomMinutes":30,"notificationSnoozes":["TEN_MINUTES","TWO_HOURS"],"hiddenSnoozes":[],"snoozeUses":{},"dismissedAlertProblems":[],"compactHome":false,"compactRoutines":false,"disclaimerRead":false}""",
+                """"snoozeCustomMinutes":30,"notificationSnoozes":["TEN_MINUTES","TWO_HOURS"],"hiddenSnoozes":[],"snoozeUses":{},"customSnoozes":[],"dismissedAlertProblems":[],"compactHome":false,"compactRoutines":false,"disclaimerRead":false}""",
             encoded,
         )
     }

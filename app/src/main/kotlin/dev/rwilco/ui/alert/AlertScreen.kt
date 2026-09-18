@@ -44,11 +44,13 @@ import androidx.compose.ui.unit.sp
 import dev.rwilco.R
 import dev.rwilco.model.Actionable
 import dev.rwilco.model.actionablesIn
-import dev.rwilco.model.Snooze
 import dev.rwilco.model.SnoozeBoard
+import dev.rwilco.model.SnoozeOffer
 import dev.rwilco.model.SnoozeTerms
 import dev.rwilco.model.AppSettings
+import dev.rwilco.model.snoozeBoard
 import dev.rwilco.model.snoozeTerms
+import dev.rwilco.model.standingAt
 import dev.rwilco.ui.components.SnoozeMoreSheet
 import dev.rwilco.model.kind
 import dev.rwilco.ui.components.GuardIndicator
@@ -81,6 +83,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import java.time.Instant
+import java.time.ZoneId
 import java.time.ZonedDateTime
 
 /** How many rows the words may add over "Ver": each one is room taken from the words themselves. */
@@ -106,7 +109,7 @@ fun AlertScreen(
     onDone: () -> Unit,
     /** Reminders ringing behind this one, shown the instant it is answered. */
     waiting: Int = 0,
-    onSnooze: (Snooze) -> Unit,
+    onSnooze: (SnoozeOffer) -> Unit,
     onView: () -> Unit,
     /**
      * The number or the link in the words, acted on (0.135.0): held like every other answer, and
@@ -121,7 +124,7 @@ fun AlertScreen(
      * person's own choice, and every one of them by default. [terms] is what each offer's moment
      * is worked out from, for the list that says when it would come back.
      */
-    board: SnoozeBoard = SnoozeBoard(Snooze.entries, emptyList(), placesShown = true),
+    board: SnoozeBoard = snoozeBoard(AppSettings()),
     terms: SnoozeTerms = AppSettings().snoozeTerms,
     /** The place answers this phone can give: "al llegar a casa", "al salir de aquí". */
     places: List<SnoozePlace> = emptyList(),
@@ -158,6 +161,10 @@ fun AlertScreen(
     // question rather than writing a length.
     var pickingDate by remember { mutableStateOf(false) }
     var choosingMore by remember { mutableStateOf(false) }
+    // As the board stands now: one of the person's own that names a part of today ("esta tarde")
+    // is not held out once that has gone. Read once for the alert — one that runs out while the
+    // screen is up and is pressed anyway still puts the reminder off (ReminderFiring.snoozeBy).
+    val standing = remember(board, terms) { board.standingAt(Instant.now(), ZoneId.systemDefault(), terms) }
     // **A routine does not ring in amber.** Amber is what fires next, and a routine's ring is
     // not an appointment arriving but a span running out — a different thing to wake up to, and
     // the one the phone shows least often. So the lamp and the word above it wear the routines'
@@ -277,7 +284,7 @@ fun AlertScreen(
             // at. They sit clear of the Done button, because the two mean opposite things and a
             // half-awake hand should not be able to confuse them.
             SnoozeOffers(
-                offers = board.shown,
+                offers = standing.shown,
                 customMinutes = customMinutes,
                 onPick = onSnooze,
                 places = if (board.placesShown) places else emptyList(),

@@ -614,6 +614,7 @@
         <item>no molestar</item>
         <item>permisos</item>
         <item>pantalla completa</item>
+        <item>posponer</item>
         <item>volumen</item>
     </string-array>
     <string-array name="settings_keywords_sound">
@@ -980,6 +981,45 @@
     <string name="snooze_weekend">El finde</string>
     <string name="snooze_next_week">La semana que viene</string>
     <string name="snooze_tomorrow_morning">Mañana por la mañana</string>
+    <!-- Los posponer que son tuyos (0.138.0). No se escribe ningún nombre: la etiqueta sale del
+         propio posponer, así que sigue leyéndose bien cuando cambias las horas de «por la tarde»
+         y «por la noche» en «Tu día». -->
+    <string name="snooze_own_this_morning">Esta mañana</string>
+    <string name="snooze_own_this_afternoon">Esta tarde</string>
+    <string name="snooze_own_this_evening">Esta noche</string>
+    <string name="snooze_own_tomorrow_afternoon">Mañana por la tarde</string>
+    <string name="snooze_own_tomorrow_evening">Mañana por la noche</string>
+    <string name="snooze_own_weekend_morning">El finde por la mañana</string>
+    <string name="snooze_own_weekend_afternoon">El finde por la tarde</string>
+    <string name="snooze_own_weekend_evening">El finde por la noche</string>
+    <string name="snooze_own_weekday_morning">El %1$s por la mañana</string>
+    <string name="snooze_own_weekday_afternoon">El %1$s por la tarde</string>
+    <string name="snooze_own_weekday_evening">El %1$s por la noche</string>
+    <string name="snooze_own_today_at">Hoy a las %1$s</string>
+    <string name="snooze_own_tomorrow_at">Mañana a las %1$s</string>
+    <string name="snooze_own_weekend_at">El finde a las %1$s</string>
+    <string name="snooze_own_weekday_at">El %1$s a las %2$s</string>
+    <!-- Cómo se monta uno -->
+    <string name="snooze_builder_title">Un posponer tuyo</string>
+    <string name="snooze_builder_on">Un día</string>
+    <string name="snooze_builder_after">Dentro de…</string>
+    <string name="snooze_builder_which_day">Qué día</string>
+    <string name="snooze_builder_which_hour">A qué hora</string>
+    <string name="snooze_builder_today">Hoy</string>
+    <string name="snooze_builder_tomorrow">Mañana</string>
+    <string name="snooze_builder_morning">Por la mañana</string>
+    <string name="snooze_builder_afternoon">Por la tarde</string>
+    <string name="snooze_builder_evening">Por la noche</string>
+    <string name="snooze_builder_at">A una hora</string>
+    <string name="snooze_builder_parts_hint">Estas tres siguen las horas de «Tu día»: si las cambias ahí, esto cambia con ellas.</string>
+    <string name="snooze_builder_unit_minutes">minutos</string>
+    <string name="snooze_builder_unit_hours">horas</string>
+    <string name="snooze_builder_unit_days">días</string>
+    <string name="snooze_builder_would">Ahora mismo sería %1$s</string>
+    <string name="snooze_builder_gone">Ese momento ya ha pasado hoy; mañana vuelve a estar en el aviso.</string>
+    <string name="snooze_builder_refused_offered">Eso es justo lo que hace «%1$s».</string>
+    <string name="snooze_builder_refused_yours">Este ya lo tienes.</string>
+    <string name="snooze_builder_refused_many">%1$d son todos los que caben en el aviso. Borra uno antes.</string>
     <string name="snooze_arrive_at">Al llegar a %1$s</string>
     <string name="snooze_leave_here">Al salir de aquí (%1$d m)</string>
     <string name="snooze_here_label">aquí</string>
@@ -1472,6 +1512,14 @@
     <string name="settings_snooze_shown">En el aviso</string>
     <string name="settings_snooze_shown_hint">Los posponer que enseñan la alerta a pantalla completa y el menú de una tarjeta. Uno apagado no desaparece: espera detrás de «A otro momento…», donde salen primero los que más usas.</string>
     <string name="settings_snooze_shown_places">Lugares</string>
+    <string name="settings_snooze_own">Tus posponer</string>
+    <string name="settings_snooze_own_hint">Los que no trae la app: «esta noche», «mañana por la tarde», «el finde por la noche», «dentro de tres días». Salen en el aviso junto a los demás, y cada uno dice a cuándo te llevaría.</string>
+    <string name="settings_snooze_own_empty">Todavía ninguno.</string>
+    <string name="settings_snooze_own_add">Añadir un posponer</string>
+    <string name="settings_snooze_own_remove">Borrar %1$s</string>
+    <string name="settings_snooze_own_removed">Posponer borrado</string>
+    <string name="settings_snooze_own_now">Ahora mismo: %1$s</string>
+    <string name="settings_snooze_own_gone">Hoy ya ha pasado; vuelve mañana</string>
     <plurals name="alert_waiting">
         <item quantity="one">%1$d más esperando</item>
         <item quantity="other">%1$d más esperando</item>
@@ -1634,6 +1682,21 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_138_0">
+
+        <item>Tus propios posponer. En Ajustes → Avisos → Posponer → «Tus posponer» montas las respuestas que la app no traía: «esta noche», «mañana por la tarde», «el finde por la noche», «el lunes a las 08:00», «dentro de tres días». Salen en el aviso junto a los siete de siempre, en un orden que no baila con la hora, y se esconden, se ponen en la notificación y se usan desde el menú de una tarjeta igual que ellos.</item>
+
+        <item>Dos formas, y ningún nombre que escribir: una duración («dentro de…») o un día y un momento de él. Lo que dirá el botón sale del propio posponer, y la hoja lo enseña junto al momento al que te llevaría si lo pulsaras ahora mismo —que es como descubres que tu «finde por la noche» es el sábado, porque tu finde empieza el viernes a las 20:30.</item>
+
+        <item>La mañana, la tarde y la noche siguen las horas de «Tu día», así que cambiarlas ahí cambia todos los posponer que las nombran. Para lo demás, una hora fija.</item>
+
+        <item>Nada que signifique lo mismo que otra cosa: un posponer que dice lo que ya dice uno de la app se rechaza diciéndote cuál lo hace ya.</item>
+
+        <item>«Esta tarde» a las nueve de la noche no es una respuesta, así que no sale en el aviso: vuelve mañana. Y a la notificación no llega ninguno de esos, porque una tarjeta puede pasarse horas en la bandeja y el botón hablaría de una tarde que ya pasó.</item>
+
+        <item>Un botón de posponer en la bandeja mantiene su palabra. Lleva lo que es, no el sitio donde estaba, así que sigue haciendo lo que dice aunque hayas borrado aquí el posponer del que salió — y uno que no se pueda leer, o cuyo momento ya haya pasado, pospone diez minutos en vez de dejar un aviso sin contestar.</item>
+
+    </string-array>
     <string-array name="whats_new_0_137_0">
 
         <item>Tú eliges qué posponer enseña el aviso. Hasta ahora llevaba todas las respuestas que existen, todas las veces —siete duraciones, los lugares, el calendario: hasta diez botones de mantener pulsado en la única pantalla que se contesta medio dormido—, hubieras pulsado o no alguna vez «La semana que viene». En Ajustes → Avisos → Posponer hay ahora una fila «En el aviso»; lo que apagues ahí sale del aviso y del menú de una tarjeta.</item>

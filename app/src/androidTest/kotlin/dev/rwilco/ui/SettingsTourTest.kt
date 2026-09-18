@@ -9,6 +9,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -33,7 +34,9 @@ import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.ThemeMode
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Rule
@@ -241,6 +244,46 @@ class SettingsTourTest {
     }
 
     /** The rows, in the order the screen puts them. */
+    /**
+     * A snooze of the person's own, built in the sheet and then sitting among the app's.
+     *
+     * The part only a real screen answers: the sheet's two halves, the label that is worked out
+     * rather than typed ("El finde por la noche"), and the row plus the chips it becomes — one
+     * under "Tus posponer", one in "En el aviso", one in the notification's row.
+     */
+    @Test
+    fun aSnoozeOfYourOwnIsBuiltAndThenSitsAmongTheApps() = runBlocking {
+        app.settingsStore.update { it.copy(customSnoozes = emptyList()) }
+        rule.onNodeWithContentDescription(s(R.string.home_settings)).performClick()
+        rule.waitUntilShown(s(R.string.settings_alerts))
+        if (rule.onAllNodesWithText(s(R.string.settings_snooze_own_add), useUnmergedTree = true).fetchSemanticsNodes().isEmpty()) {
+            rule.onNodeWithText(s(R.string.settings_alerts), useUnmergedTree = true).performScrollTo().performClick()
+            rule.waitUntilShown(s(R.string.settings_snooze_own_add))
+        }
+        rule.onNodeWithText(s(R.string.settings_snooze_own_empty), useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText(s(R.string.settings_snooze_own_add), useUnmergedTree = true).performScrollTo().performClick()
+        rule.waitUntilShown(s(R.string.snooze_builder_title))
+        // It opens on "esta noche", which is the answer the app's own seven never had.
+        rule.onNodeWithText(s(R.string.snooze_own_this_evening), useUnmergedTree = true).assertIsDisplayed()
+        shot("settings-snooze-builder")
+
+        // The weekend instead: the chip is in the sheet, which is the last thing drawn — the
+        // card behind it has one saying the same word.
+        rule.onAllNodesWithText(s(R.string.snooze_weekend), useUnmergedTree = true).onLast().performClick()
+        val label = s(R.string.snooze_own_weekend_evening)
+        rule.waitUntilShown(label)
+        shot("settings-snooze-builder-weekend")
+        rule.onNodeWithText(s(R.string.sheet_add), useUnmergedTree = true).performClick()
+        rule.waitUntilGone(s(R.string.snooze_builder_title))
+
+        // Three of it now: the row under "Tus posponer", the chip on the alert, and the one the
+        // notification's pair is chosen from.
+        rule.waitUntil(10_000) { rule.onAllNodesWithText(label, useUnmergedTree = true).fetchSemanticsNodes().size >= 3 }
+        rule.onNodeWithText(s(R.string.settings_snooze_own), useUnmergedTree = true).performScrollTo()
+        shot("settings-snooze-own")
+        assertEquals(listOf("on:weekend:evening"), app.settingsStore.settings.first().customSnoozes)
+    }
+
     private fun indexTitles(): List<String> = listOf(
         s(R.string.settings_alerts),
         s(R.string.settings_sound_title),

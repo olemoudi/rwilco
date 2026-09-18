@@ -404,6 +404,9 @@ const val DEFAULT_SNOOZE_MINUTES = 30
 object SnoozeLimits {
     val CUSTOM_MINUTES = 5..720
     const val STEP = 5
+
+    /** What a length of the person's own ([SnoozeSpec.After]) may be: five minutes to thirty days. */
+    val AFTER_MINUTES = 5..30 * 24 * 60
 }
 
 /**
@@ -418,9 +421,12 @@ object SnoozeLimits {
  * Declaration order is the order the alert screen offers them in. It travels as a *name*
  * everywhere it is stored or sent — an intent extra, and the two offers in the settings
  * ([AppSettings.notificationSnoozes]) — and never as the enum itself, so a name this build has
- * no member for is dropped ([notificationSnoozeOffers]) rather than failing the read. Decoding
+ * no member for is dropped ([notificationOffers]) rather than failing the read. Decoding
  * the settings is all-or-nothing: an exception there does not lose a snooze offer, it loses the
  * theme, the sound, the presets and the saved places with it.
+ *
+ * These are the app's own. The person's ([SnoozeSpec]) sit beside them as [SnoozeOffer]s, and
+ * travel the same way: as a key.
  */
 enum class Snooze {
     TEN_MINUTES,
@@ -470,26 +476,6 @@ const val NOTIFICATION_SNOOZES = 2
 
 /** What the notification carries until somebody says otherwise. */
 val DEFAULT_NOTIFICATION_SNOOZES: List<Snooze> = listOf(Snooze.TEN_MINUTES, Snooze.TWO_HOURS)
-
-/**
- * The stored names read back as offers, dropping any this build has no member for — and falling
- * back to the defaults if that leaves nothing, because a notification with no way to postpone is
- * worse than one offering the wrong two.
- */
-val AppSettings.notificationSnoozeOffers: List<Snooze>
-    get() = notificationSnoozes.mapNotNull { name -> Snooze.entries.firstOrNull { it.name == name } }
-        .ifEmpty { DEFAULT_NOTIFICATION_SNOOZES }
-
-/**
- * The notification's two offers after [tapped] is chosen in the settings: always exactly two,
- * the newest choice replacing the older of the pair, and tapping one already there changing
- * nothing — a notification with one offer, or none, is not a choice anybody makes on purpose.
- */
-fun pickNotificationSnoozes(current: List<Snooze>, tapped: Snooze): List<Snooze> {
-    val pair = current.distinct().take(NOTIFICATION_SNOOZES)
-    if (tapped in pair) return pair
-    return (pair + tapped).takeLast(NOTIFICATION_SNOOZES)
-}
 
 /**
  * Rang, and nobody has dealt with it since: what keeps a reminder on the alert screen, and what

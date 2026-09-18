@@ -878,6 +878,12 @@ sheets sliding out on Confirm (`hide()` vs `confirmValueChange`)~~ — both done
 the dead code listed under 0.67.0 — asked about, not deleted.
 
 ## Still to prove on the real phone (Pixel 8 Pro)
+- Los posponer tuyos (0.138.0): monta «el finde por la noche» y «dentro de 3 días» en Ajustes →
+  Avisos → Posponer, ponlos en el aviso, y contesta con ellos un aviso de verdad — el momento al
+  que te lleva tiene que ser el que decía la hoja. Pon uno tuyo en la notificación y contéstalo
+  **desde la bandeja** (la de la tarjeta, no la de la pantalla completa). Luego bórralo en
+  Ajustes y pulsa el botón de una tarjeta vieja que siguiera en la bandeja: tiene que posponer
+  igual. Y mira si «esta noche» desaparece del aviso a partir de las 20:00, como debe.
 - The snooze board (0.137.0): hide three or four offers in Settings → Avisos → Posponer, let a
   reminder ring, and answer it through "A otro momento…" a few times over a week — the list has
   to reorder itself by what was actually taken; and whether "A otro momento…" held and then a
