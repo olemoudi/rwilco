@@ -16,7 +16,6 @@ import dev.rwilco.model.DayShape
 import dev.rwilco.model.NextFire
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.awakeAt
-import dev.rwilco.model.countsFromRinging
 import dev.rwilco.model.firingPlan
 import dev.rwilco.model.moment
 import dev.rwilco.ui.format.recurrenceLabel
@@ -143,17 +142,14 @@ fun UpcomingLine(
             readings.first(),
         )
     }
-    // **A span counted from the "hecho" is said as one** (0.68.0). Its next moments are the
-    // rules' own — "a las 20:45", every day — because nothing has been dealt with yet, and
-    // the line read "luego vie 4 sept · luego sáb 5 sept" under a reminder that says "vuelve
-    // cada 4 años": true, and read as the years being missing. So after the first moment it
-    // says what actually happens: the rules go on until it is done, and then the span.
-    val untilDone = recurrence is Recurrence.After && !recurrence.countsFromRinging && readings.size > 1
+    // What the moments are, once said, needs one clause after them for two of the three shapes
+    // a "Vuelve" can have: see [UpcomingTail], which is where the reasoning for each lives.
+    val tail = upcomingTail(recurrence, readings.size)
     Column(modifier = modifier) {
         Text(
             text = buildAnnotatedString {
                 withStyle(SpanStyle(color = first, fontWeight = FontWeight.SemiBold)) { append(firstLine) }
-                if (untilDone) {
+                if (tail == UpcomingTail.UNTIL_DONE) {
                     withStyle(SpanStyle(color = rest)) {
                         append(sep + words.get(R.string.editor_will_ring_then, readings[1]))
                         append(sep + words.get(R.string.editor_will_ring_until_done))
@@ -162,6 +158,17 @@ fun UpcomingLine(
                 } else {
                     for (reading in readings.drop(1)) {
                         withStyle(SpanStyle(color = rest)) { append(sep + words.get(R.string.editor_will_ring_then, reading)) }
+                    }
+                    // And with no "Vuelve", both halves of what those later ones are, in the
+                    // shape the span above uses: they go on until it is done **once**, and then
+                    // they stop for good. Either half alone is the misreading — the list on its
+                    // own reads as a rhythm, and "hasta que lo hagas" alone leaves open what
+                    // happens after.
+                    if (tail == UpcomingTail.UNLESS_DONE) {
+                        withStyle(SpanStyle(color = rest)) {
+                            append(sep + words.get(R.string.editor_will_ring_until_done_once))
+                            append(sep + words.get(R.string.editor_will_ring_never_again))
+                        }
                     }
                 }
             },

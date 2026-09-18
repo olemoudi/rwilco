@@ -1635,6 +1635,14 @@ loud what DST and a change of zone do to a landing.
   first two moments it now says "y así hasta que lo hagas · después vuelve cada 4 años". A
   place reminder gets its line too (`upcomingMoments` keeps a `WhenAt` as the first and only
   entry): "suena al llegar a Casa" where a blank line read as the app having nothing to say.
+  **And what it says under "No repetir"** (0.140.0, `upcomingTail`): the walk pretends each moment
+  rang and asks again, so two weekday rules under "cualquiera" give three dates in a row — which
+  is true (they are what would ring if nobody ever answered) and reads as a rhythm, under a form
+  that has just said it does not repeat. The three shapes are one decision now, pure and tested:
+  a recurrence that repeats on its own says nothing after the moments, a span counted from the
+  "hecho" keeps its own sentence, and no recurrence at all says both halves in that same shape —
+  "y así hasta que lo hagas una vez · después, nunca más" — because either alone is a misreading:
+  the list is a rhythm without them, and "hasta que lo hagas" leaves open what follows.
 - **Readiness is two groups** (0.68.0): `AlertReadiness.problems` counts the seven that decide
   whether a reminder *arrives* (notifications, a muted channel, the alarm volume, total-silence
   DND, exact alarms, a restricted background, battery optimisation) and `quirks` the three that

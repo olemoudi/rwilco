@@ -9,6 +9,7 @@ import dev.rwilco.model.Presence
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.awaitingAnswer
 import dev.rwilco.model.nextFire
+import dev.rwilco.model.RecurrenceFrom
 import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.RepeatUnit
 import dev.rwilco.model.Condition
@@ -947,5 +948,25 @@ class EditorStateTest {
         assertNull(plain.contactCloseness)
         assertFalse(plain.contactCadenceByHand)
         assertNull(plain.contactDays)
+    }
+
+    @Test
+    fun `what the list of moments needs saying after it depends on the Vuelve behind it`() {
+        // Three dates under a form that says "No repetir" read as a repetition. They are the
+        // rules' own moments — two weekday triggers under "cualquiera" — and every one after the
+        // first happens only while nobody has answered.
+        assertEquals(UpcomingTail.UNLESS_DONE, upcomingTail(Recurrence.None, moments = 3))
+        assertEquals(UpcomingTail.UNLESS_DONE, upcomingTail(Recurrence.None, moments = 2))
+        // One moment says nothing but itself, whatever is behind it.
+        for (recurrence in listOf(Recurrence.None, Recurrence.After(3, RecurrenceUnit.DAYS), Recurrence.After(6, RecurrenceUnit.HOURS, from = RecurrenceFrom.RANG))) {
+            assertEquals(UpcomingTail.NONE, upcomingTail(recurrence, moments = 1), recurrence.toString())
+            assertEquals(UpcomingTail.NONE, upcomingTail(recurrence, moments = 0), recurrence.toString())
+        }
+        // A span counted from the "hecho" keeps its own sentence (0.68.0).
+        assertEquals(UpcomingTail.UNTIL_DONE, upcomingTail(Recurrence.After(4, RecurrenceUnit.YEARS), moments = 3))
+        // And one counted from the ring, or a calendar, is a schedule: the moments are the whole
+        // story and there is nothing to add to them.
+        assertEquals(UpcomingTail.NONE, upcomingTail(Recurrence.After(6, RecurrenceUnit.HOURS, from = RecurrenceFrom.RANG), moments = 3))
+        assertEquals(UpcomingTail.NONE, upcomingTail(Recurrence.Calendar(Trigger.Repeat(startsOn = java.time.LocalDate.of(2026, 9, 18), unit = RepeatUnit.DAY)), moments = 3))
     }
 }

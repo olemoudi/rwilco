@@ -37,6 +37,11 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.rwilco.BuildConfig
+import dev.rwilco.model.Recurrence
+import dev.rwilco.model.Reminder
+import dev.rwilco.model.Trigger
+import dev.rwilco.model.TriggerRule
+import java.time.DayOfWeek
 import dev.rwilco.MainActivity
 import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
@@ -155,6 +160,47 @@ class EditorTourTest {
         }
         // Yesterday's captures would otherwise be pulled along with today's and quietly go stale.
         File(context.filesDir, "screenshots").listFiles()?.forEach { it.delete() }
+    }
+
+    /**
+     * The line over "Guardar" under a form that says "No repetir" (0.140.0).
+     *
+     * Two weekday rules under "cualquiera" give the walk three moments, and three dates in a row
+     * read as a repetition — the one thing the person had just said it was not. They are real:
+     * they are what would ring if nobody ever answered. So the line says which of the two it is.
+     */
+    @Test
+    fun theLineUnderNoRepeatDoesNotPromiseARepetition() {
+        val app = context.applicationContext as RwilcoApplication
+        val words = "Desviar móvil curro"
+        runBlocking {
+            // On its own: the demo data's cards would push this one off the bottom of the list,
+            // and a card that is not composed is a card the tree cannot be asked about.
+            app.repository.deleteAll()
+            app.repository.save(
+                Reminder(
+                    id = "no-repeat-line",
+                    text = words,
+                    rules = listOf(
+                        TriggerRule(Trigger.TimeOfDay(LocalTime.of(15, 0), setOf(DayOfWeek.FRIDAY))),
+                        TriggerRule(Trigger.TimeOfDay(LocalTime.of(20, 45), setOf(DayOfWeek.SUNDAY))),
+                    ),
+                    recurrence = Recurrence.None,
+                    createdAt = app.clock.instant(),
+                    updatedAt = app.clock.instant(),
+                ),
+            )
+        }
+        rule.waitUntilShown(words)
+        text(words).performScrollTo().performClick()
+        rule.waitUntilShown(s(R.string.editor_add_trigger))
+        // Three moments, and both halves of what they are: until it is done once, then never.
+        // Matched as a substring: the whole line is one Text, so its words are one node's.
+        rule.waitUntil(timeoutMillis = 10_000) {
+            rule.onAllNodesWithText(s(R.string.editor_will_ring_never_again), substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText(s(R.string.editor_will_ring_until_done_once), substring = true, useUnmergedTree = true).assertIsDisplayed()
+        shot("editor-no-repeat-line")
     }
 
     @Test

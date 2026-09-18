@@ -26,6 +26,7 @@ import dev.rwilco.model.MAX_PRESET_NAME
 import dev.rwilco.model.MAX_TEXT_LENGTH
 import dev.rwilco.model.Preset
 import dev.rwilco.model.Recurrence
+import dev.rwilco.model.countsFromRinging
 import dev.rwilco.model.ROUTINE_KINDS
 import dev.rwilco.model.SafetyNetSettings
 import dev.rwilco.model.RecurrencePreset
@@ -316,6 +317,39 @@ data class EditorUiState(
     val dirty: Boolean get() = draft != initial || asPreset != initialAsPreset || presetText != initialPresetText
     val errors: List<ValidationError> get() = validate(draft.text, draft.rules, draft.recurrence)
     val canSave: Boolean get() = errors.isEmpty()
+}
+
+/**
+ * What the list of next moments over "Guardar" needs saying **after** it, which depends only on
+ * the "Vuelve" behind it (see `UpcomingLine`). The moments themselves are the rules' own — the
+ * walk pretends each one rang and asks again — so on their own they read as a schedule, and for
+ * two of the three shapes that is not what they are.
+ */
+enum class UpcomingTail {
+    /** Nothing to add: a recurrence that repeats on its own, so the list is the schedule. */
+    NONE,
+
+    /**
+     * "…y así hasta que lo hagas · después vuelve cada X" (0.68.0): a span counted from the
+     * "hecho" has no moments of its own until something is dealt with, so the list is the rules
+     * going round, and without this it read as the span being missing.
+     */
+    UNTIL_DONE,
+
+    /**
+     * "…si no lo das por hecho antes" (0.140.0): with **no** "Vuelve" the first moment is the
+     * one that is promised, and every one after it happens only while nobody has answered. Three
+     * dates under a form that says "No repetir" read as a repetition — the one thing the person
+     * had just said it was not.
+     */
+    UNLESS_DONE,
+}
+
+fun upcomingTail(recurrence: Recurrence, moments: Int): UpcomingTail = when {
+    moments <= 1 -> UpcomingTail.NONE
+    recurrence is Recurrence.After && !recurrence.countsFromRinging -> UpcomingTail.UNTIL_DONE
+    recurrence == Recurrence.None -> UpcomingTail.UNLESS_DONE
+    else -> UpcomingTail.NONE
 }
 
 /** What the form is called: the thing being written, and whether it is new. */
