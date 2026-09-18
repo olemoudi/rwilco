@@ -4,6 +4,7 @@ import dev.rwilco.model.Fixtures.local
 import dev.rwilco.model.Fixtures.zone
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -69,6 +70,29 @@ class SnoozeSpecTest {
         // Somebody whose weekend starts on Friday at six has a Friday evening in it.
         val early = AppSettings(weekendTime = t(18)).snoozeTerms
         assertEquals(local(2026, 8, 28, 20, 0), SnoozeSpec.On(SnoozeDay.Weekend, part(SnoozePart.EVENING)).until(now, zone, early))
+    }
+
+    @Test
+    fun `a weekend with no such hour in it still answers, as near as it can`() {
+        // Somebody whose weekend is a Saturday morning: eight o'clock at night is nowhere inside
+        // it. An offer that never answers would be worse than one that answers nearly, so it is
+        // the first such hour from the moment the weekend starts.
+        val narrow = AppSettings(
+            weekendDay = DayOfWeek.SATURDAY, weekendTime = t(10),
+            weekendEndDay = DayOfWeek.SATURDAY, weekendEndTime = t(12),
+        ).snoozeTerms
+        assertEquals(local(2026, 8, 29, 20, 0), SnoozeSpec.On(SnoozeDay.Weekend, part(SnoozePart.EVENING)).until(now, zone, narrow))
+        // And when that hour is before the weekend opens, the next day's: nothing lands in the past.
+        val night = AppSettings(
+            weekendDay = DayOfWeek.FRIDAY, weekendTime = t(22),
+            weekendEndDay = DayOfWeek.SATURDAY, weekendEndTime = t(2),
+        ).snoozeTerms
+        val morning = SnoozeSpec.On(SnoozeDay.Weekend, part(SnoozePart.MORNING)).until(now, zone, night)!!
+        assertEquals(local(2026, 8, 29, 9, 0), morning)
+        assertTrue(morning > now)
+        // A weekend with no width at all has nothing inside it either, and still answers.
+        val none = AppSettings(weekendDay = DayOfWeek.SATURDAY, weekendTime = t(10), weekendEndDay = DayOfWeek.SATURDAY, weekendEndTime = t(10)).snoozeTerms
+        assertTrue(SnoozeSpec.On(SnoozeDay.Weekend, part(SnoozePart.MORNING)).until(now, zone, none)!! > now)
     }
 
     @Test
@@ -218,6 +242,34 @@ class SnoozeSpecTest {
         assertEquals(listOf(1, 2, 3, 4, 5, 6, 7), Snooze.entries.map { SnoozeOffer.BuiltIn(it).code })
         // And every one of them survives the trip as a key.
         assertEquals(offers, offers.map { snoozeOfferOf(it.key) })
+    }
+
+    @Test
+    fun `what a notification's button carries says what it will do, whatever the settings do next`() {
+        // The one offer whose key did not describe itself: "CUSTOM" is a name, and its length is
+        // read when it is pressed. A card posted saying "45 min" and pressed after the setting
+        // moved to 20 put the reminder off 20 minutes.
+        val settings = AppSettings(snoozeCustomMinutes = 45)
+        val frozen = SnoozeOffer.BuiltIn(Snooze.CUSTOM).frozen(settings.snoozeCustomMinutes)
+        assertEquals("after:45", frozen.key)
+        assertEquals(now.plusSeconds(45 * 60), snoozeOfferOf(frozen.key)!!.until(now, zone, AppSettings(snoozeCustomMinutes = 20).snoozeTerms))
+        // Everything else already is itself, and is handed on untouched.
+        for (offer in AppSettings(customSnoozes = listOf("on:weekend:evening")).snoozeOffers.filter { it != SnoozeOffer.BuiltIn(Snooze.CUSTOM) }) {
+            assertEquals(offer, offer.frozen(45), offer.key)
+        }
+        // A length out of what the stepper can reach is still a key something can read.
+        assertNotNull(snoozeOfferOf(SnoozeOffer.BuiltIn(Snooze.CUSTOM).frozen(99_999).key))
+    }
+
+    @Test
+    fun `an hour that comes to what the app already offers is the same chip twice`() {
+        // "Mañana a las 9:00" with a day that starts at nine is "mañana por la mañana".
+        val nine = AppSettings()
+        assertEquals(CustomSnoozeRefusal.ALREADY_OFFERED, nine.customSnoozeRefusal(SnoozeSpec.On(SnoozeDay.Tomorrow, SnoozeHour.At(t(9)))))
+        // And with a day that starts at half seven, nine o'clock is a chip of its own again.
+        val early = AppSettings(dayStart = t(7, 30))
+        assertNull(early.customSnoozeRefusal(SnoozeSpec.On(SnoozeDay.Tomorrow, SnoozeHour.At(t(9)))))
+        assertEquals(CustomSnoozeRefusal.ALREADY_OFFERED, early.customSnoozeRefusal(SnoozeSpec.On(SnoozeDay.Tomorrow, SnoozeHour.At(t(7, 30)))))
     }
 
     @Test

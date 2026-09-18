@@ -1682,6 +1682,23 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_139_0">
+
+        <item>«Enviar la propuesta mañana» vuelve a entenderse. Desde la 0.136.0 cualquier palabra acabada en «esta» —propuesta, respuesta, encuesta, fiesta, siesta— se comía el «mañana», así que algunas frases no daban chip; y con una parte del día al lado el chip no se perdía, salía mal: «la fiesta mañana por la tarde» caía hoy a las cinco.</item>
+
+        <item>El botón de posponer de una notificación mantiene su palabra. «45 min» pospone cuarenta y cinco minutos aunque después cambies cuánto dura tu posponer a medida, porque la tarjeta se lleva la duración escrita y no el nombre del ajuste.</item>
+
+        <item>Deshacer un «hecho» se lleva también su línea del historial, así que «hecha N veces» cuenta las veces que la hiciste.</item>
+
+        <item>Tocar fuera de una hoja la cierra —y pregunta antes si hay algo escrito—. No hacía absolutamente nada, en doce hojas. El gesto rápido que no debe tirar un formulario a medias sigue rechazado.</item>
+
+        <item>La lista de «A otro momento…» se desliza al contestarla, como todas las demás, en vez de desaparecer de golpe.</item>
+
+        <item>Un teléfono escrito 91.234.56.78 vuelve a encontrarse —su final se leía como una fecha— y un enlace que acaba en paréntesis, que es como está escrita media Wikipedia, ya no pierde el último carácter.</item>
+
+        <item>Cosas más pequeñas: las filas del aviso separadas como todo lo demás, «Guardar» ya no contesta mientras el formulario se está leyendo, la búsqueda deja de decir «hoy» de lo de ayer si la dejas abierta pasada la medianoche, y la cuenta de posponer ya no reescribe tus ajustes cuando no hay nada que contar.</item>
+
+    </string-array>
     <string-array name="whats_new_0_138_0">
 
         <item>Tus propios posponer. En Ajustes → Avisos → Posponer → «Tus posponer» montas las respuestas que la app no traía: «esta noche», «mañana por la tarde», «el finde por la noche», «el lunes a las 08:00», «dentro de tres días». Salen en el aviso junto a los siete de siempre, en un orden que no baila con la hora, y se esconden, se ponen en la notificación y se usan desde el menú de una tarjeta igual que ellos.</item>

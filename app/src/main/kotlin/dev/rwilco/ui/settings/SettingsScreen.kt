@@ -285,6 +285,7 @@ fun SettingsScreen(
                 }
                 SnoozeCard(
                     settings = current,
+                    clock = viewModel.clock,
                     onCustomMinutes = viewModel::setSnoozeCustomMinutes,
                     onPick = viewModel::pickNotificationSnooze,
                     onShown = viewModel::setSnoozeShown,

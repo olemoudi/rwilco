@@ -100,6 +100,19 @@ interface FiringEventDao {
     @Query("SELECT * FROM firing_event ORDER BY at DESC, id DESC LIMIT :limit")
     suspend fun newest(limit: Int): List<FiringEventEntity>
 
+    /**
+     * The newest line of one of [kinds] written after [after], if there is one: what an undo takes
+     * back with the row (0.139.0). "Hecho" writes a line and the undo restored the row without it,
+     * so a reminder answered and unanswered twice read as "hecha 3 veces" having been done once.
+     * Bounded by [after] — the moment the row itself was last dealt with — so it can only ever
+     * reach the line this very "hecho" wrote, never the real one before it.
+     */
+    @Query(
+        "DELETE FROM firing_event WHERE id = (SELECT id FROM firing_event WHERE reminderId = :reminderId " +
+            "AND kind IN (:kinds) AND at > :after ORDER BY at DESC, id DESC LIMIT 1)",
+    )
+    suspend fun deleteNewest(reminderId: String, kinds: List<String>, after: Long)
+
     /** Everything past the newest [keep] of one reminder's rows. */
     @Query(
         "DELETE FROM firing_event WHERE reminderId = :reminderId AND id NOT IN " +

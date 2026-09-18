@@ -179,6 +179,15 @@ class ReminderRepository(
         }
     }
 
+    /**
+     * The newest line of one of [kinds] since [after], forgotten: the half of an undo the row
+     * cannot hold (see [FiringEventDao.deleteNewest]). Never fatal — a history line that will
+     * not go is a count one too high, not a lost undo.
+     */
+    suspend fun forgetNewest(reminderId: String, kinds: List<FiringKind>, after: Instant?) {
+        runCatching { events.deleteNewest(reminderId, kinds.map { it.name }, after?.toEpochMilli() ?: 0L) }
+    }
+
     /** What happened to one reminder, newest first. */
     suspend fun history(reminderId: String, limit: Int = HISTORY_KEEP): List<FiringEvent> =
         events.history(reminderId, limit).mapNotNull(FiringEventEntity::toDomain)

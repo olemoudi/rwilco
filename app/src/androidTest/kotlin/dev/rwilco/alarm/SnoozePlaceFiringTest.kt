@@ -14,6 +14,7 @@ import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.hereCircle
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -132,5 +133,34 @@ class SnoozePlaceFiringTest {
         assertNull(row.snoozedToPlace)
         assertNotNull(row.snoozedUntil)
         assertEquals("the watch has nothing left to spend on", emptyList<String>(), app.placeWatcher.places().map { it.id })
+    }
+
+    /**
+     * The key a notification's button carries (0.138.0), through the real door: one of the
+     * person's own puts the reminder off where it says, and **anything that is no answer now
+     * still answers the alert** — a key from a newer build, one since deleted, or a part of today
+     * that went by while the card sat in the shade. Ten minutes, never nothing.
+     */
+    @Test
+    fun aSnoozeKeyIsHonouredAndWhatCannotBeReadIsStillAnAnswer() = runBlocking {
+        app.settingsStore.update { it.copy(customSnoozes = listOf("after:45"), snoozeUses = emptyMap()) }
+        val before = app.clock.instant()
+        app.firing.snoozeBy(id, "after:45")
+        val own = app.repository.get(id)!!.snoozedUntil!!
+        // Seconds, not minutes: a duration a millisecond short of forty-five reads as forty-four.
+        assertEquals("forty-five minutes on", (45 * 60).toDouble(), Duration.between(before, own).seconds.toDouble(), 2.0)
+        assertEquals("the answer is counted, so the list behind «a otro momento» can order itself", 1, app.settingsStore.settings.first().snoozeUses["after:45"])
+
+        // A key this build cannot read: ten minutes, and nothing counted.
+        val unknown = app.clock.instant()
+        app.firing.snoozeBy(id, "on:full_moon:midnight")
+        assertEquals((10 * 60).toDouble(), Duration.between(unknown, app.repository.get(id)!!.snoozedUntil!!).seconds.toDouble(), 2.0)
+        // And a part of today, whatever the hour it is asked at: either it is still ahead and
+        // that is where it lands, or it has gone and ten minutes answers the alert. What must
+        // never happen is a snooze into the past, which rings again the instant it is armed.
+        app.firing.snoozeBy(id, "on:today:evening")
+        val part = app.repository.get(id)!!.snoozedUntil!!
+        assertTrue("a snooze into the past", part > app.clock.instant())
+        assertEquals("nothing that was not chosen is counted", setOf("after:45"), app.settingsStore.settings.first().snoozeUses.keys)
     }
 }

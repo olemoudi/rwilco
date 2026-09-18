@@ -54,8 +54,7 @@ import androidx.compose.material.icons.outlined.Snooze
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import dev.rwilco.model.AppSettings
-import java.time.Instant
-import java.time.ZoneId
+import java.time.Clock
 import dev.rwilco.model.SnoozeBoard
 import dev.rwilco.model.SnoozeOffer
 import dev.rwilco.model.SnoozeTerms
@@ -110,6 +109,8 @@ fun ReminderActionsMenu(
     board: SnoozeBoard = snoozeBoard(AppSettings()),
     /** What a part of today is read against: one that has gone ("esta tarde", at nine) is not offered. */
     terms: SnoozeTerms = AppSettings().snoozeTerms,
+    /** The app's clock, so what is on the row can be driven by a fake one. */
+    clock: Clock = Clock.systemDefaultZone(),
     onCancelSnooze: () -> Unit,
     /** The place answers, after the clock ones; empty on a phone that cannot give them. */
     places: List<SnoozePlace> = emptyList(),
@@ -133,7 +134,7 @@ fun ReminderActionsMenu(
     val scheme = MaterialTheme.colorScheme
     var choosingSnooze by rememberSaveable { mutableStateOf(false) }
     // The menu is composed when it is opened, so this is the board as it stands at that moment.
-    val standing = remember(board, terms) { board.standingAt(Instant.now(), ZoneId.systemDefault(), terms) }
+    val standing = remember(board, terms) { board.standingAt(clock.instant(), clock.zone, terms) }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         // The dialog's own window covers the screen, so "outside" has to be made by hand: the
         // box takes the taps that miss the menu and answers them with a dismissal.

@@ -878,6 +878,11 @@ sheets sliding out on Confirm (`hide()` vs `confirmValueChange`)~~ — both done
 the dead code listed under 0.67.0 — asked about, not deleted.
 
 ## Still to prove on the real phone (Pixel 8 Pro)
+- La ronda de arreglos (0.139.0): toca fuera de una hoja del editor con algo escrito —tiene que
+  preguntar— y con nada escrito —tiene que cerrarse deslizándose—; y comprueba que un gesto rápido
+  hacia abajo dentro de una hoja con lista (la de lugares) sigue **sin** cerrarla. Y deja una
+  notificación en la bandeja con «45 min», cambia el posponer a medida en Ajustes, y púlsala:
+  tienen que ser 45 minutos.
 - Los posponer tuyos (0.138.0): monta «el finde por la noche» y «dentro de 3 días» en Ajustes →
   Avisos → Posponer, ponlos en el aviso, y contesta con ellos un aviso de verdad — el momento al
   que te lleva tiene que ser el que decía la hoja. Pon uno tuyo en la notificación y contéstalo

@@ -68,6 +68,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Clock
 import java.time.Duration
@@ -863,6 +864,11 @@ class ReminderFiring(
         }
         Diag.note(TAG_DIAG, "r=${short(id)} hecho undone")
         repository.restoreRow(row)
+        // And the line that "hecho" wrote goes with it (0.139.0). The row is put back exactly as
+        // it stood, so the history had to be too: a routine answered and unanswered twice read as
+        // "hecha 3 veces" having been done once, because the summary counts DEALT lines. Bounded
+        // by the moment the restored row was last dealt with, so it can only reach this one.
+        repository.forgetNewest(id, listOf(FiringKind.DEALT, FiringKind.SKIPPED), row.lastDealtAt?.let(Instant::ofEpochMilli))
         scheduler.rearmAll()
     }
 
@@ -896,7 +902,7 @@ class ReminderFiring(
         val terms = settings().snoozeTerms
         val offer = key?.let(::snoozeOfferOf)
         val until = offer?.until(now, clock.zone, terms)
-        if (offer != null && until != null) putOff(id, until, said = offer.key)
+        if (offer != null && until != null) putOff(id, until, said = offer.key, counted = offer.key)
         else putOff(id, Snooze.TEN_MINUTES.until(now, clock.zone, terms), said = "$key, which is no answer now: ten minutes")
     }
 
@@ -937,8 +943,13 @@ class ReminderFiring(
         }
     }
 
-    /** The write both of them make; the lock is the caller's. */
-    private suspend fun putOff(id: String, until: Instant, said: String) {
+    /**
+     * The write all of them make; the lock is the caller's. [said] is for the diagnostics line and
+     * is a sentence; [counted] is the offer's key or null, and is the only thing the settings see.
+     * Two parameters and not one, because the two were one and the key was reached by parsing an
+     * English sentence: reword the sentence and a use lands on a snooze nobody pressed.
+     */
+    private suspend fun putOff(id: String, until: Instant, said: String, counted: String? = null) {
         // A notification outlives the row it was posted for (see [dismiss]), and "Posponer" on
         // one of those has nothing to write — but it still has a card to take down.
         if (repository.get(id) == null) {
@@ -957,7 +968,16 @@ class ReminderFiring(
         // momento", so the one somebody gives once a month is at the top of the list it is looked
         // for in. Last, and never in the way: a settings write that fails costs a ranking, not
         // the snooze — and `settingsKey` does not read it, so nothing is re-armed for it.
-        runCatching { settingsStore.update { it.withSnoozeUsed(said) } }
+        //
+        // **Only when there is something to count** (0.139.0), and bounded like the read above it:
+        // "a una fecha", "1 semana" and the ten minutes an unreadable key falls back to have no
+        // offer to credit, and the write is not free — it re-encodes and commits the whole blob,
+        // holding the one lock every other firing path needs, inside a broadcast the system gives
+        // about ten seconds. A cancellation is the caller's to hear, so it is not swallowed.
+        if (counted != null) {
+            runCatching { withTimeoutOrNull(SETTINGS_TIMEOUT_MS) { settingsStore.update { it.withSnoozeUsed(counted) } } }
+                .onFailure { if (it is CancellationException) throw it }
+        }
     }
 
     /**

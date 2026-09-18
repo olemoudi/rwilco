@@ -3,6 +3,7 @@ package dev.rwilco.alarm
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.rwilco.RwilcoApplication
+import dev.rwilco.data.FiringKind
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
@@ -123,6 +124,36 @@ class FiringOnceTest {
             app.firing.fire(id)
         }
         assertEquals("a finished timer came back", Status.DONE, app.repository.get(id)!!.status)
+    }
+
+    /**
+     * The undo of a "hecho" takes its line of history with it (0.139.0). The row was put back
+     * exactly as it stood and the DEALT line was not, so a routine answered and unanswered twice
+     * read as "hecha 3 veces" having been done once — `routineHistory` counts those lines.
+     */
+    @Test
+    fun undoing_a_hecho_leaves_no_trace_of_it_in_the_history() = runBlocking {
+        saveAndArm()
+        app.firing.fire(id)
+        val before = app.repository.history(id, 20)
+        val row = app.repository.rowOf(id)!!
+        app.firing.dismiss(id, notice = true)
+        assertEquals(1, app.repository.history(id, 20).count { it.kind == FiringKind.DEALT })
+
+        app.firing.undoDismiss(id, row)
+        assertEquals("the hecho left its line behind", 0, app.repository.history(id, 20).count { it.kind == FiringKind.DEALT })
+        assertEquals("and took something else with it", before.size, app.repository.history(id, 20).size)
+        assertEquals(Status.ACTIVE, app.repository.get(id)!!.status)
+
+        // A "hecho" from before the undone one is never the line it reaches for: the delete is
+        // bounded by the moment the restored row was last dealt with.
+        app.firing.dismiss(id)
+        val kept = app.repository.rowOf(id)!!
+        Thread.sleep(10)
+        app.firing.dismiss(id)
+        assertEquals(2, app.repository.history(id, 20).count { it.kind == FiringKind.DEALT })
+        app.firing.undoDismiss(id, kept)
+        assertEquals("the older hecho went with the newer one", 1, app.repository.history(id, 20).count { it.kind == FiringKind.DEALT })
     }
 
     @Test

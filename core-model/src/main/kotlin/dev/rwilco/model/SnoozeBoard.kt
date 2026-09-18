@@ -39,6 +39,22 @@ val SnoozeOffer.expires: Boolean
     get() = this is SnoozeOffer.Custom && spec is SnoozeSpec.On && spec.day == SnoozeDay.Today
 
 /**
+ * The key a **notification** button carries, which outlives the settings it was built from.
+ *
+ * Every offer says what it is except one: [Snooze.CUSTOM] travels as the bare name "CUSTOM" and
+ * its length is read when the button is pressed. A card posted while "un posponer a tu medida"
+ * said 45 minutes, and pressed after it was moved to 20, put the reminder off 20 — the one button
+ * whose label was not what it did. Written out here as the length it showed ([SnoozeSpec.After]),
+ * which is the whole point of a key that describes itself. Everything else is already itself.
+ */
+fun SnoozeOffer.frozen(customMinutes: Int): SnoozeOffer =
+    if (this is SnoozeOffer.BuiltIn && snooze == Snooze.CUSTOM) {
+        SnoozeOffer.Custom(SnoozeSpec.After(customMinutes.coerceIn(SnoozeLimits.CUSTOM_MINUTES)))
+    } else {
+        this
+    }
+
+/**
  * A number that is this offer's and no other's, and never zero: what tells two snooze buttons
  * apart where only a number can (a `PendingIntent`'s request code — extras are not part of what
  * makes two of those the same, so two buttons on one card would both become the last one built).
@@ -213,8 +229,12 @@ fun AppSettings.builtInSaying(spec: SnoozeSpec): Snooze? = when (spec) {
         snoozeCustomMinutes.coerceIn(SnoozeLimits.CUSTOM_MINUTES) -> Snooze.CUSTOM
         else -> null
     }
-    is SnoozeSpec.On ->
-        Snooze.TOMORROW_MORNING.takeIf { spec.day == SnoozeDay.Tomorrow && spec.hour == SnoozeHour.Part(SnoozePart.MORNING) }
+    // By shape, and by the hour it comes to: "mañana a las 9:00" with a day that starts at nine
+    // is the same chip twice under two names.
+    is SnoozeSpec.On -> Snooze.TOMORROW_MORNING.takeIf {
+        spec.day == SnoozeDay.Tomorrow &&
+            (spec.hour == SnoozeHour.Part(SnoozePart.MORNING) || spec.hour == SnoozeHour.At(dayStart))
+    }
 }
 
 fun AppSettings.customSnoozeRefusal(spec: SnoozeSpec): CustomSnoozeRefusal? = when {

@@ -55,11 +55,10 @@ import java.time.Clock
  * offers, one already there, one more than the alert has room for ([customSnoozeRefusal]).
  */
 @Composable
-fun SnoozeBuilderSheet(settings: AppSettings, onAdd: (SnoozeSpec) -> Unit, onDismiss: () -> Unit) {
+fun SnoozeBuilderSheet(settings: AppSettings, clock: Clock, onAdd: (SnoozeSpec) -> Unit, onDismiss: () -> Unit) {
     val spacing = Tokens.spacing
     val words = rememberWords()
     var draft by rememberSaveable(stateSaver = DraftSaver) { mutableStateOf(SnoozeDraft()) }
-    val clock = remember { Clock.systemDefaultZone() }
     val now by rememberNow(60_000, clock)
     val spec = draft.spec
     val refusal = settings.customSnoozeRefusal(spec)

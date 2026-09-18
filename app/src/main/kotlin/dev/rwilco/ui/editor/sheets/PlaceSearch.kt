@@ -50,7 +50,9 @@ fun placeSearchOutcome(found: List<FoundPlace>?, online: Boolean): PlaceSearch =
 suspend fun searchPlaces(context: Context, query: String, locale: Locale, limit: Int = 5): PlaceSearch {
     val text = query.trim()
     if (text.isEmpty()) return PlaceSearch.Found(emptyList())
-    if (!Geocoder.isPresent()) return PlaceSearch.Unavailable
+    // Off the main thread from here: this is called from a composable's scope, and both the
+    // geocoder's presence and the network's capabilities are binder calls (0.139.0).
+    if (withContext(Dispatchers.IO) { !Geocoder.isPresent() }) return PlaceSearch.Unavailable
     val geocoder = Geocoder(context, locale)
     // Null is "no answer": a timeout, an error, a throw. An empty list is the geocoder's own.
     val addresses: List<Address>? = withTimeoutOrNull(GEOCODE_TIMEOUT_MS) {
@@ -76,7 +78,7 @@ suspend fun searchPlaces(context: Context, query: String, locale: Locale, limit:
             }
         }
     }
-    return placeSearchOutcome(addresses?.mapNotNull { it.toFoundPlace() }, online = context.isOnline())
+    return placeSearchOutcome(addresses?.mapNotNull { it.toFoundPlace() }, online = withContext(Dispatchers.IO) { context.isOnline() })
 }
 
 /**

@@ -363,6 +363,21 @@ class WhenInTextTest {
     }
 
     @Test
+    fun `a word that merely ends in esta is not the word esta`() {
+        // The guard that keeps "esta mañana" from reading as tomorrow had no word boundary, so
+        // every word ending in "esta" swallowed it: propuesta, respuesta, encuesta, fiesta,
+        // cuesta, siesta, orquesta. "Enviar la propuesta mañana" gave no chip at all — and with
+        // a part of the day beside it the chip was not lost but *wrong*, which is worse:
+        // "la fiesta mañana por la tarde" landed on today at five.
+        assertEquals(tomorrow(), once("enviar la propuesta mañana"))
+        assertEquals(tomorrow(), once("contestar la encuesta mañana"))
+        assertEquals(tomorrow(t(17)), once("comprar hielo para la fiesta mañana por la tarde"))
+        assertEquals(tomorrow(t(9)), once("la siesta mañana por la mañana"))
+        // And the real "esta" still is one, with anything in front of it.
+        assertNull(read("lo dejé hecho esta mañana"))
+    }
+
+    @Test
     fun `morning, afternoon and evening land on the hours the person keeps, not on the app's`() {
         // The quick chip under "Cuándo" has followed the day's start since 0.63.0; the words
         // went on meaning nine o'clock whatever Settings said, so the same three words were two

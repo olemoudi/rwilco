@@ -77,6 +77,8 @@ import java.time.Clock
 @Composable
 fun SnoozeCard(
     settings: AppSettings,
+    /** The app's clock: what "ahora mismo" on each of the person's own is worked out from. */
+    clock: Clock,
     onCustomMinutes: (Int) -> Unit,
     /** One of the notification's two, by its key. */
     onPick: (String) -> Unit,
@@ -109,6 +111,7 @@ fun SnoozeCard(
             }
             OwnSnoozes(
                 settings = settings,
+                clock = clock,
                 own = offers.filterIsInstance<SnoozeOffer.Custom>(),
                 onAdd = { adding = true },
                 onRemove = onRemoveOwn,
@@ -167,6 +170,7 @@ fun SnoozeCard(
     if (adding) {
         SnoozeBuilderSheet(
             settings = settings,
+            clock = clock,
             onAdd = { spec ->
                 onAddOwn(spec)
                 adding = false
@@ -184,6 +188,7 @@ fun SnoozeCard(
 @Composable
 private fun OwnSnoozes(
     settings: AppSettings,
+    clock: Clock,
     own: List<SnoozeOffer.Custom>,
     onAdd: () -> Unit,
     onRemove: (String) -> Unit,
@@ -195,7 +200,6 @@ private fun OwnSnoozes(
     val snackbar = LocalSnackbar.current
     val removedMessage = stringResource(R.string.settings_snooze_own_removed)
     val undoLabel = stringResource(R.string.common_undo)
-    val clock = remember { Clock.systemDefaultZone() }
     val now by rememberNow(60_000, clock)
     val today = now.atZone(clock.zone).toLocalDate()
     Column {

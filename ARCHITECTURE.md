@@ -2005,6 +2005,30 @@ loud what DST and a change of zone do to a landing.
   board is exactly what the alert was**, which is what an update has to be. The strips and the
   notification are untouched: they carry the notification's two. No wire changed — the keys are
   the enum's names; the person's own snoozes, and the wire that carries them, are 0.138.0.
+- **The review round after it (0.139.0).** Six things the round itself had left: the guard that
+  keeps "esta mañana" from reading as tomorrow had no word boundary, so every word ending in
+  *esta* — propuesta, respuesta, encuesta, fiesta, siesta — swallowed it, and with a part of the
+  day beside it the chip was not lost but wrong (`WhenInText.TOMORROW`, now `(?<!\besta )`).
+  A notification's snooze button carried `Snooze.CUSTOM` by name, whose length is read when it is
+  pressed, so a card saying "45 min" did twenty after the setting moved: the key is frozen as the
+  label is drawn (`SnoozeOffer.frozen`), which is the whole point of a key that describes itself.
+  The undo of a "hecho" put the row back and left its `DEALT` line, which `routineHistory` counts,
+  so it now takes the line with it (`ReminderRepository.forgetNewest`, bounded by the restored
+  row's own `lastDealtAt` so it can never reach the real "hecho" before it). A tap on a sheet's
+  veil did nothing at all on twelve sheets (Material asks the same `confirmValueChange` the fling
+  meets): `SheetScaffold` now tells the two apart by **where the finger was** — a fling handed
+  over by the content, and a drag of the body, both start on the sheet — and a tap outside leaves
+  the way Back does. `SnoozeMoreSheet` slides out before it answers, as every sheet has since
+  0.133.0. And in `Actionables`, a closing bracket the address opened itself stays (Wikipedia's
+  disambiguations) while the sentence's does not, and a date is only a whole one, so a landline
+  written `91.234.56.78` is no longer eaten by its own tail.
+  **And the phone's regex is not the JVM's.** Android's `java.util.regex` is ICU's engine and is
+  stricter in places nothing on the desktop complains about: the date guard's `[\d.,:]` reads
+  there as an unterminated POSIX property, threw at class initialisation and took every use of
+  `Actionables.kt` down with it — a `NoClassDefFoundError` while the alert screen was drawing —
+  behind a fully green JVM suite. A colon is never the last thing in a character class now, and
+  `PatternsOnDeviceTest` compiles every pattern-bearing file on the device so the next one fails a
+  test instead of a screen.
 - **Snoozes of the person's own** (0.138.0, `core-model/SnoozeSpec.kt`, the rest of
   `SnoozeBoard.kt`, `ui/settings/SnoozeDraft.kt` + `SnoozeBuilderSheet.kt`). The app's seven are
   the answers most people give an alarm; "esta noche", "mañana por la tarde" and "el finde por la

@@ -26,6 +26,10 @@ class ActionablesTest {
             "Ana +34 612 345 678" to "+34612345678",
             "Hotel 0034 912 345 678." to "0034912345678",
             "gestoría (612.345.678)" to "612345678",
+            // Two-three-two-two with dots or hyphens, which is how half of Spain writes a
+            // landline: its tail read as a date ("56.78"), and what survived was too short.
+            "Taller 91.234.56.78" to "912345678",
+            "Taller 91-234-56-78" to "912345678",
         )
         for ((text, dial) in table) assertEquals(listOf(dial), phones(text), text)
         // What the row says is what was written, not what the dialer is handed.
@@ -57,6 +61,13 @@ class ActionablesTest {
         assertEquals(listOf("https://www.renfe.com/horarios"), links("mirar www.renfe.com/horarios."))
         assertEquals(listOf("http://192.168.1.1/admin"), links("router http://192.168.1.1/admin, clave en la pegatina"))
         assertEquals(listOf("https://example.com/a?b=1&c=2"), links("(ver https://example.com/a?b=1&c=2)"))
+        // A bracket the address opened itself stays: Spanish Wikipedia writes half its
+        // disambiguations that way, and stripped flat the row opened a page that is not one.
+        assertEquals(listOf("https://es.wikipedia.org/wiki/Torrijas_(postre)"), links("https://es.wikipedia.org/wiki/Torrijas_(postre)"))
+        assertEquals(listOf("https://es.wikipedia.org/wiki/Torrijas_(postre)"), links("receta: https://es.wikipedia.org/wiki/Torrijas_(postre)."))
+        assertEquals(listOf("https://example.com/a_(b)"), links("(ver https://example.com/a_(b))"))
+        // And the host is said without "www." however it was typed.
+        assertEquals("renfe.com", (actionablesIn("WWW.Renfe.COM/horarios").single() as Actionable.Link).host.lowercase())
         val link = actionablesIn("mirar www.renfe.com/horarios.").single() as Actionable.Link
         assertEquals("renfe.com", link.host)
         assertEquals("www.renfe.com/horarios", link.raw)

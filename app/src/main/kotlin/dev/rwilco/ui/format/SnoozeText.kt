@@ -40,15 +40,30 @@ fun snoozeLabel(words: Words, spec: SnoozeSpec): String = when (spec) {
     is SnoozeSpec.After -> durationText(words, spec.minutes)
     is SnoozeSpec.On -> when (val hour = spec.hour) {
         is SnoozeHour.Part -> {
-            val ids = when (spec.day) {
-                SnoozeDay.Today -> TODAY_PARTS
-                SnoozeDay.Tomorrow -> TOMORROW_PARTS
-                SnoozeDay.Weekend -> WEEKEND_PARTS
-                is SnoozeDay.Weekday -> WEEKDAY_PARTS
-            }
             val day = spec.day
-            if (day is SnoozeDay.Weekday) words.get(ids.getValue(hour.part), TimeText.weekday(day.day, words.locale))
-            else words.get(ids.getValue(hour.part))
+            val phrase = when (day) {
+                SnoozeDay.Today -> when (hour.part) {
+                    SnoozePart.MORNING -> R.string.snooze_own_this_morning
+                    SnoozePart.AFTERNOON -> R.string.snooze_own_this_afternoon
+                    SnoozePart.EVENING -> R.string.snooze_own_this_evening
+                }
+                SnoozeDay.Tomorrow -> when (hour.part) {
+                    SnoozePart.MORNING -> R.string.snooze_tomorrow_morning
+                    SnoozePart.AFTERNOON -> R.string.snooze_own_tomorrow_afternoon
+                    SnoozePart.EVENING -> R.string.snooze_own_tomorrow_evening
+                }
+                SnoozeDay.Weekend -> when (hour.part) {
+                    SnoozePart.MORNING -> R.string.snooze_own_weekend_morning
+                    SnoozePart.AFTERNOON -> R.string.snooze_own_weekend_afternoon
+                    SnoozePart.EVENING -> R.string.snooze_own_weekend_evening
+                }
+                is SnoozeDay.Weekday -> when (hour.part) {
+                    SnoozePart.MORNING -> R.string.snooze_own_weekday_morning
+                    SnoozePart.AFTERNOON -> R.string.snooze_own_weekday_afternoon
+                    SnoozePart.EVENING -> R.string.snooze_own_weekday_evening
+                }
+            }
+            if (day is SnoozeDay.Weekday) words.get(phrase, TimeText.weekday(day.day, words.locale)) else words.get(phrase)
         }
         is SnoozeHour.At -> {
             val time = TimeText.time(hour.time, words.is24h, words.locale)
@@ -61,27 +76,6 @@ fun snoozeLabel(words: Words, spec: SnoozeSpec): String = when (spec) {
         }
     }
 }
-
-private val TODAY_PARTS = mapOf(
-    SnoozePart.MORNING to R.string.snooze_own_this_morning,
-    SnoozePart.AFTERNOON to R.string.snooze_own_this_afternoon,
-    SnoozePart.EVENING to R.string.snooze_own_this_evening,
-)
-private val TOMORROW_PARTS = mapOf(
-    SnoozePart.MORNING to R.string.snooze_tomorrow_morning,
-    SnoozePart.AFTERNOON to R.string.snooze_own_tomorrow_afternoon,
-    SnoozePart.EVENING to R.string.snooze_own_tomorrow_evening,
-)
-private val WEEKEND_PARTS = mapOf(
-    SnoozePart.MORNING to R.string.snooze_own_weekend_morning,
-    SnoozePart.AFTERNOON to R.string.snooze_own_weekend_afternoon,
-    SnoozePart.EVENING to R.string.snooze_own_weekend_evening,
-)
-private val WEEKDAY_PARTS = mapOf(
-    SnoozePart.MORNING to R.string.snooze_own_weekday_morning,
-    SnoozePart.AFTERNOON to R.string.snooze_own_weekday_afternoon,
-    SnoozePart.EVENING to R.string.snooze_own_weekday_evening,
-)
 
 /** What an offer's button says, whoever's it is. */
 fun snoozeLabel(words: Words, offer: SnoozeOffer, customMinutes: Int): String = when (offer) {

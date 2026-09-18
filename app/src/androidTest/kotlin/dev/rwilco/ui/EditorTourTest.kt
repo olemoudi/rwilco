@@ -17,6 +17,11 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.isRoot
+import androidx.compose.ui.test.onLast
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -97,6 +102,15 @@ class EditorTourTest {
     private fun s(id: Int, arg: Any): String = rule.activity.getString(id, arg)
 
     private fun text(value: String) = rule.onNodeWithText(value, useUnmergedTree = true)
+
+    /**
+     * A tap on the veil over a sheet: the sheet's own window is the last root, and the top of it
+     * is scrim — the sheet itself is at the bottom. No node to find by name, because the scrim is
+     * not one of ours.
+     */
+    private fun androidx.compose.ui.test.junit4.ComposeTestRule.tapTheVeil() {
+        onAllNodes(isRoot()).onLast().performTouchInput { click(Offset(width / 2f, 24f)) }
+    }
 
     /** One toggle of the month grid, told from anything else that happens to say a number. */
     private fun monthDay(value: String) = rule.onNode(hasText(value) and isSelectable())
@@ -217,6 +231,14 @@ class EditorTourTest {
                 rule.waitUntilGone(s(R.string.sheet_cancel))
                 // Back from a fresh configurator lands on the picker it came from (0.93.0), so
                 // the same kind is one tap away.
+                rule.waitUntilShown(s(R.string.kind_date))
+                text(s(R.string.kind_interval)).performClick()
+                rule.waitUntilDisplayed(s(R.string.sheet_cancel))
+                // And a tap outside is a way out too (0.139.0). It was not: Material asks the
+                // same refusal the fling meets, so the veil over twelve sheets did nothing at
+                // all. Nothing has been touched inside this one, so it leaves the way back does.
+                rule.tapTheVeil()
+                rule.waitUntilGone(s(R.string.sheet_cancel))
                 rule.waitUntilShown(s(R.string.kind_date))
                 text(s(R.string.kind_interval)).performClick()
                 rule.waitUntilDisplayed(s(R.string.sheet_cancel))

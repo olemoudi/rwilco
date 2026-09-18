@@ -46,6 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextRange
 import dev.rwilco.R
+import dev.rwilco.model.AppSettings
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.components.TagLabel
 import dev.rwilco.ui.theme.Tokens
@@ -143,7 +144,13 @@ fun SearchResultRow(
     /** A routine's door: the routines with it in view, not the form. */
     onOpenRoutine: (String) -> Unit = onOpen,
     /** The hour a date with no time of its own means, for the line that says when. */
-    defaultTime: LocalTime = LocalTime.of(9, 0),
+    defaultTime: LocalTime = AppSettings().defaultTime,
+    /**
+     * Today, off the app's own clock and its minute pulse. Read here as `LocalDate.now()` until
+     * 0.139.0, which bypassed the injected clock and — not being a key of the `remember` below —
+     * went on saying "hoy" about yesterday in a search left open across midnight.
+     */
+    today: LocalDate = LocalDate.now(),
 ) {
     val words = rememberWords()
     when (hit) {
@@ -160,7 +167,7 @@ fun SearchResultRow(
             // line that was missing since the search arrived (left open after 0.69.0). Not for a
             // finished one — what it *would* have rung at is not news about something done.
             whenLine = hit.source?.takeIf { !hit.done }?.let { reminder ->
-                remember(reminder, words) { reminderSummary(words, reminder, LocalDate.now(), defaultTime) }.takeIf { it.isNotEmpty() }
+                remember(reminder, words, today) { reminderSummary(words, reminder, today, defaultTime) }.takeIf { it.isNotEmpty() }
             },
             kind = stringResource(
                 when {

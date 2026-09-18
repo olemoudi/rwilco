@@ -311,7 +311,11 @@ private val DAY_AFTER_TOMORROW = Regex("\\bpasado manana\\b|\\bday after tomorro
 // The word for the morning is the word for the next day, so everything that makes it a morning
 // keeps it from being one: "por la", "de la", "en la" — and "esta", which was missing, so "lo
 // dejé hecho esta mañana" offered a chip for tomorrow (0.136.0).
-private val TOMORROW = Regex("(?<!pasado )(?<!por la )(?<!de la )(?<!en la )(?<!esta )\\bmanana\\b|\\btomorrow\\b")
+// **And "esta" has to be the word** (0.139.0): written without a boundary it swallowed every word
+// that merely ends in it — propuesta, respuesta, encuesta, fiesta, siesta — so "enviar la
+// propuesta mañana" gave no chip at all, and "la fiesta mañana por la tarde" gave a wrong one,
+// today at five, because the hour was read and the day was not.
+private val TOMORROW = Regex("(?<!pasado )(?<!por la )(?<!de la )(?<!en la )(?<!\\besta )\\bmanana\\b|\\btomorrow\\b")
 
 private val DATE_ES = Regex("\\b(\\d{1,2}) de $MONTH_ES\\b")
 private val DATE_EN_DAY_FIRST = Regex("\\b(\\d{1,2})(?:st|nd|rd|th)?(?: of)? $MONTH_EN\\b")

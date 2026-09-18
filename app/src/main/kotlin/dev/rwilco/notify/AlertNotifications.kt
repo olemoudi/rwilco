@@ -30,6 +30,7 @@ import dev.rwilco.model.Trigger
 import dev.rwilco.model.AlertSound
 import dev.rwilco.model.SnoozeOffer
 import dev.rwilco.model.code
+import dev.rwilco.model.frozen
 import dev.rwilco.model.VibrationPattern
 import dev.rwilco.model.key
 import dev.rwilco.model.notificationPattern
@@ -663,7 +664,9 @@ object AlertNotifications {
                 builder.addAction(
                     0,
                     snoozeLabel(context, snooze, customMinutes),
-                    actionIntent(context, reminder.id, AlertActionReceiver.ACTION_SNOOZE, snooze),
+                    // The key is frozen as the label is drawn: a card outlives the setting it was
+                    // built from, and a button must go on doing what it says. See [frozen].
+                    actionIntent(context, reminder.id, AlertActionReceiver.ACTION_SNOOZE, snooze.frozen(customMinutes)),
                 )
             }
         }

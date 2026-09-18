@@ -27,13 +27,18 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
+import android.os.SystemClock
 import dev.rwilco.R
 import dev.rwilco.ui.theme.Tokens
 import androidx.compose.ui.platform.LocalConfiguration
@@ -80,8 +85,15 @@ import androidx.compose.foundation.layout.BoxWithConstraints
  * and only then tells the caller. A drag or a fling never sets the flag, so it still meets a no.
  * The answer is delivered whatever becomes of the animation — a finger that catches the sheet on
  * its way down has still pressed the button — and a second tap meanwhile is not a second answer.
- * (A tap on the scrim does nothing here, and did not before either: Material's own scrim asks
- * `confirmValueChange` too, so the refusal has always covered it, whatever this file once said.)
+ * **And a tap outside does what Back does** (0.139.0). Material's scrim asks the same
+ * `confirmValueChange`, so the refusal above had always covered it too: a tap on the scrim did
+ * nothing at all, on twelve sheets, which is the opposite of what anybody expects. The two asks
+ * arrive at the same lambda and the only thing that tells them apart is **where the finger was**:
+ * a fling handed over by the sheet's own scrolling content, and a drag of its body, both start on
+ * the sheet ([FROM_THE_SHEET_MS]); a tap on the scrim never touches it. So the fling that must not
+ * throw a form away is refused exactly as before, and everything else leaves the way Back does —
+ * the question first when there is something to throw away, and always through [leave], so it
+ * slides rather than popping.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,7 +116,22 @@ fun SheetScaffold(
     // by a remembered lambda, because the lambda is a key of the sheet state — a fresh one on
     // every recomposition would be a fresh sheet.
     val leaving = remember { mutableStateOf(false) }
-    val mayHide = remember { { value: SheetValue -> leaving.value || value != SheetValue.Hidden } }
+    // When a finger was last on the sheet itself, which is what tells a drag from a tap outside.
+    val touchedSheet = remember { mutableLongStateOf(0L) }
+    // A tap outside asked to leave. Written by the predicate, which runs in the middle of a
+    // gesture, and read back in composition where the asking and the sliding belong.
+    val askedFromOutside = remember { mutableStateOf(false) }
+    val mayHide = remember {
+        { value: SheetValue ->
+            if (value != SheetValue.Hidden || leaving.value) {
+                true
+            } else {
+                // Nothing has touched the sheet, so this is not the fling the refusal exists for.
+                if (SystemClock.uptimeMillis() - touchedSheet.longValue > FROM_THE_SHEET_MS) askedFromOutside.value = true
+                false
+            }
+        }
+    }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true, confirmValueChange = mayHide)
     val scope = rememberCoroutineScope()
     val haptics = Tokens.haptics
@@ -122,6 +149,13 @@ fun SheetScaffold(
                 then()
             }
         }
+    }
+    // The tap outside, answered here: the same two ways out Back has.
+    LaunchedEffect(askedFromOutside.value) {
+        if (!askedFromOutside.value) return@LaunchedEffect
+        askedFromOutside.value = false
+        if (leaving.value) return@LaunchedEffect
+        if (dirty) askingToDiscard = true else leave(onDismiss)
     }
     if (askingToDiscard) {
         DiscardDialog(onKeep = { askingToDiscard = false }, onDiscard = { askingToDiscard = false; leave(onDismiss) })
@@ -142,7 +176,20 @@ fun SheetScaffold(
             // above this, and the gap it leaves under the status bar — is the honest guess. Capping
             // against the whole window instead asked for more room than the sheet has and clipped
             // the confirm row all the same, only by less.
-            SheetBounds(modifier = Modifier.padding(horizontal = spacing.screen)) {
+            SheetBounds(
+                modifier = Modifier
+                    .padding(horizontal = spacing.screen)
+                    // Every touch that lands on the sheet, before its children can eat it: see
+                    // the last paragraph above. Nothing is consumed here, only noted.
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                awaitPointerEvent(PointerEventPass.Initial)
+                                touchedSheet.longValue = SystemClock.uptimeMillis()
+                            }
+                        }
+                    },
+            ) {
                 Text(title, style = MaterialTheme.typography.headlineSmall)
                 Spacer(Modifier.height(spacing.lg))
                 Column(
@@ -224,3 +271,11 @@ fun NoBounce(content: @Composable () -> Unit) =
 
 /** The drag handle above the content, plus the gap the sheet leaves under the status bar. */
 private val SHEET_CHROME = 96.dp
+
+/**
+ * How long after a finger has been on the sheet an ask to hide still counts as that finger's.
+ * A fling handed over by the content settles the moment it lifts, so this only has to cover the
+ * hand-over; long enough to be sure, short enough that a tap outside right after a scroll is
+ * still answered on the second try.
+ */
+private const val FROM_THE_SHEET_MS = 700L

@@ -1697,6 +1697,23 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_139_0">
+
+        <item>"Send the proposal tomorrow" is understood again. Since 0.136.0 any word ending in "esta" — propuesta, respuesta, encuesta, fiesta, siesta — swallowed the Spanish word for tomorrow, so some sentences gave no chip at all; and with a part of the day beside it the chip was not lost but wrong, landing on today.</item>
+
+        <item>A snooze button on a notification keeps its word. "45 min" now puts the reminder off forty-five minutes even after you change what your own length is, because the card carries the length written out instead of the name of the setting.</item>
+
+        <item>Undoing a "done" takes its line of history with it, so "done N times" counts the times you did it.</item>
+
+        <item>Tapping outside a sheet closes it — and asks first when there is something written in it. It had never done anything at all, on twelve sheets. The fling that must not throw a half-filled form away is still refused.</item>
+
+        <item>The list behind "Another time…" slides away when you answer it, like every other sheet, instead of vanishing on the spot.</item>
+
+        <item>A telephone written 91.234.56.78 is found again — its tail read as a date — and a link that ends in a bracket, which is how half of Wikipedia\'s disambiguations are written, no longer loses its last character.</item>
+
+        <item>Smaller things: the rows on the alert are spaced like everything else on it, "Save" no longer answers while the form is still being read, the search stops saying "today" about yesterday if you leave it open past midnight, and the snooze counter no longer rewrites your settings when there is nothing to count.</item>
+
+    </string-array>
     <string-array name="whats_new_0_138_0">
 
         <item>Snoozes of your own. Settings → Alerts → Snooze → "Snoozes of your own" builds the answers the app never had: "tonight", "tomorrow afternoon", "the weekend, in the evening", "on Monday at 08:00", "in three days". They sit on the alert beside the seven it comes with, in one order that does not move with the clock, and they can be hidden, put on the notification and used from a card\'s menu exactly as those are.</item>

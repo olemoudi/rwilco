@@ -33,9 +33,10 @@ fun actionablesIn(text: String, limit: Int = 3): List<Actionable> {
     // **Only the web.** The words may have come from another app's share, and a row that opened
     // whatever scheme it was handed would be that app's way into every other one on the phone.
     for (match in LINK.findAll(text)) {
-        val raw = match.value.trimEnd(*TRAILING)
+        val raw = match.value.withoutSentenceTail()
         val url = if (raw.startsWith("www.", ignoreCase = true)) "https://$raw" else raw
-        val host = url.substringAfter("://").substringBefore('/').substringBefore('?').substringBefore(':').removePrefix("www.")
+        val bare = url.substringAfter("://").substringBefore('/').substringBefore('?').substringBefore(':')
+        val host = if (bare.startsWith("www.", ignoreCase = true)) bare.drop(4) else bare
         if (host.isNotEmpty()) found += match.range.first to Actionable.Link(raw, url, host)
         rest = rest.blank(match.range)
     }
@@ -60,11 +61,44 @@ private val LINK = Regex("(?i)(?<![\\w@])(?:https?://|www\\.)[^\\s<>\"']+")
 /** What ends a sentence is not part of the address it ended on. */
 private val TRAILING = charArrayOf('.', ',', ';', ':', '!', '?', ')', ']', '»', '”', '\'')
 
+/**
+ * The address without the punctuation the sentence put after it — **except a bracket the address
+ * opened itself** (0.139.0). Stripped flat, "es.wikipedia.org/wiki/Torrijas_(postre)" lost its
+ * last character and the row opened an address that is not a page; Spanish Wikipedia writes half
+ * its disambiguations that way. A closing bracket with its opening inside the address belongs to
+ * the address; one without belongs to the hand that wrote "(ver https://…)".
+ */
+private fun String.withoutSentenceTail(): String {
+    var end = length
+    while (end > 0) {
+        val last = this[end - 1]
+        if (last !in TRAILING) break
+        val opening = when (last) {
+            ')' -> '('
+            ']' -> '['
+            else -> null
+        }
+        // Counted over what is left, not over the whole: "…/a_(b))" gives one bracket back and
+        // keeps the other.
+        val sofar = take(end)
+        if (opening != null && sofar.count { it == opening } >= sofar.count { it == last }) break
+        end--
+    }
+    return substring(0, end)
+}
+
+// **A date is a whole one, not the tail of something longer** (0.139.0): "91.234.56.78" ends in
+// what reads as a date, and blanking it left a stub under the nine-digit floor, so a landline
+// written the way half of Spain writes one was not offered at all. Bounded by a separator on
+// either side as well as a digit, so a run of groups is never mistaken for a date inside it.
 private val NOT_PHONES = listOf(
     // 27.08.2026 · 26/8 · 3-10-26
-    Regex("(?<!\\d)\\d{1,2}[./-]\\d{1,2}(?:[./-]\\d{2,4})?(?!\\d)"),
+    Regex("(?<![\\d./-])\\d{1,2}[./-]\\d{1,2}(?:[./-]\\d{2,4})?(?![\\d./-])"),
     // 17:30 · 10.30 · 12,50
-    Regex("(?<!\\d)\\d{1,2}[:.,]\\d{2}(?!\\d)"),
+    // **The colon is never the last thing in a class.** Android's regex is ICU's, and ICU reads
+    // ":]" as the end of a POSIX property — `[\d.,:]` threw at class-init on the phone and took
+    // the whole file with it, while the JVM tests were green. `PatternsOnDeviceTest` is the guard.
+    Regex("(?<![\\d:.,-])\\d{1,2}[:.,]\\d{2}(?![\\d:.,])"),
 )
 
 /**

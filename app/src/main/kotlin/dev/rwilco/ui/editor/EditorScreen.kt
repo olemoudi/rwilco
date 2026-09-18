@@ -413,9 +413,15 @@ fun EditorScreen(
                     actions = state.draft.actions,
                     zone = zone,
                     onSave = {
-                        haptics.perform(HapticFeedbackType.Confirm)
-                        focusManager.clearFocus()
-                        viewModel.save()
+                        // Not while the row is still being read (0.139.0): the placeholder is in
+                        // the content, the bar is not, and a tap in that window ran `save()`
+                        // against the blank state — a red refusal and a buzz about a form the
+                        // person is watching load, wiped a moment later by the row arriving.
+                        if (state.loaded) {
+                            haptics.perform(HapticFeedbackType.Confirm)
+                            focusManager.clearFocus()
+                            viewModel.save()
+                        }
                     },
                 )
             },
@@ -1203,10 +1209,10 @@ internal fun FieldWarning(text: String, modifier: Modifier = Modifier, severe: B
     }
 }
 
-/** Keys of the cards a refusal can be sent to; see the `Invalid` event. */
 /** How many card shapes stand in for the form while its row is read: the four parts a form has. */
 private const val LOADING_CARDS = 4
 
+/** Keys of the cards a refusal can be sent to; see the `Invalid` event. */
 private const val SECTION_WHEN = "when"
 private const val SECTION_RETURNS = "returns"
 

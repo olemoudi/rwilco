@@ -81,6 +81,7 @@ import dev.rwilco.ui.format.join
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import java.time.Instant
 import java.time.ZoneId
@@ -159,8 +160,10 @@ fun AlertScreen(
     val guard = rememberPressGuard(content, openedOnPurpose = openedOnPurpose)
     // The calendar behind "posponer · a una fecha", which is the one offer that asks a second
     // question rather than writing a length.
-    var pickingDate by remember { mutableStateOf(false) }
-    var choosingMore by remember { mutableStateOf(false) }
+    // Kept across a rotation, as the same two flags are on Home and the routines: turning the
+    // phone with the list open is not an answer to it.
+    var pickingDate by rememberSaveable { mutableStateOf(false) }
+    var choosingMore by rememberSaveable { mutableStateOf(false) }
     // As the board stands now: one of the person's own that names a part of today ("esta tarde")
     // is not held out once that has gone. Read once for the alert — one that runs out while the
     // screen is up and is pressed anyway still puts the reminder off (ReminderFiring.snoozeBy).
@@ -324,6 +327,10 @@ fun AlertScreen(
                     ) {
                         Text(text = label, style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant)
                     }
+                    // Eight dp between targets, as everywhere else on this screen: three rows
+                    // flush against each other, and against "Ver", is a thumb's width of screen
+                    // where a slip lands on the wrong one.
+                    Spacer(Modifier.height(spacing.sm))
                 }
             }
             val viewLabel = stringResource(if (preview) R.string.alert_close_preview else R.string.alert_view)

@@ -413,6 +413,7 @@ fun RoutinesScreen(
             onSnooze = { snooze -> actingOn = null; viewModel.snooze(held.id, snooze) },
             board = snoozeBoard,
             terms = snoozeTerms,
+            clock = viewModel.clock,
             onSnoozeMore = { actingOn = null; choosingMoreFor = held.id },
             onCancelSnooze = { actingOn = null; viewModel.cancelSnooze(held.id) },
             onClone = { actingOn = null; onClone(held.id) },

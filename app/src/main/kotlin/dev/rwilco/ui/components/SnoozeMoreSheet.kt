@@ -26,6 +26,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -49,6 +54,7 @@ import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.color
 import java.time.ZonedDateTime
+import kotlinx.coroutines.launch
 
 /**
  * "A otro momento…": every way there is of putting a reminder off, in one list (0.137.0).
@@ -63,6 +69,12 @@ import java.time.ZonedDateTime
  *
  * Plain taps, even over the alert: the button that opened it was held, the eyes have arrived,
  * and a list is read before it is pressed — the same reasoning the calendar's own "Listo" has.
+ *
+ * **And it slides away when it is answered** (0.139.0), as every configurator sheet has since
+ * 0.133.0: a row that called straight back tore the sheet out of composition on the same frame,
+ * and picking the calendar swapped two sheets in one frame with no transition between them.
+ * There is no refusal to step around here — this sheet has nothing to throw away, so a fling may
+ * close it like anything else — only an answer that waits for the way out to finish.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,10 +92,26 @@ fun SnoozeMoreSheet(
     val spacing = Tokens.spacing
     val words = rememberWords()
     val today = now.toLocalDate()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+    var leaving by remember { mutableStateOf(false) }
+
+    /** Slides it out, then answers. Once: a second tap while it goes is not a second answer. */
+    fun leave(then: () -> Unit) {
+        if (leaving) return
+        leaving = true
+        scope.launch {
+            try {
+                sheetState.hide()
+            } finally {
+                then()
+            }
+        }
+    }
     NoBounce {
         ModalBottomSheet(
-            onDismissRequest = onDismiss,
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            onDismissRequest = { leave(onDismiss) },
+            sheetState = sheetState,
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             contentColor = MaterialTheme.colorScheme.onSurface,
             shape = MaterialTheme.shapes.extraLarge,
@@ -102,7 +130,7 @@ fun SnoozeMoreSheet(
                         .weight(1f, fill = false)
                         .verticalScroll(rememberScrollState()),
                 ) {
-                    MoreRow(icon = Icons.Outlined.Event, label = stringResource(R.string.snooze_more_pick), moment = null, onClick = onPickDate)
+                    MoreRow(icon = Icons.Outlined.Event, label = stringResource(R.string.snooze_more_pick), moment = null, onClick = { leave(onPickDate) })
                     for (snooze in board.more + board.shown) {
                         // A part of today that has gone is not an answer, so it is not a row.
                         val back = snooze.until(now.toInstant(), now.zone, terms)?.atZone(now.zone) ?: continue
@@ -110,7 +138,7 @@ fun SnoozeMoreSheet(
                             icon = Icons.Outlined.Snooze,
                             label = snoozeLabel(snooze, terms.customMinutes),
                             moment = dayWord(words, back.toLocalDate(), today) + " " + TimeText.time(back.toLocalTime(), words.is24h, words.locale),
-                            onClick = { onPick(snooze) },
+                            onClick = { leave { onPick(snooze) } },
                         )
                     }
                     if (!board.placesShown) {
@@ -120,7 +148,7 @@ fun SnoozeMoreSheet(
                                 label = placeOfferLabel(place),
                                 moment = null,
                                 accent = TriggerFamily.PLACE.color(),
-                                onClick = { onPickPlace(place) },
+                                onClick = { leave { onPickPlace(place) } },
                             )
                         }
                     }

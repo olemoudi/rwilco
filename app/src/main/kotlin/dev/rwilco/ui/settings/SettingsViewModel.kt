@@ -60,7 +60,8 @@ class SettingsViewModel(
     private val repository: ReminderRepository,
     placeWatch: Flow<PlaceWatchState>,
     private val placeLog: PlaceLogStore,
-    private val clock: Clock,
+    /** The app's own, not the system's: what the rows that say "ahora mismo" are drawn against. */
+    val clock: Clock,
 ) : ViewModel() {
 
     /** Only ask for "allow all the time" when something actually waits on a place. */

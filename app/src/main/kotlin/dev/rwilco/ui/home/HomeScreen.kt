@@ -439,6 +439,7 @@ fun HomeScreen(
                 // answer takes over — the calendar is its first row.
                 board = snoozeBoard,
                 terms = snoozeTerms,
+                clock = viewModel.clock,
                 onSnoozeMore = {
                     actingOn = null
                     choosingMoreFor = held.id
@@ -716,6 +717,7 @@ fun HomeScreen(
                         onFilterByTag = viewModel::filterByTag,
                         modifier = Modifier.animateItem(),
                         defaultTime = state.defaultTime,
+                        today = today,
                     )
                 }
                 // Capped at twenty with nothing to say so: a search that found more read as a
