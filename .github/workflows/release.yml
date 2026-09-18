@@ -105,17 +105,68 @@ jobs:
           PY
           echo "versionName=$VN" >> "$GITHUB_OUTPUT"
 
+      # The release itself, with no files on it yet: what it carries is uploaded below, because
+      # an upload is the part that fails and the part that has to be able to be tried again.
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          files: |
-            rwilco.apk
-            version.json
-          fail_on_unmatched_files: true
           generate_release_notes: true
           # The flag that keeps `releases/latest` meaning "beta", which is what the install link
           # and every pre-channel install both resolve through.
           prerelease: ${{ steps.channel.outputs.prerelease }}
+
+      # **An upload that fails leaves a ghost, and the ghost blocks the retry.** Twice in eight
+      # releases GitHub answered `Error saving asset` half way through, which leaves the asset
+      # created but unfinished (`state` anything but `uploaded`). The job then failed with the
+      # channel still pointing at the release before it — the phones keep what they have, which is
+      # the right way round, but nothing updates until somebody notices — and "Re-run failed jobs"
+      # failed again at once, because the name was taken by the half-made one. So: clear whatever
+      # did not finish, upload over whatever did (`--clobber`), and try three times. A clobber
+      # that fails takes the old asset with it, which is exactly what the next attempt wants —
+      # nothing of the last one left to trip over — and the sweep above catches the rest.
+      - name: Upload the assets, clearing anything that stuck half way
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.channel.outputs.tag }}
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" \
+              --jq '.assets[] | select(.state != "uploaded") | "\(.id) \(.name) \(.state)"' |
+              while read -r id name state; do
+                echo "clearing $name, which stopped at '$state'"
+                gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$id"
+              done
+            if gh release upload "$TAG" rwilco.apk version.json --clobber; then
+              echo "both assets are up (attempt $attempt)"
+              exit 0
+            fi
+            echo "upload $attempt did not finish; trying again"
+            sleep $((attempt * 10))
+          done
+          echo "::error::could not upload the release assets"
+          exit 1
+
+      # And read back what a phone would read. A green job did not use to prove the APK was
+      # fetchable: the manifest below names it, and a manifest pointing at a download that is not
+      # there is every phone on the channel failing to update, quietly, until the next release.
+      - name: Check the release can actually be downloaded
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.channel.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq '.assets[] | "\(.name) \(.state) \(.size)"'
+          STATE=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq '.assets[] | select(.name == "rwilco.apk") | .state')
+          SIZE=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq '.assets[] | select(.name == "rwilco.apk") | .size')
+          LOCAL=$(stat -c%s rwilco.apk)
+          [ "$STATE" = "uploaded" ] || { echo "::error::rwilco.apk is '$STATE', not 'uploaded'"; exit 1; }
+          [ "$SIZE" = "$LOCAL" ] || { echo "::error::rwilco.apk is $SIZE bytes up there and $LOCAL here"; exit 1; }
+          # The small one end to end, by the same url an install fetches, which proves the path
+          # and not just the API's word for it. The APK's own bytes are what the size above is.
+          curl -fsSL "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/version.json" -o published.json
+          diff published.json version.json
+          rm -f published.json
 
       # Only after the release exists: the manifest names an APK, and pointing a channel at a
       # download that has not been published yet is a few minutes of every phone on that channel
