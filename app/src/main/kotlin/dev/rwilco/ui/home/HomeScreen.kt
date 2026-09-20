@@ -77,6 +77,7 @@ import dev.rwilco.R
 import dev.rwilco.model.Section
 import dev.rwilco.model.SEARCH_LIMIT
 import dev.rwilco.model.TagFilter
+import dev.rwilco.ui.alert.openAlert
 import dev.rwilco.ui.components.EmptyState
 import dev.rwilco.ui.components.ListPlaceholder
 import dev.rwilco.ui.components.LocalSnackbar
@@ -598,6 +599,9 @@ fun HomeScreen(
         // Asked once and read twice — by the list that draws it and by the arithmetic that
         // counts past it — because the two disagreeing is a scroll to the wrong card.
         val stripShown = !search.open && stripShows(readiness, dismissedProblems, placesReady)
+        // Asked once and read twice, like the strip: by the list and by the arithmetic that
+        // counts past it. Not over the results — a search is a different list.
+        val waitingShown = !search.open && state.waiting.isNotEmpty()
         // The row of chips, and the "+" on it that administers the tags. Not only while a
         // chip has something to filter (0.93.0): a tag left on finished reminders alone is
         // the one 0.90.0 made deletable *from that panel*, and the panel had no door then.
@@ -630,6 +634,7 @@ fun HomeScreen(
                     minOf(state.routines.contacts.size, HOME_CONTACT_ROWS) +
                         (if (state.routines.contacts.size > HOME_CONTACT_ROWS) 1 else 0)
                 },
+                waitingRow = waitingShown,
             )
                 ?: return@LaunchedEffect
             if (saved.created) {
@@ -670,6 +675,19 @@ fun HomeScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(spacing.md),
         ) {
+            // **Above the strip, which is the only thing that was ever up here.** A permission
+            // that might stop a future ring is a smaller matter than a ring that has already
+            // happened and is standing there waiting to be answered.
+            if (waitingShown) {
+                item(key = "waiting", contentType = "waiting") {
+                    WaitingCard(
+                        waiting = state.waiting,
+                        now = nowState.value,
+                        onAnswer = { id -> openAlert(context, id) },
+                        modifier = Modifier.animateItem(),
+                    )
+                }
+            }
             // A fold in Settings may never hide a phone that will not ring, and neither may
             // Home: the one screen somebody actually looks at says so, once, until waved off.
             if (stripShown) {

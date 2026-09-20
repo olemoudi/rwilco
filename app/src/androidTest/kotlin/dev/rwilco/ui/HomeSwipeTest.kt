@@ -204,10 +204,13 @@ class HomeSwipeTest {
             app.repository.deleteAll()
             val written = app.clock.instant().minus(Duration.ofHours(2))
             // Rang an hour after it was written and nobody answered: overdue, waiting on Home.
+            // With no card asked for, so it is a vencido on the list rather than a row on the
+            // "esperando respuesta" card, which is not swiped (0.141.0).
             app.repository.save(
                 Reminder(
                     id = id,
                     text = pills,
+                    actions = emptySet(),
                     recurrence = Recurrence.After(1, RecurrenceUnit.HOURS),
                     createdAt = written,
                     updatedAt = written,

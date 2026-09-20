@@ -74,12 +74,17 @@ class HomeMenuTest {
         val zone = app.clock.zone
         val anHourAgo = now.minusSeconds(3_600)
         // Rang an hour ago and nobody answered: the one shape "posponer" is an answer to.
+        //
+        // **And it asked for no card**, which is what keeps it a card on the list (0.141.0): a
+        // ring somebody was actually told about is on the "esperando respuesta" card at the top
+        // now, and the answers to *that* are on the alert screen, not in this menu. The menu is
+        // still about a reminder that rang and was let go, which this one is.
         app.repository.save(
             Reminder(
                 id = id,
                 text = words,
                 rules = listOf(TriggerRule(Trigger.AtDateTime(LocalDateTime.ofInstant(anHourAgo, zone)))),
-                actions = setOf(Action.NOTIFICATION),
+                actions = emptySet(),
                 createdAt = anHourAgo,
                 updatedAt = anHourAgo,
                 lastFiredAt = anHourAgo,

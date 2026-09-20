@@ -90,8 +90,10 @@ class HomeStateTest {
     fun `an overdue card says how long ago its moment went, and no other card does`() {
         // Under "Vencidos" every row went on describing the rule exactly as a future card's
         // rows do, so the heading was the only thing telling the two apart.
+        // Armed for noon and slept through: a vencido nobody was ever asked about, which is
+        // what keeps it a card here rather than a row on the "esperando respuesta" card.
         val missed = reminder("missed", Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 12, 0)))
-            .copy(lastFiredAt = LocalDateTime.of(2026, 8, 27, 12, 0).atZone(zone).toInstant())
+            .copy(armedFor = LocalDateTime.of(2026, 8, 27, 12, 0).atZone(zone).toInstant())
         val state = buildHomeState(listOf(missed, soon, paused), defaultTime, now, zone, selectedTag = null)
         val overdue = state.sections.single { it.section == Section.OVERDUE }.cards.single()
         assertEquals(LocalDateTime.of(2026, 8, 27, 12, 0).atZone(zone).toInstant(), overdue.missedAt)
@@ -282,7 +284,10 @@ class HomeStateTest {
 
     @Test
     fun `posponer is offered only where it is an answer`() {
-        val rang = soon.copy(id = "rang", lastFiredAt = now.minusSeconds(600))
+        // One that rang and asked for nothing at all: no card was ever posted for it, so it is
+        // not on the "esperando respuesta" card — it is still a vencido here, and still owed
+        // an answer, which is the one ringing card Home has left.
+        val rang = soon.copy(id = "rang", actions = emptySet(), lastFiredAt = now.minusSeconds(600))
         val putOff = soon.copy(id = "putOff", snoozedUntil = now.plusSeconds(3600))
         val spentSnooze = soon.copy(id = "spentSnooze", lastFiredAt = now.minusSeconds(600), lastDealtAt = now.minusSeconds(300))
         val state = buildHomeState(listOf(soon, rang, putOff, spentSnooze, paused), defaultTime, now, zone, selectedTag = null)
@@ -298,13 +303,20 @@ class HomeStateTest {
     fun `only a reminder that comes back, and is not ringing, has a next one to skip`() {
         val daily = reminder("daily", Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 20, 0))).copy(recurrence = Recurrence.After(1, RecurrenceUnit.DAYS))
         val once = reminder("once", Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 20, 0)))
-        // Rang an hour ago and nobody answered: the answer owed is "hecho", not a skip.
+        // Rang an hour ago and nobody answered: the answer owed is "hecho", not a skip. It is
+        // on the card at the top now, so Home has no skip to offer it at all — the same
+        // sentence, said by the screen instead of by a null.
         val ringing = daily.copy(id = "ringing", lastFiredAt = now.minusSeconds(3_600), armedFor = now.minusSeconds(3_600))
-        val state = buildHomeState(listOf(daily, once, ringing), defaultTime, now, zone, selectedTag = null)
+        // And the same reminder that asked for no card at all, which stays in the list: the
+        // flag itself still has to say no.
+        val mute = ringing.copy(id = "mute", actions = emptySet())
+        val state = buildHomeState(listOf(daily, once, ringing, mute), defaultTime, now, zone, selectedTag = null)
         val cards = (listOfNotNull(state.hero?.card) + state.sections.flatMap { it.cards }).associateBy { it.id }
         assertEquals(LocalDateTime.of(2026, 8, 27, 20, 0).atZone(zone).toInstant(), cards.getValue("daily").skipsMoment)
         assertNull(cards.getValue("once").skipsMoment, "a one-off has no next one")
-        assertNull(cards.getValue("ringing").skipsMoment, "a ring waiting for an answer is not skipped, it is answered")
+        assertNull(cards.getValue("mute").skipsMoment, "a ring waiting for an answer is not skipped, it is answered")
+        assertEquals(listOf("ringing"), state.waiting.map { it.id })
+        assertFalse(cards.containsKey("ringing"), "and it is not a card down the list as well")
     }
     /** A card is only an id here: nothing else takes part in where it sits. */
     private fun card(id: String) = ReminderCardUi(
@@ -363,6 +375,12 @@ class HomeStateTest {
         assertEquals(4, homeCardIndex(withHero, "a", strip = false, pinned = false, routinesRows = 1))
         assertEquals(6, homeCardIndex(withHero, "a", strip = true, pinned = false, undoRow = true, routinesRows = 1))
         assertEquals(6, homeCardIndex(withHero, "a", strip = false, pinned = false, routinesRows = 3), "three overdue push it three")
+        // The "esperando respuesta" card is one row above everything, however many things are
+        // on it: the rows live inside the one card.
+        assertEquals(2, homeCardIndex(withHero, "hero", strip = false, pinned = false, waitingRow = true))
+        assertEquals(4, homeCardIndex(withHero, "a", strip = false, pinned = false, waitingRow = true))
+        val withWaiting = withHero.copy(waiting = listOf(WaitingUi("w1", "w", Instant.EPOCH, false), WaitingUi("w2", "w", Instant.EPOCH, false)))
+        assertEquals(2, homeCardIndex(withWaiting, "hero", strip = false, pinned = false), "two things waiting, still one card")
     }
 
     @Test
@@ -391,6 +409,54 @@ class HomeStateTest {
         assertEquals("fresh", calm.nextDue?.id)
         assertTrue(calm.overdue.isEmpty())
         assertEquals(3, HOME_ROUTINE_ROWS, "the screen lists three and counts the rest")
+    }
+
+    @Test
+    fun `what is waiting for an answer is lifted to the top and said once`() {
+        // A reminder that rang at two and nobody answered. It used to be a card in "vencidos"
+        // whose tap opened the form; now it is the card at the top, whose tap is the alert.
+        val rang = now.minusSeconds(3600)
+        val left = reminder("left", Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 14, 0))).copy(lastFiredAt = rang)
+        val state = buildHomeState(listOf(left, soon), defaultTime, now, zone, selectedTag = null)
+        assertEquals(listOf("left"), state.waiting.map { it.id })
+        assertEquals(rang, state.waiting.single().since)
+        assertFalse(state.waiting.single().routine)
+        val cards = (listOfNotNull(state.hero?.card) + state.sections.flatMap { it.cards }).map { it.id }
+        assertEquals(listOf("soon"), cards, "said once: it is not a vencido as well")
+        // A chip must not hide an answer owed, the way it does not hide the routines line.
+        val filtered = buildHomeState(listOf(left, soon), defaultTime, now, zone, selectedTag = TagFilter.Named("casa"))
+        assertEquals(listOf("left"), filtered.waiting.map { it.id })
+    }
+
+    @Test
+    fun `a routine waiting is lifted out of its own row, and the shade is the second witness`() {
+        val asked = reminder("asked").copy(
+            recurrence = Recurrence.Since(21, RecurrenceUnit.DAYS),
+            createdAt = now.minusSeconds(30 * 86_400),
+            askedAt = now.minusSeconds(120),
+        )
+        // Nothing in the shade: the row owes no answer, so the routine is a vencida as before.
+        val quiet = buildHomeState(listOf(asked), defaultTime, now, zone, selectedTag = null)
+        assertTrue(quiet.waiting.isEmpty())
+        assertEquals(listOf("asked"), quiet.routines.overdue.map { it.id })
+        // Its question still in the shade: it moves up, and the overdue row lets it go.
+        val open = buildHomeState(listOf(asked), defaultTime, now, zone, selectedTag = null, cardOpen = { it == "asked" })
+        assertEquals(listOf("asked"), open.waiting.map { it.id })
+        assertTrue(open.waiting.single().routine)
+        assertTrue(open.routines.overdue.isEmpty())
+        assertEquals(1, open.routines.total, "lifted from the rows, still one of the routines")
+    }
+
+    @Test
+    fun `an answer owed is not an empty home, and never a quiet day`() {
+        val rang = reminder("rang", Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 14, 0))).copy(lastFiredAt = now.minusSeconds(600))
+        val alone = buildHomeState(listOf(rang), defaultTime, now, zone, selectedTag = null)
+        assertFalse(alone.empty, "the invitation to write your first reminder, under a ring nobody answered")
+        assertFalse(alone.quietToday)
+        // And with something next month over it: "nada para hoy" is not true either.
+        val later = reminder("later", Trigger.AtDateTime(LocalDateTime.of(2026, 10, 1, 9, 0)))
+        assertFalse(buildHomeState(listOf(rang, later), defaultTime, now, zone, selectedTag = null).quietToday)
+        assertTrue(buildHomeState(listOf(later), defaultTime, now, zone, selectedTag = null).quietToday)
     }
 
     @Test

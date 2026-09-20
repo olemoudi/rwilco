@@ -34,6 +34,8 @@ import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
 import dev.rwilco.model.awaitingAnswer
+import dev.rwilco.model.answersOwed
+import dev.rwilco.model.owedSince
 import dev.rwilco.model.momentDealtWith
 import dev.rwilco.model.Deadline
 import dev.rwilco.model.hasDeadline
@@ -66,6 +68,14 @@ data class RoutinesLineUi(
 /** A contact whose turn came and went unanswered; [since] is the last time you spoke. */
 data class ContactNameUi(val id: String, val text: String, val kind: ContactKind, val since: Instant)
 
+/**
+ * One thing waiting for an answer, as the card at the top of Home says it: its own words, how
+ * long it has been waiting, and whether it is a routine — which decides the ink, the way it
+ * does everywhere else. See `Waiting.kt` for what "waiting" is, and `WaitingCard.kt` for the
+ * card. The tap is the alert screen, which is the only door that can actually answer it.
+ */
+data class WaitingUi(val id: String, val text: String, val since: Instant, val routine: Boolean)
+
 /** [since] is the moment the count runs from — the last "hecho", or the day it was written. */
 data class RoutineNameUi(val id: String, val text: String, val since: Instant)
 
@@ -80,6 +90,12 @@ const val HOME_CONTACT_ROWS = 3
 
 data class HomeUiState(
     val loaded: Boolean = false,
+    /**
+     * What is waiting for an answer, longest first: the card above everything else, including
+     * the readiness strip — a ring nobody answered outranks a permission that might one day
+     * stop one. Taken out of the rows they used to sit in, so Home says each of them once.
+     */
+    val waiting: List<WaitingUi> = emptyList(),
     val hero: HeroUi? = null,
     val sections: List<SectionUi> = emptyList(),
     val tags: List<TagFilter> = emptyList(),
@@ -99,8 +115,12 @@ data class HomeUiState(
     /** The store could not be read: an error to say, not a loading state to sit in for ever. */
     val failed: Boolean = false,
 ) {
-    /** Nothing open at all (as opposed to a filter that matched nothing). */
-    val empty: Boolean get() = loaded && !failed && hero == null && sections.isEmpty() && selectedTag == null
+    /**
+     * Nothing open at all (as opposed to a filter that matched nothing). A reminder waiting for
+     * an answer counts: it is lifted out of the sections, and without this the one reminder on
+     * the phone ringing unanswered drew the "write your first one" invitation under it.
+     */
+    val empty: Boolean get() = loaded && !failed && hero == null && sections.isEmpty() && waiting.isEmpty() && selectedTag == null
 }
 
 /**
@@ -137,8 +157,11 @@ fun homeCardIndex(
     routinesRows: Int = 0,
     /** And how many contact rows under those. **Keep in step with the list in HomeScreen.** */
     contactsRows: Int = 0,
+    /** The "esperando respuesta" card, above everything: one row whatever is on it. */
+    waitingRow: Boolean = state.waiting.isNotEmpty(),
 ): Int? {
     var index = 0
+    if (waitingRow) index++
     if (strip) index++
     if (pinned) index++
     if (tagsRow) index++
@@ -378,6 +401,13 @@ fun buildHomeState(
     inside: (String, Int) -> Boolean? = { _, _ -> null },
     /** What the person has said about their own tags; here, only which ones lead the row. */
     tagPrefs: List<TagPref> = emptyList(),
+    /**
+     * Whether one of our cards about this reminder is still in the shade — the second witness
+     * to "waiting for an answer"; see `Waiting.kt`. Only Android can answer it, so it arrives
+     * as a question, and a caller with no way to ask (every test that is not about this) says
+     * no and gets the row's own word.
+     */
+    cardOpen: (String) -> Boolean = { false },
 ): HomeUiState {
     val tags = tagFilters(reminders, tagPrefs)
     // A filter on something that is no longer offered is no filter: the last reminder carrying
@@ -389,7 +419,11 @@ fun buildHomeState(
         if (chosen !is TagFilter.Named) chosen.takeIf { it in tags }
         else tags.firstOrNull { it is TagFilter.Named && it.tag.equals(chosen.tag, ignoreCase = true) }
     }
-    val groups = groupForHome(reminders, now, zone, defaultTime, filter, dayStart, shape)
+    // **From the whole list, before the filter**: an answer owed is not somebody's filing, and a
+    // chip must not hide one — the same reason the routines line is built from everything.
+    val waiting = answersOwed(reminders, now, cardOpen)
+    val lifted = waiting.map { it.id }.toSet()
+    val groups = groupForHome(reminders, now, zone, defaultTime, filter, dayStart, shape, lifted)
     fun card(reminder: Reminder, missedAt: Instant? = null, next: NextFire? = null, cannotRing: Boolean = false): ReminderCardUi {
         val standings = reminder.ruleStandings(now, zone, dayStart, shape) { index -> inside(reminder.id, index) }
         val circles = reminder.watchedCircles(now, zone, defaultTime, shape, dayStart)
@@ -446,7 +480,11 @@ fun buildHomeState(
     val busySections = groups.sections.keys.any { it == Section.TODAY || it == Section.OVERDUE }
     return HomeUiState(
         loaded = true,
-        quietToday = (groups.hero != null || groups.sections.isNotEmpty()) && !heroToday && !busySections && filter == null,
+        waiting = waiting.map { WaitingUi(it.id, it.text, it.owedSince(), it.isRoutine) },
+        // "Nada para hoy" over a card saying something rang and nobody answered is Home
+        // contradicting itself in two rows.
+        quietToday = (groups.hero != null || groups.sections.isNotEmpty()) && waiting.isEmpty() &&
+            !heroToday && !busySections && filter == null,
         hero = groups.hero?.let { hero ->
             HeroUi(
                 // The hero says its moment in its own words, so it needs no [returnsAt] — but
@@ -462,10 +500,15 @@ fun buildHomeState(
         selectedTag = filter,
         routines = RoutinesLineUi(
             total = reminders.count { it.isRoutine && it.status != Status.DONE },
-            overdue = overdueRoutines(reminders, now, zone, dayStart).map { RoutineNameUi(it.id, it.text, it.routineAnchor()) },
+            // Lifted out of here too, for the same reason they are lifted out of the sections:
+            // a routine whose question is open is on the card above, where it can be answered.
+            overdue = overdueRoutines(reminders, now, zone, dayStart)
+                .filter { it.id !in lifted }
+                .map { RoutineNameUi(it.id, it.text, it.routineAnchor()) },
             nextDue = nextDueRoutine(reminders, now, zone, dayStart)?.let { RoutineDueUi(it.id, it.text, it.routineDeadline(zone, dayStart)!!) },
             // No queue is needed here: "its turn came and nobody answered" is written in the row
-            // itself, which is the whole reason contactOwed reads awaitingAnswer.
+            // itself, which is the whole reason contactOwed reads awaitingAnswer. Nothing is
+            // lifted out of this one: a contact is never on the card above ([answerOwed]).
             contacts = overdueContacts(reminders, now).map { ContactNameUi(it.id, it.text, it.contactKind!!, it.routineAnchor()) },
         ),
         defaultTime = defaultTime,

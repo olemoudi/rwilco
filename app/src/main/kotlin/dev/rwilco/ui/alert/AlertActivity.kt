@@ -1,6 +1,7 @@
 package dev.rwilco.ui.alert
 
 import android.app.KeyguardManager
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -530,5 +531,32 @@ class AlertActivity : ComponentActivity() {
         const val STATE_SILENT = "silenced"
         const val STATE_FOCUSED = "focused"
         const val STATE_HUSHED = "hushed"
+    }
+}
+
+/**
+ * The alert screen for one reminder, opened from inside the app — Home's "esperando respuesta"
+ * card, which is the one door on Home that leads to the answers rather than to the form.
+ *
+ * **Silent and held**, which is the whole of what it adds. Silent ([ReminderScheduler.EXTRA_TAPPED])
+ * because the noise this reminder asked for was made when its moment came, and making it again
+ * because somebody got round to reading the card is the app shouting at a person who is already
+ * looking at it. Held ([ReminderScheduler.EXTRA_ANYWAY]) because the card is also shown for
+ * things that are not *owed* an answer — a routine's question, a note from the net — and without
+ * it the screen would drop them on its first look and the tap would flash and do nothing.
+ *
+ * And it opens whatever the reminder asked for: the full screen is where its answers live, and
+ * "pantalla completa" is a setting about what an alarm does at three in the morning, not about
+ * where a person is allowed to answer it from.
+ */
+fun openAlert(context: Context, reminderId: String) {
+    runCatching {
+        context.startActivity(
+            Intent(context, AlertActivity::class.java)
+                .setData(ReminderScheduler.reminderUri(reminderId))
+                .putExtra(ReminderScheduler.EXTRA_TAPPED, true)
+                .putExtra(ReminderScheduler.EXTRA_ANYWAY, true)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
     }
 }

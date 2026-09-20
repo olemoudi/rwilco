@@ -806,6 +806,34 @@ object AlertNotifications {
 
     fun resetNotificationId(reminderId: String): Int = ("reset:$reminderId").hashCode()
 
+    /**
+     * Which of our cards are in the shade right now, by id — what Home's "esperando respuesta"
+     * card asks, for the answers that are written nowhere else (see `Waiting.kt`). Our own
+     * notifications only; no permission, and nothing about anybody else's.
+     *
+     * Empty if the system will not say, which is the right way to be wrong here: the row's own
+     * word still puts an unanswered ring on Home.
+     */
+    fun openCards(context: Context): Set<Int> = runCatching {
+        context.getSystemService(NotificationManager::class.java)
+            ?.activeNotifications
+            ?.map { it.id }
+            ?.toSet()
+            .orEmpty()
+    }.getOrDefault(emptySet())
+
+    /**
+     * Whether one of [open] is a card about this reminder that is waiting for an answer: the
+     * ring, the net's word about it, or a routine's question.
+     *
+     * **Not [resetNotificationId]**, which is the "hecha · deshacer" notice and the one about a
+     * place having counted a routine as done. Those are about something already done and go by
+     * themselves after their minute; a red row on Home saying an answer is owed for a thing the
+     * app has just ticked off is the opposite of what happened.
+     */
+    fun cardOpen(open: Set<Int>, reminderId: String): Boolean = open.isNotEmpty() &&
+        (notificationId(reminderId) in open || nudgeNotificationId(reminderId) in open || askNotificationId(reminderId) in open)
+
     private fun channelId(sound: Boolean, vibrate: Boolean, vibration: VibrationPattern, chosen: AlertSound, bypass: Boolean): String {
         // Each part only belongs in the id of a channel it can actually change: a silent channel
         // would otherwise get one id per tone nobody is going to hear, and a still one per

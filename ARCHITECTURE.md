@@ -915,6 +915,36 @@ loud what DST and a change of zone do to a landing.
   otherwise every rotation pushed the shared text back on top of whatever the person was doing.
   Settings → Aspecto has a language row on API 33+ that opens the
   system's per-app page (`locales_config.xml` names the two).
+- **What is waiting for an answer is the first thing on Home** (0.141.0, `core-model`'s
+  `Waiting.kt`, `ui/home/WaitingCard.kt`). One card above everything, the readiness strip
+  included — a permission that might stop a future ring is a smaller matter than a ring that has
+  already happened and is standing there — with one row per thing waiting, longest first, and
+  **the tap is the alert screen** (`openAlert`, silent and held: `EXTRA_TAPPED` + `EXTRA_ANYWAY`).
+  That is the whole point of it: the alert is the one door that can actually answer a reminder —
+  "hecho", every snooze, the places — and nothing on Home led there. It opens whatever the
+  reminder asked for, because "pantalla completa" is a setting about what an alarm does at three
+  in the morning, not about where a person may answer it from.
+  **Two witnesses** (`Reminder.answerOwed`): the row itself says a ring was left unanswered
+  (`awaitingAnswer`), which is true whether or not the card is still in the shade — one swiped
+  away half asleep is exactly the one worth showing; and the shade says what the row cannot,
+  because "todavía no" on a routine's question takes the card down and writes nothing, and the
+  net's notes are about reminders that are *not* owed an answer. The second is read by
+  `AlertNotifications.openCards`/`cardOpen` (the ring's id, the net's, the ask's — never the
+  "hecha · deshacer" notice, which is about something already done) inside Home's own rebuild:
+  every minute, every row that changes, every resume. There is no telling when a card is swiped
+  — a listener for that is a system-wide permission — so a row can outlive its card by up to a
+  minute, which is the cheap way round.
+  **A firing that asked for nothing is never here**: its moment passes without a word on purpose
+  and it is simply overdue after. **And neither is a contact**, although its telling is a card in
+  the shade with two answers on it: its row is the one thing in this app built on purpose not to
+  look like a debt (`Contacts.kt`), and this card is a complaint. Asked and answered by the owner
+  (2026-09-20).
+  **Lifted, not repeated**: `groupForHome(lifted = …)` drops them from the hero and the sections
+  and `buildHomeState` drops them from the overdue-routine rows, the way the hero is dropped from
+  its section — so while a reminder is waiting it has no card down the list, and its swipe and its
+  held menu are the alert's answers instead. The widget passes no `lifted` and goes on counting
+  them among its "vencidos", which is what it should count. `homeCardIndex` mirrors the card as
+  one row (`waitingRow`), whatever is on it.
 - **The routines have a screen of their own, and Home keeps one line about them** (0.95.0,
   `ui/routines/`, `ui/home/RoutinesLine.kt`). `Routes.Routines` is reached from that line —
   a full-width row under the chips and over the hero, always there once the list has been

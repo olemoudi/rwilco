@@ -120,6 +120,8 @@
     <string name="home_routines_overdue_title">You still haven\'t done:</string>
     <string name="home_routines_open">Open the routines</string>
     <string name="home_contacts_title">Time to get in touch with:</string>
+    <string name="home_waiting_title">Waiting for your answer</string>
+    <string name="home_waiting_open">Open the alert</string>
     <plurals name="home_contacts_more">
         <item quantity="one">%1$d more contact</item>
         <item quantity="other">%1$d more contacts</item>
@@ -1699,6 +1701,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_141_0">
+
+        <item>Anything waiting for your answer is now the first thing on Home, in one card above everything else: a reminder that rang and was left, a routine whose question is still in the shade. Tapping it opens the alert screen — "Hecho", every snooze, the places — whether or not that reminder ever asked for a full screen. It is lifted out of "Overdue" rather than said twice, so while it is waiting its card is not down the list.</item>
+
+    </string-array>
     <string-array name="whats_new_0_140_0">
 
         <item>The line over "Save" no longer promises a repetition the form says it will not make. With two weekday rules and "Does not repeat", it listed three dates in a row — true, because those are the rings you would get if you never answered it, and read as a rhythm. It now says the whole of it: "…and so on until you do it once · after that, never again".</item>

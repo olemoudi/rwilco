@@ -116,6 +116,8 @@
     <string name="home_routines_overdue_title">Todavía no has hecho lo siguiente:</string>
     <string name="home_routines_open">Abrir las rutinas</string>
     <string name="home_contacts_title">Toca escribir a:</string>
+    <string name="home_waiting_title">Esperando tu respuesta</string>
+    <string name="home_waiting_open">Abrir la alerta</string>
     <plurals name="home_contacts_more">
         <item quantity="one">%1$d contacto más</item>
         <item quantity="other">%1$d contactos más</item>
@@ -1684,6 +1686,11 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_141_0">
+
+        <item>Lo que está esperando tu respuesta es ahora lo primero de Home, en una tarjeta por encima de todo lo demás: un recordatorio que sonó y se quedó sin contestar, una rutina cuya pregunta sigue en la bandeja. Al pulsarla se abre la pantalla de alerta —«Hecho», todos los posponer, los sitios— aunque ese recordatorio no tenga configurada la pantalla completa. Sube de «Vencidos» en vez de decirse dos veces: mientras espera, su tarjeta no está en la lista.</item>
+
+    </string-array>
     <string-array name="whats_new_0_140_0">
 
         <item>La línea sobre «Guardar» ya no promete una repetición que el formulario dice que no habrá. Con dos reglas de día de la semana y «No repetir» enumeraba tres fechas seguidas —ciertas, porque son los avisos que tendrías si no lo contestaras nunca, pero se leen como un ritmo—. Ahora lo dice entero: «…y así hasta que lo hagas una vez · después, nunca más».</item>

@@ -71,6 +71,12 @@ fun sectionOf(next: NextFire?, status: Status, hasRules: Boolean, now: Instant, 
  * [TagFilter] keeps only the reminders that belong under it. The hero is the earliest definite
  * moment among active reminders and is lifted out of its section; a random draw never becomes
  * the hero.
+ *
+ * [lifted] are reminders some row above the list has already taken — the ones waiting for an
+ * answer (`Waiting.kt`), which Home puts in one card at the top. They are dropped here so the
+ * same reminder is not read twice on one screen, the way the hero is dropped from its section.
+ * Empty for every caller that has no such row: the widget counts its "vencidos" off these
+ * sections and a ring left unanswered is exactly what it should be counting.
  */
 fun groupForHome(
     reminders: List<Reminder>,
@@ -80,9 +86,10 @@ fun groupForHome(
     tagFilter: TagFilter? = null,
     dayStart: LocalTime = DEFAULT_DAY_START,
     shape: DayShape = DayShape.DEFAULT,
+    lifted: Set<String> = emptySet(),
 ): HomeGroups {
     val entries = reminders
-        .filter { it.status != Status.DONE && !it.isRoutine }
+        .filter { it.status != Status.DONE && !it.isRoutine && it.id !in lifted }
         .filter { tagFilter == null || tagFilter.matches(it) }
         .map {
             val next = nextFire(it, now, zone, defaultTime, dayStart, shape)

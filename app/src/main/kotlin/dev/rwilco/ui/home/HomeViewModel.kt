@@ -7,6 +7,7 @@ import dev.rwilco.RwilcoApplication
 import dev.rwilco.alarm.ReminderFiring
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
+import dev.rwilco.notify.AlertNotifications
 import dev.rwilco.model.Action
 import dev.rwilco.model.DayShape
 import dev.rwilco.model.GeofenceIds
@@ -172,6 +173,19 @@ class HomeViewModel(
     private val locationAllowed: () -> Boolean = { false },
     /** The watch's door for which side of a line the phone starts on; see [ReminderFiring.snoozeToPlace]. */
     private val rememberSide: suspend (String, Transition) -> Unit = { _, _ -> },
+    /**
+     * Which of our cards are in the shade, by notification id — the second witness to "waiting
+     * for an answer" (`Waiting.kt`), for the answers written nowhere else: "todavía no" on a
+     * routine's question takes the card down and writes nothing.
+     *
+     * Read inside the rebuild rather than kept in a flow of its own. There is no telling when a
+     * card is swiped — a listener for that is a system-wide permission, for a personal app, to
+     * be told about every notification on the phone — so it is asked at the moments Home is
+     * built anyway: every minute, on every row that changes, and on every resume. A row can
+     * therefore outlive its card by up to a minute, which is the cheap way round: the other
+     * would be a row that vanished while being read.
+     */
+    private val openCards: suspend () -> Set<Int> = { emptySet() },
 ) : ViewModel() {
 
     /** The place answers a held card can give: the most-used saved place as a doorway in, and "aquí". */
@@ -505,11 +519,13 @@ class HomeViewModel(
         // StateFlow, and on every resubscription — the app coming back after five seconds
         // away — it replays its last value, the instant the ViewModel was made, possibly hours
         // ago: Home was built for a morning that had passed until the next minute tick.
+        val cards = openCards()
         buildHomeState(
             reminders, current.defaultTime, clock.instant(), clock.zone, tag,
             current.dayStart, current.dayShape, accuracy,
             inside = { id, index -> insideOf(reminders, watch, id, index) },
             tagPrefs = current.tagPrefs,
+            cardOpen = { id -> AlertNotifications.cardOpen(cards, id) },
         )
     }
         .flowOn(Dispatchers.Default)
@@ -782,6 +798,7 @@ class HomeViewModel(
                 hereFix = { hereFix(app, app.placeWatch, app.clock.instant()) },
                 locationAllowed = { app.hasBackgroundLocation() },
                 rememberSide = app.placeWatcher::remember,
+                openCards = { AlertNotifications.openCards(app) },
             ) as T
     }
 }
