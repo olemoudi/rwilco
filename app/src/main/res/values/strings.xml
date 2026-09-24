@@ -1701,6 +1701,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_142_0">
+
+        <item>Editing a saved place in Settings now asks whether the reminders and routines that use it go with it. Before, they kept the old copy without a word: moving \"the office\" moved nothing that rang there. What counts as using it is the same pin; a radius or a name a reminder tuned for itself is kept.</item>
+
+    </string-array>
     <string-array name="whats_new_0_141_0">
 
         <item>Anything waiting for your answer is now the first thing on Home, in one card above everything else: a reminder that rang and was left, a routine whose question is still in the shade. Tapping it opens the alert screen — "Hecho", every snooze, the places — whether or not that reminder ever asked for a full screen. It is lifted out of "Overdue" rather than said twice, so while it is waiting its card is not down the list.</item>
@@ -2616,4 +2621,11 @@
         <item quantity="one">%1$d reminder</item>
         <item quantity="other">%1$d reminders</item>
     </plurals>
+    <string name="place_move_title">Update everything that uses «%1$s»?</string>
+    <plurals name="place_move_body">
+        <item quantity="one">%d reminder or routine still has the place as it was. If you leave it, it keeps the old one.</item>
+        <item quantity="other">%d reminders or routines still have the place as it was. If you leave them, they keep the old one.</item>
+    </plurals>
+    <string name="place_move_confirm">Update</string>
+    <string name="place_move_keep">Only the place</string>
 </resources>

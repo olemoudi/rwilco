@@ -122,3 +122,67 @@ fun withHiddenText(hidden: List<String>, text: String): List<String> {
     if (hidden.any { it.trim().lowercase(Locale.ROOT) == key }) return hidden
     return hidden + phrase
 }
+
+/*
+ * A saved place, edited in Settings.
+ *
+ * A rule does not point at a saved place, it copies it — name, pin and radius — so moving "la
+ * oficina" in Settings used to reach no reminder at all. These carry the edit over, once
+ * somebody has been asked. What counts as using a place is its **pin**: the chips copy it to the
+ * last digit, and a name is the part most likely to have been retyped. And only what the edit
+ * changed is carried, and only where the copy still had the old value: a reminder that widened
+ * the circle for itself keeps its own radius when the pin moves.
+ */
+
+private fun SavedPlace.pinOf(lat: Double, lng: Double): Boolean = lat == this.lat && lng == this.lng
+
+private fun Trigger.Location.movedTo(old: SavedPlace, new: SavedPlace): Trigger.Location =
+    if (!old.pinOf(lat, lng)) this
+    else copy(
+        lat = new.lat,
+        lng = new.lng,
+        radiusM = if (radiusM == old.radiusM) new.radiusM else radiusM,
+        label = if (label == old.label) new.label else label,
+    )
+
+private fun Condition.movedTo(old: SavedPlace, new: SavedPlace): Condition =
+    if (this !is Condition.AtPlace || !old.pinOf(lat, lng)) this
+    else copy(
+        lat = new.lat,
+        lng = new.lng,
+        radiusM = if (radiusM == old.radiusM) new.radiusM else radiusM,
+        label = if (label == old.label) new.label else label,
+    )
+
+private fun List<TriggerRule>.movedTo(old: SavedPlace, new: SavedPlace): List<TriggerRule> = map { rule ->
+    rule.copy(
+        trigger = (rule.trigger as? Trigger.Location)?.movedTo(old, new) ?: rule.trigger,
+        conditions = rule.conditions.map { it.movedTo(old, new) },
+    )
+}
+
+private fun Recurrence.movedTo(old: SavedPlace, new: SavedPlace): Recurrence =
+    withConditions(conditions.map { it.movedTo(old, new) })
+
+/**
+ * Every reminder still to ring with a place on [old]'s pin, carried over to [new]: its rules,
+ * their fences, its calendar's fences and a snooze waiting at that door. Only the rows that
+ * changed. DONE ones are left as they were written: they are history, not plans.
+ */
+fun movePlaceIn(reminders: List<Reminder>, old: SavedPlace, new: SavedPlace): List<Reminder> {
+    if (old == new) return emptyList()
+    return reminders.mapNotNull { reminder ->
+        if (reminder.status == Status.DONE) return@mapNotNull null
+        val moved = reminder.copy(
+            rules = reminder.rules.movedTo(old, new),
+            recurrence = reminder.recurrence.movedTo(old, new),
+            snoozedToPlace = reminder.snoozedToPlace?.movedTo(old, new),
+        )
+        moved.takeIf { it != reminder }
+    }
+}
+
+/** The same, on the presets: the whole list back, since the settings blob is written whole. */
+fun movePlaceInPresets(presets: List<Preset>, old: SavedPlace, new: SavedPlace): List<Preset> =
+    if (old == new) presets
+    else presets.map { it.copy(rules = it.rules.movedTo(old, new), recurrence = it.recurrence.movedTo(old, new)) }

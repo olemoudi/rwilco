@@ -18,6 +18,8 @@ import dev.rwilco.model.AlertStacking
 import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.toggling
 import dev.rwilco.model.SavedPlace
+import dev.rwilco.model.movePlaceIn
+import dev.rwilco.model.movePlaceInPresets
 import dev.rwilco.model.SavedWindow
 import dev.rwilco.model.PlaceWatchPolicy
 import dev.rwilco.model.ThemeMode
@@ -30,6 +32,8 @@ import dev.rwilco.model.tally
 import dev.rwilco.model.pollsSince
 import dev.rwilco.model.TriggerKind
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -138,11 +142,46 @@ class SettingsViewModel(
     /** The one thing the place watch is allowed to say about itself, and only if asked to. */
     fun setBusyWatchNotice(on: Boolean) = update { it.copy(busyWatchNotice = on) }
 
-    /** A new place when [index] is null, otherwise the one at [index] rewritten. */
-    fun savePlace(index: Int?, place: SavedPlace) = update { settings ->
-        val places = settings.savedPlaces.toMutableList()
-        if (index != null && index in places.indices) places[index] = place else places += place
-        settings.copy(savedPlaces = places)
+    private val _placeMove = MutableStateFlow<PlaceMoveAsk?>(null)
+
+    /** An edited place that reminders still carry a copy of, waiting for "update them too?". */
+    val placeMove: StateFlow<PlaceMoveAsk?> = _placeMove.asStateFlow()
+
+    /**
+     * A new place when [index] is null, otherwise the one at [index] rewritten. A rule copies a
+     * saved place rather than pointing at it, so an edit that some reminder still carries the
+     * old copy of asks first whether they go with it ([answerPlaceMove]).
+     */
+    fun savePlace(index: Int?, place: SavedPlace) {
+        val old = index?.let { settings.value?.savedPlaces?.getOrNull(it) }
+        if (old == null || old == place) return writePlace(index, place, carry = null)
+        viewModelScope.launch {
+            val carrying = movePlaceIn(repository.allNow(), old, place).size
+            if (carrying == 0) writePlace(index, place, carry = null)
+            else _placeMove.value = PlaceMoveAsk(index, old, place, carrying)
+        }
+    }
+
+    /** The answer: [carry] moves every copy with the place; otherwise only the place is saved. */
+    fun answerPlaceMove(carry: Boolean) {
+        val ask = _placeMove.value ?: return
+        _placeMove.value = null
+        writePlace(ask.index, ask.new, carry = ask.old.takeIf { carry })
+    }
+
+    /** [carry] is the place as it was, when the reminders and presets on it move too. */
+    private fun writePlace(index: Int?, place: SavedPlace, carry: SavedPlace?) {
+        viewModelScope.launch {
+            if (carry != null) repository.saveAll(movePlaceIn(repository.allNow(), carry, place))
+            store.update { settings ->
+                val places = settings.savedPlaces.toMutableList()
+                if (index != null && index in places.indices) places[index] = place else places += place
+                settings.copy(
+                    savedPlaces = places,
+                    presets = if (carry != null) movePlaceInPresets(settings.presets, carry, place) else settings.presets,
+                )
+            }
+        }
     }
 
     fun removePlace(index: Int) = update { settings ->
@@ -273,3 +312,6 @@ class SettingsViewModel(
             ) as T
     }
 }
+
+/** A saved place edited from [old] to [new], and how many reminders still carry [old]. */
+data class PlaceMoveAsk(val index: Int, val old: SavedPlace, val new: SavedPlace, val count: Int)

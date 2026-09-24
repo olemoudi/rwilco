@@ -58,6 +58,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.rwilco.BuildConfig
@@ -680,6 +682,28 @@ fun SettingsScreen(
                         editingPlace = null
                     },
                     onDismiss = { editingPlace = null },
+                )
+            }
+            // The edited place is still copied into reminders: asked whether they go with it.
+            // Tapping outside keeps the edit the sheet already confirmed, and only that.
+            val placeMove by viewModel.placeMove.collectAsStateWithLifecycle()
+            placeMove?.let { ask ->
+                AlertDialog(
+                    onDismissRequest = { viewModel.answerPlaceMove(carry = false) },
+                    title = { Text(stringResource(R.string.place_move_title, ask.old.label)) },
+                    text = { Text(pluralStringResource(R.plurals.place_move_body, ask.count, ask.count)) },
+                    confirmButton = {
+                        TextButton(onClick = { viewModel.answerPlaceMove(carry = true) }) {
+                            Text(stringResource(R.string.place_move_confirm))
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { viewModel.answerPlaceMove(carry = false) }) {
+                            Text(stringResource(R.string.place_move_keep))
+                        }
+                    },
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    shape = MaterialTheme.shapes.extraLarge,
                 )
             }
 
