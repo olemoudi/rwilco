@@ -29,7 +29,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.R
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.TriggerFamily
@@ -43,7 +42,7 @@ import dev.rwilco.ui.theme.wash
 /**
  * The places kept by name: home, work, the gym. Each row is a place trigger's worth of
  * answer — name, pin, radius — offered whole in the place sheet. Tap a row to move it, the
- * bin to forget it.
+ * bin to forget it; what the bin does next is the screen's (it may have to ask first).
  */
 @Composable
 fun SavedPlacesCard(
@@ -51,14 +50,9 @@ fun SavedPlacesCard(
     onAdd: () -> Unit,
     onEdit: (Int) -> Unit,
     onRemove: (Int) -> Unit,
-    /** The undo: the place back at the index it was removed from. */
-    onRestore: (Int, SavedPlace) -> Unit,
 ) {
     val spacing = Tokens.spacing
     val family = TriggerFamily.PLACE
-    val snackbar = LocalSnackbar.current
-    val removedMessage = stringResource(R.string.settings_place_removed)
-    val undoLabel = stringResource(R.string.common_undo)
     RwilcoCard {
         Column(Modifier.padding(spacing.lg)) {
             Text(
@@ -104,11 +98,7 @@ fun SavedPlacesCard(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                            IconButton(onClick = {
-                                onRemove(index)
-                                // One tap, no question — but a way back, like a reminder has.
-                                snackbar.show(removedMessage, undoLabel) { onRestore(index, place) }
-                            }) {
+                            IconButton(onClick = { onRemove(index) }) {
                                 Icon(
                                     imageVector = Icons.Outlined.Delete,
                                     contentDescription = stringResource(R.string.settings_remove_place),

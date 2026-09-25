@@ -35,6 +35,10 @@ import dev.rwilco.model.tally
 import dev.rwilco.model.pollsSince
 import dev.rwilco.model.TriggerKind
 import kotlinx.coroutines.flow.Flow
+import dev.rwilco.data.FiringEvent
+import dev.rwilco.model.placeUsersOf
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
@@ -187,15 +191,64 @@ class SettingsViewModel(
         }
     }
 
-    fun removePlace(index: Int) = update { settings ->
-        settings.copy(savedPlaces = settings.savedPlaces.filterIndexed { i, _ -> i != index })
+    private val _placeRemove = MutableStateFlow<PlaceRemoveAsk?>(null)
+
+    /** A place being deleted that reminders still ring by, waiting for what to do with them. */
+    val placeRemove: StateFlow<PlaceRemoveAsk?> = _placeRemove.asStateFlow()
+
+    private val _placeRemoved = Channel<PlaceRemoved>(Channel.BUFFERED)
+
+    /** A place gone, for the snackbar that offers it back. */
+    val placeRemoved: Flow<PlaceRemoved> = _placeRemoved.receiveAsFlow()
+
+    /**
+     * One tap when nothing rings by the place, as it always was. When something does, the
+     * question first ([answerPlaceRemove]): those reminders can stay on their own copies of the
+     * circle, or go with it — and going with it is asked twice, because it deletes things.
+     */
+    fun removePlace(index: Int) {
+        val place = settings.value?.savedPlaces?.getOrNull(index) ?: return
+        viewModelScope.launch {
+            val users = placeUsersOf(repository.allNow(), place)
+            if (users.isEmpty()) dropPlace(index, place, deleting = emptyList())
+            else _placeRemove.value = PlaceRemoveAsk(index, place, users)
+        }
     }
 
-    /** The undo of [removePlace]: back where it was, or at the end if the list has shrunk since. */
-    fun restorePlace(index: Int, place: SavedPlace) = update { settings ->
-        val places = settings.savedPlaces.toMutableList()
-        places.add(index.coerceIn(0, places.size), place)
-        settings.copy(savedPlaces = places)
+    /** Null is "cancel"; false keeps the reminders; true deletes them, the second time it is said. */
+    fun answerPlaceRemove(deleteThem: Boolean?) {
+        val ask = _placeRemove.value ?: return
+        when {
+            deleteThem == null -> _placeRemove.value = null
+            deleteThem && !ask.sure -> _placeRemove.value = ask.copy(sure = true)
+            else -> {
+                _placeRemove.value = null
+                viewModelScope.launch { dropPlace(ask.index, ask.place, deleting = if (deleteThem) ask.reminders else emptyList()) }
+            }
+        }
+    }
+
+    /** The place out of the list and [deleting] out of the database, their history kept for the undo. */
+    private suspend fun dropPlace(index: Int, place: SavedPlace, deleting: List<Reminder>) {
+        val deleted = deleting.map { reminder ->
+            val history = repository.history(reminder.id)
+            repository.delete(reminder.id)
+            DeletedReminder(reminder, history)
+        }
+        store.update { settings -> settings.copy(savedPlaces = settings.savedPlaces.filterIndexed { i, _ -> i != index }) }
+        _placeRemoved.send(PlaceRemoved(index, place, deleted))
+    }
+
+    /** The undo: the place back where it was (or at the end if the list has shrunk since), and whatever went with it. */
+    fun undoPlaceRemoval(removed: PlaceRemoved) {
+        viewModelScope.launch {
+            removed.deleted.forEach { repository.restore(it.reminder, it.history) }
+            store.update { settings ->
+                val places = settings.savedPlaces.toMutableList()
+                places.add(removed.index.coerceIn(0, places.size), removed.place)
+                settings.copy(savedPlaces = places)
+            }
+        }
     }
 
     /** The same two, for a stretch of the day kept under a name. */
@@ -323,3 +376,14 @@ data class PlaceMoveAsk(val index: Int, val old: SavedPlace, val new: SavedPlace
 data class PlaceUser(val text: String, val routine: Boolean, val paused: Boolean) {
     constructor(reminder: Reminder) : this(reminder.text, reminder.isRoutine, reminder.status == Status.PAUSED)
 }
+
+/** A saved place being deleted, the reminders that ring by it, and whether "delete them" has been said once already. */
+data class PlaceRemoveAsk(val index: Int, val place: SavedPlace, val reminders: List<Reminder>, val sure: Boolean = false) {
+    val users: List<PlaceUser> get() = reminders.map(::PlaceUser)
+}
+
+/** A reminder deleted with its place, and its history, so the undo can bring back both. */
+data class DeletedReminder(val reminder: Reminder, val history: List<FiringEvent>)
+
+/** A saved place deleted from [index], and the reminders deleted with it, if any. */
+data class PlaceRemoved(val index: Int, val place: SavedPlace, val deleted: List<DeletedReminder>)

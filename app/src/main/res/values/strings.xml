@@ -1701,6 +1701,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_145_0">
+
+        <item>Deleting a saved place that reminders or routines still ring by now shows you which ones, and asks: keep them, going on with their own copy of the place, or delete them too. Deleting them is asked a second time before anything goes, and \"Undo\" brings back the place and all of them.</item>
+
+    </string-array>
     <string-array name="whats_new_0_144_0">
 
         <item>A saved place now has a fixed key, and a reminder that takes it from a chip keeps that key beside its own copy. Editing the place finds them by the key, wherever their pin has drifted. Reminders written before this are found by the same pin or by the same name, and they get the key when you update them.</item>
@@ -2638,4 +2643,21 @@
     </plurals>
     <string name="place_move_confirm">Update</string>
     <string name="place_move_keep">Only the place</string>
+    <string name="place_remove_title">Delete «%1$s»?</string>
+    <plurals name="place_remove_body">
+        <item quantity="one">This one rings by it. If you keep it, it goes on ringing with its own copy of the place.</item>
+        <item quantity="other">These %d ring by it. If you keep them, they go on ringing with their own copy of the place.</item>
+    </plurals>
+    <string name="place_remove_keep">Keep them</string>
+    <string name="place_remove_delete">Delete them too</string>
+    <string name="place_remove_sure_title">Are you sure?</string>
+    <plurals name="place_remove_sure_body">
+        <item quantity="one">%1$d reminder or routine will be deleted along with «%2$s».</item>
+        <item quantity="other">%1$d reminders or routines will be deleted along with «%2$s».</item>
+    </plurals>
+    <string name="place_remove_sure_confirm">Delete</string>
+    <plurals name="place_removed_with">
+        <item quantity="one">«%2$s» deleted, and one reminder with it</item>
+        <item quantity="other">«%2$s» deleted, and %1$d reminders with it</item>
+    </plurals>
 </resources>

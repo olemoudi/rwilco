@@ -174,4 +174,19 @@ class SavedPlaceMoveTest {
     fun `a snooze to a saved place carries its key`() {
         assertEquals("office-key", SnoozePlace.Arrive(keyed).circle().placeId)
     }
+
+    @Test
+    fun `deleting a place is asked about what still rings by it, found the way an edit finds it`() {
+        val all = listOf(
+            reminder("pin", TriggerRule(leaving(office))),
+            reminder("key", TriggerRule(keyedLeaving(40.4, -3.6))),
+            reminder("name", TriggerRule(keyedLeaving(40.4, -3.6, label = "OFICINA", placeId = null))),
+            reminder("fence", TriggerRule(Trigger.AtDateTime(java.time.LocalDateTime.of(2026, 9, 24, 9, 0)), listOf(fence(office)))),
+            reminder("snooze", snoozedToPlace = leaving(office)),
+            reminder("done", TriggerRule(leaving(office)), status = Status.DONE),
+            reminder("home", TriggerRule(leaving(home))),
+            reminder("other-key", TriggerRule(keyedLeaving(office.lat, office.lng, placeId = "somewhere-else"))),
+        )
+        assertEquals(listOf("pin", "key", "name", "fence", "snooze"), placeUsersOf(all, keyed).map { it.id })
+    }
 }

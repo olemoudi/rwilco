@@ -8,6 +8,7 @@ import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -32,13 +33,15 @@ import dev.rwilco.model.TriggerRule
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * A saved place edited in Settings asks whether what uses it goes with it, and says what by
+ * A saved place edited or deleted in Settings asks about what rings by it — deleting it, twice
+ * before anything is deleted (0.145.0). And an edit asks whether what uses it goes with it, and says what by
  * name (0.143.0, keys 0.144.0): what uses its pin, its key or its name is listed, the finished one and the
  * one somewhere else are not, and the answer reaches the rows — or, for "only the place",
  * leaves them exactly as they were.
@@ -110,8 +113,8 @@ class SavedPlaceMoveTest {
         )
     }
 
-    /** Settings, the places group, the office's row, and the name changed to [name] in its sheet. */
-    private fun renameTheOffice(name: String) {
+    /** Settings, with the places group open on the office's row. */
+    private fun openThePlaces() {
         rule.onNodeWithContentDescription(s(R.string.home_settings)).performClick()
         rule.waitUntilShown(s(R.string.settings_places))
         // The group opens itself when a place reminder is missing its grant, as it is here.
@@ -120,6 +123,11 @@ class SavedPlaceMoveTest {
             rule.onNode(hasText(s(R.string.settings_places)) and isHeading(), useUnmergedTree = true).performScrollTo().performClick()
         }
         rule.waitUntilShown(office.label)
+    }
+
+    /** The office's row opened, and the name changed to [name] in its sheet. */
+    private fun renameTheOffice(name: String) {
+        openThePlaces()
         rule.onNodeWithText(office.label, useUnmergedTree = true).performScrollTo().performClick()
         rule.waitUntilShown(s(R.string.place_saved_title))
         rule.onNode(hasSetTextAction() and hasText(office.label)).performTextReplacement(name)
@@ -173,6 +181,54 @@ class SavedPlaceMoveTest {
         assertEquals(office.label, label("routine"))
     }
 
+    /** The office's bin — the first of the two rows — and the question it asks. */
+    private fun binTheOffice() {
+        openThePlaces()
+        rule.onAllNodesWithContentDescription(s(R.string.settings_remove_place))[0].performScrollTo().performClick()
+        rule.waitUntilShown(rule.activity.getString(R.string.place_remove_title, office.label))
+    }
+
+    private fun exists(id: String): Boolean = runBlocking { app.repository.get(id) != null }
+
+    private fun savedLabels(): List<String> = runBlocking { app.settingsStore.settings.first().savedPlaces.map { it.label } }
+
+    @Test
+    fun deletingThePlaceAsksAndCanKeepWhatRingsByIt() {
+        binTheOffice()
+        for (words in listOf(leaving, routine, keyed, byName)) {
+            rule.onNodeWithText(words, useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        }
+        rule.onAllNodesWithText(finished, useUnmergedTree = true).assertCountEquals(0)
+        shot("settings-place-remove")
+        rule.onNodeWithText(s(R.string.place_remove_keep), useUnmergedTree = true).performClick()
+        rule.waitUntil(timeoutMillis = 10_000) { savedLabels() == listOf(home.label) }
+        // Each goes on with its own copy of the circle.
+        assertEquals(office.label, label("leaving"))
+        assertTrue(listOf("leaving", "routine", "keyed", "byName", "finished", "elsewhere").all(::exists))
+    }
+
+    @Test
+    fun deletingWhatRingsByItIsAskedTwice() {
+        binTheOffice()
+        rule.onNodeWithText(s(R.string.place_remove_delete), useUnmergedTree = true).performClick()
+        rule.waitUntilShown(s(R.string.place_remove_sure_title))
+        shot("settings-place-remove-sure")
+        // "No" the second time is no: nothing deleted, the place still there.
+        rule.onNodeWithText(s(R.string.sheet_cancel), useUnmergedTree = true).performClick()
+        rule.waitUntilGone(s(R.string.place_remove_sure_title))
+        assertEquals(listOf(office.label, home.label), savedLabels())
+        assertTrue(listOf("leaving", "routine", "keyed", "byName").all(::exists))
+
+        rule.onAllNodesWithContentDescription(s(R.string.settings_remove_place))[0].performScrollTo().performClick()
+        rule.waitUntilShown(rule.activity.getString(R.string.place_remove_title, office.label))
+        rule.onNodeWithText(s(R.string.place_remove_delete), useUnmergedTree = true).performClick()
+        rule.waitUntilShown(s(R.string.place_remove_sure_title))
+        rule.onNodeWithText(s(R.string.place_remove_sure_confirm), useUnmergedTree = true).performClick()
+        rule.waitUntil(timeoutMillis = 10_000) { savedLabels() == listOf(home.label) }
+        assertTrue("what rang by it went with it", listOf("leaving", "routine", "keyed", "byName").none(::exists))
+        assertTrue("history and the other place's are untouched", exists("finished") && exists("elsewhere"))
+    }
+
     private fun shot(name: String) {
         rule.waitForIdle()
         Thread.sleep(1_000)
@@ -183,5 +239,9 @@ class SavedPlaceMoveTest {
 
     private fun ComposeTestRule.waitUntilShown(text: String) {
         waitUntil(timeoutMillis = 10_000) { onAllNodesWithText(text, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    private fun ComposeTestRule.waitUntilGone(text: String) {
+        waitUntil(timeoutMillis = 10_000) { onAllNodesWithText(text, useUnmergedTree = true).fetchSemanticsNodes().isEmpty() }
     }
 }

@@ -656,7 +656,6 @@ fun SettingsScreen(
                     onAdd = { editingPlace = -1 },
                     onEdit = { editingPlace = it },
                     onRemove = viewModel::removePlace,
-                    onRestore = viewModel::restorePlace,
                 )
                 RwilcoCard {
                     Column(Modifier.padding(spacing.lg)) {
@@ -687,6 +686,61 @@ fun SettingsScreen(
                     onDismiss = { editingPlace = null },
                 )
             }
+            // A place gone: one tap, and a way back, like a reminder has — the way back bringing
+            // whatever was deleted with it.
+            val removedMessage = stringResource(R.string.settings_place_removed)
+            val undoLabel = stringResource(R.string.common_undo)
+            val resources = LocalContext.current.resources
+            LaunchedEffect(viewModel) {
+                viewModel.placeRemoved.collect { removed ->
+                    val message = if (removed.deleted.isEmpty()) removedMessage
+                    else resources.getQuantityString(R.plurals.place_removed_with, removed.deleted.size, removed.deleted.size, removed.place.label)
+                    snackbar.show(message, undoLabel) { viewModel.undoPlaceRemoval(removed) }
+                }
+            }
+            // Deleting a place something still rings by: they stay on their own copies, or go
+            // with it — and that is asked twice, because it deletes things.
+            val placeRemove by viewModel.placeRemove.collectAsStateWithLifecycle()
+            placeRemove?.let { ask ->
+                if (!ask.sure) {
+                    AlertDialog(
+                        onDismissRequest = { viewModel.answerPlaceRemove(null) },
+                        title = { Text(stringResource(R.string.place_remove_title, ask.place.label)) },
+                        text = { PlaceUsersList(pluralStringResource(R.plurals.place_remove_body, ask.reminders.size, ask.reminders.size), ask.users) },
+                        confirmButton = {
+                            TextButton(onClick = { viewModel.answerPlaceRemove(true) }) {
+                                Text(stringResource(R.string.place_remove_delete), color = MaterialTheme.colorScheme.error)
+                            }
+                        },
+                        dismissButton = {
+                            Row {
+                                TextButton(onClick = { viewModel.answerPlaceRemove(null) }) { Text(stringResource(R.string.sheet_cancel)) }
+                                TextButton(onClick = { viewModel.answerPlaceRemove(false) }) { Text(stringResource(R.string.place_remove_keep)) }
+                            }
+                        },
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        shape = MaterialTheme.shapes.extraLarge,
+                    )
+                } else {
+                    AlertDialog(
+                        onDismissRequest = { viewModel.answerPlaceRemove(null) },
+                        title = { Text(stringResource(R.string.place_remove_sure_title)) },
+                        text = {
+                            Text(pluralStringResource(R.plurals.place_remove_sure_body, ask.reminders.size, ask.reminders.size, ask.place.label))
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { viewModel.answerPlaceRemove(true) }) {
+                                Text(stringResource(R.string.place_remove_sure_confirm), color = MaterialTheme.colorScheme.error)
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { viewModel.answerPlaceRemove(null) }) { Text(stringResource(R.string.sheet_cancel)) }
+                        },
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        shape = MaterialTheme.shapes.extraLarge,
+                    )
+                }
+            }
             // The edited place is still copied into reminders: asked whether they go with it.
             // Tapping outside keeps the edit the sheet already confirmed, and only that.
             val placeMove by viewModel.placeMove.collectAsStateWithLifecycle()
@@ -694,7 +748,7 @@ fun SettingsScreen(
                 AlertDialog(
                     onDismissRequest = { viewModel.answerPlaceMove(carry = false) },
                     title = { Text(stringResource(R.string.place_move_title, ask.old.label)) },
-                    text = { PlaceUsersList(ask.users) },
+                    text = { PlaceUsersList(pluralStringResource(R.plurals.place_move_body, ask.users.size, ask.users.size), ask.users) },
                     confirmButton = {
                         TextButton(onClick = { viewModel.answerPlaceMove(carry = true) }) {
                             Text(stringResource(R.string.place_move_confirm))
@@ -979,15 +1033,15 @@ private fun systemHapticsOn(context: Context): Boolean =
     Settings.System.getInt(context.contentResolver, Settings.System.HAPTIC_FEEDBACK_ENABLED, 1) != 0
 
 /**
- * What "update everything that uses it?" is about, by name: the reminders and routines still
- * carrying the place as it was. A count alone asked for a yes about things nobody could see.
+ * What a question about a saved place is about, by name: the reminders and routines that ring
+ * by it, under [intro]. A count alone asked for a yes about things nobody could see.
  * The list scrolls inside the dialog, which stops growing at [Tokens.sizes.dialogMax].
  */
 @Composable
-private fun PlaceUsersList(users: List<PlaceUser>) {
+private fun PlaceUsersList(intro: String, users: List<PlaceUser>) {
     val spacing = Tokens.spacing
     Column(Modifier.verticalScroll(rememberScrollState())) {
-        Text(pluralStringResource(R.plurals.place_move_body, users.size, users.size))
+        Text(intro)
         Spacer(Modifier.height(spacing.md))
         Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
             for (user in users) {

@@ -1577,7 +1577,11 @@ loud what DST and a change of zone do to a landing.
   still had the old ones. DONE rows are history and stay as written. A place kept before keys
   gets one worked out from what it is and where it sits (`withPlaceIds`, in the settings read
   path), the same on every read until the next write stores it. A moved circle is a new fence
-  id, so its watch starts afresh. The
+  id, so its watch starts afresh. **Deleting** a place something still rings by asks too
+  (0.145.0, `placeUsersOf`): the list, then "dejarlos" — each goes on with its own copy, its key
+  pointing at nothing — or "borrar también", which is asked a second time ("¿Seguro?") because it
+  deletes things; the snackbar's undo brings back the place and every reminder with its history.
+  Nothing rings by it, nothing is asked, as before. The
   sheet also searches addresses through the platform `Geocoder` (`PlaceSearch.kt` — which tells
   "no such address" from "could not look", 0.132.0, since the geocoder needs a network), and asks every
   enabled provider at once for a fix (`CurrentLocation.kt`: fine *or* coarse is enough, the

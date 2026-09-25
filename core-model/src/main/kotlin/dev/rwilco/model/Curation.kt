@@ -189,6 +189,23 @@ fun movePlaceIn(reminders: List<Reminder>, old: SavedPlace, new: SavedPlace): Li
     }
 }
 
+/**
+ * Every reminder still to ring that takes something from [place] — a rule, a fence, its
+ * calendar's fence or a snooze at that door — known the way an edit knows them. What deleting
+ * the place is asked about: those can go with it, or stay on their own copies of the circle.
+ */
+fun placeUsersOf(reminders: List<Reminder>, place: SavedPlace): List<Reminder> {
+    fun Trigger.Location.takes() = place.isOf(placeId, lat, lng, label)
+    fun Condition.takes() = this is Condition.AtPlace && place.isOf(placeId, lat, lng, label)
+    return reminders.filter { reminder ->
+        reminder.status != Status.DONE && (
+            reminder.rules.any { rule -> (rule.trigger as? Trigger.Location)?.takes() == true || rule.conditions.any { it.takes() } } ||
+                reminder.recurrence.conditions.any { it.takes() } ||
+                reminder.snoozedToPlace?.takes() == true
+            )
+    }
+}
+
 /** The same, on the presets: the whole list back, since the settings blob is written whole. */
 fun movePlaceInPresets(presets: List<Preset>, old: SavedPlace, new: SavedPlace): List<Preset> =
     if (old == new) presets

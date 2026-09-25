@@ -1686,6 +1686,11 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_145_0">
+
+        <item>Al borrar un lugar guardado por el que aún suenan recordatorios o rutinas, ahora te dice cuáles y pregunta: dejarlos, que siguen con su propia copia del lugar, o borrarlos también. Borrarlos se pregunta una segunda vez antes de que se vaya nada, y «Deshacer» devuelve el lugar y todos ellos.</item>
+
+    </string-array>
     <string-array name="whats_new_0_144_0">
 
         <item>Cada lugar guardado tiene ahora una clave fija, y el recordatorio que lo toma de una ficha la guarda junto a su copia. Al editar el lugar se encuentran por esa clave, aunque su punto se haya desplazado. Los recordatorios anteriores se encuentran por el mismo punto o por el mismo nombre, y reciben la clave al actualizarlos.</item>
@@ -2623,4 +2628,21 @@
     </plurals>
     <string name="place_move_confirm">Actualizar</string>
     <string name="place_move_keep">Solo el lugar</string>
+    <string name="place_remove_title">¿Borrar «%1$s»?</string>
+    <plurals name="place_remove_body">
+        <item quantity="one">Este suena por él. Si lo dejas, seguirá sonando con su propia copia del lugar.</item>
+        <item quantity="other">Estos %d suenan por él. Si los dejas, seguirán sonando con su propia copia del lugar.</item>
+    </plurals>
+    <string name="place_remove_keep">Dejarlos</string>
+    <string name="place_remove_delete">Borrar también</string>
+    <string name="place_remove_sure_title">¿Seguro?</string>
+    <plurals name="place_remove_sure_body">
+        <item quantity="one">Se borrará %1$d recordatorio o rutina junto con «%2$s».</item>
+        <item quantity="other">Se borrarán %1$d recordatorios o rutinas junto con «%2$s».</item>
+    </plurals>
+    <string name="place_remove_sure_confirm">Borrar</string>
+    <plurals name="place_removed_with">
+        <item quantity="one">«%2$s» borrado, y un recordatorio con él</item>
+        <item quantity="other">«%2$s» borrado, y %1$d recordatorios con él</item>
+    </plurals>
 </resources>
