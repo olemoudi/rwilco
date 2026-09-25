@@ -15,7 +15,8 @@ class AlertPresentationTest {
         foreground: ForegroundApp = ForegroundApp.NONE,
         canOverlay: Boolean = true,
         canFullScreen: Boolean = true,
-    ) = alertPresentation(fullScreenWanted, inUse, foreground, canOverlay, canFullScreen)
+        repeat: Boolean = false,
+    ) = alertPresentation(fullScreenWanted, inUse, foreground, canOverlay, canFullScreen, repeat)
 
     @Test
     fun `an app open in front of somebody is not interrupted`() {
@@ -54,5 +55,20 @@ class AlertPresentationTest {
     @Test
     fun `a reminder that never asked for the screen never takes it`() {
         assertEquals(AlertPresentation.BANNER, decide(fullScreenWanted = false, inUse = false))
+    }
+
+    @Test
+    fun `a repeat takes a locked phone's screen again, and leaves a phone in use alone`() {
+        // Reported from the phone: a timer's repeat came back as a card on the lock screen, the
+        // tap asked for the PIN, and the noise went on. Locked or dark, it is the alert screen,
+        // whose "Silenciar" needs no unlocking.
+        assertEquals(AlertPresentation.FULL_SCREEN, decide(inUse = false, repeat = true))
+        // In somebody's hand it is the banner it always was, wherever they are: once was the alarm.
+        assertEquals(AlertPresentation.BANNER, decide(inUse = true, foreground = ForegroundApp.NONE, repeat = true))
+        assertEquals(AlertPresentation.BANNER, decide(inUse = true, foreground = ForegroundApp.OURS, repeat = true))
+        // And the system's refusal still wins: a screen that will not come is a banner that rings.
+        assertEquals(AlertPresentation.BANNER, decide(inUse = false, canFullScreen = false, repeat = true))
+        // A reminder that never asked for the screen does not get it on a repeat either.
+        assertEquals(AlertPresentation.BANNER, decide(fullScreenWanted = false, inUse = false, repeat = true))
     }
 }

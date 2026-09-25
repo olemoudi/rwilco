@@ -1,6 +1,7 @@
 package dev.rwilco.ui
 
 import android.content.Intent
+import android.view.KeyEvent
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -272,6 +273,51 @@ class AlertSilenceTest {
         val dir = java.io.File(context.filesDir, "screenshots").apply { mkdirs() }
         val bitmap = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot() ?: return
         java.io.File(dir, "$name.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+    }
+
+    /**
+     * The volume keys are the silence too (0.148.0): the control a hand finds in a pocket or in
+     * the dark, over the lock screen, without unlocking. The noise goes; the reminder does not.
+     */
+    @Test
+    fun theVolumeKeysSilenceARingingAlert() {
+        seed(loudId, loud, setOf(Action.FULL_SCREEN, Action.VIBRATE))
+        scenario = ActivityScenario.launch(alert(loudId))
+        rule.waitUntilShown(loud)
+        val silence = string { it.getString(R.string.alert_silence) }
+        val done = string { it.getString(R.string.alert_done) }
+        rule.onNodeWithText(silence).assertIsDisplayed()
+
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_VOLUME_DOWN)
+
+        rule.waitUntilShown(done)
+        check(rule.onAllNodesWithText(silence).fetchSemanticsNodes().isEmpty()) { "the key did not silence it" }
+        runBlocking {
+            check(app.repository.get(loudId)?.lastDealtAt == null) { "the key dismissed the reminder" }
+        }
+    }
+
+    /**
+     * A repeat of "hasta que reciba caso" comes back to a locked phone as this screen (0.148.0),
+     * and may find it still up from the first ring and already silenced. It rings again: its
+     * notification is quiet because the screen makes the sound, so a repeat that did not ring
+     * here would ring nowhere.
+     */
+    @Test
+    fun aRepeatRingsAgainOnAScreenAlreadySilenced() {
+        seed(loudId, loud, setOf(Action.FULL_SCREEN, Action.VIBRATE))
+        scenario = ActivityScenario.launch(alert(loudId))
+        rule.waitUntilShown(loud)
+        val silence = string { it.getString(R.string.alert_silence) }
+        val done = string { it.getString(R.string.alert_done) }
+        rule.onNodeWithText(silence).performClick()
+        rule.waitUntilShown(done)
+
+        // The repeat's full-screen intent, as the system delivers it to the screen already up.
+        context.startActivity(alert(loudId).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+
+        rule.waitUntilShown(silence)
+        rule.onNodeWithText(loud).assertIsDisplayed()
     }
 
     private fun alert(id: String) = Intent(context, AlertActivity::class.java).setData(ReminderScheduler.reminderUri(id))

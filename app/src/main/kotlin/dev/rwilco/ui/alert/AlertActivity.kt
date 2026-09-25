@@ -4,6 +4,7 @@ import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -312,7 +313,8 @@ class AlertActivity : ComponentActivity() {
     }
 
     /** A reminder id carried by an intent: the launch, or a later start reaching the live screen. */
-    private fun arrived(intent: Intent) {
+    /** [again] is a start delivered to the screen already up, never the one it was created with. */
+    private fun arrived(intent: Intent, again: Boolean = false) {
         val id = ReminderScheduler.reminderIdOf(intent) ?: return
         val held = ReminderScheduler.anywayIn(intent)
         track(
@@ -320,6 +322,7 @@ class AlertActivity : ComponentActivity() {
             ReminderScheduler.ruleIndexOf(intent),
             held = held,
             quiet = held || ReminderScheduler.tappedIn(intent),
+            again = again,
         )
     }
 
@@ -329,15 +332,22 @@ class AlertActivity : ComponentActivity() {
      * exception and the whole of it — a reminder shown because one of the net's notes was
      * tapped, which is owed nothing and stays until it is answered here.
      */
-    private fun track(id: String, ruleIndex: Int?, held: Boolean = false, quiet: Boolean = held) {
+    private fun track(id: String, ruleIndex: Int?, held: Boolean = false, quiet: Boolean = held, again: Boolean = false) {
         if (id in ringing) {
             // Already on the screen — but one being shown *silently* because a card was tapped
             // stops being that the moment its own alarm arrives (a wait at a place, and the
             // door opened while the screen was up). It gets the noise it was asked for, and the
             // epoch is what starts it. A second tap on the same card is not that moment.
+            //
+            // **Nor is its noise spent for good** (0.148.0): a repeat of "hasta que reciba caso"
+            // comes back to a locked phone as this screen, and finds it still up from the first
+            // ring — silenced, or hushed when the display went dark. Its notification is quiet
+            // because the screen makes the sound, so a repeat that did not ring here rang nowhere.
+            // [again] is what tells that repeat from a rotation, which rebuilds the screen from
+            // the start it was created with and must stay as quiet as it was left.
             if (!quiet) {
                 anyway.remove(id)
-                if (silenced.remove(id)) {
+                if (silenced.remove(id) || again) {
                     hushedOnPurpose = false
                     ringEpoch++
                 }
@@ -495,7 +505,7 @@ class AlertActivity : ComponentActivity() {
         setIntent(intent)
         // A second reminder firing while this one is up joins the screen; it does not swap the
         // words under somebody's thumb (sequential) or take the screen for itself (strips).
-        arrived(intent)
+        arrived(intent, again = true)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -506,6 +516,21 @@ class AlertActivity : ComponentActivity() {
         outState.putStringArrayList(STATE_SILENT, ArrayList(silenced))
         outState.putString(STATE_FOCUSED, focused)
         outState.putBoolean(STATE_HUSHED, hushedOnPurpose)
+    }
+
+    /**
+     * **The volume keys silence it** (0.148.0), as they do an alarm clock: the one control on a
+     * phone that can be found by feel, in a pocket or in the dark, and that works over the lock
+     * screen without unlocking anything. Only the noise — the reminder is still owed its answer,
+     * exactly as after "Silenciar" — and only while there is noise: a quiet screen leaves the
+     * keys to the volume. (Power already hushes it: the screen going dark stops this activity.)
+     */
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (noise && keyCode in SILENCING_KEYS) {
+            silence()
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
     }
 
     override fun onStop() {
@@ -531,6 +556,7 @@ class AlertActivity : ComponentActivity() {
         const val STATE_SILENT = "silenced"
         const val STATE_FOCUSED = "focused"
         const val STATE_HUSHED = "hushed"
+        val SILENCING_KEYS = setOf(KeyEvent.KEYCODE_VOLUME_UP, KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_MUTE)
     }
 }
 

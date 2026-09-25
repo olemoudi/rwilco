@@ -1700,6 +1700,12 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_148_0">
+
+        <item>A reminder that keeps ringing until answered now comes back as the alert screen when the phone is locked, not as a card on the lock screen. That card asked for your PIN when tapped and could not be swiped away, so its sound had no quick way to stop. With the phone in your hand it is still a banner.</item>
+        <item>The volume keys silence a ringing alert, as on an alarm clock, over the lock screen and without unlocking. The power button already did.</item>
+
+    </string-array>
     <string-array name="whats_new_0_147_0">
 
         <item>Search stops finding coincidences: \"termo\" no longer finds \"Temporizador 10 minutos\" by picking letters out of the middle of two words. Abbreviations still work — \"cmp\" for \"comprar\", \"cp\" for \"comprar pan\" — on Home, on Done and in Settings.</item>

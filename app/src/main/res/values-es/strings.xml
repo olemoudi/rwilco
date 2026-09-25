@@ -1685,6 +1685,12 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_148_0">
+
+        <item>Un recordatorio que suena hasta que le haces caso ahora vuelve como la pantalla de alerta cuando el móvil está bloqueado, en vez de como una tarjeta en la pantalla de bloqueo. Esa tarjeta pedía el PIN al tocarla y no se podía apartar, así que su sonido no tenía forma rápida de pararse. Con el móvil en la mano sigue siendo un aviso.</item>
+        <item>Los botones de volumen silencian una alerta que está sonando, como en un despertador, sobre la pantalla de bloqueo y sin desbloquear. El botón de encendido ya lo hacía.</item>
+
+    </string-array>
     <string-array name="whats_new_0_147_0">
 
         <item>El buscador deja de encontrar casualidades: «termo» ya no encuentra «Temporizador 10 minutos» a base de coger letras de en medio de dos palabras. Las abreviaturas siguen funcionando —«cmp» por «comprar», «cp» por «comprar pan»— en Home, en Hechos y en Ajustes.</item>

@@ -410,7 +410,7 @@ class ReminderFiring(
             return@withLock
         }
         Log.i(TAG, "$id has not been dealt with; play ${played + 1} of ${settings.soundPlays}")
-        AlertPresenter.show(context, reminder, plan, late = null, vibration = settings.vibration, sound = settings.soundFor(plan), takeScreen = false, ruleIndex = ruleIndex, defaultTime = settings.defaultTime, snoozes = settings.notificationOffers, customMinutes = settings.snoozeCustomMinutes)
+        AlertPresenter.show(context, reminder, plan, late = null, vibration = settings.vibration, sound = settings.soundFor(plan), repeat = true, ruleIndex = ruleIndex, defaultTime = settings.defaultTime, snoozes = settings.notificationOffers, customMinutes = settings.snoozeCustomMinutes)
         nextSoundIn(played + 1, settings.soundPlays, settings.soundGapMinutes)
             ?.let { gap -> repeater.schedule(id, played + 1, rangAt, now + gap, ruleIndex) }
     }

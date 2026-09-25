@@ -2691,9 +2691,18 @@ loud what DST and a change of zone do to a landing.
   no column, no migration, nothing written down, because a chain that lives in its own alarms
   needs no memory and a cancelled one leaves none behind. Each link re-posts the notification
   rather than playing a fresh sound — it re-alerts on its own channel, which *is* the sound, and
-  it puts the card back in front of somebody who scrolled past — and never takes the screen a
-  second time. Everything that ends a round is asked at fire time rather than remembered: gone,
-  paused, finished, snoozed, or dealt with since it rang.
+  it puts the card back in front of somebody who scrolled past — and **takes the screen a second
+  time only from nobody** (0.148.0, `alertPresentation(repeat = true)`): in somebody's hand it is
+  the banner it always was, but on a locked or dark phone a banner is a sound nothing can stop
+  without unlocking — the tap on a lock-screen card asks for the PIN, and an insistent card is
+  pinned — so there it is the alert screen again, whose "Silenciar" needs nothing. It rings on a
+  screen still up from the first ring, silenced or hushed by the dark (`track(again = true)`, from
+  `onNewIntent` only: a rotation rebuilds from the start it was created with and stays quiet),
+  because its notification is quiet while a screen makes the sound. **And the volume keys silence
+  that screen** (`onKeyDown`, only while there is noise): the control a hand finds in a pocket,
+  over the lock, as on an alarm clock. Power already did — the display going dark stops the
+  activity, and `onStop` hushes. Everything that ends a round is asked at fire time rather than
+  remembered: gone, paused, finished, snoozed, or dealt with since it rang.
 - **The vibration is built whole and finite** (`core-model/Vibration.kt`): strength and rhythm
   from `AppSettings.vibration`, and a waveform long enough to last exactly its minute
   (`VibrationLimits.LONGEST`) with **no repeat count**. The obvious way to buzz until somebody

@@ -65,12 +65,21 @@ fun alertPresentation(
     canOverlay: Boolean,
     /** Whether the system will honour a full-screen intent at all: Android 14+ can refuse it. */
     canFullScreen: Boolean = true,
+    /**
+     * A repeat of a sound already made ("hasta que reciba caso"). It takes the screen again only
+     * where nobody is using it (0.148.0): on a phone in somebody's hand it is a banner, as it
+     * always was — once was the alarm — but on a locked one a banner is a sound nothing can stop
+     * without unlocking. Reported from the phone: a timer's repeat came back as a card on the
+     * lock screen, the tap asked for the PIN, the card was pinned, and the noise went on.
+     */
+    repeat: Boolean = false,
 ): AlertPresentation = when {
     !fullScreenWanted -> AlertPresentation.BANNER
     // Screen off or locked: only the system's full-screen intent can light it — and when the
     // system refuses that, the notification has to make the noise itself. Deciding
     // FULL_SCREEN here regardless once muted the notification for a screen that never came.
     !inUse -> if (canFullScreen) AlertPresentation.FULL_SCREEN else AlertPresentation.BANNER
+    repeat -> AlertPresentation.BANNER
     foreground == ForegroundApp.OTHER -> AlertPresentation.BANNER
     foreground == ForegroundApp.UNKNOWN -> AlertPresentation.BANNER
     !canOverlay -> AlertPresentation.BANNER
@@ -84,8 +93,9 @@ fun alertPresentation(
 object AlertPresenter {
 
     /**
-     * [takeScreen] false is a repeat of a sound that has already been made: once was the alarm
-     * and this is the reminder of the alarm, so it never takes the screen a second time.
+     * [repeat] is a repeat of a sound that has already been made: once was the alarm and this is
+     * the reminder of the alarm, so it takes the screen again only from nobody (see
+     * [alertPresentation]) — a locked phone gets the alert screen back, with its "Silenciar".
      */
     fun show(
         context: Context,
@@ -94,7 +104,7 @@ object AlertPresenter {
         late: Instant?,
         vibration: VibrationPattern = VibrationPattern(),
         sound: AlertSound = AlertSound.System,
-        takeScreen: Boolean = true,
+        repeat: Boolean = false,
         /** The rule whose moment rang, so the screen can say which; null for a snooze or a recurrence. */
         ruleIndex: Int? = null,
         /** Passed straight through to the notification's reason line. */
@@ -113,13 +123,14 @@ object AlertPresenter {
         val foreground = context.foregroundApp()
         val overlay = context.canDrawOverlays()
         val fsi = context.canUseFullScreenIntent()
-        val wanted = plan.fullScreen && late == null && takeScreen
+        val wanted = plan.fullScreen && late == null
         val presentation = alertPresentation(
             fullScreenWanted = wanted,
             inUse = inUse,
             foreground = foreground,
             canOverlay = overlay,
             canFullScreen = fsi,
+            repeat = repeat,
         )
         // With the screen on, the takeover is ours to start — and it is started BEFORE the
         // notification, because whether it took decides which channel the notification goes
@@ -151,7 +162,7 @@ object AlertPresenter {
         // how to show over the lock and turn the display on; it is worth a try from anywhere.
         // From a screen that is off or locked too: the notification's full-screen intent is
         // what would have launched it, and a notification that never posted launches nothing.
-        if (!screenTaken && wanted && !NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+        if (!screenTaken && wanted && !(repeat && inUse) && !NotificationManagerCompat.from(context).areNotificationsEnabled()) {
             Log.w(TAG, "notifications are off; trying the screen for ${reminder.id}")
             startAlert(context, reminder, ruleIndex)
         }
