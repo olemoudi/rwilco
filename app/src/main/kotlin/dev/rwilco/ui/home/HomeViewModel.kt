@@ -551,10 +551,11 @@ class HomeViewModel(
      * The magnifier's own state, kept apart from [state]: a keystroke must not send Home
      * through grouping and next-fire again, and what search shows does not depend on the clock.
      */
-    // Over what is open *and* what was done: the history kept three months and the only way
-    // through it was scrolling. `search` puts the done ones last and says which they are.
-    val search: StateFlow<SearchUiState> = combine(repository.open, repository.done, searching, query) { reminders, done, open, text ->
-        buildSearchState(reminders + done, text, open)
+    // Over what is open, and only that (0.146.0): what was done has its own search, on the
+    // Hechos screen, where it is the thing being looked for rather than the tail of a list of
+    // things to do.
+    val search: StateFlow<SearchUiState> = combine(repository.open, searching, query) { reminders, open, text ->
+        buildSearchState(reminders, text, open)
     }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchUiState())

@@ -1686,6 +1686,12 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_146_0">
+
+        <item>El buscador de Home solo encuentra lo que queda por hacer. Lo que ya hiciste tiene su propio buscador, en la pantalla de Hechos, junto a la papelera.</item>
+        <item>Al pulsar un resultado se abre su tarjeta de Home ahí mismo: deslízala para marcarla hecha o borrarla, pulsa el lápiz para editarla o mantenla pulsada para el menú. Otro toque la vuelve a plegar.</item>
+
+    </string-array>
     <string-array name="whats_new_0_145_0">
 
         <item>Al borrar un lugar guardado por el que aún suenan recordatorios o rutinas, ahora te dice cuáles y pregunta: dejarlos, que siguen con su propia copia del lugar, o borrarlos también. Borrarlos se pregunta una segunda vez antes de que se vaya nada, y «Deshacer» devuelve el lugar y todos ellos.</item>
@@ -2645,4 +2651,6 @@
         <item quantity="one">«%2$s» borrado, y un recordatorio con él</item>
         <item quantity="other">«%2$s» borrado, y %1$d recordatorios con él</item>
     </plurals>
+    <string name="done_search">Buscar en lo hecho</string>
+    <string name="done_search_hint">Buscar entre lo que hiciste</string>
 </resources>

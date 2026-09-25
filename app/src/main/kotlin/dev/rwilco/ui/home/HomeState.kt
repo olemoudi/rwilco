@@ -112,6 +112,14 @@ data class HomeUiState(
      * while the widget beside it said "0 hoy".
      */
     val quietToday: Boolean = false,
+    /**
+     * Every open reminder's card, by id, **whatever the chip says** and whether or not it is
+     * lifted onto the waiting card: what a search result opens into (0.146.0). The same cards
+     * the sections hold where they hold one — the missed hour and the rest come from the same
+     * grouping — so a result opens into exactly the card Home would show. Routines have none:
+     * they are a line on Home, not a card.
+     */
+    val cards: Map<String, ReminderCardUi> = emptyMap(),
     /** The store could not be read: an error to say, not a loading state to sit in for ever. */
     val failed: Boolean = false,
 ) {
@@ -475,6 +483,21 @@ fun buildHomeState(
             },
         )
     }
+    val heroCard = groups.hero?.let { card(it.entry.reminder, next = it.entry.next) }
+    val sections = groups.sections.map { (section, entries) -> SectionUi(section, entries.map { card(it.reminder, it.missedAt, it.next, it.cannotRing) }) }
+    // Unfiltered for the search's sake: under a chip, the grouping is asked again without it.
+    // Without one the cards above are already all of them, and none is built twice.
+    val shown = if (filter == null) {
+        (listOfNotNull(heroCard) + sections.flatMap { it.cards }).associateBy { it.id }
+    } else {
+        groupForHome(reminders, now, zone, defaultTime, null, dayStart, shape, lifted).let { all ->
+            (listOfNotNull(all.hero?.let { card(it.entry.reminder, next = it.entry.next) }) +
+                all.sections.values.flatten().map { card(it.reminder, it.missedAt, it.next, it.cannotRing) }).associateBy { it.id }
+        }
+    }
+    val cards = reminders
+        .filter { it.status != Status.DONE && !it.isRoutine }
+        .associate { reminder -> reminder.id to (shown[reminder.id] ?: card(reminder)) }
     val today = now.atZone(zone).toLocalDate()
     val heroToday = groups.hero?.entry?.wake?.at?.atZone(zone)?.toLocalDate() == today
     val busySections = groups.sections.keys.any { it == Section.TODAY || it == Section.OVERDUE }
@@ -489,13 +512,14 @@ fun buildHomeState(
             HeroUi(
                 // The hero says its moment in its own words, so it needs no [returnsAt] — but
                 // it is carried all the same, the way the snooze is, and HeroCard leaves it out.
-                card = card(hero.entry.reminder, next = hero.entry.next),
+                card = heroCard!!,
                 at = hero.entry.wake!!.at,
                 snoozed = (hero.entry.next as? NextFire.Scheduled)?.snoozed == true,
                 atEarliest = hero.atEarliest,
             )
         },
-        sections = groups.sections.map { (section, entries) -> SectionUi(section, entries.map { card(it.reminder, it.missedAt, it.next, it.cannotRing) }) },
+        sections = sections,
+        cards = cards,
         tags = tags,
         selectedTag = filter,
         routines = RoutinesLineUi(

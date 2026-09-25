@@ -52,6 +52,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateContentSize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -394,6 +397,8 @@ fun HomeScreen(
     actingOn?.let { id ->
         val held = state.hero?.card?.takeIf { it.id == id }
             ?: state.sections.firstNotNullOfOrNull { section -> section.cards.firstOrNull { it.id == id } }
+            // Held on a search result opened into its card, which a chip may keep off the list.
+            ?: state.cards[id]
         // Dealt with from the shade while the menu was up: the menu goes with it. An effect,
         // not a write in the middle of composing (0.94.0) — it converged, but only by luck.
         LaunchedEffect(held == null) { if (held == null) actingOn = null }
@@ -612,6 +617,10 @@ fun HomeScreen(
         // closing it left Home wherever the results had been.
         val searchListState = rememberLazyListState()
         LaunchedEffect(search.open) { if (search.open) searchListState.scrollToItem(0) }
+        // Which result is open into its card; a new search starts with all of them closed.
+        var expandedHit by rememberSaveable(search.open) { mutableStateOf<String?>(null) }
+        val focusManager = LocalFocusManager.current
+        val motion = Tokens.motion
         LaunchedEffect(justSaved, state.sections, state.hero) {
             val saved = justSaved ?: return@LaunchedEffect
             val id = saved.id
@@ -727,16 +736,53 @@ fun HomeScreen(
                         TagFilterRow(tags = state.tags, selected = null, onSelect = { tag -> if (tag is TagFilter.Named) viewModel.filterByTag(tag.tag) else viewModel.selectTagAndClose(tag) })
                     }
                 }
-                items(search.hits, key = { it.key }, contentType = { CONTENT_HIT }) { hit ->
-                    SearchResultRow(
-                        hit = hit,
-                        onOpen = onOpen,
-                        onOpenRoutine = { id -> onRoutines(id) },
-                        onFilterByTag = viewModel::filterByTag,
-                        modifier = Modifier.animateItem(),
-                        defaultTime = state.defaultTime,
-                        today = today,
-                    )
+                items(
+                    search.hits,
+                    key = { it.key },
+                    contentType = { hit -> if (hit is SearchHitUi.OfReminder && hit.id == expandedHit) CONTENT_CARD else CONTENT_HIT },
+                ) { hit ->
+                    // **A result opens into its Home card, where it is** (0.146.0): the same
+                    // card, the same swipes for "hecho" and "eliminar", the pencil for the form,
+                    // the hold for the menu. The tap folds it back into the row, as a tap folds
+                    // a card on Home. A routine still opens where it lives: it has no card.
+                    val card = (hit as? SearchHitUi.OfReminder)?.takeIf { it.id == expandedHit }?.let { state.cards[it.id] }
+                    Box(Modifier.animateItem().animateContentSize(tween(motion.medium, easing = motion.emphasized))) {
+                        if (card != null) {
+                            SwipeableCard(
+                                onDone = { viewModel.markDone(card.id) },
+                                onDelete = { viewModel.delete(card.id) },
+                            ) {
+                                ReminderCard(
+                                    card = card,
+                                    today = today,
+                                    defaultTime = defaultTime,
+                                    zone = zone,
+                                    onEdit = { onOpen(card.id) },
+                                    onTogglePause = { viewModel.togglePause(card.id, card.paused) },
+                                    onLongClick = { actingOn = card.id },
+                                    longClickLabel = cardActionsLabel,
+                                    onToggleCompact = { expandedHit = null },
+                                )
+                            }
+                        } else {
+                            SearchResultRow(
+                                hit = hit,
+                                onOpen = { id ->
+                                    if (id in state.cards) {
+                                        // The keyboard down, so the card it opens into can be seen whole.
+                                        focusManager.clearFocus()
+                                        expandedHit = id
+                                    } else {
+                                        onOpen(id)
+                                    }
+                                },
+                                onOpenRoutine = { id -> onRoutines(id) },
+                                onFilterByTag = viewModel::filterByTag,
+                                defaultTime = state.defaultTime,
+                                today = today,
+                            )
+                        }
+                    }
                 }
                 // Capped at twenty with nothing to say so: a search that found more read as a
                 // search that found twenty (0.69.0).

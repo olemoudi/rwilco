@@ -1701,6 +1701,12 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_146_0">
+
+        <item>Home\'s search finds only what is still to do. What you already did has its own search, on the Done screen, next to its bin.</item>
+        <item>Tapping a result opens it into its Home card, right there: swipe it done or deleted, tap the pencil to edit it, hold it for the menu. Tap it again to fold it back.</item>
+
+    </string-array>
     <string-array name="whats_new_0_145_0">
 
         <item>Deleting a saved place that reminders or routines still ring by now shows you which ones, and asks: keep them, going on with their own copy of the place, or delete them too. Deleting them is asked a second time before anything goes, and \"Undo\" brings back the place and all of them.</item>
@@ -2660,4 +2666,6 @@
         <item quantity="one">«%2$s» deleted, and one reminder with it</item>
         <item quantity="other">«%2$s» deleted, and %1$d reminders with it</item>
     </plurals>
+    <string name="done_search">Search what was done</string>
+    <string name="done_search_hint">Search what you did</string>
 </resources>

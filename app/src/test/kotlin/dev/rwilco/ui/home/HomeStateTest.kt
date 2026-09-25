@@ -526,4 +526,22 @@ class HomeStateTest {
         assertEquals(setOf("other"), shownOpen(setOf("new", "other"), "new", compact = false), "a card folded by hand opens, and nobody else moves")
     }
 
+
+    @Test
+    fun `every open reminder has its card for the search, whatever the chip hides`() {
+        val overdue = reminder("overdue", Trigger.AtDateTime(LocalDateTime.of(2026, 8, 27, 9, 0)), tags = listOf("salud"))
+        val routine = reminder("routine").copy(recurrence = Recurrence.Since(21, RecurrenceUnit.DAYS))
+        val done = reminder("done", Trigger.AtDateTime(LocalDateTime.of(2026, 8, 26, 9, 0)), status = Status.DONE)
+        val all = listOf(soon, place, random, paused, overdue, routine, done)
+        val unfiltered = buildHomeState(all, defaultTime, now, zone, selectedTag = null)
+        val filtered = buildHomeState(all, defaultTime, now, zone, selectedTag = TagFilter.Named("casa"))
+
+        assertEquals(setOf("soon", "place", "random", "paused", "overdue"), filtered.cards.keys, "no routine, nothing done")
+        // Hidden by the chip, and still the card Home shows without it: the missed hour included.
+        assertFalse(filtered.sections.any { section -> section.cards.any { it.id == "overdue" } })
+        assertEquals(unfiltered.cards.getValue("overdue"), filtered.cards.getValue("overdue"))
+        // And the very card a section holds, not another built beside it.
+        assertEquals(unfiltered.hero?.card, unfiltered.cards.getValue("soon"), "the hero's own")
+        assertEquals(unfiltered.sections.flatMap { it.cards }.first { it.id == "paused" }, unfiltered.cards.getValue("paused"))
+    }
 }

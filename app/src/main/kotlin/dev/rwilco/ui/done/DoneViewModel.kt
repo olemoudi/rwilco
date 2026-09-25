@@ -8,6 +8,8 @@ import dev.rwilco.RwilcoApplication
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.model.DoneSection
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.SearchHit
+import dev.rwilco.model.search
 import dev.rwilco.model.Status
 import dev.rwilco.model.doneByDay
 import dev.rwilco.model.groupDone
@@ -65,6 +67,24 @@ class DoneViewModel(private val repository: ReminderRepository, private val cloc
             emit(DoneView(sections = emptyList(), bars = emptyList(), total = 0, failed = true))
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    private val query = MutableStateFlow("")
+
+    /**
+     * This screen's own search (0.146.0): what was done is looked for here, and Home's magnifier
+     * finds only what is still to do. The same forgiving match, best first; null while nothing
+     * is typed, which is the screen as it always was rather than an empty result.
+     */
+    val found: StateFlow<List<Reminder>?> = combine(repository.done, query) { list, text ->
+        if (text.isBlank()) null
+        else search(list, text, limit = list.size).filterIsInstance<SearchHit.OfReminder>().map { it.reminder }
+    }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun setQuery(text: String) {
+        query.value = text
+    }
 
     fun restore(id: String) {
         viewModelScope.launch { repository.setStatus(id, Status.ACTIVE) }

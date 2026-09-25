@@ -23,6 +23,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import dev.rwilco.ui.home.SearchField
+import androidx.compose.material.icons.outlined.SearchOff
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.background
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -76,30 +83,84 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
     val snackbar = LocalSnackbar.current
     val restoredMessage = stringResource(R.string.done_restored)
     val undoLabel = stringResource(R.string.common_undo)
+    // What was done is searched here, not on Home (0.146.0): the magnifier swaps the title for
+    // the same field Home and Settings use, and Back closes it before it leaves the screen.
+    var searching by rememberSaveable { mutableStateOf(false) }
+    val found by viewModel.found.collectAsStateWithLifecycle()
+    val closeSearch = {
+        searching = false
+        viewModel.setQuery("")
+    }
+    BackHandler(enabled = searching) { closeSearch() }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
-            RwilcoTopBar(
-                title = stringResource(R.string.done_title),
-                onBack = onBack,
-                action = if ((view?.total ?: 0) > 0) {
-                    {
-                        IconButton(onClick = { confirmingPurge = true }) {
-                            Icon(Icons.Outlined.DeleteSweep, contentDescription = stringResource(R.string.done_purge))
+            if (searching) {
+                // The field paints its own background and keeps clear of the status bar, as
+                // Settings' does: the top bar it replaces was doing both.
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.background)
+                        .statusBarsPadding()
+                        .padding(horizontal = spacing.sm),
+                ) {
+                    SearchField(
+                        query = "",
+                        onQueryChange = viewModel::setQuery,
+                        onClose = closeSearch,
+                        hint = stringResource(R.string.done_search_hint),
+                    )
+                }
+            } else {
+                RwilcoTopBar(
+                    title = stringResource(R.string.done_title),
+                    onBack = onBack,
+                    action = if ((view?.total ?: 0) > 0) {
+                        {
+                            Row {
+                                IconButton(onClick = { searching = true }) {
+                                    Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.done_search))
+                                }
+                                IconButton(onClick = { confirmingPurge = true }) {
+                                    Icon(Icons.Outlined.DeleteSweep, contentDescription = stringResource(R.string.done_purge))
+                                }
+                            }
                         }
-                    }
-                } else {
-                    null
-                },
-            )
+                    } else {
+                        null
+                    },
+                )
+            }
         },
     ) { padding ->
         val shown = view
+        val words = rememberWords()
+        // One row, for the bands and the results alike.
+        val entry: @Composable LazyItemScope.(Reminder) -> Unit = { reminder ->
+            DoneCard(
+                // A row brought back closes up over its place, as Home's rows do.
+                modifier = Modifier.animateItem(),
+                reminder = reminder,
+                doneLabel = reminder.doneAt?.let { doneAt ->
+                    val at = doneAt.atZone(clock.zone)
+                    dayWord(words, at.toLocalDate(), today) + " · " + TimeText.time(at.toLocalTime(), is24h, locale)
+                },
+                onOpen = { onOpen(reminder.id) },
+                onRestore = {
+                    viewModel.restore(reminder.id)
+                    // Said, and undoable: a mis-tap put a reminder back on Home without a word.
+                    snackbar.show(restoredMessage, undoLabel) { viewModel.undoRestore(reminder) }
+                },
+            )
+        }
         // Both sides too (0.93.0): the Scaffold is asked for the safe area and only the top and
         // bottom of its answer were read, so a phone on its side put cards under the cutout.
         val direction = LocalLayoutDirection.current
+        // What a search with something typed found; the chart, the bands and the note step aside for it.
+        val results = found?.takeIf { searching }
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
@@ -139,38 +200,36 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
             // fortnight behind it. A list of what got done answers "did I do it?"; this answers
             // "how is it going?", which is the question somebody opens this screen with and
             // which no amount of scrolling was ever going to answer.
-            if (shown != null && shown.total > 0) {
+            if (shown != null && shown.total > 0 && results == null) {
                 item(key = "chart") {
                     DoneHeadline(counts = shown.bars, week = shown.bars.takeLast(DAYS_IN_A_WEEK).sum())
                 }
             }
+            // While a search has something typed, its results are the list: best first, the same
+            // rows, the same way back for each.
+            if (results != null) {
+                items(results, key = { it.id }) { reminder -> entry(reminder) }
+                if (results.isEmpty()) {
+                    item(key = "search-empty") {
+                        EmptyState(
+                            title = stringResource(R.string.home_search_none_title),
+                            body = stringResource(R.string.home_search_none_body),
+                            icon = Icons.Outlined.SearchOff,
+                        )
+                    }
+                }
+            }
             // Three bands rather than one long list: what got done today, what got done this
             // week, and the rest — which is a place to look rather than a place to read.
-            for ((section, reminders) in shown?.sections.orEmpty()) {
+            for ((section, reminders) in shown?.sections.orEmpty().takeIf { results == null }.orEmpty()) {
                 item(key = "head-$section") {
                     SectionHeader(title = stringResource(section.titleRes), trailing = reminders.size.toString())
                 }
-                items(reminders, key = { it.id }) { reminder ->
-                    DoneCard(
-                        // A row brought back closes up over its place, as Home's rows do.
-                        modifier = Modifier.animateItem(),
-                        reminder = reminder,
-                        doneLabel = reminder.doneAt?.let { doneAt ->
-                            val at = doneAt.atZone(clock.zone)
-                            dayWord(rememberWords(), at.toLocalDate(), today) + " · " + TimeText.time(at.toLocalTime(), is24h, locale)
-                        },
-                        onOpen = { onOpen(reminder.id) },
-                        onRestore = {
-                            viewModel.restore(reminder.id)
-                            // Said, and undoable: a mis-tap put a reminder back on Home without a word.
-                            snackbar.show(restoredMessage, undoLabel) { viewModel.undoRestore(reminder) }
-                        },
-                    )
-                }
+                items(reminders, key = { it.id }) { reminder -> entry(reminder) }
             }
             // Said once, at the bottom, because a list that quietly forgets things is worse
             // than one that says how long it remembers for.
-            if (shown != null && shown.total > 0) {
+            if (shown != null && shown.total > 0 && results == null) {
                 item(key = "kept") {
                     Text(
                         text = stringResource(R.string.done_kept_note),

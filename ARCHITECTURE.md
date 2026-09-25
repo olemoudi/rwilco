@@ -772,12 +772,15 @@ came back with a reminder about table tennis. What gives that away is where the 
 not how thinly it is spread: "pan" over "poner la lavadora antes de nada" is spread just as thin
 and is exactly the abbreviation the band exists for. Nobody abbreviates from the middle of a
 word, so the run must begin at the start of one, which costs the useful matches nothing and
-takes the mid-word coincidences out. **What was done is found too**
-(0.51.0), after everything open whatever its score — somebody typing on Home is after something
-to do before something they did — and the row says "hecho" where it said "recordatorio". The
-history kept three months and the only way through it was scrolling; `HomeViewModel` feeds the
-search `open + done` for that reason, while a tag is still counted over the open ones alone,
-because that is what its chip would show.
+takes the mid-word coincidences out. **What was done is searched where it lives** (0.146.0). From 0.51.0 Home's magnifier fed `search`
+`open + done`, the done ones last and said as such; it now reads what is open and nothing else,
+and the Hechos screen has its own magnifier (`DoneViewModel.found`: the same `search` over the done
+rows, best first, the chart and the bands stepping aside while something is typed). **And a result
+opens into its Home card, in place**: `HomeUiState.cards` holds every open reminder's card by id,
+unfiltered by the chip — the very cards the sections hold where they hold one, built again without
+the chip only while one is set — so the search row swaps for the same `SwipeableCard` +
+`ReminderCard`: the swipes for "hecho" and "eliminar", the pencil for the form, the hold for the
+menu, and the tap folding it back into the row. A routine still opens its own screen: it has no card.
 
 ## Persistence
 
