@@ -935,7 +935,6 @@
     <string name="home_search_more">Showing the first %1$d; narrow the search to see the rest.</string>
     <string name="home_search_kind_reminder">Reminder</string>
     <string name="home_search_kind_tag">Tag</string>
-    <string name="home_search_kind_done">Done</string>
     <plurals name="home_search_tag_count">
         <item quantity="one">%1$d reminder</item>
         <item quantity="other">%1$d reminders</item>
@@ -1701,6 +1700,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_147_0">
+
+        <item>Search stops finding coincidences: \"termo\" no longer finds \"Temporizador 10 minutos\" by picking letters out of the middle of two words. Abbreviations still work — \"cmp\" for \"comprar\", \"cp\" for \"comprar pan\" — on Home, on Done and in Settings.</item>
+
+    </string-array>
     <string-array name="whats_new_0_146_0">
 
         <item>Home\'s search finds only what is still to do. What you already did has its own search, on the Done screen, next to its bin.</item>

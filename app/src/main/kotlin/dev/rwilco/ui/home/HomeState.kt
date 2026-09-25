@@ -556,7 +556,7 @@ sealed interface SearchHitUi {
     val key: String
 
     /**
-     * [done] when it is one already dealt with: found all the same, and said so on the row.
+     * Only ever an open one: what was done is searched on the Hechos screen (0.146.0).
      * [source] is the reminder itself, for the one line only a composition can word — *when* it
      * rings (0.134.0): a search for "casa" that finds a reminder by its place has to show the
      * place, and two reminders with the same words are told apart by their hour and nothing else.
@@ -565,7 +565,6 @@ sealed interface SearchHitUi {
         val id: String,
         val text: String,
         val tags: List<String>,
-        val done: Boolean = false,
         val routine: Boolean = false,
         val source: Reminder? = null,
     ) : SearchHitUi {
@@ -586,7 +585,7 @@ fun buildSearchState(reminders: List<Reminder>, query: String, open: Boolean): S
         when (hit) {
             is SearchHit.OfReminder -> SearchHitUi.OfReminder(
                 hit.reminder.id, hit.reminder.text, hit.reminder.tags,
-                done = hit.reminder.status == Status.DONE, routine = hit.reminder.isRoutine, source = hit.reminder,
+                routine = hit.reminder.isRoutine, source = hit.reminder,
             )
             is SearchHit.OfTag -> SearchHitUi.OfTag(hit.tag, hit.count)
         }

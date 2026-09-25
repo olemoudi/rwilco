@@ -164,17 +164,12 @@ fun SearchResultRow(
             title = hit.text,
             subtitle = joinAll(hit.tags.take(3)).takeIf { it.isNotEmpty() },
             // When it rings, in the sentence the editor and the notification already say: the
-            // line that was missing since the search arrived (left open after 0.69.0). Not for a
-            // finished one — what it *would* have rung at is not news about something done.
-            whenLine = hit.source?.takeIf { !hit.done }?.let { reminder ->
+            // line that was missing since the search arrived (left open after 0.69.0).
+            whenLine = hit.source?.let { reminder ->
                 remember(reminder, words, today) { reminderSummary(words, reminder, today, defaultTime) }.takeIf { it.isNotEmpty() }
             },
             kind = stringResource(
-                when {
-                    hit.done -> R.string.home_search_kind_done
-                    hit.routine -> R.string.home_search_kind_routine
-                    else -> R.string.home_search_kind_reminder
-                },
+                if (hit.routine) R.string.home_search_kind_routine else R.string.home_search_kind_reminder,
             ),
             onClick = { if (hit.routine) onOpenRoutine(hit.id) else onOpen(hit.id) },
             modifier = modifier,

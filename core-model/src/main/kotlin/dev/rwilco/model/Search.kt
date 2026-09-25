@@ -171,7 +171,41 @@ private fun subsequenceScore(needle: String, haystack: String): Int? {
         if (found == 0 || !haystack[found - 1].isLetterOrDigit()) bonus += WORD_START_BONUS
         from = found + 1
     }
+    if (fewestDives(needle, haystack) > MAX_DIVES) return null
     return (SUBSEQUENCE + bonus - jumps * JUMP_COST - first.coerceAtMost(MAX_HEAD_COST)).coerceAtLeast(1)
+}
+
+/**
+ * **And it may skip into the middle of a word once** (0.147.0). "termo" found "Temporizador 10
+ * minutos": it starts a word, so the rule above let it through — t, e and r out of
+ * "temporizador", m and o out of "minutos" — and the tell is the r and the o, each reached by
+ * skipping letters and landing inside a word. An abbreviation does not do that twice: it is
+ * initials ("cp", "comprar pan"), where every skip lands on a word's first letter, or one word's
+ * skeleton ("cmp", "tmpo"), which goes in once and runs on.
+ *
+ * Counted over the **best** way through, not the first: taken greedily, "pan" over "poner la
+ * lavadora antes de nada" dives into "la" and into "antes", while it is poner, antes, nada — no
+ * dive at all. One pass over the pairs, [needle] by [haystack], keeping for each letter the
+ * fewest dives that can end on it; both strings are a phrase long, so the table is small.
+ */
+private fun fewestDives(needle: String, haystack: String): Int {
+    val none = Int.MAX_VALUE / 2
+    fun startsWord(at: Int) = at == 0 || !haystack[at - 1].isLetterOrDigit()
+    // The first letter has to start a word (see above), so it is never a dive.
+    var previous = IntArray(haystack.length) { at -> if (haystack[at] == needle[0] && startsWord(at)) 0 else none }
+    for (index in 1 until needle.length) {
+        val current = IntArray(haystack.length) { none }
+        var bestBefore = none // the fewest over every position at least two back: a skip away
+        for (at in 1 until haystack.length) {
+            if (at >= 2) bestBefore = minOf(bestBefore, previous[at - 2])
+            if (haystack[at] != needle[index]) continue
+            val runOn = previous[at - 1]
+            val skip = bestBefore + if (startsWord(at)) 0 else 1
+            current[at] = minOf(runOn, skip)
+        }
+        previous = current
+    }
+    return previous.minOrNull() ?: none
 }
 
 /** Case and accents out of the way: what is left is what the two strings are really made of. */
@@ -195,3 +229,5 @@ private const val SUBSEQUENCE = 200
 private const val WORD_START_BONUS = 12
 private const val JUMP_COST = 8
 private const val MAX_HEAD_COST = 40
+/** How many times the letters in order may skip into the middle of a word; see [fewestDives]. */
+private const val MAX_DIVES = 1

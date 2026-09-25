@@ -772,7 +772,11 @@ came back with a reminder about table tennis. What gives that away is where the 
 not how thinly it is spread: "pan" over "poner la lavadora antes de nada" is spread just as thin
 and is exactly the abbreviation the band exists for. Nobody abbreviates from the middle of a
 word, so the run must begin at the start of one, which costs the useful matches nothing and
-takes the mid-word coincidences out. **What was done is searched where it lives** (0.146.0). From 0.51.0 Home's magnifier fed `search`
+takes the mid-word coincidences out. **And it may skip into the middle of a word only once**
+(0.147.0, `fewestDives`): "termo" found "Temporizador 10 minutos" — t, e, r out of the first word,
+m, o out of the second — landing mid-word twice, which no abbreviation does: they are initials
+("cp") or one word's skeleton ("cmp", "tmpo"). Counted over the best way through rather than the
+greedy one, so "pan" is still poner, antes, nada. **What was done is searched where it lives** (0.146.0). From 0.51.0 Home's magnifier fed `search`
 `open + done`, the done ones last and said as such; it now reads what is open and nothing else,
 and the Hechos screen has its own magnifier (`DoneViewModel.found`: the same `search` over the done
 rows, best first, the chart and the bands stepping aside while something is typed). **And a result

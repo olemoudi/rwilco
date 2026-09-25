@@ -109,6 +109,23 @@ class SearchTest {
     }
 
     @Test
+    fun `letters in order may dive into the middle of a word once, not twice`() {
+        // Reported from the Hechos search: "termo" found "Temporizador 10 minutos" — t, e and r
+        // out of "temporizador", m and o out of "minutos". It starts a word, so the rule above let
+        // it through; what gives it away is that it goes into the middle of a word twice (the r,
+        // the o), which no abbreviation does: they are initials, or one word's skeleton.
+        assertNull(fuzzyScore("termo", fold("Temporizador 10 minutos")))
+        val reminders = listOf(reminder("Temporizador 10 minutos"), reminder("Llevar el termo", id = "t2"), reminder("Comprar un termómetro", id = "t3"))
+        assertEquals(listOf("Llevar el termo", "Comprar un termómetro"), texts(search(reminders, "termo")))
+        // What the band is for is untouched: a skeleton goes in once, initials never do — and
+        // the best way through counts, not the first: "pan" is poner, antes, nada.
+        assertNotNull(fuzzyScore("cmp", "comprar manzanas"))
+        assertNotNull(fuzzyScore("tmpo", "tiempo"))
+        assertNotNull(fuzzyScore("pan", "poner la lavadora antes de nada"))
+        assertNotNull(fuzzyScore("lcp", "llevar la compra"))
+    }
+
+    @Test
     fun `what was done is found too, after what is open, and says so`() {
         val reminders = listOf(
             reminder("Comprar pan", tags = listOf("compra"), id = "open"),
