@@ -2747,8 +2747,15 @@ loud what DST and a change of zone do to a landing.
   tiles the same thing on the one surface where the difference is loudest — a reminder asked to
   say it once said it over and over for a minute. It gives up at the latest **when the buzz
   does** — one minute,
-  `VibrationLimits.LONGEST` — and so does its hold on the screen (`FLAG_KEEP_SCREEN_ON` is
-  cleared with the noise). The two are one alarm, and they used to end a minute apart: the motor
+  `VibrationLimits.LONGEST` — and so does its hold on the screen (`FLAG_KEEP_SCREEN_ON`, set
+  while there is a noise and cleared with it). **The hold was dropped in 0.63.0 and is back in
+  0.155.0**, at the owner's word: the noise is the screen's own and stops when the screen stops
+  being seen (`onStop`), which is right for the power button and wrong for a lock screen dimming
+  by itself a few seconds after the alert lit it — three evening timers "did not ring", one of
+  them re-alerting four times in half an hour. The report now says what the sound did: a `ring`
+  line when it starts (the tone and how many times, vibration, speaker or headphones, the alarm
+  volume), when it moves to the speaker, when the tone fails to play, and when it stops and why
+  (answered, silenced, a volume key, the round over, the minute run out, the screen gone). The two are one alarm, and they used to end a minute apart: the motor
   stopped at its limit and the looping tone went on alone. Nobody answered in
   a minute because nobody is there, and a display lit at full brightness until somebody comes
   home costs more battery than everything else in this app together. The alert is still on the

@@ -1701,6 +1701,12 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_155_0">
+
+        <item>Un aviso que suena mantiene la pantalla encendida mientras suena, como mucho un minuto. Con el móvil bloqueado la pantalla se apagaba sola a los pocos segundos y se llevaba el sonido con ella, así que una alarma podía durar esos segundos. El botón de encendido y las teclas de volumen lo siguen callando.</item>
+        <item>El informe de diagnóstico dice ahora qué hizo el sonido: cuándo empezó, qué tono y cuántas veces, si fue a los auriculares o al altavoz, y cuándo y por qué se calló.</item>
+
+    </string-array>
     <string-array name="whats_new_0_154_0">
 
         <item>El «sonido insistente» funciona como se lee: cada vez que avisa, el tono suena varias veces seguidas (5 por defecto); vuelve a avisar cada pocos minutos (5); y avisa como mucho un número de veces (3, nuevo). Antes, cada aviso repetía el tono hasta un minuto y el primer número era cuántos avisos.</item>

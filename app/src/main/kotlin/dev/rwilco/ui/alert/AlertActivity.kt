@@ -5,6 +5,11 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.KeyEvent
+import android.view.WindowManager
+import dev.rwilco.diag.Diag
+import dev.rwilco.model.key
+import dev.rwilco.notify.AlertAudio
+import dev.rwilco.notify.alarmVolumeDescription
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -122,11 +127,30 @@ class AlertActivity : ComponentActivity() {
      *
      * It goes false three ways: somebody silenced it, the minute ran out, or the screen went
      * away. All three run through [hush], so the button and the ringer can never disagree.
+     *
+     * **And the screen is held on while it is true** (0.155.0, the owner's call, going back on
+     * 0.63.0). The noise is this screen's own and stops when the screen stops being seen — which
+     * is right for the power button, and wrong for a lock screen dimming by itself a few seconds
+     * after the alert lit it: reported from the phone, three timers that "did not ring", one of
+     * them re-alerting four times for half an hour. So while there is a noise the display stays
+     * up; it lasts a minute at the most, and the hold goes with it.
      */
-    private var noise by mutableStateOf(false)
+    private var noise: Boolean
+        get() = noiseState
+        set(value) {
+            noiseState = value
+            if (value) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    private var noiseState by mutableStateOf(false)
 
-    /** Stop the noise and say so. The alert stays up: the reminder is still owed an answer. */
-    private fun hush() {
+    /**
+     * Stop the noise and say so. The alert stays up: the reminder is still owed an answer.
+     * [why] goes in the diagnostics when there was a noise to stop — "¿sonó?" had no answer in the
+     * report, because nothing about the sound itself was written down (0.155.0).
+     */
+    private fun hush(why: String? = null) {
+        if (noise && why != null) Diag.note(TAG_DIAG, "stopped: $why")
         ringer.stop()
         noise = false
     }
@@ -146,9 +170,9 @@ class AlertActivity : ComponentActivity() {
     private var hushedOnPurpose = false
 
     /** The person's answer to the noise, or the minute's: quiet, and quiet through a rotation. */
-    private fun silence() {
+    private fun silence(why: String = "silenced") {
         hushedOnPurpose = true
-        hush()
+        hush(why)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -223,8 +247,16 @@ class AlertActivity : ComponentActivity() {
                         // when the last has sounded, this alert's noise is over, buzz and all,
                         // exactly as if the minute had run out (0.154.0).
                         times = times,
-                        onDone = if (insisting) ({ silence() }) else null,
+                        onDone = if (insisting) ({ silence("the round is over") }) else null,
                     )
+                    if (sound || vibrate) {
+                        val route = if (sound && current.alertToHeadphones && AlertAudio.headsetConnected(this@AlertActivity)) "headphones, speaker in 10 s" else "speaker"
+                        Diag.note(
+                            TAG_DIAG,
+                            "r=${reminders.joinToString(",") { it.id.take(8) }} ringing sound=${if (sound) "${tone.key}x$times" else "no"} " +
+                                "vibrate=${if (vibrate) "y" else "n"} to=$route volume=${alarmVolumeDescription()}",
+                        )
+                    }
                     // **Only a noise that outlives the tap is one there is anything to answer.**
                     // A single tone is over in a second or two and nothing ever cleared this, so
                     // the red button sat on top of "hecho" for the rest of the minute, protecting
@@ -238,13 +270,11 @@ class AlertActivity : ComponentActivity() {
             // screen when somebody comes back to it, and the notification is still in the shade
             // either way.
             //
-            // **The screen is not held on at all** (0.63.0). It used to be pinned awake for the
-            // minute the noise lasted, on the reasoning that an alarm you cannot see is not an
-            // alarm — but a takeover that keeps a phone lit is a decision about somebody's
-            // battery and their bedroom that the phone's own screen timeout has already made,
-            // and the alert is not more entitled to override it than anything else here.
-            // [setTurnScreenOn] still brings the screen up so the alert is seen; from there it
-            // goes off when the system says so.
+            // **The screen is held on while there is a noise, and only then** ([noise], 0.155.0).
+            // 0.63.0 stopped holding it at all — a phone kept lit is a decision about somebody's
+            // battery and bedroom their own screen timeout had made — but the noise stops when
+            // this screen stops being seen, so on a lock screen that dims a few seconds after the
+            // alert lit it, the alarm lasted those few seconds. The minute below bounds the hold.
             //
             // **The noise stops when the buzz does** ([VibrationLimits.LONGEST]). The two are
             // one alarm and they used to end at different times — the motor at its minute, the
@@ -253,7 +283,7 @@ class AlertActivity : ComponentActivity() {
             // ring that has gone round for one has made the same point.
             LaunchedEffect(ringEpoch) {
                 delay(RING_TIMEOUT_MS)
-                silence()
+                silence("the minute ran out")
             }
 
             // The place answers: the saved place this phone's reminders use most, as a doorway
@@ -284,7 +314,7 @@ class AlertActivity : ComponentActivity() {
                         onDoneAll = { answerAll(items.map { it.id }) { id -> app.firing.dismiss(id, notice = true) } },
                         onSnoozeAll = { snooze -> answerAll(items.map { it.id }) { id -> app.firing.snooze(id, snooze) } },
                         ringing = noise,
-                        onSilence = ::silence,
+                        onSilence = { silence() },
                     )
                 } else {
                     val first = focusedItem ?: items.first()
@@ -304,7 +334,7 @@ class AlertActivity : ComponentActivity() {
                         onSnoozeToPlace = { offer -> snoozeToPlace(first.id, offer) },
                         onSnoozeUntil = { until -> answer(first.id) { app.firing.snoozeUntil(first.id, until) } },
                         ringing = noise,
-                        onSilence = ::silence,
+                        onSilence = { silence() },
                         // Silent because it was tapped open: the eyes arrived before the thumb.
                         // A strip opened out of the stack is the same thing — somebody chose to
                         // look at this one on a screen that was already armed, so the second
@@ -501,7 +531,7 @@ class AlertActivity : ComponentActivity() {
     }
 
     private fun close() {
-        hush()
+        hush("answered")
         finish()
     }
 
@@ -532,7 +562,7 @@ class AlertActivity : ComponentActivity() {
      */
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (noise && keyCode in SILENCING_KEYS) {
-            silence()
+            silence("a volume key")
             return true
         }
         return super.onKeyDown(keyCode, event)
@@ -540,8 +570,10 @@ class AlertActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
-        // Left the screen without answering: the notification is still there, so go quiet.
-        hush()
+        // Left the screen without answering: the notification is still there, so go quiet. With the
+        // display held while there is a noise, this is the power button or somebody leaving it
+        // (0.155.0) — no longer the lock screen timing out on its own.
+        hush("the screen went away")
         // A bouncer whose callback never came back (it happens on some skins) must not leave
         // "Ver" deaf for the rest of the screen's life.
         askingUnlock = false
@@ -549,10 +581,13 @@ class AlertActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        hush()
+        hush("closed")
     }
 
     private companion object {
+        /** The diagnostics' word for the alert screen's own noise. */
+        const val TAG_DIAG = "ring"
+
         /** As long as the buzz beside it, and no longer: see the LaunchedEffect above. */
         val RING_TIMEOUT_MS = VibrationLimits.LONGEST.toMillis()
         const val STATE_RINGING = "ringing"

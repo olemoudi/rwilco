@@ -1716,6 +1716,12 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_155_0">
+
+        <item>A ringing alert keeps the screen on while it makes its noise, a minute at the most. On a locked phone the screen used to dim by itself after a few seconds and take the sound with it, so an alarm could last those few seconds. The power button and the volume keys still silence it.</item>
+        <item>The diagnostics report now says what the sound did: when it started, which tone and how many times, whether it went to the headphones or the speaker, and when and why it stopped.</item>
+
+    </string-array>
     <string-array name="whats_new_0_154_0">
 
         <item>«Sound until answered» works the way it reads now: each time it alerts, the tone sounds several times in a row (5 by default); it alerts again every few minutes (5); and it alerts at most a set number of times (3, new). Before, each alert looped the tone for up to a minute and the first number was how many alerts.</item>

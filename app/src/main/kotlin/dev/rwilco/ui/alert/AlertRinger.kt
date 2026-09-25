@@ -15,6 +15,7 @@ import android.util.Log
 import dev.rwilco.notify.AlertAudio
 import dev.rwilco.notify.Sounds
 import java.time.Duration
+import dev.rwilco.diag.Diag
 import dev.rwilco.model.AlertSound
 import dev.rwilco.model.VibrationLimits
 import dev.rwilco.model.VibrationPattern
@@ -120,8 +121,9 @@ class AlertRinger(private val context: Context) {
                         onDone?.invoke()
                     }
                 }
-                setOnErrorListener { failed, _, _ ->
+                setOnErrorListener { failed, what, extra ->
                     if (player === failed) {
+                        Diag.note(TAG_DIAG, "the tone failed mid-play (what=$what extra=$extra)")
                         soundOver()
                         onDone?.invoke()
                     }
@@ -132,6 +134,9 @@ class AlertRinger(private val context: Context) {
             }
         }.onFailure {
             Log.w(TAG, "could not ring", it)
+            // Said where the report can see it: a tone that would not play is an alarm that
+            // "did not ring" with every other line of the report saying it did (0.155.0).
+            Diag.note(TAG_DIAG, "could not play the tone: ${it::class.simpleName}")
             // Asked for the audio and never got a sound out of it: give it straight back, or
             // the podcast stays ducked until something else happens to call stop().
             soundOver()
@@ -153,7 +158,10 @@ class AlertRinger(private val context: Context) {
     private fun handOverToSpeaker() {
         val move = Runnable {
             handover = null
-            player?.let { AlertAudio.toSpeaker(context, it) }
+            player?.let {
+                AlertAudio.toSpeaker(context, it)
+                Diag.note(TAG_DIAG, "unanswered on the headphones: moved to the speaker")
+            }
         }
         handover = move
         clock.postDelayed(move, AlertAudio.HEADPHONES_GRACE_MS)
@@ -201,6 +209,9 @@ class AlertRinger(private val context: Context) {
 
     private companion object {
         const val TAG = "RwilcoAlarms"
+
+        /** The same word the alert screen writes its noise under. */
+        const val TAG_DIAG = "ring"
 
         /** Play the pattern once and stop. It is already as long as it is allowed to be. */
         const val NO_REPEAT = -1
