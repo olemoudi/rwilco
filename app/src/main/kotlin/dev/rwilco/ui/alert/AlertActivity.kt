@@ -33,7 +33,8 @@ import dev.rwilco.model.firingPlan
 import dev.rwilco.model.dayShape
 import dev.rwilco.model.hushedByTheHour
 import dev.rwilco.model.hushed
-import dev.rwilco.model.loopsOnScreen
+import dev.rwilco.model.insistsOnScreen
+import dev.rwilco.model.tonesInARow
 import dev.rwilco.model.soundFor
 import dev.rwilco.ui.theme.RwilcoTheme
 import dev.rwilco.ui.theme.resolvesToDark
@@ -203,8 +204,9 @@ class AlertActivity : ComponentActivity() {
             // asking, the tone is the one chosen for that.
             val tone = current.soundFor(plans.any { it.insistent })
 
-            val looping = loopsOnScreen(plans)
-            DisposableEffect(sound, vibrate, current.vibration, tone, current.alertToHeadphones, looping, ringEpoch) {
+            val insisting = insistsOnScreen(plans)
+            val times = current.tonesInARow(insisting)
+            DisposableEffect(sound, vibrate, current.vibration, tone, current.alertToHeadphones, times, ringEpoch) {
                 if (hushedOnPurpose) {
                     // Rebuilt after a rotation, or the settings changed under a silenced
                     // screen: the noise was answered and stays answered. See [hushedOnPurpose].
@@ -216,9 +218,12 @@ class AlertActivity : ComponentActivity() {
                         pattern = current.vibration,
                         tone = tone,
                         toHeadphones = current.alertToHeadphones,
-                        // "Sonido" is once, here too: the screen only goes round and round for the
-                        // reminders that asked to be insisted at.
-                        looping = looping,
+                        // "Sonido" is once, here too: only the reminders that asked to be insisted
+                        // at hear the tone again, as many times in a row as Settings say — and
+                        // when the last has sounded, this alert's noise is over, buzz and all,
+                        // exactly as if the minute had run out (0.154.0).
+                        times = times,
+                        onDone = if (insisting) ({ silence() }) else null,
                     )
                     // **Only a noise that outlives the tap is one there is anything to answer.**
                     // A single tone is over in a second or two and nothing ever cleared this, so

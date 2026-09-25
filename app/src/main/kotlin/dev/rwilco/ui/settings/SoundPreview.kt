@@ -52,24 +52,40 @@ class SoundPreview(private val context: Context) {
     }
 
     /**
-     * The insistent sound, rehearsed: the same tone as many times as it would really come back,
-     * with the waits between shortened to something somebody will sit through. Nobody is going
-     * to hold the phone for five minutes to find out what "hasta que lo atienda" is like, and
-     * the thing worth knowing about it is the shape — how many times, and that it keeps coming
-     * — not the wait. The card says the real one underneath.
+     * The insistent sound, rehearsed: each alert as it really is — the tone [inARow] times back to
+     * back — and as many alerts as it would really make, with the waits between them shortened to
+     * something somebody will sit through. Nobody is going to hold the phone for five minutes to
+     * find out what "hasta que lo atienda" is like, and the thing worth knowing about it is the
+     * shape — how many in a row, how many times, and that it keeps coming — not the wait. The card
+     * says the real one underneath.
      */
-    fun playRound(sound: AlertSound, times: Int, gapMs: Long, toHeadphones: Boolean = true, onRunning: (PreviewMode?) -> Unit = {}) {
+    fun playRound(sound: AlertSound, inARow: Int, rounds: Int, gapMs: Long, toHeadphones: Boolean = true, onRunning: (PreviewMode?) -> Unit = {}) {
         begin(PreviewMode.ROUND, onRunning)
-        var left = times.coerceAtLeast(1)
-        fun again() {
-            if (left <= 0) {
+        var roundsLeft = rounds.coerceAtLeast(1)
+        var tonesLeft = 0
+        var started = false
+        fun step() {
+            if (tonesLeft > 0) {
+                tonesLeft--
+                start(sound, toHeadphones, looping = false, onDone = ::step)
+                return
+            }
+            // A whole alert has sounded (or none yet): the end, or the next one — at once the
+            // first time, after the shortened gap every time after.
+            if (roundsLeft <= 0) {
                 stop()
                 return
             }
-            left--
-            start(sound, toHeadphones, looping = false) { handler.postDelayed(::again, gapMs) }
+            roundsLeft--
+            tonesLeft = inARow.coerceAtLeast(1)
+            if (started) {
+                handler.postDelayed(::step, gapMs)
+            } else {
+                started = true
+                step()
+            }
         }
-        again()
+        step()
     }
 
     fun stop() {

@@ -2,6 +2,8 @@ package dev.rwilco.ui
 
 import android.graphics.Bitmap
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -71,14 +73,17 @@ class SettingsInsistentToneTest {
     fun theInsistentToneIsOfferedBeforeAnythingAsksForIt() {
         rule.onNodeWithContentDescription(s(R.string.home_settings)).performClick()
         rule.waitUntilShown(s(R.string.settings_sound_title))
-        rule.onNodeWithText(s(R.string.settings_sound_title), useUnmergedTree = true).performScrollTo().performClick()
+        // The heading, not merely the words: "Sonido" is also a chip on the test alert's card, in
+        // the Alerts group that opens itself on an emulator missing grants (EditorTourTest.openGroup).
+        rule.onNode(hasText(s(R.string.settings_sound_title)) and isHeading(), useUnmergedTree = true).performScrollTo().performClick()
         rule.waitUntilShown(s(R.string.settings_sound_two_tones))
 
         // The choice is there, on a phone where nothing has asked for that sound yet.
         rule.onNodeWithText(s(R.string.settings_sound_two_tones), useUnmergedTree = true).performScrollTo().assertIsDisplayed()
-        // And the round's two numbers are not: they describe something only such a reminder has.
-        check(rule.onAllNodesWithText(s(R.string.settings_sound_plays), useUnmergedTree = true).fetchSemanticsNodes().isEmpty()) {
-            "the insistent round's numbers should stay folded until something asks for the sound"
+        // The round's numbers are there too, with nothing asking for them (0.154.0): a setting
+        // somebody cannot find until the reminder that needs it exists is not a setting.
+        check(rule.onAllNodesWithText(s(R.string.settings_sound_rounds), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()) {
+            "the insistent round's numbers should always be there"
         }
         shot("settings-insistent-tone-offered")
 

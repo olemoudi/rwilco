@@ -65,16 +65,33 @@ val AlertSound.key: String
         is AlertSound.Custom -> "c%08x".format(uri.hashCode())
     }
 
+/**
+ * The shape of "hasta que reciba caso" (0.154.0, in the owner's words): each time it alerts, the
+ * tone sounds [PLAYS] times back to back; it alerts again every [GAP_MINUTES]; and it alerts at
+ * most [ROUNDS] times, the first included. Until 0.154.0 there were two numbers, and the first
+ * was the rounds: each alert looped the tone for up to a minute, and "5 veces cada 5 min" read,
+ * naturally, as five tones and then a five-minute rest, for ever.
+ */
 object SoundLimits {
-    /** Plays in one round, counting the first. One is not "insistent", and past this is a siren. */
-    val PLAYS = 2..20
+    /** Times the tone sounds back to back each time it alerts. Past this is a siren. */
+    val PLAYS = 1..20
 
-    /** Minutes between them. Under a minute is a stutter; past an hour it is a different alarm. */
+    /** Minutes between two alerts. Under a minute is a stutter; past an hour it is a different alarm. */
     val GAP_MINUTES = 1..60
+
+    /** How many times it alerts at most, the first included. One is a single alert. */
+    val ROUNDS = 1..20
 
     const val DEFAULT_PLAYS = 5
     const val DEFAULT_GAP_MINUTES = 5
+    const val DEFAULT_ROUNDS = 3
 }
+
+/**
+ * How many times the tone sounds back to back on the alert screen: the insistent number for a
+ * reminder that keeps asking, once for plain "sonido".
+ */
+fun AppSettings.tonesInARow(insistent: Boolean): Int = if (insistent) soundPlays.coerceIn(SoundLimits.PLAYS) else 1
 
 /**
  * Which of the two tones a firing plays.
@@ -94,15 +111,15 @@ fun AppSettings.soundFor(insistent: Boolean): AlertSound =
 fun AppSettings.soundFor(plan: FiringPlan): AlertSound = soundFor(plan.insistent)
 
 /**
- * How long until the next play, or null when there is not one.
+ * How long until the next alert, or null when there is not one.
  *
- * [played] counts what has already been heard, the first one included, so a round of five is
- * over once five have gone out. The count is carried by the alarm that schedules the next play
- * rather than written down anywhere: a chain of alarms needs no memory, and a chain that is
- * cancelled leaves none behind.
+ * [alerted] counts the alerts already made, the first one included, so three are over once three
+ * have gone out. The count is carried by the alarm that schedules the next one rather than
+ * written down anywhere: a chain of alarms needs no memory, and a chain that is cancelled leaves
+ * none behind.
  */
-fun nextSoundIn(played: Int, plays: Int, gapMinutes: Int): Duration? {
-    if (played < 1) return Duration.ZERO
-    if (played >= plays.coerceIn(SoundLimits.PLAYS)) return null
+fun nextSoundIn(alerted: Int, rounds: Int, gapMinutes: Int): Duration? {
+    if (alerted < 1) return Duration.ZERO
+    if (alerted >= rounds.coerceIn(SoundLimits.ROUNDS)) return null
     return Duration.ofMinutes(gapMinutes.coerceIn(SoundLimits.GAP_MINUTES).toLong())
 }

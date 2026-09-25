@@ -225,26 +225,28 @@ data class FiringPlan(
     val insistent: Boolean = false,
 ) {
     /**
-     * A full-screen alert rings for itself (a looping tone while the screen is up), so the
-     * notification that carries it must stay silent or the two overlap.
+     * A full-screen alert rings for itself (the tone, as many times in a row as it was asked to,
+     * while the screen is up), so the notification that carries it must stay silent or the two
+     * overlap.
      */
     val notificationSound: Boolean get() = sound && !fullScreen
     val notificationVibrate: Boolean get() = vibrate && !fullScreen
 }
 
 /**
- * Whether the screen's own ring goes round and round, or says the tone once and stops.
+ * Whether the screen's own ring is the insistent one — the tone as many times in a row as
+ * Settings say ([tonesInARow]) — or says it once and stops.
  *
  * The two sound tiles are one choice — once, or again until somebody answers — and on a
- * full-screen alert they used to be the same thing: the screen looped whatever it was given,
- * because looping is what a takeover needs to be worth taking the screen for. But "sonido" is
- * a promise about how many times you are going to hear it, and a screen that says it over and
- * over for a minute has broken that promise louder than any other part of the app could.
+ * full-screen alert they used to be the same thing: the screen looped whatever it was given.
+ * But "sonido" is a promise about how many times you are going to hear it, and a screen that
+ * says it over and over has broken that promise louder than any other part of the app could.
+ * (Until 0.154.0 the insistent one looped for up to a minute; now it is a number the owner sets.)
  *
- * A screen can carry several reminders at once, so it loops when *any* of them asked to be
+ * A screen can carry several reminders at once, so it insists when *any* of them asked to be
  * insisted at — the same way it takes the insistent tone if any of them wants it.
  */
-fun loopsOnScreen(plans: List<FiringPlan>): Boolean = plans.any { it.insistent }
+fun insistsOnScreen(plans: List<FiringPlan>): Boolean = plans.any { it.insistent }
 
 /**
  * Whether the alert screen has a noise to answer before it will take "hecho".
@@ -253,7 +255,7 @@ fun loopsOnScreen(plans: List<FiringPlan>): Boolean = plans.any { it.insistent }
  * true — so a screen that is making a noise asks to be silenced first. But that argument is
  * about a noise that is *still going when the thumb arrives*, and only two of the three make
  * one: the buzz, which is built as a whole minute of waveform ([waveformFor]), and the
- * insistent tone, which loops for as long ([loopsOnScreen]). Plain "sonido" says the tone once
+ * insistent tone, said several times in a row ([insistsOnScreen]). Plain "sonido" says the tone once
  * and stops after a second or two — and the screen went on wearing the red button over the
  * fifty-eight seconds of silence that followed, holding "hecho" out of reach to protect
  * somebody from a noise that had already ended.

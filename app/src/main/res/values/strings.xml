@@ -1360,9 +1360,14 @@
     <string name="settings_sound_custom">File…</string>
     <string name="settings_sound_two_tones">A different sound when it keeps asking</string>
     <string name="settings_sound_two_tones_hint">A tone you hear once and a tone you hear five times are not the same choice. Off, both use the sound above.</string>
-    <string name="settings_sound_plays">How many times</string>
-    <string name="settings_sound_plays_hint">For «sound until answered»: how many times in all, counting the first, and how far apart. It stops the moment the reminder is dealt with, snoozed or paused.</string>
-    <string name="settings_sound_plays_value">%1$d times</string>
+    <string name="settings_sound_plays">Times in a row</string>
+    <string name="settings_sound_plays_hint">For «sound until answered»: how many times the tone sounds back to back each time it alerts.</string>
+    <plurals name="settings_sound_times">
+        <item quantity="one">%d time</item>
+        <item quantity="other">%d times</item>
+    </plurals>
+    <string name="settings_sound_rounds">How many times it alerts</string>
+    <string name="settings_sound_rounds_hint">At most, counting the first. It stops the moment the reminder is dealt with, snoozed or paused.</string>
     <string name="settings_sound_gap">How far apart</string>
     <string name="settings_sound_gap_value">every %1$d min</string>
     <string name="sound_chime_alert">Door ajar</string>
@@ -1644,7 +1649,15 @@
     </string-array>
     <string name="settings_sound_insistent_play">Hear the insistent round</string>
     <string name="settings_sound_insistent_stop">Stop</string>
-    <string name="settings_sound_insistent_hint">It plays %1$d times in all. Here the waits are shortened; the real one is every %2$d min, and it stops the moment you deal with the reminder.</string>
+    <plurals name="settings_sound_round_rounds">
+        <item quantity="one">It alerts once.</item>
+        <item quantity="other">It alerts up to %1$d times, one every %2$d min.</item>
+    </plurals>
+    <plurals name="settings_sound_round_plays">
+        <item quantity="one">Each time, the tone sounds once.</item>
+        <item quantity="other">Each time, the tone sounds %1$d times in a row.</item>
+    </plurals>
+    <string name="settings_sound_round_preview">Here the waits are shortened; it stops the moment you deal with the reminder.</string>
 
     <string-array name="whats_new_0_14_0">
         <item>The four chimes are rebuilt, and they are softer. They used to be beeps in the band that makes any sound feel shrill (up to 1568 Hz, with flat-topped envelopes); now they are low notes — 330 to 800 Hz — struck and left to decay like a bar hit with a mallet, each carrying its own octave underneath for warmth and almost nothing above it. The idea is the chime a car plays when you leave a door open, not the buzzer: «Puerta abierta» is exactly that, one soft tone struck four times, unhurried. They are still the app\'s own, still synthesised by a script in the repository, and still licensed by nobody.</item>
@@ -1691,7 +1704,7 @@
     </string-array>
     <string name="settings_sound_stop">Stop</string>
     <string name="settings_sound_loop">Hear it looping</string>
-    <string name="settings_sound_loop_hint">How a full-screen reminder that keeps asking sounds: the same tone, round and round until you answer it. One asked for «sound» says it once and stops, on the screen as anywhere else. This preview stops itself after half a minute.</string>
+    <string name="settings_sound_loop_hint">The tone on repeat, to judge whether you can stand it: a reminder that keeps asking says it the times in a row set below each time it alerts, and one with «sound» says it once. This preview stops by itself after thirty seconds.</string>
     <string name="settings_sound_volume">Alarm volume</string>
     <string name="settings_sound_volume_hint">The phone\'s own alarm slider, here so a sound can be chosen at the level it will actually arrive at. Reminders play on the alarm stream, so this is the only volume that governs them — and at zero they are silent.</string>
     <string name="settings_sound_headphones">To the headphones when there are any</string>
@@ -1703,6 +1716,14 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_154_0">
+
+        <item>«Sound until answered» works the way it reads now: each time it alerts, the tone sounds several times in a row (5 by default); it alerts again every few minutes (5); and it alerts at most a set number of times (3, new). Before, each alert looped the tone for up to a minute and the first number was how many alerts.</item>
+        <item>The number you had keeps its value and becomes the times in a row.</item>
+        <item>The three numbers are always in Settings → Sound, even before any reminder asks for that sound, with a sentence underneath saying what they come to.</item>
+        <item>On a banner, with the phone in your hand, the tone still sounds once per alert: that sound is the system notification\'s own.</item>
+
+    </string-array>
     <string-array name="whats_new_0_153_0">
 
         <item>With headphones connected, a reminder goes to them for the first ten seconds only (it was twenty); if nobody answers, it moves to the phone\'s speaker.</item>

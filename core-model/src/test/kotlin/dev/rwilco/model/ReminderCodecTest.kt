@@ -256,7 +256,7 @@ class ReminderCodecTest {
                 """{"id":"builtin-week","recurrence":{"type":"after","amount":1,"unit":"WEEKS","from":"DEALT","hour":{"type":"day_start"},"landing":"NEXT"},"name":"","uses":0,"lastUsedAt":null},""" +
                 """{"id":"builtin-month","recurrence":{"type":"after","amount":1,"unit":"MONTHS","from":"DEALT","hour":{"type":"day_start"},"landing":"NEXT"},"name":"","uses":0,"lastUsedAt":null}],""" +
                 """"busyWatchNotice":false,"vibration":{"strength":"STRONG","rhythm":"PULSED"},""" +
-                """"alertSound":{"type":"system"},"insistentSound":null,"soundPlays":5,"soundGapMinutes":5,"alertStacking":"SEQUENTIAL","updatesWifiOnly":false,"updateChannel":"BETA","alertToHeadphones":true,"safetyNet":{"afterHours":24,"minCadenceMinutes":60,"fraction":10},""" +
+                """"alertSound":{"type":"system"},"insistentSound":null,"soundPlays":5,"soundGapMinutes":5,"soundRounds":3,"alertStacking":"SEQUENTIAL","updatesWifiOnly":false,"updateChannel":"BETA","alertToHeadphones":true,"safetyNet":{"afterHours":24,"minCadenceMinutes":60,"fraction":10},""" +
                 """"snoozeCustomMinutes":30,"notificationSnoozes":["TEN_MINUTES","TWO_HOURS"],"hiddenSnoozes":[],"snoozeUses":{},"customSnoozes":[],"dismissedAlertProblems":[],"compactHome":false,"compactRoutines":false,"disclaimerRead":false,"achievements":[],"cheerLine":true,"cheerNotifications":true}""",
             encoded,
         )

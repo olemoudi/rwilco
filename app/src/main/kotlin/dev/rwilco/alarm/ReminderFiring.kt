@@ -365,7 +365,7 @@ class ReminderFiring(
                 }
                 // "Hasta que reciba caso": the first play has gone out, so line up the second.
                 if (plan.insistent) {
-                    nextSoundIn(played = 1, plays = settings.soundPlays, gapMinutes = settings.soundGapMinutes)
+                    nextSoundIn(alerted = 1, rounds = settings.soundRounds, gapMinutes = settings.soundGapMinutes)
                         ?.let { gap -> repeater.schedule(id, played = 1, rangAt = rangFor, at = now + gap, ruleIndex = ruleIndex) }
                 }
             } catch (t: Throwable) {
@@ -409,9 +409,9 @@ class ReminderFiring(
             Diag.note(TAG_DIAG, "r=${short(id)} repeat dropped (asleep)")
             return@withLock
         }
-        Log.i(TAG, "$id has not been dealt with; play ${played + 1} of ${settings.soundPlays}")
+        Log.i(TAG, "$id has not been dealt with; alert ${played + 1} of ${settings.soundRounds}")
         AlertPresenter.show(context, reminder, plan, late = null, vibration = settings.vibration, sound = settings.soundFor(plan), repeat = true, ruleIndex = ruleIndex, defaultTime = settings.defaultTime, snoozes = settings.notificationOffers, customMinutes = settings.snoozeCustomMinutes)
-        nextSoundIn(played + 1, settings.soundPlays, settings.soundGapMinutes)
+        nextSoundIn(played + 1, settings.soundRounds, settings.soundGapMinutes)
             ?.let { gap -> repeater.schedule(id, played + 1, rangAt, now + gap, ruleIndex) }
     }
 

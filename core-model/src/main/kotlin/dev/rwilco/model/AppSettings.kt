@@ -139,9 +139,16 @@ data class AppSettings(
      */
     @Serializable(with = TolerantSoundOrNull::class)
     val insistentSound: AlertSound? = null,
-    /** For [Action.SOUND_UNTIL_ANSWERED]: how many plays in a round, and how far apart. */
+    /**
+     * For [Action.SOUND_UNTIL_ANSWERED]: how many times the tone sounds back to back each time it
+     * alerts, and how many minutes apart the alerts are. Until 0.154.0 the first was how many
+     * alerts; that is [soundRounds] now, and a stored number keeps its value and takes the new
+     * reading — "3" was three alerts and is three tones in a row, beside three alerts by default.
+     */
     val soundPlays: Int = SoundLimits.DEFAULT_PLAYS,
     val soundGapMinutes: Int = SoundLimits.DEFAULT_GAP_MINUTES,
+    /** How many times an insistent reminder alerts at most (0.154.0); see [SoundLimits]. */
+    val soundRounds: Int = SoundLimits.DEFAULT_ROUNDS,
     /**
      * Two full-screen reminders within moments of each other: one after the other (the next
      * appears the instant the first is answered) or all at once, the screen split into a

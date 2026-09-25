@@ -29,39 +29,49 @@ class AlertSoundTest {
     }
 
     @Test
-    fun `a round runs out, and stops the moment it does`() {
-        // Five plays: the first has gone out, so four more follow, and then nothing.
+    fun `the alerts run out, and stop the moment they do`() {
+        // Three alerts: the first has gone out, so two more follow, and then nothing.
         val gaps = generateSequence(1) { it + 1 }
-            .map { played -> played to nextSoundIn(played, plays = 5, gapMinutes = 5) }
+            .map { alerted -> alerted to nextSoundIn(alerted, rounds = 3, gapMinutes = 5) }
             .takeWhile { (_, gap) -> gap != null }
             .toList()
-        assertEquals(listOf(1, 2, 3, 4), gaps.map { it.first })
+        assertEquals(listOf(1, 2), gaps.map { it.first })
         assertTrue(gaps.all { it.second == Duration.ofMinutes(5) })
-        assertNull(nextSoundIn(played = 5, plays = 5, gapMinutes = 5), "a fifth play is the last of five")
-        assertNull(nextSoundIn(played = 9, plays = 5, gapMinutes = 5), "and past the end stays past it")
+        assertNull(nextSoundIn(alerted = 3, rounds = 3, gapMinutes = 5), "a third alert is the last of three")
+        assertNull(nextSoundIn(alerted = 9, rounds = 3, gapMinutes = 5), "and past the end stays past it")
     }
 
     @Test
     fun `the numbers are clamped rather than trusted`() {
         // A settings blob edited by hand, or an older one read back: neither may produce a siren.
-        assertNull(nextSoundIn(played = 2, plays = 1, gapMinutes = 5), "one play is not a round")
+        assertNull(nextSoundIn(alerted = 1, rounds = 0, gapMinutes = 5), "at least the one alert, and nothing after it")
         assertEquals(
             Duration.ofMinutes(SoundLimits.GAP_MINUTES.first.toLong()),
-            nextSoundIn(played = 1, plays = 5, gapMinutes = 0),
+            nextSoundIn(alerted = 1, rounds = 5, gapMinutes = 0),
             "no gap at all would be one long noise",
         )
         assertEquals(
             Duration.ofMinutes(SoundLimits.GAP_MINUTES.last.toLong()),
-            nextSoundIn(played = 1, plays = 5, gapMinutes = 9_999),
+            nextSoundIn(alerted = 1, rounds = 5, gapMinutes = 9_999),
         )
-        assertNull(nextSoundIn(played = 40, plays = 9_999, gapMinutes = 5), "twenty is as insistent as it gets")
+        assertNull(nextSoundIn(alerted = 40, rounds = 9_999, gapMinutes = 5), "twenty is as insistent as it gets")
+        assertEquals(SoundLimits.PLAYS.last, AppSettings(soundPlays = 999).tonesInARow(insistent = true))
+        assertEquals(SoundLimits.PLAYS.first, AppSettings(soundPlays = 0).tonesInARow(insistent = true))
     }
 
     @Test
-    fun `the defaults are the five and five that were asked for`() {
+    fun `plain sound says the tone once, and the insistent one as many times in a row as it is set to`() {
+        val settings = AppSettings(soundPlays = 4)
+        assertEquals(1, settings.tonesInARow(insistent = false))
+        assertEquals(4, settings.tonesInARow(insistent = true))
+    }
+
+    @Test
+    fun `the defaults are five in a row, five minutes apart, three times`() {
         val settings = AppSettings()
         assertEquals(5, settings.soundPlays)
         assertEquals(5, settings.soundGapMinutes)
+        assertEquals(3, settings.soundRounds, "the owner's number for how many times at most (2026-09-25)")
         // The phone's own tone until somebody chooses otherwise: the chimes are subtler than an
         // alarm tone, and an alarm nobody recognises is an alarm somebody sleeps through.
         assertEquals(AlertSound.System, settings.alertSound)

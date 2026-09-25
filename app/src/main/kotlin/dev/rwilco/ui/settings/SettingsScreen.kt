@@ -310,7 +310,6 @@ fun SettingsScreen(
                 )
             }
 
-            val insistent by viewModel.insistentInUse.collectAsStateWithLifecycle()
             SettingsGroup(
                 matches = matches,
                 icon = Icons.AutoMirrored.Outlined.VolumeUp,
@@ -324,12 +323,13 @@ fun SettingsScreen(
                     insistentSound = current.insistentSound,
                     plays = current.soundPlays,
                     gapMinutes = current.soundGapMinutes,
-                    insistentInUse = insistent,
+                    rounds = current.soundRounds,
                     toHeadphones = current.alertToHeadphones,
                     onSound = viewModel::setAlertSound,
                     onInsistentSound = viewModel::setInsistentSound,
                     onPlays = viewModel::setSoundPlays,
                     onGap = viewModel::setSoundGap,
+                    onRounds = viewModel::setSoundRounds,
                     onToHeadphones = viewModel::setAlertToHeadphones,
                 )
             }

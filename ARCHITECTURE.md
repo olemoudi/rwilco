@@ -2739,12 +2739,14 @@ loud what DST and a change of zone do to a landing.
   channel rather than an edit Android would ignore. Only the rhythm; a channel's pattern is
   durations and nothing else, with no way to say how hard, so a gentle notification and a strong
   one are the same notification. A full-screen alert's notification stays silent: the
-  screen does its own ring (`AlertRinger`) — **round and round only if that is what was asked
-  for** (`loopsOnScreen`): "sonido" says the tone once here as it does anywhere else, and the
-  loop belongs to "hasta que reciba caso" alone. It looped whatever it was given until 0.36.1,
-  which made the two tiles the same thing on the one surface where the difference is loudest —
-  a reminder asked to say it once said it over and over for a minute. It gives up **when the
-  buzz does** — one minute,
+  screen does its own ring (`AlertRinger`) — **several times in a row only if that is what was
+  asked for** (`insistsOnScreen`, `tonesInARow`): "sonido" says the tone once here as it does
+  anywhere else, and "hasta que reciba caso" says it `soundPlays` times back to back (0.154.0;
+  until then it looped for the minute), after which that alert's noise is over, buzz and all, as
+  if the minute had run out. It looped whatever it was given until 0.36.1, which made the two
+  tiles the same thing on the one surface where the difference is loudest — a reminder asked to
+  say it once said it over and over for a minute. It gives up at the latest **when the buzz
+  does** — one minute,
   `VibrationLimits.LONGEST` — and so does its hold on the screen (`FLAG_KEEP_SCREEN_ON` is
   cleared with the noise). The two are one alarm, and they used to end a minute apart: the motor
   stopped at its limit and the looping tone went on alone. Nobody answered in
@@ -2825,9 +2827,16 @@ loud what DST and a change of zone do to a landing.
   days out is not, so without that it would work while being chosen and be silent when it
   mattered — and anything that will not resolve at play time falls back to the phone's alarm
   tone, because the wrong sound beats no sound.
-  And *how insistently* — `Action.SOUND` plays once, `Action.SOUND_UNTIL_ANSWERED` comes back
-  every `soundGapMinutes` until the reminder is dealt with, `soundPlays` times in all (five and
-  five by default). The two are one choice in the editor, since asking for a sound once and also
+  And *how insistently* — `Action.SOUND` plays once; `Action.SOUND_UNTIL_ANSWERED` alerts with
+  the tone `soundPlays` times in a row, again every `soundGapMinutes` until the reminder is dealt
+  with, and `soundRounds` alerts at most (five in a row, five minutes apart, three alerts by
+  default — **the owner's shape, 0.154.0**: there used to be two numbers, the first was the
+  alerts and each looped for a minute, and "5 veces cada 5 min" read, naturally, as five tones
+  and a five-minute rest, for ever). A stored `soundPlays` keeps its number and takes the new
+  reading. All three are always in Settings → Sonido, not only once something asks for that
+  sound — a setting nobody can find before writing the reminder that needs it is not one. On a
+  banner (the phone in somebody's hand) the tone is the notification's own, once per alert: the
+  system plays a channel's sound once a post. The two are one choice in the editor, since asking for a sound once and also
   until answered is asking for two contradictory things. The round is a chain of one-shot alarms
   (`SoundRepeater`), each carrying how many plays have gone out and which ring they belong to:
   no column, no migration, nothing written down, because a chain that lives in its own alarms

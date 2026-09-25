@@ -563,7 +563,7 @@ class EditorTourTest {
         shot("settings")
         // Everything below lives inside a group, so the group is opened before it is reached
         // for. Scrolled to the last thing in each card, so the whole of it is in the frame:
-        // the two insistent numbers only appear when something asks for that sound.
+        // the insistent numbers are always there, the rounds last among them.
         openGroup(s(R.string.settings_sound_title), s(R.string.settings_sound_gap))
         text(s(R.string.settings_sound_gap)).performScrollTo()
         shot("settings-sound")

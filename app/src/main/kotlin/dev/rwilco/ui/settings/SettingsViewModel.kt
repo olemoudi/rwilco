@@ -98,15 +98,6 @@ class SettingsViewModel(
         .map<PlaceWatchState, PlaceWatchState?> { it }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    /**
-     * Whether the two insistent-sound numbers are worth showing at all: something has to be
-     * asking for that sound, either a reminder or what a blank one starts with.
-     */
-    val insistentInUse: StateFlow<Boolean> = combine(repository.open, settings) { reminders, current ->
-        Action.SOUND_UNTIL_ANSWERED in current?.defaultActions.orEmpty() ||
-            reminders.any { Action.SOUND_UNTIL_ANSWERED in it.actions }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
-
     /** Every look the place watch took, newest first: the log behind the button. */
     val watchLog: StateFlow<WatchLog> = placeLog.log
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WatchLog())
@@ -315,6 +306,7 @@ class SettingsViewModel(
     fun restoreCustomSnooze(removed: RemovedCustomSnooze) = update { it.withCustomSnoozeBack(removed) }
     fun setSoundPlays(plays: Int) = update { it.copy(soundPlays = plays.coerceIn(SoundLimits.PLAYS)) }
     fun setSoundGap(minutes: Int) = update { it.copy(soundGapMinutes = minutes.coerceIn(SoundLimits.GAP_MINUTES)) }
+    fun setSoundRounds(rounds: Int) = update { it.copy(soundRounds = rounds.coerceIn(SoundLimits.ROUNDS)) }
 
     /** Where a reminder's sound comes out when headphones are connected. */
     fun setAlertToHeadphones(only: Boolean) = update { it.copy(alertToHeadphones = only) }

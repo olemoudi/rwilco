@@ -38,6 +38,7 @@ import dev.rwilco.ui.components.LocalSnackbar
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import dev.rwilco.R
 import dev.rwilco.model.Action
@@ -68,12 +69,13 @@ fun SoundCard(
     insistentSound: AlertSound?,
     plays: Int,
     gapMinutes: Int,
-    insistentInUse: Boolean,
+    rounds: Int,
     toHeadphones: Boolean,
     onSound: (AlertSound) -> Unit,
     onInsistentSound: (AlertSound?) -> Unit,
     onPlays: (Int) -> Unit,
     onGap: (Int) -> Unit,
+    onRounds: (Int) -> Unit,
     onToHeadphones: (Boolean) -> Unit,
 ) {
     val spacing = Tokens.spacing
@@ -97,7 +99,7 @@ fun SoundCard(
             when (mode) {
                 PreviewMode.ONCE -> preview.play(tone, toHeadphones) { playing = it }
                 PreviewMode.LOOPING -> preview.playLooping(tone, toHeadphones) { playing = it }
-                PreviewMode.ROUND -> preview.playRound(tone, plays, REHEARSAL_GAP_MS, toHeadphones) { playing = it }
+                PreviewMode.ROUND -> preview.playRound(tone, plays, rounds, REHEARSAL_GAP_MS, toHeadphones) { playing = it }
             }
         }
     }
@@ -219,53 +221,73 @@ fun SoundCard(
                     }
                 }
             }
-            // The two numbers are the other half of it, and they stay behind the fold: they
-            // describe a round — how many times it comes back, and how far apart — and that
-            // only means anything to a reminder that has asked for one.
-            if (insistentInUse) {
-                Column {
-                    SettingTitle(
-                        title = stringResource(R.string.settings_sound_plays),
-                        info = stringResource(R.string.settings_sound_plays_hint),
-                    )
-                    Spacer(Modifier.height(spacing.sm))
-                    Stepper(
-                        valueLabel = stringResource(R.string.settings_sound_plays_value, plays),
-                        onDecrement = { onPlays(plays - 1) },
-                        onIncrement = { onPlays(plays + 1) },
-                        decrementEnabled = plays > SoundLimits.PLAYS.first,
-                        incrementEnabled = plays < SoundLimits.PLAYS.last,
-                    )
+            // The three numbers are the other half of it (0.154.0, the owner's shape): how many
+            // times the tone sounds in a row each time it alerts, how far apart the alerts are,
+            // and how many alerts at most. **Always here** (the owner's word, the same day): they
+            // used to appear only once something asked for the insistent sound, which made them a
+            // setting nobody could find before writing the reminder that needed it.
+            Column {
+                SettingTitle(
+                    title = stringResource(R.string.settings_sound_plays),
+                    info = stringResource(R.string.settings_sound_plays_hint),
+                )
+                Spacer(Modifier.height(spacing.sm))
+                Stepper(
+                    valueLabel = pluralStringResource(R.plurals.settings_sound_times, plays, plays),
+                    onDecrement = { onPlays(plays - 1) },
+                    onIncrement = { onPlays(plays + 1) },
+                    decrementEnabled = plays > SoundLimits.PLAYS.first,
+                    incrementEnabled = plays < SoundLimits.PLAYS.last,
+                )
+            }
+            Column {
+                SettingTitle(stringResource(R.string.settings_sound_gap))
+                Spacer(Modifier.height(spacing.sm))
+                Stepper(
+                    valueLabel = stringResource(R.string.settings_sound_gap_value, gapMinutes),
+                    onDecrement = { onGap(gapMinutes - 1) },
+                    onIncrement = { onGap(gapMinutes + 1) },
+                    decrementEnabled = gapMinutes > SoundLimits.GAP_MINUTES.first,
+                    incrementEnabled = gapMinutes < SoundLimits.GAP_MINUTES.last,
+                )
+            }
+            Column {
+                SettingTitle(
+                    title = stringResource(R.string.settings_sound_rounds),
+                    info = stringResource(R.string.settings_sound_rounds_hint),
+                )
+                Spacer(Modifier.height(spacing.sm))
+                Stepper(
+                    valueLabel = pluralStringResource(R.plurals.settings_sound_times, rounds, rounds),
+                    onDecrement = { onRounds(rounds - 1) },
+                    onIncrement = { onRounds(rounds + 1) },
+                    decrementEnabled = rounds > SoundLimits.ROUNDS.first,
+                    incrementEnabled = rounds < SoundLimits.ROUNDS.last,
+                )
+            }
+            // What those two numbers actually feel like. The real waits are minutes long;
+            // this plays the round with them shortened, and says so underneath.
+            Column {
+                OutlinedButton(
+                    onClick = { listen(PreviewMode.ROUND, true) },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.sizes.touch),
+                ) {
+                    Icon(if (playing == PreviewMode.ROUND) Icons.Outlined.Stop else Icons.Outlined.Repeat, contentDescription = null)
+                    Spacer(Modifier.width(spacing.sm))
+                    Text(stringResource(if (playing == PreviewMode.ROUND) R.string.settings_sound_insistent_stop else R.string.settings_sound_insistent_play))
                 }
-                Column {
-                    SettingTitle(stringResource(R.string.settings_sound_gap))
-                    Spacer(Modifier.height(spacing.sm))
-                    Stepper(
-                        valueLabel = stringResource(R.string.settings_sound_gap_value, gapMinutes),
-                        onDecrement = { onGap(gapMinutes - 1) },
-                        onIncrement = { onGap(gapMinutes + 1) },
-                        decrementEnabled = gapMinutes > SoundLimits.GAP_MINUTES.first,
-                        incrementEnabled = gapMinutes < SoundLimits.GAP_MINUTES.last,
-                    )
-                }
-                // What those two numbers actually feel like. The real waits are minutes long;
-                // this plays the round with them shortened, and says so underneath.
-                Column {
-                    OutlinedButton(
-                        onClick = { listen(PreviewMode.ROUND, true) },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.sizes.touch),
-                    ) {
-                        Icon(if (playing == PreviewMode.ROUND) Icons.Outlined.Stop else Icons.Outlined.Repeat, contentDescription = null)
-                        Spacer(Modifier.width(spacing.sm))
-                        Text(stringResource(if (playing == PreviewMode.ROUND) R.string.settings_sound_insistent_stop else R.string.settings_sound_insistent_play))
-                    }
-                    Spacer(Modifier.height(spacing.xs))
-                    Text(
-                        text = stringResource(R.string.settings_sound_insistent_hint, plays, gapMinutes),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                Spacer(Modifier.height(spacing.xs))
+                // What the three numbers come to, said as a sentence rather than left to be
+                // worked out: "5 veces cada 5 min" was read as a rest after five, for ever.
+                Text(
+                    text = listOf(
+                        pluralStringResource(R.plurals.settings_sound_round_rounds, rounds, rounds, gapMinutes),
+                        pluralStringResource(R.plurals.settings_sound_round_plays, plays, plays),
+                        stringResource(R.string.settings_sound_round_preview),
+                    ).joinToString(" "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

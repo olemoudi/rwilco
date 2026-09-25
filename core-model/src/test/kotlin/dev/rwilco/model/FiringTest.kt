@@ -269,13 +269,13 @@ class FiringTest {
         val once = firingPlan(setOf(Action.FULL_SCREEN, Action.NOTIFICATION, Action.SOUND))
         val insisting = firingPlan(setOf(Action.FULL_SCREEN, Action.NOTIFICATION, Action.SOUND_UNTIL_ANSWERED))
         assertTrue(once.sound, "it still makes a noise")
-        assertFalse(loopsOnScreen(listOf(once)), "but it says it once")
-        assertTrue(loopsOnScreen(listOf(insisting)))
+        assertFalse(insistsOnScreen(listOf(once)), "but it says it once")
+        assertTrue(insistsOnScreen(listOf(insisting)))
         // A screen can be carrying several at once: one that insists is enough to keep it going,
         // the same way it takes the insistent tone if any of them wants it.
-        assertTrue(loopsOnScreen(listOf(once, insisting)))
-        assertFalse(loopsOnScreen(listOf(once, firingPlan(setOf(Action.VIBRATE)))))
-        assertFalse(loopsOnScreen(emptyList()))
+        assertTrue(insistsOnScreen(listOf(once, insisting)))
+        assertFalse(insistsOnScreen(listOf(once, firingPlan(setOf(Action.VIBRATE)))))
+        assertFalse(insistsOnScreen(emptyList()))
     }
 
     @Test

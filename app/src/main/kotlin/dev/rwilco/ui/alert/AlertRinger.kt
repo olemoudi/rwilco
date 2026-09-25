@@ -18,7 +18,7 @@ import java.time.Duration
 import dev.rwilco.model.AlertSound
 import dev.rwilco.model.VibrationLimits
 import dev.rwilco.model.VibrationPattern
-import dev.rwilco.model.loopsOnScreen
+import dev.rwilco.model.tonesInARow
 import dev.rwilco.model.waveformFor
 
 /**
@@ -27,11 +27,11 @@ import dev.rwilco.model.waveformFor
  * It is the alert screen's own doing (see [FiringPlan.notificationSound]): the notification that
  * carried it stays quiet so the two never overlap.
  *
- * **Round and round only if that is what was asked for.** A takeover that rings once and then
- * sits there silently is a screen you can sleep through, which is why looping was the whole of
- * it — but "sonido" and "hasta que reciba caso" are two different promises about how many times
- * somebody is going to hear the same tone, and the loop made them the same thing on the one
- * surface where it is loudest. See [loopsOnScreen].
+ * **Several times in a row only if that is what was asked for.** "Sonido" and "hasta que reciba
+ * caso" are two different promises about how many times somebody is going to hear the same tone,
+ * and a screen that looped whatever it was given made them the same thing on the one surface
+ * where it is loudest. Plain "sonido" is once; the insistent one is the number set in Settings
+ * (0.154.0; it looped for up to a minute before). See [tonesInARow].
  */
 class AlertRinger(private val context: Context) {
 
@@ -52,10 +52,15 @@ class AlertRinger(private val context: Context) {
         tone: AlertSound = AlertSound.System,
         /** Send it to the headphones when any are connected; see [AlertAudio.routeTo]. */
         toHeadphones: Boolean = true,
-        /** Round and round, or once and done: see [loopsOnScreen]. */
-        looping: Boolean = true,
+        /** How many times the tone sounds back to back: once, or the insistent number ([tonesInARow]). */
+        times: Int = 1,
+        /**
+         * Called when the last of [times] has finished (or the tone could not be played): the
+         * insistent alert's round is over, and the screen puts the buzz out with it.
+         */
+        onDone: (() -> Unit)? = null,
     ) {
-        if (sound) startSound(tone, toHeadphones, looping)
+        if (sound) startSound(tone, toHeadphones, times, onDone)
         if (vibrate) startVibration(pattern, limit)
     }
 
@@ -87,29 +92,40 @@ class AlertRinger(private val context: Context) {
         focus = null
     }
 
-    private fun startSound(tone: AlertSound, toHeadphones: Boolean, looping: Boolean) {
+    private fun startSound(tone: AlertSound, toHeadphones: Boolean, times: Int, onDone: (() -> Unit)?) {
         val uri = Sounds.uri(context, tone) ?: return
         // Everything else drops a few decibels and carries on underneath; see AlertAudio.
         focus = AlertAudio.duckOthers(context)
+        var left = times.coerceAtLeast(1)
         runCatching {
             player = MediaPlayer().apply {
                 setDataSource(context, uri)
                 setAudioAttributes(AlertAudio.attributes())
                 AlertAudio.routeTo(context, this, toHeadphones)
-                isLooping = looping
-                // **A tone said once hands the audio back the moment it ends.**
-                //
-                // Ducking is not a volume this app sets: it is every other app being asked to
-                // drop a few decibels and stay there until we let go of the focus
-                // ([AlertAudio.duckOthers]). Nothing here ever watched a one-shot tone finish,
-                // so the letting go waited for [stop] — the alert answered, or the minute
-                // running out — and two seconds of chime kept somebody's music down for the
-                // rest of that minute. The same seam as the silence step: a sound that says
-                // itself once has an end nobody was looking at. A looping tone has no
-                // completion to listen for and rightly holds the focus until it is silenced.
-                if (!looping) {
-                    setOnCompletionListener { done -> if (player === done) soundOver() }
-                    setOnErrorListener { failed, _, _ -> if (player === failed) soundOver(); true }
+                // **The tone as many times as it was asked for, then the audio back** (0.154.0).
+                // Until then the insistent tone looped for up to a minute; now it is a number
+                // the owner sets ("5 veces seguidas"), played back to back from here — a
+                // completion starts the next — and the last one hands the audio back, as a tone
+                // said once always did: ducking is every other app being asked to stay down
+                // until we let go ([AlertAudio.duckOthers]), and a sound that has ended must.
+                isLooping = false
+                setOnCompletionListener { done ->
+                    if (player !== done) return@setOnCompletionListener
+                    left--
+                    if (left > 0) {
+                        done.seekTo(0)
+                        done.start()
+                    } else {
+                        soundOver()
+                        onDone?.invoke()
+                    }
+                }
+                setOnErrorListener { failed, _, _ ->
+                    if (player === failed) {
+                        soundOver()
+                        onDone?.invoke()
+                    }
+                    true
                 }
                 prepare()
                 start()
