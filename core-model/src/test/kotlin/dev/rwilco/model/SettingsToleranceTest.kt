@@ -42,6 +42,20 @@ class SettingsToleranceTest {
     }
 
     @Test
+    fun `an achievement of a family this build has no word for is dropped, not the rest`() {
+        val earned = listOf(
+            Unlocked(AchievementFamily.HECHOS, 50, java.time.LocalDate.of(2026, 9, 1)),
+            Unlocked(AchievementFamily.STREAK, 7, java.time.LocalDate.of(2026, 9, 2), "r1", "Pan"),
+        )
+        var blob = ReminderCodec.encodeSettings(kept.copy(achievements = earned))
+        assertTrue("\"family\":\"HECHOS\"" in blob, blob)
+        blob = blob.replace("\"family\":\"HECHOS\"", "\"family\":\"MARATHONS\"")
+        val settings = ReminderCodec.decodeSettings(blob)
+        assertEquals(listOf(earned[1]), settings.achievements)
+        assertEquals(places, settings.savedPlaces)
+    }
+
+    @Test
     fun `an unknown action is dropped, not the set`() {
         val settings = decoded("\"defaultActions\":[\"NOTIFICATION\",\"SOUND\",\"VIBRATE\"]" to "\"defaultActions\":[\"NOTIFICATION\",\"HOLOGRAM\",\"VIBRATE\"]")
         assertEquals(setOf(Action.NOTIFICATION, Action.VIBRATE), settings.defaultActions)

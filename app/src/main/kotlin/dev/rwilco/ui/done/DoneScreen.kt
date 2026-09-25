@@ -67,9 +67,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 
-/** The last seven bars of the fortnight: what "esta semana" means on this screen. */
-private const val DAYS_IN_A_WEEK = 7
-
 @Composable
 fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpen: (String) -> Unit) {
     val view by viewModel.view.collectAsStateWithLifecycle()
@@ -183,7 +180,10 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
                     )
                 }
             }
-            if (shown != null && !shown.failed && shown.total == 0) {
+            // Empty is nothing finished and nothing ever done: a recurring reminder's hechos are
+            // something to show even before one-off has been finished.
+            val empty = shown != null && shown.total == 0 && shown.hechos == 0 && shown.achievements.isEmpty()
+            if (shown != null && !shown.failed && empty) {
                 item {
                     // Centred in the screen, as the watch log's is (0.94.0); it floated near
                     // the top of a tall phone.
@@ -200,9 +200,33 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
             // fortnight behind it. A list of what got done answers "did I do it?"; this answers
             // "how is it going?", which is the question somebody opens this screen with and
             // which no amount of scrolling was ever going to answer.
-            if (shown != null && shown.total > 0 && results == null) {
+            if (shown != null && !shown.failed && !empty && results == null) {
                 item(key = "chart") {
-                    DoneHeadline(counts = shown.bars, week = shown.bars.takeLast(DAYS_IN_A_WEEK).sum())
+                    DoneHeadline(counts = shown.bars, week = shown.week, lastWeek = shown.lastWeek, firstTime = shown.firstTime)
+                }
+                // What the history comes to (0.150.0): the streaks under way, what has never
+                // been left undone, and the milestones — before the list of what was finished,
+                // because they answer the question this screen is opened with.
+                if (shown.streaks.isNotEmpty()) {
+                    item(key = "streaks-head") {
+                        SectionHeader(title = stringResource(R.string.done_streaks_title), info = stringResource(R.string.done_streaks_info))
+                    }
+                    item(key = "streaks") { StreaksCard(streaks = shown.streaks, onOpen = onOpen) }
+                }
+                if (shown.neverFail.isNotEmpty()) {
+                    item(key = "never-fail-head") {
+                        SectionHeader(title = stringResource(R.string.done_never_fail_title), info = stringResource(R.string.done_never_fail_info))
+                    }
+                    item(key = "never-fail") { NeverFailCard(standings = shown.neverFail, onOpen = onOpen) }
+                }
+                if (shown.achievements.isNotEmpty() || shown.goal != null) {
+                    item(key = "achievements-head") {
+                        SectionHeader(
+                            title = stringResource(R.string.done_achievements_title),
+                            trailing = shown.achievements.size.takeIf { it > 0 }?.toString(),
+                        )
+                    }
+                    item(key = "achievements") { AchievementsCard(earned = shown.achievements, goal = shown.goal, today = today) }
                 }
             }
             // While a search has something typed, its results are the list: best first, the same
@@ -264,7 +288,7 @@ fun DoneScreen(viewModel: DoneViewModel, clock: Clock, onBack: () -> Unit, onOpe
  * Mono — the size a number is read at when it is the only thing being said.
  */
 @Composable
-private fun DoneHeadline(counts: List<Int>, week: Int) {
+private fun DoneHeadline(counts: List<Int>, week: Int, lastWeek: Int, firstTime: Pair<Int, Int>?) {
     val spacing = Tokens.spacing
     Column(modifier = Modifier.padding(top = spacing.sm, bottom = spacing.md)) {
         Text(
@@ -277,6 +301,20 @@ private fun DoneHeadline(counts: List<Int>, week: Int) {
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        // Said only when it is up: a week behind the last is a fact the bars already show, and
+        // this screen does not scold.
+        val lines = listOfNotNull(
+            if (lastWeek > 0 && week > lastWeek) stringResource(R.string.done_week_up, week - lastWeek) else null,
+            firstTime?.let { (first, of) -> stringResource(R.string.done_first_time, first, of) },
+        )
+        if (lines.isNotEmpty()) {
+            Spacer(Modifier.height(spacing.xs))
+            Text(
+                text = lines.joinToString(stringResource(R.string.common_separator)),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         Spacer(Modifier.height(spacing.lg))
         DayBars(counts = counts, label = stringResource(R.string.done_chart_label, counts.size, counts.sum()))
         // Which end is today. Fourteen bars with nothing under them were a shape without a

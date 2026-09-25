@@ -232,6 +232,12 @@ data class AppSettings(
      * off deliberately. Pressing "OK" does not set it — see [dev.rwilco.ui.Disclaimer].
      */
     val disclaimerRead: Boolean = false,
+    /**
+     * The milestones earned (0.150.0), each once and for good: see `Achievements.kt` for why they
+     * are kept rather than worked out. Read one by one, so an unknown family drops only itself.
+     */
+    @Serializable(with = TolerantUnlocks::class)
+    val achievements: List<Unlocked> = emptyList(),
 )
 
 /** How the alert screen holds more than one reminder. See [AppSettings.alertStacking]. */

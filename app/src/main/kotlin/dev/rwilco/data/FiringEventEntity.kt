@@ -9,6 +9,7 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import dev.rwilco.model.FiringEvent
 import dev.rwilco.model.FiringKind
+import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 
 /**
@@ -80,6 +81,18 @@ interface FiringEventDao {
      */
     @Query("SELECT * FROM firing_event WHERE reminderId = :reminderId ORDER BY id")
     suspend fun written(reminderId: String): List<FiringEventEntity>
+
+    /**
+     * Every reminder's history, in the order written: what the Hechos screen's numbers and the
+     * achievements are read from (0.150.0). A thousand lines a reminder at the most, and read again
+     * whenever a line is written — a few times an hour.
+     */
+    @Query("SELECT * FROM firing_event ORDER BY id")
+    fun observeAll(): Flow<List<FiringEventEntity>>
+
+    /** The same, once. */
+    @Query("SELECT * FROM firing_event ORDER BY id")
+    suspend fun all(): List<FiringEventEntity>
 
     /** The newest across every reminder, for the diagnostics report to sort into its rows. */
     @Query("SELECT * FROM firing_event ORDER BY at DESC, id DESC LIMIT :limit")

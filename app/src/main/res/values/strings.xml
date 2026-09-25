@@ -1700,6 +1700,14 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_150_0">
+
+        <item>Done counts everything you do now: the week\'s number and the fortnight\'s bars include every «done» of something that comes back and every routine, not only the reminders you finished for good.</item>
+        <item>Under the number, when it is good news: how many more than the week before, and how many this month were done at the first ask.</item>
+        <item>New on Done: the streaks going, the things you have never left undone, and your achievements — so many in a row, so many done, perfect weeks, done before they rang — with the next one ahead and how far it is.</item>
+        <item>Achievements are kept for good, and travel in the encrypted backup; the history behind the numbers stays on this phone.</item>
+
+    </string-array>
     <string-array name="whats_new_0_149_0">
 
         <item>A reminder that comes back now says how it is going, over its history: how many in a row, the best run, the last twenty rounds at a glance, how many times it was done and how far apart, and how many of those were at the first ask. A routine counts on time instead.</item>
@@ -2714,4 +2722,28 @@
         <item quantity="other">%d not done</item>
     </plurals>
     <string name="stats_strip_label">The last %1$d rounds: %2$d at the first ask, %3$d after a snooze or late, %4$d not done</string>
+    <!-- Hechos: global statistics and achievements (0.150.0) -->
+    <string name="done_week_up">%1$d more than the week before</string>
+    <string name="done_first_time">%1$d of %2$d at the first ask this month</string>
+    <string name="done_streaks_title">Streaks going</string>
+    <string name="done_streaks_info">In a row without leaving one undone. Putting one off and then doing it keeps the streak; skipping one on purpose neither adds nor breaks it.</string>
+    <string name="done_never_fail_title">Never missed</string>
+    <string name="done_never_fail_info">Five rounds or more, and not one left undone.</string>
+    <plurals name="stats_times">
+        <item quantity="one">once</item>
+        <item quantity="other">%d times</item>
+    </plurals>
+    <string name="done_achievements_title">Achievements</string>
+    <string name="done_achievements_all">Show all %1$d</string>
+    <string name="done_achievements_fewer">Show fewer</string>
+    <string name="done_achievement_about">«%1$s»</string>
+    <string name="achievement_streak">%1$d in a row</string>
+    <string name="achievement_hechos">%1$d done</string>
+    <plurals name="achievement_perfect_weeks">
+        <item quantity="one">A perfect week</item>
+        <item quantity="other">%d perfect weeks</item>
+    </plurals>
+    <string name="achievement_ahead">%1$d done before they rang</string>
+    <string name="done_goal">Next: %1$s · %2$d to go</string>
+    <string name="done_goal_streak">Next: %1$d in a row with «%2$s» · %3$d to go</string>
 </resources>

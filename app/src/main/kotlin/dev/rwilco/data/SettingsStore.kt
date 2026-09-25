@@ -11,6 +11,8 @@ import androidx.datastore.preferences.preferencesDataStore
 import dev.rwilco.model.Action
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.ReminderCodec
+import dev.rwilco.model.Unlocked
+import dev.rwilco.model.mergeUnlocked
 import dev.rwilco.model.foldRepeats
 import dev.rwilco.model.offered
 import dev.rwilco.model.withPlaceIds
@@ -40,6 +42,18 @@ class SettingsStore(private val context: Context) {
     suspend fun update(transform: (AppSettings) -> AppSettings) {
         context.settingsDataStore.edit { prefs ->
             prefs[key] = ReminderCodec.encodeSettings(transform(prefs.decode()))
+        }
+    }
+
+    /**
+     * The milestones [derived] proves, added to the ones kept (`mergeUnlocked`): never one taken
+     * away, and nothing written when nothing is new — the blob is what the backup watches.
+     */
+    suspend fun keepUnlocked(derived: List<Unlocked>) {
+        if (derived.isEmpty()) return
+        update { settings ->
+            val merged = mergeUnlocked(settings.achievements, derived)
+            if (merged === settings.achievements) settings else settings.copy(achievements = merged)
         }
     }
 

@@ -1500,6 +1500,30 @@ loud what DST and a change of zone do to a landing.
   going to answer — it was a title, two cards and half a phone of nothing. The bars are ink and
   never amber, an empty day is a dash on the floor rather than a gap, and the scale has a floor
   of three so a week with one "hecho" in it does not draw a full-height bar about a Tuesday.
+  **Since 0.150.0 the number and the bars count every "hecho"** (`globalStats`, over every
+  reminder's rounds — see "Rounds and streaks"), not the rows that are DONE: a pill taken every
+  morning and a routine done every Sunday had never once reached the week's number. Under it, a
+  line said only when it is good news — "N más que la semana anterior" when the week is up, and
+  "N de M a la primera este mes" from ten hechos in the last thirty days. Then, before the bands
+  (`DoneStats.kt`): **"Rachas en marcha"** (active, three or more, the top three, the best run
+  beside it when different), **"Nunca fallan"** (five closed rounds or more, none left undone or
+  overdue), and **"Logros"** — the milestones earned, newest first, five and then "ver los N",
+  and the nearest one still ahead ("Próximo: 30 seguidas con «X» · faltan 3", `nextGoal`). Every
+  row opens its reminder. Only a contact's or an action-less reminder's hechos are counted and
+  never ranked. The bands, the search and "vaciar" are about the rows, as before; the screen is
+  empty only when there are no rows, no hechos and no milestones.
+- **Achievements are earned once and kept** (0.150.0, `Achievements.kt`,
+  `AppSettings.achievements`). Four families — so many in a row of one reminder (7, 30, 100), so
+  many hechos (50 to 1000), so many finished weeks with five rounds or more and none left undone
+  (1, 4, 12), so many done before they had to ring (10, 50; not routines, which are always ahead
+  when on time). Worked out of the history (`achievements`) and merged into what is kept
+  (`mergeUnlocked`, `SettingsStore.keepUnlocked`: only ever adds, keeps the earlier date, writes
+  nothing when nothing is new), because what proves one does not last — the history is capped,
+  finished one-offs are swept after three months, a reminder can be deleted — and "500 hechos"
+  must not be un-earned by the sweep. Dated by the round that crossed the milestone, so what a
+  first reading finds in months of history is dated in the past and is not news. The list is
+  read element by element (`TolerantUnlocks`): a family a build has no word for drops itself,
+  not the settings.
 - The chip row is a `TagFilter` (`core-model/TagFilter.kt`), not a string: `Named` for a tag
   somebody typed, and three the app keeps for itself — `Untagged`, `Paused` and `Place`. Those
   three are not tags (never stored on a reminder, never suggested, never edited) and they appear
@@ -3482,6 +3506,9 @@ history is the backup's history for free — with a fine-grained token scoped to
   lenient read the database has) and the raw `settings_json` blob, whole. Nothing is stripped:
   the armed moments are what lets a restore ring, late, what fell due meanwhile. The place
   watch's two stores stay out (device state, a location trail), and so does the vault's own.
+  So does the `firing_event` history — and with it every streak and number the statistics show:
+  a restore starts them again. The achievements they earned travel, because they live in the
+  settings blob (`AppSettings.achievements`, 0.150.0).
 - **Sealed before it leaves** (`VaultCrypto`): a JSON envelope with a plaintext KDF header
   (PBKDF2-HMAC-SHA256, 600k, the vault's own salt) and two AES-256-GCM boxes under the derived
   key — a tiny `check` so a wrong passphrase fails cleanly, and the gzipped snapshot. The KDF is

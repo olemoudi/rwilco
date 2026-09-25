@@ -6,12 +6,15 @@ import android.os.LocaleList
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -83,6 +86,26 @@ class StatsTourTest {
         // The card's last line: scrolled to, it brings the whole card up with it.
         rule.onNodeWithText(s(R.string.stats_first_time, 31, 34), substring = true, useUnmergedTree = true).performScrollTo().assertIsDisplayed()
         shot("editor-stats")
+    }
+
+    /**
+     * The Hechos screen's own numbers: every hecho counted (the demo's week is mostly pills and
+     * plants, which the old headline never saw), the three streaks under way, the two that have
+     * never been left undone, and the milestones with the next one ahead.
+     */
+    @Test
+    fun theHechosScreenShowsStreaksAndAchievements() {
+        rule.onNodeWithContentDescription(s(R.string.home_done_list)).performClick()
+        val streaks = s(R.string.done_streaks_title)
+        rule.waitUntil(10_000) { rule.onAllNodesWithText(streaks, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+        // The plants twice: ten Saturdays in a row, and never once left undone.
+        check(rule.onAllNodesWithText("Regar las plantas del balcón", useUnmergedTree = true).fetchSemanticsNodes().size >= 2)
+        shot("done-stats")
+        val list = rule.onAllNodes(hasScrollToIndexAction())[0]
+        // Fifty-five hechos in the demo's history: the first milestone of everything together.
+        list.performScrollToNode(hasText(s(R.string.achievement_hechos, 50)))
+        list.performScrollToNode(hasText(s(R.string.done_goal_streak, 30, "Regar las plantas del balcón", 20)))
+        shot("done-achievements")
     }
 
     /** The list is built a beat after launch; a scroll before then finds no list to scroll. */

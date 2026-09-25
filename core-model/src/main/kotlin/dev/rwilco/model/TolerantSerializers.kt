@@ -146,3 +146,22 @@ object TolerantSoundOrNull : KSerializer<AlertSound?> {
         return runCatching { json.json.decodeFromJsonElement(delegate, element) }.getOrNull()
     }
 }
+
+/**
+ * The achievements, element by element: one of a family a build has no word for (a vault taken
+ * back to an older build) is dropped, rather than taking every other setting with it.
+ */
+object TolerantUnlocks : KSerializer<List<Unlocked>> {
+    private val delegate = ListSerializer(Unlocked.serializer())
+    override val descriptor: SerialDescriptor = delegate.descriptor
+
+    override fun serialize(encoder: Encoder, value: List<Unlocked>) = delegate.serialize(encoder, value)
+
+    override fun deserialize(decoder: Decoder): List<Unlocked> {
+        val json = decoder as? JsonDecoder ?: return delegate.deserialize(decoder)
+        val array = json.decodeJsonElement() as? JsonArray ?: return emptyList()
+        return array.mapNotNull { element ->
+            runCatching { json.json.decodeFromJsonElement(Unlocked.serializer(), element) }.getOrNull()
+        }
+    }
+}

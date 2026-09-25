@@ -1,5 +1,6 @@
 package dev.rwilco.data
 
+import dev.rwilco.alarm.TestAlert
 import dev.rwilco.model.FiringEvent
 import dev.rwilco.model.FiringKind
 import dev.rwilco.model.Reminder
@@ -200,6 +201,22 @@ class ReminderRepository(
      */
     suspend fun historyAsWritten(reminderId: String): List<FiringEvent> =
         events.written(reminderId).mapNotNull(FiringEventEntity::toDomain)
+
+    /**
+     * Every reminder's history, each in the order written, keyed by reminder: what the statistics
+     * over everything are read from. A rehearsal's ("probar una alerta") is left out — it is not
+     * something anybody did.
+     */
+    val allHistory: Flow<Map<String, List<FiringEvent>>> = events.observeAll().map(::byReminder)
+
+    /** The same, once: for the reads that are not a screen (Home's line, the encouragement worker). */
+    suspend fun allHistoryNow(): Map<String, List<FiringEvent>> = byReminder(events.all())
+
+    private fun byReminder(rows: List<FiringEventEntity>): Map<String, List<FiringEvent>> =
+        rows.asSequence()
+            .filterNot { TestAlert.isTest(it.reminderId) }
+            .mapNotNull { row -> row.toDomain()?.let { row.reminderId to it } }
+            .groupBy({ it.first }, { it.second })
 
     /** The newest [perReminder] happenings of every reminder, for the diagnostics report. */
     suspend fun recentHistory(perReminder: Int): Map<String, List<FiringEvent>> =

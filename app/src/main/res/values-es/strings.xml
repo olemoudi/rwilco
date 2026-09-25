@@ -1685,6 +1685,14 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_150_0">
+
+        <item>Hechos cuenta ahora todo lo que haces: el número de la semana y las barras de la quincena incluyen cada «hecho» de lo que vuelve y de cada rutina, no solo los recordatorios que terminaste del todo.</item>
+        <item>Bajo el número, cuando es buena noticia: cuántos más que la semana anterior, y cuántos este mes fueron a la primera.</item>
+        <item>Nuevo en Hechos: las rachas en marcha, lo que nunca has dejado sin hacer y tus logros — tantas seguidas, tantos hechos, semanas redondas, hechos antes de sonar — con el próximo y lo que falta.</item>
+        <item>Los logros se guardan para siempre y viajan en la copia cifrada; el historial de detrás de los números se queda en este teléfono.</item>
+
+    </string-array>
     <string-array name="whats_new_0_149_0">
 
         <item>Un recordatorio que vuelve dice ahora cómo va, encima de su historial: cuántas seguidas, la mejor racha, sus últimas veinte vueltas de un vistazo, cuántas veces se ha hecho y cada cuánto, y cuántas a la primera. En una rutina, cuántas a tiempo.</item>
@@ -2699,4 +2707,28 @@
         <item quantity="other">%d sin hacer</item>
     </plurals>
     <string name="stats_strip_label">Las últimas %1$d vueltas: %2$d a la primera, %3$d tras posponer o tarde, %4$d sin hacer</string>
+    <!-- Hechos: global statistics and achievements (0.150.0) -->
+    <string name="done_week_up">%1$d más que la semana anterior</string>
+    <string name="done_first_time">%1$d de %2$d a la primera este mes</string>
+    <string name="done_streaks_title">Rachas en marcha</string>
+    <string name="done_streaks_info">Seguidas sin dejar ninguna sin hacer. Posponer y luego hacerlo mantiene la racha; saltarse una a propósito ni suma ni la rompe.</string>
+    <string name="done_never_fail_title">Nunca fallan</string>
+    <string name="done_never_fail_info">Cinco vueltas o más, y ninguna sin hacer.</string>
+    <plurals name="stats_times">
+        <item quantity="one">una vez</item>
+        <item quantity="other">%d veces</item>
+    </plurals>
+    <string name="done_achievements_title">Logros</string>
+    <string name="done_achievements_all">Ver los %1$d</string>
+    <string name="done_achievements_fewer">Ver menos</string>
+    <string name="done_achievement_about">«%1$s»</string>
+    <string name="achievement_streak">%1$d seguidas</string>
+    <string name="achievement_hechos">%1$d hechos</string>
+    <plurals name="achievement_perfect_weeks">
+        <item quantity="one">Una semana redonda</item>
+        <item quantity="other">%d semanas redondas</item>
+    </plurals>
+    <string name="achievement_ahead">%1$d hechos antes de sonar</string>
+    <string name="done_goal">Próximo: %1$s · faltan %2$d</string>
+    <string name="done_goal_streak">Próximo: %1$d seguidas con «%2$s» · faltan %3$d</string>
 </resources>

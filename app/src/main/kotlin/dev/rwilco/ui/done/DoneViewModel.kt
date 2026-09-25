@@ -11,7 +11,17 @@ import dev.rwilco.model.Reminder
 import dev.rwilco.model.SearchHit
 import dev.rwilco.model.search
 import dev.rwilco.model.Status
-import dev.rwilco.model.doneByDay
+import dev.rwilco.data.SettingsStore
+import dev.rwilco.model.Goal
+import dev.rwilco.model.Standing
+import dev.rwilco.model.Unlocked
+import dev.rwilco.model.achievements
+import dev.rwilco.model.asSubject
+import dev.rwilco.model.globalStats
+import dev.rwilco.model.mergeUnlocked
+import dev.rwilco.model.nextGoal
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import dev.rwilco.model.groupDone
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -34,16 +44,33 @@ import java.time.Clock
  * recomposition, and read "today" once — so left open across midnight, every "hoy" was wrong.
  * [failed] is the store refusing to be read, which is an error to say rather than a
  * placeholder to sit in.
+ *
+ * Since 0.150.0 the numbers are every "hecho" (`globalStats`), not the finished rows: [bars],
+ * [week] and [lastWeek] count a pill taken every morning as much as a one-off finished. [total]
+ * is still the rows, which is what the bands, the search and "vaciar" are about. [achievements]
+ * are newest first.
  */
 data class DoneView(
     val sections: List<Pair<DoneSection, List<Reminder>>>,
     val bars: List<Int>,
     val total: Int,
+    val week: Int = 0,
+    val lastWeek: Int = 0,
+    val hechos: Int = 0,
+    val streaks: List<Standing> = emptyList(),
+    val neverFail: List<Standing> = emptyList(),
+    val firstTime: Pair<Int, Int>? = null,
+    val achievements: List<Unlocked> = emptyList(),
+    val goal: Goal? = null,
     val failed: Boolean = false,
 )
 
 /** The done list: what was, with a way back for each and a way to empty it all. */
-class DoneViewModel(private val repository: ReminderRepository, private val clock: Clock) : ViewModel() {
+class DoneViewModel(
+    private val repository: ReminderRepository,
+    private val store: SettingsStore,
+    private val clock: Clock,
+) : ViewModel() {
 
     /** A minute pulse, alive only while the screen is: the bands move at midnight. */
     private val minutePulse = flow {
@@ -53,12 +80,39 @@ class DoneViewModel(private val repository: ReminderRepository, private val cloc
         }
     }
 
-    val view: StateFlow<DoneView?> = combine(repository.done, merge(MutableStateFlow(clock.instant()), minutePulse)) { list, _ ->
+    /** What the numbers name: every reminder still here, open or done. Unmoved by a re-arm. */
+    private val openSubjects = repository.open.map { list -> list.map(Reminder::asSubject) }.distinctUntilChanged()
+
+    private val kept = store.settings.map { it.achievements }.distinctUntilChanged()
+
+    val view: StateFlow<DoneView?> = combine(
+        repository.done,
+        repository.allHistory,
+        openSubjects,
+        kept,
+        merge(MutableStateFlow(clock.instant()), minutePulse),
+    ) { list, history, open, unlocked, _ ->
         val now = clock.instant()
+        val subjects = (open + list.map(Reminder::asSubject)).associateBy { it.id }
+        val stats = globalStats(history, subjects, now, clock.zone)
+        // What the history proves, kept for good (a no-op when it adds nothing); the kept list
+        // coming back through [kept] then finds nothing new to write.
+        val derived = achievements(stats.tallies, now, clock.zone)
+        // A settings write that fails costs the keeping, not the screen.
+        runCatching { store.keepUnlocked(derived) }.onFailure { Log.w(TAG, "could not keep the achievements", it) }
+        val earned = mergeUnlocked(unlocked, derived)
         DoneView(
             sections = groupDone(list, now, clock.zone).toList(),
-            bars = doneByDay(list, now, clock.zone),
+            bars = stats.byDay,
             total = list.size,
+            week = stats.thisWeek,
+            lastWeek = stats.lastWeek,
+            hechos = stats.hechos,
+            streaks = stats.streaks,
+            neverFail = stats.neverFail,
+            firstTime = stats.firstTime,
+            achievements = earned.sortedByDescending { it.on },
+            goal = nextGoal(stats, earned),
         )
     }
         .flowOn(Dispatchers.Default)
@@ -104,7 +158,7 @@ class DoneViewModel(private val repository: ReminderRepository, private val cloc
 
     class Factory(private val app: RwilcoApplication) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T = DoneViewModel(app.repository, app.clock) as T
+        override fun <T : ViewModel> create(modelClass: Class<T>): T = DoneViewModel(app.repository, app.settingsStore, app.clock) as T
     }
 }
 
