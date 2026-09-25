@@ -27,17 +27,18 @@ class DoneSectionsTest {
 
     @Test
     fun `the fortnight of bars is oldest first and ends today`() {
-        val counts = doneByDay(
+        // What the bars count since 0.150.0 is every hecho, by its day (countByDay).
+        val today = java.time.LocalDate.of(2026, 8, 27)
+        val counts = countByDay(
             listOf(
-                done("today-1", local(2026, 8, 27, 1, 0)),
-                done("today-2", local(2026, 8, 27, 14, 30)),
-                done("monday", local(2026, 8, 24, 9, 0)),
+                today,
+                today,
+                java.time.LocalDate.of(2026, 8, 24),
                 // The first day still inside a fortnight ending today, and the one before it.
-                done("edge-in", local(2026, 8, 14, 9, 0)),
-                done("edge-out", local(2026, 8, 13, 23, 59)),
+                java.time.LocalDate.of(2026, 8, 14),
+                java.time.LocalDate.of(2026, 8, 13),
             ),
-            now,
-            zone,
+            today,
         )
         assertEquals(14, counts.size)
         assertEquals(1, counts.first(), "the fourteenth day back is in")
@@ -47,17 +48,18 @@ class DoneSectionsTest {
     }
 
     @Test
-    fun `nothing finished is a fortnight of empty bars, not an empty chart`() {
+    fun `nothing done is a fortnight of empty bars, not an empty chart`() {
         // The chart draws a dash per empty day, so the row has to keep its length.
-        assertEquals(List(14) { 0 }, doneByDay(emptyList(), now, zone))
-        assertEquals(emptyList<Int>(), doneByDay(emptyList(), now, zone, days = 0))
+        val today = java.time.LocalDate.of(2026, 8, 27)
+        assertEquals(List(14) { 0 }, countByDay(emptyList(), today))
+        assertEquals(emptyList<Int>(), countByDay(emptyList(), today, span = 0))
     }
 
     @Test
-    fun `a row filed before doneAt existed is counted by the day it was last touched`() {
-        // The same fallback groupDone uses: finishedAt() is never null, so a bar is never lost.
-        val counts = doneByDay(listOf(done("old", at = null).copy(updatedAt = local(2026, 8, 26, 9, 0))), now, zone)
-        assertEquals(1, counts[13 - 1])
+    fun `a row filed before doneAt existed is banded by the day it was last touched`() {
+        // finishedAt() is never null, so a row always has a band and an age to be swept at.
+        val old = done("old", at = null).copy(updatedAt = local(2026, 8, 26, 9, 0))
+        assertEquals(listOf(DoneSection.LAST_WEEK), groupDone(listOf(old), now, zone).keys.toList())
     }
 
     @Test

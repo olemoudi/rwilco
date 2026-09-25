@@ -137,6 +137,10 @@ interface FiringEventDao {
     )
     suspend fun deleteLineUnlessRangSince(reminderId: String, id: Long)
 
+    /** How many lines of [kinds] were written for one reminder after line [line]. */
+    @Query("SELECT COUNT(*) FROM firing_event WHERE reminderId = :reminderId AND id > :line AND kind IN (:kinds)")
+    suspend fun countAfter(reminderId: String, line: Long, kinds: List<String>): Int
+
     /** Everything past the newest [keep] of one reminder's rows. */
     @Query(
         "DELETE FROM firing_event WHERE reminderId = :reminderId AND id NOT IN " +

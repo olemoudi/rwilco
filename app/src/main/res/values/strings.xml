@@ -169,10 +169,6 @@
     <string name="notif_done_body">The count starts again from now.</string>
     <string name="notif_done_title_plain">Done: %1$s</string>
     <string name="notif_done_body_plain">Marked done.</string>
-    <plurals name="history_routine_done">
-        <item quantity="one">done once</item>
-        <item quantity="other">done %d times</item>
-    </plurals>
     <string name="history_routine_gap">every %1$s on average</string>
     <string name="routines_due">due %1$s</string>
     <string name="routines_overdue">overdue %1$s</string>
@@ -1716,6 +1712,12 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_156_0">
+
+        <item>Undoing a place\'s «done» on a routine no longer rolls the count back past a «done» you gave by hand after it: the undo now checks the history and is refused if anything counted the routine as done since.</item>
+        <item>Housekeeping: the code the statistics replaced is gone.</item>
+
+    </string-array>
     <string-array name="whats_new_0_155_0">
 
         <item>A ringing alert keeps the screen on while it makes its noise, a minute at the most. On a locked phone the screen used to dim by itself after a few seconds and take the sound with it, so an alarm could last those few seconds. The power button and the volume keys still silence it.</item>

@@ -954,16 +954,23 @@ putting the anchor back alone is not an undo. It refuses a reminder deleted sinc
 outlives its row), it goes in a minute — past that the undo is "Hechos"; a place's own reset card
 keeps ten (`UNDO_NOTICE_MS`), because nobody was looking when it was given — and it writes
 nothing to the history, which is the silence Home's own undo already keeps and deliberately not
-`UNRESET`: that word is a place's, and `HistorySummary` reads it as cancelling the reset before
-it. A place's own "done" keeps `resetNotice`/`undoReset` exactly as they were. "Ver" on a
+`UNRESET`: that word is a place's, and the statistics (`rounds`) read it as cancelling the reset
+before it. A place's own "done" keeps `resetNotice`/`undoReset` — and **that undo asks the history
+whether anything counted the routine as done after the reset's own line** (0.156.0,
+`ReminderRepository.doneSince`, the line carried on the card): it used to compare the moment the
+count ran from before the reset with the count as it stood, and the first is always the older, so
+it never refused, and a reset undone after a "hecho" by hand rolled the count back past it while
+the history still counted the hecho. A card from an older build, with no line, keeps the old
+question. "Ver" on a
 routine's ring and its question card both land on the routines with it in view. The alert says
 the plazo where a rule's line would be ("su plazo: cada 21 días desde la última vez"), heads its
 offers "todavía no" and puts "a una fecha" first ("a otro momento…" since 0.137.0, with the
 calendar as its first row); the ring card's reason line says the span even
 with no rules. The form warns on a rule that is not a question under a routine
 (`Draft.rulesNotQuestions`), a preset kept from a routine drops its `startsAt`, and the history
-card under a routine drops the questions and opens with "hecha N veces · cada X de media"
-(`routineHistory`, `HistorySummary.kt`).
+card under a routine drops the questions. What the "hechos" come to — how many, how far apart —
+is the statistics card over it since 0.149.0 (`StatsCard`); the old "hecha N veces" line
+(`routineHistory`) counted only the fourteen lines shown and went in 0.156.0.
 
 **The polish round** (0.107.1): "Sí" is an outlined button with its word, not a bare glyph, and
 not before the count begins; the folded card carries a `stateDescription` ("Sí · hace 1 d · vence
@@ -1534,8 +1541,8 @@ loud what DST and a change of zone do to a landing.
 - **"Hechos" opens with a number and a fortnight**, not with a list: how many were dealt with in
   the last seven days in `displayLarge` — the one Material role this app sets in JetBrains Mono,
   the size a number is read at when it is the only thing being said — over `DayBars`, one bar per
-  day for a fortnight (`doneByDay`, pure and tested, counting by the same `finishedAt()` the
-  bands do). A list of what got done answers "did I do it?"; this answers "how is it going?",
+  day for a fortnight (`countByDay`, pure and tested; until 0.150.0 `doneByDay` counted the
+  finished rows by `finishedAt()`, and every hecho is counted now). A list of what got done answers "did I do it?"; this answers "how is it going?",
   which is the question somebody opens that screen with and which no amount of scrolling was
   going to answer — it was a title, two cards and half a phone of nothing. The bars are ink and
   never amber, an empty day is a dash on the floor rather than a gap, and the scale has a floor
@@ -2216,7 +2223,7 @@ loud what DST and a change of zone do to a landing.
   A notification's snooze button carried `Snooze.CUSTOM` by name, whose length is read when it is
   pressed, so a card saying "45 min" did twenty after the setting moved: the key is frozen as the
   label is drawn (`SnoozeOffer.frozen`), which is the whole point of a key that describes itself.
-  The undo of a "hecho" put the row back and left its `DEALT` line, which `routineHistory` counts,
+  The undo of a "hecho" put the row back and left its `DEALT` line, which the routine's count read,
   so it now takes the line with it (`ReminderRepository.forgetNewest`, bounded by the restored
   row's own `lastDealtAt` so it can never reach the real "hecho" before it). A tap on a sheet's
   veil did nothing at all on twelve sheets (Material asks the same `confirmValueChange` the fling

@@ -202,6 +202,15 @@ class ReminderRepository(
         runCatching { events.deleteNewest(reminderId, kinds.map { it.name }, after?.toEpochMilli() ?: 0L) }
     }
 
+    /**
+     * Whether anything has counted [reminderId] as done since history line [line] was written: a
+     * "hecho" by hand, or another place. A read that fails answers yes — this is asked before an
+     * undo, and an undo that cannot tell is safer refused than rolling a count back past
+     * somebody's own word.
+     */
+    suspend fun doneSince(reminderId: String, line: Long): Boolean =
+        runCatching { events.countAfter(reminderId, line, listOf(FiringKind.DEALT.name, FiringKind.RESET.name)) > 0 }.getOrDefault(true)
+
     /** What happened to one reminder, newest first. */
     suspend fun history(reminderId: String, limit: Int = HISTORY_KEEP): List<FiringEvent> =
         events.history(reminderId, limit).mapNotNull(FiringEventEntity::toDomain)

@@ -102,7 +102,8 @@ class RoutinePromptDeviceTest {
         app.firing.ask(id, ruleIndex = 1, viaPlace = false)
         val card = posted("Mover el coche")
         assertNotNull("the question was not posted", card)
-        assertEquals(context.getString(R.string.routines_question, "Mover el coche"), card!!.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
+        // The card asks in the second person; the routines list says it in the first.
+        assertEquals(context.getString(R.string.notif_routine_question, "Mover el coche"), card!!.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
         assertEquals(listOf(context.getString(R.string.notif_ask_yes), context.getString(R.string.notif_ask_later)), card.actions.map { it.title.toString() })
         assertNotNull("the question is written down", app.repository.get(id)!!.askedAt)
         // "Sí, ahora" is the same door "hecho" goes through: the count starts again, the card goes.
@@ -124,7 +125,8 @@ class RoutinePromptDeviceTest {
         assertNotNull("leaving the garage is the car moving", after.lastDealtAt)
         val notice = posted(context.getString(R.string.notif_reset_title, "Mover el coche"))
         assertNotNull("the mute word about it was not posted", notice)
-        assertEquals(listOf(context.getString(R.string.common_undo)), notice!!.actions.map { it.title.toString() })
+        // Agreeing is a button of its own, first; the undo beside it.
+        assertEquals(listOf(context.getString(R.string.notif_reset_confirm), context.getString(R.string.common_undo)), notice!!.actions.map { it.title.toString() })
         // Deshacer: the count goes back to where it ran from, which was the day it was written.
         app.firing.undoReset(id, previous = null)
         assertNull(app.repository.get(id)!!.lastDealtAt)
@@ -135,6 +137,28 @@ class RoutinePromptDeviceTest {
         assertNotNull(first)
         app.firing.resetBy(id, ruleIndex = 0)
         assertEquals(first, app.repository.get(id)!!.lastDealtAt)
+    }
+
+    /**
+     * The reset's undo does not roll the count back past a "hecho" given by hand after it
+     * (0.156.0). It used to: the guard compared the moment the count ran from before the reset
+     * with the count as it stood, and the first is always the older, so nothing was ever refused.
+     */
+    @Test
+    fun aResetUndoneAfterAHechoByHandLeavesTheHechoStanding() = runBlocking {
+        val key = GeofenceIds.encode(id, 0, garage)
+        app.placeWatcher.remember(key, Transition.ENTER)
+        assertEquals(Crossing.RESETS, app.placeWatcher.accept(key, Transition.EXIT))
+        val line = app.firing.resetBy(id, ruleIndex = 0)
+        assertNotNull("the reset wrote its line", line)
+        // Done by hand a moment later, before the card was tapped.
+        app.firing.dismiss(id)
+        val byHand = app.repository.get(id)!!.lastDealtAt
+        assertNotNull(byHand)
+        app.firing.undoReset(id, previous = null, line = line)
+        assertEquals("the undo took back a hecho given by hand", byHand, app.repository.get(id)!!.lastDealtAt)
+        // The watch's memory is reset for the next test.
+        PlaceWatchStore(context).write(PlaceWatchState())
     }
 
     @Test

@@ -792,8 +792,9 @@ class ReminderFiring(
      * the quiet after a "hecho" (a second leaving twenty minutes after the first says nothing
      * new), a moment after another reset, and when the rule's own fences do not hold now.
      */
-    suspend fun resetBy(id: String, ruleIndex: Int) = lock.withLock {
-        val reminder = repository.get(id) ?: return@withLock Diag.note(TAG_DIAG, "r=${short(id)} gone")
+    suspend fun resetBy(id: String, ruleIndex: Int): Long? = lock.withLock {
+        val reminder = repository.get(id) ?: return@withLock Diag.note(TAG_DIAG, "r=${short(id)} gone").let { null }
+        var line: Long? = null
         val now = clock.instant()
         val settings = settings()
         val rule = reminder.rules.getOrNull(ruleIndex)
@@ -824,29 +825,36 @@ class ReminderFiring(
                     // What dismiss writes for a routine: a routine is never finished by doing
                     // it, spends nothing ahead, and has no round to bound.
                     repository.dealtWith(id, now, Status.ACTIVE, reminder.dealtThrough, null)
-                    repository.record(id, FiringKind.RESET, now, ruleIndex, detail = place.doorDetail())
-                    AlertNotifications.resetNotice(context, reminder, place, previous)
+                    line = repository.record(id, FiringKind.RESET, now, ruleIndex, detail = place.doorDetail())
+                    AlertNotifications.resetNotice(context, reminder, place, previous, line)
                 }
             }
         }
         scheduler.rearmAll()
+        line
     }
 
     /**
      * "Deshacer" on a reset by a place: the count goes back to [previous], the moment it ran from.
      *
-     * Never forward: a "hecho" given by hand after the reset and before the card was tapped is
-     * the person's own word, and an undo that rolled the count back past it would be undoing
-     * the wrong thing. And written down — the history said the routine was counted as done at
-     * the garage, and stopped there; a reset undone left a line that was no longer true.
+     * Not past anything that came after it: a "hecho" given by hand after the reset and before the
+     * card was tapped is the person's own word, and an undo that rolled the count back past it
+     * would be undoing the wrong thing. **Asked of the history, from the reset's own [line]**
+     * (0.156.0): the old guard compared [previous] with the count as it stands, and [previous] is
+     * always the older of the two, so it never refused anything — the routine went back to before
+     * the hecho by hand while the history still counted it. A card posted by an older build
+     * carries no line and keeps the old question. And written down — the history said the routine
+     * was counted as done at the garage, and stopped there; a reset undone left a line that was
+     * no longer true.
      */
-    suspend fun undoReset(id: String, previous: Instant?) = lock.withLock {
+    suspend fun undoReset(id: String, previous: Instant?, line: Long? = null) = lock.withLock {
         AlertNotifications.cancelReset(context, id)
         val reminder = repository.get(id) ?: return@withLock
         if (!reminder.isRoutine) return@withLock
         val standing = reminder.lastDealtAt
-        if (standing != null && previous != null && previous > standing) {
-            Diag.note(TAG_DIAG, "r=${short(id)} reset undo refused: would move the count forward")
+        val overtaken = if (line != null) repository.doneSince(id, line) else standing != null && previous != null && previous > standing
+        if (overtaken) {
+            Diag.note(TAG_DIAG, "r=${short(id)} reset undo refused: done again since")
             return@withLock
         }
         val now = clock.instant()

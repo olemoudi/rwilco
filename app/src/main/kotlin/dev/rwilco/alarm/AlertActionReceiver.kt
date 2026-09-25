@@ -57,6 +57,7 @@ class AlertActionReceiver : BroadcastReceiver() {
                         ACTION_UNDO_RESET -> app.firing.undoReset(
                             id,
                             intent.getLongExtra(EXTRA_PREVIOUS, -1L).takeIf { it >= 0 }?.let(Instant::ofEpochMilli),
+                            intent.getLongExtra(EXTRA_LINE, -1L).takeIf { it >= 0 },
                         )
                         // "Confirmar como hecha": the card goes and nothing is written. The reset
                         // is already done and already in the history; what this answers is the
@@ -91,6 +92,7 @@ class AlertActionReceiver : BroadcastReceiver() {
         const val ACTION_UNDO_DONE = "dev.rwilco.alert.UNDO_DONE"
         const val EXTRA_SNOOZE = "snooze"
         const val EXTRA_PREVIOUS = "previous"
+        const val EXTRA_LINE = "line"
         const val EXTRA_ROW = "row"
         private const val BUDGET_MS = 9_000L
     }

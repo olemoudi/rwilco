@@ -41,7 +41,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import dev.rwilco.R
-import dev.rwilco.model.Action
 import dev.rwilco.model.AlertSound
 import dev.rwilco.model.Chime
 import dev.rwilco.model.SoundLimits
@@ -392,7 +391,3 @@ val Chime.labelRes: Int
         Chime.LOW -> R.string.sound_chime_low
         Chime.SOFT -> R.string.sound_chime_soft
     }
-
-/** Whether anything at all asks for the sound that comes back. */
-fun insistentInUse(defaults: Set<Action>, anyReminder: Boolean): Boolean =
-    Action.SOUND_UNTIL_ANSWERED in defaults || anyReminder
