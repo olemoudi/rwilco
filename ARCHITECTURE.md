@@ -1566,8 +1566,9 @@ loud what DST and a change of zone do to a landing.
   sheet offers the places kept by name in Settings (`AppSettings.savedPlaces`, managed by
   `SavedPlacesCard` through the same sheet without the arriving/leaving choice) as one-tap
   chips — **copied, not referenced**, so an edit to one in Settings asks "update everything
-  that uses it?" when some reminder still carries the old copy (0.142.0, `movePlaceIn` in
-  `Curation.kt`): *using* it means the same pin, and only the fields the edit changed move, and
+  that uses it?" when some reminder still carries the old copy, and lists them by their words,
+  a routine and a pause said under each (0.142.0, the list 0.143.0; `movePlaceIn` in
+  `Curation.kt`, `SavedPlaceMoveTest` on the device): *using* it means the same pin, and only the fields the edit changed move, and
   only where the copy still had the old value, so a radius tuned for one reminder stays; rules,
   their fences, a calendar's fences, a snooze at that door and the presets go; DONE rows are
   history and stay as written. A moved circle is a new fence id, so its watch starts afresh. The

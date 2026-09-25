@@ -1701,6 +1701,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_143_0">
+
+        <item>The question asked when you edit a saved place now says which reminders and routines it is about, by their words, with a routine or a paused one marked as such. It used to give only a number.</item>
+
+    </string-array>
     <string-array name="whats_new_0_142_0">
 
         <item>Editing a saved place in Settings now asks whether the reminders and routines that use it go with it. Before, they kept the old copy without a word: moving \"the office\" moved nothing that rang there. What counts as using it is the same pin; a radius or a name a reminder tuned for itself is kept.</item>
@@ -2623,8 +2628,8 @@
     </plurals>
     <string name="place_move_title">Update everything that uses «%1$s»?</string>
     <plurals name="place_move_body">
-        <item quantity="one">%d reminder or routine still has the place as it was. If you leave it, it keeps the old one.</item>
-        <item quantity="other">%d reminders or routines still have the place as it was. If you leave them, they keep the old one.</item>
+        <item quantity="one">This one still has the place as it was. If you leave it, it keeps the old one.</item>
+        <item quantity="other">These %d still have the place as it was. If you leave them, they keep the old one.</item>
     </plurals>
     <string name="place_move_confirm">Update</string>
     <string name="place_move_keep">Only the place</string>

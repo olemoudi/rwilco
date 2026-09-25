@@ -58,6 +58,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.res.stringResource
@@ -691,7 +692,7 @@ fun SettingsScreen(
                 AlertDialog(
                     onDismissRequest = { viewModel.answerPlaceMove(carry = false) },
                     title = { Text(stringResource(R.string.place_move_title, ask.old.label)) },
-                    text = { Text(pluralStringResource(R.plurals.place_move_body, ask.count, ask.count)) },
+                    text = { PlaceUsersList(ask.users) },
                     confirmButton = {
                         TextButton(onClick = { viewModel.answerPlaceMove(carry = true) }) {
                             Text(stringResource(R.string.place_move_confirm))
@@ -974,3 +975,41 @@ private fun ThemeButton(
  */
 private fun systemHapticsOn(context: Context): Boolean =
     Settings.System.getInt(context.contentResolver, Settings.System.HAPTIC_FEEDBACK_ENABLED, 1) != 0
+
+/**
+ * What "update everything that uses it?" is about, by name: the reminders and routines still
+ * carrying the place as it was. A count alone asked for a yes about things nobody could see.
+ * The list scrolls inside the dialog, which stops growing at [Tokens.sizes.dialogMax].
+ */
+@Composable
+private fun PlaceUsersList(users: List<PlaceUser>) {
+    val spacing = Tokens.spacing
+    Column(Modifier.verticalScroll(rememberScrollState())) {
+        Text(pluralStringResource(R.plurals.place_move_body, users.size, users.size))
+        Spacer(Modifier.height(spacing.md))
+        Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+            for (user in users) {
+                Column {
+                    Text(
+                        text = user.text,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    val marks = listOfNotNull(
+                        stringResource(R.string.home_search_kind_routine).takeIf { user.routine },
+                        stringResource(R.string.home_tag_paused).takeIf { user.paused },
+                    )
+                    if (marks.isNotEmpty()) {
+                        Text(
+                            text = marks.joinToString(" · "),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}

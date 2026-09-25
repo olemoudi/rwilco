@@ -18,6 +18,9 @@ import dev.rwilco.model.AlertStacking
 import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.toggling
 import dev.rwilco.model.SavedPlace
+import dev.rwilco.model.isRoutine
+import dev.rwilco.model.Status
+import dev.rwilco.model.Reminder
 import dev.rwilco.model.movePlaceIn
 import dev.rwilco.model.movePlaceInPresets
 import dev.rwilco.model.SavedWindow
@@ -156,9 +159,9 @@ class SettingsViewModel(
         val old = index?.let { settings.value?.savedPlaces?.getOrNull(it) }
         if (old == null || old == place) return writePlace(index, place, carry = null)
         viewModelScope.launch {
-            val carrying = movePlaceIn(repository.allNow(), old, place).size
-            if (carrying == 0) writePlace(index, place, carry = null)
-            else _placeMove.value = PlaceMoveAsk(index, old, place, carrying)
+            val carrying = movePlaceIn(repository.allNow(), old, place)
+            if (carrying.isEmpty()) writePlace(index, place, carry = null)
+            else _placeMove.value = PlaceMoveAsk(index, old, place, carrying.map(::PlaceUser))
         }
     }
 
@@ -313,5 +316,10 @@ class SettingsViewModel(
     }
 }
 
-/** A saved place edited from [old] to [new], and how many reminders still carry [old]. */
-data class PlaceMoveAsk(val index: Int, val old: SavedPlace, val new: SavedPlace, val count: Int)
+/** A saved place edited from [old] to [new], and the reminders that still carry [old]. */
+data class PlaceMoveAsk(val index: Int, val old: SavedPlace, val new: SavedPlace, val users: List<PlaceUser>)
+
+/** One line of the list the question shows: whose words, and whether it is a routine or resting. */
+data class PlaceUser(val text: String, val routine: Boolean, val paused: Boolean) {
+    constructor(reminder: Reminder) : this(reminder.text, reminder.isRoutine, reminder.status == Status.PAUSED)
+}
