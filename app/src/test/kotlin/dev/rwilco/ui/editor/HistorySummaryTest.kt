@@ -1,7 +1,7 @@
 package dev.rwilco.ui.editor
 
-import dev.rwilco.data.FiringEvent
-import dev.rwilco.data.FiringKind
+import dev.rwilco.model.FiringEvent
+import dev.rwilco.model.FiringKind
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test

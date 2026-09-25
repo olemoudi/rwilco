@@ -33,7 +33,8 @@ import dev.rwilco.model.RecurrencePreset
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.nextPresetColor
 import dev.rwilco.model.RuleMatch
-import dev.rwilco.data.FiringEvent
+import dev.rwilco.model.FiringEvent
+import dev.rwilco.model.ReminderStats
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.SavedWindow
 import dev.rwilco.model.Status
@@ -271,6 +272,11 @@ data class EditorUiState(
     val savedPlaces: List<SavedPlace> = emptyList(),
     /** What has happened to this reminder, newest first; empty for a new one or a preset. */
     val history: List<FiringEvent> = emptyList(),
+    /**
+     * What that history comes to — the streak, the hechos, the first-time answers — or null for a
+     * new reminder, a preset, and until it has been worked out (it arrives a beat after the form).
+     */
+    val stats: ReminderStats? = null,
     /** The stretches of the day kept by name, offered wherever one is asked for. */
     val savedWindows: List<SavedWindow> = emptyList(),
     /**

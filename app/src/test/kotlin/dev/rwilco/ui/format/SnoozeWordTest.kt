@@ -1,6 +1,6 @@
 package dev.rwilco.ui.format
 
-import dev.rwilco.alarm.LATER_DETAIL
+import dev.rwilco.model.LATER_DETAIL
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 

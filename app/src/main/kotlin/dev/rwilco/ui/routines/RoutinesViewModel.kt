@@ -6,7 +6,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.alarm.ReminderFiring
-import dev.rwilco.data.FiringEvent
+import dev.rwilco.model.FiringEvent
+import dev.rwilco.model.FiringKind
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.AppSettings
@@ -57,8 +58,11 @@ sealed interface RoutinesEvent {
 
     data class Paused(val reminder: Reminder, val paused: Boolean) : RoutinesEvent
 
-    /** Put off until [until]; null with [cancelled] is the snooze being taken back. */
-    data class Snoozed(val reminder: Reminder, val until: Instant?, val cancelled: Boolean = false) : RoutinesEvent
+    /**
+     * Put off until [until]; null with [cancelled] is the snooze being taken back. [at] is the
+     * moment just before it was given, so the undo can take its history line back with the row.
+     */
+    data class Snoozed(val reminder: Reminder, val until: Instant?, val cancelled: Boolean = false, val at: Instant? = null) : RoutinesEvent
 }
 
 /**
@@ -213,7 +217,7 @@ class RoutinesViewModel(
     fun delete(id: String) {
         viewModelScope.launch {
             val reminder = repository.get(id) ?: return@launch
-            val history = repository.history(id)
+            val history = repository.historyAsWritten(id)
             repository.delete(id)
             val event = RoutinesEvent.Deleted(reminder, history)
             keepUndoable(event)
@@ -235,7 +239,27 @@ class RoutinesViewModel(
         }
     }
 
-    /** The row exactly as it was: a "hecho" moved the count, and only the whole row puts it back. */
+    /**
+     * The undo of a "hecho", dated or not: the row as it was — a "hecho" moved the count, and only
+     * the whole row puts it back — and the line it wrote taken back, which the statistics would
+     * otherwise count as a hecho nobody gave.
+     */
+    fun undoDone(event: RoutinesEvent.Done) {
+        viewModelScope.launch {
+            repository.restore(event.reminder)
+            repository.forgetNewest(event.reminder.id, listOf(FiringKind.DEALT, FiringKind.SKIPPED), event.reminder.lastDealtAt)
+        }
+    }
+
+    /** The snooze the row had before, and the line this one wrote taken back. */
+    fun undoSnooze(event: RoutinesEvent.Snoozed) {
+        viewModelScope.launch {
+            repository.restore(event.reminder)
+            event.at?.let { repository.forgetNewest(event.reminder.id, listOf(FiringKind.SNOOZED), it.minusMillis(1)) }
+        }
+    }
+
+    /** The row exactly as it was, and after a delete its history with it. */
     fun undo(reminder: Reminder, history: List<FiringEvent> = emptyList()) {
         _pendingDelete.value?.let { pending ->
             if (pending.reminder.id == reminder.id && _pendingDelete.compareAndSet(pending, null)) pendingDeleteTimer?.cancel()
@@ -259,8 +283,9 @@ class RoutinesViewModel(
     fun snooze(id: String, snooze: SnoozeOffer) {
         viewModelScope.launch {
             val before = repository.get(id) ?: return@launch
+            val at = clock.instant()
             firing.snooze(id, snooze)
-            events.send(RoutinesEvent.Snoozed(before, repository.get(id)?.snoozedUntil))
+            events.send(RoutinesEvent.Snoozed(before, repository.get(id)?.snoozedUntil, at = at))
         }
     }
 
@@ -268,8 +293,9 @@ class RoutinesViewModel(
     fun snoozeUntil(id: String, until: Instant) {
         viewModelScope.launch {
             val before = repository.get(id) ?: return@launch
+            val at = clock.instant()
             firing.snoozeUntil(id, until)
-            events.send(RoutinesEvent.Snoozed(before, repository.get(id)?.snoozedUntil))
+            events.send(RoutinesEvent.Snoozed(before, repository.get(id)?.snoozedUntil, at = at))
         }
     }
 

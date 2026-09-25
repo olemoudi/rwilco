@@ -205,7 +205,7 @@ fun RoutinesScreen(
                         words.get(R.string.routines_done_returns, dayWord(words, here.toLocalDate(), todayHere) + " " + TimeText.time(here.toLocalTime(), words.is24h, words.locale))
                     } ?: doneMessage,
                     undoLabel = undoLabel,
-                    onUndo = { viewModel.undo(event.reminder) },
+                    onUndo = { viewModel.undoDone(event) },
                 )
                 is RoutinesEvent.Deleted -> snackbar.show(deletedMessage, undoLabel) { viewModel.undo(event.reminder, event.history) }
                 is RoutinesEvent.Paused -> snackbar.show(if (event.paused) pausedMessage else resumedMessage, undoLabel) { viewModel.undoPause(event) }
@@ -217,7 +217,7 @@ fun RoutinesScreen(
                         words.get(R.string.home_snoozed_until, dayWord(words, here.toLocalDate(), todayHere) + " " + TimeText.time(here.toLocalTime(), words.is24h, words.locale))
                     } ?: snoozeCancelledMessage,
                     undoLabel = undoLabel,
-                    onUndo = { viewModel.undo(event.reminder) },
+                    onUndo = { viewModel.undoSnooze(event) },
                 )
             }
         }

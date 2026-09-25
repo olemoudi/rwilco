@@ -9,7 +9,7 @@ import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import dev.rwilco.RwilcoApplication
-import dev.rwilco.data.FiringEvent
+import dev.rwilco.model.FiringEvent
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.OFFERED_KINDS
@@ -26,7 +26,7 @@ import dev.rwilco.model.cadenceFor
 import dev.rwilco.model.contactScheduleOf
 import java.time.DayOfWeek
 import dev.rwilco.model.Recurrence
-import dev.rwilco.data.FiringKind
+import dev.rwilco.model.FiringKind
 import dev.rwilco.model.isRoutine
 import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.SavedPlace
@@ -56,6 +56,9 @@ import dev.rwilco.model.suggestedTexts
 import dev.rwilco.model.textsMatching
 import dev.rwilco.model.visibleTexts
 import dev.rwilco.model.withHiddenText
+import dev.rwilco.model.reminderStats
+import dev.rwilco.model.roundShape
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -65,6 +68,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.Clock
 import java.time.Instant
 import java.util.UUID
@@ -234,6 +238,9 @@ class EditorViewModel(
             // said before rather than ask for it again.
             val past = repository.allNow()
             val now = clock.instant()
+            // Read once, in the order it was written: the statistics need it that way and the
+            // card below shows the newest lines, by when they happened.
+            val written = loaded?.let { repository.historyAsWritten(it.id) }.orEmpty()
             _state.value = EditorUiState(
                 loaded = true,
                 isNew = loaded == null,
@@ -269,10 +276,9 @@ class EditorViewModel(
                 // A routine asks every morning, and fourteen lines of "preguntó" pushed its
                 // actual "hechos" — the only history a routine has — off the card. Its list is
                 // read wider and shown without the questions.
-                history = loaded?.let { row ->
-                    if (row.isRoutine) repository.history(row.id).filterNot { it.kind == FiringKind.ASKED }.take(HISTORY_SHOWN)
-                    else repository.history(row.id, HISTORY_SHOWN)
-                }.orEmpty(),
+                history = written.asReversed().sortedByDescending { it.at }
+                    .filterNot { loaded?.isRoutine == true && it.kind == FiringKind.ASKED }
+                    .take(HISTORY_SHOWN),
                 recurrencePresets = recurrencePresetsByPopularity(current.recurrencePresets),
                 workContacts = current.workContacts,
                 personalContacts = current.personalContacts,
@@ -296,6 +302,12 @@ class EditorViewModel(
                 // just built from the row: the yardstick stays the row's, so it comes back dirty.
                 .withRestored(restored)
                 .let { if (restored == null) it else readWords(it) }
+            // The numbers a beat after the form, off the main thread: a year of an hourly
+            // reminder is a thousand lines, and the form is not waiting for them.
+            if (loaded != null && written.isNotEmpty()) {
+                val stats = withContext(Dispatchers.Default) { reminderStats(written, loaded.roundShape) }
+                _state.update { it.copy(stats = stats) }
+            }
         }
         // Handed over only when the system asks (a process about to be put away), so a keystroke
         // costs nothing; and only a form that holds something — one still loading, or untouched,
@@ -589,7 +601,7 @@ class EditorViewModel(
         }
         val target = existing ?: return
         viewModelScope.launch {
-            val history = repository.history(target.id)
+            val history = repository.historyAsWritten(target.id)
             repository.delete(target.id)
             events.send(EditorEvent.Deleted(target, history))
         }

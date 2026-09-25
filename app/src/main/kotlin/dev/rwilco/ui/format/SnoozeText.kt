@@ -3,7 +3,7 @@ package dev.rwilco.ui.format
 import android.content.Context
 import androidx.compose.runtime.Composable
 import dev.rwilco.R
-import dev.rwilco.alarm.LATER_DETAIL
+import dev.rwilco.model.LATER_DETAIL
 import dev.rwilco.model.Presence
 import dev.rwilco.model.Snooze
 import dev.rwilco.model.SnoozeDay

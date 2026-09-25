@@ -35,7 +35,7 @@ import dev.rwilco.model.tally
 import dev.rwilco.model.pollsSince
 import dev.rwilco.model.TriggerKind
 import kotlinx.coroutines.flow.Flow
-import dev.rwilco.data.FiringEvent
+import dev.rwilco.model.FiringEvent
 import dev.rwilco.model.placeUsersOf
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.channels.Channel
@@ -231,7 +231,7 @@ class SettingsViewModel(
     /** The place out of the list and [deleting] out of the database, their history kept for the undo. */
     private suspend fun dropPlace(index: Int, place: SavedPlace, deleting: List<Reminder>) {
         val deleted = deleting.map { reminder ->
-            val history = repository.history(reminder.id)
+            val history = repository.historyAsWritten(reminder.id)
             repository.delete(reminder.id)
             DeletedReminder(reminder, history)
         }

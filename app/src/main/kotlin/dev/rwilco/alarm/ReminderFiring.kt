@@ -2,7 +2,7 @@ package dev.rwilco.alarm
 
 import android.content.Context
 import android.util.Log
-import dev.rwilco.data.FiringKind
+import dev.rwilco.model.FiringKind
 import dev.rwilco.data.ReminderEntity
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.toDomain
@@ -490,8 +490,11 @@ class ReminderFiring(
      * the buttons on a notification outlive the row they were posted for (the reminder was
      * deleted from Home with the card still in the shade), and "Hecho" on one of those has to
      * take it down rather than leave a button that does nothing.
+     *
+     * [skip] is Home's "Saltar la próxima", the one door that says so: it is the same dismissal
+     * and only the word in the history differs.
      */
-    suspend fun dismiss(id: String, notice: Boolean = false) = lock.withLock {
+    suspend fun dismiss(id: String, notice: Boolean = false, skip: Boolean = false) = lock.withLock {
         Diag.note(TAG_DIAG, "r=${short(id)} dealt with")
         repeater.cancel(id)
         AlertNotifications.cancel(context, id)
@@ -539,10 +542,12 @@ class ReminderFiring(
         // A "hecho" that spends no moment (an answer to a ring) keeps what was dealt with ahead:
         // written as null it wiped the rounds already skipped, and they came back.
         repository.dealtWith(id, now, status, consumed ?: reminder.dealtThrough, nextExpiry)
-        // The word for what this was: an answer to a ring, or a round of something that comes
-        // back let pass ahead of it. A one-off finished ahead of its moment is still "hecho".
-        val skipped = consumed != null && reminder.recurrence != Recurrence.None && !reminder.awaitingAnswer(now)
-        repository.record(id, if (skipped) FiringKind.SKIPPED else FiringKind.DEALT, now)
+        // The word for what this was: "hecho", unless the person said "saltar". It used to be
+        // guessed from the moment spent — which also caught a "hecho" given to a snoozed round
+        // (a snooze is an answer, so nothing is awaiting one) and a round done ahead of its
+        // ring: both were filed as skipped, and the statistics (0.149.0) would have counted the
+        // most ordinary "pospuesto, y luego hecho" as a round let pass.
+        repository.record(id, if (skip) FiringKind.SKIPPED else FiringKind.DEALT, now)
         // The way back, from the two doors that have no snackbar to give one: the alert screen
         // and the shade, for a minute (0.129.0). Home and the routines list answer for themselves.
         if (notice) AlertNotifications.doneNotice(context, reminder, row)

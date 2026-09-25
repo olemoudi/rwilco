@@ -108,7 +108,7 @@ import dev.rwilco.ui.settings.stripProblems
 import dev.rwilco.ui.settings.readinessShortRes
 import dev.rwilco.ui.settings.stripShows
 import dev.rwilco.ui.format.snoozePlacePhrase
-import dev.rwilco.data.FiringEvent
+import dev.rwilco.model.FiringEvent
 import dev.rwilco.model.Reminder
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue

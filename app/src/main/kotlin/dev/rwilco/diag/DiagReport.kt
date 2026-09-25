@@ -1,7 +1,7 @@
 package dev.rwilco.diag
 
 import dev.rwilco.model.dayShape
-import dev.rwilco.data.FiringEvent
+import dev.rwilco.model.FiringEvent
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Condition
 import dev.rwilco.model.DiagNote

@@ -38,6 +38,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Notes
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.LocalOffer
@@ -81,7 +82,7 @@ import dev.rwilco.model.RecurrenceWarning
 import dev.rwilco.model.decidesItsOwnDates
 import dev.rwilco.model.recurrenceWarning
 import dev.rwilco.model.Preset
-import dev.rwilco.data.FiringEvent
+import dev.rwilco.model.FiringEvent
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.TriggerKind
 import dev.rwilco.model.ValidationError
@@ -121,6 +122,8 @@ import dev.rwilco.ui.components.LocalSnackbar
 import dev.rwilco.model.upcomingMoments
 import dev.rwilco.model.NextFire
 import dev.rwilco.model.Recurrence
+import dev.rwilco.model.RoundShape
+import dev.rwilco.ui.format.TimeText
 import dev.rwilco.model.Action
 import dev.rwilco.model.DayShape
 import dev.rwilco.model.cannotRing
@@ -753,13 +756,27 @@ fun EditorScreen(
                         onToggle = viewModel::toggleAction,
                     )
                 }
+                // What the history comes to, over the history itself (0.149.0). Not for a one-off:
+                // "done once" is what its card already says. The routine's old "hecha N veces"
+                // line lived on the history card and counted only the fourteen lines shown; this
+                // counts the lot.
+                val stats = state.stats
+                if (stats != null && stats.shape != RoundShape.ONE_OFF && stats.done + stats.notDone > 0) {
+                    EditorSection(
+                        title = stringResource(R.string.stats_title),
+                        icon = Icons.Outlined.Insights,
+                        note = stats.since?.let { stringResource(R.string.stats_since, TimeText.dayDate(it.atZone(zone).toLocalDate(), currentLocale(), today)) },
+                    ) {
+                        StatsCard(stats = stats, contact = contact)
+                    }
+                }
                 if (state.history.isNotEmpty()) {
                     EditorSection(
                         title = stringResource(R.string.history_title),
                         icon = Icons.Outlined.History,
                         note = stringResource(if (routine) R.string.history_note_routine else R.string.history_note),
                     ) {
-                        HistoryList(history = state.history, today = today, zone = zone, routine = routine)
+                        HistoryList(history = state.history, today = today, zone = zone)
                     }
                 }
                 // What happens if none of the four cards above it lands: the last word on the

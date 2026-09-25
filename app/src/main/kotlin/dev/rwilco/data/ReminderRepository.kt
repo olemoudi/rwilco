@@ -1,5 +1,7 @@
 package dev.rwilco.data
 
+import dev.rwilco.model.FiringEvent
+import dev.rwilco.model.FiringKind
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
 import dev.rwilco.model.routineAnchorAfterPause
@@ -134,15 +136,15 @@ class ReminderRepository(
     /**
      * The row as it was — and, after a delete, [history] with it: the cascade took every line of
      * it, and a snackbar's undo that brings the reminder back without its fortnight of "sonó
-     * ayer" is not an undo. Oldest first on the way in, so the ids keep the order the screen
-     * sorts ties by.
+     * ayer" is not an undo. [history] is taken as written ([historyAsWritten]) and inserted in
+     * that order, so the new ids keep the order the rounds are read in.
      */
     suspend fun restore(reminder: Reminder, history: List<FiringEvent> = emptyList()) {
         dao.upsert(reminder.toEntity())
         if (history.isEmpty()) return
         runCatching {
             events.insertAll(
-                history.asReversed().map {
+                history.map {
                     FiringEventEntity(reminderId = reminder.id, at = it.at.toEpochMilli(), kind = it.kind.name, ruleIndex = it.ruleIndex, detail = it.detail)
                 },
             )
@@ -192,9 +194,16 @@ class ReminderRepository(
     suspend fun history(reminderId: String, limit: Int = HISTORY_KEEP): List<FiringEvent> =
         events.history(reminderId, limit).mapNotNull(FiringEventEntity::toDomain)
 
+    /**
+     * What happened to one reminder in the order it was written: what its statistics are read
+     * from, and what a delete carries so its undo can put the lines back in the same order.
+     */
+    suspend fun historyAsWritten(reminderId: String): List<FiringEvent> =
+        events.written(reminderId).mapNotNull(FiringEventEntity::toDomain)
+
     /** The newest [perReminder] happenings of every reminder, for the diagnostics report. */
     suspend fun recentHistory(perReminder: Int): Map<String, List<FiringEvent>> =
-        events.newest(HISTORY_KEEP * 8)
+        events.newest(DIAG_HISTORY_LINES)
             .groupBy { it.reminderId }
             .mapValues { (_, rows) -> rows.take(perReminder).mapNotNull(FiringEventEntity::toDomain) }
 }

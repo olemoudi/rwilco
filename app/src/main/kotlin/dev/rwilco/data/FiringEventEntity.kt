@@ -7,18 +7,25 @@ import androidx.room.Index
 import androidx.room.Insert
 import androidx.room.PrimaryKey
 import androidx.room.Query
+import dev.rwilco.model.FiringEvent
+import dev.rwilco.model.FiringKind
 import java.time.Instant
 
 /**
  * What happened to a reminder, one row per happening — the memory the row itself does not
  * keep. `lastFiredAt`, `lastDealtAt` and `snoozedUntil` are each one slot deep: the ring
  * before last is gone the moment the next one lands, and "¿sonó ayer?" had no answer
- * anywhere but a global diagnostics ring that keeps a week. This is per reminder, a few dozen
- * deep, and goes with the reminder ([ForeignKey] cascade): a history is a fact about that
- * row, not a second table of things to tidy.
+ * anywhere but a global diagnostics ring that keeps a week. This is per reminder, up to
+ * [HISTORY_KEEP] deep, and goes with the reminder ([ForeignKey] cascade): a history is a fact
+ * about that row, not a second table of things to tidy.
  *
- * Not in the vault. It is diagnostic, like the place watch's log — what the row *is* is what
- * the backup copies, and what happened to it stays on the phone it happened on.
+ * Since 0.149.0 it is also what the statistics are worked out of (`rounds`, `reminderStats`), which
+ * is why it is read back **in the order it was written** ([FiringEventDao.written]) and why every
+ * undo takes its own line back with it.
+ *
+ * Not in the vault. What the row *is* is what the backup copies, and what happened to it stays on
+ * the phone it happened on: a restore starts the streaks again (the achievements they earned
+ * travel, in the settings).
  */
 @Entity(
     tableName = "firing_event",
@@ -42,46 +49,16 @@ data class FiringEventEntity(
     }
 }
 
-/** The kinds of thing that happen to a reminder, each the verb a line of history says. */
-enum class FiringKind {
-    /** It rang, on time. */
-    RANG,
+/**
+ * How many happenings a reminder keeps: about a year of a daily one with its snoozes, which is
+ * what a streak or "never missed" needs to mean something. It was fifty (seven weeks) while the
+ * history was only read back line by line; an hourly reminder still reaches the cap in three
+ * weeks, and its statistics then say "since" the oldest line kept rather than "ever".
+ */
+const val HISTORY_KEEP = 1000
 
-    /** It rang, but late enough to arrive as the quiet "did not ring on time" note. */
-    MISSED,
-
-    /** The safety net said its word about a moment that got away. */
-    NET,
-
-    /** "Hecho", given to a ring waiting for an answer, or to a one-off ahead of its moment. */
-    DEALT,
-
-    /** A round of a recurring reminder let pass on purpose, ahead of its ring. */
-    SKIPPED,
-
-    /** Put off, until [FiringEvent.detail] says. */
-    SNOOZED,
-
-    /** Under "todos", a place rule ticked off came undone again. */
-    UNTICKED,
-
-    /** The set's deadline ran out with the set incomplete, and the round was let go without a sound. */
-    LAPSED,
-
-    /** A routine was asked whether it had been done: a question in the shade, not a ring. */
-    ASKED,
-
-    /** A routine was counted as done by a place — [FiringEvent.detail] says which doorway. */
-    RESET,
-
-    /** "Deshacer" on that: the count went back to where it was before the place counted it. */
-    UNRESET,
-}
-
-data class FiringEvent(val kind: FiringKind, val at: Instant, val ruleIndex: Int? = null, val detail: String? = null)
-
-/** How many happenings a reminder keeps. A daily reminder answered every day is seven weeks of it. */
-const val HISTORY_KEEP = 50
+/** How many lines the diagnostics report looks through for its five per reminder. */
+const val DIAG_HISTORY_LINES = 400
 
 @Dao
 interface FiringEventDao {
@@ -95,6 +72,14 @@ interface FiringEventDao {
     /** Newest first; the screen reads it that way and the cap below counts from the same end. */
     @Query("SELECT * FROM firing_event WHERE reminderId = :reminderId ORDER BY at DESC, id DESC LIMIT :limit")
     suspend fun history(reminderId: String, limit: Int): List<FiringEventEntity>
+
+    /**
+     * One reminder's history in the order it was written, which is the order the rounds are read
+     * in: a "hecho" dated back ("lo hice el sábado") is written after the ring it answers and must
+     * be read after it too, whatever its date says.
+     */
+    @Query("SELECT * FROM firing_event WHERE reminderId = :reminderId ORDER BY id")
+    suspend fun written(reminderId: String): List<FiringEventEntity>
 
     /** The newest across every reminder, for the diagnostics report to sort into its rows. */
     @Query("SELECT * FROM firing_event ORDER BY at DESC, id DESC LIMIT :limit")

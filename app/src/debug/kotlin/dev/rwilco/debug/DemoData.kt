@@ -12,6 +12,8 @@ import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Status
 import dev.rwilco.model.Presence
+import dev.rwilco.model.FiringEvent
+import dev.rwilco.model.FiringKind
 import dev.rwilco.model.FixTier
 import dev.rwilco.model.NoteKind
 import dev.rwilco.model.Trigger
@@ -207,6 +209,56 @@ object DemoData {
         )
         repository.deleteAll()
         reminders.forEach { repository.save(it) }
+        // Their pasts, so the statistics, the streaks and the Hechos screen have something to say.
+        val history = demoHistory(clock)
+        reminders.forEach { reminder -> history[reminder.id]?.let { repository.restore(reminder, it) } }
+    }
+
+    /**
+     * What the demo set has been through, in the order it would have been written: the pills on
+     * every weekday of the last seven weeks, three of them put off first and one left unanswered
+     * nine weekdays ago (so a streak of eight under a best of twenty-six); the plants on ten
+     * Saturdays, all at the first time of asking, and put off this morning; the antibiotic every
+     * eight hours, and the two finished ones.
+     */
+    fun demoHistory(clock: Clock): Map<String, List<FiringEvent>> {
+        val now = clock.instant()
+        val zone = clock.zone
+        val today = now.atZone(zone).toLocalDate()
+        fun at(day: java.time.LocalDate, hour: Int, minute: Int) = day.atTime(hour, minute).atZone(zone).toInstant()
+        fun e(kind: FiringKind, at: java.time.Instant, detail: String? = null) = FiringEvent(kind, at, detail = detail)
+
+        val weekdays = generateSequence(today.minusDays(1)) { it.minusDays(1) }
+            .filter { it.dayOfWeek != DayOfWeek.SATURDAY && it.dayOfWeek != DayOfWeek.SUNDAY }
+            .take(35).toList().asReversed()
+        val pills = weekdays.flatMapIndexed { index, day ->
+            val rang = at(day, 7, 30)
+            when (index) {
+                26 -> listOf(e(FiringKind.RANG, rang))
+                14, 22, 30 -> listOf(
+                    e(FiringKind.RANG, rang),
+                    e(FiringKind.SNOOZED, rang.plusSeconds(60), rang.plusSeconds(660).toString()),
+                    e(FiringKind.RANG, rang.plusSeconds(660)),
+                    e(FiringKind.DEALT, rang.plusSeconds(780)),
+                )
+                else -> listOf(e(FiringKind.RANG, rang), e(FiringKind.DEALT, rang.plusSeconds(180)))
+            }
+        }
+        val saturdays = generateSequence(today.minusDays(1).with(TemporalAdjusters.previousOrSame(DayOfWeek.SATURDAY))) { it.minusWeeks(1) }
+            .take(10).toList().asReversed()
+        val plants = saturdays.flatMap { day -> listOf(e(FiringKind.RANG, at(day, 10, 0)), e(FiringKind.DEALT, at(day, 10, 20))) } +
+            listOf(e(FiringKind.RANG, now.minusSeconds(3600)), e(FiringKind.SNOOZED, now.minusSeconds(3300), now.plus(Duration.ofHours(2)).toString()))
+        val antibiotic = (8 downTo 0).flatMap { round ->
+            val dealt = now.minus(Duration.ofHours(2L + 8L * round))
+            listOf(e(FiringKind.RANG, dealt.minusSeconds(300)), e(FiringKind.DEALT, dealt))
+        }
+        return mapOf(
+            "demo-pills" to pills,
+            "demo-plants" to plants,
+            "demo-antibiotic" to antibiotic,
+            "demo-done1" to listOf(e(FiringKind.DEALT, now.minus(Duration.ofMinutes(1500)))),
+            "demo-done2" to listOf(e(FiringKind.DEALT, now.minus(Duration.ofMinutes(4300)))),
+        )
     }
 
     /**

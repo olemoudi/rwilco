@@ -3,7 +3,7 @@ package dev.rwilco.alarm
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.rwilco.RwilcoApplication
-import dev.rwilco.data.FiringKind
+import dev.rwilco.model.FiringKind
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder

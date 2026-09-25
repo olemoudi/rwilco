@@ -1685,6 +1685,15 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_149_0">
+
+        <item>Un recordatorio que vuelve dice ahora cómo va, encima de su historial: cuántas seguidas, la mejor racha, sus últimas veinte vueltas de un vistazo, cuántas veces se ha hecho y cada cuánto, y cuántas a la primera. En una rutina, cuántas a tiempo.</item>
+        <item>Una racha solo se rompe no haciéndolo: posponer y luego hacerlo la mantiene. Saltar una vuelta a propósito ni suma ni rompe.</item>
+        <item>Deshacer un «hecho» o un posponer desde Home o desde las rutinas lo quita también del historial, como ya hacía el deshacer de la notificación, así que los números no cuentan lo que retiraste.</item>
+        <item>Un «hecho» sobre algo que habías pospuesto se apunta como hecho, no como vuelta saltada.</item>
+        <item>El historial guarda cerca de un año de un recordatorio diario en vez de siete semanas.</item>
+
+    </string-array>
     <string-array name="whats_new_0_148_0">
 
         <item>Un recordatorio que suena hasta que le haces caso ahora vuelve como la pantalla de alerta cuando el móvil está bloqueado, en vez de como una tarjeta en la pantalla de bloqueo. Esa tarjeta pedía el PIN al tocarla y no se podía apartar, así que su sonido no tenía forma rápida de pararse. Con el móvil en la mano sigue siendo un aviso.</item>
@@ -2663,4 +2672,31 @@
     </plurals>
     <string name="done_search">Buscar en lo hecho</string>
     <string name="done_search_hint">Buscar entre lo que hiciste</string>
+    <!-- Statistics (0.149.0) -->
+    <string name="stats_title">Estadísticas</string>
+    <string name="stats_since">desde el %1$s</string>
+    <plurals name="stats_streak_unit">
+        <item quantity="one">seguida</item>
+        <item quantity="other">seguidas</item>
+    </plurals>
+    <string name="stats_best">mejor: %1$d</string>
+    <plurals name="stats_done">
+        <item quantity="one">%d hecho</item>
+        <item quantity="other">%d hechos</item>
+    </plurals>
+    <plurals name="stats_talked">
+        <item quantity="one">una conversación</item>
+        <item quantity="other">%d conversaciones</item>
+    </plurals>
+    <string name="stats_first_time">%1$d de %2$d a la primera</string>
+    <string name="stats_on_time">%1$d de %2$d a tiempo</string>
+    <plurals name="stats_snoozed">
+        <item quantity="one">se pospuso una vez</item>
+        <item quantity="other">se pospuso %d veces</item>
+    </plurals>
+    <plurals name="stats_not_done">
+        <item quantity="one">%d sin hacer</item>
+        <item quantity="other">%d sin hacer</item>
+    </plurals>
+    <string name="stats_strip_label">Las últimas %1$d vueltas: %2$d a la primera, %3$d tras posponer o tarde, %4$d sin hacer</string>
 </resources>

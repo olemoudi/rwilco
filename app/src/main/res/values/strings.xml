@@ -1700,6 +1700,15 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_149_0">
+
+        <item>A reminder that comes back now says how it is going, over its history: how many in a row, the best run, the last twenty rounds at a glance, how many times it was done and how far apart, and how many of those were at the first ask. A routine counts on time instead.</item>
+        <item>A streak only breaks by not doing it: putting something off and then doing it keeps it. Letting a round pass on purpose neither adds nor breaks.</item>
+        <item>Undoing a «done» or a snooze from Home or the routines now also takes it out of the history, as the notification\'s undo already did, so the numbers do not count what you took back.</item>
+        <item>A «done» on something you had put off is written down as done, not as a skipped round.</item>
+        <item>The history keeps about a year of a daily reminder instead of seven weeks.</item>
+
+    </string-array>
     <string-array name="whats_new_0_148_0">
 
         <item>A reminder that keeps ringing until answered now comes back as the alert screen when the phone is locked, not as a card on the lock screen. That card asked for your PIN when tapped and could not be swiped away, so its sound had no quick way to stop. With the phone in your hand it is still a banner.</item>
@@ -2678,4 +2687,31 @@
     </plurals>
     <string name="done_search">Search what was done</string>
     <string name="done_search_hint">Search what you did</string>
+    <!-- Statistics (0.149.0) -->
+    <string name="stats_title">Statistics</string>
+    <string name="stats_since">since %1$s</string>
+    <plurals name="stats_streak_unit">
+        <item quantity="one">in a row</item>
+        <item quantity="other">in a row</item>
+    </plurals>
+    <string name="stats_best">best: %1$d</string>
+    <plurals name="stats_done">
+        <item quantity="one">done once</item>
+        <item quantity="other">done %d times</item>
+    </plurals>
+    <plurals name="stats_talked">
+        <item quantity="one">talked once</item>
+        <item quantity="other">talked %d times</item>
+    </plurals>
+    <string name="stats_first_time">%1$d of %2$d at the first ask</string>
+    <string name="stats_on_time">%1$d of %2$d on time</string>
+    <plurals name="stats_snoozed">
+        <item quantity="one">snoozed once</item>
+        <item quantity="other">snoozed %d times</item>
+    </plurals>
+    <plurals name="stats_not_done">
+        <item quantity="one">%d not done</item>
+        <item quantity="other">%d not done</item>
+    </plurals>
+    <string name="stats_strip_label">The last %1$d rounds: %2$d at the first ask, %3$d after a snooze or late, %4$d not done</string>
 </resources>

@@ -16,8 +16,8 @@ import dev.rwilco.ui.format.countdownText
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.style.TextAlign
 import dev.rwilco.R
-import dev.rwilco.data.FiringEvent
-import dev.rwilco.data.FiringKind
+import dev.rwilco.model.FiringEvent
+import dev.rwilco.model.FiringKind
 import dev.rwilco.ui.format.SnoozeWord
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.dayWord

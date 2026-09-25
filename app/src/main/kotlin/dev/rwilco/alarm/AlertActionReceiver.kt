@@ -5,8 +5,9 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import dev.rwilco.RwilcoApplication
-import dev.rwilco.data.FiringKind
+import dev.rwilco.model.FiringKind
 import dev.rwilco.data.ReminderEntity
+import dev.rwilco.model.LATER_DETAIL
 import dev.rwilco.model.ReminderCodec
 import dev.rwilco.notify.AlertNotifications
 import java.time.Instant
@@ -94,6 +95,3 @@ class AlertActionReceiver : BroadcastReceiver() {
         private const val BUDGET_MS = 9_000L
     }
 }
-
-/** What a "todavía no" writes as its detail: not a moment and not a place, just the word. */
-const val LATER_DETAIL = "later"

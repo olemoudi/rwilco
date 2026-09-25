@@ -79,7 +79,8 @@ import dev.rwilco.model.snoozePlaceOffers
 import dev.rwilco.model.speaksForHere
 import dev.rwilco.geo.hasBackgroundLocation
 import kotlinx.coroutines.flow.first
-import dev.rwilco.data.FiringEvent
+import dev.rwilco.model.FiringEvent
+import dev.rwilco.model.FiringKind
 import dev.rwilco.model.roundExpiry
 
 /** What Home reports back that is not state: things to say in a snackbar. */
@@ -132,6 +133,12 @@ sealed interface HomeEvent {
          * again, or the first crossing is not news to it.
          */
         val sideBefore: Boolean? = null,
+        /**
+         * The moment just before the snooze was given, so its undo can take back the line it
+         * wrote in the history — left there, it was a snooze the statistics counted and nobody
+         * gave. Null for a cancel, which writes none.
+         */
+        val at: Instant? = null,
     ) : HomeEvent
 
     /** "Al salir de aquí" asked where here is, and nothing could say. Nothing was written. */
@@ -619,14 +626,14 @@ class HomeViewModel(
             var comesBackAt: Instant? = null
             when (kind) {
                 HomeEvent.Removed.Kind.DONE, HomeEvent.Removed.Kind.SKIPPED -> {
-                    firing.dismiss(id)
+                    firing.dismiss(id, skip = kind == HomeEvent.Removed.Kind.SKIPPED)
                     // Asked of the row the dismissal left rather than worked out again here:
                     // whether that was the end of it, and when it comes back if it was not, are
                     // [ReminderFiring]'s answers; the snackbar only reads them back.
                     comesBackAt = comesBack(id)
                 }
                 HomeEvent.Removed.Kind.DELETED -> {
-                    history = repository.history(id)
+                    history = repository.historyAsWritten(id)
                     repository.delete(id)
                 }
             }
@@ -691,7 +698,14 @@ class HomeViewModel(
     fun undo(removed: HomeEvent.Removed) {
         // Undone from either door, the other closes: the row is about a delete that is no more.
         if (_pendingDelete.compareAndSet(removed, null)) pendingDeleteTimer?.cancel()
-        viewModelScope.launch { repository.restore(removed.reminder, removed.history) }
+        viewModelScope.launch {
+            repository.restore(removed.reminder, removed.history)
+            // A "hecho" taken back takes its line in the history back too, as the shade's undo
+            // always did (`undoDismiss`): left there, the statistics counted a hecho nobody gave.
+            if (removed.kind != HomeEvent.Removed.Kind.DELETED) {
+                repository.forgetNewest(removed.reminder.id, listOf(FiringKind.DEALT, FiringKind.SKIPPED), removed.reminder.lastDealtAt)
+            }
+        }
     }
 
     /**
@@ -719,11 +733,12 @@ class HomeViewModel(
         viewModelScope.launch {
             val reminder = repository.get(id) ?: return@launch
             val sideBefore = sideOf(reminder)
+            val at = clock.instant()
             firing.snooze(id, snooze)
             // Gone between the two reads (dealt with from the shade): nothing to say, and
             // nothing an undo could put back.
             val after = repository.get(id) ?: return@launch
-            events.send(HomeEvent.Snoozed(reminder, after.snoozedUntil, sideBefore = sideBefore))
+            events.send(HomeEvent.Snoozed(reminder, after.snoozedUntil, sideBefore = sideBefore, at = at))
         }
     }
 
@@ -740,9 +755,10 @@ class HomeViewModel(
         viewModelScope.launch {
             val reminder = repository.get(id) ?: return@launch
             val sideBefore = sideOf(reminder)
+            val at = clock.instant()
             firing.snoozeUntil(id, until)
             val after = repository.get(id) ?: return@launch
-            events.send(HomeEvent.Snoozed(reminder, after.snoozedUntil, sideBefore = sideBefore))
+            events.send(HomeEvent.Snoozed(reminder, after.snoozedUntil, sideBefore = sideBefore, at = at))
         }
     }
 
@@ -759,7 +775,7 @@ class HomeViewModel(
                 }
             }
             firing.snoozeToPlace(id, place, fix, rememberSide)
-            events.send(HomeEvent.Snoozed(reminder, until = null, place = place, sideBefore = sideBefore))
+            events.send(HomeEvent.Snoozed(reminder, until = null, place = place, sideBefore = sideBefore, at = now))
         }
     }
 
@@ -777,6 +793,8 @@ class HomeViewModel(
         viewModelScope.launch {
             val reminder = event.reminder
             repository.snooze(reminder.id, reminder.snoozedUntil, reminder.snoozedToPlace)
+            // And the line the snooze wrote, which the statistics would otherwise count.
+            event.at?.let { repository.forgetNewest(reminder.id, listOf(FiringKind.SNOOZED), it.minusMillis(1)) }
             // The circle is back on the row; the watch is told the side it knew, the way the
             // snooze itself told it (see ReminderFiring.snoozeToPlace).
             val place = reminder.snoozedToPlace ?: return@launch

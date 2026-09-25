@@ -786,6 +786,38 @@ the chip only while one is set — so the search row swaps for the same `Swipeab
 `ReminderCard`: the swipes for "hecho" and "eliminar", the pencil for the form, the hold for the
 menu, and the tap folding it back into the row. A routine still opens its own screen: it has no card.
 
+### Rounds and streaks (0.149.0)
+
+A reminder's history (`firing_event`, `History.kt`) is read as **rounds** (`Rounds.kt`): each time
+it came up and what became of it — done, not done, let pass, or still under way. The statistics
+on the form, the Hechos screen and the encouragement lines are all worked out of that one reading.
+
+**A streak breaks only by not doing it** (the owner's rule, 2026-09-25): a ring left without a
+"hecho" — overtaken by the next ring, or chased by the net (`NET` with `LET_GO`) and still
+unanswered — and, for a routine, its deadline ringing before the "hecho" (overdue: done, but the
+streak goes). A snooze and then the "hecho" keeps it, and is counted apart as not "a la primera".
+`SKIPPED` ("saltar la próxima") and `LAPSED` neither add nor break: a deadline only lapses when
+nothing rang (`deadlineOutranked`), so there was nothing to answer. "Todavía no" is filed as a
+`SNOOZED` with `LATER_DETAIL` and is not a snooze. A place's `RESET` is a "hecho", and each
+`UNRESET` takes the latest one before it back.
+
+`RoundShape` says how a reminder's rounds are read: **REPEATING** (an unanswered ring is overtaken
+by the next — a miss), **ONE_OFF** (it may ring twice, a place crossed twice, and it is still one
+thing to do), **ROUTINE** (a ring is the deadline), and **QUIET** — a contact, or a reminder with
+no actions — whose "hechos" are counted and nothing else: a contact is never a debt, and a
+reminder that asks for nothing cannot have been left unanswered.
+
+The history is read **in the order it was written** (the table's id, `FiringEventDao.written`),
+never sorted by date: "lo hice el sábado" said on Tuesday writes a `DEALT` dated Saturday *after*
+Monday's deadline ring. In written order it closes the round it was said in, and a ring or snooze
+dated after the hecho's own moment is taken back — what `Reminder.doneEarlier` does to
+`lastFiredAt`. Sorted by date, the ring would fall into the next round and make it overdue.
+
+`ReminderStats` (`reminderStats`) is the count: done, not done, skipped, snoozes, first-time
+answers, the current and the best streak, the mean gap between hechos, the oldest line kept
+(`since` — every number is "since then", the history being capped), and the last
+`RECENT_ROUNDS` rounds as marks for the form's strip. `RoundsTest` holds every rule above.
+
 ## Persistence
 
 - Room (`app/.../data/`): one table, `reminder(id, text, tags, triggers, ruleMatch, actions,
@@ -802,7 +834,8 @@ menu, and the tap folding it back into the row. A routine still opens its own sc
   DataStore, because a preset written then holds a repeating rule too. Room v8 adds
   **Room v9 adds a second table, `firing_event` (0.54.0)**: what happened to a reminder, one row
   per happening — rang, rang late, the net spoke, dealt with, a round skipped, put off (until
-  when), a place rule come undone — capped at `HISTORY_KEEP` per reminder and gone with it
+  when), a place rule come undone — capped at `HISTORY_KEEP` per reminder (fifty until 0.149.0,
+  a thousand since: about a year of a daily one, which is what a streak needs) and gone with it
   (a foreign key cascade; a restore replaces the reminders and takes the history with them).
   The row keeps one of each stamp and `DiagLog` keeps a week of everything, so "¿sonó ayer?" —
   the question under half the reports from the phone — had no answer anywhere a person could
@@ -810,7 +843,18 @@ menu, and the tap folding it back into the row. A routine still opens its own sc
   last fortnight of them on a card of their own (`HistoryList`), and the report carries five
   per reminder (`hist=`). Not in the vault: it is diagnostic, like the place watch's log — what
   the row *is* is what the backup copies, and what happened to it stays on the phone it
-  happened on.
+  happened on. **Since 0.149.0 it is also what the statistics are read from** (see "Rounds and
+  streaks"), which made three things about it matter that did not before. It is read and put
+  back **in the order written** (`historyAsWritten`; a delete's undo re-inserts it as given,
+  where it used to reverse it). **Every undo takes its own line back**: Home's and the
+  routines' undo of a "hecho" (`forgetNewest` of `DEALT`/`SKIPPED` after the restored row's
+  `lastDealtAt`, as the shade's undo already did) and of a snooze (the `SNOOZED` line written
+  after the moment the event carries) — left behind, each was a hecho or a snooze the numbers
+  counted and nobody gave. And **the word a dismissal writes is the person's**:
+  `ReminderFiring.dismiss(skip = true)` for "saltar la próxima", `DEALT` for everything else. It
+  used to be guessed from the moment spent, which also filed a "hecho" given to a snoozed round
+  (a snooze is an answer, so nothing awaits one) and a round done ahead of its ring as skipped.
+  The diagnostics read a fixed `DIAG_HISTORY_LINES` rather than a multiple of the cap.
   `lastFiredRule` (see the place watch below): additive, null on every older row, and one more
   name on the vault's frozen column list.
   `RwilcoDatabase.VERSION` + `MIGRATIONS` are guarded by `MigrationChainTest` (JVM) and
@@ -2040,6 +2084,18 @@ loud what DST and a change of zone do to a landing.
   once it has gone. The three hours are **not ordered against each other** on purpose: every
   reader takes one on its own, and somebody who works nights is allowed an evening before their
   morning. The snoozes that name a part of the day (0.138.0) read the same three.
+- **A reminder's form says what its history comes to** (0.149.0, `StatsCard`, `RoundStrip`). Over
+  the history card, for anything that comes back or counts from the last time: the streak in mono
+  with the best run beside it when it is a different number, the last `RECENT_ROUNDS` rounds as a
+  strip (a solid square done the first time, its outline done after a snooze, a dash let pass,
+  the error colour not done — the only colour, because it is the only mark that is news; no amber,
+  no family hue), then "N hechos · cada X de media" and "N de M a la primera · se pospuso K
+  veces · J sin hacer". A routine's "a la primera" is "a tiempo". A contact, and a reminder with no
+  actions, say only their hechos (a contact's as conversations). A one-off gets none: "done once"
+  is what its card already says. The section's note is "desde" the oldest line kept. The numbers
+  arrive a beat after the form (`EditorUiState.stats`, worked out on `Dispatchers.Default` from
+  the one read the history card is also cut from), and the routine's old "hecha N veces" line —
+  which counted only the fourteen lines the card shows, and read "cada en 21 d" — is gone from it.
 
 ## Firing
 
