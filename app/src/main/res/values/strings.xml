@@ -1695,7 +1695,7 @@
     <string name="settings_sound_volume">Alarm volume</string>
     <string name="settings_sound_volume_hint">The phone\'s own alarm slider, here so a sound can be chosen at the level it will actually arrive at. Reminders play on the alarm stream, so this is the only volume that governs them — and at zero they are silent.</string>
     <string name="settings_sound_headphones">To the headphones when there are any</string>
-    <string name="settings_sound_headphones_hint">A reminder is an alarm, and an alarm comes out of the phone\'s speaker even with headphones on. With this on it goes to the headphones instead when a pair is connected, and whatever you were listening to drops a little and carries on underneath rather than stopping. Turn it off if your earbuds live in a drawer: a reminder played to nobody is a reminder missed.</string>
+    <string name="settings_sound_headphones_hint">A reminder is an alarm, and an alarm comes out of the phone\'s speaker even with headphones on. With this on it goes to the headphones instead when a pair is connected, and whatever you were listening to drops a little and carries on underneath rather than stopping. If nobody answers within ten seconds, it moves to the speaker. Turn it off if your earbuds live in a drawer: a reminder played to nobody is a reminder missed.</string>
 
     <string-array name="whats_new_0_17_0">
         <item>A reminder with sound now goes to your headphones when you are wearing any, instead of out of the phone\'s speaker as an alarm otherwise would. It is a setting, in Sound, and it is worth turning off if your earbuds live in a drawer: a reminder played to nobody is a reminder missed.</item>
@@ -1703,6 +1703,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_153_0">
+
+        <item>With headphones connected, a reminder goes to them for the first ten seconds only (it was twenty); if nobody answers, it moves to the phone\'s speaker.</item>
+
+    </string-array>
     <string-array name="whats_new_0_152_0">
 
         <item>A reminder that comes back from its «done» and asks again — a place crossed twice, the same hour the next day — no longer counts the first ask as a miss when you do it at the second. Its streak goes on.</item>

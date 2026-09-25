@@ -80,13 +80,13 @@ object AlertAudio {
      * says it is playing, and the person hears nothing. The vibration is no help either; a phone
      * on a desk is a phone nobody is touching.
      *
-     * So the routing is a *first* answer rather than the only one. Twenty seconds is long enough
-     * for somebody actually wearing them to have heard it and reached for the screen, and short
-     * enough to be well inside the minute the noise is allowed to last at all
-     * ([VibrationLimits.LONGEST]) — the handover leaves forty seconds of alarm out loud, which is
-     * an alarm.
+     * So the routing is a *first* answer rather than the only one. Ten seconds (the owner's
+     * number, 2026-09-25; it was twenty) is long enough for somebody actually wearing them to have
+     * heard it, and short enough that a ring into a link nobody is listening to does not eat a
+     * third of the minute the noise is allowed to last ([VibrationLimits.LONGEST]) — the handover
+     * leaves fifty seconds of alarm out loud.
      */
-    const val HEADPHONES_GRACE_MS: Long = 20_000L
+    const val HEADPHONES_GRACE_MS: Long = 10_000L
 
     /**
      * Move a sound already playing to the phone's own speaker. See [HEADPHONES_GRACE_MS].

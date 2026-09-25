@@ -2795,7 +2795,7 @@ loud what DST and a change of zone do to a landing.
   always, but routed to the headphones when a pair is connected (`setPreferredDevice`, looked up
   at the moment of playing so a pair unplugged a minute ago cannot swallow a reminder;
   `AppSettings.alertToHeadphones`, on, and off is the honest setting for earbuds that live in a
-  drawer). **And twenty seconds later it comes out of the phone anyway**
+  drawer). **And ten seconds later it comes out of the phone anyway** (twenty until 0.153.0)
   (`AlertAudio.HEADPHONES_GRACE_MS`, `toSpeaker`, scheduled by `AlertRinger` and cancelled by
   its `stop`): a pair of earbuds is not proof that anybody is listening through them. Bluetooth
   headphones routinely hold two devices, and while the other one has the channel the alarm is

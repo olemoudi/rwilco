@@ -126,7 +126,7 @@ class AlertRinger(private val context: Context) {
     }
 
     /**
-     * Twenty seconds unanswered, and the sound comes out of the phone instead of the earbuds.
+     * Ten seconds unanswered, and the sound comes out of the phone instead of the earbuds.
      *
      * Only where it was sent to earbuds in the first place, and only until something stops it:
      * [stop] takes it off the queue, so answering the alert, silencing it, or the minute running

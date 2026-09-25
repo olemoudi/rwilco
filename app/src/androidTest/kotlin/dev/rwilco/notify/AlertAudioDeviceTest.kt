@@ -56,7 +56,7 @@ class AlertAudioDeviceTest {
 
     @Test
     fun aSoundCanBeMovedToTheSpeakerMidPlay() {
-        // Twenty seconds unanswered and a reminder sent to the headphones comes out of the
+        // Ten seconds unanswered and a reminder sent to the headphones comes out of the
         // phone instead (AlertAudio.HEADPHONES_GRACE_MS) — because headphones connected are not
         // headphones being listened through. There is nothing to hear on an emulator; what this
         // pins is that the move itself is a call the platform takes, mid-playback, without
@@ -75,7 +75,7 @@ class AlertAudioDeviceTest {
             runCatching { player.stop() }
             player.release()
         }
-        assertTrue("twenty seconds is inside the minute the noise may last", AlertAudio.HEADPHONES_GRACE_MS < 60_000L)
+        assertTrue("the grace is inside the minute the noise may last", AlertAudio.HEADPHONES_GRACE_MS < 60_000L)
     }
 
     @Test
