@@ -75,6 +75,10 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.material.icons.outlined.AutoAwesome
+import dev.rwilco.cheer.CheerText
+import dev.rwilco.model.CheerPick
 import dev.rwilco.shortcuts.PresetShortcuts
 import dev.rwilco.R
 import dev.rwilco.model.Section
@@ -116,6 +120,9 @@ import androidx.compose.runtime.setValue
 
 /** So a test can scroll the list itself; a lazy list does not compose what is off screen. */
 const val HOME_LIST_TAG = "homeList"
+
+/** The line of encouragement under the hero, for the tests to find whatever it happens to say. */
+const val HOME_CHEER_TAG = "homeCheer"
 
 /**
  * A reminder the editor has just written, on its way to Home's list.
@@ -177,6 +184,7 @@ fun HomeScreen(
     val flippedCards by viewModel.flippedCards.collectAsStateWithLifecycle()
     val snoozeCustomMinutes by viewModel.snoozeCustomMinutes.collectAsStateWithLifecycle()
     val placeOffers by viewModel.placeOffers.collectAsStateWithLifecycle()
+    val cheer by viewModel.cheer.collectAsStateWithLifecycle()
     val hereLabel = stringResource(R.string.snooze_here_label)
     val noFixMessage = stringResource(R.string.snooze_no_fix)
     // Whether this phone can ring at all, re-read on every resume; Settings has the detail.
@@ -607,6 +615,9 @@ fun HomeScreen(
         // Asked once and read twice, like the strip: by the list and by the arithmetic that
         // counts past it. Not over the results — a search is a different list.
         val waitingShown = !search.open && state.waiting.isNotEmpty()
+        // The line of encouragement: never while searching, and never over something owed (the
+        // view model already goes quiet then; this is the frame before it notices).
+        val cheerShown = cheer != null && !search.open && state.waiting.isEmpty()
         // The row of chips, and the "+" on it that administers the tags. Not only while a
         // chip has something to filter (0.93.0): a tag left on finished reminders alone is
         // the one 0.90.0 made deletable *from that panel*, and the panel had no door then.
@@ -644,6 +655,7 @@ fun HomeScreen(
                         (if (state.routines.contacts.size > HOME_CONTACT_ROWS) 1 else 0)
                 },
                 waitingRow = waitingShown,
+                cheerRow = cheerShown,
             )
                 ?: return@LaunchedEffect
             if (saved.created) {
@@ -919,6 +931,13 @@ fun HomeScreen(
                                 marked = hero.card.id == marked,
                             )
                         }
+                    }
+                }
+                // Under what fires next, before the day's verdict: one quiet line, and a door to Hechos.
+                val line = cheer
+                if (cheerShown && line != null) {
+                    item(key = "cheer", contentType = "cheer") {
+                        CheerRow(pick = line, onClick = onDoneList, modifier = Modifier.animateItem())
                     }
                 }
                 if (state.quietToday) {
@@ -1252,6 +1271,41 @@ private const val CONTENT_HERO = "hero"
 private const val CONTENT_SECTION = "section"
 private const val CONTENT_TAG = "tag"
 private const val CONTENT_HIT = "hit"
+
+/**
+ * The line of encouragement (0.151.0): the same quiet weight as "nada para hoy" — a small glyph
+ * and a line in the second ink, no card, no colour — because it is a remark, not a thing to do.
+ * The whole row is the door to Hechos, where the numbers it talks about live.
+ */
+@Composable
+private fun CheerRow(pick: CheerPick, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val resources = LocalContext.current.resources
+    val configuration = LocalConfiguration.current
+    val text = remember(pick, configuration) { CheerText.format(resources, pick) }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.small)
+            .clickable(onClickLabel = stringResource(R.string.cheer_open_done), onClick = onClick)
+            .testTag(HOME_CHEER_TAG)
+            .heightIn(min = Tokens.sizes.touch)
+            .padding(vertical = Tokens.spacing.xs),
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.AutoAwesome,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(Tokens.sizes.glyph),
+        )
+        Spacer(Modifier.width(Tokens.spacing.sm))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
 
 /** "Nada para hoy": one quiet line where the day's section would be, so the list has a verdict. */
 @Composable

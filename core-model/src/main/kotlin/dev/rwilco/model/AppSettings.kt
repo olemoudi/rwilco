@@ -238,6 +238,10 @@ data class AppSettings(
      */
     @Serializable(with = TolerantUnlocks::class)
     val achievements: List<Unlocked> = emptyList(),
+    /** A quiet line of encouragement on Home, under what fires next (0.151.0, `Cheers.kt`). */
+    val cheerLine: Boolean = true,
+    /** And a silent notification every two or three days, when there is something new to say. */
+    val cheerNotifications: Boolean = true,
 )
 
 /** How the alert screen holds more than one reminder. See [AppSettings.alertStacking]. */

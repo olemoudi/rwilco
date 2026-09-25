@@ -3,6 +3,9 @@ package dev.rwilco
 import android.app.Application
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.RwilcoDatabase
+import dev.rwilco.cheer.CheerStore
+import dev.rwilco.cheer.CheerWorker
+import dev.rwilco.cheer.Cheering
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.alarm.RearmWorker
 import dev.rwilco.alarm.ReminderFiring
@@ -102,6 +105,10 @@ class RwilcoApplication : Application() {
     lateinit var settings: StateFlow<AppSettings?>
         private set
 
+    /** Where Home's line of encouragement and the silent word come from (0.151.0). */
+    lateinit var cheering: Cheering
+        private set
+
     override fun onCreate() {
         super.onCreate()
         settingsStore = SettingsStore(this)
@@ -118,6 +125,7 @@ class RwilcoApplication : Application() {
         placeWatcher = PlaceWatcher(this, repository, firing, placeWatch, placeLog, settingsStore, clock)
         vaultStore = VaultStore(this)
         diagStore = DiagStore(this)
+        cheering = Cheering(repository, settingsStore, CheerStore(this), clock)
         Diag.install(diagStore, appScope, clock)
         // With the chosen tone and rhythm, once they are known: the channels of any other are
         // swept away by ensureChannels, so making them with the defaults first would delete the
@@ -265,6 +273,14 @@ class RwilcoApplication : Application() {
                 .map { it.updatesWifiOnly }
                 .distinctUntilChanged()
                 .collect { wifiOnly -> UpdateWorker.schedule(this@RwilcoApplication, wifiOnly) }
+        }
+        appScope.launch {
+            // The silent word every two or three days: booked while the switch is on (a booking
+            // already there is kept, so a launch does not push it away), and gone when it is off.
+            settingsStore.settings
+                .map { it.cheerNotifications }
+                .distinctUntilChanged()
+                .collect { on -> if (on) CheerWorker.start(this@RwilcoApplication, clock) else CheerWorker.cancel(this@RwilcoApplication) }
         }
     }
 

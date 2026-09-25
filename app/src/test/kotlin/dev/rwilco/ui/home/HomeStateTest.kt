@@ -381,6 +381,10 @@ class HomeStateTest {
         assertEquals(4, homeCardIndex(withHero, "a", strip = false, pinned = false, waitingRow = true))
         val withWaiting = withHero.copy(waiting = listOf(WaitingUi("w1", "w", Instant.EPOCH, false), WaitingUi("w2", "w", Instant.EPOCH, false)))
         assertEquals(2, homeCardIndex(withWaiting, "hero", strip = false, pinned = false), "two things waiting, still one card")
+        // The line of encouragement sits under the hero: the hero stays where it was, and the
+        // cards under it move down by one.
+        assertEquals(1, homeCardIndex(withHero, "hero", strip = false, pinned = false, cheerRow = true))
+        assertEquals(4, homeCardIndex(withHero, "a", strip = false, pinned = false, cheerRow = true))
     }
 
     @Test

@@ -40,6 +40,14 @@ import dev.rwilco.model.toReminder
 import dev.rwilco.model.used
 import dev.rwilco.model.warnings
 import java.util.UUID
+import dev.rwilco.cheer.CheerText
+import dev.rwilco.model.CheerPick
+import dev.rwilco.model.DayParts
+import dev.rwilco.model.dayParts
+import dev.rwilco.model.daySlot
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.Dispatchers
@@ -193,6 +201,8 @@ class HomeViewModel(
      * would be a row that vanished while being read.
      */
     private val openCards: suspend () -> Set<Int> = { emptySet() },
+    /** The line of encouragement for a part of the day, or null for silence (`Cheering.lineFor`). */
+    private val cheerLine: suspend (String) -> CheerPick? = { null },
 ) : ViewModel() {
 
     /** The place answers a held card can give: the most-used saved place as a doorway in, and "aquí". */
@@ -545,6 +555,33 @@ class HomeViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     /**
+     * The quiet line under the hero (0.151.0): one per part of the day, the same one however
+     * often Home is opened in it, and none at all while the switch is off, while something is
+     * waiting for an answer — praise over an unanswered alarm is the app not listening — or when
+     * there is nothing true and good to say. Worked out off the main thread from the whole
+     * history, once a slot: never part of the per-minute rebuild of [state].
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val cheer: StateFlow<CheerPick?> = combine(
+        settings.filterNotNull().map { it.cheerLine to it.dayParts }.distinctUntilChanged(),
+        state.map { it.loaded && !it.failed && it.waiting.isEmpty() }.distinctUntilChanged(),
+    ) { (on, parts), calm -> if (on && calm) parts else null }
+        .flatMapLatest { parts ->
+            if (parts == null) flowOf(null)
+            else slots(parts).map { slot -> runCatching { cheerLine(slot) }.onFailure { Log.w(TAG, "no line", it) }.getOrNull() }
+        }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** The part of the day, asked by the minute and said when it changes. */
+    private fun slots(parts: DayParts) = flow {
+        while (true) {
+            emit(daySlot(clock.instant(), clock.zone, parts))
+            delay(60_000L - Math.floorMod(clock.millis(), 60_000L))
+        }
+    }.distinctUntilChanged()
+
+    /**
      * Whether the phone is inside the circle of one rule, from the watch's own memory. Keyed by
      * the id that carries the circle itself, so an edited place is a different question rather
      * than the old answer (see GeofenceIds).
@@ -818,6 +855,7 @@ class HomeViewModel(
                 locationAllowed = { app.hasBackgroundLocation() },
                 rememberSide = app.placeWatcher::remember,
                 openCards = { AlertNotifications.openCards(app) },
+                cheerLine = { slot -> app.cheering.lineFor(slot, CheerText.variants(app.resources)) },
             ) as T
     }
 }

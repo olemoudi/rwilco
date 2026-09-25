@@ -31,6 +31,9 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import dev.rwilco.R
+import dev.rwilco.cheer.CheerText
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import dev.rwilco.model.AchievementFamily
 import dev.rwilco.model.Goal
 import dev.rwilco.model.Standing
@@ -155,13 +158,12 @@ private fun AchievementRow(one: Unlocked, today: LocalDate) {
     }
 }
 
-/** "30 seguidas", "100 hechos", "4 semanas redondas", "10 antes de sonar". */
+/** "30 seguidas", "100 hechos", "4 semanas redondas": the same words the encouragement uses. */
 @Composable
-fun achievementTitle(family: AchievementFamily, tier: Int): String = when (family) {
-    AchievementFamily.STREAK -> stringResource(R.string.achievement_streak, tier)
-    AchievementFamily.HECHOS -> stringResource(R.string.achievement_hechos, tier)
-    AchievementFamily.PERFECT_WEEKS -> pluralStringResource(R.plurals.achievement_perfect_weeks, tier, tier)
-    AchievementFamily.AHEAD -> stringResource(R.string.achievement_ahead, tier)
+fun achievementTitle(family: AchievementFamily, tier: Int): String {
+    // Read so a change of language redraws it, as stringResource does.
+    LocalConfiguration.current
+    return CheerText.achievementTitle(LocalContext.current.resources, family, tier)
 }
 
 @Composable

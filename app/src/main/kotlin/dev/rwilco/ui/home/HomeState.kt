@@ -167,6 +167,8 @@ fun homeCardIndex(
     contactsRows: Int = 0,
     /** The "esperando respuesta" card, above everything: one row whatever is on it. */
     waitingRow: Boolean = state.waiting.isNotEmpty(),
+    /** The line of encouragement under the hero (0.151.0), when there is one to say. */
+    cheerRow: Boolean = false,
 ): Int? {
     var index = 0
     if (waitingRow) index++
@@ -180,6 +182,7 @@ fun homeCardIndex(
         if (state.hero.card.id == id) return index
         index++
     }
+    if (cheerRow) index++
     if (state.quietToday) index++
     for (section in state.sections) {
         index++ // the section's own heading

@@ -26,7 +26,10 @@ import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.debug.DemoData
 import dev.rwilco.model.ThemeMode
+import dev.rwilco.ui.home.HOME_CHEER_TAG
 import dev.rwilco.ui.home.HOME_LIST_TAG
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onAllNodesWithTag
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.BeforeClass
@@ -106,6 +109,19 @@ class StatsTourTest {
         list.performScrollToNode(hasText(s(R.string.achievement_hechos, 50)))
         list.performScrollToNode(hasText(s(R.string.done_goal_streak, 30, "Regar las plantas del balcón", 20)))
         shot("done-achievements")
+    }
+
+    /**
+     * The quiet line under the hero: there, with something true in it (which one is the slot's
+     * draw), and a door to Hechos.
+     */
+    @Test
+    fun homeCarriesOneQuietLineOfEncouragement() {
+        rule.waitUntil(15_000) { rule.onAllNodesWithTag(HOME_CHEER_TAG, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithTag(HOME_LIST_TAG).performScrollToNode(hasTestTag(HOME_CHEER_TAG))
+        shot("home-cheer")
+        rule.onNodeWithTag(HOME_CHEER_TAG).performClick()
+        rule.waitUntil(10_000) { rule.onAllNodesWithText(s(R.string.done_streaks_title), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
     }
 
     /** The list is built a beat after launch; a scroll before then finds no list to scroll. */

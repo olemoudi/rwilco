@@ -144,6 +144,8 @@ class MainActivity : ComponentActivity() {
         const val DESTINATION_WATCH_LOG = "watch_log"
         /** The routines screen: where a question about one, or a reset by a place, lands. */
         const val DESTINATION_ROUTINES = "routines"
+        /** Hechos: where a word of encouragement, which is about its numbers, lands (0.151.0). */
+        const val DESTINATION_DONE = "done"
         private const val ROUTINE_PREFIX = "routines:"
 
         /** The routines screen, brought to one of them: what an overdue routine's shortcut asks for. */

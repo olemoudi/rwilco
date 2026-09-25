@@ -283,6 +283,11 @@ class SettingsViewModel(
     fun setEvening(time: LocalTime) = update { it.copy(evening = time) }
     fun setHaptics(enabled: Boolean) = update { it.copy(haptics = enabled) }
 
+    /** Home's line of encouragement, and the silent word every few days (0.151.0). */
+    fun setCheerLine(on: Boolean) = update { it.copy(cheerLine = on) }
+
+    fun setCheerNotifications(on: Boolean) = update { it.copy(cheerNotifications = on) }
+
     /** What a reminder feels like. Unrelated to [setHaptics], which is the UI's own touch feedback. */
     fun setVibration(pattern: VibrationPattern) = update { it.copy(vibration = pattern) }
 

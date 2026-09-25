@@ -813,6 +813,25 @@ fun SettingsScreen(
                         }
                     }
                 }
+                // The encouragement (0.151.0): how the app talks to somebody about how they are
+                // doing, which is as much its manner as the theme is. Two switches, because a
+                // line on a screen you opened and a word in the shade are two different asks.
+                RwilcoCard {
+                    Column(Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.lg)) {
+                        SettingSwitchRow(
+                            title = stringResource(R.string.settings_cheer_line),
+                            info = stringResource(R.string.settings_cheer_line_hint),
+                            checked = current.cheerLine,
+                            onCheckedChange = viewModel::setCheerLine,
+                        )
+                        SettingSwitchRow(
+                            title = stringResource(R.string.settings_cheer_notices),
+                            info = stringResource(R.string.settings_cheer_notices_hint),
+                            checked = current.cheerNotifications,
+                            onCheckedChange = viewModel::setCheerNotifications,
+                        )
+                    }
+                }
                 // The per-app language is the system's to keep (locales_config.xml says which
                 // two), and the system's page is the one place to change it — it only exists
                 // from API 33, and below that the phone's own language is the whole answer.

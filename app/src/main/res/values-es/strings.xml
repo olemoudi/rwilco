@@ -687,6 +687,9 @@
         <item>idioma</item>
         <item>vibración al tocar</item>
         <item>colores</item>
+        <item>ánimos</item>
+        <item>motivación</item>
+        <item>logros</item>
     </string-array>
     <string-array name="settings_keywords_backup">
         <item>copia</item>
@@ -1685,6 +1688,13 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_151_0">
+
+        <item>Bajo lo siguiente que suena, la pantalla principal dice de vez en cuando algo cierto sobre cómo vas: una racha, una buena semana, un logro. Siempre con números de verdad y tus propios recordatorios, nunca lo mismo dos veces seguidas, y cambia en cada parte del día. Tócala para abrir Hechos.</item>
+        <item>Cada dos o tres días, una notificación en silencio del mismo estilo — solo cuando hay algo nuevo que decir, y nunca mientras algo espera respuesta.</item>
+        <item>Las dos se pueden apagar en Ajustes → Aspecto y tacto.</item>
+
+    </string-array>
     <string-array name="whats_new_0_150_0">
 
         <item>Hechos cuenta ahora todo lo que haces: el número de la semana y las barras de la quincena incluyen cada «hecho» de lo que vuelve y de cada rutina, no solo los recordatorios que terminaste del todo.</item>
@@ -2731,4 +2741,85 @@
     <string name="achievement_ahead">%1$d hechos antes de sonar</string>
     <string name="done_goal">Próximo: %1$s · faltan %2$d</string>
     <string name="done_goal_streak">Próximo: %1$d seguidas con «%2$s» · faltan %3$d</string>
+    <!-- Encouragement (0.151.0). Every line carries exactly its kind's placeholders (CheerStringsTest); numbers are always two or more. -->
+    <string name="settings_cheer_line">Una línea de ánimo en la pantalla principal</string>
+    <string name="settings_cheer_line_hint">Bajo lo siguiente que suena, algo cierto sobre cómo vas: una racha, una buena semana, un logro. Cambia en cada parte del día, y no dice nada mientras algo espera respuesta.</string>
+    <string name="settings_cheer_notices">Notificaciones de ánimo en silencio</string>
+    <string name="settings_cheer_notices_hint">Cada dos o tres días, en algún momento de tus horas despierto, y solo cuando hay algo nuevo que decir. Nunca mientras algo espera respuesta. Con su propio canal, para que el sistema pueda silenciarlas por separado.</string>
+    <string name="cheer_channel_name">Ánimos</string>
+    <string name="cheer_channel_description">De vez en cuando, algo cierto sobre cómo vas. En silencio.</string>
+    <string name="cheer_open_done">abrir Hechos</string>
+    <string name="cheer_achievement_with">%1$s con «%2$s»</string>
+    <string-array name="cheer_streak">
+        <item>«%1$s»: %2$d seguidas. Alguien ahí dentro está muy contento.</item>
+        <item>%2$d seguidas con «%1$s». A este paso habrá que ponerlo en el currículum.</item>
+        <item>«%1$s» lleva %2$d vueltas sin fallar. Constancia de la buena.</item>
+        <item>%2$d seguidas con «%1$s». Haces que parezca fácil (no lo es).</item>
+        <item>«%1$s», %2$d veces seguidas. Esto ya no es suerte.</item>
+        <item>%2$d seguidas de «%1$s». Lo de «ya si eso» no va contigo.</item>
+    </string-array>
+    <string-array name="cheer_best_streak">
+        <item>%2$d seguidas con «%1$s»: tu mejor racha. De momento.</item>
+        <item>Récord nuevo en «%1$s»: %2$d seguidas. El anterior ya puede ir haciendo las maletas.</item>
+        <item>«%1$s» nunca había llegado a %2$d seguidas. Hasta ahora.</item>
+        <item>%2$d seguidas con «%1$s», más que nunca. Que no se entere tu yo de hace un mes.</item>
+        <item>Mejor racha de siempre en «%1$s»: %2$d. Se admiten aplausos discretos.</item>
+        <item>«%1$s» bate su marca: %2$d seguidas. Sin dopaje.</item>
+    </string-array>
+    <string-array name="cheer_never_fails">
+        <item>«%1$s»: %2$d veces y ni una sin hacer. Fiable como un reloj suizo, pero más barato.</item>
+        <item>%2$d de %2$d con «%1$s». Perfección, de la que no presume.</item>
+        <item>«%1$s» no sabe lo que es fallar: %2$d de %2$d.</item>
+        <item>%2$d veces «%1$s» y ni una se te ha escapado. Da hasta un poco de miedo.</item>
+        <item>Con «%1$s» vas %2$d de %2$d. Ni una. Cero. Nada.</item>
+        <item>«%1$s»: %2$d veces, cero despistes. Así se hace.</item>
+    </string-array>
+    <string-array name="cheer_first_time">
+        <item>%1$d de %2$d a la primera este mes. El botón de posponer se siente un poco solo.</item>
+        <item>Este mes, %1$d de %2$d a la primera. Ni el despertador es tan puntual.</item>
+        <item>%1$d de %2$d sin posponer este mes. Tu yo del futuro te lo agradece.</item>
+        <item>A la primera: %1$d de %2$d este mes. Posponer es para otros.</item>
+        <item>%1$d de %2$d este mes sin tocar posponer. Eso es carácter.</item>
+        <item>%1$d veces de %2$d lo hiciste en cuanto sonó. Reflejos de portero.</item>
+    </string-array>
+    <string-array name="cheer_week_up">
+        <item>Esta semana llevas %1$d, %2$d más que la pasada. Sin prisa, pero sin pausa.</item>
+        <item>%1$d hechos esta semana: %2$d más que la anterior. La gráfica sube y tú con ella.</item>
+        <item>%2$d más que la semana pasada, y ya van %1$d. Alguien se ha venido arriba.</item>
+        <item>Semana en alza: %1$d hechos, %2$d más que la anterior.</item>
+        <item>%1$d esta semana, %2$d más que la pasada. Que no se entere la semana pasada.</item>
+        <item>Vas %2$d por delante de la semana pasada, con %1$d hechos. La anterior pide la revancha.</item>
+    </string-array>
+    <string-array name="cheer_week_count">
+        <item>%1$d hechos esta semana. Y la semana aún no ha dicho su última palabra.</item>
+        <item>Llevas %1$d esta semana. Tu lista de pendientes empieza a tenerte respeto.</item>
+        <item>Esta semana, %1$d cosas hechas. Nada mal para no llevar capa.</item>
+        <item>%1$d hechos en siete días. Buen ritmo, y sin despeinarse.</item>
+        <item>Semana de %1$d hechos. Las barras de Hechos están que se salen.</item>
+        <item>%1$d cosas hechas esta semana. Lo demás, que espere.</item>
+    </string-array>
+    <string-array name="cheer_today">
+        <item>Hoy ya van %1$d. El día aún no sabe con quién se ha metido.</item>
+        <item>%1$d hechos hoy, y contando.</item>
+        <item>%1$d cosas hechas hoy. Te has ganado un café (o dos).</item>
+        <item>Hoy llevas %1$d. Se nota que has venido a jugar.</item>
+        <item>%1$d tachadas hoy. Qué gusto da.</item>
+        <item>Ya van %1$d hoy. A este ritmo, mañana te aburres.</item>
+    </string-array>
+    <string-array name="cheer_ahead">
+        <item>%1$d hechos esta semana antes de que sonaran. Rwilco empieza a sentirse prescindible.</item>
+        <item>Esta semana te has adelantado al aviso %1$d veces. Ni falta que hacía.</item>
+        <item>%1$d cosas hechas antes de que te las recordara. ¿Para qué me quieres?</item>
+        <item>Por delante de la alarma %1$d veces esta semana. Casi no le das tiempo a abrir la boca.</item>
+        <item>Adelantándote al aviso: %1$d esta semana. La alarma se ha quedado con las ganas.</item>
+        <item>%1$d esta semana sin esperar a que sonara. Puntualidad británica, versión exprés.</item>
+    </string-array>
+    <string-array name="cheer_achievement">
+        <item>Logro nuevo: %1$s. Está en Hechos, por si quieres enmarcarlo.</item>
+        <item>Logro desbloqueado: %1$s. Sin fanfarria, pero te la mereces.</item>
+        <item>%1$s. Ya consta en Hechos, para la posteridad.</item>
+        <item>Logro nuevo: %1$s. Esto hay que celebrarlo, con moderación.</item>
+        <item>%1$s: conseguido. Guárdalo, que no pasa todos los días.</item>
+        <item>Te acabas de ganar esto: %1$s. En Hechos está, con su fecha y todo.</item>
+    </string-array>
 </resources>

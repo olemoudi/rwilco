@@ -818,6 +818,30 @@ answers, the current and the best streak, the mean gap between hechos, the oldes
 (`since` — every number is "since then", the history being capped), and the last
 `RECENT_ROUNDS` rounds as marks for the form's strip. `RoundsTest` holds every rule above.
 
+### Encouragement (0.151.0)
+
+`Cheers.kt`: a quiet line on Home under what fires next, and a silent notification every two or
+three days — the owner's "lo estás haciendo genial, sigue así", with his condition that it never
+feel canned. **What keeps it from being canned is that every line carries a real number or a
+reminder's own words**: there is no generic "vas bien" (`cheers` offers only true and good
+things — a streak of three or more, a run longer than any before it, a reminder never once left
+undone, most of the month at the first ask, a week up on the last, a good week, a busy day,
+things done before they rang, a milestone earned in the last three days — and nothing true and
+good to say is silence). Then freshness, in `pickCheer`: the same fact (its `key` carries the
+numbers, so a streak that grew is a new fact) not for a week, the same reminder not for a day and
+a half, not the kind said last when there is any other, weighted towards the better news, and the
+phrasing never the one that kind used last. **Home's line is one per part of the day**
+(`daySlot`, the person's own three hours in clock order; before the first it is still last
+night's): drawn with a seed made from the slot and remembered in it, so the screen does not change
+its mind every time it is opened in the same afternoon, and the next slot moves on. The phrasings
+are the app's — a string-array per kind in each language, six each, concrete and with humour that
+never needs to understand the reminder's words — and every number offered is two or more, so no
+phrasing needs a singular. **The notification** (`nextCheerAt`) goes at a minute drawn from the
+waking hours two or three days on, an hour clear of each end; a run that finds the person asleep,
+something waiting for an answer or a routine overdue tries again in ninety minutes
+(`cheerRetryAt`) — praise over an unanswered alarm would be the app not listening — and with
+nothing new to say says nothing. Home's line goes quiet on the same condition.
+
 ## Persistence
 
 - Room (`app/.../data/`): one table, `reminder(id, text, tags, triggers, ruleMatch, actions,
@@ -2108,6 +2132,23 @@ loud what DST and a change of zone do to a landing.
   once it has gone. The three hours are **not ordered against each other** on purpose: every
   reader takes one on its own, and somebody who works nights is allowed an evening before their
   morning. The snoozes that name a part of the day (0.138.0) read the same three.
+- **Home carries one quiet line of encouragement, under the hero** (0.151.0, `CheerRow`,
+  `HomeViewModel.cheer`, `cheer/`). The weight of "nada para hoy" — a small glyph and a line in
+  the second ink, no card and no colour, because it is a remark and not a thing to do — and the
+  whole row is the door to Hechos. Its own `StateFlow`, never part of the per-minute rebuild of
+  Home's state: worked out once a slot on `Dispatchers.Default` from the whole history
+  (`Cheering.lineFor`, which also keeps any milestone the reading proves), and null while the
+  switch is off, while something is waiting for an answer, while searching, or when there is
+  nothing to say. **It is a row in the column, so `homeCardIndex` counts it** (`cheerRow`,
+  after the hero and before "nada para hoy"). What was said is remembered in a store of its own
+  (`CheerStore`, "rwilco_cheers", the last forty), not in the settings: it changes three times a
+  day, and the settings blob is what the backup watches. The silent word is `CheerWorker`, a
+  chain of one-time jobs like the backup's, booked while `AppSettings.cheerNotifications` is on
+  (KEEP at launch, so a launch never pushes it away) and cancelled when it is off; it posts on its
+  own low, silent channel ("rwilco_cheers", notification id 47), which the readiness strip never
+  counts, and a tap opens Hechos (`MainActivity.DESTINATION_DONE`). Both switches live in
+  Settings → Aspecto, on by default. `CheerStringsTest` holds every phrasing to exactly its kind's
+  placeholders, in both languages, with no emoji.
 - **A reminder's form says what its history comes to** (0.149.0, `StatsCard`, `RoundStrip`). Over
   the history card, for anything that comes back or counts from the last time: the streak in mono
   with the best run beside it when it is a different number, the last `RECENT_ROUNDS` rounds as a

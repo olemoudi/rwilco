@@ -698,6 +698,9 @@
         <item>language</item>
         <item>vibration on touch</item>
         <item>colours</item>
+        <item>encouragement</item>
+        <item>motivation</item>
+        <item>achievements</item>
     </string-array>
     <string-array name="settings_keywords_backup">
         <item>copy</item>
@@ -1700,6 +1703,13 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_151_0">
+
+        <item>Under what rings next, Home now says something true about how you are doing now and then: a streak, a good week, a milestone. Always with real numbers and your own reminders, never the same thing twice in a row, and it changes with each part of the day. Tap it to open Done.</item>
+        <item>Every two or three days, a silent notification of the same kind — only when there is something new to say, and never while something is waiting for an answer.</item>
+        <item>Both can be switched off in Settings → Look and feel.</item>
+
+    </string-array>
     <string-array name="whats_new_0_150_0">
 
         <item>Done counts everything you do now: the week\'s number and the fortnight\'s bars include every «done» of something that comes back and every routine, not only the reminders you finished for good.</item>
@@ -2746,4 +2756,85 @@
     <string name="achievement_ahead">%1$d done before they rang</string>
     <string name="done_goal">Next: %1$s · %2$d to go</string>
     <string name="done_goal_streak">Next: %1$d in a row with «%2$s» · %3$d to go</string>
+    <!-- Encouragement (0.151.0). Every line carries exactly its kind's placeholders (CheerStringsTest); numbers are always two or more. -->
+    <string name="settings_cheer_line">A line of encouragement on Home</string>
+    <string name="settings_cheer_line_hint">Under what rings next, something true about how you are doing: a streak, a good week, an achievement. It changes with each part of the day, and says nothing while something is waiting for an answer.</string>
+    <string name="settings_cheer_notices">Silent notifications of encouragement</string>
+    <string name="settings_cheer_notices_hint">Every two or three days, at some moment in your waking hours, and only when there is something new to say. Never while something is waiting for an answer. Their own channel, so the system can silence them on their own.</string>
+    <string name="cheer_channel_name">Encouragement</string>
+    <string name="cheer_channel_description">Now and then, something true about how you are doing. Silent.</string>
+    <string name="cheer_open_done">open Done</string>
+    <string name="cheer_achievement_with">%1$s with «%2$s»</string>
+    <string-array name="cheer_streak">
+        <item>«%1$s»: %2$d in a row. Someone in there is very pleased.</item>
+        <item>%2$d in a row for «%1$s». This belongs on your CV.</item>
+        <item>«%1$s» is %2$d rounds strong. Consistency, the good kind.</item>
+        <item>%2$d in a row with «%1$s». You make it look easy (it isn\'t).</item>
+        <item>«%1$s», %2$d times running. That is not luck any more.</item>
+        <item>%2$d straight for «%1$s». «Maybe later» is not your thing.</item>
+    </string-array>
+    <string-array name="cheer_best_streak">
+        <item>%2$d in a row with «%1$s»: your best streak. So far.</item>
+        <item>New record for «%1$s»: %2$d in a row. The old one can start packing.</item>
+        <item>«%1$s» had never reached %2$d in a row. Until now.</item>
+        <item>%2$d in a row with «%1$s», more than ever. Don\'t tell last month\'s you.</item>
+        <item>Best streak ever for «%1$s»: %2$d. Quiet applause allowed.</item>
+        <item>«%1$s» beats its own mark: %2$d in a row. No doping involved.</item>
+    </string-array>
+    <string-array name="cheer_never_fails">
+        <item>«%1$s»: %2$d times and not one missed. Reliable as a Swiss watch, only cheaper.</item>
+        <item>%2$d out of %2$d with «%1$s». Perfection, the modest kind.</item>
+        <item>«%1$s» doesn\'t know what missing means: %2$d out of %2$d.</item>
+        <item>%2$d times «%1$s» and not one got away. Almost scary.</item>
+        <item>With «%1$s» you are %2$d for %2$d. Not one. Zero. None.</item>
+        <item>«%1$s»: %2$d times, zero slips. That is how it\'s done.</item>
+    </string-array>
+    <string-array name="cheer_first_time">
+        <item>%1$d of %2$d at the first ask this month. The snooze button feels a bit lonely.</item>
+        <item>This month, %1$d of %2$d at the first ask. Not even the alarm clock is that punctual.</item>
+        <item>%1$d of %2$d without snoozing this month. Future you says thanks.</item>
+        <item>At the first ask: %1$d of %2$d this month. Snoozing is for other people.</item>
+        <item>%1$d of %2$d this month without touching snooze. That is character.</item>
+        <item>%1$d times out of %2$d you did it the moment it rang. Goalkeeper reflexes.</item>
+    </string-array>
+    <string-array name="cheer_week_up">
+        <item>%1$d this week, %2$d more than the last. Slowly, but never stopping.</item>
+        <item>%1$d done this week: %2$d more than the week before. The chart goes up, and so do you.</item>
+        <item>%2$d more than last week, and that makes %1$d. Someone\'s on a roll.</item>
+        <item>A week on the rise: %1$d done, %2$d more than the one before.</item>
+        <item>%1$d this week, %2$d up on the last. Don\'t let last week hear about it.</item>
+        <item>%2$d ahead of last week, with %1$d done. Last week wants a rematch.</item>
+    </string-array>
+    <string-array name="cheer_week_count">
+        <item>%1$d done this week. And the week isn\'t over yet.</item>
+        <item>%1$d this week. Your to-do list is starting to respect you.</item>
+        <item>This week, %1$d things done. Not bad for someone without a cape.</item>
+        <item>%1$d done in seven days. Good pace, not a hair out of place.</item>
+        <item>A %1$d-done week. The bars on Done are showing off.</item>
+        <item>%1$d things done this week. Everything else can wait.</item>
+    </string-array>
+    <string-array name="cheer_today">
+        <item>%1$d already today. The day has no idea who it\'s dealing with.</item>
+        <item>%1$d done today, and counting.</item>
+        <item>%1$d things done today. You have earned a coffee (or two).</item>
+        <item>%1$d so far today. You came to play.</item>
+        <item>%1$d ticked off today. So satisfying.</item>
+        <item>That makes %1$d today. At this rate tomorrow will be boring.</item>
+    </string-array>
+    <string-array name="cheer_ahead">
+        <item>%1$d done this week before they rang. Rwilco is starting to feel unnecessary.</item>
+        <item>This week you beat the reminder %1$d times. It wasn\'t even needed.</item>
+        <item>%1$d things done before I could remind you. What do you need me for?</item>
+        <item>Ahead of the alarm %1$d times this week. It barely got a word in.</item>
+        <item>Beating the reminder: %1$d this week. The alarm is left wanting.</item>
+        <item>%1$d this week without waiting for the ring. Punctuality, express edition.</item>
+    </string-array>
+    <string-array name="cheer_achievement">
+        <item>New achievement: %1$s. It\'s on Done, if you want to frame it.</item>
+        <item>Achievement unlocked: %1$s. No fanfare, but you deserve one.</item>
+        <item>%1$s. Now on record in Done, for posterity.</item>
+        <item>New achievement: %1$s. This calls for a celebration, in moderation.</item>
+        <item>%1$s: done. Keep it, it\'s not every day.</item>
+        <item>You just earned this: %1$s. It\'s on Done, date and all.</item>
+    </string-array>
 </resources>
