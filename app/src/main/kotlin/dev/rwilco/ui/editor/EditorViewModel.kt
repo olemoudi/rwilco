@@ -412,7 +412,10 @@ class EditorViewModel(
     fun keepPlace(place: SavedPlace) {
         viewModelScope.launch {
             store.update { settings ->
-                settings.copy(savedPlaces = settings.savedPlaces.filterNot { it.label.equals(place.label, ignoreCase = true) } + place)
+                val namesake = settings.savedPlaces.firstOrNull { it.label.equals(place.label, ignoreCase = true) }
+                // The namesake's key survives the replacement: rules taken from it still mean this place.
+                val kept = namesake?.id?.ifBlank { null }?.let { place.copy(id = it) } ?: place
+                settings.copy(savedPlaces = settings.savedPlaces.filterNot { it.label.equals(place.label, ignoreCase = true) } + kept)
             }
             val kept = store.settings.first().savedPlaces
             _state.update { it.copy(savedPlaces = kept) }

@@ -13,6 +13,7 @@ import dev.rwilco.model.AppSettings
 import dev.rwilco.model.ReminderCodec
 import dev.rwilco.model.foldRepeats
 import dev.rwilco.model.offered
+import dev.rwilco.model.withPlaceIds
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -62,6 +63,9 @@ class SettingsStore(private val context: Context) {
         val zone = ZoneId.systemDefault()
         return settings.copy(
             presets = settings.presets.map { it.foldRepeats(zone) },
+            // A place kept before keys existed is named here, the same on every read, and the
+            // next write stores the name (see withPlaceIds).
+            savedPlaces = settings.savedPlaces.withPlaceIds(),
             defaultTriggerKind = settings.defaultTriggerKind?.offered(),
             defaultActions = withSound(settings.defaultActions),
             routineActions = withSound(settings.routineActions),

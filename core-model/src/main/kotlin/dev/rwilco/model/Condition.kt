@@ -147,6 +147,9 @@ sealed interface Condition {
         val label: String,
         /** True is "and only if I am there"; false is "and only if I am not". */
         val inside: Boolean = true,
+        /** The saved place this was taken from; see [Trigger.Location.placeId]. */
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
+        val placeId: String? = null,
     ) : Condition
 }
 

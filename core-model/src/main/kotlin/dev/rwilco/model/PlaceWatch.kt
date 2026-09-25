@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 import java.time.Duration
 import java.time.Instant
+import java.util.UUID
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.max
@@ -111,7 +112,36 @@ data class WatchedPlace(
 
 /** A place kept in Settings, offered whole — name, pin and radius — when a rule needs one. */
 @Serializable
-data class SavedPlace(val label: String, val lat: Double, val lng: Double, val radiusM: Int)
+data class SavedPlace(
+    val label: String,
+    val lat: Double,
+    val lng: Double,
+    val radiusM: Int,
+    /**
+     * What a rule taken from this place remembers it by ([Trigger.Location.placeId]): fixed for
+     * the life of the place, whatever its name, pin or radius become. Blank only on a place
+     * written before there were keys, until [withPlaceIds] names it on the way in.
+     */
+    val id: String = "",
+)
+
+/** A key for a place being kept for the first time. */
+fun newPlaceId(): String = UUID.randomUUID().toString()
+
+/**
+ * Every place with a key. One kept before keys existed is given one worked out from what it
+ * is and where it sits in the list, so every read names it the same until the next write of
+ * the settings stores it for good — no migration, and nothing to lose on a phone that never
+ * writes them again.
+ */
+fun List<SavedPlace>.withPlaceIds(): List<SavedPlace> = mapIndexed { index, place ->
+    if (place.id.isNotBlank()) place
+    else place.copy(id = UUID.nameUUIDFromBytes("$index|${place.label}|${place.lat}|${place.lng}|${place.radiusM}".toByteArray()).toString())
+}
+
+/** The key of the saved place whose pin is exactly this one, if any: a chip copies it to the last digit. */
+fun List<SavedPlace>.idAt(lat: Double?, lng: Double?): String? =
+    firstOrNull { it.lat == lat && it.lng == lng && it.id.isNotBlank() }?.id
 
 /** Great-circle distance in metres. Haversine: good to a fraction of a percent, inside any fix. */
 fun distanceMeters(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {

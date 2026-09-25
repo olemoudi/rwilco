@@ -108,4 +108,70 @@ class SavedPlaceMoveTest {
         assertEquals(leaving(moved), after[0].rules.single().trigger)
         assertEquals(presets[1], after[1])
     }
+
+    // Keys: what the rule remembers the saved place by.
+
+    private val keyed = office.copy(id = "office-key")
+    private val keyedMoved = moved.copy(id = "office-key")
+
+    private fun keyedLeaving(lat: Double, lng: Double, label: String = keyed.label, placeId: String? = keyed.id) =
+        Trigger.Location(lat, lng, keyed.radiusM, Presence.OUTSIDE, label, onCrossing = true, placeId = placeId)
+
+    private fun trigger(reminder: Reminder) = reminder.rules.single().trigger as Trigger.Location
+
+    @Test
+    fun `a rule is found by its key wherever its pin has drifted, and goes to the new pin`() {
+        val drifted = reminder("a", TriggerRule(keyedLeaving(40.4, -3.6, label = "el curro")))
+        val after = trigger(movePlaceIn(listOf(drifted), keyed, keyedMoved).single())
+        assertEquals(moved.lat, after.lat)
+        assertEquals(moved.lng, after.lng)
+        assertEquals("el curro", after.label, "a name of its own is kept")
+        assertEquals("office-key", after.placeId)
+    }
+
+    @Test
+    fun `a rule keyed to another place is not this one's, even on the same pin`() {
+        val other = reminder("a", TriggerRule(keyedLeaving(office.lat, office.lng, placeId = "somewhere-else")))
+        assertEquals(emptyList<Reminder>(), movePlaceIn(listOf(other), keyed, keyedMoved))
+    }
+
+    @Test
+    fun `a rule from before keys is known by its name too, and is given the key`() {
+        val stale = reminder("a", TriggerRule(keyedLeaving(40.4, -3.6, label = "  oficina ", placeId = null)))
+        val after = trigger(movePlaceIn(listOf(stale), keyed, keyedMoved).single())
+        assertEquals(moved.lat, after.lat, "the place moved, so the copy goes to where it is now")
+        assertEquals("office-key", after.placeId)
+    }
+
+    @Test
+    fun `a rename reaches an unkeyed copy on an old pin without moving it`() {
+        val stale = reminder("a", TriggerRule(keyedLeaving(40.4, -3.6, placeId = null)))
+        val after = trigger(movePlaceIn(listOf(stale), keyed, keyed.copy(label = "Curro")).single())
+        assertEquals(40.4, after.lat, "the edit did not move the place, so nothing moves the copy")
+        assertEquals("Curro", after.label)
+        assertEquals("office-key", after.placeId, "and from now on it is found by the key")
+    }
+
+    @Test
+    fun `places kept before keys are named the same on every read, and apart`() {
+        val legacy = listOf(office, office, home.copy(id = "home-key"))
+        val first = legacy.withPlaceIds()
+        assertEquals(first, legacy.withPlaceIds(), "stable until written")
+        assertTrue(first.all { it.id.isNotBlank() })
+        assertTrue(first[0].id != first[1].id, "two identical places are still two places")
+        assertEquals("home-key", first[2].id, "a key already given is never replaced")
+    }
+
+    @Test
+    fun `the key of a pin is the saved place exactly on it`() {
+        val places = listOf(keyed, home.copy(id = "home-key"))
+        assertEquals("office-key", places.idAt(office.lat, office.lng))
+        assertEquals(null, places.idAt(office.lat + 0.000001, office.lng))
+        assertEquals(null, places.idAt(null, null))
+    }
+
+    @Test
+    fun `a snooze to a saved place carries its key`() {
+        assertEquals("office-key", SnoozePlace.Arrive(keyed).circle().placeId)
+    }
 }

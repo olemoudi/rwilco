@@ -126,57 +126,64 @@ fun withHiddenText(hidden: List<String>, text: String): List<String> {
 /*
  * A saved place, edited in Settings.
  *
- * A rule does not point at a saved place, it copies it — name, pin and radius — so moving "la
- * oficina" in Settings used to reach no reminder at all. These carry the edit over, once
- * somebody has been asked. What counts as using a place is its **pin**: the chips copy it to the
- * last digit, and a name is the part most likely to have been retyped. And only what the edit
- * changed is carried, and only where the copy still had the old value: a reminder that widened
- * the circle for itself keeps its own radius when the pin moves.
+ * A rule copies a saved place — name, pin and radius — so that it rings by its own circle and a
+ * place deleted in Settings takes nothing with it; and it keeps the place's key beside the copy
+ * ([Trigger.Location.placeId]), which is how these find it again when the place is edited.
+ *
+ * A rule written before keys existed has none, and is known the only ways it can be: the same
+ * pin to the last digit (a chip copies it exactly) or the same name. Carried over, it is given
+ * the key, so from then on it is found by that alone.
+ *
+ * What moves: the pin whenever the edit moved it — the place is where it is, whatever a copy
+ * held — and the radius and the name only where the copy still had the old ones, so a circle
+ * one reminder widened for itself, or a place it called something else, stays its own.
  */
 
-private fun SavedPlace.pinOf(lat: Double, lng: Double): Boolean = lat == this.lat && lng == this.lng
+private fun SavedPlace.isOf(placeId: String?, lat: Double, lng: Double, label: String): Boolean =
+    if (placeId != null) placeId == id
+    else (lat == this.lat && lng == this.lng) || label.trim().equals(this.label.trim(), ignoreCase = true)
 
-private fun Trigger.Location.movedTo(old: SavedPlace, new: SavedPlace): Trigger.Location =
-    if (!old.pinOf(lat, lng)) this
-    else copy(
-        lat = new.lat,
-        lng = new.lng,
-        radiusM = if (radiusM == old.radiusM) new.radiusM else radiusM,
-        label = if (label == old.label) new.label else label,
-    )
+private class PlaceEdit(val old: SavedPlace, val new: SavedPlace) {
+    val moved = old.lat != new.lat || old.lng != new.lng
+    fun lat(own: Double) = if (moved) new.lat else own
+    fun lng(own: Double) = if (moved) new.lng else own
+    fun radius(own: Int) = if (own == old.radiusM) new.radiusM else own
+    fun label(own: String) = if (own.trim().equals(old.label.trim(), ignoreCase = true)) new.label else own
+    fun key(own: String?) = new.id.ifBlank { null } ?: own
+}
 
-private fun Condition.movedTo(old: SavedPlace, new: SavedPlace): Condition =
-    if (this !is Condition.AtPlace || !old.pinOf(lat, lng)) this
-    else copy(
-        lat = new.lat,
-        lng = new.lng,
-        radiusM = if (radiusM == old.radiusM) new.radiusM else radiusM,
-        label = if (label == old.label) new.label else label,
-    )
+private fun Trigger.Location.movedBy(edit: PlaceEdit): Trigger.Location =
+    if (!edit.old.isOf(placeId, lat, lng, label)) this
+    else copy(lat = edit.lat(lat), lng = edit.lng(lng), radiusM = edit.radius(radiusM), label = edit.label(label), placeId = edit.key(placeId))
 
-private fun List<TriggerRule>.movedTo(old: SavedPlace, new: SavedPlace): List<TriggerRule> = map { rule ->
+private fun Condition.movedBy(edit: PlaceEdit): Condition =
+    if (this !is Condition.AtPlace || !edit.old.isOf(placeId, lat, lng, label)) this
+    else copy(lat = edit.lat(lat), lng = edit.lng(lng), radiusM = edit.radius(radiusM), label = edit.label(label), placeId = edit.key(placeId))
+
+private fun List<TriggerRule>.movedBy(edit: PlaceEdit): List<TriggerRule> = map { rule ->
     rule.copy(
-        trigger = (rule.trigger as? Trigger.Location)?.movedTo(old, new) ?: rule.trigger,
-        conditions = rule.conditions.map { it.movedTo(old, new) },
+        trigger = (rule.trigger as? Trigger.Location)?.movedBy(edit) ?: rule.trigger,
+        conditions = rule.conditions.map { it.movedBy(edit) },
     )
 }
 
-private fun Recurrence.movedTo(old: SavedPlace, new: SavedPlace): Recurrence =
-    withConditions(conditions.map { it.movedTo(old, new) })
+private fun Recurrence.movedBy(edit: PlaceEdit): Recurrence =
+    withConditions(conditions.map { it.movedBy(edit) })
 
 /**
- * Every reminder still to ring with a place on [old]'s pin, carried over to [new]: its rules,
+ * Every reminder still to ring with a place taken from [old], carried over to [new]: its rules,
  * their fences, its calendar's fences and a snooze waiting at that door. Only the rows that
  * changed. DONE ones are left as they were written: they are history, not plans.
  */
 fun movePlaceIn(reminders: List<Reminder>, old: SavedPlace, new: SavedPlace): List<Reminder> {
     if (old == new) return emptyList()
+    val edit = PlaceEdit(old, new)
     return reminders.mapNotNull { reminder ->
         if (reminder.status == Status.DONE) return@mapNotNull null
         val moved = reminder.copy(
-            rules = reminder.rules.movedTo(old, new),
-            recurrence = reminder.recurrence.movedTo(old, new),
-            snoozedToPlace = reminder.snoozedToPlace?.movedTo(old, new),
+            rules = reminder.rules.movedBy(edit),
+            recurrence = reminder.recurrence.movedBy(edit),
+            snoozedToPlace = reminder.snoozedToPlace?.movedBy(edit),
         )
         moved.takeIf { it != reminder }
     }
@@ -185,4 +192,4 @@ fun movePlaceIn(reminders: List<Reminder>, old: SavedPlace, new: SavedPlace): Li
 /** The same, on the presets: the whole list back, since the settings blob is written whole. */
 fun movePlaceInPresets(presets: List<Preset>, old: SavedPlace, new: SavedPlace): List<Preset> =
     if (old == new) presets
-    else presets.map { it.copy(rules = it.rules.movedTo(old, new), recurrence = it.recurrence.movedTo(old, new)) }
+    else PlaceEdit(old, new).let { edit -> presets.map { it.copy(rules = it.rules.movedBy(edit), recurrence = it.recurrence.movedBy(edit)) } }

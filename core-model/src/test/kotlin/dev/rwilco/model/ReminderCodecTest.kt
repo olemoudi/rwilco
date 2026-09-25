@@ -351,5 +351,15 @@ class ReminderCodecTest {
         val place = ReminderCodec.decodeRules(newer).single().trigger as Trigger.Location
         assertEquals(10, place.dwellMinutes)
     }
-}
 
+    @Test
+    fun `a place's key is written only when there is one, and read back`() {
+        val plain = TriggerRule(Trigger.Location(40.4169, -3.7035, 200, Presence.INSIDE, "Casa"), listOf(Condition.AtPlace(40.4, -3.7, 150, "Oficina")))
+        assertFalse(ReminderCodec.encodeRules(listOf(plain)).contains("placeId"), "no place on a phone changes shape")
+        val keyed = TriggerRule(
+            Trigger.Location(40.4169, -3.7035, 200, Presence.INSIDE, "Casa", placeId = "casa-key"),
+            listOf(Condition.AtPlace(40.4, -3.7, 150, "Oficina", placeId = "oficina-key")),
+        )
+        assertEquals(keyed, ReminderCodec.decodeRules(ReminderCodec.encodeRules(listOf(keyed))).single())
+    }
+}

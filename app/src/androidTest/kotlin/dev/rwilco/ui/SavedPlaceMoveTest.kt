@@ -39,7 +39,7 @@ import org.junit.runner.RunWith
 
 /**
  * A saved place edited in Settings asks whether what uses it goes with it, and says what by
- * name (0.143.0): the reminder and the routine on its pin are listed, the finished one and the
+ * name (0.143.0, keys 0.144.0): what uses its pin, its key or its name is listed, the finished one and the
  * one somewhere else are not, and the answer reaches the rows — or, for "only the place",
  * leaves them exactly as they were.
  */
@@ -58,13 +58,18 @@ class SavedPlaceMoveTest {
 
     private fun s(id: Int): String = rule.activity.getString(id)
 
-    private val office = SavedPlace("Oficina", 40.501234, -3.661234, 200)
+    private val office = SavedPlace("Oficina", 40.501234, -3.661234, 200, id = "office-key")
     private val home = SavedPlace("Casa", 40.4169, -3.7035, 50)
 
     private val leaving = "Registrar la jornada"
     private val routine = "Regar el ficus"
     private val finished = "Pedir cita en la oficina"
     private val elsewhere = "Comprar pan"
+    // The two a pin alone could not find: one keyed to the office on a pin that has drifted,
+    // and one from before keys, on an old pin, known only by the name. (A copy under a name of
+    // its own has nothing a rename would change, so it is not listed: SavedPlaceMoveTest on the JVM.)
+    private val keyed = "Fichar al entrar"
+    private val byName = "Llevar el portátil"
 
     private fun at(place: SavedPlace, presence: Presence) =
         TriggerRule(Trigger.Location(place.lat, place.lng, place.radiusM, presence, place.label, onCrossing = true))
@@ -76,11 +81,18 @@ class SavedPlaceMoveTest {
             it.copy(lastSeenVersionCode = BuildConfig.VERSION_CODE, theme = ThemeMode.DARK, savedPlaces = listOf(office, home))
         }
         val now = app.clock.instant()
-        fun reminder(id: String, text: String, place: SavedPlace, status: Status = Status.ACTIVE, recurrence: Recurrence = Recurrence.None) =
+        fun reminder(
+            id: String,
+            text: String,
+            place: SavedPlace,
+            status: Status = Status.ACTIVE,
+            recurrence: Recurrence = Recurrence.None,
+            placeId: String? = null,
+        ) =
             Reminder(
                 id = id,
                 text = text,
-                rules = listOf(at(place, Presence.OUTSIDE)),
+                rules = listOf(TriggerRule(at(place, Presence.OUTSIDE).trigger.let { (it as Trigger.Location).copy(placeId = placeId) })),
                 status = status,
                 recurrence = recurrence,
                 createdAt = now,
@@ -92,6 +104,8 @@ class SavedPlaceMoveTest {
                 reminder("routine", routine, office, Status.PAUSED, Recurrence.Since(21, RecurrenceUnit.DAYS)),
                 reminder("finished", finished, office, Status.DONE),
                 reminder("elsewhere", elsewhere, home),
+                reminder("keyed", keyed, office.copy(lat = 40.4, lng = -3.6), placeId = office.id),
+                reminder("byName", byName, office.copy(lat = 40.49, lng = -3.65)),
             ),
         )
     }
@@ -115,6 +129,10 @@ class SavedPlaceMoveTest {
 
     private fun savedLabel(): String = runBlocking { app.settingsStore.settings.first().savedPlaces.first().label }
 
+    private fun placeId(id: String): String? = runBlocking {
+        (app.repository.get(id)?.rules?.single()?.trigger as? Trigger.Location)?.placeId
+    }
+
     private fun label(id: String): String? = runBlocking {
         (app.repository.get(id)?.rules?.single()?.trigger as? Trigger.Location)?.label
     }
@@ -125,6 +143,8 @@ class SavedPlaceMoveTest {
         // What is still to ring on that pin, by name, with the routine and the pause said...
         rule.onNodeWithText(leaving, useUnmergedTree = true).assertIsDisplayed()
         rule.onNodeWithText(routine, useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithText(keyed, useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText(byName, useUnmergedTree = true).performScrollTo().assertIsDisplayed()
         rule.onNodeWithText("${s(R.string.home_search_kind_routine)} · ${s(R.string.home_tag_paused)}", useUnmergedTree = true)
             .assertIsDisplayed()
         // ...and neither the finished one nor the one somewhere else.
@@ -137,6 +157,9 @@ class SavedPlaceMoveTest {
         rule.waitUntil(timeoutMillis = 10_000) { savedLabel() == "Curro" }
         assertEquals("Curro", label("leaving"))
         assertEquals("Curro", label("routine"))
+        assertEquals("found by the key, on a pin nothing else would match", "Curro", label("keyed"))
+        assertEquals("Curro", label("byName"))
+        assertEquals("found by name once, by the key from now on", office.id, placeId("byName"))
         assertEquals("history stays as written", office.label, label("finished"))
         assertEquals(home.label, label("elsewhere"))
     }

@@ -67,6 +67,8 @@ import dev.rwilco.model.kind
 import dev.rwilco.model.movingOf
 import dev.rwilco.model.Presence
 import dev.rwilco.model.SavedPlace
+import dev.rwilco.model.idAt
+import dev.rwilco.model.newPlaceId
 import dev.rwilco.model.Trigger
 import dev.rwilco.ui.components.PermissionFixRow
 import dev.rwilco.ui.components.PresetChip
@@ -331,8 +333,16 @@ fun LocationSheet(
         title = title,
         onDismiss = onDismiss,
         onConfirm = {
-            if (keep && keepOffered) onKeepPlace?.invoke(SavedPlace(label.trim(), lat!!, lng!!, radius))
-            val place = Trigger.Location(lat!!, lng!!, radius, Presence.valueOf(presence), label.trim(), onCrossing, rate)
+            // The key of the saved place this circle came from: the one whose pin it is, or the
+            // one it opened with if the pin has not moved. A pin put down any other way has none.
+            var placeId = savedPlaces.idAt(lat, lng) ?: initial?.placeId?.takeIf { initial.lat == lat && initial.lng == lng }
+            if (keep && keepOffered) {
+                // Kept under a name that is already saved, it replaces that place and keeps its key.
+                val kept = savedPlaces.firstOrNull { it.label.equals(label.trim(), ignoreCase = true) }?.id?.ifBlank { null } ?: newPlaceId()
+                onKeepPlace?.invoke(SavedPlace(label.trim(), lat!!, lng!!, radius, id = kept))
+                placeId = kept
+            }
+            val place = Trigger.Location(lat!!, lng!!, radius, Presence.valueOf(presence), label.trim(), onCrossing, rate, placeId = placeId)
             onConfirmRule?.invoke(place, fence, resets) ?: onConfirm(place)
         },
         confirmLabel = stringResource(if (initial == null) R.string.sheet_add else R.string.sheet_done),

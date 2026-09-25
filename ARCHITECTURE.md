@@ -1565,13 +1565,19 @@ loud what DST and a change of zone do to a landing.
   `AtDateTime`; the place
   sheet offers the places kept by name in Settings (`AppSettings.savedPlaces`, managed by
   `SavedPlacesCard` through the same sheet without the arriving/leaving choice) as one-tap
-  chips — **copied, not referenced**, so an edit to one in Settings asks "update everything
-  that uses it?" when some reminder still carries the old copy, and lists them by their words,
-  a routine and a pause said under each (0.142.0, the list 0.143.0; `movePlaceIn` in
-  `Curation.kt`, `SavedPlaceMoveTest` on the device): *using* it means the same pin, and only the fields the edit changed move, and
-  only where the copy still had the old value, so a radius tuned for one reminder stays; rules,
-  their fences, a calendar's fences, a snooze at that door and the presets go; DONE rows are
-  history and stay as written. A moved circle is a new fence id, so its watch starts afresh. The
+  chips — **copied, and keyed** (0.144.0). The rule keeps its own circle, so it rings by that
+  alone and a place deleted in Settings takes nothing with it; beside the copy it keeps the
+  place's fixed key (`SavedPlace.id` → `Trigger.Location.placeId`/`Condition.AtPlace.placeId`,
+  written only when set), stamped by the chip, by "guardar este lugar" and by a snooze to a saved
+  place, and dropped when the pin is put down any other way. An edit in Settings then asks
+  "update everything that uses it?", listing the rows by their words (`movePlaceIn` in
+  `Curation.kt`; `SavedPlaceMoveTest` on the JVM and on the device): *using* it is the key, or —
+  for a rule from before keys — the same pin or the same name, and carrying it over stamps the
+  key. The pin moves whenever the edit moved it; the radius and the name only where the copy
+  still had the old ones. DONE rows are history and stay as written. A place kept before keys
+  gets one worked out from what it is and where it sits (`withPlaceIds`, in the settings read
+  path), the same on every read until the next write stores it. A moved circle is a new fence
+  id, so its watch starts afresh. The
   sheet also searches addresses through the platform `Geocoder` (`PlaceSearch.kt` — which tells
   "no such address" from "could not look", 0.132.0, since the geocoder needs a network), and asks every
   enabled provider at once for a fix (`CurrentLocation.kt`: fine *or* coarse is enough, the

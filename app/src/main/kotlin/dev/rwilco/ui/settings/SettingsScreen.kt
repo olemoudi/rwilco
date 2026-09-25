@@ -74,6 +74,7 @@ import dev.rwilco.model.contactWarning
 import dev.rwilco.model.OFFERED_KINDS
 import dev.rwilco.model.Presence
 import dev.rwilco.model.SavedPlace
+import dev.rwilco.model.newPlaceId
 import dev.rwilco.model.ThemeMode
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.VibrationRhythm
@@ -675,11 +676,12 @@ fun SettingsScreen(
             editingPlace?.let { index ->
                 val existing = current.savedPlaces.getOrNull(index)
                 LocationSheet(
-                    initial = existing?.let { Trigger.Location(it.lat, it.lng, it.radiusM, Presence.INSIDE, it.label) },
+                    initial = existing?.let { Trigger.Location(it.lat, it.lng, it.radiusM, Presence.INSIDE, it.label, placeId = it.id) },
                     title = stringResource(R.string.place_saved_title),
                     pickTransition = false,
                     onConfirm = { place ->
-                        viewModel.savePlace(index.takeIf { it >= 0 }, SavedPlace(place.label, place.lat, place.lng, place.radiusM))
+                        // The key stays with the place through every edit: it is what the rules taken from it know it by.
+                        viewModel.savePlace(index.takeIf { it >= 0 }, SavedPlace(place.label, place.lat, place.lng, place.radiusM, id = existing?.id ?: newPlaceId()))
                         editingPlace = null
                     },
                     onDismiss = { editingPlace = null },

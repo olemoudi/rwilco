@@ -24,6 +24,7 @@ import dev.rwilco.model.MovingKind
 import dev.rwilco.model.kind
 import dev.rwilco.model.movingOf
 import dev.rwilco.model.SavedPlace
+import dev.rwilco.model.newPlaceId
 import dev.rwilco.ui.components.DayToggles
 import dev.rwilco.ui.components.MonthDayToggles
 import dev.rwilco.ui.components.PresetChip
@@ -93,7 +94,7 @@ fun ConditionSheet(
     // deleted or renamed in Settings since — so re-opening it does not quietly point it at
     // whichever place happens to be first.
     val offered = if (atPlace != null && savedPlaces.none { it.label == atPlace.label }) {
-        savedPlaces + SavedPlace(atPlace.label, atPlace.lat, atPlace.lng, atPlace.radiusM)
+        savedPlaces + SavedPlace(atPlace.label, atPlace.lat, atPlace.lng, atPlace.radiusM, id = atPlace.placeId.orEmpty())
     } else {
         savedPlaces
     }
@@ -111,7 +112,7 @@ fun ConditionSheet(
         onConfirm = {
             when {
                 kind == KIND_PLACE && pickedPlace != null ->
-                    onConfirm(Condition.AtPlace(pickedPlace.lat, pickedPlace.lng, pickedPlace.radiusM, pickedPlace.label, inside))
+                    onConfirm(Condition.AtPlace(pickedPlace.lat, pickedPlace.lng, pickedPlace.radiusM, pickedPlace.label, inside, placeId = pickedPlace.id.ifBlank { null }))
                 kind == KIND_MONTH_DAYS -> onConfirm(Condition.OnMonthDays(monthDays))
                 kind == KIND_MOVING -> onConfirm(movingOf(MovingKind.valueOf(movingKind)))
                 else -> onConfirm(Condition.TimeWindow(from, to, selected))
@@ -238,7 +239,9 @@ fun ConditionSheet(
             title = stringResource(R.string.place_saved_title),
             pickTransition = false,
             onConfirm = { made ->
-                onKeepPlace(SavedPlace(made.label, made.lat, made.lng, made.radiusM))
+                // A namesake is replaced, and its key goes on with it.
+                val kept = savedPlaces.firstOrNull { it.label.equals(made.label, ignoreCase = true) }?.id?.ifBlank { null } ?: newPlaceId()
+                onKeepPlace(SavedPlace(made.label, made.lat, made.lng, made.radiusM, id = kept))
                 chosenLabel = made.label
                 addingPlace = false
             },

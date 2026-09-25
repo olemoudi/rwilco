@@ -64,7 +64,7 @@ const val HERE_FIX_MAX_ACCURACY_M = 150.0
 
 /** The doorway in: "cuando llegue a casa", whichever side the phone is on when it is said. */
 fun SnoozePlace.Arrive.circle(): Trigger.Location =
-    Trigger.Location(place.lat, place.lng, place.radiusM, Presence.INSIDE, place.label, onCrossing = true)
+    Trigger.Location(place.lat, place.lng, place.radiusM, Presence.INSIDE, place.label, onCrossing = true, placeId = place.id.ifBlank { null })
 
 /** The doorway out of a circle drawn around [fix]; [label] is the word for "here" in the person's language. */
 fun hereCircle(fix: Fix, label: String): Trigger.Location =

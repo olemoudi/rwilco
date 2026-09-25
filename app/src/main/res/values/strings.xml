@@ -1701,6 +1701,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_144_0">
+
+        <item>A saved place now has a fixed key, and a reminder that takes it from a chip keeps that key beside its own copy. Editing the place finds them by the key, wherever their pin has drifted. Reminders written before this are found by the same pin or by the same name, and they get the key when you update them.</item>
+
+    </string-array>
     <string-array name="whats_new_0_143_0">
 
         <item>The question asked when you edit a saved place now says which reminders and routines it is about, by their words, with a routine or a paused one marked as such. It used to give only a number.</item>

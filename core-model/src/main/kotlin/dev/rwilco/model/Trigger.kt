@@ -298,6 +298,15 @@ sealed interface Trigger {
         // carries this: the rate is the rare answer, and the bytes belong to the common one.
         @EncodeDefault(EncodeDefault.Mode.NEVER)
         val dwellMinutes: Int? = null,
+        /**
+         * The saved place this circle was taken from ([SavedPlace.id]), or null for a pin
+         * dropped by hand. A key, not a source: the circle above is still the rule's own copy
+         * and all the watch ever reads, so a saved place deleted in Settings takes nothing with
+         * it. What the key is for is finding this rule again when that place is edited. Never
+         * written when absent, for the reason [dwellMinutes] is not.
+         */
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
+        val placeId: String? = null,
     ) : Trigger
 
     /**
