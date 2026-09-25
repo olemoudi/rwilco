@@ -20,7 +20,10 @@ enum class FiringKind {
     /** The safety net said its word about a moment that got away. */
     NET,
 
-    /** "Hecho", given to a ring waiting for an answer, or to a one-off ahead of its moment. */
+    /**
+     * "Hecho": to a ring waiting for an answer, to a round put off, or ahead of the moment — of a
+     * one-off, or of the next round of something that comes back (0.149.0: only "saltar" is a skip).
+     */
     DEALT,
 
     /** A round of a recurring reminder let pass on purpose, ahead of its ring. */

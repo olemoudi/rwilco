@@ -175,10 +175,21 @@ class ReminderRepository(
      * reminder on the way in; a row that is gone by the time this runs (a notification's
      * button outliving its reminder) is nothing to write about, not a failure.
      */
-    suspend fun record(reminderId: String, kind: FiringKind, at: Instant = clock.instant(), ruleIndex: Int? = null, detail: String? = null) {
+    suspend fun record(reminderId: String, kind: FiringKind, at: Instant = clock.instant(), ruleIndex: Int? = null, detail: String? = null): Long? =
         runCatching {
-            events.insert(FiringEventEntity(reminderId = reminderId, at = at.toEpochMilli(), kind = kind.name, ruleIndex = ruleIndex, detail = detail))
+            val line = events.insert(FiringEventEntity(reminderId = reminderId, at = at.toEpochMilli(), kind = kind.name, ruleIndex = ruleIndex, detail = detail))
             events.trim(reminderId, HISTORY_KEEP)
+            line
+        }.getOrNull()
+
+    /**
+     * The line [record] wrote for an answer now being taken back — that one and no other. A
+     * snooze's line stays if the reminder has rung since ([FiringEventDao.deleteLineUnlessRangSince]).
+     * Never fatal, like [forgetNewest].
+     */
+    suspend fun forgetLine(reminderId: String, line: Long, keepIfRangSince: Boolean = false) {
+        runCatching {
+            if (keepIfRangSince) events.deleteLineUnlessRangSince(reminderId, line) else events.deleteLine(reminderId, line)
         }
     }
 

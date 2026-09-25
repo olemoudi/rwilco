@@ -18,8 +18,21 @@ import java.time.Instant
 
 /** How a reminder's rounds are read. */
 enum class RoundShape {
-    /** It comes back ("Vuelve"): an unanswered ring is overtaken by the next one, and that is a miss. */
+    /**
+     * It comes back on its own clock — counted from the ring, drawn by its trigger, or a calendar
+     * ringing its own dates: the next ring is the next round whether or not the last was
+     * answered, so an unanswered ring overtaken by the next one is a miss.
+     */
     REPEATING,
+
+    /**
+     * It comes back, but from the "hecho": the span counts from the answer, and until there is one
+     * the rules go on asking (a place crossed again, the same hour the next day). A second ring is
+     * the same round asking again, not the next one — so a miss is only the net's word left
+     * unanswered, as for a one-off (review of 0.152.0: "al llegar a casa, vuelve cada día",
+     * ignored at six and done at the second arrival, was a miss and a broken streak).
+     */
+    UNTIL_DONE,
 
     /** Once: it may ring more than once (a place, crossed twice) and it is still one round. */
     ONE_OFF,
@@ -28,9 +41,10 @@ enum class RoundShape {
     ROUTINE,
 
     /**
-     * A contact, or something that asks for no answer (no actions): its "hechos" are counted and
-     * nothing else. A contact is never a debt (Waiting.kt), and a reminder that rings silently and
-     * asks for nothing cannot have been left unanswered.
+     * A contact, something that asks for no answer (no actions), or a to-do with nothing that can
+     * ring: its "hechos" are counted and nothing else. A contact is never a debt (Waiting.kt), a
+     * reminder that rings silently and asks for nothing cannot have been left unanswered, and a
+     * to-do ticked off was never "ahead" of a ring it could not have.
      */
     QUIET,
 }
@@ -41,8 +55,23 @@ val Reminder.roundShape: RoundShape
         // Before the actions: a routine goes overdue whether or not its deadline makes a sound.
         isRoutine -> RoundShape.ROUTINE
         actions.isEmpty() -> RoundShape.QUIET
-        recurrence.repeats -> RoundShape.REPEATING
-        else -> RoundShape.ONE_OFF
+        !recurrence.repeats && rules.isEmpty() -> RoundShape.QUIET
+        !recurrence.repeats -> RoundShape.ONE_OFF
+        roundsByClock -> RoundShape.REPEATING
+        else -> RoundShape.UNTIL_DONE
+    }
+
+/**
+ * Whether the next round comes whatever became of the last: a span from the ring, the trigger's
+ * own draws, or a calendar with no rules of its own (its dates are the rings). A calendar with
+ * rules is a rest counted from the "hecho" (`restUntil`), like any span from the answer.
+ */
+private val Reminder.roundsByClock: Boolean
+    get() = when (val recurrence = recurrence) {
+        Recurrence.ByTrigger -> true
+        is Recurrence.After -> recurrence.from == RecurrenceFrom.RANG
+        is Recurrence.Calendar, is Recurrence.MonthlyWeekday -> rules.isEmpty()
+        else -> false
     }
 
 /** How a round ended. */
@@ -71,12 +100,14 @@ data class Round(
     val snoozes: Int,
     val chased: Boolean,
     val late: Boolean,
+    /** How many times it rang before the "hecho": more than one is being asked again. */
+    val rings: Int = if (rang) 1 else 0,
 ) {
     val keepsStreak: Boolean get() = end == RoundEnd.DONE && !late
     val breaksStreak: Boolean get() = end == RoundEnd.NOT_DONE || (end == RoundEnd.DONE && late)
 
-    /** Done the first time it was asked: no snooze, not overdue, not chased. */
-    val firstTime: Boolean get() = end == RoundEnd.DONE && snoozes == 0 && !late && !chased
+    /** Done the first time it was asked: rung at most once, no snooze, not overdue, not chased. */
+    val firstTime: Boolean get() = end == RoundEnd.DONE && rings <= 1 && snoozes == 0 && !late && !chased
 
     /** Done before it ever rang. */
     val ahead: Boolean get() = end == RoundEnd.DONE && !rang
@@ -169,23 +200,28 @@ private class OpenRound(val startedAt: Instant) {
 
     fun chase(at: Instant) {
         if (chasedAt == null) chasedAt = at
+        // The net only speaks about a ring nobody answered: whatever snooze came before it was
+        // taken back ("quitar el posponer" writes no line), and the next ring overtakes this one.
+        snoozedSinceRing = false
     }
 
     /** Only what happened by [at] counts: a hecho dated earlier takes back what came after it. */
     fun done(at: Instant, shape: RoundShape): Round {
-        val rang = rings.any { it <= at }
+        val rang = rings.count { it <= at }
         return Round(
             end = RoundEnd.DONE,
             startedAt = minOf(startedAt, at),
             endedAt = at,
-            rang = rang,
+            rang = rang > 0,
             snoozes = snoozes.count { it <= at },
             chased = chasedAt?.let { it <= at } == true,
-            late = shape == RoundShape.ROUTINE && rang,
+            late = shape == RoundShape.ROUTINE && rang > 0,
+            rings = rang,
         )
     }
 
-    fun close(end: RoundEnd, at: Instant?) = Round(end, startedAt, at, rings.isNotEmpty(), snoozes.size, chasedAt != null, late = false)
+    fun close(end: RoundEnd, at: Instant?) =
+        Round(end, startedAt, at, rings.isNotEmpty(), snoozes.size, chasedAt != null, late = false, rings = rings.size)
 
     /**
      * The round still under way. Chased and unanswered is not done — until a hecho arrives and
@@ -252,8 +288,11 @@ data class ReminderStats(
 /** How many rounds the strip on a reminder shows: a month of a daily one, at a glance. */
 const val RECENT_ROUNDS = 20
 
-fun reminderStats(events: List<FiringEvent>, shape: RoundShape): ReminderStats {
-    val all = rounds(events, shape)
+fun reminderStats(events: List<FiringEvent>, shape: RoundShape): ReminderStats =
+    statsOf(rounds(events, shape), shape, since = events.minOfOrNull { it.at })
+
+/** The same, from rounds already read — [since] being the oldest line they were read from. */
+fun statsOf(all: List<Round>, shape: RoundShape, since: Instant?): ReminderStats {
     val done = all.filter { it.end == RoundEnd.DONE }
     val hechos = done.mapNotNull { it.endedAt }.sorted()
     val gaps = hechos.zipWithNext { earlier, later -> Duration.between(earlier, later) }
@@ -269,7 +308,7 @@ fun reminderStats(events: List<FiringEvent>, shape: RoundShape): ReminderStats {
         bestStreak = if (counted) bestStreak(all) else 0,
         meanGap = gaps.takeIf { it.isNotEmpty() }?.let { list -> list.fold(Duration.ZERO, Duration::plus).dividedBy(list.size.toLong()) },
         lastDone = hechos.lastOrNull(),
-        since = events.minOfOrNull { it.at },
+        since = since,
         recent = all.mapNotNull { it.mark }.takeLast(RECENT_ROUNDS),
     )
 }

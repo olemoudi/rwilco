@@ -91,17 +91,22 @@ fun achievements(tallies: List<Tally>, now: Instant, zone: ZoneId): List<Unlocke
     out += crossings(AchievementFamily.HECHOS, hechos.map(::day))
 
     val ahead = tallies
-        .filter { it.subject.shape == RoundShape.REPEATING || it.subject.shape == RoundShape.ONE_OFF }
+        .filter { it.subject.shape.canBeAhead }
         .flatMap { tally -> tally.rounds.filter { it.ahead } }
         .sortedBy { it.at }
     out += crossings(AchievementFamily.AHEAD, ahead.map(::day))
 
     val thisWeek = now.atZone(zone).toLocalDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    // A round still open counts against its week until it closes: a Sunday-evening ring nobody
+    // has answered yet may still turn into a miss, and a milestone is never taken back.
     val perfectWeeks = tallies
         .filter { it.subject.shape.keepsCount }
-        .flatMap { tally -> tally.rounds.filter { it.end == RoundEnd.DONE || it.end == RoundEnd.NOT_DONE } }
+        .flatMap { tally -> tally.rounds.filter { it.end != RoundEnd.SKIPPED } }
         .groupBy { day(it).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)) }
-        .filter { (monday, rounds) -> monday.isBefore(thisWeek) && rounds.size >= PERFECT_WEEK_MIN && rounds.none { it.breaksStreak } }
+        .filter { (monday, rounds) ->
+            monday.isBefore(thisWeek) && rounds.none { it.end == RoundEnd.OPEN } &&
+                rounds.size >= PERFECT_WEEK_MIN && rounds.none { it.breaksStreak }
+        }
         .keys.sorted()
         .map { monday -> monday.plusDays(6) }
     out += crossings(AchievementFamily.PERFECT_WEEKS, perfectWeeks)
@@ -153,5 +158,5 @@ fun nextGoal(stats: GlobalStats, unlocked: List<Unlocked>): Goal? {
             .firstOrNull { tier -> tier > streak && Unlocked(AchievementFamily.STREAK, tier, LocalDate.MIN, tally.subject.id).key !in have }
             ?.let { candidates += Goal(AchievementFamily.STREAK, it, it - streak, tally.subject) }
     }
-    return candidates.minWithOrNull(compareBy<Goal> { it.remaining }.thenBy { it.family.ordinal }.thenBy { it.subject?.text })
+    return candidates.minWithOrNull(compareBy<Goal> { it.remaining }.thenBy { it.family != AchievementFamily.HECHOS }.thenBy { it.subject?.text })
 }

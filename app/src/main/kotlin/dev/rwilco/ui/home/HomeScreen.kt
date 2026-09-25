@@ -617,7 +617,7 @@ fun HomeScreen(
         val waitingShown = !search.open && state.waiting.isNotEmpty()
         // The line of encouragement: never while searching, and never over something owed (the
         // view model already goes quiet then; this is the frame before it notices).
-        val cheerShown = cheer != null && !search.open && state.waiting.isEmpty()
+        val cheerShown = cheer != null && !search.open && state.calm
         // The row of chips, and the "+" on it that administers the tags. Not only while a
         // chip has something to filter (0.93.0): a tag left on finished reminders alone is
         // the one 0.90.0 made deletable *from that panel*, and the panel had no door then.

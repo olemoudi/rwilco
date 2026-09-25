@@ -63,14 +63,18 @@ const val DIAG_HISTORY_LINES = 400
 
 @Dao
 interface FiringEventDao {
+    /** The new line's id: what an undo takes back, and nothing else (0.152.0). */
     @Insert
-    suspend fun insert(event: FiringEventEntity)
+    suspend fun insert(event: FiringEventEntity): Long
 
     /** A reminder's history put back with it, after an undone delete. */
     @Insert
     suspend fun insertAll(events: List<FiringEventEntity>)
 
-    /** Newest first; the screen reads it that way and the cap below counts from the same end. */
+    /**
+     * Newest first, by when it happened, and the cap below counts from the same end. The editor
+     * and the statistics read [written] instead; this is for the device tests.
+     */
     @Query("SELECT * FROM firing_event WHERE reminderId = :reminderId ORDER BY at DESC, id DESC LIMIT :limit")
     suspend fun history(reminderId: String, limit: Int): List<FiringEventEntity>
 
@@ -103,13 +107,35 @@ interface FiringEventDao {
      * back with the row (0.139.0). "Hecho" writes a line and the undo restored the row without it,
      * so a reminder answered and unanswered twice read as "hecha 3 veces" having been done once.
      * Bounded by [after] — the moment the row itself was last dealt with — so it can only ever
-     * reach the line this very "hecho" wrote, never the real one before it.
+     * reach the line this very "hecho" wrote, never the real one before it. Only the shade's and
+     * the alert screen's undo use it now, which carry the row and not the line; Home's and the
+     * routines' take theirs back by id ([deleteLine]).
      */
     @Query(
         "DELETE FROM firing_event WHERE id = (SELECT id FROM firing_event WHERE reminderId = :reminderId " +
             "AND kind IN (:kinds) AND at > :after ORDER BY at DESC, id DESC LIMIT 1)",
     )
     suspend fun deleteNewest(reminderId: String, kinds: List<String>, after: Long)
+
+    /**
+     * One line, by the id [insert] gave it: the undo of the very answer that wrote it (0.152.0).
+     * "The newest of its kind after the row's last hecho", which the undos used before, is the
+     * line meant almost always — and a real earlier one when a clock was wrong, a routine's anchor
+     * had been pushed ahead by a pause, or another door answered in between.
+     */
+    @Query("DELETE FROM firing_event WHERE id = :id AND reminderId = :reminderId")
+    suspend fun deleteLine(reminderId: String, id: Long)
+
+    /**
+     * The same, unless the reminder has rung since: a snooze taken back after its own ring would
+     * leave that ring and the one before it with no answer between them, which the statistics read
+     * as a round left undone. The line stays then — the snooze did happen.
+     */
+    @Query(
+        "DELETE FROM firing_event WHERE id = :id AND reminderId = :reminderId AND NOT EXISTS " +
+            "(SELECT 1 FROM firing_event WHERE reminderId = :reminderId AND id > :id AND kind IN ('RANG', 'MISSED'))",
+    )
+    suspend fun deleteLineUnlessRangSince(reminderId: String, id: Long)
 
     /** Everything past the newest [keep] of one reminder's rows. */
     @Query(

@@ -59,12 +59,40 @@ class RoundsTest {
     }
 
     @Test
-    fun `a one-off rung twice before its hecho is one round`() {
-        // A place crossed twice rings twice; it is still one thing to do.
+    fun `a one-off rung twice before its hecho is one round, done but not at the first ask`() {
+        // A place crossed twice rings twice; it is still one thing to do — asked twice.
         val events = listOf(rang(day(1)), rang(day(2)), dealt(day(2, 9, 5)))
         val round = rounds(events, RoundShape.ONE_OFF).single()
         assertEquals(RoundEnd.DONE, round.end)
-        assertTrue(round.firstTime)
+        assertEquals(2, round.rings)
+        assertFalse(round.firstTime)
+        assertTrue(round.keepsStreak)
+    }
+
+    @Test
+    fun `a span from the hecho asked again is the same round, not a miss`() {
+        // "Al llegar a casa, vuelve cada día": ignored at six, rung again at the second arrival
+        // at eight, done then. The rules go on asking until the answer; that is one round.
+        val events = listOf(rang(day(1, 18)), rang(day(1, 20)), dealt(day(1, 20).plusSeconds(300)))
+        val all = rounds(events, RoundShape.UNTIL_DONE)
+        assertEquals(listOf(RoundEnd.DONE), all.map { it.end })
+        assertEquals(1, currentStreak(all))
+        // It fails the way a one-off does: the net's word, and still nothing.
+        val chased = listOf(rang(day(1, 18)), e(FiringKind.NET, day(2, 12), NetWord.LET_GO.name))
+        assertEquals(RoundEnd.NOT_DONE, rounds(chased, RoundShape.UNTIL_DONE).single().end)
+    }
+
+    @Test
+    fun `a snooze taken back does not hide the ring it was about`() {
+        // Rang, put off, the snooze taken back (which writes no line), the net's word, then the
+        // next day's ring: the first round was not done.
+        val events = listOf(
+            rang(day(1)),
+            snoozed(day(1, 9, 1)),
+            e(FiringKind.NET, day(1, 12), NetWord.LET_GO.name),
+            rang(day(2)),
+        )
+        assertEquals(listOf(RoundEnd.NOT_DONE, RoundEnd.OPEN), rounds(events, RoundShape.REPEATING).map { it.end })
     }
 
     @Test
@@ -249,11 +277,19 @@ class RoundsTest {
 
     @Test
     fun `a reminder is read by what it is`() {
-        val base = Fixtures.reminder()
-        assertEquals(RoundShape.ONE_OFF, base.roundShape)
-        assertEquals(RoundShape.REPEATING, base.copy(recurrence = Recurrence.After(1, RecurrenceUnit.DAYS)).roundShape)
-        assertEquals(RoundShape.QUIET, base.copy(recurrence = Recurrence.After(1, RecurrenceUnit.DAYS), actions = emptySet()).roundShape)
-        assertEquals(RoundShape.ROUTINE, base.copy(recurrence = Recurrence.Since(7, RecurrenceUnit.DAYS), actions = emptySet()).roundShape)
-        assertEquals(RoundShape.QUIET, base.copy(recurrence = Recurrence.Since(90, RecurrenceUnit.DAYS), contactKind = ContactKind.WORK).roundShape)
+        val ringing = Fixtures.reminder(Trigger.TimeOfDay(java.time.LocalTime.of(9, 0)))
+        assertEquals(RoundShape.ONE_OFF, ringing.roundShape)
+        // A to-do with nothing that can ring: its hechos count, and it is never "ahead" of anything.
+        assertEquals(RoundShape.QUIET, Fixtures.reminder().roundShape)
+        assertEquals(RoundShape.UNTIL_DONE, ringing.copy(recurrence = Recurrence.After(1, RecurrenceUnit.DAYS)).roundShape)
+        assertEquals(RoundShape.UNTIL_DONE, Fixtures.reminder().copy(recurrence = Recurrence.After(1, RecurrenceUnit.DAYS)).roundShape)
+        assertEquals(RoundShape.REPEATING, ringing.copy(recurrence = Recurrence.After(1, RecurrenceUnit.HOURS, RecurrenceFrom.RANG)).roundShape)
+        assertEquals(RoundShape.REPEATING, ringing.copy(recurrence = Recurrence.ByTrigger).roundShape)
+        val calendar = Recurrence.Calendar(Trigger.Repeat(startsOn = java.time.LocalDate.of(2026, 8, 1), unit = RepeatUnit.DAY))
+        assertEquals(RoundShape.REPEATING, Fixtures.reminder().copy(recurrence = calendar).roundShape, "a calendar ringing its own dates")
+        assertEquals(RoundShape.UNTIL_DONE, ringing.copy(recurrence = calendar).roundShape, "a calendar resting rules until the hecho")
+        assertEquals(RoundShape.QUIET, ringing.copy(recurrence = Recurrence.After(1, RecurrenceUnit.DAYS), actions = emptySet()).roundShape)
+        assertEquals(RoundShape.ROUTINE, ringing.copy(recurrence = Recurrence.Since(7, RecurrenceUnit.DAYS), actions = emptySet()).roundShape)
+        assertEquals(RoundShape.QUIET, ringing.copy(recurrence = Recurrence.Since(90, RecurrenceUnit.DAYS), contactKind = ContactKind.WORK).roundShape)
     }
 }

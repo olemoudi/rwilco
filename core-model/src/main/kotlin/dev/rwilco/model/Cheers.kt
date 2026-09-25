@@ -92,7 +92,10 @@ val FACT_REST: Duration = Duration.ofDays(7)
 /** A reminder talked about is left alone for a day and a half, so the line moves around. */
 val SUBJECT_REST: Duration = Duration.ofHours(36)
 
-/** A milestone is news for three days; after that it lives on the Hechos screen. */
+/** A kind of line said is let rest for a day when there is any other kind to say. */
+val KIND_REST: Duration = Duration.ofHours(24)
+
+/** A milestone is news for three days (the day it was earned and the two after); then it lives on the Hechos screen. */
 const val ACHIEVEMENT_NEWS_DAYS = 3L
 
 /** How many said lines are remembered: two weeks of three a day and a notification every few. */
@@ -120,26 +123,39 @@ fun cheers(stats: GlobalStats, unlocked: List<Unlocked>, now: Instant, zone: Zon
         }
     }
     stats.firstTime?.let { (first, of) ->
-        if (first * 10 >= of * 8) out += Cheer(CheerKind.FIRST_TIME, "first:$first/$of", 30, listOf(first, of))
+        if (firstTimeIsGood(first, of)) out += Cheer(CheerKind.FIRST_TIME, "first:$first/$of", 30, listOf(first, of))
     }
     val gain = stats.thisWeek - stats.lastWeek
     when {
         stats.lastWeek > 0 && gain >= 2 && stats.thisWeek >= WEEK_SHOWN ->
             out += Cheer(CheerKind.WEEK_UP, "weekup:${stats.thisWeek}:$gain", 45, listOf(stats.thisWeek, gain))
-        stats.thisWeek >= WEEK_SHOWN -> out += Cheer(CheerKind.WEEK_COUNT, "week:${stats.thisWeek}", 20, listOf(stats.thisWeek))
+        // A good week is only news when it is not a step down: "tu lista empieza a tenerte
+        // respeto" over half of last week's number reads as sarcasm.
+        stats.thisWeek >= WEEK_SHOWN && stats.thisWeek >= stats.lastWeek ->
+            out += Cheer(CheerKind.WEEK_COUNT, "week:${stats.thisWeek}", 20, listOf(stats.thisWeek))
     }
     if (stats.today >= TODAY_SHOWN) out += Cheer(CheerKind.TODAY_COUNT, "today:$today:${stats.today}", 35, listOf(stats.today))
-    val weekAgo = now.minus(7, ChronoUnit.DAYS)
+    // The same seven days "esta semana" means everywhere else: today and the six before it.
+    val weekStart = today.minusDays(6)
     val ahead = stats.tallies
-        .filter { it.subject.shape == RoundShape.REPEATING || it.subject.shape == RoundShape.ONE_OFF }
-        .sumOf { tally -> tally.rounds.count { it.ahead && it.at >= weekAgo } }
+        .filter { it.subject.shape.canBeAhead }
+        .sumOf { tally -> tally.rounds.count { it.ahead && !it.at.atZone(zone).toLocalDate().isBefore(weekStart) } }
     if (ahead >= 2) out += Cheer(CheerKind.AHEAD, "ahead:$ahead", 25, listOf(ahead))
     for (one in unlocked) {
-        if (ChronoUnit.DAYS.between(one.on, today) > ACHIEVEMENT_NEWS_DAYS) continue
+        if (ChronoUnit.DAYS.between(one.on, today) >= ACHIEVEMENT_NEWS_DAYS) continue
         out += Cheer(CheerKind.ACHIEVEMENT, "ach:${one.key}", 100, subjectId = one.subjectId, achievement = one)
     }
     return out
 }
+
+/**
+ * Whether this is a moment for encouragement at all: nothing waiting for an answer — the owner's
+ * own condition. Praise over an unanswered alarm is the app not listening. The same question
+ * Home's "esperando respuesta" card answers (`answersOwed`), so the line on Home and the word in
+ * the shade go quiet together (review of 0.152.0: they asked two different questions). Not
+ * "anything in Vencidos": one old overdue card would silence it for weeks.
+ */
+fun calmForCheer(reminders: List<Reminder>, now: Instant): Boolean = answersOwed(reminders, now).isEmpty()
 
 /** A "best ever" only counts past five, and against a record that was a streak itself. */
 const val BEST_STREAK_MIN = 5
@@ -186,15 +202,24 @@ fun pickCheer(
 ): CheerPick? {
     val sayable = candidates.filter { (variants[it.kind] ?: 0) > 0 }
     if (slot != null) {
+        // The slot's line holds while its kind still has something to say about the same thing:
+        // "llevas 12 esta semana" becomes "llevas 13" after a "hecho", in the same words, rather
+        // than the line changing its mind — and the memory filling — with every hecho.
         val here = shown.lastOrNull { it.slot == slot && !it.notified }
-        val still = here?.let { said -> sayable.firstOrNull { it.key == said.key } }
+        val still = here?.let { said -> sayable.firstOrNull { it.kind == said.kind && it.subjectId == said.subjectId } }
         if (here != null && still != null) return CheerPick(still, here.variant.coerceIn(0, variants.getValue(still.kind) - 1))
     }
     val recentFacts = shown.filter { Duration.between(it.at, now) < FACT_REST }.map { it.key }.toSet()
     val recentSubjects = shown.filter { it.subjectId != null && Duration.between(it.at, now) < SUBJECT_REST }.mapNotNull { it.subjectId }.toSet()
     val fresh = sayable.filter { it.key !in recentFacts && (it.subjectId == null || it.subjectId !in recentSubjects) }
+    // A kind said in the last day gives way to one that was not, and failing that the kind said
+    // last gives way to any other: "llevas 12 esta semana" in the morning and "llevas 14 esta
+    // semana" at night is two facts and one line said twice.
+    val recentKinds = shown.filter { Duration.between(it.at, now) < KIND_REST }.map { it.kind }.toSet()
     val lastKind = shown.maxByOrNull { it.at }?.kind
-    val pool = fresh.filter { it.kind != lastKind }.ifEmpty { fresh }
+    val pool = fresh.filter { it.kind !in recentKinds && it.kind != lastKind }
+        .ifEmpty { fresh.filter { it.kind != lastKind } }
+        .ifEmpty { fresh }
     if (pool.isEmpty()) return null
     val random = Random(seed)
     var ticket = random.nextInt(pool.sumOf { it.weight })
@@ -249,14 +274,18 @@ fun nextCheerAt(after: Instant, zone: ZoneId, shape: DayShape, random: Random): 
  * margin); otherwise at a drawn moment of tomorrow's.
  */
 fun cheerRetryAt(now: Instant, zone: ZoneId, shape: DayShape, random: Random): Instant {
-    val retry = now.plus(CHEER_RETRY)
-    val local = retry.atZone(zone).toLocalDateTime()
+    val retry = now.plus(CHEER_RETRY).atZone(zone).toLocalDateTime()
     val date = now.atZone(zone).toLocalDate()
-    val stillToday = listOf(date.minusDays(1), date).any { day ->
+    // The first waking stretch that has not closed by then — last night's that runs past
+    // midnight, today's, or tomorrow's — and inside it the retry, or its opening if later. A run
+    // at three in the morning waits for the morning, not for the day after it.
+    for (day in listOf(date.minusDays(1), date, date.plusDays(1))) {
         val window = shape.awakeOn(day)
-        local >= window.from.plus(AWAKE_MARGIN) && local < window.to.minus(AWAKE_MARGIN)
+        val opens = window.from.plus(AWAKE_MARGIN)
+        val closes = window.to.minus(AWAKE_MARGIN)
+        if (retry < closes) return maxOf(retry, opens).atZone(zone).toInstant()
     }
-    return if (stillToday) retry else momentIn(date.plusDays(1), zone, shape, random)
+    return momentIn(date.plusDays(2), zone, shape, random)
 }
 
 private fun momentIn(day: LocalDate, zone: ZoneId, shape: DayShape, random: Random): Instant {
@@ -274,7 +303,9 @@ private fun momentIn(day: LocalDate, zone: ZoneId, shape: DayShape, random: Rand
 fun shortSubject(text: String, max: Int = SUBJECT_MAX): String {
     val clean = text.trim().replace(Regex("\\s+"), " ")
     if (clean.length <= max) return clean
-    val cut = clean.lastIndexOf(' ', max - 1).takeIf { it >= max / 2 } ?: (max - 1)
+    var cut = clean.lastIndexOf(' ', max - 1).takeIf { it >= max / 2 } ?: (max - 1)
+    // Never through the middle of a character that takes two chars (an emoji, say).
+    if (Character.isHighSurrogate(clean[cut - 1])) cut--
     return clean.substring(0, cut).trimEnd(',', '.', ';', ':', ' ') + "…"
 }
 

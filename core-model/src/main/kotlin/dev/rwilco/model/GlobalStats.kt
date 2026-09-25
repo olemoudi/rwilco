@@ -74,7 +74,7 @@ fun globalStats(
     val tallies = history.mapNotNull { (id, events) ->
         val subject = subjects[id] ?: return@mapNotNull null
         val rounds = rounds(events, subject.shape)
-        Tally(subject, rounds, reminderStats(events, subject.shape))
+        Tally(subject, rounds, statsOf(rounds, subject.shape, since = events.minOfOrNull { it.at }))
     }
     val today = now.atZone(zone).toLocalDate()
     val hechoDays = tallies.flatMap { tally -> tally.rounds.filter { it.end == RoundEnd.DONE }.map { it.at.atZone(zone).toLocalDate() } }
@@ -102,8 +102,19 @@ fun globalStats(
     )
 }
 
-/** Whether streaks and misses mean anything for this shape: everything but the quiet ones. */
-val RoundShape.keepsCount: Boolean get() = this == RoundShape.REPEATING || this == RoundShape.ROUTINE
+/** Whether streaks and misses mean anything for this shape: whatever comes back and asks for an answer. */
+val RoundShape.keepsCount: Boolean
+    get() = this == RoundShape.REPEATING || this == RoundShape.UNTIL_DONE || this == RoundShape.ROUTINE
+
+/** Whether "done before it rang" means anything: a reminder that rings and is not a routine (always ahead when on time). */
+val RoundShape.canBeAhead: Boolean
+    get() = this == RoundShape.REPEATING || this == RoundShape.UNTIL_DONE || this == RoundShape.ONE_OFF
+
+/**
+ * Whether a first-ask rate is news worth saying: eight in ten or better. Below it the number is a
+ * fact the screen keeps to itself — it does not scold.
+ */
+fun firstTimeIsGood(first: Int, of: Int): Boolean = of > 0 && first * 10 >= of * 8
 
 /** At least [NEVER_FAIL_MIN] rounds closed, and not one of them broke the streak. */
 val Tally.neverFailed: Boolean

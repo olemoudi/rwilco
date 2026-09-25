@@ -110,6 +110,34 @@ once and the first answer wins, and the freshest last-known fix answers immediat
 as the fallback. "Could not get a fix" and "not allowed" are two different sentences now,
 because they need two different things from the person.
 
+## The review round, 0.152.0 (2026-09-25)
+The pass after the statistics, achievements and encouragement of 0.149.0–0.151.0: three reviewers
+(the model, the machinery, the screens and the words), every finding checked against the code
+before it was touched. The ones worth not re-deriving:
+
+- **A span from the "hecho" rings more than once in one round, on purpose.** With rules, an
+  anchored recurrence is a rest counted from the answer, and until the answer the rules go on
+  asking: a place crossed twice, the same hour the next day. Reading every unanswered ring as
+  overtaken by the next called "al llegar a casa, vuelve cada día", ignored at six and done at
+  eight, a miss. Only a round that comes back by the clock (from the ring, by the trigger's own
+  draws, a calendar with no rules of its own) is overtaken: `RoundShape.UNTIL_DONE`.
+- **An undo takes back its own line, by id.** "The newest line of its kind after the row's last
+  hecho" deleted a real earlier line under a wrong clock, a routine anchor pushed ahead by a pause,
+  or another door answering in between. A snooze's line stays if the reminder has rung since.
+- **A milestone is never taken back, so it must not be given early:** a finished week with a round
+  still open is not perfect yet.
+- Smaller: a to-do with nothing that can ring was "done ahead" every time; the goal tie went the
+  wrong way; a retry in the small hours skipped to the day after the next morning; a good-week line
+  was offered on a week down on the last; Home's sticky line changed (and filled the memory) with
+  every hecho; the worker ended its chain on a throw and counted as said a word nobody could see;
+  Hechos failed whole when the numbers failed; "este mes" for thirty days; "faltan 1".
+
+Decided and left: **the line and the word go quiet only while something waits for an answer**
+(the owner's words), not while anything sits in "Vencidos" — one old overdue card would silence
+them for weeks. "Devolver a la lista" from Hechos keeps the "hecho" it had: reopening something
+done is doing it again, not un-doing it. Pre-existing and reported rather than fixed here:
+`ReminderFiring.undoReset` can roll `lastDealtAt` back past a hand-given "hecho" after the reset.
+
 ## Review round, 0.61.1 (2026-08-31)
 The pass after the five features of 0.61.0. Four findings, all in the new work's blast radius,
 and the first one is the only serious one.

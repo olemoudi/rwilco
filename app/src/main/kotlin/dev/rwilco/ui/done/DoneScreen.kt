@@ -46,6 +46,7 @@ import dev.rwilco.ui.components.rememberNow
 import dev.rwilco.R
 import dev.rwilco.ui.components.SectionHeader
 import dev.rwilco.model.DoneSection
+import dev.rwilco.model.firstTimeIsGood
 import dev.rwilco.model.Reminder
 import dev.rwilco.ui.components.DayBars
 import dev.rwilco.ui.components.LocalSnackbar
@@ -305,7 +306,7 @@ private fun DoneHeadline(counts: List<Int>, week: Int, lastWeek: Int, firstTime:
         // this screen does not scold.
         val lines = listOfNotNull(
             if (lastWeek > 0 && week > lastWeek) stringResource(R.string.done_week_up, week - lastWeek) else null,
-            firstTime?.let { (first, of) -> stringResource(R.string.done_first_time, first, of) },
+            firstTime?.takeIf { (first, of) -> firstTimeIsGood(first, of) }?.let { (first, of) -> stringResource(R.string.done_first_time, first, of) },
         )
         if (lines.isNotEmpty()) {
             Spacer(Modifier.height(spacing.xs))

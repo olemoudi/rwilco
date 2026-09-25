@@ -700,7 +700,7 @@
         <item>colours</item>
         <item>encouragement</item>
         <item>motivation</item>
-        <item>achievements</item>
+        <item>cheer</item>
     </string-array>
     <string-array name="settings_keywords_backup">
         <item>copy</item>
@@ -1703,9 +1703,19 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_152_0">
+
+        <item>A reminder that comes back from its «done» and asks again — a place crossed twice, the same hour the next day — no longer counts the first ask as a miss when you do it at the second. Its streak goes on.</item>
+        <item>«First time» means rung once, with no snooze: something done after a second ask is done, but not at the first.</item>
+        <item>A to-do with nothing that can ring counts its dones, and no longer earns «done before they rang».</item>
+        <item>Undoing a «done» or a snooze takes back exactly the line it wrote in the history, and a perfect week waits until nothing in it is still pending.</item>
+        <item>The encouragement: no praise for a week that is down on the last, the same kind of line not twice in a day when there is anything else, a line that stays put when its number moves, a retry in the small hours that waits for the morning, and nothing counted as said while notifications are off.</item>
+        <item>Done: a broken streak leads with the best one, the first-time rate only shows when it is good, and what is already on the streaks is not repeated under «Never missed».</item>
+
+    </string-array>
     <string-array name="whats_new_0_151_0">
 
-        <item>Under what rings next, Home now says something true about how you are doing now and then: a streak, a good week, a milestone. Always with real numbers and your own reminders, never the same thing twice in a row, and it changes with each part of the day. Tap it to open Done.</item>
+        <item>Under what rings next, Home now and then says something true about how you are doing: a streak, a good week, a milestone. Always with real numbers and your own reminders, never the same thing twice in a row, and it changes with each part of the day. Tap the line to open Done.</item>
         <item>Every two or three days, a silent notification of the same kind — only when there is something new to say, and never while something is waiting for an answer.</item>
         <item>Both can be switched off in Settings → Look and feel.</item>
 
@@ -1713,14 +1723,14 @@
     <string-array name="whats_new_0_150_0">
 
         <item>Done counts everything you do now: the week\'s number and the fortnight\'s bars include every «done» of something that comes back and every routine, not only the reminders you finished for good.</item>
-        <item>Under the number, when it is good news: how many more than the week before, and how many this month were done at the first ask.</item>
+        <item>Under the number, when it is good news: how many more than the week before, and how many in the last month were done the first time.</item>
         <item>New on Done: the streaks going, the things you have never left undone, and your achievements — so many in a row, so many done, perfect weeks, done before they rang — with the next one ahead and how far it is.</item>
         <item>Achievements are kept for good, and travel in the encrypted backup; the history behind the numbers stays on this phone.</item>
 
     </string-array>
     <string-array name="whats_new_0_149_0">
 
-        <item>A reminder that comes back now says how it is going, over its history: how many in a row, the best run, the last twenty rounds at a glance, how many times it was done and how far apart, and how many of those were at the first ask. A routine counts on time instead.</item>
+        <item>A reminder that comes back now says how it is going, over its history: how many in a row, the best run, the last twenty rounds at a glance, how many times it was done and how far apart, and how many of those were done the first time. A routine counts on time instead.</item>
         <item>A streak only breaks by not doing it: putting something off and then doing it keeps it. Letting a round pass on purpose neither adds nor breaks.</item>
         <item>Undoing a «done» or a snooze from Home or the routines now also takes it out of the history, as the notification\'s undo already did, so the numbers do not count what you took back.</item>
         <item>A «done» on something you had put off is written down as done, not as a skipped round.</item>
@@ -2721,7 +2731,7 @@
         <item quantity="one">talked once</item>
         <item quantity="other">talked %d times</item>
     </plurals>
-    <string name="stats_first_time">%1$d of %2$d at the first ask</string>
+    <string name="stats_first_time">%1$d of %2$d first time</string>
     <string name="stats_on_time">%1$d of %2$d on time</string>
     <plurals name="stats_snoozed">
         <item quantity="one">snoozed once</item>
@@ -2731,11 +2741,36 @@
         <item quantity="one">%d not done</item>
         <item quantity="other">%d not done</item>
     </plurals>
-    <string name="stats_strip_label">The last %1$d rounds: %2$d at the first ask, %3$d after a snooze or late, %4$d not done</string>
+    <plurals name="stats_strip_lead">
+        <item quantity="one">The last round</item>
+        <item quantity="other">The last %d rounds</item>
+    </plurals>
+    <plurals name="stats_strip_first">
+        <item quantity="one">%d first time</item>
+        <item quantity="other">%d first time</item>
+    </plurals>
+    <plurals name="stats_strip_later">
+        <item quantity="one">%d after a snooze</item>
+        <item quantity="other">%d after a snooze</item>
+    </plurals>
+    <plurals name="stats_strip_late">
+        <item quantity="one">%d late</item>
+        <item quantity="other">%d late</item>
+    </plurals>
+    <plurals name="stats_strip_missed">
+        <item quantity="one">%d not done</item>
+        <item quantity="other">%d not done</item>
+    </plurals>
+    <plurals name="stats_strip_skipped">
+        <item quantity="one">%d skipped</item>
+        <item quantity="other">%d skipped</item>
+    </plurals>
+    <string name="stats_best_run">best streak</string>
+    <string name="stats_open">open</string>
     <!-- Hechos: global statistics and achievements (0.150.0) -->
     <string name="done_week_up">%1$d more than the week before</string>
-    <string name="done_first_time">%1$d of %2$d at the first ask this month</string>
-    <string name="done_streaks_title">Streaks going</string>
+    <string name="done_first_time">%1$d of %2$d first time in the last month</string>
+    <string name="done_streaks_title">Current streaks</string>
     <string name="done_streaks_info">In a row without leaving one undone. Putting one off and then doing it keeps the streak; skipping one on purpose neither adds nor breaks it.</string>
     <string name="done_never_fail_title">Never missed</string>
     <string name="done_never_fail_info">Five rounds or more, and not one left undone.</string>
@@ -2750,55 +2785,61 @@
     <string name="achievement_streak">%1$d in a row</string>
     <string name="achievement_hechos">%1$d done</string>
     <plurals name="achievement_perfect_weeks">
-        <item quantity="one">A perfect week</item>
+        <item quantity="one">%d perfect week</item>
         <item quantity="other">%d perfect weeks</item>
     </plurals>
     <string name="achievement_ahead">%1$d done before they rang</string>
-    <string name="done_goal">Next: %1$s · %2$d to go</string>
-    <string name="done_goal_streak">Next: %1$d in a row with «%2$s» · %3$d to go</string>
+    <plurals name="done_goal">
+        <item quantity="one">Next: %1$s · %2$d to go</item>
+        <item quantity="other">Next: %1$s · %2$d to go</item>
+    </plurals>
+    <plurals name="done_goal_streak">
+        <item quantity="one">Next: %1$d in a row with «%2$s» · %3$d to go</item>
+        <item quantity="other">Next: %1$d in a row with «%2$s» · %3$d to go</item>
+    </plurals>
     <!-- Encouragement (0.151.0). Every line carries exactly its kind's placeholders (CheerStringsTest); numbers are always two or more. -->
     <string name="settings_cheer_line">A line of encouragement on Home</string>
     <string name="settings_cheer_line_hint">Under what rings next, something true about how you are doing: a streak, a good week, an achievement. It changes with each part of the day, and says nothing while something is waiting for an answer.</string>
     <string name="settings_cheer_notices">Silent notifications of encouragement</string>
-    <string name="settings_cheer_notices_hint">Every two or three days, at some moment in your waking hours, and only when there is something new to say. Never while something is waiting for an answer. Their own channel, so the system can silence them on their own.</string>
+    <string name="settings_cheer_notices_hint">Every two or three days, at some moment in your waking hours, and only when there is something new to say. Never while something is waiting for an answer. They have a channel of their own, so the system can silence them without touching anything else.</string>
     <string name="cheer_channel_name">Encouragement</string>
     <string name="cheer_channel_description">Now and then, something true about how you are doing. Silent.</string>
     <string name="cheer_open_done">open Done</string>
     <string name="cheer_achievement_with">%1$s with «%2$s»</string>
     <string-array name="cheer_streak">
-        <item>«%1$s»: %2$d in a row. Someone in there is very pleased.</item>
+        <item>«%1$s»: %2$d in a row. That\'s starting to look like a habit.</item>
         <item>%2$d in a row for «%1$s». This belongs on your CV.</item>
-        <item>«%1$s» is %2$d rounds strong. Consistency, the good kind.</item>
+        <item>«%1$s»: %2$d rounds and going strong. Consistency, the good kind.</item>
         <item>%2$d in a row with «%1$s». You make it look easy (it isn\'t).</item>
         <item>«%1$s», %2$d times running. That is not luck any more.</item>
-        <item>%2$d straight for «%1$s». «Maybe later» is not your thing.</item>
+        <item>%2$d straight for «%1$s». Sooner or later, it always gets done.</item>
     </string-array>
     <string-array name="cheer_best_streak">
         <item>%2$d in a row with «%1$s»: your best streak. So far.</item>
         <item>New record for «%1$s»: %2$d in a row. The old one can start packing.</item>
         <item>«%1$s» had never reached %2$d in a row. Until now.</item>
-        <item>%2$d in a row with «%1$s», more than ever. Don\'t tell last month\'s you.</item>
+        <item>%2$d in a row with «%1$s», more than ever. Don\'t tell the old you.</item>
         <item>Best streak ever for «%1$s»: %2$d. Quiet applause allowed.</item>
-        <item>«%1$s» beats its own mark: %2$d in a row. No doping involved.</item>
+        <item>«%1$s» beats its own record: %2$d in a row. The podium is yours.</item>
     </string-array>
     <string-array name="cheer_never_fails">
-        <item>«%1$s»: %2$d times and not one missed. Reliable as a Swiss watch, only cheaper.</item>
+        <item>«%1$s»: %2$d times and not one missed. More reliable than a Swiss watch, and no battery needed.</item>
         <item>%2$d out of %2$d with «%1$s». Perfection, the modest kind.</item>
-        <item>«%1$s» doesn\'t know what missing means: %2$d out of %2$d.</item>
+        <item>«%1$s» has never heard of missing: %2$d out of %2$d.</item>
         <item>%2$d times «%1$s» and not one got away. Almost scary.</item>
-        <item>With «%1$s» you are %2$d for %2$d. Not one. Zero. None.</item>
-        <item>«%1$s»: %2$d times, zero slips. That is how it\'s done.</item>
+        <item>With «%1$s» you\'re %2$d for %2$d. Misses: zero. None. Nada.</item>
+        <item>«%1$s»: %2$d times, zero slips. That\'s how it\'s done.</item>
     </string-array>
     <string-array name="cheer_first_time">
-        <item>%1$d of %2$d at the first ask this month. The snooze button feels a bit lonely.</item>
-        <item>This month, %1$d of %2$d at the first ask. Not even the alarm clock is that punctual.</item>
-        <item>%1$d of %2$d without snoozing this month. Future you says thanks.</item>
-        <item>At the first ask: %1$d of %2$d this month. Snoozing is for other people.</item>
-        <item>%1$d of %2$d this month without touching snooze. That is character.</item>
-        <item>%1$d times out of %2$d you did it the moment it rang. Goalkeeper reflexes.</item>
+        <item>%1$d of %2$d first time in the last month. The snooze button feels a bit lonely.</item>
+        <item>In the last month, %1$d of %2$d first time. Not even the alarm clock is that punctual.</item>
+        <item>%1$d of %2$d without snoozing in the last month. Future you says thanks.</item>
+        <item>First time: %1$d of %2$d in the last month. Snoozing, only when it really counts.</item>
+        <item>%1$d of %2$d in the last month without touching snooze. That\'s character.</item>
+        <item>%1$d of %2$d first time in the last month. Goalkeeper reflexes.</item>
     </string-array>
     <string-array name="cheer_week_up">
-        <item>%1$d this week, %2$d more than the last. Slowly, but never stopping.</item>
+        <item>%1$d this week, %2$d more than the last. Slow and steady.</item>
         <item>%1$d done this week: %2$d more than the week before. The chart goes up, and so do you.</item>
         <item>%2$d more than last week, and that makes %1$d. Someone\'s on a roll.</item>
         <item>A week on the rise: %1$d done, %2$d more than the one before.</item>
@@ -2810,13 +2851,13 @@
         <item>%1$d this week. Your to-do list is starting to respect you.</item>
         <item>This week, %1$d things done. Not bad for someone without a cape.</item>
         <item>%1$d done in seven days. Good pace, not a hair out of place.</item>
-        <item>A %1$d-done week. The bars on Done are showing off.</item>
+        <item>%1$d done in a week. The bars on Done are showing off.</item>
         <item>%1$d things done this week. Everything else can wait.</item>
     </string-array>
     <string-array name="cheer_today">
         <item>%1$d already today. The day has no idea who it\'s dealing with.</item>
         <item>%1$d done today, and counting.</item>
-        <item>%1$d things done today. You have earned a coffee (or two).</item>
+        <item>%1$d things done today. You\'ve earned a coffee (or two).</item>
         <item>%1$d so far today. You came to play.</item>
         <item>%1$d ticked off today. So satisfying.</item>
         <item>That makes %1$d today. At this rate tomorrow will be boring.</item>
@@ -2824,9 +2865,9 @@
     <string-array name="cheer_ahead">
         <item>%1$d done this week before they rang. Rwilco is starting to feel unnecessary.</item>
         <item>This week you beat the reminder %1$d times. It wasn\'t even needed.</item>
-        <item>%1$d things done before I could remind you. What do you need me for?</item>
-        <item>Ahead of the alarm %1$d times this week. It barely got a word in.</item>
-        <item>Beating the reminder: %1$d this week. The alarm is left wanting.</item>
+        <item>%1$d things done this week before I could remind you. What do you need me for?</item>
+        <item>Ahead of the alarm %1$d times this week. It never got a word in.</item>
+        <item>Beating the reminder: %1$d this week. The alarm never got its moment.</item>
         <item>%1$d this week without waiting for the ring. Punctuality, express edition.</item>
     </string-array>
     <string-array name="cheer_achievement">
@@ -2834,7 +2875,7 @@
         <item>Achievement unlocked: %1$s. No fanfare, but you deserve one.</item>
         <item>%1$s. Now on record in Done, for posterity.</item>
         <item>New achievement: %1$s. This calls for a celebration, in moderation.</item>
-        <item>%1$s: done. Keep it, it\'s not every day.</item>
+        <item>%1$s: achieved. Hold on to it, it\'s not every day.</item>
         <item>You just earned this: %1$s. It\'s on Done, date and all.</item>
     </string-array>
 </resources>

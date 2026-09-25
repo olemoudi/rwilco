@@ -493,8 +493,11 @@ class ReminderFiring(
      *
      * [skip] is Home's "Saltar la próxima", the one door that says so: it is the same dismissal
      * and only the word in the history differs.
+     *
+     * Returns the id of the history line it wrote, for an undo to take back exactly that one;
+     * null when it wrote none.
      */
-    suspend fun dismiss(id: String, notice: Boolean = false, skip: Boolean = false) = lock.withLock {
+    suspend fun dismiss(id: String, notice: Boolean = false, skip: Boolean = false): Long? = lock.withLock {
         Diag.note(TAG_DIAG, "r=${short(id)} dealt with")
         repeater.cancel(id)
         AlertNotifications.cancel(context, id)
@@ -502,14 +505,14 @@ class ReminderFiring(
         // take this "hecho" back, and nothing short of the whole row puts one back (the write
         // below is nine columns). Read here, inside the lock, so what is offered back is what
         // this very "hecho" is about to replace.
-        val row = repository.rowOf(id) ?: return@withLock
+        val row = repository.rowOf(id) ?: return@withLock null
         val reminder = row.toDomain()
         // A rehearsal ("probar una alerta") is not a thing that got done: it goes, rather than
         // landing in "Hechos" where the week is counted.
         if (TestAlert.isTest(id)) {
             repository.delete(id)
             scheduler.rearmAll()
-            return@withLock
+            return@withLock null
         }
         val now = clock.instant()
         val settings = settings()
@@ -547,11 +550,12 @@ class ReminderFiring(
         // (a snooze is an answer, so nothing is awaiting one) and a round done ahead of its
         // ring: both were filed as skipped, and the statistics (0.149.0) would have counted the
         // most ordinary "pospuesto, y luego hecho" as a round let pass.
-        repository.record(id, if (skip) FiringKind.SKIPPED else FiringKind.DEALT, now)
+        val line = repository.record(id, if (skip) FiringKind.SKIPPED else FiringKind.DEALT, now)
         // The way back, from the two doors that have no snackbar to give one: the alert screen
         // and the shade, for a minute (0.129.0). Home and the routines list answer for themselves.
         if (notice) AlertNotifications.doneNotice(context, reminder, row)
         scheduler.rearmAll()
+        line
     }
 
     /**
@@ -567,22 +571,25 @@ class ReminderFiring(
      * [Reminder.doneEarlier]. So this writes the whole row, under the same lock as every other
      * answer, and the word in the history is the ordinary "hecho", on the day it was done.
      */
-    suspend fun doneEarlier(id: String, at: Instant): Boolean = lock.withLock {
-        val reminder = repository.get(id) ?: return@withLock false
+    suspend fun doneEarlier(id: String, at: Instant): DatedDone = lock.withLock {
+        val reminder = repository.get(id) ?: return@withLock DatedDone(written = false)
         val now = clock.instant()
         val refusal = reminder.doneEarlierRefusal(at, now, clock.zone, settings().dayStart)
         if (reminder.status != Status.ACTIVE || refusal != null) {
             Diag.note(TAG_DIAG, "r=${short(id)} hecho dated back refused: ${refusal ?: reminder.status}")
-            return@withLock false
+            return@withLock DatedDone(written = false)
         }
         Diag.note(TAG_DIAG, "r=${short(id)} dealt with, dated back to $at")
         repeater.cancel(id)
         AlertNotifications.cancel(context, id)
         repository.save(reminder.doneEarlier(at, now))
-        repository.record(id, FiringKind.DEALT, at)
+        val line = repository.record(id, FiringKind.DEALT, at)
         scheduler.rearmAll()
-        true
+        DatedDone(written = true, line = line)
     }
+
+    /** What a dated "hecho" came to: whether it was taken, and the history line it wrote. */
+    data class DatedDone(val written: Boolean, val line: Long? = null)
 
     /**
      * The set's deadline ran out: the round is let go, without a sound.
@@ -859,7 +866,7 @@ class ReminderFiring(
      * Nothing is written to the history, for the same reason Home's own undo writes nothing: the
      * row is as it was, and a line saying so would be a line about the app rather than about the
      * reminder. (Not [FiringKind.UNRESET] in particular — that word belongs to a place's own
-     * "hecho", and `HistorySummary` reads it as cancelling the reset before it.)
+     * "hecho", and the statistics (`rounds`) read it as cancelling the reset before it.)
      */
     suspend fun undoDismiss(id: String, row: ReminderEntity) = lock.withLock {
         AlertNotifications.cancelReset(context, id)
@@ -890,7 +897,7 @@ class ReminderFiring(
      * all. An alert still in the shade is an answer somebody can give again; a silent reminder
      * that ignored the answer is not.
      */
-    suspend fun snooze(id: String, offer: SnoozeOffer) = snoozeBy(id, offer.key)
+    suspend fun snooze(id: String, offer: SnoozeOffer): Long? = snoozeBy(id, offer.key)
 
     /**
      * The same, by the key an offer travels as — which is all a notification's button has
@@ -902,7 +909,7 @@ class ReminderFiring(
      * tarde", held at one minute past) gets the ten minutes an unknown name always got: the
      * alternative is an alert that was answered and rings on as if it had not been.
      */
-    suspend fun snoozeBy(id: String, key: String?) = lock.withLock {
+    suspend fun snoozeBy(id: String, key: String?): Long? = lock.withLock {
         val now = clock.instant()
         val terms = settings().snoozeTerms
         val offer = key?.let(::snoozeOfferOf)
@@ -916,10 +923,10 @@ class ReminderFiring(
      * calendar rather than one of the offers' own lengths. A moment already behind us is
      * refused rather than written: a snooze into the past rings the instant it is armed.
      */
-    suspend fun snoozeUntil(id: String, until: Instant) = lock.withLock {
+    suspend fun snoozeUntil(id: String, until: Instant): Long? = lock.withLock {
         if (until <= clock.instant()) {
             Diag.note(TAG_DIAG, "r=${short(id)} snooze to $until dropped: already behind us")
-            return@withLock
+            return@withLock null
         }
         putOff(id, until, said = "a date")
     }
@@ -937,6 +944,7 @@ class ReminderFiring(
             return@withLock
         }
         putOff(id, reminder.contactPutOffUntil(clock.instant(), clock.zone), said = "a week")
+        Unit
     }
 
     /** Whether a contact of the same kind as [contact] has already rung on the day of [at]. */
@@ -952,20 +960,21 @@ class ReminderFiring(
      * The write all of them make; the lock is the caller's. [said] is for the diagnostics line and
      * is a sentence; [counted] is the offer's key or null, and is the only thing the settings see.
      * Two parameters and not one, because the two were one and the key was reached by parsing an
-     * English sentence: reword the sentence and a use lands on a snooze nobody pressed.
+     * English sentence: reword the sentence and a use lands on a snooze nobody pressed. Returns
+     * the history line it wrote, for an undo.
      */
-    private suspend fun putOff(id: String, until: Instant, said: String, counted: String? = null) {
+    private suspend fun putOff(id: String, until: Instant, said: String, counted: String? = null): Long? {
         // A notification outlives the row it was posted for (see [dismiss]), and "Posponer" on
         // one of those has nothing to write — but it still has a card to take down.
         if (repository.get(id) == null) {
             repeater.cancel(id)
             AlertNotifications.cancel(context, id)
-            return
+            return null
         }
         val now = clock.instant()
         repository.snooze(id, until)
         Diag.note(TAG_DIAG, "r=${short(id)} snoozed ($said) until $until")
-        repository.record(id, FiringKind.SNOOZED, now, detail = until.toString())
+        val line = repository.record(id, FiringKind.SNOOZED, now, detail = until.toString())
         repeater.cancel(id)
         AlertNotifications.cancel(context, id)
         scheduler.rearmAll()
@@ -983,6 +992,7 @@ class ReminderFiring(
             runCatching { withTimeoutOrNull(SETTINGS_TIMEOUT_MS) { settingsStore.update { it.withSnoozeUsed(counted) } } }
                 .onFailure { if (it is CancellationException) throw it }
         }
+        return line
     }
 
     /**
@@ -997,7 +1007,8 @@ class ReminderFiring(
      * is the watch's own door for that memory (`PlaceWatcher.remember`), handed in rather than
      * held, because the watch is built after this and calls back into it.
      */
-    suspend fun snoozeToPlace(id: String, place: Trigger.Location, fix: Fix?, remember: suspend (String, Transition) -> Unit) {
+    suspend fun snoozeToPlace(id: String, place: Trigger.Location, fix: Fix?, remember: suspend (String, Transition) -> Unit): Long? {
+        var line: Long? = null
         val written = lock.withLock {
             if (repository.get(id) == null) {
                 repeater.cancel(id)
@@ -1011,12 +1022,12 @@ class ReminderFiring(
             "r=${short(id)} snoozed to a place #${GeofenceIds.tag(place.lat, place.lng, place.radiusM)} ${place.radiusM}m " +
                 "(${place.snoozeDetail().substringBefore(':')}, side ${if (fix == null) "unknown" else "known"})",
         )
-            repository.record(id, FiringKind.SNOOZED, now, detail = place.snoozeDetail())
+            line = repository.record(id, FiringKind.SNOOZED, now, detail = place.snoozeDetail())
             repeater.cancel(id)
             AlertNotifications.cancel(context, id)
             true
         }
-        if (!written) return
+        if (!written) return null
         // After the row and outside this lock: the watch takes its own to write it, and the
         // watch's look takes that lock before it reaches `fire`, which takes this one.
         if (fix != null) {
@@ -1024,6 +1035,7 @@ class ReminderFiring(
             remember(GeofenceIds.encodeSnooze(id, place), if (inside) Transition.ENTER else Transition.EXIT)
         }
         scheduler.rearmAll()
+        return line
     }
 
     /**

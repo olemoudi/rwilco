@@ -50,8 +50,11 @@ import java.time.LocalTime
 
 /** What the routines screen says in a snackbar, each with a way back. */
 sealed interface RoutinesEvent {
-    /** «¿He hecho «X»? Sí»: the count starts again; [comesBackAt] is when it will next ask. */
-    data class Done(val reminder: Reminder, val comesBackAt: Instant?) : RoutinesEvent
+    /**
+     * «¿He hecho «X»? Sí»: the count starts again; [comesBackAt] is when it will next ask, and
+     * [line] the history line it wrote, which its undo takes back.
+     */
+    data class Done(val reminder: Reminder, val comesBackAt: Instant?, val line: Long? = null) : RoutinesEvent
 
     /** A routine left the list; [history] is what the cascade took with it, for the undo. */
     data class Deleted(val reminder: Reminder, val history: List<FiringEvent>) : RoutinesEvent
@@ -59,10 +62,10 @@ sealed interface RoutinesEvent {
     data class Paused(val reminder: Reminder, val paused: Boolean) : RoutinesEvent
 
     /**
-     * Put off until [until]; null with [cancelled] is the snooze being taken back. [at] is the
-     * moment just before it was given, so the undo can take its history line back with the row.
+     * Put off until [until]; null with [cancelled] is the snooze being taken back. [line] is the
+     * history line it wrote, which the undo takes back with the row.
      */
-    data class Snoozed(val reminder: Reminder, val until: Instant?, val cancelled: Boolean = false, val at: Instant? = null) : RoutinesEvent
+    data class Snoozed(val reminder: Reminder, val until: Instant?, val cancelled: Boolean = false, val line: Long? = null) : RoutinesEvent
 }
 
 /**
@@ -167,8 +170,8 @@ class RoutinesViewModel(
     fun markDone(id: String) {
         viewModelScope.launch {
             val before = repository.get(id) ?: return@launch
-            firing.dismiss(id)
-            events.send(RoutinesEvent.Done(before, comesBack(id)))
+            val line = firing.dismiss(id)
+            events.send(RoutinesEvent.Done(before, comesBack(id), line))
         }
     }
 
@@ -203,7 +206,8 @@ class RoutinesViewModel(
         _dating.value = null
         viewModelScope.launch {
             val before = repository.get(asked.reminder.id) ?: return@launch
-            if (firing.doneEarlier(before.id, at)) events.send(RoutinesEvent.Done(before, comesBack(before.id)))
+            val dated = firing.doneEarlier(before.id, at)
+            if (dated.written) events.send(RoutinesEvent.Done(before, comesBack(before.id), dated.line))
         }
     }
 
@@ -247,7 +251,7 @@ class RoutinesViewModel(
     fun undoDone(event: RoutinesEvent.Done) {
         viewModelScope.launch {
             repository.restore(event.reminder)
-            repository.forgetNewest(event.reminder.id, listOf(FiringKind.DEALT, FiringKind.SKIPPED), event.reminder.lastDealtAt)
+            event.line?.let { repository.forgetLine(event.reminder.id, it) }
         }
     }
 
@@ -255,7 +259,7 @@ class RoutinesViewModel(
     fun undoSnooze(event: RoutinesEvent.Snoozed) {
         viewModelScope.launch {
             repository.restore(event.reminder)
-            event.at?.let { repository.forgetNewest(event.reminder.id, listOf(FiringKind.SNOOZED), it.minusMillis(1)) }
+            event.line?.let { repository.forgetLine(event.reminder.id, it, keepIfRangSince = true) }
         }
     }
 
@@ -283,9 +287,8 @@ class RoutinesViewModel(
     fun snooze(id: String, snooze: SnoozeOffer) {
         viewModelScope.launch {
             val before = repository.get(id) ?: return@launch
-            val at = clock.instant()
-            firing.snooze(id, snooze)
-            events.send(RoutinesEvent.Snoozed(before, repository.get(id)?.snoozedUntil, at = at))
+            val line = firing.snooze(id, snooze)
+            events.send(RoutinesEvent.Snoozed(before, repository.get(id)?.snoozedUntil, line = line))
         }
     }
 
@@ -293,9 +296,8 @@ class RoutinesViewModel(
     fun snoozeUntil(id: String, until: Instant) {
         viewModelScope.launch {
             val before = repository.get(id) ?: return@launch
-            val at = clock.instant()
-            firing.snoozeUntil(id, until)
-            events.send(RoutinesEvent.Snoozed(before, repository.get(id)?.snoozedUntil, at = at))
+            val line = firing.snoozeUntil(id, until)
+            events.send(RoutinesEvent.Snoozed(before, repository.get(id)?.snoozedUntil, line = line))
         }
     }
 

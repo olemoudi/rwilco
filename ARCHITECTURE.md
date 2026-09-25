@@ -801,11 +801,17 @@ nothing rang (`deadlineOutranked`), so there was nothing to answer. "Todavía no
 `SNOOZED` with `LATER_DETAIL` and is not a snooze. A place's `RESET` is a "hecho", and each
 `UNRESET` takes the latest one before it back.
 
-`RoundShape` says how a reminder's rounds are read: **REPEATING** (an unanswered ring is overtaken
-by the next — a miss), **ONE_OFF** (it may ring twice, a place crossed twice, and it is still one
-thing to do), **ROUTINE** (a ring is the deadline), and **QUIET** — a contact, or a reminder with
-no actions — whose "hechos" are counted and nothing else: a contact is never a debt, and a
-reminder that asks for nothing cannot have been left unanswered.
+`RoundShape` says how a reminder's rounds are read: **REPEATING** — it comes back on its own clock
+(a span from the ring, the trigger's own draws, a calendar ringing its own dates), so an
+unanswered ring overtaken by the next is a miss; **UNTIL_DONE** — it comes back from the "hecho"
+(a span from the answer, or a calendar resting rules until it), and until the answer the rules go
+on asking, so a second ring is the same round asking again and a miss is only the net's word left
+unanswered (the review of 0.152.0 found "al llegar a casa, vuelve cada día", ignored at six and
+done at the second arrival, counted as a miss); **ONE_OFF** (it may ring twice, a place crossed
+twice, and it is still one thing to do); **ROUTINE** (a ring is the deadline); and **QUIET** — a
+contact, a reminder with no actions, or a to-do with nothing that can ring — whose "hechos" are
+counted and nothing else. "A la primera" is done having rung at most once, with no snooze and no
+word from the net; the net's word also clears a snooze taken back, which writes no line.
 
 The history is read **in the order it was written** (the table's id, `FiringEventDao.written`),
 never sorted by date: "lo hice el sábado" said on Tuesday writes a `DEALT` dated Saturday *after*
@@ -830,17 +836,22 @@ things done before they rang, a milestone earned in the last three days — and 
 good to say is silence). Then freshness, in `pickCheer`: the same fact (its `key` carries the
 numbers, so a streak that grew is a new fact) not for a week, the same reminder not for a day and
 a half, not the kind said last when there is any other, weighted towards the better news, and the
-phrasing never the one that kind used last. **Home's line is one per part of the day**
+phrasing never the one that kind used last; a kind said in the last day waits while any other has
+something to say. **Home's line is one per part of the day**
 (`daySlot`, the person's own three hours in clock order; before the first it is still last
 night's): drawn with a seed made from the slot and remembered in it, so the screen does not change
-its mind every time it is opened in the same afternoon, and the next slot moves on. The phrasings
+its mind every time it is opened in the same afternoon, and the next slot moves on — held by its
+kind and subject rather than its exact numbers, so a "hecho" turns "llevas 12" into "llevas 13" in
+the same words instead of a new line. The phrasings
 are the app's — a string-array per kind in each language, six each, concrete and with humour that
 never needs to understand the reminder's words — and every number offered is two or more, so no
 phrasing needs a singular. **The notification** (`nextCheerAt`) goes at a minute drawn from the
-waking hours two or three days on, an hour clear of each end; a run that finds the person asleep,
-something waiting for an answer or a routine overdue tries again in ninety minutes
-(`cheerRetryAt`) — praise over an unanswered alarm would be the app not listening — and with
-nothing new to say says nothing. Home's line goes quiet on the same condition.
+waking hours two or three days on, an hour clear of each end; a run that finds the person asleep
+or something waiting for an answer (`calmForCheer`, the question Home's "esperando respuesta"
+card answers) tries again ninety minutes on, or at the next waking morning (`cheerRetryAt`) —
+praise over an unanswered alarm would be the app not listening — and with nothing new to say says
+nothing. With notifications off or its channel silenced it says nothing and counts nothing, and a
+run that fails still books the next. Home's line goes quiet on the same condition.
 
 ## Persistence
 
@@ -874,7 +885,12 @@ nothing new to say says nothing. Home's line goes quiet on the same condition.
   routines' undo of a "hecho" (`forgetNewest` of `DEALT`/`SKIPPED` after the restored row's
   `lastDealtAt`, as the shade's undo already did) and of a snooze (the `SNOOZED` line written
   after the moment the event carries) — left behind, each was a hecho or a snooze the numbers
-  counted and nobody gave. And **the word a dismissal writes is the person's**:
+  counted and nobody gave. **Since 0.152.0 by the line's own id** (`record` returns it, the
+  answer carries it to its event, `forgetLine` deletes that row and no other): "the newest line of
+  its kind after the row's last hecho" was the right line almost always, and a real earlier one
+  when a clock was wrong, a routine's anchor had been pushed ahead by a pause, or another door
+  answered in between. A snooze's line stays if the reminder has rung since — taken back, it would
+  leave two rings with no answer between them, which reads as a miss. And **the word a dismissal writes is the person's**:
   `ReminderFiring.dismiss(skip = true)` for "saltar la próxima", `DEALT` for everything else. It
   used to be guessed from the moment spent, which also filed a "hecho" given to a snoozed round
   (a snooze is an answer, so nothing awaits one) and a round done ahead of its ring as skipped.
@@ -1528,10 +1544,14 @@ loud what DST and a change of zone do to a landing.
   reminder's rounds — see "Rounds and streaks"), not the rows that are DONE: a pill taken every
   morning and a routine done every Sunday had never once reached the week's number. Under it, a
   line said only when it is good news — "N más que la semana anterior" when the week is up, and
-  "N de M a la primera este mes" from ten hechos in the last thirty days. Then, before the bands
+  "N de M a la primera en el último mes" from ten hechos in the last thirty days, and only at
+  eight in ten or better (`firstTimeIsGood`) — below it the number is not news, and the screen
+  does not scold. The numbers are worked out in a try of their own, so a history or settings read
+  that fails costs the numbers and never the list; they move with the day, not the minute. Then, before the bands
   (`DoneStats.kt`): **"Rachas en marcha"** (active, three or more, the top three, the best run
-  beside it when different), **"Nunca fallan"** (five closed rounds or more, none left undone or
-  overdue), and **"Logros"** — the milestones earned, newest first, five and then "ver los N",
+  beside it when different — a broken streak leads with the best one on the form), **"Nunca
+  fallas"** (five closed rounds or more, none left undone or overdue; not the ones already on the
+  streaks, whose row says the same), and **"Logros"** — the milestones earned, newest first, five and then "ver los N",
   and the nearest one still ahead ("Próximo: 30 seguidas con «X» · faltan 3", `nextGoal`). Every
   row opens its reminder. Only a contact's or an action-less reminder's hechos are counted and
   never ranked. The bands, the search and "vaciar" are about the rows, as before; the screen is
@@ -1540,7 +1560,8 @@ loud what DST and a change of zone do to a landing.
   `AppSettings.achievements`). Four families — so many in a row of one reminder (7, 30, 100), so
   many hechos (50 to 1000), so many finished weeks with five rounds or more and none left undone
   (1, 4, 12), so many done before they had to ring (10, 50; not routines, which are always ahead
-  when on time). Worked out of the history (`achievements`) and merged into what is kept
+  when on time). A week with a round still open does not count until it closes, because a milestone
+  is never taken back. Worked out of the history (`achievements`) and merged into what is kept
   (`mergeUnlocked`, `SettingsStore.keepUnlocked`: only ever adds, keeps the earlier date, writes
   nothing when nothing is new), because what proves one does not last — the history is capped,
   finished one-offs are swept after three months, a reminder can be deleted — and "500 hechos"

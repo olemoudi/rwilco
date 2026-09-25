@@ -45,6 +45,7 @@ import dev.rwilco.model.CheerPick
 import dev.rwilco.model.DayParts
 import dev.rwilco.model.dayParts
 import dev.rwilco.model.daySlot
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
@@ -109,6 +110,8 @@ sealed interface HomeEvent {
          * (a place: it comes back on arrival, and no clock knows when that is).
          */
         val comesBackAt: Instant? = null,
+        /** The history line the "hecho" or "saltar" wrote: what its undo takes back, and nothing else. */
+        val line: Long? = null,
     ) : HomeEvent {
         /** [SKIPPED] is a "hecho" given ahead of the ring, said with the word for that. */
         enum class Kind { DONE, DELETED, SKIPPED }
@@ -142,11 +145,10 @@ sealed interface HomeEvent {
          */
         val sideBefore: Boolean? = null,
         /**
-         * The moment just before the snooze was given, so its undo can take back the line it
-         * wrote in the history — left there, it was a snooze the statistics counted and nobody
-         * gave. Null for a cancel, which writes none.
+         * The history line the snooze wrote, so its undo can take that one back — left there, it
+         * was a snooze the statistics counted and nobody gave. Null for a cancel, which writes none.
          */
-        val at: Instant? = null,
+        val line: Long? = null,
     ) : HomeEvent
 
     /** "Al salir de aquí" asked where here is, and nothing could say. Nothing was written. */
@@ -557,18 +559,28 @@ class HomeViewModel(
     /**
      * The quiet line under the hero (0.151.0): one per part of the day, the same one however
      * often Home is opened in it, and none at all while the switch is off, while something is
-     * waiting for an answer — praise over an unanswered alarm is the app not listening — or when
-     * there is nothing true and good to say. Worked out off the main thread from the whole
-     * history, once a slot: never part of the per-minute rebuild of [state].
+     * waiting for an answer — praise over an unanswered alarm is the app not listening
+     * (`calmForCheer`, which the notification asks of the rows) — or when there is nothing true
+     * and good to say. Worked out
+     * off the main thread from the whole history, once a slot: never part of the per-minute
+     * rebuild of [state].
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     val cheer: StateFlow<CheerPick?> = combine(
         settings.filterNotNull().map { it.cheerLine to it.dayParts }.distinctUntilChanged(),
-        state.map { it.loaded && !it.failed && it.waiting.isEmpty() }.distinctUntilChanged(),
+        state.map { it.loaded && !it.failed && it.calm }.distinctUntilChanged(),
     ) { (on, parts), calm -> if (on && calm) parts else null }
         .flatMapLatest { parts ->
             if (parts == null) flowOf(null)
-            else slots(parts).map { slot -> runCatching { cheerLine(slot) }.onFailure { Log.w(TAG, "no line", it) }.getOrNull() }
+            else slots(parts).map { slot ->
+                try {
+                    cheerLine(slot)
+                } catch (failure: Exception) {
+                    if (failure is CancellationException) throw failure
+                    Log.w(TAG, "no line", failure)
+                    null
+                }
+            }
         }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -661,9 +673,10 @@ class HomeViewModel(
             val reminder = repository.get(id) ?: return@launch
             var history: List<FiringEvent> = emptyList()
             var comesBackAt: Instant? = null
+            var line: Long? = null
             when (kind) {
                 HomeEvent.Removed.Kind.DONE, HomeEvent.Removed.Kind.SKIPPED -> {
-                    firing.dismiss(id, skip = kind == HomeEvent.Removed.Kind.SKIPPED)
+                    line = firing.dismiss(id, skip = kind == HomeEvent.Removed.Kind.SKIPPED)
                     // Asked of the row the dismissal left rather than worked out again here:
                     // whether that was the end of it, and when it comes back if it was not, are
                     // [ReminderFiring]'s answers; the snackbar only reads them back.
@@ -674,7 +687,7 @@ class HomeViewModel(
                     repository.delete(id)
                 }
             }
-            val event = HomeEvent.Removed(kind, reminder, history, comesBackAt)
+            val event = HomeEvent.Removed(kind, reminder, history, comesBackAt, line)
             if (kind == HomeEvent.Removed.Kind.DELETED) keepUndoable(event)
             events.send(event)
         }
@@ -739,9 +752,8 @@ class HomeViewModel(
             repository.restore(removed.reminder, removed.history)
             // A "hecho" taken back takes its line in the history back too, as the shade's undo
             // always did (`undoDismiss`): left there, the statistics counted a hecho nobody gave.
-            if (removed.kind != HomeEvent.Removed.Kind.DELETED) {
-                repository.forgetNewest(removed.reminder.id, listOf(FiringKind.DEALT, FiringKind.SKIPPED), removed.reminder.lastDealtAt)
-            }
+            // That line by its id, never "the newest one": see [FiringEventDao.deleteLine].
+            removed.line?.let { repository.forgetLine(removed.reminder.id, it) }
         }
     }
 
@@ -770,12 +782,11 @@ class HomeViewModel(
         viewModelScope.launch {
             val reminder = repository.get(id) ?: return@launch
             val sideBefore = sideOf(reminder)
-            val at = clock.instant()
-            firing.snooze(id, snooze)
+            val line = firing.snooze(id, snooze)
             // Gone between the two reads (dealt with from the shade): nothing to say, and
             // nothing an undo could put back.
             val after = repository.get(id) ?: return@launch
-            events.send(HomeEvent.Snoozed(reminder, after.snoozedUntil, sideBefore = sideBefore, at = at))
+            events.send(HomeEvent.Snoozed(reminder, after.snoozedUntil, sideBefore = sideBefore, line = line))
         }
     }
 
@@ -792,10 +803,9 @@ class HomeViewModel(
         viewModelScope.launch {
             val reminder = repository.get(id) ?: return@launch
             val sideBefore = sideOf(reminder)
-            val at = clock.instant()
-            firing.snoozeUntil(id, until)
+            val line = firing.snoozeUntil(id, until)
             val after = repository.get(id) ?: return@launch
-            events.send(HomeEvent.Snoozed(reminder, after.snoozedUntil, sideBefore = sideBefore, at = at))
+            events.send(HomeEvent.Snoozed(reminder, after.snoozedUntil, sideBefore = sideBefore, line = line))
         }
     }
 
@@ -811,8 +821,8 @@ class HomeViewModel(
                     hereCircle(fix, hereLabel) to fix
                 }
             }
-            firing.snoozeToPlace(id, place, fix, rememberSide)
-            events.send(HomeEvent.Snoozed(reminder, until = null, place = place, sideBefore = sideBefore, at = now))
+            val line = firing.snoozeToPlace(id, place, fix, rememberSide)
+            events.send(HomeEvent.Snoozed(reminder, until = null, place = place, sideBefore = sideBefore, line = line))
         }
     }
 
@@ -830,8 +840,9 @@ class HomeViewModel(
         viewModelScope.launch {
             val reminder = event.reminder
             repository.snooze(reminder.id, reminder.snoozedUntil, reminder.snoozedToPlace)
-            // And the line the snooze wrote, which the statistics would otherwise count.
-            event.at?.let { repository.forgetNewest(reminder.id, listOf(FiringKind.SNOOZED), it.minusMillis(1)) }
+            // And the line the snooze wrote, which the statistics would otherwise count — unless it
+            // has rung since, which would turn one answered round into two unanswered rings.
+            event.line?.let { repository.forgetLine(reminder.id, it, keepIfRangSince = true) }
             // The circle is back on the row; the watch is told the side it knew, the way the
             // snooze itself told it (see ReminderFiring.snoozeToPlace).
             val place = reminder.snoozedToPlace ?: return@launch

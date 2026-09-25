@@ -9,12 +9,12 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.diag.Diag
-import dev.rwilco.model.answersOwed
 import dev.rwilco.model.awakeAt
+import dev.rwilco.model.calmForCheer
 import dev.rwilco.model.cheerRetryAt
 import dev.rwilco.model.dayShape
 import dev.rwilco.model.nextCheerAt
-import dev.rwilco.model.overdueRoutines
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import java.time.Clock
 import java.time.Duration
@@ -37,30 +37,44 @@ class CheerWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
 
     override suspend fun doWork(): Result {
         val app = applicationContext as RwilcoApplication
-        val settings = app.settingsStore.settings.first()
-        if (!settings.cheerNotifications) return Result.success()
         val now = app.clock.instant()
+        // The next booking is made whatever happens in the run: one that threw used to end the
+        // chain until the app was next opened. A cancellation is the switch going off, and is heard.
+        val next = try {
+            runOnce(app, now)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Exception) {
+            Log.w(TAG, "the word could not be worked out", failure)
+            now.plus(Duration.ofDays(1))
+        }
+        if (next != null) schedule(applicationContext, next, now)
+        return Result.success()
+    }
+
+    /** One run: says the word if it is a moment for one, and answers when the next run is — null when switched off. */
+    private suspend fun runOnce(app: RwilcoApplication, now: Instant): Instant? {
+        val settings = app.settingsStore.settings.first()
+        if (!settings.cheerNotifications) return null
         val zone = app.clock.zone
         val shape = settings.dayShape
         val random = Random(now.toEpochMilli())
-        val open = app.repository.openNow()
-        val busy = !shape.awakeAt(now, zone) ||
-            answersOwed(open, now).isNotEmpty() ||
-            overdueRoutines(open, now, zone, settings.dayStart).isNotEmpty()
-        if (busy) {
+        val calm = shape.awakeAt(now, zone) && calmForCheer(app.repository.openNow(), now)
+        if (!calm) {
             val retry = cheerRetryAt(now, zone, shape, random)
-            Diag.note(TAG_DIAG, "not now (asleep or something owed), again ${Duration.between(now, retry).toMinutes()} min on")
-            schedule(applicationContext, retry, now)
-            return Result.success()
+            Diag.note(TAG_DIAG, "not now (asleep, or something waiting for an answer), again ${Duration.between(now, retry).toMinutes()} min on")
+            return retry
+        }
+        val next = nextCheerAt(now, zone, shape, random)
+        if (!CheerNotice.canPost(applicationContext)) {
+            Diag.note(TAG_DIAG, "notifications off or the channel silenced: nothing said, nothing counted")
+            return next
         }
         val resources = applicationContext.resources
-        val pick = runCatching { app.cheering.notice(CheerText.variants(resources)) }
-            .onFailure { Log.w(TAG, "could not work out a word", it) }
-            .getOrNull()
+        val pick = app.cheering.notice(CheerText.variants(resources))
         if (pick != null) CheerNotice.post(applicationContext, CheerText.format(resources, pick))
         Diag.note(TAG_DIAG, if (pick != null) "said ${pick.cheer.kind}" else "nothing new to say")
-        schedule(applicationContext, nextCheerAt(now, zone, shape, random), now)
-        return Result.success()
+        return next
     }
 
     companion object {
@@ -75,16 +89,22 @@ class CheerWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
 
         /**
          * Switched on (or the app started with it on): books the first word two or three days out,
-         * leaving an existing booking alone — a launch must not keep pushing it away.
+         * leaving an existing booking alone — a launch must not keep pushing it away — and makes
+         * the channel, so it can be silenced before the first word.
          */
         suspend fun start(app: RwilcoApplication, clock: Clock) {
+            CheerNotice.ensureChannel(app)
             val now = clock.instant()
             val shape = app.settingsStore.settings.first().dayShape
             val first = nextCheerAt(now, clock.zone, shape, Random(now.toEpochMilli()))
             WorkManager.getInstance(app).enqueueUniqueWork(WORK, ExistingWorkPolicy.KEEP, request(Duration.between(now, first)))
         }
 
-        fun cancel(context: Context) = WorkManager.getInstance(context).cancelUniqueWork(WORK)
+        /** Switched off: nothing booked, and the word in the shade, if any, taken down. */
+        fun cancel(context: Context) {
+            WorkManager.getInstance(context).cancelUniqueWork(WORK)
+            CheerNotice.cancel(context)
+        }
 
         private fun request(wait: Duration) = OneTimeWorkRequestBuilder<CheerWorker>()
             .setInitialDelay(wait.toMinutes().coerceAtLeast(0), TimeUnit.MINUTES)

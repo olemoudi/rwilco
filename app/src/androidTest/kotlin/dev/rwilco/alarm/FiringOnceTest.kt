@@ -129,7 +129,7 @@ class FiringOnceTest {
     /**
      * The undo of a "hecho" takes its line of history with it (0.139.0). The row was put back
      * exactly as it stood and the DEALT line was not, so a routine answered and unanswered twice
-     * read as "hecha 3 veces" having been done once — `routineHistory` counts those lines.
+     * read as "hecha 3 veces" having been done once — the statistics (`rounds`) count those lines.
      */
     @Test
     fun undoing_a_hecho_leaves_no_trace_of_it_in_the_history() = runBlocking {

@@ -151,6 +151,9 @@ data class HomeUiState(
  * but the screen also draws it for tags with nothing open to filter (the door to the panel),
  * and says so.
  */
+/** Nothing waiting for an answer: the question `calmForCheer` asks of the rows, asked of what Home already built. */
+val HomeUiState.calm: Boolean get() = waiting.isEmpty()
+
 fun homeCardIndex(
     state: HomeUiState,
     id: String,

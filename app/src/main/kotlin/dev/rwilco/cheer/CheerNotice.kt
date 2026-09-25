@@ -22,7 +22,12 @@ object CheerNotice {
     // 43 the update's, 44 the vault's, 45 and 46 the watch's.
     private const val NOTIF_ID = 47
 
-    fun post(context: Context, text: String) {
+    /**
+     * The channel, made as soon as the switch is on rather than at the first word: until it
+     * exists the system has nothing to show in its settings, and "silence these" is a thing
+     * somebody may want to decide before the first one arrives.
+     */
+    fun ensureChannel(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL, context.getString(R.string.cheer_channel_name), NotificationManager.IMPORTANCE_LOW).apply {
@@ -31,6 +36,27 @@ object CheerNotice {
                 enableVibration(false)
             },
         )
+    }
+
+    /**
+     * Whether a word posted now would be seen at all: notifications allowed, and this channel not
+     * silenced. A word nobody can see must not be counted as said — it would keep that fact from
+     * Home's line for a week.
+     */
+    fun canPost(context: Context): Boolean {
+        val compat = NotificationManagerCompat.from(context)
+        if (!compat.areNotificationsEnabled()) return false
+        val channel = context.getSystemService(NotificationManager::class.java)?.getNotificationChannel(CHANNEL) ?: return true
+        return channel.importance != NotificationManager.IMPORTANCE_NONE
+    }
+
+    /** Switched off: the word still in the shade goes too. */
+    fun cancel(context: Context) {
+        runCatching { NotificationManagerCompat.from(context).cancel(NOTIF_ID) }
+    }
+
+    fun post(context: Context, text: String) {
+        ensureChannel(context)
         val open = Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
             .putExtra(MainActivity.EXTRA_DESTINATION, MainActivity.DESTINATION_DONE)

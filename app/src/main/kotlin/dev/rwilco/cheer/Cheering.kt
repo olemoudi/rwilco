@@ -13,6 +13,7 @@ import dev.rwilco.model.globalStats
 import dev.rwilco.model.mergeUnlocked
 import dev.rwilco.model.pickCheer
 import dev.rwilco.model.slotSeed
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import java.time.Clock
 
@@ -36,7 +37,12 @@ class Cheering(
         val subjects = repository.allNow().map { it.asSubject() }.associateBy { it.id }
         val stats = globalStats(repository.allHistoryNow(), subjects, now, clock.zone)
         val derived = achievements(stats.tallies, now, clock.zone)
-        runCatching { settings.keepUnlocked(derived) }
+        // A write that fails costs the keeping, not the line; a cancellation is the caller's.
+        try {
+            settings.keepUnlocked(derived)
+        } catch (failure: Exception) {
+            if (failure is CancellationException) throw failure
+        }
         val earned = mergeUnlocked(settings.settings.first().achievements, derived)
         return cheers(stats, earned, now, clock.zone)
     }

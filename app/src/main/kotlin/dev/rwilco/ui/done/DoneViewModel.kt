@@ -20,6 +20,7 @@ import dev.rwilco.model.asSubject
 import dev.rwilco.model.globalStats
 import dev.rwilco.model.mergeUnlocked
 import dev.rwilco.model.nextGoal
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import dev.rwilco.model.groupDone
@@ -83,37 +84,63 @@ class DoneViewModel(
     /** What the numbers name: every reminder still here, open or done. Unmoved by a re-arm. */
     private val openSubjects = repository.open.map { list -> list.map(Reminder::asSubject) }.distinctUntilChanged()
 
-    private val kept = store.settings.map { it.achievements }.distinctUntilChanged()
+    /**
+     * The numbers' own inputs, each failing to nothing rather than taking the list down with it:
+     * before 0.150.0 the finished rows were all this screen read, and a history or settings read
+     * that throws must not cost somebody the list of what they did.
+     */
+    private val history = repository.allHistory.catch { failure ->
+        Log.w(TAG, "could not read the history", failure)
+        emit(emptyMap())
+    }
+    private val kept = store.settings.map { it.achievements }.distinctUntilChanged().catch { emit(emptyList()) }
+
+    /** The day, by the minute: the bands and the numbers move at midnight, and at nothing else the clock does. */
+    private val today = merge(MutableStateFlow(clock.instant()), minutePulse)
+        .map { it.atZone(clock.zone).toLocalDate() }
+        .distinctUntilChanged()
 
     val view: StateFlow<DoneView?> = combine(
-        repository.done,
-        repository.allHistory,
+        repository.done.distinctUntilChanged(),
+        history,
         openSubjects,
         kept,
-        merge(MutableStateFlow(clock.instant()), minutePulse),
+        today,
     ) { list, history, open, unlocked, _ ->
         val now = clock.instant()
-        val subjects = (open + list.map(Reminder::asSubject)).associateBy { it.id }
-        val stats = globalStats(history, subjects, now, clock.zone)
-        // What the history proves, kept for good (a no-op when it adds nothing); the kept list
-        // coming back through [kept] then finds nothing new to write.
-        val derived = achievements(stats.tallies, now, clock.zone)
-        // A settings write that fails costs the keeping, not the screen.
-        runCatching { store.keepUnlocked(derived) }.onFailure { Log.w(TAG, "could not keep the achievements", it) }
-        val earned = mergeUnlocked(unlocked, derived)
-        DoneView(
-            sections = groupDone(list, now, clock.zone).toList(),
-            bars = stats.byDay,
-            total = list.size,
-            week = stats.thisWeek,
-            lastWeek = stats.lastWeek,
-            hechos = stats.hechos,
-            streaks = stats.streaks,
-            neverFail = stats.neverFail,
-            firstTime = stats.firstTime,
-            achievements = earned.sortedByDescending { it.on },
-            goal = nextGoal(stats, earned),
-        )
+        val base = DoneView(sections = groupDone(list, now, clock.zone).toList(), bars = emptyList(), total = list.size)
+        try {
+            val subjects = (open + list.map(Reminder::asSubject)).associateBy { it.id }
+            val stats = globalStats(history, subjects, now, clock.zone)
+            // What the history proves, kept for good (a no-op when it adds nothing); the kept
+            // list coming back through [kept] then finds nothing new to write.
+            val derived = achievements(stats.tallies, now, clock.zone)
+            try {
+                store.keepUnlocked(derived)
+            } catch (failure: Exception) {
+                if (failure is CancellationException) throw failure
+                Log.w(TAG, "could not keep the achievements", failure)
+            }
+            val earned = mergeUnlocked(unlocked, derived)
+            val streaks = stats.streaks.map { it.subject.id }.toSet()
+            base.copy(
+                bars = stats.byDay,
+                week = stats.thisWeek,
+                lastWeek = stats.lastWeek,
+                hechos = stats.hechos,
+                streaks = stats.streaks,
+                // A thing on both lists said the same thing twice: a reminder never left undone
+                // has a running streak as long as its history, and that row already says it.
+                neverFail = stats.neverFail.filter { it.subject.id !in streaks },
+                firstTime = stats.firstTime,
+                achievements = earned.sortedByDescending { it.on },
+                goal = nextGoal(stats, earned),
+            )
+        } catch (failure: Exception) {
+            if (failure is CancellationException) throw failure
+            Log.e(TAG, "could not work out the numbers", failure)
+            base
+        }
     }
         .flowOn(Dispatchers.Default)
         .catch { failure ->

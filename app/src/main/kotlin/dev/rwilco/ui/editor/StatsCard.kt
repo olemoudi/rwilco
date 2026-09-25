@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import dev.rwilco.R
 import dev.rwilco.model.ReminderStats
 import dev.rwilco.model.RoundMark
@@ -41,11 +42,17 @@ fun StatsCard(stats: ReminderStats, contact: Boolean) {
     val scheme = MaterialTheme.colorScheme
     Column {
         if (stats.shape != RoundShape.QUIET) {
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(text = stats.currentStreak.toString(), style = MonoStyles.countdown, color = scheme.onSurface)
+            // With the streak just broken (or a routine overdue right now) the headline is the
+            // best run, not a big nought: the miss is on the strip and in the line below, and
+            // this card does not lead with it.
+            val leadWithBest = stats.currentStreak == 0 && stats.bestStreak > 0
+            val lead = if (leadWithBest) stats.bestStreak else stats.currentStreak
+            // One thing to a screen reader: "8 seguidas, mejor: 26", not three.
+            Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.semantics(mergeDescendants = true) {}) {
+                Text(text = lead.toString(), style = MonoStyles.countdown, color = scheme.onSurface)
                 Spacer(Modifier.width(spacing.sm))
                 Text(
-                    text = pluralStringResource(R.plurals.stats_streak_unit, stats.currentStreak),
+                    text = if (leadWithBest) stringResource(R.string.stats_best_run) else pluralStringResource(R.plurals.stats_streak_unit, lead),
                     style = MaterialTheme.typography.titleMedium,
                     color = scheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = spacing.xs).weight(1f),
@@ -110,10 +117,18 @@ private fun gapText(words: Words, gap: Duration): String {
 
 private const val MINUTES_PER_DAY = 24 * 60L
 
+/** "Las últimas 20 vueltas: 17 a la primera, 2 tras posponer, 1 sin hacer" — only the parts there are. */
 @Composable
 private fun stripLabel(marks: List<RoundMark>): String {
-    val first = marks.count { it == RoundMark.FIRST_TIME }
-    val later = marks.count { it == RoundMark.DONE || it == RoundMark.LATE }
-    val missed = marks.count { it == RoundMark.NOT_DONE }
-    return stringResource(R.string.stats_strip_label, marks.size, first, later, missed)
+    val parts = listOf(
+        RoundMark.FIRST_TIME to R.plurals.stats_strip_first,
+        RoundMark.DONE to R.plurals.stats_strip_later,
+        RoundMark.LATE to R.plurals.stats_strip_late,
+        RoundMark.NOT_DONE to R.plurals.stats_strip_missed,
+        RoundMark.SKIPPED to R.plurals.stats_strip_skipped,
+    ).mapNotNull { (mark, res) ->
+        val count = marks.count { it == mark }
+        if (count == 0) null else pluralStringResource(res, count, count)
+    }
+    return pluralStringResource(R.plurals.stats_strip_lead, marks.size, marks.size) + ": " + parts.joinToString(", ")
 }

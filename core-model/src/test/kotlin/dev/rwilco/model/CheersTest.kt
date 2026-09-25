@@ -67,14 +67,14 @@ class CheersTest {
     fun `a week up on the last says by how much`() {
         val history = mapOf("a" to daily(18..20) + daily(21..27) + daily(21..27).map { FiringEvent(it.kind, it.at.plusSeconds(60)) })
         val up = candidates(history).single { it.kind == CheerKind.WEEK_UP }
-        assertEquals(2, up.numbers.size)
-        assertTrue(up.numbers[1] >= 2)
+        // Fourteen from the 21st to the 27th, three the week before (the 18th to the 20th).
+        assertEquals(listOf(14, 11), up.numbers)
     }
 
     @Test
     fun `an achievement is news for three days`() {
         val fresh = Unlocked(AchievementFamily.HECHOS, 50, LocalDate.of(2026, 8, 25))
-        val old = Unlocked(AchievementFamily.HECHOS, 100, LocalDate.of(2026, 8, 20))
+        val old = Unlocked(AchievementFamily.HECHOS, 100, LocalDate.of(2026, 8, 24))
         val kinds = candidates(emptyMap(), listOf(fresh, old)).filter { it.kind == CheerKind.ACHIEVEMENT }
         assertEquals(listOf(fresh), kinds.map { it.achievement })
     }
@@ -120,13 +120,53 @@ class CheersTest {
     }
 
     @Test
+    fun `something waiting for an answer is not a moment for encouragement`() {
+        val later = Fixtures.reminder(Trigger.AtDateTime(java.time.LocalDateTime.of(2026, 8, 28, 9, 0)))
+        assertTrue(calmForCheer(listOf(later), now))
+        val ringing = later.copy(id = "ringing", lastFiredAt = now.minusSeconds(60))
+        assertTrue(!calmForCheer(listOf(later, ringing), now))
+        // Its moment gone without ringing is overdue, not owed: one old card must not silence it for weeks.
+        val gone = Fixtures.reminder(Trigger.AtDateTime(java.time.LocalDateTime.of(2026, 8, 20, 9, 0)), id = "gone")
+        assertTrue(calmForCheer(listOf(later, gone), now))
+    }
+
+    @Test
     fun `a slot keeps its line while it still holds`() {
         val a = Cheer(CheerKind.WEEK_COUNT, "week:12", 20, listOf(12))
         val b = Cheer(CheerKind.TODAY_COUNT, "today:x:4", 20, listOf(4))
         val said = CheerShown(a.key, a.kind, 3, now.minus(Duration.ofMinutes(30)), slot = "2026-08-27:AFTERNOON")
         assertEquals(CheerPick(a, 3), pickCheer(listOf(a, b), listOf(said), now, variants, 7, slot = "2026-08-27:AFTERNOON"))
-        // No longer true (the week moved on): a fresh one, not the stale line.
+        // The week moved on by a "hecho": the same line in the same words, with the new number.
+        val moved = a.copy(key = "week:13", numbers = listOf(13))
+        assertEquals(CheerPick(moved, 3), pickCheer(listOf(moved, b), listOf(said), now, variants, 7, slot = "2026-08-27:AFTERNOON"))
+        // No longer true at all: a fresh one, not the stale line.
         assertEquals(b, pickCheer(listOf(b), listOf(said), now, variants, 7, slot = "2026-08-27:AFTERNOON")?.cheer)
+    }
+
+    @Test
+    fun `a kind said in the last day gives way to one that was not`() {
+        val week = Cheer(CheerKind.WEEK_COUNT, "week:14", 1000, listOf(14))
+        val today = Cheer(CheerKind.TODAY_COUNT, "today:x:4", 1, listOf(4))
+        val streak = Cheer(CheerKind.STREAK, "streak:a:5", 1, listOf(5), "a", "text a")
+        // The week said this morning, a streak after it: the week still waits.
+        val said = listOf(
+            CheerShown("week:12", CheerKind.WEEK_COUNT, 0, now.minus(Duration.ofHours(6))),
+            CheerShown("streak:b:4", CheerKind.STREAK, 0, now.minus(Duration.ofHours(2)), subjectId = "b"),
+        )
+        repeat(20) { seed ->
+            assertEquals(CheerKind.TODAY_COUNT, pickCheer(listOf(week, today, streak), said, now, variants, seed.toLong())?.cheer?.kind)
+        }
+    }
+
+    @Test
+    fun `a week down on the last is not a good week to mention`() {
+        // Twenty-one the week before, seven this one: nothing about the week.
+        val history = mapOf(
+            "a" to daily(14..20), "b" to daily(14..20), "c" to daily(14..20),
+            "d" to daily(21..27),
+        )
+        val kinds = candidates(history).map { it.kind }
+        assertTrue(CheerKind.WEEK_COUNT !in kinds && CheerKind.WEEK_UP !in kinds, kinds.toString())
     }
 
     @Test
@@ -170,6 +210,17 @@ class CheersTest {
             val at = nextCheerAt(now, zone, shape, Random(seed)).atZone(zone).toLocalDateTime()
             assertTrue(windows.any { at >= it.from.plusHours(1) && at < it.to.minusHours(1) }, "$at outside $windows")
         }
+    }
+
+    @Test
+    fun `a retry in the small hours waits for the morning, not for the day after`() {
+        // Saturday 03:00: Friday's night is over, Saturday's day opens at ten, plus the margin.
+        val at = cheerRetryAt(local(2026, 8, 29, 3, 0), zone, DayShape.DEFAULT, Random(1))
+        assertEquals(local(2026, 8, 29, 11, 0), at)
+        // Saturday 00:10 is still Friday's night, and ninety minutes on it is past its margin.
+        assertEquals(local(2026, 8, 29, 11, 0), cheerRetryAt(local(2026, 8, 29, 0, 10), zone, DayShape.DEFAULT, Random(1)))
+        // Thursday 07:00, before waking: the same morning.
+        assertEquals(local(2026, 8, 27, 9, 0), cheerRetryAt(local(2026, 8, 27, 7, 0), zone, DayShape.DEFAULT, Random(1)))
     }
 
     @Test

@@ -38,6 +38,7 @@ import dev.rwilco.model.AchievementFamily
 import dev.rwilco.model.Goal
 import dev.rwilco.model.Standing
 import dev.rwilco.model.Unlocked
+import dev.rwilco.model.shortSubject
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.currentLocale
@@ -170,9 +171,9 @@ fun achievementTitle(family: AchievementFamily, tier: Int): String {
 private fun goalText(goal: Goal): String {
     val subject = goal.subject
     return if (goal.family == AchievementFamily.STREAK && subject != null) {
-        stringResource(R.string.done_goal_streak, goal.tier, subject.text, goal.remaining)
+        pluralStringResource(R.plurals.done_goal_streak, goal.remaining, goal.tier, shortSubject(subject.text), goal.remaining)
     } else {
-        stringResource(R.string.done_goal, achievementTitle(goal.family, goal.tier), goal.remaining)
+        pluralStringResource(R.plurals.done_goal, goal.remaining, achievementTitle(goal.family, goal.tier), goal.remaining)
     }
 }
 
@@ -195,7 +196,7 @@ private fun StandingRow(lead: String?, text: String, trailing: String?, onClick:
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(onClickLabel = stringResource(R.string.stats_open), onClick = onClick)
             .heightIn(min = Tokens.sizes.touch)
             .padding(horizontal = spacing.lg, vertical = spacing.sm),
         verticalAlignment = Alignment.CenterVertically,

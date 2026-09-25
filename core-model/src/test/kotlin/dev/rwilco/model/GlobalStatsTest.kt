@@ -40,6 +40,16 @@ class GlobalStatsTest {
     }
 
     @Test
+    fun `a hecho dated back and written last still counts on its own day`() {
+        // Told on the 27th that it was done on the 20th, after two others: counted on the 20th.
+        val history = mapOf("b" to listOf(dealt(day(13)), dealt(day(27)), dealt(day(20))))
+        val stats = globalStats(history, mapOf("b" to subject("b", RoundShape.ROUTINE)), now, zone)
+        assertEquals(1, stats.byDay[DONE_CHART_DAYS - 8], "the 20th")
+        assertEquals(1, stats.thisWeek, "the 27th")
+        assertEquals(1, stats.lastWeek, "the 20th, the week before")
+    }
+
+    @Test
     fun `a running streak is named from three, longest first, and only while it is going`() {
         val history = mapOf(
             "long" to daily(1..27),
@@ -156,6 +166,30 @@ class GlobalStatsTest {
         )
         val merged = mergeUnlocked(kept, derived)
         assertEquals(listOf(LocalDate.of(2026, 8, 7) to "a", LocalDate.of(2026, 8, 9) to "b"), merged.map { it.on to it.subjectId })
+    }
+
+    @Test
+    fun `a week with a round still open is not perfect yet`() {
+        // Every day of the week of the 17th done, and a weekly one rung on Sunday the 23rd and not
+        // answered: that week waits for it.
+        val history = mapOf(
+            "a" to daily(17..23),
+            "w" to listOf(rang(day(23, 20))),
+        )
+        val subjects = mapOf("a" to subject("a"), "w" to subject("w", RoundShape.UNTIL_DONE))
+        assertTrue(unlocked(history, subjects).none { it.family == AchievementFamily.PERFECT_WEEKS && it.on == LocalDate.of(2026, 8, 23) })
+        val answered = history + ("w" to listOf(rang(day(23, 20)), dealt(day(24, 8))))
+        assertTrue(unlocked(answered, subjects).any { it.family == AchievementFamily.PERFECT_WEEKS && it.on == LocalDate.of(2026, 8, 23) })
+    }
+
+    @Test
+    fun `a tie between two goals goes to the hechos`() {
+        // 43 hechos (7 to fifty) and a streak of 23 (7 to thirty).
+        val history = mapOf("a" to daily(5..27), "b" to (1..20).map { dealt(day(it)) })
+        val subjects = mapOf("a" to subject("a"), "b" to subject("b", RoundShape.QUIET))
+        val stats = globalStats(history, subjects, now, zone)
+        assertEquals(43, stats.hechos)
+        assertEquals(Goal(AchievementFamily.HECHOS, 50, 7), nextGoal(stats, achievements(stats.tallies, now, zone)))
     }
 
     @Test

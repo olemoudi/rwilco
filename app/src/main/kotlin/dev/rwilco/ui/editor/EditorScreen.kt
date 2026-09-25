@@ -760,9 +760,15 @@ fun EditorScreen(
                 // "done once" is what its card already says. The routine's old "hecha N veces"
                 // line lived on the history card and counted only the fourteen lines shown; this
                 // counts the lot.
+                // It arrives a beat after the form, so it opens into place rather than pushing
+                // the history down on the next frame.
                 val stats = state.stats
-                if (stats != null && stats.shape != RoundShape.ONE_OFF && stats.done + stats.notDone > 0) {
-                    EditorSection(
+                AnimatedVisibility(
+                    visible = stats != null && stats.shape != RoundShape.ONE_OFF && stats.done + stats.notDone > 0,
+                    enter = partEnter(motion),
+                    exit = partExit(motion),
+                ) {
+                    if (stats != null) EditorSection(
                         title = stringResource(R.string.stats_title),
                         icon = Icons.Outlined.Insights,
                         note = stats.since?.let { stringResource(R.string.stats_since, TimeText.dayDate(it.atZone(zone).toLocalDate(), currentLocale(), today)) },
