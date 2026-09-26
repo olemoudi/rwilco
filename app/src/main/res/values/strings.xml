@@ -1719,6 +1719,12 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_158_0">
+
+        <item>The app now takes about 8 MB instead of 61, and the update downloads in a fraction of the time: the published build is trimmed of everything it never uses.</item>
+        <item>Nothing you see or do changes. Only English and Spanish are packed in, which are the app\'s two languages.</item>
+
+    </string-array>
     <string-array name="whats_new_0_157_0">
 
         <item>A routine can now be marked done «on time»: the count goes on from when it was due, not from the moment you tap. Due on Monday, done on Monday, said on Wednesday — it stays on Mondays.</item>

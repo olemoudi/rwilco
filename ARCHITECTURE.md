@@ -3861,3 +3861,21 @@ GitHub Actions: `ci.yml` (tests, coverage badge, debug APK, compiles instrumente
 plus the channel manifest committed to `main`; a tag naming neither channel fails the workflow,
 and so does a `versionName` that disagrees with it). Signed with the committed
 `rwilco-release.jks`. Self-update — milestone 7.
+
+**The release is shrunk by R8** (0.158.0): 61 MB of APK, 18 MB to download, was 92% dex nobody
+had shrunk — most of it `material-icons-extended`, of which the app draws about a hundred. Now
+about 8 MB. `isMinifyEnabled` + `isShrinkResources` with the default optimize rules, and
+**`-dontobfuscate`** (`app/proguard-rules.pro`): about a megabyte more, for class names the
+diagnostics print (`::class.simpleName` in `Diag.note`, `DiagReport`, `Updater`) and stack
+traces that read as they are, with no mapping file to keep per release. `localeFilters` keeps
+English and Spanish (a megabyte of the libraries' other languages, stored uncompressed in
+`resources.arsc`), and `packaging` drops what only kotlin-reflect and the coroutines debug agent
+read. Dex and `resources.arsc` stay stored uncompressed on purpose: Android maps them in place,
+and compressed they would only be unpacked into a second copy on the phone. The debug build is
+not minified, so **the instrumented suite never sees R8**. Before 0.158.0 went out it was run
+against the release build with the shared libraries and our own code kept (the in-process tests
+reach into both, and R8 strips what only a test uses), which exercised the third-party code
+shrunk — osmdroid, which ships no rules, among it — and the real APK was installed over seeded
+data and walked screen by screen. Anything added that reaches for a class by name needs a keep
+rule here.
+

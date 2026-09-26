@@ -24,8 +24,8 @@ android {
         // v0.1.0 and v0.2.0: the published versionName came out as the comment's placeholder
         // with the real one stuck on the end. Updates kept working (the version CODE never
         // matched the comment), so nothing complained — it just offered a nonsense version.
-        versionCode = 214
-        versionName = "0.157.0-alpha"
+        versionCode = 215
+        versionName = "0.158.0-alpha"
         // Ours, and only so the launch notice is answered once for the whole suite: see
         // RwilcoTestRunner. Everything else about it is AndroidJUnitRunner.
         testInstrumentationRunner = "dev.rwilco.RwilcoTestRunner"
@@ -44,7 +44,11 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 (0.158.0): 61 MB of APK was 92% dex nobody had shrunk — most of it the icon set,
+            // of which the app draws about a hundred. Shrunk, not obfuscated: see proguard-rules.pro.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("release")
         }
         debug {
@@ -54,6 +58,17 @@ android {
             // the reminders. The keystore is committed; see the release signingConfig above.
             signingConfig = signingConfigs.getByName("release")
         }
+    }
+
+    // English and Spanish are the app's languages (res/xml/locales_config.xml); the libraries'
+    // strings in the other eighty-odd were a megabyte of resources.arsc, stored uncompressed.
+    androidResources {
+        localeFilters += listOf("en", "es")
+    }
+
+    // What only kotlin-reflect (not a dependency) and the coroutines debug agent ever read.
+    packaging {
+        resources.excludes += listOf("DebugProbesKt.bin", "kotlin/**", "META-INF/*.version", "META-INF/version-control-info.textproto")
     }
 
     compileOptions {

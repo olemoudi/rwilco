@@ -170,6 +170,8 @@ class RoutinesTourTest {
         val saved = runBlocking { app.repository.get(carId) }!!
         check(saved.lastDealtAt == due) { "the count should run from the deadline $due, not from now: ${saved.lastDealtAt}" }
         check(saved.routineDone(app.clock.instant(), app.clock.zone, dayStart)) { "and twelve days of its twenty-one are left" }
+        // The row is written first and its line a moment after (ReminderFiring.writeDated).
+        rule.waitUntil(timeoutMillis = 10_000) { runBlocking { app.repository.historyAsWritten(carId) }.any { it.kind == FiringKind.DEALT } }
         val line = runBlocking { app.repository.historyAsWritten(carId) }.last()
         check(line.kind == FiringKind.DEALT && line.detail == ON_TIME_DETAIL) { "written as a hecho a su hora: $line" }
         // Said and undone like any other "hecho", and off Home's overdue line.
