@@ -19,6 +19,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performCustomAccessibilityActionWithLabel
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.GrantPermissionRule
@@ -34,7 +35,11 @@ import dev.rwilco.model.ThemeMode
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.routineDone
+import dev.rwilco.model.routineDeadline
+import dev.rwilco.model.FiringKind
+import dev.rwilco.model.ON_TIME_DETAIL
 import dev.rwilco.ui.home.HOME_SEARCH_TAG
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.BeforeClass
@@ -128,6 +133,8 @@ class RoutinesTourTest {
 
         rule.onNodeWithContentDescription(s(R.string.card_more, car)).performClick()
         rule.waitUntilShown(s(R.string.routines_done_earlier))
+        // Nine days past its deadline on three weeks: "a su hora" is an answer here too (0.157.0).
+        rule.onNodeWithText(s(R.string.routines_done_on_time), useUnmergedTree = true).assertIsDisplayed()
         rule.onNodeWithText(s(R.string.routines_done_earlier), useUnmergedTree = true).performClick()
         rule.waitUntilShown(s(R.string.routines_done_earlier_title))
         shot("routines-done-earlier")
@@ -140,6 +147,34 @@ class RoutinesTourTest {
         check(saved.routineDone(app.clock.instant(), app.clock.zone)) { "and with twenty days left of its twenty-one it is done for now" }
         // Said and undone like any other "hecho".
         rule.waitUntilShown(s(R.string.common_undo))
+    }
+
+    /**
+     * "Lo hice a su hora" (0.157.0): the car was moved the day it was due and nobody said so.
+     * Home's overdue row, held, opens the menu every card has, and the answer is in it; the count
+     * then runs from the deadline — where "Sí" would have started it from this second.
+     */
+    @Test
+    fun aHechoCanBeCountedFromWhenItWasDue() {
+        rule.waitUntil(timeoutMillis = 10_000) { rule.activity.resources.configuration.locales[0].language == "es" }
+        rule.waitUntilShown(s(R.string.home_routines_overdue_title))
+        val dayStart = runBlocking { app.settingsStore.settings.first().dayStart }
+        val due = runBlocking { app.repository.get(carId) }!!.routineDeadline(app.clock.zone, dayStart)!!
+
+        rule.onNodeWithContentDescription(s(R.string.home_routines_open), substring = true).performSemanticsAction(SemanticsActions.OnLongClick)
+        rule.waitUntilShown(s(R.string.routines_done_on_time))
+        shot("home-routine-menu")
+        rule.onNodeWithText(s(R.string.routines_done_on_time), useUnmergedTree = true).performClick()
+
+        rule.waitUntil(timeoutMillis = 10_000) { runBlocking { app.repository.get(carId) }?.lastDealtAt != null }
+        val saved = runBlocking { app.repository.get(carId) }!!
+        check(saved.lastDealtAt == due) { "the count should run from the deadline $due, not from now: ${saved.lastDealtAt}" }
+        check(saved.routineDone(app.clock.instant(), app.clock.zone, dayStart)) { "and twelve days of its twenty-one are left" }
+        val line = runBlocking { app.repository.historyAsWritten(carId) }.last()
+        check(line.kind == FiringKind.DEALT && line.detail == ON_TIME_DETAIL) { "written as a hecho a su hora: $line" }
+        // Said and undone like any other "hecho", and off Home's overdue line.
+        rule.waitUntilShown(s(R.string.common_undo))
+        rule.waitUntilGone(s(R.string.home_routines_overdue_title))
     }
 
     @Test

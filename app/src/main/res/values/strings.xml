@@ -71,6 +71,9 @@
     <string name="routines_done_earlier_future">That has not happened yet</string>
     <string name="routines_done_earlier_before_last">That is before the last time on record, %1$s</string>
     <string name="routines_done_earlier_due">Counted from then it would already be due. Mark it done when you do it.</string>
+    <string name="routines_done_on_time">I did it on time</string>
+    <string name="routines_done_on_time_hint">Counted from when it was due, %1$s</string>
+    <string name="routines_done_on_time_refused">A whole span has passed since it was due. Mark it done when you do it.</string>
     <string name="home_menu_done">Done</string>
     <string name="home_menu_delete">Delete</string>
     <string name="home_snooze">Snooze</string>
@@ -167,6 +170,8 @@
     <string name="editor_warning_not_a_question">Under a routine this is not a question: it asks once, or never.</string>
     <string name="notif_done_title">Done: %1$s</string>
     <string name="notif_done_body">The count starts again from now.</string>
+    <string name="notif_done_body_on_time">The count goes on from when it was due, %1$s.</string>
+    <string name="notif_done_on_time">Done on time</string>
     <string name="notif_done_title_plain">Done: %1$s</string>
     <string name="notif_done_body_plain">Marked done.</string>
     <string name="history_routine_gap">every %1$s on average</string>
@@ -549,6 +554,7 @@
     <string name="alert_done">Done</string>
     <string name="alert_silence">Silence</string>
     <string name="alert_view">View</string>
+    <string name="alert_done_on_time">I did it on time · %1$s</string>
     <!-- One strip's "View" among several on the alert screen: named after its own reminder, the
          way Home's pencils are, because "View, button" said three times says nothing. -->
     <string name="alert_view_one">View «%1$s»</string>
@@ -583,6 +589,7 @@
     <string name="history_missed">did not ring on time; said quietly</string>
     <string name="history_net">the safety net spoke up</string>
     <string name="history_dealt">done</string>
+    <string name="history_dealt_on_time">done on time</string>
     <string name="history_asked">asked whether it was done</string>
     <string name="history_reset">counted as done by a place</string>
     <string name="history_reset_leave">counted as done on leaving %1$s</string>
@@ -1712,6 +1719,13 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_157_0">
+
+        <item>A routine can now be marked done «on time»: the count goes on from when it was due, not from the moment you tap. Due on Monday, done on Monday, said on Wednesday — it stays on Mondays.</item>
+        <item>It is in the routine\'s menu (hold its row, on the routines screen and now on Home\'s overdue rows too), on the alert screen, and as a button on the routine\'s notification, where it takes the second snooze\'s place.</item>
+        <item>Done on time keeps the streak, and the history says «done on time». It is not offered once a whole span has passed since it was due: counted from then, the routine would be owed again at once.</item>
+
+    </string-array>
     <string-array name="whats_new_0_156_0">
 
         <item>Undoing a place\'s «done» on a routine no longer rolls the count back past a «done» you gave by hand after it: the undo now checks the history and is refused if anything counted the routine as done since.</item>

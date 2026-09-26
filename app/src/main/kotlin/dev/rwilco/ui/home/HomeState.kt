@@ -41,6 +41,7 @@ import dev.rwilco.model.Deadline
 import dev.rwilco.model.hasDeadline
 import dev.rwilco.model.isRoutine
 import dev.rwilco.model.overdueRoutines
+import dev.rwilco.model.doneOnTimeAt
 import dev.rwilco.model.routineAnchor
 import dev.rwilco.model.routineDeadline
 import dev.rwilco.model.nextDueRoutine
@@ -76,8 +77,18 @@ data class ContactNameUi(val id: String, val text: String, val kind: ContactKind
  */
 data class WaitingUi(val id: String, val text: String, val since: Instant, val routine: Boolean)
 
-/** [since] is the moment the count runs from — the last "hecho", or the day it was written. */
-data class RoutineNameUi(val id: String, val text: String, val since: Instant)
+/**
+ * [since] is the moment the count runs from — the last "hecho", or the day it was written.
+ * [snoozeOffered] and [onTimeAt] are for the menu a held row opens (0.157.0): whether "posponer"
+ * is an answer (its deadline rang and is waiting), and where "lo hice a su hora" would land.
+ */
+data class RoutineNameUi(
+    val id: String,
+    val text: String,
+    val since: Instant,
+    val snoozeOffered: Boolean = false,
+    val onTimeAt: Instant? = null,
+)
 
 /** A routine still inside its plazo, and when it runs out. */
 data class RoutineDueUi(val id: String, val text: String, val at: Instant)
@@ -534,7 +545,7 @@ fun buildHomeState(
             // a routine whose question is open is on the card above, where it can be answered.
             overdue = overdueRoutines(reminders, now, zone, dayStart)
                 .filter { it.id !in lifted }
-                .map { RoutineNameUi(it.id, it.text, it.routineAnchor()) },
+                .map { RoutineNameUi(it.id, it.text, it.routineAnchor(), it.awaitingAnswer(now), it.doneOnTimeAt(now, zone, dayStart)) },
             nextDue = nextDueRoutine(reminders, now, zone, dayStart)?.let { RoutineDueUi(it.id, it.text, it.routineDeadline(zone, dayStart)!!) },
             // No queue is needed here: "its turn came and nobody answered" is written in the row
             // itself, which is the whole reason contactOwed reads awaitingAnswer. Nothing is

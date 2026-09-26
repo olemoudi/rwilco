@@ -152,7 +152,7 @@ fun rounds(events: List<FiringEvent>, shape: RoundShape): List<Round> {
             // shut window, a shape that cannot ring, a place slow to be reached are not.
             FiringKind.NET -> if (shape != RoundShape.QUIET && event.detail == NetWord.LET_GO.name) open?.chase(event.at)
             FiringKind.DEALT, FiringKind.RESET -> {
-                out += (open ?: OpenRound(event.at)).done(event.at, shape)
+                out += (open ?: OpenRound(event.at)).done(event.at, shape, onTime = event.detail == ON_TIME_DETAIL)
                 open = null
             }
             FiringKind.SKIPPED, FiringKind.LAPSED -> {
@@ -205,9 +205,16 @@ private class OpenRound(val startedAt: Instant) {
         snoozedSinceRing = false
     }
 
-    /** Only what happened by [at] counts: a hecho dated earlier takes back what came after it. */
-    fun done(at: Instant, shape: RoundShape): Round {
-        val rang = rings.count { it <= at }
+    /**
+     * Only what happened by [at] counts: a hecho dated earlier takes back what came after it.
+     *
+     * [onTime] is "lo hice a su hora" ([ON_TIME_DETAIL]): done at the deadline, which is the
+     * moment the ring was *for*, while its line carries the moment the alarm arrived, a breath
+     * later. Read by date, that round was done before it rang; it was done as it rang — at the
+     * first ask, and not late, which is the owner's reading (the streak stands).
+     */
+    fun done(at: Instant, shape: RoundShape, onTime: Boolean = false): Round {
+        val rang = if (onTime) rings.size else rings.count { it <= at }
         return Round(
             end = RoundEnd.DONE,
             startedAt = minOf(startedAt, at),
@@ -215,7 +222,7 @@ private class OpenRound(val startedAt: Instant) {
             rang = rang > 0,
             snoozes = snoozes.count { it <= at },
             chased = chasedAt?.let { it <= at } == true,
-            late = shape == RoundShape.ROUTINE && rang > 0,
+            late = shape == RoundShape.ROUTINE && rang > 0 && !onTime,
             rings = rang,
         )
     }

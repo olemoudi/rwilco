@@ -120,6 +120,66 @@ class RoutinesTest {
         assertFalse(said.awaitingAnswer(now))
     }
 
+    // --- "lo hice a su hora": a hecho dated to the deadline (0.157.0) ---
+
+    @Test
+    fun `lo hice a su hora lands on the deadline, and the count keeps its rhythm`() {
+        // Every seven days, last done eight days ago: due yesterday, said today.
+        val weekly = Recurrence.Since(7, RecurrenceUnit.DAYS)
+        val routine = car(nine, span = weekly, createdAt = now.minus(day.multipliedBy(40)), lastDealtAt = now.minus(day.multipliedBy(8)))
+        val deadline = routine.routineDeadline(zone, dayStart)!!
+        assertTrue(deadline < now, "it is overdue")
+
+        assertEquals(deadline, routine.doneOnTimeAt(now, zone, dayStart))
+        val said = routine.doneEarlier(deadline, now)
+        assertEquals(deadline.atZone(zone).toLocalDate().plusDays(7), said.routineDeadline(zone, dayStart)!!.atZone(zone).toLocalDate())
+        assertTrue(said.routineDone(now, zone, dayStart))
+        // And "hecho" now would have moved it: that is the difference the choice is for.
+        assertTrue(routine.done(now).routineDeadline(zone, dayStart)!! > said.routineDeadline(zone, dayStart)!!)
+    }
+
+    @Test
+    fun `lo hice a su hora keeps the deadline's ring, which it answers`() {
+        val weekly = Recurrence.Since(7, RecurrenceUnit.DAYS)
+        val before = car(nine, span = weekly, createdAt = now.minus(day.multipliedBy(40)), lastDealtAt = now.minus(day.multipliedBy(8)))
+        val deadline = before.routineDeadline(zone, dayStart)!!
+        // The ring is stamped with the moment it rang *for* — the deadline itself.
+        val rung = before.copy(lastFiredAt = deadline, armedFor = deadline)
+        assertTrue(rung.awaitingAnswer(now))
+
+        val said = rung.doneEarlier(rung.doneOnTimeAt(now, zone, dayStart)!!, now)
+        assertEquals(deadline, said.lastFiredAt, "the ring was real: it rang at the moment it was done")
+        assertFalse(said.awaitingAnswer(now), "and a hecho at that same moment answers it")
+        assertNull(missedFire(said, now))
+    }
+
+    @Test
+    fun `lo hice a su hora is offered only on a routine that is due, active, and not a whole span late`() {
+        val weekly = Recurrence.Since(7, RecurrenceUnit.DAYS)
+        fun weeklyDoneDaysAgo(days: Long, status: Status = Status.ACTIVE) =
+            car(nine, span = weekly, createdAt = now.minus(day.multipliedBy(60)), lastDealtAt = now.minus(day.multipliedBy(days)), status = status)
+
+        assertNull(weeklyDoneDaysAgo(3).doneOnTimeAt(now, zone, dayStart), "not due yet: the deadline is still ahead")
+        assertEquals(weeklyDoneDaysAgo(8).routineDeadline(zone, dayStart), weeklyDoneDaysAgo(8).doneOnTimeAt(now, zone, dayStart))
+        // Two spans late: counted from its deadline it would be owed again at once. The owner's
+        // call — not offered, rather than rolled on to a later deadline it never had.
+        assertNull(weeklyDoneDaysAgo(16).doneOnTimeAt(now, zone, dayStart))
+        assertNull(weeklyDoneDaysAgo(8, Status.PAUSED).doneOnTimeAt(now, zone, dayStart), "a paused count owes nothing")
+        // A contact's plazo is a turn in the draw, not a moment it was due.
+        assertNull(weeklyDoneDaysAgo(8).copy(contactKind = ContactKind.PERSONAL).doneOnTimeAt(now, zone, dayStart))
+        assertNull(reminderOf(Recurrence.None).doneOnTimeAt(now, zone, dayStart), "and a reminder has no count")
+    }
+
+    @Test
+    fun `lo hice a su hora is there for a put-off routine and at the very moment it runs out`() {
+        val weekly = Recurrence.Since(7, RecurrenceUnit.DAYS)
+        val routine = car(nine, span = weekly, createdAt = now.minus(day.multipliedBy(60)), lastDealtAt = now.minus(day.multipliedBy(8)))
+        val deadline = routine.routineDeadline(zone, dayStart)!!
+        assertEquals(deadline, routine.copy(snoozedUntil = now.plusSeconds(3600)).doneOnTimeAt(now, zone, dayStart))
+        assertEquals(deadline, routine.doneOnTimeAt(deadline, zone, dayStart), "the second it rings, a su hora is now")
+        assertNull(routine.doneOnTimeAt(deadline.minusSeconds(1), zone, dayStart))
+    }
+
     /** What `ReminderFiring.dismiss` writes, as `Simulation.deal(Done)` mirrors it. */
     private fun Reminder.done(at: Instant): Reminder {
         val consumed = momentDealtWith(at, zone, defaultTime, dayStart)

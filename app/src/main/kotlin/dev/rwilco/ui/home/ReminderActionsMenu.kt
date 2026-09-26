@@ -47,6 +47,7 @@ import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.EventAvailable
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.SkipNext
@@ -125,6 +126,12 @@ fun ReminderActionsMenu(
      * is not an answer — anything that is not a routine, and a routine that rests.
      */
     onDoneEarlier: (() -> Unit)? = null,
+    /**
+     * "Lo hice a su hora": the moment a routine's "hecho" would be dated to — its deadline — in
+     * words; null wherever that is not an answer (see [dev.rwilco.model.doneOnTimeAt]).
+     */
+    onTimeHint: String? = null,
+    onDoneOnTime: () -> Unit = {},
     /** A contact, whose deed is a conversation: "hablamos otro día". */
     contact: Boolean = false,
     /** What can be done with the words themselves — ring the number, open the link, copy them. */
@@ -185,6 +192,17 @@ fun ReminderActionsMenu(
                             modifier = Modifier.weight(1f),
                         )
                         ActionTile(Icons.Outlined.Delete, stringResource(R.string.home_menu_delete), onDelete, Modifier.weight(1f))
+                    }
+                    // "Hecho" is *now*; this is the same answer counted from when it was due, so a
+                    // routine said on Wednesday about Monday keeps its Mondays (0.157.0). Above
+                    // "otro día": it is the one that needs no calendar.
+                    if (onTimeHint != null) {
+                        ActionRow(
+                            icon = Icons.Outlined.History,
+                            label = stringResource(R.string.routines_done_on_time),
+                            hint = onTimeHint,
+                            onClick = onDoneOnTime,
+                        )
                     }
                     // "Hecho" is always *now*, which is right for the tap and wrong for the day
                     // after: watered on Saturday, remembered on Tuesday, and the count was three

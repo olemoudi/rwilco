@@ -211,6 +211,19 @@ class RoutinesViewModel(
         }
     }
 
+    /**
+     * "Lo hice a su hora": [ReminderFiring.doneOnTime], which dates the "hecho" to the deadline
+     * and asks again under its own lock whether that still answers anything. Said and undone
+     * exactly as a "hecho" is.
+     */
+    fun doneOnTime(id: String) {
+        viewModelScope.launch {
+            val before = repository.get(id) ?: return@launch
+            val dated = firing.doneOnTime(id)
+            if (dated.written) events.send(RoutinesEvent.Done(before, comesBack(id), dated.line))
+        }
+    }
+
     /** When [id] next rings, read off the row the dismissal left. */
     private suspend fun comesBack(id: String): Instant? {
         val after = repository.get(id)?.takeIf { it.status == Status.ACTIVE } ?: return null

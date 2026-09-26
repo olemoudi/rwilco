@@ -660,6 +660,18 @@ class HomeViewModel(
     fun delete(id: String) = removeAs(id, HomeEvent.Removed.Kind.DELETED)
 
     /**
+     * "Lo hice a su hora" from an overdue routine's row (0.157.0): the "hecho" dated to its
+     * deadline ([ReminderFiring.doneOnTime]), said and undone exactly as [markDone] is.
+     */
+    fun markDoneOnTime(id: String) {
+        viewModelScope.launch {
+            val reminder = repository.get(id) ?: return@launch
+            val dated = firing.doneOnTime(id)
+            if (dated.written) events.send(HomeEvent.Removed(HomeEvent.Removed.Kind.DONE, reminder, comesBackAt = comesBack(id), line = dated.line))
+        }
+    }
+
+    /**
      * "Saltar la próxima": the same door as "hecho", because it *is* one — a dismissal given to
      * a recurring reminder that is not ringing spends its next round (`momentDealtWith`) and
      * the round after is next. The card still leaves and comes back on its own; only the word

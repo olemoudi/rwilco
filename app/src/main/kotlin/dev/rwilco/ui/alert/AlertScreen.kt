@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Call
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -69,6 +70,8 @@ import dev.rwilco.ui.theme.icon
 import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
 import dev.rwilco.ui.components.SnoozeOffers
 import dev.rwilco.ui.format.rememberWords
+import dev.rwilco.ui.format.TimeText
+import dev.rwilco.ui.format.dayWord
 import dev.rwilco.ui.format.recurrenceLabel
 import dev.rwilco.ui.components.MomentSheet
 import dev.rwilco.model.SnoozePlace
@@ -108,6 +111,11 @@ fun AlertScreen(
     content: AlertContent,
     preview: Boolean,
     onDone: () -> Unit,
+    /**
+     * "Lo hice a su hora" on a routine (0.157.0): the "hecho" dated to its deadline
+     * ([AlertContent.onTimeAt]). Drawn only while there is such a moment; null draws nothing.
+     */
+    onDoneOnTime: (() -> Unit)? = null,
     /** Reminders ringing behind this one, shown the instant it is answered. */
     waiting: Int = 0,
     onSnooze: (SnoozeOffer) -> Unit,
@@ -351,6 +359,30 @@ fun AlertScreen(
                 Text(text = viewLabel, style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(spacing.sm))
+            // **"Hecho", counted from when it was due** (0.157.0). As quiet as "Ver" and held like
+            // it, and next to the big button because it is the same answer: a thumb that lands
+            // on this one instead has still said "hecho". Only where it means something — a
+            // routine past its deadline and not a whole span past it.
+            val onTimeAt = content.onTimeAt
+            if (onDoneOnTime != null && onTimeAt != null) {
+                val due = onTimeAt.atZone(ZoneId.systemDefault())
+                val words = rememberWords()
+                val onTimeLabel = stringResource(
+                    R.string.alert_done_on_time,
+                    dayWord(words, due.toLocalDate(), content.today) + " " + TimeText.time(due.toLocalTime(), words.is24h, words.locale),
+                )
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = Tokens.sizes.touch)
+                        .clip(MaterialTheme.shapes.medium)
+                        .guarded(guard, GuardedAction(icon = Icons.Outlined.History, holding = onTimeLabel), onConfirmed = onDoneOnTime),
+                ) {
+                    Text(text = onTimeLabel, style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant)
+                }
+                Spacer(Modifier.height(spacing.sm))
+            }
             // **While it is ringing, the big button is "Silenciar" and not "Hecho".**
             //
             // The one place a thumb lands on a screen that woke somebody up should not be the

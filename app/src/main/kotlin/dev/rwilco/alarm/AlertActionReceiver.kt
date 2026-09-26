@@ -4,6 +4,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import android.widget.Toast
+import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.model.FiringKind
 import dev.rwilco.data.ReminderEntity
@@ -11,7 +13,9 @@ import dev.rwilco.model.LATER_DETAIL
 import dev.rwilco.model.ReminderCodec
 import dev.rwilco.notify.AlertNotifications
 import java.time.Instant
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 /** The "Hecho" and "Posponer" buttons on the notification. */
@@ -30,6 +34,13 @@ class AlertActionReceiver : BroadcastReceiver() {
                         // notice is posted by the firing itself, which is where the row it would
                         // be taken back to is read (ReminderFiring.dismiss).
                         ACTION_DONE -> app.firing.dismiss(id, notice = true)
+                        // "A su hora" on a routine's card: the same "hecho", dated to its deadline.
+                        // A card is fixed when it goes out and this one may have sat in the shade
+                        // for longer than a span, when that answer would leave the routine owed at
+                        // once; refused then, and said, or the button would do nothing at all.
+                        ACTION_DONE_ON_TIME -> if (!app.firing.doneOnTime(id, notice = true).written && app.repository.get(id) != null) {
+                            withContext(Dispatchers.Main) { Toast.makeText(context, R.string.routines_done_on_time_refused, Toast.LENGTH_LONG).show() }
+                        }
                         ACTION_UNDO_DONE -> {
                             val row = intent.getStringExtra(EXTRA_ROW)
                                 ?.let { runCatching { ReminderCodec.json.decodeFromString(ReminderEntity.serializer(), it) }.getOrNull() }
@@ -78,6 +89,8 @@ class AlertActionReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_DONE = "dev.rwilco.alert.DONE"
         const val ACTION_SNOOZE = "dev.rwilco.alert.SNOOZE"
+        /** "A su hora" on a routine's card: done, counted from when it was due. */
+        const val ACTION_DONE_ON_TIME = "dev.rwilco.alert.DONE_ON_TIME"
         /** "Posponer 1 semana" on a contact's card: back for the same weekday's window next week. */
         const val ACTION_PUT_OFF_WEEK = "dev.rwilco.alert.PUT_OFF_WEEK"
         /** "Todavía no" on a routine's question. */

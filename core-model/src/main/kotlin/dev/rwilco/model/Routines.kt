@@ -15,7 +15,8 @@ import java.time.ZoneId
  *
  * - The span is the ring, counted from the last "hecho" (or from where the count started: the
  *   day it was written, or a moment the person named — see [routineStart]).
- * - "Hecho" is *now*: the count starts again from this moment ([Reminder.momentDealtWith]).
+ * - "Hecho" is *now*: the count starts again from this moment ([Reminder.momentDealtWith]) —
+ *   or, when somebody says so, from the deadline it answers ([doneOnTimeAt]).
  * - A pause freezes the count ([Reminder.pausedAt], [routineClock], [routineAnchorAfterPause]):
  *   nothing is owed while it rests, and the time it rested is not time that passed.
  * - The rules never ring and never rest. A clock rule *asks* whether it has been done; a place
@@ -167,6 +168,25 @@ fun Reminder.doneEarlier(at: Instant, now: Instant): Reminder {
         lastFiredRule = lastFiredRule.takeUnless { rangAfter },
         nudgedAt = nudgedAt.takeUnless { rangAfter },
     )
+}
+
+/**
+ * Where "lo hice a su hora" lands: the moment the plazo ran out, or null where that is not an
+ * answer (0.157.0, the owner's "cuando venció originalmente").
+ *
+ * "Hecho" is *now*, and for a tap given after the fact that loses the rhythm: due on Monday,
+ * done on Monday, said on Wednesday, and a weekly routine has moved to Wednesdays for good. This
+ * is [doneEarlier] on the one day that needs no calendar, inside the same fences
+ * ([doneEarlierRefusal]): so only once the deadline has passed, and **never a whole span late** —
+ * counted from its deadline, a routine that late would be owed again the second it was written.
+ * The owner chose that it is then not offered, rather than rolled on to a later deadline the
+ * routine never had. Not on a paused routine (its count is frozen, and owes nothing), and not on
+ * a contact, whose plazo is a turn in the draw rather than a moment it was due.
+ */
+fun Reminder.doneOnTimeAt(now: Instant, zone: ZoneId, dayStart: LocalTime = DEFAULT_DAY_START): Instant? {
+    if (isContact || status != Status.ACTIVE) return null
+    val deadline = routineDeadline(zone, dayStart) ?: return null
+    return deadline.takeIf { doneEarlierRefusal(it, now, zone, dayStart) == null }
 }
 
 /**

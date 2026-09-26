@@ -182,6 +182,36 @@ class RoundsTest {
     }
 
     @Test
+    fun `lo hice a su hora is done when it rang, not before it and not late`() {
+        // The deadline rang for Monday at nine; the alarm's own line is written a breath later.
+        // On Wednesday: "lo hice a su hora" — dated nine o'clock Monday, written after the ring.
+        val events = listOf(dealt(day(10)), rang(day(17, 9, 0).plusMillis(40)), e(FiringKind.DEALT, day(17), ON_TIME_DETAIL))
+        val last = rounds(events, RoundShape.ROUTINE).last()
+        assertEquals(RoundEnd.DONE, last.end)
+        assertFalse(last.late)
+        assertTrue(last.keepsStreak, "the owner's call: done on time keeps the streak")
+        assertTrue(last.rang, "it rang, and was answered as it did")
+        assertFalse(last.ahead, "not a round done before it rang")
+        assertTrue(last.firstTime)
+        assertEquals(day(17), last.endedAt)
+    }
+
+    @Test
+    fun `lo hice a su hora is still on time after the net spoke and a snooze was given`() {
+        val events = listOf(
+            dealt(day(10)),
+            rang(day(17)),
+            snoozed(day(17, 9, 30)),
+            e(FiringKind.NET, day(17, 21, 0), NetWord.LET_GO.name),
+            e(FiringKind.DEALT, day(17), ON_TIME_DETAIL),
+        )
+        val last = rounds(events, RoundShape.ROUTINE).last()
+        assertTrue(last.keepsStreak)
+        assertEquals(0, last.snoozes, "what came after the moment it was done is not part of it")
+        assertFalse(last.chased)
+    }
+
+    @Test
     fun `a place's reset counts as a hecho and an undone reset does not`() {
         val events = listOf(
             dealt(day(1)),

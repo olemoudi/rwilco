@@ -211,6 +211,8 @@ fun HomeScreen(
     var askingWordsFor by rememberSaveable { mutableStateOf<String?>(null) }
     // The card being held, and so the one the actions menu is about.
     var actingOn by rememberSaveable { mutableStateOf<String?>(null) }
+    // Held on an overdue routine's row, which is not a card and has no card state to find.
+    var actingOnRoutine by rememberSaveable { mutableStateOf<String?>(null) }
     // The card a calendar is open for: "posponer · a una fecha concreta" (see MomentSheet).
     var pickingDateFor by rememberSaveable { mutableStateOf<String?>(null) }
     /** The card "a otro momento" was asked for: the list of every other way of putting it off. */
@@ -471,6 +473,44 @@ fun HomeScreen(
                     onKeepAsPreset(held.id)
                 },
                 onDismiss = { actingOn = null },
+            )
+        }
+    }
+
+    // **An overdue routine's row answers a held press too** (0.157.0). It was the one thing on
+    // Home that did not, and "lo hice a su hora" is an answer a swipe cannot give. The routines
+    // screen's own menu, less what needs that screen: "otro día" asks a calendar that lives there.
+    // An owed routine is active and not put off, so neither "reanudar" nor "quitar el posponer".
+    actingOnRoutine?.let { id ->
+        val held = state.routines.overdue.firstOrNull { it.id == id }
+        LaunchedEffect(held == null) { if (held == null) actingOnRoutine = null }
+        if (held != null) {
+            ReminderActionsMenu(
+                words = held.text,
+                wordActions = rememberWordActions(held.text) { actingOnRoutine = null },
+                paused = false,
+                snoozeOffered = held.snoozeOffered,
+                snoozed = false,
+                customMinutes = snoozeCustomMinutes,
+                onDone = { actingOnRoutine = null; viewModel.markDone(held.id) },
+                onPause = { actingOnRoutine = null; viewModel.togglePause(held.id, false) },
+                onDelete = { actingOnRoutine = null; viewModel.delete(held.id) },
+                onSnooze = { snooze -> actingOnRoutine = null; viewModel.snooze(held.id, snooze) },
+                board = snoozeBoard,
+                terms = snoozeTerms,
+                clock = viewModel.clock,
+                onSnoozeMore = { actingOnRoutine = null; choosingMoreFor = held.id },
+                onCancelSnooze = { actingOnRoutine = null; viewModel.cancelSnooze(held.id) },
+                onClone = { actingOnRoutine = null; onClone(held.id) },
+                onKeepAsPreset = { actingOnRoutine = null; onKeepAsPreset(held.id) },
+                onDismiss = { actingOnRoutine = null },
+                routine = true,
+                onTimeHint = held.onTimeAt?.let { due ->
+                    val here = due.atZone(zone)
+                    val todayHere = viewModel.clock.instant().atZone(zone).toLocalDate()
+                    words.get(R.string.routines_done_on_time_hint, dayWord(words, here.toLocalDate(), todayHere) + " " + TimeText.time(here.toLocalTime(), words.is24h, words.locale))
+                },
+                onDoneOnTime = { actingOnRoutine = null; viewModel.markDoneOnTime(held.id) },
             )
         }
     }
@@ -875,6 +915,7 @@ fun HomeScreen(
                                     routine = routine,
                                     now = nowState.value,
                                     onOpen = { onRoutines(routine.id) },
+                                    onLongClick = { actingOnRoutine = routine.id },
                                 )
                             }
                         }

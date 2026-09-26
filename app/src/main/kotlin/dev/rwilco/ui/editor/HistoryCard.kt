@@ -15,6 +15,7 @@ import androidx.compose.ui.text.style.TextAlign
 import dev.rwilco.R
 import dev.rwilco.model.FiringEvent
 import dev.rwilco.model.FiringKind
+import dev.rwilco.model.ON_TIME_DETAIL
 import dev.rwilco.ui.format.SnoozeWord
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.dayWord
@@ -69,7 +70,7 @@ private fun eventWords(event: FiringEvent, today: LocalDate, zone: ZoneId): Stri
         FiringKind.RANG -> stringResource(R.string.history_rang)
         FiringKind.MISSED -> stringResource(R.string.history_missed)
         FiringKind.NET -> stringResource(R.string.history_net)
-        FiringKind.DEALT -> stringResource(R.string.history_dealt)
+        FiringKind.DEALT -> stringResource(if (event.detail == ON_TIME_DETAIL) R.string.history_dealt_on_time else R.string.history_dealt)
         FiringKind.SKIPPED -> stringResource(R.string.history_skipped)
         FiringKind.UNTICKED -> stringResource(R.string.history_unticked)
         FiringKind.LAPSED -> stringResource(R.string.history_lapsed)

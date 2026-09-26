@@ -91,6 +91,8 @@ import dev.rwilco.model.isRoutine
 import dev.rwilco.model.withSnoozeUsed
 import dev.rwilco.model.doneEarlier
 import dev.rwilco.model.doneEarlierRefusal
+import dev.rwilco.model.doneOnTimeAt
+import dev.rwilco.model.ON_TIME_DETAIL
 import dev.rwilco.model.closesFrom
 import dev.rwilco.model.windows
 import dev.rwilco.model.promptLookFrom
@@ -580,12 +582,46 @@ class ReminderFiring(
             return@withLock DatedDone(written = false)
         }
         Diag.note(TAG_DIAG, "r=${short(id)} dealt with, dated back to $at")
-        repeater.cancel(id)
-        AlertNotifications.cancel(context, id)
-        repository.save(reminder.doneEarlier(at, now))
-        val line = repository.record(id, FiringKind.DEALT, at)
-        scheduler.rearmAll()
+        DatedDone(written = true, line = writeDated(reminder, at, now))
+    }
+
+    /**
+     * "Lo hice a su hora": a routine's "hecho" dated to its own deadline (0.157.0) — the same
+     * dated write as [doneEarlier], on the moment the row itself names, worked out here under the
+     * lock rather than trusted from a card that may have sat in the shade since. Refused, and the
+     * card left where it is, when that is no longer an answer ([doneOnTimeAt]): a whole span late,
+     * paused, or answered from somewhere else in between.
+     *
+     * The history line is the ordinary "hecho" with [ON_TIME_DETAIL] on it, which is how the
+     * statistics know it was done as the deadline rang rather than before it. With [notice] it
+     * leaves the minute's undo card, as every "hecho" from the shade and the alert screen does.
+     */
+    suspend fun doneOnTime(id: String, notice: Boolean = false): DatedDone = lock.withLock {
+        val row = repository.rowOf(id) ?: run {
+            // A card that outlived its row: it goes, as "Hecho" on it would take it down.
+            AlertNotifications.cancel(context, id)
+            return@withLock DatedDone(written = false)
+        }
+        val reminder = row.toDomain()
+        val now = clock.instant()
+        val at = reminder.doneOnTimeAt(now, clock.zone, settings().dayStart) ?: run {
+            Diag.note(TAG_DIAG, "r=${short(id)} hecho on time refused: ${reminder.status}, due ${reminder.routineDeadline(clock.zone, settings().dayStart)}")
+            return@withLock DatedDone(written = false)
+        }
+        Diag.note(TAG_DIAG, "r=${short(id)} dealt with on time, dated to its deadline $at")
+        val line = writeDated(reminder, at, now, ON_TIME_DETAIL)
+        if (notice) AlertNotifications.doneNotice(context, reminder, row, countedFrom = at.atZone(clock.zone))
         DatedDone(written = true, line = line)
+    }
+
+    /** The one write behind both dated doors: the whole row ([Reminder.doneEarlier]) and its "hecho" line. */
+    private suspend fun writeDated(reminder: Reminder, at: Instant, now: Instant, detail: String? = null): Long? {
+        repeater.cancel(reminder.id)
+        AlertNotifications.cancel(context, reminder.id)
+        repository.save(reminder.doneEarlier(at, now))
+        val line = repository.record(reminder.id, FiringKind.DEALT, at, detail = detail)
+        scheduler.rearmAll()
+        return line
     }
 
     /** What a dated "hecho" came to: whether it was taken, and the history line it wrote. */

@@ -1,6 +1,8 @@
 package dev.rwilco.ui.home
 
 import dev.rwilco.model.momentDealtWith
+import dev.rwilco.model.DEFAULT_ACTIONS
+import dev.rwilco.model.routineDeadline
 import dev.rwilco.model.Period
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RecurrenceUnit
@@ -385,6 +387,28 @@ class HomeStateTest {
         // cards under it move down by one.
         assertEquals(1, homeCardIndex(withHero, "hero", strip = false, pinned = false, cheerRow = true))
         assertEquals(4, homeCardIndex(withHero, "a", strip = false, pinned = false, cheerRow = true))
+    }
+
+    @Test
+    fun `an overdue routine's row carries what its held menu offers`() {
+        // Weekly, two days late and rung: "a su hora" lands on the deadline, and "posponer" is an
+        // answer to the ring. Rung *silently* — a ring with sound is lifted onto the waiting card,
+        // whose tap is the alert screen, and that has "a su hora" of its own. Weekly and thirteen
+        // days late: counted from its deadline it would be owed again at once, so the menu does not
+        // offer it — and nothing rang to put off.
+        val span = Recurrence.Since(7, RecurrenceUnit.DAYS)
+        val due = reminder("due").copy(recurrence = span, createdAt = now.minusSeconds(9 * 86_400), actions = emptySet())
+        val rung = due.copy(lastFiredAt = due.routineDeadline(zone))
+        val stale = reminder("stale").copy(recurrence = span, createdAt = now.minusSeconds(20 * 86_400))
+        val state = buildHomeState(listOf(rung, stale), defaultTime, now, zone, selectedTag = null)
+        val row = state.routines.overdue.single { it.id == "due" }
+        assertEquals(rung.routineDeadline(zone), row.onTimeAt)
+        assertTrue(row.snoozeOffered)
+        val staleRow = state.routines.overdue.single { it.id == "stale" }
+        assertNull(staleRow.onTimeAt)
+        assertFalse(staleRow.snoozeOffered)
+        val loud = buildHomeState(listOf(rung.copy(actions = DEFAULT_ACTIONS)), defaultTime, now, zone, selectedTag = null)
+        assertTrue(loud.routines.overdue.isEmpty(), "a ring with sound is the waiting card's, not a row")
     }
 
     @Test

@@ -90,7 +90,14 @@ fun RoutinesDoor(total: Int, onOpen: () -> Unit, modifier: Modifier = Modifier, 
  * everywhere in this app — the same ink the routine's own row wears over there.
  */
 @Composable
-fun OverdueRoutineRow(routine: RoutineNameUi, now: Instant, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+fun OverdueRoutineRow(
+    routine: RoutineNameUi,
+    now: Instant,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** The held press: the menu every card on Home opens (0.157.0), "lo hice a su hora" in it. */
+    onLongClick: (() -> Unit)? = null,
+) {
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
     val ink = scheme.onErrorContainer
@@ -104,6 +111,8 @@ fun OverdueRoutineRow(routine: RoutineNameUi, now: Instant, onOpen: () -> Unit, 
     val header = stringResource(R.string.home_routines_overdue_title)
     RwilcoCard(
         onClick = onOpen,
+        onLongClick = onLongClick,
+        longClickLabel = stringResource(R.string.routines_card_actions),
         color = scheme.errorContainer,
         modifier = modifier.semantics { contentDescription = header + " " + routine.text + ". " + ago + ". " + opens },
     ) {

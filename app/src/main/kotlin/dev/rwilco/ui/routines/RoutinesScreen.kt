@@ -423,6 +423,12 @@ fun RoutinesScreen(
             // Not of one that rests: its count is frozen, and a day named into a frozen count
             // is a sentence nobody can read back.
             onDoneEarlier = { actingOn = null; viewModel.askWhenDone(held.id) }.takeIf { !held.paused },
+            onTimeHint = held.onTimeAt?.let { due ->
+                val here = due.atZone(zone)
+                val todayHere = clock.instant().atZone(zone).toLocalDate()
+                words.get(R.string.routines_done_on_time_hint, dayWord(words, here.toLocalDate(), todayHere) + " " + TimeText.time(here.toLocalTime(), words.is24h, words.locale))
+            },
+            onDoneOnTime = { actingOn = null; viewModel.doneOnTime(held.id) },
             contact = held.contactKind != null,
         )
     }

@@ -9,6 +9,7 @@ import dev.rwilco.model.Reminder
 import dev.rwilco.model.contactDeadline
 import dev.rwilco.model.contactOwed
 import dev.rwilco.model.contactQueue
+import dev.rwilco.model.doneOnTimeAt
 import dev.rwilco.model.isContact
 import dev.rwilco.model.RoutineFilter
 import dev.rwilco.model.Status
@@ -69,6 +70,11 @@ data class RoutineRowUi(
      * turn inside the year the draw looks over, which is what "sin turno" says.
      */
     val turnAt: Instant? = null,
+    /**
+     * Where "lo hice a su hora" would put the "hecho": the deadline, while that is an answer —
+     * overdue, active, not a contact, not a whole span late ([Reminder.doneOnTimeAt]). Null hides it.
+     */
+    val onTimeAt: Instant? = null,
 )
 
 data class RoutinesUiState(
@@ -137,6 +143,7 @@ fun buildRoutinesState(
             putOff = reminder.status == Status.ACTIVE && reminder.routinePutOff(now),
             contactKind = reminder.contactKind,
             turnAt = turn,
+            onTimeAt = reminder.doneOnTimeAt(now, zone, dayStart),
         )
     }
     return RoutinesUiState(

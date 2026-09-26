@@ -19,6 +19,8 @@ import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
+import dev.rwilco.model.routineDeadline
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -135,6 +137,59 @@ class UndoAndNetNotificationTest {
         } finally {
             AlertNotifications.cancelReset(context, ficus.id)
             runBlocking { app.repository.delete(ficus.id) }
+        }
+    }
+
+    @Test
+    fun aRoutinesCardOffersASuHoraInPlaceOfTheSecondSnooze() {
+        // 0.157.0: "Hecho" is now; a routine's card also says "a su hora", counted from the
+        // deadline. Three is the cap, so it takes the second snooze's place — and only there.
+        AlertNotifications.post(context, car, QUIET, late = null, nudge = NetWord.LET_GO)
+        Thread.sleep(600)
+        val words = cardsOn(AlertNotifications.CHANNEL_NET).single().notification.words()
+        assertEquals(3, words.size)
+        assertEquals(listOf(context.getString(R.string.alert_done), context.getString(R.string.notif_done_on_time)), words.take(2))
+        AlertNotifications.cancel(context, car.id)
+        Thread.sleep(300)
+        AlertNotifications.post(context, bins, QUIET, late = null, nudge = NetWord.LET_GO)
+        Thread.sleep(600)
+        val plain = cardsOn(AlertNotifications.CHANNEL_NET).single().notification.words()
+        assertEquals("a reminder keeps both snoozes", 3, plain.size)
+        assertEquals(false, context.getString(R.string.notif_done_on_time) in plain)
+    }
+
+    @Test
+    fun aSuHoraFromTheShadeCountsFromTheDeadlineAndLeavesAMinutesUndo() {
+        val app = context.applicationContext as dev.rwilco.RwilcoApplication
+        // Weekly, written nine days ago and never done: due two days ago.
+        val plants = car.copy(
+            id = "shade-on-time",
+            text = "Regar las plantas (prueba)",
+            rules = emptyList(),
+            recurrence = Recurrence.Since(7, RecurrenceUnit.DAYS),
+            createdAt = Instant.now().minus(Duration.ofDays(9)),
+            updatedAt = Instant.now().minus(Duration.ofDays(9)),
+        )
+        runBlocking { app.repository.save(plants) }
+        try {
+            val dayStart = runBlocking { app.settingsStore.settings.first().dayStart }
+            val due = plants.routineDeadline(app.clock.zone, dayStart)!!
+            context.sendBroadcast(
+                Intent(context, AlertActionReceiver::class.java)
+                    .setAction(AlertActionReceiver.ACTION_DONE_ON_TIME)
+                    .setData(ReminderScheduler.reminderUri(plants.id)),
+            )
+            val about = { cardsOn(AlertNotifications.CHANNEL_NET).map { it.notification }.filter { plants.text in it.title() } }
+            val deadline = System.currentTimeMillis() + 10_000
+            while (about().isEmpty()) {
+                check(System.currentTimeMillis() < deadline) { "no undo card came" }
+                Thread.sleep(100)
+            }
+            assertEquals("one button, the undo", 1, about().single().actions.orEmpty().size)
+            assertEquals("counted from the deadline, not from now", due, runBlocking { app.repository.get(plants.id) }!!.lastDealtAt)
+        } finally {
+            AlertNotifications.cancelReset(context, plants.id)
+            runBlocking { app.repository.delete(plants.id) }
         }
     }
 

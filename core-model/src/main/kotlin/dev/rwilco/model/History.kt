@@ -56,3 +56,11 @@ data class FiringEvent(val kind: FiringKind, val at: Instant, val ruleIndex: Int
  * and not a snooze — the statistics do not count it as one.
  */
 const val LATER_DETAIL = "later"
+
+/**
+ * What "lo hice a su hora" writes as its detail: a [FiringKind.DEALT] dated to the routine's
+ * deadline ([doneOnTimeAt]). The line is the ordinary "hecho"; the word is there because the
+ * deadline's own ring is stamped a breath *after* that moment, and read by date alone the round
+ * would be done before it ever rang — which the statistics call something else (see [rounds]).
+ */
+const val ON_TIME_DETAIL = "on-time"

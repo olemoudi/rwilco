@@ -447,7 +447,8 @@ anything repeats**:
   doing it.
   `Reminder.isRoutine` is exactly this predicate, and everything a routine does follows from the
   one reading: the span is **always the ring**, counted from `lastDealtAt ?: routineStart()`
-  (`routineAnchor`, `routineDeadline`); **"hecho" is now**, never "the one that was coming"
+  (`routineAnchor`, `routineDeadline`); **"hecho" is now** (or, asked for, the deadline:
+  "lo hice a su hora", `doneOnTimeAt`, 0.157.0), never "the one that was coming"
   (`momentDealtWith` answers null, and `recurrenceAnchor` ignores a `dealtThrough` left behind
   by an `After` edited into a `Since`); and **the rules never ring and never rest** —
   `nextFire`/`nextWake` answer with the deadline before `restUntil` is even asked, `restUntil`
@@ -818,6 +819,9 @@ never sorted by date: "lo hice el sábado" said on Tuesday writes a `DEALT` date
 Monday's deadline ring. In written order it closes the round it was said in, and a ring or snooze
 dated after the hecho's own moment is taken back — what `Reminder.doneEarlier` does to
 `lastFiredAt`. Sorted by date, the ring would fall into the next round and make it overdue.
+The one exception is a `DEALT` carrying `ON_TIME_DETAIL` ("lo hice a su hora", 0.157.0): dated
+to the deadline, a breath before the ring's own line, and read as done *as it rang* — every ring
+of the round counts, and it is not late.
 
 `ReminderStats` (`reminderStats`) is the count: done, not done, skipped, snoozes, first-time
 answers, the current and the best streak, the mean gap between hechos, the oldest line kept
@@ -2302,6 +2306,39 @@ loud what DST and a change of zone do to a landing.
   journey (`doneEarlier`) walks rung-Wednesday / done-Monday / said-Thursday to the next ring.
   Known edge: a contact told today and then dated back frees its kind's turn for the day
   (`anotherContactToldThatDay` reads the ring that was shed).
+- **"Lo hice a su hora": the "hecho" counted from when it was due** (0.157.0, the owner's
+  "cuando venció originalmente"; `Reminder.doneOnTimeAt` in `Routines.kt`,
+  `ReminderFiring.doneOnTime`). "Hecho" is now, and a routine answered after the fact drifted:
+  due Monday, done Monday, said Wednesday, and a weekly one lived on Wednesdays for good. This is
+  the dated "hecho" above on the one day that needs no calendar — the deadline — written through
+  the same `Reminder.doneEarlier` and the same fences (`doneEarlierRefusal`), worked out under
+  the lock rather than trusted from the surface that offered it. **What it means was asked**:
+  "lo hice a su hora", a claim that it was done when due, not "keep the rhythm however late" —
+  so **it keeps the streak** and **it is not offered past a whole span** (counted from its
+  deadline the routine would be owed again at once; `ALREADY_DUE`), rather than rolled on to a
+  later deadline the routine never had. Not on a contact (its plazo is a turn, not a moment it
+  was due) nor on a paused routine. The deadline's ring is stamped with the moment it rang *for*
+  (`lastFiredAt = armedFor`), which is exactly this moment, so `doneEarlier` keeps it and the
+  "hecho" answers it (`awaitingAnswer` wants the hecho at or after the ring). The history line is
+  `DEALT` with **`ON_TIME_DETAIL`**: the ring's own line carries the millisecond the alarm
+  arrived, a breath after the deadline, and read by date the round would be "done before it
+  rang" (`ahead`, which the cheers and the achievements count); `rounds` reads the detail as
+  done at its ring, at the first ask and not late. **Four doors**, the owner's list: the
+  routines' `⋯` menu and **Home's overdue rows, which now answer a held press** with the same
+  `ReminderActionsMenu` (less "otro día", whose calendar lives on the routines screen); the
+  alert screen, a quiet held row over the big button (`AlertContent.onTimeAt`), which the
+  waiting card reaches too — a rung routine is lifted off the overdue rows onto it; and the
+  ring's card and the net's word about it, where "A su hora" takes the **second snooze's
+  place** (three actions is the cap). A card is fixed when it goes out, so pressed a whole span
+  later it is refused and a toast says why (`AlertActionReceiver.ACTION_DONE_ON_TIME`), rather
+  than the button doing nothing. From the shade and the alert it leaves the minute's undo card,
+  whose body says where the count runs from (`doneNotice(countedFrom)`); `undoDismiss` takes the
+  line back as it does any "hecho" (it is dated after the restored row's anchor). Not on the
+  stacked alert's strips (their "Ver" opens the single alert, which has it) nor on a routine's
+  question ("¿lo has hecho?" is asked before the deadline, and its "Sí, ahora" says what it
+  does). `RoutinesTest`/`RoundsTest` pin the moment, the fences and the streak;
+  `RoutinesStateTest`/`HomeStateTest` the rows; `RoutinesTourTest`, `AlertRoutineTest` and
+  `UndoAndNetNotificationTest` the four doors on a device.
 - **A routine's rules never ring** (0.95.0, `Reminder.isRoutine`). `nextWake` arms a routine's
   deadline and nothing else, so no clock rule of one is ever armed; a place rule's circle still
   reports crossings, and a stale alarm can still carry a rule index, so `ReminderFiring.fire`

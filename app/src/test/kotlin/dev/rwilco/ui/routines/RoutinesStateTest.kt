@@ -9,6 +9,7 @@ import dev.rwilco.model.RoutineFilter
 import dev.rwilco.model.Status
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.Duration
@@ -170,5 +171,21 @@ class RoutinesStateTest {
         assertTrue(state.rows.single { it.id == "rang" }.snoozeOffered)
         assertFalse(state.rows.single { it.id == "quiet" }.snoozeOffered)
         assertFalse(state.rows.single { it.id == "rang" }.snoozed)
+    }
+
+    @Test
+    fun `lo hice a su hora is on the rows it answers, at the deadline`() {
+        // Nine days late on three weeks: a su hora is the deadline. Fresh: nothing is due. Fifty
+        // days late: counted from its deadline it would be owed at once. Paused: owes nothing.
+        val late = routine("late", daysAgo = 30)
+        val fresh = routine("fresh", daysAgo = 1)
+        val stale = routine("stale", daysAgo = 50)
+        val paused = routine("paused", daysAgo = 30, status = Status.PAUSED)
+        val state = buildRoutinesState(listOf(late, fresh, stale, paused), RoutineFilter.All, now, zone, dayStart)
+        val lateRow = state.rows.single { it.id == "late" }
+        assertEquals(lateRow.deadline, lateRow.onTimeAt)
+        assertNull(state.rows.single { it.id == "fresh" }.onTimeAt)
+        assertNull(state.rows.single { it.id == "stale" }.onTimeAt)
+        assertNull(state.rows.single { it.id == "paused" }.onTimeAt)
     }
 }

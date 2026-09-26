@@ -39,12 +39,17 @@ import dev.rwilco.model.ReminderCodec
 import dev.rwilco.ui.theme.AMBER_ARGB
 import androidx.compose.ui.graphics.toArgb
 import dev.rwilco.ui.theme.routineColor
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.Instant
+import java.time.ZonedDateTime
 import java.time.Duration
 import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
 import dev.rwilco.model.NOTIFICATION_SNOOZES
 import dev.rwilco.ui.format.snoozeLabel
+import dev.rwilco.ui.format.TimeText
+import dev.rwilco.ui.format.dayWord
+import dev.rwilco.ui.format.words
 import dev.rwilco.model.notificationOffers
 
 /**
@@ -394,8 +399,11 @@ object AlertNotifications {
      * columns in one statement and the anchor is one of them, so the whole row is the only honest
      * undo — the same one Home's own puts back. A row too long to carry is posted without the
      * button rather than risking the binder: the word still lands, and "Hechos" still has it.
+     *
+     * [countedFrom] is "lo hice a su hora" (0.157.0): the count did not start again now, it went
+     * on from the deadline, and the card says from when — the one thing the tap cannot show.
      */
-    fun doneNotice(context: Context, reminder: Reminder, row: ReminderEntity?) {
+    fun doneNotice(context: Context, reminder: Reminder, row: ReminderEntity?, countedFrom: ZonedDateTime? = null) {
         val snapshot = row
             ?.let { runCatching { ReminderCodec.json.encodeToString(ReminderEntity.serializer(), it) }.getOrNull() }
             ?.takeIf { it.length <= MOST_UNDO_CHARS }
@@ -412,7 +420,15 @@ object AlertNotifications {
             reminder.isRoutine -> context.getString(R.string.notif_done_title, reminder.text)
             else -> context.getString(R.string.notif_done_title_plain, reminder.text)
         }
-        val body = context.getString(if (reminder.isRoutine) R.string.notif_done_body else R.string.notif_done_body_plain)
+        val body = when {
+            countedFrom != null -> {
+                val words = context.words()
+                val day = dayWord(words, countedFrom.toLocalDate(), LocalDate.now(countedFrom.zone))
+                context.getString(R.string.notif_done_body_on_time, day + " " + TimeText.time(countedFrom.toLocalTime(), words.is24h, words.locale))
+            }
+            reminder.isRoutine -> context.getString(R.string.notif_done_body)
+            else -> context.getString(R.string.notif_done_body_plain)
+        }
         undoableNotice(context, reminder, undo, title, body, DONE_NOTICE_MS)
     }
 
@@ -644,6 +660,14 @@ object AlertNotifications {
             )
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .addAction(0, context.getString(R.string.alert_done), actionIntent(context, reminder.id, AlertActionReceiver.ACTION_DONE, null))
+        // **A routine's second button is "a su hora"** (0.157.0, the owner's): "Hecho" is now, and
+        // the card is most often answered after the fact — due at nine, done at nine, said at
+        // seven — which moved the count to seven for good. It takes the second snooze's place,
+        // because three is the cap; the offers behind the first are on the alert screen. A card
+        // left in the shade past a whole span is refused when pressed, and says so
+        // ([AlertActionReceiver]), since what a card shows is fixed when it goes out.
+        val onTime = reminder.isRoutine && !reminder.isContact
+        if (onTime) builder.addAction(0, context.getString(R.string.notif_done_on_time), actionIntent(context, reminder.id, AlertActionReceiver.ACTION_DONE_ON_TIME, null))
         // Three is what a notification shows, so two more — and which two depends on what this
         // card is. **A word from the net about a reminder that cannot arrive has nothing to
         // postpone**: its hours and its moments never meet, or its moment came and went while a
@@ -663,7 +687,7 @@ object AlertNotifications {
                 context.getString(R.string.home_cancel_snooze),
                 actionIntent(context, reminder.id, AlertActionReceiver.ACTION_UNSNOOZE, null),
             )
-            NetWord.LET_GO, null -> for (snooze in snoozes.take(NOTIFICATION_SNOOZES)) {
+            NetWord.LET_GO, null -> for (snooze in snoozes.take(if (onTime) NOTIFICATION_SNOOZES - 1 else NOTIFICATION_SNOOZES)) {
                 builder.addAction(
                     0,
                     snoozeLabel(context, snooze, customMinutes),

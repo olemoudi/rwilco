@@ -20,6 +20,11 @@ data class AlertContent(
     val routine: Boolean = false,
     /** The routine's own plazo, which is what its ring is *for* — said where a rule's line would be. */
     val recurrence: dev.rwilco.model.Recurrence = dev.rwilco.model.Recurrence.None,
+    /**
+     * Where "lo hice a su hora" would date the "hecho": a routine's deadline, while that is still
+     * an answer ([dev.rwilco.model.doneOnTimeAt]). Null draws no such row.
+     */
+    val onTimeAt: java.time.Instant? = null,
 ) {
     companion object {
         /**

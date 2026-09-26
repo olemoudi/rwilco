@@ -11,6 +11,9 @@ import androidx.test.platform.app.InstrumentationRegistry
 import dev.rwilco.R
 import dev.rwilco.ui.alert.AlertContent
 import dev.rwilco.ui.alert.AlertScreen
+import dev.rwilco.ui.format.TimeText
+import dev.rwilco.ui.format.dayWord
+import dev.rwilco.ui.format.words
 import dev.rwilco.ui.theme.RwilcoTheme
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -19,6 +22,7 @@ import org.junit.runner.RunWith
 import java.io.File
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 
 /**
  * A routine's alert is not a reminder's.
@@ -68,6 +72,35 @@ class AlertRoutineTest {
                 .fetchSemanticsNodes().isNotEmpty(),
         )
         shot("alert-routine")
+    }
+
+    /**
+     * "Lo hice a su hora" (0.157.0): a routine past its deadline offers the "hecho" counted from
+     * then, held like every answer here, and says which moment it lands on.
+     */
+    @Test
+    fun aRoutinePastItsDeadlineCanBeDoneOnTime() {
+        val due = LocalDate.now().atTime(9, 0).atZone(ZoneId.systemDefault())
+        val words = context.words()
+        val label = context.getString(R.string.alert_done_on_time, dayWord(words, due.toLocalDate(), due.toLocalDate()) + " " + TimeText.time(due.toLocalTime(), words.is24h, words.locale))
+        var answered = false
+        rule.setContent {
+            RwilcoTheme(darkTheme = true) {
+                AlertScreen(
+                    content = content("Mover el coche", routine = true).copy(today = due.toLocalDate(), onTimeAt = due.toInstant()),
+                    preview = false,
+                    onDone = {},
+                    onDoneOnTime = { answered = true },
+                    onSnooze = {},
+                    onView = {},
+                )
+            }
+        }
+        rule.waitUntilArmed(label)
+        shot("alert-routine-on-time")
+        rule.holdToAnswer(label)
+        rule.waitForIdle()
+        assertTrue("the hold on the row gives that answer", answered)
     }
 
     @Test

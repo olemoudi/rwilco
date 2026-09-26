@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.view.KeyEvent
 import android.view.WindowManager
 import dev.rwilco.diag.Diag
+import dev.rwilco.model.doneOnTimeAt
 import dev.rwilco.model.key
 import dev.rwilco.notify.AlertAudio
 import dev.rwilco.notify.alarmVolumeDescription
@@ -293,7 +294,12 @@ class AlertActivity : ComponentActivity() {
                 value = snoozePlaceOffers(current.savedPlaces, app.repository.allNow(), app.placeWatch.read(), hasBackgroundLocation())
             }
             RwilcoTheme(darkTheme = current.theme.resolvesToDark(), haptics = current.haptics) {
-                val items = reminders.map { AlertItem(it.id, AlertContent.fromReminder(it, today, current.defaultTime, rules[it.id])) }
+                // "A su hora" is asked of the moment the screen is drawn; the firing asks again
+                // under its lock when it is pressed ([ReminderFiring.doneOnTime]).
+                val now = app.clock.instant()
+                val items = reminders.map {
+                    AlertItem(it.id, AlertContent.fromReminder(it, today, current.defaultTime, rules[it.id]).copy(onTimeAt = it.doneOnTimeAt(now, zone, current.dayStart)))
+                }
                 // The strip somebody asked to see on its own, while there is still a stack to
                 // go back to: the last one left is the single alert anyway, and its arrow would
                 // have nowhere to point.
@@ -323,6 +329,7 @@ class AlertActivity : ComponentActivity() {
                         preview = false,
                         waiting = items.size - 1,
                         onDone = { answer(first.id) { app.firing.dismiss(first.id, notice = true) } },
+                        onDoneOnTime = { answer(first.id) { app.firing.doneOnTime(first.id, notice = true) } },
                         onSnooze = { snooze: SnoozeOffer -> answer(first.id) { app.firing.snooze(first.id, snooze) } },
                         onView = { view(first.id, first.content.routine) },
                         onAct = ::act,
