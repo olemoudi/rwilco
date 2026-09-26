@@ -109,6 +109,7 @@ object AlertPresenter {
         ruleIndex: Int? = null,
         /** Passed straight through to the notification's reason line. */
         defaultTime: LocalTime = AppSettings().defaultTime,
+        dayStart: LocalTime = AppSettings().dayStart,
         /** Passed straight through to the notification's buttons. */
         snoozes: List<SnoozeOffer> = AppSettings().notificationOffers,
         customMinutes: Int = DEFAULT_SNOOZE_MINUTES,
@@ -154,6 +155,7 @@ object AlertPresenter {
             chosen = sound,
             ruleIndex = ruleIndex,
             defaultTime = defaultTime,
+            dayStart = dayStart,
             snoozes = snoozes,
             customMinutes = customMinutes,
         )

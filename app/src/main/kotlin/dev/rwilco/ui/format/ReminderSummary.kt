@@ -7,7 +7,11 @@ import dev.rwilco.model.isAnchored
 import dev.rwilco.model.isRoutine
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import dev.rwilco.model.DEFAULT_DAY_START
 import dev.rwilco.model.deadlineApplies
+import dev.rwilco.model.routineDeadline
 
 /**
  * Why a reminder rings, in one plain line — the same sentence the form says back over its save
@@ -81,3 +85,32 @@ private val RuleMatch.joinRes: Int
  */
 fun Reminder.summaryLine(context: android.content.Context, defaultTime: LocalTime): String =
     reminderSummary(context.words(), this, LocalDate.now(), defaultTime)
+
+/**
+ * Why a **routine's** card is in the shade: its plazo ran out — "Su plazo: cada 5 días desde la
+ * última vez · venció ayer 10:00" — and never the sentence its rules make (0.159.0).
+ *
+ * A routine rings for its plazo and nothing else (`Routines.kt`): its rules only ask, or count it
+ * as done. The card said [reminderSummary] all the same, and for "entrenar, al llevar 15 min en
+ * el parque, y vuelve cada 5 días" that read as "you have been in the park fifteen minutes" on a
+ * ring that was yesterday's deadline coming back from "mañana a la misma hora" — with the phone
+ * nowhere near the park. The alert screen already said the plazo; this is the card saying it
+ * too, with the moment it ran out, because a card that comes back from a snooze arrives a day
+ * after it and "venció" is the one word that says which ring this is.
+ */
+fun routineRingReason(words: Words, reminder: Reminder, today: LocalDate, due: ZonedDateTime): String {
+    val span = recurrenceLabel(words, reminder.recurrence, today).replaceFirstChar { it.lowercase(words.locale) }
+    val ranOut = dayWord(words, due.toLocalDate(), today) + " " + TimeText.time(due.toLocalTime(), words.is24h, words.locale)
+    return words.get(R.string.notif_routine_reason, span, ranOut)
+}
+
+/**
+ * The line under a ring's title, off a plain [android.content.Context]: [routineRingReason] for a
+ * routine, [summaryLine] for everything else.
+ */
+fun Reminder.ringReason(context: android.content.Context, defaultTime: LocalTime, dayStart: LocalTime = DEFAULT_DAY_START): String {
+    val zone = ZoneId.systemDefault()
+    val due = if (isRoutine) routineDeadline(zone, dayStart) else null
+    return if (due == null) summaryLine(context, defaultTime)
+    else routineRingReason(context.words(), this, LocalDate.now(zone), due.atZone(zone))
+}

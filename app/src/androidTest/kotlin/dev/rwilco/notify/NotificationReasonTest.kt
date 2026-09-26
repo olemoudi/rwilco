@@ -6,6 +6,13 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.GrantPermissionRule
 import dev.rwilco.model.Action
+import dev.rwilco.model.AppSettings
+import dev.rwilco.model.Recurrence
+import dev.rwilco.model.RecurrenceUnit
+import dev.rwilco.model.routineDeadline
+import dev.rwilco.ui.format.TimeText
+import dev.rwilco.ui.format.routineRingReason
+import dev.rwilco.ui.format.words
 import dev.rwilco.model.Condition
 import dev.rwilco.model.FiringPlan
 import dev.rwilco.model.NetWord
@@ -16,13 +23,17 @@ import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.time.LocalTime
 
 /**
@@ -146,6 +157,27 @@ class NotificationReasonTest {
         )
         assertEquals("casa · fotos", notification.line(Notification.EXTRA_SUB_TEXT))
         assertTrue("the reason lost its line to the tags", notification.line(Notification.EXTRA_TEXT)!!.contains("9:00"))
+    }
+
+    @Test
+    fun aRoutinesCardSaysItsPlazoAndWhenItRanOutRatherThanItsRules() {
+        // 0.159.0, from the owner's phone: "entrenar, al llevar 15 min en el parque, y vuelve
+        // cada 5 días" came back from "mañana a la misma hora" a day after its deadline, and the
+        // card's line read as if the park had rung it. A routine rings for its plazo alone.
+        val zone = ZoneId.systemDefault()
+        val lastTime = LocalDate.now(zone).minusDays(6).atTime(20, 39).atZone(zone).toInstant()
+        val park = TriggerRule(Trigger.Location(40.43, -3.67, 50, Presence.INSIDE, "Parque", onCrossing = true), resets = true)
+        val routine = reminder(park).copy(
+            recurrence = Recurrence.Since(5, RecurrenceUnit.DAYS),
+            lastDealtAt = lastTime,
+            createdAt = lastTime.minus(Duration.ofDays(30)),
+        )
+        val text = postAndRead(routine).line(Notification.EXTRA_TEXT)!!
+        val words = context.words()
+        val due = routine.routineDeadline(zone, AppSettings().dayStart)!!.atZone(zone)
+        assertEquals(routineRingReason(words, routine, LocalDate.now(zone), due), text)
+        assertFalse("the park is a rule, and a routine's rules never ring it: $text", "Parque" in text)
+        assertTrue("it says when the plazo ran out: $text", TimeText.time(due.toLocalTime(), words.is24h, words.locale) in text)
     }
 
     @Test

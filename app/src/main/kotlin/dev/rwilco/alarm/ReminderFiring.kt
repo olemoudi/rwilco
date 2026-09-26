@@ -363,7 +363,7 @@ class ReminderFiring(
                     // Never the screen, never a sound: its own quiet card, and one answer.
                     AlertNotifications.contact(context, reminder, Duration.between(reminder.routineAnchor(), rangFor))
                 } else {
-                    AlertPresenter.show(context, if (viaSnoozePlace) reminder.copy(snoozedToPlace = null) else reminder, plan, presentedLate, settings.vibration, settings.soundFor(plan), ruleIndex = ruleIndex, defaultTime = settings.defaultTime, snoozes = settings.notificationOffers, customMinutes = settings.snoozeCustomMinutes)
+                    AlertPresenter.show(context, if (viaSnoozePlace) reminder.copy(snoozedToPlace = null) else reminder, plan, presentedLate, settings.vibration, settings.soundFor(plan), ruleIndex = ruleIndex, defaultTime = settings.defaultTime, dayStart = settings.dayStart, snoozes = settings.notificationOffers, customMinutes = settings.snoozeCustomMinutes)
                 }
                 // "Hasta que reciba caso": the first play has gone out, so line up the second.
                 if (plan.insistent) {
@@ -412,7 +412,7 @@ class ReminderFiring(
             return@withLock
         }
         Log.i(TAG, "$id has not been dealt with; alert ${played + 1} of ${settings.soundRounds}")
-        AlertPresenter.show(context, reminder, plan, late = null, vibration = settings.vibration, sound = settings.soundFor(plan), repeat = true, ruleIndex = ruleIndex, defaultTime = settings.defaultTime, snoozes = settings.notificationOffers, customMinutes = settings.snoozeCustomMinutes)
+        AlertPresenter.show(context, reminder, plan, late = null, vibration = settings.vibration, sound = settings.soundFor(plan), repeat = true, ruleIndex = ruleIndex, defaultTime = settings.defaultTime, dayStart = settings.dayStart, snoozes = settings.notificationOffers, customMinutes = settings.snoozeCustomMinutes)
         nextSoundIn(played + 1, settings.soundRounds, settings.soundGapMinutes)
             ?.let { gap -> repeater.schedule(id, played + 1, rangAt, now + gap, ruleIndex) }
     }
@@ -729,6 +729,7 @@ class ReminderFiring(
             nudge = due.word,
             nudgeAbout = due.about,
             defaultTime = settings.defaultTime,
+            dayStart = settings.dayStart,
             snoozes = settings.notificationOffers,
             customMinutes = settings.snoozeCustomMinutes,
         )

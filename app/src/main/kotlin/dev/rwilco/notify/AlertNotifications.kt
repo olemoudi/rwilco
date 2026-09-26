@@ -19,7 +19,7 @@ import dev.rwilco.MainActivity
 import dev.rwilco.ui.alert.AlertActivity
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.FiringPlan
-import dev.rwilco.ui.format.summaryLine
+import dev.rwilco.ui.format.ringReason
 import dev.rwilco.model.NetWord
 import dev.rwilco.model.saysItGotAway
 import dev.rwilco.model.Presence
@@ -544,6 +544,8 @@ object AlertNotifications {
         ruleIndex: Int? = null,
         /** The hour a bare date rings at, which is the one thing the reason line cannot read off the rule. */
         defaultTime: LocalTime = AppSettings().defaultTime,
+        /** Where a day starts, which is where a routine's plazo lands: its card says when it ran out. */
+        dayStart: LocalTime = AppSettings().dayStart,
         /** The two snooze offers the buttons carry (three actions is the cap, and "hecho" is one), and how long the custom one is. */
         snoozes: List<SnoozeOffer> = AppSettings().notificationOffers,
         customMinutes: Int = DEFAULT_SNOOZE_MINUTES,
@@ -594,8 +596,10 @@ object AlertNotifications {
         val tap = activityIntent(context, reminder.id, ruleIndex, anyway = nudge != null, tapped = true)
         // **Why it rang**, in the words the form used when it was written — not the reminder's
         // own text again, which the title already carries and which said nothing twice. The
-        // sentence is the editor's own, minus the words themselves (`reminderSummary`).
-        val reason = reminder.summaryLine(context, defaultTime)
+        // sentence is the editor's own, minus the words themselves (`reminderSummary`) — except
+        // on a routine, whose rules never ring: its card says the plazo and when it ran out
+        // (`routineRingReason`, 0.159.0).
+        val reason = reminder.ringReason(context, defaultTime, dayStart)
         // **A note from the net says so in the first two words** (0.75.0). Its card carries the
         // reminder's own text, on a channel with no sound and no screen, and in a shade full of
         // cards that is indistinguishable from the alarm it is about — the line that says which

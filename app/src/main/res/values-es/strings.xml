@@ -879,6 +879,7 @@
     <string name="snooze_until_title">Posponer hasta</string>
     <string name="snooze_until_past">Ese momento ya ha pasado.</string>
     <string name="notif_routine_question">¿Has hecho «%1$s»?</string>
+    <string name="notif_routine_reason">Su plazo: %1$s · venció %2$s</string>
     <string name="condition_month_days_hint">El disparador sólo cuenta esos días del mes. El 31 es el último día de los meses que no tienen 31.</string>
     <plurals name="condition_month_days">
         <item quantity="one">día %1$s</item>
@@ -1704,6 +1705,11 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_159_0">
+
+        <item>La notificación de una rutina dice ahora por qué está ahí: su plazo y cuándo venció («Su plazo: cada 5 días desde la última vez · venció ayer 10:00»). Antes repetía la frase de la rutina, y «al llevar 15 min en el parque» parecía que la había hecho sonar el parque, cuando era el plazo volviendo de un posponer.</item>
+
+    </string-array>
     <string-array name="whats_new_0_158_0">
 
         <item>La app ocupa ahora unos 8 MB en vez de 61, y la actualización se descarga en una fracción del tiempo: la versión publicada va sin todo lo que nunca usa.</item>

@@ -892,6 +892,7 @@
     <string name="snooze_until_title">Snooze until</string>
     <string name="snooze_until_past">That moment has already passed.</string>
     <string name="notif_routine_question">Have you done «%1$s»?</string>
+    <string name="notif_routine_reason">Its span: %1$s · ran out %2$s</string>
     <string name="condition_month_days_hint">The trigger only counts on those days of the month. The 31st is the last day of a month that has no 31st.</string>
     <plurals name="condition_month_days">
         <item quantity="one">day %1$s</item>
@@ -1719,6 +1720,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_159_0">
+
+        <item>A routine\'s notification now says why it is there: its span and when it ran out («Its span: every 5 days since the last time · ran out yesterday 10:00»). It used to repeat the routine\'s own sentence, so «after 15 min at the park» read as if the park had rung it, when it was the span coming back from a snooze.</item>
+
+    </string-array>
     <string-array name="whats_new_0_158_0">
 
         <item>The app now takes about 8 MB instead of 61, and the update downloads in a fraction of the time: the published build is trimmed of everything it never uses.</item>

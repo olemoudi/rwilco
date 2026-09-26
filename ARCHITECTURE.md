@@ -2707,6 +2707,14 @@ loud what DST and a change of zone do to a landing.
   give that place up to the net's word or a missed ring's, which is about *this* arrival rather
   than about the reminder. A reminder with no rules at all leaves the line off rather than
   printing a blank one.
+  **Except a routine's** (0.159.0, `routineRingReason`, `Reminder.ringReason`): "Su plazo: cada 5
+  días desde la última vez · venció ayer 10:00". A routine rings for its plazo alone — its rules
+  only ask, or count it as done — so the rules' sentence named something that did not happen. The
+  owner's card for "entrenar, al llevar 15 min en el parque" came back from "mañana a la misma
+  hora" a day after its deadline, with the phone nowhere near the park, and read as if the park
+  had rung it. The alert screen already said the plazo (`alert_routine_span`); the card now says
+  it too, with the moment it ran out (`dayStart` is threaded through `AlertPresenter.show` and
+  `post` for that), since a snooze's return arrives long after it. `NotificationReasonTest` pins it.
   **Which is why the phrasing stopped being a Compose thing.** `triggerPhrase`, `conditionPhrase`
   and `recurrenceLabel` read their strings out of the composition, which is fine while the only
   reader is a screen and impossible from a receiver — and two functions saying the same sentence
