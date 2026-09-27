@@ -4,6 +4,7 @@ import android.app.ActivityManager
 import android.app.AlarmManager
 import android.app.NotificationManager
 import android.content.Context
+import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.os.Build
 import android.os.PowerManager
@@ -62,6 +63,36 @@ fun Context.alarmVolumeIsUp(): Boolean {
 fun Context.alarmVolumeDescription(): String {
     val audio = getSystemService(AudioManager::class.java) ?: return "?"
     return runCatching { "${audio.getStreamVolume(AudioManager.STREAM_ALARM)}/${audio.getStreamMaxVolume(AudioManager.STREAM_ALARM)}" }.getOrDefault("?")
+}
+
+/**
+ * Where a reminder's sound would go right now and how loud it can be there, for a line of the
+ * report: "headset=bt music=y media=4/25 alarm=5/7" (0.161.0).
+ *
+ * The alarm slider alone never answered "it rang, but very quietly". With headphones connected
+ * and something playing, Android holds an alarm played into them six decibels under the media
+ * volume, whatever the alarm slider says (`AudioPolicyManager::computeVolume`, and for five
+ * seconds after the music stops) — so a quiet ring is the four of these together, and a report
+ * that had only the last of them read as a phone that should have been loud.
+ */
+fun Context.audioDescription(): String {
+    val audio = getSystemService(AudioManager::class.java) ?: return "audio=?"
+    val media = runCatching { "${audio.getStreamVolume(AudioManager.STREAM_MUSIC)}/${audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)}" }.getOrDefault("?")
+    return audioLine(AlertAudio.headset(this)?.type, runCatching { audio.isMusicActive }.getOrDefault(false), media, alarmVolumeDescription())
+}
+
+/** [audioDescription]'s words, apart from the phone that answers them. */
+fun audioLine(headsetType: Int?, musicActive: Boolean, media: String, alarm: String): String {
+    val headset = when (headsetType) {
+        null -> "none"
+        AudioDeviceInfo.TYPE_BLUETOOTH_A2DP -> "bt"
+        AudioDeviceInfo.TYPE_BLE_HEADSET, AudioDeviceInfo.TYPE_BLE_SPEAKER -> "ble"
+        AudioDeviceInfo.TYPE_WIRED_HEADSET, AudioDeviceInfo.TYPE_WIRED_HEADPHONES -> "wired"
+        AudioDeviceInfo.TYPE_USB_HEADSET, AudioDeviceInfo.TYPE_USB_DEVICE -> "usb"
+        AudioDeviceInfo.TYPE_HEARING_AID -> "hearing"
+        else -> "type$headsetType"
+    }
+    return "headset=$headset music=${if (musicActive) "y" else "n"} media=$media alarm=$alarm"
 }
 
 /** A channel muted by hand is invisible to `areNotificationsEnabled`; this is the check it lacks. */

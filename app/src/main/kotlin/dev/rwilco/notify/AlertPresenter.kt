@@ -140,10 +140,13 @@ object AlertPresenter {
         // the alert: the system does it for us, and doing it here as well would race with it.
         val screenTaken = presentation == AlertPresentation.FULL_SCREEN && inUse && startAlert(context, reminder, ruleIndex)
         val fullScreen = presentation == AlertPresentation.FULL_SCREEN && (screenTaken || !inUse)
+        // A card whose tone the system plays leaves no other trace of where it went or how loud
+        // it could be there; the screen's own tone says so on its `ring` line (0.161.0).
+        val audio = if (plan.sound && !fullScreen) " " + context.audioDescription() else ""
         Diag.note(
             "show",
             "r=${reminder.id.take(8)} $presentation screen=${if (screenTaken) "taken" else if (inUse) "refused" else "system"} " +
-                "inUse=$inUse fg=$foreground overlay=$overlay fsi=$fsi notif=${NotificationManagerCompat.from(context).areNotificationsEnabled()}",
+                "inUse=$inUse fg=$foreground overlay=$overlay fsi=$fsi notif=${NotificationManagerCompat.from(context).areNotificationsEnabled()}$audio",
         )
         AlertNotifications.post(
             context,

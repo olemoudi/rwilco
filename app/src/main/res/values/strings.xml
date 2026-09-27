@@ -1729,6 +1729,12 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_161_0">
+
+        <item>The diagnostics report now says where an alert\'s sound went and how loud it could be there: headphones or not, whether something was playing, and the media and alarm volumes. With headphones on and music playing, Android keeps an alarm in them below the media volume, whatever the alarm slider says — which is why one can sound very quiet.</item>
+        <item>And it follows the full-screen alert step by step (opened, on screen, taken off), so a ring that never made a sound can be told apart from one the phone never showed.</item>
+
+    </string-array>
     <string-array name="whats_new_0_160_0">
 
         <item>«Another time…» no longer repeats the buttons you have just seen on the alert. It now brings its own: in 1 h and 4 h, this afternoon and tonight, tomorrow at lunchtime (14:00), in the afternoon and in the evening, the weekend morning, Monday morning, in 2 and 3 days, in 14 and in 30 days — each with the moment it would come back at. «Pick a day and an hour…» is still the first row.</item>

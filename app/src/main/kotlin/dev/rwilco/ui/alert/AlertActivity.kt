@@ -4,13 +4,14 @@ import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.PowerManager
 import android.view.KeyEvent
 import android.view.WindowManager
 import dev.rwilco.diag.Diag
 import dev.rwilco.model.doneOnTimeAt
 import dev.rwilco.model.key
 import dev.rwilco.notify.AlertAudio
-import dev.rwilco.notify.alarmVolumeDescription
+import dev.rwilco.notify.audioDescription
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -197,6 +198,7 @@ class AlertActivity : ComponentActivity() {
         hushedOnPurpose = savedInstanceState?.getBoolean(STATE_HUSHED) ?: false
         intent?.let { arrived(it) }
         if (ringing.isEmpty()) {
+            Diag.note(TAG_DIAG, "opened with no reminder to show")
             finish()
             return
         }
@@ -255,7 +257,7 @@ class AlertActivity : ComponentActivity() {
                         Diag.note(
                             TAG_DIAG,
                             "r=${reminders.joinToString(",") { it.id.take(8) }} ringing sound=${if (sound) "${tone.key}x$times" else "no"} " +
-                                "vibrate=${if (vibrate) "y" else "n"} to=$route volume=${alarmVolumeDescription()}",
+                                "vibrate=${if (vibrate) "y" else "n"} to=$route ${audioDescription()}",
                         )
                     }
                     // **Only a noise that outlives the tap is one there is anything to answer.**
@@ -359,13 +361,27 @@ class AlertActivity : ComponentActivity() {
     private fun arrived(intent: Intent, again: Boolean = false) {
         val id = ReminderScheduler.reminderIdOf(intent) ?: return
         val held = ReminderScheduler.anywayIn(intent)
+        val quiet = held || ReminderScheduler.tappedIn(intent)
+        // **Each step between a full-screen ring and its noise, written down** (0.161.0). A
+        // reminder shown full screen left no line at all when its noise never came, and "the
+        // system never opened the screen", "it opened and was never seen" and "it was taken off
+        // before it rang" read the same: nothing. A tap on a card is not a ring, so it says nothing.
+        // A rotation rebuilds the screen from the start it was made with; that is not an arrival.
+        if (!quiet && (again || id !in ringing)) Diag.note(TAG_DIAG, "r=${id.take(8)} ${if (again) "joined the screen" else "opened"} ${displayState()}")
         track(
             id,
             ReminderScheduler.ruleIndexOf(intent),
             held = held,
-            quiet = held || ReminderScheduler.tappedIn(intent),
+            quiet = quiet,
             again = again,
         )
+    }
+
+    /** "display=off locked=y": whether the screen that just arrived could be seen, for the report. */
+    private fun displayState(): String {
+        val awake = getSystemService(PowerManager::class.java)?.isInteractive
+        val locked = getSystemService(KeyguardManager::class.java)?.isKeyguardLocked
+        return "display=${awake?.let { if (it) "on" else "off" } ?: "?"} locked=${locked?.let { if (it) "y" else "n" } ?: "?"}"
     }
 
     /**
@@ -410,7 +426,15 @@ class AlertActivity : ComponentActivity() {
                 // emission and the tap would have flashed and done nothing. The explicit
                 // answers still call [drop] themselves, and a deleted row still leaves.
                 val owed = reminder != null && reminder.awaitingAnswer(app.clock.instant())
-                if (reminder == null || !(owed || id in anyway)) drop(id) else loaded[id] = reminder
+                if (reminder == null || !(owed || id in anyway)) {
+                    // Answered here drops the watch first, so this is the shade, a deletion, or a
+                    // screen opened for a reminder that was not waiting at all — the last being
+                    // one way a full-screen ring ends before it makes a sound.
+                    Diag.note(TAG_DIAG, "r=${id.take(8)} left the screen: ${if (reminder == null) "deleted" else "not waiting for an answer"}")
+                    drop(id)
+                } else {
+                    loaded[id] = reminder
+                }
             }
         }
     }
@@ -573,6 +597,17 @@ class AlertActivity : ComponentActivity() {
             return true
         }
         return super.onKeyDown(keyCode, event)
+    }
+
+    /** Once per screen: the report's word that an alert which opened was also brought up (0.161.0). */
+    private var shownNoted = false
+
+    override fun onResume() {
+        super.onResume()
+        if (!shownNoted && ringing.isNotEmpty()) {
+            shownNoted = true
+            Diag.note(TAG_DIAG, "r=${ringing.joinToString(",") { it.take(8) }} on screen ${displayState()}")
+        }
     }
 
     override fun onStop() {
