@@ -889,6 +889,11 @@
     <string name="snooze_more">Another time…</string>
     <string name="snooze_more_title">Snooze to another time</string>
     <string name="snooze_more_pick">Pick a day and an hour…</string>
+    <string name="snooze_more_in">In %1$s</string>
+    <plurals name="snooze_more_days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
     <string name="snooze_until_title">Snooze until</string>
     <string name="snooze_until_past">That moment has already passed.</string>
     <string name="notif_routine_question">Have you done «%1$s»?</string>
@@ -1022,6 +1027,10 @@
     <string name="snooze_own_tomorrow_at">Tomorrow at %1$s</string>
     <string name="snooze_own_weekend_at">The weekend, at %1$s</string>
     <string name="snooze_own_weekday_at">%1$s at %2$s</string>
+    <string name="snooze_own_today_midday">Today at lunchtime</string>
+    <string name="snooze_own_tomorrow_midday">Tomorrow at lunchtime</string>
+    <string name="snooze_own_weekend_midday">The weekend, at lunchtime</string>
+    <string name="snooze_own_weekday_midday">%1$s at lunchtime</string>
     <!-- Building one -->
     <string name="snooze_builder_title">A snooze of your own</string>
     <string name="snooze_builder_on">A day</string>
@@ -1720,6 +1729,12 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_160_0">
+
+        <item>«Another time…» no longer repeats the buttons you have just seen on the alert. It now brings its own: in 1 h and 4 h, this afternoon and tonight, tomorrow at lunchtime (14:00), in the afternoon and in the evening, the weekend morning, Monday morning, in 2 and 3 days, in 14 and in 30 days — each with the moment it would come back at. «Pick a day and an hour…» is still the first row.</item>
+        <item>What you use most climbs to the top of that list, suggestions included. One that would come back at the same minute as a button on the alert is left out: at three, «this afternoon» is the «2 h».</item>
+
+    </string-array>
     <string-array name="whats_new_0_159_0">
 
         <item>A routine\'s notification now says why it is there: its span and when it ran out («Its span: every 5 days since the last time · ran out yesterday 10:00»). It used to repeat the routine\'s own sentence, so «after 15 min at the park» read as if the park had rung it, when it was the span coming back from a snooze.</item>

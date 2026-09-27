@@ -2207,7 +2207,8 @@ loud what DST and a change of zone do to a landing.
   (`onMore`/`moreFirst`; it *was* "a una fecha", `onPickDate`/`dateFirst`), always there, first
   on a routine as the calendar was. It opens `SnoozeMoreSheet`: the calendar first (it is
   literally "another moment"), then `more`, then `shown` — so nobody has to remember which list
-  an answer lives in — then the places when they are kept off the alert; every row says the
+  an answer lives in (until 0.160.0: `shown` is no longer there, see below) — then the places
+  when they are kept off the alert; every row says the
   moment it would come back at, because "el finde" is a word and the hour it means is a setting
   three screens away (`SnoozeTerms`, the four settings a snooze's moment is worked out from, as
   one value). Held on the alert like every answer there; the rows behind it are plain taps, by
@@ -2281,6 +2282,21 @@ loud what DST and a change of zone do to a landing.
   there is no name to keep in step with the hours under "Tu día"; the builder is a pure
   `SnoozeDraft` (both halves kept whichever is showing) and a sheet that only draws, showing the
   label and the moment it would come back at as it is built.
+- **"A otro momento…" has answers of its own, and none of the alert's** (0.160.0,
+  `SnoozeBoard.laterAt`, `SNOOZE_SUGGESTIONS`). For somebody who had hidden nothing, the door
+  opened on the very buttons just walked past. Its rows are now `more` plus fourteen suggested
+  `SnoozeSpec`s — 30 min, 1 h, 4 h, esta tarde/noche, mañana a mediodía/por la tarde/por la
+  noche, 2 and 3 days, the weekend's morning, Monday's morning, 14 and 30 days — as **one list,
+  the most used first, then by the moment they come back** (`SnoozeBoard.uses` rides along for
+  that, and `withSnoozeUsed` counts a suggestion's key as well). **Nothing on the alert, by
+  moment**: a row that would come back at the same instant as a `shown` button, or as a row above
+  it, is that button under another name and is dropped — "esta tarde" at three is the "2 h", the
+  suggested half hour is the default own length, "el finde por la mañana" on a Saturday is
+  "mañana por la mañana". No suggestion is one of the app's `Snooze`s, since every one of those
+  is already `shown` or `more`. **"A mediodía" is `MIDDAY`, a fixed 14:00**, not a fourth part of
+  "Tu día": it travels as `on:tomorrow:14:00`, so no wire changed; only the label
+  (`snoozeLabel`) says "mediodía", for any snooze at that hour. Lengths in the sheet read as
+  sentences (`snoozeRowLabel`: "Dentro de 2 días") where a button keeps the bare length.
 - **A "hecho" can be dated: "lo hice otro día"** (0.134.0, `ReminderFiring.doneEarlier`,
   `Reminder.doneEarlier`/`doneEarlierRefusal` in `Routines.kt`). "Hecho" on a routine is always
   *now*, which is right for the tap and wrong for the day after — and once a routine has been

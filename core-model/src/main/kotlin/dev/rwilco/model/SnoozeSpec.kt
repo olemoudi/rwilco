@@ -58,6 +58,13 @@ sealed interface SnoozeHour {
     data class At(val time: LocalTime) : SnoozeHour
 }
 
+/**
+ * What "a mediodía" means (0.160.0): two in the afternoon, when Spain sits down to lunch. A fixed
+ * hour rather than a fourth part of "Tu día", so it travels as the hour it is — `on:tomorrow:14:00`
+ * — and needed no new word on the wire; only its label says "mediodía".
+ */
+val MIDDAY: LocalTime = LocalTime.of(14, 0)
+
 fun SnoozeHour.timeIn(parts: DayParts): LocalTime = when (this) {
     is SnoozeHour.At -> time
     is SnoozeHour.Part -> when (part) {

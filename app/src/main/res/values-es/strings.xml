@@ -876,6 +876,11 @@
     <string name="snooze_more">A otro momento…</string>
     <string name="snooze_more_title">Posponer a otro momento</string>
     <string name="snooze_more_pick">Elegir día y hora…</string>
+    <string name="snooze_more_in">Dentro de %1$s</string>
+    <plurals name="snooze_more_days">
+        <item quantity="one">%d día</item>
+        <item quantity="other">%d días</item>
+    </plurals>
     <string name="snooze_until_title">Posponer hasta</string>
     <string name="snooze_until_past">Ese momento ya ha pasado.</string>
     <string name="notif_routine_question">¿Has hecho «%1$s»?</string>
@@ -1009,6 +1014,10 @@
     <string name="snooze_own_tomorrow_at">Mañana a las %1$s</string>
     <string name="snooze_own_weekend_at">El finde a las %1$s</string>
     <string name="snooze_own_weekday_at">El %1$s a las %2$s</string>
+    <string name="snooze_own_today_midday">Hoy a mediodía</string>
+    <string name="snooze_own_tomorrow_midday">Mañana a mediodía</string>
+    <string name="snooze_own_weekend_midday">El finde a mediodía</string>
+    <string name="snooze_own_weekday_midday">El %1$s a mediodía</string>
     <!-- Cómo se monta uno -->
     <string name="snooze_builder_title">Un posponer tuyo</string>
     <string name="snooze_builder_on">Un día</string>
@@ -1705,6 +1714,12 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_160_0">
+
+        <item>«A otro momento…» ya no repite los botones que acabas de ver en el aviso. Trae los suyos: dentro de 1 h y de 4 h, esta tarde y esta noche, mañana a mediodía (14:00), por la tarde y por la noche, el finde por la mañana, el lunes por la mañana, dentro de 2 y de 3 días, de 14 y de 30 días — cada uno con la hora a la que volvería. «Elegir día y hora…» sigue siendo el primero.</item>
+        <item>Lo que más usas sube arriba en esa lista, sugerencias incluidas. Uno que volvería al mismo minuto que un botón del aviso no sale: a las tres, «esta tarde» es el «2 h».</item>
+
+    </string-array>
     <string-array name="whats_new_0_159_0">
 
         <item>La notificación de una rutina dice ahora por qué está ahí: su plazo y cuándo venció («Su plazo: cada 5 días desde la última vez · venció ayer 10:00»). Antes repetía la frase de la rutina, y «al llevar 15 min en el parque» parecía que la había hecho sonar el parque, cuando era el plazo volviendo de un posponer.</item>

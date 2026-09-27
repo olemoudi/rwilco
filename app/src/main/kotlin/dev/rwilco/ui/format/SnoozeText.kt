@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import dev.rwilco.R
 import dev.rwilco.model.LATER_DETAIL
+import dev.rwilco.model.MIDDAY
 import dev.rwilco.model.Presence
 import dev.rwilco.model.Snooze
 import dev.rwilco.model.SnoozeDay
@@ -65,7 +66,15 @@ fun snoozeLabel(words: Words, spec: SnoozeSpec): String = when (spec) {
             }
             if (day is SnoozeDay.Weekday) words.get(phrase, TimeText.weekday(day.day, words.locale)) else words.get(phrase)
         }
-        is SnoozeHour.At -> {
+        // "A mediodía" is an hour and not a part (see [MIDDAY]), so it is said here by name.
+        is SnoozeHour.At -> if (hour.time == MIDDAY) {
+            when (val day = spec.day) {
+                SnoozeDay.Today -> words.get(R.string.snooze_own_today_midday)
+                SnoozeDay.Tomorrow -> words.get(R.string.snooze_own_tomorrow_midday)
+                SnoozeDay.Weekend -> words.get(R.string.snooze_own_weekend_midday)
+                is SnoozeDay.Weekday -> words.get(R.string.snooze_own_weekday_midday, TimeText.weekday(day.day, words.locale))
+            }
+        } else {
             val time = TimeText.time(hour.time, words.is24h, words.locale)
             when (val day = spec.day) {
                 SnoozeDay.Today -> words.get(R.string.snooze_own_today_at, time)
@@ -76,6 +85,32 @@ fun snoozeLabel(words: Words, spec: SnoozeSpec): String = when (spec) {
         }
     }
 }
+
+/**
+ * What a row of "a otro momento…" calls an offer (0.160.0): a length reads as the sentence
+ * somebody would say — "Dentro de 2 días", "Dentro de 1 h" — where a button keeps the bare length
+ * that fits on one. A list is read, not aimed at, and "14 d" beside "Mañana por la tarde" reads
+ * as a code. Everything that is not a length is called what its button is.
+ */
+fun snoozeRowLabel(words: Words, offer: SnoozeOffer, customMinutes: Int): String {
+    val minutes = when (offer) {
+        is SnoozeOffer.BuiltIn -> when (offer.snooze) {
+            Snooze.TEN_MINUTES -> 10
+            Snooze.CUSTOM -> customMinutes
+            Snooze.TWO_HOURS -> 120
+            else -> null
+        }
+        is SnoozeOffer.Custom -> (offer.spec as? SnoozeSpec.After)?.minutes
+    } ?: return snoozeLabel(words, offer, customMinutes)
+    val days = minutes / MINUTES_PER_DAY
+    val length = if (days > 0 && minutes % MINUTES_PER_DAY == 0) words.plural(R.plurals.snooze_more_days, days) else durationText(words, minutes)
+    return words.get(R.string.snooze_more_in, length)
+}
+
+private const val MINUTES_PER_DAY = 24 * 60
+
+@Composable
+fun snoozeRowLabel(offer: SnoozeOffer, customMinutes: Int): String = snoozeRowLabel(rememberWords(), offer, customMinutes)
 
 /** What an offer's button says, whoever's it is. */
 fun snoozeLabel(words: Words, offer: SnoozeOffer, customMinutes: Int): String = when (offer) {

@@ -44,12 +44,12 @@ import dev.rwilco.model.SnoozeOffer
 import dev.rwilco.model.SnoozePlace
 import dev.rwilco.model.SnoozeTerms
 import dev.rwilco.model.TriggerFamily
-import dev.rwilco.model.until
+import dev.rwilco.model.laterAt
 import dev.rwilco.ui.format.TimeText
 import dev.rwilco.ui.format.dayWord
 import dev.rwilco.ui.format.placeOfferLabel
 import dev.rwilco.ui.format.rememberWords
-import dev.rwilco.ui.format.snoozeLabel
+import dev.rwilco.ui.format.snoozeRowLabel
 import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.color
@@ -62,10 +62,14 @@ import kotlinx.coroutines.launch
  * The alert used to carry all of them, every time — up to ten held buttons on the one screen
  * that is answered half awake. It carries the ones somebody chose now, and this is the door to
  * the rest: the calendar first (it is literally "another moment", and the one answer that is not
- * a length), then **what was kept off the alert, the most used first**, then what is on it
- * anyway, so nobody has to remember which list an answer lives in. Each row says the moment it
- * would come back at — "mañana 09:00" — because "el finde" is a word, and the hour it means is a
- * setting three screens away.
+ * a length), then **what was kept off the alert and the answers the app suggests, as one list,
+ * the most used first** ([laterAt]). Each row says the moment it would come back at — "mañana
+ * 09:00" — because "el finde" is a word, and the hour it means is a setting three screens away.
+ *
+ * **Nothing that is on the alert** (0.160.0). It used to end with the alert's own buttons, so
+ * that nobody had to remember which list an answer lived in — and for somebody who had hidden
+ * nothing, that was the whole list: the door opened on what had just been walked past. Every way
+ * in (the alert, a card's menu on Home and on Rutinas) shows those buttons right beside it.
  *
  * Plain taps, even over the alert: the button that opened it was held, the eyes have arrived,
  * and a list is read before it is pressed — the same reasoning the calendar's own "Listo" has.
@@ -92,6 +96,7 @@ fun SnoozeMoreSheet(
     val spacing = Tokens.spacing
     val words = rememberWords()
     val today = now.toLocalDate()
+    val rows = remember(board, terms, now) { board.laterAt(now.toInstant(), now.zone, terms) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     var leaving by remember { mutableStateOf(false) }
@@ -131,12 +136,11 @@ fun SnoozeMoreSheet(
                         .verticalScroll(rememberScrollState()),
                 ) {
                     MoreRow(icon = Icons.Outlined.Event, label = stringResource(R.string.snooze_more_pick), moment = null, onClick = { leave(onPickDate) })
-                    for (snooze in board.more + board.shown) {
-                        // A part of today that has gone is not an answer, so it is not a row.
-                        val back = snooze.until(now.toInstant(), now.zone, terms)?.atZone(now.zone) ?: continue
+                    for ((snooze, until) in rows) {
+                        val back = until.atZone(now.zone)
                         MoreRow(
                             icon = Icons.Outlined.Snooze,
-                            label = snoozeLabel(snooze, terms.customMinutes),
+                            label = snoozeRowLabel(snooze, terms.customMinutes),
                             moment = dayWord(words, back.toLocalDate(), today) + " " + TimeText.time(back.toLocalTime(), words.is24h, words.locale),
                             onClick = { leave { onPick(snooze) } },
                         )

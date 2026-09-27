@@ -1,5 +1,6 @@
 package dev.rwilco.model
 
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
@@ -115,8 +116,16 @@ fun SnoozeOffer.until(now: Instant, zone: ZoneId, terms: SnoozeTerms): Instant? 
  * With nothing hidden and nothing added the board is exactly what the alert was, which is what an
  * update has to be. The place answers are hidden or shown as one ([SNOOZE_PLACES]): they are the
  * phone's offers rather than the person's, and come and go with where the phone is.
+ *
+ * [uses] rides along for the list behind the door ([laterAt]), which holds the app's
+ * [SNOOZE_SUGGESTIONS] as well and orders them by the same count.
  */
-data class SnoozeBoard(val shown: List<SnoozeOffer>, val more: List<SnoozeOffer>, val placesShown: Boolean)
+data class SnoozeBoard(
+    val shown: List<SnoozeOffer>,
+    val more: List<SnoozeOffer>,
+    val placesShown: Boolean,
+    val uses: Map<String, Int> = emptyMap(),
+)
 
 /** The key the place answers ("al llegar a casa", "al salir de aquí") are hidden under, as one. */
 const val SNOOZE_PLACES = "places"
@@ -128,7 +137,58 @@ fun snoozeBoard(settings: AppSettings): SnoozeBoard {
         // Stable, so the ones never used keep the order they always had among themselves.
         more = hidden.sortedByDescending { settings.snoozeUses[it.key] ?: 0 },
         placesShown = SNOOZE_PLACES !in settings.hiddenSnoozes,
+        uses = settings.snoozeUses,
     )
+}
+
+/**
+ * The answers "a otro momento…" holds out besides the ones somebody kept off the alert (0.160.0).
+ * Until then the door had nothing of its own: for somebody who had hidden nothing it opened on
+ * the very buttons they had just walked past. These are the ones people give an alarm when the
+ * alert's lengths are not it — a while, later today, a moment of tomorrow, a few days, a good
+ * while. Keys that say what they are, like the person's own, so taking one is a snooze like any
+ * other and nothing has to be kept in Settings for it.
+ *
+ * None is one of the app's own ([Snooze]): every one of those is on the alert or already behind
+ * the door. Where one of these meets a button on the alert anyway — the half hour, when that is
+ * the person's own length — [laterAt] leaves it out by its moment.
+ */
+val SNOOZE_SUGGESTIONS: List<SnoozeSpec> = listOf(
+    SnoozeSpec.After(30),
+    SnoozeSpec.After(60),
+    SnoozeSpec.After(4 * 60),
+    SnoozeSpec.On(SnoozeDay.Today, SnoozeHour.Part(SnoozePart.AFTERNOON)),
+    SnoozeSpec.On(SnoozeDay.Today, SnoozeHour.Part(SnoozePart.EVENING)),
+    SnoozeSpec.On(SnoozeDay.Tomorrow, SnoozeHour.At(MIDDAY)),
+    SnoozeSpec.On(SnoozeDay.Tomorrow, SnoozeHour.Part(SnoozePart.AFTERNOON)),
+    SnoozeSpec.On(SnoozeDay.Tomorrow, SnoozeHour.Part(SnoozePart.EVENING)),
+    SnoozeSpec.After(2 * MINUTES_A_DAY),
+    SnoozeSpec.After(3 * MINUTES_A_DAY),
+    SnoozeSpec.On(SnoozeDay.Weekend, SnoozeHour.Part(SnoozePart.MORNING)),
+    SnoozeSpec.On(SnoozeDay.Weekday(DayOfWeek.MONDAY), SnoozeHour.Part(SnoozePart.MORNING)),
+    SnoozeSpec.After(14 * MINUTES_A_DAY),
+    SnoozeSpec.After(30 * MINUTES_A_DAY),
+)
+
+/**
+ * The rows of "a otro momento…" at [now], after its calendar, each with the moment it comes back
+ * at: what was kept off the alert and the [SNOOZE_SUGGESTIONS] as one list — the most used first,
+ * as the hidden ones always were, and otherwise in the order they come back.
+ *
+ * **Nothing that is on the alert, by name or by moment** (0.160.0). The list used to end with the
+ * alert's own buttons, so that nobody had to remember which list an answer lived in; but a door
+ * that opens on what was just walked past reads as a door to nothing. A row that would come back
+ * at the very minute of a button on the alert — "esta tarde" asked at three, when that is the
+ * "2 h" — is that button under another name, and goes; so does the later of any two rows that
+ * meet. A part of today that has gone is not an answer at all.
+ */
+fun SnoozeBoard.laterAt(now: Instant, zone: ZoneId, terms: SnoozeTerms): List<Pair<SnoozeOffer, Instant>> {
+    val taken = shown.mapNotNullTo(mutableSetOf()) { it.until(now, zone, terms) }
+    return (more + SNOOZE_SUGGESTIONS.map(SnoozeOffer::Custom))
+        .mapNotNull { offer -> offer.until(now, zone, terms)?.let { offer to it } }
+        // Stable: of two that meet, the one kept off the alert stays and the suggestion goes.
+        .sortedWith(compareByDescending<Pair<SnoozeOffer, Instant>> { uses[it.first.key] ?: 0 }.thenBy { it.second })
+        .filter { taken.add(it.second) }
 }
 
 /**
@@ -197,9 +257,13 @@ private val LocalTime.minuteOfDay: Int get() = hour * 60 + minute
 private fun AppSettings.offerCalled(key: String): SnoozeOffer? =
     snoozeOfferOf(key)?.takeIf { it is SnoozeOffer.BuiltIn || key in customSnoozes }
 
-/** One use more of the offer called [key]; anything that is not an offer ("a date", "a week") is not counted. */
+/**
+ * One use more of the offer called [key], or of one of the [SNOOZE_SUGGESTIONS] (0.160.0) — which
+ * is what lets a suggestion climb the list it sits in. Anything else ("a date", "a week") is not
+ * counted.
+ */
 fun AppSettings.withSnoozeUsed(key: String): AppSettings =
-    if (offerCalled(key) == null) this
+    if (offerCalled(key) == null && SNOOZE_SUGGESTIONS.none { it.key == key }) this
     else copy(snoozeUses = snoozeUses + (key to (snoozeUses[key] ?: 0) + 1))
 
 /** The switch in Settings: [key] on the alert, or behind the other door. */
