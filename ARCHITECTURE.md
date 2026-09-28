@@ -946,12 +946,14 @@ each a `SwipeableCard` like every card (done / delete), and counts the rest in o
 (`MoreOverdueRoutinesRow`); the door names the next one due; the count ticks by the minute. The
 widget's overdue count includes the routines owed; the launcher gives them `ROUTINE_SLOTS` (two)
 so the pinned presets keep theirs. The ask card and the undo cards join the app's bundle and
-wear `routineColor`. A "hecho" given from the shade or the alert screen gets an undo card
-(`AlertNotifications.doneNotice`) — every reminder's, not only a routine's, since 0.122.0: those
-are the two doors with no snackbar to take an answer back with. It went from the alert in 0.126.0
+wear `routineColor`. A "hecho" given from the shade gets an undo card
+(`AlertNotifications.doneNotice`) — every reminder's, not only a routine's, since 0.122.0: it is
+the door with no snackbar to take an answer back with. It went from the alert in 0.126.0
 and from the shade in 0.128.0 (a card saying "Hecho" after the thing just told "Hecho" repeats the
 answer) and came back to both in 0.129.0 **for one minute** (`DONE_NOTICE_MS`), at the owner's
-word: long enough for a mis-held thumb, gone before it is clutter. The card
+word: long enough for a mis-held thumb, gone before it is clutter. **The alert screen gave it up
+again in 0.162.0**, at his word too: its "Hecho" is a hold, and `AlertActivity` answers with
+`notice = false`; the shade's buttons (`AlertActionReceiver`) keep it. The card
 carries the **row as it stood** (`ReminderFiring.dismiss(notice = true)` reads it inside the same
 lock; `undoDismiss` writes it back), because a "hecho" writes nine columns in one statement and
 putting the anchor back alone is not an undo. It refuses a reminder deleted since (a card
@@ -2858,6 +2860,14 @@ loud what DST and a change of zone do to a landing.
   rotation like the rest of the screen, and takes one out — starting the noise, `ringEpoch` — the
   moment its own alarm does arrive for a card already open: a wait at a place whose door opens
   while somebody is looking at it. `EXTRA_ANYWAY` implies it; what it adds on top is the holding.
+  **The one exception is "hasta que reciba caso" on a full screen** (0.162.0, `FiringPlan.tapRings`,
+  reported as a bug): that noise is not over until the reminder is answered, and opened from the
+  shade it came up quiet with "Hecho" as the big button — the reflex the silence step exists to
+  catch. Its ring card carries `EXTRA_TAP_RINGS` beside `EXTRA_TAPPED`, and the screen opens
+  ringing, "Silenciar" first, every time that card is tapped. Never the missed card or the net's
+  (they are about a ring, not the ring), and never at night (`hushed()` drops `insistent`). The
+  diagnostics write that start as `tapped open`, so it does not read as the system's full-screen
+  intent arriving late.
 - **The audio is handed back when the sound ends, not when the screen is answered** (0.63.0).
   Ducking is not a volume this app sets: `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK` asks every other
   app to drop a few decibels and stay there until the focus is abandoned. `AlertRinger` only ever

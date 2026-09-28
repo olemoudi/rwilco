@@ -1729,6 +1729,12 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_162_0">
+
+        <item>«Done» on the full-screen alert no longer leaves a «Done · Undo» card in the notifications. «Done» from the notification itself still does, for a minute.</item>
+        <item>A full-screen reminder with the insistent sound, opened from its notification, now opens as the alarm: it rings and asks to be silenced first, instead of offering «Done» straight away.</item>
+
+    </string-array>
     <string-array name="whats_new_0_161_0">
 
         <item>The diagnostics report now says where an alert\'s sound went and how loud it could be there: headphones or not, whether something was playing, and the media and alarm volumes. With headphones on and music playing, Android keeps an alarm in them below the media volume, whatever the alarm slider says — which is why one can sound very quiet.</item>

@@ -120,8 +120,8 @@ class AlertStackTest {
             // A finished activity has no hierarchy to ask, which the test rule reports by throwing.
             runCatching { rule.onAllNodesWithText(doneAll).fetchSemanticsNodes().isEmpty() }.getOrDefault(true)
         }
-        assertUndoCardForAMinute(textA)
-        assertUndoCardForAMinute(textB)
+        assertNoUndoCard(textA, "stack-a")
+        assertNoUndoCard(textB, "stack-b")
     }
 
     @Test
@@ -183,25 +183,23 @@ class AlertStackTest {
 
         rule.waitUntilShown(textB)
         rule.onAllNodesWithText(waiting).assertCountEquals(0)
-        assertUndoCardForAMinute(textA)
+        assertNoUndoCard(textA, "stack-a")
     }
 
     /**
-     * A "hecho" on the alert leaves its undo card for a minute (0.129.0): the alert has no snackbar,
-     * and a mis-held thumb there is what the card is for. It is posted after the row is written,
-     * so it is waited for rather than looked for once.
+     * A "hecho" on the alert leaves no undo card (0.162.0, going back on 0.129.0 for this screen):
+     * the shade keeps its own, the alert does not. A card would be posted after the row is written,
+     * so the absence is looked for once the row says it was dealt with, and a moment after.
      */
-    private fun assertUndoCardForAMinute(text: String) {
+    private fun assertNoUndoCard(text: String, id: String) {
+        rule.waitUntil(timeoutMillis = 10_000) { runBlocking { app.repository.get(id)?.lastDealtAt != null } }
+        Thread.sleep(1_000)
         val manager = context.getSystemService(NotificationManager::class.java)
-        val about = { manager.activeNotifications.filter {
+        val cards = manager.activeNotifications.filter {
             it.notification.channelId == AlertNotifications.CHANNEL_NET &&
                 it.notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.contains(text) == true
-        } }
-        val deadline = System.currentTimeMillis() + 5_000
-        while (about().isEmpty() && System.currentTimeMillis() < deadline) Thread.sleep(100)
-        val cards = about()
-        assertEquals("one card about «$text» in the shade", 1, cards.size)
-        assertEquals("a minute, then it goes by itself", AlertNotifications.DONE_NOTICE_MS, cards.single().notification.timeoutAfter)
+        }
+        assertEquals("no card about «$text» in the shade", 0, cards.size)
     }
 
     private fun shot(name: String) {

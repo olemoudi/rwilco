@@ -226,6 +226,28 @@ class AlertSilenceTest {
     }
 
     @Test
+    fun theCardOfAnInsistentFullScreenOpensItRinging() {
+        // Reported as a bug from the phone (0.162.0): "hasta que reciba caso" on a full screen,
+        // opened from the shade, came up quiet with "Hecho" as the big button. Its noise is not
+        // over until it is answered, so its card opens the alarm, and the silence comes first.
+        seed(cardId, card, setOf(Action.FULL_SCREEN, Action.SOUND_UNTIL_ANSWERED))
+        scenario = ActivityScenario.launch(
+            alert(cardId)
+                .putExtra(ReminderScheduler.EXTRA_TAPPED, true)
+                .putExtra(ReminderScheduler.EXTRA_TAP_RINGS, true),
+        )
+        rule.waitUntilShown(card)
+
+        val silence = string { it.getString(R.string.alert_silence) }
+        rule.onNodeWithText(silence).assertIsDisplayed()
+        check(rule.onAllNodesWithText(string { it.getString(R.string.alert_done) }).fetchSemanticsNodes().isEmpty()) {
+            "«Hecho» was reachable on an insistent alarm opened from its card"
+        }
+        rule.onNodeWithText(silence).performClick()
+        rule.waitUntilShown(string { it.getString(R.string.alert_done) })
+    }
+
+    @Test
     fun anAlertOutsideTheHoursYouAreUpArrivesSilent() {
         // Awake for one minute a day, and it is not this one: the buzz and the insistent tone
         // are both taken out, so the screen has nothing to ask about and offers "Hecho" at

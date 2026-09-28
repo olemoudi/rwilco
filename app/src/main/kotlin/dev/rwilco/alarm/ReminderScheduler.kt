@@ -473,6 +473,17 @@ class ReminderScheduler(
         fun tappedIn(intent: Intent): Boolean = intent.getBooleanExtra(EXTRA_TAPPED, false)
 
         /**
+         * The one tap that is not quiet: the card of an insistent full-screen ring, which opens
+         * the alarm — its tones, and "Silenciar" first — rather than a look at it
+         * ([dev.rwilco.model.tapRings], 0.162.0). It rides beside [EXTRA_TAPPED] rather than
+         * instead of it, so the screen can still tell a tap from the moment arriving, and the
+         * report says which it was.
+         */
+        const val EXTRA_TAP_RINGS = "tap_rings"
+
+        fun tapRingsIn(intent: Intent): Boolean = intent.getBooleanExtra(EXTRA_TAP_RINGS, false)
+
+        /**
          * What the scheduling of a list depends on in the settings; anything else changing must
          * not re-arm it. The net's numbers are here because the nudge is an alarm ([armNudge]):
          * "avísame 36 h después" moved to 12 used to leave every net armed on the old numbers

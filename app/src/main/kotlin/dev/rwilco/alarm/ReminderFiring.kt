@@ -553,8 +553,9 @@ class ReminderFiring(
         // ring: both were filed as skipped, and the statistics (0.149.0) would have counted the
         // most ordinary "pospuesto, y luego hecho" as a round let pass.
         val line = repository.record(id, if (skip) FiringKind.SKIPPED else FiringKind.DEALT, now)
-        // The way back, from the two doors that have no snackbar to give one: the alert screen
-        // and the shade, for a minute (0.129.0). Home and the routines list answer for themselves.
+        // The way back, from the one door that has no snackbar to give one: the shade, for a
+        // minute (0.129.0; the alert screen gave it up in 0.162.0). Home and the routines list
+        // answer for themselves.
         if (notice) AlertNotifications.doneNotice(context, reminder, row)
         scheduler.rearmAll()
         line
@@ -594,7 +595,7 @@ class ReminderFiring(
      *
      * The history line is the ordinary "hecho" with [ON_TIME_DETAIL] on it, which is how the
      * statistics know it was done as the deadline rang rather than before it. With [notice] it
-     * leaves the minute's undo card, as every "hecho" from the shade and the alert screen does.
+     * leaves the minute's undo card, as every "hecho" from the shade does.
      */
     suspend fun doneOnTime(id: String, notice: Boolean = false): DatedDone = lock.withLock {
         val row = repository.rowOf(id) ?: run {

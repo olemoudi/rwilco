@@ -266,6 +266,24 @@ fun insistsOnScreen(plans: List<FiringPlan>): Boolean = plans.any { it.insistent
 fun asksToBeSilenced(plans: List<FiringPlan>): Boolean = plans.any { it.vibrate || it.insistent }
 
 /**
+ * Whether a tap on the ring's card opens the alert screen ringing, as the ring itself does,
+ * rather than quiet.
+ *
+ * A card opens its screen quiet because the noise it was about has been and gone (0.65.1): a
+ * tone said once, a buzz that had its minute. **Not "hasta que reciba caso" on a full screen**
+ * (0.162.0, a bug from the phone): that noise is not over until somebody answers it, and the
+ * screen is where it asks to be silenced before it will take "hecho". Opened from the shade it
+ * came up quiet, with "Hecho" as the big button — the one reflex the silence step is there to
+ * catch — whether the ring had been a banner (the phone in hand) or a screen that was never
+ * seen. So that card opens the alarm: its round of tones, and "Silenciar" first.
+ *
+ * Only on a full screen: a reminder that asked for a banner asked for its noise in the shade,
+ * and its screen is only where the rest of the answers are. A plan hushed by the hour has
+ * nothing insistent left in it ([hushed]), so the card stays quiet at night.
+ */
+val FiringPlan.tapRings: Boolean get() = fullScreen && insistent
+
+/**
  * The same firing with the noise taken out of it: the card, the screen and every answer on it
  * stay exactly where they were, and nothing is heard or felt.
  *

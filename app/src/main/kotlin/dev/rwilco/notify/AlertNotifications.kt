@@ -19,6 +19,7 @@ import dev.rwilco.MainActivity
 import dev.rwilco.ui.alert.AlertActivity
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.FiringPlan
+import dev.rwilco.model.tapRings
 import dev.rwilco.ui.format.ringReason
 import dev.rwilco.model.NetWord
 import dev.rwilco.model.saysItGotAway
@@ -382,18 +383,18 @@ object AlertNotifications {
     }
 
     /**
-     * A "hecho" given where there is no snackbar to take it back with — the alert screen and the
-     * shade — said back with "deshacer", for a minute.
+     * A "hecho" given from the shade, where there is no snackbar to take it back with, said back
+     * with "deshacer", for a minute.
      *
      * It used to be a routine's alone, on the reasoning that what a routine's "hecho" moves is a
-     * count; but a mis-held thumb on the alert at three in the morning finishes a one-off just as
-     * thoroughly, and those two doors are exactly the two with no way back (Home and the routines
-     * screen have their snackbars, the launcher refuses to mark anything done at all).
+     * count; but a mis-tapped button in the shade finishes a one-off just as thoroughly (Home and
+     * the routines screen have their snackbars, the launcher refuses to mark anything done at all).
      *
      * **A minute, then it goes by itself** ([DONE_NOTICE_MS], 0.129.0). The owner took the card off
      * the alert in 0.126.0 and off the shade in 0.128.0 — a card saying "Hecho" after the thing just
      * told "Hecho" repeats the answer — and brought it back as a minute's grace: long enough for
-     * the thumb that went wrong, gone before it is one more thing in the shade.
+     * the thumb that went wrong, gone before it is one more thing in the shade. **The alert screen
+     * gave it up again in 0.162.0**, at his word: its "Hecho" is a hold, not a tap.
      *
      * [row] is the row as it stood a moment before, carried in the button: a "hecho" writes nine
      * columns in one statement and the anchor is one of them, so the whole row is the only honest
@@ -590,10 +591,19 @@ object AlertNotifications {
         // until one is given here, and it arrives silent. What it costs is the one door Home
         // was: taking a wait at a place *back* without answering is still Home's long-press
         // menu ("quitar el posponer").
-        // A tap, never a ring: whichever card it is, the noise it was about is already spent —
-        // see [ReminderScheduler.EXTRA_TAPPED]. The full-screen intent below is the other half
-        // of that, and the only start left that still rings.
-        val tap = activityIntent(context, reminder.id, ruleIndex, anyway = nudge != null, tapped = true)
+        // A tap, not a ring: the noise the card was about is usually spent — see
+        // [ReminderScheduler.EXTRA_TAPPED]. The full-screen intent below is the other half of
+        // that. **Except the ring of an insistent full screen** ([tapRings], 0.162.0), whose noise
+        // is not over until it is answered: its card opens the alarm, "Silenciar" first. Never
+        // the missed card or the net's, which are about a ring and not the ring itself.
+        val tap = activityIntent(
+            context,
+            reminder.id,
+            ruleIndex,
+            anyway = nudge != null,
+            tapped = true,
+            rings = late == null && nudge == null && plan.tapRings,
+        )
         // **Why it rang**, in the words the form used when it was written — not the reminder's
         // own text again, which the title already carries and which said nothing twice. The
         // sentence is the editor's own, minus the words themselves (`reminderSummary`) — except
@@ -909,7 +919,9 @@ object AlertNotifications {
      * [anyway] is the net's card saying that its reminder is not owed an answer and that the
      * screen should hold it regardless; see [ReminderScheduler.EXTRA_ANYWAY]. [tapped] is a
      * person opening the card rather than the moment arriving, and the whole of what it buys is
-     * silence; see [ReminderScheduler.EXTRA_TAPPED].
+     * silence; see [ReminderScheduler.EXTRA_TAPPED] — unless [rings] says this card's alarm is not
+     * over yet ([ReminderScheduler.EXTRA_TAP_RINGS]). It is not in the request code: one card per
+     * reminder carries a content intent, and FLAG_UPDATE_CURRENT gives it the last card's word.
      *
      * Both are in the request code as well as in the extras, because extras are not part of a
      * PendingIntent's identity and the request code is. The content intent and the full-screen
@@ -923,6 +935,7 @@ object AlertNotifications {
         ruleIndex: Int?,
         anyway: Boolean = false,
         tapped: Boolean = false,
+        rings: Boolean = false,
     ): PendingIntent = PendingIntent.getActivity(
         context,
         (if (anyway) 1 else 0) or (if (tapped) 2 else 0),
@@ -932,6 +945,7 @@ object AlertNotifications {
                 if (ruleIndex != null) putExtra(ReminderScheduler.EXTRA_RULE, ruleIndex)
                 if (anyway) putExtra(ReminderScheduler.EXTRA_ANYWAY, true)
                 if (tapped) putExtra(ReminderScheduler.EXTRA_TAPPED, true)
+                if (rings) putExtra(ReminderScheduler.EXTRA_TAP_RINGS, true)
             }
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,

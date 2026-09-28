@@ -302,6 +302,21 @@ class FiringTest {
     }
 
     @Test
+    fun `only an insistent full screen opens ringing from its card`() {
+        // The alarm that is not over until it is answered: its card opens it as the alarm.
+        assertTrue(firingPlan(setOf(Action.FULL_SCREEN, Action.SOUND_UNTIL_ANSWERED)).tapRings)
+        assertTrue(firingPlan(setOf(Action.FULL_SCREEN, Action.NOTIFICATION, Action.SOUND_UNTIL_ANSWERED, Action.VIBRATE)).tapRings)
+        // Everything else was said once when it rang, and the card is somebody reading it.
+        assertFalse(firingPlan(setOf(Action.FULL_SCREEN, Action.SOUND)).tapRings, "a tone said once")
+        assertFalse(firingPlan(setOf(Action.FULL_SCREEN, Action.VIBRATE)).tapRings, "a buzz that had its minute")
+        assertFalse(firingPlan(setOf(Action.FULL_SCREEN)).tapRings)
+        // A banner asked for its noise in the shade; its screen is only where the answers are.
+        assertFalse(firingPlan(setOf(Action.NOTIFICATION, Action.SOUND_UNTIL_ANSWERED)).tapRings)
+        // And at night there is nothing insistent left to open.
+        assertFalse(firingPlan(setOf(Action.FULL_SCREEN, Action.SOUND_UNTIL_ANSWERED)).hushed().tapRings)
+    }
+
+    @Test
     fun `the hours somebody is asleep take the noise out of a firing`() {
         // Up from 08:00 to 23:30 on a weekday, which is the default.
         val shape = DayShape.DEFAULT

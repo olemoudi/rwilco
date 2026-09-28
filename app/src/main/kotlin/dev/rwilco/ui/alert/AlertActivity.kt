@@ -105,6 +105,9 @@ class AlertActivity : ComponentActivity() {
      * to reading the card is the app shouting at a person who is already looking at it. The
      * reminder is still owed an answer and the screen is still the place to give it; it is only
      * the alarm that has been and gone.
+     *
+     * **Not "hasta que reciba caso" on a full screen** (0.162.0, [tapRings]): that alarm is not
+     * gone until it is answered, and its card arrives here ringing, "Silenciar" first.
      */
     private val silenced = mutableStateListOf<String>()
 
@@ -308,18 +311,19 @@ class AlertActivity : ComponentActivity() {
                 val stacked = items.size > 1 && current.alertStacking == AlertStacking.STRIPS
                 val focusedItem = focused?.takeIf { stacked }?.let { id -> items.firstOrNull { it.id == id } }
                 BackHandler(enabled = focusedItem != null) { focused = null }
-                // "Hecho" here leaves its undo card for a minute (0.129.0): this screen has no
-                // snackbar, and a mis-held thumb on it is exactly what the card is for.
+                // **"Hecho" here leaves no undo card** (0.162.0, the owner's call, going back on
+                // 0.129.0 for this screen): "Hecho" is a hold on it, and a card saying "hecho"
+                // after the screen just took it is the same answer twice. The shade keeps its own.
                 if (stacked && focusedItem == null) {
                     AlertStackScreen(
                         items = items,
-                        onDone = { id -> answer(id) { app.firing.dismiss(id, notice = true) } },
+                        onDone = { id -> answer(id) { app.firing.dismiss(id) } },
                         onSnooze = { id, snooze -> answer(id) { app.firing.snooze(id, snooze) } },
                         // Not the form: this one reminder, on the whole screen. See [focused].
                         onView = { id -> focused = id },
                         snoozes = current.notificationOffers,
                         customMinutes = current.snoozeCustomMinutes,
-                        onDoneAll = { answerAll(items.map { it.id }) { id -> app.firing.dismiss(id, notice = true) } },
+                        onDoneAll = { answerAll(items.map { it.id }) { id -> app.firing.dismiss(id) } },
                         onSnoozeAll = { snooze -> answerAll(items.map { it.id }) { id -> app.firing.snooze(id, snooze) } },
                         ringing = noise,
                         onSilence = { silence() },
@@ -330,8 +334,8 @@ class AlertActivity : ComponentActivity() {
                         content = first.content,
                         preview = false,
                         waiting = items.size - 1,
-                        onDone = { answer(first.id) { app.firing.dismiss(first.id, notice = true) } },
-                        onDoneOnTime = { answer(first.id) { app.firing.doneOnTime(first.id, notice = true) } },
+                        onDone = { answer(first.id) { app.firing.dismiss(first.id) } },
+                        onDoneOnTime = { answer(first.id) { app.firing.doneOnTime(first.id) } },
                         onSnooze = { snooze: SnoozeOffer -> answer(first.id) { app.firing.snooze(first.id, snooze) } },
                         onView = { view(first.id, first.content.routine) },
                         onAct = ::act,
@@ -361,13 +365,24 @@ class AlertActivity : ComponentActivity() {
     private fun arrived(intent: Intent, again: Boolean = false) {
         val id = ReminderScheduler.reminderIdOf(intent) ?: return
         val held = ReminderScheduler.anywayIn(intent)
-        val quiet = held || ReminderScheduler.tappedIn(intent)
+        val tapped = ReminderScheduler.tappedIn(intent)
+        // A tap is quiet, except on the card of an alarm that is not over until it is answered
+        // (0.162.0): that one opens ringing, "Silenciar" first. See [tapRings].
+        val quiet = held || (tapped && !ReminderScheduler.tapRingsIn(intent))
         // **Each step between a full-screen ring and its noise, written down** (0.161.0). A
         // reminder shown full screen left no line at all when its noise never came, and "the
         // system never opened the screen", "it opened and was never seen" and "it was taken off
-        // before it rang" read the same: nothing. A tap on a card is not a ring, so it says nothing.
+        // before it rang" read the same: nothing. A quiet tap is not a ring, so it says nothing;
+        // one that rings says it was a tap, or it would read as the system opening the screen late.
         // A rotation rebuilds the screen from the start it was made with; that is not an arrival.
-        if (!quiet && (again || id !in ringing)) Diag.note(TAG_DIAG, "r=${id.take(8)} ${if (again) "joined the screen" else "opened"} ${displayState()}")
+        if (!quiet && (again || id !in ringing)) {
+            val how = when {
+                tapped -> "tapped open"
+                again -> "joined the screen"
+                else -> "opened"
+            }
+            Diag.note(TAG_DIAG, "r=${id.take(8)} $how ${displayState()}")
+        }
         track(
             id,
             ReminderScheduler.ruleIndexOf(intent),
@@ -395,7 +410,8 @@ class AlertActivity : ComponentActivity() {
             // Already on the screen — but one being shown *silently* because a card was tapped
             // stops being that the moment its own alarm arrives (a wait at a place, and the
             // door opened while the screen was up). It gets the noise it was asked for, and the
-            // epoch is what starts it. A second tap on the same card is not that moment.
+            // epoch is what starts it. A second tap on the same card is not that moment — unless
+            // it is an insistent full screen's, which opens the alarm every time ([tapRings]).
             //
             // **Nor is its noise spent for good** (0.148.0): a repeat of "hasta que reciba caso"
             // comes back to a locked phone as this screen, and finds it still up from the first
