@@ -1737,6 +1737,12 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_165_0">
+
+        <item>A reminder whose sound plays once no longer plays it again when the phone is turned while its screen is up. Picking the phone up to answer it rebuilt the screen, and the rebuilt screen said the tone over, so one alert could be heard three times.</item>
+        <item>An alarm silenced by you, and one that has finished its round, already stayed quiet through a turn; now a single tone does too.</item>
+
+    </string-array>
     <string-array name="whats_new_0_164_0">
 
         <item>Turning the backup on against a repository that already has a copy no longer offers «Replace it with this phone» on a phone with no reminders. That is a new phone before its restore, and the tap would have put nothing over the one copy that has everything.</item>

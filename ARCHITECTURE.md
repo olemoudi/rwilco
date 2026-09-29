@@ -1987,7 +1987,10 @@ loud what DST and a change of zone do to a landing.
   the recreated screen tracks every reminder again and bumps the epoch, which is what starts
   the noise, so the alarm somebody had just answered rang a fresh minute under a phone turned
   sideways; the flag is set by the button and the minute, not by leaving the screen, and a
-  reminder joining the screen clears it. **Search has a list state of its own**, so a search
+  reminder joining the screen clears it. Since 0.165.0 a tone said once (sound, no buzz, not
+  insistent) sets it as soon as it starts: nothing silences a tone that ends by itself, so a
+  screen rebuilt after it had rung said it again — one alert heard three times as the phone
+  was picked up and turned (`AlertSilenceTest.aToneSaidOnceIsNotSaidAgainWhenThePhoneIsTurnedSideways`). **Search has a list state of its own**, so a search
   opened twenty cards down starts at the top of its results and Home keeps its place. **Back
   walks search → filter → exit.** **The row of chips is drawn whenever there is a tag to
   administer** (`tagsRowShown`, mirrored into `homeCardIndex(tagsRow)`): a tag left on finished

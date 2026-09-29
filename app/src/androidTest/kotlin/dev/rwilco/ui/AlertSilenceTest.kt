@@ -63,6 +63,10 @@ class AlertSilenceTest {
     private val asleepId = "silence-asleep"
     private val asleep = "Cerrar el gas (prueba de madrugada)"
     private val sidewaysId = "silence-sideways"
+    // Its own first eight characters: the report names a reminder by them, and the count below
+    // must not pick up any other reminder of this class.
+    private val onceSidewaysId = "turned-once"
+    private val onceSideways = "Sacar la basura (prueba de un tono y un giro)"
     private val sideways = "Apagar el horno (prueba de giro)"
 
     private var hoursBefore: AwakeHours? = null
@@ -110,6 +114,7 @@ class AlertSilenceTest {
         app.repository.delete(noteId)
         app.repository.delete(cardId)
         app.repository.delete(sidewaysId)
+        app.repository.delete(onceSidewaysId)
     }
 
     @Test
@@ -288,6 +293,35 @@ class AlertSilenceTest {
             "turning the phone sideways started the alarm again"
         }
     }
+
+    /**
+     * A tone said once is said once, whatever happens to the screen after it (0.165.0). Nothing
+     * silences a tone that ends by itself, so a screen rebuilt after it had rung — the phone
+     * picked up and turned — started it over: reported as one alert heard three times.
+     */
+    @Test
+    fun aToneSaidOnceIsNotSaidAgainWhenThePhoneIsTurnedSideways() {
+        runBlocking { app.diagStore.clear() }
+        seed(onceSidewaysId, onceSideways, setOf(Action.FULL_SCREEN, Action.SOUND))
+        scenario = ActivityScenario.launch(alert(onceSidewaysId))
+        rule.waitUntilShown(onceSideways)
+        rule.waitUntil(timeoutMillis = 10_000) { ringsOf(onceSidewaysId) == 1 }
+
+        scenario!!.recreate()
+        rule.waitUntilShown(onceSideways)
+        rule.waitForIdle()
+        // Written after anything the rebuilt screen could have said, so once it is in the log a
+        // second ring would be too.
+        val marker = "after the turn ${System.nanoTime()}"
+        dev.rwilco.diag.Diag.note("test", marker)
+        rule.waitUntil(timeoutMillis = 10_000) { runBlocking { app.diagStore.read() }.notes.any { it.text == marker } }
+
+        check(ringsOf(onceSidewaysId) == 1) { "turning the phone sideways said the tone again" }
+    }
+
+    /** How many times the report says the alert screen made a noise for [id]. */
+    private fun ringsOf(id: String): Int = runBlocking { app.diagStore.read() }.notes
+        .count { it.tag == "ring" && it.text.startsWith("r=${id.take(8)} ringing") }
 
     private fun shot(name: String) {
         rule.waitForIdle()
