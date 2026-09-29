@@ -63,6 +63,35 @@ class NotificationBundleTest {
     private fun alerts() = manager.activeNotifications.count { it.id != 1 }
 
     /**
+     * A full-screen ring's card rings too, and the screen quiets it in place when it takes the
+     * noise over (0.163.0): the same card, on the silent channel, without its full-screen intent,
+     * with every button still on it. Reported from the phone: the card used to be silent, and a
+     * screen Android never opened left nothing ringing at all.
+     */
+    @Test
+    fun aFullScreenRingsCardRingsUntilTheScreenQuietsIt() {
+        val r = reminder("quiet-a", "Registrar la jornada (prueba)").copy(actions = setOf(Action.FULL_SCREEN, Action.SOUND, Action.VIBRATE))
+        AlertNotifications.post(context, r, firingPlan(r.actions), late = null, fullScreen = true)
+        Thread.sleep(300)
+        val id = AlertNotifications.notificationId(r.id)
+        val loud = manager.activeNotifications.single { it.id == id }.notification
+        val loudChannel = manager.getNotificationChannel(loud.channelId)
+        check(loudChannel.sound != null) { "the card of a full-screen ring went out silent" }
+        check(loud.fullScreenIntent != null) { "and it still asks for the screen" }
+
+        AlertNotifications.quiet(context, r.id)
+        Thread.sleep(300)
+        val quieted = manager.activeNotifications.single { it.id == id }.notification
+        val quietChannel = manager.getNotificationChannel(quieted.channelId)
+        assertEquals("no sound once the screen has it", null, quietChannel.sound)
+        check(!quietChannel.shouldVibrate()) { "no buzz either" }
+        assertEquals("no second screen started over the first", null, quieted.fullScreenIntent)
+        assertEquals("every button still on it", loud.actions.size, quieted.actions.size)
+        assertEquals(loud.extras.getCharSequence(android.app.Notification.EXTRA_TITLE), quieted.extras.getCharSequence(android.app.Notification.EXTRA_TITLE))
+        manager.cancel(id)
+    }
+
+    /**
      * Not an assertion: two alerts left standing in the shade so a person can look at them.
      * Run on its own, it is how the drawer gets a screenshot.
      */

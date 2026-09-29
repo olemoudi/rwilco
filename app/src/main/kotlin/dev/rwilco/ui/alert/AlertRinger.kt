@@ -25,8 +25,9 @@ import dev.rwilco.model.waveformFor
 /**
  * The noise a full-screen alert makes while it is on screen.
  *
- * It is the alert screen's own doing (see [FiringPlan.notificationSound]): the notification that
- * carried it stays quiet so the two never overlap.
+ * It is the alert screen's own doing. The notification that carried it rings too until the screen
+ * comes up (see [FiringPlan.notificationSound], 0.163.0), and the screen quiets it then, so the
+ * two overlap for a moment at most.
  *
  * **Several times in a row only if that is what was asked for.** "Sonido" and "hasta que reciba
  * caso" are two different promises about how many times somebody is going to hear the same tone,

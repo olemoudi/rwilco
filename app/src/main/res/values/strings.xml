@@ -1729,6 +1729,13 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_163_0">
+
+        <item>A full-screen reminder can no longer go off in silence. Its notification now carries the sound and the vibration from the first instant, and the full screen takes the sound over when it opens. Until now the notification was silent and only the screen rang, so when Android did not open the screen (a locked phone) nothing rang at all.</item>
+        <item>When the screen does open you will hear both for a moment: that is the notification handing the sound over to the screen.</item>
+        <item>The diagnostics report now says when a reminders channel has been set below «alert» in Android\'s settings, not only when it is switched off.</item>
+
+    </string-array>
     <string-array name="whats_new_0_162_0">
 
         <item>«Done» on the full-screen alert no longer leaves a «Done · Undo» card in the notifications. «Done» from the notification itself still does, for a minute.</item>

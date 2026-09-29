@@ -83,6 +83,15 @@ class DiagReportTest {
     )
 
     @Test
+    fun `an alert channel set below alert is named, not only one switched off`() {
+        // The report said channelMuted=n while every full-screen ring went out without its screen:
+        // a lowered channel is the other way a card stops popping up (0.163.0).
+        assertTrue(diagnostics().report().contains("channelMuted=n lowered=- "))
+        val lowered = diagnostics().let { it.copy(permissions = it.permissions.copy(loweredChannels = listOf("alert_v2_s0_v0:3"))) }
+        assertTrue(lowered.report().contains("lowered=alert_v2_s0_v0:3 "))
+    }
+
+    @Test
     fun `it holds what a firing is decided from`() {
         val report = diagnostics().report()
         assertTrue(report.contains("#0f1e2d3c"), "the id, short enough to follow and long enough to be one")

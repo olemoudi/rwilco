@@ -11,6 +11,7 @@ import dev.rwilco.diag.Diag
 import dev.rwilco.model.doneOnTimeAt
 import dev.rwilco.model.key
 import dev.rwilco.notify.AlertAudio
+import dev.rwilco.notify.AlertNotifications
 import dev.rwilco.notify.audioDescription
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -221,8 +222,8 @@ class AlertActivity : ComponentActivity() {
             // own plan from the row, so without this, being started at three in the morning
             // would begin the alarm the firing had just been careful not to make
             // ([hushedByTheHour]).
-            val plans = reminders
-                .filter { it.id !in silenced }
+            val loud = reminders.filter { it.id !in silenced }
+            val plans = loud
                 .map { reminder ->
                     val plan = firingPlan(reminder.actions)
                     val momentFor = reminder.lastFiredAt ?: app.clock.instant()
@@ -256,6 +257,11 @@ class AlertActivity : ComponentActivity() {
                         onDone = if (insisting) ({ silence("the round is over") }) else null,
                     )
                     if (sound || vibrate) {
+                        // **The card rang first, and this screen takes the noise over** (0.163.0):
+                        // the card carries the sound in case this screen never comes, so once it
+                        // has come the card goes quiet — or the two ring over each other.
+                        val cards = loud.map { it.id }
+                        app.appScope.launch { cards.forEach { AlertNotifications.quiet(app, it) } }
                         val route = if (sound && current.alertToHeadphones && AlertAudio.headsetConnected(this@AlertActivity)) "headphones, speaker in 10 s" else "speaker"
                         Diag.note(
                             TAG_DIAG,
@@ -415,8 +421,8 @@ class AlertActivity : ComponentActivity() {
             //
             // **Nor is its noise spent for good** (0.148.0): a repeat of "hasta que reciba caso"
             // comes back to a locked phone as this screen, and finds it still up from the first
-            // ring — silenced, or hushed when the display went dark. Its notification is quiet
-            // because the screen makes the sound, so a repeat that did not ring here rang nowhere.
+            // ring — silenced, or hushed when the display went dark. The repeat is this screen's
+            // to ring: its card rings only until the screen takes over, which is at once here.
             // [again] is what tells that repeat from a rotation, which rebuilds the screen from
             // the start it was created with and must stay as quiet as it was left.
             if (!quiet) {

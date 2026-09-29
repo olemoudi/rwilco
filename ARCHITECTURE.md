@@ -2675,10 +2675,16 @@ loud what DST and a change of zone do to a landing.
   is a number somebody can agree or disagree with and "una décima parte de la cadencia" is a
   rule they would have to work out.
 - `AlertPresenter` decides *where* a firing shows itself: an app open in front of somebody gets
-  the banner, and the home screen, a dark screen or the lock screen get the whole screen. The
-  noise follows that decision, not the tile: a full-screen alert rings for itself, but one
-  shown as a banner has no screen to ring and its notification carries the sound and the buzz
-  (`AlertNotifications.post` picks the channel from the presentation it was handed). And any
+  the banner, and the home screen, a dark screen or the lock screen get the whole screen.
+  **The card carries the sound and the buzz either way** (0.163.0, `FiringPlan.notificationSound`).
+  Until then the noise followed the presentation — a full-screen ring went out on the silent
+  channel and the screen alone made a sound — and when Android did not open the screen (twice in
+  a day on the owner's phone, locked, the report with no `opened` line for either) nothing rang
+  at all. Now the card rings from the first instant, and the alert screen, when it starts its own
+  noise, quiets it in place (`AlertNotifications.quiet`: the same card on the silent channel, only
+  once, without its full-screen intent — posted again with it, the system could start the screen
+  over itself, and a screen started again rings again). The cost, the owner's choice over a
+  watchdog: a second where both are heard, on every screen that does open. And any
   action at all implies a notification (`firingPlan`): a sound or a buzz is made by a channel,
   so "sonido" with "notificación" unticked is still a notification rather than nothing. **A
   reminder written from nothing makes one** (0.109.0): `DEFAULT_ACTIONS` was a card and a buzz,

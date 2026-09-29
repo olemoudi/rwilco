@@ -134,15 +134,17 @@ object AlertPresenter {
             repeat = repeat,
         )
         // With the screen on, the takeover is ours to start — and it is started BEFORE the
-        // notification, because whether it took decides which channel the notification goes
-        // on. Posted first, a refused start left a silent card behind a screen that never came.
+        // notification, because whether it took decides whether the card asks for the screen as
+        // well. (It used to decide the channel too: a refused start left a silent card behind a
+        // screen that never came. The card rings either way now, 0.163.0.)
         // With the screen off or locked, the notification's full-screen intent is what launches
         // the alert: the system does it for us, and doing it here as well would race with it.
         val screenTaken = presentation == AlertPresentation.FULL_SCREEN && inUse && startAlert(context, reminder, ruleIndex)
         val fullScreen = presentation == AlertPresentation.FULL_SCREEN && (screenTaken || !inUse)
         // A card whose tone the system plays leaves no other trace of where it went or how loud
-        // it could be there; the screen's own tone says so on its `ring` line (0.161.0).
-        val audio = if (plan.sound && !fullScreen) " " + context.audioDescription() else ""
+        // it could be there; the screen's own tone says so on its `ring` line (0.161.0). Every
+        // card with a sound is one of those since 0.163.0, full screen or not.
+        val audio = if (plan.notificationSound) " " + context.audioDescription() else ""
         Diag.note(
             "show",
             "r=${reminder.id.take(8)} $presentation screen=${if (screenTaken) "taken" else if (inUse) "refused" else "system"} " +

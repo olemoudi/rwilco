@@ -225,12 +225,19 @@ data class FiringPlan(
     val insistent: Boolean = false,
 ) {
     /**
-     * A full-screen alert rings for itself (the tone, as many times in a row as it was asked to,
-     * while the screen is up), so the notification that carries it must stay silent or the two
-     * overlap.
+     * **The card carries the noise too, full screen or not** (0.163.0, the owner's call).
+     *
+     * It used to stay silent on a full-screen ring, so the card and the screen never overlapped
+     * — which made the screen the only thing that could make a sound, and a screen is something
+     * Android may simply not open. Reported from the phone: a place's reminder at 07:37 and a
+     * timer at 19:53 went out as silent cards on a locked phone, the screen never came (the
+     * report has no `opened` line for either), and nothing rang at all. Now the card rings from
+     * the first instant, and the alert screen, when it does come up, takes the noise over and
+     * quiets the card in place: a second of overlap on every screen that opens, against an
+     * alarm that is never mute when one does not.
      */
-    val notificationSound: Boolean get() = sound && !fullScreen
-    val notificationVibrate: Boolean get() = vibrate && !fullScreen
+    val notificationSound: Boolean get() = sound
+    val notificationVibrate: Boolean get() = vibrate
 }
 
 /**

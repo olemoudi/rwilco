@@ -184,13 +184,16 @@ class FiringTest {
     }
 
     @Test
-    fun `a full-screen alert keeps its notification but hands the noise to the screen`() {
+    fun `a full-screen alert's card rings too, in case the screen never comes`() {
         val plan = firingPlan(setOf(Action.FULL_SCREEN, Action.SOUND, Action.VIBRATE))
         assertTrue(plan.fullScreen)
         assertTrue(plan.notification, "the notification is what is left when the takeover is refused")
-        assertTrue(plan.sound)
-        assertFalse(plan.notificationSound, "the alert screen rings; the notification must not double it")
-        assertFalse(plan.notificationVibrate)
+        // A silent card behind a screen Android never opened was an alarm nobody heard (0.163.0).
+        assertTrue(plan.notificationSound, "the card rings until the screen takes the noise over")
+        assertTrue(plan.notificationVibrate)
+        val insisting = firingPlan(setOf(Action.FULL_SCREEN, Action.SOUND_UNTIL_ANSWERED))
+        assertTrue(insisting.notificationSound)
+        assertFalse(firingPlan(setOf(Action.FULL_SCREEN)).notificationSound, "nothing asked for, nothing made")
     }
 
     @Test

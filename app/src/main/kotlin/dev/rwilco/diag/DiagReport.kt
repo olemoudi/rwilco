@@ -64,6 +64,12 @@ data class DiagPermissions(
     val alarmVolume: String,
     val location: String,
     val playServices: Boolean,
+    /**
+     * Alert channels set below "alert" (importance under HIGH), as `id:importance` (0.163.0).
+     * [anyChannelMuted] only sees one switched off, and one lowered by hand or by the system is
+     * the other way a card stops popping up and its screen stops being opened.
+     */
+    val loweredChannels: List<String> = emptyList(),
 )
 
 /** The backup, with nothing in it that opens anything. */
@@ -141,7 +147,7 @@ fun Diagnostics.report(): String = buildString {
 
     appendLine("-- what the phone allows --")
     with(permissions) {
-        appendLine("notifications=${yes(notifications)} channelMuted=${yes(anyChannelMuted)} fullScreenIntent=${yes(fullScreenIntent)} exactAlarms=${yes(exactAlarms)}")
+        appendLine("notifications=${yes(notifications)} channelMuted=${yes(anyChannelMuted)} lowered=${loweredChannels.joinToString(",").ifEmpty { "-" }} fullScreenIntent=${yes(fullScreenIntent)} exactAlarms=${yes(exactAlarms)}")
         appendLine("overlay=${yes(overlay)} usageAccess=${yes(usageAccess)} battery=${if (ignoresBatteryOptimisation) "unrestricted" else "optimised"} background=${if (backgroundRestricted) "RESTRICTED" else "ok"}")
         appendLine("dnd=$dnd alarmVolume=$alarmVolume location=$location playServices=${yes(playServices)}")
     }

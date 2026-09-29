@@ -1,5 +1,6 @@
 package dev.rwilco.notify
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationChannelGroup
 import android.app.NotificationManager
@@ -565,12 +566,12 @@ object AlertNotifications {
         // fixed the moment it is created, so one made under the file's own key while the file
         // was away would keep the system tone for ever, card back in or not.
         val effective = if (chosen is AlertSound.Custom && !Sounds.readable(context, Uri.parse(chosen.uri))) AlertSound.System else chosen
-        // The noise follows where the firing is actually shown, not what was ticked: a
-        // full-screen alert rings for itself, but one that ends up as a banner — an app in
-        // front, usage access never granted — has no screen to ring, and a silent banner is a
-        // reminder somebody sleeps through.
-        val soundHere = plan.sound && !fullScreen
-        val vibrateHere = plan.vibrate && !fullScreen
+        // **The card rings, whether or not a screen is meant to** (0.163.0): a full-screen ring
+        // used to go out on a silent card, and when Android did not open the screen — twice in a
+        // day on the owner's phone, locked, with nothing in the report to say why — nothing rang
+        // at all. The screen, when it comes, takes the noise over and quiets this card ([quiet]).
+        val soundHere = plan.notificationSound
+        val vibrateHere = plan.notificationVibrate
         val bypass = context.getSystemService(NotificationManager::class.java)?.isNotificationPolicyAccessGranted == true
         // The channel this card goes out on, made here if the process has not made it yet — a
         // ring can be the first thing a fresh process does. Only the one it needs, never the
@@ -783,6 +784,33 @@ object AlertNotifications {
             manager.cancel(askNotificationId(reminderId))
             manager.cancel(resetNotificationId(reminderId))
         }
+    }
+
+    /**
+     * The ring's card, made quiet where it stands: the alert screen has come up and taken the
+     * noise over (0.163.0). See [FiringPlan.notificationSound] for why the card rings at all.
+     *
+     * The card as it was posted, on the silent channel, and nothing else about it changed: Android
+     * stops a notification's sound and buzz the moment it is updated to one that has none. Only
+     * once ([Notification.Builder.setOnlyAlertOnce]), and **without its full-screen intent**:
+     * posted again with it, the system could bring the screen up over itself, and a screen
+     * started again rings again. A card already quiet, or no longer there, is left alone.
+     */
+    fun quiet(context: Context, reminderId: String) {
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        val id = notificationId(reminderId)
+        runCatching {
+            val posted = manager.activeNotifications.firstOrNull { it.id == id && it.tag == null }?.notification ?: return
+            val silent = ensureAlertChannel(context, sound = false, vibrate = false, VibrationPattern(), AlertSound.System, manager.isNotificationPolicyAccessGranted)
+            if (posted.channelId == silent) return
+            val quieted = Notification.Builder.recoverBuilder(context, posted)
+                .setChannelId(silent)
+                .setOnlyAlertOnce(true)
+                .setFullScreenIntent(null, false)
+                .build()
+            manager.notify(id, quieted)
+            Diag.note("ring", "r=${reminderId.take(8)} card quieted")
+        }.onFailure { Log.w(TAG, "could not quiet the card for $reminderId", it) }
     }
 
     /**

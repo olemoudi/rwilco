@@ -95,6 +95,19 @@ fun audioLine(headsetType: Int?, musicActive: Boolean, media: String, alarm: Str
     return "headset=$headset music=${if (musicActive) "y" else "n"} media=$media alarm=$alarm"
 }
 
+/**
+ * Every alert channel below "alert", as `id:importance`: a card on one of those does not pop up,
+ * and the system does not open its full screen either (0.163.0, for the report).
+ */
+fun Context.loweredAlertChannels(): List<String> {
+    val manager = getSystemService(NotificationManager::class.java) ?: return emptyList()
+    return runCatching {
+        manager.notificationChannels
+            .filter { it.id.startsWith(AlertNotifications.ALERT_CHANNEL_PREFIX) && it.importance < NotificationManager.IMPORTANCE_HIGH }
+            .map { "${it.id}:${it.importance}" }
+    }.getOrDefault(emptyList())
+}
+
 /** A channel muted by hand is invisible to `areNotificationsEnabled`; this is the check it lacks. */
 fun Context.anyAlertChannelMuted(): Boolean = mutedAlertChannelId() != null
 

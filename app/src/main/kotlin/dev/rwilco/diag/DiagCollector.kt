@@ -22,6 +22,7 @@ import dev.rwilco.notify.dndDescription
 import dev.rwilco.notify.hasUsageAccess
 import dev.rwilco.notify.ignoresBatteryOptimisations
 import dev.rwilco.notify.isBackgroundRestricted
+import dev.rwilco.notify.loweredAlertChannels
 import dev.rwilco.vault.pendingChanges
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -75,6 +76,7 @@ suspend fun RwilcoApplication.collectDiagnostics(): Diagnostics = withContext(Di
 private fun Context.permissions(): DiagPermissions = DiagPermissions(
     notifications = NotificationManagerCompat.from(this).areNotificationsEnabled(),
     anyChannelMuted = anyAlertChannelMuted(),
+    loweredChannels = loweredAlertChannels(),
     fullScreenIntent = canUseFullScreenIntent(),
     exactAlarms = canScheduleExactAlarms(),
     overlay = canDrawOverlays(),
