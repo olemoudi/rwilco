@@ -172,17 +172,30 @@ jobs:
       # download that has not been published yet is a few minutes of every phone on that channel
       # failing to fetch it.
       - name: Point the channel at it
+        # Releases cut minutes apart run side by side and finish in any order. Each one rebuilt its
+        # commit by rebasing onto main, and two of them editing the same line of the same file
+        # conflicted: the rebase stopped half-way, every retry after it failed on the leftover, and
+        # the channel stayed on the older release (0.166.0-alpha). So each attempt starts from main
+        # as it is, writes the file afresh, and only ever moves the channel forward.
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           FILE="channels/${{ steps.channel.outputs.name }}.json"
-          git add "$FILE"
-          git diff --cached --quiet && echo "channel already points here" && exit 0
-          git commit -m "chore: point the ${{ steps.channel.outputs.name }} channel at ${{ steps.manifest.outputs.versionName }} [skip ci]"
+          cp "$FILE" "$RUNNER_TEMP/channel.json"
+          CODE=$(jq -r '.versionCode' "$RUNNER_TEMP/channel.json")
           for attempt in 1 2 3 4 5; do
             git fetch origin main
-            git rebase origin/main && git push origin HEAD:main && exit 0
+            git reset -q --hard origin/main
+            CURRENT=$(jq -r '.versionCode // 0' "$FILE" 2>/dev/null || echo 0)
+            if [ "$CURRENT" -ge "$CODE" ]; then
+              echo "the channel is at $CURRENT already; this release is $CODE"
+              exit 0
+            fi
+            cp "$RUNNER_TEMP/channel.json" "$FILE"
+            git add "$FILE"
+            git commit -q -m "chore: point the ${{ steps.channel.outputs.name }} channel at ${{ steps.manifest.outputs.versionName }} [skip ci]"
+            git push origin HEAD:main && exit 0
             echo "push $attempt was beaten to it; trying again"
             sleep $((attempt * 5))
           done
