@@ -14,6 +14,8 @@ import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.alarm.ReminderScheduler
 import dev.rwilco.model.Action
+import dev.rwilco.model.AlertSound
+import dev.rwilco.model.Chime
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
@@ -297,30 +299,41 @@ class AlertSilenceTest {
     /**
      * A tone said once is said once, whatever happens to the screen after it (0.165.0). Nothing
      * silences a tone that ends by itself, so a screen rebuilt after it had rung — the phone
-     * picked up and turned — started it over: reported as one alert heard three times.
+     * picked up and turned — started it over: reported as one alert heard three times. Spent at
+     * its end, not its start (0.169.0): a rebuild while it plays must still let it be heard.
      */
     @Test
     fun aToneSaidOnceIsNotSaidAgainWhenThePhoneIsTurnedSideways() {
         runBlocking { app.diagStore.clear() }
-        seed(onceSidewaysId, onceSideways, setOf(Action.FULL_SCREEN, Action.SOUND))
-        scenario = ActivityScenario.launch(alert(onceSidewaysId))
-        rule.waitUntilShown(onceSideways)
-        rule.waitUntil(timeoutMillis = 10_000) { ringsOf(onceSidewaysId) == 1 }
+        // A chime of the app's own: always there to play, and over in a couple of seconds.
+        val toneBefore = runBlocking { app.settingsStore.settings.first().alertSound }
+        runBlocking { app.settingsStore.update { it.copy(alertSound = AlertSound.Bundled(Chime.TWO_TONE)) } }
+        try {
+            seed(onceSidewaysId, onceSideways, setOf(Action.FULL_SCREEN, Action.SOUND))
+            scenario = ActivityScenario.launch(alert(onceSidewaysId))
+            rule.waitUntilShown(onceSideways)
+            rule.waitUntil(timeoutMillis = 10_000) { ringsOf(onceSidewaysId) == 1 }
+            rule.waitUntil(timeoutMillis = 15_000) { notes().any { it.text.startsWith("r=${onceSidewaysId.take(8)} the tone is over") } }
 
-        scenario!!.recreate()
-        rule.waitUntilShown(onceSideways)
-        rule.waitForIdle()
-        // Written after anything the rebuilt screen could have said, so once it is in the log a
-        // second ring would be too.
-        val marker = "after the turn ${System.nanoTime()}"
-        dev.rwilco.diag.Diag.note("test", marker)
-        rule.waitUntil(timeoutMillis = 10_000) { runBlocking { app.diagStore.read() }.notes.any { it.text == marker } }
+            scenario!!.recreate()
+            rule.waitUntilShown(onceSideways)
+            rule.waitForIdle()
+            // Written after anything the rebuilt screen could have said, so once it is in the log a
+            // second ring would be too.
+            val marker = "after the turn ${System.nanoTime()}"
+            dev.rwilco.diag.Diag.note("test", marker)
+            rule.waitUntil(timeoutMillis = 10_000) { notes().any { it.text == marker } }
 
-        check(ringsOf(onceSidewaysId) == 1) { "turning the phone sideways said the tone again" }
+            check(ringsOf(onceSidewaysId) == 1) { "turning the phone sideways said the tone again" }
+        } finally {
+            runBlocking { app.settingsStore.update { it.copy(alertSound = toneBefore) } }
+        }
     }
 
+    private fun notes() = runBlocking { app.diagStore.read() }.notes
+
     /** How many times the report says the alert screen made a noise for [id]. */
-    private fun ringsOf(id: String): Int = runBlocking { app.diagStore.read() }.notes
+    private fun ringsOf(id: String): Int = notes()
         .count { it.tag == "ring" && it.text.startsWith("r=${id.take(8)} ringing") }
 
     private fun shot(name: String) {

@@ -67,14 +67,14 @@ class VaultBackup(
         val state = store.read()
         if (!state.enabled || !state.hasKey) return VaultRunResult.DONE
         val settings = settingsJson().orEmpty()
-        val snapshot = buildSnapshot(rows(), settings, clock.instant(), state.deviceId, appVersionCode, dbVersion, events())
-        val print = snapshot.fingerprint()
+        val bare = buildSnapshot(rows(), settings, clock.instant(), state.deviceId, appVersionCode, dbVersion)
+        val print = bare.fingerprint()
         when (nextVaultStep(state.enabled, print, state.lastUploadedFingerprint)) {
             VaultStep.DISABLED -> return VaultRunResult.DONE
             VaultStep.NOTHING_CHANGED -> return stillThere(transportFor(state), state)
             VaultStep.UPLOAD -> Unit
         }
-        val sent = Sent(print, settingsHash(settings), snapshot.reminders.size, settings.length)
+        val sent = Sent(print, settingsHash(settings), bare.reminders.size, settings.length)
         // Something became nothing. A fingerprint cannot tell that from a deletion, so this is
         // the only place it can be caught — before the bytes are sealed, and before the one copy
         // that still has everything is replaced by the phone that has lost it.
@@ -82,6 +82,9 @@ class VaultBackup(
             log("what this phone holds went empty (${state.lastUploadedRows} rows to ${sent.rows}, ${state.lastUploadedSettingsLength} to ${sent.settingsLength} of settings); not copying that up")
             return attention(VaultOutcome.COLLAPSED)
         }
+        // The history only for a copy that is going: it does not decide whether one goes (see
+        // [fingerprint]), and a look that finds nothing to copy has no use for a thousand lines a reminder.
+        val snapshot = bare.copy(events = events().sortedBy { it.id })
         VaultCenter.report(working = true)
         try {
             val bytes = VaultCrypto.seal(encodeSnapshot(snapshot), state.keyBytes(), state.saltBytes(), state.iterations)

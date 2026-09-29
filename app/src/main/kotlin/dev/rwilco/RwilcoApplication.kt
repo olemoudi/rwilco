@@ -319,7 +319,7 @@ class RwilcoApplication : Application() {
         }
         // Not while settings that would not read are kept aside: the defaults standing in for
         // them point at no tone of their own, and the sweep would take the copies with it.
-        if (!settingsStore.hasUnreadable()) SoundStore.sweep(this, settled)
+        if (!settingsStore.sweepHeld(clock.instant())) SoundStore.sweep(this, settled)
     }
 
     companion object {

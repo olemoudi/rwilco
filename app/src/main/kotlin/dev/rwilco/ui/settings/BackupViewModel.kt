@@ -52,8 +52,12 @@ data class Credentials(val owner: String, val repo: String, val pat: String)
 
 /** Where a vault about to be restored came from; decides what the phone keeps afterwards. */
 sealed interface RestoreSource {
-    /** The remote: this phone adopts its key and, when given, the credentials that reached it. */
-    data class Remote(val sha: String, val credentials: Credentials?) : RestoreSource
+    /**
+     * The remote: this phone adopts its key and, when given, the credentials that reached it.
+     * [attempt] is the vault's last upload attempt when the copy was read, which is how a run
+     * that got in between the read and the restore is recognised (see [BackupViewModel.confirmRestore]).
+     */
+    data class Remote(val sha: String, val credentials: Credentials?, val attempt: String? = null) : RestoreSource
     /** A file somebody picked; the vault's own credentials and key are left alone. */
     data object File : RestoreSource
     /** The copy kept before the last restore. */
@@ -223,16 +227,20 @@ class BackupViewModel(private val app: RwilcoApplication) : ViewModel() {
                     when (val source = confirm.source) {
                         is RestoreSource.Remote -> {
                             val withCredentials = source.credentials?.let { state.copy(enabled = true, owner = it.owner, repo = it.repo, pat = it.pat) } ?: state
+                            // A run that got in between the read and the restore — which waits for
+                            // it — uploaded this phone's old data over the copy just read. Then the
+                            // restored data has to go back up, over what that run left there.
+                            val raced = state.enabled && state.lastAttemptSha != source.attempt
                             withCredentials.copy(
                                 key = VaultState.encode(opened.key), salt = VaultState.encode(opened.salt), iterations = opened.iterations,
                                 deviceId = state.deviceId.ifEmpty { UUID.randomUUID().toString() },
-                                remoteSha = source.sha, lastAttemptSha = null,
+                                remoteSha = if (raced) state.remoteSha else source.sha, lastAttemptSha = if (raced) state.lastAttemptSha else null,
                                 // Every cursor the copy up there answers for, not just the
                                 // fingerprint: when it was made, what it weighed in rows and in
                                 // settings. Left behind, the badge counted the first edit
                                 // afterwards as every reminder on the phone, and the guard had
                                 // nothing to compare a collapse against.
-                                lastUploadedFingerprint = opened.snapshot.fingerprint(),
+                                lastUploadedFingerprint = if (raced) null else opened.snapshot.fingerprint(),
                                 lastUploadedAt = opened.snapshot.exportedAt,
                                 lastUploadedSettingsHash = settingsHash(opened.snapshot.settingsJson),
                                 lastUploadedRows = opened.snapshot.reminders.size,
@@ -325,7 +333,7 @@ class BackupViewModel(private val app: RwilcoApplication) : ViewModel() {
             } catch (e: VaultTransportException) {
                 return@launch fail(messageOf(e.failure))
             } ?: return@launch fail(R.string.vault_error_no_remote)
-            offer(remote.bytes, RestoreSource.Remote(remote.sha, null), state)
+            offer(remote.bytes, RestoreSource.Remote(remote.sha, null, state.lastAttemptSha), state)
         }
     }
 
@@ -396,6 +404,8 @@ class BackupViewModel(private val app: RwilcoApplication) : ViewModel() {
             val there = (probeAndRead(transportFor(credentials)) ?: return@launch).value?.sha
             val current = app.vaultStore.read()
             if (!current.isRepository(credentials.owner, credentials.repo) && there != null && there != current.remoteSha) {
+                // The same rule as enabling over a copy (0.164.0): an empty phone never replaces one.
+                if (app.repository.allRows().isEmpty()) return@launch fail(R.string.vault_error_nothing_to_replace)
                 mutablePhase.value = BackupPhase.ConfirmMove(credentials, there)
                 return@launch
             }
@@ -406,7 +416,10 @@ class BackupViewModel(private val app: RwilcoApplication) : ViewModel() {
     /** From [BackupPhase.ConfirmMove]: the copy in the new repository gives way to this phone's. */
     fun confirmMove() {
         val confirm = mutablePhase.value as? BackupPhase.ConfirmMove ?: return
-        viewModelScope.launch { moveTo(confirm.credentials, confirm.remoteSha) }
+        viewModelScope.launch {
+            if (app.repository.allRows().isEmpty()) return@launch fail(R.string.vault_error_nothing_to_replace)
+            moveTo(confirm.credentials, confirm.remoteSha)
+        }
     }
 
     private suspend fun moveTo(credentials: Credentials, remoteSha: String?) {

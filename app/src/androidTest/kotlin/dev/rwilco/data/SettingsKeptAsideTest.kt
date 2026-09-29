@@ -11,6 +11,8 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
+import java.time.Duration
+import java.time.Instant
 
 /**
  * Settings that will not read are kept aside before the defaults are written over them (0.167.0).
@@ -22,35 +24,44 @@ class SettingsKeptAsideTest {
 
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
     private val app get() = context.applicationContext as RwilcoApplication
-    private val aside get() = File(context.filesDir, UNREADABLE_FILE)
     private var before: String? = null
+
+    private fun kept(): List<File> = context.filesDir.listFiles { f -> f.name.startsWith(ASIDE_PREFIX) }.orEmpty().sortedBy { it.name }
 
     @Before
     fun keep(): Unit = runBlocking {
         before = app.settingsStore.rawJson()
-        aside.delete()
+        kept().forEach { it.delete() }
     }
 
     @After
     fun restore(): Unit = runBlocking {
         before?.let { app.settingsStore.replaceRaw(it) }
-        aside.delete()
+        kept().forEach { it.delete() }
     }
 
     @Test
-    fun anUnreadableBlobIsKeptBeforeTheDefaultsAreWrittenOverIt(): Unit = runBlocking {
+    fun whatWouldNotReadIsKeptBeforeItIsWrittenOverOncePerBlob(): Unit = runBlocking {
         val unreadable = """{"theme":"DARK","defaultTime":"half past seven"}"""
         app.settingsStore.replaceRaw(unreadable)
 
         check(app.settingsStore.settings.first() == AppSettings()) { "the defaults stand in for settings that will not read" }
+        check(kept().isEmpty()) { "reading alone kept something aside; that is the write's job, off the main thread" }
+        check(app.settingsStore.sweepHeld(Instant.now())) { "the sweep ran over settings that do not read" }
         app.settingsStore.update { it.copy(lastSeenVersionCode = 1) }
 
-        check(app.settingsStore.hasUnreadable()) { "nothing was kept aside" }
-        check(aside.readText() == unreadable) { "what was kept is not what would not read: ${aside.readText()}" }
+        check(kept().map { it.readText() } == listOf(unreadable)) { "not kept, or not as it was: ${kept().map { it.name }}" }
+        check(app.settingsStore.sweepHeld(Instant.now())) { "the sweep is held for a month after" }
+        check(!app.settingsStore.sweepHeld(Instant.now().plus(Duration.ofDays(31)))) { "and not for ever" }
 
-        // A second failure is the defaults' own, not the data: the first blob is the one kept.
-        app.settingsStore.replaceRaw("""{"theme":""")
-        app.settingsStore.settings.first()
-        check(aside.readText() == unreadable) { "a later failure wrote over the blob kept aside" }
+        // The same blob again is not kept twice; another one is kept beside it.
+        app.settingsStore.replaceRaw(unreadable)
+        app.settingsStore.update { it.copy(lastSeenVersionCode = 2) }
+        check(kept().size == 1) { "one blob kept twice" }
+        Thread.sleep(5) // two files in the same millisecond would share a name
+        val lossy = """{"presets":[{"id":"p1"}],"theme":"DARK"}"""
+        app.settingsStore.replaceRaw(lossy)
+        app.settingsStore.update { it.copy(lastSeenVersionCode = 3) }
+        check(kept().map { it.readText() } == listOf(unreadable, lossy)) { "a preset dropped on read was not kept: ${kept().map { it.name }}" }
     }
 }

@@ -39,9 +39,25 @@ class VaultStepTest {
     )
 
     @Test
-    fun `a new token for the same repository keeps every cursor`() {
-        val moved = home.movedTo("Ole", "VAULT", "new-token", remoteSha = "ignored")
-        assertEquals(home.copy(owner = "Ole", repo = "VAULT", pat = "new-token", lastOutcome = null), moved)
+    fun `the copy this phone last wrote keeps every cursor, wherever it now is`() {
+        val token = home.movedTo("Ole", "VAULT", "new-token", remoteSha = "sha-there")
+        assertEquals(home.copy(owner = "Ole", repo = "VAULT", pat = "new-token", lastOutcome = null), token)
+        val renamed = home.movedTo("ole", "vault-renamed", "old-token", remoteSha = "sha-there")
+        assertEquals("print", renamed.lastUploadedFingerprint, "a repository renamed still holds this phone's copy")
+    }
+
+    @Test
+    fun `the same repository made again, empty, gets everything`() {
+        val remade = home.movedTo("ole", "vault", "new-token", remoteSha = null)
+        assertNull(remade.remoteSha)
+        assertNull(remade.lastUploadedFingerprint, "judged by the name, it read as up to date while it stayed empty")
+    }
+
+    @Test
+    fun `somebody else's copy in the same repository stays the conflict it was`() {
+        val other = home.movedTo("ole", "vault", "new-token", remoteSha = "sha-other")
+        assertEquals("sha-there", other.remoteSha)
+        assertEquals("print", other.lastUploadedFingerprint)
     }
 
     @Test

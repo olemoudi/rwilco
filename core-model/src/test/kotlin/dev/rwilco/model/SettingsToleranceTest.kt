@@ -1,6 +1,7 @@
 package dev.rwilco.model
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -122,6 +123,15 @@ class SettingsToleranceTest {
         assertEquals(places, settings.savedPlaces)
         assertEquals(listOf("Tarde"), settings.savedWindows.map { it.label })
         assertEquals(LocalTime.of(7, 30), settings.defaultTime, "the rest of the settings must survive")
+    }
+
+    @Test
+    fun `what a read lost is what the store keeps aside`() {
+        val whole = ReminderCodec.encodeSettings(kept)
+        assertFalse(ReminderCodec.settingsLostOnRead(whole, ReminderCodec.decodeSettingsOrNull(whole)))
+        val droppedPreset = whole.replace("\"name\":\"Pan\"", "\"nombre\":\"Pan\"")
+        assertTrue(ReminderCodec.settingsLostOnRead(droppedPreset, ReminderCodec.decodeSettingsOrNull(droppedPreset)))
+        assertTrue(ReminderCodec.settingsLostOnRead("{\"theme\":", null))
     }
 
     @Test

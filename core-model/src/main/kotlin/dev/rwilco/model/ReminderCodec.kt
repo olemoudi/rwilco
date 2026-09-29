@@ -107,6 +107,19 @@ object ReminderCodec {
     fun decodeSettingsOrNull(raw: String): AppSettings? =
         runCatching { json.decodeFromString(AppSettings.serializer(), raw) }.getOrNull()
 
+    /**
+     * Whether writing back what [raw] read as ([read], from [decodeSettingsOrNull]) would lose
+     * something for good: the whole blob, when it did not read, or an element one of the tolerant
+     * lists dropped (`TolerantList`). What the store keeps aside before it writes over it.
+     */
+    fun settingsLostOnRead(raw: String, read: AppSettings?): Boolean {
+        if (read == null) return true
+        val written = runCatching { json.parseToJsonElement(raw) as? JsonObject }.getOrNull() ?: return true
+        fun count(name: String) = (written[name] as? JsonArray)?.size ?: 0
+        return count("presets") > read.presets.size || count("savedPlaces") > read.savedPlaces.size ||
+            count("savedWindows") > read.savedWindows.size
+    }
+
     fun encodePlaceWatch(state: PlaceWatchState): String = json.encodeToString(PlaceWatchState.serializer(), state)
 
     /** Losing the watch's memory costs one baseline check, never a crash. */

@@ -173,10 +173,13 @@ class AlertActivity : ComponentActivity() {
      * list is about reminders that *arrived* quiet, and it also decides whether the guard
      * counts down. A reminder joining the screen clears it — that one is owed its noise.
      *
-     * **A tone said once is spent the moment it starts** (0.165.0), so it sets this too. Nothing
-     * silences a tone that ends by itself, so a screen rebuilt after it had rung started it over:
-     * reported from the phone, one "sonido" alert heard three times — the ring, then twice more
-     * as the phone was picked up and turned, 23 and 25 seconds later.
+     * **A tone said once is spent when it has been said** (0.165.0, moved to its end in 0.169.0),
+     * so it sets this too. Nothing silences a tone that ends by itself, so a screen rebuilt after
+     * it had rung started it over: reported from the phone, one "sonido" alert heard three times —
+     * the ring, then twice more as the phone was picked up and turned, 23 and 25 seconds later.
+     * Its end rather than its start: a rebuild *while* it plays — a turn in the first second, or a
+     * cold start settling the tone under it — stops it, and a tone marked spent at its first note
+     * would then never be heard, with its card already quieted.
      */
     private var hushedOnPurpose = false
 
@@ -259,7 +262,16 @@ class AlertActivity : ComponentActivity() {
                         // when the last has sounded, this alert's noise is over, buzz and all,
                         // exactly as if the minute had run out (0.154.0).
                         times = times,
-                        onDone = if (insisting) ({ silence("the round is over") }) else null,
+                        onDone = when {
+                            insisting -> ({ silence("the round is over") })
+                            // A tone said once, with no buzz to outlive it: said, and so answered —
+                            // a screen rebuilt under it now must not say it again ([hushedOnPurpose]).
+                            !asksToBeSilenced(plans) -> ({
+                                hushedOnPurpose = true
+                                Diag.note(TAG_DIAG, "r=${reminders.joinToString(",") { it.id.take(8) }} the tone is over")
+                            })
+                            else -> null
+                        },
                     )
                     if (sound || vibrate) {
                         // **The card rang first, and this screen takes the noise over** (0.163.0):
@@ -279,9 +291,6 @@ class AlertActivity : ComponentActivity() {
                     // the red button sat on top of "hecho" for the rest of the minute, protecting
                     // somebody from a silence. See [asksToBeSilenced].
                     noise = asksToBeSilenced(plans)
-                    // And that single tone is as good as answered once it has started: a screen
-                    // rebuilt under it (the phone turned) must not say it again. See [hushedOnPurpose].
-                    if (sound && !noise) hushedOnPurpose = true
                 }
                 onDispose { hush() }
             }

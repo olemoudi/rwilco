@@ -61,6 +61,7 @@ class VaultBackupTest {
     }
 
     private val attention = mutableListOf<VaultOutcome>()
+    private var historyReads = 0
     private var resolved = 0
 
     private fun backup(
@@ -71,7 +72,7 @@ class VaultBackupTest {
     ) = VaultBackup(
         store = store,
         rows = { rows },
-        events = { history },
+        events = { historyReads++; history },
         settingsJson = { settingsJson },
         transportFor = { transport },
         clock = clock,
@@ -102,6 +103,7 @@ class VaultBackupTest {
         assertTrue(transport.writes.isEmpty())
         assertEquals(0, transport.reads)
         assertEquals(1, transport.probes)
+        assertEquals(0, historyReads, "the history is read for a copy that goes, not for a look")
         assertEquals(VaultOutcome.UP_TO_DATE, store.state.lastOutcome)
         assertEquals(now, store.state.lastRunAt, "the cadence counts from a look that found nothing to copy")
     }

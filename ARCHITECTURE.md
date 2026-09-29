@@ -3742,9 +3742,10 @@ history is the backup's history for free — with a fine-grained token scoped to
   the database and leaves the rows on disk) — and the next run would have copied that faithfully
   over the one copy that still had everything. Settings that parse as a file but not as
   `AppSettings` are a different failure: since 0.167.0 the lists in them (presets, places,
-  windows) drop a bad element instead of the blob (`TolerantList`), and a blob that still will
-  not read is kept as `files/settings-unreadable.json` before the defaults are written over it,
-  with the sound sweep held off while it is there. So the run stops before it seals anything: `VaultOutcome.COLLAPSED`,
+  windows) drop a bad element instead of the blob (`TolerantList`), and a blob that lost anything
+  on read — whole, or an element — is kept as `files/settings-unreadable-<millis>.json` on the
+  write that would make the loss permanent (`SettingsStore.update`, off the main thread; once per
+  distinct blob), with the sound sweep held for a month after (`sweepHeld`). So the run stops before it seals anything: `VaultOutcome.COLLAPSED`,
   `needsAttention`, a notice, and GitHub exactly as it was. What it compares against is
   `lastUploadedRows` / `lastUploadedSettingsLength`, written down by each upload; null — a vault
   that has not uploaded since these existed — says nothing, never "it was zero". **Only nothing,

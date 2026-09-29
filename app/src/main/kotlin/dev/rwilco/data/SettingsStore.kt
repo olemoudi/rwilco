@@ -22,6 +22,7 @@ import java.io.File
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.time.Instant
 import java.time.ZoneId
 
 // A file that will not parse is replaced by an empty one: the settings come back as defaults,
@@ -44,6 +45,8 @@ class SettingsStore(private val context: Context) {
 
     suspend fun update(transform: (AppSettings) -> AppSettings) {
         context.settingsDataStore.edit { prefs ->
+            // Before anything is written over what would not read whole: see [keepAside].
+            prefs[key]?.let { raw -> if (ReminderCodec.settingsLostOnRead(raw, ReminderCodec.decodeSettingsOrNull(raw))) keepAside(raw) }
             prefs[key] = ReminderCodec.encodeSettings(transform(prefs.decode()))
         }
     }
@@ -76,8 +79,7 @@ class SettingsStore(private val context: Context) {
      * A phantom the whole time; the rename is only what made it visible.
      */
     private fun Preferences.decode(): AppSettings {
-        val raw = this[key] ?: return AppSettings()
-        val settings = ReminderCodec.decodeSettingsOrNull(raw) ?: return AppSettings().also { keepAside(raw) }
+        val settings = this[key]?.let(ReminderCodec::decodeSettings) ?: return AppSettings()
         val zone = ZoneId.systemDefault()
         return settings.copy(
             presets = settings.presets.map { it.foldRepeats(zone) },
@@ -100,23 +102,39 @@ class SettingsStore(private val context: Context) {
     suspend fun rawJson(): String? = raw.first()
 
     /**
-     * A blob that will not read at all, kept aside before anything writes the defaults over it
-     * (0.167.0). The defaults are what the app runs on — a settings file that throws on every read
-     * is the whole app going quiet — but the first write after that (the "what's new" sheet makes
-     * one on every launch) used to make the loss permanent: presets, places, windows, the sounds.
-     * The first such blob is the one kept; a later one is the defaults' own failure, not the data.
+     * Settings that would not read whole, kept aside before anything writes over them (0.167.0).
+     * The defaults — or the lists without the element that would not read — are what the app
+     * runs on, but the first write after that (the "what's new" sheet makes one on every launch)
+     * used to make the loss permanent: presets, places, windows, the sounds. Here, on the write,
+     * because that is the moment it becomes a loss, and it runs off the main thread (0.169.0; it
+     * was on the read, which a screen collects on the main one). Each blob once, by its content,
+     * with its time in the name: a second one — from a restored vault, a later bug — is kept too.
      */
     private fun keepAside(raw: String) {
-        val file = unreadableFile()
-        if (file.exists()) return
-        runCatching { file.writeText(raw) }.onFailure { Log.w(TAG, "could not keep the unreadable settings aside", it) }
-        Diag.note("settings", "the settings would not read; the defaults stand in and the blob is kept as $UNREADABLE_FILE (${raw.length} chars)")
+        if (keptAside().any { runCatching { it.readText() == raw }.getOrDefault(false) }) return
+        val file = File(context.filesDir, "$ASIDE_PREFIX${System.currentTimeMillis()}.json")
+        runCatching { file.writeText(raw) }
+            .onSuccess { Diag.note("settings", "settings that would not read whole are kept as ${file.name} (${raw.length} chars)") }
+            .onFailure {
+                Log.w(TAG, "could not keep the unreadable settings aside", it)
+                Diag.note("settings", "settings that would not read whole could not be kept aside: ${it::class.simpleName}")
+            }
     }
 
-    /** Whether settings were found unreadable and kept aside ([keepAside]); what they held may still be wanted. */
-    fun hasUnreadable(): Boolean = unreadableFile().exists()
+    private fun keptAside(): List<File> = context.filesDir.listFiles { file -> file.name.startsWith(ASIDE_PREFIX) }.orEmpty().toList()
 
-    private fun unreadableFile(): File = File(context.filesDir, UNREADABLE_FILE)
+    /**
+     * Whether the sweep of the sound copies is held: settings that do not read whole now, or were
+     * kept aside within [SWEEP_HOLD]. The defaults standing in for them point at no tone of their
+     * own, and the sweep would take the copies the kept settings name — so it waits, a month, and
+     * then the copies nothing asks for go as they always did (it was held for good in 0.167.0).
+     */
+    suspend fun sweepHeld(now: Instant): Boolean {
+        val raw = rawJson()
+        if (raw != null && ReminderCodec.settingsLostOnRead(raw, ReminderCodec.decodeSettingsOrNull(raw))) return true
+        val since = now.minus(SWEEP_HOLD).toEpochMilli()
+        return keptAside().any { it.lastModified() > since }
+    }
 
     /** A restore: the blob becomes [json] as it is, read leniently like everything else. */
     suspend fun replaceRaw(json: String) {
@@ -126,8 +144,11 @@ class SettingsStore(private val context: Context) {
 
 private const val TAG = "RwilcoSettings"
 
-/** Where settings that would not read are kept, in the app's own files. */
-const val UNREADABLE_FILE = "settings-unreadable.json"
+/** Settings that would not read whole are kept as `<this><epoch millis>.json` in the app's own files. */
+const val ASIDE_PREFIX = "settings-unreadable-"
+
+/** How long settings kept aside hold the sweep of the sound copies; see [SettingsStore.sweepHeld]. */
+private val SWEEP_HOLD: java.time.Duration = java.time.Duration.ofDays(30)
 
 /** What every version of this app before 0.109.0 switched on for a new reminder. */
 private val OLD_DEFAULT_ACTIONS = setOf(Action.NOTIFICATION, Action.VIBRATE)
