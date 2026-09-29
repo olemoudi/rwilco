@@ -1738,6 +1738,13 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_167_0">
+
+        <item>A saved place, a preset or a stretch of the day that cannot be read no longer takes all your settings with it. That one is left out and the rest stays as it was.</item>
+        <item>If the settings as a whole ever cannot be read, the app now keeps them aside before it starts over with the defaults, and leaves your own alert tones alone meanwhile. Until now the defaults were written over them at the next launch, and the tones were deleted.</item>
+        <item>Installing an older version of the app by hand over a newer one no longer deletes your reminders. The older one refuses to open them instead, and installing the newer one again brings everything back as it was.</item>
+
+    </string-array>
     <string-array name="whats_new_0_166_0">
 
         <item>With nothing new to copy, the backup still takes a look at the repository every time a copy is due. A repository deleted, an account closed or a token expired is now noticed within one interval, not the next time you change something.</item>

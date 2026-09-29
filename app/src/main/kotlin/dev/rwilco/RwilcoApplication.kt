@@ -316,7 +316,9 @@ class RwilcoApplication : Application() {
             Log.i(TAG, "a chosen sound had stopped being playable; settling it")
             settingsStore.update { SoundStore.settle(this, it) }
         }
-        SoundStore.sweep(this, settled)
+        // Not while settings that would not read are kept aside: the defaults standing in for
+        // them point at no tone of their own, and the sweep would take the copies with it.
+        if (!settingsStore.hasUnreadable()) SoundStore.sweep(this, settled)
     }
 
     companion object {

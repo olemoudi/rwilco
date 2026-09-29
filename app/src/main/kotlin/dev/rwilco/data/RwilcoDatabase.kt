@@ -191,11 +191,12 @@ abstract class RwilcoDatabase : RoomDatabase() {
         }
 
         private fun build(context: Context): RwilcoDatabase =
+            // No destructive fallback of any kind (0.167.0). An upgrade without its migration must
+            // fail loudly (and MigrationChainTest fails first); so must a downgrade — an older
+            // build installed by hand over a newer one — which used to drop every table. Failing
+            // leaves the rows on disk, and the newer build installed again opens them as they were.
             Room.databaseBuilder(context, RwilcoDatabase::class.java, NAME)
                 .addMigrations(*MIGRATIONS)
-                // Only on a downgrade, which a sideloaded app can only reach by hand. An upgrade
-                // without its migration must fail loudly (and MigrationChainTest fails first).
-                .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
                 .build()
     }
 }

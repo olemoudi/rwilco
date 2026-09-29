@@ -46,6 +46,36 @@ object TolerantRules : KSerializer<List<TriggerRule>> {
 }
 
 /**
+ * A list in the settings read element by element (0.167.0): one element that will not read is
+ * dropped, not the blob. Presets, saved places and saved windows are lists of objects with
+ * required fields, and one of them malformed — by a bug, a downgrade, a vault from a newer build —
+ * threw in the middle of the object and brought every setting back to its default, which the next
+ * write then made permanent. Losing the one element is the price; the rest stays.
+ */
+abstract class TolerantList<T>(private val element: KSerializer<T>) : KSerializer<List<T>> {
+    private val delegate = ListSerializer(element)
+    override val descriptor: SerialDescriptor = delegate.descriptor
+
+    // Through the Json instance, as TolerantRules does: an element may carry polymorphic values.
+    override fun serialize(encoder: Encoder, value: List<T>) {
+        val json = encoder as? JsonEncoder ?: return delegate.serialize(encoder, value)
+        json.encodeJsonElement(json.json.encodeToJsonElement(delegate, value))
+    }
+
+    override fun deserialize(decoder: Decoder): List<T> {
+        val json = decoder as? JsonDecoder ?: return delegate.deserialize(decoder)
+        val array = json.decodeJsonElement() as? JsonArray ?: return emptyList()
+        return array.mapNotNull { runCatching { json.json.decodeFromJsonElement(element, it) }.getOrNull() }
+    }
+}
+
+object TolerantPresets : TolerantList<Preset>(Preset.serializer())
+
+object TolerantPlaces : TolerantList<SavedPlace>(SavedPlace.serializer())
+
+object TolerantWindows : TolerantList<SavedWindow>(SavedWindow.serializer())
+
+/**
  * The same for a recurrence a build cannot read: it stops rather than guesses, which is what
  * `ReminderCodec.decodeRecurrence` already does for the reminder's own column.
  */

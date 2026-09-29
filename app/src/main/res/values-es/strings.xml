@@ -1723,6 +1723,13 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_167_0">
+
+        <item>Un lugar guardado, un preajuste o un tramo del día que no se pueda leer ya no se lleva todos tus ajustes con él. Se queda fuera ese y el resto sigue como estaba.</item>
+        <item>Si alguna vez los ajustes enteros no se pueden leer, la app ahora los guarda aparte antes de empezar de nuevo con los valores por defecto, y mientras tanto no toca tus tonos de aviso propios. Hasta ahora los valores por defecto se escribían encima en el siguiente arranque y los tonos se borraban.</item>
+        <item>Instalar a mano una versión más antigua de la app encima de una más nueva ya no borra tus recordatorios. La antigua se niega a abrirlos, y al volver a instalar la nueva todo aparece como estaba.</item>
+
+    </string-array>
     <string-array name="whats_new_0_166_0">
 
         <item>Aunque no haya nada nuevo que copiar, la copia echa un vistazo al repositorio cada vez que le toca. Un repositorio borrado, una cuenta cerrada o un token caducado se notan ahora en un intervalo, no la próxima vez que cambies algo.</item>

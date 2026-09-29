@@ -54,6 +54,7 @@ data class AppSettings(
     /** What's-new sheet bookkeeping: the last versionCode whose notes were shown. */
     val lastSeenVersionCode: Int = 0,
     /** Places named once and offered whole whenever a rule needs one: home, work, the gym. */
+    @Serializable(with = TolerantPlaces::class)
     val savedPlaces: List<SavedPlace> = emptyList(),
     /**
      * Stretches of the day named once and offered wherever one is asked for: "a la hora de
@@ -61,6 +62,7 @@ data class AppSettings(
      * is worth answering once — and, like a place, what a trigger keeps is the two times rather
      * than a reference, so renaming or deleting one never reaches back into a reminder.
      */
+    @Serializable(with = TolerantWindows::class)
     val savedWindows: List<SavedWindow> = emptyList(),
     /**
      * What a blank reminder starts with. The old default is still the default; this is for
@@ -76,6 +78,7 @@ data class AppSettings(
     @Serializable(with = TolerantActions::class)
     val routineActions: Set<Action> = DEFAULT_ACTIONS,
     /** Reminders kept by shape, under a name: see [Preset]. */
+    @Serializable(with = TolerantPresets::class)
     val presets: List<Preset> = emptyList(),
     /** Phrases dismissed from the "or reuse one" offers; the reminders that used them stay. */
     val hiddenTexts: List<String> = emptyList(),

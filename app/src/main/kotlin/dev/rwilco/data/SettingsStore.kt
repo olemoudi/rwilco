@@ -1,6 +1,7 @@
 package dev.rwilco.data
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.Preferences
@@ -16,6 +17,8 @@ import dev.rwilco.model.mergeUnlocked
 import dev.rwilco.model.foldRepeats
 import dev.rwilco.model.offered
 import dev.rwilco.model.withPlaceIds
+import dev.rwilco.diag.Diag
+import java.io.File
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -73,7 +76,8 @@ class SettingsStore(private val context: Context) {
      * A phantom the whole time; the rename is only what made it visible.
      */
     private fun Preferences.decode(): AppSettings {
-        val settings = this[key]?.let(ReminderCodec::decodeSettings) ?: return AppSettings()
+        val raw = this[key] ?: return AppSettings()
+        val settings = ReminderCodec.decodeSettingsOrNull(raw) ?: return AppSettings().also { keepAside(raw) }
         val zone = ZoneId.systemDefault()
         return settings.copy(
             presets = settings.presets.map { it.foldRepeats(zone) },
@@ -95,11 +99,35 @@ class SettingsStore(private val context: Context) {
 
     suspend fun rawJson(): String? = raw.first()
 
+    /**
+     * A blob that will not read at all, kept aside before anything writes the defaults over it
+     * (0.167.0). The defaults are what the app runs on — a settings file that throws on every read
+     * is the whole app going quiet — but the first write after that (the "what's new" sheet makes
+     * one on every launch) used to make the loss permanent: presets, places, windows, the sounds.
+     * The first such blob is the one kept; a later one is the defaults' own failure, not the data.
+     */
+    private fun keepAside(raw: String) {
+        val file = unreadableFile()
+        if (file.exists()) return
+        runCatching { file.writeText(raw) }.onFailure { Log.w(TAG, "could not keep the unreadable settings aside", it) }
+        Diag.note("settings", "the settings would not read; the defaults stand in and the blob is kept as $UNREADABLE_FILE (${raw.length} chars)")
+    }
+
+    /** Whether settings were found unreadable and kept aside ([keepAside]); what they held may still be wanted. */
+    fun hasUnreadable(): Boolean = unreadableFile().exists()
+
+    private fun unreadableFile(): File = File(context.filesDir, UNREADABLE_FILE)
+
     /** A restore: the blob becomes [json] as it is, read leniently like everything else. */
     suspend fun replaceRaw(json: String) {
         context.settingsDataStore.edit { prefs -> prefs[key] = json }
     }
 }
+
+private const val TAG = "RwilcoSettings"
+
+/** Where settings that would not read are kept, in the app's own files. */
+const val UNREADABLE_FILE = "settings-unreadable.json"
 
 /** What every version of this app before 0.109.0 switched on for a new reminder. */
 private val OLD_DEFAULT_ACTIONS = setOf(Action.NOTIFICATION, Action.VIBRATE)

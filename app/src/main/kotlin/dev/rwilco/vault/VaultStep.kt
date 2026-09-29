@@ -21,10 +21,11 @@ fun nextVaultStep(enabled: Boolean, fingerprint: String, lastUploaded: String?):
  * carry up on its own.
  *
  * A run decides what to send by comparing fingerprints, and a fingerprint cannot tell a reminder
- * deleted on purpose from every reminder gone at once. Two things can empty this phone without
- * anybody asking: a database dropped by `fallbackToDestructiveMigrationOnDowngrade` when an older
- * build is installed by hand over a newer one, and a settings file the platform replaced with an
- * empty one because it would not parse. Either way the next run would copy the emptiness
+ * deleted on purpose from every reminder gone at once. Things can empty this phone without
+ * anybody asking: a settings file the platform replaced with an empty one because it would not
+ * parse, app data cleared, and until 0.167.0 a database dropped by
+ * `fallbackToDestructiveMigrationOnDowngrade` when an older build was installed by hand over a
+ * newer one. Either way the next run would copy the emptiness
  * faithfully over the one copy that still had everything.
  *
  * **Only nothing, never "less".** Zero is not somewhere ordinary use gets to — a reminder dealt

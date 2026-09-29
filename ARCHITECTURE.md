@@ -3730,11 +3730,16 @@ history is the backup's history for free — with a fine-grained token scoped to
   and asks the same question with it.
 - **What it will not copy** (0.125.0, `wentEmpty`, pure and JVM-tested): a run decides what to send
   by comparing fingerprints, and a fingerprint cannot tell a reminder deleted on purpose from every
-  reminder gone at once. Two things empty this phone without anybody asking — the database dropped
-  by `fallbackToDestructiveMigrationOnDowngrade` when an older build is installed by hand over a
-  newer one, and a settings file `ReplaceFileCorruptionHandler` replaced with an empty one because
-  it would not parse — and the next run would have copied that faithfully over the one copy that
-  still had everything. So the run stops before it seals anything: `VaultOutcome.COLLAPSED`,
+  reminder gone at once. Things empty this phone without anybody asking — a settings file
+  `ReplaceFileCorruptionHandler` replaced with an empty one because it would not parse, app data
+  cleared, and until 0.167.0 the database dropped by `fallbackToDestructiveMigrationOnDowngrade`
+  when an older build was installed by hand over a newer one (gone: a downgrade now fails to open
+  the database and leaves the rows on disk) — and the next run would have copied that faithfully
+  over the one copy that still had everything. Settings that parse as a file but not as
+  `AppSettings` are a different failure: since 0.167.0 the lists in them (presets, places,
+  windows) drop a bad element instead of the blob (`TolerantList`), and a blob that still will
+  not read is kept as `files/settings-unreadable.json` before the defaults are written over it,
+  with the sound sweep held off while it is there. So the run stops before it seals anything: `VaultOutcome.COLLAPSED`,
   `needsAttention`, a notice, and GitHub exactly as it was. What it compares against is
   `lastUploadedRows` / `lastUploadedSettingsLength`, written down by each upload; null — a vault
   that has not uploaded since these existed — says nothing, never "it was zero". **Only nothing,

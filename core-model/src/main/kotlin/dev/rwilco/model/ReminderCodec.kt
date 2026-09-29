@@ -101,8 +101,11 @@ object ReminderCodec {
     fun encodeSettings(settings: AppSettings): String = json.encodeToString(AppSettings.serializer(), settings)
 
     /** A blob that does not parse yields the defaults rather than a crash on launch. */
-    fun decodeSettings(raw: String): AppSettings =
-        runCatching { json.decodeFromString(AppSettings.serializer(), raw) }.getOrDefault(AppSettings())
+    fun decodeSettings(raw: String): AppSettings = decodeSettingsOrNull(raw) ?: AppSettings()
+
+    /** The same, saying so when it does not parse: the store keeps such a blob aside before it is written over. */
+    fun decodeSettingsOrNull(raw: String): AppSettings? =
+        runCatching { json.decodeFromString(AppSettings.serializer(), raw) }.getOrNull()
 
     fun encodePlaceWatch(state: PlaceWatchState): String = json.encodeToString(PlaceWatchState.serializer(), state)
 

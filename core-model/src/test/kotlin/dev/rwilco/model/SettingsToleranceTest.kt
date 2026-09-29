@@ -93,4 +93,42 @@ class SettingsToleranceTest {
         )
         assertEquals(original, ReminderCodec.decodeSettings(ReminderCodec.encodeSettings(original)))
     }
+
+    /**
+     * A list in the blob read element by element (0.167.0): a preset missing a required field, a
+     * place whose latitude is a word, a window whose hour will not parse — each used to throw in
+     * the middle of the object and bring every setting back to its default.
+     */
+    @Test
+    fun `a malformed preset, place or window is dropped, not the rest`() {
+        val two = kept.copy(
+            savedPlaces = places + SavedPlace("Oficina", 40.45, -3.69, 150),
+            savedWindows = listOf(SavedWindow("Comida", LocalTime.of(14, 0), LocalTime.of(15, 0)), SavedWindow("Tarde", LocalTime.of(17, 0), LocalTime.of(20, 0))),
+            presets = kept.presets + Preset(id = "p2", name = "Leche", actions = setOf(Action.VIBRATE), createdAt = java.time.Instant.EPOCH),
+        )
+        var blob = ReminderCodec.encodeSettings(two)
+        for ((old, new) in listOf(
+            "\"name\":\"Pan\"" to "\"nombre\":\"Pan\"",
+            "\"label\":\"Oficina\",\"lat\":40.45" to "\"label\":\"Oficina\",\"lat\":\"north\"",
+            "\"from\":\"14:00\"" to "\"from\":\"lunchtime\"",
+        )) {
+            assertTrue(old in blob, "the blob must carry '$old' for the swap to mean anything: $blob")
+            blob = blob.replace(old, new)
+        }
+
+        val settings = ReminderCodec.decodeSettings(blob)
+
+        assertEquals(listOf("p2"), settings.presets.map { it.id })
+        assertEquals(places, settings.savedPlaces)
+        assertEquals(listOf("Tarde"), settings.savedWindows.map { it.label })
+        assertEquals(LocalTime.of(7, 30), settings.defaultTime, "the rest of the settings must survive")
+    }
+
+    @Test
+    fun `a blob that will not read at all says so, and the defaults stand in`() {
+        assertNull(ReminderCodec.decodeSettingsOrNull("{\"theme\":"))
+        assertNull(ReminderCodec.decodeSettingsOrNull("[]"))
+        assertEquals(AppSettings(), ReminderCodec.decodeSettings("{\"theme\":"))
+        assertEquals(kept, ReminderCodec.decodeSettingsOrNull(ReminderCodec.encodeSettings(kept)))
+    }
 }
