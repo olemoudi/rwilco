@@ -78,6 +78,7 @@ import dev.rwilco.ui.theme.familyColor
 import dev.rwilco.vault.VaultOutcome
 import dev.rwilco.vault.VaultState
 import dev.rwilco.vault.VaultSummary
+import dev.rwilco.vault.mayReplaceExisting
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import dev.rwilco.ui.components.RwilcoTopBar
@@ -409,7 +410,8 @@ private fun PhaseDialogs(phase: BackupPhase, localCount: Int, viewModel: BackupV
         is BackupPhase.Busy -> BusyDialog(stringResource(phase.message))
         is BackupPhase.Failed -> MessageDialog(phase.arg?.let { stringResource(phase.message, it) } ?: stringResource(phase.message), onDismiss = viewModel::dismiss)
         is BackupPhase.DryRun -> DryRunDialog(phase.summary, viewModel::dismiss)
-        is BackupPhase.Existing -> ExistingDialog(phase, viewModel)
+        is BackupPhase.Existing -> ExistingDialog(phase, localCount, viewModel)
+        is BackupPhase.ConfirmReplace -> ConfirmReplaceDialog(localCount, viewModel)
         is BackupPhase.Confirm -> ConfirmDialog(phase.opened.summary, localCount, viewModel)
         is BackupPhase.AskPassphrase -> PassphraseDialog(
             title = stringResource(R.string.vault_passphrase_title),
@@ -537,15 +539,29 @@ private fun MessageDialog(message: String, onDismiss: () -> Unit) {
     )
 }
 
+/**
+ * Enabling found a copy there. Restoring it is offered when the passphrase opened it; replacing
+ * it only when this phone has something to put in its place (see [mayReplaceExisting]), and
+ * then only through [ConfirmReplaceDialog]. A new phone with a mistyped passphrase is the one
+ * that meets this dialog most, and it used to be one tap from putting nothing over everything.
+ */
 @Composable
-private fun ExistingDialog(phase: BackupPhase.Existing, viewModel: BackupViewModel) {
+private fun ExistingDialog(phase: BackupPhase.Existing, localCount: Int, viewModel: BackupViewModel) {
     val opened = phase.opened
+    val replaceable = mayReplaceExisting(localCount, opened != null, phase.passphrase)
     AlertDialog(
         onDismissRequest = viewModel::dismiss,
         title = { Text(stringResource(R.string.vault_existing_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(Tokens.spacing.sm)) {
-                if (opened != null) SummaryText(opened.summary) else Text(stringResource(R.string.vault_existing_locked), style = MaterialTheme.typography.bodyMedium)
+                if (opened != null) {
+                    SummaryText(opened.summary)
+                } else {
+                    Text(
+                        stringResource(if (replaceable) R.string.vault_existing_locked else R.string.vault_existing_locked_retry),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
             }
         },
         confirmButton = {
@@ -553,10 +569,28 @@ private fun ExistingDialog(phase: BackupPhase.Existing, viewModel: BackupViewMod
                 if (opened != null) {
                     TextButton(onClick = viewModel::restoreExisting) { Text(stringResource(R.string.vault_existing_restore)) }
                 }
-                TextButton(onClick = viewModel::replaceExisting) { Text(stringResource(R.string.vault_existing_replace), color = MaterialTheme.colorScheme.error) }
+                if (replaceable) {
+                    TextButton(onClick = viewModel::askReplaceExisting) { Text(stringResource(R.string.vault_existing_replace), color = MaterialTheme.colorScheme.error) }
+                }
                 TextButton(onClick = viewModel::dismiss) { Text(stringResource(R.string.vault_cancel)) }
             }
         },
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = MaterialTheme.shapes.extraLarge,
+    )
+}
+
+/** The copy that is there gives way to this phone: said in numbers, with where the old one goes. */
+@Composable
+private fun ConfirmReplaceDialog(localCount: Int, viewModel: BackupViewModel) {
+    AlertDialog(
+        onDismissRequest = viewModel::keepExisting,
+        title = { Text(stringResource(R.string.vault_replace_title)) },
+        text = { Text(pluralStringResource(R.plurals.vault_replace_body, localCount, localCount), style = MaterialTheme.typography.bodyMedium) },
+        confirmButton = {
+            TextButton(onClick = viewModel::replaceExisting) { Text(stringResource(R.string.vault_replace_yes), color = MaterialTheme.colorScheme.error) }
+        },
+        dismissButton = { TextButton(onClick = viewModel::keepExisting) { Text(stringResource(R.string.vault_cancel)) } },
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         shape = MaterialTheme.shapes.extraLarge,
     )

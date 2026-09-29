@@ -204,6 +204,6 @@ class VaultBackup(
 
     companion object {
         /** Process-wide: runs come from the worker, the button and a restore, and must not overlap. */
-        private val lock = Mutex()
+        internal val lock = Mutex()
     }
 }

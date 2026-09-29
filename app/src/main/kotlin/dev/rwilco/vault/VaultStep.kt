@@ -1,5 +1,7 @@
 package dev.rwilco.vault
 
+import dev.rwilco.model.passphraseIsStrongEnough
+
 /** What one backup run does next, once it knows everything it can learn without the network. */
 enum class VaultStep {
     DISABLED,
@@ -32,6 +34,17 @@ fun nextVaultStep(enabled: Boolean, fingerprint: String, lastUploaded: String?):
  * said about: the guard is inert until the first upload that writes the size down.
  */
 fun wentEmpty(was: Int?, now: Int): Boolean = was != null && was > 0 && now == 0
+
+/**
+ * Whether "replace it with this phone" may be offered over a copy that is already there.
+ *
+ * Never from an empty phone: that is a new phone before its restore, and the tap would put
+ * nothing over the one copy that has everything. And a copy the passphrase did not open is
+ * replaced by a new vault under that passphrase, so the passphrase has to be one a new vault is
+ * allowed — the rule is only waived for opening a copy that is already there.
+ */
+fun mayReplaceExisting(localRows: Int, opened: Boolean, passphrase: String): Boolean =
+    localRows > 0 && (opened || passphraseIsStrongEnough(passphrase))
 
 /**
  * What a refused upload means. The remote's blob sha is `git hash-object` of the bytes, which the

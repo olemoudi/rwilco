@@ -33,6 +33,18 @@ class VaultStepTest {
     }
 
     @Test
+    fun `replacing a copy that is there needs something to put in its place`() {
+        val strong = "correct horse 42 battery"
+        val old = "twelve chars"
+        assertFalse(mayReplaceExisting(localRows = 0, opened = true, passphrase = strong), "a new phone before its restore")
+        assertFalse(mayReplaceExisting(localRows = 0, opened = false, passphrase = strong), "a new phone with a mistyped passphrase")
+        assertTrue(mayReplaceExisting(localRows = 3, opened = true, passphrase = strong))
+        assertTrue(mayReplaceExisting(localRows = 3, opened = false, passphrase = strong), "a new vault under this passphrase")
+        assertTrue(mayReplaceExisting(localRows = 3, opened = true, passphrase = old), "the copy's own passphrase, from before the rule")
+        assertFalse(mayReplaceExisting(localRows = 3, opened = false, passphrase = old), "a new vault must meet the rule")
+    }
+
+    @Test
     fun `a conflict whose remote is our own last attempt is ours`() {
         assertEquals(ConflictVerdict.OURS_LANDED, judgeConflict(remoteSha = "abc", lastAttemptSha = "abc"))
         assertEquals(ConflictVerdict.OTHER_WRITER, judgeConflict(remoteSha = "abc", lastAttemptSha = "def"))

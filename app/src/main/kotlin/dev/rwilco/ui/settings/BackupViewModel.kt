@@ -66,6 +66,8 @@ sealed interface BackupPhase {
     data class Busy(@StringRes val message: Int) : BackupPhase
     /** Enabling found a vault already there. [opened] is null when the passphrase did not open it. */
     data class Existing(val opened: OpenedVault?, val remoteSha: String, val credentials: Credentials, val passphrase: String) : BackupPhase
+    /** "Replace it with this phone", asked once more: the copy there is what it puts an end to. */
+    data class ConfirmReplace(val existing: Existing) : BackupPhase
     data class Confirm(val opened: OpenedVault, val source: RestoreSource) : BackupPhase
     /** A vault this phone's key does not open: ask for the passphrase it was sealed with. */
     data class AskPassphrase(val bytes: ByteArray, val source: RestoreSource) : BackupPhase
@@ -123,11 +125,14 @@ class BackupViewModel(private val app: RwilcoApplication) : ViewModel() {
     fun enable() {
         val f = form.value
         val credentials = credentialsOf(f.repo, f.token) ?: return
-        if (!passphraseIsStrongEnough(f.passphrase)) return fail(R.string.vault_error_passphrase_short)
         if (f.passphrase != f.again) return fail(R.string.vault_error_passphrase_mismatch)
         viewModelScope.launch {
             val transport = transportFor(credentials)
             val remote = probeAndRead(transport) ?: return@launch
+            // The rule is for a vault about to be made. One already there only has to open with
+            // the passphrase: 0.12.0 sealed with twelve characters of anything, and a new phone
+            // turned away at the door with the right one would have no way in but by hand.
+            if (remote.value == null && !passphraseIsStrongEnough(f.passphrase)) return@launch fail(R.string.vault_error_passphrase_short)
             busy(R.string.vault_busy_deriving)
             if (remote.value == null) {
                 val salt = VaultCrypto.newSalt()
@@ -162,10 +167,26 @@ class BackupViewModel(private val app: RwilcoApplication) : ViewModel() {
         mutablePhase.value = BackupPhase.Confirm(opened, RestoreSource.Remote(existing.remoteSha, existing.credentials))
     }
 
-    /** From [BackupPhase.Existing]: the copy there is replaced by this phone's data on the first upload. */
-    fun replaceExisting() {
+    /** From [BackupPhase.Existing]: ask before this phone's data takes the copy's place. */
+    fun askReplaceExisting() {
         val existing = mutablePhase.value as? BackupPhase.Existing ?: return
+        mutablePhase.value = BackupPhase.ConfirmReplace(existing)
+    }
+
+    /** From [BackupPhase.ConfirmReplace], on "no": back to the choice, not out of it. */
+    fun keepExisting() {
+        val confirm = mutablePhase.value as? BackupPhase.ConfirmReplace ?: return
+        mutablePhase.value = confirm.existing
+    }
+
+    /** From [BackupPhase.ConfirmReplace]: the copy there is replaced by this phone's data on the first upload. */
+    fun replaceExisting() {
+        val existing = (mutablePhase.value as? BackupPhase.ConfirmReplace)?.existing ?: return
         viewModelScope.launch {
+            // Asked of the table, not of the count on screen, which starts at zero and may lag:
+            // this is the one tap on this screen that could put nothing over everything.
+            if (app.repository.allRows().isEmpty()) return@launch fail(R.string.vault_error_nothing_to_replace)
+            if (existing.opened == null && !passphraseIsStrongEnough(existing.passphrase)) return@launch fail(R.string.vault_error_passphrase_short)
             busy(R.string.vault_busy_deriving)
             // The same passphrase opened it: keep its salt, so the file stays one vault. Otherwise
             // it is a new vault under a new salt, and the old one lives on in the history only.

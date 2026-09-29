@@ -1485,6 +1485,13 @@
     <string name="vault_existing_locked">Tu contraseña no la abre. Aun así puedes reemplazarla con los datos de este teléfono, con esta contraseña; la copia antigua queda en el historial del repositorio.</string>
     <string name="vault_existing_restore">Restaurarla aquí</string>
     <string name="vault_existing_replace">Reemplazarla con este teléfono</string>
+    <string name="vault_existing_locked_retry">Tu contraseña no la abre. Revísala y vuelve a intentarlo.</string>
+    <string name="vault_replace_title">¿Reemplazar la copia que hay?</string>
+    <plurals name="vault_replace_body">
+        <item quantity="one">La copia pasa a ser el único recordatorio de este teléfono. Lo que tiene ahora solo quedará en el historial del repositorio.</item>
+        <item quantity="other">La copia pasa a ser los %1$d recordatorios de este teléfono. Lo que tiene ahora solo quedará en el historial del repositorio.</item>
+    </plurals>
+    <string name="vault_replace_yes">Reemplazar</string>
     <string name="vault_summary">Hecha %1$s en el teléfono %2$s: %3$d recordatorios activos, %4$d hechos, %5$d preajustes, %6$d lugares.</string>
     <string name="vault_summary_newer">La hizo una Rwilco más nueva que ésta. Actualiza la app antes, o lo que ésta no entienda se perderá en la siguiente edición.</string>
     <string name="vault_confirm_title">¿Restaurar esta copia?</string>
@@ -1505,6 +1512,7 @@
     <string name="vault_error_repo_name">Escribe el repositorio como usuario/nombre.</string>
     <string name="vault_error_token">Falta el token.</string>
     <string name="vault_error_passphrase_short">La contraseña es demasiado corta.</string>
+    <string name="vault_error_nothing_to_replace">Este teléfono no tiene nada que poner en lugar de la copia.</string>
     <string name="vault_error_passphrase_mismatch">Las dos contraseñas no coinciden.</string>
     <string name="vault_error_not_private">Ese repositorio es público. La copia va cifrada, pero no es sitio para ella.</string>
     <string name="vault_error_no_push">El token no puede escribir en ese repositorio.</string>
@@ -1714,6 +1722,14 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_164_0">
+
+        <item>Al activar la copia contra un repositorio que ya tiene una, un teléfono sin recordatorios ya no ofrece «Reemplazarla con este teléfono». Es un teléfono nuevo antes de restaurar, y ese toque ponía nada encima de la única copia que lo tiene todo.</item>
+        <item>Reemplazar una copia que ya está ahí ahora pregunta una vez más, y dice cuántos recordatorios ocuparán su lugar.</item>
+        <item>Una contraseña de antes de la regla actual (la 0.12.0 aceptaba doce caracteres cualesquiera) ya puede restaurar desde GitHub en un teléfono nuevo. La regla se aplica al crear una copia, no al abrir una que ya existe.</item>
+        <item>Una restauración y una copia ya no pueden ejecutarse a la vez, así que nunca se hace una copia a medio restaurar.</item>
+
+    </string-array>
     <string-array name="whats_new_0_163_0">
 
         <item>Un recordatorio a pantalla completa ya no puede saltar en silencio. Su notificación lleva el sonido y la vibración desde el primer instante, y la pantalla completa toma el relevo al abrirse. Hasta ahora la notificación salía muda y solo sonaba la pantalla, así que cuando Android no la abría (con el móvil bloqueado) no sonaba nada.</item>

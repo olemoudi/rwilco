@@ -1500,6 +1500,13 @@
     <string name="vault_existing_locked">Your passphrase does not open it. You can still replace it with this phone\'s data, under this passphrase; the old copy stays in the repository\'s history.</string>
     <string name="vault_existing_restore">Restore it here</string>
     <string name="vault_existing_replace">Replace it with this phone</string>
+    <string name="vault_existing_locked_retry">Your passphrase does not open it. Check it and try again.</string>
+    <string name="vault_replace_title">Replace the copy that is there?</string>
+    <plurals name="vault_replace_body">
+        <item quantity="one">The copy there becomes this phone\'s one reminder. What it holds now is left only in the repository\'s history.</item>
+        <item quantity="other">The copy there becomes this phone\'s %1$d reminders. What it holds now is left only in the repository\'s history.</item>
+    </plurals>
+    <string name="vault_replace_yes">Replace</string>
     <string name="vault_summary">Made %1$s on phone %2$s: %3$d active reminders, %4$d done, %5$d presets, %6$d places.</string>
     <string name="vault_summary_newer">Made by a newer Rwilco than this one. Update the app first, or the parts it does not understand will be lost on the next edit.</string>
     <string name="vault_confirm_title">Restore this copy?</string>
@@ -1520,6 +1527,7 @@
     <string name="vault_error_repo_name">Write the repository as owner/name.</string>
     <string name="vault_error_token">The token is missing.</string>
     <string name="vault_error_passphrase_short">The passphrase is too short.</string>
+    <string name="vault_error_nothing_to_replace">This phone has nothing to put in the copy\'s place.</string>
     <string name="vault_error_passphrase_mismatch">The two passphrases differ.</string>
     <string name="vault_error_not_private">That repository is public. The copy is sealed, but it does not belong in a public place.</string>
     <string name="vault_error_no_push">The token cannot write to that repository.</string>
@@ -1729,6 +1737,14 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_164_0">
+
+        <item>Turning the backup on against a repository that already has a copy no longer offers «Replace it with this phone» on a phone with no reminders. That is a new phone before its restore, and the tap would have put nothing over the one copy that has everything.</item>
+        <item>Replacing a copy that is already there now asks once more, and says how many reminders will take its place.</item>
+        <item>A passphrase from before today\'s rule (0.12.0 took any twelve characters) can now restore from GitHub on a new phone. The rule applies when a new copy is made, not when an old one is opened.</item>
+        <item>A restore and a backup can no longer run at the same time, so a copy is never made halfway through a restore.</item>
+
+    </string-array>
     <string-array name="whats_new_0_163_0">
 
         <item>A full-screen reminder can no longer go off in silence. Its notification now carries the sound and the vibration from the first instant, and the full screen takes the sound over when it opens. Until now the notification was silent and only the screen rang, so when Android did not open the screen (a locked phone) nothing rang at all.</item>

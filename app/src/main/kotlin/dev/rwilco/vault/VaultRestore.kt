@@ -4,6 +4,7 @@ import dev.rwilco.BuildConfig
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.data.RwilcoDatabase
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -51,8 +52,12 @@ class VaultRestore(private val app: RwilcoApplication) {
      * sealed under the incoming key (the one this phone keeps from now on), unless there was
      * nothing here. [adopt] is what the vault's own state becomes — credentials, key, cursors —
      * and runs between the data and the alarms.
+     *
+     * Under the backup's lock: a run that read the new rows before the old settings were
+     * replaced would upload a phone that never existed, and it could land between the rows and
+     * the vault's own state and read the new content against the old cursors.
      */
-    suspend fun apply(opened: OpenedVault, adopt: (VaultState) -> VaultState) {
+    suspend fun apply(opened: OpenedVault, adopt: (VaultState) -> VaultState): Unit = VaultBackup.lock.withLock {
         val before = app.repository.allRows()
         if (before.isNotEmpty()) {
             val snapshot = buildSnapshot(before, app.settingsStore.rawJson().orEmpty(), app.clock.instant(), app.vaultStore.read().deviceId, BuildConfig.VERSION_CODE, RwilcoDatabase.VERSION)
