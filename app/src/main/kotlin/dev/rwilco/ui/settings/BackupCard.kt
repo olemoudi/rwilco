@@ -39,15 +39,7 @@ fun BackupCard(onOpen: () -> Unit, modifier: Modifier = Modifier, matches: Set<S
     // which is what `pending` means here, rather than hashing every reminder again for one line
     // in a list (Home's badge has the real count and hands it the same question).
     val now by rememberNow(60_000, app.clock)
-    val freshness = current?.let {
-        backupFreshness(
-            enabled = it.enabled,
-            lastRunAt = it.lastRunAt,
-            pending = if (it.lastOutcome == VaultOutcome.UPLOADED || it.lastOutcome == VaultOutcome.UP_TO_DATE) 0 else 1,
-            cadence = it.cadence,
-            now = now,
-        )
-    } ?: BackupFreshness.OFF
+    val freshness = current?.let { vaultFreshness(it, now) } ?: BackupFreshness.OFF
 
     SettingsLinkRow(
         title = stringResource(R.string.vault_card_title),
@@ -62,6 +54,15 @@ fun BackupCard(onOpen: () -> Unit, modifier: Modifier = Modifier, matches: Set<S
         modifier = modifier,
     )
 }
+
+/** How far behind the copy is, asked of the state alone; see the note in [BackupCard]. */
+internal fun vaultFreshness(state: VaultState, now: Instant): BackupFreshness = backupFreshness(
+    enabled = state.enabled,
+    lastRunAt = state.lastRunAt,
+    pending = if (state.lastOutcome == VaultOutcome.UPLOADED || state.lastOutcome == VaultOutcome.UP_TO_DATE) 0 else 1,
+    cadence = state.cadence,
+    now = now,
+)
 
 /** Off / working / stopped and why / when the last copy was made. Shared by the row and the screen. */
 @Composable
@@ -82,6 +83,9 @@ internal fun vaultStatusText(
         stringResource(R.string.vault_card_stale, dateTimeText(state.lastRunAt))
     state.lastOutcome == VaultOutcome.TRANSIENT && state.lastUploadedAt == null -> stringResource(R.string.vault_card_transient)
     state.lastUploadedAt == null -> stringResource(R.string.vault_card_never)
+    // A copy asked for with no signal, or a run the network stopped: the last good copy is still
+    // worth its date, and the try after it is worth saying — "Last copy …" alone read as success.
+    state.lastOutcome == VaultOutcome.TRANSIENT -> stringResource(R.string.vault_card_last_failed, dateTimeText(state.lastUploadedAt))
     else -> stringResource(R.string.vault_card_last, dateTimeText(state.lastUploadedAt))
 }
 

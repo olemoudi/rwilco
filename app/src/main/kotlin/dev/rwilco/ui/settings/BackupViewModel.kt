@@ -26,6 +26,8 @@ import dev.rwilco.vault.VaultTransportException
 import dev.rwilco.vault.VaultWorker
 import dev.rwilco.vault.fingerprint
 import dev.rwilco.vault.isRepoName
+import dev.rwilco.vault.isRepository
+import dev.rwilco.vault.movedTo
 import dev.rwilco.vault.settingsHash
 import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
@@ -68,6 +70,8 @@ sealed interface BackupPhase {
     data class Existing(val opened: OpenedVault?, val remoteSha: String, val credentials: Credentials, val passphrase: String) : BackupPhase
     /** "Replace it with this phone", asked once more: the copy there is what it puts an end to. */
     data class ConfirmReplace(val existing: Existing) : BackupPhase
+    /** Moving to another repository found a copy there that is not this phone's last. */
+    data class ConfirmMove(val credentials: Credentials, val remoteSha: String) : BackupPhase
     data class Confirm(val opened: OpenedVault, val source: RestoreSource) : BackupPhase
     /** A vault this phone's key does not open: ask for the passphrase it was sealed with. */
     data class AskPassphrase(val bytes: ByteArray, val source: RestoreSource) : BackupPhase
@@ -381,16 +385,35 @@ class BackupViewModel(private val app: RwilcoApplication) : ViewModel() {
         viewModelScope.launch { app.vaultStore.clear() }
     }
 
-    /** A new token, or a repository that moved: checked before it is kept. */
+    /**
+     * A new token, or a new home: checked before it is kept. Another repository starts from
+     * nothing ([movedTo]) and gets the whole copy at once; one that already holds a copy which is
+     * not this phone's last is asked about first, because the upload replaces it.
+     */
     fun updateCredentials(repo: String, token: String) {
         val credentials = credentialsOf(repo, token) ?: return
         viewModelScope.launch {
-            probeAndRead(transportFor(credentials)) ?: return@launch
-            app.vaultStore.update { it.copy(owner = credentials.owner, repo = credentials.repo, pat = credentials.pat, lastOutcome = null) }
-            VaultNotifications.cancel(app)
-            VaultWorker.runNow(app)
-            dismiss()
+            val there = (probeAndRead(transportFor(credentials)) ?: return@launch).value?.sha
+            val current = app.vaultStore.read()
+            if (!current.isRepository(credentials.owner, credentials.repo) && there != null && there != current.remoteSha) {
+                mutablePhase.value = BackupPhase.ConfirmMove(credentials, there)
+                return@launch
+            }
+            moveTo(credentials, there)
         }
+    }
+
+    /** From [BackupPhase.ConfirmMove]: the copy in the new repository gives way to this phone's. */
+    fun confirmMove() {
+        val confirm = mutablePhase.value as? BackupPhase.ConfirmMove ?: return
+        viewModelScope.launch { moveTo(confirm.credentials, confirm.remoteSha) }
+    }
+
+    private suspend fun moveTo(credentials: Credentials, remoteSha: String?) {
+        app.vaultStore.update { it.movedTo(credentials.owner, credentials.repo, credentials.pat, remoteSha) }
+        VaultNotifications.cancel(app)
+        VaultWorker.runNow(app)
+        dismiss()
     }
 
     fun importFrom(uri: Uri) {

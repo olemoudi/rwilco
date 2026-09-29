@@ -95,6 +95,19 @@ class BackupTourTest {
         rule.waitUntilShown(s(R.string.vault_conflict_keep_phone))
         shot("backup-conflict")
 
+        // A try the network stopped after a copy that went through (0.166.0): the date of the
+        // good one, and the word that the next did not go. Moving house is offered here too.
+        runBlocking {
+            val now = app.clock.instant()
+            app.vaultStore.update { it.copy(lastOutcome = VaultOutcome.TRANSIENT, lastOutcomeAt = now, lastUploadedAt = now.minusSeconds(3_600), lastRunAt = now) }
+        }
+        val failedTail = s(R.string.vault_card_last_failed).substringAfter("%1\$s")
+        rule.waitUntil(timeoutMillis = 10_000) { rule.onAllNodesWithText(failedTail, substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+        check(rule.onAllNodesWithText(s(R.string.vault_update_credentials), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()) {
+            "moving to another repository is offered only once the current one has gone"
+        }
+        shot("backup-last-failed")
+
     }
 
     @Test

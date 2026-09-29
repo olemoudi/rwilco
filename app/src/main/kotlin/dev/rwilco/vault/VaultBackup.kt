@@ -22,8 +22,8 @@ enum class VaultRunResult {
  * One backup run: snapshot, compare, seal, upload, and write down what happened.
  *
  * Everything it touches comes in through the constructor so the whole run — the conflict
- * path included — is a JVM test. A run that finds nothing changed makes no call at all; one
- * that uploads writes the blob sha down *before* sending, so a reply lost on the way back is
+ * path included — is a JVM test. A run that finds nothing changed uploads nothing and only looks
+ * at the repository ([stillThere]); one that uploads writes the blob sha down *before* sending, so a reply lost on the way back is
  * recognised on the next attempt instead of being read as somebody else's write. And a run whose
  * snapshot has gone empty where the last copy was not stops without a call at all ([wentEmpty]):
  * the copy is the thing that outlives the phone, so a phone that has lost everything must not be
@@ -68,12 +68,7 @@ class VaultBackup(
         val print = snapshot.fingerprint()
         when (nextVaultStep(state.enabled, print, state.lastUploadedFingerprint)) {
             VaultStep.DISABLED -> return VaultRunResult.DONE
-            VaultStep.NOTHING_CHANGED -> {
-                // A look that found nothing to copy is a run that worked: the cadence counts
-                // from it, or an untouched phone would ask again every few minutes for ever.
-                record(VaultOutcome.UP_TO_DATE, ran = true)
-                return VaultRunResult.DONE
-            }
+            VaultStep.NOTHING_CHANGED -> return stillThere(transportFor(state), state)
             VaultStep.UPLOAD -> Unit
         }
         val sent = Sent(print, settingsHash(settings), snapshot.reminders.size, settings.length)
@@ -96,6 +91,41 @@ class VaultBackup(
         } finally {
             VaultCenter.report(working = false)
         }
+    }
+
+    /**
+     * Nothing to copy, and one look at the repository anyway (0.166.0): the one GET that says it
+     * is still there and still ours to write. Without it a repository taken away — deleted, the
+     * account closed, the token expired — went unnoticed for as long as nothing on the phone
+     * changed, with the screen saying "up to date" over a copy that no longer existed.
+     *
+     * Only the refusals mean anything here. A look that could not get through is not a copy that
+     * failed — nothing was waiting to go — so it is written down as the look that found nothing
+     * to copy, which is what the cadence counts from, and no "has not gone through" is said.
+     * A look that passes after a refusal takes the refusal's notice down.
+     */
+    private suspend fun stillThere(transport: VaultTransport, state: VaultState): VaultRunResult {
+        val info = try {
+            transport.probe()
+        } catch (e: VaultTransportException) {
+            log("the look at the repository was refused: ${e.failure} (${e.message})")
+            return when (e.failure) {
+                TransportFailure.AUTH -> attention(VaultOutcome.AUTH)
+                TransportFailure.REPO_MISSING -> attention(VaultOutcome.REPO_MISSING)
+                TransportFailure.CONFLICT, TransportFailure.TRANSIENT -> {
+                    // Whatever was said before stands: a look that did not get through has
+                    // nothing to add to a refusal, nor anything to take back from one.
+                    record(state.lastOutcome ?: VaultOutcome.UP_TO_DATE, ran = true)
+                    VaultRunResult.DONE
+                }
+            }
+        }
+        if (!info.canPush) return attention(VaultOutcome.AUTH)
+        // A look that found nothing to copy is a run that worked: the cadence counts from it, or
+        // an untouched phone would ask again every few minutes for ever.
+        record(VaultOutcome.UP_TO_DATE, ran = true)
+        if (state.lastOutcome == VaultOutcome.AUTH || state.lastOutcome == VaultOutcome.REPO_MISSING) onResolved()
+        return VaultRunResult.DONE
     }
 
     private suspend fun upload(transport: VaultTransport, bytes: ByteArray, sha: String, replacing: String?, sent: Sent, earlier: String?): VaultRunResult {

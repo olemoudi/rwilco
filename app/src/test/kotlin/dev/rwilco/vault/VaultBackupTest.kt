@@ -39,9 +39,11 @@ class VaultBackupTest {
     private class FakeTransport(
         var onWrite: (ByteArray, String?) -> String = { _, _ -> error("no write expected") },
         var onRead: () -> RemoteVault? = { error("no read expected") },
+        var onProbe: () -> RepoInfo = { RepoInfo(isPrivate = true, canPush = true) },
     ) : VaultTransport {
         val writes = mutableListOf<Pair<ByteArray, String?>>()
         var reads = 0
+        var probes = 0
         override suspend fun read(): RemoteVault? {
             reads++
             return onRead()
@@ -50,7 +52,10 @@ class VaultBackupTest {
             writes += bytes to replacingSha
             return onWrite(bytes, replacingSha)
         }
-        override suspend fun probe(): RepoInfo = RepoInfo(isPrivate = true, canPush = true)
+        override suspend fun probe(): RepoInfo {
+            probes++
+            return onProbe()
+        }
     }
 
     private val attention = mutableListOf<VaultOutcome>()
@@ -84,13 +89,68 @@ class VaultBackupTest {
         assertEquals(VaultState(), store.state)
     }
 
+    private val upToDate = enabled.copy(lastUploadedFingerprint = fingerprint(listOf(row), settings))
+
     @Test
-    fun `unchanged content makes no call`() = runBlocking {
-        val store = MemoryStore(enabled.copy(lastUploadedFingerprint = fingerprint(listOf(row), settings)))
+    fun `unchanged content sends nothing and only looks at the repository`() = runBlocking {
+        val store = MemoryStore(upToDate)
         val transport = FakeTransport()
         assertEquals(VaultRunResult.DONE, backup(store, transport).run())
         assertTrue(transport.writes.isEmpty())
+        assertEquals(0, transport.reads)
+        assertEquals(1, transport.probes)
         assertEquals(VaultOutcome.UP_TO_DATE, store.state.lastOutcome)
+        assertEquals(now, store.state.lastRunAt, "the cadence counts from a look that found nothing to copy")
+    }
+
+    @Test
+    fun `a repository taken away is noticed with nothing to copy`() = runBlocking {
+        val store = MemoryStore(upToDate)
+        val transport = FakeTransport(onProbe = { throw refusal(TransportFailure.REPO_MISSING) })
+
+        assertEquals(VaultRunResult.FAILED, backup(store, transport).run())
+
+        assertEquals(VaultOutcome.REPO_MISSING, store.state.lastOutcome)
+        assertEquals(listOf(VaultOutcome.REPO_MISSING), attention)
+    }
+
+    @Test
+    fun `a token refused, or one that can no longer write, is noticed with nothing to copy`() = runBlocking {
+        val refused = MemoryStore(upToDate)
+        assertEquals(VaultRunResult.FAILED, backup(refused, FakeTransport(onProbe = { throw refusal(TransportFailure.AUTH) })).run())
+        assertEquals(VaultOutcome.AUTH, refused.state.lastOutcome)
+
+        val readOnly = MemoryStore(upToDate)
+        assertEquals(VaultRunResult.FAILED, backup(readOnly, FakeTransport(onProbe = { RepoInfo(isPrivate = true, canPush = false) })).run())
+        assertEquals(VaultOutcome.AUTH, readOnly.state.lastOutcome)
+        assertEquals(listOf(VaultOutcome.AUTH, VaultOutcome.AUTH), attention)
+    }
+
+    @Test
+    fun `a look the network stopped neither adds to nor takes back what was said`() = runBlocking {
+        val refused = MemoryStore(upToDate.copy(lastOutcome = VaultOutcome.AUTH))
+        val offline = FakeTransport(onProbe = { throw refusal(TransportFailure.TRANSIENT) })
+
+        assertEquals(VaultRunResult.DONE, backup(refused, offline).run())
+
+        assertEquals(VaultOutcome.AUTH, refused.state.lastOutcome, "a refusal is not cleared by a look that never got there")
+        assertEquals(0, resolved)
+        assertTrue(attention.isEmpty(), "nothing was waiting to go, so nothing is said about it")
+
+        val fine = MemoryStore(upToDate)
+        assertEquals(VaultRunResult.DONE, backup(fine, offline).run())
+        assertEquals(VaultOutcome.UP_TO_DATE, fine.state.lastOutcome)
+        assertEquals(now, fine.state.lastRunAt)
+    }
+
+    @Test
+    fun `a look that passes after a refusal takes its notice down`() = runBlocking {
+        val store = MemoryStore(upToDate.copy(lastOutcome = VaultOutcome.REPO_MISSING))
+
+        assertEquals(VaultRunResult.DONE, backup(store, FakeTransport()).run())
+
+        assertEquals(VaultOutcome.UP_TO_DATE, store.state.lastOutcome)
+        assertEquals(1, resolved)
     }
 
     @Test

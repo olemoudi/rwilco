@@ -36,6 +36,27 @@ fun nextVaultStep(enabled: Boolean, fingerprint: String, lastUploaded: String?):
 fun wentEmpty(was: Int?, now: Int): Boolean = was != null && was > 0 && now == 0
 
 /**
+ * The vault pointed at [owner]/[repo] with [pat].
+ *
+ * The same repository — a new token, or the same name typed in another case, which GitHub does
+ * not tell apart — keeps every cursor: the copy there is the one this phone last wrote. A
+ * different one is a new home. What it holds now ([remoteSha], null when it is empty) is what
+ * the next upload replaces, and nothing of this phone has been copied there yet, so the next run
+ * uploads everything (0.166.0). Before, the old repository's sha and fingerprint came along: a run
+ * with nothing changed called the new one up to date while it stayed empty, and the first change
+ * went out carrying a sha the new repository had never seen. The sizes [wentEmpty] compares
+ * against are kept: they are about this phone, not about where it copies to.
+ */
+fun VaultState.movedTo(owner: String, repo: String, pat: String, remoteSha: String?): VaultState {
+    val pointed = copy(owner = owner, repo = repo, pat = pat, lastOutcome = null)
+    return if (isRepository(owner, repo)) pointed else pointed.copy(remoteSha = remoteSha, lastUploadedFingerprint = null, lastAttemptSha = null)
+}
+
+/** Whether [owner]/[repo] is where this vault copies to now; GitHub names do not tell case apart. */
+fun VaultState.isRepository(owner: String, repo: String): Boolean =
+    owner.equals(this.owner, ignoreCase = true) && repo.equals(this.repo, ignoreCase = true)
+
+/**
  * Whether "replace it with this phone" may be offered over a copy that is already there.
  *
  * Never from an empty phone: that is a new phone before its restore, and the tap would put

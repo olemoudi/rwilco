@@ -63,7 +63,10 @@ import android.content.Intent
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import dev.rwilco.R
+import dev.rwilco.RwilcoApplication
 import dev.rwilco.model.BackupCadence
+import dev.rwilco.model.BackupFreshness
+import dev.rwilco.ui.components.rememberNow
 import dev.rwilco.model.MIN_PASSPHRASE_LENGTH
 import dev.rwilco.model.PassphraseStrength
 import dev.rwilco.model.TriggerFamily
@@ -247,6 +250,11 @@ private fun SetupCard(viewModel: BackupViewModel) {
 private fun StatusCard(vault: VaultState, working: Boolean, viewModel: BackupViewModel) {
     val spacing = Tokens.spacing
     var editingCredentials by rememberSaveable { mutableStateOf(false) }
+    // How far behind, as the Settings row and the Home badge say it: this screen used to be the
+    // one place that read "Last copy …" over a copy that had stopped going through days ago.
+    val app = LocalContext.current.applicationContext as RwilcoApplication
+    val now by rememberNow(60_000, app.clock)
+    val freshness = vaultFreshness(vault, now)
     RwilcoCard {
         Column(Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.md)) {
             Text(
@@ -254,9 +262,9 @@ private fun StatusCard(vault: VaultState, working: Boolean, viewModel: BackupVie
                 style = MaterialTheme.typography.titleMedium,
             )
             Text(
-                text = vaultStatusText(vault, working),
+                text = vaultStatusText(vault, working, freshness),
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (vault.needsAttention) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (vault.needsAttention || freshness == BackupFreshness.STALE) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
             )
             when (vault.lastOutcome) {
                 VaultOutcome.CONFLICT -> {
@@ -305,6 +313,11 @@ private fun StatusCard(vault: VaultState, working: Boolean, viewModel: BackupVie
                 NavRow(stringResource(R.string.vault_restore_remote), onClick = viewModel::restoreFromRemote)
             }
             NavRow(stringResource(R.string.vault_test), onClick = viewModel::testConnection)
+            // Moving is not only for a repository that has gone: before it goes is the better
+            // time. The two states that stopped over it offer it above already.
+            if (vault.lastOutcome != VaultOutcome.AUTH && vault.lastOutcome != VaultOutcome.REPO_MISSING) {
+                NavRow(stringResource(R.string.vault_update_credentials), onClick = { editingCredentials = true })
+            }
             // The token can be tested; until now the passphrase — the half with no way back —
             // could only be found out about on the day it was the only way in.
             NavRow(
@@ -411,7 +424,8 @@ private fun PhaseDialogs(phase: BackupPhase, localCount: Int, viewModel: BackupV
         is BackupPhase.Failed -> MessageDialog(phase.arg?.let { stringResource(phase.message, it) } ?: stringResource(phase.message), onDismiss = viewModel::dismiss)
         is BackupPhase.DryRun -> DryRunDialog(phase.summary, viewModel::dismiss)
         is BackupPhase.Existing -> ExistingDialog(phase, localCount, viewModel)
-        is BackupPhase.ConfirmReplace -> ConfirmReplaceDialog(localCount, viewModel)
+        is BackupPhase.ConfirmReplace -> ConfirmReplaceDialog(localCount, onConfirm = viewModel::replaceExisting, onDismiss = viewModel::keepExisting)
+        is BackupPhase.ConfirmMove -> ConfirmReplaceDialog(localCount, onConfirm = viewModel::confirmMove, onDismiss = viewModel::dismiss)
         is BackupPhase.Confirm -> ConfirmDialog(phase.opened.summary, localCount, viewModel)
         is BackupPhase.AskPassphrase -> PassphraseDialog(
             title = stringResource(R.string.vault_passphrase_title),
@@ -580,17 +594,20 @@ private fun ExistingDialog(phase: BackupPhase.Existing, localCount: Int, viewMod
     )
 }
 
-/** The copy that is there gives way to this phone: said in numbers, with where the old one goes. */
+/**
+ * The copy that is there gives way to this phone: said in numbers, with where the old one goes.
+ * Asked when enabling finds one, and when moving to a repository that already holds one.
+ */
 @Composable
-private fun ConfirmReplaceDialog(localCount: Int, viewModel: BackupViewModel) {
+private fun ConfirmReplaceDialog(localCount: Int, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
-        onDismissRequest = viewModel::keepExisting,
+        onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.vault_replace_title)) },
         text = { Text(pluralStringResource(R.plurals.vault_replace_body, localCount, localCount), style = MaterialTheme.typography.bodyMedium) },
         confirmButton = {
-            TextButton(onClick = viewModel::replaceExisting) { Text(stringResource(R.string.vault_replace_yes), color = MaterialTheme.colorScheme.error) }
+            TextButton(onClick = onConfirm) { Text(stringResource(R.string.vault_replace_yes), color = MaterialTheme.colorScheme.error) }
         },
-        dismissButton = { TextButton(onClick = viewModel::keepExisting) { Text(stringResource(R.string.vault_cancel)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.vault_cancel)) } },
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         shape = MaterialTheme.shapes.extraLarge,
     )

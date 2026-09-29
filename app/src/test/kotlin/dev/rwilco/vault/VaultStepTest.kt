@@ -32,6 +32,34 @@ class VaultStepTest {
         assertFalse(wentEmpty(was = null, now = 0), "a copy that never carried this part says nothing about it")
     }
 
+    private val home = VaultState(
+        enabled = true, owner = "ole", repo = "vault", pat = "old-token",
+        remoteSha = "sha-there", lastUploadedFingerprint = "print", lastAttemptSha = "attempt",
+        lastUploadedRows = 40, lastUploadedSettingsLength = 900, lastOutcome = VaultOutcome.AUTH,
+    )
+
+    @Test
+    fun `a new token for the same repository keeps every cursor`() {
+        val moved = home.movedTo("Ole", "VAULT", "new-token", remoteSha = "ignored")
+        assertEquals(home.copy(owner = "Ole", repo = "VAULT", pat = "new-token", lastOutcome = null), moved)
+    }
+
+    @Test
+    fun `another repository starts from what it holds and gets everything`() {
+        val empty = home.movedTo("ole", "vault-2", "new-token", remoteSha = null)
+        assertEquals("vault-2", empty.repo)
+        assertNull(empty.remoteSha, "an empty repository is written to without a sha")
+        assertNull(empty.lastUploadedFingerprint, "nothing of this phone is there yet: the next run uploads")
+        assertNull(empty.lastAttemptSha)
+        assertNull(empty.lastOutcome)
+        assertEquals(40, empty.lastUploadedRows, "the guard is about this phone, not the repository")
+        assertEquals(900, empty.lastUploadedSettingsLength)
+
+        val holding = home.movedTo("someone", "vault", "new-token", remoteSha = "sha-new")
+        assertEquals("sha-new", holding.remoteSha, "the upload replaces what is there, having been asked")
+        assertNull(holding.lastUploadedFingerprint)
+    }
+
     @Test
     fun `replacing a copy that is there needs something to put in its place`() {
         val strong = "correct horse 42 battery"

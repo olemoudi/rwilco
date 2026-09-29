@@ -1441,6 +1441,7 @@
     <string name="vault_card_off">Off. Everything stays on this phone.</string>
     <string name="vault_card_never">On; no copy made yet</string>
     <string name="vault_card_last">Last copy %1$s</string>
+    <string name="vault_card_last_failed">Last copy %1$s · the last try did not go through; it will try again</string>
     <string name="vault_card_working">Copying…</string>
     <string name="vault_card_transient">The last attempt failed; it will try again</string>
     <string name="vault_card_stale">Nothing copied since %1$s, and changes waiting</string>
@@ -1737,6 +1738,14 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_166_0">
+
+        <item>With nothing new to copy, the backup still takes a look at the repository every time a copy is due. A repository deleted, an account closed or a token expired is now noticed within one interval, not the next time you change something.</item>
+        <item>Moving the backup to another repository copies everything there at once. Until now the new one could stay empty while the screen said everything was up to date. If it already holds a copy, you are asked before it is replaced.</item>
+        <item>«Change the repository or the token…» is always on the Backup screen, not only after something has failed: the best time to move is before you have to.</item>
+        <item>The Backup screen says when the last try did not go through, and marks a copy that has fallen behind, as the row in Settings already did.</item>
+
+    </string-array>
     <string-array name="whats_new_0_165_0">
 
         <item>A reminder whose sound plays once no longer plays it again when the phone is turned while its screen is up. Picking the phone up to answer it rebuilt the screen, and the rebuilt screen said the tone over, so one alert could be heard three times.</item>
