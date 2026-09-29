@@ -10,6 +10,7 @@ import androidx.room.Query
 import dev.rwilco.model.FiringEvent
 import dev.rwilco.model.FiringKind
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.Serializable
 import java.time.Instant
 
 /**
@@ -24,10 +25,13 @@ import java.time.Instant
  * is why it is read back **in the order it was written** ([FiringEventDao.written]) and why every
  * undo takes its own line back with it.
  *
- * Not in the vault. What the row *is* is what the backup copies, and what happened to it stays on
- * the phone it happened on: a restore starts the streaks again (the achievements they earned
- * travel, in the settings).
+ * **In the vault since 0.168.0** (`VaultSnapshot.events`), as rows, like the reminders. It was
+ * left out on the reasoning that what happened to a reminder belongs to the phone it happened
+ * on — but a phone lost is exactly when somebody wants their streaks and their numbers back, and
+ * every restore wiped them through the cascade, the undo of a restore included. Serializable for
+ * that: the column names are the vault's contract too, frozen in `VaultSchemaTest`.
  */
+@Serializable
 @Entity(
     tableName = "firing_event",
     foreignKeys = [ForeignKey(entity = ReminderEntity::class, parentColumns = ["id"], childColumns = ["reminderId"], onDelete = ForeignKey.CASCADE)],

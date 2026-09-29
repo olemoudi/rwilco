@@ -1723,6 +1723,13 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_168_0">
+
+        <item>La copia lleva ahora también el historial de cada recordatorio: cada aviso, cada «posponer» y cada «hecho», de donde salen tus rachas y tus números. Restaurar en un teléfono nuevo, o después de perder este, los recupera en vez de empezarlos otra vez de cero.</item>
+        <item>Deshacer una restauración ahora devuelve también el historial.</item>
+        <item>Una copia hecha antes de esta versión se restaura como siempre, sin historial; la siguiente copia que se haga ya lo lleva.</item>
+
+    </string-array>
     <string-array name="whats_new_0_167_0">
 
         <item>Un lugar guardado, un preajuste o un tramo del día que no se pueda leer ya no se lleva todos tus ajustes con él. Se queda fuera ese y el resto sigue como estaba.</item>

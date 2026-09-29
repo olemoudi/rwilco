@@ -4,6 +4,7 @@ import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.rwilco.data.NO_RECURRENCE
+import dev.rwilco.data.FiringEventEntity
 import dev.rwilco.data.ReminderEntity
 import dev.rwilco.data.RwilcoDatabase
 import kotlinx.coroutines.runBlocking
@@ -57,9 +58,34 @@ class VaultDeviceTest {
         dao.upsert(row("old-1"))
         dao.upsert(row("old-2"))
 
-        dao.replaceAll(listOf(row("new-1"), row("new-2"), row("new-3")))
+        dao.replaceAll(listOf(row("new-1"), row("new-2"), row("new-3")), emptyList())
 
         assertEquals(listOf("new-1", "new-2", "new-3"), dao.getAll().map { it.id })
+    }
+
+    /**
+     * The history comes back with its rows, in the order it was written (0.168.0) — and a line
+     * whose reminder did not come back is left out rather than failing the foreign key, which
+     * would have failed the whole restore with it.
+     */
+    @Test
+    fun aRestoreBringsTheHistoryBackWithItsRows() = runBlocking {
+        val dao = db.reminders()
+        dao.upsert(row("old-1"))
+        db.events().insert(FiringEventEntity(reminderId = "old-1", at = 1, kind = "RANG"))
+
+        dao.replaceAll(
+            listOf(row("new-1"), row("new-2")),
+            listOf(
+                FiringEventEntity(id = 40, reminderId = "new-2", at = 300, kind = "DEALT"),
+                FiringEventEntity(id = 10, reminderId = "new-1", at = 100, kind = "RANG", ruleIndex = 0),
+                FiringEventEntity(id = 20, reminderId = "gone", at = 200, kind = "RANG"),
+                FiringEventEntity(id = 30, reminderId = "new-1", at = 250, kind = "SNOOZED", detail = "TEN_MINUTES"),
+            ),
+        )
+
+        assertEquals(listOf(10L to "new-1", 30L to "new-1", 40L to "new-2"), db.events().all().map { it.id to it.reminderId })
+        assertEquals(listOf("RANG", "SNOOZED"), db.events().written("new-1").map { it.kind })
     }
 
     private fun row(id: String) = ReminderEntity(

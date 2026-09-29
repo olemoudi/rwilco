@@ -1,5 +1,6 @@
 package dev.rwilco.vault
 
+import dev.rwilco.data.FiringEventEntity
 import dev.rwilco.data.ReminderEntity
 import dev.rwilco.model.backupFreshness
 import dev.rwilco.model.backupNoticeDue
@@ -32,6 +33,8 @@ enum class VaultRunResult {
 class VaultBackup(
     private val store: VaultStateStore,
     private val rows: suspend () -> List<ReminderEntity>,
+    /** Every reminder's history, which travels with the rows (see [VaultSnapshot.events]). */
+    private val events: suspend () -> List<FiringEventEntity>,
     private val settingsJson: suspend () -> String?,
     private val transportFor: (VaultState) -> VaultTransport,
     private val clock: Clock,
@@ -64,7 +67,7 @@ class VaultBackup(
         val state = store.read()
         if (!state.enabled || !state.hasKey) return VaultRunResult.DONE
         val settings = settingsJson().orEmpty()
-        val snapshot = buildSnapshot(rows(), settings, clock.instant(), state.deviceId, appVersionCode, dbVersion)
+        val snapshot = buildSnapshot(rows(), settings, clock.instant(), state.deviceId, appVersionCode, dbVersion, events())
         val print = snapshot.fingerprint()
         when (nextVaultStep(state.enabled, print, state.lastUploadedFingerprint)) {
             VaultStep.DISABLED -> return VaultRunResult.DONE

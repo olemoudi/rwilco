@@ -1,5 +1,6 @@
 package dev.rwilco.vault
 
+import dev.rwilco.data.FiringEventEntity
 import dev.rwilco.data.ReminderEntity
 import dev.rwilco.model.InstantSerializer
 import dev.rwilco.model.ReminderCodec
@@ -43,6 +44,11 @@ data class VaultSnapshot(
     val reminders: List<ReminderEntity> = emptyList(),
     /** `settings_json` as `SettingsStore` holds it. */
     val settingsJson: String = "",
+    /**
+     * Every reminder's history, in the order written (0.168.0): the streaks and the numbers. A
+     * vault from before it has none, and restores as it always did; an older build ignores it.
+     */
+    val events: List<FiringEventEntity> = emptyList(),
 )
 
 /** What a snapshot says about itself before anybody agrees to restore it. */
@@ -79,6 +85,7 @@ fun buildSnapshot(
     deviceId: String,
     appVersionCode: Int,
     dbVersion: Int,
+    events: List<FiringEventEntity> = emptyList(),
 ): VaultSnapshot = VaultSnapshot(
     dbVersion = dbVersion,
     appVersionCode = appVersionCode,
@@ -86,6 +93,7 @@ fun buildSnapshot(
     deviceId = deviceId,
     reminders = rows.sortedBy { it.id },
     settingsJson = settingsJson,
+    events = events.sortedBy { it.id },
 )
 
 fun encodeSnapshot(snapshot: VaultSnapshot): ByteArray =
@@ -96,6 +104,12 @@ fun encodeSnapshot(snapshot: VaultSnapshot): ByteArray =
  * scheduler's own write-backs — the moment armed and which rule it is for — are left out, or
  * every re-arm would be a change worth a commit; so is the order the rows came in, and so are
  * the stamps that differ between two exports of the same thing.
+ *
+ * **The history is carried, not watched** (0.168.0). Every line of it is written with a change to
+ * its row — a ring, a snooze, a "hecho" each move a column — so the rows already say when there is
+ * something new; the rare line that moves nothing else (an undo taking its own line back, the
+ * oldest dropped at the cap) goes up with the next change. Watching it too would put the whole
+ * history through this hash and through Home's count of what is waiting ([pendingChanges]).
  */
 fun fingerprint(rows: List<ReminderEntity>, settingsJson: String): String {
     val content = rows.sortedBy { it.id }.map { it.copy(armedFor = null, armedRule = null) }

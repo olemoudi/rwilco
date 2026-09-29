@@ -1,6 +1,7 @@
 package dev.rwilco.data
 
 import androidx.room.Dao
+import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Upsert
@@ -29,12 +30,24 @@ interface ReminderDao {
     @Query("SELECT * FROM reminder ORDER BY id")
     fun observeAll(): Flow<List<ReminderEntity>>
 
-    /** A restore: the table becomes exactly [rows], in one transaction or not at all. */
+    /**
+     * A restore: the table becomes exactly [rows], and the history [events], in one transaction or
+     * not at all. Deleting the rows takes every line of history with them (the cascade); the lines
+     * put back are only those whose reminder came back too — one that did not would fail the
+     * foreign key and, with it, the whole restore. Their ids go in as they were, which is what
+     * keeps them in the order they were written.
+     */
     @Transaction
-    suspend fun replaceAll(rows: List<ReminderEntity>) {
+    suspend fun replaceAll(rows: List<ReminderEntity>, events: List<FiringEventEntity>) {
         deleteAll()
         upsertAll(rows)
+        val ids = rows.mapTo(HashSet()) { it.id }
+        insertEvents(events.filter { it.reminderId in ids })
     }
+
+    /** The history a restore puts back; see [replaceAll]. */
+    @Insert
+    suspend fun insertEvents(events: List<FiringEventEntity>)
 
     @Query("SELECT * FROM reminder WHERE id = :id")
     fun observe(id: String): Flow<ReminderEntity?>

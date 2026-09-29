@@ -60,13 +60,14 @@ class VaultRestore(private val app: RwilcoApplication) {
     suspend fun apply(opened: OpenedVault, adopt: (VaultState) -> VaultState): Unit = VaultBackup.lock.withLock {
         val before = app.repository.allRows()
         if (before.isNotEmpty()) {
-            val snapshot = buildSnapshot(before, app.settingsStore.rawJson().orEmpty(), app.clock.instant(), app.vaultStore.read().deviceId, BuildConfig.VERSION_CODE, RwilcoDatabase.VERSION)
+            // With its history, so undoing the restore brings the streaks back too.
+            val snapshot = buildSnapshot(before, app.settingsStore.rawJson().orEmpty(), app.clock.instant(), app.vaultStore.read().deviceId, BuildConfig.VERSION_CODE, RwilcoDatabase.VERSION, app.repository.allEvents())
             // Off the main thread, as sealNow is: this runs from the screen's own scope, and
             // gzip plus AES over the whole table is a visible stall on a full phone.
             val sealed = withContext(Dispatchers.Default) { VaultCrypto.seal(encodeSnapshot(snapshot), opened.key, opened.salt, opened.iterations) }
             writeUndoCopy(sealed)
         }
-        app.repository.replaceAll(opened.snapshot.reminders)
+        app.repository.replaceAll(opened.snapshot.reminders, opened.snapshot.events)
         app.settingsStore.replaceRaw(opened.snapshot.settingsJson)
         // A vault from another phone names sound files that were never on this one. Anything
         // that cannot be opened goes back to the phone's own alarm rather than to silence.
@@ -80,7 +81,7 @@ class VaultRestore(private val app: RwilcoApplication) {
     /** This phone's data now, sealed under [key]: the export, and what the backup uploads. */
     suspend fun sealNow(key: ByteArray, salt: ByteArray, iterations: Int): ByteArray {
         val state = app.vaultStore.read()
-        val snapshot = buildSnapshot(app.repository.allRows(), app.settingsStore.rawJson().orEmpty(), app.clock.instant(), state.deviceId, BuildConfig.VERSION_CODE, RwilcoDatabase.VERSION)
+        val snapshot = buildSnapshot(app.repository.allRows(), app.settingsStore.rawJson().orEmpty(), app.clock.instant(), state.deviceId, BuildConfig.VERSION_CODE, RwilcoDatabase.VERSION, app.repository.allEvents())
         return withContext(Dispatchers.Default) { VaultCrypto.seal(encodeSnapshot(snapshot), key, salt, iterations) }
     }
 

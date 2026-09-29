@@ -875,14 +875,19 @@ run that fails still books the next. Home's line goes quiet on the same conditio
   per happening — rang, rang late, the net spoke, dealt with, a round skipped, put off (until
   when), a place rule come undone — capped at `HISTORY_KEEP` per reminder (fifty until 0.149.0,
   a thousand since: about a year of a daily one, which is what a streak needs) and gone with it
-  (a foreign key cascade; a restore replaces the reminders and takes the history with them).
+  (a foreign key cascade; a restore replaces the reminders and, since 0.168.0, the history with
+  them — the vault's own copy of it).
   The row keeps one of each stamp and `DiagLog` keeps a week of everything, so "¿sonó ayer?" —
   the question under half the reports from the phone — had no answer anywhere a person could
   find; `ReminderFiring` writes these where it writes its diagnostic notes, the editor shows the
   last fortnight of them on a card of their own (`HistoryList`), and the report carries five
-  per reminder (`hist=`). Not in the vault: it is diagnostic, like the place watch's log — what
-  the row *is* is what the backup copies, and what happened to it stays on the phone it
-  happened on. **Since 0.149.0 it is also what the statistics are read from** (see "Rounds and
+  per reminder (`hist=`). It was kept out of the vault as diagnostic, like the place watch's log;
+  **since 0.168.0 it travels** (`VaultSnapshot.events`, additive, frozen columns in
+  `VaultSchemaTest`), because once the statistics were read from it a lost phone or a restore
+  wiped the streaks, the undo of a restore included. `ReminderDao.replaceAll(rows, events)` puts
+  back only the lines whose reminder came back (the foreign key would fail the whole restore),
+  with their ids, so the order written survives; the fingerprint does not watch it — every line
+  comes with a change to its row. **Since 0.149.0 it is also what the statistics are read from** (see "Rounds and
   streaks"), which made three things about it matter that did not before. It is read and put
   back **in the order written** (`historyAsWritten`; a delete's undo re-inserts it as given,
   where it used to reverse it). **Every undo takes its own line back**: Home's and the

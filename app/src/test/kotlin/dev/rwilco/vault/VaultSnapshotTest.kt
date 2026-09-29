@@ -1,6 +1,7 @@
 package dev.rwilco.vault
 
 import dev.rwilco.data.NO_RECURRENCE
+import dev.rwilco.data.FiringEventEntity
 import dev.rwilco.data.ReminderEntity
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Preset
@@ -72,6 +73,25 @@ class VaultSnapshotTest {
         val back = decodeSnapshot(encodeSnapshot(snapshot))
         assertEquals(snapshot, back)
         assertEquals(listOf("a", "b", "c"), back.reminders.map { it.id })
+    }
+
+    @Test
+    fun `the history travels in the order it was written, and a vault from before it has none`() {
+        val lines = listOf(
+            FiringEventEntity(id = 12, reminderId = "b", at = 900, kind = "DEALT"),
+            FiringEventEntity(id = 3, reminderId = "a", at = 100, kind = "RANG", ruleIndex = 0),
+            FiringEventEntity(id = 11, reminderId = "b", at = 800, kind = "SNOOZED", detail = "TEN_MINUTES"),
+        )
+        val snapshot = buildSnapshot(rows, settings, Instant.EPOCH, "d", 1, 5, lines)
+        val back = decodeSnapshot(encodeSnapshot(snapshot))
+        assertEquals(listOf(3L, 11L, 12L), back.events.map { it.id })
+        assertEquals(lines.sortedBy { it.id }, back.events)
+        assertEquals(fingerprint(rows, settings), back.fingerprint(), "the history is carried, not watched")
+
+        val before = String(encodeSnapshot(buildSnapshot(rows, settings, Instant.EPOCH, "d", 1, 5)))
+            .replace(",\"events\":[]", "")
+        assertFalse(before.contains("events"), before)
+        assertTrue(decodeSnapshot(before.toByteArray()).events.isEmpty())
     }
 
     @Test

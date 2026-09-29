@@ -46,8 +46,11 @@ class ReminderRepository(
     /** The rows, reactive, so the backup hears about a change without polling. */
     val rows: Flow<List<ReminderEntity>> = dao.observeAll()
 
-    /** A restore: the table becomes [rows] in one transaction. */
-    suspend fun replaceAll(rows: List<ReminderEntity>) = dao.replaceAll(rows)
+    /** Every line of history, in the order written: what the backup copies with the rows. */
+    suspend fun allEvents(): List<FiringEventEntity> = events.all()
+
+    /** A restore: the table becomes [rows], with the lines of [history] that belong to them, in one transaction. */
+    suspend fun replaceAll(rows: List<ReminderEntity>, history: List<FiringEventEntity> = emptyList()) = dao.replaceAll(rows, history)
 
     /** Put off until [until] or until [place] — one or the other; both null takes a snooze back. */
     suspend fun snooze(id: String, until: Instant?, place: Trigger.Location? = null) =

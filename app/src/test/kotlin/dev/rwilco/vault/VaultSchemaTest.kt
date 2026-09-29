@@ -1,5 +1,6 @@
 package dev.rwilco.vault
 
+import dev.rwilco.data.FiringEventEntity
 import dev.rwilco.data.ReminderEntity
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.descriptors.elementNames
@@ -21,6 +22,12 @@ class VaultSchemaTest {
     @Test
     fun `the columns of a row are the ones data version 1 froze`() {
         assertEquals(FROZEN_COLUMNS, ReminderEntity.serializer().descriptor.elementNames.toList())
+    }
+
+    /** The history has travelled since 0.168.0, additively: a vault from before it has none. */
+    @Test
+    fun `the columns of a history line are the ones they were when it started to travel`() {
+        assertEquals(FROZEN_EVENT_COLUMNS, FiringEventEntity.serializer().descriptor.elementNames.toList())
     }
 
     @Test
@@ -80,5 +87,8 @@ class VaultSchemaTest {
             // Room v16: how close a contact is, and what on it was set by hand; older rows follow Settings.
             "contactCloseness", "contactCadenceByHand", "contactDays", "contactWindow",
         )
+
+        /** `firing_event` as Room v9 made it, carried in the vault since 0.168.0. */
+        val FROZEN_EVENT_COLUMNS = listOf("id", "reminderId", "at", "kind", "ruleIndex", "detail")
     }
 }

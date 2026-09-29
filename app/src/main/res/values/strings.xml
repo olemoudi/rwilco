@@ -1738,6 +1738,13 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_168_0">
+
+        <item>The backup now carries each reminder\'s history too: every ring, snooze and «hecho» that your streaks and numbers are worked out from. Restoring on a new phone, or after losing this one, brings them back instead of starting them again from nothing.</item>
+        <item>Undoing a restore now brings the history back as well.</item>
+        <item>A backup made before this version restores as it always did, with no history; the next copy made from here on carries it.</item>
+
+    </string-array>
     <string-array name="whats_new_0_167_0">
 
         <item>A saved place, a preset or a stretch of the day that cannot be read no longer takes all your settings with it. That one is left out and the rest stays as it was.</item>

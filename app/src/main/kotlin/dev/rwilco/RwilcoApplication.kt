@@ -288,6 +288,7 @@ class RwilcoApplication : Application() {
     fun vaultBackup(): VaultBackup = VaultBackup(
         store = vaultStore,
         rows = repository::allRows,
+        events = repository::allEvents,
         settingsJson = settingsStore::rawJson,
         transportFor = { state -> GitHubVault(state.owner, state.repo, state.pat, userAgent = USER_AGENT) },
         clock = clock,

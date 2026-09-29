@@ -1,5 +1,6 @@
 package dev.rwilco.vault
 
+import dev.rwilco.data.FiringEventEntity
 import dev.rwilco.data.NO_RECURRENCE
 import dev.rwilco.data.ReminderEntity
 import kotlinx.coroutines.runBlocking
@@ -28,6 +29,7 @@ class VaultBackupTest {
         createdAt = 1, updatedAt = 1, doneAt = null, recurrence = NO_RECURRENCE,
     )
     private val settings = """{"theme":"SYSTEM"}"""
+    private val history = listOf(FiringEventEntity(id = 7, reminderId = "r1", at = 5, kind = "RANG", ruleIndex = 0))
 
     private class MemoryStore(var state: VaultState) : VaultStateStore {
         override suspend fun read(): VaultState = state
@@ -69,6 +71,7 @@ class VaultBackupTest {
     ) = VaultBackup(
         store = store,
         rows = { rows },
+        events = { history },
         settingsJson = { settingsJson },
         transportFor = { transport },
         clock = clock,
@@ -164,6 +167,7 @@ class VaultBackupTest {
         assertEquals("0ld", replacing)
         val snapshot = decodeSnapshot(VaultCrypto.open(sent, key))
         assertEquals(listOf(row), snapshot.reminders)
+        assertEquals(history, snapshot.events, "the history travels with the rows")
         assertEquals(settings, snapshot.settingsJson)
         assertEquals("phone-1", snapshot.deviceId)
         assertEquals(now, snapshot.exportedAt)
