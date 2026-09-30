@@ -245,6 +245,29 @@ class PlaceGateTest {
         assertNull(state.place.dwell)
     }
 
+    @Test
+    fun `a rate carries the moment its hours open, so a stay met early can wait for them`() {
+        // "Al llegar a casa, y al menos diez minutos allí, a la vez de 19:00 a 21:30": watched
+        // from five, and a stay met at a quarter to seven is held for seven, not thrown away.
+        val rate = TriggerRule(home.copy(onCrossing = true, dwellMinutes = 10))
+        val evening = TriggerRule(Trigger.Interval(LocalTime.of(19, 0), LocalTime.of(21, 30)))
+        val set = reminder(rate, evening, match = RuleMatch.TOGETHER)
+        val seven = local(2026, 8, 27, 19, 0)
+        assertEquals(seven, set.watchedCircles(local(2026, 8, 27, 18, 45), zone, defaultTime).single { it.ruleIndex == 0 }.place.ringsFrom)
+        assertNull(set.watchedCircles(local(2026, 8, 27, 19, 30), zone, defaultTime).single { it.ruleIndex == 0 }.place.ringsFrom, "open: nothing to wait for")
+
+        // The rule's own hours read the same way as a sibling's.
+        val own = reminder(TriggerRule(home.copy(onCrossing = true, dwellMinutes = 10), listOf(Condition.TimeWindow(LocalTime.of(19, 0), LocalTime.of(21, 30)))))
+        assertEquals(seven, own.watchedCircles(local(2026, 8, 27, 18, 45), zone, defaultTime).single().place.ringsFrom)
+
+        // Only a rate is held. A bare doorway is an instant, and a side of a line is already a
+        // state that the window's own opening asks about.
+        val bare = reminder(TriggerRule(home.copy(onCrossing = true)), evening, match = RuleMatch.TOGETHER)
+        assertNull(bare.watchedCircles(local(2026, 8, 27, 18, 45), zone, defaultTime).single { it.ruleIndex == 0 }.place.ringsFrom)
+        val side = reminder(TriggerRule(home), evening, match = RuleMatch.TOGETHER)
+        assertNull(side.watchedCircles(local(2026, 8, 27, 18, 45), zone, defaultTime).single { it.ruleIndex == 0 }.place.ringsFrom)
+    }
+
     // ---- a routine's circles: ask or count as done, never rest -----------------------------
 
     @Test

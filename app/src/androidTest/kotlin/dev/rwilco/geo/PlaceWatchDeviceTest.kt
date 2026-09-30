@@ -572,6 +572,48 @@ class PlaceWatchDeviceTest {
         assertNotNull("it starts again from the door", store.read().dwelling[circle])
     }
 
+    @Test
+    fun aRateMetBeforeItsHoursIsHeldAndRingsWhenTheyOpen() = runBlocking {
+        // "Al llegar a casa, y al menos diez minutos allí, a la vez con una franja": ten minutes
+        // met before the franja opens are held, and the look at the opening rings them through
+        // ReminderFiring — which judges the franja too, so it runs on the same moved clock.
+        val start = movable.instant()
+        val opens = java.time.LocalDateTime.ofInstant(start.plus(Duration.ofMinutes(15)), app.clock.zone).truncatedTo(java.time.temporal.ChronoUnit.MINUTES)
+        val id = "watch-held"
+        app.repository.save(
+            Reminder(
+                id = id,
+                text = "Held test",
+                rules = listOf(
+                    TriggerRule(Trigger.Location(homeLat, homeLng, radius, Presence.INSIDE, "Casa", onCrossing = true, dwellMinutes = 10)),
+                    TriggerRule(Trigger.Interval(opens.toLocalTime(), opens.toLocalTime().plusHours(1))),
+                ),
+                ruleMatch = RuleMatch.TOGETHER,
+                status = Status.ACTIVE,
+                createdAt = start,
+                updatedAt = start,
+            ),
+        )
+        Thread.sleep(1_500)
+        cancelWatchAlarm()
+        val circle = key(id, Presence.INSIDE, onCrossing = true, dwellMinutes = 10)
+        val firing = dev.rwilco.alarm.ReminderFiring(context, app.repository, app.settingsStore, app.scheduler, app.placeWatch, movable)
+        val held = PlaceWatcher(context, app.repository, firing, store, app.placeLog, app.settingsStore, movable, silent)
+
+        moveTo(south = 5_000.0, at = t0)
+        held.check()
+        walkTo(held, metres = 50.0, after = 2)
+        repeat(4) { walkTo(held, metres = 50.0, after = 2, seconds = 30) }
+        assertNull("the franja is not open yet", app.repository.get(id)!!.lastFiredAt)
+        assertNotNull("ten minutes at home should be held", store.read().held[circle])
+        val opening = opens.atZone(app.clock.zone).toInstant()
+        assertEquals("the next look is the opening", opening, store.read().nextCheckAt)
+
+        walkTo(held, metres = 50.0, after = 0, seconds = Duration.between(movable.instant(), opening).seconds + 30)
+        assertNotNull("still at home when the franja opened should have rung", app.repository.get(id)!!.lastFiredAt)
+        assertTrue("a hold rings once", store.read().held.isEmpty())
+    }
+
     /**
      * A watch on a clock this test moves. Everything about a rate is measured in elapsed time,
      * and two `check()` calls in a row are milliseconds apart however far the phone was moved

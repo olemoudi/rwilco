@@ -158,12 +158,14 @@ fun Reminder.watchedCircles(
             return@flatMapIndexed emptyList()
         }
         val fold = folded[index]
+        // When its own hours and, folded in, its siblings' next all hold: now, when they do.
+        val hoursOpen = if (place != null) (fold ?: rule).windows().openFrom(now, zone) else null
         val gate: Instant? = if (place != null) {
             // Its own hours and, folded in, its siblings'. A fold that comes back null is a
             // crossing that can never ring — the circle is still watched, quietly, because a
             // sibling's moment is going to ask where the phone is; but only from that moment's
             // lead, and not at all if there is no such moment.
-            val hours = (fold ?: rule).windows().openFrom(now, zone)?.minus(PlaceWatchPolicy.WINDOW_LEAD)
+            val hours = hoursOpen?.minus(PlaceWatchPolicy.WINDOW_LEAD)
             val opens = when {
                 hours == null -> null
                 fold != null -> hours
@@ -179,6 +181,8 @@ fun Reminder.watchedCircles(
         // listened to, and its memory is not worth keeping either.
         if (gate == null) return@flatMapIndexed emptyList()
         val opensAt = gate.takeIf { it > soon }
+        // A crossing that rings and carries a rate, and nothing else: see [PlaceWatchState.held].
+        val rings = !ticked && fold != null
         val trigger = place?.let {
             Gated(
                 place = WatchedPlace(
@@ -207,6 +211,10 @@ fun Reminder.watchedCircles(
                     // leave the set carrying a rule that is plainly false.
                     dwell = if (ticked) null else it.dwell,
                     floor = floor,
+                    // **A rate is "at least"** (0.170.0): ten minutes at home met at 18:55 are
+                    // still met at 19:00, so the stay waits for the hours rather than being
+                    // judged early and thrown away. The watch needs the opening to wait for.
+                    ringsFrom = hoursOpen?.takeIf { opening -> rings && it.dwell != null && opening > now },
                 ),
                 ruleIndex = index,
                 opensAt = opensAt,

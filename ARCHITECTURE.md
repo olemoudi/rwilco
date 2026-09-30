@@ -127,7 +127,7 @@ reminder announcing itself as next, and ringing at half past one for the mere fa
 somewhere else. As a moment it is two moments beside an hour, which never coincide: nothing is
 armed, no circle is watched, and the editor says so. Beside a *window* it is the shape that
 sentence was reaching for — the crossing is the moment, the window the state it has to land
-in — and the window's own opening rings nothing. Four readings, two questions, and the same four words on every screen
+in — and the window's own opening rings nothing, with one exception: a doorway with a rate (below) says *at least* so many minutes, so a stay met before the window opens is held and rung at the opening if the phone is still there. Four readings, two questions, and the same four words on every screen
 (`placeReading`). **A place being added opens on the doorway** (`LocationSheet`): "al llegar a
 casa" is the sentence somebody writes at the moment they reach for a place, and the state
 reading is the same switch, one tap away. That is the editor's opening answer and nothing else:
@@ -3347,10 +3347,26 @@ loud what DST and a change of zone do to a landing.
   one to one of three buckets and asks three questions in order: **met** (`heldMs` has reached
   the rate — the crossing happens *now*, which is also the moment any hours on the rule are
   judged at, and that is the honest reading: "en la oficina entre las cinco y las siete, y diez
-  minutos allí" is asking about the ten minutes); **strayed** (more than `dwellTolerance`, a
+  minutos allí" is asking about the ten minutes — and asking for *at least* ten, see the hold
+  below); **strayed** (more than `dwellTolerance`, a
   third of the rate, spent on the wrong side — dropped in silence, and the circle waits for
   another crossing, because somebody who left has to arrive again); **out of time**
   (`dwellCeiling`).
+  **A rate met before its hours is held for them** (0.170.0, `PlaceWatchState.held`,
+  `WatchedPlace.ringsFrom`). Ten minutes at home is *at least* ten: home at 18:45, met at 18:55,
+  and "de 19:00 a 21:30" beside it used to ring into a firing that refused it as early, after
+  which nothing offered it again — a doorway is crossed once (the owner's phone, 2026-09-30).
+  The gate hands a rate its rule's next opening (`openFrom` over its windows and, folded in, its
+  siblings'), a count met before it becomes a hold instead of an event, and the look the plan
+  never lets fall past that opening releases it — if the phone is still on the rule's side — as
+  the event the count would have been. The look is armed exact (it is the ring), a rest never
+  releases one (a rest reports nothing), and the system's own loitering holds one the same way
+  (`holding`). A hold is the tail of a count and lives like one: only while its circle asks for a
+  position, and only while the side holds, so a phone seen leaving, a reminder dealt with or a
+  gate shut takes it along. Only windows hold — another fence that says no at the opening still
+  drops it, as before — and only an ordinary reminder's doorway that rings: a bare doorway is an
+  instant, a state is asked by the window's own opening already, and a routine's questions keep
+  their own gates. Arriving before the run-up (`WINDOW_LEAD`) is still not counted at all.
   **It counts time, not readings, and that is the whole of why it survives an adaptive cadence.**
   A percentage of the last N positions cannot mean the same thing twice when the cadence itself
   moves, and moving the cadence is what this watch does for a living — the same "75% inside"

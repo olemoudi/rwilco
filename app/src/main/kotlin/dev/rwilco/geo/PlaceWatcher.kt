@@ -39,6 +39,7 @@ import dev.rwilco.model.settlesFirstSideOf
 import dev.rwilco.model.busyNotice
 import dev.rwilco.model.counted
 import dev.rwilco.model.counting
+import dev.rwilco.model.holding
 import dev.rwilco.model.crossingIsNews
 import dev.rwilco.model.pollsSince
 import dev.rwilco.model.remembering
@@ -249,7 +250,7 @@ class PlaceWatcher(
             // Nothing worth a fix now is not the same as nothing to watch: a set whose hours
             // open at five is worth waking for at five and worth nothing until then.
             val gate = watch.opensAt.takeIf { context.hasBackgroundLocation() }
-            store.write(current.copy(inside = current.inside.filterKeys { it in watch.remembered }, nextCheckAt = gate, dwelling = emptyMap()))
+            store.write(current.copy(inside = current.inside.filterKeys { it in watch.remembered }, nextCheckAt = gate, dwelling = emptyMap(), held = emptyMap()))
             if (gate == null) cancel() else scheduleAt(gate)
             return@withLock
         }
@@ -268,8 +269,8 @@ class PlaceWatcher(
         // A count belongs to a circle that is being asked for a position. A circle that has gone
         // — edited, dealt with, its rate changed, and so a new id ([GeofenceIds]) — takes its
         // count with it, and so does one whose gate has shut: a listener must not ring, and a
-        // count is a ring waiting to happen.
-        store.write(current.copy(inside = judged, nextCheckAt = at, dwelling = current.dwelling.filterKeys { it in ids }))
+        // count is a ring waiting to happen. A hold is the tail of a count and goes the same way.
+        store.write(current.copy(inside = judged, nextCheckAt = at, dwelling = current.dwelling.filterKeys { it in ids }, held = current.held.filterKeys { it in ids }))
         scheduleAt(at)
     }
 
@@ -439,15 +440,25 @@ class PlaceWatcher(
         }
         // The side goes down too: a loitering is an arrival the app may not have seen, and the
         // memory is what the next crossing is judged against.
-        store.write(state.remembering(placeId, Transition.ENTER).counted(placeId))
+        val settled = state.remembering(placeId, Transition.ENTER).counted(placeId)
+        // Met before its rule's hours: held for them, as the watch holds one it met itself, and
+        // the look that rings it armed for the opening if nothing sooner is coming.
+        val opening = live.ringsFrom?.takeIf { it > now && live.crossing == Crossing.RINGS }
+        val due = opening?.let { at -> settled.nextCheckAt?.takeIf { it > now && it <= at } ?: at }
+        store.write(if (opening != null) settled.holding(placeId, now).copy(nextCheckAt = due) else settled)
+        if (opening != null && due == opening) scheduleAt(opening, promised = true)
         Log.i(TAG, "the system says ${rate.toMinutes()} min at $placeId")
         log.note(
             WatchNote(
                 at = now, kind = NoteKind.LOITER, place = live.label, lat = live.lat, lng = live.lng, radiusM = live.radiusM,
-                inside = true, reported = true, acted = live.crossing != Crossing.NOTHING,
+                inside = true, reported = true, acted = opening == null && live.crossing != Crossing.NOTHING,
                 dwellS = rate.seconds, heldS = rate.seconds,
             ),
         )
+        if (opening != null) {
+            Diag.note("geo", "r=${GeofenceIds.reminderIdOf(placeId).take(8)} ${rate.toMinutes()} min met before its hours; held until $opening")
+            return@withLock Crossing.NOTHING
+        }
         live.crossing
     }
 
@@ -536,11 +547,11 @@ class PlaceWatcher(
                 // nothing left to do went on naming a moment in the past as its next look:
                 // wrong in the diagnostics report, and useless as the one signal that tells a
                 // watch resting deliberately from a chain that stopped ([recoverIfStalled]).
-                store.write(current.copy(inside = forgotten, nextCheckAt = null, dwelling = emptyMap()))
+                store.write(current.copy(inside = forgotten, nextCheckAt = null, dwelling = emptyMap(), held = emptyMap()))
                 cancel()
             } else {
                 Log.i(TAG, "nothing worth a fix until the hours open")
-                store.write(current.copy(inside = forgotten, nextCheckAt = gate, tier = FixTier.BALANCED, dwelling = emptyMap()))
+                store.write(current.copy(inside = forgotten, nextCheckAt = gate, tier = FixTier.BALANCED, dwelling = emptyMap(), held = emptyMap()))
                 scheduleAt(gate)
             }
             return
@@ -558,7 +569,7 @@ class PlaceWatcher(
             // A rest takes no fix, so it says nothing about the blind streak: kept, or a run of
             // blind looks backing off 10/20/40 min was reset to ten by the sofa.
             store.write(rest.state.copy(nextCheckAt = at, blindStreak = before.blindStreak))
-            scheduleAt(at, rested.gapM, inside = rest.state.inside[rested.nearest.id] == true)
+            scheduleAt(at, rested.gapM, inside = rest.state.inside[rested.nearest.id] == true, promised = at == rest.heldUntil)
             Log.i(TAG, "nothing has moved; no fix taken, next look in ${Duration.between(now, at).toMinutes()} min")
             write(NoteKind.REST, now, rest.state, rested, rest.movement, charge)
             return
@@ -613,7 +624,7 @@ class PlaceWatcher(
         // A resting circle's memory needs no merging back in any more: it is one of the
         // listeners the step was handed, so this judgement is its own and up to date.
         store.write(step.state.copy(nextCheckAt = at))
-        scheduleAt(at, plan.gapM, inside = step.state.inside[plan.nearest.id] == true)
+        scheduleAt(at, plan.gapM, inside = step.state.inside[plan.nearest.id] == true, promised = at == step.heldUntil)
         Log.i(TAG, "${plan.gapM.toInt()} m from ${plan.nearest.label}; next look in ${Duration.between(now, at).toMinutes()} min (${plan.tier})")
         write(if (cached) NoteKind.CACHE else NoteKind.FIX, now, step.state, plan, step.movement, charge)
         val what = places.associate { it.id to it.crossing }
@@ -623,6 +634,10 @@ class PlaceWatcher(
         // seven seconds on a fix — is one no later look can report again. So they go out
         // whatever happens to the coroutine, and one that fails does not take the rest with it.
         withContext(NonCancellable) {
+            // A stay met before its hours rings nothing yet, and the report has to say why.
+            for (place in step.held) {
+                Diag.note("geo", "r=${GeofenceIds.reminderIdOf(place.id).take(8)} ${place.dwell?.toMinutes()} min met before its hours; held until ${place.ringsFrom}")
+            }
             // **A rate nothing could measure is worth a sentence.** The battery has the last word
             // on how often this watch looks ([batteryFloor]), and under it a ten-minute stay
             // simply cannot be timed: the looks arrive an hour apart, the vouched minutes never
@@ -805,11 +820,15 @@ class PlaceWatcher(
      * nothing that the phone was going to honour anyway — while below it, walking up to a door,
      * a two-minute look arriving three minutes late is a place reminder that missed the door.
      * So: exact under [EXACT_UNDER], batchable above it.
+     *
+     * [promised] is the other case where exactness is real: the look at the moment a held stay's
+     * hours open (`PlaceWatchState.held`). That look *is* the ring, and a batchable alarm half an
+     * hour out may be let go a good part of that late.
      */
-    private fun scheduleAt(at: Instant, gapM: Double? = null, inside: Boolean = false) {
+    private fun scheduleAt(at: Instant, gapM: Double? = null, inside: Boolean = false, promised: Boolean = false) {
         val intent = pendingIntent()
         val soon = Duration.between(clock.instant(), at) < EXACT_UNDER
-        val exact = soon && (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms.canScheduleExactAlarms())
+        val exact = (soon || promised) && (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms.canScheduleExactAlarms())
         runCatching {
             if (exact) {
                 alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.toEpochMilli(), intent)

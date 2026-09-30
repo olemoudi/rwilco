@@ -1738,6 +1738,12 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_170_0">
+
+        <item>A place with «at least so many minutes there» now keeps counting as met for as long as you stay. Home at 18:45 with ten minutes asked for and hours from 19:00: it used to be thrown away for being five minutes early, and now it rings at 19:00 if you are still at home.</item>
+        <item>If you leave before the hours open, nothing rings: the next arrival counts again from the door.</item>
+
+    </string-array>
     <string-array name="whats_new_0_169_0">
 
         <item>A tone said once now counts as said when it ends, not when it starts. Turning the phone in the first second, while it is still playing, no longer cuts it off for good; once it has ended, turning the phone still does not say it again.</item>

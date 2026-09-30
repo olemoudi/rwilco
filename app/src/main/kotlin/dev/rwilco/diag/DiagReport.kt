@@ -248,6 +248,8 @@ fun Diagnostics.report(): String = buildString {
                     (away?.let { " d=${it.toInt()}m" } ?: " d=-") +
                     (lastSeen?.let { " seen=${it.at.atZone(zone).format(short)}" } ?: " seen=-") +
                     " gate=$gate" +
+                    // A stay met before its hours, waiting for them (`PlaceWatchState.held`).
+                    (group.mapNotNull { (_, gated) -> watchState.held[gated.place.id] }.minOrNull()?.let { " held=${it.atZone(zone).format(short)}" } ?: "") +
                     " r=" + group.map { (reminder, _) -> reminder.id.take(8) }.distinct().joinToString(",") +
                     // The whole of yesterday's puzzle in one clause: arriving takes a fix at
                     // least as tight as the circle ([insideAfter]), so a circle under this

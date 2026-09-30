@@ -108,6 +108,12 @@ data class WatchedPlace(
      * one ([Trigger.Location.dwell]).
      */
     val dwell: Duration? = null,
+    /**
+     * When the rule behind this circle may ring by the clock, while that is still ahead: its
+     * hours, and under "a la vez" its siblings'. Null is "now, as far as the clock goes". Only a
+     * rate carries one, because only a rate is held for it ([PlaceWatchState.held]).
+     */
+    val ringsFrom: Instant? = null,
 )
 
 /** A place kept in Settings, offered whole — name, pin and radius — when a rule needs one. */
@@ -825,6 +831,12 @@ data class PlaceWatchState(
      * after the update starts one.
      */
     val dwelling: Map<String, Dwelling> = emptyMap(),
+    /**
+     * Rates met before their rule's hours, by circle: when each was met. A rate says "at least",
+     * so a stay met at 18:55 is still met at 19:00 if nobody has left — see [stepPlaceWatch].
+     * Empty on every blob written before holds existed, which is what it reads back as.
+     */
+    val held: Map<String, Instant> = emptyMap(),
 )
 
 /**
@@ -877,7 +889,8 @@ data class DwellStep(
  * - **Met**: [Dwelling.heldMs] has reached the rate. The crossing happens now, and the moment it
  *   is judged at is now — which is the honest reading for the hours a rule may also carry: "en la
  *   oficina entre las cinco y las siete, y diez minutos allí" is asking about the ten minutes,
- *   not about the doorstep.
+ *   not about the doorstep. And the ten minutes are *at least* ten: met before the hours open,
+ *   the stay is held for them rather than judged early and lost ([PlaceWatchState.held]).
  * - **Strayed**: more of the rate has been spent on the wrong side than [dwellTolerance] allows.
  *   The count is dropped in silence and the circle goes back to waiting for a crossing: somebody
  *   who left is somebody who has to arrive again. Note it may be dropped while the phone is
@@ -991,6 +1004,13 @@ data class WatchStep(
      * nothing rang, and that is the whole reason it is here — see [stepDwell].
      */
     val unmeasured: List<WatchedPlace> = emptyList(),
+    /** Rates met on this look before their hours: held, not rung. Worth a line in the log. */
+    val held: List<WatchedPlace> = emptyList(),
+    /**
+     * The soonest opening a hold is waiting for, or null with none waiting. The plan never looks
+     * past it; when the next look falls exactly there, it is a promise and wants an exact alarm.
+     */
+    val heldUntil: Instant? = null,
 )
 
 /**
@@ -1051,9 +1071,27 @@ fun stepPlaceWatch(
         crossed = crossed.mapTo(HashSet()) { it.id },
         now = now,
     )
+    // **A rate says "at least", and a stay met is met for as long as it lasts** (0.170.0). Met
+    // before the rule's hours — home at 18:45, ten minutes at 18:55, the window from 19:00 — it
+    // used to ring into a firing that refused it as early, and nothing ever offered it again: a
+    // doorway is crossed once. So the watch holds it instead, and hands it on at the first look
+    // the hours are open, if the phone is still on the side the rule is about. A hold is the
+    // tail of a count and lives like one: only while its circle is asked for a position (a
+    // circle dealt with, edited or shut takes it along), and only while the side holds — a
+    // phone seen leaving has to arrive again.
+    val stays = places.filter { place ->
+        place.id in state.held && inside[place.id] == (place.transition == Transition.ENTER)
+    }
+    val (early, metNow) = dwelt.met.partition { it.ringsFrom?.isAfter(now) == true }
+    val (waiting, released) = stays.partition { it.ringsFrom?.isAfter(now) == true }
+    val held = waiting.associate { it.id to state.held.getValue(it.id) } + early.associate { it.id to now }
     val events = crossed.filter { it.dwell == null }.map { PlaceEvent(it.id, it.transition) } +
-        dwelt.met.map { PlaceEvent(it.id, it.transition) }
+        (metNow + released).map { PlaceEvent(it.id, it.transition) }
+    // The opening is a promise, so the look is not allowed to fall past it: an arrival held
+    // half an hour past seven because the phone was resting inside is the late ring this is for.
+    val heldUntil = (waiting + early).mapNotNull { it.ringsFrom }.minOrNull()
     val plan = planNextCheck(fix, movement, places, inside, charge, previous = state.lastFix, counting = dwelt.dwelling.keys)
+        ?.let { plan -> if (heldUntil != null && now + plan.wait > heldUntil) plan.copy(wait = Duration.between(now, heldUntil)) else plan }
     // **The streak counts looks that got the phone no nearer anything** (0.82.0), not only the
     // ones that found it motionless. It is what the back-off doubles on, and a phone being
     // lived with inside its own four walls is not still — it is going nowhere, which for a
@@ -1083,8 +1121,9 @@ fun stepPlaceWatch(
         nearestLabel = plan?.nearest?.label,
         tier = plan?.tier ?: FixTier.BALANCED,
         dwelling = dwelt.dwelling,
+        held = held,
     )
-    return WatchStep(next, events, plan, movement, dwelt.unmeasured)
+    return WatchStep(next, events, plan, movement, dwelt.unmeasured, held = early, heldUntil = heldUntil)
 }
 
 /**
@@ -1118,6 +1157,9 @@ fun stepWithoutLooking(
     // count asks for a look every [dwellWait] and lasts minutes — and it is given up on the side
     // that rings rather than the side that goes quiet.
     if (places.any { it.dwell != null && it.id in state.dwelling }) return null
+    // Nor a hold whose hours have opened, for the same reason: releasing it is a ring, and a
+    // rest reports none. The look is taken, one fix, and it rings off that.
+    if (places.any { it.id in state.held && it.ringsFrom?.isAfter(now) != true }) return null
     val fix = state.lastFix ?: return null
     val step = stepPlaceWatch(state, fix, places, now, sensed = false, charge = charge, listening = listening)
     val wait = step.plan?.wait ?: return null
@@ -1220,3 +1262,9 @@ fun PlaceWatchState.counting(placeId: String, now: Instant): PlaceWatchState =
 
 /** A count settled by somebody else — the system's own loitering — is a count no longer running. */
 fun PlaceWatchState.counted(placeId: String): PlaceWatchState = copy(dwelling = dwelling - placeId)
+
+/**
+ * A rate the system's own loitering met before its rule's hours, held for them exactly as the
+ * watch holds one it met itself ([stepPlaceWatch]): the next look after the opening rings it.
+ */
+fun PlaceWatchState.holding(placeId: String, now: Instant): PlaceWatchState = copy(held = held + (placeId to now))
