@@ -3069,6 +3069,12 @@ loud what DST and a change of zone do to a landing.
   spot when Play Services says it has dropped them (`GeofenceReceiver`, an event with
   `GEOFENCE_NOT_AVAILABLE`: location switched off, the network provider gone), which used to go
   to the log and nowhere else, leaving the places blind until the six-hourly pass.
+  **And again once they can be** (0.172.0, `syncIfLost`, `fencesWorthRetrying`): the on-the-spot
+  attempt runs with location still off and fails, so a phone whose location went off for the
+  night had no fences until the worker came round. After every look that got a fix, and whenever
+  somebody opens the app, a sync whose last attempt left no fences in is tried again if location
+  is on — free otherwise. Syncs are one at a time now (a lock): each is a remove and an add, and
+  two side by side could land one's remove after the other's add.
   **Wholesale, but no longer on every process start (0.53.0).** `sync()` runs from
   `Application.onCreate`, and the place watch's own alarm starts the process every few minutes
   to an hour on a phone that kills it — so the fences were torn down and put back at the

@@ -3,6 +3,7 @@ package dev.rwilco.geo
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.location.LocationManager
 import android.util.Log
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingClient
@@ -15,8 +16,18 @@ import dev.rwilco.model.dwell
 import dev.rwilco.model.geofenceChoices
 import dev.rwilco.model.geofenceFingerprint
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
+
+/**
+ * Whether the fences are worth registering again without being asked: the last attempt left none
+ * ([registered] is the fingerprint [GeofenceStore] keeps only once they are in), and an attempt
+ * now could succeed — allowed in the background, and location on.
+ */
+fun fencesWorthRetrying(registered: String?, permitted: Boolean, locationOn: Boolean): Boolean =
+    registered == null && permitted && locationOn
 
 /** What came of trying to register the places; the Settings card turns this into a sentence. */
 enum class GeofenceState {
@@ -54,7 +65,32 @@ class GeofenceManager(
 
     private val client: GeofencingClient by lazy { LocationServices.getGeofencingClient(context) }
 
-    suspend fun sync(force: Boolean = false): GeofenceState {
+    /**
+     * One sync at a time. Each removes everything and then adds, so two side by side could have
+     * one's remove land after the other's add — every fence gone, and a fingerprint saying they
+     * were in. The doors that call this were already several (the launch, a change, a grant,
+     * the worker); 0.172.0 added two more ([syncIfLost]).
+     */
+    private val lock = Mutex()
+
+    suspend fun sync(force: Boolean = false): GeofenceState = lock.withLock { syncLocked(force) }
+
+    /**
+     * The fences put back once they can be (0.172.0). Location switched off drops all of them
+     * and says so (`GEOFENCE_NOT_AVAILABLE`), and the re-registration that answers that fails
+     * with location still off; nothing tried again until the six-hourly worker, so for hours the
+     * watch's own looks were the only eye — late arrivals, and no doorway passed through quickly.
+     * Asked after every look that got a fix and whenever somebody opens the app: free when the
+     * fences are in, and when location is still off.
+     */
+    suspend fun syncIfLost(): GeofenceState? {
+        val on = context.getSystemService(LocationManager::class.java)?.isLocationEnabled ?: false
+        if (!fencesWorthRetrying(store.read(), hasBackgroundLocation(), on)) return null
+        Diag.note("geo", "fences were left out by the last attempt; putting them back")
+        return sync()
+    }
+
+    private suspend fun syncLocked(force: Boolean): GeofenceState {
         // Which circles deserve one of the hundred fences is arithmetic on the rules, and
         // lives with the rest of the arithmetic (geofenceChoices, core-model) where a JVM
         // test can hold it still. This side keeps the radios.

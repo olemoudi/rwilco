@@ -359,6 +359,9 @@ class RwilcoApplication : Application() {
             // no-op whenever a look is genuinely still coming, and the door is already rate
             // limited to once every few minutes, so it costs nothing to ask here.
             runCatching { placeWatcher.recoverIfStalled() }.onFailure { Log.e(TAG, "could not recover the place watch", it) }
+            // And the fences, which location switched off takes away and nothing put back until
+            // the six-hourly worker (0.172.0). Free when they are in.
+            runCatching { geofences.syncIfLost() }.onFailure { Log.e(TAG, "could not put the fences back", it) }
         }
     }
 

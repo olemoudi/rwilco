@@ -31,6 +31,10 @@ class PlaceCheckReceiver : BroadcastReceiver() {
             } finally {
                 pending.finish()
             }
+            // Fences the last attempt left out (location was off) go back in once it is on again:
+            // a look is the moment that knows. Past the broadcast, because registering waits on
+            // Play Services; free when they are in. See GeofenceManager.syncIfLost.
+            runCatching { app.geofences.syncIfLost() }.onFailure { Log.w(TAG, "could not put the fences back", it) }
         }
     }
 
