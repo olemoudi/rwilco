@@ -36,6 +36,21 @@ data class Gated(
 const val SNOOZE_RULE = -1
 
 /**
+ * Whether a gated circle is judged on the way past while it waits — a listener, in the watch's
+ * words: told which side of the line the phone is on by fixes other circles paid for, so that when
+ * its gate opens it starts from a side and not from nothing.
+ *
+ * Right for a doorway, which needs that side or its first look is a baseline and not an arrival;
+ * and for the circles that only answer ("y sólo si…"), undo a tick or speak for a routine, which
+ * keep a memory on purpose. **Wrong for a state that rings** (0.172.0): "mientras esté en casa" is
+ * met by being there, so what it must start from when it opens is *not asked yet* — and a side
+ * kept from the wait made being home when the hours opened, or when a rest ended, no change at
+ * all. It rang only if the phone happened to arrive later, and never if it was already there.
+ */
+val Gated.listens: Boolean
+    get() = opensAt != null && !(place.crossing == Crossing.RINGS && !place.onCrossing)
+
+/**
  * Every circle this reminder needs an eye on, gated.
  *
  * Three gates, and a circle asks for a position only while every one that applies to it is open.
@@ -154,7 +169,7 @@ fun Reminder.watchedCircles(
         // under "a la vez" it is folded into every other rule as a state, and those rules are
         // not spent — a window beside it can ring again, and it is this map that answers where
         // the phone was when it did.
-        if (place != null && !place.onCrossing && rules.size == 1 && presenceAlreadyRang(place, index)) {
+        if (place != null && !place.onCrossing && rules.size == 1 && presenceAlreadyRang(place, index, now, zone, dayStart, shape)) {
             return@flatMapIndexed emptyList()
         }
         val fold = folded[index]
@@ -214,7 +229,14 @@ fun Reminder.watchedCircles(
                     // **A rate is "at least"** (0.170.0): ten minutes at home met at 18:55 are
                     // still met at 19:00, so the stay waits for the hours rather than being
                     // judged early and thrown away. The watch needs the opening to wait for.
-                    ringsFrom = hoursOpen?.takeIf { opening -> rings && it.dwell != null && opening > now },
+                    //
+                    // **And so is a state with hours of its own** (0.172.0): home at seven is
+                    // home at eight, and "mientras esté en casa, y sólo si es de 20 a 22" has
+                    // nothing else to ask at eight. Only where folding leaves the rule as it is:
+                    // under "a la vez" a sibling window's own opening asks about the place.
+                    ringsFrom = hoursOpen?.takeIf { opening ->
+                        rings && opening > now && (it.dwell != null || (!it.onCrossing && fold == rule))
+                    },
                 ),
                 ruleIndex = index,
                 opensAt = opensAt,

@@ -110,8 +110,9 @@ data class WatchedPlace(
     val dwell: Duration? = null,
     /**
      * When the rule behind this circle may ring by the clock, while that is still ahead: its
-     * hours, and under "a la vez" its siblings'. Null is "now, as far as the clock goes". Only a
-     * rate carries one, because only a rate is held for it ([PlaceWatchState.held]).
+     * hours, and under "a la vez" its siblings'. Null is "now, as far as the clock goes". Carried
+     * by a rate and by a state with hours of its own, the two things held for it
+     * ([PlaceWatchState.held]); a bare doorway is an instant and is not.
      */
     val ringsFrom: Instant? = null,
 )
@@ -1004,7 +1005,7 @@ data class WatchStep(
      * nothing rang, and that is the whole reason it is here — see [stepDwell].
      */
     val unmeasured: List<WatchedPlace> = emptyList(),
-    /** Rates met on this look before their hours: held, not rung. Worth a line in the log. */
+    /** Rates met, and states reached, on this look before their hours: held, not rung. Worth a line in the log. */
     val held: List<WatchedPlace> = emptyList(),
     /**
      * The soonest opening a hold is waiting for, or null with none waiting. The plan never looks
@@ -1083,13 +1084,16 @@ fun stepPlaceWatch(
         place.id in state.held && inside[place.id] == (place.transition == Transition.ENTER)
     }
     val (early, metNow) = dwelt.met.partition { it.ringsFrom?.isAfter(now) == true }
+    // The same for a state with hours of its own (0.172.0): its side reached before they open is
+    // held for them, rather than handed to a firing that drops it as early and never sees it again.
+    val (thereEarly, crossedNow) = crossed.filter { it.dwell == null }.partition { it.ringsFrom?.isAfter(now) == true }
     val (waiting, released) = stays.partition { it.ringsFrom?.isAfter(now) == true }
-    val held = waiting.associate { it.id to state.held.getValue(it.id) } + early.associate { it.id to now }
-    val events = crossed.filter { it.dwell == null }.map { PlaceEvent(it.id, it.transition) } +
+    val held = waiting.associate { it.id to state.held.getValue(it.id) } + (early + thereEarly).associate { it.id to now }
+    val events = crossedNow.map { PlaceEvent(it.id, it.transition) } +
         (metNow + released).map { PlaceEvent(it.id, it.transition) }
     // The opening is a promise, so the look is not allowed to fall past it: an arrival held
     // half an hour past seven because the phone was resting inside is the late ring this is for.
-    val heldUntil = (waiting + early).mapNotNull { it.ringsFrom }.minOrNull()
+    val heldUntil = (waiting + early + thereEarly).mapNotNull { it.ringsFrom }.minOrNull()
     val plan = planNextCheck(fix, movement, places, inside, charge, previous = state.lastFix, counting = dwelt.dwelling.keys)
         ?.let { plan -> if (heldUntil != null && now + plan.wait > heldUntil) plan.copy(wait = Duration.between(now, heldUntil)) else plan }
     // **The streak counts looks that got the phone no nearer anything** (0.82.0), not only the
@@ -1123,7 +1127,7 @@ fun stepPlaceWatch(
         dwelling = dwelt.dwelling,
         held = held,
     )
-    return WatchStep(next, events, plan, movement, dwelt.unmeasured, held = early, heldUntil = heldUntil)
+    return WatchStep(next, events, plan, movement, dwelt.unmeasured, held = early + thereEarly, heldUntil = heldUntil)
 }
 
 /**

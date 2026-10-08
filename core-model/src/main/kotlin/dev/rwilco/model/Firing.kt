@@ -172,6 +172,27 @@ fun Reminder.presenceAlreadyRang(place: Trigger.Location, ruleIndex: Int): Boole
     return lastFiredRule == null || lastFiredRule == ruleIndex
 }
 
+/**
+ * [presenceAlreadyRang], and the one round that ends with nobody answering: **«desde que suena»**.
+ * That anchor is chosen by somebody who is not going to answer, and its clock rules come back on
+ * their rhythm whatever happens; a state place went quiet for good after its first ring instead.
+ * The owner's call (2026-10-08): once the rest counted from that ring is over, the state asks
+ * again. Counted from the "hecho", the ring keeps it quiet until there is one, as it always did.
+ */
+fun Reminder.presenceAlreadyRang(
+    place: Trigger.Location,
+    ruleIndex: Int,
+    now: Instant,
+    zone: ZoneId,
+    dayStart: LocalTime,
+    shape: DayShape = DayShape.DEFAULT,
+): Boolean {
+    if (!presenceAlreadyRang(place, ruleIndex)) return false
+    if (!recurrence.countsFromRinging) return true
+    val rest = restUntil(zone, dayStart, shape) ?: return true
+    return rest > now
+}
+
 /** Inside this of the last ring, a second sighting of the same place is the same arrival. */
 val PLACE_ECHO: Duration = Duration.ofMinutes(5)
 

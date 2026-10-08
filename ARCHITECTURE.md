@@ -3256,6 +3256,14 @@ loud what DST and a change of zone do to a landing.
   fix**: what nothing is refreshing is dropped, because a judgement left standing for weeks and
   then subtracted from a fresh one invents a crossing nobody made — and a rule ticked off under
   "todos" by a crossing nobody made is the one mistake here that cannot be seen from the card.
+  **A state that rings is not a listener** (0.172.0, `Gated.listens`). A doorway needs the side
+  it starts from; "mientras esté en casa" needs the opposite — *not asked yet* — because being
+  there when its gate opens is exactly what it is waiting for. Told "home" by every look another
+  reminder paid for, a state gated by its hours or resting after a "hecho" opened to a side that
+  had not changed and said nothing: "mientras esté en casa, y vuelve cada día" rang once and
+  never again, but only on a phone with a second place reminder being watched, which is why it
+  looked like it worked. Gated, it is now left out of `listening` (so `sync` drops its memory as
+  well), and the first look after the gate finds it true and says so.
   On each check (an allow-while-idle alarm to `PlaceCheckReceiver`,
   exact only for a look under a quarter of an hour away — above that the exactness buys nothing
   Doze was going to honour anyway, and an inexact alarm is one the system may batch with
@@ -3388,8 +3396,18 @@ loud what DST and a change of zone do to a landing.
   position, and only while the side holds, so a phone seen leaving, a reminder dealt with or a
   gate shut takes it along. Only windows hold — another fence that says no at the opening still
   drops it, as before — and only an ordinary reminder's doorway that rings: a bare doorway is an
-  instant, a state is asked by the window's own opening already, and a routine's questions keep
-  their own gates. Arriving before the run-up (`WINDOW_LEAD`) is still not counted at all.
+  instant, and a routine's questions keep their own gates. Arriving before the run-up
+  (`WINDOW_LEAD`) is still not counted at all.
+  **A state with hours of its own is held the same way** (0.172.0). "Mientras esté en casa, y
+  sólo si es de 20:00 a 22:00", home since seven: the side was reached early, handed to a firing
+  that dropped it, and at eight nothing had changed — silent for the whole evening. Its rule now
+  carries the opening too, the step holds a state reached before it (`thereEarly`) exactly as it
+  holds a rate met early, and `PlaceWatcher.accept` holds the fence's word on it the way
+  `acceptDwell` holds a loitering. Only where folding leaves the rule as it is: under "a la vez"
+  a sibling window's own opening asks about the place, and holding as well would ring it twice.
+  And **«desde que suena» starts a round of its own** (0.172.0, the owner's call): a state that
+  rang and was never answered is quiet only until the rest counted from that ring is over
+  (`presenceAlreadyRang` with the clock), and then asks again — as the clock rules always did.
   **It counts time, not readings, and that is the whole of why it survives an adaptive cadence.**
   A percentage of the last N positions cannot mean the same thing twice when the cadence itself
   moves, and moving the cadence is what this watch does for a living — the same "75% inside"

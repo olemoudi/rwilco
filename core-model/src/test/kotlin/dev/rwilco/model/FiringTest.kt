@@ -268,6 +268,32 @@ class FiringTest {
         assertTrue(ignored.copy(resumedAt = rang.minusSeconds(60)).presenceAlreadyRang(casa, 0))
     }
 
+    /**
+     * «Desde que suena» is the anchor somebody picks because they will not answer, and it comes
+     * back on its rhythm: the clock rules always did, and a state place went quiet for good after
+     * its first ring nobody answered. The owner's call (2026-10-08): it asks again once the rest
+     * counted from that ring is over. Counted from the "hecho", an unanswered ring still keeps
+     * it quiet, as it always did.
+     */
+    @Test
+    fun `a state left unanswered under desde que suena asks again once its rest is over`() {
+        val rang = local(2026, 8, 26, 19, 0)
+        val ignored = reminder(casa).copy(
+            recurrence = Recurrence.After(1, RecurrenceUnit.DAYS, from = RecurrenceFrom.RANG),
+            lastFiredAt = rang,
+            lastFiredRule = 0,
+        )
+        val tonight = local(2026, 8, 26, 22, 0)
+        val tomorrow = local(2026, 8, 27, 9, 0)
+        assertTrue(ignored.presenceAlreadyRang(casa, 0, tonight, zone, DEFAULT_DAY_START), "it has had its say tonight")
+        assertFalse(ignored.presenceAlreadyRang(casa, 0, tomorrow, zone, DEFAULT_DAY_START), "the rest from the ring is over: a new round")
+        assertTrue(ignored.watchedCircles(tonight, zone, defaultTime).isEmpty(), "nothing to watch while it has had its say")
+        assertNull(ignored.watchedCircles(tomorrow, zone, defaultTime).single().opensAt, "and watched again from the morning")
+
+        val fromDone = ignored.copy(recurrence = Recurrence.After(1, RecurrenceUnit.DAYS))
+        assertTrue(fromDone.presenceAlreadyRang(casa, 0, local(2026, 8, 28, 9, 0), zone, DEFAULT_DAY_START), "counted from the hecho, it waits for one")
+    }
+
     @Test
     fun `a sibling clock ringing does not spend a state place under any`() {
         // "En casa, o a las nueve." Nine rings and is swiped away without a hecho; at six the

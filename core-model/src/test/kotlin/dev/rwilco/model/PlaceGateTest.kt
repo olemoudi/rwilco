@@ -268,6 +268,34 @@ class PlaceGateTest {
         assertNull(side.watchedCircles(local(2026, 8, 27, 18, 45), zone, defaultTime).single { it.ruleIndex == 0 }.place.ringsFrom)
     }
 
+    @Test
+    fun `a state with hours of its own carries their opening, so being there early waits for them`() {
+        // "Mientras esté en casa, y sólo si es de 20:00 a 22:00": home at seven is home at eight,
+        // and nothing else in the set asks at eight — there is no sibling window to ring then.
+        val evening = listOf(Condition.TimeWindow(LocalTime.of(20, 0), LocalTime.of(22, 0)))
+        val eight = local(2026, 8, 27, 20, 0)
+        val state = reminder(TriggerRule(home, evening))
+        assertEquals(eight, state.watchedCircles(local(2026, 8, 27, 19, 0), zone, defaultTime).single().place.ringsFrom)
+        assertNull(state.watchedCircles(local(2026, 8, 27, 20, 30), zone, defaultTime).single().place.ringsFrom, "open: nothing to wait for")
+        // A doorway with no rate is an instant: arriving at seven is not arriving at eight.
+        val door = reminder(TriggerRule(home.copy(onCrossing = true), evening))
+        assertNull(door.watchedCircles(local(2026, 8, 27, 19, 0), zone, defaultTime).single().place.ringsFrom)
+    }
+
+    @Test
+    fun `a gated state is not judged on the way past, and a gated doorway is`() {
+        // A doorway needs to know which side it starts on, or its first look is a baseline and
+        // not an arrival. A state is the opposite: what it starts from is "not asked yet", so
+        // that being there when its gate opens is news — a side kept from the wait made it none.
+        val evening = listOf(Condition.TimeWindow(LocalTime.of(20, 0), LocalTime.of(22, 0)))
+        val state = reminder(TriggerRule(home, evening)).circles().single()
+        val door = reminder(TriggerRule(home.copy(onCrossing = true), evening)).circles().single()
+        assertNotNull(state.opensAt)
+        assertFalse(state.listens)
+        assertTrue(door.listens)
+        assertFalse(reminder(TriggerRule(home)).circles().single().listens, "an open circle asks; it does not listen")
+    }
+
     // ---- a routine's circles: ask or count as done, never rest -----------------------------
 
     @Test

@@ -255,7 +255,7 @@ class ReminderFiring(
             return@withLock
         }
         // A state rings once a round; a crossing rings for every doorway. See presenceAlreadyRang.
-        if (place != null && ruleIndex != null && reminder.presenceAlreadyRang(place, ruleIndex)) {
+        if (place != null && ruleIndex != null && reminder.presenceAlreadyRang(place, ruleIndex, now, clock.zone, settings.dayStart, settings.dayShape)) {
             Log.i(TAG, "$id already rang for being there; waiting for the round to start again")
             Diag.note(TAG_DIAG, "r=${short(id)} dropped: state place already rang at $lastFired")
             scheduler.rearmAll()

@@ -40,6 +40,7 @@ import dev.rwilco.model.busyNotice
 import dev.rwilco.model.counted
 import dev.rwilco.model.counting
 import dev.rwilco.model.holding
+import dev.rwilco.model.listens
 import dev.rwilco.model.crossingIsNews
 import dev.rwilco.model.pollsSince
 import dev.rwilco.model.remembering
@@ -188,7 +189,10 @@ class PlaceWatcher(
         for (reminder in repository.openNow()) {
             for (circle in reminder.watchedCircles(now, clock.zone, current.defaultTime, current.dayShape, current.dayStart)) {
                 val gate = circle.opensAt
-                if (gate == null) asking += circle.place else listening += circle.place
+                // A gated state is not a listener (0.172.0, `Gated.listens`): what it must start
+                // from when it opens is "not asked yet", and every look another circle paid for
+                // used to tell it "home" — so being home when the gate opened was no news at all.
+                if (gate == null) asking += circle.place else if (circle.listens) listening += circle.place
                 if (gate != null && (opens == null || gate < opens!!)) opens = gate
                 // A resting circle keeps its baseline if it is waiting for a doorway. An
                 // ordinary *state* has to be asked afresh when the rest is over, and keeping
@@ -383,6 +387,19 @@ class PlaceWatcher(
         val awaited = live != null && live.transition == transition
         val rate = live?.dwell?.takeIf { awaited && live.crossing != Crossing.NOTHING }
         val remembered = state.remembering(placeId, transition)
+        // **A state reached before its hours is held for them** (0.172.0), as a rate met early
+        // is ([acceptDwell]): the fence is usually the first eye, and handed to the firing it was
+        // dropped as early — with the side written down, so the watch had nothing left to report
+        // when the hours opened. Held, the look at the opening rings it if the phone is still there.
+        val opening = live?.ringsFrom?.takeIf { awaited && rate == null && it > now && live.crossing == Crossing.RINGS }
+        if (opening != null) {
+            val due = remembered.nextCheckAt?.takeIf { it > now && it <= opening } ?: opening
+            store.write(remembered.holding(placeId, now).copy(nextCheckAt = due))
+            if (due == opening) scheduleAt(opening, promised = true)
+            log.note(WatchNote(at = now, kind = NoteKind.FENCE, place = label, lat = live.lat, lng = live.lng, radiusM = live.radiusM, inside = arrived, reported = arrived, acted = false))
+            Diag.note("geo", "r=${GeofenceIds.reminderIdOf(placeId).take(8)} there before its hours; held until $opening")
+            return@withLock Crossing.NOTHING
+        }
         store.write(if (rate != null) remembered.counting(placeId, now) else remembered)
         // Written down either way; acted on only for the crossing the rule waits for, and only
         // while the circle is worth watching at all — not resting, not outside its hours. What
@@ -636,7 +653,8 @@ class PlaceWatcher(
         withContext(NonCancellable) {
             // A stay met before its hours rings nothing yet, and the report has to say why.
             for (place in step.held) {
-                Diag.note("geo", "r=${GeofenceIds.reminderIdOf(place.id).take(8)} ${place.dwell?.toMinutes()} min met before its hours; held until ${place.ringsFrom}")
+                val what = place.dwell?.let { "${it.toMinutes()} min met" } ?: "there"
+                Diag.note("geo", "r=${GeofenceIds.reminderIdOf(place.id).take(8)} $what before its hours; held until ${place.ringsFrom}")
             }
             // **A rate nothing could measure is worth a sentence.** The battery has the last word
             // on how often this watch looks ([batteryFloor]), and under it a ten-minute stay

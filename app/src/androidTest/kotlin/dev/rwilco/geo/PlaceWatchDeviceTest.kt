@@ -256,15 +256,22 @@ class PlaceWatchDeviceTest {
         // needs, "fenced" buys no fix of its own and never will until they come round — but
         // "live" is watching the same city and pays for one every few minutes, and judging one
         // more circle against a fix already in hand costs arithmetic. So it is told.
+        //
+        // A doorway, because a doorway is what needs it: its first look must find a side, or it
+        // is a baseline and not an arrival. A state is the opposite and is NOT told (0.172.0,
+        // `Gated.listens`): being home when its gate opens has to be news, and a side kept from
+        // the wait made it none.
         val time = app.clock.instant().atZone(app.clock.zone).toLocalTime()
         val window = Condition.TimeWindow(time.plusHours(4).withSecond(0), time.plusHours(6).withSecond(0))
-        val fenced = seed("fenced", Presence.INSIDE, conditions = listOf(window))
+        val fenced = seed("fenced", Presence.INSIDE, conditions = listOf(window), onCrossing = true)
+        val state = seed("state", Presence.INSIDE, conditions = listOf(window))
         val live = seed("live", Presence.INSIDE)
-        val paused = key(fenced, Presence.INSIDE)
+        val paused = key(fenced, Presence.INSIDE, onCrossing = true)
 
         moveTo(south = 1_000.0, at = t0)
         watcher.check()
         assertEquals("the paused circle was not told where the phone was", false, store.read().inside[paused])
+        assertNull("a gated state was judged on the way past", store.read().inside[key(state, Presence.INSIDE)])
 
         // And it is told the arrival too. Told, and nothing else: it is not on the list a
         // crossing may be rung from, by either eye.
@@ -275,6 +282,30 @@ class PlaceWatchDeviceTest {
         assertEquals("the fence rang a circle outside its hours", Crossing.NOTHING, watcher.accept(paused, Transition.ENTER))
         assertNull(app.repository.get(fenced)!!.lastFiredAt)
         assertNotNull("the circle that paid for the fix should have rung", app.repository.get(live)!!.lastFiredAt)
+    }
+
+    @Test
+    fun aStateReachedBeforeItsHoursIsHeldForThemByEitherEye() = runBlocking {
+        // "Mientras esté en casa, y sólo si es de …": hours an hour out, inside the run-up, so
+        // the circle is watched — and home now is home then. Both eyes hold it for the opening
+        // instead of handing it to a firing that drops it as early (0.172.0).
+        val now = app.clock.instant().atZone(app.clock.zone).toLocalTime()
+        val window = Condition.TimeWindow(now.plusHours(1).withSecond(0), now.plusHours(3).withSecond(0))
+        val evening = seed("evening", Presence.INSIDE, conditions = listOf(window))
+        val circle = key(evening, Presence.INSIDE)
+
+        moveTo(south = 40.0, at = t0)
+        watcher.check()
+        assertNull("rang before its hours", app.repository.get(evening)!!.lastFiredAt)
+        val held = store.read()
+        assertNotNull("the watch dropped being there instead of holding it", held.held[circle])
+        assertTrue("the watch will not look by the opening: ${held.nextCheckAt}", held.nextCheckAt!! <= Instant.now().plusSeconds(3_660))
+
+        // The fence, first to see it, does the same.
+        store.write(PlaceWatchState())
+        assertEquals(Crossing.NOTHING, watcher.accept(circle, Transition.ENTER))
+        assertNull(app.repository.get(evening)!!.lastFiredAt)
+        assertNotNull("the fence dropped being there instead of holding it", store.read().held[circle])
     }
 
     @Test
