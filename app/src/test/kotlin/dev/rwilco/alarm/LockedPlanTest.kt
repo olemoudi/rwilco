@@ -1,6 +1,8 @@
 package dev.rwilco.alarm
 
+import dev.rwilco.model.Action
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.Duration
@@ -36,5 +38,19 @@ class LockedPlanTest {
         val plan = lockedPlan(LockedMirrorState(wakes = listOf(said, wake("note", 60, loud = false)), announced = listOf(said)), now)
         assertTrue(plan.arm.isEmpty())
         assertTrue(plan.announceNow.isEmpty())
+    }
+
+    /**
+     * The locked channel always plays the alarm tone, so only a reminder that makes a sound when
+     * the phone is unlocked is given one before. A full screen with no sound is silent unlocked,
+     * and was the alarm tone at alarm volume locked.
+     */
+    @Test
+    fun `only a reminder that sounds is said aloud before the first unlock`() {
+        assertTrue(soundsWhileLocked(setOf(Action.NOTIFICATION, Action.SOUND)))
+        assertTrue(soundsWhileLocked(setOf(Action.SOUND_UNTIL_ANSWERED)))
+        assertFalse(soundsWhileLocked(setOf(Action.FULL_SCREEN)), "a silent takeover stays silent")
+        assertFalse(soundsWhileLocked(setOf(Action.NOTIFICATION, Action.VIBRATE)))
+        assertFalse(soundsWhileLocked(emptySet()))
     }
 }

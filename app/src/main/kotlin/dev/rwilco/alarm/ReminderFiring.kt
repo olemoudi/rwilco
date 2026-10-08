@@ -1137,11 +1137,15 @@ class ReminderFiring(
      * firing is not news.
      */
     suspend fun rearmAndCatchUp() {
+        // What was said generically before the first unlock (LockedBoot.kt), to be told properly —
+        // read before the re-arm writes the mirror's moments afresh: the locked alarms to take down
+        // are the ones armed from it as the boot found it, and a reminder deleted or paused since
+        // is in that list and not in the new one.
+        val locked = LockedMirror.read(context)
         val missed = scheduler.rearmAll()
         val settings = settings()
-        // What was said generically before the first unlock (LockedBoot.kt), to be told properly.
-        val locked = LockedMirror.read(context)
         val announced = locked.announced.mapTo(HashSet()) { it.id to it.at }
+        val failed = HashSet<String>()
         for (reminder in missed) {
             // **One reminder at a time, each on its own.** A throw out of one used to end the
             // pass, and every missed reminder after it in the list stayed missed — held unarmed by
@@ -1151,15 +1155,20 @@ class ReminderFiring(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                failed += reminder.id
                 Log.e(TAG, "could not catch up ${reminder.id}", e)
                 Diag.note(TAG_DIAG, "r=${short(reminder.id)} catch-up failed (${e::class.simpleName}); the next pass tries again")
             }
         }
         // The locked alarms and the generic words go once the reminders they stood for are told.
+        // One whose catch-up failed keeps its word, and its mark: the next pass tells it quietly,
+        // where without the mark it was a plain missed moment, and inside a quarter of an hour that
+        // is a ring — the second, and loud.
         if (locked.armedLocked || locked.announced.isNotEmpty()) {
-            LockedAlerts.settle(context, locked)
-            LockedMirror.update(context) { it.copy(announced = emptyList(), armedLocked = false) }
-            Diag.note(TAG_DIAG, "unlocked after a locked boot: ${locked.announced.size} said generically")
+            val untold = locked.announced.filter { it.id in failed }
+            LockedAlerts.settle(context, locked.copy(announced = locked.announced - untold.toSet()))
+            LockedMirror.update(context) { it.copy(announced = untold, armedLocked = false) }
+            Diag.note(TAG_DIAG, "unlocked after a locked boot: ${locked.announced.size} said generically${if (untold.isNotEmpty()) ", ${untold.size} still to tell" else ""}")
         }
     }
 

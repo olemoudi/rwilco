@@ -35,7 +35,6 @@ import dev.rwilco.model.missedFire
 import dev.rwilco.model.nudgeAt
 import dev.rwilco.model.nextPrompt
 import dev.rwilco.model.nextWake
-import dev.rwilco.model.firingPlan
 import dev.rwilco.model.hushedByTheHour
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
@@ -187,8 +186,7 @@ class ReminderScheduler(
                 }
                 if (wrote) arm(reminder.id, wake, quiet = reminder.isContact) else cancelRing(reminder.id)
                 if (wrote && !reminder.isContact) {
-                    val plan = firingPlan(reminder.actions)
-                    val loud = plan.notification && (plan.sound || plan.fullScreen) && !hushedByTheHour(wake.at, wake.at, zone, settings.dayShape)
+                    val loud = soundsWhileLocked(reminder.actions) && !hushedByTheHour(wake.at, wake.at, zone, settings.dayShape)
                     mirrored += LockedWake(reminder.id, wake.at.toEpochMilli(), wake.ruleIndex, loud)
                 }
             }

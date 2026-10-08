@@ -52,7 +52,14 @@ class AlarmReceiver : BroadcastReceiver() {
                     // Only a ring has a moment the row keeps armed for it; the net's word, a lapse
                     // and a question are re-derived by the next re-arm pass on their own.
                     val retry = !nudge && !lapse && !ask
-                    if (retry) app.scheduler.armRetry(id, ruleIndex, app.clock.instant().plusSeconds(RETRY_SECONDS))
+                    if (retry) {
+                        app.scheduler.armRetry(id, ruleIndex, app.clock.instant().plusSeconds(RETRY_SECONDS))
+                        // The retry has this reminder's alarm identity, so it stands over whatever
+                        // the work armed before it finished — a next moment under a minute away
+                        // would ring late, as the wrong rule. Once the work is done, it is re-armed
+                        // from the row; done already, that is now.
+                        work.invokeOnCompletion { app.appScope.launch { runCatching { app.scheduler.rearmAll() } } }
+                    }
                     Log.e("RwilcoAlarms", "firing $id ran out of time; it goes on${if (retry) ", and is asked again in a minute" else ""}")
                     Diag.note("fire", "r=${id.take(8)} outlasted its broadcast${if (retry) "; retry armed" else ""}")
                 }

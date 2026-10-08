@@ -16,7 +16,9 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
 import dev.rwilco.MainActivity
 import dev.rwilco.R
+import dev.rwilco.model.Action
 import dev.rwilco.model.LATE_IS_MISSED
+import dev.rwilco.model.firingPlan
 import dev.rwilco.ui.alert.LockedAlertActivity
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -122,6 +124,14 @@ class LockedBootReceiver : BroadcastReceiver() {
     }
 }
 
+/**
+ * Whether a reminder is said aloud before the first unlock: only one that makes a sound unlocked.
+ * The locked channel has one tone, the alarm's, so a full screen asked for in silence was the
+ * alarm at alarm volume — and the generic word without a sound is a card nobody would see before
+ * the real one replaces it at the unlock.
+ */
+fun soundsWhileLocked(actions: Set<Action>): Boolean = firingPlan(actions).sound
+
 /** A mirrored moment came round. Still locked, it rings generically; unlocked, the real alarm has it. */
 class LockedAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -208,6 +218,16 @@ object LockedAlerts {
     }
 
     fun notificationId(id: String): Int = "locked:$id".hashCode()
+
+    /**
+     * Every generic word still up, and the tone each is playing. The screen says no more than "a
+     * reminder", so its "Silenciar" is for all of them: two due the same minute were two cards on
+     * one screen, and only the first went quiet.
+     */
+    fun silenceAll(context: Context) {
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        runCatching { manager.activeNotifications.filter { it.notification.channelId == CHANNEL }.forEach { manager.cancel(it.tag, it.id) } }
+    }
 
     /**
      * Unlocked: the locked alarms still standing go, and so do the generic words — the reminders

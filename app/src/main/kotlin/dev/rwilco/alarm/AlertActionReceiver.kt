@@ -24,6 +24,10 @@ class AlertActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val id = ReminderScheduler.reminderIdOf(intent) ?: return
         val app = context.applicationContext as RwilcoApplication
+        // The card goes at the tap, not when the "hecho" gets the lock: a tap waiting behind
+        // another door left the button there to be tapped again, and the second "hecho" — the
+        // ring already answered — spent the next moment as done ahead of time.
+        if (intent.action == ACTION_DONE) AlertNotifications.cancel(context, id)
         val pending = goAsync()
         app.appScope.launch {
             try {

@@ -2506,7 +2506,10 @@ loud what DST and a change of zone do to a landing.
   store) was dropped before `markFired`: the re-arm held its moment as missed and nothing caught
   it up until the app was opened or the six-hourly worker came — hours late, and silent by then.
   A ring that outlasts its broadcast also arms itself again a minute on (`armRetry`), in case the
-  process does not live to finish it; the armed-moment check drops the retry when it did.
+  process does not live to finish it; the armed-moment check drops the retry when it did, and the
+  job re-arms once it is done, because the retry wears the reminder's alarm identity and stands
+  over whatever the work had armed. A "hecho" from the shade takes its card down at the tap: left
+  up while the answer waited for the lock, a second tap spent the next moment as done ahead.
   `rearmAndCatchUp` catches up each reminder on its own: a throw out of one used to end the pass,
   leaving every missed reminder after it unarmed and uncaught on every pass after.
 - **A "hecho" deals with whatever is owed** (`momentDealtWith`, pure). Usually that is the firing
@@ -3421,13 +3424,13 @@ loud what DST and a change of zone do to a landing.
   And **«desde que suena» starts a round of its own** (0.172.0, the owner's call): a state that
   rang and was never answered is quiet only until the rest counted from that ring is over
   (`presenceAlreadyRang` with the clock), and then asks again — as the clock rules always did.
-  **It counts time, not readings, and that is the whole of why it survives an adaptive cadence.**
-  A percentage of the last N positions cannot mean the same thing twice when the cadence itself
-  moves, and moving the cadence is what this watch does for a living — the same "75% inside"
   While it waits it is gated by that rest rather than dropped, because the rest is the moment the
   watch has to wake for and a place arms none of its own; and the round is open from the run-up
   the watch starts asking it at (`MIN_WAIT` before), or a reading taken there was dropped with
   its side written down, and the end of the rest had no change left to report.
+  **It counts time, not readings, and that is the whole of why it survives an adaptive cadence.**
+  A percentage of the last N positions cannot mean the same thing twice when the cadence itself
+  moves, and moving the cadence is what this watch does for a living — the same "75% inside"
   means one thing at a look every two minutes and another at a look every fifteen. It is also
   brutal at the start, where one position on the wrong side is 100% of everything measured. So
   the tolerance is a **budget in minutes**: it only grows, it lands on exactly a quarter of the
@@ -3704,18 +3707,25 @@ loud what DST and a change of zone do to a landing.
   so a phone that restarted at three in the morning armed nothing, and the seven o'clock reminder
   arrived at twenty to eight, unlocked, as a quiet "did not ring on time" card. Every `rearmAll`
   now mirrors each reminder's next moment into device-protected storage (`LockedMirror`: id,
-  instant, rule and whether it would make a sound — **never the words**, the owner's call). A
+  instant, rule and whether it would make a sound, `soundsWhileLocked` — **never the words**, the
+  owner's call; a silent full screen is not said, because the locked channel's one tone is the
+  alarm's). A
   `directBootAware` `LockedBootReceiver` hears `LOCKED_BOOT_COMPLETED` and arms them
   (`lockedPlan`, pure: ahead → an alarm; passed during the restart, within `LATE_IS_MISSED` → at
   once; older → the catch-up's); `LockedAlarmReceiver` rings a generic "Tienes un recordatorio" on
   a channel of its own (`locked_v1`, the phone's alarm tone: a chosen tone is in locked storage)
-  with `LockedAlertActivity` over the lock screen — silence it, or unlock to see it. Once unlocked,
-  `rearmAndCatchUp` tells a moment already said that way as the reminder it was, quietly and
-  without the screen, rather than as missed (`fire(announced = true)`), and takes the locked
-  alarms and the generic cards down. The process those receivers start must not touch anything
+  with `LockedAlertActivity` over the lock screen — silence it (every generic card goes: the screen
+  names none), or unlock to see it. Once unlocked, `rearmAndCatchUp` tells a moment already said
+  that way as the reminder it was, quietly and without the screen, rather than as missed
+  (`fire(announced = true)`), and takes the locked alarms and the generic cards down — the alarms
+  as the mirror stood before the re-arm rewrote it, and keeping the mark of any whose catch-up
+  threw, so the next pass tells it quietly too rather than ringing it a second time. The process those receivers start must not touch anything
   else: `RwilcoApplication.onCreate` builds nothing before the unlock and waits for
   `ACTION_USER_UNLOCKED`; every dependency is a `Built` delegate, so anything that asks first —
   a component started just after the unlock, ahead of the broadcast — builds the container itself.
+  Nothing in `start()` may throw once the container is marked ready, or the collectors after it
+  never launch: WorkManager's provider reaches a process started locked only at the unlock, so
+  the one call there that can fail is caught.
 - **Nothing on the way to the person is allowed to fail quietly.** Every way `fire` has of
   *not* ringing re-arms before it leaves (the alarm that brought it is spent; a drop that left
   nothing behind was a reminder silent until the six-hourly net); `rearmAll` writes the armed

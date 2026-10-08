@@ -24,7 +24,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.core.app.NotificationManagerCompat
 import dev.rwilco.MainActivity
 import dev.rwilco.R
 import dev.rwilco.alarm.LockedAlerts
@@ -80,9 +79,9 @@ class LockedAlertActivity : ComponentActivity() {
         }
     }
 
-    /** The card goes, and with it the sound its channel is playing. */
+    /** The cards go, and with them the sound their channel is playing. */
     private fun silence() {
-        intent?.data?.lastPathSegment?.let { id -> runCatching { NotificationManagerCompat.from(this).cancel(LockedAlerts.notificationId(id)) } }
+        LockedAlerts.silenceAll(this)
         finish()
     }
 

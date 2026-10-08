@@ -142,8 +142,16 @@ class RwilcoApplication : Application() {
         if (ready) return
         synchronized(this) {
             if (ready) return
+            // The monitor is re-entrant, so a dependency [build] reads before assigning it would
+            // come back here and build again, for ever: an ordering mistake, said as one.
+            check(!building) { "a dependency was read before build() assigned it" }
             check(isUserUnlocked()) { "the app's storage cannot be read before the first unlock" }
-            build()
+            building = true
+            try {
+                build()
+            } finally {
+                building = false
+            }
             // Before the work starts and not after it: the work reads these through [Built], and
             // a read that found the container not ready would come back here and wait for itself.
             ready = true
@@ -153,6 +161,9 @@ class RwilcoApplication : Application() {
 
     @Volatile
     private var ready = false
+
+    /** Only ever read and written under the monitor of [ensureInitialized]. */
+    private var building = false
 
     /**
      * Built when the phone is first unlocked. A system broadcast, so a receiver nothing else can
@@ -215,7 +226,11 @@ class RwilcoApplication : Application() {
         // app was started" is not "somebody opened the app": the place watch's own alarm starts
         // this process every few minutes to an hour, and each of those used to enqueue a trip
         // to GitHub for a version.json that had not changed since the last one.
-        RearmWorker.schedule(this)
+        // Kept from throwing: a throw here comes after [ready], and would leave every collector
+        // below unlaunched for the life of the process. A process started before the first unlock
+        // gets WorkManager's provider only at the unlock, so this is the one call here with a way
+        // to fail — and the periodic work it books outlives the process, already booked by the last.
+        runCatching { RearmWorker.schedule(this) }.onFailure { Log.e(TAG, "could not book the six-hourly re-arm", it) }
         grants = Grants.read(this)
 
         // One pass at launch that also speaks up about anything the phone slept through, then a
@@ -392,8 +407,8 @@ class RwilcoApplication : Application() {
     /**
      * A dependency [ensureInitialized] builds. Asked for before that has run — a component that
      * starts right after the first unlock, ahead of the broadcast saying so — it runs it; asked
-     * for while it is running, it hands back what has been built so far, which is what the
-     * building itself reads as it goes.
+     * for from another thread while it is running, it waits for it. [build] itself may read what
+     * it has already assigned, and nothing else (see the check in [ensureInitialized]).
      */
     private class Built<T : Any> : ReadWriteProperty<RwilcoApplication, T> {
         @Volatile
