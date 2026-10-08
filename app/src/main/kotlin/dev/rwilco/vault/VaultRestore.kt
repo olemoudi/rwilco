@@ -85,6 +85,21 @@ class VaultRestore(private val app: RwilcoApplication) {
         return withContext(Dispatchers.Default) { VaultCrypto.seal(encodeSnapshot(snapshot), key, salt, iterations) }
     }
 
+    /**
+     * The vault under a new key (see [rekeyed]). Under the backup's lock: a run that sealed with
+     * the old key and finished after this would write its fingerprint over the forced upload, and
+     * the copy up there would stay under the forgotten passphrase until something changed. The
+     * undo copy goes under the new key too, when the old one sealed it — left as it was, undoing
+     * the last restore would ask for the passphrase this is here to replace.
+     */
+    suspend fun rekey(key: ByteArray, salt: ByteArray, iterations: Int): Unit = VaultBackup.lock.withLock {
+        val old = app.vaultStore.read()
+        readUndoCopy()?.let { bytes ->
+            withContext(Dispatchers.Default) { VaultCrypto.reseal(bytes, old.keyBytes(), key, salt, iterations) }?.let { writeUndoCopy(it) }
+        }
+        app.vaultStore.update { if (it.enabled) it.rekeyed(key, salt, iterations) else it }
+    }
+
     fun hasUndoCopy(): Boolean = undoFile().isFile
 
     suspend fun readUndoCopy(): ByteArray? = withContext(Dispatchers.IO) { undoFile().takeIf { it.isFile }?.readBytes() }

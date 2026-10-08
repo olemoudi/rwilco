@@ -3,6 +3,8 @@ package dev.rwilco.vault
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import javax.crypto.SecretKeyFactory
@@ -86,6 +88,25 @@ class VaultCryptoTest {
     fun `garbage is corruption`() {
         assertThrows(VaultException.Corrupt::class.java) { VaultCrypto.open("<html>".toByteArray(), key) }
         assertThrows(VaultException.Corrupt::class.java) { VaultCrypto.header("{}".toByteArray()) }
+    }
+
+    @Test
+    fun `a vault sealed again opens with the new key and not the old`() {
+        val newSalt = ByteArray(16) { (it + 1).toByte() }
+        val newKey = VaultCrypto.deriveKey("a new passphrase 2026", newSalt, TEST_ITERATIONS)
+        val resealed = VaultCrypto.reseal(VaultCrypto.seal(plain, key, salt, TEST_ITERATIONS), key, newKey, newSalt, TEST_ITERATIONS)
+        assertNotNull(resealed)
+        assertArrayEquals(plain, VaultCrypto.open(resealed!!, newKey))
+        assertArrayEquals(newSalt, VaultCrypto.header(resealed).salt, "a new phone derives with the salt the file carries")
+        assertThrows(VaultException.WrongPassphrase::class.java) { VaultCrypto.open(resealed, key) }
+    }
+
+    @Test
+    fun `a vault the old key does not open is left as it is`() {
+        val other = VaultCrypto.deriveKey("incorrect horse battery staple", salt, TEST_ITERATIONS)
+        val newKey = VaultCrypto.deriveKey("a new passphrase 2026", salt, TEST_ITERATIONS)
+        assertNull(VaultCrypto.reseal(VaultCrypto.seal(plain, other, salt, TEST_ITERATIONS), key, newKey, salt, TEST_ITERATIONS))
+        assertNull(VaultCrypto.reseal("<html>".toByteArray(), key, newKey, salt, TEST_ITERATIONS))
     }
 
     @Test

@@ -70,6 +70,7 @@ import dev.rwilco.ui.components.rememberNow
 import dev.rwilco.model.MIN_PASSPHRASE_LENGTH
 import dev.rwilco.model.PassphraseStrength
 import dev.rwilco.model.TriggerFamily
+import dev.rwilco.model.passphraseIsStrongEnough
 import dev.rwilco.model.passphraseStrength
 import dev.rwilco.ui.components.ListPlaceholder
 import dev.rwilco.ui.components.LocalSnackbar
@@ -325,6 +326,12 @@ private fun StatusCard(vault: VaultState, working: Boolean, viewModel: BackupVie
                 subtitle = stringResource(R.string.vault_check_hint),
                 onClick = viewModel::askPassphraseCheck,
             )
+            // Nobody can recover it, but this phone can seal its data again under a new one.
+            NavRow(
+                stringResource(R.string.vault_change_passphrase),
+                subtitle = stringResource(R.string.vault_change_passphrase_hint),
+                onClick = viewModel::askNewPassphrase,
+            )
         }
     }
     Spacer(Modifier.height(Tokens.spacing.sm))
@@ -441,6 +448,7 @@ private fun PhaseDialogs(phase: BackupPhase, localCount: Int, viewModel: BackupV
             onConfirm = viewModel::checkPassphrase,
             onDismiss = viewModel::dismiss,
         )
+        BackupPhase.AskNewPassphrase -> NewPassphraseDialog(onConfirm = viewModel::changePassphrase, onDismiss = viewModel::dismiss)
         is BackupPhase.AskExportPassphrase -> PassphraseDialog(
             title = stringResource(R.string.vault_export_passphrase_title),
             body = stringResource(R.string.vault_export_passphrase_body, MIN_PASSPHRASE_LENGTH),
@@ -673,6 +681,42 @@ private fun PassphraseDialog(title: String, body: String, action: String, onConf
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(passphrase) }, enabled = passphrase.isNotEmpty()) { Text(action) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.vault_cancel)) } },
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = MaterialTheme.shapes.extraLarge,
+    )
+}
+
+/**
+ * The new passphrase, twice, with the strength bar the setup form has. The button waits for the
+ * two to agree and to meet the rule, so a slip costs a correction rather than the whole dialog.
+ */
+@Composable
+private fun NewPassphraseDialog(onConfirm: (String, String) -> Unit, onDismiss: () -> Unit) {
+    // Plain `remember`, as in PassphraseDialog.
+    var passphrase by remember { mutableStateOf("") }
+    var again by remember { mutableStateOf("") }
+    val ready = passphrase == again && passphraseIsStrongEnough(passphrase)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.vault_change_passphrase_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Tokens.spacing.md)) {
+                Text(stringResource(R.string.vault_change_passphrase_body), style = MaterialTheme.typography.bodyMedium)
+                SecretField(value = passphrase, onChange = { passphrase = it }, label = stringResource(R.string.vault_field_passphrase_new), strength = true)
+                SecretField(
+                    value = again,
+                    onChange = { again = it },
+                    label = stringResource(R.string.vault_field_passphrase_again),
+                    // Only once the second is as long as the first: said while it is being typed,
+                    // it would be wrong on every keystroke but the last.
+                    hint = if (again.length >= passphrase.length && again != passphrase) stringResource(R.string.vault_error_passphrase_mismatch) else null,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(passphrase, again) }, enabled = ready) { Text(stringResource(R.string.vault_change_passphrase_action)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.vault_cancel)) } },
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,

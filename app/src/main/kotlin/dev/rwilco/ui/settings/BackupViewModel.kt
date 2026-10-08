@@ -81,6 +81,8 @@ sealed interface BackupPhase {
     data class AskPassphrase(val bytes: ByteArray, val source: RestoreSource) : BackupPhase
     /** A rehearsal of the one thing that has no way back: do you still know the passphrase? */
     data object AskCheckPassphrase : BackupPhase
+    /** A new passphrase for the vault, with no need for the old one. */
+    data object AskNewPassphrase : BackupPhase
     /** An export with no vault on: the file needs a passphrase of its own. */
     data class AskExportPassphrase(val uri: Uri) : BackupPhase
     /** A file opened to see whether it would work, and nothing else. */
@@ -385,6 +387,31 @@ class BackupViewModel(private val app: RwilcoApplication) : ViewModel() {
             busy(R.string.vault_busy_deriving)
             val derived = derive(passphrase, current.saltBytes(), current.iterations)
             if (MessageDigest.isEqual(derived, current.keyBytes())) done(R.string.vault_check_ok) else fail(R.string.vault_check_wrong)
+        }
+    }
+
+    fun askNewPassphrase() {
+        mutablePhase.value = BackupPhase.AskNewPassphrase
+    }
+
+    /**
+     * The passphrase forgotten, or only to be changed: this phone holds the data and the key that
+     * seals it, so the old one is not asked for. A new salt and key, and a copy sent now to replace
+     * the one up there. What was sealed before — files exported, the older versions the
+     * repository's history keeps — still opens with the old passphrase only.
+     */
+    fun changePassphrase(passphrase: String, again: String) {
+        if (mutablePhase.value != BackupPhase.AskNewPassphrase) return
+        val current = state.value
+        if (current == null || !current.hasKey) return
+        if (passphrase != again) return fail(R.string.vault_error_passphrase_mismatch)
+        if (!passphraseIsStrongEnough(passphrase)) return fail(R.string.vault_error_passphrase_short)
+        viewModelScope.launch {
+            busy(R.string.vault_busy_deriving)
+            val salt = VaultCrypto.newSalt()
+            restore.rekey(derive(passphrase, salt, KDF_ITERATIONS), salt, KDF_ITERATIONS)
+            VaultWorker.runNow(app)
+            done(R.string.vault_done_passphrase_changed)
         }
     }
 

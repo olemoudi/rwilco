@@ -12,6 +12,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -20,10 +21,13 @@ import dev.rwilco.MainActivity
 import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.model.ThemeMode
+import dev.rwilco.vault.VaultCrypto
 import dev.rwilco.vault.VaultOutcome
 import dev.rwilco.vault.VaultState
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.BeforeClass
 import androidx.test.rule.GrantPermissionRule
@@ -41,6 +45,8 @@ import java.io.File
 class BackupTourTest {
 
     companion object {
+        private const val NEW_PASSPHRASE = "a new passphrase 2026"
+
         @JvmStatic
         @BeforeClass
         fun useSpanish() {
@@ -108,6 +114,39 @@ class BackupTourTest {
         }
         shot("backup-last-failed")
 
+    }
+
+    /**
+     * A forgotten passphrase replaced without the old one (0.171.0): typed twice into the dialog,
+     * and what the phone keeps afterwards is the new passphrase's key under a new salt.
+     */
+    @Test
+    fun aForgottenPassphraseIsReplacedWithoutTheOldOne() {
+        val oldSalt = VaultCrypto.newSalt()
+        runBlocking {
+            app.vaultStore.update {
+                VaultState(
+                    enabled = true, owner = "olemoudi", repo = "rwilco-vault", pat = "x",
+                    key = VaultState.encode(VaultCrypto.deriveKey("forgotten passphrase 1", oldSalt, 1_000)),
+                    salt = VaultState.encode(oldSalt), iterations = 1_000, deviceId = "tour",
+                )
+            }
+        }
+        rule.onNodeWithContentDescription(s(R.string.home_settings)).performClick()
+        rule.waitUntilShown(s(R.string.vault_card_title))
+        rule.onNodeWithText(s(R.string.vault_card_title), useUnmergedTree = true).performScrollTo().performClick()
+        rule.waitUntilShown(s(R.string.vault_change_passphrase))
+        rule.onNodeWithText(s(R.string.vault_change_passphrase)).performScrollTo().performClick()
+        rule.waitUntilShown(s(R.string.vault_change_passphrase_title))
+        rule.onNodeWithText(s(R.string.vault_field_passphrase_new)).performTextInput(NEW_PASSPHRASE)
+        rule.onNodeWithText(s(R.string.vault_field_passphrase_again)).performTextInput(NEW_PASSPHRASE)
+        shot("backup-new-passphrase")
+        rule.onNodeWithText(s(R.string.vault_change_passphrase_action)).performClick()
+
+        rule.waitUntil(timeoutMillis = 30_000) { runBlocking { app.vaultStore.read() }.salt != VaultState.encode(oldSalt) }
+        val state = runBlocking { app.vaultStore.read() }
+        assertArrayEquals(VaultCrypto.deriveKey(NEW_PASSPHRASE, state.saltBytes(), state.iterations), state.keyBytes())
+        assertNull("the copy up there is owed again under the new key", state.lastUploadedFingerprint)
     }
 
     @Test

@@ -77,6 +77,18 @@ class VaultStepTest {
     }
 
     @Test
+    fun `a new passphrase changes the key and nothing else, and owes the copy again`() {
+        val key = ByteArray(32) { 7 }
+        val salt = ByteArray(16) { 9 }
+        val rekeyed = home.rekeyed(key, salt, iterations = 1_000)
+        assertEquals(VaultState.encode(key), rekeyed.key)
+        assertEquals(VaultState.encode(salt), rekeyed.salt)
+        assertEquals(1_000, rekeyed.iterations)
+        assertNull(rekeyed.lastUploadedFingerprint, "the copy up there is under the old key until an upload replaces it")
+        assertEquals(home.copy(key = rekeyed.key, salt = rekeyed.salt, iterations = 1_000, lastUploadedFingerprint = null), rekeyed)
+    }
+
+    @Test
     fun `replacing a copy that is there needs something to put in its place`() {
         val strong = "correct horse 42 battery"
         val old = "twelve chars"

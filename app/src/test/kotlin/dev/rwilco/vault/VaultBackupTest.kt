@@ -7,6 +7,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.Clock
@@ -181,6 +182,23 @@ class VaultBackupTest {
         assertEquals(VaultOutcome.UPLOADED, state.lastOutcome)
         assertEquals(1, resolved)
         assertTrue(attention.isEmpty())
+    }
+
+    @Test
+    fun `a new passphrase sends the same content again, under the new key only`() = runBlocking {
+        val store = MemoryStore(enabled.copy(remoteSha = "0ld", lastUploadedFingerprint = fingerprint(listOf(row), settings)))
+        val transport = FakeTransport(onWrite = { bytes, _ -> VaultCrypto.gitBlobSha(bytes) })
+        val newSalt = ByteArray(16) { (it + 1).toByte() }
+        val newKey = VaultCrypto.deriveKey("a new passphrase 2026", newSalt, 100)
+        store.state = store.state.rekeyed(newKey, newSalt, 100)
+
+        assertEquals(VaultRunResult.DONE, backup(store, transport).run())
+
+        val (sent, replacing) = transport.writes.single()
+        assertEquals("0ld", replacing, "the copy there is replaced, not left beside the new one")
+        assertEquals(listOf(row), decodeSnapshot(VaultCrypto.open(sent, newKey)).reminders)
+        assertThrows(VaultException.WrongPassphrase::class.java) { VaultCrypto.open(sent, key) }
+        assertEquals(fingerprint(listOf(row), settings), store.state.lastUploadedFingerprint)
     }
 
     @Test

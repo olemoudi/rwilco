@@ -3775,6 +3775,13 @@ history is the backup's history for free — with a fine-grained token scoped to
   screen derives what is typed with the vault's own salt and compares it to the key
   (`checkPassphrase`, `MessageDigest.isEqual`): nothing is read, written or sent, and the token has
   had its own rehearsal (`testConnection`) since the beginning.
+- **A new passphrase, the old one forgotten** (0.171.0): the key is all that seals, and this phone
+  holds the data, so the old phrase is never asked for. `changePassphrase` derives a new key under
+  a new salt; `VaultRestore.rekey`, under the backup's lock (a run sealing with the old key must
+  not write its fingerprint over the forced upload), stores it with `rekeyed` — which drops
+  `lastUploadedFingerprint` and keeps `remoteSha` — and reseals the undo copy when the old key
+  opened it. The next run replaces the file. What the old phrase sealed elsewhere stays sealed
+  with it: exported files, and the older versions the repository's history keeps.
 - **Off, or lost**: the vault's store is replaced by an empty one when its file will not parse —
   the right trade, a screen that says the backup is off beats one that crashes — but an empty store
   reads exactly like a backup nobody ever set up, and the copies stop with nobody told. A zero-byte

@@ -1478,7 +1478,14 @@
     <string name="vault_check_body">Type the passphrase this copy is sealed with. It is checked against the key on this phone: nothing is read, written or sent.</string>
     <string name="vault_check_action">Check</string>
     <string name="vault_check_ok">That is the passphrase.</string>
-    <string name="vault_check_wrong">That is not the passphrase this copy is sealed with.</string>
+    <string name="vault_check_wrong">That is not the passphrase this copy is sealed with. If it is gone, “Change the passphrase” sets a new one.</string>
+    <string name="vault_change_passphrase">Change the passphrase</string>
+    <string name="vault_change_passphrase_hint">Also if you have forgotten it: the old one is not needed.</string>
+    <string name="vault_change_passphrase_title">A new passphrase</string>
+    <string name="vault_change_passphrase_body">This phone seals its data again under the new passphrase and replaces the copy on GitHub; the old one is not needed. Files exported before, and the older versions the repository’s history keeps, still open with the old one only.</string>
+    <string name="vault_change_passphrase_action">Change</string>
+    <string name="vault_field_passphrase_new">New passphrase</string>
+    <string name="vault_done_passphrase_changed">Passphrase changed. The copy under the new one is on its way.</string>
     <string name="vault_lost_title">The backup\'s own settings were lost</string>
     <string name="vault_lost_body">The backup was on, and the file holding its token and its key could not be read, so the phone replaced it with an empty one. Nothing has been copied since. The copy on GitHub is untouched: set it up again with the same repository and the same passphrase and this phone rejoins it.</string>
     <string name="vault_lost_dismiss">Leave it off</string>
@@ -1736,6 +1743,13 @@
         <item>A reminder with sound now goes to your headphones when you are wearing any, instead of out of the phone\'s speaker as an alarm otherwise would. It is a setting, in Sound, and it is worth turning off if your earbuds live in a drawer: a reminder played to nobody is a reminder missed.</item>
         <item>And it no longer stops your music. What was playing drops a few decibels and carries on underneath while the reminder sounds over it — the reminder is on the alarm channel and the music is not, so neither has to fight the other — and comes back by itself. It used to ask for the audio outright, which ended podcasts for a ten-second chime.</item>
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_171_0">
+
+        <item>Backup → “Change the passphrase”. The old one is not asked for: this phone seals what it holds again under the new one and replaces the copy on GitHub straight away. So a forgotten passphrase is something you can put right while you still have the phone.</item>
+        <item>Files exported before, and the older versions the repository’s history keeps, still open with the old passphrase only.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_170_0">

@@ -122,6 +122,16 @@ object VaultCrypto {
         return runCatching { gunzip(packed) }.getOrElse { throw VaultException.Corrupt("payload does not unpack") }
     }
 
+    /** [envelope] sealed again under [key], or null when [oldKey] does not open it. */
+    fun reseal(envelope: ByteArray, oldKey: ByteArray, key: ByteArray, salt: ByteArray, iterations: Int): ByteArray? {
+        val plain = try {
+            open(envelope, oldKey)
+        } catch (e: VaultException) {
+            return null
+        }
+        return seal(plain, key, salt, iterations)
+    }
+
     /** `git hash-object`: what GitHub reports as the blob sha, computable here before the upload. */
     fun gitBlobSha(bytes: ByteArray): String {
         val digest = MessageDigest.getInstance("SHA-1")

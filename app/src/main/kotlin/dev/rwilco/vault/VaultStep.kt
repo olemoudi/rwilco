@@ -54,6 +54,15 @@ fun VaultState.movedTo(owner: String, repo: String, pat: String, remoteSha: Stri
     return if (keeps) pointed else pointed.copy(remoteSha = remoteSha, lastUploadedFingerprint = null, lastAttemptSha = null)
 }
 
+/**
+ * The vault under a new passphrase's [key]. The old passphrase is not needed — this phone holds
+ * the data, and the key is all that seals it — so a forgotten one can be replaced. The copy up
+ * there is still sealed under the old key, which is why the fingerprint goes: the next run
+ * uploads even with nothing changed, over the sha it already knows. Everything else stays.
+ */
+fun VaultState.rekeyed(key: ByteArray, salt: ByteArray, iterations: Int): VaultState =
+    copy(key = VaultState.encode(key), salt = VaultState.encode(salt), iterations = iterations, lastUploadedFingerprint = null)
+
 /** Whether [owner]/[repo] is where this vault copies to now; GitHub names do not tell case apart. */
 fun VaultState.isRepository(owner: String, repo: String): Boolean =
     owner.equals(this.owner, ignoreCase = true) && repo.equals(this.repo, ignoreCase = true)

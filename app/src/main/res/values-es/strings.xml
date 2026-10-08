@@ -1463,7 +1463,14 @@
     <string name="vault_check_body">Escribe la contraseña con la que está cifrada esta copia. Se comprueba contra la clave de este teléfono: no se lee, ni se escribe, ni se envía nada.</string>
     <string name="vault_check_action">Comprobar</string>
     <string name="vault_check_ok">Esa es la contraseña.</string>
-    <string name="vault_check_wrong">Esa no es la contraseña con la que está cifrada esta copia.</string>
+    <string name="vault_check_wrong">Esa no es la contraseña con la que está cifrada esta copia. Si la has olvidado, «Cambiar la contraseña» pone una nueva.</string>
+    <string name="vault_change_passphrase">Cambiar la contraseña</string>
+    <string name="vault_change_passphrase_hint">También si la has olvidado: no hace falta la antigua.</string>
+    <string name="vault_change_passphrase_title">Una contraseña nueva</string>
+    <string name="vault_change_passphrase_body">Este teléfono vuelve a cifrar sus datos con la nueva y sustituye la copia de GitHub; no hace falta la antigua. Los archivos exportados antes, y las versiones anteriores que guarda el historial del repositorio, siguen abriéndose solo con la antigua.</string>
+    <string name="vault_change_passphrase_action">Cambiar</string>
+    <string name="vault_field_passphrase_new">Contraseña nueva</string>
+    <string name="vault_done_passphrase_changed">Contraseña cambiada. La copia con la nueva está en camino.</string>
     <string name="vault_lost_title">Se han perdido los ajustes de la copia</string>
     <string name="vault_lost_body">La copia estaba activada y el fichero que guardaba su token y su clave no se ha podido leer, así que el teléfono lo ha reemplazado por uno vacío. Desde entonces no se ha copiado nada. La copia de GitHub sigue intacta: vuelve a configurarla con el mismo repositorio y la misma contraseña y este teléfono se reengancha.</string>
     <string name="vault_lost_dismiss">Dejarla desactivada</string>
@@ -1721,6 +1728,13 @@
         <item>Un aviso con sonido va ahora a tus auriculares cuando los llevas puestos, en vez de salir por el altavoz del móvil como haría cualquier alarma. Es un ajuste, en Sonido, y merece la pena desactivarlo si tus auriculares viven en un cajón: un aviso que suena para nadie es un aviso perdido.</item>
         <item>Y ya no te corta la música. Lo que estuvieras escuchando baja unos decibelios y sigue por debajo mientras el aviso suena por encima —el aviso va por el canal de alarma y la música no, así que ninguno tiene que pelear con el otro— y vuelve solo a su volumen. Antes pedía el audio en exclusiva, lo que mataba un podcast por un tono de diez segundos.</item>
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_171_0">
+
+        <item>Copia de seguridad → «Cambiar la contraseña». No te pide la antigua: este teléfono vuelve a cifrar lo que tiene con la nueva y sustituye la copia de GitHub en el momento. Así, una contraseña olvidada se arregla mientras aún tienes el teléfono.</item>
+        <item>Los archivos exportados antes, y las versiones anteriores que guarda el historial del repositorio, siguen abriéndose solo con la antigua.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_170_0">
