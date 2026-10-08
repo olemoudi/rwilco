@@ -178,6 +178,12 @@ fun Reminder.presenceAlreadyRang(place: Trigger.Location, ruleIndex: Int): Boole
  * their rhythm whatever happens; a state place went quiet for good after its first ring instead.
  * The owner's call (2026-10-08): once the rest counted from that ring is over, the state asks
  * again. Counted from the "hecho", the ring keeps it quiet until there is one, as it always did.
+ *
+ * **Over from the run-up, not the minute.** The watch starts asking a gated circle
+ * [PlaceWatchPolicy.MIN_WAIT] before its gate (`watchedCircles`), and a reading taken then and
+ * dropped here wrote the side down all the same: at the end of the rest there was no change left
+ * to report, and nothing rang for as long as the phone stayed there. Up to two minutes early is
+ * what a rest counted from a "hecho" has always rung.
  */
 fun Reminder.presenceAlreadyRang(
     place: Trigger.Location,
@@ -190,7 +196,7 @@ fun Reminder.presenceAlreadyRang(
     if (!presenceAlreadyRang(place, ruleIndex)) return false
     if (!recurrence.countsFromRinging) return true
     val rest = restUntil(zone, dayStart, shape) ?: return true
-    return rest > now
+    return rest > now + PlaceWatchPolicy.MIN_WAIT
 }
 
 /** Inside this of the last ring, a second sighting of the same place is the same arrival. */

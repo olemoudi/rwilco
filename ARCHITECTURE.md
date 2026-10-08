@@ -3073,8 +3073,10 @@ loud what DST and a change of zone do to a landing.
   attempt runs with location still off and fails, so a phone whose location went off for the
   night had no fences until the worker came round. After every look that got a fix, and whenever
   somebody opens the app, a sync whose last attempt left no fences in is tried again if location
-  is on — free otherwise. Syncs are one at a time now (a lock): each is a remove and an add, and
-  two side by side could land one's remove after the other's add.
+  is on — free otherwise, and no more than every half hour (`RETRY_FENCES_EVERY`): Play Services
+  can refuse with location on, and every look near a place was a full remove-and-add. Syncs are
+  one at a time now (a lock): each is a remove and an add, and two side by side could land one's
+  remove after the other's add.
   **Wholesale, but no longer on every process start (0.53.0).** `sync()` runs from
   `Application.onCreate`, and the place watch's own alarm starts the process every few minutes
   to an hour on a phone that kills it — so the fences were torn down and put back at the
@@ -3269,7 +3271,12 @@ loud what DST and a change of zone do to a landing.
   had not changed and said nothing: "mientras esté en casa, y vuelve cada día" rang once and
   never again, but only on a phone with a second place reminder being watched, which is why it
   looked like it worked. Gated, it is now left out of `listening` (so `sync` drops its memory as
-  well), and the first look after the gate finds it true and says so.
+  well), and the first look after the gate finds it true and says so. The fence keeps out of it
+  too: `accept` writes no side for a circle that is neither asking nor listening — registered all
+  the same, its ENTER at six wrote "home" and the look at the opening found nothing new. And a
+  look that would take no fix (`stepWithoutLooking`) is taken after all when the stored fix finds
+  something: a state reopened has no side, so a phone lying still found "home" at once, and the
+  rest wrote it down and threw the ring away.
   On each check (an allow-while-idle alarm to `PlaceCheckReceiver`,
   exact only for a look under a quarter of an hour away — above that the exactness buys nothing
   Doze was going to honour anyway, and an inexact alarm is one the system may batch with
@@ -3417,6 +3424,10 @@ loud what DST and a change of zone do to a landing.
   **It counts time, not readings, and that is the whole of why it survives an adaptive cadence.**
   A percentage of the last N positions cannot mean the same thing twice when the cadence itself
   moves, and moving the cadence is what this watch does for a living — the same "75% inside"
+  While it waits it is gated by that rest rather than dropped, because the rest is the moment the
+  watch has to wake for and a place arms none of its own; and the round is open from the run-up
+  the watch starts asking it at (`MIN_WAIT` before), or a reading taken there was dropped with
+  its side written down, and the end of the rest had no change left to report.
   means one thing at a look every two minutes and another at a look every fifteen. It is also
   brutal at the start, where one position on the wrong side is 100% of everything measured. So
   the tolerance is a **budget in minutes**: it only grows, it lands on exactly a quarter of the

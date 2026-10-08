@@ -335,14 +335,15 @@ class PlaceWatcher(
         // went into the memory, NOTHING came back, and a real arrival was consumed for good.
         // Left unwritten instead, the next look re-derives the crossing from fix-versus-memory
         // and rings late rather than never.
-        val lively = runCatching { places().firstOrNull { it.id == placeId } }
+        val lively = runCatching { watching() }
         val failed = lively.exceptionOrNull()
         if (failed != null) {
             Log.e(TAG, "could not judge a crossing at $placeId", failed)
             Diag.note("geo", "crossing unjudged (${failed::class.simpleName}); left for the next look")
             return@withLock Crossing.NOTHING
         }
-        val live = lively.getOrNull()
+        val watch = lively.getOrThrow()
+        val live = watch.asking.firstOrNull { it.id == placeId }
         // A circle that asks for the doorway and has already rung is owed the other side before
         // it rings again: the crossing has to be one the app has seen the far side of, and what
         // it cannot vouch for is not news. The first ring keeps the benefit of the doubt. A
@@ -400,7 +401,12 @@ class PlaceWatcher(
             Diag.note("geo", "r=${GeofenceIds.reminderIdOf(placeId).take(8)} there before its hours; held until $opening")
             return@withLock Crossing.NOTHING
         }
-        store.write(if (rate != null) remembered.counting(placeId, now) else remembered)
+        // **Not for a circle nobody is asking or listening to** (0.172.0): a gated state keeps no
+        // side through its wait (`Gated.listens`), and the fence — registered for it all the same
+        // — wrote one anyway: home at six, the hours open at eight, and the look at the opening
+        // found the phone where the memory already had it. Nothing to report, nothing rang.
+        val heard = live != null || watch.listening.any { it.id == placeId }
+        if (heard) store.write(if (rate != null) remembered.counting(placeId, now) else remembered)
         // Written down either way; acted on only for the crossing the rule waits for, and only
         // while the circle is worth watching at all — not resting, not outside its hours. What
         // acting on it means is the circle's own to say: a place under "todos" that has already

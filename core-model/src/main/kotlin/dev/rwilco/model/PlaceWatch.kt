@@ -1139,7 +1139,8 @@ fun stepPlaceWatch(
  * the same — the corroboration matters, because a phone flat on a train table feels nothing —
  * then the fix about to be taken is one already in hand, and the step is run against the stored
  * one instead. That is exactly what a repeated reading would have produced: [insideAfter] is
- * idempotent, so a rested step has no crossings to miss and cannot invent one.
+ * idempotent, so a rested step has no crossings to miss — and one that finds a circle with no
+ * side yet (a state reopened) is not taken at all, because that finding is a ring.
  *
  * The bound is that fix's own age. Everything downstream is measured from it — the speed the
  * next plan is drawn at, whether a geofence's crossing is news ([crossingIsNews]) — so a rest
@@ -1166,6 +1167,11 @@ fun stepWithoutLooking(
     if (places.any { it.id in state.held && it.ringsFrom?.isAfter(now) != true }) return null
     val fix = state.lastFix ?: return null
     val step = stepPlaceWatch(state, fix, places, now, sensed = false, charge = charge, listening = listening)
+    // **Nor a step that found something.** A reading repeated finds no crossing — except for a
+    // circle with no side yet: a state reopened after a rest or its gate (0.172.0) is judged
+    // afresh, and found home it is news. Rested, that news was written down as the side and
+    // thrown away with the rest of the step. The look is taken instead, and rings off that.
+    if (step.events.isNotEmpty()) return null
     val wait = step.plan?.wait ?: return null
     if (Duration.between(fix.at, now + wait) > PlaceWatchPolicy.SPEED_MEMORY) return null
     return step

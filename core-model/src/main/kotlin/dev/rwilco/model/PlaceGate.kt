@@ -169,7 +169,15 @@ fun Reminder.watchedCircles(
         // under "a la vez" it is folded into every other rule as a state, and those rules are
         // not spent — a window beside it can ring again, and it is this map that answers where
         // the phone was when it did.
-        if (place != null && !place.onCrossing && rules.size == 1 && presenceAlreadyRang(place, index, now, zone, dayStart, shape)) {
+        //
+        // **Not under «desde que suena»** (0.172.0): there the rest counted from that ring is what
+        // ends the round, and the circle waits for it below like any other rest — gated, which is
+        // what wakes the watch when it is over. Dropped, nothing did: a place has no moment to
+        // arm, and the watch with nothing to ask stood down until the six-hourly worker. A
+        // series with no rest left to count (it has run out) has had its say for good.
+        if (place != null && !place.onCrossing && rules.size == 1 && presenceAlreadyRang(place, index, now, zone, dayStart, shape) &&
+            !(recurrence.countsFromRinging && rest != null)
+        ) {
             return@flatMapIndexed emptyList()
         }
         val fold = folded[index]

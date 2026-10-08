@@ -7,6 +7,7 @@ import dev.rwilco.model.Fixtures.reminder
 import dev.rwilco.model.Fixtures.zone
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -287,11 +288,37 @@ class FiringTest {
         val tomorrow = local(2026, 8, 27, 9, 0)
         assertTrue(ignored.presenceAlreadyRang(casa, 0, tonight, zone, DEFAULT_DAY_START), "it has had its say tonight")
         assertFalse(ignored.presenceAlreadyRang(casa, 0, tomorrow, zone, DEFAULT_DAY_START), "the rest from the ring is over: a new round")
-        assertTrue(ignored.watchedCircles(tonight, zone, defaultTime).isEmpty(), "nothing to watch while it has had its say")
+        // Not dropped while it waits, as a state that has had its say for good is: gated by the
+        // rest, which is the moment the watch has to wake up for — nothing else would.
+        val waiting = ignored.watchedCircles(tonight, zone, defaultTime).single()
+        assertEquals(ignored.restUntil(zone, DEFAULT_DAY_START), waiting.opensAt, "it waits for the rest, and the watch with it")
+        assertFalse(waiting.listens, "and keeps no side from the wait")
         assertNull(ignored.watchedCircles(tomorrow, zone, defaultTime).single().opensAt, "and watched again from the morning")
 
         val fromDone = ignored.copy(recurrence = Recurrence.After(1, RecurrenceUnit.DAYS))
         assertTrue(fromDone.presenceAlreadyRang(casa, 0, local(2026, 8, 28, 9, 0), zone, DEFAULT_DAY_START), "counted from the hecho, it waits for one")
+    }
+
+    /**
+     * The watch starts asking a circle a run-up before its gate ([PlaceWatchPolicy.MIN_WAIT]), so
+     * the round has to be open from the same moment: a reading taken in the run-up and dropped as
+     * "already rang" left the side written down, and when the rest was over there was no change
+     * left to report — silent for as long as the phone stayed there.
+     */
+    @Test
+    fun `a state under desde que suena is free from the moment the watch starts asking it`() {
+        val rang = local(2026, 8, 26, 18, 0)
+        val ignored = reminder(casa).copy(
+            recurrence = Recurrence.After(2, RecurrenceUnit.HOURS, from = RecurrenceFrom.RANG),
+            lastFiredAt = rang,
+            lastFiredRule = 0,
+        )
+        val runUp = local(2026, 8, 26, 19, 59)
+        assertNull(ignored.watchedCircles(runUp, zone, defaultTime).single().opensAt, "the watch asks it a minute before eight")
+        assertFalse(ignored.presenceAlreadyRang(casa, 0, runUp, zone, DEFAULT_DAY_START), "and what it finds is a new round")
+        val earlier = local(2026, 8, 26, 19, 50)
+        assertNotNull(ignored.watchedCircles(earlier, zone, defaultTime).single().opensAt)
+        assertTrue(ignored.presenceAlreadyRang(casa, 0, earlier, zone, DEFAULT_DAY_START))
     }
 
     @Test

@@ -19,15 +19,25 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
+import java.time.Duration
+import java.time.Instant
 import kotlin.coroutines.resume
 
 /**
  * Whether the fences are worth registering again without being asked: the last attempt left none
  * ([registered] is the fingerprint [GeofenceStore] keeps only once they are in), and an attempt
  * now could succeed — allowed in the background, and location on.
+ *
+ * And not more often than [RETRY_FENCES_EVERY]: Play Services can refuse with location on (its
+ * own location accuracy switched off says the same "not available"), a look comes every few
+ * minutes near a place, and each attempt is a full remove-and-add — the fences that were in go out
+ * for the length of it.
  */
-fun fencesWorthRetrying(registered: String?, permitted: Boolean, locationOn: Boolean): Boolean =
-    registered == null && permitted && locationOn
+fun fencesWorthRetrying(registered: String?, permitted: Boolean, locationOn: Boolean, lastTriedAt: Instant?, now: Instant): Boolean =
+    registered == null && permitted && locationOn && (lastTriedAt == null || Duration.between(lastTriedAt, now) >= RETRY_FENCES_EVERY)
+
+/** The least time between two attempts of [GeofenceManager.syncIfLost]'s. */
+val RETRY_FENCES_EVERY: Duration = Duration.ofMinutes(30)
 
 /** What came of trying to register the places; the Settings card turns this into a sentence. */
 enum class GeofenceState {
@@ -85,10 +95,16 @@ class GeofenceManager(
      */
     suspend fun syncIfLost(): GeofenceState? {
         val on = context.getSystemService(LocationManager::class.java)?.isLocationEnabled ?: false
-        if (!fencesWorthRetrying(store.read(), hasBackgroundLocation(), on)) return null
+        val now = Instant.now()
+        if (!fencesWorthRetrying(store.read(), hasBackgroundLocation(), on, lastRetryAt, now)) return null
+        lastRetryAt = now
         Diag.note("geo", "fences were left out by the last attempt; putting them back")
         return sync()
     }
+
+    /** When [syncIfLost] last tried. This process's: a new one may try once at once, which is cheap. */
+    @Volatile
+    private var lastRetryAt: Instant? = null
 
     private suspend fun syncLocked(force: Boolean): GeofenceState {
         // Which circles deserve one of the hundred fences is arithmetic on the rules, and

@@ -3,6 +3,7 @@ package dev.rwilco.model
 import dev.rwilco.model.Fixtures.local
 import dev.rwilco.model.Fixtures.zone
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -126,5 +127,30 @@ class PlaceStateTest {
         }
         val nine = look(state, 10.0, at(30, 9, 0), daily, office)
         assertEquals(listOf(daily.key(at(30, 9, 0))), nine.events.map { it.placeId }, "home at nine is home: it rings")
+    }
+
+    /**
+     * The same morning on a phone lying still on the desk, which is when the watch takes no fix
+     * and runs the step on the one it has (`stepWithoutLooking`). That is only sound when the step
+     * can report nothing — and a circle reopened with no side yet reports "home" at once, which a
+     * rest would have written down and thrown away: silent until the phone left and came back.
+     */
+    @Test
+    fun `a phone lying still still takes the look that finds a state asked afresh`() {
+        val daily = reminder(
+            "daily", TriggerRule(home), recurrence = Recurrence.After(1, RecurrenceUnit.DAYS),
+            fired = at(29, 19, 0), dealt = at(29, 19, 5),
+        )
+        val seven = look(PlaceWatchState(), 10.0, at(30, 7, 0), daily, office).state
+        fun rested(now: Instant): WatchStep? {
+            val still = seven.copy(stillStreak = 3, lastFix = north(10.0, now.minusSeconds(600)))
+            val circles = listOf(daily, office).flatMap { it.watchedCircles(now, zone, Fixtures.defaultTime) }
+            return stepWithoutLooking(
+                still, circles.filter { it.opensAt == null }.map { it.place }, now, sensed = false,
+                listening = circles.filter { it.listens }.map { it.place },
+            )
+        }
+        assertNotNull(rested(at(30, 8, 0)), "still resting: nothing to find, and no fix taken")
+        assertNull(rested(at(30, 9, 0)), "open again: the look is taken, and it rings off that")
     }
 }
