@@ -661,6 +661,11 @@ thing to know before choosing it. **With rules on the reminder, the rest counts 
 too** (`restUntil`, `recurrenceMoment`): "a las ocho, y luego cada 6 h desde que suena" rings at
 eight, is ignored, and comes back at two — read off `lastDealtAt` alone it never spoke until
 somebody answered, which is the one thing that anchor was chosen not to need.
+**A rest in hours ends on the minute, and a rule may ring on it** (0.172.0): `restUntil` floors an
+hours span to the minute (the ring is written when the alarm *arrives*, a moment past the hour),
+and `rulesLookFrom` looks from a breath before the rest, because the rules want moments strictly
+after where they start. "A las 9, y vuelve cada 24 h desde que suena" landed its rest exactly on
+nine — or just past it — and rang every other day.
 `RecurrencePreset`s (in the settings, four built in unnamed) put the usual **spans** on buttons;
 a calendar is not one of them, because a calendar carries a `startsOn` that is that reminder's
 own. Room v4 added the boolean this replaced; v5 turns it into a shape (`by_trigger` for whatever

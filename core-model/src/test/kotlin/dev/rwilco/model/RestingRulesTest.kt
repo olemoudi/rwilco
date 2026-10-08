@@ -112,6 +112,35 @@ class RestingRulesTest {
         assertEquals(local(2026, 8, 26, 14, 5), pills.restUntil(zone, dayStart), "six hours, to the minute")
     }
 
+    /**
+     * The same boundary for a rest in hours, which is exact and so lands *on* the rule's moment:
+     * "a las 9, y vuelve cada 24 h desde que suena" rang at nine, rested until nine the next day,
+     * and nine is not *after* nine — so it rang every other day. The ring is written down when the
+     * alarm arrives, a moment past the hour, which put the rest past the moment as well.
+     */
+    @Test
+    fun `a rest in hours does not swallow the rule's moment it lands on`() {
+        val daily = Trigger.AtTime(LocalTime.of(9, 0), DayOfWeek.entries.toSet())
+        val pills = Reminder(
+            id = "r3",
+            text = "Pastillas",
+            rules = listOf(TriggerRule(daily)),
+            recurrence = Recurrence.After(24, RecurrenceUnit.HOURS, from = RecurrenceFrom.RANG),
+            createdAt = local(2026, 8, 20, 9, 0),
+            updatedAt = local(2026, 8, 20, 9, 0),
+            lastFiredAt = local(2026, 8, 26, 9, 0).plusMillis(800),
+        )
+        assertEquals(local(2026, 8, 27, 9, 0), nextWake(pills, local(2026, 8, 26, 9, 1), zone, defaultTime, dayStart)?.at, "nine tomorrow, not the day after")
+
+        val twice = pills.copy(
+            rules = listOf(TriggerRule(Trigger.AtTime(LocalTime.of(8, 0), DayOfWeek.entries.toSet())), TriggerRule(Trigger.AtTime(LocalTime.of(20, 0), DayOfWeek.entries.toSet()))),
+            ruleMatch = RuleMatch.ANY,
+            recurrence = Recurrence.After(12, RecurrenceUnit.HOURS, from = RecurrenceFrom.RANG),
+            lastFiredAt = local(2026, 8, 26, 8, 0).plusMillis(400),
+        )
+        assertEquals(local(2026, 8, 26, 20, 0), nextWake(twice, local(2026, 8, 26, 8, 1), zone, defaultTime, dayStart)?.at, "the evening one, every evening")
+    }
+
     @Test
     fun `a window that opens after the day starts is left where it was`() {
         // Nothing is pulled forward for its own sake: a rule due in the evening is due in the

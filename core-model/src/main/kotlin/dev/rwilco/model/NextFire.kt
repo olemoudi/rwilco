@@ -5,6 +5,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 /** What a reminder will do next, as far as the model can know without the scheduler. */
 sealed interface NextFire {
@@ -561,7 +562,9 @@ fun Reminder.restUntil(zone: ZoneId, dayStart: LocalTime, shape: DayShape = DayS
     val back = calendarMoment(recurrenceAnchor(dealt), zone, shape)
         ?: nextRecurrence(recurrence, recurrenceAnchor(dealt), zone, dayStart)
         ?: return null
-    if (!recurrence.countsInDays) return back
+    // To the minute: a ring is written down when its alarm arrives, a moment past the hour, and
+    // the rest counted from it would end that same moment past the rule's next hour.
+    if (!recurrence.countsInDays) return back.truncatedTo(ChronoUnit.MINUTES)
     // "El más cercano": the span's day bent to the nearest day the rules allow, which is the
     // only reading of the three that can land the rest BEFORE the span is up. That is the whole
     // point of it — thirty days to the nearest Friday is sometimes the Friday two days early —
@@ -587,8 +590,13 @@ fun Reminder.restUntil(zone: ZoneId, dayStart: LocalTime, shape: DayShape = DayS
  * and [nextWake] spelled it out; Home's cards did not, and asked each rule from *now* — so a
  * "los lunes, y vuelve cada semana" dealt with on a Thursday went on drawing the Monday it had
  * just been dealt through, on the one screen somebody would look at to check.
+ *
+ * A breath before the rest's end, because the rules look for moments strictly *after* where they
+ * start: a moment that falls exactly where the rest ends is the one the rest was waiting for.
+ * A rest in hours lands on the rule's hour ("a las 9, y vuelve cada 24 h desde que suena"), and
+ * looking from the rest itself skipped it — every other day (0.172.0).
  */
-fun Reminder.rulesLookFrom(now: Instant, rest: Instant?): Instant = maxOf(searchFrom(now), rest ?: now)
+fun Reminder.rulesLookFrom(now: Instant, rest: Instant?): Instant = maxOf(searchFrom(now), rest?.minusMillis(1) ?: now)
 
 /**
  * Whether an "exactly the span" recurrence has taken the rules out of the loop.
