@@ -37,6 +37,16 @@ fun nextVaultStep(enabled: Boolean, fingerprint: String, lastUploaded: String?):
 fun wentEmpty(was: Int?, now: Int): Boolean = was != null && was > 0 && now == 0
 
 /**
+ * The same "something to nothing" for the settings, said in what they hold rather than in their
+ * length (0.172.0). A settings file that would not read — corrupt, or a shape this build cannot
+ * name — is replaced by the factory's, and the first write after it (the "what's new" sheet makes
+ * one at every launch) stores two thousand characters of defaults: never empty, so [wentEmpty]
+ * let the next run copy them over the places, presets and sounds the last copy had. [hadOwn] is
+ * whether the last copy held anything of the person's; null says nothing.
+ */
+fun settingsWentBare(hadOwn: Boolean?, bareNow: Boolean): Boolean = hadOwn == true && bareNow
+
+/**
  * The vault pointed at [owner]/[repo] with [pat], where the file now is [remoteSha] (null: no file).
  *
  * Decided by what is there, not by the name (0.166.0, by the name only until 0.169.0). The copy

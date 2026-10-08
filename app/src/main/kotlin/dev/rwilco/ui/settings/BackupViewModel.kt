@@ -9,6 +9,8 @@ import androidx.lifecycle.viewModelScope
 import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.model.BackupCadence
+import dev.rwilco.model.ReminderCodec
+import dev.rwilco.model.holdsNothingOfTheirOwn
 import dev.rwilco.model.passphraseIsStrongEnough
 import dev.rwilco.vault.GitHubVault
 import dev.rwilco.vault.KDF_ITERATIONS
@@ -247,6 +249,7 @@ class BackupViewModel(private val app: RwilcoApplication) : ViewModel() {
                                 lastUploadedSettingsHash = settingsHash(opened.snapshot.settingsJson),
                                 lastUploadedRows = opened.snapshot.reminders.size,
                                 lastUploadedSettingsLength = opened.snapshot.settingsJson.length,
+                                lastUploadedSettingsOwn = ReminderCodec.decodeSettingsOrNull(opened.snapshot.settingsJson)?.let { !it.holdsNothingOfTheirOwn() },
                                 lastOutcome = VaultOutcome.UP_TO_DATE, lastOutcomeAt = now,
                             )
                         }
@@ -363,7 +366,7 @@ class BackupViewModel(private val app: RwilcoApplication) : ViewModel() {
      */
     fun uploadAnyway() {
         viewModelScope.launch {
-            app.vaultStore.update { it.copy(lastUploadedRows = null, lastUploadedSettingsLength = null, lastOutcome = null) }
+            app.vaultStore.update { it.copy(lastUploadedRows = null, lastUploadedSettingsLength = null, lastUploadedSettingsOwn = null, lastOutcome = null) }
             VaultNotifications.cancel(app)
             VaultWorker.runNow(app)
             dismiss()

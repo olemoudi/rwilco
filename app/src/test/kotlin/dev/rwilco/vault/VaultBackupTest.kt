@@ -3,6 +3,9 @@ package dev.rwilco.vault
 import dev.rwilco.data.FiringEventEntity
 import dev.rwilco.data.NO_RECURRENCE
 import dev.rwilco.data.ReminderEntity
+import dev.rwilco.model.AppSettings
+import dev.rwilco.model.ReminderCodec
+import dev.rwilco.model.SavedPlace
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -223,6 +226,42 @@ class VaultBackupTest {
 
         assertTrue(transport.writes.isEmpty())
         assertEquals(VaultOutcome.COLLAPSED, store.state.lastOutcome)
+    }
+
+    /**
+     * The guard's other half for the settings. A blob that would not read is replaced by the
+     * factory's on the first write after it (the "what's new" sheet makes one at every launch), so
+     * the settings were never *empty* when the next run came — two thousand characters of
+     * defaults — and that run copied them over the places, presets and sounds the last copy had.
+     */
+    @Test
+    fun `a phone whose settings went back to the factory does not copy that over its own`() = runBlocking {
+        val own = ReminderCodec.encodeSettings(AppSettings(savedPlaces = listOf(SavedPlace("Casa", 40.4, -3.7, 100, id = "p1"))))
+        val factory = ReminderCodec.encodeSettings(AppSettings(lastSeenVersionCode = 228))
+        val store = MemoryStore(enabled.copy(lastUploadedFingerprint = fingerprint(listOf(row), own), lastUploadedRows = 1, lastUploadedSettingsLength = own.length, lastUploadedSettingsOwn = true))
+        val transport = FakeTransport()
+
+        assertEquals(VaultRunResult.FAILED, backup(store, transport, settingsJson = factory).run())
+
+        assertTrue(transport.writes.isEmpty(), "nothing went up")
+        assertEquals(VaultOutcome.COLLAPSED, store.state.lastOutcome)
+        assertEquals(listOf(VaultOutcome.COLLAPSED), attention)
+    }
+
+    @Test
+    fun `whether the settings held anything of their own is written down with each copy`() = runBlocking {
+        val own = ReminderCodec.encodeSettings(AppSettings(hiddenTexts = listOf("comprar pan")))
+        val store = MemoryStore(enabled)
+        val transport = FakeTransport(onWrite = { bytes, _ -> VaultCrypto.gitBlobSha(bytes) })
+        backup(store, transport, settingsJson = own).run()
+        assertEquals(true, store.state.lastUploadedSettingsOwn)
+
+        // A person who never kept anything: written down as such, and the guard stays out of it.
+        val bare = ReminderCodec.encodeSettings(AppSettings())
+        val fresh = MemoryStore(enabled)
+        backup(fresh, transport, settingsJson = bare).run()
+        assertEquals(false, fresh.state.lastUploadedSettingsOwn)
+        assertEquals(VaultOutcome.UPLOADED, fresh.state.lastOutcome)
     }
 
     @Test

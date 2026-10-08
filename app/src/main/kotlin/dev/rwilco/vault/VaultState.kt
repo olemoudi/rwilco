@@ -67,6 +67,13 @@ data class VaultState(
      */
     val lastUploadedRows: Int? = null,
     val lastUploadedSettingsLength: Int? = null,
+    /**
+     * Whether the last copy's settings held anything only a person puts there
+     * (`holdsNothingOfTheirOwn`): what [settingsWentBare] compares against, because a reset is
+     * never *empty* — the factory blob is written whole on the next launch. Null on a vault that
+     * has not uploaded since this was written down, which says nothing.
+     */
+    val lastUploadedSettingsOwn: Boolean? = null,
     /** The blob sha the remote file had after our last successful write; what the next PUT replaces. */
     val remoteSha: String? = null,
     /** The blob sha of the bytes last sent, written down before sending (see [judgeConflict]). */

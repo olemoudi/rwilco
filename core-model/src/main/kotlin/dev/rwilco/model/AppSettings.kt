@@ -260,3 +260,14 @@ enum class AlertStacking { SEQUENTIAL, STRIPS }
 
 /** Nine in the morning, until somebody says otherwise. */
 val DEFAULT_DAY_START: LocalTime = LocalTime.of(9, 0)
+
+/**
+ * Whether these settings carry nothing only a person puts there: no place or window kept, no
+ * preset, no words hidden, no tag dressed, no snooze of their own. What a blob reset to the
+ * factory looks like whatever the app has written into it since by itself (the version last seen,
+ * a milestone, a snooze counted) — and so what the vault refuses to copy over one that had them
+ * (`settingsWentBare`, 0.172.0).
+ */
+fun AppSettings.holdsNothingOfTheirOwn(): Boolean =
+    savedPlaces.isEmpty() && savedWindows.isEmpty() && presets.isEmpty() && hiddenTexts.isEmpty() &&
+        tagPrefs.isEmpty() && customSnoozes.isEmpty()

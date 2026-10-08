@@ -2,7 +2,9 @@ package dev.rwilco.vault
 
 import dev.rwilco.data.FiringEventEntity
 import dev.rwilco.data.ReminderEntity
+import dev.rwilco.model.ReminderCodec
 import dev.rwilco.model.backupFreshness
+import dev.rwilco.model.holdsNothingOfTheirOwn
 import dev.rwilco.model.backupNoticeDue
 import java.time.Instant
 import kotlinx.coroutines.sync.Mutex
@@ -74,12 +76,17 @@ class VaultBackup(
             VaultStep.NOTHING_CHANGED -> return stillThere(transportFor(state), state)
             VaultStep.UPLOAD -> Unit
         }
-        val sent = Sent(print, settingsHash(settings), bare.reminders.size, settings.length)
+        // Null when the blob will not read at all: it travels as it is, which keeps it, and there
+        // is nothing to say about what is in it.
+        val own = ReminderCodec.decodeSettingsOrNull(settings)?.let { !it.holdsNothingOfTheirOwn() }
+        val sent = Sent(print, settingsHash(settings), bare.reminders.size, settings.length, own)
         // Something became nothing. A fingerprint cannot tell that from a deletion, so this is
         // the only place it can be caught — before the bytes are sealed, and before the one copy
         // that still has everything is replaced by the phone that has lost it.
-        if (wentEmpty(state.lastUploadedRows, sent.rows) || wentEmpty(state.lastUploadedSettingsLength, sent.settingsLength)) {
-            log("what this phone holds went empty (${state.lastUploadedRows} rows to ${sent.rows}, ${state.lastUploadedSettingsLength} to ${sent.settingsLength} of settings); not copying that up")
+        if (wentEmpty(state.lastUploadedRows, sent.rows) || wentEmpty(state.lastUploadedSettingsLength, sent.settingsLength) ||
+            settingsWentBare(state.lastUploadedSettingsOwn, bareNow = own == false)
+        ) {
+            log("what this phone holds went empty (${state.lastUploadedRows} rows to ${sent.rows}, ${state.lastUploadedSettingsLength} to ${sent.settingsLength} of settings, own ${state.lastUploadedSettingsOwn} to $own); not copying that up")
             return attention(VaultOutcome.COLLAPSED)
         }
         // The history only for a copy that is going: it does not decide whether one goes (see
@@ -200,6 +207,7 @@ class VaultBackup(
                 lastUploadedSettingsHash = sent.settingsHash,
                 lastUploadedRows = sent.rows,
                 lastUploadedSettingsLength = sent.settingsLength,
+                lastUploadedSettingsOwn = sent.settingsOwn,
                 remoteSha = sha,
                 lastOutcome = VaultOutcome.UPLOADED,
                 lastOutcomeAt = now,
@@ -236,7 +244,7 @@ class VaultBackup(
     }
 
     /** What one run is carrying: everything a successful upload writes down about the content. */
-    private class Sent(val print: String, val settingsHash: String, val rows: Int, val settingsLength: Int)
+    private class Sent(val print: String, val settingsHash: String, val rows: Int, val settingsLength: Int, val settingsOwn: Boolean?)
 
     companion object {
         /** Process-wide: runs come from the worker, the button and a restore, and must not overlap. */

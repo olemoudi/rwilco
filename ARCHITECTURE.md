@@ -3817,6 +3817,15 @@ history is the backup's history for free — with a fine-grained token scoped to
   between "fewer" and "gone", and a fraction would only buy false alarms. The two ways on are the
   conflict's: bring the copy here, or say it was a person who emptied it (`uploadAnyway`, which
   forgets the two sizes so the next run has nothing left to refuse).
+  **Settings reset to the factory are a collapse too** (0.172.0, `settingsWentBare`). A settings
+  file that will not read is replaced by the defaults, and the first write after it — the "what's
+  new" sheet makes one at every launch — stores the whole factory blob: never empty, so the length
+  guard let the next run (fifteen minutes after that write) copy it over every place, preset and
+  sound the last copy had. Each copy now writes down whether its settings held anything only a
+  person puts there (`lastUploadedSettingsOwn`, from `holdsNothingOfTheirOwn`: places, windows,
+  presets, hidden words, tag prefs, own snoozes), and a run whose settings hold none of it over a
+  copy that did stops as COLLAPSED, with the same two ways on. A restore writes it from the copy it
+  brought; `uploadAnyway` forgets it with the sizes.
 - **The passphrase, asked of yourself**: the phone keeps the key and never the phrase, so the day
   somebody found out whether they still knew it was the day it was the only way in. The Backup
   screen derives what is typed with the vault's own salt and compares it to the key
