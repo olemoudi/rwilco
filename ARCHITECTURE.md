@@ -511,7 +511,15 @@ anything repeats**:
   it cost was everything hung off "never done": `routineWaitingToStart` wants that column null, so
   "aún no empieza" went for good and — with a start still ahead — the row was left counting from an
   anchor in the future; and `promptQuietUntil` went from null to a tenth of the span, holding the
-  routine's questions quiet over a "hecho" that never happened. Two guards for rows that arrive by other roads (a vault, a preset
+  routine's questions quiet over a "hecho" that never happened.
+  **A "hecho" leaves a pause standing** (0.172.0). `statusAfterDismissal` answers PAUSED for a
+  paused row that is not finished — a card left in the shade from before the pause, or a swipe on
+  the paused card. It used to answer ACTIVE with `pausedAt` still set: the reminder rang again, a
+  routine's count stayed frozen for good, a contact left the queue for good. A "hecho" given during
+  the pause starts the count there, so the clock freezes at the later of the two
+  (`routineClock`) and the resume adds only the rest after it (`routineAnchorAfterPause`) —
+  the whole pause on top put the anchor in the future. And pausing from Home or Routines takes the
+  reminder's cards and its repeating sound down (`ReminderFiring.paused`). Two guards for rows that arrive by other roads (a vault, a preset
   shaped before): `foldRepeats` never touches a `Since`, and `hasDeadline` is false on one
   (a lapse would have written a silent "hecho"). And the edit that *makes* a routine sheds the
   old ring (`becomesRoutine`, `EditorViewModel.save`): a routine's first deadline can be older

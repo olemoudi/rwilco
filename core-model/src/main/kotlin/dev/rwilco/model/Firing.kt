@@ -30,10 +30,15 @@ fun statusAfterDismissal(
     shape: DayShape = DayShape.DEFAULT,
 ): Status {
     if (!reminder.recurrence.repeats) return Status.DONE
+    // **A pause outlives a "hecho".** A card left in the shade from before the pause, or a swipe
+    // on the paused card, deals with the round; it does not lift the pause. Written ACTIVE, the
+    // reminder rang again at its next moment, and a routine or a contact came back with
+    // `pausedAt` still set — a count frozen for good, a contact out of the queue for good.
+    val going = if (reminder.status == Status.PAUSED) Status.PAUSED else Status.ACTIVE
     // A span counted from an event always has a next one, so there is nothing to check: it
     // stays. A calendar is asked like the triggers are, because a calendar can run out
     // ([RepeatEnd]) and a series that has rung its last time is finished.
-    if (reminder.recurrence.isAnchored && !reminder.recurrence.isCalendar) return Status.ACTIVE
+    if (reminder.recurrence.isAnchored && !reminder.recurrence.isCalendar) return going
     // A calendar with no date left finishes the rules with it. It has no rest to hand them
     // (restUntil is null once the series is over), so asked below they would speak again on
     // their own, unfenced — "al llegar a casa, y vuelve cada lunes hasta junio" ringing on
@@ -42,7 +47,7 @@ fun statusAfterDismissal(
     // Dealt with means the round is over: what had already happened under ALL stops counting,
     // and the question is whether the reminder can come round again from scratch.
     val cleared = reminder.copy(status = Status.ACTIVE, snoozedUntil = null, snoozedToPlace = null, firedRules = emptySet(), expiresAt = null)
-    return if (nextFire(cleared, now, zone, defaultTime, shape = shape) == null) Status.DONE else Status.ACTIVE
+    return if (nextFire(cleared, now, zone, defaultTime, shape = shape) == null) Status.DONE else going
 }
 
 /**

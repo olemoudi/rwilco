@@ -1085,6 +1085,18 @@ class ReminderFiring(
     }
 
     /**
+     * Paused from a screen: whatever the reminder still has in the shade goes, and its sound
+     * stops coming back. A pause is "not until I say", and a card left behind it was a "Hecho"
+     * waiting to be pressed on something that was not going to ring — which, until a "hecho"
+     * learned to leave a pause standing ([statusAfterDismissal]), lifted the pause as well.
+     */
+    suspend fun paused(id: String) = lock.withLock {
+        repeater.cancel(id)
+        AlertNotifications.cancel(context, id)
+        Diag.note(TAG_DIAG, "r=${short(id)} paused; its cards are taken down")
+    }
+
+    /**
      * "Quitar el posponer": back to its own moment, as if the answer had never been given.
      * Nothing to take down — a snooze already took the notification with it — so this is the
      * row and the alarm, under the same lock as everything else that writes them.

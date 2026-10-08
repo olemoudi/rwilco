@@ -51,6 +51,23 @@ class FiringTest {
         assertEquals(Status.DONE, statusAfterDismissal(reminder(place), at, zone, defaultTime))
     }
 
+    /**
+     * A "hecho" given to a paused reminder — the card left in the shade from before the pause,
+     * a swipe on the paused card on Home — deals with the round and leaves the pause standing.
+     * It used to write ACTIVE over it: the reminder rang again at its next moment, a routine
+     * came back with its count still frozen (`pausedAt` stays set) and never fell due, and a
+     * contact dropped out of the queue for good.
+     */
+    @Test
+    fun `a hecho on a paused reminder leaves it paused`() {
+        val at = local(2026, 8, 27, 21, 31)
+        val paused = reminder(weekly).copy(recurrence = Recurrence.ByTrigger, status = Status.PAUSED, pausedAt = now)
+        assertEquals(Status.PAUSED, statusAfterDismissal(paused, at, zone, defaultTime))
+        val span = paused.copy(recurrence = Recurrence.Since(2, RecurrenceUnit.DAYS))
+        assertEquals(Status.PAUSED, statusAfterDismissal(span, at, zone, defaultTime), "a span always has a next round, and it waits for the pause")
+        assertEquals(Status.DONE, statusAfterDismissal(reminder(tonight).copy(status = Status.PAUSED, pausedAt = now), at, zone, defaultTime), "a one-off done is done, paused or not")
+    }
+
     @Test
     fun `asked to keep going, it stays for as long as something can ring`() {
         val at = local(2026, 8, 27, 21, 31)

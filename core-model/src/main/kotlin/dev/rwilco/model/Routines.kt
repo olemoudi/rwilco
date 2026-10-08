@@ -46,8 +46,9 @@ fun Reminder.routineAnchor(): Instant = lastDealtAt ?: routineStart() ?: created
  * Every "how long has it been" and every "is it owed" on a paused routine is asked of this
  * rather than of the wall clock, so a routine paused ten days into its three weeks reads
  * "hace 10 d" for as long as it rests — and reads "Sí", because nothing is owed while it does.
+ * A "hecho" given during the pause freezes it there instead: the count is at zero from it.
  */
-fun Reminder.routineClock(now: Instant): Instant = pausedAt ?: now
+fun Reminder.routineClock(now: Instant): Instant = pausedAt?.let { maxOf(it, routineAnchor()) } ?: now
 
 /**
  * Where the count runs from once a pause is lifted at [now]: the anchor pushed forward by
@@ -62,7 +63,11 @@ fun Reminder.routineClock(now: Instant): Instant = pausedAt ?: now
  */
 fun Reminder.routineAnchorAfterPause(now: Instant): Instant {
     val paused = pausedAt ?: return routineAnchor()
-    return routineAnchor().plus(Duration.between(paused, now).coerceAtLeast(Duration.ZERO))
+    // From the later of the two: a "hecho" given during the pause starts the count at zero, and
+    // only the rest after it is owed back. The whole pause added on top of it put the anchor in
+    // the future.
+    val anchor = routineAnchor()
+    return anchor.plus(Duration.between(maxOf(paused, anchor), now).coerceAtLeast(Duration.ZERO))
 }
 
 /**

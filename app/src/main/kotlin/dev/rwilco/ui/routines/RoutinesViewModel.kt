@@ -288,6 +288,7 @@ class RoutinesViewModel(
         viewModelScope.launch {
             val reminder = repository.get(id) ?: return@launch
             repository.setStatus(id, if (paused) Status.ACTIVE else Status.PAUSED)
+            if (!paused) firing.paused(id)
             events.send(RoutinesEvent.Paused(reminder, paused = !paused))
         }
     }

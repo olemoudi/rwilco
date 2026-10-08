@@ -318,6 +318,11 @@ class RoutinesTest {
         // The same arithmetic on a routine that had been done: the last "hecho" moves on.
         val done = car(lastDealtAt = now.minusSeconds(5 * 86_400)).copy(status = Status.PAUSED, pausedAt = now)
         assertEquals(now.minusSeconds(5 * 86_400).plusSeconds(30 * 86_400), done.routineAnchorAfterPause(later))
+        // A "hecho" given during the pause starts the count from that "hecho", and only the
+        // rest after it is added: the whole pause added on top put the anchor in the future.
+        val doneDuring = car(lastDealtAt = now.plusSeconds(10 * 86_400)).copy(status = Status.PAUSED, pausedAt = now)
+        assertEquals(later, doneDuring.routineAnchorAfterPause(later), "frozen at zero from the hecho, counting again from the resume")
+        assertEquals(doneDuring.lastDealtAt, doneDuring.routineClock(later), "the count reads zero, never less")
         // And nothing paused is nothing to move.
         assertEquals(car().routineAnchor(), car().routineAnchorAfterPause(later))
         assertEquals(later, car().routineClock(later))
