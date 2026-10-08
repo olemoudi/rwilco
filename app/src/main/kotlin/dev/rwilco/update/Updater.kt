@@ -161,7 +161,12 @@ class Updater(private val context: Context) {
         }
         val current = currentVersionCode()
         Log.i(TAG, "installed=$current latest=${info.versionCode}")
-        val staged = stagedUpdate(channel)
+        val found = stagedUpdate(channel)
+        val staged = found?.takeIf { stagedIsCurrent(it.versionCode, info.versionCode) }
+        if (found != null && staged == null) {
+            Log.i(TAG, "the ${found.versionName} APK in the cache was replaced by ${info.versionName}; discarding it")
+            discardStagedApk()
+        }
         val step = nextUpdateStep(
             isNewer = info.isNewerThan(current),
             hasStagedApk = staged != null,

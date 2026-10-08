@@ -46,6 +46,18 @@ class StagedApkTest {
         assertFalse(installable(name = ""))
     }
 
+    /**
+     * A release that moved on past the bytes on disk replaces them. Kept and committed again on
+     * every check, a build waiting for a confirmation outlived the fix that followed it — and one
+     * the platform blocked was offered for ever, with nothing newer ever fetched.
+     */
+    @Test
+    fun `a staged apk is the one to install only while no newer release has replaced it`() {
+        assertTrue(stagedIsCurrent(stagedVersionCode = 228, latestVersionCode = 228))
+        assertTrue(stagedIsCurrent(stagedVersionCode = 229, latestVersionCode = 228), "the release moved back: the newer bytes are still progress")
+        assertFalse(stagedIsCurrent(stagedVersionCode = 228, latestVersionCode = 229))
+    }
+
     @Test
     fun `the apk survives a cancelled or blocked install and nothing else`() {
         assertTrue(keepsApkAfterFailure(PackageInstaller.STATUS_FAILURE_ABORTED))

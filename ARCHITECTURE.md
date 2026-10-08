@@ -3835,6 +3835,14 @@ a failed attempt leaving sixty megabytes behind under a name nothing sweeps (`st
 Whatever the file turns out to be is settled where everything else is: by `apkIsInstallable`, on
 the way to the installer.
 
+**A staged APK is only installed while it is the latest** (0.172.0, `stagedIsCurrent`). Bytes on
+disk outrank every network gate (`nextUpdateStep`), which is what makes a cancelled prompt a
+one-tap retry — but not a newer release. Before, a build left waiting for a confirmation was
+committed again on every check after the one that fixed it had shipped, and one the platform
+answered with `STATUS_FAILURE_BLOCKED` (kept, see `keepsApkAfterFailure`) was offered for ever with
+nothing newer ever downloaded. A staged build older than the manifest's is now deleted before the
+step is decided, which also frees its space for the download that replaces it.
+
 Choosing a channel asks straight away (`UpdateChannelCard.follow`). It used to write the setting
 and nothing else, so the answer arrived with the next periodic check — up to twelve hours later,
 from a control somebody had just touched and was looking at for evidence that it did anything.

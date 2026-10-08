@@ -57,6 +57,14 @@ fun apkIsInstallable(
     belongsToChannel(apkVersionName, channel)
 
 /**
+ * Whether the APK already on disk is still the build to install: no newer release has replaced
+ * it. One that has is thrown away and the newer one fetched. Kept, it was committed again on every
+ * check — a build left waiting for a confirmation outlived the release that fixed it, and one the
+ * platform blocked was offered for ever with nothing newer ever downloaded.
+ */
+fun stagedIsCurrent(stagedVersionCode: Int, latestVersionCode: Int): Boolean = stagedVersionCode >= latestVersionCode
+
+/**
  * Whether the downloaded APK survives an install that did not succeed.
  *
  * ABORTED is somebody tapping "Cancel" — by reflex at least as often as on purpose — and
