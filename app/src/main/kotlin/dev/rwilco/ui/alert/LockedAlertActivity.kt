@@ -71,6 +71,8 @@ class LockedAlertActivity : ComponentActivity() {
                         ) { Text(stringResource(R.string.locked_alert_unlock)) }
                         TextButton(
                             onClick = ::silence,
+                            // Neutral: amber is what fires next, never a way to answer it.
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant),
                             modifier = Modifier.fillMaxWidth().heightIn(min = Tokens.sizes.touch),
                         ) { Text(stringResource(R.string.locked_alert_silence)) }
                     }
