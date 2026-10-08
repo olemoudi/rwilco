@@ -6,7 +6,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.preferencesOf
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dev.rwilco.model.Action
@@ -27,11 +28,16 @@ import java.time.ZoneId
 
 // A file that will not parse is replaced by an empty one: the settings come back as defaults,
 // which is a loss, where a read that throws on every attempt — from the firing, from the
-// scheduler, from every collector in the app — was the whole app going quiet.
+// scheduler, from every collector in the app — was the whole app going quiet. The empty one says
+// when it was put there: nothing of the old file is left to keep aside, and the backup has to
+// know the defaults it is about to see were not anybody's choice (see [SettingsStore.lostAt]).
 private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(
     "rwilco_settings",
-    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+    corruptionHandler = ReplaceFileCorruptionHandler { preferencesOf(REPLACED_AT to System.currentTimeMillis()) },
 )
+
+/** When the settings file was replaced by an empty one because it would not parse. */
+private val REPLACED_AT = longPreferencesKey("replaced_at")
 
 /**
  * The settings as one JSON blob under one key. Additive changes to AppSettings need no
@@ -119,6 +125,17 @@ class SettingsStore(private val context: Context) {
                 Log.w(TAG, "could not keep the unreadable settings aside", it)
                 Diag.note("settings", "settings that would not read whole could not be kept aside: ${it::class.simpleName}")
             }
+    }
+
+    /**
+     * When settings were last lost to a read — kept aside because they would not read whole, or
+     * the file replaced because it would not parse — if ever. What tells the backup that settings
+     * with nothing of the person's left in them were a reset and not a deletion (0.172.0).
+     */
+    suspend fun lostAt(): Instant? {
+        val replaced = context.settingsDataStore.data.first()[REPLACED_AT]
+        val aside = keptAside().maxOfOrNull { it.lastModified() }
+        return listOfNotNull(replaced, aside).maxOrNull()?.let(Instant::ofEpochMilli)
     }
 
     private fun keptAside(): List<File> = context.filesDir.listFiles { file -> file.name.startsWith(ASIDE_PREFIX) }.orEmpty().toList()

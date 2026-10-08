@@ -3839,10 +3839,15 @@ history is the backup's history for free — with a fine-grained token scoped to
   new" sheet makes one at every launch — stores the whole factory blob: never empty, so the length
   guard let the next run (fifteen minutes after that write) copy it over every place, preset and
   sound the last copy had. Each copy now writes down whether its settings held anything only a
-  person puts there (`lastUploadedSettingsOwn`, from `holdsNothingOfTheirOwn`: places, windows,
-  presets, hidden words, tag prefs, own snoozes), and a run whose settings hold none of it over a
-  copy that did stops as COLLAPSED, with the same two ways on. A restore writes it from the copy it
-  brought; `uploadAnyway` forgets it with the sizes.
+  person puts there (`lastUploadedSettingsOwn`, from `settingsHoldTheirOwn`: places, windows,
+  presets, hidden words, tag prefs, own snoozes — read off the JSON as written, so a blob this
+  build cannot decode still says what it carries), and a run whose settings hold none of it over a
+  copy that did stops as COLLAPSED, with the same two ways on — **but only when the settings were
+  lost since that copy** (`SettingsStore.lostAt`: a blob kept aside because it would not read, or
+  the file replaced because it would not parse, which leaves `replaced_at` in the empty one).
+  Nothing of the person's left is also what deleting the last saved place leaves, and without
+  the evidence every backup after that deletion stopped as "this phone went empty". A remote
+  restore writes the flag from the copy it brought; `uploadAnyway` forgets it with the sizes.
 - **The passphrase, asked of yourself**: the phone keeps the key and never the phrase, so the day
   somebody found out whether they still knew it was the day it was the only way in. The Backup
   screen derives what is typed with the vault's own salt and compares it to the key

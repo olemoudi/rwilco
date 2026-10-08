@@ -34,10 +34,11 @@ class VaultStepTest {
 
     @Test
     fun `settings that went back to the factory are a collapse, and settings never anybody's are not`() {
-        assertTrue(settingsWentBare(hadOwn = true, bareNow = true), "places and presets, then none: a reset")
-        assertFalse(settingsWentBare(hadOwn = true, bareNow = false))
-        assertFalse(settingsWentBare(hadOwn = false, bareNow = true), "a person who never kept anything has lost nothing")
-        assertFalse(settingsWentBare(hadOwn = null, bareNow = true), "a copy from before this was written down says nothing")
+        assertTrue(settingsWentBare(hadOwn = true, bareNow = true, lostSinceCopy = true), "places and presets, lost, then none: a reset")
+        assertFalse(settingsWentBare(hadOwn = true, bareNow = true, lostSinceCopy = false), "the last place deleted by hand")
+        assertFalse(settingsWentBare(hadOwn = true, bareNow = false, lostSinceCopy = true), "lost in part, the rest still there")
+        assertFalse(settingsWentBare(hadOwn = false, bareNow = true, lostSinceCopy = true), "a person who never kept anything has lost nothing")
+        assertFalse(settingsWentBare(hadOwn = null, bareNow = true, lostSinceCopy = true), "a copy from before this was written down says nothing")
     }
 
     private val home = VaultState(

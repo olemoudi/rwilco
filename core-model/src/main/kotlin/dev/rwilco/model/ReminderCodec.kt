@@ -120,6 +120,22 @@ object ReminderCodec {
             count("savedWindows") > read.savedWindows.size
     }
 
+    /**
+     * Whether [raw] holds anything only a person puts there: a place or a window kept, a preset,
+     * words hidden, a tag dressed, a snooze of their own. What a blob reset to the factory never
+     * has, whatever the app has written into it since by itself (the version last seen, a
+     * milestone, a snooze counted) — and so what the vault refuses to copy over one that had it
+     * (`settingsWentBare`, 0.172.0). Read off the JSON as written rather than decoded, so a blob
+     * this build cannot decode still says what it carries; null when it is not JSON at all.
+     */
+    fun settingsHoldTheirOwn(raw: String): Boolean? {
+        val written = runCatching { json.parseToJsonElement(raw) as? JsonObject }.getOrNull() ?: return null
+        return OWN_SETTINGS.any { ((written[it] as? JsonArray)?.size ?: 0) > 0 }
+    }
+
+    /** The lists in the settings only a person fills; see [settingsHoldTheirOwn]. */
+    private val OWN_SETTINGS = listOf("savedPlaces", "savedWindows", "presets", "hiddenTexts", "tagPrefs", "customSnoozes")
+
     fun encodePlaceWatch(state: PlaceWatchState): String = json.encodeToString(PlaceWatchState.serializer(), state)
 
     /** Losing the watch's memory costs one baseline check, never a crash. */

@@ -4,7 +4,6 @@ import dev.rwilco.data.FiringEventEntity
 import dev.rwilco.data.ReminderEntity
 import dev.rwilco.model.ReminderCodec
 import dev.rwilco.model.backupFreshness
-import dev.rwilco.model.holdsNothingOfTheirOwn
 import dev.rwilco.model.backupNoticeDue
 import java.time.Instant
 import kotlinx.coroutines.sync.Mutex
@@ -38,6 +37,8 @@ class VaultBackup(
     /** Every reminder's history, which travels with the rows (see [VaultSnapshot.events]). */
     private val events: suspend () -> List<FiringEventEntity>,
     private val settingsJson: suspend () -> String?,
+    /** When settings that would not read were last replaced by the defaults, if ever (`SettingsStore.lostAt`). */
+    private val settingsLostAt: suspend () -> Instant? = { null },
     private val transportFor: (VaultState) -> VaultTransport,
     private val clock: Clock,
     private val appVersionCode: Int,
@@ -76,15 +77,16 @@ class VaultBackup(
             VaultStep.NOTHING_CHANGED -> return stillThere(transportFor(state), state)
             VaultStep.UPLOAD -> Unit
         }
-        // Null when the blob will not read at all: it travels as it is, which keeps it, and there
-        // is nothing to say about what is in it.
-        val own = ReminderCodec.decodeSettingsOrNull(settings)?.let { !it.holdsNothingOfTheirOwn() }
-        val sent = Sent(print, settingsHash(settings), bare.reminders.size, settings.length, own)
+        // Null when the blob is not JSON at all: it travels as it is, which keeps it, and what the
+        // last copy was known to hold still stands.
+        val own = ReminderCodec.settingsHoldTheirOwn(settings)
+        val lostSinceCopy = settingsLostAt()?.let { lost -> state.lastUploadedAt?.let { lost > it } ?: true } ?: false
+        val sent = Sent(print, settingsHash(settings), bare.reminders.size, settings.length, own ?: state.lastUploadedSettingsOwn)
         // Something became nothing. A fingerprint cannot tell that from a deletion, so this is
         // the only place it can be caught — before the bytes are sealed, and before the one copy
         // that still has everything is replaced by the phone that has lost it.
         if (wentEmpty(state.lastUploadedRows, sent.rows) || wentEmpty(state.lastUploadedSettingsLength, sent.settingsLength) ||
-            settingsWentBare(state.lastUploadedSettingsOwn, bareNow = own == false)
+            settingsWentBare(state.lastUploadedSettingsOwn, bareNow = own == false, lostSinceCopy = lostSinceCopy)
         ) {
             log("what this phone holds went empty (${state.lastUploadedRows} rows to ${sent.rows}, ${state.lastUploadedSettingsLength} to ${sent.settingsLength} of settings, own ${state.lastUploadedSettingsOwn} to $own); not copying that up")
             return attention(VaultOutcome.COLLAPSED)

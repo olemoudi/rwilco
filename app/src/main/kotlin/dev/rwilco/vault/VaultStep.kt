@@ -41,10 +41,16 @@ fun wentEmpty(was: Int?, now: Int): Boolean = was != null && was > 0 && now == 0
  * length (0.172.0). A settings file that would not read — corrupt, or a shape this build cannot
  * name — is replaced by the factory's, and the first write after it (the "what's new" sheet makes
  * one at every launch) stores two thousand characters of defaults: never empty, so [wentEmpty]
- * let the next run copy them over the places, presets and sounds the last copy had. [hadOwn] is
- * whether the last copy held anything of the person's; null says nothing.
+ * let the next run copy them over the places, presets and windows the last copy had. [hadOwn] is
+ * whether the last copy held anything of the person's (null says nothing).
+ *
+ * **Only when the settings were lost since that copy** ([lostSinceCopy]): settings with nothing of
+ * the person's in them are also what deleting the last saved place leaves, and zero, unlike for
+ * the reminders, is somewhere ordinary use gets to. Without it every backup after that deletion
+ * stopped as "this phone went empty".
  */
-fun settingsWentBare(hadOwn: Boolean?, bareNow: Boolean): Boolean = hadOwn == true && bareNow
+fun settingsWentBare(hadOwn: Boolean?, bareNow: Boolean, lostSinceCopy: Boolean): Boolean =
+    hadOwn == true && bareNow && lostSinceCopy
 
 /**
  * The vault pointed at [owner]/[repo] with [pat], where the file now is [remoteSha] (null: no file).

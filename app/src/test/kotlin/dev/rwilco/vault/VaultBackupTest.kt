@@ -73,11 +73,13 @@ class VaultBackupTest {
         transport: FakeTransport,
         rows: List<ReminderEntity> = listOf(row),
         settingsJson: String = settings,
+        settingsLostAt: Instant? = null,
     ) = VaultBackup(
         store = store,
         rows = { rows },
         events = { historyReads++; history },
         settingsJson = { settingsJson },
+        settingsLostAt = { settingsLostAt },
         transportFor = { transport },
         clock = clock,
         appVersionCode = 33,
@@ -234,18 +236,69 @@ class VaultBackupTest {
      * the settings were never *empty* when the next run came — two thousand characters of
      * defaults — and that run copied them over the places, presets and sounds the last copy had.
      */
+    private val ownSettings = ReminderCodec.encodeSettings(AppSettings(savedPlaces = listOf(SavedPlace("Casa", 40.4, -3.7, 100, id = "p1"))))
+    private val factory = ReminderCodec.encodeSettings(AppSettings(lastSeenVersionCode = 228))
+    private val lastCopy = now.minusSeconds(3_600)
+    private val copiedOwn = enabled.copy(
+        lastUploadedFingerprint = fingerprint(listOf(row), ownSettings), lastUploadedAt = lastCopy,
+        lastUploadedRows = 1, lastUploadedSettingsLength = ownSettings.length, lastUploadedSettingsOwn = true,
+    )
+
     @Test
     fun `a phone whose settings went back to the factory does not copy that over its own`() = runBlocking {
-        val own = ReminderCodec.encodeSettings(AppSettings(savedPlaces = listOf(SavedPlace("Casa", 40.4, -3.7, 100, id = "p1"))))
-        val factory = ReminderCodec.encodeSettings(AppSettings(lastSeenVersionCode = 228))
-        val store = MemoryStore(enabled.copy(lastUploadedFingerprint = fingerprint(listOf(row), own), lastUploadedRows = 1, lastUploadedSettingsLength = own.length, lastUploadedSettingsOwn = true))
+        val store = MemoryStore(copiedOwn)
         val transport = FakeTransport()
 
-        assertEquals(VaultRunResult.FAILED, backup(store, transport, settingsJson = factory).run())
+        assertEquals(VaultRunResult.FAILED, backup(store, transport, settingsJson = factory, settingsLostAt = lastCopy.plusSeconds(60)).run())
 
         assertTrue(transport.writes.isEmpty(), "nothing went up")
         assertEquals(VaultOutcome.COLLAPSED, store.state.lastOutcome)
         assertEquals(listOf(VaultOutcome.COLLAPSED), attention)
+    }
+
+    /**
+     * The review of 0.172.0: settings with nothing of the person's left in them are also what
+     * deleting the last saved place leaves — ordinary use, and every backup after it stopped as
+     * "this phone went empty". Only settings that were lost since the last copy are a collapse.
+     */
+    @Test
+    fun `deleting the last thing of your own is a deletion, and goes up`() = runBlocking {
+        val store = MemoryStore(copiedOwn)
+        val transport = FakeTransport(onWrite = { bytes, _ -> VaultCrypto.gitBlobSha(bytes) })
+
+        assertEquals(VaultRunResult.DONE, backup(store, transport, settingsJson = factory).run())
+
+        assertEquals(1, transport.writes.size)
+        assertEquals(VaultOutcome.UPLOADED, store.state.lastOutcome)
+        assertEquals(false, store.state.lastUploadedSettingsOwn)
+    }
+
+    @Test
+    fun `settings lost before the last copy say nothing about this one`() = runBlocking {
+        val store = MemoryStore(copiedOwn)
+        val transport = FakeTransport(onWrite = { bytes, _ -> VaultCrypto.gitBlobSha(bytes) })
+
+        assertEquals(VaultRunResult.DONE, backup(store, transport, settingsJson = factory, settingsLostAt = lastCopy.minusSeconds(60)).run())
+
+        assertEquals(VaultOutcome.UPLOADED, store.state.lastOutcome)
+    }
+
+    /**
+     * A blob this build cannot decode travels as it is, and still says what it carries: it used
+     * to be written down as "nothing known", which switched the guard off for the reset that
+     * follows it — the defaults are written over it at the next launch.
+     */
+    @Test
+    fun `a copy of settings this build cannot read still counts what is in them`() = runBlocking {
+        val unreadable = """{"haptics":"sometimes","savedPlaces":[{"name":"Casa","lat":40.4,"lng":-3.7,"radiusM":100}]}"""
+        val store = MemoryStore(copiedOwn)
+        val transport = FakeTransport(onWrite = { bytes, _ -> VaultCrypto.gitBlobSha(bytes) })
+        backup(store, transport, settingsJson = unreadable).run()
+        assertEquals(true, store.state.lastUploadedSettingsOwn)
+
+        val reset = backup(store, FakeTransport(), settingsJson = factory, settingsLostAt = clock.instant().plusSeconds(60))
+        assertEquals(VaultRunResult.FAILED, reset.run())
+        assertEquals(VaultOutcome.COLLAPSED, store.state.lastOutcome)
     }
 
     @Test

@@ -166,6 +166,9 @@ class Updater(private val context: Context) {
         if (found != null && staged == null) {
             Log.i(TAG, "the ${found.versionName} APK in the cache was replaced by ${info.versionName}; discarding it")
             discardStagedApk()
+            // A "confirm" or "finish updating" still in the shade is for the build just thrown
+            // away: tapped, it opened a Settings with nothing left to install.
+            UpdateNotifications.cancel(context)
         }
         val step = nextUpdateStep(
             isNewer = info.isNewerThan(current),

@@ -356,6 +356,7 @@ class RwilcoApplication : Application() {
         rows = repository::allRows,
         events = repository::allEvents,
         settingsJson = settingsStore::rawJson,
+        settingsLostAt = settingsStore::lostAt,
         transportFor = { state -> GitHubVault(state.owner, state.repo, state.pat, userAgent = USER_AGENT) },
         clock = clock,
         appVersionCode = BuildConfig.VERSION_CODE,

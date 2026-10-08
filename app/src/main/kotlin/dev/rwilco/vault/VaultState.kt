@@ -69,7 +69,7 @@ data class VaultState(
     val lastUploadedSettingsLength: Int? = null,
     /**
      * Whether the last copy's settings held anything only a person puts there
-     * (`holdsNothingOfTheirOwn`): what [settingsWentBare] compares against, because a reset is
+     * (`settingsHoldTheirOwn`): what [settingsWentBare] compares against, because a reset is
      * never *empty* — the factory blob is written whole on the next launch. Null on a vault that
      * has not uploaded since this was written down, which says nothing.
      */
