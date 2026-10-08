@@ -1464,6 +1464,12 @@
     <string name="vault_check_action">Comprobar</string>
     <string name="vault_check_ok">Esa es la contraseña.</string>
     <string name="vault_check_wrong">Esa no es la contraseña con la que está cifrada esta copia. Si la has olvidado, «Cambiar la contraseña» pone una nueva.</string>
+    <string name="locked_alert_title">Tienes un recordatorio</string>
+    <string name="locked_alert_text">El teléfono se ha reiniciado y aún no se ha desbloqueado, así que no se puede leer lo que dice. Desbloquéalo para verlo.</string>
+    <string name="locked_alert_unlock">Desbloquear para verlo</string>
+    <string name="locked_alert_silence">Silenciar</string>
+    <string name="locked_channel_name">Recordatorios antes de desbloquear</string>
+    <string name="locked_channel_description">Tras un reinicio, hasta que se desbloquea el teléfono: que toca un recordatorio, sin sus palabras.</string>
     <string name="vault_change_passphrase">Cambiar la contraseña</string>
     <string name="vault_change_passphrase_hint">También si la has olvidado: no hace falta la antigua.</string>
     <string name="vault_change_passphrase_title">Una contraseña nueva</string>

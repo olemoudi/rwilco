@@ -134,7 +134,7 @@ class ReminderFiring(
      * conditions on it ("al llegar a casa, y sólo si es por la tarde"). An alarm needs no such
      * check: the moment it was armed for already satisfied them.
      */
-    suspend fun fire(id: String, late: Instant? = null, ruleIndex: Int? = null, viaSnoozePlace: Boolean = false) = lock.withLock {
+    suspend fun fire(id: String, late: Instant? = null, ruleIndex: Int? = null, viaSnoozePlace: Boolean = false, announced: Boolean = false) = lock.withLock {
         val reminder = repository.get(id) ?: return@withLock Diag.note(TAG_DIAG, "r=${short(id)} gone")
         if (reminder.status != Status.ACTIVE) return@withLock Diag.note(TAG_DIAG, "r=${short(id)} not active (${reminder.status})")
         // The crossing a "cuando llegue a…" waits for. A fence outlives the snooze it was set
@@ -340,8 +340,11 @@ class ReminderFiring(
         // rather than read from the actions on purpose: a row restored from a vault, or one that
         // carried FULL_SCREEN before it became a contact, must not be able to take the screen or
         // make a sound. Same shape as the net's word (see [nudge]).
+        // [announced]: this moment already rang, generically, before the phone's first unlock
+        // (LockedBoot.kt). It is told now as the reminder it was — the card, not the "did not
+        // ring on time" note — and quietly, without the screen: it has made its noise once.
         val plan = if (reminder.isContact) CONTACT_PLAN
-        else firingPlan(reminder.actions).let { if (asleep) it.hushed() else it }
+        else firingPlan(reminder.actions).let { if (asleep) it.hushed() else it }.let { if (announced) it.hushed().copy(fullScreen = false) else it }
         Diag.note(TAG_DIAG, "r=${short(id)} RANG for $rangFor rule=$ruleIndex${if (late != null) " (late for $late)" else ""}${if (viaSnoozePlace) " (place snooze)" else ""} plan=${plan.summary()}")
         // From the sello to the screen in one piece: the receiver runs this under a timeout, and
         // a cancellation landing between markFired and show spent a moment nothing ever showed
@@ -354,7 +357,7 @@ class ReminderFiring(
             // A moment the phone slept through by a minute or two is still that moment, and
             // rings like it; only one it slept through by a good while arrives as the quiet
             // "did not ring on time" note (lateForPresentation).
-            val presentedLate = lateForPresentation(late, now)
+            val presentedLate = if (announced) null else lateForPresentation(late, now)
             repository.record(id, if (presentedLate != null) FiringKind.MISSED else FiringKind.RANG, now, ruleIndex)
             try {
                 // The row read above still carries the place this ring is the end of; shown as
@@ -1136,12 +1139,15 @@ class ReminderFiring(
     suspend fun rearmAndCatchUp() {
         val missed = scheduler.rearmAll()
         val settings = settings()
+        // What was said generically before the first unlock (LockedBoot.kt), to be told properly.
+        val locked = LockedMirror.read(context)
+        val announced = locked.announced.mapTo(HashSet()) { it.id to it.at }
         for (reminder in missed) {
             // **One reminder at a time, each on its own.** A throw out of one used to end the
             // pass, and every missed reminder after it in the list stayed missed — held unarmed by
             // the re-arm (it holds what is owed), and caught up by nobody, on every pass after.
             try {
-                catchUp(reminder, settings)
+                catchUp(reminder, settings, announced)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -1149,12 +1155,18 @@ class ReminderFiring(
                 Diag.note(TAG_DIAG, "r=${short(reminder.id)} catch-up failed (${e::class.simpleName}); the next pass tries again")
             }
         }
+        // The locked alarms and the generic words go once the reminders they stood for are told.
+        if (locked.armedLocked || locked.announced.isNotEmpty()) {
+            LockedAlerts.settle(context, locked)
+            LockedMirror.update(context) { it.copy(announced = emptyList(), armedLocked = false) }
+            Diag.note(TAG_DIAG, "unlocked after a locked boot: ${locked.announced.size} said generically")
+        }
     }
 
-    private suspend fun catchUp(reminder: Reminder, settings: AppSettings) {
+    private suspend fun catchUp(reminder: Reminder, settings: AppSettings, announced: Set<Pair<String, Long>>) {
         val at = missedFire(reminder, clock.instant()) ?: return
         // The rule the moment belonged to, or the whole thing is recorded against the wrong one.
-        fire(reminder.id, late = at, ruleIndex = reminder.armedRule)
+        fire(reminder.id, late = at, ruleIndex = reminder.armedRule, announced = (reminder.id to at.toEpochMilli()) in announced)
         // Under ALL only the earliest pending moment is ever armed, and the next only once
         // the first is written down. A phone off across two of them wakes owing both, and
         // the second — never armed, so never "missed" — would otherwise leave the set

@@ -3688,6 +3688,23 @@ loud what DST and a change of zone do to a landing.
   hands (`ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED`): on Android 12 and 13 taking
   "Alarms & reminders" away cancels every exact alarm the app had, and given back, nothing else
   would set them again until the app was opened.
+- **Before the first unlock** (0.172.0, `alarm/LockedBoot.kt`). `BOOT_COMPLETED` only arrives once
+  somebody unlocks the phone — the database and the settings are in storage it has not decrypted —
+  so a phone that restarted at three in the morning armed nothing, and the seven o'clock reminder
+  arrived at twenty to eight, unlocked, as a quiet "did not ring on time" card. Every `rearmAll`
+  now mirrors each reminder's next moment into device-protected storage (`LockedMirror`: id,
+  instant, rule and whether it would make a sound — **never the words**, the owner's call). A
+  `directBootAware` `LockedBootReceiver` hears `LOCKED_BOOT_COMPLETED` and arms them
+  (`lockedPlan`, pure: ahead → an alarm; passed during the restart, within `LATE_IS_MISSED` → at
+  once; older → the catch-up's); `LockedAlarmReceiver` rings a generic "Tienes un recordatorio" on
+  a channel of its own (`locked_v1`, the phone's alarm tone: a chosen tone is in locked storage)
+  with `LockedAlertActivity` over the lock screen — silence it, or unlock to see it. Once unlocked,
+  `rearmAndCatchUp` tells a moment already said that way as the reminder it was, quietly and
+  without the screen, rather than as missed (`fire(announced = true)`), and takes the locked
+  alarms and the generic cards down. The process those receivers start must not touch anything
+  else: `RwilcoApplication.onCreate` builds nothing before the unlock and waits for
+  `ACTION_USER_UNLOCKED`; every dependency is a `Built` delegate, so anything that asks first —
+  a component started just after the unlock, ahead of the broadcast — builds the container itself.
 - **Nothing on the way to the person is allowed to fail quietly.** Every way `fire` has of
   *not* ringing re-arms before it leaves (the alarm that brought it is spent; a drop that left
   nothing behind was a reminder silent until the six-hourly net); `rearmAll` writes the armed

@@ -1,6 +1,14 @@
 package dev.rwilco
 
 import android.app.Application
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import dev.rwilco.alarm.isUserUnlocked
+import androidx.core.content.ContextCompat
+import kotlin.properties.ReadWriteProperty
+import kotlin.reflect.KProperty
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.RwilcoDatabase
 import dev.rwilco.cheer.CheerStore
@@ -72,45 +80,100 @@ class RwilcoApplication : Application() {
         SupervisorJob() + Dispatchers.Default + CoroutineExceptionHandler { _, t -> Log.e(TAG, "background work failed", t) },
     )
 
-    lateinit var repository: ReminderRepository
+    var repository: ReminderRepository by Built()
         private set
-    lateinit var settingsStore: SettingsStore
+    var settingsStore: SettingsStore by Built()
         private set
-    lateinit var scheduler: ReminderScheduler
+    var scheduler: ReminderScheduler by Built()
         private set
-    lateinit var firing: ReminderFiring
+    var firing: ReminderFiring by Built()
         private set
-    lateinit var geofences: GeofenceManager
+    var geofences: GeofenceManager by Built()
         private set
-    lateinit var placeWatcher: PlaceWatcher
+    var placeWatcher: PlaceWatcher by Built()
         private set
 
     /** What the place watch did and why, for the log behind the button in Settings. */
-    lateinit var placeLog: PlaceLogStore
+    var placeLog: PlaceLogStore by Built()
         private set
 
     /** Which circles the phone is inside, as the watch last saw it: what Home's rule marks read. */
-    lateinit var placeWatch: PlaceWatchStore
+    var placeWatch: PlaceWatchStore by Built()
         private set
 
     /** The encrypted backup's own memory: credentials, key, cursors. Off by default. */
-    lateinit var vaultStore: VaultStore
+    var vaultStore: VaultStore by Built()
         private set
 
     /** What the app did and why, for the report somebody pastes into a conversation. */
-    lateinit var diagStore: DiagStore
+    var diagStore: DiagStore by Built()
         private set
 
     /** Null until the first read lands; the activity paints the window ground until then. */
-    lateinit var settings: StateFlow<AppSettings?>
+    var settings: StateFlow<AppSettings?> by Built()
         private set
 
     /** Where Home's line of encouragement and the silent word come from (0.151.0). */
-    lateinit var cheering: Cheering
+    var cheering: Cheering by Built()
         private set
 
     override fun onCreate() {
         super.onCreate()
+        // **Before the first unlock nothing here can be built** (0.172.0). After a reboot the
+        // database, the settings and every other store live in storage the phone has not
+        // decrypted yet, and the process can be started by the one thing that runs then — the
+        // locked-boot alarms ([dev.rwilco.alarm.LockedBootReceiver]), which use none of it. So
+        // the building waits for the unlock, and anything that asks for a dependency first
+        // builds it ([Built]).
+        if (!isUserUnlocked()) {
+            Log.i(TAG, "started before the first unlock; building waits for it")
+            waitForUnlock()
+            return
+        }
+        ensureInitialized()
+    }
+
+    /**
+     * Builds the dependencies and starts the background work, once. Safe from any thread and any
+     * door; refuses — loudly — before the first unlock, because a half-built container that
+     * believed itself ready would stay half-built until the process died.
+     */
+    fun ensureInitialized() {
+        if (ready) return
+        synchronized(this) {
+            if (ready) return
+            check(isUserUnlocked()) { "the app's storage cannot be read before the first unlock" }
+            build()
+            // Before the work starts and not after it: the work reads these through [Built], and
+            // a read that found the container not ready would come back here and wait for itself.
+            ready = true
+            start()
+        }
+    }
+
+    @Volatile
+    private var ready = false
+
+    /**
+     * Built when the phone is first unlocked. A system broadcast, so a receiver nothing else can
+     * reach still hears it; and checked again after registering, because an unlock landing
+     * between the check in [onCreate] and here would otherwise never be heard at all.
+     */
+    private fun waitForUnlock() {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                runCatching { unregisterReceiver(this) }
+                ensureInitialized()
+            }
+        }
+        ContextCompat.registerReceiver(this, receiver, IntentFilter(Intent.ACTION_USER_UNLOCKED), ContextCompat.RECEIVER_NOT_EXPORTED)
+        if (isUserUnlocked()) {
+            runCatching { unregisterReceiver(receiver) }
+            ensureInitialized()
+        }
+    }
+
+    private fun build() {
         settingsStore = SettingsStore(this)
         val database = RwilcoDatabase.get(this)
         repository = ReminderRepository(database.reminders(), clock, database.events())
@@ -126,6 +189,9 @@ class RwilcoApplication : Application() {
         vaultStore = VaultStore(this)
         diagStore = DiagStore(this)
         cheering = Cheering(repository, settingsStore, CheerStore(this), clock)
+    }
+
+    private fun start() {
         Diag.install(diagStore, appScope, clock)
         // With the chosen tone and rhythm, once they are known: the channels of any other are
         // swept away by ensureChannels, so making them with the defaults first would delete the
@@ -320,6 +386,27 @@ class RwilcoApplication : Application() {
         // Not while settings that would not read are kept aside: the defaults standing in for
         // them point at no tone of their own, and the sweep would take the copies with it.
         if (!settingsStore.sweepHeld(clock.instant())) SoundStore.sweep(this, settled)
+    }
+
+    /**
+     * A dependency [ensureInitialized] builds. Asked for before that has run — a component that
+     * starts right after the first unlock, ahead of the broadcast saying so — it runs it; asked
+     * for while it is running, it hands back what has been built so far, which is what the
+     * building itself reads as it goes.
+     */
+    private class Built<T : Any> : ReadWriteProperty<RwilcoApplication, T> {
+        @Volatile
+        private var value: T? = null
+
+        override fun getValue(thisRef: RwilcoApplication, property: KProperty<*>): T =
+            value ?: run {
+                thisRef.ensureInitialized()
+                value ?: error("${property.name} was not built")
+            }
+
+        override fun setValue(thisRef: RwilcoApplication, property: KProperty<*>, value: T) {
+            this.value = value
+        }
     }
 
     companion object {

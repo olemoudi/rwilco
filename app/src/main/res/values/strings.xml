@@ -1479,6 +1479,12 @@
     <string name="vault_check_action">Check</string>
     <string name="vault_check_ok">That is the passphrase.</string>
     <string name="vault_check_wrong">That is not the passphrase this copy is sealed with. If it is gone, “Change the passphrase” sets a new one.</string>
+    <string name="locked_alert_title">You have a reminder</string>
+    <string name="locked_alert_text">The phone restarted and has not been unlocked yet, so what it says cannot be read. Unlock it to see it.</string>
+    <string name="locked_alert_unlock">Unlock to see it</string>
+    <string name="locked_alert_silence">Silence</string>
+    <string name="locked_channel_name">Reminders before unlocking</string>
+    <string name="locked_channel_description">After a restart, until the phone is unlocked: that a reminder is due, without its words.</string>
     <string name="vault_change_passphrase">Change the passphrase</string>
     <string name="vault_change_passphrase_hint">Also if you have forgotten it: the old one is not needed.</string>
     <string name="vault_change_passphrase_title">A new passphrase</string>

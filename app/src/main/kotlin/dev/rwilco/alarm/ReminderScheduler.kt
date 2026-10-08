@@ -35,6 +35,8 @@ import dev.rwilco.model.missedFire
 import dev.rwilco.model.nudgeAt
 import dev.rwilco.model.nextPrompt
 import dev.rwilco.model.nextWake
+import dev.rwilco.model.firingPlan
+import dev.rwilco.model.hushedByTheHour
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -131,6 +133,9 @@ class ReminderScheduler(
         val turns = contactQueue(open, now, zone, settings::contactScheduleOf, dayStart)
         val missed = ArrayList<Reminder>()
         val seen = HashSet<String>(open.size)
+        // What a locked boot can arm (LockedBoot.kt): the next moment of every reminder, and
+        // whether it would make a sound — never the words.
+        val mirrored = ArrayList<LockedWake>()
         for (reminder in open) {
             seen += reminder.id
             // The safety net keeps an alarm of its own, and deliberately does not touch
@@ -181,6 +186,11 @@ class ReminderScheduler(
                     true
                 }
                 if (wrote) arm(reminder.id, wake, quiet = reminder.isContact) else cancelRing(reminder.id)
+                if (wrote && !reminder.isContact) {
+                    val plan = firingPlan(reminder.actions)
+                    val loud = plan.notification && (plan.sound || plan.fullScreen) && !hushedByTheHour(wake.at, wake.at, zone, settings.dayShape)
+                    mirrored += LockedWake(reminder.id, wake.at.toEpochMilli(), wake.ruleIndex, loud)
+                }
             }
         }
         // Whatever was armed and is no longer open (done, deleted) loses its alarm. A process
@@ -190,6 +200,7 @@ class ReminderScheduler(
         for (id in nudging.toList() - seen) cancelNudge(id)
         for (id in lapsing.toList() - seen) cancelLapse(id)
         for (id in asking.toList() - seen) cancelAsk(id)
+        LockedMirror.update(context) { it.copy(wakes = mirrored) }
         Log.i(TAG, "armed ${seen.size} reminders, ${missed.size} missed")
         Diag.note("arm", "armed=${seen.size} missed=${missed.size} exact=${if (canScheduleExact()) "y" else "n"}")
         for (reminder in missed) Diag.note("arm", "r=${reminder.id.take(8)} missed its moment ${reminder.armedFor} (rule ${reminder.armedRule})")

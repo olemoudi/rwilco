@@ -100,6 +100,35 @@
             android:name=".alarm.AlarmReceiver"
             android:exported="false" />
 
+        <!-- Ringing before the first unlock (0.172.0): a reboot clears every alarm, and the one
+             that re-arms them waits for the unlock. These three are the only parts of the app that
+             run while the phone's own storage is still locked, and they read only the mirror of
+             next moments kept in device-protected storage — no words (see alarm/LockedBoot.kt). -->
+        <receiver
+            android:name=".alarm.LockedBootReceiver"
+            android:directBootAware="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".alarm.LockedAlarmReceiver"
+            android:directBootAware="true"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.alert.LockedAlertActivity"
+            android:directBootAware="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:excludeFromRecents="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:taskAffinity=".locked"
+            android:theme="@style/Theme.Rwilco" />
+
         <receiver
             android:name=".alarm.AlertActionReceiver"
             android:exported="false" />
