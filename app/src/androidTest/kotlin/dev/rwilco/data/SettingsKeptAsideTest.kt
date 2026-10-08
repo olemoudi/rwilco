@@ -13,6 +13,7 @@ import org.junit.runner.RunWith
 import java.io.File
 import java.time.Duration
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 /**
  * Settings that will not read are kept aside before the defaults are written over them (0.167.0).
@@ -48,9 +49,14 @@ class SettingsKeptAsideTest {
         check(app.settingsStore.settings.first() == AppSettings()) { "the defaults stand in for settings that will not read" }
         check(kept().isEmpty()) { "reading alone kept something aside; that is the write's job, off the main thread" }
         check(app.settingsStore.sweepHeld(Instant.now())) { "the sweep ran over settings that do not read" }
+        val writing = Instant.now().truncatedTo(ChronoUnit.SECONDS)
         app.settingsStore.update { it.copy(lastSeenVersionCode = 1) }
 
         check(kept().map { it.readText() } == listOf(unreadable)) { "not kept, or not as it was: ${kept().map { it.name }}" }
+        // What tells the backup that the defaults now standing are a loss and not somebody's
+        // deletion (0.172.0): a copy made before this must not be overwritten by them.
+        val lost = app.settingsStore.lostAt()
+        check(lost != null && !lost.isBefore(writing)) { "the loss was not dated: $lost, written from $writing" }
         check(app.settingsStore.sweepHeld(Instant.now())) { "the sweep is held for a month after" }
         check(!app.settingsStore.sweepHeld(Instant.now().plus(Duration.ofDays(31)))) { "and not for ever" }
 

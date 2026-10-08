@@ -264,5 +264,24 @@ class FiringOnceTest {
         assertNull(app.repository.get(id)!!.armedFor)
     }
 
+    /**
+     * 0.172.0: the card left in the shade from before the pause, answered "Hecho" after it. The
+     * round is dealt with and the pause stands — it used to come back ACTIVE with `pausedAt` still
+     * set, and ring again at its next moment.
+     */
+    @Test
+    fun a_hecho_on_a_paused_reminder_leaves_it_paused() = runBlocking {
+        saveAndArm(Recurrence.After(1, RecurrenceUnit.HOURS))
+        app.firing.fire(id)
+        app.repository.setStatus(id, Status.PAUSED)
+
+        app.firing.dismiss(id)
+        val after = app.repository.get(id)!!
+        assertEquals("the hecho lifted the pause", Status.PAUSED, after.status)
+        assertNotNull("the hecho was not written down", after.lastDealtAt)
+        repeat(2) { app.firing.rearmAndCatchUp() }
+        assertNull("a paused reminder was armed", app.repository.get(id)!!.armedFor)
+    }
+
     private fun assertNotNull(message: String, value: Instant?) = assertTrue(message, value != null)
 }
