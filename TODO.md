@@ -906,6 +906,15 @@ sheets sliding out on Confirm (`hide()` vs `confirmValueChange`)~~ — both done
 the dead code listed under 0.67.0 — asked about, not deleted.
 
 ## Still to prove on the real phone (Pixel 8 Pro)
+- La revisión de 0.172.0. **Antes del primer desbloqueo:** con un recordatorio con sonido para
+  dentro de 5–10 min, reinicia el teléfono y **no** lo desbloquees — tiene que sonar el tono de
+  alarma con «Tienes un recordatorio» sobre el bloqueo; «Silenciar» lo calla; al desbloquear
+  aparece el aviso de verdad, callado, y no como «no sonó a su hora». **Lugares:** «mientras esté
+  en casa, y sólo de 20 a 22» estando en casa desde antes de las 20 (tiene que sonar a las 20); y
+  «mientras esté en casa, vuelve cada día», un día entero en casa con otro recordatorio de lugar
+  activo (tiene que sonar al empezar el día). **Ubicación:** apágala un rato y vuelve a
+  encenderla; en Ajustes → Diagnóstico tiene que aparecer «putting them back» y las geocercas
+  armadas en menos de media hora.
 - La ronda de arreglos (0.139.0): toca fuera de una hoja del editor con algo escrito —tiene que
   preguntar— y con nada escrito —tiene que cerrarse deslizándose—; y comprueba que un gesto rápido
   hacia abajo dentro de una hoja con lista (la de lugares) sigue **sin** cerrarla. Y deja una
