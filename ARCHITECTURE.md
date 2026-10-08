@@ -2499,6 +2499,16 @@ loud what DST and a change of zone do to a landing.
   owing both and only one is detectably missed; `owedUnderAll` (pure) lists the one-shot
   moments after the missed one that have since passed, and `rearmAndCatchUp` fires them in
   turn, so the set completes late rather than never.
+- **A receiver's budget bounds the wait, never the answer** (0.172.0). `AlarmReceiver` and
+  `AlertActionReceiver` run the firing as its own job in `appScope` and wait up to nine seconds
+  for it; past that they let the broadcast go and the job carries on. They used to cancel it, so a
+  ring queued behind another door holding the firing lock (a snooze waiting on a slow settings
+  store) was dropped before `markFired`: the re-arm held its moment as missed and nothing caught
+  it up until the app was opened or the six-hourly worker came — hours late, and silent by then.
+  A ring that outlasts its broadcast also arms itself again a minute on (`armRetry`), in case the
+  process does not live to finish it; the armed-moment check drops the retry when it did.
+  `rearmAndCatchUp` catches up each reminder on its own: a throw out of one used to end the pass,
+  leaving every missed reminder after it unarmed and uncaught on every pass after.
 - **A "hecho" deals with whatever is owed** (`momentDealtWith`, pure). Usually that is the firing
   waiting for an answer, and then it spends nothing else. When nothing is waiting, what is being
   dealt with is the moment that was *coming*: a daily at two o'clock ticked off this morning

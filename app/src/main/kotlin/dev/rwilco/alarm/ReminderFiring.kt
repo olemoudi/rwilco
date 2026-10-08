@@ -1137,20 +1137,34 @@ class ReminderFiring(
         val missed = scheduler.rearmAll()
         val settings = settings()
         for (reminder in missed) {
-            val at = missedFire(reminder, clock.instant()) ?: continue
-            // The rule the moment belonged to, or the whole thing is recorded against the wrong one.
-            fire(reminder.id, late = at, ruleIndex = reminder.armedRule)
-            // Under ALL only the earliest pending moment is ever armed, and the next only once
-            // the first is written down. A phone off across two of them wakes owing both, and
-            // the second — never armed, so never "missed" — would otherwise leave the set
-            // waiting for something that has already happened. Each is fired in turn; the
-            // last one to complete the set rings.
-            var left = reminder.rules.size
-            while (left-- > 0) {
-                val current = repository.get(reminder.id) ?: break
-                val owed = owedUnderAll(current, at, clock.instant(), clock.zone, settings.defaultTime, settings.dayShape).firstOrNull() ?: break
-                fire(reminder.id, late = owed.at, ruleIndex = owed.ruleIndex)
+            // **One reminder at a time, each on its own.** A throw out of one used to end the
+            // pass, and every missed reminder after it in the list stayed missed — held unarmed by
+            // the re-arm (it holds what is owed), and caught up by nobody, on every pass after.
+            try {
+                catchUp(reminder, settings)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "could not catch up ${reminder.id}", e)
+                Diag.note(TAG_DIAG, "r=${short(reminder.id)} catch-up failed (${e::class.simpleName}); the next pass tries again")
             }
+        }
+    }
+
+    private suspend fun catchUp(reminder: Reminder, settings: AppSettings) {
+        val at = missedFire(reminder, clock.instant()) ?: return
+        // The rule the moment belonged to, or the whole thing is recorded against the wrong one.
+        fire(reminder.id, late = at, ruleIndex = reminder.armedRule)
+        // Under ALL only the earliest pending moment is ever armed, and the next only once
+        // the first is written down. A phone off across two of them wakes owing both, and
+        // the second — never armed, so never "missed" — would otherwise leave the set
+        // waiting for something that has already happened. Each is fired in turn; the
+        // last one to complete the set rings.
+        var left = reminder.rules.size
+        while (left-- > 0) {
+            val current = repository.get(reminder.id) ?: break
+            val owed = owedUnderAll(current, at, clock.instant(), clock.zone, settings.defaultTime, settings.dayShape).firstOrNull() ?: break
+            fire(reminder.id, late = owed.at, ruleIndex = owed.ruleIndex)
         }
     }
 

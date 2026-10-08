@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import dev.rwilco.RwilcoApplication
+import dev.rwilco.diag.Diag
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -27,9 +29,13 @@ class AlarmReceiver : BroadcastReceiver() {
         val pending = goAsync()
         app.appScope.launch {
             try {
-                // Bounded under the broadcast's own budget: past it the system finishes the
-                // receiver itself, and a finish() of our own on top of that throws.
-                val done = withTimeoutOrNull(BUDGET_MS) {
+                // **The answer is never cut short; only the wait for it is.** The broadcast's own
+                // budget bounds how long this receiver holds on — past it the system finishes the
+                // receiver itself, and a finish() of our own on top of that throws — but the work
+                // runs on beside it. Cancelled at the budget, a firing queued behind another door
+                // holding the lock was dropped before it was written down, and its moment waited
+                // for the next catch-up: hours, and by then a silent "missed" card.
+                val work = app.appScope.async {
                     when {
                         nudge -> app.firing.nudge(id)
                         lapse -> app.firing.expire(id)
@@ -37,9 +43,21 @@ class AlarmReceiver : BroadcastReceiver() {
                         else -> app.firing.fire(id, ruleIndex = ruleIndex)
                     }
                 }
-                if (done == null) Log.e("RwilcoAlarms", "firing $id ran out of time")
+                // Said even when nobody is waiting any more: past the budget, a throw has no
+                // catch below to land in.
+                work.invokeOnCompletion { failure -> if (failure != null) Log.e("RwilcoAlarms", "firing $id failed", failure) }
+                val done = withTimeoutOrNull(BUDGET_MS) { work.await() }
+                if (done == null) {
+                    // In case this process does not live to finish it: the same alarm, a minute on.
+                    // Only a ring has a moment the row keeps armed for it; the net's word, a lapse
+                    // and a question are re-derived by the next re-arm pass on their own.
+                    val retry = !nudge && !lapse && !ask
+                    if (retry) app.scheduler.armRetry(id, ruleIndex, app.clock.instant().plusSeconds(RETRY_SECONDS))
+                    Log.e("RwilcoAlarms", "firing $id ran out of time; it goes on${if (retry) ", and is asked again in a minute" else ""}")
+                    Diag.note("fire", "r=${id.take(8)} outlasted its broadcast${if (retry) "; retry armed" else ""}")
+                }
             } catch (t: Throwable) {
-                Log.e("RwilcoAlarms", "firing $id failed", t)
+                // Said by invokeOnCompletion above, which is the one place that sees it either way.
             } finally {
                 runCatching { pending.finish() }
             }
@@ -48,5 +66,6 @@ class AlarmReceiver : BroadcastReceiver() {
 
     private companion object {
         const val BUDGET_MS = 9_000L
+        const val RETRY_SECONDS = 60L
     }
 }

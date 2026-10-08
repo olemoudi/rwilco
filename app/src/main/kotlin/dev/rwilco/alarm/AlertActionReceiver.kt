@@ -14,6 +14,7 @@ import dev.rwilco.model.ReminderCodec
 import dev.rwilco.notify.AlertNotifications
 import java.time.Instant
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -26,9 +27,11 @@ class AlertActionReceiver : BroadcastReceiver() {
         val pending = goAsync()
         app.appScope.launch {
             try {
-                // Bounded under the broadcast's own budget, as AlarmReceiver is: past it the
-                // system finishes the receiver itself, and a finish() of ours on top throws.
-                val done = withTimeoutOrNull(BUDGET_MS) {
+                // The wait is bounded by the broadcast's own budget, as AlarmReceiver's is: past it
+                // the system finishes the receiver itself, and a finish() of ours on top throws.
+                // The answer is not: a tap queued behind another door holding the lock was
+                // cancelled at the budget, and the "hecho" somebody gave was simply not written.
+                val work = app.appScope.async {
                     when (intent.action) {
                         // Every "hecho" from the shade leaves a minute's undo card (0.129.0): the
                         // notice is posted by the firing itself, which is where the row it would
@@ -77,9 +80,11 @@ class AlertActionReceiver : BroadcastReceiver() {
                         ACTION_CONFIRM_RESET -> AlertNotifications.cancelReset(context, id)
                     }
                 }
-                if (done == null) Log.e("RwilcoAlarms", "action ${intent.action} on $id ran out of time")
+                work.invokeOnCompletion { failure -> if (failure != null) Log.e("RwilcoAlarms", "action ${intent.action} on $id failed", failure) }
+                val done = withTimeoutOrNull(BUDGET_MS) { work.await() }
+                if (done == null) Log.e("RwilcoAlarms", "action ${intent.action} on $id outlasted its broadcast; it goes on")
             } catch (t: Throwable) {
-                Log.e("RwilcoAlarms", "action ${intent.action} on $id failed", t)
+                // Said by invokeOnCompletion above.
             } finally {
                 runCatching { pending.finish() }
             }

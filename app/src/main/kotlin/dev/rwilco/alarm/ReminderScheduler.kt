@@ -312,6 +312,14 @@ class ReminderScheduler(
         }.onFailure { Log.e(TAG, "could not arm the safety net of ${reminder.id}", it) }
     }
 
+    /**
+     * A firing that outlasted its broadcast ([AlarmReceiver]) asked again at [at], under the same
+     * alarm it came by. Its moment stays armed on the row, so a re-arm pass holds it as missed and
+     * leaves this alarm where it is; a firing that did finish re-arms over it; and one arriving
+     * after that finds nothing armed for now and is dropped as a stray (`ReminderFiring.fire`).
+     */
+    fun armRetry(id: String, ruleIndex: Int?, at: Instant) = arm(id, Wake(at, ruleIndex))
+
     private fun arm(id: String, wake: Wake, quiet: Boolean = false) {
         val at = wake.at
         val operation = alarmIntent(id, wake.ruleIndex)
