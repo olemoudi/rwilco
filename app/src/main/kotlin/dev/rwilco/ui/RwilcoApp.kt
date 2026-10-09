@@ -71,6 +71,8 @@ fun RwilcoApp(
     app: RwilcoApplication,
     requestedDestination: String? = null,
     onDestinationConsumed: () -> Unit = {},
+    /** When the app was last opened; see MainActivity.openedAt. */
+    openedAt: Long = 0L,
 ) {
     val navController = rememberNavController()
     val snackbarHost = remember { SnackbarHostState() }
@@ -168,6 +170,7 @@ fun RwilcoApp(
                 composable<Routes.Home> {
                     HomeScreen(
                         viewModel = viewModel(factory = HomeViewModel.Factory(app)),
+                        openedAt = openedAt,
                         justSaved = justSaved,
                         onJustSavedShown = { justSaved = null },
                         justDeleted = justDeleted,

@@ -50,6 +50,14 @@ Running notes: what is next, what cost time, what must not be re-derived.
   in the screen rather than in the test (0.63.0): at the top of the list the row is shown.
   Cost: two emulator runs on 2026-08-31, one of them bisecting against the pre-change tree to
   prove it was not the change under review.
+- **A row put in above the first visible one goes in out of sight — even at the very top.**
+  `LazyListState` keeps its place by the *key* of its first visible item, so a row that arrives
+  above it (Home's waiting card, read a beat after the presets row was drawn) is inserted above
+  the viewport and the list stays on the old row. A list with nothing above to hold on to (no
+  presets: the placeholder is replaced) does not show it, which is how `HomeWaitingTest` was
+  green from the day it was written while the phone opened on the presets. `requestScrollToItem(0)` from an
+  effect keyed on the new row is the documented way to stay at the top (0.173.0). Proven by
+  running the new checks against the build without the fix first: 3 of 4 failed.
 - **A device test may not have a backticked name with spaces.** The backticked-sentence
   convention is the JVM suites'; `androidTest` is dexed, and dex refuses spaces in a SimpleName
   prior to version 040 — it fails in `dexBuilderDebugAndroidTest`, not in the compiler, so the

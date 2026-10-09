@@ -10,6 +10,7 @@ import androidx.core.content.ContextCompat
 import java.util.concurrent.atomic.AtomicBoolean
 import android.graphics.Color
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -19,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -32,6 +34,12 @@ class MainActivity : ComponentActivity() {
 
     /** Where a notification asked to land (the update card lives in Settings); cleared once shown. */
     private val requestedDestination = mutableStateOf<String?>(null)
+
+    /**
+     * When the app was last opened — a cold start, or back from another app or the alert screen
+     * (`elapsedRealtime`). Home starts at what is waiting for an answer then; see HomeScreen.
+     */
+    private val openedAt = mutableLongStateOf(0L)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -61,6 +69,7 @@ class MainActivity : ComponentActivity() {
                     RwilcoApp(
                         app = app,
                         requestedDestination = requestedDestination.value,
+                        openedAt = openedAt.longValue,
                         onDestinationConsumed = {
                             requestedDestination.value = null
                             // And the intent it came from, so a later recreation finds nothing
@@ -97,6 +106,11 @@ class MainActivity : ComponentActivity() {
             // Where a browser puts the page's title: a shared link used to arrive as a bare URL.
             subject = intent.getStringExtra(Intent.EXTRA_SUBJECT),
         )
+
+    override fun onStart() {
+        super.onStart()
+        openedAt.longValue = SystemClock.elapsedRealtime()
+    }
 
     override fun onResume() {
         super.onResume()

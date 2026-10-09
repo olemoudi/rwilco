@@ -1751,6 +1751,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_173_0">
+
+        <item>When something is waiting for your answer, the app opens on it. With presets, their row was drawn first and the “Waiting for your answer” card arrived a moment later above it, out of sight, so you had to scroll up to find it. It also no longer slips in above the top of the list while you are looking at it.</item>
+
+    </string-array>
     <string-array name="whats_new_0_172_0">
 
         <item>After a restart the phone rings before you unlock it. A screen over the lock says “You have a reminder”, with the alarm tone, and nothing of what it says: the words stay encrypted until the phone is unlocked, and then it is the real reminder. It used to wait for the unlock and arrive late, quiet, as “did not ring on time”.</item>

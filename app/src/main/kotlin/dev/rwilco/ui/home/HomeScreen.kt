@@ -1,5 +1,6 @@
 package dev.rwilco.ui.home
 
+import android.os.SystemClock
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -59,6 +60,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.material3.Surface
@@ -115,6 +117,8 @@ import dev.rwilco.ui.format.snoozePlacePhrase
 import dev.rwilco.model.FiringEvent
 import dev.rwilco.model.Reminder
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 
@@ -174,6 +178,8 @@ fun HomeScreen(
     /** The routines screen, behind the one line Home keeps about them (see RoutinesLine). */
     /** The routines screen; the id is the one to scroll to, when the tap came from its row. */
     onRoutines: (String?) -> Unit = {},
+    /** When the app was last opened (`elapsedRealtime`); see the waiting card's effects below. */
+    openedAt: Long = 0L,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val search by viewModel.search.collectAsStateWithLifecycle()
@@ -720,6 +726,29 @@ fun HomeScreen(
         LaunchedEffect(listState) {
             snapshotFlow { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0 }
                 .collect { if (it) headerScroll.show() }
+        }
+        // **What is waiting for an answer is what the app opens on** (0.173.0). The list keeps
+        // its place by the key of its first visible row, so the waiting card, which arrives a
+        // beat after the presets row (Home's rows are read and built; the presets are one map of
+        // the settings), was put in *above* it, out of sight: the app opened on the presets.
+        // So: the list showing its top keeps showing it when the card comes; and an opening —
+        // a cold start, or back from another app or the alert — with something waiting starts
+        // at the top whatever the list was left at. Only an opening: a card that turns up while
+        // somebody is reading further down does not pull the list out from under them.
+        LaunchedEffect(waitingShown) {
+            if (waitingShown && listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0) {
+                listState.requestScrollToItem(0)
+            }
+        }
+        val waitingNow by rememberUpdatedState(waitingShown)
+        LaunchedEffect(openedAt) {
+            // Measured from the opening itself, so Home entered later (back from a screen the app
+            // was reopened on) is not an opening, and cannot fight a save's scroll to its card.
+            val left = OPENING_WAIT_MS - (SystemClock.elapsedRealtime() - openedAt)
+            if (left <= 0) return@LaunchedEffect
+            // The rows are read again on the way in; the card can come a moment after the screen.
+            withTimeoutOrNull(left) { snapshotFlow { waitingNow }.first { it } } ?: return@LaunchedEffect
+            listState.scrollToItem(0)
         }
         LazyColumn(
             state = if (search.open) searchListState else listState,
@@ -1292,6 +1321,12 @@ private fun TagFilter.label(): String = when (this) {
 
 /** How long a just-saved card stays lit: long enough to be caught, short enough not to be worn. */
 private const val MARK_MS = 1_400L
+
+/**
+ * How long after the app opens a waiting card that arrives still takes the list to the top.
+ * Home's rows are local and read in well under this; past it, the list is somebody's again.
+ */
+private const val OPENING_WAIT_MS = 3_000L
 
 /** The hero's row is keyed by its slot, not by the reminder alone; read by the just-saved effect. */
 private const val HERO_KEY_PREFIX = "hero-"
