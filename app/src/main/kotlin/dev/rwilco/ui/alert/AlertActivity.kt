@@ -30,6 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import dev.rwilco.MainActivity
 import dev.rwilco.RwilcoApplication
+import dev.rwilco.alarm.Door
 import dev.rwilco.alarm.ReminderScheduler
 import dev.rwilco.model.AlertStacking
 import dev.rwilco.model.Reminder
@@ -340,13 +341,13 @@ class AlertActivity : ComponentActivity() {
                 if (stacked && focusedItem == null) {
                     AlertStackScreen(
                         items = items,
-                        onDone = { id -> answer(id) { app.firing.dismiss(id) } },
+                        onDone = { id -> answer(id) { app.firing.dismiss(id, via = Door.ALERT) } },
                         onSnooze = { id, snooze -> answer(id) { app.firing.snooze(id, snooze) } },
                         // Not the form: this one reminder, on the whole screen. See [focused].
                         onView = { id -> focused = id },
                         snoozes = current.notificationOffers,
                         customMinutes = current.snoozeCustomMinutes,
-                        onDoneAll = { answerAll(items.map { it.id }) { id -> app.firing.dismiss(id) } },
+                        onDoneAll = { answerAll(items.map { it.id }) { id -> app.firing.dismiss(id, via = Door.ALERT) } },
                         onSnoozeAll = { snooze -> answerAll(items.map { it.id }) { id -> app.firing.snooze(id, snooze) } },
                         ringing = noise,
                         onSilence = { silence() },
@@ -357,8 +358,8 @@ class AlertActivity : ComponentActivity() {
                         content = first.content,
                         preview = false,
                         waiting = items.size - 1,
-                        onDone = { answer(first.id) { app.firing.dismiss(first.id) } },
-                        onDoneOnTime = { answer(first.id) { app.firing.doneOnTime(first.id) } },
+                        onDone = { answer(first.id) { app.firing.dismiss(first.id, via = Door.ALERT) } },
+                        onDoneOnTime = { answer(first.id) { app.firing.doneOnTime(first.id, via = Door.ALERT) } },
                         onSnooze = { snooze: SnoozeOffer -> answer(first.id) { app.firing.snooze(first.id, snooze) } },
                         onView = { view(first.id, first.content.routine) },
                         onAct = ::act,

@@ -3,10 +3,12 @@ package dev.rwilco.notify
 import android.app.AppOpsManager
 import android.app.KeyguardManager
 import android.app.NotificationManager
+import android.app.UiModeManager
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Build
 import android.os.PowerManager
 import android.os.Process
@@ -73,8 +75,19 @@ fun alertPresentation(
      * lock screen, the tap asked for the PIN, the card was pinned, and the noise went on.
      */
     repeat: Boolean = false,
+    /**
+     * The phone is in car mode — Android Auto (0.174.0). Nobody at the wheel is reading the phone,
+     * and Android Auto shows no card of ours, so the screen would wait on the lock until the
+     * phone is picked up on arrival and come up again under the hand pulling it off the mount.
+     * Reported from the phone: a ring at 18:00 on the road, the screen back up at 18:17 as the
+     * car was left, and "Hecho" given from it seven seconds later — "como si se hubiera marcado
+     * como hecha sola". The card rings as on any banner and waits in the shade until somebody
+     * gets out and looks.
+     */
+    driving: Boolean = false,
 ): AlertPresentation = when {
     !fullScreenWanted -> AlertPresentation.BANNER
+    driving -> AlertPresentation.BANNER
     // Screen off or locked: only the system's full-screen intent can light it — and when the
     // system refuses that, the notification has to make the noise itself. Deciding
     // FULL_SCREEN here regardless once muted the notification for a screen that never came.
@@ -124,6 +137,7 @@ object AlertPresenter {
         val foreground = context.foregroundApp()
         val overlay = context.canDrawOverlays()
         val fsi = context.canUseFullScreenIntent()
+        val driving = context.inCarMode()
         val wanted = plan.fullScreen && late == null
         val presentation = alertPresentation(
             fullScreenWanted = wanted,
@@ -132,6 +146,7 @@ object AlertPresenter {
             canOverlay = overlay,
             canFullScreen = fsi,
             repeat = repeat,
+            driving = driving,
         )
         // With the screen on, the takeover is ours to start — and it is started BEFORE the
         // notification, because whether it took decides whether the card asks for the screen as
@@ -148,7 +163,8 @@ object AlertPresenter {
         Diag.note(
             "show",
             "r=${reminder.id.take(8)} $presentation screen=${if (screenTaken) "taken" else if (inUse) "refused" else "system"} " +
-                "inUse=$inUse fg=$foreground overlay=$overlay fsi=$fsi notif=${NotificationManagerCompat.from(context).areNotificationsEnabled()}$audio",
+                "inUse=$inUse fg=$foreground overlay=$overlay fsi=$fsi car=${if (driving) "y" else "n"} " +
+                "notif=${NotificationManagerCompat.from(context).areNotificationsEnabled()}$audio",
         )
         AlertNotifications.post(
             context,
@@ -198,6 +214,10 @@ fun Context.isInUse(): Boolean {
 }
 
 fun Context.canDrawOverlays(): Boolean = Settings.canDrawOverlays(this)
+
+/** Car mode: what Android Auto puts the phone in while it drives the car's screen (and a car dock does too). */
+fun Context.inCarMode(): Boolean =
+    getSystemService(UiModeManager::class.java)?.currentModeType == Configuration.UI_MODE_TYPE_CAR
 
 /**
  * Since Android 14 a full-screen intent is only for calls and alarms, and everyone else gets a

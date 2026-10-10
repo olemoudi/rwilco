@@ -2710,6 +2710,13 @@ loud what DST and a change of zone do to a landing.
   rule they would have to work out.
 - `AlertPresenter` decides *where* a firing shows itself: an app open in front of somebody gets
   the banner, and the home screen, a dark screen or the lock screen get the whole screen.
+  **Except in car mode, which never gets the screen** (0.174.0, `alertPresentation(driving)`,
+  `UiModeManager` — what Android Auto puts the phone in). Android Auto shows no card of ours, so
+  a full screen rung on the road waited on the lock until the phone was pulled off the mount, and
+  was answered by the hand doing it: back up at 18:17 as the car was left, "Hecho" from it seven
+  seconds later, given by nobody who remembers giving it. In the car the card rings as any banner
+  does and waits in the shade. The `show` line says `car=`, and every "hecho" says the door it
+  came through (`via=alert|shade|home|routines`, `ReminderFiring.dismiss`/`doneOnTime`).
   **The card carries the sound and the buzz either way** (0.163.0, `FiringPlan.notificationSound`).
   Until then the noise followed the presentation — a full-screen ring went out on the silent
   channel and the screen alone made a sound — and when Android did not open the screen (twice in

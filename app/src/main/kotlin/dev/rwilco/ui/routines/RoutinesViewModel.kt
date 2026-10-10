@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.alarm.ReminderFiring
+import dev.rwilco.alarm.Door
 import dev.rwilco.model.FiringEvent
 import dev.rwilco.model.FiringKind
 import dev.rwilco.data.ReminderRepository
@@ -170,7 +171,7 @@ class RoutinesViewModel(
     fun markDone(id: String) {
         viewModelScope.launch {
             val before = repository.get(id) ?: return@launch
-            val line = firing.dismiss(id)
+            val line = firing.dismiss(id, via = Door.ROUTINES)
             events.send(RoutinesEvent.Done(before, comesBack(id), line))
         }
     }
@@ -219,7 +220,7 @@ class RoutinesViewModel(
     fun doneOnTime(id: String) {
         viewModelScope.launch {
             val before = repository.get(id) ?: return@launch
-            val dated = firing.doneOnTime(id)
+            val dated = firing.doneOnTime(id, via = Door.ROUTINES)
             if (dated.written) events.send(RoutinesEvent.Done(before, comesBack(id), dated.line))
         }
     }

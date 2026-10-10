@@ -16,7 +16,8 @@ class AlertPresentationTest {
         canOverlay: Boolean = true,
         canFullScreen: Boolean = true,
         repeat: Boolean = false,
-    ) = alertPresentation(fullScreenWanted, inUse, foreground, canOverlay, canFullScreen, repeat)
+        driving: Boolean = false,
+    ) = alertPresentation(fullScreenWanted, inUse, foreground, canOverlay, canFullScreen, repeat, driving)
 
     @Test
     fun `an app open in front of somebody is not interrupted`() {
@@ -70,5 +71,20 @@ class AlertPresentationTest {
         assertEquals(AlertPresentation.BANNER, decide(inUse = false, canFullScreen = false, repeat = true))
         // A reminder that never asked for the screen does not get it on a repeat either.
         assertEquals(AlertPresentation.BANNER, decide(fullScreenWanted = false, inUse = false, repeat = true))
+    }
+
+    @Test
+    fun `a phone driving the car's screen never takes its own`() {
+        // Reported from the phone: rung on the road, the screen waited on the lock and was rebuilt
+        // as the car was left, and "Hecho" was given from it seven seconds later, by nobody who
+        // remembers giving it. Locked in the mount, the card rings and waits in the shade.
+        assertEquals(AlertPresentation.BANNER, decide(inUse = false, driving = true))
+        // Picked up at a red light, or held by a passenger: still not the screen.
+        assertEquals(AlertPresentation.BANNER, decide(inUse = true, foreground = ForegroundApp.NONE, driving = true))
+        assertEquals(AlertPresentation.BANNER, decide(inUse = true, foreground = ForegroundApp.OURS, driving = true))
+        // And a repeat of "hasta que reciba caso" is a banner too, locked or not.
+        assertEquals(AlertPresentation.BANNER, decide(inUse = false, repeat = true, driving = true))
+        // Out of the car, the same phone gets the screen as ever.
+        assertEquals(AlertPresentation.FULL_SCREEN, decide(inUse = false, driving = false))
     }
 }

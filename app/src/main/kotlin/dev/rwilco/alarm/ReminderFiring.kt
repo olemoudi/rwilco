@@ -499,11 +499,14 @@ class ReminderFiring(
      * [skip] is Home's "Saltar la próxima", the one door that says so: it is the same dismissal
      * and only the word in the history differs.
      *
+     * [via] is the door it came through, for the report alone (0.174.0): a "hecho" nobody
+     * remembered giving could only be traced by a line missing from the alert screen's watch.
+     *
      * Returns the id of the history line it wrote, for an undo to take back exactly that one;
      * null when it wrote none.
      */
-    suspend fun dismiss(id: String, notice: Boolean = false, skip: Boolean = false): Long? = lock.withLock {
-        Diag.note(TAG_DIAG, "r=${short(id)} dealt with")
+    suspend fun dismiss(id: String, notice: Boolean = false, skip: Boolean = false, via: Door? = null): Long? = lock.withLock {
+        Diag.note(TAG_DIAG, "r=${short(id)} dealt with${saidVia(via)}")
         repeater.cancel(id)
         AlertNotifications.cancel(context, id)
         // The row itself, not only what it says: with [notice] it is handed to the card that can
@@ -600,7 +603,7 @@ class ReminderFiring(
      * statistics know it was done as the deadline rang rather than before it. With [notice] it
      * leaves the minute's undo card, as every "hecho" from the shade does.
      */
-    suspend fun doneOnTime(id: String, notice: Boolean = false): DatedDone = lock.withLock {
+    suspend fun doneOnTime(id: String, notice: Boolean = false, via: Door? = null): DatedDone = lock.withLock {
         val row = repository.rowOf(id) ?: run {
             // A card that outlived its row: it goes, as "Hecho" on it would take it down.
             AlertNotifications.cancel(context, id)
@@ -612,7 +615,7 @@ class ReminderFiring(
             Diag.note(TAG_DIAG, "r=${short(id)} hecho on time refused: ${reminder.status}, due ${reminder.routineDeadline(clock.zone, settings().dayStart)}")
             return@withLock DatedDone(written = false)
         }
-        Diag.note(TAG_DIAG, "r=${short(id)} dealt with on time, dated to its deadline $at")
+        Diag.note(TAG_DIAG, "r=${short(id)} dealt with on time, dated to its deadline $at${saidVia(via)}")
         val line = writeDated(reminder, at, now, ON_TIME_DETAIL)
         if (notice) AlertNotifications.doneNotice(context, reminder, row, countedFrom = at.atZone(clock.zone))
         DatedDone(written = true, line = line)
@@ -1196,6 +1199,9 @@ class ReminderFiring(
         /** Eight characters of a UUID: enough to follow one reminder through a report. */
         fun short(id: String): String = id.take(8)
 
+        /** " via=alert", or nothing for a caller that did not say. */
+        fun saidVia(via: Door?): String = via?.let { " via=${it.name.lowercase()}" }.orEmpty()
+
         /** `FS+N+S+V`, which is what a firing is actually asked to do. */
         fun FiringPlan.summary(): String = buildString {
             if (fullScreen) append("FS+")
@@ -1214,6 +1220,9 @@ class ReminderFiring(
         const val SETTINGS_TIMEOUT_MS = 5_000L
     }
 }
+
+/** Where a "hecho" was given, as the report says it ([ReminderFiring.dismiss]). */
+enum class Door { ALERT, SHADE, HOME, ROUTINES }
 
 /** How long a routine's question waits before it is tried again inside its window. */
 private val ASK_RETRY: Duration = Duration.ofMinutes(15)

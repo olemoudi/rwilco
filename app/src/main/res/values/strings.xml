@@ -1751,6 +1751,12 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_174_0">
+
+        <item>With Android Auto on, a reminder no longer takes over the phone’s screen. It rings with its notification and waits there until you get out. The car shows nothing from this app, so the full-screen alert used to sit on the lock screen until you picked the phone up, and the hand taking it off the mount could press “Done” without you seeing it.</item>
+        <item>The diagnostics report now says where each “done” came from: the alert, the notification, the home screen or the routines list.</item>
+
+    </string-array>
     <string-array name="whats_new_0_173_0">
 
         <item>When something is waiting for your answer, the app opens on it. With presets, their row was drawn first and the “Waiting for your answer” card arrived a moment later above it, out of sight, so you had to scroll up to find it. It also no longer slips in above the top of the list while you are looking at it.</item>

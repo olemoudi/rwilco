@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.alarm.ReminderFiring
+import dev.rwilco.alarm.Door
 import dev.rwilco.data.ReminderRepository
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.notify.AlertNotifications
@@ -666,7 +667,7 @@ class HomeViewModel(
     fun markDoneOnTime(id: String) {
         viewModelScope.launch {
             val reminder = repository.get(id) ?: return@launch
-            val dated = firing.doneOnTime(id)
+            val dated = firing.doneOnTime(id, via = Door.HOME)
             if (dated.written) events.send(HomeEvent.Removed(HomeEvent.Removed.Kind.DONE, reminder, comesBackAt = comesBack(id), line = dated.line))
         }
     }
@@ -688,7 +689,7 @@ class HomeViewModel(
             var line: Long? = null
             when (kind) {
                 HomeEvent.Removed.Kind.DONE, HomeEvent.Removed.Kind.SKIPPED -> {
-                    line = firing.dismiss(id, skip = kind == HomeEvent.Removed.Kind.SKIPPED)
+                    line = firing.dismiss(id, skip = kind == HomeEvent.Removed.Kind.SKIPPED, via = Door.HOME)
                     // Asked of the row the dismissal left rather than worked out again here:
                     // whether that was the end of it, and when it comes back if it was not, are
                     // [ReminderFiring]'s answers; the snackbar only reads them back.

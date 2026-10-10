@@ -40,12 +40,12 @@ class AlertActionReceiver : BroadcastReceiver() {
                         // Every "hecho" from the shade leaves a minute's undo card (0.129.0): the
                         // notice is posted by the firing itself, which is where the row it would
                         // be taken back to is read (ReminderFiring.dismiss).
-                        ACTION_DONE -> app.firing.dismiss(id, notice = true)
+                        ACTION_DONE -> app.firing.dismiss(id, notice = true, via = Door.SHADE)
                         // "A su hora" on a routine's card: the same "hecho", dated to its deadline.
                         // A card is fixed when it goes out and this one may have sat in the shade
                         // for longer than a span, when that answer would leave the routine owed at
                         // once; refused then, and said, or the button would do nothing at all.
-                        ACTION_DONE_ON_TIME -> if (!app.firing.doneOnTime(id, notice = true).written && app.repository.get(id) != null) {
+                        ACTION_DONE_ON_TIME -> if (!app.firing.doneOnTime(id, notice = true, via = Door.SHADE).written && app.repository.get(id) != null) {
                             withContext(Dispatchers.Main) { Toast.makeText(context, R.string.routines_done_on_time_refused, Toast.LENGTH_LONG).show() }
                         }
                         ACTION_UNDO_DONE -> {
