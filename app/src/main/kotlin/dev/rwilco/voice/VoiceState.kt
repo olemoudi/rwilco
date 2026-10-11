@@ -1,6 +1,8 @@
 package dev.rwilco.voice
 
+import dev.rwilco.model.Fix
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.Spoken
 
 /**
  * Where the dictation sheet is. A pure step function drives it ([voiceStep]); Home's ViewModel
@@ -15,8 +17,14 @@ sealed interface VoiceState {
     /** Listening: what has been heard so far, and how loud it is (0..1). */
     data class Listening(val partial: String = "", val level: Float = 0f) : VoiceState
 
-    /** The sentence is in, and being turned into a reminder. */
-    data class Thinking(val text: String) : VoiceState
+    /** The sentence is in, and being turned into a reminder; [asking] while Gemini is asked (0.178.0). */
+    data class Thinking(val text: String, val asking: Boolean = false) : VoiceState
+
+    /**
+     * What Gemini made of it, not written yet: a guess is shown and confirmed, never written
+     * unseen (the owner's call). [form] is the same reading for the editor, if "Editar".
+     */
+    data class Confirm(val reminder: Reminder, val form: String, val spoken: Spoken, val here: Fix?) : VoiceState
 
     /** Written: shown, with its undo, for a moment. */
     data class Created(val reminder: Reminder) : VoiceState
@@ -43,6 +51,7 @@ sealed interface VoiceInputEvent {
     data class Permission(val granted: Boolean) : VoiceInputEvent
     data class Heard(val event: VoiceEvent) : VoiceInputEvent
     data class Written(val reminder: Reminder) : VoiceInputEvent
+    data class Proposed(val reminder: Reminder, val form: String, val spoken: Spoken, val here: Fix?) : VoiceInputEvent
     data class Unwritten(val text: String, val why: VoiceOutcome.Why, val form: String? = null) : VoiceInputEvent
 
     /** Again, from the top. */
@@ -57,8 +66,10 @@ fun voiceStep(state: VoiceState, event: VoiceInputEvent): VoiceState = when (eve
     is VoiceInputEvent.Permission ->
         if (state !is VoiceState.Asking) state else if (event.granted) VoiceState.Listening() else VoiceState.Failed(VoiceFailure.NO_PERMISSION)
     VoiceInputEvent.Retry -> VoiceState.Listening()
-    is VoiceInputEvent.Written -> if (state is VoiceState.Thinking) VoiceState.Created(event.reminder) else state
-    is VoiceInputEvent.Unwritten -> if (state is VoiceState.Thinking) VoiceState.ToEditor(event.text, event.why, event.form) else state
+    // Written from the sentence, or from Gemini's guess once confirmed.
+    is VoiceInputEvent.Written -> if (state is VoiceState.Thinking || state is VoiceState.Confirm) VoiceState.Created(event.reminder) else state
+    is VoiceInputEvent.Proposed -> if (state is VoiceState.Thinking) VoiceState.Confirm(event.reminder, event.form, event.spoken, event.here) else state
+    is VoiceInputEvent.Unwritten -> if (state is VoiceState.Thinking || state is VoiceState.Confirm) VoiceState.ToEditor(event.text, event.why, event.form) else state
     is VoiceInputEvent.Heard -> if (state !is VoiceState.Listening) state else when (val heard = event.event) {
         VoiceEvent.Ready -> state
         is VoiceEvent.Level -> state.copy(level = levelOf(heard.rms))
@@ -86,6 +97,12 @@ sealed interface VoiceOutcome {
     data class Created(val reminder: Reminder) : VoiceOutcome
 
     /**
+     * Gemini's guess, written once somebody says so: what it was heard as and the position
+     * "aquí" was drawn round travel with it, so "Guardar" settles the same reading at the tap.
+     */
+    data class Proposed(val reminder: Reminder, val form: String, val spoken: Spoken, val here: Fix?) : VoiceOutcome
+
+    /**
      * Not written: the words go to the editor, and [why] is the line that says so. [form] is the
      * whole reading, for one understood but refused: the editor opens on it, warning and all.
      */
@@ -106,5 +123,11 @@ sealed interface VoiceOutcome {
 
         /** Understood, but it would not ring as said: the editor shows why. */
         REFUSED,
+
+        /** Gemini would not take the key: Settings is where that is fixed. */
+        GEMINI_KEY,
+
+        /** Gemini was asked and gave no answer: offline, too slow, too many asks. */
+        GEMINI_FAILED,
     }
 }

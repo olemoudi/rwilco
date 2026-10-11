@@ -65,6 +65,18 @@ class VoiceStepTest {
     }
 
     @Test
+    fun `a guess is shown, and written only once confirmed`() {
+        val thinking = VoiceState.Thinking("comprar pilas en el mercado", asking = true)
+        val spoken = dev.rwilco.model.Spoken("Comprar pilas")
+        val shown = voiceStep(thinking, VoiceInputEvent.Proposed(reminder, "{form}", spoken, null))
+        assertEquals(VoiceState.Confirm(reminder, "{form}", spoken, null), shown)
+        assertEquals(VoiceState.Created(reminder), voiceStep(shown, VoiceInputEvent.Written(reminder)))
+        assertEquals(VoiceState.ToEditor("x", VoiceOutcome.Why.REFUSED, "{form}"), voiceStep(shown, VoiceInputEvent.Unwritten("x", VoiceOutcome.Why.REFUSED, "{form}")))
+        // A guess that arrives after the sheet moved on is not shown.
+        assertEquals(VoiceState.Listening(), voiceStep(VoiceState.Listening(), VoiceInputEvent.Proposed(reminder, "{form}", spoken, null)))
+    }
+
+    @Test
     fun `again starts a fresh round`() {
         assertEquals(VoiceState.Listening(), voiceStep(VoiceState.Failed(VoiceFailure.NOT_HEARD), VoiceInputEvent.Retry))
     }

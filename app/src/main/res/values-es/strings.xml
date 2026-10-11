@@ -123,6 +123,33 @@
     <string name="voice_to_editor_no_words">He oído cuándo, pero no qué recordarte.</string>
     <string name="voice_to_editor_no_fix">No sé dónde estás ahora mismo: elige el lugar aquí.</string>
     <string name="voice_to_editor_refused">Tal como lo has dicho no sonaría nunca: revísalo aquí.</string>
+    <string name="settings_group_voice">Voz</string>
+    <string name="voice_summary_local">Dictado, entendido en el teléfono</string>
+    <string name="voice_summary_gemini">Dictado, con Gemini si hace falta</string>
+    <string name="voice_recognition_title">Dónde se reconoce tu voz</string>
+    <string name="voice_recognition_on_device">En este teléfono: lo que dices no sale de él.</string>
+    <string name="voice_recognition_service">Con el servicio de voz de Google: este teléfono no puede reconocerla por sí solo.</string>
+    <string name="voice_gemini_title">Preguntar a Gemini cuando no entienda</string>
+    <string name="voice_gemini_info">Solo para las frases que las reglas de la app no saben leer. Lo que entienda Gemini se te enseña para guardarlo o editarlo; nunca se guarda solo.</string>
+    <string name="voice_gemini_body">Cuando se le pregunta, el texto de la frase va a Google, con la fecha y la hora y los nombres de tus lugares y franjas guardados. Nunca el audio ni tu posición. Con una clave gratuita, Google puede usar lo que se envía para mejorar sus productos.</string>
+    <string name="voice_gemini_key">Clave de API de Gemini</string>
+    <string name="voice_gemini_key_hint">Se guarda solo en este teléfono, fuera de la copia de seguridad.</string>
+    <string name="voice_gemini_key_missing">Sin clave no se pregunta a Gemini. Una gratuita se saca en un minuto.</string>
+    <string name="voice_gemini_get_key">Conseguir una clave gratuita</string>
+    <string name="voice_gemini_save_key">Guardar la clave</string>
+    <string name="voice_gemini_clear">Borrar la clave</string>
+    <string-array name="settings_keywords_voice">
+        <item>dictado</item>
+        <item>dictar</item>
+        <item>micrófono</item>
+        <item>voz</item>
+        <item>gemini</item>
+        <item>clave de api</item>
+    </string-array>
+    <string name="voice_asking_gemini">Preguntando a Gemini…</string>
+    <string name="voice_confirm">Gemini ha entendido esto</string>
+    <string name="voice_to_editor_gemini_key">Gemini no acepta la clave: revísala en Ajustes › Voz.</string>
+    <string name="voice_to_editor_gemini_failed">Gemini no ha contestado: termínalo aquí.</string>
     <string name="home_pin_manage">Añadir un botón de preset</string>
     <string name="home_pin_title">Botones en la pantalla principal</string>
     <string name="home_pin_hint">Un toque escribe el recordatorio. Si el preset no trae texto propio, te lo pide y nada más. Un preset fijado está también en el icono del lanzador: mantenlo pulsado.</string>
@@ -1764,6 +1791,13 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_178_0">
+
+        <item>Gemini, si quieres. En Ajustes › Voz puedes activar que, cuando una frase dictada no se entiende con las reglas de la app, se le pregunte a Gemini con tu propia clave (una gratuita de AI Studio vale). Lo que entienda se te enseña con «Guardar» y «Editar»: nunca se guarda solo.</item>
+        <item>Solo sale el texto de la frase, con la fecha y la hora y los nombres de tus lugares y franjas guardados; nunca el audio ni tu posición. Con una clave gratuita, Google puede usar lo que se envía para mejorar sus productos. La clave se queda en el teléfono, fuera de la copia de seguridad.</item>
+        <item>Ajustes › Voz dice también dónde se reconoce tu voz: en el propio teléfono o con el servicio de Google.</item>
+
+    </string-array>
     <string-array name="whats_new_0_177_0">
 
         <item>Ahora puedes dictar frases con más de un cuándo. «A las 9 o al llegar a casa» suena con lo primero. «Al llegar a casa por la tarde» o «al llegar a casa y sólo si es fin de semana» es una sola regla con condición. «Cuando esté en casa y sea fin de semana» tiene que cumplirse todo a la vez. «A las 9 y a las 21» suena dos veces; para que tengan que pasar las dos, dilo: «…, las dos cosas».</item>

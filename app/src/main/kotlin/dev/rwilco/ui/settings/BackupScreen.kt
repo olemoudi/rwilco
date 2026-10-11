@@ -770,7 +770,7 @@ private fun PlainField(value: String, onChange: (String) -> Unit, label: String,
 
 /** A token or a passphrase: hidden by default, shown on request, never auto-corrected. */
 @Composable
-private fun SecretField(value: String, onChange: (String) -> Unit, label: String, hint: String? = null, strength: Boolean = false) {
+internal fun SecretField(value: String, onChange: (String) -> Unit, label: String, hint: String? = null, strength: Boolean = false) {
     val scheme = MaterialTheme.colorScheme
     var shown by rememberSaveable { mutableStateOf(false) }
     Column {

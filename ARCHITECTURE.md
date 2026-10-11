@@ -1469,6 +1469,24 @@ loud what DST and a change of zone do to a landing.
   .spokenForm` → the saved-form restore), warning in view. `SpokenCompositionTest` is the table;
   `SpokenRoundTripTest` fills the editor's own sentence templates from both `strings.xml` and
   hears them back.
+- **Gemini, when the grammar cannot read it (0.178.0, `SpokenJson.kt`, `voice/GeminiClient.kt`,
+  `voice/GeminiStore.kt`).** Opt in, in Settings › Voz, with the person's own key (a free AI
+  Studio one; the owner accepted that the free tier lets Google use what is sent). Asked only for
+  `Unsure(NOTHING | PARTIAL)` — never for a sentence that is only a "when". What goes: the text,
+  the moment, the person's hours and the *names* of their saved places and windows
+  (`geminiInstruction`) — never audio, never a coordinate. The answer is held to a flat schema
+  (`geminiSchema`: one event per rule, a kind and the fields it uses, the places an enum of the
+  saved labels built for each request), read by `GeminiReading.toHeard` — a place must be saved,
+  every date and hour must parse — and then through **the same gate** as the grammar
+  (`Spoken.toReminder`). And it is **proposed, not written** (`VoiceState.Confirm`, "Guardar" /
+  "Editar"; the owner's call): a guess is seen before it exists. "Guardar" settles it again at the
+  tap. The client is plain OkHttp, no SDK: the key in `x-goog-api-key`, no redirects followed, a
+  "latest" Flash-Lite alias first and named models after it, the next tried only on a 404; a
+  refused key says so (Settings is where it is fixed), anything else is "no answer" and the
+  editor takes the words. The key lives in its own DataStore (`rwilco_voice`), out of the
+  settings and so out of the vault, as the vault's own token does. `GeminiReadingTest`,
+  `GeminiClientTest` (MockWebServer), and `VoiceDictationTest` with a fake answer
+  (`GeminiInput.ask`).
 - **A held stepper keeps counting (0.51.0).** A step is one unit on purpose (three minutes has
   to be sayable, and the countdown sheet says why), and the price was seventeen taps from thirty
   to forty-seven. `Stepper` repeats after `Motion.holdRepeatDelay`, quickening to

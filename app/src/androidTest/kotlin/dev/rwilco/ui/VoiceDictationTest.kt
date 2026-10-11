@@ -7,6 +7,7 @@ import android.os.LocaleList
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
@@ -21,6 +22,12 @@ import dev.rwilco.RwilcoApplication
 import dev.rwilco.model.Presence
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.Trigger
+import dev.rwilco.model.GeminiEvent
+import dev.rwilco.model.GeminiReading
+import dev.rwilco.model.GeminiRule
+import dev.rwilco.voice.GeminiAnswer
+import dev.rwilco.voice.GeminiClient
+import dev.rwilco.voice.GeminiInput
 import dev.rwilco.voice.Listener
 import dev.rwilco.voice.PlatformListener
 import dev.rwilco.voice.VoiceEvent
@@ -97,6 +104,29 @@ class VoiceDictationTest {
     @After
     fun realEar() {
         VoiceInput.factory = ::PlatformListener
+        GeminiInput.ask = { key, sentence, instruction, schema -> GeminiClient(key).read(sentence, instruction, schema) }
+        runBlocking { app.geminiStore.clear() }
+    }
+
+    @Test
+    fun aSentenceTheRulesCannotReadIsAskedOfGeminiAndOnlyWrittenOnceConfirmed() {
+        runBlocking {
+            app.geminiStore.setKey("AIza-test")
+            app.geminiStore.setEnabled(true)
+        }
+        var asked = ""
+        GeminiInput.ask = { _, said, _, _ ->
+            asked = said
+            GeminiAnswer.Reading(GeminiReading(text = "Comprar pilas", rules = listOf(GeminiRule(GeminiEvent(kind = "IN_MINUTES", minutes = 20)))))
+        }
+        sentence = "comprar pilas cuando acabe el partido"
+        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.home_dictate_hold)).fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithContentDescription(s(R.string.home_dictate)).performSemanticsAction(SemanticsActions.OnClick)
+        waitFor(s(R.string.voice_confirm))
+        assertEquals("comprar pilas cuando acabe el partido", asked)
+        assertEquals(emptyList<String>(), runBlocking { app.repository.openNow() }.map { it.text })
+        rule.onNodeWithText(s(R.string.common_save), useUnmergedTree = true).performClick()
+        rule.waitUntil(30_000) { runBlocking { app.repository.openNow().any { it.text == "Comprar pilas" } } }
     }
 
     @Test

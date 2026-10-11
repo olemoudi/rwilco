@@ -12,7 +12,9 @@
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <!-- Self-update from GitHub Releases: fetch version.json + the APK, prompt through a
          notification, install through PackageInstaller, re-check after boot and after the
-         update itself. ACCESS_NETWORK_STATE is what WorkManager's "connected" constraint reads. -->
+         update itself. ACCESS_NETWORK_STATE is what WorkManager's "connected" constraint reads.
+         Also the encrypted backup to GitHub, and — only when switched on in Settings › Voice —
+         a dictated sentence's text to Gemini (0.178.0). -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />

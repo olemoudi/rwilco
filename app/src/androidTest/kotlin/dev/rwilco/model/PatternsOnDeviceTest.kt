@@ -57,6 +57,9 @@ class PatternsOnDeviceTest {
         )) {
             hear(text, now, zone, settings)
         }
+        // Gemini's half (0.178.0): the schema built and an answer read back, on the phone's JSON.
+        assertNotNull(geminiSchema(settings.geminiPlaces))
+        assertNotNull(geminiJson.decodeFromString(GeminiReading.serializer(), """{"text":"x","match":"ANY","rules":[{"event":{"kind":"ARRIVE","place":"Casa"}}]}""").toHeard(now, zone, settings, null, "aquí", "x"))
     }
 
     @Test

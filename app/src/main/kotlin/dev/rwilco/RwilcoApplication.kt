@@ -105,6 +105,10 @@ class RwilcoApplication : Application() {
     var vaultStore: VaultStore by Built()
         private set
 
+    /** Gemini's key and switch, for dictation's fallback (0.178.0): a file of their own, like the vault's. */
+    var geminiStore: dev.rwilco.voice.GeminiStore by Built()
+        private set
+
     /** What the app did and why, for the report somebody pastes into a conversation. */
     var diagStore: DiagStore by Built()
         private set
@@ -198,6 +202,7 @@ class RwilcoApplication : Application() {
         placeLog = PlaceLogStore(this)
         placeWatcher = PlaceWatcher(this, repository, firing, placeWatch, placeLog, settingsStore, clock)
         vaultStore = VaultStore(this)
+        geminiStore = dev.rwilco.voice.GeminiStore(this)
         diagStore = DiagStore(this)
         cheering = Cheering(repository, settingsStore, CheerStore(this), clock)
     }

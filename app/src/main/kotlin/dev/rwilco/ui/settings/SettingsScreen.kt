@@ -33,6 +33,7 @@ import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.SettingsBrightness
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.HealthAndSafety
@@ -112,7 +113,7 @@ import androidx.compose.runtime.setValue
  * arrives at all, then what it sounds and feels like, then what a new one starts as, then the
  * shape of the day, then the standing things — places, looks, the copy, updates, the app.
  */
-private enum class Group { ALERTS, SOUND, VIBRATION, NET, NEW, DAY, CONTACTS, PLACES, LOOK, UPDATES, ABOUT }
+private enum class Group { ALERTS, SOUND, VIBRATION, NET, NEW, VOICE, DAY, CONTACTS, PLACES, LOOK, UPDATES, ABOUT }
 
 /** Card shapes shown while the settings load: about what the index's first screen holds. */
 private const val LOADING_ROWS = 4
@@ -449,6 +450,23 @@ fun SettingsScreen(
                         }
                     }
                 }
+            }
+
+            val gemini by viewModel.gemini.collectAsStateWithLifecycle()
+            SettingsGroup(
+                matches = matches,
+                icon = Icons.Outlined.Mic,
+                title = stringResource(R.string.settings_group_voice),
+                summary = stringResource(if (gemini.usable) R.string.voice_summary_gemini else R.string.voice_summary_local),
+                expanded = Group.VOICE in open,
+                onToggle = { toggle(Group.VOICE) },
+            ) {
+                VoiceCard(
+                    setup = gemini,
+                    onEnabled = viewModel::setGeminiEnabled,
+                    onKey = viewModel::setGeminiKey,
+                    onClear = viewModel::clearGemini,
+                )
             }
 
             SettingsGroup(

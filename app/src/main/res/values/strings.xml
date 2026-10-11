@@ -127,6 +127,33 @@
     <string name="voice_to_editor_no_words">I heard when, but not what to remind you of.</string>
     <string name="voice_to_editor_no_fix">I can\'t tell where you are right now: pick the place here.</string>
     <string name="voice_to_editor_refused">As said it would never ring: check it here.</string>
+    <string name="settings_group_voice">Voice</string>
+    <string name="voice_summary_local">Dictation, understood on the phone</string>
+    <string name="voice_summary_gemini">Dictation, with Gemini when needed</string>
+    <string name="voice_recognition_title">Where your voice is recognised</string>
+    <string name="voice_recognition_on_device">On this phone: what you say stays on it.</string>
+    <string name="voice_recognition_service">By Google\'s speech service: this phone cannot recognise speech on its own.</string>
+    <string name="voice_gemini_title">Ask Gemini when I don\'t understand</string>
+    <string name="voice_gemini_info">Only for sentences the app\'s own rules cannot read. What Gemini understands is shown to you to save or edit; it is never saved on its own.</string>
+    <string name="voice_gemini_body">When it is asked, the sentence\'s text goes to Google, with the date and time and the names of your saved places and windows. Never the audio, never your position. With a free key, Google may use what is sent to improve its products.</string>
+    <string name="voice_gemini_key">Gemini API key</string>
+    <string name="voice_gemini_key_hint">Kept on this phone only, out of the backup.</string>
+    <string name="voice_gemini_key_missing">Without a key Gemini is not asked. A free one takes a minute.</string>
+    <string name="voice_gemini_get_key">Get a free key</string>
+    <string name="voice_gemini_save_key">Save the key</string>
+    <string name="voice_gemini_clear">Delete the key</string>
+    <string-array name="settings_keywords_voice">
+        <item>dictation</item>
+        <item>dictate</item>
+        <item>microphone</item>
+        <item>speech</item>
+        <item>gemini</item>
+        <item>api key</item>
+    </string-array>
+    <string name="voice_asking_gemini">Asking Gemini…</string>
+    <string name="voice_confirm">Gemini understood this</string>
+    <string name="voice_to_editor_gemini_key">Gemini didn\'t accept the key: check it in Settings › Voice.</string>
+    <string name="voice_to_editor_gemini_failed">Gemini didn\'t answer: finish it here.</string>
     <string name="home_pin_manage">Add a preset button</string>
     <string name="home_pin_title">Buttons on the main screen</string>
     <string name="home_pin_hint">One tap writes the reminder. If the preset has no words of its own, it asks for them and nothing else. A pinned preset is on the launcher icon too: hold it.</string>
@@ -1779,6 +1806,13 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_178_0">
+
+        <item>Gemini, if you want it. In Settings › Voice you can have Gemini asked, with your own key (a free AI Studio one will do), whenever a dictated sentence is beyond the app’s own rules. What it understands is shown to you with “Save” and “Edit”: it is never saved on its own.</item>
+        <item>Only the sentence’s text leaves the phone, with the date and time and the names of your saved places and windows; never the audio, never your position. With a free key, Google may use what is sent to improve its products. The key stays on the phone, out of the backup.</item>
+        <item>Settings › Voice also says where your voice is recognised: on the phone itself, or by Google’s service.</item>
+
+    </string-array>
     <string-array name="whats_new_0_177_0">
 
         <item>You can now dictate sentences with more than one when. “At 9 or when I get home” rings with whichever comes first. “When I get home in the afternoon” or “when I get home and only if it’s the weekend” is one rule with a condition. “While I’m at home and it’s the weekend” has to be true all at once. “At 9 and at 9pm” rings twice; to need both, say so: “…, once both”.</item>

@@ -359,6 +359,8 @@ fun HomeScreen(
             VoiceOutcome.Why.NO_WORDS to stringResource(R.string.voice_to_editor_no_words),
             VoiceOutcome.Why.NO_FIX to stringResource(R.string.voice_to_editor_no_fix),
             VoiceOutcome.Why.REFUSED to stringResource(R.string.voice_to_editor_refused),
+            VoiceOutcome.Why.GEMINI_KEY to stringResource(R.string.voice_to_editor_gemini_key),
+            VoiceOutcome.Why.GEMINI_FAILED to stringResource(R.string.voice_to_editor_gemini_failed),
         )
         val voiceUndone = stringResource(R.string.voice_undone)
         VoiceSheet(
@@ -378,6 +380,7 @@ fun HomeScreen(
                 viewModel.closeVoice()
                 onOpen(reminder.id)
             },
+            onConfirm = viewModel::confirmVoice,
             onToEditor = { text, why, form ->
                 viewModel.closeVoice()
                 why?.let { snackbar.show(voiceWhy.getValue(it)) }

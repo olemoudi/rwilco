@@ -102,6 +102,8 @@ fun VoiceSheet(
     onStop: () -> Unit,
     onUndo: (Reminder) -> Unit,
     onEdit: (Reminder) -> Unit,
+    /** "Guardar" on Gemini's guess (0.178.0). */
+    onConfirm: () -> Unit,
     /**
      * To the editor with these words; [VoiceOutcome.Why] says why, null when somebody asked to
      * type; the last is the whole reading to open on, when there is one.
@@ -195,6 +197,7 @@ fun VoiceSheet(
                     is VoiceState.Listening -> current.partial
                     is VoiceState.Thinking -> current.text
                     is VoiceState.Created -> current.reminder.text
+                    is VoiceState.Confirm -> current.reminder.text
                     is VoiceState.Failed -> current.partial
                     is VoiceState.ToEditor -> current.text
                     VoiceState.Asking -> ""
@@ -215,6 +218,7 @@ fun VoiceSheet(
                 // colours the editor's own sentence over "Guardar" uses.
                 val shown: Spoken? = when (current) {
                     is VoiceState.Created -> current.reminder.let { Spoken(it.text, it.rules, it.ruleMatch, it.recurrence, it.deadline) }
+                    is VoiceState.Confirm -> current.reminder.let { Spoken(it.text, it.rules, it.ruleMatch, it.recurrence, it.deadline) }
                     is VoiceState.Listening, is VoiceState.Thinking -> reading
                     else -> null
                 }
@@ -235,6 +239,8 @@ fun VoiceSheet(
                     onUndo = { reminder -> leave { onUndo(reminder) } },
                     onEdit = { reminder -> leave { onEdit(reminder) } },
                     onType = { leave { onToEditor(words, null, null) } },
+                    onConfirm = onConfirm,
+                    onEditGuess = { form -> leave { onToEditor(words, null, form) } },
                     onRetry = { onEvent(VoiceInputEvent.Retry) },
                     onSettings = {
                         context.startActivity(
@@ -296,6 +302,8 @@ private fun Buttons(
     onType: () -> Unit,
     onRetry: () -> Unit,
     onSettings: () -> Unit,
+    onConfirm: () -> Unit,
+    onEditGuess: (String) -> Unit,
 ) {
     val spacing = Tokens.spacing
     Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm), modifier = Modifier.fillMaxWidth()) {
@@ -310,6 +318,11 @@ private fun Buttons(
             is VoiceState.Created -> {
                 Quiet(R.string.common_undo) { onUndo(state.reminder) }
                 Primary(R.string.voice_edit, { onEdit(state.reminder) }, Modifier.weight(1f))
+            }
+            // A guess: nothing is written until "Guardar".
+            is VoiceState.Confirm -> {
+                Quiet(R.string.voice_edit) { onEditGuess(state.form) }
+                Primary(R.string.common_save, onConfirm, Modifier.weight(1f))
             }
             is VoiceState.Failed -> {
                 Quiet(R.string.voice_type, onType)
@@ -353,7 +366,9 @@ private fun Primary(label: Int, onClick: () -> Unit, modifier: Modifier = Modifi
 private fun statusOf(state: VoiceState): Int = when (state) {
     VoiceState.Asking -> R.string.voice_asking
     is VoiceState.Listening -> R.string.voice_listening
-    is VoiceState.Thinking, is VoiceState.ToEditor -> R.string.voice_thinking
+    is VoiceState.Thinking -> if (state.asking) R.string.voice_asking_gemini else R.string.voice_thinking
+    is VoiceState.ToEditor -> R.string.voice_thinking
+    is VoiceState.Confirm -> R.string.voice_confirm
     is VoiceState.Created -> R.string.voice_created
     is VoiceState.Failed -> when (state.why) {
         VoiceFailure.NO_PERMISSION -> R.string.voice_no_permission

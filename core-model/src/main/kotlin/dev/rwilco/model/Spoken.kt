@@ -121,6 +121,32 @@ fun hear(
 }
 
 /**
+ * Whether a sentence the grammar could not read has anything in it that might be a "when" or a
+ * "where" at all — a word for a time, a day, a season, a doorway, a number — so that asking Gemini
+ * could come to something. "Comprar pan" has nothing: no guess can give it a when, and asking
+ * would only make it wait.
+ */
+fun mightSayWhen(text: String): Boolean {
+    val words = Words.of(text).text
+    return soundsLikeWhen(text) || CUE.containsMatchIn(words)
+}
+
+private val CUE = Regex(
+    "\\d|\\b(?:" + listOf(
+        "cuando", "mientras", "antes", "despues", "durante", "hasta", "desde", "luego", "pronto", "tarde", "manana", "hoy", "ayer", "noche", "madrugada",
+        "mediodia", "semana", "semanas", "finde", "mes", "meses", "ano", "anos", "hora", "horas", "minuto", "minutos", "dia", "dias", "cada", "vez", "veces",
+        "navidad", "nochevieja", "nochebuena", "reyes", "verano", "invierno", "primavera", "otono", "puente", "vispera", "vacaciones", "cumpleanos",
+        "llegue", "llegar", "salga", "salir", "vuelva", "volver", "vaya", "irme", "este", "estoy", "aqui", "alli", "comer", "cenar", "desayunar",
+        "lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo",
+        "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+        "when", "while", "before", "after", "during", "until", "since", "soon", "later", "tonight", "tomorrow", "today", "morning", "afternoon",
+        "evening", "night", "noon", "week", "weekend", "month", "year", "hour", "minute", "day", "every", "each", "times", "christmas", "summer",
+        "winter", "spring", "autumn", "holidays", "birthday", "arrive", "leave", "here", "there", "lunch", "dinner", "breakfast",
+        "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+    ).joinToString("|") + ")s?\\b",
+)
+
+/**
  * The span a routine counts ("rutina: mover el coche cada 3 semanas", "regar cada 5 días desde la
  * última vez"), from the repeat the words said — a routine is a count since the last time, so
  * "cada 3 semanas" there is three weeks since it was last done, not a calendar. Said with no span

@@ -1,6 +1,8 @@
 package dev.rwilco.ui.settings
 
 import androidx.lifecycle.ViewModel
+import dev.rwilco.voice.GeminiSetup
+import dev.rwilco.voice.GeminiStore
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.rwilco.RwilcoApplication
@@ -73,7 +75,25 @@ class SettingsViewModel(
     private val placeLog: PlaceLogStore,
     /** The app's own, not the system's: what the rows that say "ahora mismo" are drawn against. */
     val clock: Clock,
+    /** Gemini's key and switch, for dictation's fallback (0.178.0). */
+    private val geminiStore: GeminiStore? = null,
 ) : ViewModel() {
+
+    /** Whether dictation may ask Gemini, and with which key. */
+    val gemini: StateFlow<GeminiSetup> = (geminiStore?.setup ?: kotlinx.coroutines.flow.flowOf(GeminiSetup()))
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GeminiSetup())
+
+    fun setGeminiEnabled(enabled: Boolean) {
+        viewModelScope.launch { geminiStore?.setEnabled(enabled) }
+    }
+
+    fun setGeminiKey(key: String) {
+        viewModelScope.launch { geminiStore?.setKey(key) }
+    }
+
+    fun clearGemini() {
+        viewModelScope.launch { geminiStore?.clear() }
+    }
 
     /** Only ask for "allow all the time" when something actually waits on a place. */
     val hasPlaceReminders: StateFlow<Boolean> = repository.open
@@ -362,6 +382,7 @@ class SettingsViewModel(
                 app.placeWatcher.state,
                 app.placeLog,
                 app.clock,
+                app.geminiStore,
             ) as T
     }
 }

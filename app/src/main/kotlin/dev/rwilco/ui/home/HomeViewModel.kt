@@ -45,6 +45,14 @@ import dev.rwilco.model.Spoken
 import dev.rwilco.model.hear
 import dev.rwilco.diag.Diag
 import dev.rwilco.voice.VoiceInputEvent
+import dev.rwilco.voice.GeminiAnswer
+import dev.rwilco.voice.GeminiInput
+import dev.rwilco.voice.GeminiSetup
+import dev.rwilco.model.geminiInstruction
+import dev.rwilco.model.geminiSchema
+import dev.rwilco.model.geminiPlaces
+import dev.rwilco.model.toHeard
+import dev.rwilco.model.mightSayWhen
 import dev.rwilco.ui.editor.spokenFormJson
 import dev.rwilco.model.Recurrence
 import dev.rwilco.voice.VoiceOutcome
@@ -219,6 +227,10 @@ class HomeViewModel(
     private val openCards: suspend () -> Set<Int> = { emptySet() },
     /** The line of encouragement for a part of the day, or null for silence (`Cheering.lineFor`). */
     private val cheerLine: suspend (String) -> CheerPick? = { null },
+    /** Whether Gemini may be asked, and with which key (0.178.0). */
+    private val geminiSetup: suspend () -> GeminiSetup = { GeminiSetup() },
+    /** Asks Gemini: key, sentence, instruction, schema. */
+    private val askGemini: suspend (String, String, String, kotlinx.serialization.json.JsonObject) -> GeminiAnswer = { _, _, _, _ -> GeminiAnswer.Failed },
 ) : ViewModel() {
 
     /** The settings as last read, for the dictation sheet's live reading ([preview]). */
@@ -540,6 +552,7 @@ class HomeViewModel(
             val outcome = fromVoice(after.text, hereLabel)
             val answer = when (outcome) {
                 is VoiceOutcome.Created -> VoiceInputEvent.Written(outcome.reminder)
+                is VoiceOutcome.Proposed -> VoiceInputEvent.Proposed(outcome.reminder, outcome.form, outcome.spoken, outcome.here)
                 is VoiceOutcome.ToEditor -> VoiceInputEvent.Unwritten(outcome.text, outcome.why, outcome.form)
             }
             _voice.value = _voice.value?.let { voiceStep(it, answer) }
@@ -565,47 +578,132 @@ class HomeViewModel(
      */
     private suspend fun fromVoice(transcript: String, hereLabel: String): VoiceOutcome {
         val settings = store.settings.first()
-        var heard = hear(transcript, clock.instant(), clock.zone, settings, hereLabel = hereLabel)
-        var fix: Fix? = null
-        if (heard is Heard.NeedsHere) {
-            fix = hereFix() ?: return VoiceOutcome.ToEditor(heard.text, VoiceOutcome.Why.NO_FIX).also { noteVoice("no position for here") }
-            heard = hear(transcript, clock.instant(), clock.zone, settings, fix, hereLabel)
-        }
-        val read = when (heard) {
-            is Heard.Read -> heard
-            is Heard.NeedsHere -> return VoiceOutcome.ToEditor(heard.text, VoiceOutcome.Why.NO_FIX)
-            is Heard.Unsure -> {
-                val why = when (heard.why) {
-                    Heard.Why.NOTHING -> VoiceOutcome.Why.NOTHING
-                    Heard.Why.PARTIAL -> VoiceOutcome.Why.PARTIAL
-                    Heard.Why.NO_WORDS -> VoiceOutcome.Why.NO_WORDS
-                }
-                noteVoice("to the editor: ${why.name.lowercase()}")
-                return VoiceOutcome.ToEditor(heard.text, why)
+        return when (val heard = withHere { here -> hear(transcript, clock.instant(), clock.zone, settings, here, hereLabel) }) {
+            is Here.Read -> settle(heard.read, heard.fix, settings, write = true)
+            is Here.Missing -> VoiceOutcome.ToEditor(heard.said, VoiceOutcome.Why.NO_FIX).also { noteVoice("no position for here") }
+            is Here.Unsure -> {
+                // What the grammar could not read, Gemini is asked — when the person said so in
+                // Settings; never for a sentence that is only a "when" (nothing to guess), and never
+                // for one with nothing in it that sounds like a when or a where at all ("comprar
+                // pan"), which no guess can turn into one.
+                val setup = geminiSetup()
+                val worthAsking = heard.unsure.why == Heard.Why.PARTIAL || (heard.unsure.why == Heard.Why.NOTHING && mightSayWhen(transcript))
+                if (setup.usable && worthAsking) return fromGemini(transcript, heard.unsure.text, setup.key, settings, hereLabel)
+                toEditor(heard.unsure)
             }
         }
-        val reminder = read.spoken.toReminder(UUID.randomUUID().toString(), clock.instant(), clock.zone, settings)
-        if (reminder == null) {
-            noteVoice("to the editor: it would not ring as said")
-            val defaults = if (read.spoken.recurrence is Recurrence.Since) settings.routineActions else settings.defaultActions
-            return VoiceOutcome.ToEditor(read.said, VoiceOutcome.Why.REFUSED, spokenFormJson(read.spoken, read.spoken.actions.applyTo(defaults), clock.instant()))
+    }
+
+    /**
+     * Gemini asked about a sentence the grammar could not read (0.178.0). Its answer goes through
+     * the same doors a reading of the grammar's does, and is then **proposed, not written**: the
+     * sheet shows it and asks.
+     */
+    private suspend fun fromGemini(transcript: String, said: String, key: String, settings: AppSettings, hereLabel: String): VoiceOutcome {
+        _voice.value = (_voice.value as? VoiceState.Thinking)?.copy(asking = true) ?: _voice.value
+        val answer = askGemini(key, transcript, geminiInstruction(clock.instant(), clock.zone, settings), geminiSchema(settings.geminiPlaces))
+        val reading = when (answer) {
+            is GeminiAnswer.Reading -> answer.reading
+            GeminiAnswer.KeyRefused -> return VoiceOutcome.ToEditor(said, VoiceOutcome.Why.GEMINI_KEY).also { noteVoice("gemini: key refused") }
+            GeminiAnswer.Failed -> return VoiceOutcome.ToEditor(said, VoiceOutcome.Why.GEMINI_FAILED).also { noteVoice("gemini: no answer") }
+        }
+        return when (val heard = withHere { here -> reading.toHeard(clock.instant(), clock.zone, settings, here, hereLabel, said) }) {
+            is Here.Read -> settle(heard.read, heard.fix, settings, write = false)
+            is Here.Missing -> VoiceOutcome.ToEditor(said, VoiceOutcome.Why.NO_FIX)
+            is Here.Unsure -> toEditor(heard.unsure).also { noteVoice("gemini: no reading") }
+        }
+    }
+
+    /** A reading, once "aquí" has had its position — or the reason it could not be read. */
+    private sealed interface Here {
+        class Read(val read: Heard.Read, val fix: Fix?) : Here
+        class Unsure(val unsure: Heard.Unsure) : Here
+        class Missing(val said: String) : Here
+    }
+
+    /** [read] without a position, and again with one when it asks for "aquí". */
+    private suspend fun withHere(read: suspend (Fix?) -> Heard): Here {
+        var heard = read(null)
+        var fix: Fix? = null
+        if (heard is Heard.NeedsHere) {
+            fix = hereFix() ?: return Here.Missing(heard.text)
+            heard = read(fix)
+        }
+        return when (heard) {
+            is Heard.Read -> Here.Read(heard, fix)
+            is Heard.Unsure -> Here.Unsure(heard)
+            is Heard.NeedsHere -> Here.Missing(heard.text)
+        }
+    }
+
+    /**
+     * A reading, through the gate: refused → the editor with the reading in it; otherwise
+     * written ([write], the grammar's) or proposed (Gemini's, written only at "Guardar").
+     */
+    private suspend fun settle(read: Heard.Read, fix: Fix?, settings: AppSettings, write: Boolean): VoiceOutcome {
+        val spoken = read.spoken
+        val defaults = if (spoken.recurrence is Recurrence.Since) settings.routineActions else settings.defaultActions
+        val form = spokenFormJson(spoken, spoken.actions.applyTo(defaults), clock.instant())
+        val reminder = spoken.toReminder(UUID.randomUUID().toString(), clock.instant(), clock.zone, settings)
+            ?: return VoiceOutcome.ToEditor(read.said, VoiceOutcome.Why.REFUSED, form).also { noteVoice("to the editor: it would not ring as said") }
+        if (!write) {
+            noteVoice("gemini: proposed ${reminder.rules.size} rule(s), ${reminder.recurrence::class.simpleName}")
+            return VoiceOutcome.Proposed(reminder, form, spoken, fix)
         }
         currentCoroutineContext().ensureActive()
         repository.save(reminder)
-        // "Aquí" is a circle the phone is standing in, and the watch is told so: its first look
-        // leans towards the side a doorway waits for, and a doorway out whose first look says
-        // "outside" never sees the way out. The snooze to "aquí" does the same.
-        // Only that circle: a saved place's doorway beside it ("o al llegar a casa") starts from
-        // whatever the watch sees, as one chosen in the editor does.
-        if (fix != null) {
-            reminder.rules.forEachIndexed { index, rule ->
-                val place = rule.trigger as? Trigger.Location ?: return@forEachIndexed
-                val here = place.onCrossing && place.placeId == null && place.lat == fix.lat && place.lng == fix.lng
-                if (here) rememberSide(GeofenceIds.encode(reminder.id, index, place), Transition.ENTER)
-            }
-        }
+        if (fix != null) seedHere(reminder, fix)
         noteVoice("written: ${reminder.rules.size} rule(s), ${reminder.recurrence::class.simpleName}${if (fix != null) ", here" else ""}")
         return VoiceOutcome.Created(reminder)
+    }
+
+    private fun toEditor(unsure: Heard.Unsure): VoiceOutcome {
+        val why = when (unsure.why) {
+            Heard.Why.NOTHING -> VoiceOutcome.Why.NOTHING
+            Heard.Why.PARTIAL -> VoiceOutcome.Why.PARTIAL
+            Heard.Why.NO_WORDS -> VoiceOutcome.Why.NO_WORDS
+        }
+        noteVoice("to the editor: ${why.name.lowercase()}")
+        return VoiceOutcome.ToEditor(unsure.text, why)
+    }
+
+    /**
+     * "Aquí" is a circle the phone is standing in, and the watch is told so: its first look leans
+     * towards the side a doorway waits for, and a doorway out whose first look says "outside"
+     * never sees the way out. Only that circle: a saved place's doorway beside it ("o al llegar a
+     * casa") starts from whatever the watch sees, as one chosen in the editor does.
+     */
+    private suspend fun seedHere(reminder: Reminder, fix: Fix) {
+        reminder.rules.forEachIndexed { index, rule ->
+            val place = rule.trigger as? Trigger.Location ?: return@forEachIndexed
+            val here = place.onCrossing && place.placeId == null && place.lat == fix.lat && place.lng == fix.lng
+            if (here) rememberSide(GeofenceIds.encode(reminder.id, index, place), Transition.ENTER)
+        }
+    }
+
+    /**
+     * "Guardar" on Gemini's guess: written now, settled to now — a countdown starts from the tap,
+     * not from the guess — and through the gate again, since the moment may have passed meanwhile.
+     * Once: a second tap while it is writing is not a second reminder.
+     */
+    fun confirmVoice() {
+        val shown = _voice.value as? VoiceState.Confirm ?: return
+        if (voiceWork?.isActive == true) return
+        voiceWork = viewModelScope.launch {
+            val settings = store.settings.first()
+            val reminder = shown.spoken.toReminder(shown.reminder.id, clock.instant(), clock.zone, settings)
+            val next = if (reminder == null) {
+                VoiceInputEvent.Unwritten(shown.spoken.text, VoiceOutcome.Why.REFUSED, shown.form)
+            } else {
+                currentCoroutineContext().ensureActive()
+                repository.save(reminder)
+                shown.here?.let { seedHere(reminder, it) }
+                noteVoice("gemini: confirmed")
+                VoiceInputEvent.Written(reminder)
+            }
+            // Only onto the sheet it was asked from: one let go of meanwhile stays gone.
+            if (_voice.value === shown) _voice.value = voiceStep(shown, next)
+        }
     }
 
     /** What [voicePreview] reads a sentence as, off the settings Home already holds. */
@@ -1016,6 +1114,8 @@ class HomeViewModel(
                 rememberSide = app.placeWatcher::remember,
                 openCards = { AlertNotifications.openCards(app) },
                 cheerLine = { slot -> app.cheering.lineFor(slot, CheerText.variants(app.resources)) },
+                geminiSetup = { app.geminiStore.read() },
+                askGemini = { key, sentence, instruction, schema -> GeminiInput.ask(key, sentence, instruction, schema) },
             ) as T
     }
 }

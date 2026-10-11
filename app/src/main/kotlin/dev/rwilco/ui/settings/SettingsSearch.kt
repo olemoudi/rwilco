@@ -54,6 +54,7 @@ internal val SETTINGS_INDEX: List<Pair<Int, Int>> = listOf(
     R.string.settings_vibration_strength to R.array.settings_keywords_vibration,
     R.string.settings_net_title to R.array.settings_keywords_net,
     R.string.settings_group_new to R.array.settings_keywords_new,
+    R.string.settings_group_voice to R.array.settings_keywords_voice,
     R.string.settings_group_day to R.array.settings_keywords_day,
     R.string.settings_contacts_title to R.array.settings_keywords_contacts,
     R.string.settings_places to R.array.settings_keywords_places,

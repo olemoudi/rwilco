@@ -49,8 +49,9 @@ class SettingsSearchTest {
     fun `every row in the index has its own words`() {
         // The index is the one place a row can be added and forgotten: nothing fails loudly when
         // a new group arrives without the words people would look for it by, so this does.
-        // Eleven folding groups plus the backup, which is a row in the index and not a group.
-        assertEquals(12, SETTINGS_INDEX.size)
+        // Twelve folding groups (Voz since 0.178.0) plus the backup, which is a row in the index
+        // and not a group.
+        assertEquals(13, SETTINGS_INDEX.size)
         assertEquals(SETTINGS_INDEX.size, SETTINGS_INDEX.map { it.first }.toSet().size, "a row twice over")
         assertTrue(SETTINGS_INDEX.all { it.second != 0 }, "a row with no words to find it by")
     }
