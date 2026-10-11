@@ -525,6 +525,12 @@ class WhenInTextTest {
     }
 
     @Test
+    fun `the chip keeps a weekly with its part of the day, and next month's end`() {
+        assertEquals(weekly(LocalDate.of(2026, 8, 31), DayOfWeek.MONDAY, t(9)), comes("ir al gimnasio los lunes por las mañanas"))
+        assertEquals(Trigger.DayRandom(LocalDate.of(2026, 9, 30)), once("pagar la tarjeta a final del mes que viene"))
+    }
+
+    @Test
     fun `what the chip still will not guess at`() {
         // How, not when; somebody's plans; a weekday and a number that never meet soon.
         assertNull(read("salir temprano del trabajo"))

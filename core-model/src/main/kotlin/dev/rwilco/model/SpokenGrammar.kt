@@ -197,6 +197,7 @@ private val HOLDS_A_Y: List<Regex> = listOf(
     Regex("\\bentre (?:las? |el )?\\S+ y (?:las? |el )?\\S+"),
     Regex("\\bbetween \\S+ and \\S+"),
     Regex("\\by (?:media|cuarto)\\b"),
+    Regex("\\b$HOUR_WORDS_PATTERN y (?:cinco|diez|veinte|veinticinco)\\b"),
     Regex("\\b(?:lunes|martes|miercoles|jueves|viernes|sabado|domingo)s? (?:y|e) (?:los |el )?(?:lunes|martes|miercoles|jueves|viernes|sabado|domingo)s?\\b"),
     Regex("\\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)s? and (?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)s?\\b"),
     Regex("\\bdias? \\d{1,2}(?:, \\d{1,2})* y \\d{1,2}\\b"),
@@ -455,8 +456,10 @@ private fun readOne(text: String, context: Context, fence: Boolean, partsAreWind
     }
     // "Hoy" alone, said to a phone, is some time today: what is left of it (the chip, reading
     // typed words, still wants an hour — "hoy he comprado pan" is not a reminder).
+    // Not beside an hour the chip would not take ("hoy a las 10 de la mañana", gone by): that is
+    // more said than read, for a person or Gemini — never today fenced by a moment that is not in it.
     val reading = readWhen(text, context.now, context.zone, settings.dayParts, settings.savedPlaces, settings.dayShape)
-        ?: return TODAY_ALONE.find(words)?.let { said(Piece.When(Trigger.DayRandom(today)), it) }
+        ?: return TODAY_ALONE.find(words)?.takeIf { !namesClockHour(words) }?.let { said(Piece.When(Trigger.DayRandom(today)), it) }
     val piece = when (val understood = reading.understood) {
         is Understood.Once -> Piece.When(understood.trigger, (reading.twin as? Understood.Once)?.trigger)
         is Understood.Comes -> Piece.Comes(understood.recurrence, (reading.twin as? Understood.Comes)?.recurrence)
@@ -839,7 +842,12 @@ private fun rulesOf(blocks: List<Block>, override: RuleMatch?, context: Context,
         if (rule != null && twin != null && awake(twin, today, shape)) add(listOf(rule.copy(trigger = twin)) to recurrence)
         val comes = sequence.mapNotNull { it.second as? Piece.Comes }.singleOrNull()
         val calendarTwin = (comes?.twin as? Recurrence.Calendar)?.takeIf { fold.isEmpty() && recurrence == comes.recurrence }
-        if (calendarTwin != null && calendarTwin.repeat.time?.let { shape.awakeAt(calendarTwin.repeat.startsOn.atTime(it)) } == true) add(emptyList<TriggerRule>() to calendarTwin)
+        // Awake on any of the days it rings on, not only the first: said on a Saturday, a daily's
+        // first day is Sunday's lie-in, and the other eight is still Monday's.
+        val twinTime = calendarTwin?.repeat?.time
+        if (calendarTwin != null && twinTime != null && calendarTwin.repeat.occurrences().take(7).any { shape.awakeAt(it.atTime(twinTime)) }) {
+            add(emptyList<TriggerRule>() to calendarTwin)
+        }
     }
     return Composed.Rules(fold, match, recurrence, deadline, spans, alternatives = alternatives)
 }

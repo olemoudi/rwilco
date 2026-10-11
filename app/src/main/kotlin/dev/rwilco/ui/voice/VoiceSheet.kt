@@ -76,6 +76,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -228,18 +229,28 @@ fun VoiceSheet(
     // Written, shown to be checked, and gone by itself when there is nothing to look at twice —
     // the countdown drawn on "Listo" — unless a hand reaches for the sheet first. Keyed by the
     // reminder's id: an alternative chosen is the same reminder, and a touch is still a touch.
+    // Saved across a rotation, as the touch that stopped it is a decision, and the haptic once said is said.
     val created = state as? VoiceState.Created
     val createdId = created?.reminder?.id
-    var touched by remember(createdId) { mutableStateOf(false) }
+    var touched by rememberSaveable(createdId) { mutableStateOf(false) }
+    var confirmed by rememberSaveable(createdId) { mutableStateOf(false) }
     val closing = remember(createdId) { Animatable(0f) }
     LaunchedEffect(createdId) {
-        if (createdId != null) haptics.perform(HapticFeedbackType.Confirm)
+        if (createdId != null && !confirmed) {
+            confirmed = true
+            haptics.perform(HapticFeedbackType.Confirm)
+        }
     }
-    val closesItself = created != null && created.check.clear && !touched
+    // The person's own "time to take action", and never by itself for somebody exploring the
+    // screen by touch: a screen reader's swipes are not presses, and the sheet would go mid-sentence.
+    val dwell = LocalAccessibilityManager.current
+        ?.calculateRecommendedTimeoutMillis(CREATED_DWELL_MS, containsIcons = true, containsText = true, containsControls = true)
+        ?: CREATED_DWELL_MS
+    val closesItself = created != null && created.check.clear && !touched && dwell < Int.MAX_VALUE
     LaunchedEffect(createdId, closesItself) {
         closing.snapTo(0f)
         if (!closesItself) return@LaunchedEffect
-        closing.animateTo(1f, tween(CREATED_DWELL_MS, easing = LinearEasing))
+        closing.animateTo(1f, tween(dwell.toInt(), easing = LinearEasing))
         leave(onClosed)
     }
     // Not written: to the editor, with the words.
@@ -258,10 +269,7 @@ fun VoiceSheet(
         ) {
             SheetBounds(
                 modifier = Modifier
-                    .padding(horizontal = spacing.screen)
-                    .navigationBarsPadding()
-                    .padding(bottom = spacing.md)
-                    // Any touch on a written reminder's sheet is somebody reading it: it stays.
+                    // Any touch on a written reminder's sheet — gutters included — is somebody reading it: it stays.
                     .pointerInput(createdId) {
                         if (createdId == null) return@pointerInput
                         awaitPointerEventScope {
@@ -269,7 +277,10 @@ fun VoiceSheet(
                                 if (awaitPointerEvent(PointerEventPass.Initial).type == PointerEventType.Press) touched = true
                             }
                         }
-                    },
+                    }
+                    .padding(horizontal = spacing.screen)
+                    .navigationBarsPadding()
+                    .padding(bottom = spacing.md),
             ) {
                 val current = state
                 val checking = current is VoiceState.Created || current is VoiceState.Confirm
@@ -559,8 +570,10 @@ private fun CheckView(
             val lone = (reminder.rules.singleOrNull()?.trigger as? Trigger.AtDateTime)?.at
             check.firesAt?.let { FiresLine(it, today, zone, distanceOnly = lone != null && lone == it.atZone(zone).toLocalDateTime()) }
         }
-        if (check.heard.isNotBlank()) HeardLine(check)
-        val doubts = check.doubtWords()
+        // The marks and the doubts are about the grammar's reading: while Gemini's is the one
+        // shown, the sentence is shown as heard and nothing in it is claimed to be what it says.
+        if (check.heard.isNotBlank()) HeardLine(check, marked = check.readsAsSaid)
+        val doubts = if (check.readsAsSaid) check.doubtWords() else emptyList()
         if (doubts.isNotEmpty()) DoubtLine(doubts)
         if (onAlternative != null) {
             // Gemini's reading, or the grammar's once Gemini's took its place: a whole reading,
@@ -594,12 +607,13 @@ private fun ReadingOffer(offer: VoiceAlternative, today: LocalDate, defaultTime:
                 defaultTime = defaultTime,
                 zone = zone,
             )
+            val description = stringResource(if (offer.kind == VoiceAlternative.Kind.GEMINI) R.string.voice_use_gemini else R.string.voice_use_original)
             SuggestionChip(
                 onClick = {
                     haptics.perform(HapticFeedbackType.ContextClick)
                     onAlternative(offer)
                 },
-                label = { Text(stringResource(R.string.voice_use_this), style = MaterialTheme.typography.labelLarge) },
+                label = { Text(stringResource(R.string.voice_use_this), style = MaterialTheme.typography.labelLarge, modifier = Modifier.semantics { contentDescription = description }) },
                 icon = { Icon(Icons.Outlined.SwapHoriz, contentDescription = null, modifier = Modifier.size(SuggestionChipDefaults.IconSize)) },
                 colors = SuggestionChipDefaults.suggestionChipColors(iconContentColor = scheme.onSurfaceVariant, labelColor = scheme.onSurface),
                 modifier = Modifier.testTag(VOICE_OFFER_TAG),
@@ -618,8 +632,9 @@ private fun FiresLine(at: Instant, today: LocalDate, zone: ZoneId, distanceOnly:
     val local = at.atZone(zone)
     val hour = TimeText.time(local.toLocalTime(), words.is24h, words.locale)
     val parts = partsBetween(Instant.now(), at)
-    // Under an hour a distance is in minutes alone: the seconds tick on Home, not in a line read once.
-    val distance = if (parts.underAnHour) {
+    // Under an hour a distance is in minutes alone: the seconds tick on Home, not in a line read
+    // once. A moment gone by (a sheet left open) says so in Home's own words.
+    val distance = if (parts.underAnHour && !parts.overdue) {
         stringResource(R.string.countdown_in, stringResource(R.string.countdown_minutes, parts.minutes.coerceAtLeast(1)))
     } else {
         countdownText(parts)
@@ -645,12 +660,12 @@ private fun FiresLine(at: Instant, today: LocalDate, zone: ZoneId, distanceOnly:
 
 /** The sentence as heard, marked ([marks]): each "when" in its family's colour, how it was said dimmed, doubts underlined. */
 @Composable
-private fun HeardLine(check: VoiceCheck) {
+private fun HeardLine(check: VoiceCheck, marked: Boolean) {
     val scheme = MaterialTheme.colorScheme
     val inks = TriggerFamily.entries.associateWith { it.color() }
     val text = buildAnnotatedString {
         append(check.heard)
-        for (mark in check.marks()) {
+        for (mark in if (marked) check.marks() else emptyList()) {
             val style = when (mark.kind) {
                 HeardMark.Kind.MANNER -> SpanStyle(color = scheme.outline)
                 HeardMark.Kind.WHEN -> SpanStyle(color = mark.family?.let(inks::getValue) ?: scheme.onSurface, fontWeight = FontWeight.SemiBold)
@@ -731,7 +746,7 @@ private fun statusOf(state: VoiceState): Int = when (state) {
     is VoiceState.Thinking -> if (state.asking) R.string.voice_asking_gemini else R.string.voice_thinking
     is VoiceState.ToEditor -> R.string.voice_thinking
     is VoiceState.Confirm -> R.string.voice_confirm
-    is VoiceState.Created -> when (state.check.refining) {
+    is VoiceState.Created -> if (!state.check.readsAsSaid) R.string.voice_created_gemini else when (state.check.refining) {
         Refining.NONE -> R.string.voice_created
         Refining.ASKING -> R.string.voice_created_refining
         Refining.AGREED -> R.string.voice_created_agreed
@@ -749,7 +764,7 @@ private fun statusOf(state: VoiceState): Int = when (state) {
  * How long a written reminder with nothing to look at twice is shown before the sheet goes by
  * itself: long enough to read the card and the sentence once (the owner's "~6 s", 2026-10-11).
  */
-private const val CREATED_DWELL_MS = 6_000
+private const val CREATED_DWELL_MS = 6_000L
 
 /** How strongly the countdown's bar shows on "Listo": a shade of the button, not a second colour. */
 private const val CLOSING_BAR_ALPHA = 0.35f

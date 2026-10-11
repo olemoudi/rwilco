@@ -1563,6 +1563,25 @@ loud what DST and a change of zone do to a landing.
   (`isOnline`), Gemini is not asked at all. Letting the sheet go cancels the ask; the reminder stays.
   `VoiceStepTest`, `VoiceDictationTest` (an offer used; a Gemini that never answers; the editor
   while it thinks).
+- **The review round over 0.181–0.183 (0.183.1).** Two reviews, one over the grammar with probes
+  against the old build and one over the sheet. Grammar: "sobre/hacia/para las N" is an hour only
+  when what follows ends it (`saysAnHour`: nothing, a small word, a when, an infinitive) — "para las
+  4 personas" counts people; a weekday or "el" before a number is not a date when an am/pm or a
+  plural follows ("saturday 10 am", "el sábado 3 barras de pan"); a getting-up or bedtime calendar
+  takes a typical working day's hour, and a series whose every night goes past midnight is not
+  read; "los días 1 y 15 de cada mes" is not the 15th alone; "el primer/último día de cada mes" and
+  "el último viernes del mes" (once, `nthOnceIn`) are read; "desde hoy", "a partir de" go with the
+  day; twelve and one said with the night are 0:00 and 1:00; a nap is not bedtime; midnight with a
+  day is the end of that day; "y diez" holds its "y" among joins; a daily's other half is offered
+  when it is awake on any day it rings on; ages, durations, "cada", "mediodía" are no doubts; bare
+  "hoy" is not read beside an hour that the chip would not take. Sheet: every change to `_voice`
+  that does not come from the ear is a pure step applied atomically (`refinedWith`, `choosing`,
+  `refiningStopped`, `MutableStateFlow.update`), so a late Gemini answer cannot bring back a sheet
+  closed meanwhile nor undo a choice; "aquí"'s position travels with the reading it was drawn for
+  and Gemini reuses it; once Gemini's reading is chosen the grammar's marks and doubts are not shown
+  as if they described it; the auto-close follows the accessibility "time to take action" and never
+  runs under a screen reader, and the touch that stopped it survives a rotation; a chip whose moment
+  has gone is withdrawn rather than written.
 - **A held stepper keeps counting (0.51.0).** A step is one unit on purpose (three minutes has
   to be sayable, and the countdown sheet says why), and the price was seventeen taps from thirty
   to forty-seven. `Stepper` repeats after `Motion.holdRepeatDelay`, quickening to

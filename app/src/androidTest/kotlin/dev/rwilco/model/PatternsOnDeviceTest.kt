@@ -63,6 +63,9 @@ class PatternsOnDeviceTest {
             "a final de mes", "en septiembre", "a finales de septiembre", "el primer lunes de cada mes", "el día 1 de cada mes",
             "de lunes a viernes a las 8", "entre semana a las 8", "todas las noches", "al levantarme", "antes de acostarme",
             "cuando vaya a casa", "la próxima vez que esté en casa", "que no se me olvide regar hoy", "twice a day",
+            // The review round (0.183.1): counted things, the night's twelve, lists of days, one nth weekday.
+            "reservar mesa para las 4 personas", "sobre las 5 llamar", "el sábado 3 barras de pan", "saturday 10 am", "todas las noches a las 12",
+            "los días 1 y 15 de cada mes", "el último día de cada mes", "el último viernes del mes", "a final del mes que viene", "antes de dormir la siesta",
         )) {
             hear(text, now, zone, settings)
         }

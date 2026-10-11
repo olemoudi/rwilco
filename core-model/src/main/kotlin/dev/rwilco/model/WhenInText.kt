@@ -109,7 +109,7 @@ internal fun readWhen(
     // Saturday's nine, as "el sábado a las 9" is.
     val ringsOn = seriesDaysIn(words).let { days -> (0L..6L).map { today.plusDays(it) }.firstOrNull { it.dayOfWeek in days } } ?: today
     routineIn(words)?.takeIf { !namesClockHour(words) }?.let { routine ->
-        return readRoutine(routine, words, here.toLocalDateTime(), ringsOn, hour, shape)?.let { read(it.value, it.spans) }
+        return readRoutine(routine, words, here.toLocalDateTime(), hour, shape)?.let { read(it.value, it.spans) }
     }
     recurrenceIn(words, today, nowTime, hour.at(onDay(ringsOn)))?.let { found ->
         // The other half of an open hour, as a calendar of its own: "cada día a las 8" could be
@@ -119,6 +119,8 @@ internal fun readWhen(
     }
     countdownIn(words)?.let { return read(Understood.Once(Trigger.Countdown(it.value)), it.spans) }
     fun onDate(date: Found<LocalDate>): Reading {
+        // Midnight said with a day is the end of it: "el viernes a medianoche" is Friday night.
+        if (hour.time == LocalTime.MIDNIGHT) return read(Understood.Once(Trigger.AtDateTime(date.value.plusDays(1).atStartOfDay())), date.spans + hour.spans)
         val time = onDay(date.value)
         val trigger = time?.let { Trigger.AtDateTime(LocalDateTime.of(date.value, it)) } ?: Trigger.DayRandom(date.value)
         val twin = other(date.value)?.let { Understood.Once(Trigger.AtDateTime(LocalDateTime.of(date.value, it))) }
@@ -127,9 +129,12 @@ internal fun readWhen(
     // "El lunes 14": one day named twice, before the weekday alone is read as the next Monday. A
     // weekday and a number that do not meet ("el domingo 14", not a Sunday for months) are two
     // answers to one question, and no chip is better than either.
-    if (WEEKDAY_DATE.containsMatchIn(words)) return weekdayDateIn(words, today)?.let(::onDate)
+    if (WEEKDAY_DATE.find(words)?.groupValues?.get(2)?.toIntOrNull() in 1..31) return weekdayDateIn(words, today)?.let(::onDate)
+    // And "el último viernes del mes" is one day, before "viernes" alone is read as the next one.
+    nthOnceIn(words, today)?.let { return onDate(it) }
     relativeDayIn(words)?.let { day ->
         val date = (Trigger.RelativeDate(day.value).on(today) as? Trigger.DayRandom)?.date ?: today
+        if (hour.time == LocalTime.MIDNIGHT) return onDate(Found(date, day.spans))
         val twin = other(date)?.let { Understood.Once(Trigger.RelativeDate(day.value, it)) }
         return read(Understood.Once(Trigger.RelativeDate(day.value, onDay(date))), day.spans + hour.spans, twin)
     }
@@ -239,10 +244,10 @@ private fun hourIn(words: String, parts: DayParts): Hour {
     // Open: an hour from one to twelve with nothing beside it to say which half of the day —
     // no am/pm, no "de la tarde", no part of the day, no leading zero ("09:30" is a clock).
     fun open(raw: String, qualifier: String) = qualifier.isEmpty() && !late && morning == null && isOpenHour(raw)
-    ES_TIME.find(words)?.let { m ->
+    ES_TIME.findAll(words).firstOrNull { saysAnHour(words, it) }?.let { m ->
         val qualifier = m.groupValues[5].ifEmpty { m.groupValues[6] }
         val offset = fractionOf(m.groupValues[3], m.groupValues[4])
-        return hour(timeOf(m.groupValues[1], m.groupValues[2], offset, qualifier, late), m, night, afternoon, morning, open = open(m.groupValues[1], qualifier))
+        return hour(timeOf(m.groupValues[1], m.groupValues[2], offset, qualifier, late, night != null), m, night, afternoon, morning, open = open(m.groupValues[1], qualifier))
     }
     // "Quarter past seven", "half past six", "ten to nine": before "at", which would read the
     // first number as the hour.
@@ -250,15 +255,15 @@ private fun hourIn(words: String, parts: DayParts): Hour {
         val amount = m.groupValues[1]
         val minutes = EN_FRACTIONS[amount] ?: amount.toIntOrNull()?.takeIf { m.groupValues[2] != "to" } ?: return@let
         val offset = if (m.groupValues[2] == "to") -minutes else minutes
-        return hour(timeOf(m.groupValues[3], "", offset, m.groupValues[4], late), m, night, afternoon, morning, open = open(m.groupValues[3], m.groupValues[4]))
+        return hour(timeOf(m.groupValues[3], "", offset, m.groupValues[4], late, night != null), m, night, afternoon, morning, open = open(m.groupValues[3], m.groupValues[4]))
     }
     EN_AT.find(words)?.let { m ->
-        return hour(timeOf(m.groupValues[1], m.groupValues[2], 0, m.groupValues[3], late), m, night, afternoon, morning, open = open(m.groupValues[1], m.groupValues[3]))
+        return hour(timeOf(m.groupValues[1], m.groupValues[2], 0, m.groupValues[3], late, night != null), m, night, afternoon, morning, open = open(m.groupValues[1], m.groupValues[3]))
     }
     EN_PM.find(words)?.let { m -> return hour(timeOf(m.groupValues[1], m.groupValues[2], 0, m.groupValues[3], late), m, night, afternoon, morning) }
     NOON.find(words)?.let { m -> return hour(LocalTime.NOON, m) }
     MIDNIGHT.find(words)?.let { m -> return hour(LocalTime.MIDNIGHT, m) }
-    CLOCK.find(words)?.let { m -> return hour(timeOf(m.groupValues[1], m.groupValues[2], 0, "", late), m, night, afternoon, morning, open = open(m.groupValues[1], "")) }
+    CLOCK.find(words)?.let { m -> return hour(timeOf(m.groupValues[1], m.groupValues[2], 0, "", late, night != null), m, night, afternoon, morning, open = open(m.groupValues[1], "")) }
     // A part of the day with no number in it: the hour this person keeps for it.
     if (afternoon != null) return hour(parts.afternoon, afternoon)
     if (morning != null) return hour(parts.morning, morning)
@@ -270,7 +275,7 @@ private fun hourIn(words: String, parts: DayParts): Hour {
  * Null for an hour or a minute that does not exist: a typo is not an offer. [offset] is what was
  * said after the hour, in minutes: "y media" is thirty, "menos cuarto" minus fifteen.
  */
-private fun timeOf(hourRaw: String, minuteRaw: String, offset: Int, qualifierRaw: String, late: Boolean): LocalTime? {
+private fun timeOf(hourRaw: String, minuteRaw: String, offset: Int, qualifierRaw: String, late: Boolean, night: Boolean = false): LocalTime? {
     var hour = hourRaw.toIntOrNull() ?: HOUR_WORDS[hourRaw] ?: return null
     // "p. m." is pm, and "in the evening" is the night's arithmetic.
     val qualifier = when (val said = qualifierRaw.filter(Char::isLetter)) {
@@ -284,7 +289,11 @@ private fun timeOf(hourRaw: String, minuteRaw: String, offset: Int, qualifierRaw
         // "A la una" is lunchtime to anyone who says it, however it is spelled; one in the
         // morning gets said in full. And an hour said in the same breath as the afternoon or
         // the night is that half of the day's.
+        // Said with the night ("todas las noches a las 12", "cada noche a la una"), twelve is
+        // midnight and one is the small hours, as "de la noche" makes them.
         "" -> when {
+            night && hour == 12 -> hour = 0
+            night && hour == 1 -> Unit
             hour == 1 -> hour = 13
             late && hour in 2..11 -> hour += 12
         }
@@ -297,6 +306,26 @@ private fun timeOf(hourRaw: String, minuteRaw: String, offset: Int, qualifierRaw
     // "Las 9 menos cuarto" is a quarter before the hour as qualified: 20:45 at night.
     return LocalTime.of(hour, minute).plusMinutes(offset.toLong())
 }
+
+/**
+ * Whether an hour said with "sobre", "hacia", "para"… is an hour (review round, 0.183.1): "sobre
+ * las 3 pastillas", "para las 2 niñas" count something. "A las" always is one, as it always was;
+ * the approximate ways of saying it are hours only when what follows ends the hour — nothing, a
+ * small word, a when, or a verb that starts the thing ("sobre las 5 llamar a Juan").
+ */
+private fun saysAnHour(words: String, match: MatchResult): Boolean {
+    if (match.value.trimStart().startsWith("a la")) return true
+    val next = NEXT_WORD.find(words, match.range.last + 1)?.value ?: return true
+    return next in HOUR_FOLLOWERS || next in WEEKDAYS || INFINITIVE.matches(next)
+}
+
+private val NEXT_WORD = Regex("[^\\s.]+")
+private val HOUR_FOLLOWERS = setOf(
+    "de", "del", "y", "o", "u", "e", "a", "al", "en", "el", "la", "los", "las", "lo", "por", "para", "cuando", "mientras", "si", "que", "con", "sin",
+    "manana", "hoy", "pasado", "tarde", "noche", "menos", "mas", "aproximadamente", "mismo",
+)
+/** A verb as a reminder starts with one: "llamar", "recogerla", "irme". */
+private val INFINITIVE = Regex("[a-z]+(?:ar|er|ir)(?:me|te|le|lo|la|les|los|las|nos|se)?")
 
 /** "Y media", "y cuarto", "menos cuarto", "menos diez": the minutes said after an hour, signed. */
 private fun fractionOf(sign: String, word: String): Int {
@@ -326,7 +355,10 @@ private fun recurrenceIn(words: String, today: LocalDate, nowTime: LocalTime, ho
     // "El día 1 de cada mes", "on the 1st of every month". ("Cada mes el día 1" is a calendar and
     // the date it starts on, which the sentence's grammar already folds into one.)
     MONTH_DAY_SERIES.find(words)?.let { m ->
-        val day = m.groupValues.drop(1).firstOrNull { it.isNotEmpty() }?.toIntOrNull()?.takeIf { it in 1..31 } ?: return null
+        // "Los días 1 y 15 de cada mes" is two days a month, which no monthly holds: not the last of them alone.
+        if (LISTED_DAYS_BEFORE.containsMatchIn(words.substring(0, m.range.first))) return null
+        val said = m.groupValues.drop(1).firstOrNull { it.isNotEmpty() } ?: return null
+        val day = (FIRST_LAST_DAY[said] ?: said.toIntOrNull())?.takeIf { it in 1..31 } ?: return null
         return Found(monthly(today, nowTime, time, MonthlyOn.Day(day)), listOf(m.range) + hourSpans)
     }
     // "De lunes a viernes": a run of days, every week.
@@ -339,8 +371,6 @@ private fun recurrenceIn(words: String, today: LocalDate, nowTime: LocalTime, ho
             if (time != null || EVERY_WORD.containsMatchIn(m.value)) return Found(calendar(today, nowTime, time, 1, RepeatUnit.WEEK, days), listOf(m.range) + hourSpans)
         }
     }
-    // "Todas las noches", "every morning": every day, at that part's hour or the one said.
-    DAILY_PART.find(words)?.let { m -> return Found(calendar(today, nowTime, time, 1, RepeatUnit.DAY, emptySet()), listOf(m.range) + hour.spans) }
     val weekly = WEEKLY_DAYS.findAll(words).toList()
     val days = if (weekly.isEmpty()) emptySet() else weekdaysIn(words)
     // Every day it names and the hour it rings at are part of saying it.
@@ -359,6 +389,9 @@ private fun recurrenceIn(words: String, today: LocalDate, nowTime: LocalTime, ho
         return Found(calendar(today, nowTime, time, 1, unit, days), listOf(m.range) + alongside)
     }
     if (days.isNotEmpty()) return Found(calendar(today, nowTime, time, 1, RepeatUnit.WEEK, days), alongside)
+    // "Todas las noches", "every morning": every day, at that part's hour or the one said — after
+    // the weekdays, so "los lunes por las mañanas" stays Mondays.
+    DAILY_PART.find(words)?.let { m -> return Found(calendar(today, nowTime, time, 1, RepeatUnit.DAY, emptySet()), listOf(m.range) + hour.spans) }
     return null
 }
 
@@ -455,8 +488,14 @@ private fun dateIn(words: String, today: LocalDate): Found<LocalDate>? {
     }
     (DAY_ES.find(words) ?: DAY_EN.find(words))?.let { m -> return nextDayOfMonth(today, m.groupValues[1].toInt())?.let { found(it, m) } }
     // "A final de mes": its last day. "A principios de mes": the next first of a month.
-    END_OF_MONTH.find(words)?.let { return found(today.with(TemporalAdjusters.lastDayOfMonth()), it) }
-    START_OF_MONTH.find(words)?.let { return found(if (today.dayOfMonth == 1) today else today.withDayOfMonth(1).plusMonths(1), it) }
+    END_OF_MONTH.find(words)?.let { m ->
+        val month = if (NEXT_MONTH_WORDS.containsMatchIn(m.value)) today.plusMonths(1) else today
+        return found(month.with(TemporalAdjusters.lastDayOfMonth()), m)
+    }
+    START_OF_MONTH.find(words)?.let { m ->
+        val next = today.withDayOfMonth(1).plusMonths(1)
+        return found(if (today.dayOfMonth == 1 && !NEXT_MONTH_WORDS.containsMatchIn(m.value)) today else next, m)
+    }
     return null
 }
 
@@ -478,6 +517,15 @@ private fun weekdayDateIn(words: String, today: LocalDate): Found<LocalDate>? {
         }
     }
     return date?.let { found(it, m) }
+}
+
+/** "El último viernes del mes", said once: that day of this month, or of the next once it has gone (or when the next is said). */
+private fun nthOnceIn(words: String, today: LocalDate): Found<LocalDate>? {
+    val m = NTH_ONCE.find(words) ?: return null
+    val rule = MonthlyOn.Nth(ORDINALS[m.groupValues[1]] ?: return null, WEEKDAYS[m.groupValues[2]] ?: return null)
+    val thisMonth = dayIn(YearMonth.from(today), rule)
+    val next = NEXT_MONTH_WORDS.containsMatchIn(m.value) || thisMonth.isBefore(today)
+    return found(if (next) dayIn(YearMonth.from(today).plusMonths(1), rule) else thisMonth, m)
 }
 
 /** The next [day] of [month] from today on: this year while it is still ahead, else the next. */
@@ -582,16 +630,29 @@ private fun routineIn(words: String): Routine? = WAKE.find(words)?.let { Routine
  * Getting up and going to bed, by the person's own hours (0.181.0): getting up is the moment their
  * day starts, and going to bed half an hour before it ends — on the day it is said for, so a
  * Saturday's lie-in is the weekend's and a Friday's bedtime past midnight is the small hours of
- * Saturday. Every day ("todas las noches antes de acostarme") is a calendar at the hour the first
- * day gives; alone, the next one to come round.
+ * Saturday. Alone, the next one to come round.
+ *
+ * A calendar has one hour for every day it rings on, so it takes a typical day's (review round,
+ * 0.183.1): the first day it rings on that is a working one and goes to bed before midnight —
+ * "todas las noches antes de acostarme" said on a Friday is a weekday's 23:00, never the weekend's
+ * 1:00 every night; "todas las mañanas" said on a Saturday is a weekday's getting up. A series
+ * whose every night goes past midnight ("los viernes antes de dormir", with the weekend's
+ * bedtime) is no calendar this can hold, and is not read.
  */
-private fun readRoutine(routine: Routine, words: String, now: LocalDateTime, ringsOn: LocalDate, hour: Hour, shape: DayShape): Found<Understood>? {
+private fun readRoutine(routine: Routine, words: String, now: LocalDateTime, hour: Hour, shape: DayShape): Found<Understood>? {
     fun at(date: LocalDate): LocalDateTime = shape.awakeOn(date).let { if (routine.wake) it.from else it.to.minusMinutes(BED_LEAD_MINUTES) }
     val today = now.toLocalDate()
     val spans = listOf(routine.match.range) + hour.spans
-    recurrenceIn(words, today, now.toLocalTime(), Hour(at(ringsOn).toLocalTime(), hour.today, spans))?.let { return Found(Understood.Comes(it.value), it.spans) }
+    val days = seriesDaysIn(words)
+    val candidates = (0L..6L).map { today.plusDays(it) }.filter { days.isEmpty() || it.dayOfWeek in days }
+    fun sameDay(date: LocalDate) = at(date).toLocalDate() == date
+    val typical = candidates.firstOrNull { !shape.inWeekend(it.atTime(LocalTime.NOON)) && sameDay(it) } ?: candidates.firstOrNull(::sameDay)
+    recurrenceIn(words, today, now.toLocalTime(), Hour(at(typical ?: today).toLocalTime(), hour.today, spans))?.let {
+        return if (typical == null) null else Found(Understood.Comes(it.value), it.spans)
+    }
     val day = relativeDayIn(words)?.let { found -> (Trigger.RelativeDate(found.value).on(today) as? Trigger.DayRandom)?.date?.let { Found(it, found.spans) } }
         ?: weekdayDateIn(words, today)
+        ?: nthOnceIn(words, today)
         ?: dateIn(words, today)
     if (day != null) return Found(Understood.Once(Trigger.AtDateTime(at(day.value))), day.spans + spans)
     // Yesterday's first: a bedtime past midnight said at half past twelve is tonight's.
@@ -773,7 +834,7 @@ private val EVERY_OTHER = Regex("\\bevery other (day|week|month)\\b")
 /** "El primer lunes de cada mes", "the last friday of every month". Groups: the ordinal, the weekday. */
 private val NTH_MONTHLY = Regex(
     "\\b(?:(?:el|cada|todos los|the|every|on the) )?(primer|primero|segundo|tercer|tercero|cuarto|ultimo|first|second|third|fourth|last) $WEEKDAY_PATTERN " +
-        "(?:de cada mes|de todos los meses|del mes|of (?:every|each|the) month|every month)\\b",
+        "(?:de cada mes|de todos los meses|of (?:every|each) month|every month)\\b",
 )
 private val ORDINALS: Map<String, Int> = mapOf(
     "primer" to 1, "primero" to 1, "segundo" to 2, "tercer" to 3, "tercero" to 3, "cuarto" to 4, "ultimo" to -1,
@@ -781,8 +842,13 @@ private val ORDINALS: Map<String, Int> = mapOf(
 )
 /** "El día 1 de cada mes", "on the 1st of every month". One group per way of saying it, the day in each. */
 private val MONTH_DAY_SERIES = Regex(
-    "\\b(?:el )?(?:dia )?(\\d{1,2}) de (?:cada mes|todos los meses)\\b|\\b(?:on )?the (\\d{1,2})(?:st|nd|rd|th)? of (?:every|each) month\\b",
+    "\\b(?:el )?(?:dia )?(\\d{1,2}) de (?:cada mes|todos los meses)\\b|\\b(?:on )?the (\\d{1,2})(?:st|nd|rd|th)? of (?:every|each) month\\b|" +
+        "\\bel (primer|ultimo) dia de (?:cada mes|todos los meses)\\b|\\b(?:on )?the (first|last) day of (?:every|each) month\\b",
 )
+/** The first and the last day of a month said in words; the last is the 31st, which a short month pulls back to its own end. */
+private val FIRST_LAST_DAY = mapOf("primer" to 1, "first" to 1, "ultimo" to 31, "last" to 31)
+/** A day of the month listed before the one a series names: "los días 1 **y** 15 de cada mes". */
+private val LISTED_DAYS_BEFORE = Regex("\\d{1,2}(?:,| y| e| and) $")
 /** "De lunes a viernes", "del lunes al viernes", "from monday to friday". Groups: the first day and the last, once for each language. */
 private val WEEKDAY_RUN = Regex("\\bdel? $WEEKDAY_PATTERN al? $WEEKDAY_PATTERN\\b|\\b(?:from )?$WEEKDAY_PATTERN (?:to|through|thru) $WEEKDAY_PATTERN\\b")
 /** Working days and weekends, said as days that come round. */
@@ -801,8 +867,9 @@ private val WAKE = Regex(
         "\\b(?:when|as soon as|once) i (?:wake up|get up)\\b|\\b(?:on|after) waking(?: up)?\\b",
 )
 private val BED = Regex(
-    "\\b(?:antes de|al) (?:acostarme|dormir|irme a dormir|irme a la cama|meterme en la cama)\\b|\\bcuando me (?:acueste|vaya a dormir|vaya a la cama)\\b|" +
-        "\\ba la hora de (?:dormir|acostarme)\\b|\\bbefore (?:bed|bedtime|going to bed|i go to bed|sleeping)\\b|\\bat bedtime\\b|\\bwhen i go to bed\\b",
+    // A nap is not going to bed: "antes de dormir la siesta" is not a bedtime.
+    "\\b(?:antes de|al) (?:acostarme|dormir|irme a dormir|irme a la cama|meterme en la cama)\\b(?! (?:la |una )?siesta)|\\bcuando me (?:acueste|vaya a dormir|vaya a la cama)\\b|" +
+        "\\ba la hora de (?:dormir|acostarme)\\b(?! (?:la |una )?siesta)|\\bbefore (?:bed|bedtime|going to bed|i go to bed|sleeping)\\b|\\bat bedtime\\b|\\bwhen i go to bed\\b",
 )
 private val EVERY_ONE = Regex("\\bcada (dia|semana|mes|ano)\\b|\\ba (diario)\\b|\\btodos los (dias|meses|anos)\\b|\\btodas las (semanas)\\b|\\bevery (day|week|month|year)\\b|\\b(daily|weekly|monthly|yearly)\\b")
 private val WEEKLY_DAYS = Regex("\\b(?:cada|todos los|los|every) ${WEEKDAY_PATTERN}s?\\b|\\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)s\\b")
@@ -838,7 +905,9 @@ private val DATE_ES = Regex("\\b(?:dia )?(\\d{1,2}) de $MONTH_ES\\b")
 private val DATE_EN_DAY_FIRST = Regex("\\b(\\d{1,2})(?:st|nd|rd|th)?(?: of)? $MONTH_EN\\b")
 private val DATE_EN_MONTH_FIRST = Regex("\\b$MONTH_EN (?:the )?(\\d{1,2})(?:st|nd|rd|th)?\\b")
 private val DATE_NUMERIC = Regex("\\b(\\d{1,2})/(\\d{1,2})(?:/(\\d{2}|\\d{4}))?\\b")
-private val DAY_ES = Regex("\\bel (?:dia )?(\\d{1,2})\\b(?![./]\\d)")
+// Not a count of something, nor an hour with its am/pm: "el 3 barras" is what is left of "el
+// sábado 3 barras de pan" once the weekday is read (0.183.1).
+private val DAY_ES = Regex("\\bel (?:dia )?(\\d{1,2})\\b(?![./]\\d)(?! [a-z]+s\\b)(?! ?(?:a\\.? ?m|p\\.? ?m)(?:[\\s.]|$))")
 private val DAY_EN = Regex("\\bon the (\\d{1,2})(?:st|nd|rd|th)\\b")
 /**
  * "El lunes 14", "el martes 1 de septiembre", "monday the 14th". Groups: weekday, day, month. Not
@@ -847,13 +916,24 @@ private val DAY_EN = Regex("\\bon the (\\d{1,2})(?:st|nd|rd|th)\\b")
  */
 private val WEEKDAY_DATE = Regex(
     "\\b(?:(?:el|on) )?$WEEKDAY_PATTERN (?:(?:dia|the) )?(\\d{1,2})(?:st|nd|rd|th)?(?: (?:de|of) (${MONTHS.keys.joinToString("|")}))?\\b" +
-        "(?![:.h]\\d)(?! (?:horas?|minutos?|min|veces|hours?|minutes?|times|de la|y media|y cuarto|menos)\\b)",
+        "(?![:.h]\\d)(?! (?:horas?|minutos?|min|veces|hours?|minutes?|times|de la|in the|y media|y cuarto|menos)\\b)" +
+        // Nor an hour with its am/pm ("saturday 10 am"), nor a count of something, which is a
+        // plural ("el sábado 3 barras de pan", "el lunes 50 euros"): "el lunes 14 dentista" is a date.
+        "(?! ?(?:a\\.? ?m|p\\.? ?m)(?:[\\s.]|$))(?! [a-z]+s\\b)",
 )
 private val END_OF_MONTH = Regex(
-    "\\b(?:a|al|para|hacia) (?:final|finales|fin|el final)(?: de| del) mes\\b|\\bel ultimo dia del mes\\b|" +
-        "\\b(?:(?:at|by) )?the end of (?:the|this) month\\b|\\bend of (?:the |this )?month\\b",
+    "\\b(?:a|al|para|hacia) (?:final|finales|fin|el final)(?: de| del) (?:mes que viene|proximo mes|mes)\\b|\\bel ultimo dia del (?:mes que viene|proximo mes|mes)\\b|" +
+        "\\b(?:(?:at|by) )?the end of (?:the|this|next) month\\b|\\bend of (?:the |this |next )?month\\b",
 )
-private val START_OF_MONTH = Regex("\\b(?:a|al) (?:principios?|primeros|comienzos?|inicio)(?: de| del) mes\\b|\\b(?:at )?the (?:start|beginning) of (?:the |next )?month\\b")
+private val START_OF_MONTH = Regex(
+    "\\b(?:a|al) (?:principios?|primeros|comienzos?|inicio)(?: de| del) (?:mes que viene|proximo mes|mes)\\b|\\b(?:at )?the (?:start|beginning) of (?:the |next )?month\\b",
+)
+private val NEXT_MONTH_WORDS = Regex("\\b(?:que viene|proximo|next)\\b")
+/** "El último viernes del mes", "the first monday of next month": one day, not every month. Groups: the ordinal, the weekday. */
+private val NTH_ONCE = Regex(
+    "\\b(?:el |the )?(primer|primero|segundo|tercer|tercero|cuarto|ultimo|first|second|third|fourth|last) $WEEKDAY_PATTERN " +
+        "(?:del (?:mes que viene|proximo mes|mes)|of (?:the|this|next) month)\\b",
+)
 
 // "En algún momento de hoy", and the other ways of saying today with no hour in it on purpose.
 // Plain "hoy" is not one: it has always needed an hour still ahead (see the tests).

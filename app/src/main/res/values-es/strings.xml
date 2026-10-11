@@ -113,7 +113,7 @@
     <string name="voice_done">Listo</string>
     <string name="voice_closes_itself">Se cierra sola en un momento</string>
     <string name="voice_heard">Lo que he oído</string>
-    <string name="voice_fires_at">Sonará %1$s a las %2$s · %3$s</string>
+    <string name="voice_fires_at">Sonará %1$s, %2$s · %3$s</string>
     <string name="voice_fires_in">Sonará %1$s</string>
     <string name="voice_doubt">No sé si «%1$s» cambia cuándo suena: revísalo.</string>
     <string name="voice_doubt_join">», «</string>
@@ -168,6 +168,9 @@
     <string name="voice_gemini_offer">Gemini lo entiende así:</string>
     <string name="voice_original_offer">Como lo entendí sin Gemini:</string>
     <string name="voice_use_this">Usar esta</string>
+    <string name="voice_use_gemini">Usar la lectura de Gemini</string>
+    <string name="voice_use_original">Volver a como lo entendí</string>
+    <string name="voice_created_gemini">Creado · con la lectura de Gemini</string>
     <string name="voice_confirm">Gemini ha entendido esto</string>
     <string name="voice_to_editor_gemini_key">Gemini no acepta la clave: revísala en Ajustes › Voz.</string>
     <string name="voice_to_editor_gemini_failed">Gemini no ha contestado: termínalo aquí.</string>
@@ -1812,11 +1815,19 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_183_1">
+
+        <item>Repaso de lo nuevo al dictar: «reservar mesa para las 4 personas» o «comprar el sábado 3 barras de pan» ya no se leen como una hora ni como una fecha, y «todas las noches a las 12» es a medianoche, no a mediodía.</item>
+        <item>«Antes de acostarme» todos los días usa tu hora de acostarte de entre semana, no la de 1:30 del fin de semana; «el último viernes del mes» es ese día una vez, y «el último día de cada mes» se repite cada mes.</item>
+        <item>«Cada uno», «40 años» o «el menú de mediodía» ya no cuentan como dudas, y si usas lo que propone Gemini, la hoja deja de marcar como dudosas palabras que ya no están.</item>
+        <item>Con TalkBack, o con «Tiempo para realizar acciones» en Accesibilidad, la hoja de «Creado» no se cierra sola antes de tiempo.</item>
+
+    </string-array>
     <string-array name="whats_new_0_183_0">
 
         <item>Si tienes Gemini activado y al dictar quedan palabras que no he sabido leer, el recordatorio se crea igual al momento y Gemini lo repasa al lado: verás «Creado · mejorando la captura con Gemini…».</item>
         <item>Si Gemini lo entiende igual, te lo dice y la hoja se cierra sola; si lo entiende de otra forma, te enseña su versión con «Usar esta», pero no cambia nada si no la tocas (y puedes volver a la tuya).</item>
-        <item>Gemini puede tardar o fallar: nunca se le espera más de 8 segundos, sin conexión ni se le pregunta, y mientras piensa puedes pasar al editor con «Escribirlo yo». Lo que ya estaba creado no se pierde.</item>
+        <item>Gemini puede tardar o fallar: nunca se le espera más de 8 segundos y sin conexión ni se le pregunta. Lo que ya estaba creado no se pierde, y si aún no se había creado nada, mientras piensa puedes pasar al editor con «Escribirlo».</item>
 
     </string-array>
     <string-array name="whats_new_0_182_0">

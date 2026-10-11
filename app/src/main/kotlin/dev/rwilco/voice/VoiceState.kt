@@ -107,7 +107,15 @@ data class VoiceCheck(
     val alternatives: List<VoiceAlternative> = emptyList(),
     /** Where Gemini's second look at a doubtful reading is (0.183.0). */
     val refining: Refining = Refining.NONE,
+    /** The position "aquí" was drawn round in the reading shown, for the watch to be told if it comes back. */
+    val here: Fix? = null,
 ) {
+    /**
+     * Whether the reading shown is the grammar's own, which [parts] and [doubts] describe: once
+     * Gemini's has taken its place they are about a reading that is no longer the one on screen.
+     */
+    val readsAsSaid: Boolean get() = alternatives.none { it.kind == VoiceAlternative.Kind.ORIGINAL }
+
     /**
      * Nothing to look at twice, so the sheet may go by itself (the owner's call): a doubt or an
      * alternative keeps it until somebody says "Listo", and so does Gemini still looking.
@@ -121,7 +129,8 @@ data class VoiceCheck(
      */
     fun swapped(current: Reminder, chosen: VoiceAlternative): VoiceCheck = copy(
         firesAt = chosen.firesAt,
-        alternatives = alternatives.map { if (it == chosen) VoiceAlternative(current, firesAt, chosen.kind.replaced, chosen.here) else it },
+        here = chosen.here,
+        alternatives = alternatives.map { if (it == chosen) VoiceAlternative(current, firesAt, chosen.kind.replaced, here) else it },
     )
 
     /**
@@ -146,6 +155,25 @@ data class VoiceCheck(
 
 /** Gemini's second look at a reading the grammar had doubts about. */
 enum class Refining { NONE, ASKING, AGREED, OFFERED, FAILED }
+
+/*
+ * The changes to a written reminder's sheet that do not come from the ear — Gemini's answer, a
+ * reading chosen, the sheet let go of — as pure steps, so the ViewModel applies each atomically
+ * to whatever the sheet is *now* (`MutableStateFlow.update`): a Gemini answer that arrives on its
+ * own thread must neither bring back a sheet closed meanwhile nor undo a choice made meanwhile.
+ */
+
+/** Gemini's answer about the reminder [id], laid on the sheet only while it still shows that reminder. */
+fun VoiceState?.refinedWith(id: String, offer: VoiceAlternative?): VoiceState? =
+    if (this is VoiceState.Created && reminder.id == id) copy(check = check.refined(reminder, offer)) else this
+
+/** [chosen] in place of the shown reading — only while it is still on offer on the sheet. */
+fun VoiceState?.choosing(chosen: VoiceAlternative): VoiceState? =
+    if (this is VoiceState.Created && chosen in check.alternatives) VoiceState.Created(chosen.reminder, check.swapped(reminder, chosen)) else this
+
+/** The sheet is leaving, so Gemini's look is over: a sheet that comes back (a rotation mid-hide) shows no endless "mejorando". */
+fun VoiceState?.refiningStopped(): VoiceState? =
+    if (this is VoiceState.Created && check.refining == Refining.ASKING) copy(check = check.copy(refining = Refining.FAILED)) else this
 
 /**
  * Whether two readings of a sentence say the same thing: the same words (case, accents and

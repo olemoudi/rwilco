@@ -117,11 +117,11 @@
     <string name="voice_done">Done</string>
     <string name="voice_closes_itself">Closes by itself in a moment</string>
     <string name="voice_heard">What I heard</string>
-    <string name="voice_fires_at">Rings %1$s at %2$s · %3$s</string>
+    <string name="voice_fires_at">Rings %1$s, %2$s · %3$s</string>
     <string name="voice_fires_in">Rings %1$s</string>
     <string name="voice_doubt">Not sure whether “%1$s” changes when it rings: check it.</string>
     <string name="voice_doubt_join">”, “</string>
-    <string name="voice_alternatives">Or did you mean</string>
+    <string name="voice_alternatives">Or did you mean:</string>
     <string name="voice_alternative_use">Change it to %1$s</string>
     <string name="voice_edit">Edit</string>
     <string name="voice_retry">Try again</string>
@@ -172,6 +172,9 @@
     <string name="voice_gemini_offer">Gemini reads it like this:</string>
     <string name="voice_original_offer">As I read it without Gemini:</string>
     <string name="voice_use_this">Use this one</string>
+    <string name="voice_use_gemini">Use Gemini\'s reading</string>
+    <string name="voice_use_original">Go back to how I read it</string>
+    <string name="voice_created_gemini">Created · with Gemini\'s reading</string>
     <string name="voice_confirm">Gemini understood this</string>
     <string name="voice_to_editor_gemini_key">Gemini didn\'t accept the key: check it in Settings › Voice.</string>
     <string name="voice_to_editor_gemini_failed">Gemini didn\'t answer: finish it here.</string>
@@ -1827,11 +1830,19 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_183_1">
+
+        <item>A review of what dictation learned: “reservar mesa para las 4 personas” or “comprar el sábado 3 barras de pan” are no longer read as an hour or a date, and “every night at 12” is midnight, not noon.</item>
+        <item>“Before bed” every day uses your weekday bedtime, not the weekend’s 1:30; “the last Friday of the month” is that day once, and “the last day of every month” repeats every month.</item>
+        <item>“Each one”, “40 years old” or “the midday menu” no longer count as doubts, and if you use Gemini’s reading, the sheet stops marking words that are no longer there.</item>
+        <item>With TalkBack, or with “Time to take action” in Accessibility, the “Created” sheet no longer closes by itself too soon.</item>
+
+    </string-array>
     <string-array name="whats_new_0_183_0">
 
         <item>With Gemini on, when dictation leaves words I could not read, the reminder is still created at once and Gemini looks it over beside it: you will see “Created · improving the capture with Gemini…”.</item>
         <item>If Gemini reads it the same way it says so and the sheet closes by itself; if it reads it another way it shows its version with “Use this one”, but nothing changes unless you tap it (and you can go back to yours).</item>
-        <item>Gemini can be slow or fail: it is never waited for more than 8 seconds, it is not asked at all offline, and while it thinks you can go to the editor with “Type it”. What was already created is never lost.</item>
+        <item>Gemini can be slow or fail: it is never waited for more than 8 seconds and it is not asked at all offline. What was already created is never lost, and if nothing had been created yet, while it thinks you can go to the editor with “Type it”.</item>
 
     </string-array>
     <string-array name="whats_new_0_182_0">

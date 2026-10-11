@@ -62,6 +62,9 @@ import dev.rwilco.voice.VoiceAlternative
 import dev.rwilco.voice.VoiceCheck
 import dev.rwilco.voice.VoiceOutcome
 import dev.rwilco.voice.VoiceState
+import dev.rwilco.voice.choosing
+import dev.rwilco.voice.refinedWith
+import dev.rwilco.voice.refiningStopped
 import dev.rwilco.voice.voiceStep
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -95,6 +98,9 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Clock
@@ -533,7 +539,11 @@ class HomeViewModel(
     /** The sentence being turned into a reminder; cancelled when the sheet is let go of first. */
     private var voiceWork: Job? = null
 
-    /** Gemini's second look at a written reminder the grammar had doubts about; cancelled with the sheet. */
+    /**
+     * Gemini's second look at a written reminder the grammar had doubts about; cancelled with the
+     * sheet. Set from the reading's own thread and cancelled from the main one.
+     */
+    @Volatile
     private var refineWork: Job? = null
 
     /**
@@ -555,9 +565,9 @@ class HomeViewModel(
 
     /** One thing that happened to the sheet; a finished sentence is turned into a reminder here, once. */
     fun onVoice(event: VoiceInputEvent, hereLabel: String) {
-        val before = _voice.value ?: return
-        val after = voiceStep(before, event)
-        _voice.value = after
+        // Stepped on whatever the sheet is now, atomically: Gemini's answer may be landing on another thread.
+        var before: VoiceState? = null
+        val after = _voice.updateAndGet { current -> before = current; current?.let { voiceStep(it, event) } } ?: return
         if (after !is VoiceState.Thinking || before is VoiceState.Thinking) return
         // Off the main thread: reading a sentence is a few hundred regex passes, and the sheet is
         // animating while it happens.
@@ -568,8 +578,9 @@ class HomeViewModel(
                 is VoiceOutcome.Proposed -> VoiceInputEvent.Proposed(outcome.reminder, outcome.form, outcome.spoken, outcome.here, outcome.check)
                 is VoiceOutcome.ToEditor -> VoiceInputEvent.Unwritten(outcome.text, outcome.why, outcome.form)
             }
-            _voice.value = _voice.value?.let { voiceStep(it, answer) }
-            if (refine != null && outcome is VoiceOutcome.Created) refine(outcome.reminder, refine)
+            _voice.update { current -> current?.let { voiceStep(it, answer) } }
+            // Not for a sheet let go of while this was finishing: nobody would see the answer.
+            if (refine != null && outcome is VoiceOutcome.Created && isActive) refine(outcome.reminder, refine)
         }
     }
 
@@ -579,6 +590,7 @@ class HomeViewModel(
         voiceWork = null
         refineWork?.cancel()
         refineWork = null
+        _voice.update { it.refiningStopped() }
     }
 
     /** The sheet is gone. */
@@ -602,7 +614,7 @@ class HomeViewModel(
                 // and a Gemini that is slow or silent costs nothing but the offer.
                 val setup = if (heard.read.doubts.isEmpty()) null else geminiSetup().takeIf { it.usable && online() }
                 val outcome = settle(heard.read, heard.fix, settings, write = true, transcript, refining = setup != null)
-                outcome to setup?.let { Refine(transcript, heard.read.said, it.key, settings, hereLabel) }
+                outcome to setup?.let { Refine(transcript, heard.read.said, it.key, settings, hereLabel, heard.fix) }
             }
             is Here.Missing -> (VoiceOutcome.ToEditor(heard.said, VoiceOutcome.Why.NO_FIX) to null).also { noteVoice("no position for here") }
             is Here.Unsure -> {
@@ -618,8 +630,12 @@ class HomeViewModel(
         }
     }
 
-    /** What Gemini's second look at a written reading needs: the sentence, and how to ask. */
-    private class Refine(val transcript: String, val said: String, val key: String, val settings: AppSettings, val hereLabel: String)
+    /**
+     * What Gemini's second look at a written reading needs: the sentence, how to ask, and the
+     * position "aquí" was already drawn round — the same circle, or two readings of one sentence
+     * would never agree, and a second position would spend Gemini's seconds on the GPS.
+     */
+    private class Refine(val transcript: String, val said: String, val key: String, val settings: AppSettings, val hereLabel: String, val fix: Fix?)
 
     /**
      * Gemini's second look at [written], a reading the grammar had doubts about (0.183.0), beside
@@ -630,11 +646,8 @@ class HomeViewModel(
     private fun refine(written: Reminder, refine: Refine) {
         refineWork = viewModelScope.launch(Dispatchers.Default) {
             val offer = withTimeoutOrNull(GEMINI_PATIENCE_MS) { geminiReadingOf(written, refine) }
-            val shown = _voice.value as? VoiceState.Created ?: return@launch
-            if (shown.reminder.id != written.id) return@launch
-            val check = shown.check.refined(shown.reminder, offer)
-            _voice.value = shown.copy(check = check)
-            noteVoice("gemini refine: ${check.refining.name.lowercase()}")
+            val now = _voice.updateAndGet { it.refinedWith(written.id, offer) }
+            (now as? VoiceState.Created)?.takeIf { it.reminder.id == written.id }?.let { noteVoice("gemini refine: ${it.check.refining.name.lowercase()}") }
         }
     }
 
@@ -643,7 +656,11 @@ class HomeViewModel(
         val settings = refine.settings
         val answer = askGemini(refine.key, refine.transcript, geminiInstruction(clock.instant(), clock.zone, settings), geminiSchema(settings.geminiPlaces))
         val reading = (answer as? GeminiAnswer.Reading)?.reading ?: return null
-        val heard = withHere { here -> reading.toHeard(clock.instant(), clock.zone, settings, here, refine.hereLabel, refine.said) } as? Here.Read ?: return null
+        val heard = if (refine.fix != null) {
+            (reading.toHeard(clock.instant(), clock.zone, settings, refine.fix, refine.hereLabel, refine.said) as? Heard.Read)?.let { Here.Read(it, refine.fix) }
+        } else {
+            withHere { here -> reading.toHeard(clock.instant(), clock.zone, settings, here, refine.hereLabel, refine.said) } as? Here.Read
+        } ?: return null
         // Settled as of the moment the sentence was written, so the two readings can be compared.
         val reminder = heard.read.spoken.toReminder(written.id, written.createdAt, clock.zone, settings) ?: return null
         return VoiceAlternative(reminder, firesAt(reminder, settings), VoiceAlternative.Kind.GEMINI, heard.fix)
@@ -655,7 +672,7 @@ class HomeViewModel(
      * sheet shows it and asks.
      */
     private suspend fun fromGemini(transcript: String, said: String, key: String, settings: AppSettings, hereLabel: String): VoiceOutcome {
-        _voice.value = (_voice.value as? VoiceState.Thinking)?.copy(asking = true) ?: _voice.value
+        _voice.update { current -> (current as? VoiceState.Thinking)?.copy(asking = true) ?: current }
         // Never longer than the person would wait: a Gemini still thinking is a Gemini that failed.
         val answer = withTimeoutOrNull(GEMINI_PATIENCE_MS) {
             askGemini(key, transcript, geminiInstruction(clock.instant(), clock.zone, settings), geminiSchema(settings.geminiPlaces))
@@ -709,7 +726,7 @@ class HomeViewModel(
         val alternatives = read.alternatives
             .mapNotNull { it.toReminder(reminder.id, clock.instant(), clock.zone, settings) }
             .map { VoiceAlternative(it, firesAt(it, settings)) }
-        val check = VoiceCheck(transcript, read.parts, read.doubts, firesAt(reminder, settings), alternatives, if (refining) Refining.ASKING else Refining.NONE)
+        val check = VoiceCheck(transcript, read.parts, read.doubts, firesAt(reminder, settings), alternatives, if (refining) Refining.ASKING else Refining.NONE, fix)
         if (!write) {
             noteVoice("gemini: proposed ${reminder.rules.size} rule(s), ${reminder.recurrence::class.simpleName}")
             return VoiceOutcome.Proposed(reminder, form, spoken, fix, check)
@@ -734,9 +751,16 @@ class HomeViewModel(
      * alternative, so a second tap takes the choice back. Shown at once; written right after.
      */
     fun useAlternative(chosen: VoiceAlternative) {
-        val shown = _voice.value as? VoiceState.Created ?: return
-        if (chosen !in shown.check.alternatives) return
-        _voice.value = VoiceState.Created(chosen.reminder, shown.check.swapped(shown.reminder, chosen))
+        // A sheet with something to look at twice stays open as long as somebody likes: by the
+        // time the chip is tapped its moment may have gone, and a reading of the past is not one
+        // to write. It leaves the offer instead.
+        if (chosen.firesAt != null && chosen.firesAt <= clock.instant()) {
+            _voice.update { current -> if (current is VoiceState.Created) current.copy(check = current.check.copy(alternatives = current.check.alternatives - chosen)) else current }
+            return
+        }
+        var chose = false
+        _voice.update { current -> current.choosing(chosen).also { chose = it !== current } }
+        if (!chose) return
         viewModelScope.launch {
             repository.save(chosen.reminder.copy(updatedAt = clock.instant()))
             chosen.here?.let { seedHere(chosen.reminder, it) }
@@ -789,7 +813,7 @@ class HomeViewModel(
                 VoiceInputEvent.Written(reminder, shown.check.copy(firesAt = firesAt(reminder, settings)))
             }
             // Only onto the sheet it was asked from: one let go of meanwhile stays gone.
-            if (_voice.value === shown) _voice.value = voiceStep(shown, next)
+            _voice.compareAndSet(shown, voiceStep(shown, next))
         }
     }
 

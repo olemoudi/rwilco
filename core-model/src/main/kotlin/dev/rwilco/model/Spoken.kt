@@ -241,16 +241,16 @@ private fun doubtsIn(text: String, spans: List<IntRange>, whens: List<IntRange>)
 /** Only ever about time, left anywhere in the words. Folded. */
 private val DOUBTFUL = Regex(
     "\\b(?:temprano|pronto|luego|enseguida|en un rato|dentro de un rato|mas tarde|a primera hora|a ultima hora|y media|y cuarto|menos cuarto|en punto|" +
-        "(?:la )?(?:proxima|siguiente) vez|\\d+ (?:horas?|minutos?|min|dias?|semanas?|meses|anos?)|(?:una|dos|tres|media) horas?|mediodia|medianoche|madrugada|" +
+        "(?:la )?(?:proxima|siguiente) vez|\\d+ (?:horas?|minutos?|min)|(?:una|dos|tres|media) horas?|medianoche|madrugada|" +
         "antes de|despues de|hasta que|desde que|en cuanto|cuando|mientras|todos los (?:dias|meses|anos)|todas las (?:semanas|mananas|tardes|noches)|" +
-        "later|soon|early|first thing|next time|half past|quarter (?:past|to)|o clock|and a half|\\d+ (?:hours?|minutes?|days?|weeks?|months?)|midnight|noon|" +
+        "later|soon|early|first thing|next time|half past|quarter (?:past|to)|o clock|and a half|\\d+ (?:hours?|minutes?)|midnight|" +
         "before|after|until|when|while)\\b",
 )
 
 /** What qualifies a "when" right beside it, and is rarely the thing itself. Folded. */
 private val DOUBTFUL_BESIDE = setOf(
-    "primer", "primera", "primero", "segundo", "segunda", "tercer", "tercera", "tercero", "ultimo", "ultima", "cada",
-    "first", "second", "third", "fourth", "last", "every", "each", "horas", "minutos", "hours", "minutes",
+    "primer", "primera", "primero", "segundo", "segunda", "tercer", "tercera", "tercero", "ultimo", "ultima",
+    "first", "second", "third", "fourth", "last", "horas", "minutos", "hours", "minutes",
 )
 
 /**
@@ -360,7 +360,9 @@ private val CLAUSE_JOINERS = setOf("de", "que", "y", "e", "para", "to", "and", "
 private val JOINERS = setOf(
     "el", "la", "los", "las", "lo", "este", "esta", "proximo", "proxima", "que", "de", "del", "a", "al",
     "para", "en", "y", "o", "e", "u", "por", "mi", "mis",
-    "the", "on", "at", "for", "next", "this", "by", "in", "and", "or", "to", "my",
+    // "Desde hoy", "a partir de mañana": where a series starts, said with the day (0.183.1).
+    "desde", "partir",
+    "the", "on", "at", "for", "next", "this", "by", "in", "and", "or", "to", "my", "from", "starting",
 )
 
 /**

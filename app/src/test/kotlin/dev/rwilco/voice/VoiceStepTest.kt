@@ -185,6 +185,50 @@ class VoiceStepTest {
         assertEquals(listOf(gemini), chosen.swapped(later, chosen.alternatives.single()).alternatives)
     }
 
+    // --- the steps applied atomically, whatever the sheet is now (the review round) ---
+
+    @Test
+    fun `Gemini's answer lands only on the sheet still showing that reminder`() {
+        val offer = VoiceAlternative(later.copy(text = "Llamar al banco"), nine, VoiceAlternative.Kind.GEMINI)
+        val asking = VoiceState.Created(shown, doubtful)
+        assertEquals(Refining.OFFERED, (asking.refinedWith(shown.id, offer) as VoiceState.Created).check.refining)
+        // A sheet closed meanwhile stays closed; another reminder's sheet is left alone.
+        assertEquals(null, (null as VoiceState?).refinedWith(shown.id, offer))
+        assertEquals(asking, asking.refinedWith("another", offer))
+        assertEquals(VoiceState.Listening(), VoiceState.Listening().refinedWith(shown.id, offer))
+    }
+
+    @Test
+    fun `a choice made while Gemini was asked survives its answer`() {
+        val half = VoiceAlternative(later, twentyOne)
+        val chosen = VoiceState.Created(shown, doubtful.copy(alternatives = listOf(half))).choosing(half) as VoiceState.Created
+        assertEquals(later, chosen.reminder)
+        val answered = chosen.refinedWith(shown.id, null) as VoiceState.Created
+        assertEquals(later, answered.reminder)
+        assertEquals(Refining.FAILED, answered.check.refining)
+        // A reading no longer on offer is not chosen.
+        assertEquals(chosen, chosen.choosing(half))
+    }
+
+    @Test
+    fun `a sheet let go of while Gemini was asked stops saying it is asking`() {
+        assertEquals(Refining.FAILED, (VoiceState.Created(shown, doubtful).refiningStopped() as VoiceState.Created).check.refining)
+        val settled = VoiceState.Created(shown, doubtful.copy(refining = Refining.AGREED))
+        assertEquals(settled, settled.refiningStopped())
+        assertEquals(null, (null as VoiceState?).refiningStopped())
+    }
+
+    @Test
+    fun `the position of aqui travels with the reading it was drawn for`() {
+        val spot = dev.rwilco.model.Fix(40.4, -3.7, 10.0, Instant.EPOCH)
+        val gemini = VoiceAlternative(later, twentyOne, VoiceAlternative.Kind.GEMINI, here = null)
+        val swapped = doubtful.copy(here = spot, alternatives = listOf(gemini)).swapped(shown, gemini)
+        assertEquals(null, swapped.here)
+        assertEquals(spot, swapped.alternatives.single().here)
+        assertFalse(swapped.readsAsSaid)
+        assertTrue(swapped.swapped(later, swapped.alternatives.single()).readsAsSaid)
+    }
+
     @Test
     fun `the same reading is the same words and the same when, however it is written`() {
         assertTrue(sameReading(shown, shown.copy(text = "LLAMAR al banco, antes de comer.")))

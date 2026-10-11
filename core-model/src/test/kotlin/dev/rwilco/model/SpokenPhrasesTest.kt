@@ -337,6 +337,111 @@ class SpokenPhrasesTest {
         assertEquals(emptyList<Spoken>(), read("comprar pan cuando llegue a casa").alternatives)
     }
 
+    // --- the review round (0.183.1) ---
+
+    private fun heardAt(text: String, at: java.time.Instant) = hear(text, at, zone, settings, here = null, hereLabel = "aquí")
+
+    @Test
+    fun `about or for an hour followed by what it counts is not an hour`() {
+        assertTrue(heard("hablar con el jefe sobre las 2 ofertas") !is Heard.Read)
+        assertTrue(heard("comprar mochilas para las 2 niñas") !is Heard.Read)
+        assertTrue(heard("reservar mesa para las 4 personas") !is Heard.Read)
+        // A verb after it starts the thing; a join or nothing at all ends the hour.
+        assertEquals("Llamar a Juan" to at(8, 27, 17), once("sobre las 5 llamar a Juan"))
+        assertEquals("Llamar a Juan" to at(8, 27, 17), once("llamar a Juan hacia las 5 y media".replace(" y media", "")))
+        assertEquals("Tenerlo listo" to at(8, 27, 17), once("tenerlo listo para las 5"))
+    }
+
+    @Test
+    fun `a weekday and a number that counts something or says the hour is not a date`() {
+        assertEquals("Call mom" to Trigger.RelativeDate(RelativeDay.NextWeekday(DayOfWeek.SATURDAY), t(10)), once("call mom saturday 10 am"))
+        assertEquals("Cena" to Trigger.RelativeDate(RelativeDay.NextWeekday(DayOfWeek.FRIDAY), t(21)), once("cena el viernes 9 p. m."))
+        assertEquals("Comprar 3 barras de pan" to Trigger.RelativeDate(RelativeDay.NextWeekday(DayOfWeek.SATURDAY)), once("comprar el sábado 3 barras de pan"))
+        assertEquals("Pagar 50 euros a Juan" to Trigger.RelativeDate(RelativeDay.NextWeekday(DayOfWeek.MONDAY)), once("pagar el lunes 50 euros a Juan"))
+        // And the day it names is still a date.
+        assertEquals("Dentista" to Trigger.DayRandom(LocalDate.of(2026, 9, 14)), once("el lunes 14 dentista"))
+    }
+
+    @Test
+    fun `bedtime past midnight is never every night at one in the morning`() {
+        // Said on a Friday afternoon, whose own bedtime is the weekend's: every night is a working night's.
+        val friday = Fixtures.local(2026, 8, 28, 15, 0)
+        val nightly = (heardAt("meditar cada noche antes de acostarme", friday) as Heard.Read).spoken.recurrence as Recurrence.Calendar
+        assertEquals(t(23), nightly.repeat.time)
+        // Mornings too: a weekday morning's hour, not Saturday's lie-in.
+        val saturday = Fixtures.local(2026, 8, 29, 15, 0)
+        val mornings = (heardAt("estirar todas las mañanas al levantarme", saturday) as Heard.Read).spoken.recurrence as Recurrence.Calendar
+        assertEquals(t(8), mornings.repeat.time)
+        // A night of its own whose bedtime is past midnight is not a calendar this can hold.
+        assertTrue(heard("leer los viernes antes de dormir") !is Heard.Read)
+    }
+
+    @Test
+    fun `days of the month said as a list are not the last of them`() {
+        assertTrue(heard("pagar los días 1 y 15 de cada mes") !is Heard.Read)
+        assertEquals("Pagar la luz" to calendar(LocalDate.of(2026, 9, 1), RepeatUnit.MONTH, monthly = MonthlyOn.Day(1)), comes("pagar la luz el primer día de cada mes"))
+        assertEquals("Pagar la luz" to calendar(today.withDayOfMonth(31), RepeatUnit.MONTH, monthly = MonthlyOn.Day(31)), comes("pagar la luz el último día de cada mes"))
+    }
+
+    @Test
+    fun `from today on is part of saying when`() {
+        assertEquals("Tomar la pastilla", read("tomar la pastilla todos los días desde hoy").spoken.text)
+        assertEquals("Tomar la pastilla", read("tomar la pastilla a partir de hoy cada día").spoken.text)
+    }
+
+    @Test
+    fun `twelve and one at night are the small hours`() {
+        assertEquals(calendar(today.plusDays(1), RepeatUnit.DAY, t(0)), comes("leer todas las noches a las 12").second)
+        assertEquals(calendar(today.plusDays(1), RepeatUnit.DAY, t(1)), comes("leer cada noche a la una").second)
+    }
+
+    @Test
+    fun `a nap is not going to bed`() {
+        assertTrue(heard("tomar la pastilla antes de dormir la siesta") !is Heard.Read)
+    }
+
+    @Test
+    fun `midnight said with a day is the end of that day`() {
+        assertEquals("Entregar" to at(8, 29, 0), once("entregar el viernes a medianoche"))
+        assertEquals("Entregar" to at(8, 29, 0), once("entregar mañana a medianoche"))
+    }
+
+    @Test
+    fun `a fraction of the hour holds its y in a sentence with joins`() {
+        val spoken = read("llamar a Ana a las 9 y diez o al llegar a casa").spoken
+        assertEquals(2, spoken.rules.size)
+        assertEquals(t(21, 10), (spoken.rules.first().trigger as Trigger.AtDateTime).at.toLocalTime())
+    }
+
+    @Test
+    fun `the other half of a daily hour is offered on a weekend too`() {
+        val saturday = Fixtures.local(2026, 8, 29, 15, 0)
+        val pills = heardAt("tomar la pastilla cada día a las 8", saturday) as Heard.Read
+        assertEquals(1, pills.alternatives.size)
+    }
+
+    @Test
+    fun `ages, durations and ordinary words are not doubts`() {
+        listOf(
+            "felicitar a Ana que cumple 40 años mañana",
+            "llevar al bebé de 6 meses al pediatra mañana",
+            "mañana cada uno trae su comida",
+            "reservar el menú de mediodía mañana",
+            "tomar el antibiótico 7 días desde mañana",
+        ).forEach { assertEquals(emptyList<IntRange>(), read(it).doubts, it) }
+    }
+
+    @Test
+    fun `an hour already gone today is still left for Gemini, not fenced into nothing`() {
+        assertTrue(heard("llamar a la tienda hoy a las 10 de la mañana").let { it is Heard.Unsure && it.why == Heard.Why.NOTHING })
+    }
+
+    @Test
+    fun `the last friday of the month, said once, is not every month`() {
+        assertEquals("Pagar" to Trigger.DayRandom(LocalDate.of(2026, 8, 28)), once("pagar el último viernes del mes"))
+        assertEquals("Pagar" to Trigger.DayRandom(LocalDate.of(2026, 9, 7)), once("pagar el primer lunes del mes que viene"))
+    }
+
     @Test
     fun `every phrase here writes a reminder that can ring`() {
         val sentences = listOf(
