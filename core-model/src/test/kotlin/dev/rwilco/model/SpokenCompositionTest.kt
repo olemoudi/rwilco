@@ -47,19 +47,20 @@ class SpokenCompositionTest {
     fun `either of them is or`() {
         val spoken = read("llamar a Ana a las 9 o al llegar a casa")
         assertEquals("Llamar a Ana", spoken.text)
-        assertEquals(listOf(TriggerRule(at(28, 9)), TriggerRule(arrive(casa))), spoken.rules)
+        assertEquals(listOf(TriggerRule(at(27, 21)), TriggerRule(arrive(casa))), spoken.rules)
         assertEquals(RuleMatch.ANY, spoken.match)
     }
 
     @Test
     fun `what is said beside one side of an or fences that side`() {
         val spoken = read("regar a las 9 o al llegar a casa por la tarde")
-        assertEquals(listOf(TriggerRule(at(28, 9)), TriggerRule(arrive(casa), listOf(Condition.TimeWindow(t(17), t(20))))), spoken.rules)
+        assertEquals(listOf(TriggerRule(at(27, 21)), TriggerRule(arrive(casa), listOf(Condition.TimeWindow(t(17), t(20))))), spoken.rules)
         assertEquals(RuleMatch.ANY, spoken.match)
     }
 
     @Test
     fun `two moments joined by and ring twice, which is either`() {
+        // The 9 alone would be tonight's — which the 21 already is — so it is the other nine.
         val spoken = read("la pastilla a las 9 y a las 21")
         assertEquals("La pastilla", spoken.text)
         assertEquals(listOf(TriggerRule(at(28, 9)), TriggerRule(at(27, 21))), spoken.rules)
@@ -86,7 +87,7 @@ class SpokenCompositionTest {
             listOf(TriggerRule(arrive(casa), listOf(Condition.TimeWindow(t(18), t(22))))),
             read("comprar pan al llegar a casa y sólo si es entre las 18 y las 22").rules,
         )
-        assertEquals(listOf(TriggerRule(at(28, 8), listOf(atPlace(casa)))), read("llamar a mamá a las 8 sólo si estoy en casa").rules)
+        assertEquals(listOf(TriggerRule(at(27, 20), listOf(atPlace(casa)))), read("llamar a mamá a las 8 sólo si estoy en casa").rules)
         assertEquals(listOf(TriggerRule(arrive(casa), listOf(Condition.OnDays(setOf(DayOfWeek.FRIDAY))))), read("llamar a mamá al llegar a casa sólo si es viernes").rules)
     }
 
@@ -143,7 +144,7 @@ class SpokenCompositionTest {
         val spoken = read("llamar al banco a las 9 y al llegar a casa, las dos cosas")
         assertEquals("Llamar al banco", spoken.text)
         assertEquals(RuleMatch.ALL, spoken.match)
-        assertEquals(listOf(TriggerRule(at(28, 9)), TriggerRule(arrive(casa))), spoken.rules)
+        assertEquals(listOf(TriggerRule(at(27, 21)), TriggerRule(arrive(casa))), spoken.rules)
     }
 
     // --- plazos ---
@@ -320,7 +321,8 @@ class SpokenCompositionTest {
 
     @Test
     fun `a stretch with no qualifier is read as a whole, never overnight by accident`() {
-        assertEquals(listOf(TriggerRule(Trigger.Interval(t(7), t(8)))), read("llamar a mamá entre las 7 y las 8").rules)
+        // Seven to eight in the morning is before the default getting-up (8:00): the waking one is the evening's.
+        assertEquals(listOf(TriggerRule(Trigger.Interval(t(19), t(20)))), read("llamar a mamá entre las 7 y las 8").rules)
         assertEquals(listOf(TriggerRule(Trigger.Interval(t(10), t(14)))), read("estudiar de 10 a 2").rules)
         assertEquals(listOf(TriggerRule(Trigger.Interval(t(17), t(19)))), read("estirar de 5 a 7").rules)
     }
@@ -355,6 +357,49 @@ class SpokenCompositionTest {
             spoken.rules,
         )
         assertEquals(RuleMatch.ANY, spoken.match)
+    }
+
+    // --- the waking-hours rule, reviewed (0.179.0) ---
+
+    @Test
+    fun `an overnight stretch said in full stays overnight`() {
+        assertEquals(listOf(TriggerRule(Trigger.Interval(t(22), t(2)))), read("estudiar de 22 a 2").rules)
+    }
+
+    @Test
+    fun `one and twelve are never open`() {
+        val fridayLunch = Fixtures.local(2026, 8, 28, 11, 0)
+        val heardThen = hear("llamar a la una", fridayLunch, zone, settings)
+        assertEquals(Trigger.AtDateTime(LocalDateTime.of(2026, 8, 28, 13, 0)), (heardThen as Heard.Read).spoken.rules.single().trigger)
+        val noon = hear("llamar a las 12", fridayLunch, zone, settings)
+        assertEquals(Trigger.AtDateTime(LocalDateTime.of(2026, 8, 28, 12, 0)), (noon as Heard.Read).spoken.rules.single().trigger)
+    }
+
+    @Test
+    fun `the same rule twice with no other reading to turn to is left for a person`() {
+        assertEquals(Heard.Why.PARTIAL, unsure("la pastilla hoy a las 9 y a las 21"))
+    }
+
+    @Test
+    fun `a weekly calendar's open hour is judged on the day it rings`() {
+        // Saturdays get up at ten by default: a waking nine that day is the evening's, said once or every week.
+        assertEquals(listOf(TriggerRule(Trigger.RelativeDate(RelativeDay.NextWeekday(DayOfWeek.SATURDAY), t(21)))), read("regar el sábado a las 9").rules)
+        assertEquals(t(21), (read("regar cada sábado a las 9").recurrence as Recurrence.Calendar).repeat.time)
+    }
+
+    @Test
+    fun `a clock with its leading zero is never moved`() {
+        assertEquals(listOf(TriggerRule(Trigger.Interval(t(7), t(8)))), read("llamar de 07:00 a 08:00").rules)
+        val deadline = read("regar al llegar a casa antes de las 09:00").rules.single().conditions.single()
+        assertEquals(Condition.TimeWindow(LocalTime.MIDNIGHT, t(9)), deadline)
+    }
+
+    @Test
+    fun `an open hour that truly agrees with its calendar folds into it`() {
+        val early = Fixtures.local(2026, 8, 27, 7, 0)
+        val spoken = (hear("la pastilla a las 9 y todos los días a las 9", early, zone, settings) as Heard.Read).spoken
+        assertEquals(t(9), (spoken.recurrence as Recurrence.Calendar).repeat.time)
+        assertEquals(emptyList<TriggerRule>(), spoken.rules)
     }
 
     // --- more than one reading ---

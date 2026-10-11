@@ -29,8 +29,11 @@ internal enum class Join { AND, OR, ONLY_IF, AT_ONCE, ALL }
 
 /** One thing a clause says. */
 internal sealed interface Piece {
-    /** A trigger: a moment, or a state ([Trigger.asState] says which). */
-    data class When(val trigger: Trigger) : Piece
+    /**
+     * A trigger: a moment, or a state ([Trigger.asState] says which). [twin] is the other
+     * reading of a bare hour in it, when the words left the half of the day open.
+     */
+    data class When(val trigger: Trigger, val twin: Trigger? = null) : Piece
 
     /** A condition that is never a trigger of its own: a speed, days of the month, days of the week after "sólo si". */
     data class Fence(val condition: Condition) : Piece
@@ -123,6 +126,9 @@ internal fun composeWhen(text: String, skip: List<IntRange>, context: Context): 
     if (markers.map { it.first }.distinct().size > 1) return Composed.Ambiguous
     return rulesOf(read.filter { !it.said.isNullOrEmpty() }, override, context, spans)
 }
+
+/** A trigger said beside a rule's event: whether a join brought it, and the other reading of an open hour in it. */
+private data class Side(val trigger: Trigger, val joined: Boolean, val twin: Trigger?)
 
 /** A stretch read as one clause, the join before it, and what it said (null until read). */
 private data class Block(val range: IntRange, val join: Joined?, val said: List<Said>?)
@@ -341,14 +347,17 @@ private fun readOne(text: String, context: Context, fence: Boolean, partsAreWind
         val amount = amountIn(amountRaw) ?: return@let
         return said(Piece.Bound(Deadline.Timer(if (unit.startsWith("h")) amount * 60 else amount)), m)
     }
+    val today = context.now.atZone(context.zone).toLocalDate()
+    val shape = settings.dayShape
     BEFORE.find(words)?.let { m ->
-        val hour = hourOf(m.groupValues[1], m.groupValues[2], m.qualifier(3), late = false) ?: return@let
+        val hour = awakeHour(m.groupValues[1], m.groupValues[2], m.qualifier(3), shape, today) ?: return@let
         return said(Piece.Bound(Deadline.Window(LocalTime.MIDNIGHT, hour)), m)
     }
     RANDOM.find(words)?.let { m ->
         val times = amountIn(m.groupValues[1]) ?: return@let
         val period = if (m.groupValues[2].startsWith("sem") || m.groupValues[2] == "week") Period.WEEK else Period.DAY
-        val window = windowOf(m.groupValues[3], m.groupValues[4], m.qualifier(5), m.groupValues[7], m.groupValues[8], m.qualifier(9))
+        // A window said and not readable is no reading at all, never the default hours instead.
+        val window = if (m.groupValues[3].isEmpty()) null else windowOf(m.groupValues[3], m.groupValues[4], m.qualifier(5), m.groupValues[7], m.groupValues[8], m.qualifier(9), shape, today) ?: return@let
         return said(Piece.When(Trigger.Random(times, period, window?.from ?: RANDOM_FROM, window?.to ?: RANDOM_TO)), m)
     }
     // "Del 1 al 15 de octubre", "entre el 1 y el 15": a stretch of the calendar, both ends in it.
@@ -381,7 +390,7 @@ private fun readOne(text: String, context: Context, fence: Boolean, partsAreWind
     for (pattern in WINDOWS) {
         pattern.find(words)?.let { m ->
             if (countsSomething(words, m)) return@let
-            val window = windowOf(m.groupValues[1], m.groupValues[2], m.qualifier(3), m.groupValues[5], m.groupValues[6], m.qualifier(7)) ?: return@let
+            val window = windowOf(m.groupValues[1], m.groupValues[2], m.qualifier(3), m.groupValues[5], m.groupValues[6], m.qualifier(7), shape, today) ?: return@let
             return said(Piece.When(Trigger.Interval(window.from, window.to)), m)
         }
     }
@@ -420,9 +429,9 @@ private fun readOne(text: String, context: Context, fence: Boolean, partsAreWind
         val fix = context.here ?: return said(Piece.Here, m)
         return said(Piece.When(hereCircle(fix, context.hereLabel)), m)
     }
-    val reading = readWhen(text, context.now, context.zone, settings.dayParts, settings.savedPlaces) ?: return null
+    val reading = readWhen(text, context.now, context.zone, settings.dayParts, settings.savedPlaces, settings.dayShape) ?: return null
     val piece = when (val understood = reading.understood) {
-        is Understood.Once -> Piece.When(understood.trigger)
+        is Understood.Once -> Piece.When(understood.trigger, (reading.twin as? Understood.Once)?.trigger)
         is Understood.Comes -> Piece.Comes(understood.recurrence)
     }
     return Said(piece, reading.spans)
@@ -430,28 +439,43 @@ private fun readOne(text: String, context: Context, fence: Boolean, partsAreWind
 
 /**
  * Two hours said as a stretch, each with its own qualifier or one for both: "de 5 a 7 de la
- * tarde". With no qualifier at all the stretch is read **as a whole**: both ends from one to seven
- * are the afternoon's ("de 5 a 7" is nobody's small hours), and an end that would come before the
- * start is the same end twelve hours on ("de 10 a 2" is ten till two) — never one end in the
- * evening and the other in the morning, which is how "entre las 7 y las 8" became an overnight.
+ * tarde". With no qualifier at all the stretch is read **as a whole, and awake** (the owner's
+ * rule for a bare hour): of "as said", "the end twelve hours on" ("de 10 a 2" is ten till two) and
+ * "both twelve hours on" ("de 5 a 7" is the afternoon's), the first that runs forwards inside the
+ * person's waking hours; failing that, the first that runs forwards at all.
  */
-private fun windowOf(fromRaw: String, fromMinutes: String, fromQualifier: String, toRaw: String, toMinutes: String, toQualifier: String): DayWindow? {
+private fun windowOf(
+    fromRaw: String, fromMinutes: String, fromQualifier: String,
+    toRaw: String, toMinutes: String, toQualifier: String,
+    shape: DayShape, today: java.time.LocalDate,
+): DayWindow? {
     if (fromRaw.isEmpty() || toRaw.isEmpty()) return null
     val qualifier = toQualifier.ifEmpty { fromQualifier }
-    var from = hourOf(fromRaw, fromMinutes, fromQualifier.ifEmpty { qualifier }, late = false) ?: return null
-    var to = hourOf(toRaw, toMinutes, toQualifier.ifEmpty { qualifier }, late = false) ?: return null
-    if (qualifier.isEmpty()) {
-        val bareFrom = fromRaw.toIntOrNull() ?: amountIn(fromRaw)
-        val bareTo = toRaw.toIntOrNull() ?: amountIn(toRaw)
-        // `hourOf` already makes a bare one the afternoon's; the rest of the rule is the pair's.
-        if (bareFrom != null && bareTo != null && bareFrom in 1..7 && bareTo in 1..7) {
-            from = hourOf(fromRaw, fromMinutes, "pm", late = false) ?: return null
-            to = hourOf(toRaw, toMinutes, "pm", late = false) ?: return null
-        } else if (to < from && to.plusHours(12) > from && to.hour < 12) {
-            to = to.plusHours(12)
-        }
-    }
-    return if (from == to) null else DayWindow(from, to)
+    val from = hourOf(fromRaw, fromMinutes, fromQualifier.ifEmpty { qualifier }, late = false) ?: return null
+    val to = hourOf(toRaw, toMinutes, toQualifier.ifEmpty { qualifier }, late = false) ?: return null
+    if (from == to) return null
+    if (qualifier.isNotEmpty()) return DayWindow(from, to)
+    // Forwards, or up to midnight: a stretch that ends at twelve at night ends with the day.
+    fun forwards(start: LocalTime, end: LocalTime) = end > start || end == LocalTime.MIDNIGHT
+    val readings = listOfNotNull(
+        from to to,
+        (from to to.plusHours(12)).takeIf { to < from && to.plusHours(12) > from },
+        (from.plusHours(12) to to.plusHours(12)).takeIf { isOpenHour(fromRaw) && isOpenHour(toRaw) },
+    )
+    fun awake(start: LocalTime, end: LocalTime) =
+        shape.awakeAt(today.atTime(start)) && shape.awakeAt((if (end > start) today else today.plusDays(1)).atTime(end).minusMinutes(1))
+    // The first that runs forwards inside waking hours; then the first that runs forwards; and
+    // failing both, the stretch as said, overnight ("de 22 a 2").
+    val (start, end) = readings.firstOrNull { (a, b) -> forwards(a, b) && awake(a, b) }
+        ?: readings.firstOrNull { (a, b) -> forwards(a, b) }
+        ?: readings.first()
+    return DayWindow(start, end)
+}
+
+/** A bare hour of a deadline ("antes de las 5"): the waking one of five and seventeen, as everywhere. */
+private fun awakeHour(raw: String, minutes: String, qualifier: String, shape: DayShape, today: java.time.LocalDate): LocalTime? {
+    val time = hourOf(raw, minutes, qualifier, late = false) ?: return null
+    return if (qualifier.isEmpty() && isOpenHour(raw)) shape.wakingOf(time, time.plusHours(12), today) else time
 }
 
 /**
@@ -635,7 +659,12 @@ private fun rulesOf(blocks: List<Block>, override: RuleMatch?, context: Context,
     // Each trigger beside the event carries whether a join brought it ("y") or it was merely said
     // next to it: two moments said side by side with nothing between them ("cuando llegue a casa
     // a las 7") are one sentence with two answers, not "either".
-    class Draft(var event: Trigger?, val fences: MutableList<Condition> = mutableListOf(), val beside: MutableList<Pair<Trigger, Boolean>> = mutableListOf())
+    class Draft(
+        var event: Trigger?,
+        val fences: MutableList<Condition> = mutableListOf(),
+        val beside: MutableList<Side> = mutableListOf(),
+        var twin: Trigger? = null,
+    )
     val drafts = mutableListOf<Draft>()
     val today = context.now.atZone(context.zone).toLocalDate()
     val shape = context.settings.dayShape
@@ -665,13 +694,16 @@ private fun rulesOf(blocks: List<Block>, override: RuleMatch?, context: Context,
                 fencing -> current().fences += stateOf(piece.trigger) ?: return Composed.Ambiguous
                 join == Join.OR || join == Join.AT_ONCE || join == Join.ALL || drafts.none { it.event != null } -> {
                     val orphan = drafts.lastOrNull()?.takeIf { it.event == null && drafts.size == 1 }
-                    if (orphan != null) orphan.event = piece.trigger else drafts += Draft(piece.trigger)
+                    val draft = orphan?.also { it.event = piece.trigger } ?: Draft(piece.trigger).also { drafts += it }
+                    draft.twin = piece.twin
                 }
-                else -> drafts.last().beside += piece.trigger to (join == Join.AND)
+                else -> drafts.last().beside += Side(piece.trigger, joined = join == Join.AND, twin = piece.twin)
             }
         }
     }
     val real = drafts.filter { it.event != null }
+    // Each rule built, by identity, with the other reading of an open hour in it (if any).
+    val twinOf = java.util.IdentityHashMap<TriggerRule, Trigger?>()
     val orphanFences = drafts.filter { it.event == null }.flatMap { it.fences }
     // "Y" and nothing else between the pieces.
     val plainAnd = ors == 0 && joins.none { it == Join.AT_ONCE || it == Join.ALL }
@@ -681,15 +713,15 @@ private fun rulesOf(blocks: List<Block>, override: RuleMatch?, context: Context,
         joins.any { it == Join.ALL } -> RuleMatch.ALL
         else -> RuleMatch.ANY
     }
-    val rules: List<TriggerRule> = if (plainAnd && real.size == 1) {
+    val built: List<TriggerRule> = if (plainAnd && real.size == 1) {
         // One moment and states is one fenced rule; only states, all of them at once; only
         // moments, either of them (the owner's reading: "a las 9 y a las 21" rings twice).
         val draft = real.single()
-        val all = listOf(draft.event!! to true) + draft.beside
-        val moments = all.filter { stateOf(it.first) == null }
-        val states = all.filter { stateOf(it.first) != null }.map { it.first }
+        val all = listOf(Side(draft.event!!, joined = true, twin = draft.twin)) + draft.beside
+        val moments = all.filter { stateOf(it.trigger) == null }
+        val states = all.filter { stateOf(it.trigger) != null }.map { it.trigger }
         when {
-            moments.size == 1 -> listOf(TriggerRule(moments.single().first, states.map { stateOf(it)!! } + draft.fences))
+            moments.size == 1 -> listOf(TriggerRule(moments.single().trigger, states.map { stateOf(it)!! } + draft.fences).also { twinOf[it] = moments.single().twin })
             moments.isEmpty() && states.size == 1 -> listOf(TriggerRule(states.single(), draft.fences))
             // Days on the calendar never hold at once ("el lunes y el jueves"): either of them.
             moments.isEmpty() && states.all { settled(it, today) is Trigger.DayRandom } -> {
@@ -701,13 +733,29 @@ private fun rulesOf(blocks: List<Block>, override: RuleMatch?, context: Context,
                 match = RuleMatch.TOGETHER
                 states.map { TriggerRule(it) }
             }
-            states.isEmpty() && draft.fences.isEmpty() && moments.drop(1).all { it.second } -> moments.map { TriggerRule(it.first) }
+            states.isEmpty() && draft.fences.isEmpty() && moments.drop(1).all { it.joined } ->
+                moments.map { side -> TriggerRule(side.trigger).also { twinOf[it] = side.twin } }
             else -> return Composed.Ambiguous
         }
     } else {
         // Each joined piece its own rule, and what was said beside one is its fence.
-        real.map { draft -> TriggerRule(draft.event!!, draft.beside.map { stateOf(it.first) ?: return Composed.Ambiguous } + draft.fences) }
+        real.map { draft ->
+            TriggerRule(draft.event!!, draft.beside.map { stateOf(it.trigger) ?: return Composed.Ambiguous } + draft.fences).also { twinOf[it] = draft.twin }
+        }
     }
+    // "A las 9 y a las 21": the 9 read alone came out as the evening's (the next nine to come
+    // round), which the 21 already is. Two rules the same are one rule said twice; the one whose
+    // hour was open is the other half of the day.
+    val rules = built.toMutableList()
+    for (i in rules.indices) {
+        val other = rules.indices.firstOrNull { it != i && rules[it].trigger == rules[i].trigger } ?: continue
+        // The one whose hour was open moves; when both were, the later one.
+        val twin = twinOf[rules[i]] ?: continue
+        if (twinOf[rules[other]] == null || other < i) rules[i] = rules[i].copy(trigger = twin)
+    }
+    // Still the same rule twice ("hoy a las 9 y a las 21", the morning one gone by): one of the
+    // hours said is not in it, and a person decides.
+    if (rules.map { it.trigger }.distinct().size < rules.size) return Composed.Ambiguous
     match = override ?: match
     if (rules.size < 2) match = RuleMatch.ANY
     // A fence with nothing to fence ("sólo si estoy en casa" and nothing else), or fences on a
@@ -720,13 +768,19 @@ private fun rulesOf(blocks: List<Block>, override: RuleMatch?, context: Context,
     }
     // "Cada año el 3 de marzo", "todos los meses el día 5": a calendar and the one date it was
     // said beside is where the calendar starts, and the date's hour is its hour.
-    var fold = rules
+    var fold: List<TriggerRule> = rules
     val calendar = recurrence as? Recurrence.Calendar
     val start = rules.singleOrNull()?.takeIf { it.conditions.isEmpty() }?.trigger?.let { settled(it, today) }
     // Only when the two agree on the hour: "a las 9 y a las 21 todos los días" is two hours a
     // day, which no calendar holds, and dropping one of them would be writing half of it.
     val startTime = (start as? Trigger.AtDateTime)?.at?.toLocalTime()
-    val agrees = start is Trigger.DayRandom || (start is Trigger.AtDateTime && (calendar?.repeat?.time == null || calendar.repeat.time == startTime))
+    // An open hour that agrees with the calendar's only because it was read as the evening's
+    // ("a las 9 y a las 21 todos los días") is the other nine: two hours a day after all.
+    val openTwin = rules.singleOrNull()?.let { twinOf[built.firstOrNull { b -> b.trigger == it.trigger }] } as? Trigger.AtDateTime
+    // Moved: the open hour was read as the later half of the day (its twin is the earlier one).
+    val openAgreement = openTwin != null && startTime != null && openTwin.at.toLocalTime() < startTime
+    val agrees = start is Trigger.DayRandom ||
+        (start is Trigger.AtDateTime && (calendar?.repeat?.time == null || (calendar.repeat.time == startTime && !openAgreement)))
     if (calendar != null && start != null && agrees) {
         val date = (start as? Trigger.AtDateTime)?.at?.toLocalDate() ?: (start as Trigger.DayRandom).date
         val time = startTime ?: calendar.repeat.time

@@ -271,7 +271,7 @@ class EditorViewModel(
                 suggestedTriggers = suggestedTriggers(past, now, clock.zone),
                 // The words may already carry their own "when" (a line shared from another app
                 // does, often): read once here, and again on every keystroke.
-                understood = whenInText(draft.text, now, clock.zone, current.dayParts, current.savedPlaces),
+                understood = whenInText(draft.text, now, clock.zone, current.dayParts, current.savedPlaces, current.dayShape),
                 kindOrder = if (current.popularTriggersFirst) triggerKindsByUse(past, now) else OFFERED_KINDS,
                 savedPlaces = current.savedPlaces,
                 savedWindows = current.savedWindows,
@@ -325,7 +325,7 @@ class EditorViewModel(
     /** The words re-read for the "when" they carry, wherever they change. */
     private fun readWords(state: EditorUiState): EditorUiState =
         state.copy(
-            understood = whenInText(state.draft.text, clock.instant(), clock.zone, state.dayParts, state.savedPlaces),
+            understood = whenInText(state.draft.text, clock.instant(), clock.zone, state.dayParts, state.savedPlaces, state.dayShape),
             // What has been written before that these letters are on their way to. A hundred
             // phrases and a handful of words: nothing a keystroke notices.
             matchingTexts = textsMatching(state.allTexts, state.draft.text),

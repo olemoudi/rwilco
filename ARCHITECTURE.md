@@ -1487,6 +1487,23 @@ loud what DST and a change of zone do to a landing.
   settings and so out of the vault, as the vault's own token does. `GeminiReadingTest`,
   `GeminiClientTest` (MockWebServer), and `VoiceDictationTest` with a fake answer
   (`GeminiInput.ask`).
+- **A bare hour is a waking one (0.179.0, the owner: "favorece siempre horas despierto, yo no
+  pongo recordatorios cuando estoy durmiendo").** An hour from two to eleven said with nothing
+  to settle its half of the day — no am/pm, no "de la tarde", no part of the day, no leading
+  zero — is *open* (`isOpenHour`, `Hour.twin`); one is lunchtime and twelve is noon, as ever. With a
+  day (`mañana a las 5`, a date, a calendar — judged on the first day it rings on) it is the hour
+  as said when that is inside the person's waking hours on that day (`DayShape.wakingOf`, weekend
+  hours included), the other half when only that one is; alone it is the next of the two to come
+  round among the waking ones (`a las 9` at 15:00 is tonight). The same rule reads a bare window
+  as a whole (`windowOf`: as said, the end twelve hours on, or both — the first that runs forward
+  inside waking hours) and a bare "antes de las 5" (`awakeHour`), and Gemini is told it. The
+  editor's chip follows it too, so typed and dictated agree: `whenInText` takes the `DayShape`.
+  The reading not chosen travels with the reading (`Reading.twin`, `Piece.When.twin`) for one case:
+  "a las 9 y a las 21" — the nine alone was tonight's, which the 21 already is, so the composer
+  turns it into the other nine instead of writing one rule twice (and when there is no other nine
+  to turn to — "hoy a las 9 y a las 21", the morning gone — the sentence goes to a person); and a
+  calendar that only agrees with an open hour by reading it as the evening's is two hours a day
+  after all. A bare window that runs forwards nowhere stays the overnight it was said as.
 - **A held stepper keeps counting (0.51.0).** A step is one unit on purpose (three minutes has
   to be sayable, and the countdown sheet says why), and the price was seventeen taps from thirty
   to forty-seven. `Stepper` repeats after `Motion.holdRepeatDelay`, quickening to

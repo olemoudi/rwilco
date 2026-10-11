@@ -104,7 +104,8 @@ class WhenInTextTest {
 
     @Test
     fun `the day after tomorrow and days counted`() {
-        assertEquals(Trigger.RelativeDate(RelativeDay.In(2, RelativeUnit.DAYS), t(8)), once("pasado mañana a las 8"))
+        // Saturday: the default weekend gets up at ten, so a waking eight that day is the evening's.
+        assertEquals(Trigger.RelativeDate(RelativeDay.In(2, RelativeUnit.DAYS), t(20)), once("pasado mañana a las 8"))
         assertEquals(Trigger.RelativeDate(RelativeDay.In(2, RelativeUnit.DAYS), null), once("day after tomorrow"))
         assertEquals(Trigger.RelativeDate(RelativeDay.In(3, RelativeUnit.DAYS), null), once("en 3 días"))
         assertEquals(Trigger.RelativeDate(RelativeDay.In(3, RelativeUnit.DAYS), null), once("in 3 days"))
@@ -153,17 +154,19 @@ class WhenInTextTest {
     // --- an hour alone, or today ---
 
     @Test
-    fun `an hour alone is today while it is ahead and tomorrow once it is past`() {
-        assertEquals(at(2026, 8, 28, 9), once("a las 9"))
+    fun `an hour alone is the next waking one to come round`() {
+        // At 15:00, the next nine o'clock is tonight's: both nines are waking hours, so the one
+        // that comes first (the owner's rule, 2026-10-11).
+        assertEquals(at(2026, 8, 27, 21), once("a las 9"))
         assertEquals(at(2026, 8, 27, 21), once("a las 21"))
-        assertEquals(at(2026, 8, 28, 9, 30), once("a las 9 y media"))
+        assertEquals(at(2026, 8, 27, 21, 30), once("a las 9 y media"))
         assertEquals(at(2026, 8, 27, 21), once("a las 9 de la noche"))
         assertEquals(at(2026, 8, 28, 13), once("a la una"))
-        assertEquals(at(2026, 8, 28, 9), once("a las nueve"))
+        assertEquals(at(2026, 8, 27, 21), once("a las nueve"))
         assertEquals(at(2026, 8, 27, 17, 30), once("17:30"))
         assertEquals(at(2026, 8, 28, 12), once("al mediodía"))
-        assertEquals(at(2026, 8, 28, 9), once("at 9"))
-        assertEquals(at(2026, 8, 28, 9, 30), once("at 9:30"))
+        assertEquals(at(2026, 8, 27, 21), once("at 9"))
+        assertEquals(at(2026, 8, 27, 21, 30), once("at 9:30"))
         assertEquals(at(2026, 8, 27, 17), once("at 5pm"))
         assertEquals(at(2026, 8, 27, 17), once("5pm"))
         assertEquals(at(2026, 8, 27, 17), once("5 pm"))
@@ -190,8 +193,27 @@ class WhenInTextTest {
         assertEquals(at(2026, 8, 27, 18), once("hoy a las 18"))
         assertEquals(at(2026, 8, 27, 18), once("today at 6pm"))
         assertNull(read("hoy"))
-        assertNull(read("hoy a las 9"))
-        assertNull(read("today at 9"))
+        // Nine this morning has gone; nine tonight has not.
+        assertEquals(at(2026, 8, 27, 21), once("hoy a las 9"))
+        assertEquals(at(2026, 8, 27, 21), once("today at 9"))
+        assertNull(read("hoy a las 9 de la mañana"))
+    }
+
+    // --- a bare hour is a waking one (2026-10-11) ---
+
+    @Test
+    fun `a bare hour is the one in waking hours, by the person's own hours`() {
+        // "A las 5" said at 15:00 is this afternoon, never five tomorrow morning.
+        assertEquals(at(2026, 8, 27, 17), once("llamar a mamá a las 5"))
+        assertEquals(tomorrow(t(17)), once("mañana a las 5"))
+        // With a day, the hour as said when it is a waking one.
+        assertEquals(tomorrow(t(9)), once("mañana a las 9"))
+        // Somebody up at six reads their seven as the morning's.
+        val early = DayShape(hours = AwakeHours(wake = t(6), sleep = t(23)))
+        assertEquals(daily(LocalDate.of(2026, 8, 28), t(7)), (whenInText("a diario a las 7", now, zone, shape = early) as Understood.Comes).recurrence)
+        // Said with its half of the day, it is never moved.
+        assertEquals(tomorrow(t(5)), once("mañana a las 5 de la mañana"))
+        assertEquals(at(2026, 8, 28, 5), once("at 5am"))
     }
 
     // --- something that comes back ---
@@ -225,7 +247,8 @@ class WhenInTextTest {
         assertEquals(daily(LocalDate.of(2026, 8, 28), t(9)), comes("todos los días a las 9"))
         assertEquals(daily(today, t(21)), comes("todos los días a las 21"))
         assertEquals(daily(today, null), comes("cada día"))
-        assertEquals(daily(LocalDate.of(2026, 8, 28), t(7)), comes("a diario a las 7"))
+        // Seven in the morning is before the default getting-up (8:00): a waking seven is the evening's.
+        assertEquals(daily(today, t(19)), comes("a diario a las 7"))
         assertEquals(daily(LocalDate.of(2026, 8, 28), t(9)), comes("every day at 9"))
         assertEquals(daily(today, null), comes("daily"))
         assertEquals(daily(today, null, every = 2), comes("cada dos días"))
@@ -321,7 +344,7 @@ class WhenInTextTest {
         assertNull(read("pagar 12.50 al vecino"))
         assertNull(read("cortar a 3.20 m"))
         assertEquals(at(2026, 8, 27, 17, 30), once("17:30"))
-        assertEquals(at(2026, 8, 28, 9, 30), once("a las 9.30"))
+        assertEquals(at(2026, 8, 27, 21, 30), once("a las 9.30"))
     }
 
     @Test

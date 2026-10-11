@@ -53,7 +53,9 @@ fun whenInText(
     zone: ZoneId,
     parts: DayParts = DayParts(),
     places: List<SavedPlace> = emptyList(),
-): Understood? = readWhen(text, now, zone, parts, places)?.understood
+    /** The person's waking hours: which of "las 5" and "las 17" a bare "a las 5" is. */
+    shape: DayShape = DayShape.DEFAULT,
+): Understood? = readWhen(text, now, zone, parts, places, shape)?.understood
 
 /**
  * What [readWhen] read, and the stretches of the text it read it from — offsets into the text as
@@ -61,7 +63,16 @@ fun whenInText(
  * Only what the reading *used*: an hour beside a repeat of hours ("cada 8 horas a las 9") is not
  * one of them, and left in the words it is what tells the caller there was more than it read.
  */
-internal class Reading(val understood: Understood, val spans: List<IntRange>)
+internal class Reading(
+    val understood: Understood,
+    val spans: List<IntRange>,
+    /**
+     * The other reading of a bare hour, when the words left it open ("a las 9": nine in the
+     * morning or in the evening) — the one not chosen, for a sentence that turns out to have
+     * said the chosen one already ("a las 9 y a las 21").
+     */
+    val twin: Understood? = null,
+)
 
 /** A reader's answer and the stretches of the folded words it came from. */
 private class Found<T>(val value: T, val spans: List<IntRange>)
@@ -75,6 +86,7 @@ internal fun readWhen(
     zone: ZoneId,
     parts: DayParts = DayParts(),
     places: List<SavedPlace> = emptyList(),
+    shape: DayShape = DayShape.DEFAULT,
 ): Reading? {
     val folded = Words.of(text)
     val words = folded.text
@@ -83,22 +95,47 @@ internal fun readWhen(
     val today = here.toLocalDate()
     val nowTime = here.toLocalTime().withSecond(0).withNano(0)
     val hour = hourIn(words, parts)
-    fun read(understood: Understood, spans: List<IntRange>) = Reading(understood, spans.map(folded::original).filterNot { it.isEmpty() })
+    fun read(understood: Understood, spans: List<IntRange>, twin: Understood? = null) =
+        Reading(understood, spans.map(folded::original).filterNot { it.isEmpty() }, twin)
 
-    recurrenceIn(words, today, nowTime, hour)?.let { return read(Understood.Comes(it.value), it.spans) }
+    // **A bare hour is a waking one** (the owner, 2026-10-11: "favorece siempre horas despierto,
+    // yo no pongo recordatorios cuando estoy durmiendo"). "A las 5" with no "de la tarde" is
+    // whichever of five and seventeen falls in this person's waking hours on the day it lands
+    // on; the hour as said when both do, or neither.
+    fun onDay(date: LocalDate): LocalTime? = hour.time?.let { shape.wakingOf(it, hour.twin, date) }
+    fun other(date: LocalDate): LocalTime? = hour.twin?.let { twin -> if (onDay(date) == twin) hour.time else twin }
+
+    // A calendar's hour is judged on the first day it rings on: "cada sábado a las 9" is the
+    // Saturday's nine, as "el sábado a las 9" is.
+    val ringsOn = weekdaysIn(words).takeIf { WEEKLY_DAYS.containsMatchIn(words) }.orEmpty()
+        .let { days -> (0L..6L).map { today.plusDays(it) }.firstOrNull { it.dayOfWeek in days } } ?: today
+    recurrenceIn(words, today, nowTime, hour.at(onDay(ringsOn)))?.let { return read(Understood.Comes(it.value), it.spans) }
     countdownIn(words)?.let { return read(Understood.Once(Trigger.Countdown(it.value)), it.spans) }
-    relativeDayIn(words)?.let { return read(Understood.Once(Trigger.RelativeDate(it.value, hour.time)), it.spans + hour.spans) }
+    relativeDayIn(words)?.let { day ->
+        val date = (Trigger.RelativeDate(day.value).on(today) as? Trigger.DayRandom)?.date ?: today
+        val twin = other(date)?.let { Understood.Once(Trigger.RelativeDate(day.value, it)) }
+        return read(Understood.Once(Trigger.RelativeDate(day.value, onDay(date))), day.spans + hour.spans, twin)
+    }
     dateIn(words, today)?.let { date ->
-        val trigger = hour.time?.let { Trigger.AtDateTime(LocalDateTime.of(date.value, it)) } ?: Trigger.DayRandom(date.value)
-        return read(Understood.Once(trigger), date.spans + hour.spans)
+        val time = onDay(date.value)
+        val trigger = time?.let { Trigger.AtDateTime(LocalDateTime.of(date.value, it)) } ?: Trigger.DayRandom(date.value)
+        val twin = other(date.value)?.let { Understood.Once(Trigger.AtDateTime(LocalDateTime.of(date.value, it))) }
+        return read(Understood.Once(trigger), date.spans + hour.spans, twin)
     }
     stretchIn(words, today)?.let { return if (hour.time == null) read(Understood.Once(it.value), it.spans) else null }
     val time = hour.time ?: return placeIn(words, places)?.let { read(Understood.Once(it.value), it.spans) }
-    // "Hoy" needs an hour still ahead: a moment already gone is not something to offer.
-    if (hour.today) return if (time > nowTime) read(Understood.Once(Trigger.AtDateTime(LocalDateTime.of(today, time))), hour.spans) else null
-    val date = if (time > nowTime) today else today.plusDays(1)
-    return read(Understood.Once(Trigger.AtDateTime(LocalDateTime.of(date, time))), hour.spans)
+    // An hour alone is the next time it comes round, of the readings that fall in waking hours
+    // (all of them, when none does) — and "hoy" needs it still ahead: a moment already gone is
+    // not something to offer.
+    val candidates = listOfNotNull(time, hour.twin)
+        .map { if (it > nowTime) today.atTime(it) else today.plusDays(1).atTime(it) }
+        .filter { !hour.today || it.toLocalDate() == today }
+    if (candidates.isEmpty()) return null
+    val chosen = candidates.filter { shape.awakeAt(it) }.ifEmpty { candidates }.min()
+    val twin = candidates.firstOrNull { it != chosen }?.let { Understood.Once(Trigger.AtDateTime(it)) }
+    return read(Understood.Once(Trigger.AtDateTime(chosen)), hour.spans, twin)
 }
+
 
 /**
  * The words every reader here sees — folded, the punctuation that is not a clock's turned into
@@ -158,7 +195,16 @@ internal class Words private constructor(val text: String, private val origin: I
  * It used to carry a third thing, `refused`: a part of the day the app had no hour for ("por la
  * tarde"), which took the whole sentence with it. Every part has an hour now ([DayParts]).
  */
-private class Hour(val time: LocalTime?, val today: Boolean, val spans: List<IntRange>)
+private class Hour(
+    val time: LocalTime?,
+    val today: Boolean,
+    val spans: List<IntRange>,
+    /** The same hour twelve hours on, when nothing said which half of the day it is. */
+    val twin: LocalTime? = null,
+) {
+    /** This hour with the half of the day settled. */
+    fun at(settled: LocalTime?): Hour = Hour(settled, today, spans)
+}
 
 private fun hourIn(words: String, parts: DayParts): Hour {
     val todayMatch = TODAY.find(words) ?: THIS_PART.find(words)
@@ -171,15 +217,25 @@ private fun hourIn(words: String, parts: DayParts): Hour {
     val late = night != null || afternoon != null
     // Every part of the day said beside a numbered hour is part of how it was said, whether or
     // not it moved it: "a las 9 por la mañana" is one phrase.
-    fun hour(time: LocalTime?, vararg said: MatchResult?) =
-        Hour(time, today, if (time == null) listOfNotNull(todayMatch?.range) else (said.toList() + todayMatch).mapNotNull { it?.range })
+    fun hour(time: LocalTime?, vararg said: MatchResult?, open: Boolean = false) =
+        Hour(
+            time, today,
+            if (time == null) listOfNotNull(todayMatch?.range) else (said.toList() + todayMatch).mapNotNull { it?.range },
+            twin = time?.takeIf { open }?.plusHours(12),
+        )
+    // Open: an hour from one to twelve with nothing beside it to say which half of the day —
+    // no am/pm, no "de la tarde", no part of the day, no leading zero ("09:30" is a clock).
+    fun open(raw: String, qualifier: String) = qualifier.isEmpty() && !late && morning == null && isOpenHour(raw)
     ES_TIME.find(words)?.let { m ->
-        return hour(timeOf(m.groupValues[1], m.groupValues[2], m.groupValues[3], m.groupValues[4].ifEmpty { m.groupValues[5] }, late), m, night, afternoon, morning)
+        val qualifier = m.groupValues[4].ifEmpty { m.groupValues[5] }
+        return hour(timeOf(m.groupValues[1], m.groupValues[2], m.groupValues[3], qualifier, late), m, night, afternoon, morning, open = open(m.groupValues[1], qualifier))
     }
-    EN_AT.find(words)?.let { m -> return hour(timeOf(m.groupValues[1], m.groupValues[2], "", m.groupValues[3], late), m, night, afternoon, morning) }
+    EN_AT.find(words)?.let { m ->
+        return hour(timeOf(m.groupValues[1], m.groupValues[2], "", m.groupValues[3], late), m, night, afternoon, morning, open = open(m.groupValues[1], m.groupValues[3]))
+    }
     EN_PM.find(words)?.let { m -> return hour(timeOf(m.groupValues[1], m.groupValues[2], "", m.groupValues[3], late), m, night, afternoon, morning) }
     NOON.find(words)?.let { m -> return hour(LocalTime.NOON, m) }
-    CLOCK.find(words)?.let { m -> return hour(timeOf(m.groupValues[1], m.groupValues[2], "", "", late), m, night, afternoon, morning) }
+    CLOCK.find(words)?.let { m -> return hour(timeOf(m.groupValues[1], m.groupValues[2], "", "", late), m, night, afternoon, morning, open = open(m.groupValues[1], "")) }
     // A part of the day with no number in it: the hour this person keeps for it.
     if (afternoon != null) return hour(parts.afternoon, afternoon)
     if (morning != null) return hour(parts.morning, morning)
@@ -633,6 +689,13 @@ internal fun hourOf(raw: String, minutes: String, qualifier: String, late: Boole
 
 /** Whether folded [words] say where by one of the ways the readers know, a saved place after it or not. */
 internal fun mentionsPlace(words: String): Boolean = PLACE_LEADS.any { it.pattern.containsMatchIn(words) }
+
+/**
+ * Whether an hour said with nothing beside it leaves its half of the day open: two to eleven, in
+ * digits without a leading zero ("09:00" is a clock) or in words. One is not — "a la una" is
+ * lunchtime however it is spelled — and nor is twelve, which is noon.
+ */
+internal fun isOpenHour(raw: String): Boolean = !raw.startsWith("0") && (raw.toIntOrNull() ?: HOUR_WORDS[raw] ?: 0) in 2..11
 
 /** Whether folded [words] name a stretch of the calendar ("esta semana", "el finde que viene"). */
 internal fun mentionsStretch(words: String): Boolean =

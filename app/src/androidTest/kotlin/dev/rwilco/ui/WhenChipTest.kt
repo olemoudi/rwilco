@@ -76,7 +76,9 @@ class WhenChipTest {
     @Test
     fun theWordsOfferTheirOwnWhenAndOneTapTakesIt() {
         openTheEditor()
-        rule.onNodeWithTag(EDITOR_TEXT_TAG).performTextInput("Regar las plantas mañana a las 9")
+        // Eleven: a waking hour on any day of the default shape, so the bare hour is the one said
+        // whichever day tomorrow is (a bare nine on a weekend morning is the evening's, 0.179.0).
+        rule.onNodeWithTag(EDITOR_TEXT_TAG).performTextInput("Regar las plantas mañana a las 11")
         hideKeyboard()
 
         // The chip: a reading of the words, wearing its glyph, first in the row.
@@ -92,7 +94,7 @@ class WhenChipTest {
         // the form — always on screen, unlike the rule's row under the keyboard — names the hour.
         rule.waitUntil(timeoutMillis = 10_000) { rule.onAllNodesWithContentDescription(fromWords).fetchSemanticsNodes().isEmpty() }
         rule.waitUntil(timeoutMillis = 10_000) {
-            rule.onAllNodesWithText("09:00", substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+            rule.onAllNodesWithText("11:00", substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
         }
     }
 

@@ -97,6 +97,7 @@ class GeminiReadingTest {
         assertTrue("\"Casa\"" in instruction)
         assertTrue("40.4" !in instruction, "no coordinates leave the phone")
         assertTrue("Europe/Madrid" !in instruction, "nor the time zone: the local time is enough")
+        assertTrue("Friday 20:30" in instruction, "and where the weekend begins, as the local reader judges it")
         assertTrue(schema is JsonObject)
         assertTrue(schema["required"]!!.jsonArray.isNotEmpty())
     }

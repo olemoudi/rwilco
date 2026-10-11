@@ -138,14 +138,25 @@ fun DayShape.awakeOn(date: LocalDate): AwakeWindow {
  * What it is for: the safety net's word, which is allowed to make a noise while somebody is
  * there to hear it and must not be the thing that wakes them at three (see `netSpeaksAloud`).
  */
-fun DayShape.awakeAt(at: Instant, zone: ZoneId): Boolean {
-    val local = at.atZone(zone).toLocalDateTime()
+fun DayShape.awakeAt(at: Instant, zone: ZoneId): Boolean = awakeAt(at.atZone(zone).toLocalDateTime())
+
+/** The same, of a wall-clock moment: the day before's window included, for a bedtime past midnight. */
+fun DayShape.awakeAt(local: LocalDateTime): Boolean {
     val today = local.toLocalDate()
     return listOf(today.minusDays(1), today).any { date ->
         val window = awakeOn(date)
         local >= window.from && local < window.to
     }
 }
+
+/**
+ * Which of [time] and [twin] — the same open hour in either half of the day — is the waking one
+ * on [date]: the hour as said when it is, or when neither is; the other when only that one is.
+ * The one rule for a bare hour ("favorece siempre horas despierto", 2026-10-11), wherever an hour
+ * is read.
+ */
+fun DayShape.wakingOf(time: LocalTime, twin: LocalTime?, date: LocalDate): LocalTime =
+    if (twin == null || awakeAt(date.atTime(time)) || !awakeAt(date.atTime(twin))) time else twin
 
 /**
  * The first minute of [window] that every one of [fences] allows, or its start when none does.

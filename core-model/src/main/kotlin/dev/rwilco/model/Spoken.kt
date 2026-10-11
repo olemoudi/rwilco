@@ -96,7 +96,7 @@ fun hear(
     val routine = ROUTINE.find(folded.text)
     val since = SINCE.find(folded.text)
     if (routine != null || since != null) {
-        val reading = readWhen(mask(text, skip), now, zone, settings.dayParts, settings.savedPlaces)
+        val reading = readWhen(mask(text, skip), now, zone, settings.dayParts, settings.savedPlaces, settings.dayShape)
         val spans = skip + listOfNotNull(routine?.let { folded.original(it.range) }, since?.let { folded.original(it.range) }) + reading?.spans.orEmpty()
         val span = routineSpan(reading?.understood) ?: return Heard.Unsure(said, Heard.Why.PARTIAL)
         if (HERE.containsMatchIn(folded.text)) return Heard.Unsure(said, Heard.Why.PARTIAL)
