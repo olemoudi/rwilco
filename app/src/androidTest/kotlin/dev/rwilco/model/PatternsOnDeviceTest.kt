@@ -35,6 +35,12 @@ class PatternsOnDeviceTest {
         for (text in listOf("esta noche", "el lunes a las 8", "27/08 a las 21:30", "cada día a las 9", "in 3 days", "pasado mañana", "enviar la propuesta mañana")) {
             whenInText(text, now, zone)
         }
+        // The stretches of the calendar and the ways of saying where (0.175.0), each family once.
+        val casa = SavedPlace("Casa", 40.4, -3.7, 120, id = "p")
+        assertNotNull("a saved place was not found by name on the phone", whenInText("comprar pan cuando llegue a casa", now, zone, places = listOf(casa)))
+        for (text in listOf("esta semana", "el finde que viene", "este mes", "en algún momento de hoy", "al salir de casa", "mientras no esté en casa", "estando fuera de casa", "while I'm at casa", "when I leave casa")) {
+            whenInText(text, now, zone, places = listOf(casa))
+        }
     }
 
     @Test

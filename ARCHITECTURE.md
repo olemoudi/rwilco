@@ -1384,6 +1384,25 @@ loud what DST and a change of zone do to a landing.
   "at", a colon or an am/pm, because a false chip costs trust in every chip after it and a false
   silence costs one tap on a tile. `WhenInTextTest` is the table; `WhenChipTest` walks the
   screen.
+- **The words also say where, and for how long (0.175.0).** The first piece of reminders by
+  voice (see the plan of 2026-10-11): what a voice will say is what the text already reads, so
+  the reader learnt it first and the editor's chip gets it for free. **Places**: `whenInText`
+  takes the saved places (`places`, default none) and reads the four readings the place sheet
+  offers — "cuando llegue a / al llegar a" (doorway in), "cuando salga de / me vaya de" (doorway
+  out), "mientras esté / cuando esté / estando en" (inside, a state, as a place nearly always
+  is), "mientras no esté en / cuando esté fuera de" (outside) — and the English of each. Only a
+  place somebody saved can be named, so "limpiar la casa" is nothing; the name is never turned
+  into a pattern (a label is the person's words, and a bracket in one would be a pattern nobody
+  meant — on ICU, possibly one that throws), so a fixed lead finds the preposition and the label
+  is a plain prefix after it, with or without an article, longest label first. The rule carries
+  the place's key (`placeId`), as one chosen in the sheet does. **Stretches**: "esta semana" →
+  `DateRange(today, Sunday)` (the owner's reading, 2026-10-11), "la semana que viene", "este
+  finde" (Saturday–Sunday, or what is left of the one under way), "el finde que viene" (the one
+  after that), "este mes", "el mes que viene" → `DateRange`; "en algún momento de hoy" →
+  `DayRandom(today)`. Plain "hoy" still needs an hour. Order: the clock first (a repeat, a
+  length, a day, a date), then a stretch — offered only with no hour beside it, two answers to
+  one question being no answer — then the hour, and a place last, so no sentence that offered a
+  chip before offers a different one now.
 - **A held stepper keeps counting (0.51.0).** A step is one unit on purpose (three minutes has
   to be sayable, and the countdown sheet says why), and the price was seventeen taps from thirty
   to forty-seven. `Stepper` repeats after `Motion.holdRepeatDelay`, quickening to

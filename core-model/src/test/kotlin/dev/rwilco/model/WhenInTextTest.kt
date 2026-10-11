@@ -397,4 +397,176 @@ class WhenInTextTest {
         assertEquals(Trigger.DayRandom(LocalDate.of(2026, 9, 5)), once("Llamar al fontanero el 5."))
         assertEquals(Trigger.DayRandom(LocalDate.of(2026, 9, 5)), once("el 5, sin falta"))
     }
+
+    // --- a stretch of the calendar (0.175.0) ---
+
+    private fun range(from: LocalDate, to: LocalDate) = Trigger.DateRange(from, to)
+
+    @Test
+    fun `this week is what is left of it, up to Sunday`() {
+        val week = range(today, LocalDate.of(2026, 8, 30))
+        assertEquals(week, once("en algún momento de esta semana"))
+        assertEquals(week, once("llamar al banco esta semana"))
+        assertEquals(week, once("a lo largo de esta semana"))
+        assertEquals(week, once("sometime this week"))
+        assertEquals(week, once("later this week"))
+        // Said on the Sunday itself, the week is that one day.
+        val sunday = Fixtures.local(2026, 8, 30, 10, 0)
+        assertEquals(range(LocalDate.of(2026, 8, 30), LocalDate.of(2026, 8, 30)), (whenInText("esta semana", sunday, zone) as Understood.Once).trigger)
+    }
+
+    @Test
+    fun `next week is Monday to Sunday after this one`() {
+        val next = range(LocalDate.of(2026, 8, 31), LocalDate.of(2026, 9, 6))
+        assertEquals(next, once("la semana que viene"))
+        assertEquals(next, once("renovar el DNI la próxima semana"))
+        assertEquals(next, once("la semana próxima"))
+        assertEquals(next, once("next week"))
+    }
+
+    @Test
+    fun `the weekend is Saturday and Sunday, or what is left of the one under way`() {
+        val weekend = range(LocalDate.of(2026, 8, 29), LocalDate.of(2026, 8, 30))
+        assertEquals(weekend, once("este fin de semana"))
+        assertEquals(weekend, once("lavar el coche este finde"))
+        assertEquals(weekend, once("el fin de semana"))
+        assertEquals(weekend, once("this weekend"))
+        val saturday = Fixtures.local(2026, 8, 29, 11, 0)
+        assertEquals(weekend, (whenInText("este finde", saturday, zone) as Understood.Once).trigger)
+        val sunday = Fixtures.local(2026, 8, 30, 11, 0)
+        assertEquals(range(LocalDate.of(2026, 8, 30), LocalDate.of(2026, 8, 30)), (whenInText("este finde", sunday, zone) as Understood.Once).trigger)
+        val next = range(LocalDate.of(2026, 9, 5), LocalDate.of(2026, 9, 6))
+        assertEquals(next, once("el finde que viene"))
+        assertEquals(next, once("el fin de semana que viene"))
+        assertEquals(next, once("el próximo fin de semana"))
+        assertEquals(next, once("next weekend"))
+    }
+
+    @Test
+    fun `this month and next month`() {
+        assertEquals(range(today, LocalDate.of(2026, 8, 31)), once("pedir cita este mes"))
+        assertEquals(range(today, LocalDate.of(2026, 8, 31)), once("this month"))
+        assertEquals(range(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30)), once("el mes que viene"))
+        assertEquals(range(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30)), once("el próximo mes"))
+        assertEquals(range(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30)), once("next month"))
+    }
+
+    @Test
+    fun `sometime today is today left to the day, and plain today still needs an hour`() {
+        assertEquals(Trigger.DayRandom(today), once("en algún momento de hoy"))
+        assertEquals(Trigger.DayRandom(today), once("hoy en algún momento"))
+        assertEquals(Trigger.DayRandom(today), once("sometime today"))
+        assertNull(read("hoy"))
+    }
+
+    @Test
+    fun `a stretch with an hour beside it is two answers, and none is offered`() {
+        assertNull(read("esta semana a las 9"))
+        assertNull(read("este finde por la mañana"))
+    }
+
+    @Test
+    fun `what comes back every week is not this week`() {
+        assertEquals(Recurrence.Calendar(Trigger.Repeat(today, 1, RepeatUnit.WEEK)), comes("cada semana"))
+        assertNull(read("todos los fines de semana"))
+        assertNull(read("every weekend"))
+        assertEquals(Trigger.RelativeDate(RelativeDay.In(1, RelativeUnit.WEEKS), null), once("dentro de una semana"))
+        assertEquals(Trigger.RelativeDate(RelativeDay.In(1, RelativeUnit.MONTHS), null), once("en un mes"))
+    }
+
+    // --- a place somebody has saved (0.175.0) ---
+
+    private val casa = SavedPlace("Casa", 40.40, -3.70, 120, id = "p-casa")
+    private val oficina = SavedPlace("La Oficina", 40.41, -3.69, 150, id = "p-oficina")
+    private val padres = SavedPlace("Casa de mis padres", 40.50, -3.60, 100, id = "p-padres")
+    private val gimnasio = SavedPlace("Gimnasio", 40.42, -3.68, 80, id = "p-gimnasio")
+    private val cafe = SavedPlace("Café Central", 40.43, -3.67, 60)
+    private val home = SavedPlace("Home", 51.50, -0.12, 100, id = "p-home")
+    private val places = listOf(casa, oficina, padres, gimnasio, cafe, home)
+
+    private fun where(text: String): Trigger.Location =
+        (whenInText(text, now, zone, places = places) as? Understood.Once)?.trigger as? Trigger.Location
+            ?: throw AssertionError("'$text' was not read as a place: ${whenInText(text, now, zone, places = places)}")
+
+    private fun readWithPlaces(text: String): Understood? = whenInText(text, now, zone, places = places)
+
+    private fun SavedPlace.rule(presence: Presence, onCrossing: Boolean) =
+        Trigger.Location(lat, lng, radiusM, presence, label, onCrossing = onCrossing, placeId = id.ifBlank { null })
+
+    @Test
+    fun `arriving somewhere is the doorway in`() {
+        val arrive = casa.rule(Presence.INSIDE, onCrossing = true)
+        assertEquals(arrive, where("comprar pan cuando llegue a casa"))
+        assertEquals(arrive, where("al llegar a casa, regar"))
+        assertEquals(arrive, where("en cuanto llegue a casa"))
+        assertEquals(arrive, where("cuando vuelva a casa"))
+        assertEquals(arrive, where("nada más llegar a casa"))
+        assertEquals(home.rule(Presence.INSIDE, onCrossing = true), where("call mum when I get home"))
+        assertEquals(home.rule(Presence.INSIDE, onCrossing = true), where("as soon as I get back home"))
+        assertEquals(gimnasio.rule(Presence.INSIDE, onCrossing = true), where("cuando llegue al gimnasio"))
+    }
+
+    @Test
+    fun `leaving somewhere is the doorway out`() {
+        val leave = casa.rule(Presence.OUTSIDE, onCrossing = true)
+        assertEquals(leave, where("cuando me vaya de casa"))
+        assertEquals(leave, where("al salir de casa, la basura"))
+        assertEquals(leave, where("cuando salga de casa"))
+        assertEquals(gimnasio.rule(Presence.OUTSIDE, onCrossing = true), where("cuando salga del gimnasio"))
+        assertEquals(home.rule(Presence.OUTSIDE, onCrossing = true), where("when I leave home"))
+    }
+
+    @Test
+    fun `being somewhere is the state, not the doorway`() {
+        val inside = casa.rule(Presence.INSIDE, onCrossing = false)
+        assertEquals(inside, where("mientras estoy en casa"))
+        assertEquals(inside, where("mientras esté en casa"))
+        assertEquals(inside, where("cuando esté en casa"))
+        assertEquals(inside, where("estando en casa"))
+        assertEquals(home.rule(Presence.INSIDE, onCrossing = false), where("while I'm at home"))
+        assertEquals(home.rule(Presence.INSIDE, onCrossing = false), where("when I am at home"))
+    }
+
+    @Test
+    fun `being away from somewhere is the other side, as a state`() {
+        val outside = casa.rule(Presence.OUTSIDE, onCrossing = false)
+        assertEquals(outside, where("mientras no esté en casa"))
+        assertEquals(outside, where("cuando no estoy en casa"))
+        assertEquals(outside, where("cuando esté fuera de casa"))
+        assertEquals(outside, where("estando fuera de casa"))
+        assertEquals(home.rule(Presence.OUTSIDE, onCrossing = false), where("while I'm away from home"))
+        assertEquals(home.rule(Presence.OUTSIDE, onCrossing = false), where("when I'm not at home"))
+    }
+
+    @Test
+    fun `an article may stand before the name, and the name may carry its own`() {
+        assertEquals(oficina.rule(Presence.INSIDE, onCrossing = true), where("al llegar a la oficina"))
+        assertEquals(oficina.rule(Presence.OUTSIDE, onCrossing = true), where("cuando salga de la oficina"))
+        assertEquals(casa.rule(Presence.OUTSIDE, onCrossing = true), where("cuando salga de mi casa"))
+        assertEquals(gimnasio.rule(Presence.INSIDE, onCrossing = false), where("mientras estoy en el gimnasio"))
+    }
+
+    @Test
+    fun `the longest name wins, and accents and case are nobody's business`() {
+        assertEquals(padres.rule(Presence.INSIDE, onCrossing = true), where("cuando llegue a casa de mis padres"))
+        assertEquals(casa.rule(Presence.INSIDE, onCrossing = true), where("CUANDO LLEGUE A CASA"))
+        // A place kept before keys existed has none to give the rule.
+        assertEquals(cafe.rule(Presence.OUTSIDE, onCrossing = true), where("al salir del cafe central"))
+        assertEquals(null, where("al salir del Café Central").placeId)
+    }
+
+    @Test
+    fun `a place nobody has saved, or a word that is not a place, is nothing`() {
+        assertNull(readWithPlaces("limpiar la casa"))
+        assertNull(readWithPlaces("cuando llegue a la playa"))
+        assertNull(readWithPlaces("cuando vuelva a llamar"))
+        assertNull(readWithPlaces("comprar pan cuando llegue a casablanca"))
+        assertNull(whenInText("cuando llegue a casa", now, zone), "with no places saved there is nothing to name")
+    }
+
+    @Test
+    fun `the clock outranks the place in the same sentence`() {
+        assertEquals(tomorrow(), (readWithPlaces("mañana cuando llegue a casa") as Understood.Once).trigger)
+        assertEquals(Trigger.Countdown(20), (readWithPlaces("en 20 minutos al salir de casa") as Understood.Once).trigger)
+    }
 }

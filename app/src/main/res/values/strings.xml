@@ -1751,6 +1751,12 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_175_0">
+
+        <item>The text now understands your saved places. Write “buy bread when I get home” and the chip below offers that place as the trigger; also “when I leave”, “while I’m at” and “while I’m away from”, with or without “the” or “my”.</item>
+        <item>And the stretches with no particular day: “this week”, “next week”, “this weekend”, “next weekend”, “this month”, “next month” and “sometime today”. They ring at your default time on the first day and come back each day while they are still open.</item>
+
+    </string-array>
     <string-array name="whats_new_0_174_0">
 
         <item>With Android Auto on, a reminder no longer takes over the phone’s screen. It rings with its notification and waits there until you get out. The car shows nothing from this app, so the full-screen alert used to sit on the lock screen until you picked the phone up, and the hand taking it off the mount could press “Done” without you seeing it.</item>

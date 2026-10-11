@@ -7,6 +7,7 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.YearMonth
 import java.time.ZoneId
+import java.time.temporal.TemporalAdjusters
 
 /**
  * The "when" the words themselves say.
@@ -37,9 +38,22 @@ sealed interface Understood {
  * A repeat outranks a moment in the same sentence ("a partir de mañana cada día a las nueve" is
  * a daily), a length outranks an hour beside it, and an hour alone is today while it is still
  * ahead and tomorrow once it is past — the same reading the suggestions give a past hour.
+ *
+ * A stretch of the calendar ("esta semana", "el finde") is read when no hour is said beside it:
+ * a stretch with an hour in it is two answers to one question, and a false chip costs more than
+ * none. A place is read last, and only one of [places] — the person's own names for where they
+ * go — so "cuando llegue a casa" is the doorway into the place called Casa and "limpiar la casa"
+ * is nothing at all. The clock outranks the place in the same sentence: one chip says one thing,
+ * and it was the clock's before places were read.
  */
-fun whenInText(text: String, now: Instant, zone: ZoneId, parts: DayParts = DayParts()): Understood? {
-    val words = " " + fold(text).replace(PUNCTUATION, " ").replace(SPACES, " ").trim() + " "
+fun whenInText(
+    text: String,
+    now: Instant,
+    zone: ZoneId,
+    parts: DayParts = DayParts(),
+    places: List<SavedPlace> = emptyList(),
+): Understood? {
+    val words = " " + normalized(text) + " "
     if (words.isBlank()) return null
     val here = now.atZone(zone)
     val today = here.toLocalDate()
@@ -53,7 +67,8 @@ fun whenInText(text: String, now: Instant, zone: ZoneId, parts: DayParts = DayPa
         val trigger = hour.time?.let { Trigger.AtDateTime(LocalDateTime.of(date, it)) } ?: Trigger.DayRandom(date)
         return Understood.Once(trigger)
     }
-    val time = hour.time ?: return null
+    stretchIn(words, today)?.let { return if (hour.time == null) Understood.Once(it) else null }
+    val time = hour.time ?: return placeIn(words, places)?.let { Understood.Once(it) }
     // "Hoy" needs an hour still ahead: a moment already gone is not something to offer.
     if (hour.today) return if (time > nowTime) Understood.Once(Trigger.AtDateTime(LocalDateTime.of(today, time))) else null
     val date = if (time > nowTime) today else today.plusDays(1)
@@ -224,6 +239,88 @@ private fun nextDayOfMonth(today: LocalDate, day: Int): LocalDate? {
 private fun dateOrNull(year: Int, month: Int, day: Int): LocalDate? =
     runCatching { LocalDate.of(year, month, day) }.getOrNull()
 
+// --- a stretch of the calendar ---
+
+/**
+ * "Esta semana", "el finde", "el mes que viene": the days somebody means when they mean no day in
+ * particular, as the [Trigger.DateRange] the date-range tile writes — it rings at the default
+ * time on its first day and on each later one until it is dealt with. "En algún momento de hoy"
+ * is the one that is a single day, so it is that day left to the day ([Trigger.DayRandom]).
+ *
+ * A week ends on Sunday and a weekend is Saturday and Sunday, whatever the person's own weekend
+ * hours say: those decide when a day starts, and "este finde" names days, not hours. Said on a
+ * Saturday or a Sunday, "este finde" is what is left of the one under way.
+ */
+private fun stretchIn(words: String, today: LocalDate): Trigger? {
+    if (SOMETIME_TODAY.containsMatchIn(words)) return Trigger.DayRandom(today)
+    // The Saturday of "este finde": the coming one on a weekday, the one under way at the weekend.
+    val thisSaturday = when (today.dayOfWeek) {
+        DayOfWeek.SATURDAY -> today
+        DayOfWeek.SUNDAY -> today.minusDays(1)
+        else -> today.with(TemporalAdjusters.next(DayOfWeek.SATURDAY))
+    }
+    if (NEXT_WEEKEND.containsMatchIn(words)) {
+        // The one after "este finde", as "la semana que viene" is the one after this.
+        val saturday = thisSaturday.plusWeeks(1)
+        return Trigger.DateRange(saturday, saturday.plusDays(1))
+    }
+    if (THIS_WEEKEND.containsMatchIn(words)) return Trigger.DateRange(maxOf(today, thisSaturday), thisSaturday.plusDays(1))
+    if (NEXT_WEEK.containsMatchIn(words)) {
+        val monday = today.with(TemporalAdjusters.next(DayOfWeek.MONDAY))
+        return Trigger.DateRange(monday, monday.plusDays(6))
+    }
+    if (THIS_WEEK.containsMatchIn(words)) return Trigger.DateRange(today, today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY)))
+    if (NEXT_MONTH.containsMatchIn(words)) {
+        val first = today.withDayOfMonth(1).plusMonths(1)
+        return Trigger.DateRange(first, first.with(TemporalAdjusters.lastDayOfMonth()))
+    }
+    if (THIS_MONTH.containsMatchIn(words)) return Trigger.DateRange(today, today.with(TemporalAdjusters.lastDayOfMonth()))
+    return null
+}
+
+// --- a place ---
+
+/** One way of saying where: which side of the line it is about, and whether it is the crossing. */
+private class PlaceLead(val pattern: Regex, val presence: Presence, val onCrossing: Boolean)
+
+/**
+ * A saved place, named after one of the ways of saying where — "cuando llegue a", "al salir
+ * de", "mientras esté en", "when I'm away from".
+ *
+ * The four readings are the four the place sheet offers ([Trigger.Location]): the doorway in,
+ * the doorway out, and either side of the line as a state. "Cuando esté en casa" is the state,
+ * as ARCHITECTURE.md says it nearly always is; "cuando llegue" is the doorway.
+ *
+ * The name is never turned into a pattern: a label is the person's own words, and a bracket or a
+ * plus sign in it would be a pattern nobody meant (and on the phone's ICU engine, possibly one
+ * that throws). So the lead is matched by a fixed pattern and the name after it by a plain
+ * prefix, with or without an article in between, the longest name first — "Casa de mis padres"
+ * is not "Casa".
+ */
+private fun placeIn(words: String, places: List<SavedPlace>): Trigger.Location? {
+    val named = places.mapNotNull { place -> normalized(place.label).takeIf { it.isNotEmpty() }?.let { place to " $it " } }
+        .sortedByDescending { it.second.length }
+    if (named.isEmpty()) return null
+    for (lead in PLACE_LEADS) {
+        for (match in lead.pattern.findAll(words)) {
+            // The space after the lead, and after an article when there is one.
+            val after = match.range.last + 1
+            val starts = listOf(after) + ARTICLES.filter { words.startsWith(" $it ", after) }.map { after + it.length + 1 }
+            for (start in starts) {
+                val place = named.firstOrNull { words.startsWith(it.second, start) }?.first ?: continue
+                return Trigger.Location(
+                    place.lat, place.lng, place.radiusM, lead.presence, place.label,
+                    onCrossing = lead.onCrossing, placeId = place.id.ifBlank { null },
+                )
+            }
+        }
+    }
+    return null
+}
+
+/** The words as every reader here sees them: folded, without the punctuation that is not a clock's, single-spaced. */
+private fun normalized(text: String): String = fold(text).replace(PUNCTUATION, " ").replace(SPACES, " ").trim()
+
 // --- vocabulary ---
 
 private fun amountOf(raw: String): Int? = raw.toIntOrNull() ?: AMOUNT_WORDS[raw]
@@ -323,3 +420,51 @@ private val DATE_EN_MONTH_FIRST = Regex("\\b$MONTH_EN (?:the )?(\\d{1,2})(?:st|n
 private val DATE_NUMERIC = Regex("\\b(\\d{1,2})/(\\d{1,2})(?:/(\\d{2}|\\d{4}))?\\b")
 private val DAY_ES = Regex("\\bel (\\d{1,2})\\b(?![./]\\d)")
 private val DAY_EN = Regex("\\bon the (\\d{1,2})(?:st|nd|rd|th)\\b")
+
+// "En algún momento de hoy", and the other ways of saying today with no hour in it on purpose.
+// Plain "hoy" is not one: it has always needed an hour still ahead (see the tests).
+private val SOMETIME_TODAY = Regex("\\b(?:(?:en )?algun momento (?:de|del dia de) hoy|hoy en algun momento|a lo largo (?:del dia )?de hoy|some ?time today|at some point today|later today)\\b")
+private val THIS_WEEK = Regex("\\besta semana\\b|\\bthis week\\b")
+private val NEXT_WEEK = Regex("\\bla (?:semana que viene|proxima semana|semana proxima)\\b|\\bnext week\\b")
+private val THIS_WEEKEND = Regex("\\b(?:este|el) (?:fin de semana|finde)\\b|\\b(?:this|the) weekend\\b")
+private val NEXT_WEEKEND = Regex("\\b(?:fin de semana|finde) que viene\\b|\\bel proximo (?:fin de semana|finde)\\b|\\bnext weekend\\b")
+private val THIS_MONTH = Regex("\\beste mes\\b|\\bthis month\\b")
+private val NEXT_MONTH = Regex("\\bel (?:mes que viene|proximo mes)\\b|\\bnext month\\b")
+
+/**
+ * What may stand between the way of saying where and the name: "a la oficina", "al salir de mi
+ * casa", "when I leave the gym". Tried with and without, so a place whose own name starts with
+ * one ("La Oficina") is found either way.
+ */
+private val ARTICLES = listOf("la", "el", "los", "las", "mi", "mis", "the", "my")
+
+/**
+ * The ways of saying where, each ending on its preposition so the name follows. Folded words:
+ * no accents, and "I'm" has lost its apostrophe ("i m"). "Al" before "a" in every alternation:
+ * "a" followed by "l" is no word boundary, but the order keeps that from mattering.
+ */
+private val PLACE_LEADS = listOf(
+    // The doorway in: "cuando llegue a", "al llegar a", "en cuanto vuelva a", "when I get to".
+    PlaceLead(
+        Regex("\\b(?:(?:cuando|en cuanto|nada mas|apenas) (?:llegue|llegues|vuelva|vuelvas|regrese|regreses)|(?:al|nada mas) (?:llegar|volver|regresar)) (?:al|a)\\b"),
+        Presence.INSIDE, onCrossing = true,
+    ),
+    PlaceLead(
+        Regex("\\b(?:when|once|as soon as) i (?:get(?: back)?|arrive|come back|go back|return|reach)(?: (?:to|at|in))?\\b"),
+        Presence.INSIDE, onCrossing = true,
+    ),
+    // The doorway out: "cuando salga de", "al salir de", "cuando me vaya de", "when I leave".
+    PlaceLead(
+        Regex("\\b(?:(?:cuando|en cuanto|nada mas|apenas) (?:salga|salgas|me vaya|te vayas|me marche|te marches)|al (?:salir|irme|marcharme)) (?:del|de)\\b"),
+        Presence.OUTSIDE, onCrossing = true,
+    ),
+    PlaceLead(Regex("\\b(?:when|once|as soon as|after) i (?:leave|get out of|go out of)\\b"), Presence.OUTSIDE, onCrossing = true),
+    // Outside, as a state: "mientras no esté en", "cuando esté fuera de". Before the inside
+    // reading, though neither can match the other's words.
+    PlaceLead(Regex("\\b(?:cuando|mientras|si) no (?:este|estes|estoy|estas) en\\b"), Presence.OUTSIDE, onCrossing = false),
+    PlaceLead(Regex("\\b(?:(?:cuando|mientras|si) (?:este|estes|estoy|estas)|estando) fuera (?:del|de)\\b"), Presence.OUTSIDE, onCrossing = false),
+    PlaceLead(Regex("\\b(?:while|when|whenever|if) (?:i m|im|i am) (?:not (?:at|in)|away from|out of)\\b"), Presence.OUTSIDE, onCrossing = false),
+    // Inside, as a state: "cuando esté en", "mientras estoy en", "estando en", "while I'm at".
+    PlaceLead(Regex("\\b(?:(?:cuando|mientras|si) (?:este|estes|estoy|estas)|estando) en\\b"), Presence.INSIDE, onCrossing = false),
+    PlaceLead(Regex("\\b(?:(?:while|when|whenever|if) (?:i m|im|i am)|while) (?:at|in)\\b"), Presence.INSIDE, onCrossing = false),
+)
