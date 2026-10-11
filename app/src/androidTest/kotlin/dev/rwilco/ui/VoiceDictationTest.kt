@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
 import android.os.LocaleList
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -228,6 +229,37 @@ class VoiceDictationTest {
         shot("voice-created-doubt")
         rule.onNodeWithText(s(R.string.voice_done), useUnmergedTree = true).performClick()
         rule.waitUntil(30_000) { rule.onAllNodesWithText("«antes de»", substring = true).fetchSemanticsNodes().isEmpty() }
+    }
+
+    @Test
+    fun theCardOfAReminderJustDictatedIsOnScreenWhenTheSheetGoes() {
+        // Fourteen things due today stand before it: written for next month, the card lands far
+        // below the fold, which is where it used to be lost.
+        runBlocking {
+            val now = java.time.Instant.now()
+            repeat(14) { i ->
+                app.repository.save(
+                    dev.rwilco.model.Reminder(
+                        id = "voice-busy-$i",
+                        text = "Tarea $i",
+                        rules = listOf(dev.rwilco.model.TriggerRule(Trigger.AtDateTime(java.time.LocalDateTime.now().plusMinutes(30L + i)))),
+                        createdAt = now,
+                        updatedAt = now,
+                    ),
+                )
+            }
+        }
+        sentence = "llamar al banco el mes que viene"
+        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.home_dictate_hold)).fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithContentDescription(s(R.string.home_dictate)).performSemanticsAction(SemanticsActions.OnClick)
+        rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.any { it.text == "Llamar al banco" } }
+        // Nothing to look at twice: the sheet goes by itself (at once, on the test's clock), and
+        // Home goes to the card.
+        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.voice_heard)).fetchSemanticsNodes().isEmpty() }
+        rule.waitUntil(30_000) {
+            runCatching { rule.onNodeWithText("Llamar al banco", useUnmergedTree = true).assertIsDisplayed() }.isSuccess
+        }
+        shot("voice-card-on-home")
     }
 
     // --- Gemini when the grammar has doubts (0.183.0) ---

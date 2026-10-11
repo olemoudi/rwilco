@@ -1582,6 +1582,12 @@ loud what DST and a change of zone do to a landing.
   as if they described it; the auto-close follows the accessibility "time to take action" and never
   runs under a screen reader, and the touch that stopped it survives a rotation; a chip whose moment
   has gone is withdrawn rather than written.
+- **A dictated reminder is not lost on the way back to Home (0.184.0, the owner's ask).** When the
+  sheet of a written reminder goes — "Listo", by itself, or swiped away — Home goes to its card,
+  opens it (compact Home too) and marks it for a moment: the `JustSaved(created = true)` answer a
+  save from the editor already gets, through a `dictatedId` HomeScreen keeps for the purpose. Not
+  after "Deshacer" (nothing to go to) or "Editar" (the editor's own save does it), and not for a
+  routine, which has no card on the list. `VoiceDictationTest` puts fourteen cards before it.
 - **A held stepper keeps counting (0.51.0).** A step is one unit on purpose (three minutes has
   to be sayable, and the countdown sheet says why), and the price was seventeen taps from thirty
   to forty-seven. `Stepper` repeats after `Motion.holdRepeatDelay`, quickening to

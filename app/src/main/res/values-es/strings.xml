@@ -1815,6 +1815,11 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_184_0">
+
+        <item>Al terminar de dictar un recordatorio, la lista ya no se queda donde estaba: baja hasta su tarjeta, la abre y la ilumina un momento, para que veas que está todo en su sitio sin tener que buscarla.</item>
+
+    </string-array>
     <string-array name="whats_new_0_183_1">
 
         <item>Repaso de lo nuevo al dictar: «reservar mesa para las 4 personas» o «comprar el sábado 3 barras de pan» ya no se leen como una hora ni como una fecha, y «todas las noches a las 12» es a medianoche, no a mediodía.</item>

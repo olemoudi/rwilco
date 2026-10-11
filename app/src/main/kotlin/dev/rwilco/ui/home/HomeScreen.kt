@@ -71,6 +71,7 @@ import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import dev.rwilco.ui.voice.VoiceSheet
 import dev.rwilco.voice.VoiceOutcome
+import dev.rwilco.voice.VoiceState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.graphicsLayer
@@ -122,6 +123,7 @@ import dev.rwilco.ui.settings.stripShows
 import dev.rwilco.ui.format.snoozePlacePhrase
 import dev.rwilco.model.FiringEvent
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.isRoutine
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
@@ -352,6 +354,9 @@ fun HomeScreen(
         openDictation()
         onDictationConsumed()
     }
+    // A reminder just dictated, for the list to go to once its sheet has gone (0.184.0): the same
+    // answer a save from the editor gets, since a dictation is a save without the form.
+    var dictatedId by rememberSaveable { mutableStateOf<String?>(null) }
     DictationSheet(
         viewModel = viewModel,
         hereLabel = hereLabel,
@@ -360,6 +365,7 @@ fun HomeScreen(
         onOpen = onOpen,
         onNewFromWords = onNewFromWords,
         onNewFromForm = onNewFromForm,
+        onDictated = { dictatedId = it },
     )
 
     if (choosing) {
@@ -714,8 +720,8 @@ fun HomeScreen(
         var expandedHit by rememberSaveable(search.open) { mutableStateOf<String?>(null) }
         val focusManager = LocalFocusManager.current
         val motion = Tokens.motion
-        LaunchedEffect(justSaved, state.sections, state.hero) {
-            val saved = justSaved ?: return@LaunchedEffect
+        LaunchedEffect(justSaved, dictatedId, state.sections, state.hero) {
+            val saved = justSaved ?: dictatedId?.let { JustSaved(it, created = true) } ?: return@LaunchedEffect
             val id = saved.id
             val index = homeCardIndex(
                 state,
@@ -750,7 +756,7 @@ fun HomeScreen(
                 listState.animateScrollToItem(index)
             }
             marked = id
-            onJustSavedShown()
+            if (saved == justSaved) onJustSavedShown() else dictatedId = null
         }
         // The mark is a moment, not a state: long enough to be seen from across a scroll,
         // short enough that it is gone before it becomes a thing the card wears.
@@ -1456,6 +1462,8 @@ private fun DictationSheet(
     onOpen: (String) -> Unit,
     onNewFromWords: (String) -> Unit,
     onNewFromForm: (String) -> Unit,
+    /** A reminder was written and its sheet has gone: the list goes to its card. */
+    onDictated: (String) -> Unit,
 ) {
     val voice by viewModel.voice.collectAsStateWithLifecycle()
     val current = voice ?: return
@@ -1495,7 +1503,14 @@ private fun DictationSheet(
             why?.let { snackbar.show(voiceWhy.getValue(it)) }
             if (form != null) onNewFromForm(form) else onNewFromWords(text)
         },
-        onClosed = viewModel::closeVoice,
+        onClosed = {
+            // Asked at the moment it goes, not when the sheet was drawn: a reading chosen since is
+            // the same id, and a sheet that never wrote anything has nothing to go to. A routine
+            // has no card on the list (as when the editor saves one), so the list stays put.
+            val written = (viewModel.voice.value as? VoiceState.Created)?.reminder?.takeIf { !it.isRoutine }?.id
+            viewModel.closeVoice()
+            written?.let(onDictated)
+        },
     )
 }
 
