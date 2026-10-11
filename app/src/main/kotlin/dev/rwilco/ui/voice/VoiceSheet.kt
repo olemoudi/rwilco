@@ -34,7 +34,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Mic
@@ -391,7 +390,10 @@ fun VoiceSheet(
     }
 }
 
-/** The mic, grown by how loud the voice is; a tick once it is written, struck through when it cannot listen. */
+/**
+ * The mic, grown by how loud the voice is; struck through when it cannot listen. A written
+ * reminder's sheet shows the check of it instead (0.182.0), so the disc is never drawn for one.
+ */
 @Composable
 private fun Disc(state: VoiceState) {
     val scheme = MaterialTheme.colorScheme
@@ -410,14 +412,12 @@ private fun Disc(state: VoiceState) {
         ) {
             Icon(
                 imageVector = when (state) {
-                    is VoiceState.Created -> Icons.Outlined.Check
                     is VoiceState.Failed -> Icons.Outlined.MicOff
                     else -> Icons.Outlined.Mic
                 },
                 contentDescription = stringResource(
                     when (state) {
                         is VoiceState.Listening -> R.string.voice_mic_open
-                        is VoiceState.Created -> R.string.voice_created
                         else -> R.string.voice_mic_closed
                     },
                 ),

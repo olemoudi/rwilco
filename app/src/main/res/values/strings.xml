@@ -1830,6 +1830,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_184_1">
+
+        <item>Housekeeping, nothing you will see: the dictation sheet’s mic no longer keeps a “Created” drawing it stopped showing when the sheet began showing the card.</item>
+
+    </string-array>
     <string-array name="whats_new_0_184_0">
 
         <item>When you finish dictating a reminder, the list no longer stays where it was: it goes to its card, opens it and lights it up for a moment, so you can see everything is in place without looking for it.</item>
