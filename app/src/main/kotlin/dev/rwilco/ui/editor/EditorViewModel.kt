@@ -129,6 +129,8 @@ class EditorViewModel(
     private val routine: Boolean,
     private val contactKind: ContactKind?,
     private val contactCloseness: Closeness?,
+    /** A dictated reminder's reading, to open on (see `Routes.Editor.spokenForm`). */
+    private val spokenForm: String?,
     private val repository: ReminderRepository,
     private val store: SettingsStore,
     private val settings: Flow<AppSettings?>,
@@ -186,7 +188,7 @@ class EditorViewModel(
      * the class would still be null when it got there.
      */
     private val restored: RestoredEditor? =
-        savedEditorOf(saved.get<Bundle>(SAVED_FORM)?.getString(SAVED_FORM), clock.zone)
+        savedEditorOf(saved.get<Bundle>(SAVED_FORM)?.getString(SAVED_FORM), clock.zone) ?: savedEditorOf(spokenForm, clock.zone)
 
     init {
         viewModelScope.launch {
@@ -630,6 +632,7 @@ class EditorViewModel(
         private val routine: Boolean = false,
         private val contactKind: ContactKind? = null,
         private val contactCloseness: Closeness? = null,
+        private val spokenForm: String? = null,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         // With the extras, for the saved state that belongs to this screen's place on the back
@@ -645,6 +648,7 @@ class EditorViewModel(
                 routine,
                 contactKind,
                 contactCloseness,
+                spokenForm,
                 app.repository,
                 app.settingsStore,
                 app.settings,

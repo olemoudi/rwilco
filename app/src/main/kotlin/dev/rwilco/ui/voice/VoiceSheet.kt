@@ -102,8 +102,11 @@ fun VoiceSheet(
     onStop: () -> Unit,
     onUndo: (Reminder) -> Unit,
     onEdit: (Reminder) -> Unit,
-    /** To the editor with these words; [VoiceOutcome.Why] says why, null when somebody asked to type. */
-    onToEditor: (String, VoiceOutcome.Why?) -> Unit,
+    /**
+     * To the editor with these words; [VoiceOutcome.Why] says why, null when somebody asked to
+     * type; the last is the whole reading to open on, when there is one.
+     */
+    onToEditor: (String, VoiceOutcome.Why?, String?) -> Unit,
     onClosed: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -161,7 +164,7 @@ fun VoiceSheet(
     // Not written: to the editor, with the words.
     val unwritten = state as? VoiceState.ToEditor
     LaunchedEffect(unwritten) {
-        if (unwritten != null) leave { onToEditor(unwritten.text, unwritten.why) }
+        if (unwritten != null) leave { onToEditor(unwritten.text, unwritten.why, unwritten.form) }
     }
 
     NoBounce {
@@ -211,14 +214,14 @@ fun VoiceSheet(
                 // What will be written — the words without their "when", and the "when" in the
                 // colours the editor's own sentence over "Guardar" uses.
                 val shown: Spoken? = when (current) {
-                    is VoiceState.Created -> current.reminder.let { Spoken(it.text, it.rules, it.ruleMatch, it.recurrence) }
+                    is VoiceState.Created -> current.reminder.let { Spoken(it.text, it.rules, it.ruleMatch, it.recurrence, it.deadline) }
                     is VoiceState.Listening, is VoiceState.Thinking -> reading
                     else -> null
                 }
                 if (shown != null) {
                     Spacer(Modifier.height(spacing.sm))
                     ReminderSentence(
-                        parts = sentenceParts(shown.text, shown.rules, shown.match, shown.recurrence),
+                        parts = sentenceParts(shown.text, shown.rules, shown.match, shown.recurrence, shown.deadline),
                         today = today,
                         defaultTime = defaultTime,
                         zone = zone,
@@ -231,7 +234,7 @@ fun VoiceSheet(
                     onStop = { listener.stop() },
                     onUndo = { reminder -> leave { onUndo(reminder) } },
                     onEdit = { reminder -> leave { onEdit(reminder) } },
-                    onType = { leave { onToEditor(words, null) } },
+                    onType = { leave { onToEditor(words, null, null) } },
                     onRetry = { onEvent(VoiceInputEvent.Retry) },
                     onSettings = {
                         context.startActivity(

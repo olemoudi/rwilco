@@ -385,24 +385,35 @@ private class PlaceLead(val pattern: Regex, val presence: Presence, val onCrossi
  * is not "Casa".
  */
 private fun placeIn(words: String, places: List<SavedPlace>): Found<Trigger.Location>? {
-    val named = places.mapNotNull { place -> Words.of(place.label).text.trim().takeIf { it.isNotEmpty() }?.let { place to " $it " } }
-        .sortedByDescending { it.second.length }
-    if (named.isEmpty()) return null
+    if (places.isEmpty()) return null
     for (lead in PLACE_LEADS) {
         for (match in lead.pattern.findAll(words)) {
-            // The space after the lead, and after an article when there is one.
-            val after = match.range.last + 1
-            val starts = listOf(after) + ARTICLES.filter { words.startsWith(" $it ", after) }.map { after + it.length + 1 }
-            for (start in starts) {
-                val (place, name) = named.firstOrNull { words.startsWith(it.second, start) } ?: continue
-                val rule = Trigger.Location(
-                    place.lat, place.lng, place.radiusM, lead.presence, place.label,
-                    onCrossing = lead.onCrossing, placeId = place.id.ifBlank { null },
-                )
-                // From the first word of the lead to the last letter of the name.
-                return Found(rule, listOf(match.range.first..start + name.length - 2))
-            }
+            // The space after the lead is where the name starts, an article or not first.
+            val (place, end) = savedPlaceAt(words, match.range.last + 1, places) ?: continue
+            val rule = Trigger.Location(
+                place.lat, place.lng, place.radiusM, lead.presence, place.label,
+                onCrossing = lead.onCrossing, placeId = place.id.ifBlank { null },
+            )
+            // From the first word of the lead to the last letter of the name.
+            return Found(rule, listOf(match.range.first..end))
         }
+    }
+    return null
+}
+
+/**
+ * The saved place named right at [after] in folded [words] (the space before the name), with or
+ * without an article first, the longest name first — "Casa de mis padres" is not "Casa". The
+ * place, and the index of its name's last letter. The one place a name is matched, for the
+ * editor's chip and for a sentence said out loud alike.
+ */
+internal fun savedPlaceAt(words: String, after: Int, places: List<SavedPlace>): Pair<SavedPlace, Int>? {
+    val named = places.mapNotNull { place -> Words.of(place.label).text.trim().takeIf { it.isNotEmpty() }?.let { place to " $it " } }
+        .sortedByDescending { it.second.length }
+    val starts = listOf(after) + ARTICLES.filter { words.startsWith(" $it ", after) }.map { after + it.length + 1 }
+    for (start in starts) {
+        val (place, name) = named.firstOrNull { words.startsWith(it.second, start) } ?: continue
+        return place to start + name.length - 2
     }
     return null
 }
@@ -501,11 +512,12 @@ private val DAY_AFTER_TOMORROW = Regex("\\bpasado manana\\b|\\bday after tomorro
 // today at five, because the hour was read and the day was not.
 private val TOMORROW = Regex("(?<!pasado )(?<!por la )(?<!de la )(?<!en la )(?<!\\besta )\\bmanana\\b|\\btomorrow\\b")
 
-private val DATE_ES = Regex("\\b(\\d{1,2}) de $MONTH_ES\\b")
+// "El 5 de marzo", "el día 5 de marzo": the word for the day goes with the date.
+private val DATE_ES = Regex("\\b(?:dia )?(\\d{1,2}) de $MONTH_ES\\b")
 private val DATE_EN_DAY_FIRST = Regex("\\b(\\d{1,2})(?:st|nd|rd|th)?(?: of)? $MONTH_EN\\b")
 private val DATE_EN_MONTH_FIRST = Regex("\\b$MONTH_EN (?:the )?(\\d{1,2})(?:st|nd|rd|th)?\\b")
 private val DATE_NUMERIC = Regex("\\b(\\d{1,2})/(\\d{1,2})(?:/(\\d{2}|\\d{4}))?\\b")
-private val DAY_ES = Regex("\\bel (\\d{1,2})\\b(?![./]\\d)")
+private val DAY_ES = Regex("\\bel (?:dia )?(\\d{1,2})\\b(?![./]\\d)")
 private val DAY_EN = Regex("\\bon the (\\d{1,2})(?:st|nd|rd|th)\\b")
 
 // "En algún momento de hoy", and the other ways of saying today with no hour in it on purpose.
@@ -540,7 +552,7 @@ private val PLACE_LEADS = listOf(
         Presence.INSIDE, onCrossing = true,
     ),
     PlaceLead(
-        Regex("\\b(?:when|once|as soon as) i (?:get(?: back)?|arrive|come back|go back|return|reach)(?: (?:to|at|in))?\\b"),
+        Regex("\\b(?:when|once|as soon as) i (?:get(?: back)?|arrive|come back|go back|return|reach)(?: (?:to|at|in))?\\b|\\b(?:when|on|upon) arriving (?:at|in)\\b"),
         Presence.INSIDE, onCrossing = true,
     ),
     // The doorway out: "cuando salga de", "al salir de", "cuando me vaya de", "when I leave".
@@ -548,15 +560,17 @@ private val PLACE_LEADS = listOf(
         Regex("\\b(?:(?:cuando|en cuanto|nada mas|apenas) (?:salga|salgas|me vaya|te vayas|me marche|te marches)|al (?:salir|irme|marcharme)) (?:del|de)\\b"),
         Presence.OUTSIDE, onCrossing = true,
     ),
-    PlaceLead(Regex("\\b(?:when|once|as soon as|after) i (?:leave|get out of|go out of)\\b"), Presence.OUTSIDE, onCrossing = true),
+    PlaceLead(Regex("\\b(?:when|once|as soon as|after) i (?:leave|get out of|go out of)\\b|\\b(?:when|on|upon) leaving\\b"), Presence.OUTSIDE, onCrossing = true),
     // Outside, as a state: "mientras no esté en", "cuando esté fuera de". Before the inside
     // reading, though neither can match the other's words.
-    PlaceLead(Regex("\\b(?:cuando|mientras|si) no (?:este|estes|estoy|estas) en\\b"), Presence.OUTSIDE, onCrossing = false),
-    PlaceLead(Regex("\\b(?:(?:cuando|mientras|si) (?:este|estes|estoy|estas)|estando) fuera (?:del|de)\\b"), Presence.OUTSIDE, onCrossing = false),
-    PlaceLead(Regex("\\b(?:while|when|whenever|if) (?:i m|im|i am) (?:not (?:at|in)|away from|out of)\\b"), Presence.OUTSIDE, onCrossing = false),
+    PlaceLead(Regex("\\b(?:(?:cuando|mientras|si) )?no (?:este|estes|estoy|estas) en\\b"), Presence.OUTSIDE, onCrossing = false),
+    PlaceLead(Regex("\\b(?:(?:(?:cuando|mientras|si) )?(?:este|estes|estoy|estas)|estando) fuera (?:del|de)\\b"), Presence.OUTSIDE, onCrossing = false),
+    PlaceLead(Regex("\\b(?:(?:while|when|whenever|if) )?(?:i m|im|i am) (?:not (?:at|in)|away from|out of)\\b"), Presence.OUTSIDE, onCrossing = false),
     // Inside, as a state: "cuando esté en", "mientras estoy en", "estando en", "while I'm at".
-    PlaceLead(Regex("\\b(?:(?:cuando|mientras|si) (?:este|estes|estoy|estas)|estando) en\\b"), Presence.INSIDE, onCrossing = false),
-    PlaceLead(Regex("\\b(?:(?:while|when|whenever|if) (?:i m|im|i am)|while) (?:at|in)\\b"), Presence.INSIDE, onCrossing = false),
+    // "Cuando", "mientras" or "si" in front, or none: "y sólo si estoy en casa" reaches here
+    // with its "si" already taken as the join.
+    PlaceLead(Regex("\\b(?:(?:(?:cuando|mientras|si) )?(?:este|estes|estoy|estas)|estando) en\\b"), Presence.INSIDE, onCrossing = false),
+    PlaceLead(Regex("\\b(?:(?:(?:while|when|whenever|if) )?(?:i m|im|i am)|while) (?:at|in)\\b"), Presence.INSIDE, onCrossing = false),
 )
 
 /**
@@ -571,6 +585,47 @@ internal fun soundsLikeWhen(text: String): Boolean {
     val words = Words.of(text).text
     return WHEN_PATTERNS.any { it.containsMatchIn(words) }
 }
+
+// --- what the grammar of a spoken sentence borrows (Spoken.kt) ---
+
+/** The pattern of an amount said in digits or words ("3", "tres", "veinte", "an"): one capturing group. */
+internal val AMOUNT_WORDS_PATTERN: String get() = AMOUNT_PATTERN
+
+/** An amount said in digits or words. */
+internal fun amountIn(raw: String): Int? = amountOf(raw)
+
+/** The pattern of an hour in either language, digits or words: one capturing group. */
+internal val HOUR_WORDS_PATTERN: String get() = "(\\d{1,2}|" + HOUR_WORDS.keys.joinToString("|") + ")"
+
+/**
+ * An hour as [timeOf] reads one: [qualifier] is "manana", "tarde", "noche", "am", "pm" or empty,
+ * and [late] says a part of the day later than the morning was said beside it.
+ */
+internal fun hourOf(raw: String, minutes: String, qualifier: String, late: Boolean): LocalTime? =
+    timeOf(raw, minutes, "", qualifier, late)
+
+/** Whether folded [words] say where by one of the ways the readers know, a saved place after it or not. */
+internal fun mentionsPlace(words: String): Boolean = PLACE_LEADS.any { it.pattern.containsMatchIn(words) }
+
+/** Whether folded [words] name a stretch of the calendar ("esta semana", "el finde que viene"). */
+internal fun mentionsStretch(words: String): Boolean =
+    listOf(SOMETIME_TODAY, THIS_WEEK, NEXT_WEEK, THIS_WEEKEND, NEXT_WEEKEND, THIS_MONTH, NEXT_MONTH).any { it.containsMatchIn(words) }
+
+/** The month a folded name stands for, in either language ("octubre", "oct", "october"). */
+internal fun monthNamed(word: String): Int? = MONTHS[word]
+
+/** The pattern of a month's name in either language: one capturing group. */
+internal val MONTH_WORDS_PATTERN: String get() = "(" + MONTHS.keys.joinToString("|") + ")"
+
+/** The weekday a folded name stands for, in either language. */
+internal fun weekdayNamed(word: String): DayOfWeek? = WEEKDAYS[word]
+
+/** The pattern of a weekday's name in either language: one capturing group. */
+internal val WEEKDAY_WORDS_PATTERN: String get() = WEEKDAY_PATTERN
+
+/** Whether folded [words] name an hour with a number in it, or noon: what a part of the day is then only the qualifier of. */
+internal fun namesClockHour(words: String): Boolean =
+    listOf(ES_TIME, EN_AT, EN_PM, CLOCK, NOON).any { it.containsMatchIn(words) }
 
 /** "Que viene" with nothing read beside it is still somebody saying when. */
 private val COMING = Regex("\\bque viene\\b")

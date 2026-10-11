@@ -166,6 +166,8 @@ fun HomeScreen(
     onDictationConsumed: () -> Unit = {},
     /** A new reminder starting with these words: what a dictation could not write whole. */
     onNewFromWords: (String) -> Unit = {},
+    /** A new reminder on a whole reading: a dictation understood but refused (see `Routes.Editor.spokenForm`). */
+    onNewFromForm: (String) -> Unit = {},
     /** A reminder a save has just written, to be gone to and marked; see the effect below. */
     justSaved: JustSaved? = null,
     onJustSavedShown: () -> Unit = {},
@@ -376,10 +378,10 @@ fun HomeScreen(
                 viewModel.closeVoice()
                 onOpen(reminder.id)
             },
-            onToEditor = { text, why ->
+            onToEditor = { text, why, form ->
                 viewModel.closeVoice()
                 why?.let { snackbar.show(voiceWhy.getValue(it)) }
-                onNewFromWords(text)
+                if (form != null) onNewFromForm(form) else onNewFromWords(text)
             },
             onClosed = viewModel::closeVoice,
         )

@@ -23,7 +23,32 @@ data class Spoken(
     val rules: List<TriggerRule> = emptyList(),
     val match: RuleMatch = RuleMatch.ANY,
     val recurrence: Recurrence = Recurrence.None,
+    val deadline: Deadline? = null,
+    /** What the sentence said about how to be told — "con pantalla completa", "sin sonido". */
+    val actions: SpokenActions = SpokenActions(),
 )
+
+/**
+ * How a sentence asked to be told, as changes to the person's own defaults: "con pantalla
+ * completa" adds the full screen to whatever they usually get, "sin sonido" takes the sound away,
+ * "solo una notificación" is that and nothing else.
+ */
+data class SpokenActions(
+    val only: Set<Action>? = null,
+    val add: Set<Action> = emptySet(),
+    val remove: Set<Action> = emptySet(),
+) {
+    fun applyTo(defaults: Set<Action>): Set<Action> {
+        var actions = (only ?: defaults) - remove + add
+        // The two sounds are one choice, as the editor's tiles make them: asking for one puts the other away.
+        if (Action.SOUND_UNTIL_ANSWERED in add) actions = actions - Action.SOUND
+        if (Action.SOUND in add) actions = actions - Action.SOUND_UNTIL_ANSWERED
+        // Silenced of everything is a reminder nobody would ever notice: the notification stays.
+        return actions.ifEmpty { setOf(Action.NOTIFICATION) }
+    }
+
+    operator fun plus(other: SpokenActions) = SpokenActions(other.only ?: only, add + other.add, remove + other.remove)
+}
 
 /** What [hear] made of a sentence. */
 sealed interface Heard {
@@ -65,27 +90,33 @@ fun hear(
     val folded = Words.of(text)
     val leadIn = LEAD_IN.find(folded.text)?.let { folded.original(it.range) }?.takeUnless { it.isEmpty() }
     val said = (if (leadIn == null) text.trim() else withoutSpans(text, listOf(leadIn))).ifBlank { text.trim() }
-    val reading = readWhen(text, now, zone, settings.dayParts, settings.savedPlaces)
-    val leaving = HERE.find(folded.text)
+    val actions = ACTIONS.mapNotNull { (pattern, edit) -> pattern.find(folded.text)?.let { edit to folded.original(it.range) } }
+    val asked = actions.fold(SpokenActions()) { all, (edit, _) -> all + edit }
+    val skip = listOfNotNull(leadIn) + actions.map { it.second }
     val routine = ROUTINE.find(folded.text)
     val since = SINCE.find(folded.text)
     if (routine != null || since != null) {
-        val spans = listOfNotNull(leadIn, routine?.let { folded.original(it.range) }, since?.let { folded.original(it.range) }) + reading?.spans.orEmpty()
+        val reading = readWhen(mask(text, skip), now, zone, settings.dayParts, settings.savedPlaces)
+        val spans = skip + listOfNotNull(routine?.let { folded.original(it.range) }, since?.let { folded.original(it.range) }) + reading?.spans.orEmpty()
         val span = routineSpan(reading?.understood) ?: return Heard.Unsure(said, Heard.Why.PARTIAL)
-        if (leaving != null) return Heard.Unsure(said, Heard.Why.PARTIAL)
-        return written(text, spans, emptyList(), span, said)
+        if (HERE.containsMatchIn(folded.text)) return Heard.Unsure(said, Heard.Why.PARTIAL)
+        return written(text, spans, Spoken("", recurrence = span, actions = asked), said)
     }
-    if (leaving != null) {
-        // "Aquí" and another "when" beside it are two answers to one question.
-        if (reading != null) return Heard.Unsure(said, Heard.Why.PARTIAL)
-        here ?: return Heard.NeedsHere(said)
-        return written(text, listOfNotNull(leadIn, folded.original(leaving.range)), listOf(TriggerRule(hereCircle(here, hereLabel))), Recurrence.None, said)
-    }
-    reading ?: return Heard.Unsure(said, Heard.Why.NOTHING)
-    val spans = listOfNotNull(leadIn) + reading.spans
-    return when (val understood = reading.understood) {
-        is Understood.Once -> written(text, spans, listOf(TriggerRule(understood.trigger)), Recurrence.None, said)
-        is Understood.Comes -> written(text, spans, emptyList(), understood.recurrence, said)
+    return when (val composed = composeWhen(text, skip, Context(now, zone, settings, here, hereLabel))) {
+        Composed.Nothing -> Heard.Unsure(said, Heard.Why.NOTHING)
+        Composed.Ambiguous -> Heard.Unsure(said, Heard.Why.PARTIAL)
+        // Asked for a position only when the rest of it would be written: read once with a
+        // stand-in for "aquí", and if that comes to anything but a reading, that is the answer.
+        Composed.NeedsHere -> when (val probe = hear(text, now, zone, settings, Fix(0.0, 0.0, 0.0, now), hereLabel)) {
+            is Heard.Read -> Heard.NeedsHere(said)
+            else -> probe
+        }
+        is Composed.Rules -> written(
+            text,
+            skip + composed.spans,
+            Spoken("", composed.rules, composed.match, composed.recurrence, composed.deadline, asked),
+            said,
+        )
     }
 }
 
@@ -115,14 +146,23 @@ private fun routineSpan(understood: Understood?): Recurrence.Since? = when (unde
     }
 }
 
-private fun written(text: String, spans: List<IntRange>, rules: List<TriggerRule>, recurrence: Recurrence, said: String): Heard {
+/** [reading] with the words that are left once [spans] are out — or why it cannot be written. */
+private fun written(text: String, spans: List<IntRange>, reading: Spoken, said: String): Heard {
     val words = withoutSpans(text, spans)
     if (words.isBlank()) return Heard.Unsure(said, Heard.Why.NO_WORDS)
-    // What is left must not still sound like a "when": "mañana cuando llegue a casa" read as
-    // tomorrow leaves "cuando llegue a casa" behind, and writing that is writing half of it.
-    if (soundsLikeWhen(words)) return Heard.Unsure(said, Heard.Why.PARTIAL)
-    return Heard.Read(Spoken(words, rules, RuleMatch.ANY, recurrence), said)
+    // What is left must not still sound like a "when": "mañana cuando llegue a casa al curro"
+    // with no "curro" saved leaves a doorway behind, and writing the rest is writing half of it.
+    // Nor like a join nobody understood the other side of ("…y sólo si llueve").
+    if (soundsLikeWhen(words) || LEFT_JOIN.containsMatchIn(Words.of(words).text)) return Heard.Unsure(said, Heard.Why.PARTIAL)
+    return Heard.Read(reading.copy(text = words), said)
 }
+
+/**
+ * The joins that only ever bring a condition in: left in the words, they brought one nobody
+ * understood ("…y sólo si llueve"). "Al mismo tiempo" or "antes del" can be part of the thing
+ * itself ("tomar las dos pastillas al mismo tiempo"), so they are not here.
+ */
+private val LEFT_JOIN = Regex("\\b(?:solo si|siempre que|only if|as long as)\\b")
 
 /**
  * The reminder [Spoken] stands for, written now — or null when a person should look first.
@@ -137,20 +177,23 @@ private fun written(text: String, spans: List<IntRange>, rules: List<TriggerRule
 fun Spoken.toReminder(id: String, now: Instant, zone: ZoneId, settings: AppSettings): Reminder? {
     if (validate(text, rules, recurrence).isNotEmpty()) return null
     val shape = settings.dayShape
-    if (warnings(rules, now, zone, settings.defaultTime, match, shape, id).any { it !is ValidationWarning.BetterAsCondition }) return null
+    if (warnings(rules, now, zone, settings.defaultTime, match, shape, id, deadline).any { it !is ValidationWarning.BetterAsCondition }) return null
     if (recurrenceWarning(recurrence, now, zone, shape) != null) return null
-    return Reminder(
+    val reminder = Reminder(
         id = id,
         text = text,
         rules = settleDays(startCountdowns(settleRelativeDates(rules, now, zone), now), now, zone, shape),
         ruleMatch = match,
         // A routine is told about the way routines are, as one opened in the editor is.
-        actions = if (recurrence is Recurrence.Since) settings.routineActions else settings.defaultActions,
+        actions = actions.applyTo(if (recurrence is Recurrence.Since) settings.routineActions else settings.defaultActions),
         recurrence = recurrence,
+        deadline = deadline,
         status = Status.ACTIVE,
         createdAt = now,
         updatedAt = now,
     )
+    // The deadline's close for the round that starts now, as the editor's save writes it.
+    return if (deadline == null) reminder else reminder.copy(expiresAt = reminder.roundExpiry(now, zone, settings.defaultTime, shape = shape))
 }
 
 /**
@@ -174,6 +217,15 @@ internal fun withoutSpans(text: String, spans: List<IntRange>): String {
             if (gone[i] || !isJoiner(tokens[i].value)) continue
             val beforeGone = i + 1 < tokens.size && gone[i + 1]
             val afterGone = i > 0 && gone[i - 1]
+            // "Es", "si", "it": only ever when on both sides of them is the "when" — "a la vez
+            // que es por la tarde" — never beside one alone: "fix it tomorrow" keeps its "it".
+            if (Words.of(tokens[i].value).text.trim() in BETWEEN_ONLY) {
+                if (beforeGone && afterGone) {
+                    gone[i] = true
+                    changed = true
+                }
+                continue
+            }
             // Everything before it went: "mañana a las 9 de llamar a Ana" starts at "llamar".
             // Only the words that join a clause on, never an article or a preposition that is
             // the start of the thing itself: "recuérdame a mi madre…" keeps "a mi madre".
@@ -188,7 +240,10 @@ internal fun withoutSpans(text: String, spans: List<IntRange>): String {
     return kept.trim(' ', ',', ';', ':', '.', '-', '—').replaceFirstChar { it.titlecase(Locale.ROOT) }
 }
 
-private fun isJoiner(token: String): Boolean = Words.of(token).text.trim() in JOINERS
+private fun isJoiner(token: String): Boolean = Words.of(token).text.trim().let { it in JOINERS || it in BETWEEN_ONLY }
+
+/** The words that go only when the "when" stands on both sides of them. */
+private val BETWEEN_ONLY = setOf("es", "sea", "si", "estoy", "it", "is", "s", "i", "m", "am")
 
 private val TOKEN = Regex("\\S+")
 
@@ -213,16 +268,6 @@ private val LEAD_IN = Regex(
 )
 
 /**
- * "Cuando me vaya de aquí", "al salir de aquí", "when I leave here": a circle drawn around where
- * the phone is now, crossed on the way out — what "al salir de aquí" has meant on the alert since
- * the snooze to a place ([hereCircle]).
- */
-private val HERE = Regex(
-    "\\b(?:(?:cuando|en cuanto|nada mas|apenas) (?:me vaya|me marche|salga|te vayas|salgas)|al (?:salir|irme|marcharme)) de aqui\\b|" +
-        "\\b(?:when|once|as soon as|after) i (?:leave|get out of|go out of) (?:here|this place)\\b",
-)
-
-/**
  * "Rutina: …", "nueva rutina …", "routine: …" — at the start, after "recuérdame" or "apunta" if
  * those came first. What makes the sentence a routine rather than a reminder.
  */
@@ -235,5 +280,22 @@ private val ROUTINE = Regex(
 private val SINCE = Regex(
     "\\bdesde (?:la ultima vez|que lo (?:haga|hice|hago|hagas|hiciste|haya hecho|hayas hecho))\\b|" +
         "\\bsince (?:the )?last time\\b|\\bsince i last did it\\b|\\bafter i last did it\\b",
+)
+
+/**
+ * "Con pantalla completa", "que suene hasta que conteste", "sin sonido": how to be told, said with
+ * the rest. Only the ways of saying it that cannot be anything else — "poner el móvil en
+ * silencio" or "ser insistente con el banco" are the thing to remember, not how to be told.
+ */
+private val ACTIONS: List<Pair<Regex, SpokenActions>> = listOf(
+    Regex("\\b(?:que suene|sonando) hasta que (?:conteste|responda|lo apague|le haga caso|lo vea)\\b|\\b(?:keep ringing|ring) until i answer\\b") to
+        SpokenActions(add = setOf(Action.SOUND_UNTIL_ANSWERED)),
+    Regex("\\b(?:avisame |que salga )?(?:con|a) pantalla completa\\b|\\bwith a full ?screen alert\\b|\\bas a full ?screen alert\\b") to SpokenActions(add = setOf(Action.FULL_SCREEN)),
+    Regex("\\b(?:solo|solamente) (?:con )?(?:una )?notificacion\\b|\\bsolo notificar\\b|\\b(?:just|only) a notification\\b|\\bnotification only\\b") to
+        SpokenActions(only = setOf(Action.NOTIFICATION)),
+    Regex("\\b(?:sin sonido|que no suene|without (?:a )?sound|with no sound)\\b") to SpokenActions(remove = setOf(Action.SOUND, Action.SOUND_UNTIL_ANSWERED)),
+    Regex("\\b(?:sin vibrar|sin vibracion|que no vibre|without vibrating|with no vibration)\\b") to SpokenActions(remove = setOf(Action.VIBRATE)),
+    Regex("\\b(?:y que vibre|con vibracion|and vibrate)\\b") to SpokenActions(add = setOf(Action.VIBRATE)),
+    Regex("\\b(?:con sonido|with sound)\\b") to SpokenActions(add = setOf(Action.SOUND)),
 )
 

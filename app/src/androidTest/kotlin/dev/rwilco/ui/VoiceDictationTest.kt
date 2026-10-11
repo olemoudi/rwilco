@@ -131,6 +131,19 @@ class VoiceDictationTest {
     }
 
     @Test
+    fun aSentenceWithTwoWhensIsOneFencedRule() {
+        sentence = "comprar pan al llegar a casa por la tarde con pantalla completa"
+        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.home_dictate_hold)).fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithContentDescription(s(R.string.home_dictate)).performSemanticsAction(SemanticsActions.OnClick)
+        rule.waitUntil(30_000) { runBlocking { app.repository.openNow().any { it.text == "Comprar pan" } } }
+        val written = runBlocking { app.repository.openNow() }.single()
+        val rule = written.rules.single()
+        assertEquals("Casa", (rule.trigger as Trigger.Location).label)
+        assertEquals(1, rule.conditions.size)
+        assertEquals(true, dev.rwilco.model.Action.FULL_SCREEN in written.actions)
+    }
+
+    @Test
     fun aSentenceWithNoWhenGoesToTheEditorWithItsWords() {
         sentence = "llamar a mi madre"
         // The click a screen reader gives every hold in the app.

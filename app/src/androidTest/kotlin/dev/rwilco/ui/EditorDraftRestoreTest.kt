@@ -39,7 +39,7 @@ class EditorDraftRestoreTest {
         lateinit var viewModel: EditorViewModel
         instrumentation.runOnMainSync {
             viewModel = EditorViewModel(
-                reminderId, null, null, null, false, null, false, null, null,
+                reminderId, null, null, null, false, null, false, null, null, null,
                 app.repository, app.settingsStore, app.settings, {}, app.clock, handle,
             )
         }

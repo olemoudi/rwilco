@@ -1779,6 +1779,14 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_177_0">
+
+        <item>You can now dictate sentences with more than one when. “At 9 or when I get home” rings with whichever comes first. “When I get home in the afternoon” or “when I get home and only if it’s the weekend” is one rule with a condition. “While I’m at home and it’s the weekend” has to be true all at once. “At 9 and at 9pm” rings twice; to need both, say so: “…, once both”.</item>
+        <item>It also understands a wait (“after 10 minutes there”), speed (“if I’m driving”), deadlines (“by 10pm”, “within 2 hours”), stretches of the day (“between 6 and 8”, or a saved window by its name), chance (“three times a day”), date ranges (“from the 1st to the 15th of October”, “by Friday”), places in a row (“at the gym or at the office”) and dates that repeat (“on March 3rd every year”).</item>
+        <item>And how to tell you: “in full screen”, “keep ringing until I answer”, “silently”, “just a notification”.</item>
+        <item>It understands the same sentences the app uses to describe a reminder. If it understands one that as said would never ring (two times “at once”), the editor opens with all of it filled in and the warning in view.</item>
+
+    </string-array>
     <string-array name="whats_new_0_176_0">
 
         <item>You can dictate reminders now. Hold the mic bar at the top of Home — the same half second as “Done”, so it never opens while scrolling — say what and when (“buy bread when I get home”, “call Marta tomorrow afternoon”, “water the plants sometime this week”, “take the bins out when I leave here”) and it is created by itself, with “Undo” and “Edit” right there.</item>

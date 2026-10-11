@@ -187,6 +187,7 @@ fun RwilcoApp(
                         requestedDictation = requestedDictation,
                         onDictationConsumed = { requestedDictation = false },
                         onNewFromWords = { text -> navController.navigateOnce(Routes.Editor(sharedText = text)) },
+                        onNewFromForm = { form -> navController.navigateOnce(Routes.Editor(spokenForm = form)) },
                         onNew = { navController.navigateOnce(Routes.Editor()) },
                         onNewFromPreset = { id -> navController.navigateOnce(Routes.Editor(fromPresetId = id)) },
                         onEditPreset = { id -> navController.navigateOnce(Routes.Editor(editPresetId = id)) },
@@ -222,11 +223,12 @@ fun RwilcoApp(
                     val undoLabel = stringResource(R.string.common_undo)
                     EditorScreen(
                         viewModel = viewModel(
-                            key = "editor/${route.reminderId}/${route.fromPresetId}/${route.cloneOfId}/${route.editPresetId}/${route.newPreset}/${route.sharedText}/${route.routine}/${route.contactKind}/${route.contactCloseness}",
+                            key = "editor/${route.reminderId}/${route.fromPresetId}/${route.cloneOfId}/${route.editPresetId}/${route.newPreset}/${route.sharedText}/${route.routine}/${route.contactKind}/${route.contactCloseness}/${route.spokenForm.hashCode()}",
                             factory = EditorViewModel.Factory(
                                 app, route.reminderId, route.fromPresetId, route.cloneOfId, route.editPresetId, route.newPreset, route.sharedText, route.routine,
                                 ContactKind.entries.firstOrNull { it.name == route.contactKind },
                                 Closeness.entries.firstOrNull { it.name == route.contactCloseness },
+                                route.spokenForm,
                             ),
                         ),
                         onClose = { navController.popBackStack() },

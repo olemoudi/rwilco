@@ -21,8 +21,8 @@ sealed interface VoiceState {
     /** Written: shown, with its undo, for a moment. */
     data class Created(val reminder: Reminder) : VoiceState
 
-    /** Not written: the sheet goes, and the words go to the editor with the line that says why. */
-    data class ToEditor(val text: String, val why: VoiceOutcome.Why) : VoiceState
+    /** Not written: the sheet goes, and the words go to the editor with the line that says why — or the whole reading ([form]). */
+    data class ToEditor(val text: String, val why: VoiceOutcome.Why, val form: String? = null) : VoiceState
 
     data class Failed(val why: VoiceFailure, val partial: String = "") : VoiceState
 }
@@ -43,7 +43,7 @@ sealed interface VoiceInputEvent {
     data class Permission(val granted: Boolean) : VoiceInputEvent
     data class Heard(val event: VoiceEvent) : VoiceInputEvent
     data class Written(val reminder: Reminder) : VoiceInputEvent
-    data class Unwritten(val text: String, val why: VoiceOutcome.Why) : VoiceInputEvent
+    data class Unwritten(val text: String, val why: VoiceOutcome.Why, val form: String? = null) : VoiceInputEvent
 
     /** Again, from the top. */
     data object Retry : VoiceInputEvent
@@ -58,7 +58,7 @@ fun voiceStep(state: VoiceState, event: VoiceInputEvent): VoiceState = when (eve
         if (state !is VoiceState.Asking) state else if (event.granted) VoiceState.Listening() else VoiceState.Failed(VoiceFailure.NO_PERMISSION)
     VoiceInputEvent.Retry -> VoiceState.Listening()
     is VoiceInputEvent.Written -> if (state is VoiceState.Thinking) VoiceState.Created(event.reminder) else state
-    is VoiceInputEvent.Unwritten -> if (state is VoiceState.Thinking) VoiceState.ToEditor(event.text, event.why) else state
+    is VoiceInputEvent.Unwritten -> if (state is VoiceState.Thinking) VoiceState.ToEditor(event.text, event.why, event.form) else state
     is VoiceInputEvent.Heard -> if (state !is VoiceState.Listening) state else when (val heard = event.event) {
         VoiceEvent.Ready -> state
         is VoiceEvent.Level -> state.copy(level = levelOf(heard.rms))
@@ -85,8 +85,11 @@ fun levelOf(rms: Float): Float = ((rms + 2f) / 12f).coerceIn(0f, 1f)
 sealed interface VoiceOutcome {
     data class Created(val reminder: Reminder) : VoiceOutcome
 
-    /** Not written: the words go to the editor, and [why] is the line that says so. */
-    data class ToEditor(val text: String, val why: Why) : VoiceOutcome
+    /**
+     * Not written: the words go to the editor, and [why] is the line that says so. [form] is the
+     * whole reading, for one understood but refused: the editor opens on it, warning and all.
+     */
+    data class ToEditor(val text: String, val why: Why, val form: String? = null) : VoiceOutcome
 
     enum class Why {
         /** No "when" understood. */

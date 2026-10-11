@@ -45,6 +45,8 @@ import dev.rwilco.model.Spoken
 import dev.rwilco.model.hear
 import dev.rwilco.diag.Diag
 import dev.rwilco.voice.VoiceInputEvent
+import dev.rwilco.ui.editor.spokenFormJson
+import dev.rwilco.model.Recurrence
 import dev.rwilco.voice.VoiceOutcome
 import dev.rwilco.voice.VoiceState
 import dev.rwilco.voice.voiceStep
@@ -538,7 +540,7 @@ class HomeViewModel(
             val outcome = fromVoice(after.text, hereLabel)
             val answer = when (outcome) {
                 is VoiceOutcome.Created -> VoiceInputEvent.Written(outcome.reminder)
-                is VoiceOutcome.ToEditor -> VoiceInputEvent.Unwritten(outcome.text, outcome.why)
+                is VoiceOutcome.ToEditor -> VoiceInputEvent.Unwritten(outcome.text, outcome.why, outcome.form)
             }
             _voice.value = _voice.value?.let { voiceStep(it, answer) }
         }
@@ -583,16 +585,23 @@ class HomeViewModel(
             }
         }
         val reminder = read.spoken.toReminder(UUID.randomUUID().toString(), clock.instant(), clock.zone, settings)
-            ?: return VoiceOutcome.ToEditor(read.said, VoiceOutcome.Why.REFUSED).also { noteVoice("to the editor: it would not ring as said") }
+        if (reminder == null) {
+            noteVoice("to the editor: it would not ring as said")
+            val defaults = if (read.spoken.recurrence is Recurrence.Since) settings.routineActions else settings.defaultActions
+            return VoiceOutcome.ToEditor(read.said, VoiceOutcome.Why.REFUSED, spokenFormJson(read.spoken, read.spoken.actions.applyTo(defaults), clock.instant()))
+        }
         currentCoroutineContext().ensureActive()
         repository.save(reminder)
         // "Aquí" is a circle the phone is standing in, and the watch is told so: its first look
         // leans towards the side a doorway waits for, and a doorway out whose first look says
         // "outside" never sees the way out. The snooze to "aquí" does the same.
+        // Only that circle: a saved place's doorway beside it ("o al llegar a casa") starts from
+        // whatever the watch sees, as one chosen in the editor does.
         if (fix != null) {
             reminder.rules.forEachIndexed { index, rule ->
                 val place = rule.trigger as? Trigger.Location ?: return@forEachIndexed
-                if (place.onCrossing) rememberSide(GeofenceIds.encode(reminder.id, index, place), Transition.ENTER)
+                val here = place.onCrossing && place.placeId == null && place.lat == fix.lat && place.lng == fix.lng
+                if (here) rememberSide(GeofenceIds.encode(reminder.id, index, place), Transition.ENTER)
             }
         }
         noteVoice("written: ${reminder.rules.size} rule(s), ${reminder.recurrence::class.simpleName}${if (fix != null) ", here" else ""}")

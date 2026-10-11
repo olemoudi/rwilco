@@ -188,9 +188,9 @@ class SpokenTest {
 
     @Test
     fun `more when than was understood is not written by halves`() {
-        assertEquals(Heard.Why.PARTIAL, unsure("mañana cuando llegue a casa comprar pan"))
+        assertEquals(Heard.Why.PARTIAL, unsure("mañana cuando llegue al curro comprar pan"))
         assertEquals(Heard.Why.PARTIAL, unsure("beber agua cada 8 horas a las 9"))
-        assertEquals(Heard.Why.PARTIAL, unsure("sacar la basura cuando me vaya de aquí mañana"))
+        assertEquals(Heard.Why.PARTIAL, unsure("sacar la basura cuando me vaya de aquí al llegar al curro"))
         assertEquals(Heard.Why.PARTIAL, unsure("regar esta semana cuando llegue al curro"))
     }
 

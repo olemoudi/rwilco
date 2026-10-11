@@ -127,4 +127,23 @@ class SavedEditorTest {
         // Nothing saved is nothing changed.
         assertEquals(loaded, loaded.withRestored(null))
     }
+
+    @Test
+    fun `a dictated reading that would not ring opens as the form it was heard as`() {
+        // Two moments "a la vez" never coincide: understood, refused, and opened on so the
+        // warning is seen where it can be fixed (0.177.0).
+        val spoken = dev.rwilco.model.Spoken(
+            text = "Regar",
+            rules = listOf(TriggerRule(home), TriggerRule(Trigger.RelativeDate(dev.rwilco.model.RelativeDay.In(1, dev.rwilco.model.RelativeUnit.DAYS), LocalTime.of(9, 0)))),
+            match = RuleMatch.TOGETHER,
+            deadline = Deadline.Window(LocalTime.MIDNIGHT, LocalTime.of(22, 0)),
+        )
+        val back = savedEditorOf(spokenFormJson(spoken, setOf(Action.NOTIFICATION, Action.FULL_SCREEN), now), zone)!!
+        assertEquals("Regar", back.draft.text)
+        assertEquals(spoken.rules, back.draft.rules, "the day still counted, not settled into a date")
+        assertEquals(RuleMatch.TOGETHER, back.draft.ruleMatch)
+        assertEquals(spoken.deadline, back.draft.deadline)
+        assertEquals(setOf(Action.NOTIFICATION, Action.FULL_SCREEN), back.draft.actions)
+        assertFalse(back.asPreset)
+    }
 }

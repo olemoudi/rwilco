@@ -34,6 +34,12 @@ object Routes {
         val contactKind: String? = null,
         /** And how close, by name: with the kind, what Settings' defaults for the form are read by. */
         val contactCloseness: String? = null,
+        /**
+         * A whole form to open on: a dictated reminder that was understood but would not ring as
+         * said (0.177.0), so the warning is seen where it can be fixed. The saved-form JSON the
+         * editor already restores a half-written form from (`SavedEditor`).
+         */
+        val spokenForm: String? = null,
     )
 
     @Serializable

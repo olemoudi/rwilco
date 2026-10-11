@@ -3,8 +3,10 @@ package dev.rwilco.ui.editor
 import dev.rwilco.data.ReminderEntity
 import dev.rwilco.data.toDomain
 import dev.rwilco.data.toEntity
+import dev.rwilco.model.Action
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.ReminderCodec
+import dev.rwilco.model.Spoken
 import dev.rwilco.model.Status
 import kotlinx.serialization.Serializable
 import java.time.Instant
@@ -58,6 +60,28 @@ fun EditorUiState.toSavedJson(draftId: String, now: Instant): String {
         contactWindow = draft.contactWindow,
     ).toEntity()
     return ReminderCodec.json.encodeToString(SavedEditor.serializer(), SavedEditor(row, asPreset, presetText))
+}
+
+/**
+ * A dictated reminder that was understood but would not ring as said, as the form to open on
+ * (0.177.0): the reading as it was heard — a day counted still counted, a countdown not yet
+ * ticking — so the editor shows the same warning that kept it from being written, where it can
+ * be fixed. The same shape a half-written form is put away in.
+ */
+fun spokenFormJson(spoken: Spoken, actions: Set<Action>, now: Instant): String {
+    val row = Reminder(
+        id = "",
+        text = spoken.text,
+        rules = spoken.rules,
+        recurrence = spoken.recurrence,
+        ruleMatch = spoken.match,
+        actions = actions,
+        status = Status.ACTIVE,
+        createdAt = now,
+        updatedAt = now,
+        deadline = spoken.deadline,
+    ).toEntity()
+    return ReminderCodec.json.encodeToString(SavedEditor.serializer(), SavedEditor(row))
 }
 
 /** Null for nothing saved, and for anything that will not read: a blank form beats a crash on the way back in. */

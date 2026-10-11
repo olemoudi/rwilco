@@ -48,6 +48,15 @@ class PatternsOnDeviceTest {
         for (text in listOf("al salir de aquí regar", "rutina: mover el coche cada 3 semanas", "regar cada 5 días desde la última vez", "mañana cuando llegue al curro")) {
             hear(text, now, zone, settings)
         }
+        // And the compound grammar (0.177.0): joins, stretches, rates, speeds, deadlines, chance, actions.
+        for (text in listOf(
+            "regar al llegar a casa y sólo si es entre las 18 y las 22", "a las 9 o al salir de casa, lo que pase antes",
+            "regar cuando esté en casa y, a la vez, sea fin de semana", "al llevar 10 minutos en casa", "al salir de casa si voy en coche",
+            "regar antes de las 22 y si en 2 horas no, olvídalo", "beber agua tres veces al día", "del 1 al 15 de octubre", "hasta el viernes",
+            "despertar mañana a las 7 con pantalla completa, que suene hasta que conteste", "when I have been at casa for 10 min",
+        )) {
+            hear(text, now, zone, settings)
+        }
     }
 
     @Test

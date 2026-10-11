@@ -1436,6 +1436,39 @@ loud what DST and a change of zone do to a landing.
   a tap: a launcher cannot report a hold). `RECORD_AUDIO` is asked on first use. `DiagLog`
   notes the shape of each outcome under `voice`, never the words. `SpokenTest`, `VoiceStepTest`,
   `VoiceDictationTest` (fake ear, through the real sheet and Home).
+- **Sentences with more than one "when" (0.177.0, `SpokenGrammar.kt`).** `composeWhen` cuts the
+  sentence at the words that join clauses — "o", "y", "y sólo si", "a la vez", "y luego" —
+  except inside a phrase with a "y" of its own ("entre las 5 y las 7", "a las 9 y media", "los
+  lunes y jueves", `HOLDS_A_Y`), and a join only counts when a "when" touches it on both sides
+  (`touchesEnd`/`touchesStart`, small words and punctuation aside): "comprar pan y leche cuando
+  llegue a casa" keeps its "y", and the clauses either side are read as one. Each clause is
+  read until nothing is left (`readClause`, peeling one piece at a time): the readers only a
+  spoken sentence needs first — a doorway with its rate ("al llevar 10 min en Casa", the way
+  the app says it back), a bare rate, a speed (with its "si"/"cuando"; bare only after "sólo
+  si"), a timer and an "antes de las 22", chance ("tres veces al día"), date spans ("del 1 al 15
+  de octubre"), "hasta el viernes", windows ("entre las 18 y las 22"; one to seven with nothing
+  beside it is the afternoon's), kinds of day and days of the month (only beside another
+  "when"), weekdays as a fence after "sólo si", a saved window by its name, and a part of the
+  day *as a window* where a place, a stretch or "sólo si" makes it a fence ("al llegar a casa
+  por la tarde") — then `readWhen`. A place said with only its preposition after one said in
+  full ("en el gimnasio o en la oficina") is read the same way (`elliptic`). **The rules**
+  (`rulesOf`), the owner's readings: "o" is ANY; "sólo si" fences the rule before it (a state's
+  `asState`, a saved place keeping its key); plain "y" with one moment and states is one fenced
+  rule, with only states is TOGETHER, with only moments is ANY ("a las 9 y a las 21" rings
+  twice); "a la vez" and "y luego" are TOGETHER and ALL; "las dos cosas", "lo que pase antes",
+  a trailing "a la vez" say the set in so many words (`MARKERS`). "O" and "y" in one sentence,
+  a fence with nothing to fence, a rate or a speed with no doorway before it, two repeats, two
+  deadlines: `Ambiguous`, a person decides. A deadline applies to a set (`deadlineApplies`) and
+  beside one rule a window becomes its fence; a calendar with the one date said beside it starts
+  there ("el 3 de marzo cada año"), unless their hours disagree; fences with no rule go on the
+  calendar; "tres veces al día" is `ByTrigger`. How to be told is said with the rest ("con
+  pantalla completa", "que suene hasta que conteste", "sin sonido", "solo una notificación",
+  `SpokenActions`, applied to the person's own defaults). `hear` asks for a position only when
+  the rest would be written (it reads once with a stand-in for "aquí"). A reading `toReminder`
+  refuses goes to the editor **with the reading in it** (`spokenFormJson` → `Routes.Editor
+  .spokenForm` → the saved-form restore), warning in view. `SpokenCompositionTest` is the table;
+  `SpokenRoundTripTest` fills the editor's own sentence templates from both `strings.xml` and
+  hears them back.
 - **A held stepper keeps counting (0.51.0).** A step is one unit on purpose (three minutes has
   to be sayable, and the countdown sheet says why), and the price was seventeen taps from thirty
   to forty-seven. `Stepper` repeats after `Motion.holdRepeatDelay`, quickening to
