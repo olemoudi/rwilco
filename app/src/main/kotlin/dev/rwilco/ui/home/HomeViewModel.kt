@@ -40,6 +40,17 @@ import dev.rwilco.model.typicalAccuracyM
 import dev.rwilco.model.toReminder
 import dev.rwilco.model.used
 import dev.rwilco.model.warnings
+import dev.rwilco.model.Heard
+import dev.rwilco.model.Spoken
+import dev.rwilco.model.hear
+import dev.rwilco.diag.Diag
+import dev.rwilco.voice.VoiceInputEvent
+import dev.rwilco.voice.VoiceOutcome
+import dev.rwilco.voice.VoiceState
+import dev.rwilco.voice.voiceStep
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.mapLatest
 import java.util.UUID
 import dev.rwilco.cheer.CheerText
 import dev.rwilco.model.CheerPick
@@ -207,6 +218,9 @@ class HomeViewModel(
     /** The line of encouragement for a part of the day, or null for silence (`Cheering.lineFor`). */
     private val cheerLine: suspend (String) -> CheerPick? = { null },
 ) : ViewModel() {
+
+    /** The settings as last read, for the dictation sheet's live reading ([preview]). */
+    private val latestSettings: StateFlow<AppSettings?> = settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /** The place answers a held card can give: the most-used saved place as a doorway in, and "aquí". */
     val placeOffers: StateFlow<List<SnoozePlace>> = combine(
@@ -486,6 +500,118 @@ class HomeViewModel(
             }
         }
     }
+
+    // --- dictation (0.176.0) ---
+
+    private val _voice = MutableStateFlow<VoiceState?>(null)
+
+    /** Where the dictation sheet is, or null when it is closed (see [VoiceState] for why it lives here). */
+    val voice: StateFlow<VoiceState?> = _voice
+
+    /** The sentence being turned into a reminder; cancelled when the sheet is let go of first. */
+    private var voiceWork: Job? = null
+
+    /**
+     * What the words heard so far would be written as, for the sheet to show while it listens;
+     * null while they would not be written. Off the main thread, a beat after each new word.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val voicePreview: StateFlow<Spoken?> = _voice
+        .map { (it as? VoiceState.Listening)?.partial ?: (it as? VoiceState.Thinking)?.text }
+        .distinctUntilChanged()
+        .mapLatest { text -> text?.takeIf { it.isNotBlank() }?.let(::preview) }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** The sheet opens: listening at once, or asking for the microphone first. */
+    fun openVoice(micAllowed: Boolean) {
+        if (_voice.value == null) _voice.value = if (micAllowed) VoiceState.Listening() else VoiceState.Asking
+    }
+
+    /** One thing that happened to the sheet; a finished sentence is turned into a reminder here, once. */
+    fun onVoice(event: VoiceInputEvent, hereLabel: String) {
+        val before = _voice.value ?: return
+        val after = voiceStep(before, event)
+        _voice.value = after
+        if (after !is VoiceState.Thinking || before is VoiceState.Thinking) return
+        voiceWork = viewModelScope.launch {
+            val outcome = fromVoice(after.text, hereLabel)
+            val answer = when (outcome) {
+                is VoiceOutcome.Created -> VoiceInputEvent.Written(outcome.reminder)
+                is VoiceOutcome.ToEditor -> VoiceInputEvent.Unwritten(outcome.text, outcome.why)
+            }
+            _voice.value = _voice.value?.let { voiceStep(it, answer) }
+        }
+    }
+
+    /** The sheet is leaving: whatever it was working on stops now, before it slides away. */
+    fun stopVoice() {
+        voiceWork?.cancel()
+        voiceWork = null
+    }
+
+    /** The sheet is gone. */
+    fun closeVoice() {
+        stopVoice()
+        _voice.value = null
+    }
+
+    /**
+     * A sentence said to the mic: written as a reminder when it was understood whole, or what
+     * stopped it, for the sheet to take the words to the editor with (`Spoken.kt`). Nothing is
+     * written once the sheet has been let go of ([stopVoice]).
+     */
+    private suspend fun fromVoice(transcript: String, hereLabel: String): VoiceOutcome {
+        val settings = store.settings.first()
+        var heard = hear(transcript, clock.instant(), clock.zone, settings, hereLabel = hereLabel)
+        var fix: Fix? = null
+        if (heard is Heard.NeedsHere) {
+            fix = hereFix() ?: return VoiceOutcome.ToEditor(heard.text, VoiceOutcome.Why.NO_FIX).also { noteVoice("no position for here") }
+            heard = hear(transcript, clock.instant(), clock.zone, settings, fix, hereLabel)
+        }
+        val read = when (heard) {
+            is Heard.Read -> heard
+            is Heard.NeedsHere -> return VoiceOutcome.ToEditor(heard.text, VoiceOutcome.Why.NO_FIX)
+            is Heard.Unsure -> {
+                val why = when (heard.why) {
+                    Heard.Why.NOTHING -> VoiceOutcome.Why.NOTHING
+                    Heard.Why.PARTIAL -> VoiceOutcome.Why.PARTIAL
+                    Heard.Why.NO_WORDS -> VoiceOutcome.Why.NO_WORDS
+                }
+                noteVoice("to the editor: ${why.name.lowercase()}")
+                return VoiceOutcome.ToEditor(heard.text, why)
+            }
+        }
+        val reminder = read.spoken.toReminder(UUID.randomUUID().toString(), clock.instant(), clock.zone, settings)
+            ?: return VoiceOutcome.ToEditor(read.said, VoiceOutcome.Why.REFUSED).also { noteVoice("to the editor: it would not ring as said") }
+        currentCoroutineContext().ensureActive()
+        repository.save(reminder)
+        // "Aquí" is a circle the phone is standing in, and the watch is told so: its first look
+        // leans towards the side a doorway waits for, and a doorway out whose first look says
+        // "outside" never sees the way out. The snooze to "aquí" does the same.
+        if (fix != null) {
+            reminder.rules.forEachIndexed { index, rule ->
+                val place = rule.trigger as? Trigger.Location ?: return@forEachIndexed
+                if (place.onCrossing) rememberSide(GeofenceIds.encode(reminder.id, index, place), Transition.ENTER)
+            }
+        }
+        noteVoice("written: ${reminder.rules.size} rule(s), ${reminder.recurrence::class.simpleName}${if (fix != null) ", here" else ""}")
+        return VoiceOutcome.Created(reminder)
+    }
+
+    /** What [voicePreview] reads a sentence as, off the settings Home already holds. */
+    private fun preview(transcript: String): Spoken? {
+        val settings = latestSettings.value ?: return null
+        return (hear(transcript, clock.instant(), clock.zone, settings) as? Heard.Read)?.spoken
+    }
+
+    /** Undoing a dictated reminder: it goes. */
+    fun undoSpoken(reminder: Reminder) {
+        viewModelScope.launch { repository.delete(reminder.id) }
+    }
+
+    /** The shape of what happened and never the words: the diagnostics report holds no reminder's text. */
+    private fun noteVoice(text: String) = Diag.note("voice", text)
 
     /**
      * Reaching for a preset counts as using it, whether or not the reminder is saved in the

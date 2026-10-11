@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Hold the launcher icon: one shortcut, straight into a blank reminder. -->
+<!-- Hold the launcher icon: straight into a blank reminder, or into saying one. -->
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
     <shortcut
         android:shortcutId="new"
@@ -9,6 +9,17 @@
         android:shortcutLongLabel="@string/shortcut_new_long">
         <intent
             android:action="dev.rwilco.action.NEW"
+            android:targetPackage="dev.rwilco"
+            android:targetClass="dev.rwilco.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="dictate"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_dictate"
+        android:shortcutShortLabel="@string/shortcut_dictate_short"
+        android:shortcutLongLabel="@string/shortcut_dictate_long">
+        <intent
+            android:action="dev.rwilco.action.DICTATE"
             android:targetPackage="dev.rwilco"
             android:targetClass="dev.rwilco.MainActivity" />
     </shortcut>

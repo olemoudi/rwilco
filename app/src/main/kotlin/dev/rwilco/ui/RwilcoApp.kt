@@ -88,6 +88,8 @@ fun RwilcoApp(
     // A launcher shortcut for a pinned preset: Home does the writing, so it is handed to Home
     // rather than navigated to, and the stack is popped back to Home if the app was elsewhere.
     var requestedPreset by remember { mutableStateOf<String?>(null) }
+    // The "Dictar" shortcut, handed to Home the same way: the sheet opens over it.
+    var requestedDictation by remember { mutableStateOf(false) }
     /** The reminder a save just wrote, until Home has taken somebody to it. */
     var justSaved by remember { mutableStateOf<JustSaved?>(null) }
     /** The reminder the editor just deleted, until Home has put its undo row up. */
@@ -113,6 +115,11 @@ fun RwilcoApp(
             presetId != null -> {
                 navController.popBackStack(Routes.Home, inclusive = false)
                 requestedPreset = presetId
+                onDestinationConsumed()
+            }
+            requestedDestination == Destinations.DICTATE -> {
+                navController.popBackStack(Routes.Home, inclusive = false)
+                requestedDictation = true
                 onDestinationConsumed()
             }
             sharedText != null -> {
@@ -177,6 +184,9 @@ fun RwilcoApp(
                         onJustDeletedShown = { justDeleted = null },
                         requestedPreset = requestedPreset,
                         onPresetConsumed = { requestedPreset = null },
+                        requestedDictation = requestedDictation,
+                        onDictationConsumed = { requestedDictation = false },
+                        onNewFromWords = { text -> navController.navigateOnce(Routes.Editor(sharedText = text)) },
                         onNew = { navController.navigateOnce(Routes.Editor()) },
                         onNewFromPreset = { id -> navController.navigateOnce(Routes.Editor(fromPresetId = id)) },
                         onEditPreset = { id -> navController.navigateOnce(Routes.Editor(editPresetId = id)) },

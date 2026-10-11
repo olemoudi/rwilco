@@ -21,7 +21,7 @@ import dev.rwilco.ui.theme.routineColor
  * A pinned preset is one tap on Home; this makes it one tap from the home screen, without the
  * app in between: hold the icon, "Comprar pan", and the reminder is written (or its words are
  * asked for, when the shape left them open — the same two doors Home has). The static "Nuevo"
- * keeps its slot; the rest take what the launcher leaves.
+ * and "Dictar" keep their slots; the rest take what the launcher leaves.
  *
  * **An overdue routine outranks a preset there** (the owner's call): the slots are few, a preset
  * is a thing you go looking for, and a routine whose span has run out is a thing that has to
@@ -47,8 +47,8 @@ object PresetShortcuts {
      * rather than read here so this stays a drawing job with no resources of its own.
      */
     fun publish(context: Context, routines: List<RoutineFace>, faces: List<Face>, question: (String) -> String = { it }) {
-        // One slot is the static "Nuevo".
-        val room = (ShortcutManagerCompat.getMaxShortcutCountPerActivity(context) - 1).coerceAtLeast(0)
+        // Two slots are the static ones, "Nuevo" and "Dictar" (0.176.0).
+        val room = (ShortcutManagerCompat.getMaxShortcutCountPerActivity(context) - STATIC_SHORTCUTS).coerceAtLeast(0)
         // Two at most: an overdue routine outranks a preset (the owner's call), but four of
         // them evicting every pinned preset is the launcher losing its other job.
         val overdue = routines.take(minOf(room, ROUTINE_SLOTS)).map { routine ->
@@ -120,3 +120,6 @@ object PresetShortcuts {
 
 /** How many launcher slots the overdue routines may take before the presets. */
 const val ROUTINE_SLOTS = 2
+
+/** The shortcuts `res/xml/shortcuts.xml` declares: "Nuevo" and "Dictar". */
+private const val STATIC_SHORTCUTS = 2

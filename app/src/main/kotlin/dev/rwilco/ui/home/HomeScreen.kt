@@ -65,6 +65,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Alignment
+import dev.rwilco.ui.localToday
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import dev.rwilco.ui.voice.VoiceSheet
+import dev.rwilco.voice.VoiceOutcome
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.graphicsLayer
@@ -155,6 +161,11 @@ fun HomeScreen(
     /** A pinned preset a launcher shortcut asked for: written here, the way its button is. */
     requestedPreset: String? = null,
     onPresetConsumed: () -> Unit = {},
+    /** The "Dictar" launcher shortcut: the dictation sheet, open over Home. */
+    requestedDictation: Boolean = false,
+    onDictationConsumed: () -> Unit = {},
+    /** A new reminder starting with these words: what a dictation could not write whole. */
+    onNewFromWords: (String) -> Unit = {},
     /** A reminder a save has just written, to be gone to and marked; see the effect below. */
     justSaved: JustSaved? = null,
     onJustSavedShown: () -> Unit = {},
@@ -204,6 +215,14 @@ fun HomeScreen(
     val dismissedProblems by viewModel.dismissedAlertProblems.collectAsStateWithLifecycle()
     LaunchedEffect(readiness, placesReady) { viewModel.noteAlertReadiness(readiness, placesReady) }
     var choosing by rememberSaveable { mutableStateOf(false) }
+    // The dictation sheet (0.176.0), open from the row at the top, the launcher shortcut or the
+    // widget. Its state is the ViewModel's: see VoiceState for why.
+    val voice by viewModel.voice.collectAsStateWithLifecycle()
+    val voiceReading by viewModel.voicePreview.collectAsStateWithLifecycle()
+    val micContext = LocalContext.current
+    val openDictation = {
+        viewModel.openVoice(ContextCompat.checkSelfPermission(micContext, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
+    }
     // **"Nuevo" asks which kind whenever there is a kind to ask about** (0.65.3). The friction
     // pass (0.63.0) had it stop asking once a preset was pinned, on the argument that the row
     // above the list had already answered — and the owner reported the menu as gone. The row
@@ -324,6 +343,46 @@ fun HomeScreen(
             else viewModel.createFromPreset(preset, null, state.defaultTime, state.dayShape)
         }
         onPresetConsumed()
+    }
+
+    LaunchedEffect(requestedDictation) {
+        if (!requestedDictation) return@LaunchedEffect
+        openDictation()
+        onDictationConsumed()
+    }
+    voice?.let { current ->
+        val voiceWhy = mapOf(
+            VoiceOutcome.Why.NOTHING to stringResource(R.string.voice_to_editor_nothing),
+            VoiceOutcome.Why.PARTIAL to stringResource(R.string.voice_to_editor_partial),
+            VoiceOutcome.Why.NO_WORDS to stringResource(R.string.voice_to_editor_no_words),
+            VoiceOutcome.Why.NO_FIX to stringResource(R.string.voice_to_editor_no_fix),
+            VoiceOutcome.Why.REFUSED to stringResource(R.string.voice_to_editor_refused),
+        )
+        val voiceUndone = stringResource(R.string.voice_undone)
+        VoiceSheet(
+            state = current,
+            reading = voiceReading,
+            today = localToday(),
+            defaultTime = state.defaultTime,
+            zone = zone,
+            onEvent = { event -> viewModel.onVoice(event, hereLabel) },
+            onStop = viewModel::stopVoice,
+            onUndo = { reminder ->
+                viewModel.closeVoice()
+                viewModel.undoSpoken(reminder)
+                snackbar.show(voiceUndone)
+            },
+            onEdit = { reminder ->
+                viewModel.closeVoice()
+                onOpen(reminder.id)
+            },
+            onToEditor = { text, why ->
+                viewModel.closeVoice()
+                why?.let { snackbar.show(voiceWhy.getValue(it)) }
+                onNewFromWords(text)
+            },
+            onClosed = viewModel::closeVoice,
+        )
     }
 
     if (choosing) {
@@ -768,6 +827,14 @@ fun HomeScreen(
             // **Above the strip, which is the only thing that was ever up here.** A permission
             // that might stop a future ring is a smaller matter than a ring that has already
             // happened and is standing there waiting to be answered.
+            // Saying a reminder, first of all and the whole width (0.176.0): held, as "hecho" is,
+            // so a thumb on its way to scrolling cannot open a microphone. Not while searching,
+            // as "Nuevo" is not: the thumb is on the keyboard.
+            if (!search.open) {
+                item(key = "voice", contentType = "voice") {
+                    VoiceDoor(onOpen = openDictation)
+                }
+            }
             if (waitingShown) {
                 item(key = "waiting", contentType = "waiting") {
                     WaitingCard(

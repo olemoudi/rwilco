@@ -183,8 +183,11 @@ fun homeCardIndex(
     waitingRow: Boolean = state.waiting.isNotEmpty(),
     /** The line of encouragement under the hero (0.151.0), when there is one to say. */
     cheerRow: Boolean = false,
+    /** The door to dictating (0.176.0), first of all whenever the list is not a search. */
+    voiceRow: Boolean = true,
 ): Int? {
     var index = 0
+    if (voiceRow) index++
     if (waitingRow) index++
     if (strip) index++
     if (pinned) index++

@@ -101,6 +101,32 @@
     <string name="home_readiness_dismiss">Not now</string>
     <string name="shortcut_new_short">New</string>
     <string name="shortcut_new_long">New reminder</string>
+    <!-- Dictation (0.176.0) -->
+    <string name="shortcut_dictate_short">Dictate</string>
+    <string name="shortcut_dictate_long">Dictate a reminder</string>
+    <string name="home_dictate">Dictate a reminder</string>
+    <string name="home_dictate_hold">Hold, and say a reminder or a routine</string>
+    <string name="voice_asking">The microphone, please</string>
+    <string name="voice_listening">Listening…</string>
+    <string name="voice_thinking">One moment…</string>
+    <string name="voice_created">Created</string>
+    <string name="voice_mic_open">Microphone on</string>
+    <string name="voice_mic_closed">Microphone off</string>
+    <string name="voice_hint">Say what and when: “buy bread when I get home”, “call Marta tomorrow afternoon”.</string>
+    <string name="voice_stop">Done</string>
+    <string name="voice_edit">Edit</string>
+    <string name="voice_retry">Try again</string>
+    <string name="voice_type">Type it</string>
+    <string name="voice_open_settings">Open settings</string>
+    <string name="voice_no_permission">Dictating needs the microphone.</string>
+    <string name="voice_not_heard">I didn\'t hear anything.</string>
+    <string name="voice_broken">Speech recognition isn\'t working on this phone right now.</string>
+    <string name="voice_undone">Dictated reminder removed</string>
+    <string name="voice_to_editor_nothing">I didn\'t catch when: finish it here.</string>
+    <string name="voice_to_editor_partial">I only understood part of when: check it here.</string>
+    <string name="voice_to_editor_no_words">I heard when, but not what to remind you of.</string>
+    <string name="voice_to_editor_no_fix">I can\'t tell where you are right now: pick the place here.</string>
+    <string name="voice_to_editor_refused">As said it would never ring: check it here.</string>
     <string name="home_pin_manage">Add a preset button</string>
     <string name="home_pin_title">Buttons on the main screen</string>
     <string name="home_pin_hint">One tap writes the reminder. If the preset has no words of its own, it asks for them and nothing else. A pinned preset is on the launcher icon too: hold it.</string>
@@ -573,6 +599,8 @@
     <string name="alert_hold_hint">Hold to answer</string>
     <string name="widget_next_label">Next up</string>
     <string name="widget_next_description">What fires next, how many today, and a way to write one.</string>
+    <string name="widget_dictate_label">Dictate</string>
+    <string name="widget_dictate_description">A mic: tap it and say a reminder.</string>
     <string name="widget_nothing">Nothing next</string>
     <string name="widget_nothing_hint">Tap to write one</string>
     <plurals name="widget_overdue">
@@ -1751,6 +1779,15 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_176_0">
+
+        <item>You can dictate reminders now. Hold the mic bar at the top of Home — the same half second as “Done”, so it never opens while scrolling — say what and when (“buy bread when I get home”, “call Marta tomorrow afternoon”, “water the plants sometime this week”, “take the bins out when I leave here”) and it is created by itself, with “Undo” and “Edit” right there.</item>
+        <item>And routines: “routine: move the car every 3 weeks” or “water the plants every 5 days since the last time”.</item>
+        <item>If it does not catch when, or only part of it, nothing is half-written: the editor opens with what you said and a line saying why.</item>
+        <item>Speech is recognised on the phone itself whenever it can be; if the phone lacks your language’s pack, it asks for one and uses Google’s ordinary recogniser that time. No model reads what you say: the app works it out with its own rules. It asks for the microphone the first time.</item>
+        <item>Also from the app icon (hold it: “Dictate”) and with a 2×1 mic widget that shrinks to 1×1. The shortcut takes one of that menu’s slots, so one fewer preset fits.</item>
+
+    </string-array>
     <string-array name="whats_new_0_175_0">
 
         <item>The text now understands your saved places. Write “buy bread when I get home” and the chip below offers that place as the trigger; also “when I leave”, “while I’m at” and “while I’m away from”, with or without “the” or “my”.</item>

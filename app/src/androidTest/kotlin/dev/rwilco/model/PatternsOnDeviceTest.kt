@@ -41,6 +41,13 @@ class PatternsOnDeviceTest {
         for (text in listOf("esta semana", "el finde que viene", "este mes", "en algún momento de hoy", "al salir de casa", "mientras no esté en casa", "estando fuera de casa", "while I'm at casa", "when I leave casa")) {
             whenInText(text, now, zone, places = listOf(casa))
         }
+        // A sentence said out loud (0.176.0): the lead-ins, "aquí", the routines and the check of
+        // what is left all hold patterns of their own.
+        val settings = AppSettings(savedPlaces = listOf(casa))
+        assertNotNull("a dictated sentence was not read on the phone", hear("recuérdame comprar pan cuando llegue a casa", now, zone, settings))
+        for (text in listOf("al salir de aquí regar", "rutina: mover el coche cada 3 semanas", "regar cada 5 días desde la última vez", "mañana cuando llegue al curro")) {
+            hear(text, now, zone, settings)
+        }
     }
 
     @Test

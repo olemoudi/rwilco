@@ -18,6 +18,13 @@ class DestinationsTest {
     }
 
     @Test
+    fun `the dictate shortcut lands on Home with the sheet open`() {
+        assertEquals(Destinations.DICTATE, Destinations.of(Destinations.ACTION_DICTATE, null, null, null))
+        assertNull(Destinations.sharedTextIn(Destinations.DICTATE))
+        assertNull(Destinations.presetIdIn(Destinations.DICTATE))
+    }
+
+    @Test
     fun `a shared line becomes the words of a new reminder, trimmed`() {
         val destination = Destinations.of("android.intent.action.SEND", "text/plain", null, "  Comprar filtros \n")
         assertEquals("Comprar filtros", Destinations.sharedTextIn(destination))

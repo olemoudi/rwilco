@@ -10,7 +10,10 @@ object Destinations {
     const val ACTION_NEW = "dev.rwilco.action.NEW"
     /** A pinned preset's own launcher shortcut: the reminder written, or its words asked for. */
     const val ACTION_PRESET = "dev.rwilco.action.PRESET"
+    /** The "Dictar" launcher shortcut: Home, with the dictation sheet open. */
+    const val ACTION_DICTATE = "dev.rwilco.action.DICTATE"
     const val NEW = "new"
+    const val DICTATE = "dictate"
     private const val NEW_TEXT_PREFIX = "new:"
     private const val PRESET_PREFIX = "preset:"
     private const val ACTION_SEND = "android.intent.action.SEND"
@@ -26,6 +29,7 @@ object Destinations {
     ): String? = when {
         extraDestination != null -> extraDestination
         action == ACTION_NEW -> NEW
+        action == ACTION_DICTATE -> DICTATE
         action == ACTION_PRESET && !presetId.isNullOrBlank() -> PRESET_PREFIX + presetId
         action == ACTION_SEND && type?.startsWith("text/") == true && !sharedText.isNullOrBlank() -> NEW_TEXT_PREFIX + sharedWords(sharedText, subject)
         else -> null

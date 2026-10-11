@@ -16,6 +16,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Dictating a reminder (0.176.0): the phone's own recognizer listens while the sheet is
+         open and not a moment longer. Asked for the first time the mic is tapped. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- The one-tap "exclude from battery optimisation" dialog; a sideloaded personal app, not Play. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
@@ -51,6 +54,14 @@
     <!-- allowBackup off: reminders are personal, and the backup story is deliberately the app's
          own (the vault: sealed with the person's passphrase, off by default — see vault/), not a
          transfer to whoever controls the Google account. -->
+    <!-- Since API 30 another app's service is invisible unless named here: the speech
+         recognizer the dictation sheet asks for is one. -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
+
     <application
         android:name=".RwilcoApplication"
         android:allowBackup="false"
@@ -176,6 +187,19 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_next" />
+        </receiver>
+
+        <!-- The dictation widget: a mic that opens the app listening (0.176.0). -->
+        <receiver
+            android:name=".widget.DictateWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_dictate_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_dictate" />
         </receiver>
 
         <!--

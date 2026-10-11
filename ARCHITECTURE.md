@@ -1403,6 +1403,39 @@ loud what DST and a change of zone do to a landing.
   length, a day, a date), then a stretch — offered only with no hour beside it, two answers to
   one question being no answer — then the hour, and a place last, so no sentence that offered a
   chip before offers a different one now.
+- **A reminder said out loud (0.176.0, `Spoken.kt`, `ui/voice/VoiceSheet.kt`, `voice/`).** No
+  model of any kind: the owner's phone (a Pixel 8 Pro) is outside Gemini Nano's API, a bundled
+  small model is thirty-odd times the APK, and the sentences people say to a reminders app are
+  the closed vocabulary `whenInText` already reads. So `readWhen` is `whenInText` with *where in
+  the text* each part of the answer was said — `Words` folds a character at a time and keeps
+  each one's origin, because `fold` trims and an NFD accent is two characters that come out as
+  one — and `hear(text, now, zone, settings, here?, hereLabel)` takes the "when" out of the words
+  ("comprar pan cuando llegue a casa" → "Comprar pan", with the small words that only tied it on:
+  "para el sábado") and answers `Heard.Read(Spoken)`, `NeedsHere` ("cuando me vaya de aquí" — a
+  circle round a fresh fix, `hereCircle`, the snooze's own "aquí", and the side seeded ENTER
+  after the save as the snooze seeds it) or `Unsure(NOTHING | PARTIAL | NO_WORDS)`. **A
+  half-reading is never written**: what is left of the words is checked against the readers' own
+  vocabulary (`soundsLikeWhen`, every pattern `whenInText` holds plus the place leads), so
+  "mañana cuando llegue a casa" — read as tomorrow, a doorway left over — goes to a person.
+  Routines too: "rutina: …" at the start, or "desde la última vez / desde que lo haga", turn
+  the repeat into `Recurrence.Since` (a week when none is said, as the editor opens one; nothing
+  a routine cannot be — weekdays, an hour, a moment). `Spoken.toReminder` settles the rules the
+  way a one-tap preset does and refuses anything `warnings`/`recurrenceWarning` would flag
+  (but `BetterAsCondition`): written unseen means nothing to warn about. Actions are the
+  person's defaults (`routineActions` for a routine). The app side: `PlatformListener` is
+  Android's recognizer *on the phone* when it can be (API 31+; a missing language pack is asked
+  for on 33+ and that sentence goes to the ordinary recognizer, offline preferred), behind a
+  `Listener` a device test fakes (`VoiceInput.factory`); `voiceStep` is the sheet's pure state
+  machine; `HomeViewModel.fromVoice` writes or says why not, and `preview` gives the sheet the
+  reading as the words arrive, in the editor's own coloured sentence. Written → "Creado" with
+  Deshacer/Editar in the sheet for four seconds; anything else → the editor with the words and a
+  line saying why. Three ways in: a full-width row at the top of Home **held for `HOLD_MILLIS`**
+  like "hecho" (`VoiceDoor`, the owner's call — a microphone must not open under a scrolling
+  thumb), the "Dictar" launcher shortcut (`ACTION_DICTATE`; it costs the preset shortcuts one
+  slot, `STATIC_SHORTCUTS`), and a 2×1 widget that shrinks to the mic alone (`DictateWidget`,
+  a tap: a launcher cannot report a hold). `RECORD_AUDIO` is asked on first use. `DiagLog`
+  notes the shape of each outcome under `voice`, never the words. `SpokenTest`, `VoiceStepTest`,
+  `VoiceDictationTest` (fake ear, through the real sheet and Home).
 - **A held stepper keeps counting (0.51.0).** A step is one unit on purpose (three minutes has
   to be sayable, and the countdown sheet says why), and the price was seventeen taps from thirty
   to forty-seven. `Stepper` repeats after `Motion.holdRepeatDelay`, quickening to

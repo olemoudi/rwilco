@@ -1,5 +1,6 @@
 package dev.rwilco.model
 
+import java.text.Normalizer
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -52,59 +53,138 @@ fun whenInText(
     zone: ZoneId,
     parts: DayParts = DayParts(),
     places: List<SavedPlace> = emptyList(),
-): Understood? {
-    val words = " " + normalized(text) + " "
+): Understood? = readWhen(text, now, zone, parts, places)?.understood
+
+/**
+ * What [readWhen] read, and the stretches of the text it read it from — offsets into the text as
+ * it was given, so a sentence said out loud can be handed back without its "when" (`Spoken.kt`).
+ * Only what the reading *used*: an hour beside a repeat of hours ("cada 8 horas a las 9") is not
+ * one of them, and left in the words it is what tells the caller there was more than it read.
+ */
+internal class Reading(val understood: Understood, val spans: List<IntRange>)
+
+/** A reader's answer and the stretches of the folded words it came from. */
+private class Found<T>(val value: T, val spans: List<IntRange>)
+
+private fun <T> found(value: T, vararg matches: MatchResult?): Found<T> = Found(value, matches.mapNotNull { it?.range })
+
+/** [whenInText], with where in the text each part of the answer was said. */
+internal fun readWhen(
+    text: String,
+    now: Instant,
+    zone: ZoneId,
+    parts: DayParts = DayParts(),
+    places: List<SavedPlace> = emptyList(),
+): Reading? {
+    val folded = Words.of(text)
+    val words = folded.text
     if (words.isBlank()) return null
     val here = now.atZone(zone)
     val today = here.toLocalDate()
     val nowTime = here.toLocalTime().withSecond(0).withNano(0)
     val hour = hourIn(words, parts)
+    fun read(understood: Understood, spans: List<IntRange>) = Reading(understood, spans.map(folded::original).filterNot { it.isEmpty() })
 
-    recurrenceIn(words, today, nowTime, hour.time)?.let { return Understood.Comes(it) }
-    countdownIn(words)?.let { return Understood.Once(Trigger.Countdown(it)) }
-    relativeDayIn(words)?.let { return Understood.Once(Trigger.RelativeDate(it, hour.time)) }
+    recurrenceIn(words, today, nowTime, hour)?.let { return read(Understood.Comes(it.value), it.spans) }
+    countdownIn(words)?.let { return read(Understood.Once(Trigger.Countdown(it.value)), it.spans) }
+    relativeDayIn(words)?.let { return read(Understood.Once(Trigger.RelativeDate(it.value, hour.time)), it.spans + hour.spans) }
     dateIn(words, today)?.let { date ->
-        val trigger = hour.time?.let { Trigger.AtDateTime(LocalDateTime.of(date, it)) } ?: Trigger.DayRandom(date)
-        return Understood.Once(trigger)
+        val trigger = hour.time?.let { Trigger.AtDateTime(LocalDateTime.of(date.value, it)) } ?: Trigger.DayRandom(date.value)
+        return read(Understood.Once(trigger), date.spans + hour.spans)
     }
-    stretchIn(words, today)?.let { return if (hour.time == null) Understood.Once(it) else null }
-    val time = hour.time ?: return placeIn(words, places)?.let { Understood.Once(it) }
+    stretchIn(words, today)?.let { return if (hour.time == null) read(Understood.Once(it.value), it.spans) else null }
+    val time = hour.time ?: return placeIn(words, places)?.let { read(Understood.Once(it.value), it.spans) }
     // "Hoy" needs an hour still ahead: a moment already gone is not something to offer.
-    if (hour.today) return if (time > nowTime) Understood.Once(Trigger.AtDateTime(LocalDateTime.of(today, time))) else null
+    if (hour.today) return if (time > nowTime) read(Understood.Once(Trigger.AtDateTime(LocalDateTime.of(today, time))), hour.spans) else null
     val date = if (time > nowTime) today else today.plusDays(1)
-    return Understood.Once(Trigger.AtDateTime(LocalDateTime.of(date, time)))
+    return read(Understood.Once(Trigger.AtDateTime(LocalDateTime.of(date, time))), hour.spans)
+}
+
+/**
+ * The words every reader here sees — folded, the punctuation that is not a clock's turned into
+ * spaces, single-spaced, with one space at either end — and, for each of their characters, where
+ * it came from in the text as given.
+ *
+ * `fold` cannot say that: it trims, and a decomposed accent is two characters that come out as
+ * one. A sentence said out loud is handed back without its "when", and that takes knowing where
+ * the "when" was. Folded a character at a time, which is what `fold` does to any word a person
+ * would say: lower case, the accent off the letter.
+ */
+internal class Words private constructor(val text: String, private val origin: IntArray) {
+
+    /** A stretch of [text] as the stretch of the given text it came from; the padding maps to nothing. */
+    fun original(range: IntRange): IntRange {
+        var first = range.first
+        var last = range.last
+        while (first <= last && origin[first] < 0) first++
+        while (last >= first && origin[last] < 0) last--
+        return if (first > last) IntRange.EMPTY else origin[first]..origin[last]
+    }
+
+    companion object {
+        fun of(raw: String): Words {
+            val out = StringBuilder(" ")
+            val origin = ArrayList<Int>(raw.length + 2).apply { add(-1) }
+            raw.forEachIndexed { index, char ->
+                val folded = if (char.isWhitespace() || char in PUNCTUATION_CHARS) " " else foldChar(char)
+                for (piece in folded) {
+                    if (piece == ' ' && out.last() == ' ') continue
+                    out.append(piece)
+                    origin += index
+                }
+            }
+            if (out.last() == ' ') origin[origin.lastIndex] = -1 else {
+                out.append(' ')
+                origin += -1
+            }
+            return Words(out.toString(), origin.toIntArray())
+        }
+
+        private fun foldChar(char: Char): String {
+            val lower = char.lowercaseChar()
+            if (lower.code < 0x80) return lower.toString()
+            return Normalizer.normalize(lower.toString(), Normalizer.Form.NFD)
+                .filter { Character.getType(it) != Character.NON_SPACING_MARK.toInt() }
+        }
+    }
 }
 
 // --- the hour ---
 
 /**
- * An hour read from the words, and whether the words also said "today" — which "esta tarde",
- * "esta noche" and "esta mañana" all do.
+ * An hour read from the words, whether the words also said "today" — which "esta tarde",
+ * "esta noche" and "esta mañana" all do — and where they said both.
  *
  * It used to carry a third thing, `refused`: a part of the day the app had no hour for ("por la
  * tarde"), which took the whole sentence with it. Every part has an hour now ([DayParts]).
  */
-private class Hour(val time: LocalTime?, val today: Boolean)
+private class Hour(val time: LocalTime?, val today: Boolean, val spans: List<IntRange>)
 
 private fun hourIn(words: String, parts: DayParts): Hour {
-    val today = TODAY.containsMatchIn(words) || THIS_PART.containsMatchIn(words)
+    val todayMatch = TODAY.find(words) ?: THIS_PART.find(words)
+    val today = todayMatch != null
     // "Esta noche a las 9" is nine in the evening, "por la tarde a las 5" is five in the
     // afternoon: a part of the day reaches an hour said with no am/pm.
-    val night = NIGHT.containsMatchIn(words)
-    val afternoon = AFTERNOON.containsMatchIn(words)
-    val late = night || afternoon
+    val night = NIGHT.find(words)
+    val afternoon = AFTERNOON.find(words)
+    val morning = MORNING.find(words)
+    val late = night != null || afternoon != null
+    // Every part of the day said beside a numbered hour is part of how it was said, whether or
+    // not it moved it: "a las 9 por la mañana" is one phrase.
+    fun hour(time: LocalTime?, vararg said: MatchResult?) =
+        Hour(time, today, if (time == null) listOfNotNull(todayMatch?.range) else (said.toList() + todayMatch).mapNotNull { it?.range })
     ES_TIME.find(words)?.let { m ->
-        return Hour(timeOf(m.groupValues[1], m.groupValues[2], m.groupValues[3], m.groupValues[4], late), today)
+        return hour(timeOf(m.groupValues[1], m.groupValues[2], m.groupValues[3], m.groupValues[4], late), m, night, afternoon, morning)
     }
-    EN_AT.find(words)?.let { m -> return Hour(timeOf(m.groupValues[1], m.groupValues[2], "", m.groupValues[3], late), today) }
-    EN_PM.find(words)?.let { m -> return Hour(timeOf(m.groupValues[1], m.groupValues[2], "", m.groupValues[3], late), today) }
-    if (NOON.containsMatchIn(words)) return Hour(LocalTime.NOON, today)
-    CLOCK.find(words)?.let { m -> return Hour(timeOf(m.groupValues[1], m.groupValues[2], "", "", late), today) }
+    EN_AT.find(words)?.let { m -> return hour(timeOf(m.groupValues[1], m.groupValues[2], "", m.groupValues[3], late), m, night, afternoon, morning) }
+    EN_PM.find(words)?.let { m -> return hour(timeOf(m.groupValues[1], m.groupValues[2], "", m.groupValues[3], late), m, night, afternoon, morning) }
+    NOON.find(words)?.let { m -> return hour(LocalTime.NOON, m) }
+    CLOCK.find(words)?.let { m -> return hour(timeOf(m.groupValues[1], m.groupValues[2], "", "", late), m, night, afternoon, morning) }
     // A part of the day with no number in it: the hour this person keeps for it.
-    if (afternoon) return Hour(parts.afternoon, today)
-    if (MORNING.containsMatchIn(words)) return Hour(parts.morning, today)
-    if (night) return Hour(parts.evening, today)
-    return Hour(null, today)
+    if (afternoon != null) return hour(parts.afternoon, afternoon)
+    if (morning != null) return hour(parts.morning, morning)
+    if (night != null) return hour(parts.evening, night)
+    return hour(null)
 }
 
 /** Null for an hour or a minute that does not exist: a typo is not an offer. */
@@ -135,24 +215,31 @@ private fun timeOf(hourRaw: String, minuteRaw: String, fraction: String, qualifi
 
 // --- something that comes back ---
 
-private fun recurrenceIn(words: String, today: LocalDate, nowTime: LocalTime, time: LocalTime?): Recurrence? {
+private fun recurrenceIn(words: String, today: LocalDate, nowTime: LocalTime, hour: Hour): Found<Recurrence>? {
+    val time = hour.time
     EVERY_HOURS.find(words)?.let { m ->
         val amount = amountOf(m.groupValues[1]) ?: return null
-        return if (amount in RELATIVE_AMOUNT) Recurrence.After(amount, RecurrenceUnit.HOURS) else null
+        return if (amount in RELATIVE_AMOUNT) found(Recurrence.After(amount, RecurrenceUnit.HOURS), m) else null
     }
-    if (HOURLY.containsMatchIn(words)) return Recurrence.After(1, RecurrenceUnit.HOURS)
-    val days = WEEKLY_DAYS.takeIf { it.containsMatchIn(words) }?.let { weekdaysIn(words) }.orEmpty()
+    HOURLY.find(words)?.let { m -> return found(Recurrence.After(1, RecurrenceUnit.HOURS), m) }
+    val weekly = WEEKLY_DAYS.findAll(words).toList()
+    val days = if (weekly.isEmpty()) emptySet() else weekdaysIn(words)
+    // Every day it names and the hour it rings at are part of saying it.
+    val alongside = (if (weekly.isEmpty()) emptyList() else weekly.map { it.range } + WEEKDAY.findAll(words).map { it.range }) +
+        (if (time != null) hour.spans else emptyList())
     EVERY_N.find(words)?.let { m ->
         val amount = amountOf(m.groupValues[1]) ?: return null
         val unit = unitOf(m.groupValues[2]) ?: return null
-        return if (amount in RELATIVE_AMOUNT) calendar(today, nowTime, time, amount, unit, days) else null
+        return if (amount in RELATIVE_AMOUNT) Found(calendar(today, nowTime, time, amount, unit, days), listOf(m.range) + alongside) else null
     }
-    EVERY_OTHER.find(words)?.let { m -> return calendar(today, nowTime, time, 2, unitOf(m.groupValues[1]) ?: return null, days) }
+    EVERY_OTHER.find(words)?.let { m ->
+        return Found(calendar(today, nowTime, time, 2, unitOf(m.groupValues[1]) ?: return null, days), listOf(m.range) + alongside)
+    }
     EVERY_ONE.find(words)?.let { m ->
         val unit = unitOf(m.groupValues.drop(1).first { it.isNotEmpty() }) ?: return null
-        return calendar(today, nowTime, time, 1, unit, days)
+        return Found(calendar(today, nowTime, time, 1, unit, days), listOf(m.range) + alongside)
     }
-    if (days.isNotEmpty()) return calendar(today, nowTime, time, 1, RepeatUnit.WEEK, days)
+    if (days.isNotEmpty()) return Found(calendar(today, nowTime, time, 1, RepeatUnit.WEEK, days), alongside)
     return null
 }
 
@@ -177,15 +264,15 @@ private fun weekdaysIn(words: String): Set<DayOfWeek> =
 // --- a length, a day counted, a day pointed at ---
 
 /** A length the countdown sheet would accept; "en 200 horas" is not a chip worth offering. */
-private fun countdownIn(words: String): Int? {
-    if (HALF_HOUR.containsMatchIn(words)) return 30
-    if (QUARTER_HOUR.containsMatchIn(words)) return 15
-    val minutes = IN_MINUTES.find(words)?.let { m -> amountOf(m.groupValues[1]) }
-        ?: IN_HOURS.find(words)?.let { m -> amountOf(m.groupValues[1])?.times(60) }
-    return minutes?.takeIf { it in MIN_COUNTDOWN_MINUTES..MAX_COUNTDOWN_MINUTES }
+private fun countdownIn(words: String): Found<Int>? {
+    HALF_HOUR.find(words)?.let { return found(30, it) }
+    QUARTER_HOUR.find(words)?.let { return found(15, it) }
+    val minutes = IN_MINUTES.find(words)?.let { m -> amountOf(m.groupValues[1])?.let { found(it, m) } }
+        ?: IN_HOURS.find(words)?.let { m -> amountOf(m.groupValues[1])?.let { found(it * 60, m) } }
+    return minutes?.takeIf { it.value in MIN_COUNTDOWN_MINUTES..MAX_COUNTDOWN_MINUTES }
 }
 
-private fun relativeDayIn(words: String): RelativeDay? {
+private fun relativeDayIn(words: String): Found<RelativeDay>? {
     IN_DAYS.find(words)?.let { m ->
         val amount = amountOf(m.groupValues[1]) ?: return null
         val unit = when (unitOf(m.groupValues[2])) {
@@ -194,26 +281,26 @@ private fun relativeDayIn(words: String): RelativeDay? {
             RepeatUnit.MONTH -> RelativeUnit.MONTHS
             else -> return null
         }
-        return if (amount in RELATIVE_AMOUNT) RelativeDay.In(amount, unit) else null
+        return if (amount in RELATIVE_AMOUNT) found(RelativeDay.In(amount, unit), m) else null
     }
-    if (DAY_AFTER_TOMORROW.containsMatchIn(words)) return RelativeDay.In(2, RelativeUnit.DAYS)
-    if (TOMORROW.containsMatchIn(words)) return RelativeDay.In(1, RelativeUnit.DAYS)
-    WEEKDAY_ONCE.find(words)?.let { m -> return WEEKDAYS[m.groupValues[1]]?.let(RelativeDay::NextWeekday) }
+    DAY_AFTER_TOMORROW.find(words)?.let { return found(RelativeDay.In(2, RelativeUnit.DAYS), it) }
+    TOMORROW.find(words)?.let { return found(RelativeDay.In(1, RelativeUnit.DAYS), it) }
+    WEEKDAY_ONCE.find(words)?.let { m -> return WEEKDAYS[m.groupValues[1]]?.let { found(RelativeDay.NextWeekday(it), m) } }
     return null
 }
 
-private fun dateIn(words: String, today: LocalDate): LocalDate? {
-    DATE_ES.find(words)?.let { m -> return nextDate(today, m.groupValues[1].toInt(), MONTHS[m.groupValues[2]] ?: return null) }
-    DATE_EN_DAY_FIRST.find(words)?.let { m -> return nextDate(today, m.groupValues[1].toInt(), MONTHS[m.groupValues[2]] ?: return null) }
-    DATE_EN_MONTH_FIRST.find(words)?.let { m -> return nextDate(today, m.groupValues[2].toInt(), MONTHS[m.groupValues[1]] ?: return null) }
+private fun dateIn(words: String, today: LocalDate): Found<LocalDate>? {
+    DATE_ES.find(words)?.let { m -> return nextDate(today, m.groupValues[1].toInt(), MONTHS[m.groupValues[2]] ?: return null)?.let { found(it, m) } }
+    DATE_EN_DAY_FIRST.find(words)?.let { m -> return nextDate(today, m.groupValues[1].toInt(), MONTHS[m.groupValues[2]] ?: return null)?.let { found(it, m) } }
+    DATE_EN_MONTH_FIRST.find(words)?.let { m -> return nextDate(today, m.groupValues[2].toInt(), MONTHS[m.groupValues[1]] ?: return null)?.let { found(it, m) } }
     DATE_NUMERIC.find(words)?.let { m ->
         val year = m.groupValues[3].takeIf { it.isNotEmpty() }?.toInt()?.let { if (it < 100) 2000 + it else it }
         val day = m.groupValues[1].toInt()
         val month = m.groupValues[2].toInt()
         if (month !in 1..12) return null
-        return if (year == null) nextDate(today, day, month) else dateOrNull(year, month, day)
+        return (if (year == null) nextDate(today, day, month) else dateOrNull(year, month, day))?.let { found(it, m) }
     }
-    (DAY_ES.find(words) ?: DAY_EN.find(words))?.let { m -> return nextDayOfMonth(today, m.groupValues[1].toInt()) }
+    (DAY_ES.find(words) ?: DAY_EN.find(words))?.let { m -> return nextDayOfMonth(today, m.groupValues[1].toInt())?.let { found(it, m) } }
     return null
 }
 
@@ -251,30 +338,30 @@ private fun dateOrNull(year: Int, month: Int, day: Int): LocalDate? =
  * hours say: those decide when a day starts, and "este finde" names days, not hours. Said on a
  * Saturday or a Sunday, "este finde" is what is left of the one under way.
  */
-private fun stretchIn(words: String, today: LocalDate): Trigger? {
-    if (SOMETIME_TODAY.containsMatchIn(words)) return Trigger.DayRandom(today)
+private fun stretchIn(words: String, today: LocalDate): Found<Trigger>? {
+    SOMETIME_TODAY.find(words)?.let { return found(Trigger.DayRandom(today), it) }
     // The Saturday of "este finde": the coming one on a weekday, the one under way at the weekend.
     val thisSaturday = when (today.dayOfWeek) {
         DayOfWeek.SATURDAY -> today
         DayOfWeek.SUNDAY -> today.minusDays(1)
         else -> today.with(TemporalAdjusters.next(DayOfWeek.SATURDAY))
     }
-    if (NEXT_WEEKEND.containsMatchIn(words)) {
+    NEXT_WEEKEND.find(words)?.let {
         // The one after "este finde", as "la semana que viene" is the one after this.
         val saturday = thisSaturday.plusWeeks(1)
-        return Trigger.DateRange(saturday, saturday.plusDays(1))
+        return found(Trigger.DateRange(saturday, saturday.plusDays(1)), it)
     }
-    if (THIS_WEEKEND.containsMatchIn(words)) return Trigger.DateRange(maxOf(today, thisSaturday), thisSaturday.plusDays(1))
-    if (NEXT_WEEK.containsMatchIn(words)) {
+    THIS_WEEKEND.find(words)?.let { return found(Trigger.DateRange(maxOf(today, thisSaturday), thisSaturday.plusDays(1)), it) }
+    NEXT_WEEK.find(words)?.let {
         val monday = today.with(TemporalAdjusters.next(DayOfWeek.MONDAY))
-        return Trigger.DateRange(monday, monday.plusDays(6))
+        return found(Trigger.DateRange(monday, monday.plusDays(6)), it)
     }
-    if (THIS_WEEK.containsMatchIn(words)) return Trigger.DateRange(today, today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY)))
-    if (NEXT_MONTH.containsMatchIn(words)) {
+    THIS_WEEK.find(words)?.let { return found(Trigger.DateRange(today, today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))), it) }
+    NEXT_MONTH.find(words)?.let {
         val first = today.withDayOfMonth(1).plusMonths(1)
-        return Trigger.DateRange(first, first.with(TemporalAdjusters.lastDayOfMonth()))
+        return found(Trigger.DateRange(first, first.with(TemporalAdjusters.lastDayOfMonth())), it)
     }
-    if (THIS_MONTH.containsMatchIn(words)) return Trigger.DateRange(today, today.with(TemporalAdjusters.lastDayOfMonth()))
+    THIS_MONTH.find(words)?.let { return found(Trigger.DateRange(today, today.with(TemporalAdjusters.lastDayOfMonth())), it) }
     return null
 }
 
@@ -297,8 +384,8 @@ private class PlaceLead(val pattern: Regex, val presence: Presence, val onCrossi
  * prefix, with or without an article in between, the longest name first — "Casa de mis padres"
  * is not "Casa".
  */
-private fun placeIn(words: String, places: List<SavedPlace>): Trigger.Location? {
-    val named = places.mapNotNull { place -> normalized(place.label).takeIf { it.isNotEmpty() }?.let { place to " $it " } }
+private fun placeIn(words: String, places: List<SavedPlace>): Found<Trigger.Location>? {
+    val named = places.mapNotNull { place -> Words.of(place.label).text.trim().takeIf { it.isNotEmpty() }?.let { place to " $it " } }
         .sortedByDescending { it.second.length }
     if (named.isEmpty()) return null
     for (lead in PLACE_LEADS) {
@@ -307,19 +394,19 @@ private fun placeIn(words: String, places: List<SavedPlace>): Trigger.Location? 
             val after = match.range.last + 1
             val starts = listOf(after) + ARTICLES.filter { words.startsWith(" $it ", after) }.map { after + it.length + 1 }
             for (start in starts) {
-                val place = named.firstOrNull { words.startsWith(it.second, start) }?.first ?: continue
-                return Trigger.Location(
+                val (place, name) = named.firstOrNull { words.startsWith(it.second, start) } ?: continue
+                val rule = Trigger.Location(
                     place.lat, place.lng, place.radiusM, lead.presence, place.label,
                     onCrossing = lead.onCrossing, placeId = place.id.ifBlank { null },
                 )
+                // From the first word of the lead to the last letter of the name.
+                return Found(rule, listOf(match.range.first..start + name.length - 2))
             }
         }
     }
     return null
 }
 
-/** The words as every reader here sees them: folded, without the punctuation that is not a clock's, single-spaced. */
-private fun normalized(text: String): String = fold(text).replace(PUNCTUATION, " ").replace(SPACES, " ").trim()
 
 // --- vocabulary ---
 
@@ -334,8 +421,7 @@ private fun unitOf(raw: String): RepeatUnit? = when (raw) {
 }
 
 /** The colon stays: it is what makes "17:30" a clock rather than two numbers. */
-private val PUNCTUATION = Regex("[,;()¿?¡!\"']")
-private val SPACES = Regex("\\s+")
+private const val PUNCTUATION_CHARS = ",;()¿?¡!\"'"
 
 private const val MINUTES = "(?:[:.h](\\d{2}))?"
 
@@ -397,7 +483,8 @@ private val EVERY_OTHER = Regex("\\bevery other (day|week|month)\\b")
 private val EVERY_ONE = Regex("\\bcada (dia|semana|mes|ano)\\b|\\ba (diario)\\b|\\btodos los (dias)\\b|\\btodas las (semanas)\\b|\\bevery (day|week|month|year)\\b|\\b(daily|weekly|monthly|yearly)\\b")
 private val WEEKLY_DAYS = Regex("\\b(?:cada|todos los|los|every) ${WEEKDAY_PATTERN}s?\\b|\\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)s\\b")
 private val WEEKDAY = Regex("\\b${WEEKDAY_PATTERN}s?\\b")
-private val WEEKDAY_ONCE = Regex("\\b$WEEKDAY_PATTERN\\b(?!s)")
+// "El lunes que viene", "el lunes próximo": the words after it are part of saying it.
+private val WEEKDAY_ONCE = Regex("\\b$WEEKDAY_PATTERN\\b(?!s)(?: que viene\\b| proximo\\b)?")
 
 private val HALF_HOUR = Regex("\\b(?:en|dentro de|in) (?:media hora|half an hour)\\b")
 private val QUARTER_HOUR = Regex("\\b(?:en|dentro de|in) (?:un cuarto de hora|a quarter of an hour)\\b")
@@ -424,12 +511,15 @@ private val DAY_EN = Regex("\\bon the (\\d{1,2})(?:st|nd|rd|th)\\b")
 // "En algún momento de hoy", and the other ways of saying today with no hour in it on purpose.
 // Plain "hoy" is not one: it has always needed an hour still ahead (see the tests).
 private val SOMETIME_TODAY = Regex("\\b(?:(?:en )?algun momento (?:de|del dia de) hoy|hoy en algun momento|a lo largo (?:del dia )?de hoy|some ?time today|at some point today|later today)\\b")
-private val THIS_WEEK = Regex("\\besta semana\\b|\\bthis week\\b")
-private val NEXT_WEEK = Regex("\\bla (?:semana que viene|proxima semana|semana proxima)\\b|\\bnext week\\b")
-private val THIS_WEEKEND = Regex("\\b(?:este|el) (?:fin de semana|finde)\\b|\\b(?:this|the) weekend\\b")
-private val NEXT_WEEKEND = Regex("\\b(?:fin de semana|finde) que viene\\b|\\bel proximo (?:fin de semana|finde)\\b|\\bnext weekend\\b")
-private val THIS_MONTH = Regex("\\beste mes\\b|\\bthis month\\b")
-private val NEXT_MONTH = Regex("\\bel (?:mes que viene|proximo mes)\\b|\\bnext month\\b")
+// What may lead a stretch in, so that it goes with it when the words are handed back: "en algún
+// momento de esta semana", "a lo largo del mes que viene", "sometime this week".
+private const val SOMETIME = "(?:(?:en )?algun momento (?:de |del )?|a lo largo (?:de |del )?|durante |some ?time |at some point |later |during )?"
+private val THIS_WEEK = Regex("\\b${SOMETIME}(?:esta semana|this week)\\b")
+private val NEXT_WEEK = Regex("\\b${SOMETIME}(?:la (?:semana que viene|proxima semana|semana proxima)|next week)\\b")
+private val THIS_WEEKEND = Regex("\\b${SOMETIME}(?:(?:este|el|del) (?:fin de semana|finde)|(?:this|the) weekend)\\b")
+private val NEXT_WEEKEND = Regex("\\b${SOMETIME}(?:(?:el |del )?(?:fin de semana|finde) que viene|(?:el|del) proximo (?:fin de semana|finde)|next weekend)\\b")
+private val THIS_MONTH = Regex("\\b${SOMETIME}(?:este mes|this month)\\b")
+private val NEXT_MONTH = Regex("\\b${SOMETIME}(?:(?:el|del) (?:mes que viene|proximo mes)|next month)\\b")
 
 /**
  * What may stand between the way of saying where and the name: "a la oficina", "al salir de mi
@@ -468,3 +558,28 @@ private val PLACE_LEADS = listOf(
     PlaceLead(Regex("\\b(?:(?:cuando|mientras|si) (?:este|estes|estoy|estas)|estando) en\\b"), Presence.INSIDE, onCrossing = false),
     PlaceLead(Regex("\\b(?:(?:while|when|whenever|if) (?:i m|im|i am)|while) (?:at|in)\\b"), Presence.INSIDE, onCrossing = false),
 )
+
+/**
+ * Whether anything in [text] is a way of saying when that a reader here knows, read or not —
+ * an hour, a day, a weekday, a repeat, a length, a stretch, a part of the day, a doorway. What a
+ * sentence said out loud is checked against once its "when" is out of it (`Spoken.kt`): the
+ * grammar's own vocabulary, so it can never disagree with what the readers would have read.
+ * A doorway counts without a saved place after it — "cuando llegue al curro" with no "curro" is
+ * exactly the "when" nobody understood.
+ */
+internal fun soundsLikeWhen(text: String): Boolean {
+    val words = Words.of(text).text
+    return WHEN_PATTERNS.any { it.containsMatchIn(words) }
+}
+
+/** "Que viene" with nothing read beside it is still somebody saying when. */
+private val COMING = Regex("\\bque viene\\b")
+
+// Last in the file: every pattern it lists is initialised above it.
+private val WHEN_PATTERNS: List<Regex> = listOf(
+    ES_TIME, EN_AT, EN_PM, CLOCK, NOON, TODAY, THIS_PART, MORNING, AFTERNOON, NIGHT,
+    TOMORROW, DAY_AFTER_TOMORROW, WEEKDAY, IN_DAYS, DATE_ES, DATE_EN_DAY_FIRST, DATE_EN_MONTH_FIRST, DATE_NUMERIC, DAY_ES, DAY_EN,
+    EVERY_HOURS, HOURLY, EVERY_N, EVERY_OTHER, EVERY_ONE, HALF_HOUR, QUARTER_HOUR, IN_MINUTES, IN_HOURS,
+    SOMETIME_TODAY, THIS_WEEK, NEXT_WEEK, THIS_WEEKEND, NEXT_WEEKEND, THIS_MONTH, NEXT_MONTH, COMING,
+) + PLACE_LEADS.map { it.pattern }
+
