@@ -1,12 +1,14 @@
 package dev.rwilco.ui
 
 import android.app.LocaleManager
+import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
 import android.os.LocaleList
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.performClick
@@ -32,6 +34,7 @@ import dev.rwilco.voice.Listener
 import dev.rwilco.voice.PlatformListener
 import dev.rwilco.voice.VoiceEvent
 import dev.rwilco.voice.VoiceInput
+import dev.rwilco.ui.voice.VOICE_ALTERNATIVE_TAG
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -40,6 +43,7 @@ import org.junit.BeforeClass
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.File
 import java.util.Locale
 
 /**
@@ -87,6 +91,20 @@ class VoiceDictationTest {
     }
 
     private fun s(resId: Int): String = rule.activity.getString(resId)
+
+    /**
+     * The sheet as it is drawn, for looking at (dark mode, per the owner): kept in the app's files
+     * as the editor tour keeps its own, and pulled with `scripts/emu.sh tour`'s same `run-as tar`.
+     */
+    private fun shot(name: String) {
+        rule.waitForIdle()
+        // A sheet's window can be a frame or two from painted on the software-rendered emulator.
+        Thread.sleep(1_500)
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val dir = File(instrumentation.targetContext.filesDir, "screenshots").apply { mkdirs() }
+        val bitmap: Bitmap = instrumentation.uiAutomation.takeScreenshot() ?: return
+        File(dir, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+    }
 
     private fun waitFor(value: String) {
         rule.waitUntil(30_000) { rule.onAllNodesWithText(value, substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
@@ -171,6 +189,43 @@ class VoiceDictationTest {
         assertEquals("Casa", (rule.trigger as Trigger.Location).label)
         assertEquals(1, rule.conditions.size)
         assertEquals(true, dev.rwilco.model.Action.FULL_SCREEN in written.actions)
+    }
+
+    @Test
+    fun theOtherHalfOfAnOpenHourIsOneTapAway() {
+        // Eleven and twenty-three are waking hours on any day of the week, whatever the clock says.
+        sentence = "llamar a Juan a las 11"
+        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.home_dictate_hold)).fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithContentDescription(s(R.string.home_dictate)).performSemanticsAction(SemanticsActions.OnClick)
+        waitFor(s(R.string.voice_heard))
+        val first = runBlocking { app.repository.openNow() }.single()
+        val firstAt = (first.rules.single().trigger as Trigger.AtDateTime).at
+        // An alternative keeps the sheet open: still there once everything has settled.
+        rule.waitForIdle()
+        rule.onNodeWithText(s(R.string.voice_done), useUnmergedTree = true).assertExists()
+        shot("voice-created-alternative")
+        rule.onNodeWithTag(VOICE_ALTERNATIVE_TAG).performClick()
+        rule.waitUntil(30_000) {
+            val now = runBlocking { app.repository.openNow() }.single()
+            (now.rules.single().trigger as Trigger.AtDateTime).at != firstAt
+        }
+        val swapped = runBlocking { app.repository.openNow() }.single()
+        assertEquals(first.id, swapped.id)
+        assertEquals((firstAt.hour + 12) % 24, (swapped.rules.single().trigger as Trigger.AtDateTime).at.hour)
+        rule.onNodeWithText(s(R.string.voice_done), useUnmergedTree = true).performClick()
+        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.voice_heard)).fetchSemanticsNodes().isEmpty() }
+    }
+
+    @Test
+    fun aDoubtIsWrittenAndNamedAndWaitsForListo() {
+        sentence = "llamar al banco mañana antes de comer"
+        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.home_dictate_hold)).fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithContentDescription(s(R.string.home_dictate)).performSemanticsAction(SemanticsActions.OnClick)
+        waitFor("«antes de»")
+        assertEquals(listOf("Llamar al banco antes de comer"), runBlocking { app.repository.openNow() }.map { it.text })
+        shot("voice-created-doubt")
+        rule.onNodeWithText(s(R.string.voice_done), useUnmergedTree = true).performClick()
+        rule.waitUntil(30_000) { rule.onAllNodesWithText("«antes de»", substring = true).fetchSemanticsNodes().isEmpty() }
     }
 
     @Test

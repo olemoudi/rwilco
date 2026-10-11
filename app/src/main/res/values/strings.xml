@@ -114,6 +114,15 @@
     <string name="voice_mic_closed">Microphone off</string>
     <string name="voice_hint">Say what and when: “buy bread when I get home”, “call Marta tomorrow afternoon”.</string>
     <string name="voice_stop">Done</string>
+    <string name="voice_done">Done</string>
+    <string name="voice_closes_itself">Closes by itself in a moment</string>
+    <string name="voice_heard">What I heard</string>
+    <string name="voice_fires_at">Rings %1$s at %2$s · %3$s</string>
+    <string name="voice_fires_in">Rings %1$s</string>
+    <string name="voice_doubt">Not sure whether “%1$s” changes when it rings: check it.</string>
+    <string name="voice_doubt_join">”, “</string>
+    <string name="voice_alternatives">Or did you mean</string>
+    <string name="voice_alternative_use">Change it to %1$s</string>
     <string name="voice_edit">Edit</string>
     <string name="voice_retry">Try again</string>
     <string name="voice_type">Type it</string>
@@ -1811,6 +1820,14 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_182_0">
+
+        <item>When you dictate, “Created” shows the reminder as it will appear in the list, with when it first rings (“Rings tomorrow at 08:00 · in 11 h”), so you can see at a glance whether it is what you meant.</item>
+        <item>Underneath, what I heard: the words that said when in their colour (time in blue, place in green) and, underlined in red, the ones I could not read, with a line saying so.</item>
+        <item>If an hour could be morning or evening and you are awake at both (“at 8”), the other is one tap away: “Or did you mean: tomorrow at 8:00”.</item>
+        <item>If everything is clear the sheet closes by itself after 6 seconds (you can see it on “Done”); touch it, or have something to check, and it waits for “Done”.</item>
+
+    </string-array>
     <string-array name="whats_new_0_181_0">
 
         <item>Dictation understands many more ways of saying it without needing Gemini: “in an hour and a half”, “a quarter to nine”, “at around 5”, “at midnight”, “first thing tomorrow”, “Monday the 14th”, “at the end of the month”, “in September”, “late October”.</item>

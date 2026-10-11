@@ -1533,6 +1533,20 @@ loud what DST and a change of zone do to a landing.
   or "cada" right beside a "when"; kept to words that are rarely the thing itself); and
   `alternatives` — the other half of an open hour, for one rule or one calendar, only when it is
   a waking hour too and passes the gate. `SpokenPhrasesTest` is the corpus as a table.
+- **Checking what was written (0.182.0, `ui/voice/VoiceSheet.kt` `CheckView`, `voice/VoiceState.kt`
+  `VoiceCheck`).** The owner asked that a dictated reminder be easy to check against what was
+  meant. "Creado" is now the reminder as Home will show it — its words and each rule as the card's
+  `TriggerRow` (with "o"/"y"/"a la vez" between rules), the recurrence and deadline rows — and when it
+  first rings ("Sonará mañana a las 08:00 · en 11 h", from `nextFire`; just the distance under a lone
+  moment's row). Under it, the sentence as heard with each "when" in its family's colour, how it was
+  said dimmed and the doubts underlined in the error ink and named ("No sé si «antes de» cambia
+  cuándo suena"); `VoiceCheck.marks` lays them, clamped, JVM-tested. The other reading of an open
+  hour is a neutral chip: it is written under the same id (`useAlternative`), so the undo and
+  "Editar" still find it, and the one it replaced becomes the chip (`VoiceCheck.swapped`). **The
+  sheet goes by itself only when there is nothing to look at twice** (no doubt, no alternative): after
+  six seconds, the countdown a bar running out along "Listo", stopped for good by any touch on the
+  sheet (the owner's call). Otherwise it waits for "Listo". Gemini's guess is shown the same way
+  before "Guardar". `VoiceStepTest`, `VoiceDictationTest` (an alternative chosen; a doubt that waits).
 - **A held stepper keeps counting (0.51.0).** A step is one unit on purpose (three minutes has
   to be sayable, and the countdown sheet says why), and the price was seventeen taps from thirty
   to forty-seven. `Stepper` repeats after `Motion.holdRepeatDelay`, quickening to

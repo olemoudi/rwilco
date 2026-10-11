@@ -1,8 +1,11 @@
 package dev.rwilco.voice
 
 import dev.rwilco.model.Fix
+import dev.rwilco.model.HeardSpan
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Spoken
+import dev.rwilco.model.TriggerFamily
+import java.time.Instant
 
 /**
  * Where the dictation sheet is. A pure step function drives it ([voiceStep]); Home's ViewModel
@@ -24,10 +27,10 @@ sealed interface VoiceState {
      * What Gemini made of it, not written yet: a guess is shown and confirmed, never written
      * unseen (the owner's call). [form] is the same reading for the editor, if "Editar".
      */
-    data class Confirm(val reminder: Reminder, val form: String, val spoken: Spoken, val here: Fix?) : VoiceState
+    data class Confirm(val reminder: Reminder, val form: String, val spoken: Spoken, val here: Fix?, val check: VoiceCheck = VoiceCheck()) : VoiceState
 
-    /** Written: shown, with its undo, for a moment. */
-    data class Created(val reminder: Reminder) : VoiceState
+    /** Written: shown with what it was read from, its undo, and what else it could have been ([check]). */
+    data class Created(val reminder: Reminder, val check: VoiceCheck = VoiceCheck()) : VoiceState
 
     /** Not written: the sheet goes, and the words go to the editor with the line that says why — or the whole reading ([form]). */
     data class ToEditor(val text: String, val why: VoiceOutcome.Why, val form: String? = null) : VoiceState
@@ -50,8 +53,8 @@ enum class VoiceFailure {
 sealed interface VoiceInputEvent {
     data class Permission(val granted: Boolean) : VoiceInputEvent
     data class Heard(val event: VoiceEvent) : VoiceInputEvent
-    data class Written(val reminder: Reminder) : VoiceInputEvent
-    data class Proposed(val reminder: Reminder, val form: String, val spoken: Spoken, val here: Fix?) : VoiceInputEvent
+    data class Written(val reminder: Reminder, val check: VoiceCheck = VoiceCheck()) : VoiceInputEvent
+    data class Proposed(val reminder: Reminder, val form: String, val spoken: Spoken, val here: Fix?, val check: VoiceCheck = VoiceCheck()) : VoiceInputEvent
     data class Unwritten(val text: String, val why: VoiceOutcome.Why, val form: String? = null) : VoiceInputEvent
 
     /** Again, from the top. */
@@ -67,8 +70,8 @@ fun voiceStep(state: VoiceState, event: VoiceInputEvent): VoiceState = when (eve
         if (state !is VoiceState.Asking) state else if (event.granted) VoiceState.Listening() else VoiceState.Failed(VoiceFailure.NO_PERMISSION)
     VoiceInputEvent.Retry -> VoiceState.Listening()
     // Written from the sentence, or from Gemini's guess once confirmed.
-    is VoiceInputEvent.Written -> if (state is VoiceState.Thinking || state is VoiceState.Confirm) VoiceState.Created(event.reminder) else state
-    is VoiceInputEvent.Proposed -> if (state is VoiceState.Thinking) VoiceState.Confirm(event.reminder, event.form, event.spoken, event.here) else state
+    is VoiceInputEvent.Written -> if (state is VoiceState.Thinking || state is VoiceState.Confirm) VoiceState.Created(event.reminder, event.check) else state
+    is VoiceInputEvent.Proposed -> if (state is VoiceState.Thinking) VoiceState.Confirm(event.reminder, event.form, event.spoken, event.here, event.check) else state
     is VoiceInputEvent.Unwritten -> if (state is VoiceState.Thinking || state is VoiceState.Confirm) VoiceState.ToEditor(event.text, event.why, event.form) else state
     is VoiceInputEvent.Heard -> if (state !is VoiceState.Listening) state else when (val heard = event.event) {
         VoiceEvent.Ready -> state
@@ -89,18 +92,80 @@ fun voiceStep(state: VoiceState, event: VoiceInputEvent): VoiceState = when (eve
     }
 }
 
+/**
+ * What the sheet shows so a written reminder can be checked against what was said (0.182.0): the
+ * sentence as heard and where in it each "when" was ([parts]), the words that sound like a "when"
+ * nobody read ([doubts]), when it first rings ([firesAt], when that is a moment), and the other
+ * readings one tap away ([alternatives]).
+ */
+data class VoiceCheck(
+    val heard: String = "",
+    val parts: List<HeardSpan> = emptyList(),
+    val doubts: List<IntRange> = emptyList(),
+    val firesAt: Instant? = null,
+    val alternatives: List<VoiceAlternative> = emptyList(),
+) {
+    /**
+     * Nothing to look at twice, so the sheet may go by itself (the owner's call): a doubt or an
+     * alternative keeps it until somebody says "Listo".
+     */
+    val clear: Boolean get() = doubts.isEmpty() && alternatives.isEmpty()
+
+    /**
+     * [chosen] has taken [current]'s place: it leaves the alternatives and [current] joins them,
+     * so the choice can be taken back the same way it was made.
+     */
+    fun swapped(current: Reminder, chosen: VoiceAlternative): VoiceCheck = copy(
+        firesAt = chosen.firesAt,
+        alternatives = alternatives.map { if (it == chosen) VoiceAlternative(current, firesAt) else it },
+    )
+}
+
+/** One stretch of the sentence as heard, and what the sheet colours it as. */
+data class HeardMark(val range: IntRange, val kind: Kind, val family: TriggerFamily? = null) {
+    enum class Kind {
+        /** How it was said, not when: "recuérdame", a join, "con pantalla completa". Dimmed. */
+        MANNER,
+
+        /** A "when", in its family's colour. */
+        WHEN,
+
+        /** Left in the words and sounding like a "when" nobody read. */
+        DOUBT,
+    }
+}
+
+/**
+ * The marks to lay over [VoiceCheck.heard], in the order they are laid: how it was said first,
+ * then the "when"s, then the doubts — so where two meet, the one that asks to be looked at shows.
+ * Clamped to the sentence: offsets that run past it (a sentence heard again) are cut, never thrown.
+ */
+fun VoiceCheck.marks(): List<HeardMark> {
+    fun IntRange.clamped(): IntRange? = (first.coerceAtLeast(0)..last.coerceAtMost(heard.length - 1)).takeUnless { it.isEmpty() }
+    val manner = parts.filter { it.family == null }.mapNotNull { part -> part.range.clamped()?.let { HeardMark(it, HeardMark.Kind.MANNER) } }
+    val whens = parts.filter { it.family != null }.mapNotNull { part -> part.range.clamped()?.let { HeardMark(it, HeardMark.Kind.WHEN, part.family) } }
+    val doubtful = doubts.mapNotNull { range -> range.clamped()?.let { HeardMark(it, HeardMark.Kind.DOUBT) } }
+    return manner + whens + doubtful
+}
+
+/** The doubtful words themselves, as heard, for the line that names them. */
+fun VoiceCheck.doubtWords(): List<String> = marks().filter { it.kind == HeardMark.Kind.DOUBT }.map { heard.substring(it.range.first, it.range.last + 1) }.distinct()
+
+/** Another reading of the same sentence, written under the same id so it can take the shown one's place. */
+data class VoiceAlternative(val reminder: Reminder, val firesAt: Instant?)
+
 /** The recognizer's dB, which runs from about -2 to 10, as 0..1 for the mic to grow by. */
 fun levelOf(rms: Float): Float = ((rms + 2f) / 12f).coerceIn(0f, 1f)
 
 /** What a sentence said to the mic came to. */
 sealed interface VoiceOutcome {
-    data class Created(val reminder: Reminder) : VoiceOutcome
+    data class Created(val reminder: Reminder, val check: VoiceCheck = VoiceCheck()) : VoiceOutcome
 
     /**
      * Gemini's guess, written once somebody says so: what it was heard as and the position
      * "aquí" was drawn round travel with it, so "Guardar" settles the same reading at the tap.
      */
-    data class Proposed(val reminder: Reminder, val form: String, val spoken: Spoken, val here: Fix?) : VoiceOutcome
+    data class Proposed(val reminder: Reminder, val form: String, val spoken: Spoken, val here: Fix?, val check: VoiceCheck = VoiceCheck()) : VoiceOutcome
 
     /**
      * Not written: the words go to the editor, and [why] is the line that says so. [form] is the

@@ -1,7 +1,11 @@
 package dev.rwilco.voice
 
+import dev.rwilco.model.HeardSpan
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.TriggerFamily
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.Instant
 
@@ -74,6 +78,57 @@ class VoiceStepTest {
         assertEquals(VoiceState.ToEditor("x", VoiceOutcome.Why.REFUSED, "{form}"), voiceStep(shown, VoiceInputEvent.Unwritten("x", VoiceOutcome.Why.REFUSED, "{form}")))
         // A guess that arrives after the sheet moved on is not shown.
         assertEquals(VoiceState.Listening(), voiceStep(VoiceState.Listening(), VoiceInputEvent.Proposed(reminder, "{form}", spoken, null)))
+    }
+
+    @Test
+    fun `a written reminder carries what it was read from`() {
+        val check = VoiceCheck(heard = "comprar pan mañana", parts = listOf(HeardSpan(12..17, TriggerFamily.TIME)))
+        assertEquals(VoiceState.Created(reminder, check), voiceStep(VoiceState.Thinking("comprar pan mañana"), VoiceInputEvent.Written(reminder, check)))
+    }
+
+    // --- the check of a written reminder (0.182.0) ---
+
+    private val later = reminder.copy(text = "Comprar pan", updatedAt = Instant.ofEpochSecond(60))
+    private val nine = Instant.ofEpochSecond(9 * 3600)
+    private val twentyOne = Instant.ofEpochSecond(21 * 3600)
+
+    @Test
+    fun `a check with nothing to look at twice lets the sheet go by itself`() {
+        assertTrue(VoiceCheck(heard = "comprar pan mañana").clear)
+        assertFalse(VoiceCheck(heard = "x", doubts = listOf(0..0)).clear)
+        assertFalse(VoiceCheck(heard = "x", alternatives = listOf(VoiceAlternative(later, null))).clear)
+    }
+
+    @Test
+    fun `choosing an alternative puts the shown one in its place, so a second tap takes it back`() {
+        val tonight = VoiceAlternative(later, twentyOne)
+        val check = VoiceCheck(heard = "llamar a las 9", firesAt = nine, alternatives = listOf(tonight))
+        val swapped = check.swapped(reminder, tonight)
+        assertEquals(twentyOne, swapped.firesAt)
+        assertEquals(listOf(VoiceAlternative(reminder, nine)), swapped.alternatives)
+        assertEquals(check, swapped.swapped(later, swapped.alternatives.single()))
+    }
+
+    @Test
+    fun `the sentence's marks are laid how-it-was-said first, then the whens, then the doubts`() {
+        val heard = "recuérdame llamar al banco mañana antes de comer"
+        val check = VoiceCheck(
+            heard = heard,
+            parts = listOf(HeardSpan(27..32, TriggerFamily.TIME), HeardSpan(0..9, null)),
+            doubts = listOf(34..41),
+        )
+        assertEquals(
+            listOf(HeardMark(0..9, HeardMark.Kind.MANNER), HeardMark(27..32, HeardMark.Kind.WHEN, TriggerFamily.TIME), HeardMark(34..41, HeardMark.Kind.DOUBT)),
+            check.marks(),
+        )
+        assertEquals(listOf("antes de"), check.doubtWords())
+    }
+
+    @Test
+    fun `marks past the end of the sentence are cut, never thrown`() {
+        val check = VoiceCheck(heard = "regar", parts = listOf(HeardSpan(3..20, TriggerFamily.PLACE), HeardSpan(30..40, null)), doubts = listOf(-2..1))
+        assertEquals(listOf(HeardMark(3..4, HeardMark.Kind.WHEN, TriggerFamily.PLACE), HeardMark(0..1, HeardMark.Kind.DOUBT)), check.marks())
+        assertEquals(emptyList<HeardMark>(), VoiceCheck(heard = "", parts = listOf(HeardSpan(0..3, null))).marks())
     }
 
     @Test

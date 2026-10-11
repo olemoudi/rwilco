@@ -110,6 +110,15 @@
     <string name="voice_mic_closed">Micrófono cerrado</string>
     <string name="voice_hint">Di qué y cuándo: «comprar pan cuando llegue a casa», «llamar a Marta mañana por la tarde».</string>
     <string name="voice_stop">Listo</string>
+    <string name="voice_done">Listo</string>
+    <string name="voice_closes_itself">Se cierra sola en un momento</string>
+    <string name="voice_heard">Lo que he oído</string>
+    <string name="voice_fires_at">Sonará %1$s a las %2$s · %3$s</string>
+    <string name="voice_fires_in">Sonará %1$s</string>
+    <string name="voice_doubt">No sé si «%1$s» cambia cuándo suena: revísalo.</string>
+    <string name="voice_doubt_join">», «</string>
+    <string name="voice_alternatives">¿O lo querías así?</string>
+    <string name="voice_alternative_use">Cambiarlo a %1$s</string>
     <string name="voice_edit">Editar</string>
     <string name="voice_retry">Otra vez</string>
     <string name="voice_type">Escribirlo</string>
@@ -1796,6 +1805,14 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_182_0">
+
+        <item>Al dictar, «Creado» te enseña el recordatorio tal como saldrá en la lista, con cuándo sonará la primera vez («Sonará mañana a las 08:00 · en 11 h»), para que veas de un vistazo si es lo que querías.</item>
+        <item>Debajo, lo que he oído: las palabras del «cuándo» en su color (hora en azul, sitio en verde) y, subrayadas en rojo, las que no he sabido leer, con una línea que lo dice.</item>
+        <item>Si una hora podía ser de mañana o de tarde y las dos te pillan despierto («a las 8»), la otra está a un toque: «¿O lo querías así? mañana a las 8:00».</item>
+        <item>Si todo está claro, la hoja se cierra sola a los 6 segundos (lo ves en «Listo»); si la tocas, o si hay algo que revisar, espera a que pulses «Listo».</item>
+
+    </string-array>
     <string-array name="whats_new_0_181_0">
 
         <item>Dictar entiende muchas más formas de decirlo sin necesitar a Gemini: «dentro de una hora y media», «a las 9 menos cuarto», «sobre las 5», «a medianoche», «mañana temprano», «a primera hora», «el lunes 14», «a final de mes», «en septiembre», «a finales de octubre».</item>

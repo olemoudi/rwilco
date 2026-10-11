@@ -1488,6 +1488,7 @@ private fun DictationSheet(
             viewModel.closeVoice()
             onOpen(reminder.id)
         },
+        onAlternative = viewModel::useAlternative,
         onConfirm = viewModel::confirmVoice,
         onToEditor = { text, why, form ->
             viewModel.closeVoice()

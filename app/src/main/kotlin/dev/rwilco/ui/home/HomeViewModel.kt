@@ -34,6 +34,7 @@ import dev.rwilco.model.Transition
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.ValidationWarning
 import dev.rwilco.model.moment
+import dev.rwilco.model.NextFire
 import dev.rwilco.model.nextFire
 import dev.rwilco.model.presetsByPopularity
 import dev.rwilco.model.typicalAccuracyM
@@ -55,6 +56,8 @@ import dev.rwilco.model.toHeard
 import dev.rwilco.model.mightSayWhen
 import dev.rwilco.ui.editor.spokenFormJson
 import dev.rwilco.model.Recurrence
+import dev.rwilco.voice.VoiceAlternative
+import dev.rwilco.voice.VoiceCheck
 import dev.rwilco.voice.VoiceOutcome
 import dev.rwilco.voice.VoiceState
 import dev.rwilco.voice.voiceStep
@@ -553,8 +556,8 @@ class HomeViewModel(
         voiceWork = viewModelScope.launch(Dispatchers.Default) {
             val outcome = fromVoice(after.text, hereLabel)
             val answer = when (outcome) {
-                is VoiceOutcome.Created -> VoiceInputEvent.Written(outcome.reminder)
-                is VoiceOutcome.Proposed -> VoiceInputEvent.Proposed(outcome.reminder, outcome.form, outcome.spoken, outcome.here)
+                is VoiceOutcome.Created -> VoiceInputEvent.Written(outcome.reminder, outcome.check)
+                is VoiceOutcome.Proposed -> VoiceInputEvent.Proposed(outcome.reminder, outcome.form, outcome.spoken, outcome.here, outcome.check)
                 is VoiceOutcome.ToEditor -> VoiceInputEvent.Unwritten(outcome.text, outcome.why, outcome.form)
             }
             _voice.value = _voice.value?.let { voiceStep(it, answer) }
@@ -581,7 +584,7 @@ class HomeViewModel(
     private suspend fun fromVoice(transcript: String, hereLabel: String): VoiceOutcome {
         val settings = store.settings.first()
         return when (val heard = withHere { here -> hear(transcript, clock.instant(), clock.zone, settings, here, hereLabel) }) {
-            is Here.Read -> settle(heard.read, heard.fix, settings, write = true)
+            is Here.Read -> settle(heard.read, heard.fix, settings, write = true, transcript)
             is Here.Missing -> VoiceOutcome.ToEditor(heard.said, VoiceOutcome.Why.NO_FIX).also { noteVoice("no position for here") }
             is Here.Unsure -> {
                 // What the grammar could not read, Gemini is asked — when the person said so in
@@ -610,7 +613,7 @@ class HomeViewModel(
             GeminiAnswer.Failed -> return VoiceOutcome.ToEditor(said, VoiceOutcome.Why.GEMINI_FAILED).also { noteVoice("gemini: no answer") }
         }
         return when (val heard = withHere { here -> reading.toHeard(clock.instant(), clock.zone, settings, here, hereLabel, said) }) {
-            is Here.Read -> settle(heard.read, heard.fix, settings, write = false)
+            is Here.Read -> settle(heard.read, heard.fix, settings, write = false, transcript)
             is Here.Missing -> VoiceOutcome.ToEditor(said, VoiceOutcome.Why.NO_FIX)
             is Here.Unsure -> toEditor(heard.unsure).also { noteVoice("gemini: no reading") }
         }
@@ -642,21 +645,49 @@ class HomeViewModel(
      * A reading, through the gate: refused → the editor with the reading in it; otherwise
      * written ([write], the grammar's) or proposed (Gemini's, written only at "Guardar").
      */
-    private suspend fun settle(read: Heard.Read, fix: Fix?, settings: AppSettings, write: Boolean): VoiceOutcome {
+    private suspend fun settle(read: Heard.Read, fix: Fix?, settings: AppSettings, write: Boolean, transcript: String): VoiceOutcome {
         val spoken = read.spoken
         val defaults = if (spoken.recurrence is Recurrence.Since) settings.routineActions else settings.defaultActions
         val form = spokenFormJson(spoken, spoken.actions.applyTo(defaults), clock.instant())
         val reminder = spoken.toReminder(UUID.randomUUID().toString(), clock.instant(), clock.zone, settings)
             ?: return VoiceOutcome.ToEditor(read.said, VoiceOutcome.Why.REFUSED, form).also { noteVoice("to the editor: it would not ring as said") }
+        // What the sheet shows to check it by (0.182.0). The other readings are written under the
+        // same id, so choosing one puts it in this one's place and the undo still finds it.
+        val alternatives = read.alternatives
+            .mapNotNull { it.toReminder(reminder.id, clock.instant(), clock.zone, settings) }
+            .map { VoiceAlternative(it, firesAt(it, settings)) }
+        val check = VoiceCheck(transcript, read.parts, read.doubts, firesAt(reminder, settings), alternatives)
         if (!write) {
             noteVoice("gemini: proposed ${reminder.rules.size} rule(s), ${reminder.recurrence::class.simpleName}")
-            return VoiceOutcome.Proposed(reminder, form, spoken, fix)
+            return VoiceOutcome.Proposed(reminder, form, spoken, fix, check)
         }
         currentCoroutineContext().ensureActive()
         repository.save(reminder)
         if (fix != null) seedHere(reminder, fix)
-        noteVoice("written: ${reminder.rules.size} rule(s), ${reminder.recurrence::class.simpleName}${if (fix != null) ", here" else ""}")
-        return VoiceOutcome.Created(reminder)
+        noteVoice(
+            "written: ${reminder.rules.size} rule(s), ${reminder.recurrence::class.simpleName}${if (fix != null) ", here" else ""}" +
+                ", ${read.doubts.size} doubt(s), ${alternatives.size} alternative(s)",
+        )
+        return VoiceOutcome.Created(reminder, check)
+    }
+
+    /** When [reminder] first rings, when that is a moment: a place has none, and a random draw keeps its own. */
+    private fun firesAt(reminder: Reminder, settings: AppSettings): Instant? =
+        (nextFire(reminder, clock.instant(), clock.zone, settings.defaultTime, settings.dayStart, settings.dayShape) as? NextFire.Scheduled)?.at
+
+    /**
+     * The other reading of the sentence, chosen in the sheet (0.182.0): it takes the written one's
+     * place — same id, so the undo and "Editar" find it — and the one it replaced becomes the
+     * alternative, so a second tap takes the choice back. Shown at once; written right after.
+     */
+    fun useAlternative(chosen: VoiceAlternative) {
+        val shown = _voice.value as? VoiceState.Created ?: return
+        if (chosen !in shown.check.alternatives) return
+        _voice.value = VoiceState.Created(chosen.reminder, shown.check.swapped(shown.reminder, chosen))
+        viewModelScope.launch {
+            repository.save(chosen.reminder.copy(updatedAt = clock.instant()))
+            noteVoice("alternative chosen")
+        }
     }
 
     private fun toEditor(unsure: Heard.Unsure): VoiceOutcome {
@@ -701,7 +732,7 @@ class HomeViewModel(
                 repository.save(reminder)
                 shown.here?.let { seedHere(reminder, it) }
                 noteVoice("gemini: confirmed")
-                VoiceInputEvent.Written(reminder)
+                VoiceInputEvent.Written(reminder, shown.check.copy(firesAt = firesAt(reminder, settings)))
             }
             // Only onto the sheet it was asked from: one let go of meanwhile stays gone.
             if (_voice.value === shown) _voice.value = voiceStep(shown, next)
