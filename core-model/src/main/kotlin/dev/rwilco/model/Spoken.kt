@@ -50,10 +50,32 @@ data class SpokenActions(
     operator fun plus(other: SpokenActions) = SpokenActions(other.only ?: only, add + other.add, remove + other.remove)
 }
 
+/**
+ * A stretch of a sentence as heard — offsets into it — and the family of "when" it was read as;
+ * null for how the sentence was said rather than when: "recuérdame", a join, "con pantalla completa".
+ */
+data class HeardSpan(val range: IntRange, val family: TriggerFamily?)
+
 /** What [hear] made of a sentence. */
 sealed interface Heard {
-    /** Understood whole: write it. [said] is the sentence minus "recuérdame", for when it cannot be written after all. */
-    data class Read(val spoken: Spoken, val said: String) : Heard
+    /**
+     * Understood whole: write it. [said] is the sentence minus "recuérdame", for when it cannot be
+     * written after all.
+     *
+     * The rest is for the person checking it (0.181.0): [parts] is where in the sentence each
+     * "when" was said, so the sheet can show what was read from what; [doubts] are words left in
+     * the reminder that sound like part of a "when" nobody read ("antes de comer", "el primer"),
+     * offsets into the sentence; [alternatives] are the same sentence read the other way where
+     * the words left an hour open and both halves are waking ones ("a las 8": tonight, or
+     * tomorrow morning).
+     */
+    data class Read(
+        val spoken: Spoken,
+        val said: String,
+        val parts: List<HeardSpan> = emptyList(),
+        val doubts: List<IntRange> = emptyList(),
+        val alternatives: List<Spoken> = emptyList(),
+    ) : Heard
 
     /** "Cuando me vaya de aquí" — understood, but "aquí" is a position, and there is none yet. */
     data class NeedsHere(val text: String) : Heard
@@ -93,14 +115,18 @@ fun hear(
     val actions = ACTIONS.mapNotNull { (pattern, edit) -> pattern.find(folded.text)?.let { edit to folded.original(it.range) } }
     val asked = actions.fold(SpokenActions()) { all, (edit, _) -> all + edit }
     val skip = listOfNotNull(leadIn) + actions.map { it.second }
+    // How it was said, not when: shown, but in the prose's colour.
+    val manner = skip.map { HeardSpan(it, null) }
     val routine = ROUTINE.find(folded.text)
     val since = SINCE.find(folded.text)
     if (routine != null || since != null) {
         val reading = readWhen(mask(text, skip), now, zone, settings.dayParts, settings.savedPlaces, settings.dayShape)
-        val spans = skip + listOfNotNull(routine?.let { folded.original(it.range) }, since?.let { folded.original(it.range) }) + reading?.spans.orEmpty()
+        val marks = listOfNotNull(routine?.let { folded.original(it.range) }, since?.let { folded.original(it.range) })
+        val spans = skip + marks + reading?.spans.orEmpty()
         val span = routineSpan(reading?.understood) ?: return Heard.Unsure(said, Heard.Why.PARTIAL)
         if (HERE.containsMatchIn(folded.text)) return Heard.Unsure(said, Heard.Why.PARTIAL)
-        return written(text, spans, Spoken("", recurrence = span, actions = asked), said)
+        val parts = manner + marks.map { HeardSpan(it, null) } + reading?.spans.orEmpty().map { HeardSpan(it, TriggerFamily.TIME) }
+        return written(text, spans, Spoken("", recurrence = span, actions = asked), said, parts)
     }
     return when (val composed = composeWhen(text, skip, Context(now, zone, settings, here, hereLabel))) {
         Composed.Nothing -> Heard.Unsure(said, Heard.Why.NOTHING)
@@ -111,12 +137,15 @@ fun hear(
             is Heard.Read -> Heard.NeedsHere(said)
             else -> probe
         }
-        is Composed.Rules -> written(
-            text,
-            skip + composed.spans,
-            Spoken("", composed.rules, composed.match, composed.recurrence, composed.deadline, asked),
-            said,
-        )
+        is Composed.Rules -> {
+            val spoken = Spoken("", composed.rules, composed.match, composed.recurrence, composed.deadline, asked)
+            val alternatives = composed.alternatives.map { (rules, recurrence) -> spoken.copy(rules = rules, recurrence = recurrence) }
+            when (val heard = written(text, skip + composed.spans, spoken, said, manner + composed.parts, alternatives)) {
+                // An alternative is offered only when it could be written as it stands.
+                is Heard.Read -> heard.copy(alternatives = heard.alternatives.filter { it.toReminder("alternative", now, zone, settings) != null })
+                else -> heard
+            }
+        }
     }
 }
 
@@ -173,7 +202,7 @@ private fun routineSpan(understood: Understood?): Recurrence.Since? = when (unde
 }
 
 /** [reading] with the words that are left once [spans] are out — or why it cannot be written. */
-private fun written(text: String, spans: List<IntRange>, reading: Spoken, said: String): Heard {
+private fun written(text: String, spans: List<IntRange>, reading: Spoken, said: String, parts: List<HeardSpan>, alternatives: List<Spoken> = emptyList()): Heard {
     val words = withoutSpans(text, spans)
     if (words.isBlank()) return Heard.Unsure(said, Heard.Why.NO_WORDS)
     // What is left must not still sound like a "when": "mañana cuando llegue a casa al curro"
@@ -183,8 +212,46 @@ private fun written(text: String, spans: List<IntRange>, reading: Spoken, said: 
     // "Todos los días menos el domingo": an exception nobody can write, and the day after it
     // read as where the series starts. Not by halves.
     if (EXCEPT.containsMatchIn(Words.of(text).text)) return Heard.Unsure(said, Heard.Why.PARTIAL)
-    return Heard.Read(reading.copy(text = words), said)
+    val doubts = doubtsIn(text, spans, parts.filter { it.family != null }.map { it.range })
+    return Heard.Read(reading.copy(text = words), said, parts.sortedBy { it.range.first }, doubts, alternatives.map { it.copy(text = words) })
 }
+
+/**
+ * The words left in a reminder that sound like part of a "when" nobody read (0.181.0) — offsets
+ * into [text]. Not a reason to refuse it: what was read is a reading, and the sheet writes it.
+ * A reason to look twice, and to ask Gemini when the person has it on.
+ *
+ * Two kinds. Words that are only ever about time, wherever they are ("antes de comer", "luego",
+ * "y media"); and words that only qualify a "when" when they stand right beside one ("el
+ * **primer** lunes", "**cada**…") — elsewhere they are the thing itself ("la primera edición").
+ * Kept to words that are rarely the thing: "llamar a todos mañana" is not a doubt.
+ */
+private fun doubtsIn(text: String, spans: List<IntRange>, whens: List<IntRange>): List<IntRange> {
+    val (tokens, gone) = goneTokens(text, spans)
+    val kept = mask(text, tokens.filterIndexed { i, _ -> gone[i] }.map { it.range })
+    val folded = Words.of(kept)
+    val anywhere = DOUBTFUL.findAll(folded.text).map { folded.original(it.range) }.filterNot { it.isEmpty() }.toList()
+    fun isWhen(i: Int) = tokens.getOrNull(i)?.range?.let { token -> whens.any { it.first <= token.last && token.first <= it.last } } == true
+    val beside = tokens.indices
+        .filter { i -> !gone[i] && (isWhen(i - 1) || isWhen(i + 1)) && Words.of(tokens[i].value).text.trim() in DOUBTFUL_BESIDE }
+        .map { tokens[it].range }
+    return (anywhere + beside).distinct().sortedBy { it.first }
+}
+
+/** Only ever about time, left anywhere in the words. Folded. */
+private val DOUBTFUL = Regex(
+    "\\b(?:temprano|pronto|luego|enseguida|en un rato|dentro de un rato|mas tarde|a primera hora|a ultima hora|y media|y cuarto|menos cuarto|en punto|" +
+        "(?:la )?(?:proxima|siguiente) vez|\\d+ (?:horas?|minutos?|min|dias?|semanas?|meses|anos?)|(?:una|dos|tres|media) horas?|mediodia|medianoche|madrugada|" +
+        "antes de|despues de|hasta que|desde que|en cuanto|cuando|mientras|todos los (?:dias|meses|anos)|todas las (?:semanas|mananas|tardes|noches)|" +
+        "later|soon|early|first thing|next time|half past|quarter (?:past|to)|o clock|and a half|\\d+ (?:hours?|minutes?|days?|weeks?|months?)|midnight|noon|" +
+        "before|after|until|when|while)\\b",
+)
+
+/** What qualifies a "when" right beside it, and is rarely the thing itself. Folded. */
+private val DOUBTFUL_BESIDE = setOf(
+    "primer", "primera", "primero", "segundo", "segunda", "tercer", "tercera", "tercero", "ultimo", "ultima", "cada",
+    "first", "second", "third", "fourth", "last", "every", "each", "horas", "minutos", "hours", "minutes",
+)
 
 /**
  * The joins that only ever bring a condition in: left in the words, they brought one nobody
@@ -241,6 +308,13 @@ fun Spoken.toReminder(id: String, now: Instant, zone: ZoneId, settings: AppSetti
  * "comprar pan mañana de oferta" would lose its "de". What is left starts with a capital, as a typed reminder does.
  */
 internal fun withoutSpans(text: String, spans: List<IntRange>): String {
+    val (tokens, gone) = goneTokens(text, spans)
+    val kept = tokens.filterIndexed { i, _ -> !gone[i] }.joinToString(" ") { it.value }
+    return kept.trim(' ', ',', ';', ':', '.', '-', '—').replaceFirstChar { it.titlecase(Locale.ROOT) }
+}
+
+/** The sentence's words, and which of them [withoutSpans] takes out: the spans, and the small words that only tied them on. */
+private fun goneTokens(text: String, spans: List<IntRange>): Pair<List<MatchResult>, BooleanArray> {
     val tokens = TOKEN.findAll(text).toList()
     val gone = BooleanArray(tokens.size) { i -> spans.any { it.first <= tokens[i].range.last && tokens[i].range.first <= it.last } }
     var changed = true
@@ -269,8 +343,7 @@ internal fun withoutSpans(text: String, spans: List<IntRange>): String {
             }
         }
     }
-    val kept = tokens.filterIndexed { i, _ -> !gone[i] }.joinToString(" ") { it.value }
-    return kept.trim(' ', ',', ';', ':', '.', '-', '—').replaceFirstChar { it.titlecase(Locale.ROOT) }
+    return tokens to gone
 }
 
 private fun isJoiner(token: String): Boolean = Words.of(token).text.trim().let { it in JOINERS || it in BETWEEN_ONLY }
@@ -297,6 +370,8 @@ private val JOINERS = setOf(
 private val LEAD_IN = Regex(
     "^ (?:(?:oye|vale|ok|okay|hey) )?(?:recuerdame|recordarme|acuerdate de|avisame|apuntame|apunta|anota|anotame|" +
         "(?:pon|ponme|crea|creame) un recordatorio(?: para)?|remind me|remember to|don t let me forget|dont let me forget|" +
+        "(?:que )?no se me olvide|no te olvides|no olvides|no me dejes olvidar(?:me)?|que no me olvide|" +
+        "don t forget|dont forget|do not forget|" +
         "(?:set|add|create) a reminder)(?: (?:que|de|para|to|that|about))?\\b",
 )
 

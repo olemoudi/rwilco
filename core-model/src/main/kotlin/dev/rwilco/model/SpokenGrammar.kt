@@ -38,7 +38,8 @@ internal sealed interface Piece {
     /** A condition that is never a trigger of its own: a speed, days of the month, days of the week after "sólo si". */
     data class Fence(val condition: Condition) : Piece
 
-    data class Comes(val recurrence: Recurrence) : Piece
+    /** Something that comes back; [twin] is the same calendar at the other half of an open hour. */
+    data class Comes(val recurrence: Recurrence, val twin: Recurrence? = null) : Piece
 
     data class Bound(val deadline: Deadline) : Piece
 
@@ -61,6 +62,10 @@ internal sealed interface Composed {
         val deadline: Deadline?,
         /** Everything that was the "when" — clauses, joins, markers — to take out of the words. */
         val spans: List<IntRange>,
+        /** The same stretches, each with the family of "when" it was read as (null for a join or a marker). */
+        val parts: List<HeardSpan> = emptyList(),
+        /** The other reading of an open hour, as rules and a recurrence, when it is a waking one too. */
+        val alternatives: List<Pair<List<TriggerRule>, Recurrence>> = emptyList(),
     ) : Composed
 
     data object NeedsHere : Composed
@@ -122,10 +127,25 @@ internal fun composeWhen(text: String, skip: List<IntRange>, context: Context): 
     // A block that read nothing between two that did is words in the middle of the "when".
     if (read.any { it.said.isNullOrEmpty() && it.join != null }) return Composed.Ambiguous
     val spans = read.flatMap { block -> block.said.orEmpty().flatMap { it.spans } + listOfNotNull(block.join?.range) } + markers.map { it.second }
+    val parts = read.flatMap { block ->
+        block.said.orEmpty().flatMap { said -> said.spans.map { HeardSpan(it, said.piece.family) } } + listOfNotNull(block.join?.range?.let { HeardSpan(it, null) })
+    } + markers.map { HeardSpan(it.second, null) }
     val override = markers.map { it.first }.distinct().singleOrNull()
     if (markers.map { it.first }.distinct().size > 1) return Composed.Ambiguous
-    return rulesOf(read.filter { !it.said.isNullOrEmpty() }, override, context, spans)
+    return when (val composed = rulesOf(read.filter { !it.said.isNullOrEmpty() }, override, context, spans)) {
+        is Composed.Rules -> Composed.Rules(composed.rules, composed.match, composed.recurrence, composed.deadline, composed.spans, parts, composed.alternatives)
+        else -> composed
+    }
 }
+
+/** Which family of "when" a piece was, for the sheet to colour where it was said. */
+private val Piece.family: TriggerFamily
+    get() = when (this) {
+        is Piece.When -> trigger.family
+        is Piece.Fence -> if (condition is Condition.AtPlace || condition is Condition.Moving) TriggerFamily.PLACE else TriggerFamily.TIME
+        is Piece.Stay, Piece.Here -> TriggerFamily.PLACE
+        is Piece.Comes, is Piece.Bound -> TriggerFamily.TIME
+    }
 
 /** A trigger said beside a rule's event: whether a join brought it, and the other reading of an open hour in it. */
 private data class Side(val trigger: Trigger, val joined: Boolean, val twin: Trigger?)
@@ -289,12 +309,15 @@ private fun readClause(text: String, range: IntRange, context: Context, fence: B
     // hour ("al llegar a casa por la tarde"); alone or with a day it is the hour the person
     // keeps for it, as the chip reads it ("mañana por la tarde").
     val partsAreWindows = fence || ((mentionsPlace(words) || HERE.containsMatchIn(words) || mentionsStretch(words)) && !namesClockHour(words))
-    // A kind of day ("entre semana") is read beside any other "when"; alone it is as likely to be
-    // part of the thing itself.
-    val kindsOfDay = partsAreWindows || soundsLikeWhen(words)
+    // A kind of day ("entre semana", "los días 1 y 15", "de lunes a viernes") is a fence where a
+    // fence is being said: after "sólo si", or beside a place. Anywhere else it is a series the
+    // chip's own readers know ("fichar entre semana a las 8" is every working day at eight), or
+    // part of the thing ("planes para los fines de semana") — never a one-off fenced by it (0.181.0).
+    val kindsOfDay = fence || mentionsPlace(words) || HERE.containsMatchIn(words)
     val said = mutableListOf<Said>()
     repeat(MAX_PIECES) {
-        // Beside a "when" already read, a kind of day is part of saying when.
+        // Beside a "when" already read, a kind of day is part of saying when: "entre las 18 y las
+        // 20 entre semana".
         val next = readOne(String(chars), context, fence, partsAreWindows, kindsOfDay || said.isNotEmpty()) ?: return said
         said += next
         next.spans.forEach { span -> for (i in span) chars[i] = ' ' }
@@ -354,10 +377,10 @@ private fun readOne(text: String, context: Context, fence: Boolean, partsAreWind
         return said(Piece.Bound(Deadline.Window(LocalTime.MIDNIGHT, hour)), m)
     }
     RANDOM.find(words)?.let { m ->
-        val times = amountIn(m.groupValues[1]) ?: return@let
-        val period = if (m.groupValues[2].startsWith("sem") || m.groupValues[2] == "week") Period.WEEK else Period.DAY
+        val times = (if (m.groupValues[1].isEmpty()) ONCE_TWICE[m.groupValues[2]] else amountIn(m.groupValues[1])) ?: return@let
+        val period = if (m.groupValues[3].startsWith("sem") || m.groupValues[3] == "week") Period.WEEK else Period.DAY
         // A window said and not readable is no reading at all, never the default hours instead.
-        val window = if (m.groupValues[3].isEmpty()) null else windowOf(m.groupValues[3], m.groupValues[4], m.qualifier(5), m.groupValues[7], m.groupValues[8], m.qualifier(9), shape, today) ?: return@let
+        val window = if (m.groupValues[4].isEmpty()) null else windowOf(m.groupValues[4], m.groupValues[5], m.qualifier(6), m.groupValues[8], m.groupValues[9], m.qualifier(10), shape, today) ?: return@let
         return said(Piece.When(Trigger.Random(times, period, window?.from ?: RANDOM_FROM, window?.to ?: RANDOM_TO)), m)
     }
     // "Del 1 al 15 de octubre", "entre el 1 y el 15": a stretch of the calendar, both ends in it.
@@ -403,6 +426,7 @@ private fun readOne(text: String, context: Context, fence: Boolean, partsAreWind
             return said(Piece.Fence(Condition.OnMonthDays(days)), m)
         }
         for ((pattern, days) in DAY_KINDS) pattern.find(words)?.let { return said(Piece.When(Trigger.Weekday(days)), it) }
+        weekdayRunIn(words)?.let { (m, days) -> return said(Piece.Fence(Condition.OnDays(days)), m) }
     }
     if (fence) {
         WEEKDAY_NAMES.find(words)?.let { m ->
@@ -429,10 +453,13 @@ private fun readOne(text: String, context: Context, fence: Boolean, partsAreWind
         val fix = context.here ?: return said(Piece.Here, m)
         return said(Piece.When(hereCircle(fix, context.hereLabel)), m)
     }
-    val reading = readWhen(text, context.now, context.zone, settings.dayParts, settings.savedPlaces, settings.dayShape) ?: return null
+    // "Hoy" alone, said to a phone, is some time today: what is left of it (the chip, reading
+    // typed words, still wants an hour — "hoy he comprado pan" is not a reminder).
+    val reading = readWhen(text, context.now, context.zone, settings.dayParts, settings.savedPlaces, settings.dayShape)
+        ?: return TODAY_ALONE.find(words)?.let { said(Piece.When(Trigger.DayRandom(today)), it) }
     val piece = when (val understood = reading.understood) {
         is Understood.Once -> Piece.When(understood.trigger, (reading.twin as? Understood.Once)?.trigger)
-        is Understood.Comes -> Piece.Comes(understood.recurrence)
+        is Understood.Comes -> Piece.Comes(understood.recurrence, (reading.twin as? Understood.Comes)?.recurrence)
     }
     return Said(piece, reading.spans)
 }
@@ -504,7 +531,11 @@ private fun partWindow(part: String, parts: DayParts): DayWindow = when (part) {
 
 private val TODAY_WORDS = setOf("esta", "this")
 
+private val TODAY_ALONE = Regex("\\b(?:hoy|today)\\b")
+
 /** The hours a random draw opens on when none are said: what the random sheet opens on. */
+private val ONCE_TWICE = mapOf("once" to 1, "twice" to 2)
+
 private val RANDOM_FROM: LocalTime = LocalTime.of(10, 0)
 private val RANDOM_TO: LocalTime = LocalTime.of(20, 0)
 
@@ -560,7 +591,7 @@ private val UNTIL_DAY = Regex(
 
 /** "Tres veces al día (entre las 10 y las 20)", "una vez a la semana", "twice a day". */
 private val RANDOM = Regex(
-    "\\b${AMOUNT_WORDS_PATTERN} (?:vez|veces|times?) (?:al|por|cada|a la|a|per|every) (dia|semana|day|week)" +
+    "\\b(?:${AMOUNT_WORDS_PATTERN} (?:vez|veces|times?)|(once|twice)) (?:al|por|cada|a la|a|per|every) (dia|semana|day|week)" +
         "(?: (?:entre (?:las? )?|between )$HOUR$MINS$QUAL (?:y|and) (?:las? )?$HOUR$MINS$QUAL)?$AFTER",
 )
 
@@ -799,8 +830,23 @@ private fun rulesOf(blocks: List<Block>, override: RuleMatch?, context: Context,
         return Composed.Rules(fold.map { it.copy(conditions = it.conditions + window.asCondition()) }, match, recurrence, null, spans)
     }
     if (fold.isEmpty() && recurrence == Recurrence.None) return Composed.Ambiguous
-    return Composed.Rules(fold, match, recurrence, deadline, spans)
+    // The other half of an open hour, offered when it is a waking hour too ("a las 8": tonight's,
+    // or tomorrow morning's) — and only for one rule or one calendar, where it is one tap to
+    // understand. When the other half is asleep the person's own hours already said which.
+    val alternatives = buildList {
+        val rule = fold.singleOrNull()?.takeIf { built.size == 1 && fold === rules }
+        val twin = rule?.let { twinOf[built.single()] }
+        if (rule != null && twin != null && awake(twin, today, shape)) add(listOf(rule.copy(trigger = twin)) to recurrence)
+        val comes = sequence.mapNotNull { it.second as? Piece.Comes }.singleOrNull()
+        val calendarTwin = (comes?.twin as? Recurrence.Calendar)?.takeIf { fold.isEmpty() && recurrence == comes.recurrence }
+        if (calendarTwin != null && calendarTwin.repeat.time?.let { shape.awakeAt(calendarTwin.repeat.startsOn.atTime(it)) } == true) add(emptyList<TriggerRule>() to calendarTwin)
+    }
+    return Composed.Rules(fold, match, recurrence, deadline, spans, alternatives = alternatives)
 }
+
+/** Whether a moment, read as a date and an hour, falls in the person's waking hours. */
+private fun awake(trigger: Trigger, today: java.time.LocalDate, shape: DayShape): Boolean =
+    (settled(trigger, today) as? Trigger.AtDateTime)?.let { shape.awakeAt(it.at) } == true
 
 /** A day counted ("mañana") as the day it is, so it can be asked whether it is a state. */
 private fun settled(trigger: Trigger, today: java.time.LocalDate): Trigger =

@@ -1811,6 +1811,15 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_181_0">
+
+        <item>Dictation understands many more ways of saying it without needing Gemini: “in an hour and a half”, “a quarter to nine”, “at around 5”, “at midnight”, “first thing tomorrow”, “Monday the 14th”, “at the end of the month”, “in September”, “late October”.</item>
+        <item>And what repeats: “the first Monday of every month”, “on the 1st of every month”, “Monday to Friday at 8”, “every weekday at 8”, “weekends at 10”, “every night”, “every year on 3 March”.</item>
+        <item>With your hours in Settings › Your day: “when I wake up” is when your day starts and “before bed” half an hour before it ends (on Fridays, the weekend’s).</item>
+        <item>Places can also be said “when I go to the gym”, “when I pass by the shop”, “when I’m near home” or “next time I’m at home”; “today” on its own is today, and “don’t forget to…” no longer stays in the text.</item>
+        <item>Before, “an hour and a half” was saved as one hour with “and a half” in the text, and “Monday the 14th” as two reminders: not any more.</item>
+
+    </string-array>
     <string-array name="whats_new_0_180_0">
 
         <item>In Settings › Voice, “Test the key” asks Gemini a sample sentence with the key in the field (saved or not) and tells you whether it works, whether the key is refused or whether there was no answer. It is asked exactly as dictation asks, so if it works here, it works when you dictate.</item>

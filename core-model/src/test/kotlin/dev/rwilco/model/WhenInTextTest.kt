@@ -491,10 +491,47 @@ class WhenInTextTest {
     @Test
     fun `what comes back every week is not this week`() {
         assertEquals(Recurrence.Calendar(Trigger.Repeat(today, 1, RepeatUnit.WEEK)), comes("cada semana"))
-        assertNull(read("todos los fines de semana"))
-        assertNull(read("every weekend"))
+        // Every weekend is a weekly series on Saturday and Sunday (0.181.0), never this weekend.
+        val weekends = Recurrence.Calendar(Trigger.Repeat(LocalDate.of(2026, 8, 29), 1, RepeatUnit.WEEK, days = setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)))
+        assertEquals(weekends, comes("todos los fines de semana"))
+        assertEquals(weekends, comes("every weekend"))
         assertEquals(Trigger.RelativeDate(RelativeDay.In(1, RelativeUnit.WEEKS), null), once("dentro de una semana"))
         assertEquals(Trigger.RelativeDate(RelativeDay.In(1, RelativeUnit.MONTHS), null), once("en un mes"))
+    }
+
+    // --- what dictation taught the chip (0.181.0) ---
+
+    @Test
+    fun `the chip reads the ways people say a when that dictation learned`() {
+        assertEquals(Trigger.Countdown(90), once("sacar la ropa en hora y media"))
+        assertEquals(at(2026, 8, 27, 20, 45), once("llamar a las 9 menos cuarto"))
+        assertEquals(at(2026, 8, 27, 21), once("llamar a las 21 horas"))
+        assertEquals(at(2026, 8, 27, 17), once("llamar sobre las 5"))
+        assertEquals(at(2026, 8, 28, 0), once("llamar a medianoche"))
+        assertEquals(at(2026, 8, 27, 19, 15), once("call at quarter past 7"))
+        assertEquals(tomorrow(t(9)), once("llamar mañana a primera hora"))
+        assertEquals(Trigger.DayRandom(LocalDate.of(2026, 9, 14)), once("dentista el lunes 14"))
+        assertEquals(Trigger.DayRandom(LocalDate.of(2026, 8, 31)), once("pagar a fin de mes"))
+        assertEquals(Trigger.DateRange(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30)), once("apuntarme en septiembre"))
+        assertEquals(at(2026, 8, 28, 8), once("pastilla al levantarme"))
+        assertEquals(at(2026, 8, 27, 23), once("pastilla antes de acostarme"))
+        val workdays = DayOfWeek.entries.toSet() - DayOfWeek.SATURDAY - DayOfWeek.SUNDAY
+        assertEquals(Recurrence.Calendar(Trigger.Repeat(LocalDate.of(2026, 8, 28), 1, RepeatUnit.WEEK, time = t(8), days = workdays)), comes("fichar de lunes a viernes a las 8"))
+        assertEquals(
+            Recurrence.Calendar(Trigger.Repeat(LocalDate.of(2026, 9, 7), 1, RepeatUnit.MONTH, monthly = MonthlyOn.Nth(1, DayOfWeek.MONDAY))),
+            comes("reunión el primer lunes de cada mes"),
+        )
+        assertEquals(daily(today, t(20)), comes("pastilla todas las noches"))
+    }
+
+    @Test
+    fun `what the chip still will not guess at`() {
+        // How, not when; somebody's plans; a weekday and a number that never meet soon.
+        assertNull(read("salir temprano del trabajo"))
+        assertNull(read("planes para los fines de semana"))
+        assertNull(read("el domingo 14"))
+        // A number "to" an hour is a stretch, never minutes before it.
+        assertNull(read("from 5 to 7"))
     }
 
     // --- a place somebody has saved (0.175.0) ---

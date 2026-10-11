@@ -1509,6 +1509,30 @@ loud what DST and a change of zone do to a landing.
   to turn to — "hoy a las 9 y a las 21", the morning gone — the sentence goes to a person); and a
   calendar that only agrees with an open hour by reading it as the evening's is two hours a day
   after all. A bare window that runs forwards nowhere stays the overnight it was said as.
+- **The ways people actually say it (0.181.0).** A corpus of ~200 dictations was run through
+  `hear`, and what it missed — or worse, read by halves and wrote with the rest of its "when" left
+  in the words ("…y media", "Fichar todos") — is now read, by the chip's own readers wherever the
+  chip benefits too: an hour's fraction in a length ("una hora y media", "in 2 and a half hours",
+  `IN_HOURS_AND`), the minutes around an hour ("menos cuarto", "y diez", "21 horas", "en punto",
+  "sobre/hacia/a eso de las 5" — about five is five; `ES_TIME`, `EN_PAST`, `fractionOf`),
+  midnight, "temprano" right after a day and "a primera hora" (the morning's hour, `EARLY`), a
+  weekday with its number ("el lunes 14" is one date, the first that is both within three months —
+  `weekdayDateIn`; one that never meets is no reading), the end and start of the month, a month
+  alone or a third of one ("en septiembre", "a finales de octubre", `monthStretch`), the nth
+  weekday and a day of every month (`MonthlyOn.Nth`/`Day`, `monthly`), a run of weekdays and the
+  kinds of day as a weekly series when said as one or beside an hour ("de lunes a viernes a las
+  8", "entre semana a las 8", "every weekday"; alone, "los fines de semana" may be the thing),
+  plural parts of the day ("todas las noches"), and getting up / going to bed by the person's own
+  hours (`readRoutine`: the day's waking start, half an hour before its end — a Friday's bedtime
+  past midnight is Saturday's small hours). Spoken only: more lead-ins ("que no se me olvide"),
+  "la próxima vez que" and going to / passing by / being near a place as the doorway in, bare
+  "hoy" as what is left of today, and kinds of day as fences only where a fence is being said.
+  **A reading now says how it was read** (`Heard.Read`): `parts` — where in the sentence each
+  "when" was said, with its family (`HeardSpan`); `doubts` — words left in the reminder that
+  sound like a "when" nobody read (`doubtsIn`: words only ever about time anywhere, or an ordinal
+  or "cada" right beside a "when"; kept to words that are rarely the thing itself); and
+  `alternatives` — the other half of an open hour, for one rule or one calendar, only when it is
+  a waking hour too and passes the gate. `SpokenPhrasesTest` is the corpus as a table.
 - **A held stepper keeps counting (0.51.0).** A step is one unit on purpose (three minutes has
   to be sayable, and the countdown sheet says why), and the price was seventeen taps from thirty
   to forty-seven. `Stepper` repeats after `Motion.holdRepeatDelay`, quickening to

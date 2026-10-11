@@ -1796,6 +1796,15 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_181_0">
+
+        <item>Dictar entiende muchas más formas de decirlo sin necesitar a Gemini: «dentro de una hora y media», «a las 9 menos cuarto», «sobre las 5», «a medianoche», «mañana temprano», «a primera hora», «el lunes 14», «a final de mes», «en septiembre», «a finales de octubre».</item>
+        <item>Y lo que se repite: «el primer lunes de cada mes», «el día 1 de cada mes», «de lunes a viernes a las 8», «entre semana a las 8», «los fines de semana a las 10», «todas las noches», «todos los años el 3 de marzo».</item>
+        <item>Con tus horas de Ajustes › Tu día: «al levantarme» es cuando empieza tu día y «antes de acostarme», media hora antes de que acabe (el viernes, la del fin de semana).</item>
+        <item>Los sitios también se dicen «cuando vaya al gimnasio», «cuando pase por el Mercadona», «cuando esté cerca de casa» o «la próxima vez que esté en casa»; «hoy» a secas es hoy, y «que no se me olvide…» ya no se queda en el texto.</item>
+        <item>Antes, «una hora y media» se guardaba como una hora con «y media» en el texto, y «el lunes 14» como dos avisos: ya no.</item>
+
+    </string-array>
     <string-array name="whats_new_0_180_0">
 
         <item>En Ajustes › Voz, «Probar la clave» le pregunta a Gemini una frase de prueba con la clave que hay en el campo (guardada o no) y te dice si funciona, si no la acepta o si no ha contestado. Se pregunta igual que al dictar, así que si aquí funciona, al dictar también.</item>

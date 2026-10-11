@@ -57,6 +57,15 @@ class PatternsOnDeviceTest {
         )) {
             hear(text, now, zone, settings)
         }
+        // What dictation learned in 0.181.0: fractions, approximate hours, routines, months, series.
+        for (text in listOf(
+            "en hora y media", "a las 9 menos cuarto", "sobre las 5", "a medianoche", "quarter past 7", "mañana temprano", "el lunes 14",
+            "a final de mes", "en septiembre", "a finales de septiembre", "el primer lunes de cada mes", "el día 1 de cada mes",
+            "de lunes a viernes a las 8", "entre semana a las 8", "todas las noches", "al levantarme", "antes de acostarme",
+            "cuando vaya a casa", "la próxima vez que esté en casa", "que no se me olvide regar hoy", "twice a day",
+        )) {
+            hear(text, now, zone, settings)
+        }
         // Gemini's half (0.178.0): the schema built and an answer read back, on the phone's JSON.
         assertNotNull(geminiSchema(settings.geminiPlaces))
         assertNotNull(geminiJson.decodeFromString(GeminiReading.serializer(), """{"text":"x","match":"ANY","rules":[{"event":{"kind":"ARRIVE","place":"Casa"}}]}""").toHeard(now, zone, settings, null, "aquí", "x"))

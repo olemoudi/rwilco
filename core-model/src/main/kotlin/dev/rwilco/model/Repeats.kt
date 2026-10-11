@@ -99,7 +99,7 @@ private fun Trigger.Repeat.datesIn(block: Int): List<LocalDate> {
 }
 
 /** Where a monthly rule lands in one month. Always a real date in it. */
-private fun dayIn(month: YearMonth, rule: MonthlyOn): LocalDate = when (rule) {
+internal fun dayIn(month: YearMonth, rule: MonthlyOn): LocalDate = when (rule) {
     is MonthlyOn.Day -> month.atDay(rule.day.coerceIn(1, month.lengthOfMonth()))
     is MonthlyOn.Nth -> if (rule.ordinal < 0) {
         month.atEndOfMonth().with(TemporalAdjusters.previousOrSame(rule.day))
