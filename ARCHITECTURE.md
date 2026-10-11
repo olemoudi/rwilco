@@ -1486,7 +1486,12 @@ loud what DST and a change of zone do to a landing.
   editor takes the words. The key lives in its own DataStore (`rwilco_voice`), out of the
   settings and so out of the vault, as the vault's own token does. `GeminiReadingTest`,
   `GeminiClientTest` (MockWebServer), and `VoiceDictationTest` with a fake answer
-  (`GeminiInput.ask`).
+  (`GeminiInput.ask`). **"Probar la clave" (0.180.0, `voice/GeminiCheck.kt`)** asks one sample
+  sentence exactly as a dictation would — same instruction, schema and models — so "works" means
+  dictation will (the person's settings and places, as a dictation sends them). It tests the key
+  in the field without saving it; `GeminiCheckState` remembers which key a result was for, so an
+  edited key shows none, and deleting the key or switching Gemini off cancels and forgets a test.
+  `GeminiCheckTest`, `VoiceSettingsTest`.
 - **A bare hour is a waking one (0.179.0, the owner: "favorece siempre horas despierto, yo no
   pongo recordatorios cuando estoy durmiendo").** An hour from two to eleven said with nothing
   to settle its half of the day — no am/pm, no "de la tarde", no part of the day, no leading

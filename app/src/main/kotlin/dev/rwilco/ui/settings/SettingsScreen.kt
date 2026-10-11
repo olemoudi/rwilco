@@ -453,6 +453,7 @@ fun SettingsScreen(
             }
 
             val gemini by viewModel.gemini.collectAsStateWithLifecycle()
+            val geminiCheck by viewModel.geminiCheck.collectAsStateWithLifecycle()
             SettingsGroup(
                 matches = matches,
                 icon = Icons.Outlined.Mic,
@@ -466,6 +467,8 @@ fun SettingsScreen(
                     onEnabled = viewModel::setGeminiEnabled,
                     onKey = viewModel::setGeminiKey,
                     onClear = viewModel::clearGemini,
+                    check = geminiCheck,
+                    onCheck = viewModel::testGeminiKey,
                 )
             }
 

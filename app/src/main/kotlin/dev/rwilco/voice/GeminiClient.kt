@@ -141,9 +141,12 @@ private suspend fun Call.await(): Response = suspendCancellableCoroutine { conti
     continuation.invokeOnCancellation { cancel() }
 }
 
+/** How Gemini is asked: key, sentence, instruction, schema. */
+typealias AskGemini = suspend (key: String, sentence: String, instruction: String, schema: JsonObject) -> GeminiAnswer
+
 /** Where dictation asks Gemini; a device test puts a fake answer here, as [VoiceInput] holds a fake ear. */
 object GeminiInput {
-    var ask: suspend (key: String, sentence: String, instruction: String, schema: JsonObject) -> GeminiAnswer =
+    var ask: AskGemini =
         { key, sentence, instruction, schema -> GeminiClient(key).read(sentence, instruction, schema) }
 }
 

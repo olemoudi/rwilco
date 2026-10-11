@@ -230,7 +230,7 @@ class HomeViewModel(
     /** Whether Gemini may be asked, and with which key (0.178.0). */
     private val geminiSetup: suspend () -> GeminiSetup = { GeminiSetup() },
     /** Asks Gemini: key, sentence, instruction, schema. */
-    private val askGemini: suspend (String, String, String, kotlinx.serialization.json.JsonObject) -> GeminiAnswer = { _, _, _, _ -> GeminiAnswer.Failed },
+    private val askGemini: dev.rwilco.voice.AskGemini = { _, _, _, _ -> GeminiAnswer.Failed },
 ) : ViewModel() {
 
     /** The settings as last read, for the dictation sheet's live reading ([preview]). */

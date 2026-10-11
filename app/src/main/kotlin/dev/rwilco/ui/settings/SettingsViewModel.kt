@@ -2,6 +2,15 @@ package dev.rwilco.ui.settings
 
 import androidx.lifecycle.ViewModel
 import dev.rwilco.voice.GeminiSetup
+import dev.rwilco.voice.AskGemini
+import dev.rwilco.voice.GeminiAnswer
+import dev.rwilco.voice.GeminiCheckState
+import dev.rwilco.voice.GeminiInput
+import dev.rwilco.voice.geminiKeyOf
+import dev.rwilco.voice.tryGeminiKey
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import dev.rwilco.voice.GeminiStore
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -77,13 +86,41 @@ class SettingsViewModel(
     val clock: Clock,
     /** Gemini's key and switch, for dictation's fallback (0.178.0). */
     private val geminiStore: GeminiStore? = null,
+    /** Asks Gemini, for "Probar la clave". */
+    private val askGemini: AskGemini = { _, _, _, _ -> GeminiAnswer.Failed },
 ) : ViewModel() {
+
+    private val _geminiCheck = MutableStateFlow<GeminiCheckState?>(null)
+
+    /** The last check of a key, and which key it was. */
+    val geminiCheck: StateFlow<GeminiCheckState?> = _geminiCheck
+
+    private var checking: Job? = null
+
+    /** "Probar la clave": the key in the field, saved or not, asked a sample sentence the way dictation asks. */
+    fun testGeminiKey(raw: String) {
+        val key = geminiKeyOf(raw)
+        if (key.isEmpty()) return
+        checking?.cancel()
+        _geminiCheck.value = GeminiCheckState(key, result = null)
+        checking = viewModelScope.launch {
+            val current = settings.filterNotNull().first()
+            _geminiCheck.value = GeminiCheckState(key, tryGeminiKey(key, clock.instant(), clock.zone, current, askGemini))
+        }
+    }
+
+    /** A test, in flight or answered, goes with the key or the switch: it outlives neither. */
+    private fun forgetTest() {
+        checking?.cancel()
+        _geminiCheck.value = null
+    }
 
     /** Whether dictation may ask Gemini, and with which key. */
     val gemini: StateFlow<GeminiSetup> = (geminiStore?.setup ?: kotlinx.coroutines.flow.flowOf(GeminiSetup()))
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GeminiSetup())
 
     fun setGeminiEnabled(enabled: Boolean) {
+        if (!enabled) forgetTest()
         viewModelScope.launch { geminiStore?.setEnabled(enabled) }
     }
 
@@ -92,6 +129,7 @@ class SettingsViewModel(
     }
 
     fun clearGemini() {
+        forgetTest()
         viewModelScope.launch { geminiStore?.clear() }
     }
 
@@ -383,6 +421,7 @@ class SettingsViewModel(
                 app.placeLog,
                 app.clock,
                 app.geminiStore,
+                askGemini = { key, sentence, instruction, schema -> GeminiInput.ask(key, sentence, instruction, schema) },
             ) as T
     }
 }

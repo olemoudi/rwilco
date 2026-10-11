@@ -141,6 +141,11 @@
     <string name="voice_gemini_key_missing">Without a key Gemini is not asked. A free one takes a minute.</string>
     <string name="voice_gemini_get_key">Get a free key</string>
     <string name="voice_gemini_save_key">Save the key</string>
+    <string name="voice_gemini_check">Test the key</string>
+    <string name="voice_gemini_checking">Asking Gemini a sample sentence…</string>
+    <string name="voice_gemini_check_works">It works: Gemini understood a sample sentence.</string>
+    <string name="voice_gemini_check_refused">Gemini doesn\'t accept this key. Check it was copied whole.</string>
+    <string name="voice_gemini_check_no_answer">Couldn\'t test it: Gemini didn\'t answer properly. It may be the connection, too many asks in a row (with a free key, wait a minute) or a fault at Gemini\'s end.</string>
     <string name="voice_gemini_clear">Delete the key</string>
     <string-array name="settings_keywords_voice">
         <item>dictation</item>
@@ -1806,6 +1811,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_180_0">
+
+        <item>In Settings › Voice, “Test the key” asks Gemini a sample sentence with the key in the field (saved or not) and tells you whether it works, whether the key is refused or whether there was no answer. It is asked exactly as dictation asks, so if it works here, it works when you dictate.</item>
+
+    </string-array>
     <string-array name="whats_new_0_179_0">
 
         <item>An hour said on its own (“at 5”, “at 9”) is now always one you are awake at, by your hours in Settings › Your day: “call mum at 5” said at three is today at 17:00, not five tomorrow morning. If both are, the next to come. With “in the morning”, “in the afternoon”, “am” or “pm”, what you say goes.</item>
