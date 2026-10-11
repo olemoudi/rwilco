@@ -174,7 +174,7 @@ private fun hourIn(words: String, parts: DayParts): Hour {
     fun hour(time: LocalTime?, vararg said: MatchResult?) =
         Hour(time, today, if (time == null) listOfNotNull(todayMatch?.range) else (said.toList() + todayMatch).mapNotNull { it?.range })
     ES_TIME.find(words)?.let { m ->
-        return hour(timeOf(m.groupValues[1], m.groupValues[2], m.groupValues[3], m.groupValues[4], late), m, night, afternoon, morning)
+        return hour(timeOf(m.groupValues[1], m.groupValues[2], m.groupValues[3], m.groupValues[4].ifEmpty { m.groupValues[5] }, late), m, night, afternoon, morning)
     }
     EN_AT.find(words)?.let { m -> return hour(timeOf(m.groupValues[1], m.groupValues[2], "", m.groupValues[3], late), m, night, afternoon, morning) }
     EN_PM.find(words)?.let { m -> return hour(timeOf(m.groupValues[1], m.groupValues[2], "", m.groupValues[3], late), m, night, afternoon, morning) }
@@ -188,8 +188,15 @@ private fun hourIn(words: String, parts: DayParts): Hour {
 }
 
 /** Null for an hour or a minute that does not exist: a typo is not an offer. */
-private fun timeOf(hourRaw: String, minuteRaw: String, fraction: String, qualifier: String, late: Boolean): LocalTime? {
+private fun timeOf(hourRaw: String, minuteRaw: String, fraction: String, qualifierRaw: String, late: Boolean): LocalTime? {
     var hour = hourRaw.toIntOrNull() ?: HOUR_WORDS[hourRaw] ?: return null
+    // "p. m." is pm, and "in the evening" is the night's arithmetic.
+    val qualifier = when (val said = qualifierRaw.filter(Char::isLetter)) {
+        "morning" -> "manana"
+        "afternoon" -> "tarde"
+        "evening", "night" -> "noche"
+        else -> said
+    }
     val minute = when {
         minuteRaw.isNotEmpty() -> minuteRaw.toInt()
         fraction == "media" -> 30
@@ -412,11 +419,24 @@ internal fun savedPlaceAt(words: String, after: Int, places: List<SavedPlace>): 
         .sortedByDescending { it.second.length }
     val starts = listOf(after) + ARTICLES.filter { words.startsWith(" $it ", after) }.map { after + it.length + 1 }
     for (start in starts) {
-        val (place, name) = named.firstOrNull { words.startsWith(it.second, start) } ?: continue
-        return place to start + name.length - 2
+        for ((place, name) in named) {
+            if (!words.startsWith(name, start)) continue
+            val end = start + name.length - 2
+            // "Casa de Juan" is somebody else's house, not the place called Casa: a name followed
+            // by "de" and a word that is not a time of day is the start of a longer one.
+            val of = OF_SOMEONE.find(words, end + 1)?.takeIf { it.range.first == end + 1 }
+            if (of != null && of.groupValues[1] !in OF_A_TIME) continue
+            return place to end
+        }
     }
     return null
 }
+
+/** " de juan", " del trabajo": what follows a name that may make it a longer one. */
+private val OF_SOMEONE = Regex(" (?:de|del|of) (\\S+)")
+
+/** The words after "de" that say when rather than whose: "llegar a casa de noche". */
+private val OF_A_TIME = setOf("noche", "madrugada", "manana", "tarde", "dia", "vuelta", "nuevo", "paso", "camino", "night", "day")
 
 
 // --- vocabulary ---
@@ -477,9 +497,16 @@ private val MONTH_EN = "(" + MONTHS_EN.keys.joinToString("|") + ")"
 private val TODAY = Regex("\\bhoy\\b|\\btoday\\b")
 /** "Esta tarde" is this afternoon: a part of *today*, whichever part it is. */
 private val THIS_PART = Regex("\\besta (?:manana|tarde|noche)\\b|\\btonight\\b|\\bthis (?:morning|afternoon|evening)\\b")
-private val ES_TIME = Regex("\\ba las? $ES_HOUR_PATTERN${MINUTES}h?(?: y (media|cuarto))?(?: de la (manana|tarde|noche))?\\b")
-private val EN_AT = Regex("\\bat $EN_HOUR_PATTERN$MINUTES ?(am|pm)?\\b")
-private val EN_PM = Regex("\\b(\\d{1,2})$MINUTES ?(am|pm)\\b")
+/**
+ * am/pm however a recogniser writes it: "pm", "p.m.", Spanish "p. m.". One group; the dots and
+ * the space are dropped before it is read ([timeOf]). What follows it is a space or a full stop,
+ * since the dot is part of it and `\\b` cannot follow a dot.
+ */
+private const val AM_PM = "(a\\.? ?m|p\\.? ?m)\\.?"
+private const val END = "(?=[\\s.])"
+private val ES_TIME = Regex("\\ba las? $ES_HOUR_PATTERN${MINUTES}h?(?: y (media|cuarto))?(?: de la (manana|tarde|noche)| ?$AM_PM)?$END")
+private val EN_AT = Regex("\\bat $EN_HOUR_PATTERN$MINUTES(?: ?$AM_PM)?$END")
+private val EN_PM = Regex("\\b(\\d{1,2})$MINUTES ?$AM_PM$END")
 /** A bare clock needs the colon (or the h): "12.50" is a price. The dot only counts after "a las"/"at". */
 private val CLOCK = Regex("\\b(\\d{1,2})[:h](\\d{2})\\b")
 private val NOON = Regex("\\bat (?:noon|midday)\\b|\\ba(?:l)? mediodia\\b")

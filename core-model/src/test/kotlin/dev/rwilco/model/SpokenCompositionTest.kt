@@ -4,6 +4,7 @@ import dev.rwilco.model.Fixtures.now
 import dev.rwilco.model.Fixtures.zone
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -294,6 +295,66 @@ class SpokenCompositionTest {
     fun `joins that are part of the thing itself stay in the words`() {
         assertEquals("Tomar las dos pastillas al mismo tiempo", read("tomar las dos pastillas al mismo tiempo a las 9").text)
         assertEquals("Llamar antes del partido", read("llamar antes del partido a las 9").text)
+    }
+
+    // --- what the final review round found (0.179.0) ---
+
+    @Test
+    fun `pm written with dots is still the afternoon`() {
+        assertEquals("Call mom" to listOf(TriggerRule(Trigger.RelativeDate(RelativeDay.In(1, RelativeUnit.DAYS), t(17)))), read("remind me to call mom tomorrow at 5 p.m.").let { it.text to it.rules })
+        assertEquals("Llamar a mamá" to listOf(TriggerRule(Trigger.RelativeDate(RelativeDay.In(1, RelativeUnit.DAYS), t(17)))), read("llamar a mamá mañana a las 5 p. m.").let { it.text to it.rules })
+    }
+
+    @Test
+    fun `somebody else's house is not the place called Casa`() {
+        assertTrue(heard("comprar vino cuando llegue a casa de Juan") is Heard.Unsure)
+        assertTrue(heard("llevar el regalo cuando llegue a casa de mi madre") is Heard.Unsure)
+        assertEquals(listOf(TriggerRule(arrive(casa))), read("poner la lavadora cuando llegue a casa de noche").rules.map { it.copy(conditions = emptyList()) }.take(1))
+    }
+
+    @Test
+    fun `an English part of the day qualifies the hours of a stretch`() {
+        assertEquals(listOf(TriggerRule(Trigger.Interval(t(17), t(19)))), read("call mom between 5 and 7 in the evening").rules)
+        assertEquals(listOf(TriggerRule(Trigger.Random(3, Period.DAY, t(9), t(21)))), read("drink water three times a day between 9 in the morning and 9 in the evening").rules)
+    }
+
+    @Test
+    fun `a stretch with no qualifier is read as a whole, never overnight by accident`() {
+        assertEquals(listOf(TriggerRule(Trigger.Interval(t(7), t(8)))), read("llamar a mamá entre las 7 y las 8").rules)
+        assertEquals(listOf(TriggerRule(Trigger.Interval(t(10), t(14)))), read("estudiar de 10 a 2").rules)
+        assertEquals(listOf(TriggerRule(Trigger.Interval(t(17), t(19)))), read("estirar de 5 a 7").rules)
+    }
+
+    @Test
+    fun `numbers that count something are not hours or days`() {
+        assertEquals("Hacer de 10 a 15 flexiones", read("hacer de 10 a 15 flexiones mañana").text)
+        assertEquals("Comprar entre 2 y 3 kilos de naranjas", read("comprar entre 2 y 3 kilos de naranjas mañana").text)
+        assertEquals("Estudiar los temas del 1 al 5", read("estudiar los temas del 1 al 5 mañana").text)
+    }
+
+    @Test
+    fun `a day left out, or the day after said alone, is not written by halves`() {
+        assertEquals(Heard.Why.PARTIAL, unsure("tomar la pastilla todos los días menos el domingo"))
+        assertEquals(Heard.Why.PARTIAL, unsure("take the pills every day except sunday at 9"))
+        assertEquals(Heard.Why.PARTIAL, unsure("comprar pan mañana o pasado"))
+    }
+
+    @Test
+    fun `two moments said side by side with no join are two answers`() {
+        assertEquals(Heard.Why.PARTIAL, unsure("comprar pan cuando llegue a casa a las 7"))
+        // With a join they ring twice, as before.
+        assertEquals(RuleMatch.ANY, read("comprar pan al llegar a casa y a las 7").match)
+    }
+
+    @Test
+    fun `days on the calendar joined by and are either of them`() {
+        val spoken = read("regar las plantas el lunes y el jueves")
+        assertEquals("Regar las plantas", spoken.text)
+        assertEquals(
+            listOf(TriggerRule(Trigger.RelativeDate(RelativeDay.NextWeekday(DayOfWeek.MONDAY))), TriggerRule(Trigger.RelativeDate(RelativeDay.NextWeekday(DayOfWeek.THURSDAY)))),
+            spoken.rules,
+        )
+        assertEquals(RuleMatch.ANY, spoken.match)
     }
 
     // --- more than one reading ---

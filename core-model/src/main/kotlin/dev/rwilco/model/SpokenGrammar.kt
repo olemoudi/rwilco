@@ -380,6 +380,7 @@ private fun readOne(text: String, context: Context, fence: Boolean, partsAreWind
     }
     for (pattern in WINDOWS) {
         pattern.find(words)?.let { m ->
+            if (countsSomething(words, m)) return@let
             val window = windowOf(m.groupValues[1], m.groupValues[2], m.qualifier(3), m.groupValues[5], m.groupValues[6], m.qualifier(7)) ?: return@let
             return said(Piece.When(Trigger.Interval(window.from, window.to)), m)
         }
@@ -427,21 +428,48 @@ private fun readOne(text: String, context: Context, fence: Boolean, partsAreWind
     return Said(piece, reading.spans)
 }
 
-/** Two hours said as a stretch, each with its own qualifier or one for both: "de 5 a 7 de la tarde". */
+/**
+ * Two hours said as a stretch, each with its own qualifier or one for both: "de 5 a 7 de la
+ * tarde". With no qualifier at all the stretch is read **as a whole**: both ends from one to seven
+ * are the afternoon's ("de 5 a 7" is nobody's small hours), and an end that would come before the
+ * start is the same end twelve hours on ("de 10 a 2" is ten till two) — never one end in the
+ * evening and the other in the morning, which is how "entre las 7 y las 8" became an overnight.
+ */
 private fun windowOf(fromRaw: String, fromMinutes: String, fromQualifier: String, toRaw: String, toMinutes: String, toQualifier: String): DayWindow? {
     if (fromRaw.isEmpty() || toRaw.isEmpty()) return null
     val qualifier = toQualifier.ifEmpty { fromQualifier }
-    // An hour from one to seven said with nothing beside it, inside a stretch, is the
-    // afternoon's: "de 5 a 7" is nobody's small hours.
-    fun hour(raw: String, minutes: String, own: String): LocalTime? {
-        val said = own.ifEmpty { qualifier }
-        val plain = said.isEmpty() && (raw.toIntOrNull() ?: amountIn(raw) ?: 0) in 1..7
-        return hourOf(raw, minutes, said, late = plain)
+    var from = hourOf(fromRaw, fromMinutes, fromQualifier.ifEmpty { qualifier }, late = false) ?: return null
+    var to = hourOf(toRaw, toMinutes, toQualifier.ifEmpty { qualifier }, late = false) ?: return null
+    if (qualifier.isEmpty()) {
+        val bareFrom = fromRaw.toIntOrNull() ?: amountIn(fromRaw)
+        val bareTo = toRaw.toIntOrNull() ?: amountIn(toRaw)
+        // `hourOf` already makes a bare one the afternoon's; the rest of the rule is the pair's.
+        if (bareFrom != null && bareTo != null && bareFrom in 1..7 && bareTo in 1..7) {
+            from = hourOf(fromRaw, fromMinutes, "pm", late = false) ?: return null
+            to = hourOf(toRaw, toMinutes, "pm", late = false) ?: return null
+        } else if (to < from && to.plusHours(12) > from && to.hour < 12) {
+            to = to.plusHours(12)
+        }
     }
-    val from = hour(fromRaw, fromMinutes, fromQualifier) ?: return null
-    val to = hour(toRaw, toMinutes, toQualifier) ?: return null
     return if (from == to) null else DayWindow(from, to)
 }
+
+/**
+ * Whether the words right after a bare range ("de 10 a 15 …") count something — "flexiones",
+ * "kilos", "días" — which makes the numbers that thing's amount and not hours. A range with an
+ * article ("entre las 5 y las 7"), minutes or a qualifier is hours whatever follows.
+ */
+private fun countsSomething(words: String, match: MatchResult): Boolean {
+    if (HOURS_SAID.containsMatchIn(match.value)) return false
+    val next = WORD.find(words, match.range.last + 1)?.value ?: return false
+    return next !in FILLERS && next !in ALONG && !next.first().isDigit()
+}
+
+/** What makes a range hours beyond doubt: "las", a clock, a qualifier. */
+private val HOURS_SAID = Regex("\\blas? |[:h]\\d{2}|\\bde la |\\bin the |\\b[ap]\\.? ?m\\b")
+
+/** The words that may follow a stretch of hours and are part of saying when: "de 5 a 7 los lunes", "… cuando llegue". */
+private val ALONG = setOf("los", "y", "o", "cuando", "mientras", "al", "si", "every", "on", "and", "or", "when", "if", "while", "cada", "todos", "todas", "solo")
 
 /** The stretch a part of the day stands for: from its hour to the next part's ("la tarde" is from the afternoon to the evening). */
 private fun partWindow(part: String, parts: DayParts): DayWindow = when (part) {
@@ -462,7 +490,10 @@ private const val MINS = "(?:[:.h](\\d{2}))?"
  * What qualifies an hour, as two groups: a part of the day after "de la"/"in the", or am/pm with
  * or without its space ("10pm"). Never a bare "mañana" after a number — that is tomorrow.
  */
-private const val QUAL = "(?: (?:de la|in the) (manana|tarde|noche|morning|afternoon|evening)| ?(am|pm))?"
+private const val QUAL = "(?: (?:de la|in the) (manana|tarde|noche|morning|afternoon|evening)| ?(a\\.? ?m|p\\.? ?m)\\.?)?"
+
+/** After an hour that may end in a dot ("p.m."): a space or a full stop, as `\\b` cannot follow a dot. */
+private const val AFTER = "(?=[\\s.])"
 
 /** The two qualifier groups starting at [index], as the one qualifier said. */
 private fun MatchResult.qualifier(index: Int): String = groupValues[index].ifEmpty { groupValues[index + 1] }
@@ -470,19 +501,26 @@ private fun MatchResult.qualifier(index: Int): String = groupValues[index].ifEmp
 /** "Si es", "cuando sea", "if it's": how a condition is led in, which goes with it. */
 private const val IF_IT_IS = "(?:(?:si|cuando|mientras|if|when|while) )?(?:(?:es|sea|estoy|este|it s|it is|i m|i am) )?"
 
-/** "Entre las 5 y las 7", "de 17 a 19", "between 5 and 7", "from 5 to 7pm". Eight groups: hour, minutes, two qualifiers, twice. */
+/**
+ * "Entre las 5 y las 7", "de 17 a 19", "between 5 and 7", "from 5 to 7pm". Eight groups: hour,
+ * minutes, two qualifiers, twice. A bare "de 10 a 15" followed by a word that counts something
+ * ("flexiones", "kilos", "días") is that thing's amount, not hours: see [countsSomething].
+ */
 private val WINDOWS: List<Regex> = listOf(
-    Regex("\\b${IF_IT_IS}entre (?:las? )?$HOUR$MINS$QUAL y (?:las? )?$HOUR$MINS$QUAL\\b"),
-    Regex("\\b${IF_IT_IS}de (?:las? )?$HOUR$MINS$QUAL a (?:las? )?$HOUR$MINS$QUAL\\b"),
-    Regex("\\b${IF_IT_IS}between $HOUR$MINS$QUAL and $HOUR$MINS$QUAL\\b"),
-    Regex("\\b${IF_IT_IS}from $HOUR$MINS$QUAL to $HOUR$MINS$QUAL\\b"),
+    Regex("\\b${IF_IT_IS}entre (?:las? )?$HOUR$MINS$QUAL y (?:las? )?$HOUR$MINS$QUAL$AFTER"),
+    Regex("\\b${IF_IT_IS}de (?:las? )?$HOUR$MINS$QUAL a (?:las? )?$HOUR$MINS$QUAL$AFTER"),
+    Regex("\\b${IF_IT_IS}between $HOUR$MINS$QUAL and $HOUR$MINS$QUAL$AFTER"),
+    Regex("\\b${IF_IT_IS}from $HOUR$MINS$QUAL to $HOUR$MINS$QUAL$AFTER"),
 )
 
 /** "Del 1 al 15 de octubre", "entre el 1 y el 15", "from the 1st to the 15th of october". Four groups: day, month, day, month. */
 private val DATE_SPANS: List<Regex> = listOf(
-    Regex("\\b(?:del|desde el) (\\d{1,2})(?: de $MONTH_WORDS_PATTERN)? (?:al|hasta el) (\\d{1,2})(?: de $MONTH_WORDS_PATTERN)?\\b"),
-    Regex("\\bentre el (\\d{1,2})(?: de $MONTH_WORDS_PATTERN)? y el (\\d{1,2})(?: de $MONTH_WORDS_PATTERN)?\\b"),
-    Regex("\\bfrom the (\\d{1,2})(?:st|nd|rd|th)?(?: of $MONTH_WORDS_PATTERN)? (?:to|until) the (\\d{1,2})(?:st|nd|rd|th)?(?: of $MONTH_WORDS_PATTERN)?\\b"),
+    // A month on at least one end: "del 1 al 5" alone is as likely to be pages, chapters or
+    // themes as days, and a bare number is never guessed at.
+    Regex("\\b(?:del|desde el) (\\d{1,2})(?: de $MONTH_WORDS_PATTERN)? (?:al|hasta el) (\\d{1,2}) de $MONTH_WORDS_PATTERN\\b"),
+    Regex("\\b(?:del|desde el) (\\d{1,2}) de $MONTH_WORDS_PATTERN (?:al|hasta el) (\\d{1,2})()\\b"),
+    Regex("\\bentre el (\\d{1,2})(?: de $MONTH_WORDS_PATTERN)? y el (\\d{1,2}) de $MONTH_WORDS_PATTERN\\b"),
+    Regex("\\bfrom the (\\d{1,2})(?:st|nd|rd|th)?(?: of $MONTH_WORDS_PATTERN)? (?:to|until) the (\\d{1,2})(?:st|nd|rd|th)? of $MONTH_WORDS_PATTERN\\b"),
 )
 
 /** "Al llevar 10 minutos en casa", "al llevar media hora fuera de la oficina". Groups: amount, unit, side. */
@@ -499,7 +537,7 @@ private val UNTIL_DAY = Regex(
 /** "Tres veces al día (entre las 10 y las 20)", "una vez a la semana", "twice a day". */
 private val RANDOM = Regex(
     "\\b${AMOUNT_WORDS_PATTERN} (?:vez|veces|times?) (?:al|por|cada|a la|a|per|every) (dia|semana|day|week)" +
-        "(?: (?:entre (?:las? )?|between )$HOUR$MINS$QUAL (?:y|and) (?:las? )?$HOUR$MINS$QUAL)?\\b",
+        "(?: (?:entre (?:las? )?|between )$HOUR$MINS$QUAL (?:y|and) (?:las? )?$HOUR$MINS$QUAL)?$AFTER",
 )
 
 /** "Y cuando lleve diez minutos allí", "al llevar 10 minutos en casa", "after 10 minutes there". */
@@ -532,7 +570,7 @@ private val TIMER = Regex(
 )
 
 /** "Antes de las 22", "como mucho hasta las 10", "before 10pm". Three groups: hour, minutes, qualifier. */
-private val BEFORE = Regex("\\b(?:antes de las?|como mucho (?:hasta )?(?:las?)|by|before) $HOUR$MINS$QUAL\\b")
+private val BEFORE = Regex("\\b(?:antes de las?|como mucho (?:hasta )?(?:las?)|by|before) $HOUR$MINS$QUAL$AFTER")
 
 /**
  * "Los días 1 y 15", "el día 1 de cada mes": days of the month, a fence. A single "el día 5"
@@ -594,7 +632,10 @@ private fun rulesOf(blocks: List<Block>, override: RuleMatch?, context: Context,
 
     // Rules being built: an event, its fences, and the triggers said beside it with no join
     // ("al llegar a casa por la tarde"), which become fences or rules once the joins are known.
-    class Draft(var event: Trigger?, val fences: MutableList<Condition> = mutableListOf(), val beside: MutableList<Trigger> = mutableListOf())
+    // Each trigger beside the event carries whether a join brought it ("y") or it was merely said
+    // next to it: two moments said side by side with nothing between them ("cuando llegue a casa
+    // a las 7") are one sentence with two answers, not "either".
+    class Draft(var event: Trigger?, val fences: MutableList<Condition> = mutableListOf(), val beside: MutableList<Pair<Trigger, Boolean>> = mutableListOf())
     val drafts = mutableListOf<Draft>()
     val today = context.now.atZone(context.zone).toLocalDate()
     val shape = context.settings.dayShape
@@ -626,7 +667,7 @@ private fun rulesOf(blocks: List<Block>, override: RuleMatch?, context: Context,
                     val orphan = drafts.lastOrNull()?.takeIf { it.event == null && drafts.size == 1 }
                     if (orphan != null) orphan.event = piece.trigger else drafts += Draft(piece.trigger)
                 }
-                else -> drafts.last().beside += piece.trigger
+                else -> drafts.last().beside += piece.trigger to (join == Join.AND)
             }
         }
     }
@@ -644,23 +685,28 @@ private fun rulesOf(blocks: List<Block>, override: RuleMatch?, context: Context,
         // One moment and states is one fenced rule; only states, all of them at once; only
         // moments, either of them (the owner's reading: "a las 9 y a las 21" rings twice).
         val draft = real.single()
-        val all = listOf(draft.event!!) + draft.beside
-        val moments = all.filter { stateOf(it) == null }
-        val states = all.filter { stateOf(it) != null }
+        val all = listOf(draft.event!! to true) + draft.beside
+        val moments = all.filter { stateOf(it.first) == null }
+        val states = all.filter { stateOf(it.first) != null }.map { it.first }
         when {
-            moments.size == 1 -> listOf(TriggerRule(moments.single(), states.map { stateOf(it)!! } + draft.fences))
+            moments.size == 1 -> listOf(TriggerRule(moments.single().first, states.map { stateOf(it)!! } + draft.fences))
             moments.isEmpty() && states.size == 1 -> listOf(TriggerRule(states.single(), draft.fences))
+            // Days on the calendar never hold at once ("el lunes y el jueves"): either of them.
+            moments.isEmpty() && states.all { settled(it, today) is Trigger.DayRandom } -> {
+                if (draft.fences.isNotEmpty()) return Composed.Ambiguous
+                states.map { TriggerRule(it) }
+            }
             moments.isEmpty() -> {
                 if (draft.fences.isNotEmpty()) return Composed.Ambiguous
                 match = RuleMatch.TOGETHER
                 states.map { TriggerRule(it) }
             }
-            states.isEmpty() && draft.fences.isEmpty() -> moments.map { TriggerRule(it) }
+            states.isEmpty() && draft.fences.isEmpty() && moments.drop(1).all { it.second } -> moments.map { TriggerRule(it.first) }
             else -> return Composed.Ambiguous
         }
     } else {
         // Each joined piece its own rule, and what was said beside one is its fence.
-        real.map { draft -> TriggerRule(draft.event!!, draft.beside.map { stateOf(it) ?: return Composed.Ambiguous } + draft.fences) }
+        real.map { draft -> TriggerRule(draft.event!!, draft.beside.map { stateOf(it.first) ?: return Composed.Ambiguous } + draft.fences) }
     }
     match = override ?: match
     if (rules.size < 2) match = RuleMatch.ANY

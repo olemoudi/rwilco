@@ -26,6 +26,7 @@ import dev.rwilco.R
 import dev.rwilco.ui.components.RwilcoCard
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.voice.GeminiSetup
+import dev.rwilco.voice.geminiKeyOf
 
 /**
  * Settings › Voice (0.178.0): where dictation's words are recognised, and Gemini as the fallback
@@ -75,8 +76,8 @@ fun VoiceCard(
                     hint = stringResource(if (setup.key.isBlank()) R.string.voice_gemini_key_missing else R.string.voice_gemini_key_hint),
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                    if (draft.trim() != setup.key && draft.isNotBlank()) {
-                        TextButton(onClick = { onKey(draft.trim()) }, modifier = Modifier.heightIn(min = Tokens.sizes.touch)) {
+                    if (geminiKeyOf(draft) != setup.key && geminiKeyOf(draft).isNotEmpty()) {
+                        TextButton(onClick = { onKey(draft) }, modifier = Modifier.heightIn(min = Tokens.sizes.touch)) {
                             Text(stringResource(R.string.voice_gemini_save_key))
                         }
                     }

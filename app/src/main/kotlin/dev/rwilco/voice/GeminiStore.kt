@@ -47,7 +47,7 @@ class GeminiStore(private val context: Context) {
     }
 
     suspend fun setKey(key: String) {
-        context.voiceDataStore.edit { it[apiKey] = key.trim() }
+        context.voiceDataStore.edit { it[apiKey] = geminiKeyOf(key) }
     }
 
     /** The key gone, and the switch with it. */
@@ -58,3 +58,11 @@ class GeminiStore(private val context: Context) {
         }
     }
 }
+
+/**
+ * A key as it can travel in a header: printable ASCII and nothing else. A key pasted with a
+ * non-breaking or zero-width space in it, or typed with an "ñ", would otherwise be refused by the
+ * HTTP layer itself on every ask — loudly, and with the key in the message.
+ */
+fun geminiKeyOf(raw: String): String = raw.filter { it.code in 0x21..0x7e }
+

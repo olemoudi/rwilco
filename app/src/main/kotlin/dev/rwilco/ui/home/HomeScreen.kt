@@ -218,9 +218,9 @@ fun HomeScreen(
     LaunchedEffect(readiness, placesReady) { viewModel.noteAlertReadiness(readiness, placesReady) }
     var choosing by rememberSaveable { mutableStateOf(false) }
     // The dictation sheet (0.176.0), open from the row at the top, the launcher shortcut or the
-    // widget. Its state is the ViewModel's: see VoiceState for why.
-    val voice by viewModel.voice.collectAsStateWithLifecycle()
-    val voiceReading by viewModel.voicePreview.collectAsStateWithLifecycle()
+    // widget. Its state is the ViewModel's (see VoiceState for why), and read only inside
+    // [DictationSheet]: the mic's level changes it a dozen times a second while listening, and
+    // read here it would recompose the whole of Home with it.
     val micContext = LocalContext.current
     val openDictation = {
         viewModel.openVoice(ContextCompat.checkSelfPermission(micContext, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
@@ -352,43 +352,15 @@ fun HomeScreen(
         openDictation()
         onDictationConsumed()
     }
-    voice?.let { current ->
-        val voiceWhy = mapOf(
-            VoiceOutcome.Why.NOTHING to stringResource(R.string.voice_to_editor_nothing),
-            VoiceOutcome.Why.PARTIAL to stringResource(R.string.voice_to_editor_partial),
-            VoiceOutcome.Why.NO_WORDS to stringResource(R.string.voice_to_editor_no_words),
-            VoiceOutcome.Why.NO_FIX to stringResource(R.string.voice_to_editor_no_fix),
-            VoiceOutcome.Why.REFUSED to stringResource(R.string.voice_to_editor_refused),
-            VoiceOutcome.Why.GEMINI_KEY to stringResource(R.string.voice_to_editor_gemini_key),
-            VoiceOutcome.Why.GEMINI_FAILED to stringResource(R.string.voice_to_editor_gemini_failed),
-        )
-        val voiceUndone = stringResource(R.string.voice_undone)
-        VoiceSheet(
-            state = current,
-            reading = voiceReading,
-            today = localToday(),
-            defaultTime = state.defaultTime,
-            zone = zone,
-            onEvent = { event -> viewModel.onVoice(event, hereLabel) },
-            onStop = viewModel::stopVoice,
-            onUndo = { reminder ->
-                viewModel.closeVoice()
-                viewModel.undoSpoken(reminder)
-                snackbar.show(voiceUndone)
-            },
-            onEdit = { reminder ->
-                viewModel.closeVoice()
-                onOpen(reminder.id)
-            },
-            onConfirm = viewModel::confirmVoice,
-            onToEditor = { text, why, form ->
-                viewModel.closeVoice()
-                why?.let { snackbar.show(voiceWhy.getValue(it)) }
-                if (form != null) onNewFromForm(form) else onNewFromWords(text)
-            },
-            onClosed = viewModel::closeVoice,
-        )
-    }
+    DictationSheet(
+        viewModel = viewModel,
+        hereLabel = hereLabel,
+        defaultTime = state.defaultTime,
+        zone = zone,
+        onOpen = onOpen,
+        onNewFromWords = onNewFromWords,
+        onNewFromForm = onNewFromForm,
+    )
 
     if (choosing) {
         NewReminderChooser(
@@ -1473,3 +1445,56 @@ private fun QuietTodayRow() {
         )
     }
 }
+
+/** The dictation sheet, when there is one: the only place on Home that reads its state. */
+@Composable
+private fun DictationSheet(
+    viewModel: HomeViewModel,
+    hereLabel: String,
+    defaultTime: java.time.LocalTime,
+    zone: java.time.ZoneId,
+    onOpen: (String) -> Unit,
+    onNewFromWords: (String) -> Unit,
+    onNewFromForm: (String) -> Unit,
+) {
+    val voice by viewModel.voice.collectAsStateWithLifecycle()
+    val current = voice ?: return
+    val reading by viewModel.voicePreview.collectAsStateWithLifecycle()
+    val snackbar = LocalSnackbar.current
+    val voiceWhy = mapOf(
+        VoiceOutcome.Why.NOTHING to stringResource(R.string.voice_to_editor_nothing),
+        VoiceOutcome.Why.PARTIAL to stringResource(R.string.voice_to_editor_partial),
+        VoiceOutcome.Why.NO_WORDS to stringResource(R.string.voice_to_editor_no_words),
+        VoiceOutcome.Why.NO_FIX to stringResource(R.string.voice_to_editor_no_fix),
+        VoiceOutcome.Why.REFUSED to stringResource(R.string.voice_to_editor_refused),
+        VoiceOutcome.Why.GEMINI_KEY to stringResource(R.string.voice_to_editor_gemini_key),
+        VoiceOutcome.Why.GEMINI_FAILED to stringResource(R.string.voice_to_editor_gemini_failed),
+    )
+    val voiceUndone = stringResource(R.string.voice_undone)
+    VoiceSheet(
+        state = current,
+        reading = reading,
+        today = localToday(),
+        defaultTime = defaultTime,
+        zone = zone,
+        onEvent = { event -> viewModel.onVoice(event, hereLabel) },
+        onStop = viewModel::stopVoice,
+        onUndo = { reminder ->
+            viewModel.closeVoice()
+            viewModel.undoSpoken(reminder)
+            snackbar.show(voiceUndone)
+        },
+        onEdit = { reminder ->
+            viewModel.closeVoice()
+            onOpen(reminder.id)
+        },
+        onConfirm = viewModel::confirmVoice,
+        onToEditor = { text, why, form ->
+            viewModel.closeVoice()
+            why?.let { snackbar.show(voiceWhy.getValue(it)) }
+            if (form != null) onNewFromForm(form) else onNewFromWords(text)
+        },
+        onClosed = viewModel::closeVoice,
+    )
+}
+

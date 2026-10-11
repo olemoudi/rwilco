@@ -110,4 +110,17 @@ class GeminiReadingTest {
         assertEquals(true, mightSayWhen("call mum after lunch"))
         assertEquals(true, mightSayWhen("pagar el 2"))
     }
+
+    @Test
+    fun `what the grammar refuses a guess may not write either`() {
+        // A calendar beside a moment of its own, and a deadline one rule cannot carry.
+        assertEquals(
+            Heard.Unsure("lo dicho", Heard.Why.PARTIAL),
+            heard("""{"text":"x","match":"ANY","rules":[{"event":{"kind":"AT","date":"2026-08-28","time":"09:00"}}],"recurrence":{"kind":"CALENDAR","every":1,"unit":"DAYS","time":"21:00"}}"""),
+        )
+        assertEquals(
+            Heard.Unsure("lo dicho", Heard.Why.PARTIAL),
+            heard("""{"text":"x","match":"ANY","rules":[{"event":{"kind":"IN_MINUTES","minutes":20}}],"deadline":{"kind":"WITHIN_MINUTES","minutes":30}}"""),
+        )
+    }
 }

@@ -548,7 +548,9 @@ class HomeViewModel(
         val after = voiceStep(before, event)
         _voice.value = after
         if (after !is VoiceState.Thinking || before is VoiceState.Thinking) return
-        voiceWork = viewModelScope.launch {
+        // Off the main thread: reading a sentence is a few hundred regex passes, and the sheet is
+        // animating while it happens.
+        voiceWork = viewModelScope.launch(Dispatchers.Default) {
             val outcome = fromVoice(after.text, hereLabel)
             val answer = when (outcome) {
                 is VoiceOutcome.Created -> VoiceInputEvent.Written(outcome.reminder)
@@ -689,7 +691,7 @@ class HomeViewModel(
     fun confirmVoice() {
         val shown = _voice.value as? VoiceState.Confirm ?: return
         if (voiceWork?.isActive == true) return
-        voiceWork = viewModelScope.launch {
+        voiceWork = viewModelScope.launch(Dispatchers.Default) {
             val settings = store.settings.first()
             val reminder = shown.spoken.toReminder(shown.reminder.id, clock.instant(), clock.zone, settings)
             val next = if (reminder == null) {

@@ -73,7 +73,10 @@ class GeminiClient(
         }.toString().toRequestBody(JSON)
         for (model in models) {
             val url = baseUrl.newBuilder().addPathSegments("v1beta/models").addPathSegment("$model:generateContent").build()
-            val request = Request.Builder().url(url).header("x-goog-api-key", key).post(body).build()
+            // A key that cannot be a header value is a key Gemini would refuse anyway — and the
+            // error OkHttp throws for it carries the key in its message, so it is said as that.
+            val request = runCatching { Request.Builder().url(url).header("x-goog-api-key", geminiKeyOf(key)).post(body).build() }
+                .getOrElse { return@withContext GeminiAnswer.KeyRefused }
             val answer = try {
                 // Enqueued and awaited rather than executed, so a sheet let go of cancels the
                 // request itself and not only the wait for it.

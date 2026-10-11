@@ -1791,6 +1791,14 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_178_1">
+
+        <item>Una revisión a fondo del dictado deja de escribir cosas mal entendidas: «a las 5 p. m.» es por la tarde; «casa de Juan» ya no es tu Casa; «de 10 a 15 flexiones» o «del 1 al 5» (temas, páginas) no son horas ni días; «entre las 7 y las 8» ya no cruza la noche; y «menos el domingo», «o pasado» o dos horas dichas seguidas sin «y» van al editor en vez de guardarse a medias.</item>
+        <item>«El lunes y el jueves» suena cualquiera de los dos días. Las franjas en inglés entienden «in the evening».</item>
+        <item>Con Gemini: una clave pegada con un espacio raro ya no puede cerrar la app, y lo que Gemini proponga pasa los mismos controles que las reglas de la app.</item>
+        <item>Mientras escuchas, el inicio ya no se redibuja con cada cambio de volumen, y si giras el teléfono justo al cerrarse la hoja, lo dictado no se pierde.</item>
+
+    </string-array>
     <string-array name="whats_new_0_178_0">
 
         <item>Gemini, si quieres. En Ajustes › Voz puedes activar que, cuando una frase dictada no se entiende con las reglas de la app, se le pregunte a Gemini con tu propia clave (una gratuita de AI Studio vale). Lo que entienda se te enseña con «Guardar» y «Editar»: nunca se guarda solo.</item>

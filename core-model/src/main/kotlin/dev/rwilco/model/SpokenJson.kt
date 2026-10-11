@@ -279,6 +279,9 @@ fun GeminiReading.toHeard(now: Instant, zone: ZoneId, settings: AppSettings, her
         }
     } ?: if (rules.any { it.trigger is Trigger.Random }) Recurrence.ByTrigger else Recurrence.None
     if (rules.isEmpty() && recurrence == Recurrence.None) return Heard.Unsure(said, Heard.Why.NOTHING)
+    // What the grammar refuses, a guess may not write either: a calendar beside moments of its
+    // own is two answers to "when does it come back".
+    if (recurrence.isAnchored && rules.isNotEmpty()) return unsure
     val match = when (match) {
         "ALL" -> RuleMatch.ALL
         "TOGETHER" -> RuleMatch.TOGETHER
@@ -290,7 +293,10 @@ fun GeminiReading.toHeard(now: Instant, zone: ZoneId, settings: AppSettings, her
             "WITHIN_MINUTES" -> asked.minutes?.takeIf { it > 0 }?.let { Deadline.Timer(it) } ?: return unsure
             else -> return unsure
         }
-    }?.takeIf { deadlineApplies(it, rules, match) }
+    }
+    // A deadline the rules cannot carry is refused, not dropped: dropping it would show and write
+    // a reminder with no limit as if it were the one that was said.
+    if (deadline != null && !deadlineApplies(deadline, rules, match)) return unsure
     val asked = actions?.let {
         SpokenActions(
             only = if (it.notificationOnly == true) setOf(Action.NOTIFICATION) else null,

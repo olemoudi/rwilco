@@ -72,7 +72,9 @@ import dev.rwilco.voice.VoiceState
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -122,7 +124,13 @@ fun VoiceSheet(
     val scope = rememberCoroutineScope()
     var leaving by remember { mutableStateOf(false) }
 
-    /** Stops whatever was going on, slides it out, then answers. Once. */
+    /**
+     * Stops whatever was going on, slides it out, then answers. Once. The answer is given whatever
+     * becomes of the animation — a finger catching the sheet on its way down has still pressed
+     * the button — except when the sheet itself is being taken away (a rotation): then nothing is
+     * answered here, and the state Home's ViewModel still holds answers again on the new screen,
+     * where navigating can happen.
+     */
     fun leave(then: () -> Unit) {
         if (leaving) return
         leaving = true
@@ -131,9 +139,10 @@ fun VoiceSheet(
         scope.launch {
             try {
                 sheetState.hide()
-            } finally {
-                then()
+            } catch (cancelled: CancellationException) {
+                if (!isActive) throw cancelled
             }
+            then()
         }
     }
 

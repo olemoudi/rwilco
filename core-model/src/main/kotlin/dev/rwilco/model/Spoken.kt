@@ -180,15 +180,22 @@ private fun written(text: String, spans: List<IntRange>, reading: Spoken, said: 
     // with no "curro" saved leaves a doorway behind, and writing the rest is writing half of it.
     // Nor like a join nobody understood the other side of ("…y sólo si llueve").
     if (soundsLikeWhen(words) || LEFT_JOIN.containsMatchIn(Words.of(words).text)) return Heard.Unsure(said, Heard.Why.PARTIAL)
+    // "Todos los días menos el domingo": an exception nobody can write, and the day after it
+    // read as where the series starts. Not by halves.
+    if (EXCEPT.containsMatchIn(Words.of(text).text)) return Heard.Unsure(said, Heard.Why.PARTIAL)
     return Heard.Read(reading.copy(text = words), said)
 }
 
 /**
  * The joins that only ever bring a condition in: left in the words, they brought one nobody
  * understood ("…y sólo si llueve"). "Al mismo tiempo" or "antes del" can be part of the thing
- * itself ("tomar las dos pastillas al mismo tiempo"), so they are not here.
+ * itself ("tomar las dos pastillas al mismo tiempo"), so they are not here. And "o pasado" /
+ * "y pasado": the day after tomorrow said as its last word, which no reader takes alone.
  */
-private val LEFT_JOIN = Regex("\\b(?:solo si|siempre que|only if|as long as)\\b")
+private val LEFT_JOIN = Regex("\\b(?:solo si|siempre que|only if|as long as)\\b|\\b(?:o|y|u|and|or) pasado\\b")
+
+/** "Menos el domingo", "excepto los sábados", "except sunday": a day left out, which no reading here holds. */
+private val EXCEPT = Regex("\\b(?:menos|excepto|salvo|quitando|except|but not|apart from)(?: (?:el|los|la|las|on|the))? ${WEEKDAY_WORDS_PATTERN}s?\\b")
 
 /**
  * The reminder [Spoken] stands for, written now — or null when a person should look first.
