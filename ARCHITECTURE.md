@@ -1547,6 +1547,22 @@ loud what DST and a change of zone do to a landing.
   six seconds, the countdown a bar running out along "Listo", stopped for good by any touch on the
   sheet (the owner's call). Otherwise it waits for "Listo". Gemini's guess is shown the same way
   before "Guardar". `VoiceStepTest`, `VoiceDictationTest` (an alternative chosen; a doubt that waits).
+- **Gemini when the grammar is not sure (0.183.0, `HomeViewModel.refine`, `VoiceCheck.refined`).**
+  The owner: as clever as possible without Gemini, and Gemini when unsure, saying so — "piensa que
+  gemini puede fallar o tardar en responder". So a reading **with doubts** is still **written
+  first**, as any reading is, and Gemini is asked beside it ("Creado · mejorando la captura con
+  Gemini…", a progress bar, the sheet not closing by itself meanwhile). Its answer goes through the
+  same gate, settled at the moment the sentence was written, and only ever *offers*: the same
+  reading (`sameReading`: words with case, accents and punctuation aside, and the same rules, set,
+  recurrence, deadline, actions) clears the doubt ("Gemini lo ha entendido igual"); a different one
+  is shown as a whole sentence with "Usar esta" (`VoiceAlternative.Kind.GEMINI`), never applied
+  unseen, and once used the grammar's own reading is offered back (`ORIGINAL`; the other half of an
+  open hour, which belongs to the grammar's reading, is hidden meanwhile); no reading or no answer
+  within `GEMINI_PATIENCE_MS` (8 s) leaves it as written and says so. The unsure path (nothing
+  written yet) waits the same 8 s at most, and offers "Escribirlo yo" while it waits. Offline
+  (`isOnline`), Gemini is not asked at all. Letting the sheet go cancels the ask; the reminder stays.
+  `VoiceStepTest`, `VoiceDictationTest` (an offer used; a Gemini that never answers; the editor
+  while it thinks).
 - **A held stepper keeps counting (0.51.0).** A step is one unit on purpose (three minutes has
   to be sayable, and the countdown sheet says why), and the price was seventeen taps from thirty
   to forty-seven. `Stepper` repeats after `Motion.holdRepeatDelay`, quickening to

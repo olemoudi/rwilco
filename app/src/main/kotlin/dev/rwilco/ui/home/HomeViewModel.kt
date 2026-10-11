@@ -56,6 +56,8 @@ import dev.rwilco.model.toHeard
 import dev.rwilco.model.mightSayWhen
 import dev.rwilco.ui.editor.spokenFormJson
 import dev.rwilco.model.Recurrence
+import dev.rwilco.ui.editor.sheets.isOnline
+import dev.rwilco.voice.Refining
 import dev.rwilco.voice.VoiceAlternative
 import dev.rwilco.voice.VoiceCheck
 import dev.rwilco.voice.VoiceOutcome
@@ -94,6 +96,7 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Clock
 import dev.rwilco.model.SnoozeOffer
 import dev.rwilco.model.snoozeTerms
@@ -234,6 +237,8 @@ class HomeViewModel(
     private val geminiSetup: suspend () -> GeminiSetup = { GeminiSetup() },
     /** Asks Gemini: key, sentence, instruction, schema. */
     private val askGemini: dev.rwilco.voice.AskGemini = { _, _, _, _ -> GeminiAnswer.Failed },
+    /** Whether the phone has a network right now: offline, Gemini is not asked at all (0.183.0). */
+    private val online: () -> Boolean = { true },
 ) : ViewModel() {
 
     /** The settings as last read, for the dictation sheet's live reading ([preview]). */
@@ -528,6 +533,9 @@ class HomeViewModel(
     /** The sentence being turned into a reminder; cancelled when the sheet is let go of first. */
     private var voiceWork: Job? = null
 
+    /** Gemini's second look at a written reminder the grammar had doubts about; cancelled with the sheet. */
+    private var refineWork: Job? = null
+
     /**
      * What the words heard so far would be written as, for the sheet to show while it listens;
      * null while they would not be written. Off the main thread, a beat after each new word.
@@ -554,13 +562,14 @@ class HomeViewModel(
         // Off the main thread: reading a sentence is a few hundred regex passes, and the sheet is
         // animating while it happens.
         voiceWork = viewModelScope.launch(Dispatchers.Default) {
-            val outcome = fromVoice(after.text, hereLabel)
+            val (outcome, refine) = fromVoice(after.text, hereLabel)
             val answer = when (outcome) {
                 is VoiceOutcome.Created -> VoiceInputEvent.Written(outcome.reminder, outcome.check)
                 is VoiceOutcome.Proposed -> VoiceInputEvent.Proposed(outcome.reminder, outcome.form, outcome.spoken, outcome.here, outcome.check)
                 is VoiceOutcome.ToEditor -> VoiceInputEvent.Unwritten(outcome.text, outcome.why, outcome.form)
             }
             _voice.value = _voice.value?.let { voiceStep(it, answer) }
+            if (refine != null && outcome is VoiceOutcome.Created) refine(outcome.reminder, refine)
         }
     }
 
@@ -568,6 +577,8 @@ class HomeViewModel(
     fun stopVoice() {
         voiceWork?.cancel()
         voiceWork = null
+        refineWork?.cancel()
+        refineWork = null
     }
 
     /** The sheet is gone. */
@@ -581,22 +592,61 @@ class HomeViewModel(
      * stopped it, for the sheet to take the words to the editor with (`Spoken.kt`). Nothing is
      * written once the sheet has been let go of ([stopVoice]).
      */
-    private suspend fun fromVoice(transcript: String, hereLabel: String): VoiceOutcome {
+    private suspend fun fromVoice(transcript: String, hereLabel: String): Pair<VoiceOutcome, Refine?> {
         val settings = store.settings.first()
         return when (val heard = withHere { here -> hear(transcript, clock.instant(), clock.zone, settings, here, hereLabel) }) {
-            is Here.Read -> settle(heard.read, heard.fix, settings, write = true, transcript)
-            is Here.Missing -> VoiceOutcome.ToEditor(heard.said, VoiceOutcome.Why.NO_FIX).also { noteVoice("no position for here") }
+            is Here.Read -> {
+                // **Written first, refined after** (0.183.0; the owner: "piensa que gemini puede
+                // fallar o tardar en responder"). A reading with doubts in it is written at once,
+                // as any reading is, and Gemini is asked beside it; whatever it says is offered,
+                // and a Gemini that is slow or silent costs nothing but the offer.
+                val setup = if (heard.read.doubts.isEmpty()) null else geminiSetup().takeIf { it.usable && online() }
+                val outcome = settle(heard.read, heard.fix, settings, write = true, transcript, refining = setup != null)
+                outcome to setup?.let { Refine(transcript, heard.read.said, it.key, settings, hereLabel) }
+            }
+            is Here.Missing -> (VoiceOutcome.ToEditor(heard.said, VoiceOutcome.Why.NO_FIX) to null).also { noteVoice("no position for here") }
             is Here.Unsure -> {
                 // What the grammar could not read, Gemini is asked — when the person said so in
-                // Settings; never for a sentence that is only a "when" (nothing to guess), and never
-                // for one with nothing in it that sounds like a when or a where at all ("comprar
-                // pan"), which no guess can turn into one.
+                // Settings and there is a network to ask over; never for a sentence that is only
+                // a "when" (nothing to guess), and never for one with nothing in it that sounds
+                // like a when or a where at all ("comprar pan"), which no guess can turn into one.
                 val setup = geminiSetup()
                 val worthAsking = heard.unsure.why == Heard.Why.PARTIAL || (heard.unsure.why == Heard.Why.NOTHING && mightSayWhen(transcript))
-                if (setup.usable && worthAsking) return fromGemini(transcript, heard.unsure.text, setup.key, settings, hereLabel)
-                toEditor(heard.unsure)
+                if (setup.usable && worthAsking && online()) return fromGemini(transcript, heard.unsure.text, setup.key, settings, hereLabel) to null
+                toEditor(heard.unsure) to null
             }
         }
+    }
+
+    /** What Gemini's second look at a written reading needs: the sentence, and how to ask. */
+    private class Refine(val transcript: String, val said: String, val key: String, val settings: AppSettings, val hereLabel: String)
+
+    /**
+     * Gemini's second look at [written], a reading the grammar had doubts about (0.183.0), beside
+     * the sheet that already shows it ("Mejorando la captura…"). At most [GEMINI_PATIENCE_MS]: past
+     * that, or with no answer, the reading stays as it is and the sheet says so. Its answer goes
+     * only onto the sheet it was asked for — one let go of, or showing another reminder, is left alone.
+     */
+    private fun refine(written: Reminder, refine: Refine) {
+        refineWork = viewModelScope.launch(Dispatchers.Default) {
+            val offer = withTimeoutOrNull(GEMINI_PATIENCE_MS) { geminiReadingOf(written, refine) }
+            val shown = _voice.value as? VoiceState.Created ?: return@launch
+            if (shown.reminder.id != written.id) return@launch
+            val check = shown.check.refined(shown.reminder, offer)
+            _voice.value = shown.copy(check = check)
+            noteVoice("gemini refine: ${check.refining.name.lowercase()}")
+        }
+    }
+
+    /** Gemini's reading of the sentence, through the same gate as the grammar's, under [written]'s id; null for none. */
+    private suspend fun geminiReadingOf(written: Reminder, refine: Refine): VoiceAlternative? {
+        val settings = refine.settings
+        val answer = askGemini(refine.key, refine.transcript, geminiInstruction(clock.instant(), clock.zone, settings), geminiSchema(settings.geminiPlaces))
+        val reading = (answer as? GeminiAnswer.Reading)?.reading ?: return null
+        val heard = withHere { here -> reading.toHeard(clock.instant(), clock.zone, settings, here, refine.hereLabel, refine.said) } as? Here.Read ?: return null
+        // Settled as of the moment the sentence was written, so the two readings can be compared.
+        val reminder = heard.read.spoken.toReminder(written.id, written.createdAt, clock.zone, settings) ?: return null
+        return VoiceAlternative(reminder, firesAt(reminder, settings), VoiceAlternative.Kind.GEMINI, heard.fix)
     }
 
     /**
@@ -606,7 +656,10 @@ class HomeViewModel(
      */
     private suspend fun fromGemini(transcript: String, said: String, key: String, settings: AppSettings, hereLabel: String): VoiceOutcome {
         _voice.value = (_voice.value as? VoiceState.Thinking)?.copy(asking = true) ?: _voice.value
-        val answer = askGemini(key, transcript, geminiInstruction(clock.instant(), clock.zone, settings), geminiSchema(settings.geminiPlaces))
+        // Never longer than the person would wait: a Gemini still thinking is a Gemini that failed.
+        val answer = withTimeoutOrNull(GEMINI_PATIENCE_MS) {
+            askGemini(key, transcript, geminiInstruction(clock.instant(), clock.zone, settings), geminiSchema(settings.geminiPlaces))
+        } ?: GeminiAnswer.Failed
         val reading = when (answer) {
             is GeminiAnswer.Reading -> answer.reading
             GeminiAnswer.KeyRefused -> return VoiceOutcome.ToEditor(said, VoiceOutcome.Why.GEMINI_KEY).also { noteVoice("gemini: key refused") }
@@ -645,7 +698,7 @@ class HomeViewModel(
      * A reading, through the gate: refused → the editor with the reading in it; otherwise
      * written ([write], the grammar's) or proposed (Gemini's, written only at "Guardar").
      */
-    private suspend fun settle(read: Heard.Read, fix: Fix?, settings: AppSettings, write: Boolean, transcript: String): VoiceOutcome {
+    private suspend fun settle(read: Heard.Read, fix: Fix?, settings: AppSettings, write: Boolean, transcript: String, refining: Boolean = false): VoiceOutcome {
         val spoken = read.spoken
         val defaults = if (spoken.recurrence is Recurrence.Since) settings.routineActions else settings.defaultActions
         val form = spokenFormJson(spoken, spoken.actions.applyTo(defaults), clock.instant())
@@ -656,7 +709,7 @@ class HomeViewModel(
         val alternatives = read.alternatives
             .mapNotNull { it.toReminder(reminder.id, clock.instant(), clock.zone, settings) }
             .map { VoiceAlternative(it, firesAt(it, settings)) }
-        val check = VoiceCheck(transcript, read.parts, read.doubts, firesAt(reminder, settings), alternatives)
+        val check = VoiceCheck(transcript, read.parts, read.doubts, firesAt(reminder, settings), alternatives, if (refining) Refining.ASKING else Refining.NONE)
         if (!write) {
             noteVoice("gemini: proposed ${reminder.rules.size} rule(s), ${reminder.recurrence::class.simpleName}")
             return VoiceOutcome.Proposed(reminder, form, spoken, fix, check)
@@ -686,7 +739,8 @@ class HomeViewModel(
         _voice.value = VoiceState.Created(chosen.reminder, shown.check.swapped(shown.reminder, chosen))
         viewModelScope.launch {
             repository.save(chosen.reminder.copy(updatedAt = clock.instant()))
-            noteVoice("alternative chosen")
+            chosen.here?.let { seedHere(chosen.reminder, it) }
+            noteVoice("alternative chosen: ${chosen.kind.name.lowercase()}")
         }
     }
 
@@ -1149,6 +1203,7 @@ class HomeViewModel(
                 cheerLine = { slot -> app.cheering.lineFor(slot, CheerText.variants(app.resources)) },
                 geminiSetup = { app.geminiStore.read() },
                 askGemini = { key, sentence, instruction, schema -> GeminiInput.ask(key, sentence, instruction, schema) },
+                online = { app.isOnline() },
             ) as T
     }
 }
@@ -1157,3 +1212,10 @@ class HomeViewModel(
 const val UNDO_DELETE_MS = 60_000L
 
 private const val TAG = "HomeViewModel"
+
+/**
+ * How long dictation waits for Gemini (0.183.0): past it, Gemini has failed for this sentence. The
+ * free tier usually answers in a second or two; a phone on a poor network should not hold a person
+ * looking at "Mejorando la captura…" for the client's own ten seconds.
+ */
+private const val GEMINI_PATIENCE_MS = 8_000L

@@ -35,6 +35,8 @@ import dev.rwilco.voice.PlatformListener
 import dev.rwilco.voice.VoiceEvent
 import dev.rwilco.voice.VoiceInput
 import dev.rwilco.ui.voice.VOICE_ALTERNATIVE_TAG
+import dev.rwilco.ui.voice.VOICE_OFFER_TAG
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -226,6 +228,64 @@ class VoiceDictationTest {
         shot("voice-created-doubt")
         rule.onNodeWithText(s(R.string.voice_done), useUnmergedTree = true).performClick()
         rule.waitUntil(30_000) { rule.onAllNodesWithText("«antes de»", substring = true).fetchSemanticsNodes().isEmpty() }
+    }
+
+    // --- Gemini when the grammar has doubts (0.183.0) ---
+
+    private fun geminiOn() = runBlocking {
+        app.geminiStore.setKey("AIza-test")
+        app.geminiStore.setEnabled(true)
+    }
+
+    @Test
+    fun aDoubtIsCheckedWithGeminiAndItsOtherReadingIsOfferedNeverApplied() {
+        geminiOn()
+        val tomorrow = java.time.LocalDate.now().plusDays(1)
+        GeminiInput.ask = { _, _, _, _ ->
+            GeminiAnswer.Reading(GeminiReading(text = "Llamar al banco", rules = listOf(GeminiRule(GeminiEvent(kind = "AT", date = tomorrow.toString(), time = "13:00")))))
+        }
+        sentence = "llamar al banco mañana antes de comer"
+        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.home_dictate_hold)).fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithContentDescription(s(R.string.home_dictate)).performSemanticsAction(SemanticsActions.OnClick)
+        waitFor(s(R.string.voice_created_offered))
+        // Written as the rules read it; Gemini's reading is only offered.
+        assertEquals(listOf("Llamar al banco antes de comer"), runBlocking { app.repository.openNow() }.map { it.text })
+        shot("voice-gemini-offer")
+        rule.onNodeWithTag(VOICE_OFFER_TAG).performClick()
+        rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.singleOrNull()?.text == "Llamar al banco" }
+        assertEquals(tomorrow.atTime(13, 0), (runBlocking { app.repository.openNow() }.single().rules.single().trigger as Trigger.AtDateTime).at)
+        // And the rules' own reading is one tap away, to take it back.
+        waitFor(s(R.string.voice_original_offer))
+    }
+
+    @Test
+    fun aGeminiThatNeverAnswersCostsNothing() {
+        geminiOn()
+        GeminiInput.ask = { _, _, _, _ -> awaitCancellation() }
+        sentence = "llamar al banco mañana antes de comer"
+        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.home_dictate_hold)).fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithContentDescription(s(R.string.home_dictate)).performSemanticsAction(SemanticsActions.OnClick)
+        waitFor(s(R.string.voice_created_refining))
+        // Written before Gemini says anything.
+        assertEquals(listOf("Llamar al banco antes de comer"), runBlocking { app.repository.openNow() }.map { it.text })
+        shot("voice-refining")
+        // And past the patience, it stays as it was, and says so.
+        waitFor(s(R.string.voice_created_failed))
+        assertEquals(listOf("Llamar al banco antes de comer"), runBlocking { app.repository.openNow() }.map { it.text })
+    }
+
+    @Test
+    fun whileGeminiThinksTheWordsCanGoToTheEditor() {
+        geminiOn()
+        GeminiInput.ask = { _, _, _, _ -> awaitCancellation() }
+        sentence = "comprar pilas cuando acabe el partido"
+        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.home_dictate_hold)).fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithContentDescription(s(R.string.home_dictate)).performSemanticsAction(SemanticsActions.OnClick)
+        waitFor(s(R.string.voice_asking_gemini))
+        rule.onNodeWithText(s(R.string.voice_type), useUnmergedTree = true).performClick()
+        waitFor(s(R.string.editor_title_new))
+        waitFor("comprar pilas cuando acabe el partido")
+        assertEquals(emptyList<String>(), runBlocking { app.repository.openNow() }.map { it.text })
     }
 
     @Test

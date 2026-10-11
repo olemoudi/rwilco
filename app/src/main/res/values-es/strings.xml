@@ -160,7 +160,14 @@
         <item>gemini</item>
         <item>clave de api</item>
     </string-array>
-    <string name="voice_asking_gemini">Preguntando a Gemini…</string>
+    <string name="voice_asking_gemini">Mejorando la captura con Gemini…</string>
+    <string name="voice_created_refining">Creado · mejorando la captura con Gemini…</string>
+    <string name="voice_created_agreed">Creado · Gemini lo ha entendido igual</string>
+    <string name="voice_created_offered">Creado · Gemini lo entiende de otra forma</string>
+    <string name="voice_created_failed">Creado · Gemini no ha podido mejorarlo, se queda así</string>
+    <string name="voice_gemini_offer">Gemini lo entiende así:</string>
+    <string name="voice_original_offer">Como lo entendí sin Gemini:</string>
+    <string name="voice_use_this">Usar esta</string>
     <string name="voice_confirm">Gemini ha entendido esto</string>
     <string name="voice_to_editor_gemini_key">Gemini no acepta la clave: revísala en Ajustes › Voz.</string>
     <string name="voice_to_editor_gemini_failed">Gemini no ha contestado: termínalo aquí.</string>
@@ -1805,6 +1812,13 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_183_0">
+
+        <item>Si tienes Gemini activado y al dictar quedan palabras que no he sabido leer, el recordatorio se crea igual al momento y Gemini lo repasa al lado: verás «Creado · mejorando la captura con Gemini…».</item>
+        <item>Si Gemini lo entiende igual, te lo dice y la hoja se cierra sola; si lo entiende de otra forma, te enseña su versión con «Usar esta», pero no cambia nada si no la tocas (y puedes volver a la tuya).</item>
+        <item>Gemini puede tardar o fallar: nunca se le espera más de 8 segundos, sin conexión ni se le pregunta, y mientras piensa puedes pasar al editor con «Escribirlo yo». Lo que ya estaba creado no se pierde.</item>
+
+    </string-array>
     <string-array name="whats_new_0_182_0">
 
         <item>Al dictar, «Creado» te enseña el recordatorio tal como saldrá en la lista, con cuándo sonará la primera vez («Sonará mañana a las 08:00 · en 11 h»), para que veas de un vistazo si es lo que querías.</item>

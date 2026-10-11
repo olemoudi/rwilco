@@ -86,7 +86,7 @@ suspend fun searchPlaces(context: Context, query: String, locale: Locale, limit:
  * offline; a question that could not be asked at all counts as online, so that an answer the
  * geocoder did give is believed rather than second-guessed.
  */
-private fun Context.isOnline(): Boolean = runCatching {
+internal fun Context.isOnline(): Boolean = runCatching {
     val connectivity = getSystemService(ConnectivityManager::class.java) ?: return@runCatching true
     val capabilities = connectivity.getNetworkCapabilities(connectivity.activeNetwork) ?: return@runCatching false
     capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)

@@ -131,6 +131,67 @@ class VoiceStepTest {
         assertEquals(emptyList<HeardMark>(), VoiceCheck(heard = "", parts = listOf(HeardSpan(0..3, null))).marks())
     }
 
+    // --- Gemini's second look at a doubtful reading (0.183.0) ---
+
+    private val doubtful = VoiceCheck(heard = "llamar al banco mañana antes de comer", doubts = listOf(23..30), refining = Refining.ASKING)
+    private val shown = reminder.copy(text = "Llamar al banco antes de comer")
+
+    @Test
+    fun `a reading Gemini is still looking at waits for it`() {
+        assertFalse(VoiceCheck(heard = "x", refining = Refining.ASKING).clear)
+        assertTrue(VoiceCheck(heard = "x", refining = Refining.FAILED).clear)
+    }
+
+    @Test
+    fun `Gemini reading it the same way clears the doubt`() {
+        val same = VoiceAlternative(shown.copy(text = "llamar al banco antes de comer."), null, VoiceAlternative.Kind.GEMINI)
+        val agreed = doubtful.refined(shown, same)
+        assertEquals(Refining.AGREED, agreed.refining)
+        assertEquals(emptyList<IntRange>(), agreed.doubts)
+        assertTrue(agreed.clear)
+    }
+
+    @Test
+    fun `Gemini reading it another way is offered first, and nothing is applied`() {
+        val other = VoiceAlternative(shown.copy(text = "Llamar al banco"), nine, VoiceAlternative.Kind.GEMINI)
+        val half = VoiceAlternative(later, twentyOne)
+        val offered = doubtful.copy(alternatives = listOf(half)).refined(shown, other)
+        assertEquals(Refining.OFFERED, offered.refining)
+        assertEquals(listOf(other, half), offered.alternatives)
+        assertEquals(doubtful.doubts, offered.doubts)
+    }
+
+    @Test
+    fun `Gemini reading one already offered promotes it instead of offering it twice`() {
+        val half = VoiceAlternative(later, twentyOne)
+        val sameAsHalf = VoiceAlternative(later, twentyOne, VoiceAlternative.Kind.GEMINI)
+        val offered = doubtful.copy(alternatives = listOf(half)).refined(shown, sameAsHalf)
+        assertEquals(listOf(half.copy(kind = VoiceAlternative.Kind.GEMINI)), offered.alternatives)
+    }
+
+    @Test
+    fun `no reading from Gemini, or none in time, leaves everything as it was`() {
+        val failed = doubtful.refined(shown, null)
+        assertEquals(Refining.FAILED, failed.refining)
+        assertEquals(doubtful.doubts, failed.doubts)
+        assertEquals(doubtful.alternatives, failed.alternatives)
+    }
+
+    @Test
+    fun `choosing Gemini's reading leaves the original on offer, and choosing it back offers Gemini's again`() {
+        val gemini = VoiceAlternative(later, twentyOne, VoiceAlternative.Kind.GEMINI)
+        val chosen = doubtful.copy(refining = Refining.OFFERED, alternatives = listOf(gemini)).swapped(shown, gemini)
+        assertEquals(listOf(VoiceAlternative(shown, null, VoiceAlternative.Kind.ORIGINAL)), chosen.alternatives)
+        assertEquals(listOf(gemini), chosen.swapped(later, chosen.alternatives.single()).alternatives)
+    }
+
+    @Test
+    fun `the same reading is the same words and the same when, however it is written`() {
+        assertTrue(sameReading(shown, shown.copy(text = "LLAMAR al banco, antes de comer.")))
+        assertFalse(sameReading(shown, shown.copy(text = "Llamar a la banca antes de comer")))
+        assertFalse(sameReading(shown, shown.copy(ruleMatch = dev.rwilco.model.RuleMatch.ALL)))
+    }
+
     @Test
     fun `again starts a fresh round`() {
         assertEquals(VoiceState.Listening(), voiceStep(VoiceState.Failed(VoiceFailure.NOT_HEARD), VoiceInputEvent.Retry))

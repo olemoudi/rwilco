@@ -164,7 +164,14 @@
         <item>gemini</item>
         <item>api key</item>
     </string-array>
-    <string name="voice_asking_gemini">Asking Gemini…</string>
+    <string name="voice_asking_gemini">Improving the capture with Gemini…</string>
+    <string name="voice_created_refining">Created · improving the capture with Gemini…</string>
+    <string name="voice_created_agreed">Created · Gemini read it the same way</string>
+    <string name="voice_created_offered">Created · Gemini reads it another way</string>
+    <string name="voice_created_failed">Created · Gemini couldn\'t improve it, so it stays as is</string>
+    <string name="voice_gemini_offer">Gemini reads it like this:</string>
+    <string name="voice_original_offer">As I read it without Gemini:</string>
+    <string name="voice_use_this">Use this one</string>
     <string name="voice_confirm">Gemini understood this</string>
     <string name="voice_to_editor_gemini_key">Gemini didn\'t accept the key: check it in Settings › Voice.</string>
     <string name="voice_to_editor_gemini_failed">Gemini didn\'t answer: finish it here.</string>
@@ -1820,6 +1827,13 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_183_0">
+
+        <item>With Gemini on, when dictation leaves words I could not read, the reminder is still created at once and Gemini looks it over beside it: you will see “Created · improving the capture with Gemini…”.</item>
+        <item>If Gemini reads it the same way it says so and the sheet closes by itself; if it reads it another way it shows its version with “Use this one”, but nothing changes unless you tap it (and you can go back to yours).</item>
+        <item>Gemini can be slow or fail: it is never waited for more than 8 seconds, it is not asked at all offline, and while it thinks you can go to the editor with “Type it”. What was already created is never lost.</item>
+
+    </string-array>
     <string-array name="whats_new_0_182_0">
 
         <item>When you dictate, “Created” shows the reminder as it will appear in the list, with when it first rings (“Rings tomorrow at 08:00 · in 11 h”), so you can see at a glance whether it is what you meant.</item>

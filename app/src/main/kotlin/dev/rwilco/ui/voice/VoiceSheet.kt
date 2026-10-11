@@ -7,6 +7,7 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -47,6 +48,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -111,6 +114,7 @@ import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.color
 import dev.rwilco.voice.HeardMark
+import dev.rwilco.voice.Refining
 import dev.rwilco.voice.VoiceAlternative
 import dev.rwilco.voice.VoiceCheck
 import dev.rwilco.voice.VoiceFailure
@@ -281,6 +285,17 @@ fun VoiceSheet(
                         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                     )
                 }
+                // Gemini is being asked — before anything is written (the grammar read nothing),
+                // or beside a reminder already written (it had doubts): either way, it shows, and
+                // it ends when Gemini answers or the patience runs out (0.183.0).
+                val asking = (current as? VoiceState.Thinking)?.asking == true || (current as? VoiceState.Created)?.check?.refining == Refining.ASKING
+                AnimatedVisibility(visible = asking, enter = fadeIn(tween(Tokens.motion.fast)), exit = fadeOut(tween(Tokens.motion.fast))) {
+                    LinearProgressIndicator(
+                        color = scheme.onSurfaceVariant,
+                        trackColor = scheme.surfaceContainerHighest,
+                        modifier = Modifier.fillMaxWidth().padding(top = spacing.sm),
+                    )
+                }
                 val words = when (current) {
                     is VoiceState.Listening -> current.partial
                     is VoiceState.Thinking -> current.text
@@ -422,7 +437,12 @@ private fun Buttons(
     val spacing = Tokens.spacing
     Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm), modifier = Modifier.fillMaxWidth()) {
         when (state) {
-            VoiceState.Asking, is VoiceState.Thinking, is VoiceState.ToEditor -> {
+            // While Gemini is asked, nobody has to wait for it: the words can go to the editor now.
+            is VoiceState.Thinking -> {
+                Quiet(R.string.sheet_cancel, onCancel)
+                if (state.asking) Quiet(R.string.voice_type, onType)
+            }
+            VoiceState.Asking, is VoiceState.ToEditor -> {
                 Quiet(R.string.sheet_cancel, onCancel)
             }
             is VoiceState.Listening -> {
@@ -542,7 +562,49 @@ private fun CheckView(
         if (check.heard.isNotBlank()) HeardLine(check)
         val doubts = check.doubtWords()
         if (doubts.isNotEmpty()) DoubtLine(doubts)
-        if (onAlternative != null && check.alternatives.isNotEmpty()) Alternatives(check.alternatives, today, defaultTime, onAlternative)
+        if (onAlternative != null) {
+            // Gemini's reading, or the grammar's once Gemini's took its place: a whole reading,
+            // words and all, so it is shown as a sentence and not as a chip.
+            for (offer in check.alternatives.filter { it.kind != VoiceAlternative.Kind.OTHER_HALF }) ReadingOffer(offer, today, defaultTime, zone, onAlternative)
+            // The other half of an open hour belongs to the grammar's reading: not offered while Gemini's is the one shown.
+            val halves = check.alternatives.filter { it.kind == VoiceAlternative.Kind.OTHER_HALF }
+                .takeIf { check.alternatives.none { it.kind == VoiceAlternative.Kind.ORIGINAL } }.orEmpty()
+            if (halves.isNotEmpty()) Alternatives(halves, today, defaultTime, onAlternative)
+        }
+    }
+}
+
+/** A whole other reading of the sentence — Gemini's, or the grammar's own — and the one tap that makes it the reminder. */
+@Composable
+private fun ReadingOffer(offer: VoiceAlternative, today: LocalDate, defaultTime: LocalTime, zone: ZoneId, onAlternative: (VoiceAlternative) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val spacing = Tokens.spacing
+    val haptics = Tokens.haptics
+    val reminder = offer.reminder
+    Surface(shape = MaterialTheme.shapes.medium, color = scheme.surfaceContainerHigh, modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(spacing.sm), modifier = Modifier.padding(spacing.md)) {
+            Text(
+                stringResource(if (offer.kind == VoiceAlternative.Kind.GEMINI) R.string.voice_gemini_offer else R.string.voice_original_offer),
+                style = MaterialTheme.typography.labelMedium,
+                color = scheme.onSurfaceVariant,
+            )
+            ReminderSentence(
+                parts = sentenceParts(reminder.text, reminder.rules, reminder.ruleMatch, reminder.recurrence, reminder.deadline),
+                today = today,
+                defaultTime = defaultTime,
+                zone = zone,
+            )
+            SuggestionChip(
+                onClick = {
+                    haptics.perform(HapticFeedbackType.ContextClick)
+                    onAlternative(offer)
+                },
+                label = { Text(stringResource(R.string.voice_use_this), style = MaterialTheme.typography.labelLarge) },
+                icon = { Icon(Icons.Outlined.SwapHoriz, contentDescription = null, modifier = Modifier.size(SuggestionChipDefaults.IconSize)) },
+                colors = SuggestionChipDefaults.suggestionChipColors(iconContentColor = scheme.onSurfaceVariant, labelColor = scheme.onSurface),
+                modifier = Modifier.testTag(VOICE_OFFER_TAG),
+            )
+        }
     }
 }
 
@@ -660,13 +722,22 @@ private val RuleMatch.joinRes: Int
 /** For the device tests: each chip that offers another reading. */
 const val VOICE_ALTERNATIVE_TAG = "voice-alternative"
 
+/** For the device tests: the "Usar esta" under a whole other reading (Gemini's, or the original). */
+const val VOICE_OFFER_TAG = "voice-offer"
+
 private fun statusOf(state: VoiceState): Int = when (state) {
     VoiceState.Asking -> R.string.voice_asking
     is VoiceState.Listening -> R.string.voice_listening
     is VoiceState.Thinking -> if (state.asking) R.string.voice_asking_gemini else R.string.voice_thinking
     is VoiceState.ToEditor -> R.string.voice_thinking
     is VoiceState.Confirm -> R.string.voice_confirm
-    is VoiceState.Created -> R.string.voice_created
+    is VoiceState.Created -> when (state.check.refining) {
+        Refining.NONE -> R.string.voice_created
+        Refining.ASKING -> R.string.voice_created_refining
+        Refining.AGREED -> R.string.voice_created_agreed
+        Refining.OFFERED -> R.string.voice_created_offered
+        Refining.FAILED -> R.string.voice_created_failed
+    }
     is VoiceState.Failed -> when (state.why) {
         VoiceFailure.NO_PERMISSION -> R.string.voice_no_permission
         VoiceFailure.NOT_HEARD -> R.string.voice_not_heard
