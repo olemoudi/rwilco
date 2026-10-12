@@ -1660,6 +1660,17 @@ loud what DST and a change of zone do to a landing.
   lower case ("leche de vaca" whatever the contacts say about Baca), never the first word. Applied
   in `HomeViewModel.personal` to every partial, stretch and final, so the name is right as it is
   said. `VocabularyTest`, `VoiceDictationTest` ("Bito" → "Vito" once "Llamar a Vito" exists).
+- **Putting a dictation right without leaving the sheet (0.190.0).** Beside "Lo que he oído", two
+  ways: the pencil turns the sentence into a field, and "Volver a leer" reads the words as put right
+  (`VoiceInputEvent.Reread`); the mic listens again *on from* what was heard (`SayMore`), so "…no, a
+  las seis" corrects it through `SpokenRepair`. Both go through `Thinking`/`Listening` carrying
+  `replacing`, and the reading is written under the same id — the undo, "Editar" and Home's
+  scroll-to-card still find it; a re-reading that goes to the editor deletes the old one first, and
+  Gemini's pending look at the old words is cancelled. A name put right by hand is learned
+  (`fixesBetween`: words swapped one for one where the rest lines up, names only, keyed by the word
+  before — "a visto" → "Vito", so "he visto" stays seen) into `AppSettings.voiceFixes` (newest 300)
+  and applied by `Vocabulary.corrected` from then on. `VocabularyTest`, `VoiceStepTest`,
+  `VoiceDictationTest` (fixed by hand and learned; more said onto the same reminder).
 - **A held stepper keeps counting (0.51.0).** A step is one unit on purpose (three minutes has
   to be sayable, and the countdown sheet says why), and the price was seventeen taps from thirty
   to forty-seven. `Stepper` repeats after `Motion.holdRepeatDelay`, quickening to

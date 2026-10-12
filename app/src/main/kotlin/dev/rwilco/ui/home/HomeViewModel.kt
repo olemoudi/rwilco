@@ -47,6 +47,7 @@ import dev.rwilco.model.Repaired
 import dev.rwilco.model.Spoken
 import dev.rwilco.model.hear
 import dev.rwilco.model.repaired
+import dev.rwilco.model.fixesBetween
 import dev.rwilco.model.Vocabulary
 import dev.rwilco.model.vocabularyOf
 import dev.rwilco.model.withoutLeadIn
@@ -572,7 +573,7 @@ class HomeViewModel(
      * the recognizer, and used to choose between its readings and put names right ([personal]).
      */
     val vocabulary: StateFlow<Vocabulary> = combine(settings.filterNotNull(), repository.open, repository.done) { current, open, done ->
-        vocabularyOf(open + done, current.savedPlaces)
+        vocabularyOf(open + done, current.savedPlaces, current.voiceFixes)
     }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.Eagerly, Vocabulary(emptyList()))
@@ -609,6 +610,12 @@ class HomeViewModel(
     /** One thing that happened to the sheet; a finished sentence is turned into a reminder here, once. */
     fun onVoice(event: VoiceInputEvent, hereLabel: String) {
         val heard = personal(event)
+        if (event is VoiceInputEvent.Reread) learnFrom(event.text)
+        // Written over: Gemini's look at the old words is about words no longer there.
+        if (event is VoiceInputEvent.Reread || event == VoiceInputEvent.SayMore) {
+            refineWork?.cancel()
+            refineWork = null
+        }
         if (event == VoiceInputEvent.Retry || (event as? VoiceInputEvent.Permission)?.granted == true) ownWordsFixed = 0
         // Stepped on whatever the sheet is now, atomically: Gemini's answer may be landing on another thread.
         var before: VoiceState? = null
@@ -617,7 +624,7 @@ class HomeViewModel(
         // Off the main thread: reading a sentence is a few hundred regex passes, and the sheet is
         // animating while it happens.
         voiceWork = viewModelScope.launch(Dispatchers.Default) {
-            val (outcome, refine) = fromVoice(after.stretches, hereLabel)
+            val (outcome, refine) = fromVoice(after.stretches, hereLabel, after.replacing)
             val answer = when (outcome) {
                 is VoiceOutcome.Created -> VoiceInputEvent.Written(outcome.reminder, outcome.check)
                 is VoiceOutcome.Proposed -> VoiceInputEvent.Proposed(outcome.reminder, outcome.form, outcome.spoken, outcome.here, outcome.check)
@@ -649,19 +656,25 @@ class HomeViewModel(
      * stopped it, for the sheet to take the words to the editor with (`Spoken.kt`). Nothing is
      * written once the sheet has been let go of ([stopVoice]).
      */
-    private suspend fun fromVoice(stretches: List<String>, hereLabel: String): Pair<VoiceOutcome, Refine?> {
+    private suspend fun fromVoice(stretches: List<String>, hereLabel: String, replacing: String?): Pair<VoiceOutcome, Refine?> {
         val settings = store.settings.first()
         // What was meant, read; what was said, shown and asked of Gemini (0.187.0): Gemini reads
         // corrections by itself, and its second look is worth most where this one went wrong.
         val repaired = repaired(stretches, clock.instant(), clock.zone, settings)
-        val (outcome, refine) = fromRepaired(repaired, settings, hereLabel)
+        // Said again over a reminder already written (0.190.0): written over it, under its id, so
+        // the undo and "Editar" still find it; and gone if what is said now goes to the editor.
+        val (outcome, refine) = fromRepaired(repaired, settings, hereLabel, replacing ?: UUID.randomUUID().toString())
+        if (replacing != null && outcome is VoiceOutcome.ToEditor) {
+            currentCoroutineContext().ensureActive()
+            repository.delete(replacing)
+        }
         // The editor shows no struck words: what goes there is everything that was said, so a
         // correction taken wrongly costs nothing that cannot be seen.
         if (outcome is VoiceOutcome.ToEditor && repaired.dropped.isNotEmpty()) return outcome.copy(text = withoutLeadIn(repaired.heard)) to refine
         return outcome to refine
     }
 
-    private suspend fun fromRepaired(repaired: Repaired, settings: AppSettings, hereLabel: String): Pair<VoiceOutcome, Refine?> {
+    private suspend fun fromRepaired(repaired: Repaired, settings: AppSettings, hereLabel: String, id: String): Pair<VoiceOutcome, Refine?> {
         val transcript = repaired.heard
         return when (val heard = withHere { here -> hear(repaired.text, clock.instant(), clock.zone, settings, here, hereLabel) }) {
             is Here.Read -> {
@@ -670,7 +683,7 @@ class HomeViewModel(
                 // as any reading is, and Gemini is asked beside it; whatever it says is offered,
                 // and a Gemini that is slow or silent costs nothing but the offer.
                 val setup = if (heard.read.doubts.isEmpty()) null else geminiSetup().takeIf { it.usable && online() }
-                val outcome = settle(heard.read, heard.fix, settings, write = true, repaired, refining = setup != null)
+                val outcome = settle(heard.read, heard.fix, settings, write = true, repaired, id, refining = setup != null)
                 outcome to setup?.let { Refine(transcript, heard.read.said, it.key, settings, hereLabel, heard.fix) }
             }
             is Here.Missing -> (VoiceOutcome.ToEditor(heard.said, VoiceOutcome.Why.NO_FIX) to null).also { noteVoice("no position for here") }
@@ -681,7 +694,7 @@ class HomeViewModel(
                 // like a when or a where at all ("comprar pan"), which no guess can turn into one.
                 val setup = geminiSetup()
                 val worthAsking = heard.unsure.why == Heard.Why.PARTIAL || (heard.unsure.why == Heard.Why.NOTHING && mightSayWhen(repaired.text))
-                if (setup.usable && worthAsking && online()) return fromGemini(repaired, heard.unsure.text, setup.key, settings, hereLabel) to null
+                if (setup.usable && worthAsking && online()) return fromGemini(repaired, heard.unsure.text, setup.key, settings, hereLabel, id) to null
                 toEditor(heard.unsure) to null
             }
         }
@@ -728,7 +741,7 @@ class HomeViewModel(
      * the same doors a reading of the grammar's does, and is then **proposed, not written**: the
      * sheet shows it and asks.
      */
-    private suspend fun fromGemini(repaired: Repaired, said: String, key: String, settings: AppSettings, hereLabel: String): VoiceOutcome {
+    private suspend fun fromGemini(repaired: Repaired, said: String, key: String, settings: AppSettings, hereLabel: String, id: String): VoiceOutcome {
         _voice.update { current -> (current as? VoiceState.Thinking)?.copy(asking = true) ?: current }
         // Never longer than the person would wait: a Gemini still thinking is a Gemini that failed.
         val answer = withTimeoutOrNull(GEMINI_PATIENCE_MS) {
@@ -741,7 +754,7 @@ class HomeViewModel(
         }
         return when (val heard = withHere { here -> reading.toHeard(clock.instant(), clock.zone, settings, here, hereLabel, said) }) {
             // Gemini's reading is of what was said, so nothing in it is marked as a correction taken out.
-            is Here.Read -> settle(heard.read, heard.fix, settings, write = false, repaired, gemini = true)
+            is Here.Read -> settle(heard.read, heard.fix, settings, write = false, repaired, id, gemini = true)
             is Here.Missing -> VoiceOutcome.ToEditor(said, VoiceOutcome.Why.NO_FIX)
             is Here.Unsure -> toEditor(heard.unsure).also { noteVoice("gemini: no reading") }
         }
@@ -779,13 +792,14 @@ class HomeViewModel(
         settings: AppSettings,
         write: Boolean,
         repaired: Repaired,
+        id: String,
         refining: Boolean = false,
         gemini: Boolean = false,
     ): VoiceOutcome {
         val spoken = read.spoken
         val defaults = if (spoken.recurrence is Recurrence.Since) settings.routineActions else settings.defaultActions
         val form = spokenFormJson(spoken, spoken.actions.applyTo(defaults), clock.instant())
-        val reminder = spoken.toReminder(UUID.randomUUID().toString(), clock.instant(), clock.zone, settings)
+        val reminder = spoken.toReminder(id, clock.instant(), clock.zone, settings)
             ?: return VoiceOutcome.ToEditor(read.said, VoiceOutcome.Why.REFUSED, form).also { noteVoice("to the editor: it would not ring as said") }
         // What the sheet shows to check it by (0.182.0). The other readings are written under the
         // same id, so choosing one puts it in this one's place and the undo still finds it.
@@ -892,6 +906,22 @@ class HomeViewModel(
             }
             // Only onto the sheet it was asked from: one let go of meanwhile stays gone.
             _voice.compareAndSet(shown, voiceStep(shown, next))
+        }
+    }
+
+    /**
+     * What was heard, put right by hand (0.190.0): the names swapped in it are kept, to be put
+     * right the same way next time ([fixesBetween]). Only what changed, and never the words of
+     * the diagnostics note: how many.
+     */
+    private fun learnFrom(text: String) {
+        val heard = (_voice.value as? VoiceState.Created)?.check?.heard ?: return
+        val fixes = fixesBetween(heard, text)
+        noteVoice("read again by hand, ${fixes.size} fix(es) learned")
+        if (fixes.isEmpty()) return
+        viewModelScope.launch {
+            // The newest kept, the oldest let go: a few hundred names is a lifetime of them.
+            store.update { settings -> settings.copy(voiceFixes = (settings.voiceFixes - fixes.keys + fixes).entries.toList().takeLast(MAX_VOICE_FIXES).associate { it.toPair() }) }
         }
     }
 
@@ -1322,3 +1352,6 @@ private const val TAG = "HomeViewModel"
  * looking at "Mejorando la captura…" for the client's own ten seconds.
  */
 private const val GEMINI_PATIENCE_MS = 8_000L
+
+/** How many of the person's own fixes to dictation are kept (0.190.0): the newest. */
+private const val MAX_VOICE_FIXES = 300

@@ -124,6 +124,10 @@
     <string name="voice_fires_in">Rings %1$s</string>
     <string name="voice_doubt">Not sure whether “%1$s” changes when it rings: check it.</string>
     <string name="voice_dropped">Taken as a correction or a hesitation, and left out: “%1$s”.</string>
+    <string name="voice_fix_text">Fix what I heard</string>
+    <string name="voice_say_more">Add to it or correct it by speaking</string>
+    <string name="voice_fix_label">What you said</string>
+    <string name="voice_reread">Read it again</string>
     <string name="voice_doubt_join">”, “</string>
     <string name="voice_alternatives">Or did you mean:</string>
     <string name="voice_alternative_use">Change it to %1$s</string>
@@ -1834,6 +1838,13 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_190_0">
+
+        <item>A dictated reminder can be put right without leaving the sheet. Next to “What I heard”, the pencil lets you fix the words and read them again, and the microphone lets you carry on speaking (“no, at six”). Either way it is the same reminder that changes.</item>
+
+        <item>A name you fix by hand is learned: next time it is misheard in the same way, it is written as you wrote it.</item>
+
+    </string-array>
     <string-array name="whats_new_0_189_0">
 
         <item>Dictation learns your own words from what you have already written: the names in your reminders and routines, the people you keep in touch with, your tags and your places. The phone is asked to favour them, the reading that has them wins, and a name heard wrongly but sounding like one of yours is written as yours: once “Llamar a Vito” exists, “Bito” is Vito.</item>

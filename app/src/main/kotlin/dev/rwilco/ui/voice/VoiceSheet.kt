@@ -38,12 +38,26 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.StrikethroughS
 import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.MicOff
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -344,6 +358,8 @@ fun VoiceSheet(
         ) {
             SheetBounds(
                 modifier = Modifier
+                    // The heard sentence can be put right by hand: the keyboard must not cover it.
+                    .imePadding()
                     // Any touch on a written reminder's sheet — gutters included — is somebody reading it: it stays.
                     .pointerInput(createdId) {
                         if (createdId == null) return@pointerInput
@@ -408,6 +424,8 @@ fun VoiceSheet(
                             defaultTime = defaultTime,
                             zone = zone,
                             onAlternative = if (current is VoiceState.Created) onAlternative else null,
+                            onFix = if (current is VoiceState.Created) ({ text -> send(VoiceInputEvent.Reread(text)) }) else null,
+                            onSayMore = if (current is VoiceState.Created) ({ send(VoiceInputEvent.SayMore) }) else null,
                         )
                     }
                 } else {
@@ -640,6 +658,10 @@ private fun CheckView(
     defaultTime: LocalTime,
     zone: ZoneId,
     onAlternative: ((VoiceAlternative) -> Unit)?,
+    /** What was heard, put right by hand and read again (0.190.0); null for Gemini's guess. */
+    onFix: ((String) -> Unit)?,
+    /** Listening again, on from what was heard (0.190.0); null for Gemini's guess. */
+    onSayMore: (() -> Unit)?,
 ) {
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
@@ -660,7 +682,7 @@ private fun CheckView(
         }
         // The marks and the doubts are about the grammar's reading: while Gemini's is the one
         // shown, the sentence is shown as heard and nothing in it is claimed to be what it says.
-        if (check.heard.isNotBlank()) HeardLine(check, marked = check.readsAsSaid)
+        if (check.heard.isNotBlank()) HeardLine(check, marked = check.readsAsSaid, key = reminder.id, onFix = onFix, onSayMore = onSayMore)
         val dropped = if (check.readsAsSaid) check.droppedWords() else emptyList()
         if (dropped.isNotEmpty()) DroppedLine(dropped)
         val doubts = if (check.readsAsSaid) check.doubtWords() else emptyList()
@@ -748,10 +770,18 @@ private fun FiresLine(at: Instant, today: LocalDate, zone: ZoneId, distanceOnly:
     )
 }
 
-/** The sentence as heard, marked ([marks]): each "when" in its family's colour, how it was said dimmed, doubts underlined. */
+/**
+ * The sentence as heard, marked ([marks]): each "when" in its family's colour, how it was said
+ * dimmed, doubts underlined, corrections struck through. And the two ways to put it right without
+ * leaving the sheet (0.190.0): the words, by hand, read again into the same reminder; or more said,
+ * on from them ("…no, a las seis"). A name put right by hand is learned for next time.
+ */
 @Composable
-private fun HeardLine(check: VoiceCheck, marked: Boolean) {
+private fun HeardLine(check: VoiceCheck, marked: Boolean, key: String, onFix: ((String) -> Unit)?, onSayMore: (() -> Unit)?) {
     val scheme = MaterialTheme.colorScheme
+    val spacing = Tokens.spacing
+    var editing by rememberSaveable(key) { mutableStateOf(false) }
+    var draft by rememberSaveable(key, stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(check.heard, TextRange(check.heard.length))) }
     val inks = TriggerFamily.entries.associateWith { it.color() }
     val text = buildAnnotatedString {
         append(check.heard)
@@ -765,11 +795,58 @@ private fun HeardLine(check: VoiceCheck, marked: Boolean) {
             addStyle(style, mark.range.first, mark.range.last + 1)
         }
     }
-    Column(verticalArrangement = Arrangement.spacedBy(Tokens.spacing.xs)) {
-        Text(stringResource(R.string.voice_heard), style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
-        Text(text, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurfaceVariant)
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.voice_heard), style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+            if (onFix != null && !editing) {
+                IconButton(onClick = {
+                    draft = TextFieldValue(check.heard, TextRange(check.heard.length))
+                    editing = true
+                }) {
+                    Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.voice_fix_text), tint = scheme.onSurfaceVariant)
+                }
+            }
+            if (onSayMore != null && !editing) {
+                IconButton(onClick = onSayMore) {
+                    Icon(Icons.Outlined.Mic, contentDescription = stringResource(R.string.voice_say_more), tint = scheme.onSurfaceVariant)
+                }
+            }
+        }
+        if (editing && onFix != null) {
+            val focus = remember { FocusRequester() }
+            LaunchedEffect(Unit) { focus.requestFocus() }
+            val changed = draft.text.isNotBlank() && draft.text.trim() != check.heard.trim()
+            OutlinedTextField(
+                value = draft,
+                onValueChange = { draft = it },
+                textStyle = MaterialTheme.typography.bodyLarge,
+                label = { Text(stringResource(R.string.voice_fix_label)) },
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { if (changed) onFix(draft.text) }),
+                shape = MaterialTheme.shapes.small,
+                // Neutral, as the editor's own text is: amber is what fires next, never a field.
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = scheme.outline,
+                    unfocusedBorderColor = scheme.outlineVariant,
+                    focusedLabelColor = scheme.onSurfaceVariant,
+                    cursorColor = scheme.onSurface,
+                ),
+                modifier = Modifier.fillMaxWidth().focusRequester(focus).testTag(VOICE_FIX_FIELD_TAG),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm, Alignment.End), modifier = Modifier.fillMaxWidth()) {
+                Quiet(R.string.sheet_cancel) { editing = false }
+                FilledTonalButton(onClick = { onFix(draft.text) }, enabled = changed, modifier = Modifier.heightIn(min = Tokens.sizes.control)) {
+                    Text(stringResource(R.string.voice_reread))
+                }
+            }
+        } else {
+            Text(text, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurfaceVariant)
+        }
     }
 }
+
+/** For the device tests: the field the heard sentence is put right in. */
+const val VOICE_FIX_FIELD_TAG = "voice-fix-field"
 
 /**
  * The words taken out before reading, named (0.187.0): struck through above, and said here in

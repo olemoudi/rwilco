@@ -88,6 +88,27 @@ class VoiceStepTest {
     }
 
     @Test
+    fun `a written reminder put right is read again into itself, by hand or by voice`() {
+        val created = VoiceState.Created(reminder, VoiceCheck(heard = "llamar a visto mañana"))
+        assertEquals(VoiceState.Thinking(listOf("llamar a Vito mañana"), replacing = "r"), voiceStep(created, VoiceInputEvent.Reread(" llamar a Vito mañana ")))
+        assertEquals(created, voiceStep(created, VoiceInputEvent.Reread(" ")))
+        val more = voiceStep(created, VoiceInputEvent.SayMore)
+        assertEquals(VoiceState.Listening(said = listOf("llamar a visto mañana"), replacing = "r"), more)
+        // What it goes on from travels with it to the end, through a pause and "Terminado".
+        val paused = voiceStep(voiceStep(more, heard(VoiceEvent.Partial("no, a las seis"))), VoiceInputEvent.Pause)
+        assertEquals(VoiceState.Listening(said = listOf("llamar a visto mañana", "no, a las seis"), paused = true, replacing = "r"), paused)
+        assertEquals(VoiceState.Thinking(listOf("llamar a visto mañana", "no, a las seis"), replacing = "r"), voiceStep(paused, VoiceInputEvent.Finish))
+        assertEquals(
+            VoiceState.Thinking(listOf("llamar a visto mañana", "no, a las seis"), replacing = "r"),
+            voiceStep(voiceStep(more, VoiceInputEvent.Finish), heard(VoiceEvent.Final("no, a las seis"))),
+        )
+        // Nothing to read again or go on from anywhere else.
+        val listening = VoiceState.Listening("x")
+        assertEquals(listening, voiceStep(listening, VoiceInputEvent.Reread("y")))
+        assertEquals(listening, voiceStep(listening, VoiceInputEvent.SayMore))
+    }
+
+    @Test
     fun `a fresh ear keeps the stretch the old one was in the middle of`() {
         assertEquals(VoiceState.Listening(said = listOf("comprar pan", "al llegar")), voiceStep(VoiceState.Listening("al llegar", said = listOf("comprar pan")), heard(VoiceEvent.Ready)))
         assertEquals(VoiceState.Listening(said = listOf("x")), voiceStep(VoiceState.Listening(said = listOf("x")), heard(VoiceEvent.Ready)))

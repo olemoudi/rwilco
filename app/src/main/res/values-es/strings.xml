@@ -120,6 +120,10 @@
     <string name="voice_fires_in">Sonará %1$s</string>
     <string name="voice_doubt">No sé si «%1$s» cambia cuándo suena: revísalo.</string>
     <string name="voice_dropped">Lo he tomado como corrección o titubeo y lo he dejado fuera: «%1$s».</string>
+    <string name="voice_fix_text">Corregir lo que he oído</string>
+    <string name="voice_say_more">Añadir o corregir hablando</string>
+    <string name="voice_fix_label">Lo que has dicho</string>
+    <string name="voice_reread">Volver a leer</string>
     <string name="voice_doubt_join">», «</string>
     <string name="voice_alternatives">¿O lo querías así?</string>
     <string name="voice_alternative_use">Cambiarlo a %1$s</string>
@@ -1819,6 +1823,13 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_190_0">
+
+        <item>Un recordatorio dictado se puede corregir sin salir de la hoja. Junto a «Lo que he oído», el lápiz te deja arreglar las palabras y volver a leerlas, y el micrófono te deja seguir hablando («no, a las seis»). En los dos casos cambia el mismo recordatorio.</item>
+
+        <item>Un nombre que corriges a mano se aprende: la próxima vez que se oiga mal igual, se escribe como tú lo escribiste.</item>
+
+    </string-array>
     <string-array name="whats_new_0_189_0">
 
         <item>El dictado aprende tus propias palabras de lo que ya has escrito: los nombres de tus recordatorios y rutinas, las personas con las que mantienes el contacto, tus etiquetas y tus lugares. Se le pide al móvil que las prefiera, gana la lectura que las contiene, y un nombre mal oído que suena como uno de los tuyos se escribe como el tuyo: en cuanto existe «Llamar a Vito», «Bito» es Vito.</item>

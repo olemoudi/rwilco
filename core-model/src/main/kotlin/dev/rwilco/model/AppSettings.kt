@@ -252,6 +252,12 @@ data class AppSettings(
     val cheerLine: Boolean = true,
     /** And a silent notification every two or three days, when there is something new to say. */
     val cheerNotifications: Boolean = true,
+    /**
+     * What the person put right in a dictation by hand (0.190.0), to be put right the same way
+     * next time: the word before and the word as heard, folded ("a visto") → as written ("Vito").
+     * See `Vocabulary.kt`.
+     */
+    val voiceFixes: Map<String, String> = emptyMap(),
 )
 
 /** How the alert screen holds more than one reminder. See [AppSettings.alertStacking]. */

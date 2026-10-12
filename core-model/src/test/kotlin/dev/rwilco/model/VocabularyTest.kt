@@ -46,7 +46,7 @@ class VocabularyTest {
 
     @Test
     fun `the recognizer is asked to lean towards the most used, fixes first`() {
-        val vocabulary = Vocabulary(listOf("Vito", "Mercadona"), learned = mapOf("visto" to "Vito", "lusia" to "Lucía"))
+        val vocabulary = Vocabulary(listOf("Vito", "Mercadona"), learned = mapOf("a visto" to "Vito", "con lusia" to "Lucía"))
         assertEquals(listOf("Vito", "Lucía", "Mercadona"), vocabulary.bias)
     }
 
@@ -73,9 +73,28 @@ class VocabularyTest {
     }
 
     @Test
-    fun `what was put right by hand is put right the same way again, whatever its case`() {
-        val vocabulary = Vocabulary(emptyList(), learned = mapOf("visto" to "Vito"))
+    fun `what was put right by hand is put right the same way again, in the same place`() {
+        val vocabulary = Vocabulary(emptyList(), learned = mapOf("a visto" to "Vito", "bito" to "Vito"))
         assertEquals("llamar a Vito", vocabulary.corrected("llamar a visto"))
+        assertEquals("Vito llamará", vocabulary.corrected("bito llamará"))
+        // Anywhere else the word is its own: "he visto" is still seen.
+        assertEquals("ya he visto la película", vocabulary.corrected("ya he visto la película"))
+        // And the fixed word is one of the person's own from then on.
+        assertEquals("Café con Vito", Vocabulary(emptyList(), learned = mapOf("a visto" to "Vito")).choose(listOf("Café con visto", "Café con Vito")))
+    }
+
+    @Test
+    fun `what was put right by hand is learned word for word, names only`() {
+        assertEquals(mapOf("a visto" to "Vito"), fixesBetween("llamar a visto mañana", "llamar a Vito mañana"))
+        assertEquals(mapOf("bito" to "Vito"), fixesBetween("bito llamará mañana", "Vito llamará mañana"))
+        assertEquals(mapOf("con lucia" to "Lucía", "lucia garci" to "García"), fixesBetween("café con lucia garci", "café con Lucía García"))
+        // Words added or taken away, or an ordinary word changed, teach nothing.
+        assertEquals(emptyMap<String, String>(), fixesBetween("llamar a juan", "llamar a juan mañana"))
+        assertEquals(emptyMap<String, String>(), fixesBetween("ir a casa", "ir al casa"))
+        assertEquals(emptyMap<String, String>(), fixesBetween("comprar pan", "comprar pan"))
+        assertEquals(emptyMap<String, String>(), fixesBetween("llamar a visto", "escribir un correo largo a Vito sobre la cena"))
+        // The same word written as a name now is a name to write so.
+        assertEquals(mapOf("a belen" to "Belén"), fixesBetween("llamar a belen", "llamar a Belén"))
     }
 
     @Test

@@ -15,7 +15,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
+import kotlinx.coroutines.flow.first
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.GrantPermissionRule
@@ -37,6 +39,7 @@ import dev.rwilco.voice.PlatformListener
 import dev.rwilco.voice.VoiceEvent
 import dev.rwilco.voice.VoiceInput
 import dev.rwilco.ui.voice.VOICE_ALTERNATIVE_TAG
+import dev.rwilco.ui.voice.VOICE_FIX_FIELD_TAG
 import dev.rwilco.ui.voice.VOICE_OFFER_TAG
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.runBlocking
@@ -273,6 +276,45 @@ class VoiceDictationTest {
         waitFor("comprar flores para Vito mañana")
         rule.onNodeWithText(s(R.string.voice_stop), useUnmergedTree = true).performClick()
         rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.any { it.text == "Comprar flores para Vito" } }
+    }
+
+    @Test
+    fun whatWasHeardIsPutRightByHandIntoTheSameReminderAndLearned() {
+        // An open hour keeps the sheet open (its other half is offered), as somebody reading it would.
+        sentence = "llamar a visto a las 11"
+        dictate()
+        rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.any { it.text == "Llamar a visto" } }
+        val first = runBlocking { app.repository.openNow() }.single()
+        rule.onNodeWithContentDescription(s(R.string.voice_fix_text)).performClick()
+        rule.onNodeWithTag(VOICE_FIX_FIELD_TAG).performTextReplacement("llamar a Vito a las 11")
+        shot("voice-fix-by-hand")
+        rule.onNodeWithText(s(R.string.voice_reread), useUnmergedTree = true).performClick()
+        rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.singleOrNull()?.text == "Llamar a Vito" }
+        assertEquals(first.id, runBlocking { app.repository.openNow() }.single().id)
+        // Learned: the same mishearing in the same place is put right next time.
+        rule.waitUntil(30_000) { runBlocking { app.settingsStore.settings.first() }.voiceFixes["a visto"] == "Vito" }
+        rule.onNodeWithText(s(R.string.voice_done), useUnmergedTree = true).performClick()
+        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.voice_heard)).fetchSemanticsNodes().isEmpty() }
+        sentence = "escribir a visto el viernes"
+        open()
+        waitFor("escribir a Vito el viernes")
+        rule.onNodeWithText(s(R.string.voice_stop), useUnmergedTree = true).performClick()
+        rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.any { it.text == "Escribir a Vito" } }
+    }
+
+    @Test
+    fun moreSaidAfterItWasWrittenCorrectsTheSameReminder() {
+        // An open hour keeps the sheet open (its other half is offered), as somebody reading it would.
+        sentence = "llamar a Juan a las 11"
+        dictate()
+        rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.any { it.text == "Llamar a Juan" } }
+        val first = runBlocking { app.repository.openNow() }.single()
+        sentence = "no, a las 12"
+        rule.onNodeWithContentDescription(s(R.string.voice_say_more)).performClick()
+        finish()
+        rule.waitUntil(30_000) { (runBlocking { app.repository.openNow() }.singleOrNull()?.rules?.single()?.trigger as? Trigger.AtDateTime)?.at?.hour == 12 }
+        assertEquals(first.id, runBlocking { app.repository.openNow() }.single().id)
+        assertEquals("Llamar a Juan", runBlocking { app.repository.openNow() }.single().text)
     }
 
     @Test
