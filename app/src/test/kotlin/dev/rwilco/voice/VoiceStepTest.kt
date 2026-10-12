@@ -29,7 +29,7 @@ class VoiceStepTest {
         val partial = voiceStep(VoiceState.Listening(), heard(VoiceEvent.Partial("comprar pan")))
         assertEquals(VoiceState.Listening("comprar pan"), partial)
         assertEquals(VoiceState.Listening("comprar pan", level = 0.5f), voiceStep(partial, heard(VoiceEvent.Level(4f))))
-        assertEquals(VoiceState.Listening(said = listOf("comprar pan")), voiceStep(partial, heard(VoiceEvent.Ready)))
+        assertEquals(VoiceState.Listening(said = listOf("comprar pan"), ready = true), voiceStep(partial, heard(VoiceEvent.Ready)))
     }
 
     @Test
@@ -121,8 +121,10 @@ class VoiceStepTest {
 
     @Test
     fun `a fresh ear keeps the stretch the old one was in the middle of`() {
-        assertEquals(VoiceState.Listening(said = listOf("comprar pan", "al llegar")), voiceStep(VoiceState.Listening("al llegar", said = listOf("comprar pan")), heard(VoiceEvent.Ready)))
-        assertEquals(VoiceState.Listening(said = listOf("x")), voiceStep(VoiceState.Listening(said = listOf("x")), heard(VoiceEvent.Ready)))
+        assertEquals(VoiceState.Listening(said = listOf("comprar pan", "al llegar"), ready = true), voiceStep(VoiceState.Listening("al llegar", said = listOf("comprar pan")), heard(VoiceEvent.Ready)))
+        assertEquals(VoiceState.Listening(said = listOf("x"), ready = true), voiceStep(VoiceState.Listening(said = listOf("x")), heard(VoiceEvent.Ready)))
+        // Ready means listening: until it is said, and again after a pause, the sheet is getting ready.
+        assertEquals(false, (voiceStep(VoiceState.Listening(said = listOf("x"), paused = true, ready = true), VoiceInputEvent.Resume) as VoiceState.Listening).ready)
     }
 
     @Test

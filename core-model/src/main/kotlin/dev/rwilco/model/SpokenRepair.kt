@@ -114,6 +114,7 @@ fun repaired(stretches: List<String>, now: Instant, zone: ZoneId, settings: AppS
         namesPlace = { text -> Words.of(text).text.let { words -> words.indices.any { it > 0 && words[it - 1] == ' ' && savedPlaceAt(words, it - 1, settings.savedPlaces) != null } } },
     )
     repair.fillers()
+    repair.commands()
     // A marker that also opens a stretch while somebody finds the words ("Bueno, el martes")
     // is asked about as a correction first; only one that corrects nothing is a hesitation.
     repair.corrections()
@@ -144,6 +145,23 @@ private class Repair(val tokens: List<Token>, private val readSpans: (String) ->
     /** "Eh", "mmm" anywhere. */
     fun fillers() {
         tokens.indices.filter { FILLER.matches(key(it)) }.let(::drop)
+    }
+
+    /**
+     * What is said to the dictation rather than as part of it, opening a stretch (0.191.0): "borra
+     * eso" takes the stretch before away, "empieza de nuevo" everything before — and themselves.
+     * Only opening a stretch, after a pause, which is how an instruction is said; mid-sentence
+     * "borra eso" is somebody's reminder to delete something.
+     */
+    fun commands() {
+        for (stretch in tokens.map { it.stretch }.distinct()) {
+            val inIt = living().filter { tokens[it].stretch == stretch }
+            val command = COMMANDS.firstOrNull { (words, _) -> inIt.size >= words.size && words.indices.all { key(inIt[it]) == words[it] } } ?: continue
+            val (words, all) = command
+            val earlier = living().filter { tokens[it].stretch < stretch }
+            val gone = if (all) earlier else earlier.filter { tokens[it].stretch == earlier.lastOrNull()?.let { last -> tokens[last].stretch } }
+            drop(gone + inIt.take(words.size))
+        }
     }
 
     /** "Bueno", "pues", "o sea" opening a stretch that goes on, when they corrected nothing. */
@@ -418,6 +436,17 @@ private fun keyOf(raw: String): String = Words.of(raw).text.trim()
  * millimetres and a name as often as a murmur.
  */
 private val FILLER = Regex("e+h+m*|e+h*m{2,}|m{3,}|h+m+|u+h+m*|u+m+|e+r+m+|a+h+")
+
+/**
+ * What is said to the dictation, opening a stretch: the words, and whether it takes away
+ * everything before (true) or only the stretch before (false). Folded, longest first.
+ */
+private val COMMANDS: List<Pair<List<String>, Boolean>> = listOf(
+    "empieza de nuevo" to true, "empezar de nuevo" to true, "vuelvo a empezar" to true, "borra todo" to true, "borralo todo" to true,
+    "desde el principio" to true, "start over" to true, "start again" to true, "delete everything" to true,
+    "quita lo ultimo" to false, "borra lo ultimo" to false, "borra eso" to false, "quita eso" to false, "borralo" to false,
+    "elimina eso" to false, "delete that" to false, "scratch that" to false, "undo that" to false,
+).map { (words, all) -> words.split(' ') to all }.sortedByDescending { it.first.size }
 
 /** What opens a stretch while the speaker finds the words, when more words follow it. Folded. */
 private val OPENINGS: List<List<String>> = listOf(listOf("o", "sea"), listOf("bueno"), listOf("pues"))

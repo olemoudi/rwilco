@@ -13,6 +13,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -46,7 +47,8 @@ import androidx.compose.material.icons.outlined.MicOff
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.foundation.text.KeyboardActions
@@ -275,6 +277,11 @@ fun VoiceSheet(
         } finally {
             listener.cancel()
         }
+    }
+    // Listening for real: felt as well as seen, once per opening of the microphone (0.191.0).
+    val ready = listening?.ready == true && !listening.paused
+    LaunchedEffect(ready) {
+        if (ready) haptics.perform(HapticFeedbackType.ToggleOn)
     }
     // "Terminado": the ear gives its last stretch, and one that never answers does not hold the
     // sheet — a moment after its last word, what has been heard is the sentence.
@@ -508,7 +515,9 @@ fun VoiceSheet(
 @Composable
 private fun Disc(state: VoiceState) {
     val scheme = MaterialTheme.colorScheme
-    val open = state is VoiceState.Listening && !state.paused
+    // Filled only once the ear has said it is listening (0.191.0): a disc lit before that invites
+    // words into a microphone that is not open yet.
+    val open = state is VoiceState.Listening && !state.paused && state.ready
     val level = (state as? VoiceState.Listening)?.level ?: 0f
     val scale by animateFloatAsState(1f + DISC_GROWTH * level, tween(Tokens.motion.fast), label = "voice-level")
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -520,7 +529,7 @@ private fun Disc(state: VoiceState) {
                     scaleX = scale
                     scaleY = scale
                 }
-                .background(if (open) scheme.onSurface else scheme.surfaceContainerHighest, CircleShape),
+                .background(animateColorAsState(if (open) scheme.onSurface else scheme.surfaceContainerHighest, tween(Tokens.motion.fast), label = "voice-disc").value, CircleShape),
         ) {
             Icon(
                 imageVector = when (state) {
@@ -800,22 +809,7 @@ private fun HeardLine(check: VoiceCheck, marked: Boolean, key: String, onFix: ((
         }
     }
     Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.voice_heard), style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-            if (onFix != null && !editing) {
-                IconButton(onClick = {
-                    draft = TextFieldValue(check.heard, TextRange(check.heard.length))
-                    editing = true
-                }) {
-                    Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.voice_fix_text), tint = scheme.onSurfaceVariant)
-                }
-            }
-            if (onSayMore != null && !editing) {
-                IconButton(onClick = onSayMore) {
-                    Icon(Icons.Outlined.Mic, contentDescription = stringResource(R.string.voice_say_more), tint = scheme.onSurfaceVariant)
-                }
-            }
-        }
+        Text(stringResource(R.string.voice_heard), style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
         if (editing && onFix != null) {
             val focus = remember { FocusRequester() }
             LaunchedEffect(Unit) { focus.requestFocus() }
@@ -845,6 +839,31 @@ private fun HeardLine(check: VoiceCheck, marked: Boolean, key: String, onFix: ((
             }
         } else {
             Text(text, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurfaceVariant)
+            // Said in words, not left to icons to be guessed at (0.191.0): the two ways to put it right.
+            if (onFix != null || onSayMore != null) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(spacing.sm), modifier = Modifier.padding(top = spacing.xs)) {
+                    val chipColors = AssistChipDefaults.assistChipColors(labelColor = scheme.onSurface, leadingIconContentColor = scheme.onSurfaceVariant)
+                    if (onFix != null) {
+                        AssistChip(
+                            onClick = {
+                                draft = TextFieldValue(check.heard, TextRange(check.heard.length))
+                                editing = true
+                            },
+                            label = { Text(stringResource(R.string.voice_fix_text)) },
+                            leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(AssistChipDefaults.IconSize)) },
+                            colors = chipColors,
+                        )
+                    }
+                    if (onSayMore != null) {
+                        AssistChip(
+                            onClick = onSayMore,
+                            label = { Text(stringResource(R.string.voice_say_more)) },
+                            leadingIcon = { Icon(Icons.Outlined.Mic, contentDescription = null, modifier = Modifier.size(AssistChipDefaults.IconSize)) },
+                            colors = chipColors,
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -945,6 +964,7 @@ private fun statusOf(state: VoiceState): Int = when (state) {
     is VoiceState.Listening -> when {
         state.paused -> R.string.voice_paused
         state.finishing -> R.string.voice_thinking
+        !state.ready -> R.string.voice_preparing
         else -> R.string.voice_listening
     }
     is VoiceState.Thinking -> if (state.asking) R.string.voice_asking_gemini else R.string.voice_thinking

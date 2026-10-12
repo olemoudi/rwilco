@@ -586,6 +586,16 @@ class HomeViewModel(
     private var ownWordsFixed = 0
 
     /**
+     * When the microphone was asked to open and when "Terminado" was pressed (0.191.0): how long
+     * the ear took to listen and the answer took to come are noted, to know the waits for real.
+     */
+    @Volatile
+    private var openedAt = 0L
+
+    @Volatile
+    private var finishedAt = 0L
+
+    /**
      * What the ear heard, with the person's own words in it ([vocabulary]): of a stretch's
      * readings the one that says most of them, and names written as they write them.
      */
@@ -604,14 +614,37 @@ class HomeViewModel(
         }
     }
 
+    /** How long the waits were, noted at the moments they end; never anything that was said. */
+    private fun timing(event: VoiceInputEvent) {
+        val now = clock.millis()
+        when {
+            event == VoiceInputEvent.Retry || event == VoiceInputEvent.Resume || event == VoiceInputEvent.SayMore ||
+                (event as? VoiceInputEvent.Permission)?.granted == true -> openedAt = now
+            (event as? VoiceInputEvent.Heard)?.event == VoiceEvent.Ready && openedAt > 0 -> {
+                noteVoice("ear ready after ${now - openedAt} ms")
+                openedAt = 0
+            }
+            event == VoiceInputEvent.Finish && finishedAt == 0L -> finishedAt = now
+            event is VoiceInputEvent.Written || event is VoiceInputEvent.Unwritten || event is VoiceInputEvent.Proposed -> if (finishedAt > 0) {
+                noteVoice("answered ${now - finishedAt} ms after Terminado")
+                finishedAt = 0
+            }
+        }
+    }
+
     /** The sheet opens: listening at once, or asking for the microphone first. */
     fun openVoice(micAllowed: Boolean) {
-        if (_voice.value == null) ownWordsFixed = 0
+        if (_voice.value == null) {
+            ownWordsFixed = 0
+            openedAt = clock.millis()
+            finishedAt = 0
+        }
         if (_voice.value == null) _voice.value = if (micAllowed) VoiceState.Listening() else VoiceState.Asking
     }
 
     /** One thing that happened to the sheet; a finished sentence is turned into a reminder here, once. */
     fun onVoice(event: VoiceInputEvent, hereLabel: String) {
+        timing(event)
         val heard = personal(event)
         if (event is VoiceInputEvent.Reread) learnFrom(event.text)
         // Written over: Gemini's look at the old words is about words no longer there.
@@ -633,6 +666,7 @@ class HomeViewModel(
                 is VoiceOutcome.Proposed -> VoiceInputEvent.Proposed(outcome.reminder, outcome.form, outcome.spoken, outcome.here, outcome.check)
                 is VoiceOutcome.ToEditor -> VoiceInputEvent.Unwritten(outcome.text, outcome.why, outcome.form)
             }
+            timing(answer)
             _voice.update { current -> current?.let { voiceStep(it, answer) } }
             // Not for a sheet let go of while this was finishing: nobody would see the answer.
             if (refine != null && outcome is VoiceOutcome.Created && isActive) refine(outcome.reminder, refine)

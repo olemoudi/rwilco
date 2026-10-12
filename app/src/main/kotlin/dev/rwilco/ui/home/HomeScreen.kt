@@ -255,6 +255,7 @@ fun HomeScreen(
     val deletedMessage = stringResource(R.string.home_deleted)
     val skippedMessage = stringResource(R.string.home_skipped)
     val undoLabel = stringResource(R.string.common_undo)
+    val holdToDictate = stringResource(R.string.home_dictate_tapped)
     val cardActionsLabel = stringResource(R.string.home_card_actions)
     val createdMessage = stringResource(R.string.home_created)
     val pausedMessage = stringResource(R.string.home_paused)
@@ -818,7 +819,7 @@ fun HomeScreen(
             // as "Nuevo" is not: the thumb is on the keyboard.
             if (!search.open) {
                 item(key = "voice", contentType = "voice") {
-                    VoiceDoor(onOpen = openDictation)
+                    VoiceDoor(onOpen = openDictation, onTapped = { snackbar.show(holdToDictate) })
                 }
             }
             if (waitingShown) {
@@ -1484,6 +1485,8 @@ private fun DictationSheet(
         VoiceOutcome.Why.GEMINI_FAILED to stringResource(R.string.voice_to_editor_gemini_failed),
     )
     val voiceUndone = stringResource(R.string.voice_undone)
+    val createdUndo = stringResource(R.string.voice_created_named)
+    val undoLabel = stringResource(R.string.common_undo)
     VoiceSheet(
         state = current,
         preview = preview,
@@ -1518,9 +1521,11 @@ private fun DictationSheet(
             // Asked at the moment it goes, not when the sheet was drawn: a reading chosen since is
             // the same id, and a sheet that never wrote anything has nothing to go to. A routine
             // has no card on the list (as when the editor saves one), so the list stays put.
-            val written = (viewModel.voice.value as? VoiceState.Created)?.reminder?.takeIf { !it.isRoutine }?.id
+            val created = (viewModel.voice.value as? VoiceState.Created)?.reminder
             viewModel.closeVoice()
-            written?.let(onDictated)
+            created?.takeIf { !it.isRoutine }?.id?.let(onDictated)
+            // The sheet may have gone by itself: the undo stays a moment longer, down here (0.191.0).
+            created?.let { reminder -> snackbar.show(createdUndo.format(reminder.text), undoLabel) { viewModel.undoSpoken(reminder) } }
         },
     )
 }

@@ -1688,6 +1688,16 @@ loud what DST and a change of zone do to a landing.
   once. A fix that goes to the editor opens *that* reminder with the new words (Back leaves it as it
   was) instead of deleting it; the state machine carries `replacing` through a guess, a failure,
   "Otra vez" and the editor. The vocabulary is rebuilt only when words, tags, places or fixes change.
+- **Easier to use, from the UX study (0.191.0).** The sheet says "Preparando el micrófono…" with a
+  hollow disc until the ear's `Ready` (`Listening.ready`), then fills it and gives a haptic, so
+  nobody talks into a microphone not yet open; `voice` notes say how long the ear took to be ready
+  and the answer to come after "Terminado". The two ways to put a reading right are chips with
+  words ("Corregir texto", "Corregir hablando"), not bare icons. Shorter text while speaking and
+  while paused. When the sheet goes with a reminder written, Home's snackbar keeps "Creado: … ·
+  Deshacer" a moment longer — the auto-close is safe. A tap on the dictation bar (short of the
+  hold) says "Mantén pulsada la barra para dictar" with a reject haptic. And commands said to the
+  dictation, opening a stretch after a pause (`SpokenRepair.commands`): "borra eso", "quita lo
+  último" take the stretch before away; "empieza de nuevo", "borra todo" everything before.
 - **A held stepper keeps counting (0.51.0).** A step is one unit on purpose (three minutes has
   to be sayable, and the countdown sheet says why), and the price was seventeen taps from thirty
   to forty-seven. `Stepper` repeats after `Motion.holdRepeatDelay`, quickening to

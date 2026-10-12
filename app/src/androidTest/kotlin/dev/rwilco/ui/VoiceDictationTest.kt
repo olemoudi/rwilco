@@ -204,6 +204,8 @@ class VoiceDictationTest {
         rule.onNodeWithContentDescription(s(R.string.home_dictate)).performClick()
         rule.waitForIdle()
         assertEquals(0, rule.onAllNodesWithText(s(R.string.voice_listening)).fetchSemanticsNodes().size)
+        // And it says why (0.191.0).
+        waitFor(s(R.string.home_dictate_tapped))
         assertEquals(emptyList<String>(), runBlocking { app.repository.openNow() }.map { it.text })
     }
 
@@ -285,7 +287,7 @@ class VoiceDictationTest {
         dictate()
         rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.any { it.text == "Llamar a visto" } }
         val first = runBlocking { app.repository.openNow() }.single()
-        rule.onNodeWithContentDescription(s(R.string.voice_fix_text)).performClick()
+        rule.onNodeWithText(s(R.string.voice_fix_text), useUnmergedTree = true).performClick()
         rule.onNodeWithTag(VOICE_FIX_FIELD_TAG).performTextReplacement("llamar a Vito a las 11")
         shot("voice-fix-by-hand")
         rule.onNodeWithText(s(R.string.voice_reread), useUnmergedTree = true).performClick()
@@ -310,7 +312,7 @@ class VoiceDictationTest {
         dictate()
         rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.any { it.text == "Llamar a Juan" } }
         val first = runBlocking { app.repository.openNow() }.single()
-        rule.onNodeWithContentDescription(s(R.string.voice_fix_text)).performClick()
+        rule.onNodeWithText(s(R.string.voice_fix_text), useUnmergedTree = true).performClick()
         rule.onNodeWithTag(VOICE_FIX_FIELD_TAG).performTextReplacement("llamar a Pedro")
         rule.onNodeWithText(s(R.string.voice_reread), useUnmergedTree = true).performClick()
         waitFor(s(R.string.voice_to_editor_nothing))
@@ -329,8 +331,9 @@ class VoiceDictationTest {
         dictate()
         rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.any { it.text == "Llamar a Juan" } }
         val first = runBlocking { app.repository.openNow() }.single()
+        shot("voice-created-fix-chips")
         sentence = "no, a las 12"
-        rule.onNodeWithContentDescription(s(R.string.voice_say_more)).performClick()
+        rule.onNodeWithText(s(R.string.voice_say_more), useUnmergedTree = true).performClick()
         finish()
         rule.waitUntil(30_000) { (runBlocking { app.repository.openNow() }.singleOrNull()?.rules?.single()?.trigger as? Trigger.AtDateTime)?.at?.hour == 12 }
         assertEquals(first.id, runBlocking { app.repository.openNow() }.single().id)
@@ -426,7 +429,11 @@ class VoiceDictationTest {
         rule.waitUntil(30_000) {
             runCatching { rule.onNodeWithText("Llamar al banco", useUnmergedTree = true).assertIsDisplayed() }.isSuccess
         }
+        // Gone by itself, with its undo a moment longer down here (0.191.0).
+        waitFor(rule.activity.getString(R.string.voice_created_named, "Llamar al banco"))
         shot("voice-card-on-home")
+        rule.onNodeWithText(s(R.string.common_undo), useUnmergedTree = true).performClick()
+        rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.none { it.text == "Llamar al banco" } }
     }
 
     // --- Gemini when the grammar has doubts (0.183.0) ---

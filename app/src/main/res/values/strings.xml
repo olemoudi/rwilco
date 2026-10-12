@@ -112,10 +112,10 @@
     <string name="voice_created">Created</string>
     <string name="voice_mic_open">Microphone on</string>
     <string name="voice_mic_closed">Microphone off</string>
-    <string name="voice_hint">Say what and when: “buy bread when I get home”, “call Marta tomorrow afternoon”. Take your time: pausing doesn’t stop me, and you can correct yourself as you go (“at five, no, at six”). Press Done when you’ve finished.</string>
+    <string name="voice_hint">Say what and when: “call Marta tomorrow at 6”. No rush; press Done when you’ve finished.</string>
     <string name="voice_stop">Done</string>
     <string name="voice_paused">Microphone paused</string>
-    <string name="voice_paused_body">It closed after a long silence, because you left the app, or because speech recognition cut out. What you said is still here: carry on, or press Done.</string>
+    <string name="voice_paused_body">What you said is still here: carry on, or press Done.</string>
     <string name="voice_resume">Carry on</string>
     <string name="voice_done">Done</string>
     <string name="voice_closes_itself">Closes by itself in a moment</string>
@@ -124,10 +124,13 @@
     <string name="voice_fires_in">Rings %1$s</string>
     <string name="voice_doubt">Not sure whether “%1$s” changes when it rings: check it.</string>
     <string name="voice_dropped">Taken as a correction or a hesitation, and left out: “%1$s”.</string>
-    <string name="voice_fix_text">Fix what I heard</string>
-    <string name="voice_say_more">Add to it or correct it by speaking</string>
+    <string name="voice_fix_text">Fix the text</string>
+    <string name="voice_say_more">Correct by speaking</string>
     <string name="voice_fix_label">What you said</string>
     <string name="voice_reread">Read it again</string>
+    <string name="voice_preparing">Getting the microphone ready…</string>
+    <string name="voice_created_named">Created: %1$s</string>
+    <string name="home_dictate_tapped">Hold the bar to dictate</string>
     <string name="voice_doubt_join">”, “</string>
     <string name="voice_alternatives">Or did you mean:</string>
     <string name="voice_alternative_use">Change it to %1$s</string>
@@ -1838,6 +1841,17 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_191_0">
+
+        <item>The dictation sheet says “Getting the microphone ready…” until it is really listening, and then vibrates: no more first words lost to a microphone that wasn’t open yet.</item>
+
+        <item>“Fix the text” and “Correct by speaking” are now buttons with words under what was heard, and the texts while you speak are shorter.</item>
+
+        <item>When the sheet closes by itself, “Created: … · Undo” stays a moment longer at the bottom of Home.</item>
+
+        <item>After a pause you can say “borra eso” (drops what you said just before) or “empieza de nuevo” (drops everything). And a tap on the dictation bar now tells you to hold it.</item>
+
+    </string-array>
     <string-array name="whats_new_0_190_1">
 
         <item>Learning is more careful: only a name that was misheard is learned (“visto” that was Vito), never a sentence you simply changed your mind about, and common names or ordinary words are never “corrected” into one of yours.</item>

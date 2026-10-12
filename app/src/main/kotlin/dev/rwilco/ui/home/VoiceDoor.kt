@@ -24,6 +24,12 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import dev.rwilco.R
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import dev.rwilco.ui.components.HOLD_MILLIS
 import dev.rwilco.ui.components.holdable
 import dev.rwilco.ui.components.rememberHoldState
 import dev.rwilco.ui.theme.Tokens
@@ -41,11 +47,17 @@ import dev.rwilco.ui.theme.Tokens
  * Neutral, never amber: amber is what fires next.
  */
 @Composable
-fun VoiceDoor(onOpen: () -> Unit, modifier: Modifier = Modifier) {
+fun VoiceDoor(
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** A finger that only tapped (0.191.0): said why nothing opened, rather than left to wonder. */
+    onTapped: () -> Unit = {},
+) {
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
     val label = stringResource(R.string.home_dictate)
     val hold = rememberHoldState()
+    val haptics = Tokens.haptics
     Surface(
         shape = MaterialTheme.shapes.large,
         color = scheme.surfaceContainer,
@@ -53,6 +65,18 @@ fun VoiceDoor(onOpen: () -> Unit, modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth()
             .holdable(Icons.Outlined.Mic, label, onOpen, hold)
+            // Watched, never consumed: the hold is the holdable's, and only a finger lifted well
+            // short of it, without moving, is a tap.
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val up = waitForUpOrCancellation() ?: return@awaitEachGesture
+                    if (!hold.held && up.uptimeMillis - down.uptimeMillis < HOLD_MILLIS) {
+                        haptics.perform(HapticFeedbackType.Reject)
+                        onTapped()
+                    }
+                }
+            }
             .semantics(mergeDescendants = true) {
                 contentDescription = label
                 role = Role.Button

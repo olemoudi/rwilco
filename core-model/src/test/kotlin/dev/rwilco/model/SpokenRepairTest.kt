@@ -53,6 +53,19 @@ class SpokenRepairTest {
     }
 
     @Test
+    fun `what is said to the dictation after a pause takes away the stretch before, or everything`() {
+        assertEquals("llamar a Juan mañana", meant("llamar a Juan mañana", "a las cinco de la tarde", "borra eso"))
+        assertEquals("llamar a Juan a las seis", meant("llamar a Juan", "a las cinco", "quita lo último, a las seis"))
+        assertEquals("comprar pan mañana", meant("llamar a Juan el lunes", "empieza de nuevo", "comprar pan mañana"))
+        assertEquals("buy bread", meant("buy milk", "scratch that", "buy bread"))
+        // Mid-sentence it is somebody's reminder to delete something.
+        assertEquals("pedirle a Ana que borre eso mañana", meant("pedirle a Ana que borre eso mañana"))
+        assertEquals("recordar borra eso del móvil", meant("recordar borra eso del móvil"))
+        // With nothing before it, it takes only itself.
+        assertEquals("comprar pan", meant("borra eso", "comprar pan"))
+    }
+
+    @Test
     fun `a marker opening the stretch after a pause still corrects`() {
         // Since 0.188.0 a pause is a new stretch nearly every time: "Bueno," and "O sea," opening
         // one are asked about as corrections before they are taken for a hesitation (0.190.1).

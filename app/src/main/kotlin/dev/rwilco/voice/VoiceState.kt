@@ -33,6 +33,11 @@ sealed interface VoiceState {
         val paused: Boolean = false,
         /** The reminder this dictation goes on from, and is written over (0.190.0, "Añadir o corregir hablando"). */
         val replacing: String? = null,
+        /**
+         * The ear has said it is listening (0.191.0): until then the sheet says it is getting
+         * ready, so nobody starts talking into a microphone that is not open yet.
+         */
+        val ready: Boolean = false,
     ) : VoiceState {
         /** Everything heard so far, stretch by stretch. */
         val stretches: List<String> get() = (said + partial).map { it.trim() }.filter { it.isNotEmpty() }
@@ -146,7 +151,7 @@ fun voiceStep(state: VoiceState, event: VoiceInputEvent): VoiceState = when (eve
         if (state is VoiceState.Created && event.text.isNotBlank()) VoiceState.Thinking(listOf(event.text.trim()), replacing = state.reminder.id) else state
     VoiceInputEvent.SayMore ->
         if (state is VoiceState.Created) VoiceState.Listening(said = listOf(state.check.heard).filter { it.isNotBlank() }, replacing = state.reminder.id) else state
-    VoiceInputEvent.Resume -> if (state is VoiceState.Listening && state.paused) state.copy(paused = false) else state
+    VoiceInputEvent.Resume -> if (state is VoiceState.Listening && state.paused) state.copy(paused = false, ready = false) else state
     // Written from the sentence, or from Gemini's guess once confirmed.
     is VoiceInputEvent.Written -> if (state is VoiceState.Thinking || state is VoiceState.Confirm) VoiceState.Created(event.reminder, event.check) else state
     is VoiceInputEvent.Proposed ->
@@ -159,7 +164,7 @@ fun voiceStep(state: VoiceState, event: VoiceInputEvent): VoiceState = when (eve
     is VoiceInputEvent.Heard -> if (state !is VoiceState.Listening || state.paused) state else when (val heard = event.event) {
         // A fresh ear (after a rotation took the old one) starts a stretch of its own: the one
         // the old ear was in the middle of is kept as it was heard.
-        VoiceEvent.Ready -> if (state.partial.isBlank()) state else state.copy(said = state.stretches, partial = "")
+        VoiceEvent.Ready -> if (state.partial.isBlank()) state.copy(ready = true) else state.copy(said = state.stretches, partial = "", ready = true)
         is VoiceEvent.Level -> state.copy(level = levelOf(heard.rms))
         is VoiceEvent.Partial -> state.copy(partial = heard.text)
         // Some recognizers end with an empty final after a perfectly good partial.

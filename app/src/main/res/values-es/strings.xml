@@ -108,10 +108,10 @@
     <string name="voice_created">Creado</string>
     <string name="voice_mic_open">Micrófono abierto</string>
     <string name="voice_mic_closed">Micrófono cerrado</string>
-    <string name="voice_hint">Di qué y cuándo: «comprar pan cuando llegue a casa», «llamar a Marta mañana por la tarde». Sin prisa: las pausas no me cortan, y puedes corregirte sobre la marcha («a las cinco, no, a las seis»). Pulsa Terminado cuando acabes.</string>
+    <string name="voice_hint">Di qué y cuándo: «llamar a Marta mañana a las 6». Sin prisa; pulsa Terminado al acabar.</string>
     <string name="voice_stop">Terminado</string>
     <string name="voice_paused">Micrófono en pausa</string>
-    <string name="voice_paused_body">Se ha cerrado tras un silencio largo, porque has salido de la app o porque el reconocimiento se ha cortado. Lo que has dicho sigue aquí: continúa, o pulsa Terminado.</string>
+    <string name="voice_paused_body">Lo que has dicho sigue aquí: continúa, o pulsa Terminado.</string>
     <string name="voice_resume">Seguir</string>
     <string name="voice_done">Listo</string>
     <string name="voice_closes_itself">Se cierra sola en un momento</string>
@@ -120,10 +120,13 @@
     <string name="voice_fires_in">Sonará %1$s</string>
     <string name="voice_doubt">No sé si «%1$s» cambia cuándo suena: revísalo.</string>
     <string name="voice_dropped">Lo he tomado como corrección o titubeo y lo he dejado fuera: «%1$s».</string>
-    <string name="voice_fix_text">Corregir lo que he oído</string>
-    <string name="voice_say_more">Añadir o corregir hablando</string>
+    <string name="voice_fix_text">Corregir texto</string>
+    <string name="voice_say_more">Corregir hablando</string>
     <string name="voice_fix_label">Lo que has dicho</string>
     <string name="voice_reread">Volver a leer</string>
+    <string name="voice_preparing">Preparando el micrófono…</string>
+    <string name="voice_created_named">Creado: %1$s</string>
+    <string name="home_dictate_tapped">Mantén pulsada la barra para dictar</string>
     <string name="voice_doubt_join">», «</string>
     <string name="voice_alternatives">¿O lo querías así?</string>
     <string name="voice_alternative_use">Cambiarlo a %1$s</string>
@@ -1823,6 +1826,17 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_191_0">
+
+        <item>La hoja de dictado dice «Preparando el micrófono…» hasta que escucha de verdad, y entonces vibra: ya no se pierden las primeras palabras dichas antes de que el micrófono estuviera abierto.</item>
+
+        <item>«Corregir texto» y «Corregir hablando» son ahora botones con texto bajo lo oído, y los textos mientras hablas son más cortos.</item>
+
+        <item>Cuando la hoja se cierra sola, «Creado: … · Deshacer» se queda un momento más abajo en Home.</item>
+
+        <item>Tras una pausa puedes decir «borra eso» (quita lo que dijiste justo antes) o «empieza de nuevo» (lo quita todo). Y tocar la barra de dictar te avisa de que hay que mantenerla pulsada.</item>
+
+    </string-array>
     <string-array name="whats_new_0_190_1">
 
         <item>El aprendizaje es más prudente: solo se aprende un nombre mal oído («visto» que era Vito), nunca una frase en la que simplemente cambiaste de idea, y ni los nombres corrientes ni las palabras normales se «corrigen» a uno de los tuyos.</item>
