@@ -1649,6 +1649,17 @@ loud what DST and a change of zone do to a landing.
   `restarting`, `segments asked, none given`), rounds, segments, errors — never the words, so the
   owner's report says which mode his phone runs. The grammar also reads what a lost start leaves:
   "10 minutos allí" after a doorway, "lleva", "estar allí 10 minutos".
+- **The person's own words (0.189.0, `Vocabulary.kt`).** A recognizer trained on everybody's
+  Spanish does not know "Vito" (the owner's wife). `vocabularyOf` gathers the person's words from
+  what is already on the phone — names in reminders and routines (capitalised mid-sentence), every
+  word of a keep-in-touch contact, tags, saved places — most used first, and they work three ways:
+  asked for (`EXTRA_BIASING_STRINGS`, API 33, the first 50), chosen (five readings per stretch are
+  asked for, and the one with most of them wins over the first; a tie keeps the first), and put
+  right (a word the recognizer capitalised in mid-sentence — its guess at a name — that sounds like
+  one of them, `soundOf`'s rough Spanish phonetics, is written as theirs). Never an ordinary word in
+  lower case ("leche de vaca" whatever the contacts say about Baca), never the first word. Applied
+  in `HomeViewModel.personal` to every partial, stretch and final, so the name is right as it is
+  said. `VocabularyTest`, `VoiceDictationTest` ("Bito" → "Vito" once "Llamar a Vito" exists).
 - **A held stepper keeps counting (0.51.0).** A step is one unit on purpose (three minutes has
   to be sayable, and the countdown sheet says why), and the price was seventeen taps from thirty
   to forty-seven. `Stepper` repeats after `Motion.holdRepeatDelay`, quickening to

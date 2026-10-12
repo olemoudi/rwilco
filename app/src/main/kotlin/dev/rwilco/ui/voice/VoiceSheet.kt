@@ -174,6 +174,8 @@ fun VoiceSheet(
     state: VoiceState,
     /** What the words heard so far come to: what of them is a correction, and what they would be written as. */
     preview: VoicePreview?,
+    /** The person's own words, for the recognizer to lean towards (0.189.0). */
+    words: List<String>,
     today: LocalDate,
     defaultTime: LocalTime,
     zone: ZoneId,
@@ -252,7 +254,7 @@ fun VoiceSheet(
     val earOpen = listening != null && !listening.paused
     LaunchedEffect(earOpen) {
         if (!earOpen) return@LaunchedEffect
-        listener.start(locale) { event -> send(VoiceInputEvent.Heard(event)) }
+        listener.start(locale, words) { event -> send(VoiceInputEvent.Heard(event)) }
         try {
             awaitCancellation()
         } finally {

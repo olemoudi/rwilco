@@ -26,10 +26,10 @@ sealed interface VoiceEvent {
      * A stretch closed by a pause, as finally heard — empty when nothing final was — and the ear
      * listening on (0.186.0): a pause is somebody thinking, not somebody done.
      */
-    data class Segment(val text: String) : VoiceEvent
+    data class Segment(val text: String, val alternatives: List<String> = emptyList()) : VoiceEvent
 
     /** The last stretch as finally heard, once [Listener.stop] was asked; empty when nothing was. */
-    data class Final(val text: String) : VoiceEvent
+    data class Final(val text: String, val alternatives: List<String> = emptyList()) : VoiceEvent
 
     /** One of `SpeechRecognizer.ERROR_*`. */
     data class Failed(val error: Int) : VoiceEvent
@@ -44,8 +44,9 @@ interface Listener {
      * Listens until [stop] or [cancel], however long the pauses (0.186.0; the owner: the
      * dictation must not end by itself, so a sentence can be said calmly and corrected): each
      * stretch a pause closes comes as a [VoiceEvent.Segment], and the ear goes on listening.
+     * [words] are the person's own, for the recognizer to lean towards where it can (0.189.0).
      */
-    fun start(locale: Locale, onEvent: (VoiceEvent) -> Unit)
+    fun start(locale: Locale, words: List<String>, onEvent: (VoiceEvent) -> Unit)
 
     /** Stop listening: the stretch being said comes as the [VoiceEvent.Final], and that is the end. */
     fun stop()
@@ -114,8 +115,12 @@ class PlatformListener(private val context: Context) : Listener {
 
     private class How(var onDevice: Boolean = false, var segments: Int = 0, var rounds: Int = 0, val errors: MutableList<Int> = mutableListOf())
 
-    override fun start(locale: Locale, onEvent: (VoiceEvent) -> Unit) {
+    /** The person's own words, asked for on every round of this listening. */
+    private var words: List<String> = emptyList()
+
+    override fun start(locale: Locale, words: List<String>, onEvent: (VoiceEvent) -> Unit) {
         this.onEvent = onEvent
+        this.words = words
         finishing = false
         hollow = 0
         val onDevice = !noPack && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
@@ -155,7 +160,7 @@ class PlatformListener(private val context: Context) : Listener {
             override fun onSegmentResults(segmentResults: Bundle) {
                 if (!hearing) return
                 how.segments++
-                onEvent(VoiceEvent.Segment(firstOf(segmentResults).orEmpty()))
+                onEvent(VoiceEvent.Segment(firstOf(segmentResults).orEmpty(), allOf(segmentResults)))
             }
             override fun onEndOfSegmentedSession() {
                 if (!hearing) return
@@ -175,10 +180,10 @@ class PlatformListener(private val context: Context) : Listener {
                 hearing = false
                 val text = firstOf(results).orEmpty()
                 if (finishing) {
-                    onEvent(VoiceEvent.Final(text))
+                    onEvent(VoiceEvent.Final(text, allOf(results)))
                     noteHow("finished")
                 } else {
-                    onEvent(VoiceEvent.Segment(text))
+                    onEvent(VoiceEvent.Segment(text, allOf(results)))
                     again(ear, intent, empty = text.isEmpty(), SpeechRecognizer.ERROR_NO_MATCH)
                 }
             }
@@ -290,8 +295,12 @@ class PlatformListener(private val context: Context) : Listener {
         putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
         putExtra(RecognizerIntent.EXTRA_LANGUAGE, locale.toLanguageTag())
         putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-        putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+        // A few readings of each stretch, for the one with the person's own words in it to win.
+        putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, MAX_ALTERNATIVES)
         if (preferOffline) putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+        if (words.isNotEmpty() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            putStringArrayListExtra(RecognizerIntent.EXTRA_BIASING_STRINGS, ArrayList(words))
+        }
         if (segmented && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             // Segmented by length: the session lasts at least this long, handing over a stretch at
             // each pause, and ends sooner only when asked to. The length is the historical long.
@@ -302,6 +311,10 @@ class PlatformListener(private val context: Context) : Listener {
 
     private fun firstOf(results: Bundle?): String? =
         results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.takeIf { it.isNotBlank() }
+
+    /** Every reading of a stretch the recognizer offered, best first. */
+    private fun allOf(results: Bundle?): List<String> =
+        results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION).orEmpty().filter { it.isNotBlank() }
 
     private companion object {
         /** `ERROR_LANGUAGE_NOT_SUPPORTED` and `ERROR_LANGUAGE_UNAVAILABLE` (API 31). */
@@ -315,6 +328,9 @@ class PlatformListener(private val context: Context) : Listener {
          * a recognizer started again straight after a stretch says now and then, and gets over.
          */
         val PASSING = setOf(SpeechRecognizer.ERROR_CLIENT, SpeechRecognizer.ERROR_RECOGNIZER_BUSY, 11)
+
+        /** How many readings of a stretch are asked for. */
+        const val MAX_ALTERNATIVES = 5
 
         /** How long before a new recognizer after one of those. */
         const val PASSING_DELAY_MS = 300L

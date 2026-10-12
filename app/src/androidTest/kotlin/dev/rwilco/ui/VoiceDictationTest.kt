@@ -98,7 +98,7 @@ class VoiceDictationTest {
     private inner class FakeEar : Listener {
         private val main = Handler(Looper.getMainLooper())
         private var onEvent: ((VoiceEvent) -> Unit)? = null
-        override fun start(locale: Locale, onEvent: (VoiceEvent) -> Unit) {
+        override fun start(locale: Locale, words: List<String>, onEvent: (VoiceEvent) -> Unit) {
             this.onEvent = onEvent
             main.postDelayed({ onEvent(VoiceEvent.Ready) }, 50)
             var at = 150L
@@ -257,6 +257,22 @@ class VoiceDictationTest {
         shot("voice-created-correction")
         rule.onNodeWithText(s(R.string.voice_done), useUnmergedTree = true).performClick()
         rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.voice_heard)).fetchSemanticsNodes().isEmpty() }
+    }
+
+    @Test
+    fun aNameAlreadyWrittenIsWrittenTheSameWhenItIsMisheard() {
+        // The owner's "Vito" (0.189.0): written once in a reminder, it is his word from then on,
+        // and a recognizer's "Bito" is put right.
+        runBlocking {
+            val now = java.time.Instant.now()
+            app.repository.save(dev.rwilco.model.Reminder(id = "voice-vito", text = "Llamar a Vito", createdAt = now, updatedAt = now))
+        }
+        sentence = "comprar flores para Bito mañana"
+        open()
+        // Put right as it is heard, not only once it is in.
+        waitFor("comprar flores para Vito mañana")
+        rule.onNodeWithText(s(R.string.voice_stop), useUnmergedTree = true).performClick()
+        rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.any { it.text == "Comprar flores para Vito" } }
     }
 
     @Test

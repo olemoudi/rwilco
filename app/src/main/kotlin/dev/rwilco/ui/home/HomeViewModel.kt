@@ -47,8 +47,11 @@ import dev.rwilco.model.Repaired
 import dev.rwilco.model.Spoken
 import dev.rwilco.model.hear
 import dev.rwilco.model.repaired
+import dev.rwilco.model.Vocabulary
+import dev.rwilco.model.vocabularyOf
 import dev.rwilco.model.withoutLeadIn
 import dev.rwilco.diag.Diag
+import dev.rwilco.voice.VoiceEvent
 import dev.rwilco.voice.VoiceInputEvent
 import dev.rwilco.voice.GeminiAnswer
 import dev.rwilco.voice.GeminiInput
@@ -564,16 +567,52 @@ class HomeViewModel(
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /**
+     * The person's own words, from everything written and every saved place (0.189.0): asked of
+     * the recognizer, and used to choose between its readings and put names right ([personal]).
+     */
+    val vocabulary: StateFlow<Vocabulary> = combine(settings.filterNotNull(), repository.open, repository.done) { current, open, done ->
+        vocabularyOf(open + done, current.savedPlaces)
+    }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, Vocabulary(emptyList()))
+
+    /** Words the person's vocabulary changed in this dictation, for the diagnostics note. */
+    @Volatile
+    private var ownWordsFixed = 0
+
+    /**
+     * What the ear heard, with the person's own words in it ([vocabulary]): of a stretch's
+     * readings the one that says most of them, and names written as they write them.
+     */
+    private fun personal(event: VoiceInputEvent): VoiceInputEvent {
+        val heard = (event as? VoiceInputEvent.Heard)?.event ?: return event
+        val vocabulary = vocabulary.value
+        fun fix(text: String, alternatives: List<String>): String {
+            val chosen = vocabulary.choose(alternatives.ifEmpty { listOf(text) }) ?: text
+            return vocabulary.corrected(chosen).also { if (it != text) ownWordsFixed++ }
+        }
+        return when (heard) {
+            is VoiceEvent.Partial -> VoiceInputEvent.Heard(VoiceEvent.Partial(vocabulary.corrected(heard.text)))
+            is VoiceEvent.Segment -> VoiceInputEvent.Heard(VoiceEvent.Segment(fix(heard.text, heard.alternatives)))
+            is VoiceEvent.Final -> VoiceInputEvent.Heard(VoiceEvent.Final(fix(heard.text, heard.alternatives)))
+            else -> event
+        }
+    }
+
     /** The sheet opens: listening at once, or asking for the microphone first. */
     fun openVoice(micAllowed: Boolean) {
+        if (_voice.value == null) ownWordsFixed = 0
         if (_voice.value == null) _voice.value = if (micAllowed) VoiceState.Listening() else VoiceState.Asking
     }
 
     /** One thing that happened to the sheet; a finished sentence is turned into a reminder here, once. */
     fun onVoice(event: VoiceInputEvent, hereLabel: String) {
+        val heard = personal(event)
+        if (event == VoiceInputEvent.Retry || (event as? VoiceInputEvent.Permission)?.granted == true) ownWordsFixed = 0
         // Stepped on whatever the sheet is now, atomically: Gemini's answer may be landing on another thread.
         var before: VoiceState? = null
-        val after = _voice.updateAndGet { current -> before = current; current?.let { voiceStep(it, event) } } ?: return
+        val after = _voice.updateAndGet { current -> before = current; current?.let { voiceStep(it, heard) } } ?: return
         if (after !is VoiceState.Thinking || before is VoiceState.Thinking) return
         // Off the main thread: reading a sentence is a few hundred regex passes, and the sheet is
         // animating while it happens.
@@ -774,7 +813,8 @@ class HomeViewModel(
         if (fix != null) seedHere(reminder, fix)
         noteVoice(
             "written: ${reminder.rules.size} rule(s), ${reminder.recurrence::class.simpleName}${if (fix != null) ", here" else ""}" +
-                ", ${read.doubts.size} doubt(s), ${alternatives.size} alternative(s), ${repaired.dropped.size} repair(s)",
+                ", ${read.doubts.size} doubt(s), ${alternatives.size} alternative(s), ${repaired.dropped.size} repair(s)" +
+                ", ${vocabulary.value.words.size} own word(s) known, $ownWordsFixed stretch(es) put right",
         )
         return VoiceOutcome.Created(reminder, check)
     }
