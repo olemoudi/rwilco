@@ -160,6 +160,17 @@ class VoiceStepTest {
         assertTrue(VoiceCheck(heard = "comprar pan mañana").clear)
         assertFalse(VoiceCheck(heard = "x", doubts = listOf(0..0)).clear)
         assertFalse(VoiceCheck(heard = "x", alternatives = listOf(VoiceAlternative(later, null))).clear)
+        // Words taken out as a correction are looked at before the sheet goes (0.187.0).
+        assertFalse(VoiceCheck(heard = "x", dropped = listOf(0..0)).clear)
+    }
+
+    @Test
+    fun `what was taken out is struck first and named`() {
+        val heard = "llamar a Juan mañana a las cinco, no, a las seis"
+        val check = VoiceCheck(heard = heard, parts = listOf(HeardSpan(14..19, TriggerFamily.TIME), HeardSpan(38..47, TriggerFamily.TIME)), dropped = listOf(21..36))
+        assertEquals(HeardMark(21..36, HeardMark.Kind.DROPPED), check.marks().first())
+        assertEquals(listOf("a las cinco, no"), check.droppedWords())
+        assertEquals(emptyList<String>(), VoiceCheck(heard = "x", dropped = listOf(4..9)).droppedWords())
     }
 
     @Test

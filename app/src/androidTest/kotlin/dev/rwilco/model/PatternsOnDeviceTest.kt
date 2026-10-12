@@ -69,6 +69,15 @@ class PatternsOnDeviceTest {
         )) {
             hear(text, now, zone, settings)
         }
+        // A stay however it is said (0.185.0), and a dictation repaired before it is read (0.187.0).
+        for (text in listOf(
+            "comprar pan al llegar a casa y llevar 10 minutos allí", "a los 10 minutos de llegar a casa", "media hora después de salir de casa",
+            "cuando lleve 10 minutos en casa", "y estar 10 minutos allí", "10 minutes after I get home",
+        )) {
+            hear(text, now, zone, settings)
+        }
+        assertEquals("llamar a Juan mañana a las seis", repaired(listOf("eh llamar a Juan mañana a las cinco", "no, a las seis"), now, zone, settings).text)
+        assertEquals("comprar pan y leche", repaired(listOf("comprar pan", "bueno, comprar pan y leche"), now, zone, settings).text)
         // Gemini's half (0.178.0): the schema built and an answer read back, on the phone's JSON.
         assertNotNull(geminiSchema(settings.geminiPlaces))
         assertNotNull(geminiJson.decodeFromString(GeminiReading.serializer(), """{"text":"x","match":"ANY","rules":[{"event":{"kind":"ARRIVE","place":"Casa"}}]}""").toHeard(now, zone, settings, null, "aquí", "x"))

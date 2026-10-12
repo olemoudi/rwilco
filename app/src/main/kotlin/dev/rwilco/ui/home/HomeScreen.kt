@@ -1467,7 +1467,7 @@ private fun DictationSheet(
 ) {
     val voice by viewModel.voice.collectAsStateWithLifecycle()
     val current = voice ?: return
-    val reading by viewModel.voicePreview.collectAsStateWithLifecycle()
+    val preview by viewModel.voicePreview.collectAsStateWithLifecycle()
     val snackbar = LocalSnackbar.current
     val voiceWhy = mapOf(
         VoiceOutcome.Why.NOTHING to stringResource(R.string.voice_to_editor_nothing),
@@ -1481,7 +1481,7 @@ private fun DictationSheet(
     val voiceUndone = stringResource(R.string.voice_undone)
     VoiceSheet(
         state = current,
-        reading = reading,
+        preview = preview,
         today = localToday(),
         defaultTime = defaultTime,
         zone = zone,

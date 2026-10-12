@@ -38,6 +38,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.StrikethroughS
 import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.MicOff
@@ -87,6 +88,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -129,6 +132,8 @@ import dev.rwilco.voice.VoiceFailure
 import dev.rwilco.voice.VoiceInput
 import dev.rwilco.voice.VoiceInputEvent
 import dev.rwilco.voice.VoiceOutcome
+import dev.rwilco.voice.VoicePreview
+import dev.rwilco.voice.droppedWords
 import dev.rwilco.voice.VoiceState
 import dev.rwilco.voice.doubtWords
 import dev.rwilco.voice.marks
@@ -167,8 +172,8 @@ import kotlinx.coroutines.launch
 fun VoiceSheet(
     /** Where the sheet is; held by Home's ViewModel, so a rotation keeps it. */
     state: VoiceState,
-    /** What the words heard so far would be written as, or null while they say no "when". */
-    reading: Spoken?,
+    /** What the words heard so far come to: what of them is a correction, and what they would be written as. */
+    preview: VoicePreview?,
     today: LocalDate,
     defaultTime: LocalTime,
     zone: ZoneId,
@@ -403,12 +408,15 @@ fun VoiceSheet(
                         if (blank) {
                             Text(stringResource(R.string.voice_hint), style = MaterialTheme.typography.bodyLarge, color = scheme.onSurfaceVariant)
                         } else {
-                            Text(words, style = MaterialTheme.typography.headlineSmall, color = scheme.onSurface)
+                            // A correction is seen to be taken as one while it is said: what it
+                            // corrects is struck through as soon as the words after it line up.
+                            val struck = preview?.takeIf { it.heard == words }?.dropped.orEmpty()
+                            Text(struckThrough(words, struck, scheme.outline), style = MaterialTheme.typography.headlineSmall, color = scheme.onSurface)
                         }
                     }
                     // What it is turning into while it is said — the words without their "when",
                     // and the "when" in the colours the editor's own sentence over "Guardar" uses.
-                    val shown: Spoken? = if (current is VoiceState.Listening || current is VoiceState.Thinking) reading else null
+                    val shown: Spoken? = if (current is VoiceState.Listening || current is VoiceState.Thinking) preview?.reading else null
                     if (shown != null) {
                         Spacer(Modifier.height(spacing.sm))
                         ReminderSentence(
@@ -638,6 +646,8 @@ private fun CheckView(
         // The marks and the doubts are about the grammar's reading: while Gemini's is the one
         // shown, the sentence is shown as heard and nothing in it is claimed to be what it says.
         if (check.heard.isNotBlank()) HeardLine(check, marked = check.readsAsSaid)
+        val dropped = if (check.readsAsSaid) check.droppedWords() else emptyList()
+        if (dropped.isNotEmpty()) DroppedLine(dropped)
         val doubts = if (check.readsAsSaid) check.doubtWords() else emptyList()
         if (doubts.isNotEmpty()) DoubtLine(doubts)
         if (onAlternative != null) {
@@ -735,6 +745,7 @@ private fun HeardLine(check: VoiceCheck, marked: Boolean) {
                 HeardMark.Kind.MANNER -> SpanStyle(color = scheme.outline)
                 HeardMark.Kind.WHEN -> SpanStyle(color = mark.family?.let(inks::getValue) ?: scheme.onSurface, fontWeight = FontWeight.SemiBold)
                 HeardMark.Kind.DOUBT -> SpanStyle(color = scheme.error, textDecoration = TextDecoration.Underline)
+                HeardMark.Kind.DROPPED -> SpanStyle(color = scheme.outline, textDecoration = TextDecoration.LineThrough)
             }
             addStyle(style, mark.range.first, mark.range.last + 1)
         }
@@ -742,6 +753,34 @@ private fun HeardLine(check: VoiceCheck, marked: Boolean) {
     Column(verticalArrangement = Arrangement.spacedBy(Tokens.spacing.xs)) {
         Text(stringResource(R.string.voice_heard), style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
         Text(text, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurfaceVariant)
+    }
+}
+
+/**
+ * The words taken out before reading, named (0.187.0): struck through above, and said here in
+ * words too, since a line through them is not something a screen reader says.
+ */
+@Composable
+private fun DroppedLine(dropped: List<String>) {
+    val scheme = MaterialTheme.colorScheme
+    Row(verticalAlignment = Alignment.Top) {
+        Icon(Icons.Outlined.StrikethroughS, contentDescription = null, tint = scheme.onSurfaceVariant, modifier = Modifier.size(Tokens.sizes.glyphMedium))
+        Spacer(Modifier.width(Tokens.spacing.sm))
+        Text(
+            stringResource(R.string.voice_dropped, dropped.joinToString(stringResource(R.string.voice_doubt_join))),
+            style = MaterialTheme.typography.bodyMedium,
+            color = scheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** [text] with the stretches in [struck] drawn through, in [ink]. */
+private fun struckThrough(text: String, struck: List<IntRange>, ink: Color): AnnotatedString = buildAnnotatedString {
+    append(text)
+    for (range in struck) {
+        val first = range.first.coerceAtLeast(0)
+        val last = range.last.coerceAtMost(text.length - 1)
+        if (first <= last) addStyle(SpanStyle(color = ink, textDecoration = TextDecoration.LineThrough), first, last + 1)
     }
 }
 

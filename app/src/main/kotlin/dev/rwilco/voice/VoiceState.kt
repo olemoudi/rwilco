@@ -166,6 +166,8 @@ data class VoiceCheck(
     val refining: Refining = Refining.NONE,
     /** The position "aquí" was drawn round in the reading shown, for the watch to be told if it comes back. */
     val here: Fix? = null,
+    /** What of [heard] was taken out as a correction or a hesitation, and not read (0.187.0). */
+    val dropped: List<IntRange> = emptyList(),
 ) {
     /**
      * Whether the reading shown is the grammar's own, which [parts] and [doubts] describe: once
@@ -175,9 +177,10 @@ data class VoiceCheck(
 
     /**
      * Nothing to look at twice, so the sheet may go by itself (the owner's call): a doubt or an
-     * alternative keeps it until somebody says "Listo", and so does Gemini still looking.
+     * alternative keeps it until somebody says "Listo", and so does Gemini still looking — and
+     * words taken out as a correction (0.187.0), since one understood wrongly loses words unseen.
      */
-    val clear: Boolean get() = doubts.isEmpty() && alternatives.isEmpty() && refining != Refining.ASKING
+    val clear: Boolean get() = doubts.isEmpty() && alternatives.isEmpty() && refining != Refining.ASKING && dropped.isEmpty()
 
     /**
      * [chosen] has taken [current]'s place: it leaves the alternatives and [current] joins them,
@@ -254,12 +257,16 @@ data class HeardMark(val range: IntRange, val kind: Kind, val family: TriggerFam
 
         /** Left in the words and sounding like a "when" nobody read. */
         DOUBT,
+
+        /** Taken out before reading: a correction, what it corrected, a hesitation (0.187.0). Struck through. */
+        DROPPED,
     }
 }
 
 /**
- * The marks to lay over [VoiceCheck.heard], in the order they are laid: how it was said first,
- * then the "when"s, then the doubts — so where two meet, the one that asks to be looked at shows.
+ * The marks to lay over [VoiceCheck.heard], in the order they are laid: what was taken out first,
+ * then how it was said, then the "when"s, then the doubts — so where two meet, the one that asks
+ * to be looked at shows.
  * Clamped to the sentence: offsets that run past it (a sentence heard again) are cut, never thrown.
  */
 fun VoiceCheck.marks(): List<HeardMark> {
@@ -267,8 +274,20 @@ fun VoiceCheck.marks(): List<HeardMark> {
     val manner = parts.filter { it.family == null }.mapNotNull { part -> part.range.clamped()?.let { HeardMark(it, HeardMark.Kind.MANNER) } }
     val whens = parts.filter { it.family != null }.mapNotNull { part -> part.range.clamped()?.let { HeardMark(it, HeardMark.Kind.WHEN, part.family) } }
     val doubtful = doubts.mapNotNull { range -> range.clamped()?.let { HeardMark(it, HeardMark.Kind.DOUBT) } }
-    return manner + whens + doubtful
+    val gone = dropped.mapNotNull { range -> range.clamped()?.let { HeardMark(it, HeardMark.Kind.DROPPED) } }
+    return gone + manner + whens + doubtful
 }
+
+/** The words taken out before reading, as heard, for the line that names them — without the comma a pause left on them. */
+fun VoiceCheck.droppedWords(): List<String> =
+    marks().filter { it.kind == HeardMark.Kind.DROPPED }.map { heard.substring(it.range.first, it.range.last + 1).trimEnd(',', '.', ';', ':', ' ') }.filter { it.isNotEmpty() }
+
+/**
+ * What the words heard so far come to, while they are still being said (0.187.0): the sentence
+ * as heard, what of it is being taken as a correction, and what is left would be written as
+ * ([reading], null while it would not be).
+ */
+data class VoicePreview(val heard: String, val dropped: List<IntRange>, val reading: Spoken?)
 
 /** The doubtful words themselves, as heard, for the line that names them. */
 fun VoiceCheck.doubtWords(): List<String> = marks().filter { it.kind == HeardMark.Kind.DOUBT }.map { heard.substring(it.range.first, it.range.last + 1) }.distinct()

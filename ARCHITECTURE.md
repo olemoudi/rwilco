@@ -1599,6 +1599,25 @@ loud what DST and a change of zone do to a landing.
   app stopped (not a rotation), **pauses** it with the words kept — "Seguir" or "Terminado", never
   written unseen. The screen is kept on while the ear is open. `VoiceStepTest`, `VoiceDictationTest`
   (two stretches read as one sentence; a pause by leaving the app).
+- **A dictation is repaired before it is read (0.187.0, `SpokenRepair.kt`).** Said calmly, people
+  correct themselves, and both halves of "a las cinco, no, a las seis" are a "when" to the grammar.
+  `repaired(stretches, …)` does what a listener does first: hesitations go ("eh", "mmm"; "bueno",
+  "pues", "o sea" opening a stretch); a correction marker ("no", "mejor", "perdón", "digo", "quiero
+  decir", "mejor dicho", "I mean", "sorry"…) takes out what it corrects — **only when something lines
+  up**: the same two words opening both sides ("a las cinco, no, a las seis"), a "when" corrected by
+  a "when" ("mañana, no, pasado mañana"; narrowed to the part the same word opens: "tomorrow at five,
+  no, at six" keeps the day), one word in common after a marker that can only correct, a pause or a
+  comma, or a word of substance ("comprar leche no comprar pan"); a correction with no "when" of its
+  own keeps the "when" it reached over ("…mañana a las cinco, no, a Pedro"). Not after "si", "que",
+  "pedir", an article…: "si no llueve", "pedir perdón", "comprar el pan, no el de molde" stay. A
+  stretch opening with the two words the previous one opened something with is that thing said again
+  ("comprar pan… comprar pan y leche"); a word or two said twice in a row is said once, never digits
+  (a phone number). The grammar reads `text`; the sheet shows `heard`, the reading's offsets mapped
+  back (`inHeard`) and what was taken out struck through, live while it is said and in the check,
+  named in words for a screen reader; a check with something taken out waits for "Listo". Gemini is
+  asked with what was said, since its second look is worth most where the repair went wrong.
+  `SpokenRepairTest` (and the 700-odd sentences of the grammar tests left untouched),
+  `VoiceStepTest`, `VoiceDictationTest`, `PatternsOnDeviceTest`.
 - **A held stepper keeps counting (0.51.0).** A step is one unit on purpose (three minutes has
   to be sayable, and the countdown sheet says why), and the price was seventeen taps from thirty
   to forty-seven. `Stepper` repeats after `Motion.holdRepeatDelay`, quickening to

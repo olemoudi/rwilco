@@ -112,7 +112,7 @@
     <string name="voice_created">Created</string>
     <string name="voice_mic_open">Microphone on</string>
     <string name="voice_mic_closed">Microphone off</string>
-    <string name="voice_hint">Say what and when: “buy bread when I get home”, “call Marta tomorrow afternoon”. Take your time: pausing doesn’t stop me. Press Done when you’ve finished.</string>
+    <string name="voice_hint">Say what and when: “buy bread when I get home”, “call Marta tomorrow afternoon”. Take your time: pausing doesn’t stop me, and you can correct yourself as you go (“at five, no, at six”). Press Done when you’ve finished.</string>
     <string name="voice_stop">Done</string>
     <string name="voice_paused">Microphone paused</string>
     <string name="voice_paused_body">It closed after a long silence, or because you left the app. What you said is still here: carry on, or press Done.</string>
@@ -123,6 +123,7 @@
     <string name="voice_fires_at">Rings %1$s, %2$s · %3$s</string>
     <string name="voice_fires_in">Rings %1$s</string>
     <string name="voice_doubt">Not sure whether “%1$s” changes when it rings: check it.</string>
+    <string name="voice_dropped">Taken as a correction or a hesitation, and left out: “%1$s”.</string>
     <string name="voice_doubt_join">”, “</string>
     <string name="voice_alternatives">Or did you mean:</string>
     <string name="voice_alternative_use">Change it to %1$s</string>
@@ -1833,6 +1834,13 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_187_0">
+
+        <item>Dictation understands when you correct yourself: “tomorrow at five, no, at six” is six, “mañana, no, pasado mañana” is the day after, “comprar leche… no, comprar pan” is bread. Starting again after a pause counts too, and “eh”, “mmm” and words said twice are left out.</item>
+
+        <item>What was taken out as a correction is shown struck through, while you speak and in the check afterwards, and the check waits for Done so you can see it was understood right.</item>
+
+    </string-array>
     <string-array name="whats_new_0_186_0">
 
         <item>Dictation no longer ends at the first pause: it keeps listening, stretch after stretch, until you press Done, so a reminder can be said calmly and in pieces. Everything heard goes into the reading, not just the first part.</item>

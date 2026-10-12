@@ -239,6 +239,27 @@ class VoiceDictationTest {
     }
 
     @Test
+    fun aCorrectionSaidIsReadInPlaceOfWhatItCorrectsAndShownStruck() {
+        // Said calmly, corrected after a pause (0.187.0): one hour, not two, and the sheet waits
+        // for "Listo" so what was taken out can be seen.
+        stretches = listOf("llamar a Juan mañana a las cinco", "no, a las seis")
+        dictate()
+        rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.any { it.text == "Llamar a Juan" } }
+        val at = when (val trigger = runBlocking { app.repository.openNow() }.single().rules.single().trigger) {
+            is Trigger.AtDateTime -> trigger.at.toLocalTime()
+            is Trigger.RelativeDate -> trigger.time
+            else -> null
+        }
+        assertEquals(java.time.LocalTime.of(18, 0), at)
+        waitFor("«a las cinco no»")
+        rule.waitForIdle()
+        rule.onNodeWithText(s(R.string.voice_done), useUnmergedTree = true).assertExists()
+        shot("voice-created-correction")
+        rule.onNodeWithText(s(R.string.voice_done), useUnmergedTree = true).performClick()
+        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.voice_heard)).fetchSemanticsNodes().isEmpty() }
+    }
+
+    @Test
     fun aMicrophonePausedKeepsTheWordsUntilTerminado() {
         stretches = listOf("comprar pan", "al llegar a casa")
         open()
