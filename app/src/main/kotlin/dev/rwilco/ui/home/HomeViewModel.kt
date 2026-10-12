@@ -552,7 +552,7 @@ class HomeViewModel(
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     val voicePreview: StateFlow<Spoken?> = _voice
-        .map { (it as? VoiceState.Listening)?.partial ?: (it as? VoiceState.Thinking)?.text }
+        .map { (it as? VoiceState.Listening)?.transcript ?: (it as? VoiceState.Thinking)?.text }
         .distinctUntilChanged()
         .mapLatest { text -> text?.takeIf { it.isNotBlank() }?.let(::preview) }
         .flowOn(Dispatchers.Default)

@@ -29,13 +29,74 @@ class VoiceStepTest {
         val partial = voiceStep(VoiceState.Listening(), heard(VoiceEvent.Partial("comprar pan")))
         assertEquals(VoiceState.Listening("comprar pan"), partial)
         assertEquals(VoiceState.Listening("comprar pan", level = 0.5f), voiceStep(partial, heard(VoiceEvent.Level(4f))))
-        assertEquals(partial, voiceStep(partial, heard(VoiceEvent.Ready)))
+        assertEquals(VoiceState.Listening(said = listOf("comprar pan")), voiceStep(partial, heard(VoiceEvent.Ready)))
+    }
+
+    @Test
+    fun `a pause closes a stretch and the listening goes on`() {
+        val first = voiceStep(VoiceState.Listening("comprar pan"), heard(VoiceEvent.Segment("comprar pan")))
+        assertEquals(VoiceState.Listening(said = listOf("comprar pan")), first)
+        val second = voiceStep(voiceStep(first, heard(VoiceEvent.Partial("al llegar a"))), heard(VoiceEvent.Segment("")))
+        // An empty end after a good partial keeps the partial, as an empty final does.
+        assertEquals(VoiceState.Listening(said = listOf("comprar pan", "al llegar a")), second)
+        assertEquals("comprar pan al llegar a", (second as VoiceState.Listening).transcript)
+        // A silence with nothing in it adds nothing.
+        assertEquals(second, voiceStep(second, heard(VoiceEvent.Segment(""))))
+    }
+
+    @Test
+    fun `only Terminado ends it, with every stretch heard`() {
+        val listening = VoiceState.Listening("y llevar 10 minutos", said = listOf("comprar pan", "al llegar a casa"))
+        val finishing = voiceStep(listening, VoiceInputEvent.Finish)
+        assertEquals(listening.copy(finishing = true), finishing)
+        assertEquals(
+            VoiceState.Thinking(listOf("comprar pan", "al llegar a casa", "y llevar 10 minutos allí")),
+            voiceStep(finishing, heard(VoiceEvent.Final("y llevar 10 minutos allí"))),
+        )
+        // An empty last stretch keeps what was showing.
+        assertEquals(
+            VoiceState.Thinking(listOf("comprar pan", "al llegar a casa", "y llevar 10 minutos")),
+            voiceStep(finishing, heard(VoiceEvent.Final(""))),
+        )
+        // Whatever the ear says on its way out, the words are the sentence.
+        assertEquals(VoiceState.Thinking(listOf("comprar pan", "al llegar a casa", "y llevar 10 minutos")), voiceStep(finishing, heard(VoiceEvent.Failed(5))))
+        // Asked again, or an ear that never answered: what was heard is the sentence.
+        assertEquals(VoiceState.Thinking(listOf("comprar pan", "al llegar a casa", "y llevar 10 minutos")), voiceStep(finishing, VoiceInputEvent.Finish))
+        assertEquals(VoiceState.Failed(VoiceFailure.NOT_HEARD), voiceStep(VoiceState.Listening(finishing = true), VoiceInputEvent.Finish))
+    }
+
+    @Test
+    fun `a pause of the microphone keeps the words, and Seguir or Terminado take it on`() {
+        val listening = VoiceState.Listening("al llegar", level = 0.7f, said = listOf("comprar pan"))
+        val paused = voiceStep(listening, VoiceInputEvent.Pause)
+        assertEquals(VoiceState.Listening(said = listOf("comprar pan", "al llegar"), paused = true), paused)
+        // A closed ear's late words change nothing.
+        assertEquals(paused, voiceStep(paused, heard(VoiceEvent.Partial("otra cosa"))))
+        assertEquals(paused, voiceStep(paused, heard(VoiceEvent.Final("otra cosa"))))
+        assertEquals(paused, voiceStep(paused, VoiceInputEvent.Pause))
+        assertEquals(VoiceState.Listening(said = listOf("comprar pan", "al llegar")), voiceStep(paused, VoiceInputEvent.Resume))
+        assertEquals(VoiceState.Thinking(listOf("comprar pan", "al llegar")), voiceStep(paused, VoiceInputEvent.Finish))
+        // Nothing said at all: nothing to keep.
+        assertEquals(VoiceState.Failed(VoiceFailure.NOT_HEARD), voiceStep(VoiceState.Listening(), VoiceInputEvent.Pause))
+        // Paused on the way out: it ends, with what there is.
+        assertEquals(VoiceState.Thinking(listOf("comprar pan")), voiceStep(VoiceState.Listening(said = listOf("comprar pan"), finishing = true), VoiceInputEvent.Pause))
+        // Nothing to resume or finish anywhere else.
+        val thinking = VoiceState.Thinking(listOf("x"))
+        assertEquals(thinking, voiceStep(thinking, VoiceInputEvent.Resume))
+        assertEquals(thinking, voiceStep(thinking, VoiceInputEvent.Finish))
+        assertEquals(thinking, voiceStep(thinking, VoiceInputEvent.Pause))
+    }
+
+    @Test
+    fun `a fresh ear keeps the stretch the old one was in the middle of`() {
+        assertEquals(VoiceState.Listening(said = listOf("comprar pan", "al llegar")), voiceStep(VoiceState.Listening("al llegar", said = listOf("comprar pan")), heard(VoiceEvent.Ready)))
+        assertEquals(VoiceState.Listening(said = listOf("x")), voiceStep(VoiceState.Listening(said = listOf("x")), heard(VoiceEvent.Ready)))
     }
 
     @Test
     fun `the final sentence is what gets thought about, or the last partial when the final is empty`() {
-        assertEquals(VoiceState.Thinking("comprar pan"), voiceStep(VoiceState.Listening("compra"), heard(VoiceEvent.Final(" comprar pan "))))
-        assertEquals(VoiceState.Thinking("comprar pan"), voiceStep(VoiceState.Listening("comprar pan"), heard(VoiceEvent.Final(""))))
+        assertEquals(VoiceState.Thinking(listOf("comprar pan")), voiceStep(VoiceState.Listening("compra"), heard(VoiceEvent.Final(" comprar pan "))))
+        assertEquals(VoiceState.Thinking(listOf("comprar pan")), voiceStep(VoiceState.Listening("comprar pan"), heard(VoiceEvent.Final(""))))
         assertEquals(VoiceState.Failed(VoiceFailure.NOT_HEARD), voiceStep(VoiceState.Listening(), heard(VoiceEvent.Final(""))))
     }
 
@@ -43,14 +104,16 @@ class VoiceStepTest {
     fun `silence is not having heard, unless something was already heard`() {
         assertEquals(VoiceState.Failed(VoiceFailure.NOT_HEARD), voiceStep(VoiceState.Listening(), heard(VoiceEvent.Failed(7))))
         assertEquals(VoiceState.Failed(VoiceFailure.NOT_HEARD), voiceStep(VoiceState.Listening(), heard(VoiceEvent.Failed(6))))
-        assertEquals(VoiceState.Thinking("comprar pan"), voiceStep(VoiceState.Listening("comprar pan"), heard(VoiceEvent.Failed(7))))
+        assertEquals(VoiceState.Thinking(listOf("comprar pan")), voiceStep(VoiceState.Listening("comprar pan"), heard(VoiceEvent.Failed(7))))
         assertEquals(VoiceState.Failed(VoiceFailure.NO_PERMISSION, "x"), voiceStep(VoiceState.Listening("x"), heard(VoiceEvent.Failed(9))))
         assertEquals(VoiceState.Failed(VoiceFailure.BROKEN, "x"), voiceStep(VoiceState.Listening("x"), heard(VoiceEvent.Failed(5))))
+        // A failure keeps every stretch, for "Escribirlo".
+        assertEquals(VoiceState.Failed(VoiceFailure.BROKEN, "comprar pan al llegar"), voiceStep(VoiceState.Listening("al llegar", said = listOf("comprar pan")), heard(VoiceEvent.Failed(5))))
     }
 
     @Test
     fun `what the recognizer says after the sentence is in changes nothing`() {
-        val thinking = VoiceState.Thinking("comprar pan")
+        val thinking = VoiceState.Thinking(listOf("comprar pan"))
         assertEquals(thinking, voiceStep(thinking, heard(VoiceEvent.Level(8f))))
         assertEquals(thinking, voiceStep(thinking, heard(VoiceEvent.Final("otra cosa"))))
         assertEquals(VoiceState.Created(reminder), voiceStep(thinking, VoiceInputEvent.Written(reminder)))
@@ -60,7 +123,7 @@ class VoiceStepTest {
 
     @Test
     fun `a sentence that could not be written goes to the editor, once`() {
-        val thinking = VoiceState.Thinking("llamar a mi madre")
+        val thinking = VoiceState.Thinking(listOf("llamar a mi madre"))
         assertEquals(
             VoiceState.ToEditor("Llamar a mi madre", VoiceOutcome.Why.NOTHING),
             voiceStep(thinking, VoiceInputEvent.Unwritten("Llamar a mi madre", VoiceOutcome.Why.NOTHING)),
@@ -70,7 +133,7 @@ class VoiceStepTest {
 
     @Test
     fun `a guess is shown, and written only once confirmed`() {
-        val thinking = VoiceState.Thinking("comprar pilas en el mercado", asking = true)
+        val thinking = VoiceState.Thinking(listOf("comprar pilas en el mercado"), asking = true)
         val spoken = dev.rwilco.model.Spoken("Comprar pilas")
         val shown = voiceStep(thinking, VoiceInputEvent.Proposed(reminder, "{form}", spoken, null))
         assertEquals(VoiceState.Confirm(reminder, "{form}", spoken, null), shown)
@@ -83,7 +146,7 @@ class VoiceStepTest {
     @Test
     fun `a written reminder carries what it was read from`() {
         val check = VoiceCheck(heard = "comprar pan mañana", parts = listOf(HeardSpan(12..17, TriggerFamily.TIME)))
-        assertEquals(VoiceState.Created(reminder, check), voiceStep(VoiceState.Thinking("comprar pan mañana"), VoiceInputEvent.Written(reminder, check)))
+        assertEquals(VoiceState.Created(reminder, check), voiceStep(VoiceState.Thinking(listOf("comprar pan mañana")), VoiceInputEvent.Written(reminder, check)))
     }
 
     // --- the check of a written reminder (0.182.0) ---

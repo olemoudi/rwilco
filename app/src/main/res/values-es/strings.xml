@@ -108,8 +108,11 @@
     <string name="voice_created">Creado</string>
     <string name="voice_mic_open">Micrófono abierto</string>
     <string name="voice_mic_closed">Micrófono cerrado</string>
-    <string name="voice_hint">Di qué y cuándo: «comprar pan cuando llegue a casa», «llamar a Marta mañana por la tarde».</string>
-    <string name="voice_stop">Listo</string>
+    <string name="voice_hint">Di qué y cuándo: «comprar pan cuando llegue a casa», «llamar a Marta mañana por la tarde». Sin prisa: las pausas no me cortan. Pulsa Terminado cuando acabes.</string>
+    <string name="voice_stop">Terminado</string>
+    <string name="voice_paused">Micrófono en pausa</string>
+    <string name="voice_paused_body">Se ha cerrado tras un silencio largo, o porque has salido de la app. Lo que has dicho sigue aquí: continúa, o pulsa Terminado.</string>
+    <string name="voice_resume">Seguir</string>
     <string name="voice_done">Listo</string>
     <string name="voice_closes_itself">Se cierra sola en un momento</string>
     <string name="voice_heard">Lo que he oído</string>
@@ -1815,6 +1818,13 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_186_0">
+
+        <item>El dictado ya no se acaba en la primera pausa: sigue escuchando, tramo a tramo, hasta que pulsas Terminado, para poder decir un recordatorio con calma y a trozos. Todo lo oído entra en la lectura, no solo la primera parte.</item>
+
+        <item>La pantalla no se apaga mientras dictas. Tras medio minuto sin una palabra nueva, o si sales de la app, el micrófono se pone en pausa y lo dicho se queda: Seguir, o Terminado.</item>
+
+    </string-array>
     <string-array name="whats_new_0_185_0">
 
         <item>Dictar «al llegar a casa y llevar 10 minutos allí» ya pide también los diez minutos: antes guardaba solo la llegada y dejaba «y llevar 10 minutos allí» en el texto del recordatorio. Se entienden también las otras formas de decirlo: «y estar 10 minutos allí», «tras llevar media hora», «cuando lleve 10 minutos en casa», «a los 10 minutos de llegar a casa», «10 minutos después de salir del trabajo».</item>

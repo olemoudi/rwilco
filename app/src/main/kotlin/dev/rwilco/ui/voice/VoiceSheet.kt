@@ -1,6 +1,9 @@
 package dev.rwilco.ui.voice
 
 import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -59,6 +62,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -74,6 +78,7 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.platform.testTag
@@ -86,6 +91,9 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import dev.rwilco.R
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
@@ -129,6 +137,8 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -144,6 +154,10 @@ import kotlinx.coroutines.launch
  * itself after a few seconds, the countdown drawn on "Listo" and stopped by a touch; one with a
  * doubt or an alternative waits for "Listo". Anything it cannot write whole goes to the editor with
  * the words already in it, and a line saying why (`Spoken.kt`).
+ *
+ * It listens until "Terminado" and never ends by itself (0.186.0; the owner: room to say it calmly,
+ * with pauses): a pause only closes a stretch. A long silence, or the app left behind, pauses the
+ * microphone with the words kept, for "Seguir" or "Terminado".
  *
  * The microphone is the phone's own recognizer, on the phone wherever it can be ([VoiceInput]).
  * Nothing loops: the disc grows with the voice it hears and stands still in silence.
@@ -219,11 +233,53 @@ fun VoiceSheet(
         }
     }
 
-    // A fresh round of listening each time the sheet comes to it: on opening, on "otra vez", and
-    // after a rotation, which took the old ear with the old screen.
-    val listening = state is VoiceState.Listening
-    LaunchedEffect(listening) {
-        if (listening) listener.start(locale) { event -> onEvent(VoiceInputEvent.Heard(event)) }
+    // A fresh round of listening each time the sheet comes to it: on opening, on "otra vez", on
+    // "seguir" after a pause, and after a rotation, which took the old ear with the old screen.
+    // It listens across pauses until "Terminado" (0.186.0), and the ear closes the moment the
+    // sheet is anywhere else — the sentence in, a pause, a failure.
+    val listening = state as? VoiceState.Listening
+    val earOpen = listening != null && !listening.paused
+    LaunchedEffect(earOpen) {
+        if (!earOpen) return@LaunchedEffect
+        listener.start(locale) { event -> onEvent(VoiceInputEvent.Heard(event)) }
+        try {
+            awaitCancellation()
+        } finally {
+            listener.cancel()
+        }
+    }
+    // "Terminado": the ear gives its last stretch, and one that never answers does not hold the
+    // sheet — a moment later what has been heard is the sentence.
+    val finishing = listening?.finishing == true
+    LaunchedEffect(finishing) {
+        if (!finishing) return@LaunchedEffect
+        listener.stop()
+        delay(FINISH_GRACE_MS)
+        onEvent(VoiceInputEvent.Finish)
+    }
+    // Never ended by a silence, but never a microphone left open either: a long one with no new
+    // word closes it, the words kept, and so does leaving the app (where Android would silence it).
+    val transcript = listening?.transcript
+    LaunchedEffect(earOpen && !finishing, transcript) {
+        if (!earOpen || finishing) return@LaunchedEffect
+        delay(QUIET_MS)
+        onEvent(VoiceInputEvent.Pause)
+    }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val currentOnEvent by rememberUpdatedState(onEvent)
+    DisposableEffect(lifecycleOwner, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            // A rotation stops the screen too, and takes the ear with it; the new one listens on.
+            if (event == Lifecycle.Event.ON_STOP && context.findActivity()?.isChangingConfigurations != true) currentOnEvent(VoiceInputEvent.Pause)
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    // A sentence said calmly outlasts the screen's timeout, and nobody touches it while talking.
+    val view = LocalView.current
+    DisposableEffect(view, earOpen) {
+        view.keepScreenOn = earOpen
+        onDispose { view.keepScreenOn = false }
     }
     // Written, shown to be checked, and gone by itself when there is nothing to look at twice —
     // the countdown drawn on "Listo" — unless a hand reaches for the sheet first. Keyed by the
@@ -307,7 +363,7 @@ fun VoiceSheet(
                     )
                 }
                 val words = when (current) {
-                    is VoiceState.Listening -> current.partial
+                    is VoiceState.Listening -> current.transcript
                     is VoiceState.Thinking -> current.text
                     is VoiceState.Created -> current.reminder.text
                     is VoiceState.Confirm -> current.reminder.text
@@ -362,6 +418,15 @@ fun VoiceSheet(
                             zone = zone,
                         )
                     }
+                    // Paused: what to do now, since the microphone closed without anybody pressing anything.
+                    AnimatedVisibility(visible = listening?.paused == true, enter = fadeIn(tween(fast)), exit = fadeOut(tween(fast))) {
+                        Text(
+                            stringResource(R.string.voice_paused_body),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = scheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = spacing.md),
+                        )
+                    }
                 }
                 Spacer(Modifier.height(spacing.xl))
                 Buttons(
@@ -370,7 +435,8 @@ fun VoiceSheet(
                     closesItself = closesItself,
                     onCancel = { leave(onClosed) },
                     onDone = { leave(onClosed) },
-                    onStop = { listener.stop() },
+                    onFinish = { onEvent(VoiceInputEvent.Finish) },
+                    onResume = { onEvent(VoiceInputEvent.Resume) },
                     onUndo = { reminder -> leave { onUndo(reminder) } },
                     onEdit = { reminder -> leave { onEdit(reminder) } },
                     onType = { leave { onToEditor(words, null, null) } },
@@ -397,6 +463,7 @@ fun VoiceSheet(
 @Composable
 private fun Disc(state: VoiceState) {
     val scheme = MaterialTheme.colorScheme
+    val open = state is VoiceState.Listening && !state.paused
     val level = (state as? VoiceState.Listening)?.level ?: 0f
     val scale by animateFloatAsState(1f + DISC_GROWTH * level, tween(Tokens.motion.fast), label = "voice-level")
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -408,20 +475,15 @@ private fun Disc(state: VoiceState) {
                     scaleX = scale
                     scaleY = scale
                 }
-                .background(if (state is VoiceState.Listening) scheme.onSurface else scheme.surfaceContainerHighest, CircleShape),
+                .background(if (open) scheme.onSurface else scheme.surfaceContainerHighest, CircleShape),
         ) {
             Icon(
                 imageVector = when (state) {
                     is VoiceState.Failed -> Icons.Outlined.MicOff
                     else -> Icons.Outlined.Mic
                 },
-                contentDescription = stringResource(
-                    when (state) {
-                        is VoiceState.Listening -> R.string.voice_mic_open
-                        else -> R.string.voice_mic_closed
-                    },
-                ),
-                tint = if (state is VoiceState.Listening) scheme.surface else scheme.onSurface,
+                contentDescription = stringResource(if (open) R.string.voice_mic_open else R.string.voice_mic_closed),
+                tint = if (open) scheme.surface else scheme.onSurface,
                 modifier = Modifier.size(Tokens.sizes.glyphLarge),
             )
         }
@@ -436,7 +498,8 @@ private fun Buttons(
     closesItself: Boolean,
     onCancel: () -> Unit,
     onDone: () -> Unit,
-    onStop: () -> Unit,
+    onFinish: () -> Unit,
+    onResume: () -> Unit,
     onUndo: (Reminder) -> Unit,
     onEdit: (Reminder) -> Unit,
     onType: () -> Unit,
@@ -456,9 +519,11 @@ private fun Buttons(
             VoiceState.Asking, is VoiceState.ToEditor -> {
                 Quiet(R.string.sheet_cancel, onCancel)
             }
+            // Only "Terminado" ends it (0.186.0); after a pause, "Seguir" listens on beside it.
             is VoiceState.Listening -> {
                 Quiet(R.string.sheet_cancel, onCancel)
-                Primary(R.string.voice_stop, onStop, Modifier.weight(1f))
+                if (state.paused) Quiet(R.string.voice_resume, onResume)
+                Primary(R.string.voice_stop, onFinish, Modifier.weight(1f))
             }
             // "Listo" is the answer the sheet expects — it is what was said — so it is the
             // primary, in the thumb's reach; taking it back and changing it sit beside it.
@@ -742,7 +807,11 @@ const val VOICE_OFFER_TAG = "voice-offer"
 
 private fun statusOf(state: VoiceState): Int = when (state) {
     VoiceState.Asking -> R.string.voice_asking
-    is VoiceState.Listening -> R.string.voice_listening
+    is VoiceState.Listening -> when {
+        state.paused -> R.string.voice_paused
+        state.finishing -> R.string.voice_thinking
+        else -> R.string.voice_listening
+    }
     is VoiceState.Thinking -> if (state.asking) R.string.voice_asking_gemini else R.string.voice_thinking
     is VoiceState.ToEditor -> R.string.voice_thinking
     is VoiceState.Confirm -> R.string.voice_confirm
@@ -765,6 +834,22 @@ private fun statusOf(state: VoiceState): Int = when (state) {
  * itself: long enough to read the card and the sentence once (the owner's "~6 s", 2026-10-11).
  */
 private const val CREATED_DWELL_MS = 6_000L
+
+/**
+ * How long without a new word before the microphone closes by itself, the words kept (0.186.0):
+ * far past any pause for thought, short of a phone forgotten on the table listening to the room.
+ */
+private const val QUIET_MS = 30_000L
+
+/** How long "Terminado" waits for the ear's last stretch before taking what it has heard. */
+private const val FINISH_GRACE_MS = 2_000L
+
+/** The activity behind a Compose context, which may be wrapped in a theme or two. */
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
 
 /** How strongly the countdown's bar shows on "Listo": a shade of the button, not a second colour. */
 private const val CLOSING_BAR_ALPHA = 0.35f

@@ -4,6 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -18,7 +21,13 @@ sealed interface VoiceEvent {
 
     data class Partial(val text: String) : VoiceEvent
 
-    /** The sentence as finally heard; empty when nothing was. */
+    /**
+     * A stretch closed by a pause, as finally heard — empty when nothing final was — and the ear
+     * listening on (0.186.0): a pause is somebody thinking, not somebody done.
+     */
+    data class Segment(val text: String) : VoiceEvent
+
+    /** The last stretch as finally heard, once [Listener.stop] was asked; empty when nothing was. */
     data class Final(val text: String) : VoiceEvent
 
     /** One of `SpeechRecognizer.ERROR_*`. */
@@ -30,9 +39,14 @@ sealed interface VoiceEvent {
  * Every call on the main thread, which is where Android's recognizer lives.
  */
 interface Listener {
+    /**
+     * Listens until [stop] or [cancel], however long the pauses (0.186.0; the owner: the
+     * dictation must not end by itself, so a sentence can be said calmly and corrected): each
+     * stretch a pause closes comes as a [VoiceEvent.Segment], and the ear goes on listening.
+     */
     fun start(locale: Locale, onEvent: (VoiceEvent) -> Unit)
 
-    /** Stop listening: what was said so far is the sentence. */
+    /** Stop listening: the stretch being said comes as the [VoiceEvent.Final], and that is the end. */
     fun stop()
 
     /** Stop and forget it. */
@@ -50,6 +64,11 @@ object VoiceInput {
  * language — no pack installed for it yet — it is asked to fetch one (API 33+) and this sentence
  * goes to the ordinary recognizer instead, told to prefer staying offline; that is also the only
  * one there is below API 31.
+ *
+ * Android's recognizer hears one stretch and stops at the first pause; this one starts it again
+ * straight away (0.186.0), so a pause only closes a stretch and nobody has to say it all in one
+ * breath. Words said in the moment it takes to start again can be lost, which is why the sheet
+ * shows what it has heard as it hears it.
  */
 class PlatformListener(private val context: Context) : Listener {
     private var recognizer: SpeechRecognizer? = null
@@ -61,7 +80,23 @@ class PlatformListener(private val context: Context) : Listener {
      */
     private var fetching: SpeechRecognizer? = null
 
+    private val main = Handler(Looper.getMainLooper())
+    private var onEvent: ((VoiceEvent) -> Unit)? = null
+
+    /** [stop] was asked: the stretch being heard is the last. */
+    private var finishing = false
+
+    /** Whether a stretch is being heard now, rather than the ear between two of them. */
+    private var hearing = false
+    private var startedAt = 0L
+
+    /** Stretches in a row that ended at once with nothing in them: a recognizer that cannot listen, not a quiet room. */
+    private var hollow = 0
+
     override fun start(locale: Locale, onEvent: (VoiceEvent) -> Unit) {
+        this.onEvent = onEvent
+        finishing = false
+        hollow = 0
         val onDevice = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
         if (!onDevice && !SpeechRecognizer.isRecognitionAvailable(context)) {
             onEvent(VoiceEvent.Failed(SpeechRecognizer.ERROR_CLIENT))
@@ -85,8 +120,18 @@ class PlatformListener(private val context: Context) : Listener {
             override fun onPartialResults(partialResults: Bundle?) {
                 firstOf(partialResults)?.let { onEvent(VoiceEvent.Partial(it)) }
             }
-            override fun onResults(results: Bundle?) = onEvent(VoiceEvent.Final(firstOf(results).orEmpty()))
+            override fun onResults(results: Bundle?) {
+                hearing = false
+                val text = firstOf(results).orEmpty()
+                if (finishing) {
+                    onEvent(VoiceEvent.Final(text))
+                } else {
+                    onEvent(VoiceEvent.Segment(text))
+                    again(ear, intent, empty = text.isEmpty(), SpeechRecognizer.ERROR_NO_MATCH)
+                }
+            }
             override fun onError(error: Int) {
+                hearing = false
                 if (onDevice && error in LANGUAGE_ERRORS) {
                     // The phone's own model has no pack for this language yet: ask for one, and
                     // let this sentence go to the recognizer that has it.
@@ -95,6 +140,10 @@ class PlatformListener(private val context: Context) : Listener {
                     fetching = ear
                     recognizer = null
                     listen(locale, onEvent, onDevice = false)
+                } else if (!finishing && error in QUIET) {
+                    // Silence, or noise that was nobody speaking: somebody thinking. Listen on.
+                    onEvent(VoiceEvent.Segment(""))
+                    again(ear, intent, empty = true, error)
                 } else {
                     onEvent(VoiceEvent.Failed(error))
                 }
@@ -104,14 +153,39 @@ class PlatformListener(private val context: Context) : Listener {
             override fun onEndOfSpeech() = Unit
             override fun onEvent(eventType: Int, params: Bundle?) = Unit
         })
+        hear(ear, intent)
+    }
+
+    private fun hear(ear: SpeechRecognizer, intent: Intent) {
+        hearing = true
+        startedAt = SystemClock.elapsedRealtime()
         ear.startListening(intent)
     }
 
+    /**
+     * The next stretch, once the recognizer is out of its own callback. A recognizer that keeps
+     * ending at once with nothing heard is broken, not listening to a quiet room: that is said,
+     * rather than asked again for ever.
+     */
+    private fun again(ear: SpeechRecognizer, intent: Intent, empty: Boolean, error: Int) {
+        hollow = if (empty && SystemClock.elapsedRealtime() - startedAt < HOLLOW_MS) hollow + 1 else 0
+        if (hollow >= MAX_HOLLOW) {
+            onEvent?.invoke(VoiceEvent.Failed(if (error in QUIET) SpeechRecognizer.ERROR_CLIENT else error))
+            return
+        }
+        main.post { if (recognizer === ear && !finishing) hear(ear, intent) }
+    }
+
     override fun stop() {
-        recognizer?.stopListening()
+        finishing = true
+        // Between two stretches there is nothing to wait for: the last one has already come.
+        if (hearing) recognizer?.stopListening() else onEvent?.invoke(VoiceEvent.Final(""))
     }
 
     override fun cancel() {
+        main.removeCallbacksAndMessages(null)
+        onEvent = null
+        hearing = false
         recognizer?.destroy()
         recognizer = null
         fetching?.destroy()
@@ -132,5 +206,14 @@ class PlatformListener(private val context: Context) : Listener {
     private companion object {
         /** `ERROR_LANGUAGE_NOT_SUPPORTED` and `ERROR_LANGUAGE_UNAVAILABLE` (API 31). */
         val LANGUAGE_ERRORS = setOf(12, 13)
+
+        /** `ERROR_SPEECH_TIMEOUT` and `ERROR_NO_MATCH`: nobody said anything. */
+        val QUIET = setOf(SpeechRecognizer.ERROR_SPEECH_TIMEOUT, SpeechRecognizer.ERROR_NO_MATCH)
+
+        /** A stretch that ends with nothing in it sooner than this ended at once. */
+        const val HOLLOW_MS = 800L
+
+        /** How many of those in a row are a broken recognizer. */
+        const val MAX_HOLLOW = 5
     }
 }

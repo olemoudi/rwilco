@@ -6,6 +6,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.LocaleList
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.lifecycle.Lifecycle
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -51,8 +52,9 @@ import java.util.Locale
 
 /**
  * A reminder said to the mic, through the real sheet and the real Home, with a fake ear: the
- * sentence goes in as the recognizer would hand it over (a partial, then the final), and what
- * comes out is either a reminder on Home or the editor with the words in it.
+ * sentence goes in as the recognizer would hand it over (stretches closed by pauses, partials,
+ * and the final once "Terminado" asks for it), and what comes out is either a reminder on Home or
+ * the editor with the words in it.
  *
  * The undo is not walked here: the sheet goes by itself a few seconds after "Creado", and the
  * test clock fast-forwards exactly that kind of wait. Its arithmetic is `VoiceStepTest`'s.
@@ -78,19 +80,62 @@ class VoiceDictationTest {
     private val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as RwilcoApplication
     private val casa = SavedPlace("Casa", 40.4168, -3.7038, 120, id = "voice-casa")
 
-    /** What the fake ear will have heard. */
-    private var sentence = ""
+    /** What the fake ear will have heard, stretch by stretch: each but the last closed by a pause. */
+    private var stretches = listOf("")
 
-    /** Speaks [sentence] the way Android's recognizer does: ready, a partial, the final — each a beat apart. */
+    /** What the fake ear will have heard, in one breath. */
+    private var sentence: String
+        get() = stretches.joinToString(" ")
+        set(value) {
+            stretches = listOf(value)
+        }
+
+    /**
+     * Speaks [stretches] the way Android's recognizer does since 0.186.0: ready, then each stretch
+     * as partials and closed by a pause, the last one still being said — each a beat apart — and
+     * its final only once "Terminado" asks for it.
+     */
     private inner class FakeEar : Listener {
         private val main = Handler(Looper.getMainLooper())
+        private var onEvent: ((VoiceEvent) -> Unit)? = null
         override fun start(locale: Locale, onEvent: (VoiceEvent) -> Unit) {
+            this.onEvent = onEvent
             main.postDelayed({ onEvent(VoiceEvent.Ready) }, 50)
-            main.postDelayed({ onEvent(VoiceEvent.Partial(sentence.substringBefore(' '))) }, 150)
-            main.postDelayed({ onEvent(VoiceEvent.Final(sentence)) }, 300)
+            var at = 150L
+            for (stretch in stretches.dropLast(1)) {
+                main.postDelayed({ onEvent(VoiceEvent.Partial(stretch)) }, at)
+                main.postDelayed({ onEvent(VoiceEvent.Segment(stretch)) }, at + 100)
+                at += 250
+            }
+            val last = stretches.last()
+            main.postDelayed({ onEvent(VoiceEvent.Partial(last.substringBefore(' '))) }, at)
+            main.postDelayed({ onEvent(VoiceEvent.Partial(last)) }, at + 150)
         }
-        override fun stop() = Unit
-        override fun cancel() = main.removeCallbacksAndMessages(null)
+        override fun stop() {
+            main.postDelayed({ onEvent?.invoke(VoiceEvent.Final(stretches.last())) }, 50)
+        }
+        override fun cancel() {
+            onEvent = null
+            main.removeCallbacksAndMessages(null)
+        }
+    }
+
+    /** The sheet opened, everything said, then "Terminado". */
+    private fun dictate() {
+        open()
+        finish()
+    }
+
+    /** The click a screen reader gives every hold in the app. */
+    private fun open() {
+        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.home_dictate_hold)).fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithContentDescription(s(R.string.home_dictate)).performSemanticsAction(SemanticsActions.OnClick)
+    }
+
+    /** Once all of it is on the sheet, "Terminado": nothing ends a dictation by itself. */
+    private fun finish() {
+        waitFor(sentence)
+        rule.onNodeWithText(s(R.string.voice_stop), useUnmergedTree = true).performClick()
     }
 
     private fun s(resId: Int): String = rule.activity.getString(resId)
@@ -141,8 +186,7 @@ class VoiceDictationTest {
             GeminiAnswer.Reading(GeminiReading(text = "Comprar pilas", rules = listOf(GeminiRule(GeminiEvent(kind = "IN_MINUTES", minutes = 20)))))
         }
         sentence = "comprar pilas cuando acabe el partido"
-        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.home_dictate_hold)).fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithContentDescription(s(R.string.home_dictate)).performSemanticsAction(SemanticsActions.OnClick)
+        dictate()
         waitFor(s(R.string.voice_confirm))
         assertEquals("comprar pilas cuando acabe el partido", asked)
         assertEquals(emptyList<String>(), runBlocking { app.repository.openNow() }.map { it.text })
@@ -168,6 +212,7 @@ class VoiceDictationTest {
         rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.home_dictate_hold)).fetchSemanticsNodes().isNotEmpty() }
         val door = rule.onNodeWithContentDescription(s(R.string.home_dictate))
         door.performTouchInput { down(center) }
+        finish()
         // Written, with the words that are left and the doorway into the saved place.
         rule.waitUntil(30_000) { runBlocking { app.repository.openNow().any { it.text == "Comprar pan" } } }
         door.performTouchInput { up() }
@@ -182,10 +227,36 @@ class VoiceDictationTest {
     }
 
     @Test
+    fun aPauseDoesNotEndItAndEveryStretchIsRead() {
+        // The owner's sentence (2026-10-12), said with a pause in the middle of it: once, the
+        // pause was the end, and "y llevar 10 minutos allí" never reached the reading.
+        stretches = listOf("comprar pan al llegar a casa", "y llevar 10 minutos allí")
+        dictate()
+        rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.any { it.text == "Comprar pan" } }
+        val place = runBlocking { app.repository.openNow() }.single().rules.single().trigger as Trigger.Location
+        assertEquals("Casa", place.label)
+        assertEquals(10, place.dwellMinutes)
+    }
+
+    @Test
+    fun aMicrophonePausedKeepsTheWordsUntilTerminado() {
+        stretches = listOf("comprar pan", "al llegar a casa")
+        open()
+        waitFor(sentence)
+        // Leaving the app closes the microphone (as a long silence does), and the words stay.
+        rule.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+        rule.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+        waitFor(s(R.string.voice_paused))
+        shot("voice-paused")
+        assertEquals(emptyList<String>(), runBlocking { app.repository.openNow() }.map { it.text })
+        rule.onNodeWithText(s(R.string.voice_stop), useUnmergedTree = true).performClick()
+        rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.any { it.text == "Comprar pan" } }
+    }
+
+    @Test
     fun aSentenceWithTwoWhensIsOneFencedRule() {
         sentence = "comprar pan al llegar a casa por la tarde con pantalla completa"
-        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.home_dictate_hold)).fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithContentDescription(s(R.string.home_dictate)).performSemanticsAction(SemanticsActions.OnClick)
+        dictate()
         rule.waitUntil(30_000) { runBlocking { app.repository.openNow().any { it.text == "Comprar pan" } } }
         val written = runBlocking { app.repository.openNow() }.single()
         val rule = written.rules.single()
@@ -198,8 +269,7 @@ class VoiceDictationTest {
     fun theOtherHalfOfAnOpenHourIsOneTapAway() {
         // Eleven and twenty-three are waking hours on any day of the week, whatever the clock says.
         sentence = "llamar a Juan a las 11"
-        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.home_dictate_hold)).fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithContentDescription(s(R.string.home_dictate)).performSemanticsAction(SemanticsActions.OnClick)
+        dictate()
         waitFor(s(R.string.voice_heard))
         val first = runBlocking { app.repository.openNow() }.single()
         val firstAt = (first.rules.single().trigger as Trigger.AtDateTime).at
@@ -222,8 +292,7 @@ class VoiceDictationTest {
     @Test
     fun aDoubtIsWrittenAndNamedAndWaitsForListo() {
         sentence = "llamar al banco mañana antes de comer"
-        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.home_dictate_hold)).fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithContentDescription(s(R.string.home_dictate)).performSemanticsAction(SemanticsActions.OnClick)
+        dictate()
         waitFor("«antes de»")
         assertEquals(listOf("Llamar al banco antes de comer"), runBlocking { app.repository.openNow() }.map { it.text })
         shot("voice-created-doubt")
@@ -250,8 +319,7 @@ class VoiceDictationTest {
             }
         }
         sentence = "llamar al banco el mes que viene"
-        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.home_dictate_hold)).fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithContentDescription(s(R.string.home_dictate)).performSemanticsAction(SemanticsActions.OnClick)
+        dictate()
         rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.any { it.text == "Llamar al banco" } }
         // Nothing to look at twice: the sheet goes by itself (at once, on the test's clock), and
         // Home goes to the card.
@@ -277,8 +345,7 @@ class VoiceDictationTest {
             GeminiAnswer.Reading(GeminiReading(text = "Llamar al banco", rules = listOf(GeminiRule(GeminiEvent(kind = "AT", date = tomorrow.toString(), time = "13:00")))))
         }
         sentence = "llamar al banco mañana antes de comer"
-        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.home_dictate_hold)).fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithContentDescription(s(R.string.home_dictate)).performSemanticsAction(SemanticsActions.OnClick)
+        dictate()
         waitFor(s(R.string.voice_created_offered))
         // Written as the rules read it; Gemini's reading is only offered.
         assertEquals(listOf("Llamar al banco antes de comer"), runBlocking { app.repository.openNow() }.map { it.text })
@@ -295,8 +362,7 @@ class VoiceDictationTest {
         geminiOn()
         GeminiInput.ask = { _, _, _, _ -> awaitCancellation() }
         sentence = "llamar al banco mañana antes de comer"
-        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.home_dictate_hold)).fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithContentDescription(s(R.string.home_dictate)).performSemanticsAction(SemanticsActions.OnClick)
+        dictate()
         waitFor(s(R.string.voice_created_refining))
         // Written before Gemini says anything.
         assertEquals(listOf("Llamar al banco antes de comer"), runBlocking { app.repository.openNow() }.map { it.text })
@@ -311,8 +377,7 @@ class VoiceDictationTest {
         geminiOn()
         GeminiInput.ask = { _, _, _, _ -> awaitCancellation() }
         sentence = "comprar pilas cuando acabe el partido"
-        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.home_dictate_hold)).fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithContentDescription(s(R.string.home_dictate)).performSemanticsAction(SemanticsActions.OnClick)
+        dictate()
         waitFor(s(R.string.voice_asking_gemini))
         rule.onNodeWithText(s(R.string.voice_type), useUnmergedTree = true).performClick()
         waitFor(s(R.string.editor_title_new))
@@ -323,9 +388,7 @@ class VoiceDictationTest {
     @Test
     fun aSentenceWithNoWhenGoesToTheEditorWithItsWords() {
         sentence = "llamar a mi madre"
-        // The click a screen reader gives every hold in the app.
-        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.home_dictate_hold)).fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithContentDescription(s(R.string.home_dictate)).performSemanticsAction(SemanticsActions.OnClick)
+        dictate()
         waitFor(s(R.string.voice_to_editor_nothing))
         waitFor(s(R.string.editor_title_new))
         waitFor("llamar a mi madre")

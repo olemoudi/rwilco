@@ -112,8 +112,11 @@
     <string name="voice_created">Created</string>
     <string name="voice_mic_open">Microphone on</string>
     <string name="voice_mic_closed">Microphone off</string>
-    <string name="voice_hint">Say what and when: “buy bread when I get home”, “call Marta tomorrow afternoon”.</string>
+    <string name="voice_hint">Say what and when: “buy bread when I get home”, “call Marta tomorrow afternoon”. Take your time: pausing doesn’t stop me. Press Done when you’ve finished.</string>
     <string name="voice_stop">Done</string>
+    <string name="voice_paused">Microphone paused</string>
+    <string name="voice_paused_body">It closed after a long silence, or because you left the app. What you said is still here: carry on, or press Done.</string>
+    <string name="voice_resume">Carry on</string>
     <string name="voice_done">Done</string>
     <string name="voice_closes_itself">Closes by itself in a moment</string>
     <string name="voice_heard">What I heard</string>
@@ -1830,6 +1833,13 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_186_0">
+
+        <item>Dictation no longer ends at the first pause: it keeps listening, stretch after stretch, until you press Done, so a reminder can be said calmly and in pieces. Everything heard goes into the reading, not just the first part.</item>
+
+        <item>The screen stays on while you dictate. After half a minute without a new word, or if you leave the app, the microphone pauses with what you said kept: Carry on, or Done.</item>
+
+    </string-array>
     <string-array name="whats_new_0_185_0">
 
         <item>Dictating “al llegar a casa y llevar 10 minutos allí” now asks for the ten minutes too: it used to save only the arrival, with “y llevar 10 minutos allí” left in the reminder’s text. The other ways of saying it are understood as well: “y estar 10 minutos allí”, “tras llevar media hora”, “cuando lleve 10 minutos en casa”, “a los 10 minutos de llegar a casa”, “10 minutos después de salir del trabajo”.</item>
