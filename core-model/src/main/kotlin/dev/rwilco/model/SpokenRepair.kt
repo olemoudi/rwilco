@@ -64,24 +64,32 @@ class Repaired internal constructor(
         if (first >= 0) add(words[first].first..words.last().last)
     }
 
-    /** Where in [heard] a stretch of [text] was said; the spaces [text] put between words map to the word after them. */
-    fun inHeard(range: IntRange): IntRange {
-        if (range.isEmpty()) return range
-        fun at(offset: Int, forward: Boolean): Int? {
-            val order = if (forward) words.indices else words.indices.reversed()
-            for (i in order) {
-                if (!kept[i]) continue
-                val start = starts[i]
-                val end = start + words[i].last - words[i].first
-                if (offset in start..end) return words[i].first + (offset - start)
-                if (forward && start > offset) return words[i].first
-                if (!forward && end < offset) return words[i].last
+    /**
+     * Where in [heard] a stretch of [text] was said: a piece for each run of words said together,
+     * so a stretch that spans words taken out does not claim them too ("al llegar al trabajo" out
+     * of "al llegar a casa, perdón, al trabajo" is two pieces). Empty for a stretch of no words.
+     */
+    fun inHeard(range: IntRange): List<IntRange> {
+        if (range.isEmpty()) return emptyList()
+        val pieces = mutableListOf<IntRange>()
+        var piece: IntRange? = null
+        var previous = -1
+        for (i in words.indices) {
+            if (!kept[i]) continue
+            val start = starts[i]
+            val end = start + words[i].last - words[i].first
+            if (end < range.first || start > range.last) continue
+            val from = words[i].first + (range.first - start).coerceAtLeast(0)
+            val to = words[i].last - (end - range.last).coerceAtLeast(0)
+            // A word dropped between this one and the last starts a new piece.
+            piece = if (piece != null && (previous until i).drop(1).none { !kept[it] }) piece.first..to else {
+                piece?.let(pieces::add)
+                from..to
             }
-            return null
+            previous = i
         }
-        val first = at(range.first, forward = true) ?: return IntRange.EMPTY
-        val last = at(range.last, forward = false) ?: return IntRange.EMPTY
-        return if (first > last) IntRange.EMPTY else first..last
+        piece?.let(pieces::add)
+        return pieces
     }
 }
 
@@ -100,7 +108,11 @@ fun repaired(stretches: List<String>, now: Instant, zone: ZoneId, settings: AppS
         }
         offset += words.length + 1
     }
-    val repair = Repair(tokens) { text -> readWhen(text, now, zone, settings.dayParts, settings.savedPlaces, settings.dayShape)?.spans.orEmpty() }
+    val repair = Repair(
+        tokens,
+        readSpans = { text -> readWhen(text, now, zone, settings.dayParts, settings.savedPlaces, settings.dayShape)?.spans.orEmpty() },
+        namesPlace = { text -> Words.of(text).text.let { words -> words.indices.any { it > 0 && words[it - 1] == ' ' && savedPlaceAt(words, it - 1, settings.savedPlaces) != null } } },
+    )
     repair.hesitations()
     repair.corrections()
     repair.restarts()
@@ -111,20 +123,28 @@ fun repaired(stretches: List<String>, now: Instant, zone: ZoneId, settings: AppS
 /** One word as heard: where, in which stretch, and folded for comparing ("Mañana," is "manana"). */
 private class Token(val range: IntRange, val stretch: Int, val key: String, val raw: String)
 
-private class Repair(val tokens: List<Token>, val whenSpans: (String) -> List<IntRange>) {
+private class Repair(val tokens: List<Token>, private val readSpans: (String) -> List<IntRange>, private val namesPlace: (String) -> Boolean) {
     val alive = BooleanArray(tokens.size) { true }
 
-    private fun living(): List<Int> = tokens.indices.filter { alive[it] }
+    /** Reading a "when" is a few hundred regex passes, and the same words are asked about more than once. */
+    private val spansOf = HashMap<String, List<IntRange>>()
+
+    private fun whenSpans(text: String): List<IntRange> = spansOf.getOrPut(text) { readSpans(text) }
+
+    /** The words still in that are words: a dash or a lone comma lines nothing up. */
+    private fun living(): List<Int> = tokens.indices.filter { alive[it] && tokens[it].key.isNotEmpty() }
 
     private fun drop(indices: Iterable<Int>) = indices.forEach { alive[it] = false }
 
+    private fun key(index: Int) = tokens[index].key
+
     /** "Eh", "mmm" anywhere; "bueno", "pues", "o sea" opening a stretch that goes on. */
     fun hesitations() {
-        tokens.indices.filter { FILLER.matches(tokens[it].key) }.let(::drop)
+        tokens.indices.filter { FILLER.matches(key(it)) }.let(::drop)
         for (stretch in tokens.map { it.stretch }.distinct()) {
             val inIt = living().filter { tokens[it].stretch == stretch }
             for (opening in OPENINGS) {
-                if (inIt.size > opening.size && opening.indices.all { tokens[inIt[it]].key == opening[it] }) {
+                if (inIt.size > opening.size && opening.indices.all { key(inIt[it]) == opening[it] }) {
                     drop(inIt.take(opening.size))
                     break
                 }
@@ -138,62 +158,116 @@ private class Repair(val tokens: List<Token>, val whenSpans: (String) -> List<In
         while (true) {
             val words = living()
             if (at >= words.size) return
-            val marker = MARKERS.firstOrNull { marker -> marker.words.indices.all { words.getOrNull(at + it)?.let(tokens::get)?.key == marker.words[it] } }
+            val marker = markerAt(words, at)
             if (marker == null) {
                 at++
                 continue
             }
-            val markerAt = words.subList(at, at + marker.words.size)
+            // Markers said one after another are one: "espera, mejor el jueves", "no, perdón, a las seis".
+            var size = marker.words.size
+            var strong = marker.strong
+            while (true) {
+                val next = markerAt(words, at + size) ?: break
+                size += next.words.size
+                strong = strong || next.strong
+            }
+            val markerAt = words.subList(at, at + size)
             val before = words.subList(0, at)
-            val after = words.subList(at + marker.words.size, words.size)
-            val reparandum = reparandum(marker, markerAt, before, after)
+            val after = words.subList(at + size, words.size)
+            val reparandum = reparandum(strong, markerAt, before, after)
             if (reparandum == null) {
-                at += marker.words.size
+                at += size
                 continue
             }
             drop(reparandum + markerAt)
-            at = before.size - reparandum.size
+            at = before.count { alive[it] }
         }
     }
 
+    /** The marker said at [at] in [words], if one is; "espera", "actually" only with a break after them, or they are the thing itself. */
+    private fun markerAt(words: List<Int>, at: Int): Marker? {
+        val marker = MARKERS.firstOrNull { marker -> marker.words.indices.all { words.getOrNull(at + it)?.let(::key) == marker.words[it] } } ?: return null
+        if (!marker.needsBreak) return marker
+        val last = words[at + marker.words.size - 1]
+        val next = words.getOrNull(at + marker.words.size)
+        return marker.takeIf { tokens[last].raw.last() in BREAKS || (next != null && tokens[next].stretch != tokens[last].stretch) }
+    }
+
     /**
-     * What the words after [marker] correct, as indices into [tokens] — or null when nothing
+     * What goes besides the marker, as indices into [tokens]: what the words after it correct —
+     * nothing when they only narrow it down, or the words they say again — or null when nothing
      * before it lines up with them, and the marker is the thing itself.
      */
-    private fun reparandum(marker: Marker, markerAt: List<Int>, before: List<Int>, after: List<Int>): List<Int>? {
+    private fun reparandum(strong: Boolean, markerAt: List<Int>, before: List<Int>, after: List<Int>): List<Int>? {
         if (before.isEmpty() || after.isEmpty()) return null
-        // "Si no", "que no", "pedir perdón", "lo mejor", "le digo": the word is part of the sentence.
-        val previous = tokens[before.last()].key
-        if (previous in NOT_AFTER || (marker.words.first().startsWith("perdon") && previous in ASKING)) return null
-        // A correction with no "when" in it corrects something that is not one: what lines up
-        // with it is looked for outside the "when" before it ("a Juan mañana a las cinco, no, a
-        // Pedro" is Juan's "a", not the hour's).
-        val lexical = alignment(before, after, skip = if (saysWhen(after, atStart = false)) emptySet() else whenPositions(before))
+        // "Si no", "y no", "pedir perdón", "lo mejor", "le digo": the word is part of the sentence.
+        val previous = key(before.last())
+        if (previous in NOT_AFTER || (key(markerAt.first()).startsWith("perdon") && previous in ASKING)) return null
+        val paused = pausedAround(markerAt, before, after)
+        // A number corrected by a number: "a las cinco, no, seis", "at five, no, six".
+        if (isNumber(before.last()) && isNumber(after.first())) return listOf(before.last())
+        // A correction with no "when" or place in it corrects something that is not one: what
+        // lines up with it is looked for outside the "when" before it ("a Juan mañana a las
+        // cinco, no, a Pedro" is Juan's "a", not the hour's; "al llegar a casa, perdón, al
+        // trabajo" corrects the place's).
+        val text = joined(after).first
+        val lexical = alignment(before, after, skip = if (mightSayWhen(text) || namesPlace(text)) emptySet() else whenPositions(before))
+        // The same words again to add a "when" to them: "llamar al médico, mejor llamar por la
+        // mañana" is still the doctor, in the morning — the words said again go, nothing before.
+        if (lexical != null && lexical.second < after.size && whenPositions(before).none { it >= lexical.first }) {
+            val rest = after.drop(lexical.second)
+            if (whenSpans(joined(rest).first).any { it.first == 0 }) return after.take(lexical.second)
+        }
         // The same two words starting both sides: "a las cinco, no, a las seis".
         if (lexical != null && lexical.second >= 2) return keepingWhens(before.subList(lexical.first, before.size), after)
         // A "when" corrected by a "when": "mañana, no, pasado mañana", "al llegar a casa, no, al
         // salir del trabajo" — or only the part of it the same word opens: "tomorrow at five, no,
-        // at six" corrects the hour and keeps the day.
+        // at six" corrects the hour and keeps the day. Unless the two make one "when" together:
+        // "el lunes, mejor a las diez" narrows Monday down, and only the "mejor" goes.
         val endWhen = whenAtEnd(before)
         if (endWhen != null && saysWhen(after, atStart = true)) {
-            val narrowed = lexical?.first?.takeIf { it >= endWhen && tokens[before[it]].key == tokens[after.first()].key }
+            if (narrows(before, endWhen, after)) return emptyList()
+            val narrowed = lexical?.first?.takeIf { it >= endWhen && key(before[it]) == key(after.first()) }
             return before.subList(narrowed ?: endWhen, before.size)
         }
         if (lexical != null) {
-            // One word in common: enough after a word that only ever corrects ("perdón", "digo"), after
-            // a pause, or when it is a word of substance ("comprar leche no comprar pan"). Not an
-            // article on its own: "comprar el pan no el de molde" is two breads.
-            val substantial = tokens[after.first()].key !in SMALL_WORDS
-            if (marker.strong || pausedAround(markerAt, before, after) || substantial) return keepingWhens(before.subList(lexical.first, before.size), after)
+            // One word in common: enough after a word that only ever corrects ("perdón", "digo")
+            // or a "no" said on its own ("…a las cinco, no, a Pedro"), or after a pause when it is
+            // a word of substance ("comprar leche… no comprar pan"). Not an article on its own
+            // after a "no" that runs on: "llamar a Ana mañana, no a Marta" says who not to call.
+            val substantial = key(after.first()) !in SMALL_WORDS
+            if (strong || breakAfter(markerAt, after) || (paused && substantial)) return keepingWhens(before.subList(lexical.first, before.size), after)
         }
         // "Comprar leche… perdón, pan": nothing lines up, but a pause and a word that only ever
-        // corrects say it was a correction, and the word or two after it take the place of as many before.
-        if (marker.strong && pausedAround(markerAt, before, after)) {
+        // corrects say it was a correction, and the word or two after it take the place of as many
+        // before — never a "when", a small word, or a verb starting the sentence over ("llamar a
+        // Juan, no, mejor escribirle").
+        if (strong && paused) {
             val firstWhen = after.indexOfFirst { soundsLikeWhen(tokens[it].raw) }.let { if (it < 0) after.size else it }
             val replaced = after.take(firstWhen).takeWhile { tokens[it].stretch == tokens[after.first()].stretch }.size
-            if (replaced in 1..2 && before.size > replaced) return keepingWhens(before.takeLast(replaced), after)
+            if (replaced !in 1..2 || before.size <= replaced || INFINITIVE.matches(key(after.first()))) return null
+            val whens = whenPositions(before)
+            val positions = before.size - replaced until before.size
+            if (positions.any { it in whens || key(before[it]) in SMALL_WORDS }) return null
+            return keepingWhens(before.takeLast(replaced), after)
         }
         return null
+    }
+
+    /**
+     * Whether the "when" [after] a marker and the one [before] it from [endWhen] read as one
+     * "when" together — every word of both read — which makes the second a narrowing of the
+     * first and not a correction of it.
+     */
+    private fun narrows(before: List<Int>, endWhen: Int, after: List<Int>): Boolean {
+        val own = whenPositions(before).filter { it >= endWhen }
+        val inAfter = whenPositions(after).sorted()
+        val first = inAfter.firstOrNull()?.takeIf { it <= 1 } ?: return false
+        // The "when" the words after open with, and no further: what comes after it is another matter.
+        val lead = inAfter.filterIndexed { i, position -> position == first + i }
+        if (own.isEmpty()) return false
+        val together = whenPositions(before + after)
+        return own.all { it in together } && lead.all { before.size + it in together }
     }
 
     /**
@@ -219,26 +293,33 @@ private class Repair(val tokens: List<Token>, val whenSpans: (String) -> List<In
     /**
      * Where the words after a correction line up with the words before it: the nearest word before
      * that starts them (or one of its kind: "al" for "a"), within reach and not among [skip], and
-     * how many words in a row agree from there. Index into [before], and the count.
+     * how many words in a row are the very same from there. Index into [before], and the count.
      */
     private fun alignment(before: List<Int>, after: List<Int>, skip: Set<Int>): Pair<Int, Int>? {
-        val first = tokens[after.first()].key
+        val first = key(after.first())
         val from = (before.size - 1 downTo (before.size - REACH - skip.size).coerceAtLeast(0))
-            .firstOrNull { it !in skip && same(tokens[before[it]].key, first) } ?: return null
-        var length = 0
-        while (from + length < before.size && length < after.size && same(tokens[before[from + length]].key, tokens[after[length]].key)) length++
+            .firstOrNull { it !in skip && same(key(before[it]), first) } ?: return null
+        var length = 1
+        while (from + length < before.size && length < after.size && key(before[from + length]) == key(after[length])) length++
         return from to length
     }
+
+    /** Whether the marker stands on its own: a comma or a pause after it ("no, a las seis"). */
+    private fun breakAfter(markerAt: List<Int>, after: List<Int>): Boolean =
+        tokens[markerAt.last()].raw.last() in BREAKS || tokens[after.first()].stretch != tokens[markerAt.last()].stretch
 
     /** Whether a pause or a comma stands beside the marker: a correction is nearly always said with one. */
     private fun pausedAround(markerAt: List<Int>, before: List<Int>, after: List<Int>): Boolean {
         val first = tokens[markerAt.first()]
         val last = tokens[markerAt.last()]
         return tokens[before.last()].stretch != first.stretch || tokens[after.first()].stretch != last.stretch ||
-            tokens[before.last()].raw.endsWith(',') || markerAt.any { tokens[it].raw.last() in ",.;:" }
+            tokens[before.last()].raw.last() in BREAKS || markerAt.any { tokens[it].raw.last() in BREAKS }
     }
 
-    /** Where the "when" the words [before] end with starts (an index into [before]), or null when they end with none. */
+    /**
+     * Where the "when" the words [before] end with starts (an index into [before]), with the
+     * article that says it ("el lunes", "on Friday"), or null when they end with none.
+     */
     private fun whenAtEnd(before: List<Int>): Int? {
         val (text, starts) = joined(before)
         val spans = whenSpans(text).sortedBy { it.first }
@@ -246,7 +327,8 @@ private class Repair(val tokens: List<Token>, val whenSpans: (String) -> List<In
         var group = spans.lastOrNull { it.last >= lastWord } ?: return null
         // A "when" said in pieces is one: "mañana a las cinco".
         for (span in spans.reversed()) if (span.last < group.first && group.first - span.last <= 2) group = span.first..group.last
-        return starts.indexOfLast { it <= group.first }.takeIf { it >= 0 }
+        val start = starts.indexOfLast { it <= group.first }.takeIf { it >= 0 } ?: return null
+        return if (start > 0 && key(before[start - 1]) in WHEN_ARTICLES) start - 1 else start
     }
 
     /**
@@ -270,35 +352,43 @@ private class Repair(val tokens: List<Token>, val whenSpans: (String) -> List<In
         return out.toString() to starts
     }
 
+    /** A number, in digits or words — not "un" or "a", which are as often an article. */
+    private fun isNumber(index: Int): Boolean = key(index).any(Char::isDigit) || (key(index) !in ARTICLE_AMOUNTS && amountIn(key(index)) != null)
+
     /**
-     * "Comprar pan… comprar pan y leche": a stretch that opens with the two words the one before
-     * it opened something with is that something said again, and the first try goes.
+     * "Comprar pan… comprar pan y leche", "el día… el día 15": a stretch that opens with the very
+     * words the one before it ended on is those words said again, and the first try goes. Word for
+     * word: "ir a la peluquería… a las 5" goes on, it does not start over.
      */
     fun restarts() {
         for (stretch in tokens.map { it.stretch }.distinct().drop(1)) {
             val words = living()
-            val again = words.filter { tokens[it].stretch >= stretch }
-            if (again.size < 2 || tokens[again[1]].stretch != stretch || tokens[again[0]].stretch != stretch) continue
+            val again = words.filter { tokens[it].stretch == stretch }
             val earlier = words.filter { tokens[it].stretch < stretch }
-            if (earlier.isEmpty()) continue
+            if (again.isEmpty() || earlier.isEmpty()) continue
             val previous = earlier.filter { tokens[it].stretch == tokens[earlier.last()].stretch }
-            val from = (0 until previous.size - 1).lastOrNull { i ->
-                same(tokens[previous[i]].key, tokens[again[0]].key) && same(tokens[previous[i + 1]].key, tokens[again[1]].key)
+            // The longest end of the stretch before that the new one opens with.
+            val from = previous.indices.firstOrNull { i ->
+                val tail = previous.subList(i, previous.size)
+                tail.size <= again.size && tail.indices.all { key(tail[it]) == key(again[it]) }
             } ?: continue
-            drop(keepingWhens(previous.subList(from, previous.size), again))
+            drop(previous.subList(from, previous.size))
         }
     }
 
-    /** "El el martes", "comprar pan comprar pan": said twice in a row, said once. Never a number: "600 600 600" is a phone. */
+    /**
+     * "El el martes", "comprar pan comprar pan": said twice in a row, said once. Never a number —
+     * "600 600 600" and "seis seis seis" are a phone — nor a name: "Bora Bora", "Duran Duran".
+     */
     fun repeats() {
+        fun keeps(index: Int) = isNumber(index) || (tokens[index].raw.first().isUpperCase() && !opensStretch(index))
         for (n in 3 downTo 1) {
             var words = living()
             var i = 0
             while (i + 2 * n <= words.size) {
                 val first = words.subList(i, i + n)
                 val second = words.subList(i + n, i + 2 * n)
-                val same = first.indices.all { tokens[first[it]].key == tokens[second[it]].key }
-                if (same && first.none { tokens[it].key.any(Char::isDigit) }) {
+                if (first.indices.all { key(first[it]) == key(second[it]) } && first.none(::keeps)) {
                     drop(first)
                     words = living()
                 } else {
@@ -307,6 +397,8 @@ private class Repair(val tokens: List<Token>, val whenSpans: (String) -> List<In
             }
         }
     }
+
+    private fun opensStretch(index: Int): Boolean = index == 0 || tokens[index - 1].stretch != tokens[index].stretch
 }
 
 /** Two words the same, or of a kind: "a" and "al" start the same place, "el" and "la" the same day. */
@@ -314,26 +406,42 @@ private fun same(a: String, b: String): Boolean = a == b || KINDS.any { a in it 
 
 private fun keyOf(raw: String): String = Words.of(raw).text.trim()
 
-/** A word that says nothing but that somebody was thinking. Folded. */
-private val FILLER = Regex("e+h+m*|e+m{1,}|m{2,}|h+m+|u+h+m*|u+m+|e+r+m+|a+h+")
+/**
+ * A word that says nothing but that somebody was thinking. Folded. Not "mm" or "em", which are
+ * millimetres and a name as often as a murmur.
+ */
+private val FILLER = Regex("e+h+m*|e+h*m{2,}|m{3,}|h+m+|u+h+m*|u+m+|e+r+m+|a+h+")
 
 /** What opens a stretch while the speaker finds the words, when more words follow it. Folded. */
-private val OPENINGS: List<List<String>> = listOf(listOf("o", "sea"), listOf("bueno"), listOf("pues"), listOf("vale"), listOf("well"), listOf("so"))
+private val OPENINGS: List<List<String>> = listOf(listOf("o", "sea"), listOf("bueno"), listOf("pues"))
 
-/** A word that says the words after it correct the ones before; [strong] when it can be nothing else. */
-private class Marker(val words: List<String>, val strong: Boolean)
+/**
+ * A word that says the words after it correct the ones before; [strong] when it can be nothing
+ * else, [needsBreak] when it is a correction only with a comma or a pause after it ("espera, mejor
+ * el jueves" — but "cena a las 8, espera a Ana").
+ */
+private class Marker(val words: List<String>, val strong: Boolean, val needsBreak: Boolean = false)
 
 /** Longest first, so "no, mejor" is one marker and not "no" and then "mejor". Folded. */
-private val MARKERS: List<Marker> = listOf(
-    "me he equivocado", "quiero decir", "mejor dicho", "me equivoque", "no perdon", "no espera", "no mejor", "no no", "o sea",
-    "perdon", "perdona", "digo", "corrijo", "rectifico", "espera",
-    "scratch that", "or rather", "no wait", "no sorry", "i mean", "sorry", "correction", "wait", "actually",
-).map { Marker(it.split(' '), strong = true) } + listOf("no", "mejor", "rather").map { Marker(listOf(it), strong = false) }
+private val MARKERS: List<Marker> = (
+    listOf(
+        "me he equivocado", "quiero decir", "quise decir", "queria decir", "mejor dicho", "me equivoque", "no perdon", "no espera",
+        "no mejor", "no no", "uy no", "ay no", "o sea", "perdon", "perdona", "digo", "corrijo", "rectifico",
+        "scratch that", "or rather", "make that", "no wait", "no sorry", "i mean", "i meant", "sorry", "correction",
+    ).map { Marker(it.split(' '), strong = true) } +
+        listOf("espera", "wait", "actually").map { Marker(listOf(it), strong = true, needsBreak = true) } +
+        listOf("en realidad", "bueno").map { Marker(it.split(' '), strong = false, needsBreak = true) } +
+        listOf("mas bien", "no", "mejor", "rather").map { Marker(it.split(' '), strong = false) }
+    ).sortedByDescending { it.words.size }
 
-/** The words before a marker that make it part of the sentence: "si no", "que no", "lo mejor", "le digo", "la sala de espera". */
+/**
+ * The words before a marker that make it part of the sentence: "si no", "y no", "que no", "lo
+ * mejor", "le digo", "la sala de espera". Folded.
+ */
 private val NOT_AFTER = setOf(
-    "si", "que", "lo", "le", "les", "te", "se", "me", "nos", "os", "la", "el", "los", "las", "de", "a", "ya", "aun", "todavia", "es", "era", "sera", "seria", "muy",
-    "if", "do", "does", "did", "not", "will", "can", "to", "the", "i", "you", "we", "they", "it", "is", "was",
+    "si", "que", "lo", "le", "les", "te", "se", "me", "nos", "os", "la", "el", "los", "las", "de", "a", "ya", "aun", "todavia",
+    "es", "era", "sera", "seria", "muy", "y", "e", "pero", "sino", "ni", "o", "u", "porque", "aunque", "cuando", "como",
+    "if", "do", "does", "did", "not", "will", "can", "to", "the", "i", "you", "we", "they", "it", "is", "was", "and", "but", "or", "nor", "because", "when",
 )
 
 /** "Pedir perdón": asking for it, not saying it. Folded. */
@@ -344,8 +452,20 @@ private val ASKING = setOf(
 /** Words too small to line a correction up with on their own. Folded. */
 private val SMALL_WORDS = setOf(
     "a", "al", "de", "del", "el", "la", "los", "las", "lo", "en", "y", "e", "o", "u", "un", "una", "por", "para", "con", "que",
-    "the", "a", "an", "to", "at", "on", "in", "for", "of", "and", "or", "with",
+    "the", "an", "to", "at", "on", "in", "for", "of", "and", "or", "with",
 )
+
+/** What says a "when" with it, and goes with it when it is corrected: "el lunes", "on Friday". Folded. */
+private val WHEN_ARTICLES = setOf("el", "la", "los", "las", "este", "esta", "on", "the", "this")
+
+/** Amount words that are as often an article. Folded. */
+private val ARTICLE_AMOUNTS = setOf("un", "una", "a", "an")
+
+/** A Spanish infinitive, with a pronoun or not: "escribirle", "llamar", "comprarlo". Folded. */
+private val INFINITIVE = Regex("\\p{L}+(?:ar|er|ir)(?:se|le|les|lo|la|los|las|me|te|nos)?")
+
+/** What ends a word said before a pause: a comma, a full stop, an ellipsis. */
+private const val BREAKS = ",.;:…"
 
 /** Words that start the same kind of thing. Folded. */
 private val KINDS: List<Set<String>> = listOf(setOf("a", "al"), setOf("de", "del"), setOf("el", "la", "los", "las"), setOf("un", "una"))

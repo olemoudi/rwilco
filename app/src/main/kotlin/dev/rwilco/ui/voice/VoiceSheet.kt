@@ -226,8 +226,14 @@ fun VoiceSheet(
         }
     }
 
+    // Once the sheet is on its way out nothing it was doing may still move it: a "Terminado" whose
+    // wait runs out under "Cancelar" would write the reminder the person has just let go of.
+    fun send(event: VoiceInputEvent) {
+        if (!leaving) onEvent(event)
+    }
+
     val askPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
-        onEvent(VoiceInputEvent.Permission(ok))
+        send(VoiceInputEvent.Permission(ok))
     }
     // Asked once per sheet: a rotation while the system's dialog is up must not ask again.
     var asked by rememberSaveable { mutableStateOf(false) }
@@ -246,7 +252,7 @@ fun VoiceSheet(
     val earOpen = listening != null && !listening.paused
     LaunchedEffect(earOpen) {
         if (!earOpen) return@LaunchedEffect
-        listener.start(locale) { event -> onEvent(VoiceInputEvent.Heard(event)) }
+        listener.start(locale) { event -> send(VoiceInputEvent.Heard(event)) }
         try {
             awaitCancellation()
         } finally {
@@ -254,28 +260,35 @@ fun VoiceSheet(
         }
     }
     // "Terminado": the ear gives its last stretch, and one that never answers does not hold the
-    // sheet — a moment later what has been heard is the sentence.
+    // sheet — a moment after its last word, what has been heard is the sentence.
     val finishing = listening?.finishing == true
+    val transcript = listening?.transcript
     LaunchedEffect(finishing) {
+        if (finishing) listener.stop()
+    }
+    LaunchedEffect(finishing, transcript) {
         if (!finishing) return@LaunchedEffect
-        listener.stop()
         delay(FINISH_GRACE_MS)
-        onEvent(VoiceInputEvent.Finish)
+        send(VoiceInputEvent.Finish)
     }
     // Never ended by a silence, but never a microphone left open either: a long one with no new
     // word closes it, the words kept, and so does leaving the app (where Android would silence it).
-    val transcript = listening?.transcript
     LaunchedEffect(earOpen && !finishing, transcript) {
         if (!earOpen || finishing) return@LaunchedEffect
         delay(QUIET_MS)
-        onEvent(VoiceInputEvent.Pause)
+        send(VoiceInputEvent.Pause)
     }
     val lifecycleOwner = LocalLifecycleOwner.current
-    val currentOnEvent by rememberUpdatedState(onEvent)
+    val currentSend by rememberUpdatedState(::send)
     DisposableEffect(lifecycleOwner, context) {
         val observer = LifecycleEventObserver { _, event ->
             // A rotation stops the screen too, and takes the ear with it; the new one listens on.
-            if (event == Lifecycle.Event.ON_STOP && context.findActivity()?.isChangingConfigurations != true) currentOnEvent(VoiceInputEvent.Pause)
+            // The ear is closed here and now: a stopped app's composition does not run again until
+            // it is back, and the microphone must not wait for that.
+            if (event == Lifecycle.Event.ON_STOP && context.findActivity()?.isChangingConfigurations != true) {
+                currentSend(VoiceInputEvent.Pause)
+                listener.cancel()
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -443,14 +456,14 @@ fun VoiceSheet(
                     closesItself = closesItself,
                     onCancel = { leave(onClosed) },
                     onDone = { leave(onClosed) },
-                    onFinish = { onEvent(VoiceInputEvent.Finish) },
-                    onResume = { onEvent(VoiceInputEvent.Resume) },
+                    onFinish = { send(VoiceInputEvent.Finish) },
+                    onResume = { send(VoiceInputEvent.Resume) },
                     onUndo = { reminder -> leave { onUndo(reminder) } },
                     onEdit = { reminder -> leave { onEdit(reminder) } },
                     onType = { leave { onToEditor(words, null, null) } },
                     onConfirm = onConfirm,
                     onEditGuess = { form -> leave { onToEditor(words, null, form) } },
-                    onRetry = { onEvent(VoiceInputEvent.Retry) },
+                    onRetry = { send(VoiceInputEvent.Retry) },
                     onSettings = {
                         context.startActivity(
                             Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
@@ -880,7 +893,7 @@ private const val CREATED_DWELL_MS = 6_000L
  */
 private const val QUIET_MS = 30_000L
 
-/** How long "Terminado" waits for the ear's last stretch before taking what it has heard. */
+/** How long after its last word "Terminado" waits for the ear's last stretch before taking what it has heard. */
 private const val FINISH_GRACE_MS = 2_000L
 
 /** The activity behind a Compose context, which may be wrapped in a theme or two. */

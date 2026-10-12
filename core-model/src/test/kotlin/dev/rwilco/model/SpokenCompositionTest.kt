@@ -144,8 +144,14 @@ class SpokenCompositionTest {
     fun `staying and spending are the thing itself without an alli pointing back at a doorway`() {
         assertEquals("Pasar 10 minutos estirando", read("pasar 10 minutos estirando mañana").text)
         assertEquals("Correr y pasar 10 minutos estirando", read("correr y pasar 10 minutos estirando mañana").text)
-        // A stay with no doorway to stay at is not written by halves.
-        assertEquals(Heard.Why.PARTIAL, unsure("apagar el horno mañana y llevar 10 minutos allí"))
+        // A stay with no place said before it is the thing itself, left in the words as a doubt
+        // (0.187.1): these used to be read, and must not stop being.
+        val horno = heard("apagar el horno mañana y llevar 10 minutos allí") as Heard.Read
+        assertEquals("Apagar el horno y llevar 10 minutos allí", horno.spoken.text)
+        assertEquals(1, horno.doubts.size)
+        assertEquals("Llamar a Juan y pasar 10 minutos fuera con el perro", read("llamar a Juan mañana a las 9 y pasar 10 minutos fuera con el perro").text)
+        assertEquals("Salir a correr y estar media hora fuera", read("mañana a las 7 salir a correr y estar media hora fuera").text)
+        assertEquals("Sacar la tarta pasados diez minutos", read("mañana a las cinco sacar la tarta pasados diez minutos").text)
     }
 
     @Test

@@ -47,6 +47,7 @@ import dev.rwilco.model.Repaired
 import dev.rwilco.model.Spoken
 import dev.rwilco.model.hear
 import dev.rwilco.model.repaired
+import dev.rwilco.model.withoutLeadIn
 import dev.rwilco.diag.Diag
 import dev.rwilco.voice.VoiceInputEvent
 import dev.rwilco.voice.GeminiAnswer
@@ -614,6 +615,14 @@ class HomeViewModel(
         // What was meant, read; what was said, shown and asked of Gemini (0.187.0): Gemini reads
         // corrections by itself, and its second look is worth most where this one went wrong.
         val repaired = repaired(stretches, clock.instant(), clock.zone, settings)
+        val (outcome, refine) = fromRepaired(repaired, settings, hereLabel)
+        // The editor shows no struck words: what goes there is everything that was said, so a
+        // correction taken wrongly costs nothing that cannot be seen.
+        if (outcome is VoiceOutcome.ToEditor && repaired.dropped.isNotEmpty()) return outcome.copy(text = withoutLeadIn(repaired.heard)) to refine
+        return outcome to refine
+    }
+
+    private suspend fun fromRepaired(repaired: Repaired, settings: AppSettings, hereLabel: String): Pair<VoiceOutcome, Refine?> {
         val transcript = repaired.heard
         return when (val heard = withHere { here -> hear(repaired.text, clock.instant(), clock.zone, settings, here, hereLabel) }) {
             is Here.Read -> {
@@ -748,8 +757,8 @@ class HomeViewModel(
         // to where each word was heard; what was taken out as a correction is shown struck through.
         val check = VoiceCheck(
             heard = repaired.heard,
-            parts = read.parts.map { HeardSpan(repaired.inHeard(it.range), it.family) }.filterNot { it.range.isEmpty() },
-            doubts = read.doubts.map(repaired::inHeard).filterNot { it.isEmpty() },
+            parts = read.parts.flatMap { part -> repaired.inHeard(part.range).map { HeardSpan(it, part.family) } },
+            doubts = read.doubts.flatMap(repaired::inHeard),
             firesAt = firesAt(reminder, settings),
             alternatives = alternatives,
             refining = if (refining) Refining.ASKING else Refining.NONE,

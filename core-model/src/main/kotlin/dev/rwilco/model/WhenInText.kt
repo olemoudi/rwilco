@@ -1038,6 +1038,12 @@ internal val AMOUNT_WORDS_PATTERN: String get() = AMOUNT_PATTERN
 /** An amount said in digits or words. */
 internal fun amountIn(raw: String): Int? = amountOf(raw)
 
+/**
+ * The amount pattern without the amounts that are as often an article ("un", "a"): "take a minute
+ * to breathe" counts nothing. One capturing group.
+ */
+internal val COUNTED_PATTERN: String get() = "(\\d{1,3}|" + AMOUNT_WORDS.keys.filter { it !in setOf("un", "uno", "una", "a", "an") }.joinToString("|") + ")"
+
 /** The pattern of an hour in either language, digits or words: one capturing group. */
 internal val HOUR_WORDS_PATTERN: String get() = "(\\d{1,2}|" + HOUR_WORDS.keys.joinToString("|") + ")"
 

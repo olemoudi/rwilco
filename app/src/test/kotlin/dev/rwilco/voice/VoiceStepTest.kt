@@ -106,9 +106,12 @@ class VoiceStepTest {
         assertEquals(VoiceState.Failed(VoiceFailure.NOT_HEARD), voiceStep(VoiceState.Listening(), heard(VoiceEvent.Failed(6))))
         assertEquals(VoiceState.Thinking(listOf("comprar pan")), voiceStep(VoiceState.Listening("comprar pan"), heard(VoiceEvent.Failed(7))))
         assertEquals(VoiceState.Failed(VoiceFailure.NO_PERMISSION, "x"), voiceStep(VoiceState.Listening("x"), heard(VoiceEvent.Failed(9))))
-        assertEquals(VoiceState.Failed(VoiceFailure.BROKEN, "x"), voiceStep(VoiceState.Listening("x"), heard(VoiceEvent.Failed(5))))
-        // A failure keeps every stretch, for "Escribirlo".
-        assertEquals(VoiceState.Failed(VoiceFailure.BROKEN, "comprar pan al llegar"), voiceStep(VoiceState.Listening("al llegar", said = listOf("comprar pan")), heard(VoiceEvent.Failed(5))))
+        assertEquals(VoiceState.Failed(VoiceFailure.BROKEN), voiceStep(VoiceState.Listening(), heard(VoiceEvent.Failed(5))))
+        // An ear that breaks after something was said pauses with every stretch kept, for "Seguir".
+        assertEquals(
+            VoiceState.Listening(said = listOf("comprar pan", "al llegar"), paused = true),
+            voiceStep(VoiceState.Listening("al llegar", said = listOf("comprar pan")), heard(VoiceEvent.Failed(5))),
+        )
     }
 
     @Test

@@ -35,14 +35,31 @@ class SpokenRepairTest {
             listOf("comprar pan al llegar a casa no al salir del trabajo") to "comprar pan al salir del trabajo",
             listOf("comprar pan al llegar a casa, perdón, al trabajo") to "comprar pan al llegar al trabajo",
             listOf("comprar leche, no, comprar pan cuando llegue a casa") to "comprar pan cuando llegue a casa",
-            listOf("comprar leche no comprar pan cuando llegue a casa") to "comprar pan cuando llegue a casa",
             listOf("llamar a Ana, digo, a Marta, mañana") to "llamar a Marta, mañana",
             listOf("comprar leche", "perdón, pan mañana") to "comprar pan mañana",
             listOf("call John tomorrow at five, no, at six") to "call John tomorrow at six",
             listOf("call John tomorrow, I mean, on Friday") to "call John on Friday",
             listOf("buy milk", "sorry, bread") to "buy bread",
+            // The review round (0.187.1): a number for a number, a refinement that narrows, a
+            // second marker after the first, a pause written as an ellipsis.
+            listOf("llamar a Juan a las cinco no seis") to "llamar a Juan a las seis",
+            listOf("call John at five, no, six") to "call John at six",
+            listOf("llamar a Juan el miércoles, espera, mejor el jueves") to "llamar a Juan el jueves",
+            listOf("llamar a Juan mañana, bueno, pasado mañana") to "llamar a Juan pasado mañana",
+            listOf("comprar leche… perdón pan") to "comprar pan",
+            listOf("llamar a Juan a las cinco de la tarde, no, de la mañana") to "llamar a Juan a las cinco de la mañana",
         )
         for ((stretches, expected) in cases) assertEquals(expected, meant(*stretches.toTypedArray()), stretches.toString())
+    }
+
+    @Test
+    fun `a when that narrows the one before is kept with it`() {
+        assertEquals("ir al gimnasio el lunes, a las diez", meant("ir al gimnasio el lunes, mejor a las diez"))
+        assertEquals("llamar a Ana el viernes, por la tarde", meant("llamar a Ana el viernes, mejor por la tarde"))
+        // The same verb said again with only a "when" after it: the doctor is still the doctor.
+        assertEquals("llamar al médico, por la mañana, el lunes", meant("llamar al médico, mejor llamar por la mañana, el lunes"))
+        val monday = hear(meant("ir al gimnasio el lunes, mejor a las diez"), now, zone, settings) as Heard.Read
+        assertEquals(listOf(TriggerRule(Trigger.RelativeDate(RelativeDay.NextWeekday(java.time.DayOfWeek.MONDAY), java.time.LocalTime.of(10, 0)))), monday.spoken.rules)
     }
 
     @Test
@@ -60,10 +77,12 @@ class SpokenRepairTest {
     fun `a start said again after a pause takes the place of the first try`() {
         assertEquals("comprar pan y leche mañana", meant("comprar pan", "comprar pan y leche mañana"))
         assertEquals("recuérdame comprar pan mañana", meant("recuérdame comprar", "recuérdame comprar pan mañana"))
-        assertEquals("a las seis llamar a Juan", meant("a las cinco", "a las seis llamar a Juan"))
         assertEquals("recordar el cumpleaños de Ana el día 15", meant("recordar el cumpleaños de Ana el día", "el día 15"))
-        // The "when" of the first try stays when the second says none.
-        assertEquals("mañana comprar pan y leche", meant("comprar pan mañana", "comprar pan y leche"))
+        // Only the very words again: anything else after a pause goes on from where it was.
+        assertEquals("ir a la peluquería a las 5", meant("ir a la peluquería", "a las 5"))
+        assertEquals("recoger a los niños a las cinco", meant("recoger a los niños", "a las cinco"))
+        assertEquals("comprar el pan comprar la leche mañana", meant("comprar el pan", "comprar la leche", "mañana"))
+        assertEquals("comprar pan mañana comprar pan y leche", meant("comprar pan mañana", "comprar pan y leche"))
     }
 
     @Test
@@ -94,8 +113,28 @@ class SpokenRepairTest {
             "tomar la pastilla a las 9 y a las 21",
             "comprar pan y leche al llegar a casa y llevar 10 minutos allí",
             "a las cinco no",
+            // The review round (0.187.1): a contrast is not a correction.
+            "comprar pan y no comprar bollos mañana",
+            "tomar la pastilla y no tomar café mañana",
+            "llamar a Juan pero no llamar a Pedro",
+            "comprar leche y no leche de soja",
+            "tomar la pastilla de la tensión no tomar el ibuprofeno",
+            "comprar leche no comprar pan cuando llegue a casa",
+            "llamar a Ana mañana, no a Marta",
+            "comprar el pan, no el de molde mañana",
+            "cena a las 8, espera a Ana",
+            "llamar a Juan, no, mejor escribirle, mañana",
+            "vale la pena ir mañana",
+            "comprar tornillos de 8 mm mañana",
+            "call Em tomorrow",
+            "llamar al seis seis seis uno dos tres mañana",
+            "viaje a Bora Bora el lunes",
+            "take a minute to breathe tomorrow",
+            "en realidad no sé cuándo",
         )
         for (sentence in sentences) assertEquals(sentence, meant(sentence))
+        assertEquals("regar las plantas no las del balcón el sábado", meant("regar las plantas", "no las del balcón el sábado"))
+        assertEquals("comprar un regalo para Ana no una tarjeta", meant("comprar un regalo para Ana", "no una tarjeta"))
         // Said in stretches, nothing said again: joined and nothing more.
         assertEquals("comprar pan al llegar a casa y llevar 10 minutos allí", meant("comprar pan al llegar a casa", "y llevar 10 minutos allí"))
         assertEquals("llamar a Juan a las cinco", meant("llamar a Juan", "a las cinco"))
@@ -108,9 +147,12 @@ class SpokenRepairTest {
         assertEquals("llamar a Juan mañana a las cinco, no, a las seis", repair.heard)
         assertEquals(listOf("a las cinco, no,"), repair.dropped.map { repair.heard.substring(it) })
         val six = repair.text.indexOf("a las seis")
-        assertEquals("a las seis", repair.heard.substring(repair.inHeard(six until six + "a las seis".length)))
+        assertEquals(listOf("a las seis"), repair.inHeard(six until six + "a las seis".length).map(repair.heard::substring))
         val juan = repair.text.indexOf("Juan mañana")
-        assertEquals("Juan mañana", repair.heard.substring(repair.inHeard(juan until juan + "Juan mañana".length)))
+        assertEquals(listOf("Juan mañana"), repair.inHeard(juan until juan + "Juan mañana".length).map(repair.heard::substring))
+        // A stretch that spans words taken out is two pieces, and claims none of them.
+        val spanning = repair.text.indexOf("mañana a las seis")
+        assertEquals(listOf("mañana", "a las seis"), repair.inHeard(spanning until spanning + "mañana a las seis".length).map(repair.heard::substring))
     }
 
     @Test
@@ -125,7 +167,8 @@ class SpokenRepairTest {
         assertEquals("comprar pan mañana", repair.heard)
         assertEquals("comprar pan mañana", repair.text)
         assertEquals(emptyList<IntRange>(), repair.dropped)
-        assertEquals(0..5, repair.inHeard(0..5))
+        assertEquals(listOf(0..5), repair.inHeard(0..5))
+        assertEquals(emptyList<IntRange>(), repair.inHeard(IntRange.EMPTY))
     }
 
     @Test

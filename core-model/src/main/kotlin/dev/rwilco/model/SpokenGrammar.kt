@@ -319,7 +319,7 @@ private fun readClause(text: String, range: IntRange, context: Context, fence: B
     repeat(MAX_PIECES) {
         // Beside a "when" already read, a kind of day is part of saying when: "entre las 18 y las
         // 20 entre semana".
-        val next = readOne(String(chars), context, fence, partsAreWindows, kindsOfDay || said.isNotEmpty()) ?: return said
+        val next = readOne(String(chars), text, context, fence, partsAreWindows, kindsOfDay || said.isNotEmpty()) ?: return said
         said += next
         next.spans.forEach { span -> for (i in span) chars[i] = ' ' }
     }
@@ -328,7 +328,8 @@ private fun readClause(text: String, range: IntRange, context: Context, fence: B
 
 private const val MAX_PIECES = 6
 
-private fun readOne(text: String, context: Context, fence: Boolean, partsAreWindows: Boolean, kindsOfDay: Boolean): Said? {
+/** [whole] is the sentence [text] is a clause of, for what can only be read after something said before it. */
+private fun readOne(text: String, whole: String, context: Context, fence: Boolean, partsAreWindows: Boolean, kindsOfDay: Boolean): Said? {
     val folded = Words.of(text)
     val words = folded.text
     if (words.isBlank()) return null
@@ -373,7 +374,14 @@ private fun readOne(text: String, context: Context, fence: Boolean, partsAreWind
         return Said(Piece.When(rule), listOf(folded.original(m.range.first..end + rate.range.last + 1)))
     }
     for (pattern in STAY) {
-        pattern.find(words)?.let { m -> return said(Piece.Stay(minutesOf(m, 1) ?: return@let), m) }
+        pattern.find(words)?.let { m ->
+            // A rate is a doorway's, and only read after a place was said: before one, "pasar 10
+            // minutos fuera con el perro" or "sacar la tarta pasados diez minutos" is the thing
+            // itself, left in the words (a doubt), not a sentence nobody can write.
+            val at = folded.original(m.range).first
+            if (at !in whole.indices || !saysPlace(whole.substring(0, at))) return@let
+            return said(Piece.Stay(minutesOf(m, 1) ?: return@let), m)
+        }
     }
     for ((pattern, kind) in if (fence) MOVING + MOVING_BARE else MOVING) pattern.find(words)?.let { return said(Piece.Fence(movingOf(kind)), it) }
     TIMER.find(words)?.let { m ->
@@ -592,6 +600,9 @@ private val DATE_SPANS: List<Regex> = listOf(
     Regex("\\bfrom the (\\d{1,2})(?:st|nd|rd|th)?(?: of $MONTH_WORDS_PATTERN)? (?:to|until) the (\\d{1,2})(?:st|nd|rd|th)? of $MONTH_WORDS_PATTERN\\b"),
 )
 
+/** Whether [text] says a place: a way of saying where, or "aquí". */
+private fun saysPlace(text: String): Boolean = Words.of(text).text.let { mentionsPlace(it) || HERE.containsMatchIn(it) }
+
 /**
  * How long a doorway is to be stayed at: "10 minutos", "diez min", "una hora", "media hora".
  * Three groups — the amount, its unit, and the half hour said as one — read by [minutesOf].
@@ -652,7 +663,7 @@ private val RANDOM = Regex(
 private val STAY: List<Regex> = listOf(
     Regex(
         "\\b(?:(?:y )?(?:(?:cuando|en cuanto|una vez|tras|despues de) )?(?:ya )?(?:lleve|llevo|llevar|haya estado|haya pasado|hayan pasado)|" +
-            "al llevar|pasados|pasada|al cabo de|after|once i ve been(?: there)? for|(?:and )?(?:once |when )?(?:i ve |i have |have )?been there(?: for)?) " +
+            "al llevar|pasados|pasada|al cabo de|tras|despues de|after|once i ve been(?: there)? for|(?:and )?(?:once |when )?(?:i ve |i have |have )?been there(?: for)?) " +
             "(?:(?:alli|ahi|alla|ya) )?$LENGTH(?: (?:alli|ahi|alla|dentro|fuera|there|inside|outside))?\\b",
     ),
     Regex("\\b(?:y )?(?:(?:cuando|tras|despues de) )?(?:estar|este|pasar|pase) $LENGTH (?:alli|ahi|alla|dentro|fuera)\\b"),

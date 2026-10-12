@@ -1618,6 +1618,26 @@ loud what DST and a change of zone do to a landing.
   asked with what was said, since its second look is worth most where the repair went wrong.
   `SpokenRepairTest` (and the 700-odd sentences of the grammar tests left untouched),
   `VoiceStepTest`, `VoiceDictationTest`, `PatternsOnDeviceTest`.
+- **The review round over 0.185–0.187 (0.187.1).** Two reviews, one over the ear and the sheet and
+  one over the grammar and the repair, with ~150 dictations probed against the old build. Ear: a
+  recognizer started again too soon (`ERROR_CLIENT`/`BUSY`/`SERVER_DISCONNECTED`) is replaced a
+  moment later instead of ending the dictation; a stretch closes once even when the recognizer
+  answers twice; one that breaks after words were said pauses with them kept; leaving the app
+  closes the microphone on the spot (a stopped app's composition does not run its effects until it
+  is back); nothing the sheet was doing moves it once it is leaving (a "Terminado" whose wait runs
+  out under "Cancelar" no longer writes); the wait for the last stretch restarts on each new word;
+  a missing language pack is asked for once per sheet. Repair: never after "y", "pero", "sino"…
+  ("comprar pan y no comprar bollos" is a contrast); after a weak "no" one word in common needs a
+  break after the "no" or a pause and a word of substance ("llamar a Ana mañana, no a Marta" stays);
+  a stretch said again counts only word for word ("ir a la peluquería… a las 5" goes on); a "when"
+  that reads as one with the one before narrows it ("el lunes, mejor a las diez" is Monday at ten),
+  and a verb said again with only a "when" after it keeps its object ("llamar al médico, mejor llamar
+  por la mañana"); a number for a number ("a las cinco, no, seis"); "espera", "actually", "bueno",
+  "en realidad" only with a break after them; no repeats of numbers or names, no "mm"/"em". A rate
+  is only read after a place was said, so "pasar 10 minutos fuera con el perro" is the thing itself
+  again, a doubt; amounts that are articles ("take a minute") are no doubts. Marks no longer span
+  struck words (`inHeard` gives pieces), and the editor gets everything said when something was
+  taken out, since it shows nothing struck.
 - **A held stepper keeps counting (0.51.0).** A step is one unit on purpose (three minutes has
   to be sayable, and the countdown sheet says why), and the price was seventeen taps from thirty
   to forty-seven. `Stepper` repeats after `Motion.holdRepeatDelay`, quickening to

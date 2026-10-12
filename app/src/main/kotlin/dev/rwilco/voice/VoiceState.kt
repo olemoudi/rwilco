@@ -139,7 +139,10 @@ fun voiceStep(state: VoiceState, event: VoiceInputEvent): VoiceState = when (eve
             heard.error == 6 || heard.error == 7 -> settled(state.stretches)
             // ERROR_INSUFFICIENT_PERMISSIONS.
             heard.error == 9 -> VoiceState.Failed(VoiceFailure.NO_PERMISSION, state.transcript)
-            else -> VoiceState.Failed(VoiceFailure.BROKEN, state.transcript)
+            state.stretches.isEmpty() -> VoiceState.Failed(VoiceFailure.BROKEN)
+            // A dictation that has said something does not end over a broken ear: it pauses, the
+            // words kept, and "Seguir" tries a new one.
+            else -> VoiceState.Listening(said = state.stretches, paused = true)
         }
     }
 }

@@ -111,7 +111,7 @@ fun hear(
 ): Heard {
     val folded = Words.of(text)
     val leadIn = LEAD_IN.find(folded.text)?.let { folded.original(it.range) }?.takeUnless { it.isEmpty() }
-    val said = (if (leadIn == null) text.trim() else withoutSpans(text, listOf(leadIn))).ifBlank { text.trim() }
+    val said = withoutLeadIn(text)
     val actions = ACTIONS.mapNotNull { (pattern, edit) -> pattern.find(folded.text)?.let { edit to folded.original(it.range) } }
     val asked = actions.fold(SpokenActions()) { all, (edit, _) -> all + edit }
     val skip = listOfNotNull(leadIn) + actions.map { it.second }
@@ -147,6 +147,13 @@ fun hear(
             }
         }
     }
+}
+
+/** [text] without the "recuérdame" it may start with: the words a person goes on to write, if it comes to that. */
+fun withoutLeadIn(text: String): String {
+    val folded = Words.of(text)
+    val leadIn = LEAD_IN.find(folded.text)?.let { folded.original(it.range) }?.takeUnless { it.isEmpty() }
+    return (if (leadIn == null) text.trim() else withoutSpans(text, listOf(leadIn))).ifBlank { text.trim() }
 }
 
 /**
@@ -235,15 +242,17 @@ private fun doubtsIn(text: String, spans: List<IntRange>, whens: List<IntRange>)
     val beside = tokens.indices
         .filter { i -> !gone[i] && (isWhen(i - 1) || isWhen(i + 1)) && Words.of(tokens[i].value).text.trim() in DOUBTFUL_BESIDE }
         .map { tokens[it].range }
+        // "Minutos" beside a "when" is already in "diez minutos": one doubt, not two.
+        .filter { range -> anywhere.none { it.first <= range.last && range.first <= it.last } }
     return (anywhere + beside).distinct().sortedBy { it.first }
 }
 
 /** Only ever about time, left anywhere in the words. Folded. */
 private val DOUBTFUL = Regex(
     "\\b(?:temprano|pronto|luego|enseguida|en un rato|dentro de un rato|mas tarde|a primera hora|a ultima hora|y media|y cuarto|menos cuarto|en punto|" +
-        "(?:la )?(?:proxima|siguiente) vez|$AMOUNT_WORDS_PATTERN (?:horas?|minutos?|min)|media hora|medianoche|madrugada|" +
+        "(?:la )?(?:proxima|siguiente) vez|$COUNTED_PATTERN (?:horas?|minutos?|min)|(?:una|media) hora|medianoche|madrugada|" +
         "antes de|despues de|hasta que|desde que|en cuanto|cuando|mientras|todos los (?:dias|meses|anos)|todas las (?:semanas|mananas|tardes|noches)|" +
-        "later|soon|early|first thing|next time|half past|quarter (?:past|to)|o clock|and a half|$AMOUNT_WORDS_PATTERN (?:hours?|minutes?)|midnight|" +
+        "later|soon|early|first thing|next time|half past|quarter (?:past|to)|o clock|and a half|$COUNTED_PATTERN (?:hours?|minutes?)|midnight|" +
         "before|after|until|when|while)\\b",
 )
 
