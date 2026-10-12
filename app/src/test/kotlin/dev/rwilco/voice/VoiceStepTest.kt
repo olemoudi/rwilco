@@ -102,6 +102,17 @@ class VoiceStepTest {
             VoiceState.Thinking(listOf("llamar a visto mañana", "no, a las seis"), replacing = "r"),
             voiceStep(voiceStep(more, VoiceInputEvent.Finish), heard(VoiceEvent.Final("no, a las seis"))),
         )
+        // A fix keeps knowing what it fixes whatever happens to it: a failure and "Otra vez", a
+        // guess of Gemini's, the editor (0.190.1).
+        val failed = voiceStep(VoiceState.Listening(replacing = "r"), heard(VoiceEvent.Failed(5)))
+        assertEquals(VoiceState.Failed(VoiceFailure.BROKEN, replacing = "r"), failed)
+        assertEquals(VoiceState.Listening(replacing = "r"), voiceStep(failed, VoiceInputEvent.Retry))
+        assertEquals(VoiceState.Failed(VoiceFailure.NOT_HEARD, replacing = "r"), voiceStep(VoiceState.Listening(replacing = "r"), VoiceInputEvent.Pause))
+        val thinking = VoiceState.Thinking(listOf("x"), replacing = "r")
+        val guess = voiceStep(thinking, VoiceInputEvent.Proposed(reminder, "{form}", dev.rwilco.model.Spoken("X"), null))
+        assertEquals("r", (guess as VoiceState.Confirm).replacing)
+        assertEquals(VoiceState.ToEditor("x", VoiceOutcome.Why.REFUSED, "{form}", "r"), voiceStep(guess, VoiceInputEvent.Unwritten("x", VoiceOutcome.Why.REFUSED, "{form}")))
+        assertEquals(VoiceState.ToEditor("x", VoiceOutcome.Why.NOTHING, replacing = "r"), voiceStep(thinking, VoiceInputEvent.Unwritten("x", VoiceOutcome.Why.NOTHING)))
         // Nothing to read again or go on from anywhere else.
         val listening = VoiceState.Listening("x")
         assertEquals(listening, voiceStep(listening, VoiceInputEvent.Reread("y")))

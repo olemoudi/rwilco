@@ -1039,6 +1039,22 @@ internal val AMOUNT_WORDS_PATTERN: String get() = AMOUNT_PATTERN
 internal fun amountIn(raw: String): Int? = amountOf(raw)
 
 /**
+ * Whether [text] ends with a doorway into or out of one of [places] — "…al llegar a casa" —
+ * with a comma or a "y" after it at most.
+ */
+internal fun endsWithDoorway(text: String, places: List<SavedPlace>): Boolean {
+    var words = Words.of(text).text
+    if (words.endsWith(" y ")) words = words.dropLast(2)
+    for (lead in PLACE_LEADS.filter { it.onCrossing }) {
+        for (match in lead.pattern.findAll(words)) {
+            val (_, end) = savedPlaceAt(words, match.range.last + 1, places) ?: continue
+            if (end == words.trimEnd().length - 1) return true
+        }
+    }
+    return false
+}
+
+/**
  * The amount pattern without the amounts that are as often an article ("un", "a"): "take a minute
  * to breathe" counts nothing. One capturing group.
  */

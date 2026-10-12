@@ -1671,6 +1671,23 @@ loud what DST and a change of zone do to a landing.
   before — "a visto" → "Vito", so "he visto" stays seen) into `AppSettings.voiceFixes` (newest 300)
   and applied by `Vocabulary.corrected` from then on. `VocabularyTest`, `VoiceStepTest`,
   `VoiceDictationTest` (fixed by hand and learned; more said onto the same reminder).
+- **The review round over 0.188–0.190 (0.190.1).** Three reviews (code, ~190 probed sentences and
+  edits, and a UX study). Learning: only what was *misheard* — a name that sounds close to what was
+  heard (`soundsClose`, sound edit distance ≤ a third), or the same word capitalised mid-sentence —
+  never a change of mind ("Comprar"→"Recoger", "la fontanera"→"Juan Pérez"), a small word, or a
+  time or day. Vocabulary: only words the person writes capitalised are ever written in, so a tag
+  never lowercases a word; `choose` counts each unusual name once, as written by the recognizer, so
+  "más", "pilas" or a saved place's common noun never win over its first reading; a sound shorter
+  than three letters, and common given names spelled right ("Sara", whatever is bought at Zara), are
+  never corrected away; line starts, colons, dashes and list lines are not names. Repair: a marker
+  opening a stretch ("Bueno, el martes") is asked about as a correction before it is taken for a
+  hesitation. Grammar: "N minutos allí" alone and "lleva N" are a rate only right after the doorway
+  (`endsWithDoorway`), so "pagar el parking 2 horas ahí" is not a stay. Ear: segmented sessions are
+  given up only on a refusal of the very first round, a segmented round that hands over nothing is
+  hollow, results after a segmented round's stretches are not taken twice, and the note is written
+  once. A fix that goes to the editor opens *that* reminder with the new words (Back leaves it as it
+  was) instead of deleting it; the state machine carries `replacing` through a guess, a failure,
+  "Otra vez" and the editor. The vocabulary is rebuilt only when words, tags, places or fixes change.
 - **A held stepper keeps counting (0.51.0).** A step is one unit on purpose (three minutes has
   to be sayable, and the countdown sheet says why), and the price was seventeen taps from thirty
   to forty-seven. `Stepper` repeats after `Motion.holdRepeatDelay`, quickening to

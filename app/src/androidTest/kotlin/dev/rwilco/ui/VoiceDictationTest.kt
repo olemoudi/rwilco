@@ -166,7 +166,7 @@ class VoiceDictationTest {
         VoiceInput.factory = { FakeEar() }
         app.repository.deleteAll()
         app.settingsStore.update {
-            it.copy(presets = emptyList(), compactHome = false, savedPlaces = listOf(casa), lastSeenVersionCode = BuildConfig.VERSION_CODE)
+            it.copy(presets = emptyList(), compactHome = false, savedPlaces = listOf(casa), lastSeenVersionCode = BuildConfig.VERSION_CODE, voiceFixes = emptyMap())
         }
     }
 
@@ -300,6 +300,26 @@ class VoiceDictationTest {
         waitFor("escribir a Vito el viernes")
         rule.onNodeWithText(s(R.string.voice_stop), useUnmergedTree = true).performClick()
         rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.any { it.text == "Escribir a Vito" } }
+    }
+
+    @Test
+    fun aFixTheRulesCannotReadOpensTheSameReminderInTheEditor() {
+        // A fix by hand that says no "when" goes to the editor — on the reminder it was fixing,
+        // with the new words, and backing out leaves that reminder as it was (0.190.1).
+        sentence = "llamar a Juan a las 11"
+        dictate()
+        rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.any { it.text == "Llamar a Juan" } }
+        val first = runBlocking { app.repository.openNow() }.single()
+        rule.onNodeWithContentDescription(s(R.string.voice_fix_text)).performClick()
+        rule.onNodeWithTag(VOICE_FIX_FIELD_TAG).performTextReplacement("llamar a Pedro")
+        rule.onNodeWithText(s(R.string.voice_reread), useUnmergedTree = true).performClick()
+        waitFor(s(R.string.voice_to_editor_nothing))
+        waitFor("llamar a Pedro")
+        fun asWritten() = runBlocking { app.repository.openNow() }.map { Triple(it.id, it.text, it.rules) }
+        assertEquals(listOf(Triple(first.id, first.text, first.rules)), asWritten())
+        rule.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        rule.waitForIdle()
+        assertEquals(listOf(Triple(first.id, first.text, first.rules)), asWritten())
     }
 
     @Test

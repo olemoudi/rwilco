@@ -22,7 +22,10 @@ object Routes {
         val editPresetId: String? = null,
         /** A blank form that starts as a preset: the way in from "add a preset button". */
         val newPreset: Boolean = false,
-        /** Words a new reminder starts with: a line shared from another app. */
+        /**
+         * Words a new reminder starts with: a line shared from another app. With [reminderId], the
+         * words put on that reminder's form instead (0.190.1): a dictated fix of it, finished by hand.
+         */
         val sharedText: String? = null,
         /** A blank form that starts as a routine (see `Routines.kt`): the way in from the routines screen. */
         val routine: Boolean = false,
@@ -37,7 +40,8 @@ object Routes {
         /**
          * A whole form to open on: a dictated reminder that was understood but would not ring as
          * said (0.177.0), so the warning is seen where it can be fixed. The saved-form JSON the
-         * editor already restores a half-written form from (`SavedEditor`).
+         * editor already restores a half-written form from (`SavedEditor`). With [reminderId], put
+         * on that reminder's form, which comes back dirty: Back asks before throwing it away.
          */
         val spokenForm: String? = null,
     )

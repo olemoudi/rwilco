@@ -113,6 +113,12 @@ class PlatformListener(private val context: Context) : Listener {
     /** What this listening was like, for the diagnostics note: never the words. */
     private var how = How()
 
+    /** Stretches this round handed over: a round with none is a hollow one, segmented or not. */
+    private var roundSegments = 0
+
+    /** The note for this listening was written: once is enough. */
+    private var noted = false
+
     private class How(var onDevice: Boolean = false, var segments: Int = 0, var rounds: Int = 0, val errors: MutableList<Int> = mutableListOf())
 
     /** The person's own words, asked for on every round of this listening. */
@@ -123,6 +129,7 @@ class PlatformListener(private val context: Context) : Listener {
         this.words = words
         finishing = false
         hollow = 0
+        noted = false
         val onDevice = !noPack && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
         how = How(onDevice = onDevice)
         if (!onDevice && !SpeechRecognizer.isRecognitionAvailable(context)) {
@@ -160,6 +167,7 @@ class PlatformListener(private val context: Context) : Listener {
             override fun onSegmentResults(segmentResults: Bundle) {
                 if (!hearing) return
                 how.segments++
+                roundSegments++
                 onEvent(VoiceEvent.Segment(firstOf(segmentResults).orEmpty(), allOf(segmentResults)))
             }
             override fun onEndOfSegmentedSession() {
@@ -169,7 +177,8 @@ class PlatformListener(private val context: Context) : Listener {
                     onEvent(VoiceEvent.Final(""))
                     noteHow("finished")
                 } else {
-                    again(ear, intent, empty = false, SpeechRecognizer.ERROR_NO_MATCH)
+                    // A session that ends at once with nothing handed over is as hollow as a round that does.
+                    again(ear, intent, empty = roundSegments == 0, SpeechRecognizer.ERROR_NO_MATCH)
                 }
             }
 
@@ -178,7 +187,9 @@ class PlatformListener(private val context: Context) : Listener {
                 // "no match") would otherwise start two rounds on top of each other.
                 if (!hearing) return
                 hearing = false
-                val text = firstOf(results).orEmpty()
+                // After a segmented round's stretches, a recognizer may still send the whole of it
+                // as results: those words have all come already.
+                val text = if (roundSegments > 0) "" else firstOf(results).orEmpty()
                 if (finishing) {
                     onEvent(VoiceEvent.Final(text, allOf(results)))
                     noteHow("finished")
@@ -200,9 +211,10 @@ class PlatformListener(private val context: Context) : Listener {
                     noPack = true
                     recognizer = null
                     listen(locale, onEvent, onDevice = false)
-                } else if (segmented && !ready && !finishing) {
-                    // Refused before it was even ready: the way it was asked, not the room. Asked
-                    // the old way from now on, by a recognizer of its own.
+                } else if (segmented && !ready && !finishing && how.rounds == 1 && error !in QUIET + PASSING + PERMISSION) {
+                    // Refused on its very first round, before it was even ready, with something
+                    // other than a hiccup or a quiet room: the way it was asked. Asked the old way
+                    // from now on, by a recognizer of its own.
                     noSegments = true
                     main.postDelayed({ if (recognizer === ear && !finishing) listen(locale, onEvent, onDevice) }, PASSING_DELAY_MS)
                 } else if (!finishing && error in QUIET) {
@@ -230,6 +242,7 @@ class PlatformListener(private val context: Context) : Listener {
     private fun hear(ear: SpeechRecognizer, intent: Intent) {
         hearing = true
         ready = false
+        roundSegments = 0
         startedAt = SystemClock.elapsedRealtime()
         how.rounds++
         ear.startListening(intent)
@@ -263,7 +276,7 @@ class PlatformListener(private val context: Context) : Listener {
     }
 
     override fun cancel() {
-        if (onEvent != null && how.rounds > 0 && !finishing) noteHow("closed")
+        if (onEvent != null && how.rounds > 0) noteHow("closed")
         main.removeCallbacksAndMessages(null)
         onEvent = null
         hearing = false
@@ -279,6 +292,8 @@ class PlatformListener(private val context: Context) : Listener {
      * again after each, and the errors it said on the way. Never what was said.
      */
     private fun noteHow(end: String) {
+        if (noted) return
+        noted = true
         val mode = when {
             how.segments > 0 -> "segmented"
             noSegments || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU -> "restarting"
@@ -328,6 +343,9 @@ class PlatformListener(private val context: Context) : Listener {
          * a recognizer started again straight after a stretch says now and then, and gets over.
          */
         val PASSING = setOf(SpeechRecognizer.ERROR_CLIENT, SpeechRecognizer.ERROR_RECOGNIZER_BUSY, 11)
+
+        /** `ERROR_INSUFFICIENT_PERMISSIONS`: the microphone, not the way it was asked. */
+        val PERMISSION = setOf(SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS)
 
         /** How many readings of a stretch are asked for. */
         const val MAX_ALTERNATIVES = 5

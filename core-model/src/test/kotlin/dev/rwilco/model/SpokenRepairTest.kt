@@ -53,6 +53,15 @@ class SpokenRepairTest {
     }
 
     @Test
+    fun `a marker opening the stretch after a pause still corrects`() {
+        // Since 0.188.0 a pause is a new stretch nearly every time: "Bueno," and "O sea," opening
+        // one are asked about as corrections before they are taken for a hesitation (0.190.1).
+        assertEquals("Llamar a Juan el martes", meant("Llamar a Juan el lunes", "Bueno, el martes"))
+        assertEquals("llamar a Juan pasado mañana", meant("llamar a Juan mañana", "O sea, pasado mañana"))
+        assertEquals("comprar pan", meant("bueno, comprar pan"))
+    }
+
+    @Test
     fun `a when that narrows the one before is kept with it`() {
         assertEquals("ir al gimnasio el lunes, a las diez", meant("ir al gimnasio el lunes, mejor a las diez"))
         assertEquals("llamar a Ana el viernes, por la tarde", meant("llamar a Ana el viernes, mejor por la tarde"))

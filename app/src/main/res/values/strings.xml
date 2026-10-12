@@ -1838,6 +1838,15 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_190_1">
+
+        <item>Learning is more careful: only a name that was misheard is learned (“visto” that was Vito), never a sentence you simply changed your mind about, and common names or ordinary words are never “corrected” into one of yours.</item>
+
+        <item>“Bueno, el martes” after a pause now corrects the day; and “pagar el parking 2 horas ahí” is no longer taken as a stay.</item>
+
+        <item>If a fix goes to the editor, it opens the same reminder with your new words, and backing out leaves it as it was.</item>
+
+    </string-array>
     <string-array name="whats_new_0_190_0">
 
         <item>A dictated reminder can be put right without leaving the sheet. Next to “What I heard”, the pencil lets you fix the words and read them again, and the microphone lets you carry on speaking (“no, at six”). Either way it is the same reminder that changes.</item>

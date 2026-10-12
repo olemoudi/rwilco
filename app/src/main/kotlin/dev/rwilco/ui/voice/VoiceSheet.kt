@@ -204,9 +204,10 @@ fun VoiceSheet(
     onConfirm: () -> Unit,
     /**
      * To the editor with these words; [VoiceOutcome.Why] says why, null when somebody asked to
-     * type; the last is the whole reading to open on, when there is one.
+     * type; then the whole reading to open on, when there is one; and the reminder it was a fix of,
+     * for the editor to open on that one rather than a new one (0.190.1).
      */
-    onToEditor: (String, VoiceOutcome.Why?, String?) -> Unit,
+    onToEditor: (String, VoiceOutcome.Why?, String?, String?) -> Unit,
     onClosed: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -345,7 +346,7 @@ fun VoiceSheet(
     // Not written: to the editor, with the words.
     val unwritten = state as? VoiceState.ToEditor
     LaunchedEffect(unwritten) {
-        if (unwritten != null) leave { onToEditor(unwritten.text, unwritten.why, unwritten.form) }
+        if (unwritten != null) leave { onToEditor(unwritten.text, unwritten.why, unwritten.form, unwritten.replacing) }
     }
 
     NoBounce {
@@ -480,9 +481,12 @@ fun VoiceSheet(
                     onResume = { send(VoiceInputEvent.Resume) },
                     onUndo = { reminder -> leave { onUndo(reminder) } },
                     onEdit = { reminder -> leave { onEdit(reminder) } },
-                    onType = { leave { onToEditor(words, null, null) } },
+                    onType = {
+                        val replacing = (current as? VoiceState.Thinking)?.replacing ?: (current as? VoiceState.Failed)?.replacing
+                        leave { onToEditor(words, null, null, replacing) }
+                    },
                     onConfirm = onConfirm,
-                    onEditGuess = { form -> leave { onToEditor(words, null, form) } },
+                    onEditGuess = { form -> leave { onToEditor(words, null, form, (current as? VoiceState.Confirm)?.replacing) } },
                     onRetry = { send(VoiceInputEvent.Retry) },
                     onSettings = {
                         context.startActivity(

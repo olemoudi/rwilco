@@ -103,6 +103,44 @@ class VocabularyTest {
     }
 
     @Test
+    fun `the review round's ordinary words and other people stay as heard`() {
+        val vocabulary = Vocabulary(listOf("Vito", "Mar", "Rosa", "Pilar", "Sol", "Zara", "Will", "Ana"))
+        // Lower case is an ordinary word, whatever the names: never chosen over the first reading.
+        assertEquals("más leche", vocabulary.choose(listOf("más leche", "mar leche")))
+        // A common name the recognizer would have ranked first if it had heard it is no reason to
+        // pass over what it did rank first; each name counts once.
+        assertEquals("comprar pilas", vocabulary.choose(listOf("comprar pilas", "comprar Pilar")))
+        assertEquals("Ana Ana", vocabulary.choose(listOf("Ana Ana", "Ana")))
+        // A name spelled as names are is somebody, not a sound-alike of the person's own.
+        assertEquals("Llamar a Sara mañana", vocabulary.corrected("Llamar a Sara mañana"))
+        assertEquals("Vi a Ana", vocabulary.corrected("Vi a Ana"))
+        // Spelled by a tag in lower case, a capital is not taken away.
+        assertEquals("Médico el martes", Vocabulary(listOf("médico")).corrected("Médico el martes"))
+    }
+
+    @Test
+    fun `a change of mind is not a mishearing, and is not learned`() {
+        assertEquals(emptyMap<String, String>(), fixesBetween("Llamar a la fontanera mañana", "Llamar a Juan Pérez mañana"))
+        assertEquals(emptyMap<String, String>(), fixesBetween("Comprar pan mañana", "Recoger pan mañana"))
+        assertEquals(emptyMap<String, String>(), fixesBetween("llamar a ana", "llamar a Pilar"))
+        assertEquals(emptyMap<String, String>(), fixesBetween("llamar a mar", "llamar a Marta"))
+        assertEquals(emptyMap<String, String>(), fixesBetween("ir al medico", "ir al Dentista"))
+        assertEquals(emptyMap<String, String>(), fixesBetween("cita el día 15", "cita el Día 15"))
+        assertEquals(emptyMap<String, String>(), fixesBetween("cena el viernes", "cena el Viernes"))
+        assertEquals(emptyMap<String, String>(), fixesBetween("mañana llamar a juan", "Llamar a juan mañana"))
+        assertEquals(emptyMap<String, String>(), fixesBetween("comprar pan y comprar leche", "Comprar pan. Comprar leche"))
+    }
+
+    @Test
+    fun `the start of a line, a list or a clause is not a name`() {
+        val vocabulary = vocabularyOf(
+            listOf(reminder("Lista de la compra:\nLeche\nHuevos"), reminder("Revisar: Llamar al banco"), reminder("Cena — Pizza con Vito's amigos")),
+            listOf(SavedPlace("Casa de los abuelos", 40.4, -3.7, 100, id = "a")),
+        )
+        assertEquals(setOf("Casa", "Vito", "abuelos"), vocabulary.words.toSet())
+    }
+
+    @Test
     fun `words that are said the same sound the same`() {
         assertEquals(soundOf("Vito"), soundOf("Bito"))
         assertEquals(soundOf("Cecilia"), soundOf("Sesilia"))

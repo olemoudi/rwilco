@@ -373,6 +373,13 @@ private fun readOne(text: String, whole: String, context: Context, fence: Boolea
         )
         return Said(Piece.When(rule), listOf(folded.original(m.range.first..end + rate.range.last + 1)))
     }
+    for (pattern in STAY_NEXT) {
+        pattern.find(words)?.let { m ->
+            val at = folded.original(m.range).first
+            if (at !in whole.indices || !endsWithDoorway(whole.substring(0, at), settings.savedPlaces)) return@let
+            return said(Piece.Stay(minutesIn(m) ?: return@let), m)
+        }
+    }
     for (pattern in STAY) {
         pattern.find(words)?.let { m ->
             // A rate is a doorway's, and only read after a place was said: before one, "pasar 10
@@ -665,13 +672,22 @@ private val RANDOM = Regex(
  */
 private val STAY: List<Regex> = listOf(
     Regex(
-        "\\b(?:(?:y )?(?:(?:cuando|en cuanto|una vez|tras|despues de) )?(?:ya )?(?:lleve|lleves|llevo|lleva|llevas|llevamos|llevar|haya estado|haya pasado|hayan pasado)|" +
+        "\\b(?:(?:y )?(?:(?:cuando|en cuanto|una vez|tras|despues de) )?(?:ya )?(?:lleve|lleves|llevo|llevar|haya estado|haya pasado|hayan pasado)|" +
             "al llevar|pasados|pasada|al cabo de|tras|despues de|after|once i ve been(?: there)? for|(?:and )?(?:once |when )?(?:i ve |i have |have )?been there(?: for)?) " +
             "(?:(?:alli|ahi|alla|ya) )?$LENGTH(?: (?:alli|ahi|alla|dentro|fuera|there|inside|outside))?\\b",
     ),
     Regex("\\b(?:y )?(?:(?:cuando|tras|despues de) )?(?:estar|este|pasar|pase)(?: (?:alli|ahi|alla) $LENGTH| $LENGTH (?:alli|ahi|alla|dentro|fuera))\\b"),
-    // The length alone, pointed back at the doorway: "al llegar a casa, diez minutos allí" — and
-    // what is left of "y llevar 10 minutos allí" when its first words were lost to a pause (0.188.0).
+)
+
+/**
+ * A rate said only right after its doorway, with a comma or a "y" between at most (0.188.0,
+ * narrowed in 0.190.1): "al llegar a casa, diez minutos allí", "…y lleva 10 minutos allí" — what
+ * is left of "y llevar 10 minutos allí" when its first words were lost to a pause. Anywhere else
+ * these are the thing itself: "pagar el parking 2 horas ahí", "el pollo que lleva una hora en el
+ * horno". Groups: the [LENGTH] (three).
+ */
+private val STAY_NEXT: List<Regex> = listOf(
+    Regex("\\b(?:(?:cuando|en cuanto) )?(?:ya )?(?:lleva|llevas|llevamos)(?: (?:alli|ahi|alla|ya))? $LENGTH(?: (?:alli|ahi|alla|dentro|fuera))?\\b"),
     Regex("\\b(?:y )?$LENGTH (?:alli|ahi|alla)\\b"),
 )
 

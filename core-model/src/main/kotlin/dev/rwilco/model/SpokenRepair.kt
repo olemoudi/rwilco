@@ -113,8 +113,11 @@ fun repaired(stretches: List<String>, now: Instant, zone: ZoneId, settings: AppS
         readSpans = { text -> readWhen(text, now, zone, settings.dayParts, settings.savedPlaces, settings.dayShape)?.spans.orEmpty() },
         namesPlace = { text -> Words.of(text).text.let { words -> words.indices.any { it > 0 && words[it - 1] == ' ' && savedPlaceAt(words, it - 1, settings.savedPlaces) != null } } },
     )
-    repair.hesitations()
+    repair.fillers()
+    // A marker that also opens a stretch while somebody finds the words ("Bueno, el martes")
+    // is asked about as a correction first; only one that corrects nothing is a hesitation.
     repair.corrections()
+    repair.openings()
     repair.restarts()
     repair.repeats()
     return Repaired(heard, tokens.map { it.range }, repair.alive)
@@ -138,9 +141,13 @@ private class Repair(val tokens: List<Token>, private val readSpans: (String) ->
 
     private fun key(index: Int) = tokens[index].key
 
-    /** "Eh", "mmm" anywhere; "bueno", "pues", "o sea" opening a stretch that goes on. */
-    fun hesitations() {
+    /** "Eh", "mmm" anywhere. */
+    fun fillers() {
         tokens.indices.filter { FILLER.matches(key(it)) }.let(::drop)
+    }
+
+    /** "Bueno", "pues", "o sea" opening a stretch that goes on, when they corrected nothing. */
+    fun openings() {
         for (stretch in tokens.map { it.stretch }.distinct()) {
             val inIt = living().filter { tokens[it].stretch == stretch }
             for (opening in OPENINGS) {

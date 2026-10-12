@@ -573,8 +573,11 @@ class HomeViewModel(
      * the recognizer, and used to choose between its readings and put names right ([personal]).
      */
     val vocabulary: StateFlow<Vocabulary> = combine(settings.filterNotNull(), repository.open, repository.done) { current, open, done ->
-        vocabularyOf(open + done, current.savedPlaces, current.voiceFixes)
+        VocabularyInputs(open + done, current.savedPlaces, current.voiceFixes)
     }
+        // Every ring, snooze and arming writes a row; only the words, tags and places say anything here.
+        .distinctUntilChanged { a, b -> a.key == b.key }
+        .map { vocabularyOf(it.reminders, it.places, it.fixes) }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.Eagerly, Vocabulary(emptyList()))
 
@@ -662,12 +665,9 @@ class HomeViewModel(
         // corrections by itself, and its second look is worth most where this one went wrong.
         val repaired = repaired(stretches, clock.instant(), clock.zone, settings)
         // Said again over a reminder already written (0.190.0): written over it, under its id, so
-        // the undo and "Editar" still find it; and gone if what is said now goes to the editor.
+        // the undo and "Editar" still find it. One that goes to the editor goes to *that* reminder
+        // (the sheet's state carries which), and backing out of it leaves it as it was (0.190.1).
         val (outcome, refine) = fromRepaired(repaired, settings, hereLabel, replacing ?: UUID.randomUUID().toString())
-        if (replacing != null && outcome is VoiceOutcome.ToEditor) {
-            currentCoroutineContext().ensureActive()
-            repository.delete(replacing)
-        }
         // The editor shows no struck words: what goes there is everything that was said, so a
         // correction taken wrongly costs nothing that cannot be seen.
         if (outcome is VoiceOutcome.ToEditor && repaired.dropped.isNotEmpty()) return outcome.copy(text = withoutLeadIn(repaired.heard)) to refine
@@ -1352,6 +1352,11 @@ private const val TAG = "HomeViewModel"
  * looking at "Mejorando la captura…" for the client's own ten seconds.
  */
 private const val GEMINI_PATIENCE_MS = 8_000L
+
+/** What the person's own words are gathered from, and the part of it that can change them. */
+private class VocabularyInputs(val reminders: List<Reminder>, val places: List<dev.rwilco.model.SavedPlace>, val fixes: Map<String, String>) {
+    val key = Triple(reminders.map { Triple(it.text, it.tags, it.contactKind) }, places.map { it.label }, fixes)
+}
 
 /** How many of the person's own fixes to dictation are kept (0.190.0): the newest. */
 private const val MAX_VOICE_FIXES = 300

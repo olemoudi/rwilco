@@ -188,6 +188,9 @@ fun RwilcoApp(
                         onDictationConsumed = { requestedDictation = false },
                         onNewFromWords = { text -> navController.navigateOnce(Routes.Editor(sharedText = text)) },
                         onNewFromForm = { form -> navController.navigateOnce(Routes.Editor(spokenForm = form)) },
+                        onEditFromVoice = { id, text, form ->
+                            navController.navigateOnce(Routes.Editor(reminderId = id, sharedText = text.takeIf { form == null }, spokenForm = form))
+                        },
                         onNew = { navController.navigateOnce(Routes.Editor()) },
                         onNewFromPreset = { id -> navController.navigateOnce(Routes.Editor(fromPresetId = id)) },
                         onEditPreset = { id -> navController.navigateOnce(Routes.Editor(editPresetId = id)) },

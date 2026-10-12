@@ -170,6 +170,8 @@ fun HomeScreen(
     onNewFromWords: (String) -> Unit = {},
     /** A new reminder on a whole reading: a dictation understood but refused (see `Routes.Editor.spokenForm`). */
     onNewFromForm: (String) -> Unit = {},
+    /** An existing reminder, with dictated words (or a whole dictated reading) put on its form (0.190.1). */
+    onEditFromVoice: (id: String, text: String, form: String?) -> Unit = { _, _, _ -> },
     /** A reminder a save has just written, to be gone to and marked; see the effect below. */
     justSaved: JustSaved? = null,
     onJustSavedShown: () -> Unit = {},
@@ -365,6 +367,7 @@ fun HomeScreen(
         onOpen = onOpen,
         onNewFromWords = onNewFromWords,
         onNewFromForm = onNewFromForm,
+        onEditFromVoice = onEditFromVoice,
         onDictated = { dictatedId = it },
     )
 
@@ -1462,6 +1465,7 @@ private fun DictationSheet(
     onOpen: (String) -> Unit,
     onNewFromWords: (String) -> Unit,
     onNewFromForm: (String) -> Unit,
+    onEditFromVoice: (id: String, text: String, form: String?) -> Unit,
     /** A reminder was written and its sheet has gone: the list goes to its card. */
     onDictated: (String) -> Unit,
 ) {
@@ -1500,10 +1504,15 @@ private fun DictationSheet(
         },
         onAlternative = viewModel::useAlternative,
         onConfirm = viewModel::confirmVoice,
-        onToEditor = { text, why, form ->
+        onToEditor = { text, why, form, replacing ->
             viewModel.closeVoice()
             why?.let { snackbar.show(voiceWhy.getValue(it)) }
-            if (form != null) onNewFromForm(form) else onNewFromWords(text)
+            when {
+                // A fix of a reminder already written opens on that reminder, the new words on it.
+                replacing != null -> onEditFromVoice(replacing, text, form)
+                form != null -> onNewFromForm(form)
+                else -> onNewFromWords(text)
+            }
         },
         onClosed = {
             // Asked at the moment it goes, not when the sheet was drawn: a reading chosen since is

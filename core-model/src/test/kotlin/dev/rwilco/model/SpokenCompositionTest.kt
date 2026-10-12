@@ -159,6 +159,16 @@ class SpokenCompositionTest {
         assertEquals("Salir a correr y estar media hora fuera", read("mañana a las 7 salir a correr y estar media hora fuera").text)
         assertEquals("Sacar la tarta pasados diez minutos", read("mañana a las cinco sacar la tarta pasados diez minutos").text)
         assertEquals("Dejar el coche 10 minutos allí", read("mañana dejar el coche 10 minutos allí").text)
+        // The length alone and "lleva" are a rate only right after the doorway (0.190.1): further
+        // on they are what is being done there.
+        val lingering = mapOf(
+            "al llegar a la oficina pagar el parking 2 horas ahí" to arrive(oficina),
+            "cuando llegue a casa sacar el pollo que lleva una hora en el horno" to arrive(casa),
+            "al llegar a casa recordar que Vito lleva 2 horas esperando" to arrive(casa),
+            "al llegar al gimnasio correr 20 minutos allí" to arrive(gimnasio),
+            "al salir de casa dejar el coche 10 minutos ahí" to leave(casa),
+        )
+        for ((sentence, doorway) in lingering) assertEquals(listOf(TriggerRule(doorway)), read(sentence).rules, sentence)
     }
 
     @Test

@@ -53,15 +53,29 @@ sealed interface VoiceState {
      * What Gemini made of it, not written yet: a guess is shown and confirmed, never written
      * unseen (the owner's call). [form] is the same reading for the editor, if "Editar".
      */
-    data class Confirm(val reminder: Reminder, val form: String, val spoken: Spoken, val here: Fix?, val check: VoiceCheck = VoiceCheck()) : VoiceState
+    data class Confirm(
+        val reminder: Reminder,
+        val form: String,
+        val spoken: Spoken,
+        val here: Fix?,
+        val check: VoiceCheck = VoiceCheck(),
+        /** The reminder this guess would be written over, when it was a fix of one (0.190.1). */
+        val replacing: String? = null,
+    ) : VoiceState
 
     /** Written: shown with what it was read from, its undo, and what else it could have been ([check]). */
     data class Created(val reminder: Reminder, val check: VoiceCheck = VoiceCheck()) : VoiceState
 
     /** Not written: the sheet goes, and the words go to the editor with the line that says why — or the whole reading ([form]). */
-    data class ToEditor(val text: String, val why: VoiceOutcome.Why, val form: String? = null) : VoiceState
+    data class ToEditor(
+        val text: String,
+        val why: VoiceOutcome.Why,
+        val form: String? = null,
+        /** The reminder the editor opens on, with these words or this reading, when it was a fix of one (0.190.1). */
+        val replacing: String? = null,
+    ) : VoiceState
 
-    data class Failed(val why: VoiceFailure, val partial: String = "") : VoiceState
+    data class Failed(val why: VoiceFailure, val partial: String = "", val replacing: String? = null) : VoiceState
 }
 
 enum class VoiceFailure {
@@ -113,7 +127,8 @@ sealed interface VoiceInputEvent {
 fun voiceStep(state: VoiceState, event: VoiceInputEvent): VoiceState = when (event) {
     is VoiceInputEvent.Permission ->
         if (state !is VoiceState.Asking) state else if (event.granted) VoiceState.Listening() else VoiceState.Failed(VoiceFailure.NO_PERMISSION)
-    VoiceInputEvent.Retry -> VoiceState.Listening()
+    // Again, from the top — still a fix of the reminder it was fixing, if it was one.
+    VoiceInputEvent.Retry -> VoiceState.Listening(replacing = (state as? VoiceState.Failed)?.replacing)
     VoiceInputEvent.Finish -> when {
         state !is VoiceState.Listening -> state
         state.paused || state.finishing -> settled(state.stretches, state.replacing)
@@ -123,7 +138,7 @@ fun voiceStep(state: VoiceState, event: VoiceInputEvent): VoiceState = when (eve
         state !is VoiceState.Listening || state.paused -> state
         // Already asked to end: it ends, with what there is.
         state.finishing -> settled(state.stretches, state.replacing)
-        state.stretches.isEmpty() -> VoiceState.Failed(VoiceFailure.NOT_HEARD)
+        state.stretches.isEmpty() -> VoiceState.Failed(VoiceFailure.NOT_HEARD, replacing = state.replacing)
         else -> VoiceState.Listening(said = state.stretches, paused = true, replacing = state.replacing)
     }
     // Written, and put right: by hand, read again; by voice, listened to on from what was heard.
@@ -134,8 +149,13 @@ fun voiceStep(state: VoiceState, event: VoiceInputEvent): VoiceState = when (eve
     VoiceInputEvent.Resume -> if (state is VoiceState.Listening && state.paused) state.copy(paused = false) else state
     // Written from the sentence, or from Gemini's guess once confirmed.
     is VoiceInputEvent.Written -> if (state is VoiceState.Thinking || state is VoiceState.Confirm) VoiceState.Created(event.reminder, event.check) else state
-    is VoiceInputEvent.Proposed -> if (state is VoiceState.Thinking) VoiceState.Confirm(event.reminder, event.form, event.spoken, event.here, event.check) else state
-    is VoiceInputEvent.Unwritten -> if (state is VoiceState.Thinking || state is VoiceState.Confirm) VoiceState.ToEditor(event.text, event.why, event.form) else state
+    is VoiceInputEvent.Proposed ->
+        if (state is VoiceState.Thinking) VoiceState.Confirm(event.reminder, event.form, event.spoken, event.here, event.check, state.replacing) else state
+    is VoiceInputEvent.Unwritten -> when (state) {
+        is VoiceState.Thinking -> VoiceState.ToEditor(event.text, event.why, event.form, state.replacing)
+        is VoiceState.Confirm -> VoiceState.ToEditor(event.text, event.why, event.form, state.replacing)
+        else -> state
+    }
     is VoiceInputEvent.Heard -> if (state !is VoiceState.Listening || state.paused) state else when (val heard = event.event) {
         // A fresh ear (after a rotation took the old one) starts a stretch of its own: the one
         // the old ear was in the middle of is kept as it was heard.
@@ -151,8 +171,8 @@ fun voiceStep(state: VoiceState, event: VoiceInputEvent): VoiceState = when (eve
             // ERROR_SPEECH_TIMEOUT and ERROR_NO_MATCH: silence, or noise that was nobody speaking.
             heard.error == 6 || heard.error == 7 -> settled(state.stretches, state.replacing)
             // ERROR_INSUFFICIENT_PERMISSIONS.
-            heard.error == 9 -> VoiceState.Failed(VoiceFailure.NO_PERMISSION, state.transcript)
-            state.stretches.isEmpty() -> VoiceState.Failed(VoiceFailure.BROKEN)
+            heard.error == 9 -> VoiceState.Failed(VoiceFailure.NO_PERMISSION, state.transcript, state.replacing)
+            state.stretches.isEmpty() -> VoiceState.Failed(VoiceFailure.BROKEN, replacing = state.replacing)
             // A dictation that has said something does not end over a broken ear: it pauses, the
             // words kept, and "Seguir" tries a new one.
             else -> VoiceState.Listening(said = state.stretches, paused = true, replacing = state.replacing)
@@ -163,7 +183,7 @@ fun voiceStep(state: VoiceState, event: VoiceInputEvent): VoiceState = when (eve
 /** The sentence, when anything was heard — into the reminder it goes on from, if it does. */
 private fun settled(stretches: List<String>, replacing: String? = null): VoiceState {
     val heard = stretches.map { it.trim() }.filter { it.isNotEmpty() }
-    return if (heard.isEmpty()) VoiceState.Failed(VoiceFailure.NOT_HEARD) else VoiceState.Thinking(heard, replacing = replacing)
+    return if (heard.isEmpty()) VoiceState.Failed(VoiceFailure.NOT_HEARD, replacing = replacing) else VoiceState.Thinking(heard, replacing = replacing)
 }
 
 /**

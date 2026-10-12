@@ -303,7 +303,13 @@ class EditorViewModel(
                 // What was being written when the process was let go, back on the form that was
                 // just built from the row: the yardstick stays the row's, so it comes back dirty.
                 .withRestored(restored)
-                .let { if (restored == null) it else readWords(it) }
+                // A dictated fix of this reminder, finished by hand (0.190.1): its new words on its
+                // own form, which stays the yardstick, so the form comes back dirty.
+                .let { state ->
+                    val words = sharedText?.trim()?.take(MAX_TEXT_LENGTH)
+                    if (loaded != null && restored == null && !words.isNullOrEmpty()) state.withRestored(RestoredEditor(state.draft.copy(text = words), state.asPreset, state.presetText)) else state
+                }
+                .let { if (restored == null && (loaded == null || sharedText == null)) it else readWords(it) }
             // The numbers a beat after the form, off the main thread: a year of an hourly
             // reminder is a thousand lines, and the form is not waiting for them.
             if (loaded != null && written.isNotEmpty()) {
