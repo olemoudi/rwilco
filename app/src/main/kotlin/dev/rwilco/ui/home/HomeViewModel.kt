@@ -50,6 +50,7 @@ import dev.rwilco.model.repaired
 import dev.rwilco.model.fixesBetween
 import dev.rwilco.model.wordAlternatives
 import dev.rwilco.model.plain
+import dev.rwilco.model.hasLiterals
 import dev.rwilco.model.Vocabulary
 import dev.rwilco.model.vocabularyOf
 import dev.rwilco.model.withoutLeadIn
@@ -711,7 +712,8 @@ class HomeViewModel(
         // Said again over a reminder already written (0.190.0): written over it, under its id, so
         // the undo and "Editar" still find it. One that goes to the editor goes to *that* reminder
         // (the sheet's state carries which), and backing out of it leaves it as it was (0.190.1).
-        val (outcome, refine) = fromRepaired(repaired, settings, hereLabel, replacing ?: UUID.randomUUID().toString(), optionsOf(stretches, readings))
+        val shape = HeardShape(optionsOf(stretches, readings), pausesOf(stretches), readings)
+        val (outcome, refine) = fromRepaired(repaired, settings, hereLabel, replacing ?: UUID.randomUUID().toString(), shape)
         // The editor shows no struck words: what goes there is everything that was said, so a
         // correction taken wrongly costs nothing that cannot be seen.
         if (outcome is VoiceOutcome.ToEditor && repaired.dropped.isNotEmpty()) return outcome.copy(text = plain(withoutLeadIn(repaired.heard))) to refine
@@ -723,8 +725,10 @@ class HomeViewModel(
         settings: AppSettings,
         hereLabel: String,
         id: String,
-        options: Map<IntRange, List<String>> = emptyMap(),
+        shape: HeardShape = HeardShape(),
     ): Pair<VoiceOutcome, Refine?> {
+        // Words the person kept as words say how to read it: Gemini's guess is not asked for (0.192.1).
+        val literal = hasLiterals(repaired.heard)
         // Gemini is asked the words as said, without the marks of words the person kept as words.
         val transcript = plain(repaired.heard)
         return when (val heard = withHere { here -> hear(repaired.text, clock.instant(), clock.zone, settings, here, hereLabel) }) {
@@ -733,8 +737,8 @@ class HomeViewModel(
                 // fallar o tardar en responder"). A reading with doubts in it is written at once,
                 // as any reading is, and Gemini is asked beside it; whatever it says is offered,
                 // and a Gemini that is slow or silent costs nothing but the offer.
-                val setup = if (heard.read.doubts.isEmpty()) null else geminiSetup().takeIf { it.usable && online() }
-                val outcome = settle(heard.read, heard.fix, settings, write = true, repaired, id, refining = setup != null, options = options)
+                val setup = if (heard.read.doubts.isEmpty() || literal) null else geminiSetup().takeIf { it.usable && online() }
+                val outcome = settle(heard.read, heard.fix, settings, write = true, repaired, id, refining = setup != null, shape = shape)
                 outcome to setup?.let { Refine(transcript, heard.read.said, it.key, settings, hereLabel, heard.fix) }
             }
             is Here.Missing -> (VoiceOutcome.ToEditor(heard.said, VoiceOutcome.Why.NO_FIX) to null).also { noteVoice("no position for here") }
@@ -745,7 +749,7 @@ class HomeViewModel(
                 // like a when or a where at all ("comprar pan"), which no guess can turn into one.
                 val setup = geminiSetup()
                 val worthAsking = heard.unsure.why == Heard.Why.PARTIAL || (heard.unsure.why == Heard.Why.NOTHING && mightSayWhen(repaired.text))
-                if (setup.usable && worthAsking && online()) return fromGemini(repaired, heard.unsure.text, setup.key, settings, hereLabel, id) to null
+                if (setup.usable && worthAsking && !literal && online()) return fromGemini(repaired, heard.unsure.text, setup.key, settings, hereLabel, id) to null
                 toEditor(heard.unsure) to null
             }
         }
@@ -846,7 +850,7 @@ class HomeViewModel(
         id: String,
         refining: Boolean = false,
         gemini: Boolean = false,
-        options: Map<IntRange, List<String>> = emptyMap(),
+        shape: HeardShape = HeardShape(),
     ): VoiceOutcome {
         val spoken = read.spoken
         val defaults = if (spoken.recurrence is Recurrence.Since) settings.routineActions else settings.defaultActions
@@ -869,7 +873,9 @@ class HomeViewModel(
             refining = if (refining) Refining.ASKING else Refining.NONE,
             here = fix,
             dropped = if (gemini) emptyList() else repaired.dropped,
-            options = options,
+            options = shape.options,
+            pauses = shape.pauses,
+            readings = shape.readings,
         )
         if (!write) {
             noteVoice("gemini: proposed ${reminder.rules.size} rule(s), ${reminder.recurrence::class.simpleName}")
@@ -976,6 +982,19 @@ class HomeViewModel(
             // The newest kept, the oldest let go: a few hundred names is a lifetime of them.
             store.update { settings -> settings.copy(voiceFixes = (settings.voiceFixes - fixes.keys + fixes).entries.toList().takeLast(MAX_VOICE_FIXES).associate { it.toPair() }) }
         }
+    }
+
+    /** Where in what was heard ([stretches] joined, as the repair joins them) one stretch ended and the next began. */
+    private fun pausesOf(stretches: List<String>): List<Int> {
+        val pauses = mutableListOf<Int>()
+        var offset = 0
+        val kept = stretches.map { it.trim() }.filter { it.isNotEmpty() }
+        kept.dropLast(1).forEach { stretch ->
+            offset += stretch.length
+            pauses += offset
+            offset += 1
+        }
+        return pauses
     }
 
     /**
@@ -1422,6 +1441,13 @@ private const val TAG = "HomeViewModel"
  * looking at "Mejorando la captura…" for the client's own ten seconds.
  */
 private const val GEMINI_PATIENCE_MS = 8_000L
+
+/** What was heard, besides its words: what else the recognizer heard where, and where the pauses were. */
+private class HeardShape(
+    val options: Map<IntRange, List<String>> = emptyMap(),
+    val pauses: List<Int> = emptyList(),
+    val readings: Map<String, List<String>> = emptyMap(),
+)
 
 /** What the person's own words are gathered from, and the part of it that can change them. */
 private class VocabularyInputs(val reminders: List<Reminder>, val places: List<dev.rwilco.model.SavedPlace>, val fixes: Map<String, String>) {

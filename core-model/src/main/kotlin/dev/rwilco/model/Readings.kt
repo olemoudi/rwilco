@@ -14,12 +14,16 @@ package dev.rwilco.model
  * they heard there instead, most offered first, at most [MAX_OPTIONS]. Offsets into [chosen].
  */
 fun wordAlternatives(chosen: String, others: List<String>): Map<IntRange, List<String>> {
-    val a = TOKEN.findAll(chosen).toList()
+    // Each word without the punctuation around it: what is offered for "Bito," is a word for
+    // "Bito", and the comma stays where it was.
+    val a = TOKEN.findAll(chosen).mapNotNull { core(it.value, it.range.first) }.toList()
+    val keysA = a.map { keyOf(it.value) }
     val offered = LinkedHashMap<IntRange, MutableMap<String, Int>>()
     for (other in others) {
-        val b = TOKEN.findAll(other).map { it.value }.toList()
+        val b = TOKEN.findAll(other).mapNotNull { core(it.value, 0)?.value }.toList()
         if (a.size.toLong() * b.size > MAX_TABLE) continue
-        fun same(i: Int, j: Int) = keyOf(a[i].value) == keyOf(b[j])
+        val keysB = b.map(::keyOf)
+        fun same(i: Int, j: Int) = keysA[i] == keysB[j]
         // The longest run of words both say, as a table: what lines up.
         val lcs = Array(a.size + 1) { IntArray(b.size + 1) }
         for (i in a.indices.reversed()) for (j in b.indices.reversed()) {
@@ -49,6 +53,15 @@ fun wordAlternatives(chosen: String, others: List<String>): Map<IntRange, List<S
         }
     }
     return offered.mapValues { (_, counts) -> counts.entries.sortedByDescending { it.value }.map { it.key }.take(MAX_OPTIONS) }
+}
+
+/** A word, the punctuation off either end, and where it is — or null for punctuation alone. */
+private class Core(val value: String, val range: IntRange)
+
+private fun core(token: String, at: Int): Core? {
+    val start = token.indexOfFirst(Char::isLetterOrDigit).takeIf { it >= 0 } ?: return null
+    val end = token.indexOfLast(Char::isLetterOrDigit)
+    return Core(token.substring(start, end + 1), (at + start)..(at + end))
 }
 
 private fun offer(offered: MutableMap<IntRange, MutableMap<String, Int>>, range: IntRange, word: String) {

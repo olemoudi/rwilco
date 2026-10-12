@@ -136,6 +136,35 @@ class VoiceStepTest {
     }
 
     @Test
+    fun `a sentence put right is read again with its pauses where they were`() {
+        val heard = "comprar pan borra eso comprar leche mañana"
+        val pauses = listOf(11, 21)
+        // Nothing changed before or after: every pause where it was.
+        assertEquals(listOf("comprar pan", "borra eso", "comprar leche mañana"), restretched(heard, pauses, heard))
+        // A word changed in the last stretch: the pauses before it stay.
+        assertEquals(listOf("comprar pan", "borra eso", "comprar leche pasado mañana"), restretched(heard, pauses, "comprar pan borra eso comprar leche pasado mañana"))
+        // A word changed in the first: the pauses after it move with the length.
+        assertEquals(listOf("comprar el pan", "borra eso", "comprar leche mañana"), restretched(heard, pauses, "comprar el pan borra eso comprar leche mañana"))
+        // A pause right after what changed moves with it; one inside it is gone with it.
+        assertEquals(listOf("comprar leche", "mañana"), restretched("comprar pan mañana", listOf(11), "comprar leche mañana"))
+        assertEquals(listOf("ir a casa mañana"), restretched("ir al cine el lunes mañana", listOf(11), "ir a casa mañana"))
+        // The fix field's plain words, set against the marked ones.
+        val marked = dev.rwilco.model.literally("llamar a Juan mañana a las 11", 21..28)
+        assertEquals(listOf("llamar a Juan", "mañana a las 12"), restretched(marked, listOf(13), "llamar a Juan mañana a las 12"))
+    }
+
+    @Test
+    fun `putting it right keeps what else the recognizer heard, for the next word`() {
+        val check = VoiceCheck(heard = "llamar a Bito mañana", pauses = listOf(13), readings = mapOf("mañana" to listOf("manzana")))
+        val created = VoiceState.Created(reminder, check)
+        assertEquals(
+            VoiceState.Thinking(listOf("llamar a Vito", "mañana"), replacing = "r", readings = check.readings),
+            voiceStep(created, VoiceInputEvent.Reread("llamar a Vito mañana")),
+        )
+        assertEquals(VoiceState.Listening(said = listOf("llamar a Bito", "mañana"), replacing = "r", readings = check.readings), voiceStep(created, VoiceInputEvent.SayMore))
+    }
+
+    @Test
     fun `a fresh ear keeps the stretch the old one was in the middle of`() {
         assertEquals(VoiceState.Listening(said = listOf("comprar pan", "al llegar"), ready = true), voiceStep(VoiceState.Listening("al llegar", said = listOf("comprar pan")), heard(VoiceEvent.Ready)))
         assertEquals(VoiceState.Listening(said = listOf("x"), ready = true), voiceStep(VoiceState.Listening(said = listOf("x")), heard(VoiceEvent.Ready)))

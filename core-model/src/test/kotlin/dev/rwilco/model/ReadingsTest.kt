@@ -67,6 +67,29 @@ class ReadingsTest {
     }
 
     @Test
+    fun `the punctuation round a word stays where it was`() {
+        val chosen = "llamar a Bito, mañana"
+        assertEquals(mapOf(chosen.indexOf("Bito").let { it until it + 4 } to listOf("Vito")), wordAlternatives(chosen, listOf("llamar a Vito mañana")))
+    }
+
+    @Test
+    fun `a word of one letter kept as a word joins nothing and is not struck again`() {
+        val sentence = "ir a a casa mañana"
+        val kept = literally(sentence, 5..5)
+        assertEquals(sentence, plain(kept))
+        assertEquals(emptyList<IntRange>(), repaired(listOf(kept), now, zone, settings).dropped)
+    }
+
+    @Test
+    fun `words kept as words are no cue to ask anybody for a when`() {
+        val sentence = "llamar a Juan a las 11"
+        val kept = literally(sentence, sentence.indexOf("a las 11").let { it until it + 8 })
+        assertEquals(false, mightSayWhen(kept))
+        assertEquals(true, mightSayWhen(sentence))
+        assertEquals(true, hasLiterals(kept))
+    }
+
+    @Test
     fun `a word tapped as wrong is offered the person's names that sound like it`() {
         val vocabulary = Vocabulary(listOf("Vito", "Vicente", "Mercadona", "Bea"))
         assertEquals(listOf("Vito"), vocabulary.soundingLike("Bito"))

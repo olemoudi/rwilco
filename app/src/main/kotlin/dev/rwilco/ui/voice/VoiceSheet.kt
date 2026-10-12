@@ -49,6 +49,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.TextLinkStyles
+import dev.rwilco.model.LITERAL
 import dev.rwilco.model.Vocabulary
 import dev.rwilco.model.fold
 import dev.rwilco.model.literally
@@ -808,7 +809,10 @@ private fun HeardLine(check: VoiceCheck, marked: Boolean, key: String, vocabular
     val scheme = MaterialTheme.colorScheme
     val spacing = Tokens.spacing
     var editing by rememberSaveable(key) { mutableStateOf(false) }
-    var draft by rememberSaveable(key, stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(check.heard, TextRange(check.heard.length))) }
+    // The field shows plain words: an invisible mark in it is a key press that does nothing (0.192.1).
+    val plainHeard = plain(check.heard)
+    fun inPlain(offset: Int) = offset - check.heard.substring(0, offset.coerceIn(0, check.heard.length)).count { it == LITERAL }
+    var draft by rememberSaveable(key, stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(plainHeard, TextRange(plainHeard.length))) }
     // What a tap picked out (0.192.0): a word, a "when", or a correction struck through.
     var pickedFirst by rememberSaveable(key) { mutableStateOf(-1) }
     var pickedLast by rememberSaveable(key) { mutableStateOf(-1) }
@@ -855,7 +859,7 @@ private fun HeardLine(check: VoiceCheck, marked: Boolean, key: String, vocabular
             if (editing && onFix != null) {
                 val focus = remember { FocusRequester() }
                 LaunchedEffect(Unit) { focus.requestFocus() }
-                val changed = draft.text.isNotBlank() && draft.text.trim() != check.heard.trim()
+                val changed = draft.text.isNotBlank() && draft.text.trim() != plainHeard.trim()
                 OutlinedTextField(
                     value = draft,
                     onValueChange = { draft = it },
@@ -892,7 +896,7 @@ private fun HeardLine(check: VoiceCheck, marked: Boolean, key: String, vocabular
                             onFix(fixed)
                         },
                         onWrite = {
-                            draft = TextFieldValue(check.heard, TextRange(picked.range.first, picked.range.last + 1))
+                            draft = TextFieldValue(plainHeard, TextRange(inPlain(picked.range.first), inPlain(picked.range.last + 1)))
                             pickedFirst = -1
                             pickedLast = -1
                             editing = true
@@ -907,7 +911,7 @@ private fun HeardLine(check: VoiceCheck, marked: Boolean, key: String, vocabular
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(spacing.sm), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
                         if (onFix != null) {
                             TouchAction(R.string.voice_fix_text, Icons.Outlined.Edit) {
-                                draft = TextFieldValue(check.heard, TextRange(check.heard.length))
+                                draft = TextFieldValue(plainHeard, TextRange(plainHeard.length))
                                 editing = true
                             }
                         }
@@ -919,8 +923,11 @@ private fun HeardLine(check: VoiceCheck, marked: Boolean, key: String, vocabular
     }
 }
 
-/** What a tap on the heard sentence picked out (0.192.0), and what kind of thing it is. */
-private data class Touched(val range: IntRange, val kind: Kind, val options: List<String> = emptyList()) {
+/**
+ * What a tap on the heard sentence picked out (0.192.0), what kind of thing it is, and what the
+ * recognizer also heard in it — each with the stretch it would take the place of.
+ */
+private data class Touched(val range: IntRange, val kind: Kind, val options: List<Pair<IntRange, String>> = emptyList()) {
     enum class Kind {
         /** A word, or the few words the recognizer also heard as something else. */
         WORDS,
@@ -938,12 +945,23 @@ private data class Touched(val range: IntRange, val kind: Kind, val options: Lis
  * correction it falls in, or else the stretch the recognizer also heard otherwise, or the word.
  * Null for nothing picked.
  */
-private fun touched(check: VoiceCheck, marks: List<HeardMark>, first: Int, last: Int): Touched? {
-    if (first < 0 || last >= check.heard.length) return null
+private fun touched(check: VoiceCheck, marks: List<HeardMark>, tappedFirst: Int, tappedLast: Int): Touched? {
+    if (tappedFirst < 0 || tappedLast >= check.heard.length) return null
+    // The word without the punctuation round it: "mañana," is the "when" "mañana", and what
+    // takes its place leaves the comma where it was (0.192.1).
+    val word = check.heard.substring(tappedFirst, tappedLast + 1)
+    val start = word.indexOfFirst(Char::isLetterOrDigit).takeIf { it >= 0 } ?: return null
+    val first = tappedFirst + start
+    val last = tappedFirst + word.indexOfLast(Char::isLetterOrDigit)
     fun covers(range: IntRange) = range.first <= first && last <= range.last
+    fun overlaps(range: IntRange, other: IntRange) = range.first <= other.last && other.first <= range.last
     marks.firstOrNull { it.kind == HeardMark.Kind.DROPPED && covers(it.range) }?.let { return Touched(it.range, Touched.Kind.DROPPED) }
-    marks.firstOrNull { it.kind == HeardMark.Kind.WHEN && covers(it.range) }?.let { return Touched(it.range, Touched.Kind.WHEN) }
-    check.options.entries.firstOrNull { covers(it.key) }?.let { return Touched(it.key, Touched.Kind.WORDS, it.value) }
+    marks.firstOrNull { it.kind == HeardMark.Kind.WHEN && covers(it.range) }?.let { mark ->
+        // A "when" misheard ("manzana" for "mañana") is put right with what was heard there too.
+        val inIt = check.options.filterKeys { overlaps(it, mark.range) }.flatMap { (range, words) -> words.map { range to it } }
+        return Touched(mark.range, Touched.Kind.WHEN, inIt)
+    }
+    check.options.entries.firstOrNull { covers(it.key) }?.let { (range, words) -> return Touched(range, Touched.Kind.WORDS, words.map { range to it }) }
     return Touched(first..last, Touched.Kind.WORDS)
 }
 
@@ -961,7 +979,10 @@ private fun TouchedPanel(heard: String, picked: Touched, vocabulary: Vocabulary,
     val haptics = Tokens.haptics
     val words = heard.substring(picked.range.first, picked.range.last + 1)
     val shown = plain(words)
-    fun replaced(with: String) = (heard.substring(0, picked.range.first) + with + heard.substring(picked.range.last + 1)).replace(Regex(" {2,}"), " ").trim()
+    fun replaced(range: IntRange, with: String) = (heard.substring(0, range.first) + with + heard.substring(range.last + 1)).replace(Regex(" {2,}"), " ").trim()
+    fun replaced(with: String) = replaced(picked.range, with)
+    // Taking away the only word leaves nothing to read.
+    val more = heard.trim().contains(' ')
     Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -983,11 +1004,12 @@ private fun TouchedPanel(heard: String, picked: Touched, vocabulary: Vocabulary,
                 Touched.Kind.WORDS -> {
                     // What else was heard there, then the person's own names that sound like it:
                     // the likeliest answers, so the most prominent.
-                    val offers = (picked.options + vocabulary.soundingLike(shown)).distinctBy { fold(it) }.filter { fold(it) != fold(shown) }.take(MAX_TOUCH_OFFERS)
-                    for (offer in offers) {
+                    val offers = (picked.options + vocabulary.soundingLike(shown).map { picked.range to it })
+                        .distinctBy { fold(it.second) }.filter { fold(it.second) != fold(shown) }.take(MAX_TOUCH_OFFERS)
+                    for ((range, offer) in offers) {
                         // Filled and neutral, as the sheet's own answer is: never amber, which is what fires next.
                         Button(
-                            onClick = { fix(replaced(offer)) },
+                            onClick = { fix(replaced(range, offer)) },
                             colors = ButtonDefaults.buttonColors(containerColor = scheme.onSurface, contentColor = scheme.surface),
                             modifier = Modifier.heightIn(min = Tokens.sizes.control).testTag(VOICE_TOUCH_OFFER_TAG),
                         ) {
@@ -997,9 +1019,20 @@ private fun TouchedPanel(heard: String, picked: Touched, vocabulary: Vocabulary,
                         }
                     }
                     TouchAction(R.string.voice_touch_write, Icons.Outlined.Edit, onWrite)
-                    TouchAction(R.string.voice_touch_remove, Icons.Outlined.Delete) { fix(replaced("")) }
+                    if (more) TouchAction(R.string.voice_touch_remove, Icons.Outlined.Delete) { fix(replaced("")) }
                 }
                 Touched.Kind.WHEN -> {
+                    for ((range, offer) in picked.options.distinctBy { fold(it.second) }.take(MAX_TOUCH_OFFERS)) {
+                        Button(
+                            onClick = { fix(replaced(range, offer)) },
+                            colors = ButtonDefaults.buttonColors(containerColor = scheme.onSurface, contentColor = scheme.surface),
+                            modifier = Modifier.heightIn(min = Tokens.sizes.control).testTag(VOICE_TOUCH_OFFER_TAG),
+                        ) {
+                            Icon(Icons.Outlined.SwapHoriz, contentDescription = null, modifier = Modifier.size(Tokens.sizes.glyphMedium))
+                            Spacer(Modifier.width(spacing.sm))
+                            Text(offer, style = MaterialTheme.typography.titleMedium)
+                        }
+                    }
                     TouchAction(R.string.voice_touch_not_when, Icons.Outlined.TextFields) { fix(literally(heard, picked.range)) }
                     TouchAction(R.string.voice_touch_write, Icons.Outlined.Edit, onWrite)
                 }

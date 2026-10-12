@@ -1847,6 +1847,13 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_192_1">
+
+        <item>Correcting by touch keeps the pauses you spoke with: after “borra eso”, fixing a word no longer brings back what you had erased.</item>
+
+        <item>Tapping a word next to a comma or a full stop picks it properly, a coloured “when” that was misheard offers what the phone also heard there, and Gemini is not asked to second-guess what you marked as “not a when”.</item>
+
+    </string-array>
     <string-array name="whats_new_0_192_0">
 
         <item>Correct by touch: on a dictated reminder, “What I heard” is now a big card, and every word can be tapped. Tap the wrong one and pick what the phone also heard there, or one of your names that sounds like it (“Bito” offers Vito), or type it, or remove it.</item>

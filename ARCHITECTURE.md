@@ -1711,6 +1711,16 @@ loud what DST and a change of zone do to a landing.
   as words are marked by a word joiner between their letters (`LITERAL`, `literally`): invisible,
   matched by no reader and no repair marker, and taken out of everything written (`plain`) and of
   what Gemini and the editor get. `ReadingsTest`, `VoiceStepTest`, `VoiceDictationTest`.
+- **The review over correcting by touch (0.192.1).** A sentence put right (by touch or by hand) is
+  read again *with its pauses where they were* — `VoiceCheck.pauses` and `restretched` keep the
+  stretch boundaries before and after what changed — since "borra eso", a start said again or a
+  correction after a pause are about what a pause closed; and it keeps the recognizer's other
+  readings (`VoiceCheck.readings`) for the next word put right. A tap is judged on the word without
+  its punctuation ("mañana," picks the "when"); a "when" tapped offers what the recognizer also heard
+  in it ("manzana"/"mañana"); a word of one letter kept as a word carries the mark after it; the fix
+  field shows plain words (the selection mapped past the marks); "Quitar" is not offered for the only
+  word. Words kept as words are no cue to ask Gemini (`mightSayWhen` skips them), and a reading with
+  any of them never asks Gemini at all — the person has said how to read it.
 - **A held stepper keeps counting (0.51.0).** A step is one unit on purpose (three minutes has
   to be sayable, and the countdown sheet says why), and the price was seventeen taps from thirty
   to forty-seven. `Stepper` repeats after `Motion.holdRepeatDelay`, quickening to

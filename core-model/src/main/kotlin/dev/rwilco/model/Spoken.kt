@@ -163,8 +163,10 @@ fun withoutLeadIn(text: String): String {
  * would only make it wait.
  */
 fun mightSayWhen(text: String): Boolean {
-    val words = Words.of(text).text
-    return soundsLikeWhen(text) || CUE.containsMatchIn(words)
+    // Not the words the person kept as words: "1⁠1" kept is no number to guess a time from.
+    val readable = withoutLiterals(text)
+    val words = Words.of(readable).text
+    return soundsLikeWhen(readable) || CUE.containsMatchIn(words)
 }
 
 private val CUE = Regex(
@@ -234,11 +236,24 @@ private fun written(text: String, spans: List<IntRange>, reading: Spoken, said: 
  */
 const val LITERAL = '\u2060'
 
-/** [text] with every word that [range] touches marked to stay a word ([LITERAL]). */
+/**
+ * [text] with every word that [range] touches marked to stay a word ([LITERAL]). A word of one
+ * letter has nothing to hold apart, and carries the mark after it: "y⁠" joins nothing.
+ */
 fun literally(text: String, range: IntRange): String = LITERAL_TOKEN.replace(text) { token ->
     val touched = token.range.first <= range.last && range.first <= token.range.last
-    if (!touched || LITERAL in token.value) token.value else token.value.toList().joinToString(LITERAL.toString())
+    when {
+        !touched || LITERAL in token.value -> token.value
+        token.value.length == 1 -> token.value + LITERAL
+        else -> token.value.toList().joinToString(LITERAL.toString())
+    }
 }
+
+/** Whether any word of [text] was kept as a word by the person ([literally]). */
+fun hasLiterals(text: String): Boolean = LITERAL in text
+
+/** [text] without the words the person kept as words: what is left to be read at all. */
+private fun withoutLiterals(text: String): String = LITERAL_TOKEN.replace(text) { if (LITERAL in it.value) " " else it.value }
 
 /** [text] without the marks of words kept as words. */
 fun plain(text: String): String = text.replace(LITERAL.toString(), "")

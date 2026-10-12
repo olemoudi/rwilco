@@ -2,6 +2,8 @@ package dev.rwilco.voice
 
 import dev.rwilco.model.Fix
 import dev.rwilco.model.HeardSpan
+import dev.rwilco.model.LITERAL
+import dev.rwilco.model.plain
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Spoken
 import dev.rwilco.model.TriggerFamily
@@ -155,10 +157,16 @@ fun voiceStep(state: VoiceState, event: VoiceInputEvent): VoiceState = when (eve
         else -> VoiceState.Listening(said = state.stretches, paused = true, replacing = state.replacing, readings = state.readings)
     }
     // Written, and put right: by hand, read again; by voice, listened to on from what was heard.
-    is VoiceInputEvent.Reread ->
-        if (state is VoiceState.Created && event.text.isNotBlank()) VoiceState.Thinking(listOf(event.text.trim()), replacing = state.reminder.id) else state
-    VoiceInputEvent.SayMore ->
-        if (state is VoiceState.Created) VoiceState.Listening(said = listOf(state.check.heard).filter { it.isNotBlank() }, replacing = state.reminder.id) else state
+    is VoiceInputEvent.Reread -> if (state is VoiceState.Created && event.text.isNotBlank()) {
+        VoiceState.Thinking(restretched(state.check.heard, state.check.pauses, event.text), replacing = state.reminder.id, readings = state.check.readings)
+    } else {
+        state
+    }
+    VoiceInputEvent.SayMore -> if (state is VoiceState.Created) {
+        VoiceState.Listening(said = restretched(state.check.heard, state.check.pauses, state.check.heard), replacing = state.reminder.id, readings = state.check.readings)
+    } else {
+        state
+    }
     VoiceInputEvent.Resume -> if (state is VoiceState.Listening && state.paused) state.copy(paused = false, ready = false) else state
     // Written from the sentence, or from Gemini's guess once confirmed.
     is VoiceInputEvent.Written -> if (state is VoiceState.Thinking || state is VoiceState.Confirm) VoiceState.Created(event.reminder, event.check) else state
@@ -207,6 +215,39 @@ private fun settled(stretches: List<String>, replacing: String? = null, readings
     }
 }
 
+/**
+ * [new] — [old] put right — cut into stretches where [old]'s pauses were: those before what changed
+ * where they were, those after it moved by what changed in length, those in it gone. [new] may be
+ * the words without the marks of words kept as words (the fix field shows plain words): then it is
+ * set against [old] without them too.
+ */
+fun restretched(old: String, pauses: List<Int>, new: String): List<String> {
+    var base = old
+    var at = pauses
+    if (LITERAL in old && LITERAL !in new) {
+        at = pauses.map { pause -> pause - old.substring(0, pause.coerceAtMost(old.length)).count { it == LITERAL } }
+        base = plain(old)
+    }
+    val prefix = base.commonPrefixWith(new).length
+    val suffix = base.substring(prefix).commonSuffixWith(new.substring(prefix)).length
+    val delta = new.length - base.length
+    val cuts = at.mapNotNull { pause ->
+        when {
+            pause < prefix -> pause
+            pause >= base.length - suffix -> pause + delta
+            else -> null
+        }
+    }.filter { it in new.indices && new[it] == ' ' }.sorted()
+    val stretches = mutableListOf<String>()
+    var from = 0
+    for (cut in cuts) {
+        stretches += new.substring(from, cut)
+        from = cut + 1
+    }
+    stretches += new.substring(from)
+    return stretches.map { it.trim() }.filter { it.isNotEmpty() }
+}
+
 /** [readings] with [text]'s other readings, when the recognizer offered any. */
 private fun Map<String, List<String>>.with(text: String, alternatives: List<String>): Map<String, List<String>> {
     val others = alternatives.map { it.trim() }.filter { it.isNotEmpty() && it != text.trim() }.distinct()
@@ -233,6 +274,14 @@ data class VoiceCheck(
     val dropped: List<IntRange> = emptyList(),
     /** Stretches of [heard] the recognizer also heard otherwise → what it heard there, for a word tapped as wrong (0.192.0). */
     val options: Map<IntRange, List<String>> = emptyMap(),
+    /**
+     * Where in [heard] one stretch ended and the next began — the offset of the space between —
+     * so a sentence put right is read again with its pauses where they were (0.192.1): several
+     * repairs ("borra eso", a start said again) are about what a pause closed.
+     */
+    val pauses: List<Int> = emptyList(),
+    /** The recognizer's other readings of each stretch, kept for the next word put right (0.192.1). */
+    val readings: Map<String, List<String>> = emptyMap(),
 ) {
     /**
      * Whether the reading shown is the grammar's own, which [parts] and [doubts] describe: once

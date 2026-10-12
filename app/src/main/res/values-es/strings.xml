@@ -1832,6 +1832,13 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_192_1">
+
+        <item>Corregir tocando conserva las pausas con las que hablaste: después de «borra eso», arreglar una palabra ya no recupera lo que habías borrado.</item>
+
+        <item>Tocar una palabra junto a una coma o un punto la elige bien, un «cuándo» coloreado mal oído ofrece lo que el móvil también oyó ahí, y ya no se le pregunta a Gemini por lo que marcaste como «no es un cuándo».</item>
+
+    </string-array>
     <string-array name="whats_new_0_192_0">
 
         <item>Corregir tocando: en un recordatorio dictado, «Lo que he oído» es ahora una tarjeta grande y cada palabra se puede tocar. Toca la equivocada y elige lo que el móvil también oyó ahí, o uno de tus nombres que suena parecido («Bito» ofrece Vito), o escríbela, o quítala.</item>

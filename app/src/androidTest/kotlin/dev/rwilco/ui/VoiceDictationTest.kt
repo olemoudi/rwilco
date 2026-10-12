@@ -352,6 +352,19 @@ class VoiceDictationTest {
     }
 
     @Test
+    fun aFixKeepsThePausesItWasSaidWith() {
+        // 0.192.1: "borra eso" after a pause took the stretch before away; putting a word right
+        // afterwards reads it all again with its pauses, so it still does.
+        stretches = listOf("comprar pan", "borra eso", "comprar leche a las 11")
+        dictate()
+        rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.any { it.text == "Comprar leche" } }
+        rule.onNodeWithText(s(R.string.voice_fix_text), useUnmergedTree = true).performClick()
+        rule.onNodeWithTag(VOICE_FIX_FIELD_TAG).performTextReplacement("comprar pan borra eso comprar fruta a las 11")
+        rule.onNodeWithText(s(R.string.voice_reread), useUnmergedTree = true).performClick()
+        rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.singleOrNull()?.text == "Comprar fruta" }
+    }
+
+    @Test
     fun aWhenTappedCanBeKeptAsWords() {
         sentence = "llamar a Juan mañana a las 11"
         dictate()
