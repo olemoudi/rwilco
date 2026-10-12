@@ -38,6 +38,8 @@ sealed interface VoiceState {
          * ready, so nobody starts talking into a microphone that is not open yet.
          */
         val ready: Boolean = false,
+        /** Each stretch as taken → the recognizer's other readings of it, for a word tapped as wrong (0.192.0). */
+        val readings: Map<String, List<String>> = emptyMap(),
     ) : VoiceState {
         /** Everything heard so far, stretch by stretch. */
         val stretches: List<String> get() = (said + partial).map { it.trim() }.filter { it.isNotEmpty() }
@@ -50,7 +52,13 @@ sealed interface VoiceState {
      * The sentence is in, stretch by stretch as the pauses left it, and being turned into a
      * reminder; [asking] while Gemini is asked (0.178.0).
      */
-    data class Thinking(val stretches: List<String>, val asking: Boolean = false, val replacing: String? = null) : VoiceState {
+    data class Thinking(
+        val stretches: List<String>,
+        val asking: Boolean = false,
+        val replacing: String? = null,
+        /** The recognizer's other readings of each stretch (0.192.0). */
+        val readings: Map<String, List<String>> = emptyMap(),
+    ) : VoiceState {
         val text: String get() = stretches.joinToString(" ")
     }
 
@@ -136,15 +144,15 @@ fun voiceStep(state: VoiceState, event: VoiceInputEvent): VoiceState = when (eve
     VoiceInputEvent.Retry -> VoiceState.Listening(replacing = (state as? VoiceState.Failed)?.replacing)
     VoiceInputEvent.Finish -> when {
         state !is VoiceState.Listening -> state
-        state.paused || state.finishing -> settled(state.stretches, state.replacing)
+        state.paused || state.finishing -> settled(state.stretches, state.replacing, state.readings)
         else -> state.copy(finishing = true)
     }
     VoiceInputEvent.Pause -> when {
         state !is VoiceState.Listening || state.paused -> state
         // Already asked to end: it ends, with what there is.
-        state.finishing -> settled(state.stretches, state.replacing)
+        state.finishing -> settled(state.stretches, state.replacing, state.readings)
         state.stretches.isEmpty() -> VoiceState.Failed(VoiceFailure.NOT_HEARD, replacing = state.replacing)
-        else -> VoiceState.Listening(said = state.stretches, paused = true, replacing = state.replacing)
+        else -> VoiceState.Listening(said = state.stretches, paused = true, replacing = state.replacing, readings = state.readings)
     }
     // Written, and put right: by hand, read again; by voice, listened to on from what was heard.
     is VoiceInputEvent.Reread ->
@@ -168,27 +176,41 @@ fun voiceStep(state: VoiceState, event: VoiceInputEvent): VoiceState = when (eve
         is VoiceEvent.Level -> state.copy(level = levelOf(heard.rms))
         is VoiceEvent.Partial -> state.copy(partial = heard.text)
         // Some recognizers end with an empty final after a perfectly good partial.
-        is VoiceEvent.Segment -> state.copy(said = (state.said + heard.text.ifBlank { state.partial }).filter { it.isNotBlank() }, partial = "")
-        is VoiceEvent.Final -> settled(state.said + heard.text.ifBlank { state.partial }, state.replacing)
+        is VoiceEvent.Segment -> state.copy(
+            said = (state.said + heard.text.ifBlank { state.partial }).filter { it.isNotBlank() },
+            partial = "",
+            readings = state.readings.with(heard.text, heard.alternatives),
+        )
+        is VoiceEvent.Final -> settled(state.said + heard.text.ifBlank { state.partial }, state.replacing, state.readings.with(heard.text, heard.alternatives))
         is VoiceEvent.Failed -> when {
             // "Terminado" was pressed: whatever the ear says on its way out, the words are the sentence.
-            state.finishing -> settled(state.stretches, state.replacing)
+            state.finishing -> settled(state.stretches, state.replacing, state.readings)
             // ERROR_SPEECH_TIMEOUT and ERROR_NO_MATCH: silence, or noise that was nobody speaking.
-            heard.error == 6 || heard.error == 7 -> settled(state.stretches, state.replacing)
+            heard.error == 6 || heard.error == 7 -> settled(state.stretches, state.replacing, state.readings)
             // ERROR_INSUFFICIENT_PERMISSIONS.
             heard.error == 9 -> VoiceState.Failed(VoiceFailure.NO_PERMISSION, state.transcript, state.replacing)
             state.stretches.isEmpty() -> VoiceState.Failed(VoiceFailure.BROKEN, replacing = state.replacing)
             // A dictation that has said something does not end over a broken ear: it pauses, the
             // words kept, and "Seguir" tries a new one.
-            else -> VoiceState.Listening(said = state.stretches, paused = true, replacing = state.replacing)
+            else -> VoiceState.Listening(said = state.stretches, paused = true, replacing = state.replacing, readings = state.readings)
         }
     }
 }
 
 /** The sentence, when anything was heard — into the reminder it goes on from, if it does. */
-private fun settled(stretches: List<String>, replacing: String? = null): VoiceState {
+private fun settled(stretches: List<String>, replacing: String? = null, readings: Map<String, List<String>> = emptyMap()): VoiceState {
     val heard = stretches.map { it.trim() }.filter { it.isNotEmpty() }
-    return if (heard.isEmpty()) VoiceState.Failed(VoiceFailure.NOT_HEARD, replacing = replacing) else VoiceState.Thinking(heard, replacing = replacing)
+    return if (heard.isEmpty()) {
+        VoiceState.Failed(VoiceFailure.NOT_HEARD, replacing = replacing)
+    } else {
+        VoiceState.Thinking(heard, replacing = replacing, readings = readings.filterKeys { it in heard })
+    }
+}
+
+/** [readings] with [text]'s other readings, when the recognizer offered any. */
+private fun Map<String, List<String>>.with(text: String, alternatives: List<String>): Map<String, List<String>> {
+    val others = alternatives.map { it.trim() }.filter { it.isNotEmpty() && it != text.trim() }.distinct()
+    return if (text.isBlank() || others.isEmpty()) this else this + (text.trim() to others)
 }
 
 /**
@@ -209,6 +231,8 @@ data class VoiceCheck(
     val here: Fix? = null,
     /** What of [heard] was taken out as a correction or a hesitation, and not read (0.187.0). */
     val dropped: List<IntRange> = emptyList(),
+    /** Stretches of [heard] the recognizer also heard otherwise → what it heard there, for a word tapped as wrong (0.192.0). */
+    val options: Map<IntRange, List<String>> = emptyMap(),
 ) {
     /**
      * Whether the reading shown is the grammar's own, which [parts] and [doubts] describe: once

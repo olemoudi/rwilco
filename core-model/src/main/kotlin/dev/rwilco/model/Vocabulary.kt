@@ -56,6 +56,22 @@ class Vocabulary(
     private fun namesIn(text: String): Int =
         WORD.findAll(text).filter { it.value.first().isUpperCase() }.map { fold(it.value) }.filter { it in byKey && it !in COMMON_NAMES }.toSet().size
 
+    /**
+     * The person's names that sound like [word] — or nearly, a letter's sound either way — for a
+     * word tapped as wrong (0.192.0): "Bito" offers Vito. Never the word itself; the nearest and
+     * most used first.
+     */
+    fun soundingLike(word: String, max: Int = 3): List<String> {
+        val sound = soundOf(word)
+        if (sound.length < MIN_SOUND) return emptyList()
+        return names.filter { fold(it) != fold(word) }
+            .map { it to distance(soundOf(it), sound) }
+            .filter { (_, apart) -> apart <= maxOf(1, sound.length / 4) }
+            .sortedBy { it.second }
+            .map { it.first }
+            .take(max)
+    }
+
     /** [text] with the person's own words written as they write them; the same text when nothing changes. */
     fun corrected(text: String): String {
         if (names.isEmpty() && learned.isEmpty()) return text

@@ -72,6 +72,7 @@ import androidx.core.content.ContextCompat
 import dev.rwilco.ui.voice.VoiceSheet
 import dev.rwilco.voice.VoiceOutcome
 import dev.rwilco.voice.VoiceState
+import dev.rwilco.model.plain
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.graphicsLayer
@@ -1490,7 +1491,7 @@ private fun DictationSheet(
     VoiceSheet(
         state = current,
         preview = preview,
-        words = vocabulary.bias,
+        vocabulary = vocabulary,
         today = localToday(),
         defaultTime = defaultTime,
         zone = zone,
@@ -1507,7 +1508,9 @@ private fun DictationSheet(
         },
         onAlternative = viewModel::useAlternative,
         onConfirm = viewModel::confirmVoice,
-        onToEditor = { text, why, form, replacing ->
+        onToEditor = { words, why, form, replacing ->
+            // Never the marks of words kept as words: the editor shows plain words.
+            val text = plain(words)
             viewModel.closeVoice()
             why?.let { snackbar.show(voiceWhy.getValue(it)) }
             when {

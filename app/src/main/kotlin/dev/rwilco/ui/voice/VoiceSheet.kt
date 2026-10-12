@@ -40,6 +40,19 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.automirrored.outlined.Undo
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.TextFields
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.TextLinkStyles
+import dev.rwilco.model.Vocabulary
+import dev.rwilco.model.fold
+import dev.rwilco.model.literally
+import dev.rwilco.model.plain
 import androidx.compose.material.icons.outlined.StrikethroughS
 import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Mic
@@ -47,8 +60,6 @@ import androidx.compose.material.icons.outlined.MicOff
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.foundation.text.KeyboardActions
@@ -190,8 +201,8 @@ fun VoiceSheet(
     state: VoiceState,
     /** What the words heard so far come to: what of them is a correction, and what they would be written as. */
     preview: VoicePreview?,
-    /** The person's own words, for the recognizer to lean towards (0.189.0). */
-    words: List<String>,
+    /** The person's own words: for the recognizer to lean towards (0.189.0), and to offer for a word tapped as wrong (0.192.0). */
+    vocabulary: Vocabulary,
     today: LocalDate,
     defaultTime: LocalTime,
     zone: ZoneId,
@@ -271,7 +282,7 @@ fun VoiceSheet(
     val earOpen = listening != null && !listening.paused
     LaunchedEffect(earOpen) {
         if (!earOpen) return@LaunchedEffect
-        listener.start(locale, words) { event -> send(VoiceInputEvent.Heard(event)) }
+        listener.start(locale, vocabulary.bias) { event -> send(VoiceInputEvent.Heard(event)) }
         try {
             awaitCancellation()
         } finally {
@@ -434,6 +445,7 @@ fun VoiceSheet(
                             onAlternative = if (current is VoiceState.Created) onAlternative else null,
                             onFix = if (current is VoiceState.Created) ({ text -> send(VoiceInputEvent.Reread(text)) }) else null,
                             onSayMore = if (current is VoiceState.Created) ({ send(VoiceInputEvent.SayMore) }) else null,
+                            vocabulary = vocabulary,
                         )
                     }
                 } else {
@@ -675,6 +687,8 @@ private fun CheckView(
     onFix: ((String) -> Unit)?,
     /** Listening again, on from what was heard (0.190.0); null for Gemini's guess. */
     onSayMore: (() -> Unit)?,
+    /** The person's own words, for the names a word tapped as wrong is offered (0.192.0). */
+    vocabulary: Vocabulary,
 ) {
     val spacing = Tokens.spacing
     val scheme = MaterialTheme.colorScheme
@@ -695,7 +709,7 @@ private fun CheckView(
         }
         // The marks and the doubts are about the grammar's reading: while Gemini's is the one
         // shown, the sentence is shown as heard and nothing in it is claimed to be what it says.
-        if (check.heard.isNotBlank()) HeardLine(check, marked = check.readsAsSaid, key = reminder.id, onFix = onFix, onSayMore = onSayMore)
+        if (check.heard.isNotBlank()) HeardLine(check, marked = check.readsAsSaid, key = reminder.id, vocabulary = vocabulary, onFix = onFix, onSayMore = onSayMore)
         val dropped = if (check.readsAsSaid) check.droppedWords() else emptyList()
         if (dropped.isNotEmpty()) DroppedLine(dropped)
         val doubts = if (check.readsAsSaid) check.doubtWords() else emptyList()
@@ -790,15 +804,20 @@ private fun FiresLine(at: Instant, today: LocalDate, zone: ZoneId, distanceOnly:
  * on from them ("…no, a las seis"). A name put right by hand is learned for next time.
  */
 @Composable
-private fun HeardLine(check: VoiceCheck, marked: Boolean, key: String, onFix: ((String) -> Unit)?, onSayMore: (() -> Unit)?) {
+private fun HeardLine(check: VoiceCheck, marked: Boolean, key: String, vocabulary: Vocabulary, onFix: ((String) -> Unit)?, onSayMore: (() -> Unit)?) {
     val scheme = MaterialTheme.colorScheme
     val spacing = Tokens.spacing
     var editing by rememberSaveable(key) { mutableStateOf(false) }
     var draft by rememberSaveable(key, stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(check.heard, TextRange(check.heard.length))) }
+    // What a tap picked out (0.192.0): a word, a "when", or a correction struck through.
+    var pickedFirst by rememberSaveable(key) { mutableStateOf(-1) }
+    var pickedLast by rememberSaveable(key) { mutableStateOf(-1) }
+    val marks = if (marked) check.marks() else emptyList()
+    val picked = touched(check, marks, pickedFirst, pickedLast)
     val inks = TriggerFamily.entries.associateWith { it.color() }
     val text = buildAnnotatedString {
         append(check.heard)
-        for (mark in if (marked) check.marks() else emptyList()) {
+        for (mark in marks) {
             val style = when (mark.kind) {
                 HeardMark.Kind.MANNER -> SpanStyle(color = scheme.outline)
                 HeardMark.Kind.WHEN -> SpanStyle(color = mark.family?.let(inks::getValue) ?: scheme.onSurface, fontWeight = FontWeight.SemiBold)
@@ -807,66 +826,216 @@ private fun HeardLine(check: VoiceCheck, marked: Boolean, key: String, onFix: ((
             }
             addStyle(style, mark.range.first, mark.range.last + 1)
         }
-    }
-    Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
-        Text(stringResource(R.string.voice_heard), style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
-        if (editing && onFix != null) {
-            val focus = remember { FocusRequester() }
-            LaunchedEffect(Unit) { focus.requestFocus() }
-            val changed = draft.text.isNotBlank() && draft.text.trim() != check.heard.trim()
-            OutlinedTextField(
-                value = draft,
-                onValueChange = { draft = it },
-                textStyle = MaterialTheme.typography.bodyLarge,
-                label = { Text(stringResource(R.string.voice_fix_label)) },
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { if (changed) onFix(draft.text) }),
-                shape = MaterialTheme.shapes.small,
-                // Neutral, as the editor's own text is: amber is what fires next, never a field.
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = scheme.outline,
-                    unfocusedBorderColor = scheme.outlineVariant,
-                    focusedLabelColor = scheme.onSurfaceVariant,
-                    cursorColor = scheme.onSurface,
-                ),
-                modifier = Modifier.fillMaxWidth().focusRequester(focus).testTag(VOICE_FIX_FIELD_TAG),
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm, Alignment.End), modifier = Modifier.fillMaxWidth()) {
-                Quiet(R.string.sheet_cancel) { editing = false }
-                FilledTonalButton(onClick = { onFix(draft.text) }, enabled = changed, modifier = Modifier.heightIn(min = Tokens.sizes.control)) {
-                    Text(stringResource(R.string.voice_reread))
-                }
+        // Every word can be touched to put it right: what it touches is what the tap picks out.
+        if (onFix != null && !editing) {
+            for (word in TOUCHABLE.findAll(check.heard)) {
+                addLink(
+                    LinkAnnotation.Clickable(VOICE_WORD_TAG_PREFIX + word.range.first, TextLinkStyles(SpanStyle())) {
+                        val target = touched(check, marks, word.range.first, word.range.last)
+                        val again = picked?.range == target?.range
+                        pickedFirst = if (again) -1 else target?.range?.first ?: -1
+                        pickedLast = if (again) -1 else target?.range?.last ?: -1
+                    },
+                    word.range.first,
+                    word.range.last + 1,
+                )
             }
-        } else {
-            Text(text, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurfaceVariant)
-            // Said in words, not left to icons to be guessed at (0.191.0): the two ways to put it right.
-            if (onFix != null || onSayMore != null) {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(spacing.sm), modifier = Modifier.padding(top = spacing.xs)) {
-                    val chipColors = AssistChipDefaults.assistChipColors(labelColor = scheme.onSurface, leadingIconContentColor = scheme.onSurfaceVariant)
-                    if (onFix != null) {
-                        AssistChip(
-                            onClick = {
+        }
+        picked?.let { addStyle(SpanStyle(background = scheme.outlineVariant), it.range.first, it.range.last + 1) }
+    }
+    // A card of its own, the words as big as they were while being said (the owner: "grande, no
+    // pequeñita abajo"): each one is something to put a finger on.
+    Surface(shape = MaterialTheme.shapes.large, color = scheme.surfaceContainerHigh, modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(spacing.md), modifier = Modifier.padding(spacing.lg)) {
+            Text(
+                stringResource(if (onFix != null) R.string.voice_heard_touch else R.string.voice_heard),
+                style = MaterialTheme.typography.labelLarge,
+                color = scheme.onSurfaceVariant,
+            )
+            if (editing && onFix != null) {
+                val focus = remember { FocusRequester() }
+                LaunchedEffect(Unit) { focus.requestFocus() }
+                val changed = draft.text.isNotBlank() && draft.text.trim() != check.heard.trim()
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    textStyle = MaterialTheme.typography.bodyLarge,
+                    label = { Text(stringResource(R.string.voice_fix_label)) },
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { if (changed) onFix(draft.text) }),
+                    shape = MaterialTheme.shapes.small,
+                    // Neutral, as the editor's own text is: amber is what fires next, never a field.
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = scheme.outline,
+                        unfocusedBorderColor = scheme.outlineVariant,
+                        focusedLabelColor = scheme.onSurfaceVariant,
+                        cursorColor = scheme.onSurface,
+                    ),
+                    modifier = Modifier.fillMaxWidth().focusRequester(focus).testTag(VOICE_FIX_FIELD_TAG),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm, Alignment.End), modifier = Modifier.fillMaxWidth()) {
+                    Quiet(R.string.sheet_cancel) { editing = false }
+                    FilledTonalButton(onClick = { onFix(draft.text) }, enabled = changed, modifier = Modifier.heightIn(min = Tokens.sizes.control)) {
+                        Text(stringResource(R.string.voice_reread))
+                    }
+                }
+            } else {
+                Text(text, style = MaterialTheme.typography.headlineSmall, color = scheme.onSurface)
+                if (picked != null && onFix != null) {
+                    TouchedPanel(
+                        heard = check.heard,
+                        picked = picked,
+                        vocabulary = vocabulary,
+                        onFix = { fixed ->
+                            pickedFirst = -1
+                            pickedLast = -1
+                            onFix(fixed)
+                        },
+                        onWrite = {
+                            draft = TextFieldValue(check.heard, TextRange(picked.range.first, picked.range.last + 1))
+                            pickedFirst = -1
+                            pickedLast = -1
+                            editing = true
+                        },
+                        onClose = {
+                            pickedFirst = -1
+                            pickedLast = -1
+                        },
+                    )
+                } else if (onFix != null || onSayMore != null) {
+                    // Said in words, not left to icons to be guessed at (0.191.0): the two ways to put it right.
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(spacing.sm), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                        if (onFix != null) {
+                            TouchAction(R.string.voice_fix_text, Icons.Outlined.Edit) {
                                 draft = TextFieldValue(check.heard, TextRange(check.heard.length))
                                 editing = true
-                            },
-                            label = { Text(stringResource(R.string.voice_fix_text)) },
-                            leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(AssistChipDefaults.IconSize)) },
-                            colors = chipColors,
-                        )
-                    }
-                    if (onSayMore != null) {
-                        AssistChip(
-                            onClick = onSayMore,
-                            label = { Text(stringResource(R.string.voice_say_more)) },
-                            leadingIcon = { Icon(Icons.Outlined.Mic, contentDescription = null, modifier = Modifier.size(AssistChipDefaults.IconSize)) },
-                            colors = chipColors,
-                        )
+                            }
+                        }
+                        if (onSayMore != null) TouchAction(R.string.voice_say_more, Icons.Outlined.Mic, onSayMore)
                     }
                 }
             }
         }
     }
 }
+
+/** What a tap on the heard sentence picked out (0.192.0), and what kind of thing it is. */
+private data class Touched(val range: IntRange, val kind: Kind, val options: List<String> = emptyList()) {
+    enum class Kind {
+        /** A word, or the few words the recognizer also heard as something else. */
+        WORDS,
+
+        /** A "when" read from the sentence. */
+        WHEN,
+
+        /** Words taken out as a correction. */
+        DROPPED,
+    }
+}
+
+/**
+ * What a tap on [first]..[last] of the heard sentence picks out: the whole "when" or the whole
+ * correction it falls in, or else the stretch the recognizer also heard otherwise, or the word.
+ * Null for nothing picked.
+ */
+private fun touched(check: VoiceCheck, marks: List<HeardMark>, first: Int, last: Int): Touched? {
+    if (first < 0 || last >= check.heard.length) return null
+    fun covers(range: IntRange) = range.first <= first && last <= range.last
+    marks.firstOrNull { it.kind == HeardMark.Kind.DROPPED && covers(it.range) }?.let { return Touched(it.range, Touched.Kind.DROPPED) }
+    marks.firstOrNull { it.kind == HeardMark.Kind.WHEN && covers(it.range) }?.let { return Touched(it.range, Touched.Kind.WHEN) }
+    check.options.entries.firstOrNull { covers(it.key) }?.let { return Touched(it.key, Touched.Kind.WORDS, it.value) }
+    return Touched(first..last, Touched.Kind.WORDS)
+}
+
+/**
+ * The ways to put right what a tap picked out (0.192.0), each a reading again into the same
+ * reminder: for words, what the recognizer also heard there and the person's names that sound like
+ * it, or typing it, or taking it away; for a "when", keeping it as words — it was not one — or
+ * typing it; for words struck as a correction, having them back.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TouchedPanel(heard: String, picked: Touched, vocabulary: Vocabulary, onFix: (String) -> Unit, onWrite: () -> Unit, onClose: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val spacing = Tokens.spacing
+    val haptics = Tokens.haptics
+    val words = heard.substring(picked.range.first, picked.range.last + 1)
+    val shown = plain(words)
+    fun replaced(with: String) = (heard.substring(0, picked.range.first) + with + heard.substring(picked.range.last + 1)).replace(Regex(" {2,}"), " ").trim()
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(R.string.voice_touched, shown),
+                style = MaterialTheme.typography.titleMedium,
+                color = scheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(onClick = onClose) {
+                Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.common_close), tint = scheme.onSurfaceVariant)
+            }
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(spacing.sm), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+            fun fix(text: String) {
+                haptics.perform(HapticFeedbackType.ContextClick)
+                onFix(text)
+            }
+            when (picked.kind) {
+                Touched.Kind.WORDS -> {
+                    // What else was heard there, then the person's own names that sound like it:
+                    // the likeliest answers, so the most prominent.
+                    val offers = (picked.options + vocabulary.soundingLike(shown)).distinctBy { fold(it) }.filter { fold(it) != fold(shown) }.take(MAX_TOUCH_OFFERS)
+                    for (offer in offers) {
+                        // Filled and neutral, as the sheet's own answer is: never amber, which is what fires next.
+                        Button(
+                            onClick = { fix(replaced(offer)) },
+                            colors = ButtonDefaults.buttonColors(containerColor = scheme.onSurface, contentColor = scheme.surface),
+                            modifier = Modifier.heightIn(min = Tokens.sizes.control).testTag(VOICE_TOUCH_OFFER_TAG),
+                        ) {
+                            Icon(Icons.Outlined.SwapHoriz, contentDescription = null, modifier = Modifier.size(Tokens.sizes.glyphMedium))
+                            Spacer(Modifier.width(spacing.sm))
+                            Text(offer, style = MaterialTheme.typography.titleMedium)
+                        }
+                    }
+                    TouchAction(R.string.voice_touch_write, Icons.Outlined.Edit, onWrite)
+                    TouchAction(R.string.voice_touch_remove, Icons.Outlined.Delete) { fix(replaced("")) }
+                }
+                Touched.Kind.WHEN -> {
+                    TouchAction(R.string.voice_touch_not_when, Icons.Outlined.TextFields) { fix(literally(heard, picked.range)) }
+                    TouchAction(R.string.voice_touch_write, Icons.Outlined.Edit, onWrite)
+                }
+                Touched.Kind.DROPPED -> {
+                    TouchAction(R.string.voice_touch_not_correction, Icons.AutoMirrored.Outlined.Undo) { fix(literally(heard, picked.range)) }
+                }
+            }
+        }
+    }
+}
+
+/** One of the things to do with what a tap picked out: a full-size button, neutral, its icon and its words. */
+@Composable
+private fun TouchAction(label: Int, icon: ImageVector, onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+        modifier = Modifier.heightIn(min = Tokens.sizes.control),
+    ) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(Tokens.sizes.glyphMedium))
+        Spacer(Modifier.width(Tokens.spacing.sm))
+        Text(stringResource(label), style = MaterialTheme.typography.titleSmall)
+    }
+}
+
+/** A word of the heard sentence, for a tap to land on. */
+private val TOUCHABLE = Regex("\\S+")
+
+/** How many other words a tapped one is offered. */
+private const val MAX_TOUCH_OFFERS = 4
+
+/** For the device tests: a word of the heard sentence is a link tagged this and its offset. */
+const val VOICE_WORD_TAG_PREFIX = "voice-word-"
+
+/** For the device tests: a word offered in place of a tapped one. */
+const val VOICE_TOUCH_OFFER_TAG = "voice-touch-offer"
 
 /** For the device tests: the field the heard sentence is put right in. */
 const val VOICE_FIX_FIELD_TAG = "voice-fix-field"

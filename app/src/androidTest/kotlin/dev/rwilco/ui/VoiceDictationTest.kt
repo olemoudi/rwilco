@@ -15,7 +15,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performFirstLinkClick
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.test.performTouchInput
 import kotlinx.coroutines.flow.first
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -40,6 +42,8 @@ import dev.rwilco.voice.VoiceEvent
 import dev.rwilco.voice.VoiceInput
 import dev.rwilco.ui.voice.VOICE_ALTERNATIVE_TAG
 import dev.rwilco.ui.voice.VOICE_FIX_FIELD_TAG
+import dev.rwilco.ui.voice.VOICE_TOUCH_OFFER_TAG
+import dev.rwilco.ui.voice.VOICE_WORD_TAG_PREFIX
 import dev.rwilco.ui.voice.VOICE_OFFER_TAG
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.runBlocking
@@ -86,6 +90,9 @@ class VoiceDictationTest {
     /** What the fake ear will have heard, stretch by stretch: each but the last closed by a pause. */
     private var stretches = listOf("")
 
+    /** The recognizer's other readings of the last stretch (0.192.0). */
+    private var otherReadings = listOf<String>()
+
     /** What the fake ear will have heard, in one breath. */
     private var sentence: String
         get() = stretches.joinToString(" ")
@@ -115,7 +122,7 @@ class VoiceDictationTest {
             main.postDelayed({ onEvent(VoiceEvent.Partial(last)) }, at + 150)
         }
         override fun stop() {
-            main.postDelayed({ onEvent?.invoke(VoiceEvent.Final(stretches.last())) }, 50)
+            main.postDelayed({ onEvent?.invoke(VoiceEvent.Final(stretches.last(), listOf(stretches.last()) + otherReadings)) }, 50)
         }
         override fun cancel() {
             onEvent = null
@@ -165,6 +172,7 @@ class VoiceDictationTest {
     fun quietHomeWithAPlace() = runBlocking {
         VoiceInput.factory = { FakeEar() }
         app.repository.deleteAll()
+        otherReadings = emptyList()
         app.settingsStore.update {
             it.copy(presets = emptyList(), compactHome = false, savedPlaces = listOf(casa), lastSeenVersionCode = BuildConfig.VERSION_CODE, voiceFixes = emptyMap())
         }
@@ -322,6 +330,40 @@ class VoiceDictationTest {
         rule.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
         rule.waitForIdle()
         assertEquals(listOf(Triple(first.id, first.text, first.rules)), asWritten())
+    }
+
+    @Test
+    fun aWordTappedIsPutRightWithWhatTheRecognizerAlsoHeardThere() {
+        // 0.192.0: tap the wrong word, take what the recognizer also heard there.
+        sentence = "llamar a Bito a las 11"
+        otherReadings = listOf("llamar a Vito a las 11")
+        dictate()
+        rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.any { it.text == "Llamar a Bito" } }
+        val first = runBlocking { app.repository.openNow() }.single()
+        rule.onNodeWithText("llamar a Bito", substring = true, useUnmergedTree = true)
+            .performFirstLinkClick { (it.item as? LinkAnnotation.Clickable)?.tag == VOICE_WORD_TAG_PREFIX + "llamar a Bito a las 11".indexOf("Bito") }
+        rule.onNodeWithTag(VOICE_TOUCH_OFFER_TAG).assertExists()
+        shot("voice-touch-word")
+        rule.onNodeWithText("Vito", useUnmergedTree = true).performClick()
+        rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.singleOrNull()?.text == "Llamar a Vito" }
+        assertEquals(first.id, runBlocking { app.repository.openNow() }.single().id)
+        // A name put right by touch is learned as one put right by hand.
+        rule.waitUntil(30_000) { runBlocking { app.settingsStore.settings.first() }.voiceFixes["a bito"] == "Vito" }
+    }
+
+    @Test
+    fun aWhenTappedCanBeKeptAsWords() {
+        sentence = "llamar a Juan mañana a las 11"
+        dictate()
+        rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.any { it.text == "Llamar a Juan" } }
+        rule.onNodeWithText("llamar a Juan", substring = true, useUnmergedTree = true)
+            .performFirstLinkClick { (it.item as? LinkAnnotation.Clickable)?.tag == VOICE_WORD_TAG_PREFIX + "llamar a Juan mañana a las 11".indexOf("las") }
+        rule.onNodeWithText(s(R.string.voice_touch_not_when), useUnmergedTree = true).performClick()
+        rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.singleOrNull()?.text == "Llamar a Juan a las 11" }
+        // Tomorrow, still: only the hour was kept as words.
+        val kept = runBlocking { app.repository.openNow() }.single()
+        assertEquals(1, kept.rules.size)
+        assertEquals(false, (kept.rules.single().trigger as? Trigger.AtDateTime)?.at?.hour.let { it == 11 || it == 23 })
     }
 
     @Test

@@ -131,6 +131,12 @@
     <string name="voice_preparing">Getting the microphone ready…</string>
     <string name="voice_created_named">Created: %1$s</string>
     <string name="home_dictate_tapped">Hold the bar to dictate</string>
+    <string name="voice_heard_touch">What I heard · tap a word to fix it</string>
+    <string name="voice_touched">“%1$s”</string>
+    <string name="voice_touch_write">Type it…</string>
+    <string name="voice_touch_remove">Remove</string>
+    <string name="voice_touch_not_when">Not a when</string>
+    <string name="voice_touch_not_correction">It wasn’t a correction</string>
     <string name="voice_doubt_join">”, “</string>
     <string name="voice_alternatives">Or did you mean:</string>
     <string name="voice_alternative_use">Change it to %1$s</string>
@@ -1841,6 +1847,13 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_192_0">
+
+        <item>Correct by touch: on a dictated reminder, “What I heard” is now a big card, and every word can be tapped. Tap the wrong one and pick what the phone also heard there, or one of your names that sounds like it (“Bito” offers Vito), or type it, or remove it.</item>
+
+        <item>Tap a coloured “when” to say it isn’t one (it stays as words), or something struck through to say it wasn’t a correction. The reminder changes in place, and a name fixed this way is learned.</item>
+
+    </string-array>
     <string-array name="whats_new_0_191_0">
 
         <item>The dictation sheet says “Getting the microphone ready…” until it is really listening, and then vibrates: no more first words lost to a microphone that wasn’t open yet.</item>

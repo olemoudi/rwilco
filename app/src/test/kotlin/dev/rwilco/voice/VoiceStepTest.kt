@@ -120,6 +120,22 @@ class VoiceStepTest {
     }
 
     @Test
+    fun `what else the recognizer heard in each stretch goes along to the reading`() {
+        val first = voiceStep(VoiceState.Listening(), heard(VoiceEvent.Segment("llamar a Bito", listOf("llamar a Bito", "llamar a Vito"))))
+        assertEquals(mapOf("llamar a Bito" to listOf("llamar a Vito")), (first as VoiceState.Listening).readings)
+        val finishing = voiceStep(first, VoiceInputEvent.Finish)
+        val thinking = voiceStep(finishing, heard(VoiceEvent.Final("mañana", listOf("mañana", "manzana"))))
+        assertEquals(
+            VoiceState.Thinking(listOf("llamar a Bito", "mañana"), readings = mapOf("llamar a Bito" to listOf("llamar a Vito"), "mañana" to listOf("manzana"))),
+            thinking,
+        )
+        // Through a pause, too; and a reading the same as the one taken is no other reading.
+        val paused = voiceStep(first, VoiceInputEvent.Pause)
+        assertEquals(first.readings, (paused as VoiceState.Listening).readings)
+        assertEquals(emptyMap<String, List<String>>(), (voiceStep(VoiceState.Listening(), heard(VoiceEvent.Segment("x", listOf("x")))) as VoiceState.Listening).readings)
+    }
+
+    @Test
     fun `a fresh ear keeps the stretch the old one was in the middle of`() {
         assertEquals(VoiceState.Listening(said = listOf("comprar pan", "al llegar"), ready = true), voiceStep(VoiceState.Listening("al llegar", said = listOf("comprar pan")), heard(VoiceEvent.Ready)))
         assertEquals(VoiceState.Listening(said = listOf("x"), ready = true), voiceStep(VoiceState.Listening(said = listOf("x")), heard(VoiceEvent.Ready)))

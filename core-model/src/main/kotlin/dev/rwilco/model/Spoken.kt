@@ -111,7 +111,7 @@ fun hear(
 ): Heard {
     val folded = Words.of(text)
     val leadIn = LEAD_IN.find(folded.text)?.let { folded.original(it.range) }?.takeUnless { it.isEmpty() }
-    val said = withoutLeadIn(text)
+    val said = plain(withoutLeadIn(text))
     val actions = ACTIONS.mapNotNull { (pattern, edit) -> pattern.find(folded.text)?.let { edit to folded.original(it.range) } }
     val asked = actions.fold(SpokenActions()) { all, (edit, _) -> all + edit }
     val skip = listOfNotNull(leadIn) + actions.map { it.second }
@@ -210,6 +210,8 @@ private fun routineSpan(understood: Understood?): Recurrence.Since? = when (unde
 
 /** [reading] with the words that are left once [spans] are out — or why it cannot be written. */
 private fun written(text: String, spans: List<IntRange>, reading: Spoken, said: String, parts: List<HeardSpan>, alternatives: List<Spoken> = emptyList()): Heard {
+    // Checked with the words kept as words still marked ([LITERAL]), so they sound like nothing;
+    // written without the marks.
     val words = withoutSpans(text, spans)
     if (words.isBlank()) return Heard.Unsure(said, Heard.Why.NO_WORDS)
     // What is left must not still sound like a "when": "mañana cuando llegue a casa al curro"
@@ -220,8 +222,28 @@ private fun written(text: String, spans: List<IntRange>, reading: Spoken, said: 
     // read as where the series starts. Not by halves.
     if (EXCEPT.containsMatchIn(Words.of(text).text)) return Heard.Unsure(said, Heard.Why.PARTIAL)
     val doubts = doubtsIn(text, spans, parts.filter { it.family != null }.map { it.range })
-    return Heard.Read(reading.copy(text = words), said, parts.sortedBy { it.range.first }, doubts, alternatives.map { it.copy(text = words) })
+    return Heard.Read(reading.copy(text = plain(words)), said, parts.sortedBy { it.range.first }, doubts, alternatives.map { it.copy(text = plain(words)) })
 }
+
+/**
+ * What marks a word that is to stay a word (0.192.0): the person tapped it and said it is not a
+ * "when" ("No es un cuándo") or was not a correction ("No era una corrección"). A word joiner
+ * between each two of its letters — invisible on screen, and no reader's pattern, no marker of the
+ * repair, matches any piece of a word held apart like that ("1⁠1⁠:⁠3⁠0" is no clock, not even
+ * "1:30") — taken out of whatever is written ([plain]).
+ */
+const val LITERAL = '\u2060'
+
+/** [text] with every word that [range] touches marked to stay a word ([LITERAL]). */
+fun literally(text: String, range: IntRange): String = LITERAL_TOKEN.replace(text) { token ->
+    val touched = token.range.first <= range.last && range.first <= token.range.last
+    if (!touched || LITERAL in token.value) token.value else token.value.toList().joinToString(LITERAL.toString())
+}
+
+/** [text] without the marks of words kept as words. */
+fun plain(text: String): String = text.replace(LITERAL.toString(), "")
+
+private val LITERAL_TOKEN = Regex("\\S+")
 
 /**
  * The words left in a reminder that sound like part of a "when" nobody read (0.181.0) — offsets

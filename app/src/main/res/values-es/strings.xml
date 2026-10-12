@@ -127,6 +127,12 @@
     <string name="voice_preparing">Preparando el micrófono…</string>
     <string name="voice_created_named">Creado: %1$s</string>
     <string name="home_dictate_tapped">Mantén pulsada la barra para dictar</string>
+    <string name="voice_heard_touch">Lo que he oído · toca una palabra para corregirla</string>
+    <string name="voice_touched">«%1$s»</string>
+    <string name="voice_touch_write">Escribir…</string>
+    <string name="voice_touch_remove">Quitar</string>
+    <string name="voice_touch_not_when">No es un cuándo</string>
+    <string name="voice_touch_not_correction">No era una corrección</string>
     <string name="voice_doubt_join">», «</string>
     <string name="voice_alternatives">¿O lo querías así?</string>
     <string name="voice_alternative_use">Cambiarlo a %1$s</string>
@@ -1826,6 +1832,13 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_192_0">
+
+        <item>Corregir tocando: en un recordatorio dictado, «Lo que he oído» es ahora una tarjeta grande y cada palabra se puede tocar. Toca la equivocada y elige lo que el móvil también oyó ahí, o uno de tus nombres que suena parecido («Bito» ofrece Vito), o escríbela, o quítala.</item>
+
+        <item>Toca un «cuándo» coloreado para decir que no lo es (se queda como palabras), o algo tachado para decir que no era una corrección. El recordatorio cambia ahí mismo, y un nombre corregido así se aprende.</item>
+
+    </string-array>
     <string-array name="whats_new_0_191_0">
 
         <item>La hoja de dictado dice «Preparando el micrófono…» hasta que escucha de verdad, y entonces vibra: ya no se pierden las primeras palabras dichas antes de que el micrófono estuviera abierto.</item>

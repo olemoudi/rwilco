@@ -1698,6 +1698,19 @@ loud what DST and a change of zone do to a landing.
   hold) says "Mantén pulsada la barra para dictar" with a reject haptic. And commands said to the
   dictation, opening a stretch after a pause (`SpokenRepair.commands`): "borra eso", "quita lo
   último" take the stretch before away; "empieza de nuevo", "borra todo" everything before.
+- **Correcting by touch (0.192.0, the owner: "lo de corregir tocando mola"; "grande, no pequeñita
+  abajo").** "Lo que he oído" is a card of its own on a written reminder's sheet, the sentence at
+  headline size, every word a link (`LinkAnnotation.Clickable`). A tap picks out the "when" or the
+  correction it falls in, or the stretch the recognizer also heard otherwise, or the word, and a row
+  of full-size buttons below offers: for words, what the recognizer also heard there
+  (`wordAlternatives` lines the five readings of each stretch up word for word; the readings travel
+  as `Listening/Thinking.readings` into `VoiceCheck.options`) and the person's names that sound
+  like it (`Vocabulary.soundingLike`), filled and first, then "Escribir…" (the fix field, that word
+  selected) and "Quitar"; for a "when", "No es un cuándo"; for a correction, "No era una
+  corrección". Every choice is a `Reread` into the same reminder, learned as a hand fix. Words kept
+  as words are marked by a word joiner between their letters (`LITERAL`, `literally`): invisible,
+  matched by no reader and no repair marker, and taken out of everything written (`plain`) and of
+  what Gemini and the editor get. `ReadingsTest`, `VoiceStepTest`, `VoiceDictationTest`.
 - **A held stepper keeps counting (0.51.0).** A step is one unit on purpose (three minutes has
   to be sayable, and the countdown sheet says why), and the price was seventeen taps from thirty
   to forty-seven. `Stepper` repeats after `Motion.holdRepeatDelay`, quickening to
