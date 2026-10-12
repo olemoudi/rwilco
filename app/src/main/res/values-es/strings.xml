@@ -1815,6 +1815,13 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_185_0">
+
+        <item>Dictar «al llegar a casa y llevar 10 minutos allí» ya pide también los diez minutos: antes guardaba solo la llegada y dejaba «y llevar 10 minutos allí» en el texto del recordatorio. Se entienden también las otras formas de decirlo: «y estar 10 minutos allí», «tras llevar media hora», «cuando lleve 10 minutos en casa», «a los 10 minutos de llegar a casa», «10 minutos después de salir del trabajo».</item>
+
+        <item>Una duración que no se ha leído queda marcada para revisar se diga como se diga el número: «diez minutos» igual que «10 minutos».</item>
+
+    </string-array>
     <string-array name="whats_new_0_184_1">
 
         <item>Limpieza, y nada que se vea: el micro de la hoja de dictado ya no guarda un dibujo de «Creado» que dejó de enseñar cuando la hoja pasó a mostrar la tarjeta.</item>

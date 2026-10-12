@@ -111,6 +111,50 @@ class SpokenCompositionTest {
     }
 
     @Test
+    fun `a stay is read however it is said, after its doorway or before it`() {
+        // The owner's own sentence (2026-10-12), which used to be written with only the arrival
+        // and "y llevar 10 minutos allí" left in the words.
+        val cases = mapOf(
+            "comprar pan al llegar a casa y llevar 10 minutos allí" to arrive(casa).copy(dwellMinutes = 10),
+            "comprar pan al llegar a casa y llevar diez minutos allí" to arrive(casa).copy(dwellMinutes = 10),
+            "comprar pan, al llegar a casa, y llevar 10 minutos allí" to arrive(casa).copy(dwellMinutes = 10),
+            "comprar pan al llegar a casa y llevar allí 10 minutos" to arrive(casa).copy(dwellMinutes = 10),
+            "comprar pan al llegar a casa y tras llevar 10 minutos allí" to arrive(casa).copy(dwellMinutes = 10),
+            "comprar pan al llegar a casa y estar 10 minutos allí" to arrive(casa).copy(dwellMinutes = 10),
+            "comprar pan al llegar a casa y pasar 10 minutos allí" to arrive(casa).copy(dwellMinutes = 10),
+            "comprar pan cuando llegue a casa y hayan pasado 10 minutos" to arrive(casa).copy(dwellMinutes = 10),
+            "comprar pan al llegar a casa pasados 10 minutos" to arrive(casa).copy(dwellMinutes = 10),
+            "comprar pan cuando llegue a casa y lleve media hora" to arrive(casa).copy(dwellMinutes = 30),
+            "comprar pan cuando lleve 10 minutos en casa" to arrive(casa).copy(dwellMinutes = 10),
+            "comprar pan tras estar una hora en el gimnasio" to arrive(gimnasio).copy(dwellMinutes = 60),
+            "comprar pan a los 10 minutos de llegar a casa" to arrive(casa).copy(dwellMinutes = 10),
+            "comprar pan 10 minutos después de llegar a casa" to arrive(casa).copy(dwellMinutes = 10),
+            "comprar pan media hora después de salir de la oficina" to leave(oficina).copy(dwellMinutes = 30),
+            "buy bread 10 minutes after I get home" to arrive(home).copy(dwellMinutes = 10),
+            "buy bread when I get home and have been there for 10 minutes" to arrive(home).copy(dwellMinutes = 10),
+        )
+        for ((sentence, rule) in cases) {
+            val spoken = read(sentence)
+            assertEquals(listOf(TriggerRule(rule)), spoken.rules, sentence)
+            assertTrue(spoken.text == "Comprar pan" || spoken.text == "Buy bread", "$sentence -> ${spoken.text}")
+        }
+    }
+
+    @Test
+    fun `staying and spending are the thing itself without an alli pointing back at a doorway`() {
+        assertEquals("Pasar 10 minutos estirando", read("pasar 10 minutos estirando mañana").text)
+        assertEquals("Correr y pasar 10 minutos estirando", read("correr y pasar 10 minutos estirando mañana").text)
+        // A stay with no doorway to stay at is not written by halves.
+        assertEquals(Heard.Why.PARTIAL, unsure("apagar el horno mañana y llevar 10 minutos allí"))
+    }
+
+    @Test
+    fun `a length nobody read is a doubt however its amount is said`() {
+        val heard = heard("comprar pan al llegar a casa y quedarme diez minutos") as Heard.Read
+        assertEquals(listOf("diez minutos"), heard.doubts.map { "comprar pan al llegar a casa y quedarme diez minutos".substring(it) })
+    }
+
+    @Test
     fun `days of the month beside a place fence it`() {
         assertEquals(listOf(TriggerRule(arrive(casa), listOf(Condition.OnMonthDays(setOf(1, 15))))), read("pagar el alquiler al llegar a casa los días 1 y 15").rules)
     }

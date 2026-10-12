@@ -337,15 +337,28 @@ private fun readOne(text: String, context: Context, fence: Boolean, partsAreWind
     // "Al llevar 10 minutos en casa" — the doorway and its rate in one breath, which is how the
     // app itself says it back ("al llevar 10 min en Casa").
     STAY_AT.find(words)?.let { m ->
-        val amount = amountIn(m.groupValues[1]) ?: return@let
-        val minutes = if (m.groupValues[2].startsWith("h")) amount * 60 else amount
+        val minutes = minutesOf(m, 1) ?: return@let
         val (place, end) = savedPlaceAt(words, m.range.last + 1, settings.savedPlaces) ?: return@let
-        val outside = m.groupValues[3].startsWith("fuera") || m.groupValues[3] == "away from"
+        val outside = m.groupValues[4].startsWith("fuera") || m.groupValues[4] == "away from"
         val rule = Trigger.Location(
             place.lat, place.lng, place.radiusM, if (outside) Presence.OUTSIDE else Presence.INSIDE, place.label,
             onCrossing = true, dwellMinutes = minutes, placeId = place.id.ifBlank { null },
         )
         return Said(Piece.When(rule), listOf(folded.original(m.range.first..end)))
+    }
+    // "A los 10 minutos de llegar a casa", "media hora después de salir del trabajo": the rate
+    // said first, then its doorway (0.185.0).
+    for (pattern in STAY_BEFORE) {
+        pattern.find(words)?.let { m ->
+            val minutes = minutesOf(m, 1) ?: minutesOf(m, 4) ?: return@let
+            val (place, end) = savedPlaceAt(words, m.range.last + 1, settings.savedPlaces) ?: return@let
+            val out = m.groupValues[7] in LEAVING
+            val rule = Trigger.Location(
+                place.lat, place.lng, place.radiusM, if (out) Presence.OUTSIDE else Presence.INSIDE, place.label,
+                onCrossing = true, dwellMinutes = minutes, placeId = place.id.ifBlank { null },
+            )
+            return Said(Piece.When(rule), listOf(folded.original(m.range.first..end)))
+        }
     }
     // "When I have been at Home for 10 min": the English the app says it back in, the place first.
     STAY_AT_EN.find(words)?.let { m ->
@@ -359,10 +372,8 @@ private fun readOne(text: String, context: Context, fence: Boolean, partsAreWind
         )
         return Said(Piece.When(rule), listOf(folded.original(m.range.first..end + rate.range.last + 1)))
     }
-    STAY.find(words)?.let { m ->
-        val amount = amountIn(m.groupValues[1]) ?: return@let
-        val minutes = if (m.groupValues[2].startsWith("h")) amount * 60 else amount
-        return said(Piece.Stay(minutes), m)
+    for (pattern in STAY) {
+        pattern.find(words)?.let { m -> return said(Piece.Stay(minutesOf(m, 1) ?: return@let), m) }
     }
     for ((pattern, kind) in if (fence) MOVING + MOVING_BARE else MOVING) pattern.find(words)?.let { return said(Piece.Fence(movingOf(kind)), it) }
     TIMER.find(words)?.let { m ->
@@ -581,8 +592,42 @@ private val DATE_SPANS: List<Regex> = listOf(
     Regex("\\bfrom the (\\d{1,2})(?:st|nd|rd|th)?(?: of $MONTH_WORDS_PATTERN)? (?:to|until) the (\\d{1,2})(?:st|nd|rd|th)? of $MONTH_WORDS_PATTERN\\b"),
 )
 
-/** "Al llevar 10 minutos en casa", "al llevar media hora fuera de la oficina". Groups: amount, unit, side. */
-private val STAY_AT = Regex("\\bal llevar ${AMOUNT_WORDS_PATTERN} (min|mins|minutos?|horas?) (en|dentro de|fuera de|fuera del)\\b")
+/**
+ * How long a doorway is to be stayed at: "10 minutos", "diez min", "una hora", "media hora".
+ * Three groups — the amount, its unit, and the half hour said as one — read by [minutesOf].
+ */
+private val LENGTH = "(?:${AMOUNT_WORDS_PATTERN} (min|mins|minutos?|minutes?|horas?|hours?)|(media hora|half an hour))"
+
+/** The minutes a [LENGTH] said, its groups starting at [group]; null when that one was not said. */
+private fun minutesOf(m: MatchResult, group: Int): Int? {
+    if (m.groupValues[group + 2].isNotEmpty()) return 30
+    val amount = amountIn(m.groupValues[group]) ?: return null
+    return if (m.groupValues[group + 1].startsWith("h")) amount * 60 else amount
+}
+
+/**
+ * "Al llevar 10 minutos en casa", "cuando lleve media hora fuera de la oficina", "tras estar 10
+ * minutos en el gimnasio" (0.185.0). Groups: the [LENGTH] (three), the side.
+ */
+private val STAY_AT = Regex(
+    "\\b(?:al llevar|(?:cuando|en cuanto|una vez) (?:ya )?(?:lleve|este|haya estado)|(?:tras|despues de) (?:llevar|estar)) $LENGTH (en|dentro de|fuera de|fuera del)\\b",
+)
+
+/**
+ * The rate first, then its doorway: "a los 10 minutos de llegar a casa", "media hora después de
+ * salir del trabajo", "10 minutes after I get home" (0.185.0). Groups: a [LENGTH] (three) said
+ * after "a los", another said before "después", and the verb of the doorway.
+ */
+private val STAY_BEFORE: List<Regex> = listOf(
+    Regex(
+        "\\b(?:(?:a los|pasados|pasada|al cabo de|tras) $LENGTH|$LENGTH despues) de " +
+            "(llegar|volver|regresar|entrar|salir|irme|marcharme) (?:al|a|en|del|de)\\b",
+    ),
+    Regex("\\b$LENGTH()()() after (i (?:get|arrive|get back|come back)(?: (?:to|at|in))?|arriving (?:at|in)|i leave|leaving)\\b"),
+)
+
+/** The doorway verbs of [STAY_BEFORE] that are about going out. */
+private val LEAVING = setOf("salir", "irme", "marcharme", "i leave", "leaving")
 
 private val STAY_AT_EN = Regex("\\bwhen i (?:have |ve )?been (at|in|away from)\\b")
 private val STAY_FOR = Regex("^ for ${AMOUNT_WORDS_PATTERN} (min|mins|minutes?|hours?)\\b")
@@ -598,10 +643,19 @@ private val RANDOM = Regex(
         "(?: (?:entre (?:las? )?|between )$HOUR$MINS$QUAL (?:y|and) (?:las? )?$HOUR$MINS$QUAL)?$AFTER",
 )
 
-/** "Y cuando lleve diez minutos allí", "al llevar 10 minutos en casa", "after 10 minutes there". */
-private val STAY = Regex(
-    "\\b(?:(?:y )?(?:(?:cuando|en cuanto) )?(?:lleve|llevo|haya estado|haya pasado)|al llevar|after|once i ve been(?: there)? for) " +
-        "${AMOUNT_WORDS_PATTERN} (min|mins|minutos?|minutes?|horas?|hours?)(?: (?:alli|ahi|alla|dentro|fuera|there|inside|outside))?\\b",
+/**
+ * A rate for the doorway said before it: "y cuando lleve diez minutos allí", "y llevar 10 minutos
+ * allí", "pasados 10 minutos", "after 10 minutes there". "Estar" and "pasar" are also the thing
+ * itself ("pasar 10 minutos estirando"), so those only count with the "allí" that points back at
+ * the doorway. Groups: the [LENGTH] (three).
+ */
+private val STAY: List<Regex> = listOf(
+    Regex(
+        "\\b(?:(?:y )?(?:(?:cuando|en cuanto|una vez|tras|despues de) )?(?:ya )?(?:lleve|llevo|llevar|haya estado|haya pasado|hayan pasado)|" +
+            "al llevar|pasados|pasada|al cabo de|after|once i ve been(?: there)? for|(?:and )?(?:once |when )?(?:i ve |i have |have )?been there(?: for)?) " +
+            "(?:(?:alli|ahi|alla|ya) )?$LENGTH(?: (?:alli|ahi|alla|dentro|fuera|there|inside|outside))?\\b",
+    ),
+    Regex("\\b(?:y )?(?:(?:cuando|tras|despues de) )?(?:estar|este|pasar|pase) $LENGTH (?:alli|ahi|alla|dentro|fuera)\\b"),
 )
 
 /**

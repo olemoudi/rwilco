@@ -241,9 +241,9 @@ private fun doubtsIn(text: String, spans: List<IntRange>, whens: List<IntRange>)
 /** Only ever about time, left anywhere in the words. Folded. */
 private val DOUBTFUL = Regex(
     "\\b(?:temprano|pronto|luego|enseguida|en un rato|dentro de un rato|mas tarde|a primera hora|a ultima hora|y media|y cuarto|menos cuarto|en punto|" +
-        "(?:la )?(?:proxima|siguiente) vez|\\d+ (?:horas?|minutos?|min)|(?:una|dos|tres|media) horas?|medianoche|madrugada|" +
+        "(?:la )?(?:proxima|siguiente) vez|$AMOUNT_WORDS_PATTERN (?:horas?|minutos?|min)|media hora|medianoche|madrugada|" +
         "antes de|despues de|hasta que|desde que|en cuanto|cuando|mientras|todos los (?:dias|meses|anos)|todas las (?:semanas|mananas|tardes|noches)|" +
-        "later|soon|early|first thing|next time|half past|quarter (?:past|to)|o clock|and a half|\\d+ (?:hours?|minutes?)|midnight|" +
+        "later|soon|early|first thing|next time|half past|quarter (?:past|to)|o clock|and a half|$AMOUNT_WORDS_PATTERN (?:hours?|minutes?)|midnight|" +
         "before|after|until|when|while)\\b",
 )
 

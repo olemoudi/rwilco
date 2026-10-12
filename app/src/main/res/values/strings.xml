@@ -1830,6 +1830,13 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_185_0">
+
+        <item>Dictating “al llegar a casa y llevar 10 minutos allí” now asks for the ten minutes too: it used to save only the arrival, with “y llevar 10 minutos allí” left in the reminder’s text. The other ways of saying it are understood as well: “y estar 10 minutos allí”, “tras llevar media hora”, “cuando lleve 10 minutos en casa”, “a los 10 minutos de llegar a casa”, “10 minutos después de salir del trabajo”.</item>
+
+        <item>A length nobody read is now marked to be checked however its number is said: “diez minutos” as well as “10 minutos”.</item>
+
+    </string-array>
     <string-array name="whats_new_0_184_1">
 
         <item>Housekeeping, nothing you will see: the dictation sheet’s mic no longer keeps a “Created” drawing it stopped showing when the sheet began showing the card.</item>

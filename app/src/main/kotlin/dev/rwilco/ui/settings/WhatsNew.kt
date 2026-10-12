@@ -53,6 +53,7 @@ data class Release(
  * brought the notes back, so a phone that last saw 0.20.0 is told once what happened since.
  */
 val RELEASES: List<Release> = listOf(
+    Release(versionCode = 245, name = "0.185.0", bulletsRes = R.array.whats_new_0_185_0),
     Release(versionCode = 244, name = "0.184.1", bulletsRes = R.array.whats_new_0_184_1),
     Release(versionCode = 243, name = "0.184.0", bulletsRes = R.array.whats_new_0_184_0),
     Release(versionCode = 242, name = "0.183.1", bulletsRes = R.array.whats_new_0_183_1),
