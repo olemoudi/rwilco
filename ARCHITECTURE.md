@@ -1638,6 +1638,17 @@ loud what DST and a change of zone do to a landing.
   again, a doubt; amounts that are articles ("take a minute") are no doubts. Marks no longer span
   struck words (`inHeard` gives pieces), and the editor gets everything said when something was
   taken out, since it shows nothing struck.
+- **The ear listens through the pauses itself where it can (0.188.0).** Restarting the recognizer
+  after each pause (0.186.0) loses the words said while it starts again — the owner's "y llevar 10
+  minutos allí" kept arriving as the arrival alone. From API 33 `PlatformListener` asks for a
+  segmented session (`EXTRA_SEGMENTED_SESSION` by `EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS`, five
+  minutes): stretches come through `onSegmentResults` and the session ends with
+  `onEndOfSegmentedSession` once `stop()` asks. A recognizer that ignores it stops at the pause and
+  is restarted as before; one that fails before it is even ready is not asked again by that
+  listener. Each listening ends with a `voice` diagnostics note — recognizer, mode (`segmented`,
+  `restarting`, `segments asked, none given`), rounds, segments, errors — never the words, so the
+  owner's report says which mode his phone runs. The grammar also reads what a lost start leaves:
+  "10 minutos allí" after a doorway, "lleva", "estar allí 10 minutos".
 - **A held stepper keeps counting (0.51.0).** A step is one unit on purpose (three minutes has
   to be sayable, and the countdown sheet says why), and the price was seventeen taps from thirty
   to forty-seven. `Stepper` repeats after `Motion.holdRepeatDelay`, quickening to

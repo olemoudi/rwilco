@@ -73,6 +73,7 @@ class PatternsOnDeviceTest {
         for (text in listOf(
             "comprar pan al llegar a casa y llevar 10 minutos allí", "a los 10 minutos de llegar a casa", "media hora después de salir de casa",
             "cuando lleve 10 minutos en casa", "y estar 10 minutos allí", "10 minutes after I get home",
+            "al llegar a casa y estar allí 10 minutos", "al llegar a casa 10 minutos allí", "cuando llegue a casa y lleva 10 minutos allí",
         )) {
             hear(text, now, zone, settings)
         }

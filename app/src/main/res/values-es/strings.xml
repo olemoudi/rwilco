@@ -1819,6 +1819,15 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_188_0">
+
+        <item>En Android 13 o posterior, el dictado pide al móvil que escuche a través de tus pausas por sí mismo, en lugar de volver a abrir el micrófono tras cada una: ya no se pierde lo que dices mientras se volvía a abrir. Eso era lo que se comía «y llevar 10 minutos allí».</item>
+
+        <item>También se entienden «al llegar a casa, 10 minutos allí», «y lleva 10 minutos allí» y «y estar allí 10 minutos».</item>
+
+        <item>El informe de diagnóstico dice ahora cómo ha escuchado tu móvil (nunca lo que has dicho), para seguir afinándolo.</item>
+
+    </string-array>
     <string-array name="whats_new_0_187_1">
 
         <item>El dictado aguanta los tropiezos del propio reconocimiento: una pausa ya no acaba en «el reconocimiento de voz no funciona», y si de verdad se rompe después de que hayas dicho algo, el micrófono se pone en pausa con tus palabras guardadas.</item>

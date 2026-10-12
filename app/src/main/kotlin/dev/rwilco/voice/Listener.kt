@@ -10,6 +10,7 @@ import android.os.SystemClock
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import dev.rwilco.diag.Diag
 import java.util.Locale
 
 /** What a [Listener] says while somebody speaks. */
@@ -65,10 +66,12 @@ object VoiceInput {
  * goes to the ordinary recognizer instead, told to prefer staying offline; that is also the only
  * one there is below API 31.
  *
- * Android's recognizer hears one stretch and stops at the first pause; this one starts it again
- * straight away (0.186.0), so a pause only closes a stretch and nobody has to say it all in one
- * breath. Words said in the moment it takes to start again can be lost, which is why the sheet
- * shows what it has heard as it hears it.
+ * Android's recognizer hears one stretch and stops at the first pause. From API 33 it can be asked
+ * to listen *through* the pauses itself — a segmented session, each stretch handed over as it
+ * closes (0.188.0) — and that is asked first: nothing to start again, so nothing lost in the
+ * moment it takes. A recognizer that does not do it simply stops at the pause, and then it is
+ * started again straight away (0.186.0); one that refuses it is not asked again. Either way a
+ * pause only closes a stretch. How it went is noted for the diagnostics report, never the words.
  */
 class PlatformListener(private val context: Context) : Listener {
     private var recognizer: SpeechRecognizer? = null
@@ -87,25 +90,38 @@ class PlatformListener(private val context: Context) : Listener {
      */
     private var noPack = false
 
+    /** The recognizer failed a segmented session before it was even ready: rounds of one stretch from then on. */
+    private var noSegments = false
+
     private val main = Handler(Looper.getMainLooper())
     private var onEvent: ((VoiceEvent) -> Unit)? = null
 
     /** [stop] was asked: the stretch being heard is the last. */
     private var finishing = false
 
-    /** Whether a stretch is being heard now, rather than the ear between two of them. */
+    /** Whether a round is running now, rather than the ear between two of them. */
     private var hearing = false
+
+    /** Whether this round's recognizer said it was ready: an error before that is about how it was asked. */
+    private var ready = false
     private var startedAt = 0L
 
     /** Stretches in a row that ended at once with nothing in them: a recognizer that cannot listen, not a quiet room. */
     private var hollow = 0
+
+    /** What this listening was like, for the diagnostics note: never the words. */
+    private var how = How()
+
+    private class How(var onDevice: Boolean = false, var segments: Int = 0, var rounds: Int = 0, val errors: MutableList<Int> = mutableListOf())
 
     override fun start(locale: Locale, onEvent: (VoiceEvent) -> Unit) {
         this.onEvent = onEvent
         finishing = false
         hollow = 0
         val onDevice = !noPack && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
+        how = How(onDevice = onDevice)
         if (!onDevice && !SpeechRecognizer.isRecognitionAvailable(context)) {
+            Diag.note("voice", "ear: no recognizer")
             onEvent(VoiceEvent.Failed(SpeechRecognizer.ERROR_CLIENT))
             return
         }
@@ -120,13 +136,38 @@ class PlatformListener(private val context: Context) : Listener {
             SpeechRecognizer.createSpeechRecognizer(context)
         }
         recognizer = ear
-        val intent = intentFor(locale, preferOffline = !onDevice)
+        how.onDevice = onDevice
+        val segmented = !noSegments && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+        val intent = intentFor(locale, preferOffline = !onDevice, segmented)
         ear.setRecognitionListener(object : RecognitionListener {
-            override fun onReadyForSpeech(params: Bundle?) = onEvent(VoiceEvent.Ready)
+            override fun onReadyForSpeech(params: Bundle?) {
+                ready = true
+                onEvent(VoiceEvent.Ready)
+            }
             override fun onRmsChanged(rmsdB: Float) = onEvent(VoiceEvent.Level(rmsdB))
             override fun onPartialResults(partialResults: Bundle?) {
                 firstOf(partialResults)?.let { onEvent(VoiceEvent.Partial(it)) }
             }
+
+            // A segmented session (API 33): each stretch as a pause closes it, the session going
+            // on, and its end once asked for — or once the recognizer decides it has listened long
+            // enough, when a new one is started as after any stretch.
+            override fun onSegmentResults(segmentResults: Bundle) {
+                if (!hearing) return
+                how.segments++
+                onEvent(VoiceEvent.Segment(firstOf(segmentResults).orEmpty()))
+            }
+            override fun onEndOfSegmentedSession() {
+                if (!hearing) return
+                hearing = false
+                if (finishing) {
+                    onEvent(VoiceEvent.Final(""))
+                    noteHow("finished")
+                } else {
+                    again(ear, intent, empty = false, SpeechRecognizer.ERROR_NO_MATCH)
+                }
+            }
+
             override fun onResults(results: Bundle?) {
                 // A stretch closes once: a recognizer that answers twice (results, then a stray
                 // "no match") would otherwise start two rounds on top of each other.
@@ -135,6 +176,7 @@ class PlatformListener(private val context: Context) : Listener {
                 val text = firstOf(results).orEmpty()
                 if (finishing) {
                     onEvent(VoiceEvent.Final(text))
+                    noteHow("finished")
                 } else {
                     onEvent(VoiceEvent.Segment(text))
                     again(ear, intent, empty = text.isEmpty(), SpeechRecognizer.ERROR_NO_MATCH)
@@ -143,6 +185,7 @@ class PlatformListener(private val context: Context) : Listener {
             override fun onError(error: Int) {
                 if (!hearing) return
                 hearing = false
+                how.errors += error
                 if (onDevice && error in LANGUAGE_ERRORS) {
                     // The phone's own model has no pack for this language yet: ask for one, and
                     // let this sentence go to the recognizer that has it.
@@ -152,6 +195,11 @@ class PlatformListener(private val context: Context) : Listener {
                     noPack = true
                     recognizer = null
                     listen(locale, onEvent, onDevice = false)
+                } else if (segmented && !ready && !finishing) {
+                    // Refused before it was even ready: the way it was asked, not the room. Asked
+                    // the old way from now on, by a recognizer of its own.
+                    noSegments = true
+                    main.postDelayed({ if (recognizer === ear && !finishing) listen(locale, onEvent, onDevice) }, PASSING_DELAY_MS)
                 } else if (!finishing && error in QUIET) {
                     // Silence, or noise that was nobody speaking: somebody thinking. Listen on.
                     onEvent(VoiceEvent.Segment(""))
@@ -163,6 +211,7 @@ class PlatformListener(private val context: Context) : Listener {
                     again(ear, intent, empty = true, error) { listen(locale, onEvent, onDevice) }
                 } else {
                     onEvent(VoiceEvent.Failed(error))
+                    noteHow("failed")
                 }
             }
             override fun onBeginningOfSpeech() = Unit
@@ -175,12 +224,14 @@ class PlatformListener(private val context: Context) : Listener {
 
     private fun hear(ear: SpeechRecognizer, intent: Intent) {
         hearing = true
+        ready = false
         startedAt = SystemClock.elapsedRealtime()
+        how.rounds++
         ear.startListening(intent)
     }
 
     /**
-     * The next stretch, once the recognizer is out of its own callback. A recognizer that keeps
+     * The next round, once the recognizer is out of its own callback. A recognizer that keeps
      * ending at once with nothing heard is broken, not listening to a quiet room: that is said,
      * rather than asked again for ever.
      */
@@ -188,6 +239,7 @@ class PlatformListener(private val context: Context) : Listener {
         hollow = if (empty && SystemClock.elapsedRealtime() - startedAt < HOLLOW_MS) hollow + 1 else 0
         if (hollow >= MAX_HOLLOW) {
             onEvent?.invoke(VoiceEvent.Failed(if (error in QUIET) SpeechRecognizer.ERROR_CLIENT else error))
+            noteHow("hollow")
             return
         }
         val next = Runnable { if (recognizer === ear && !finishing && !hearing) anew?.invoke() ?: hear(ear, intent) }
@@ -196,11 +248,17 @@ class PlatformListener(private val context: Context) : Listener {
 
     override fun stop() {
         finishing = true
-        // Between two stretches there is nothing to wait for: the last one has already come.
-        if (hearing) recognizer?.stopListening() else onEvent?.invoke(VoiceEvent.Final(""))
+        // Between two rounds there is nothing to wait for: the last stretch has already come.
+        if (hearing) {
+            recognizer?.stopListening()
+        } else {
+            onEvent?.invoke(VoiceEvent.Final(""))
+            noteHow("finished")
+        }
     }
 
     override fun cancel() {
+        if (onEvent != null && how.rounds > 0 && !finishing) noteHow("closed")
         main.removeCallbacksAndMessages(null)
         onEvent = null
         hearing = false
@@ -210,12 +268,36 @@ class PlatformListener(private val context: Context) : Listener {
         fetching = null
     }
 
-    private fun intentFor(locale: Locale, preferOffline: Boolean) = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+    /**
+     * How the listening went, in the shape the diagnostics report keeps: which recognizer, whether
+     * it listened through the pauses itself (stretches handed over in one session) or was started
+     * again after each, and the errors it said on the way. Never what was said.
+     */
+    private fun noteHow(end: String) {
+        val mode = when {
+            how.segments > 0 -> "segmented"
+            noSegments || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU -> "restarting"
+            else -> "segments asked, none given"
+        }
+        Diag.note(
+            "voice",
+            "ear: ${if (how.onDevice) "on-device" else "service"}, $mode, ${how.rounds} round(s), ${how.segments} segment(s)" +
+                (if (how.errors.isEmpty()) "" else ", errors ${how.errors.joinToString(",")}") + ", $end",
+        )
+    }
+
+    private fun intentFor(locale: Locale, preferOffline: Boolean, segmented: Boolean) = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
         putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
         putExtra(RecognizerIntent.EXTRA_LANGUAGE, locale.toLanguageTag())
         putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
         putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
         if (preferOffline) putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+        if (segmented && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Segmented by length: the session lasts at least this long, handing over a stretch at
+            // each pause, and ends sooner only when asked to. The length is the historical long.
+            putExtra(RecognizerIntent.EXTRA_SEGMENTED_SESSION, RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, SEGMENTED_SESSION_MS)
+        }
     }
 
     private fun firstOf(results: Bundle?): String? =
@@ -242,5 +324,11 @@ class PlatformListener(private val context: Context) : Listener {
 
         /** How many of those in a row are a broken recognizer. */
         const val MAX_HOLLOW = 5
+
+        /**
+         * How long a segmented session is asked to last: longer than any dictation, since the
+         * sheet itself pauses the microphone after half a minute with nothing new said.
+         */
+        const val SEGMENTED_SESSION_MS = 300_000L
     }
 }

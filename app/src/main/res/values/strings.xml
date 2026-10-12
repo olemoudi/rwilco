@@ -1834,6 +1834,15 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_188_0">
+
+        <item>On Android 13 and later, dictation asks the phone to listen through your pauses by itself, instead of starting the microphone again after each one: nothing you say while it would have been starting again is lost. That is what kept losing “y llevar 10 minutos allí”.</item>
+
+        <item>“Al llegar a casa, 10 minutos allí”, “y lleva 10 minutos allí” and “y estar allí 10 minutos” are understood too.</item>
+
+        <item>The diagnostics report now says how your phone listened (never what you said), to keep improving it.</item>
+
+    </string-array>
     <string-array name="whats_new_0_187_1">
 
         <item>Dictation keeps going through the recognizer’s own hiccups: a pause no longer turns into “speech recognition isn’t working”, and if it really breaks after you’ve said something, the microphone pauses with your words kept.</item>

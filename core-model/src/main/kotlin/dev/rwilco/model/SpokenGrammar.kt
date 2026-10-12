@@ -380,7 +380,7 @@ private fun readOne(text: String, whole: String, context: Context, fence: Boolea
             // itself, left in the words (a doubt), not a sentence nobody can write.
             val at = folded.original(m.range).first
             if (at !in whole.indices || !saysPlace(whole.substring(0, at))) return@let
-            return said(Piece.Stay(minutesOf(m, 1) ?: return@let), m)
+            return said(Piece.Stay(minutesIn(m) ?: return@let), m)
         }
     }
     for ((pattern, kind) in if (fence) MOVING + MOVING_BARE else MOVING) pattern.find(words)?.let { return said(Piece.Fence(movingOf(kind)), it) }
@@ -609,6 +609,9 @@ private fun saysPlace(text: String): Boolean = Words.of(text).text.let { mention
  */
 private val LENGTH = "(?:${AMOUNT_WORDS_PATTERN} (min|mins|minutos?|minutes?|horas?|hours?)|(media hora|half an hour))"
 
+/** The minutes of the first [LENGTH] that was said in [m], whichever of its lengths it was. */
+private fun minutesIn(m: MatchResult): Int? = (1 until m.groupValues.size - 2 step 3).firstNotNullOfOrNull { minutesOf(m, it) }
+
 /** The minutes a [LENGTH] said, its groups starting at [group]; null when that one was not said. */
 private fun minutesOf(m: MatchResult, group: Int): Int? {
     if (m.groupValues[group + 2].isNotEmpty()) return 30
@@ -662,11 +665,14 @@ private val RANDOM = Regex(
  */
 private val STAY: List<Regex> = listOf(
     Regex(
-        "\\b(?:(?:y )?(?:(?:cuando|en cuanto|una vez|tras|despues de) )?(?:ya )?(?:lleve|llevo|llevar|haya estado|haya pasado|hayan pasado)|" +
+        "\\b(?:(?:y )?(?:(?:cuando|en cuanto|una vez|tras|despues de) )?(?:ya )?(?:lleve|lleves|llevo|lleva|llevas|llevamos|llevar|haya estado|haya pasado|hayan pasado)|" +
             "al llevar|pasados|pasada|al cabo de|tras|despues de|after|once i ve been(?: there)? for|(?:and )?(?:once |when )?(?:i ve |i have |have )?been there(?: for)?) " +
             "(?:(?:alli|ahi|alla|ya) )?$LENGTH(?: (?:alli|ahi|alla|dentro|fuera|there|inside|outside))?\\b",
     ),
-    Regex("\\b(?:y )?(?:(?:cuando|tras|despues de) )?(?:estar|este|pasar|pase) $LENGTH (?:alli|ahi|alla|dentro|fuera)\\b"),
+    Regex("\\b(?:y )?(?:(?:cuando|tras|despues de) )?(?:estar|este|pasar|pase)(?: (?:alli|ahi|alla) $LENGTH| $LENGTH (?:alli|ahi|alla|dentro|fuera))\\b"),
+    // The length alone, pointed back at the doorway: "al llegar a casa, diez minutos allí" — and
+    // what is left of "y llevar 10 minutos allí" when its first words were lost to a pause (0.188.0).
+    Regex("\\b(?:y )?$LENGTH (?:alli|ahi|alla)\\b"),
 )
 
 /**

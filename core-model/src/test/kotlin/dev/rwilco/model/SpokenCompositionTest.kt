@@ -132,6 +132,12 @@ class SpokenCompositionTest {
             "comprar pan media hora después de salir de la oficina" to leave(oficina).copy(dwellMinutes = 30),
             "buy bread 10 minutes after I get home" to arrive(home).copy(dwellMinutes = 10),
             "buy bread when I get home and have been there for 10 minutes" to arrive(home).copy(dwellMinutes = 10),
+            // 0.188.0: the third person a recognizer may write, the "allí" before the length, and
+            // the length alone pointed back at the doorway — all that is left when "y llevar" was lost.
+            "comprar pan cuando llegue a casa y lleva 10 minutos allí" to arrive(casa).copy(dwellMinutes = 10),
+            "comprar pan al llegar a casa y estar allí 10 minutos" to arrive(casa).copy(dwellMinutes = 10),
+            "comprar pan al llegar a casa 10 minutos allí" to arrive(casa).copy(dwellMinutes = 10),
+            "comprar pan al llegar a casa, diez minutos ahí" to arrive(casa).copy(dwellMinutes = 10),
         )
         for ((sentence, rule) in cases) {
             val spoken = read(sentence)
@@ -152,6 +158,7 @@ class SpokenCompositionTest {
         assertEquals("Llamar a Juan y pasar 10 minutos fuera con el perro", read("llamar a Juan mañana a las 9 y pasar 10 minutos fuera con el perro").text)
         assertEquals("Salir a correr y estar media hora fuera", read("mañana a las 7 salir a correr y estar media hora fuera").text)
         assertEquals("Sacar la tarta pasados diez minutos", read("mañana a las cinco sacar la tarta pasados diez minutos").text)
+        assertEquals("Dejar el coche 10 minutos allí", read("mañana dejar el coche 10 minutos allí").text)
     }
 
     @Test
