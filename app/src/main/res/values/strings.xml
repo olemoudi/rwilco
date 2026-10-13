@@ -130,7 +130,7 @@
     <string name="voice_reread">Read it again</string>
     <string name="voice_preparing">Getting the microphone ready…</string>
     <string name="voice_created_named">Created: %1$s</string>
-    <string name="home_dictate_tapped">Hold the bar to dictate</string>
+    <string name="home_dictate_tapped">Hold the microphone to dictate</string>
     <string name="voice_heard_touch">What I heard · tap a word to fix it</string>
     <string name="voice_touched">“%1$s”</string>
     <string name="voice_touch_write">Type it…</string>
@@ -1849,6 +1849,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_195_0">
+
+        <item>Dictation has moved from the bar at the top of Home to a floating microphone button right beside “New”, within reach of your thumb. Hold it to dictate, as before.</item>
+
+    </string-array>
     <string-array name="whats_new_0_194_0">
 
         <item>The card a “Done” from the notifications leaves is now one minimized line with just the reminder’s name, and it goes after 30 seconds instead of a minute. Expand the line to find “Undo”.</item>

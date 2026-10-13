@@ -347,47 +347,46 @@ class HomeStateTest {
             ),
             tags = emptyList(),
         )
-        // Nothing above the list but the door to dictating (0.176.0): heading, a, b, heading, c.
-        assertEquals(1, homeCardIndex(state, "a", strip = false, pinned = false, voiceRow = false))
-        assertEquals(2, homeCardIndex(state, "a", strip = false, pinned = false))
-        assertEquals(3, homeCardIndex(state, "b", strip = false, pinned = false))
-        assertEquals(5, homeCardIndex(state, "c", strip = false, pinned = false))
+        // Nothing above the list (the door to dictating moved beside "Nuevo" in 0.195.0): heading, a, b, heading, c.
+        assertEquals(1, homeCardIndex(state, "a", strip = false, pinned = false))
+        assertEquals(2, homeCardIndex(state, "b", strip = false, pinned = false))
+        assertEquals(4, homeCardIndex(state, "c", strip = false, pinned = false))
         assertNull(homeCardIndex(state, "nobody", strip = false, pinned = false))
 
         // Each thing above the list pushes everything down by exactly one.
-        assertEquals(3, homeCardIndex(state, "a", strip = true, pinned = false))
-        assertEquals(3, homeCardIndex(state, "a", strip = false, pinned = true))
-        assertEquals(4, homeCardIndex(state, "a", strip = true, pinned = true))
+        assertEquals(2, homeCardIndex(state, "a", strip = true, pinned = false))
+        assertEquals(2, homeCardIndex(state, "a", strip = false, pinned = true))
+        assertEquals(3, homeCardIndex(state, "a", strip = true, pinned = true))
         val withTags = state.copy(tags = listOf(TagFilter.Untagged))
-        assertEquals(3, homeCardIndex(withTags, "a", strip = false, pinned = false))
+        assertEquals(2, homeCardIndex(withTags, "a", strip = false, pinned = false))
         // The "deleted · undo" row sits under the tags and above the cards while it lasts.
-        assertEquals(4, homeCardIndex(withTags, "a", strip = false, pinned = false, undoRow = true))
+        assertEquals(3, homeCardIndex(withTags, "a", strip = false, pinned = false, undoRow = true))
         // The row of chips is also drawn with no chip on it — the door to the panel, for tags
         // with nothing open to filter — and the screen says so rather than the chips deciding.
-        assertEquals(3, homeCardIndex(state, "a", strip = false, pinned = false, tagsRow = true))
-        assertEquals(2, homeCardIndex(withTags, "a", strip = false, pinned = false, tagsRow = false))
+        assertEquals(2, homeCardIndex(state, "a", strip = false, pinned = false, tagsRow = true))
+        assertEquals(1, homeCardIndex(withTags, "a", strip = false, pinned = false, tagsRow = false))
         // The hero is lifted out of its section but it is still a row in the same column, and a
         // list scrolled well down has it off the top — which is where an edit that gives a
         // reminder the soonest moment on the phone sends it.
         val withHero = withTags.copy(hero = HeroUi(card("hero"), Instant.EPOCH))
-        assertEquals(2, homeCardIndex(withHero, "hero", strip = false, pinned = false))
-        assertEquals(4, homeCardIndex(withHero, "a", strip = false, pinned = false))
+        assertEquals(1, homeCardIndex(withHero, "hero", strip = false, pinned = false))
+        assertEquals(3, homeCardIndex(withHero, "a", strip = false, pinned = false))
         // The routine rows sit under everything above the list and over the hero — one row
         // when nothing is owed, and one per overdue routine when something is.
-        assertEquals(3, homeCardIndex(withHero, "hero", strip = false, pinned = false, routinesRows = 1))
-        assertEquals(5, homeCardIndex(withHero, "a", strip = false, pinned = false, routinesRows = 1))
-        assertEquals(7, homeCardIndex(withHero, "a", strip = true, pinned = false, undoRow = true, routinesRows = 1))
-        assertEquals(7, homeCardIndex(withHero, "a", strip = false, pinned = false, routinesRows = 3), "three overdue push it three")
+        assertEquals(2, homeCardIndex(withHero, "hero", strip = false, pinned = false, routinesRows = 1))
+        assertEquals(4, homeCardIndex(withHero, "a", strip = false, pinned = false, routinesRows = 1))
+        assertEquals(6, homeCardIndex(withHero, "a", strip = true, pinned = false, undoRow = true, routinesRows = 1))
+        assertEquals(6, homeCardIndex(withHero, "a", strip = false, pinned = false, routinesRows = 3), "three overdue push it three")
         // The "esperando respuesta" card is one row above everything, however many things are
         // on it: the rows live inside the one card.
-        assertEquals(3, homeCardIndex(withHero, "hero", strip = false, pinned = false, waitingRow = true))
-        assertEquals(5, homeCardIndex(withHero, "a", strip = false, pinned = false, waitingRow = true))
+        assertEquals(2, homeCardIndex(withHero, "hero", strip = false, pinned = false, waitingRow = true))
+        assertEquals(4, homeCardIndex(withHero, "a", strip = false, pinned = false, waitingRow = true))
         val withWaiting = withHero.copy(waiting = listOf(WaitingUi("w1", "w", Instant.EPOCH, false), WaitingUi("w2", "w", Instant.EPOCH, false)))
-        assertEquals(3, homeCardIndex(withWaiting, "hero", strip = false, pinned = false), "two things waiting, still one card")
+        assertEquals(2, homeCardIndex(withWaiting, "hero", strip = false, pinned = false), "two things waiting, still one card")
         // The line of encouragement sits under the hero: the hero stays where it was, and the
         // cards under it move down by one.
-        assertEquals(2, homeCardIndex(withHero, "hero", strip = false, pinned = false, cheerRow = true))
-        assertEquals(5, homeCardIndex(withHero, "a", strip = false, pinned = false, cheerRow = true))
+        assertEquals(1, homeCardIndex(withHero, "hero", strip = false, pinned = false, cheerRow = true))
+        assertEquals(4, homeCardIndex(withHero, "a", strip = false, pinned = false, cheerRow = true))
     }
 
     @Test

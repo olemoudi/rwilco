@@ -126,7 +126,7 @@
     <string name="voice_reread">Volver a leer</string>
     <string name="voice_preparing">Preparando el micrófono…</string>
     <string name="voice_created_named">Creado: %1$s</string>
-    <string name="home_dictate_tapped">Mantén pulsada la barra para dictar</string>
+    <string name="home_dictate_tapped">Mantén pulsado el micrófono para dictar</string>
     <string name="voice_heard_touch">Lo que he oído · toca una palabra para corregirla</string>
     <string name="voice_touched">«%1$s»</string>
     <string name="voice_touch_write">Escribir…</string>
@@ -1834,6 +1834,11 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_195_0">
+
+        <item>Dictar ya no es la barra de arriba del inicio: ahora es un botón flotante con el micrófono justo al lado de «Nuevo», al alcance del pulgar. Se mantiene pulsado para dictar, como antes.</item>
+
+    </string-array>
     <string-array name="whats_new_0_194_0">
 
         <item>La tarjeta que deja un «Hecho» desde las notificaciones ahora es una sola línea minimizada, solo con el nombre del recordatorio, y se va a los 30 segundos en vez de al minuto. Despliega la línea para ver «Deshacer».</item>

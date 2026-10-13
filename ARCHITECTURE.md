@@ -1433,9 +1433,10 @@ loud what DST and a change of zone do to a landing.
   machine; `HomeViewModel.fromVoice` writes or says why not, and `preview` gives the sheet the
   reading as the words arrive, in the editor's own coloured sentence. Written → "Creado" with
   Deshacer/Editar in the sheet for four seconds; anything else → the editor with the words and a
-  line saying why. Three ways in: a full-width row at the top of Home **held for `HOLD_MILLIS`**
-  like "hecho" (`VoiceDoor`, the owner's call — a microphone must not open under a scrolling
-  thumb), the "Dictar" launcher shortcut (`ACTION_DICTATE`; it costs the preset shortcuts one
+  line saying why. Three ways in: a floating microphone button beside "Nuevo" **held for
+  `HOLD_MILLIS`** like "hecho" (`VoiceDoor`, the owner's call — a microphone must not open under
+  a resting thumb; a full-width row at the top of Home from 0.176.0, moved in 0.195.0 so the left
+  thumb reaches it with the phone in the left hand), the "Dictar" launcher shortcut (`ACTION_DICTATE`; it costs the preset shortcuts one
   slot, `STATIC_SHORTCUTS`), and a 2×1 widget that shrinks to the mic alone (`DictateWidget`,
   a tap: a launcher cannot report a hold). `RECORD_AUDIO` is asked on first use. `DiagLog`
   notes the shape of each outcome under `voice`, never the words. `SpokenTest`, `VoiceStepTest`,

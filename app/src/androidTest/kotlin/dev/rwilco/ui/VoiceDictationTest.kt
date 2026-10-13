@@ -8,6 +8,7 @@ import android.os.LocaleList
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.lifecycle.Lifecycle
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -138,7 +139,7 @@ class VoiceDictationTest {
 
     /** The click a screen reader gives every hold in the app. */
     private fun open() {
-        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.home_dictate_hold)).fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(30_000) { rule.onAllNodesWithContentDescription(s(R.string.home_dictate)).fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithContentDescription(s(R.string.home_dictate)).performSemanticsAction(SemanticsActions.OnClick)
     }
 
@@ -208,7 +209,7 @@ class VoiceDictationTest {
     @Test
     fun aTapOnTheDoorIsNotEnough() {
         sentence = "comprar pan cuando llegue a casa"
-        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.home_dictate_hold)).fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(30_000) { rule.onAllNodesWithContentDescription(s(R.string.home_dictate)).fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithContentDescription(s(R.string.home_dictate)).performClick()
         rule.waitForIdle()
         assertEquals(0, rule.onAllNodesWithText(s(R.string.voice_listening)).fetchSemanticsNodes().size)
@@ -222,7 +223,7 @@ class VoiceDictationTest {
         sentence = "comprar pan cuando llegue a casa"
         // Held as "hecho" is held: a finger kept down until the ring has filled and the sheet
         // has done its work, and only then lifted (the way `holdToAnswer` holds the alert).
-        rule.waitUntil(30_000) { rule.onAllNodesWithText(s(R.string.home_dictate_hold)).fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(30_000) { rule.onAllNodesWithContentDescription(s(R.string.home_dictate)).fetchSemanticsNodes().isNotEmpty() }
         val door = rule.onNodeWithContentDescription(s(R.string.home_dictate))
         door.performTouchInput { down(center) }
         finish()

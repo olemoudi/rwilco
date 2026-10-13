@@ -222,8 +222,8 @@ fun HomeScreen(
     val dismissedProblems by viewModel.dismissedAlertProblems.collectAsStateWithLifecycle()
     LaunchedEffect(readiness, placesReady) { viewModel.noteAlertReadiness(readiness, placesReady) }
     var choosing by rememberSaveable { mutableStateOf(false) }
-    // The dictation sheet (0.176.0), open from the row at the top, the launcher shortcut or the
-    // widget. Its state is the ViewModel's (see VoiceState for why), and read only inside
+    // The dictation sheet (0.176.0), open from the button beside "Nuevo", the launcher shortcut or
+    // the widget. Its state is the ViewModel's (see VoiceState for why), and read only inside
     // [DictationSheet]: the mic's level changes it a dozen times a second while listening, and
     // read here it would recompose the whole of Home with it.
     val micContext = LocalContext.current
@@ -654,20 +654,26 @@ fun HomeScreen(
                         contentDescription = stringResource(if (compactHome) R.string.home_compact_off else R.string.home_compact_on),
                     )
                 }
-                // **Not amber either** (0.68.0). It was the biggest amber thing on the screen,
-                // and amber means what fires next; the one primary action wears the inverted
-                // neutral every other primary in the app wears (EmptyState, "Hecho"), and the
-                // hero's glow is the only amber left to look for.
-                ExtendedFloatingActionButton(
-                    // Straight to the form unless there is a question worth asking; see [asksWhichKind].
-                    onClick = { fabHaptics.perform(HapticFeedbackType.Confirm); if (asksWhichKind) choosing = true else onNew() },
-                    icon = { Icon(Icons.Outlined.Add, contentDescription = null) },
-                    text = { Text(stringResource(R.string.home_new), style = MaterialTheme.typography.titleMedium) },
-                    containerColor = MaterialTheme.colorScheme.onSurface,
-                    contentColor = MaterialTheme.colorScheme.surface,
-                    shape = MaterialTheme.shapes.large,
-                    modifier = Modifier.heightIn(min = Tokens.sizes.primary),
-                )
+                // Saying a reminder, right beside writing one (0.195.0, the owner's: a floating
+                // button the left thumb reaches with the phone in the left hand). Held, as "hecho"
+                // is, so a thumb resting on the corner cannot open a microphone ([VoiceDoor]).
+                Row(horizontalArrangement = Arrangement.spacedBy(spacing.md), verticalAlignment = Alignment.CenterVertically) {
+                    VoiceDoor(onOpen = openDictation, onTapped = { snackbar.show(holdToDictate) })
+                    // **Not amber either** (0.68.0). It was the biggest amber thing on the screen,
+                    // and amber means what fires next; the one primary action wears the inverted
+                    // neutral every other primary in the app wears (EmptyState, "Hecho"), and the
+                    // hero's glow is the only amber left to look for.
+                    ExtendedFloatingActionButton(
+                        // Straight to the form unless there is a question worth asking; see [asksWhichKind].
+                        onClick = { fabHaptics.perform(HapticFeedbackType.Confirm); if (asksWhichKind) choosing = true else onNew() },
+                        icon = { Icon(Icons.Outlined.Add, contentDescription = null) },
+                        text = { Text(stringResource(R.string.home_new), style = MaterialTheme.typography.titleMedium) },
+                        containerColor = MaterialTheme.colorScheme.onSurface,
+                        contentColor = MaterialTheme.colorScheme.surface,
+                        shape = MaterialTheme.shapes.large,
+                        modifier = Modifier.heightIn(min = Tokens.sizes.primary),
+                    )
+                }
               }
             }
         },
@@ -815,14 +821,6 @@ fun HomeScreen(
             // **Above the strip, which is the only thing that was ever up here.** A permission
             // that might stop a future ring is a smaller matter than a ring that has already
             // happened and is standing there waiting to be answered.
-            // Saying a reminder, first of all and the whole width (0.176.0): held, as "hecho" is,
-            // so a thumb on its way to scrolling cannot open a microphone. Not while searching,
-            // as "Nuevo" is not: the thumb is on the keyboard.
-            if (!search.open) {
-                item(key = "voice", contentType = "voice") {
-                    VoiceDoor(onOpen = openDictation, onTapped = { snackbar.show(holdToDictate) })
-                }
-            }
             if (waitingShown) {
                 item(key = "waiting", contentType = "waiting") {
                     WaitingCard(
