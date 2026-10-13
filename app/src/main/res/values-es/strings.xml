@@ -1832,6 +1832,11 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_193_0">
+
+        <item>Un recordatorio a pantalla completa con el móvil bloqueado ya no deja la pantalla encendida todo el tiempo de espera del móvil: tras un minuto sin que nadie lo toque, vuelve la pantalla de bloqueo y la apaga. El recordatorio sigue esperando en las notificaciones, y al tocarlo vuelve la alerta.</item>
+
+    </string-array>
     <string-array name="whats_new_0_192_1">
 
         <item>Corregir tocando conserva las pausas con las que hablaste: después de «borra eso», arreglar una palabra ya no recupera lo que habías borrado.</item>

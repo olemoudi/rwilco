@@ -190,6 +190,18 @@ class AlertActivity : ComponentActivity() {
         hush(why)
     }
 
+    /**
+     * A minute untouched on a locked phone and the lock screen comes back, to put the display out
+     * (0.193.0). See [LockScreenReturn].
+     */
+    private val lockScreen = LockScreenReturn(this) {
+        // The noise's own minute ends at this same moment, and starts a frame later than this
+        // one: leaving first must not turn "the minute ran out" into a mere "the screen went
+        // away", which a rebuilt screen would take as a noise never answered ([hushedOnPurpose]).
+        if (noise) silence("the minute ran out")
+        Diag.note(TAG_DIAG, "r=${ringing.joinToString(",") { it.take(8) }} back to the lock screen: a minute untouched")
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // The manifest attributes cover the launch; these cover being re-shown while alive.
         setShowWhenLocked(true)
@@ -612,6 +624,17 @@ class AlertActivity : ComponentActivity() {
         // A second reminder firing while this one is up joins the screen; it does not swap the
         // words under somebody's thumb (sequential) or take the screen for itself (strips).
         arrived(intent, again = true)
+        lockScreen.restart()
+    }
+
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        lockScreen.restart()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        lockScreen.focusChanged(hasFocus)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {

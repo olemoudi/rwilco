@@ -40,6 +40,24 @@ import dev.rwilco.ui.theme.Tokens
  */
 class LockedAlertActivity : ComponentActivity() {
 
+    /** A minute untouched and the lock screen comes back, to put the display out (0.193.0). */
+    private val lockScreen = LockScreenReturn(this)
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        lockScreen.restart()
+    }
+
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        lockScreen.restart()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        lockScreen.focusChanged(hasFocus)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setShowWhenLocked(true)

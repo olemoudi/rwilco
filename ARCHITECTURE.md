@@ -3209,7 +3209,19 @@ loud what DST and a change of zone do to a landing.
   them re-alerting four times in half an hour. The report now says what the sound did: a `ring`
   line when it starts (the tone and how many times, vibration, speaker or headphones, the alarm
   volume), when it moves to the speaker, when the tone fails to play, and when it stops and why
-  (answered, silenced, a volume key, the round over, the minute run out, the screen gone). The two are one alarm, and they used to end a minute apart: the motor
+  (answered, silenced, a volume key, the round over, the minute run out, the screen gone).
+  **A locked phone gets its lock screen back after a minute untouched** (0.193.0,
+  `LockScreenReturn`, the owner's call: "nunca más de 1 minuto"). An activity shown over the
+  keyguard covers it, and the keyguard's own ~10 s timeout with it, so the display stayed up for
+  the phone's screen timeout — measured on the emulator with it at ten minutes: still lit at
+  200 s; with the return, dark at ~65 s. An app cannot turn a display off, so the alert steps out
+  of the way (`moveTaskToBack`) and the lock screen puts it out; the card stays in the shade, and
+  a tap on it, or the next reminder, brings the alert back to the front (both checked on the
+  emulator: the second one "joined the screen" and lit it). A touch, a key, or a window over it —
+  a sheet, a dialog, the shade, the bouncer, whose touches the activity never sees — starts the
+  minute over; an unlocked phone is left to its own timeout. The noise's minute ends at the same
+  moment, so leaving first silences it as "the minute ran out", not as a screen gone away.
+  The two are one alarm, and they used to end a minute apart: the motor
   stopped at its limit and the looping tone went on alone. Nobody answered in
   a minute because nobody is there, and a display lit at full brightness until somebody comes
   home costs more battery than everything else in this app together. The alert is still on the
