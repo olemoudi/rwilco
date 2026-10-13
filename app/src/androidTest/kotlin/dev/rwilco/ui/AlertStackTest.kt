@@ -196,7 +196,7 @@ class AlertStackTest {
         Thread.sleep(1_000)
         val manager = context.getSystemService(NotificationManager::class.java)
         val cards = manager.activeNotifications.filter {
-            it.notification.channelId == AlertNotifications.CHANNEL_NET &&
+            it.notification.channelId in setOf(AlertNotifications.CHANNEL_NET, AlertNotifications.CHANNEL_DONE) &&
                 it.notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.contains(text) == true
         }
         assertEquals("no card about «$text» in the shade", 0, cards.size)

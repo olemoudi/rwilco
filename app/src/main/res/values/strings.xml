@@ -902,6 +902,8 @@
     <string name="alert_missed_subtext">Did not ring on time</string>
     <string name="notif_channel_net">Safety net</string>
     <string name="notif_channel_net_description">A quiet word about a reminder that rang and was never answered.</string>
+    <string name="notif_channel_done">Done · undo</string>
+    <string name="notif_channel_done_description">The one-line card a “done” from the notifications leaves for half a minute, to take it back.</string>
     <string name="notif_channel_contact">Contacts</string>
     <string name="notif_channel_contact_description">A quiet card when it is a while since you spoke to somebody on your list. Never makes a sound.</string>
     <string name="notif_contact_title">Have you called %1$s?</string>
@@ -1847,6 +1849,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_194_0">
+
+        <item>The card a “Done” from the notifications leaves is now one minimized line with just the reminder’s name, and it goes after 30 seconds instead of a minute. Expand the line to find “Undo”.</item>
+
+    </string-array>
     <string-array name="whats_new_0_193_0">
 
         <item>A full-screen reminder on a locked phone no longer keeps the screen lit for your phone’s whole screen timeout: after a minute nobody has touched it, the lock screen comes back and turns it off. The reminder is still waiting in the notifications, and tapping it brings the alert back.</item>

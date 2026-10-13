@@ -617,7 +617,7 @@ class ReminderFiring(
         }
         Diag.note(TAG_DIAG, "r=${short(id)} dealt with on time, dated to its deadline $at${saidVia(via)}")
         val line = writeDated(reminder, at, now, ON_TIME_DETAIL)
-        if (notice) AlertNotifications.doneNotice(context, reminder, row, countedFrom = at.atZone(clock.zone))
+        if (notice) AlertNotifications.doneNotice(context, reminder, row)
         DatedDone(written = true, line = line)
     }
 

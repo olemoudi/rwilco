@@ -3,6 +3,7 @@ package dev.rwilco.notify
 import android.app.Notification
 import android.app.NotificationManager
 import android.content.Intent
+import androidx.core.app.NotificationCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.GrantPermissionRule
@@ -94,10 +95,25 @@ class UndoAndNetNotificationTest {
     fun aPlainHechoCanBeTakenBackFromTheCardItLeaves() {
         AlertNotifications.doneNotice(context, bins, row)
         Thread.sleep(600)
-        val card = cardsOn(AlertNotifications.CHANNEL_NET).single().notification
+        val card = cardsOn(AlertNotifications.CHANNEL_DONE).single().notification
         assertEquals(context.getString(R.string.notif_done_title_plain, bins.text), card.title())
         assertEquals(listOf(context.getString(R.string.common_undo)), card.words())
-        assertEquals("a minute, then it goes by itself", AlertNotifications.DONE_NOTICE_MS, card.timeoutAfter)
+        assertEquals("half a minute, then it goes by itself", 30_000L, card.timeoutAfter)
+    }
+
+    @Test
+    fun theUndoCardIsOneMinimizedLine() {
+        // 0.194.0, the owner's: "que salgan minimizadas y casi sin texto". Minimized is the
+        // channel's importance, and Android only minimizes a card that is not inside a bundle.
+        AlertNotifications.doneNotice(context, bins, row)
+        Thread.sleep(600)
+        val card = cardsOn(AlertNotifications.CHANNEL_DONE).single().notification
+        assertEquals(NotificationManager.IMPORTANCE_MIN, manager.getNotificationChannel(AlertNotifications.CHANNEL_DONE).importance)
+        // Out of the app's bundle. NotificationCompat files a silent card that has no group under
+        // its own "silent" key, which with no summary over it is shown as a card of its own.
+        assertEquals("out of the bundle", true, card.group in setOf(null, NotificationCompat.GROUP_KEY_SILENT))
+        assertEquals("the title is all it says", null, card.extras.getCharSequence(Notification.EXTRA_TEXT))
+        assertEquals("no tags", null, card.extras.getCharSequence(Notification.EXTRA_SUB_TEXT))
     }
 
     @Test
@@ -106,14 +122,14 @@ class UndoAndNetNotificationTest {
         // word still lands, and "Hechos" still has the reminder.
         AlertNotifications.doneNotice(context, bins, null)
         Thread.sleep(600)
-        val card = cardsOn(AlertNotifications.CHANNEL_NET).single().notification
+        val card = cardsOn(AlertNotifications.CHANNEL_DONE).single().notification
         assertEquals(emptyList<String>(), card.words())
     }
 
     @Test
-    fun aHechoFromTheShadeLeavesAMinutesUndo() {
+    fun aHechoFromTheShadeLeavesAHalfMinutesUndo() {
         // 0.129.0: the shade's "hecho" — the button on a ring's card, a contact's and a routine's
-        // question alike — leaves the undo card again, and for a minute. Found by its own words,
+        // question alike — leaves the undo card again, for a minute then, half of one since 0.194.0. Found by its own words,
         // so a net card about some other reminder cannot be mistaken for it; the title's wording
         // is the receiver's locale, so only the reminder's text is matched.
         val app = context.applicationContext as dev.rwilco.RwilcoApplication
@@ -125,7 +141,7 @@ class UndoAndNetNotificationTest {
                     .setAction(AlertActionReceiver.ACTION_DONE)
                     .setData(ReminderScheduler.reminderUri(ficus.id)),
             )
-            val about = { cardsOn(AlertNotifications.CHANNEL_NET).map { it.notification }.filter { ficus.text in it.title() } }
+            val about = { cardsOn(AlertNotifications.CHANNEL_DONE).map { it.notification }.filter { ficus.text in it.title() } }
             val deadline = System.currentTimeMillis() + 10_000
             while (about().isEmpty()) {
                 check(System.currentTimeMillis() < deadline) { "no undo card came" }
@@ -133,7 +149,7 @@ class UndoAndNetNotificationTest {
             }
             val card = about().single()
             assertEquals("one button, the undo", 1, card.actions.orEmpty().size)
-            assertEquals("a minute, then it goes by itself", AlertNotifications.DONE_NOTICE_MS, card.timeoutAfter)
+            assertEquals("half a minute, then it goes by itself", 30_000L, card.timeoutAfter)
         } finally {
             AlertNotifications.cancelReset(context, ficus.id)
             runBlocking { app.repository.delete(ficus.id) }
@@ -159,7 +175,7 @@ class UndoAndNetNotificationTest {
     }
 
     @Test
-    fun aSuHoraFromTheShadeCountsFromTheDeadlineAndLeavesAMinutesUndo() {
+    fun aSuHoraFromTheShadeCountsFromTheDeadlineAndLeavesAnUndo() {
         val app = context.applicationContext as dev.rwilco.RwilcoApplication
         // Weekly, written nine days ago and never done: due two days ago.
         val plants = car.copy(
@@ -179,7 +195,7 @@ class UndoAndNetNotificationTest {
                     .setAction(AlertActionReceiver.ACTION_DONE_ON_TIME)
                     .setData(ReminderScheduler.reminderUri(plants.id)),
             )
-            val about = { cardsOn(AlertNotifications.CHANNEL_NET).map { it.notification }.filter { plants.text in it.title() } }
+            val about = { cardsOn(AlertNotifications.CHANNEL_DONE).map { it.notification }.filter { plants.text in it.title() } }
             val deadline = System.currentTimeMillis() + 10_000
             while (about().isEmpty()) {
                 check(System.currentTimeMillis() < deadline) { "no undo card came" }

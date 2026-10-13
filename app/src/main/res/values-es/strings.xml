@@ -891,6 +891,8 @@
     <string name="alert_missed_subtext">No sonó a su hora</string>
     <string name="notif_channel_net">Red de seguridad</string>
     <string name="notif_channel_net_description">Un aviso discreto sobre un recordatorio que sonó y que nadie atendió.</string>
+    <string name="notif_channel_done">Hecho · deshacer</string>
+    <string name="notif_channel_done_description">La tarjeta de una línea que deja un «hecho» desde las notificaciones durante medio minuto, para deshacerlo.</string>
     <string name="notif_channel_contact">Contactos</string>
     <string name="notif_channel_contact_description">Una tarjeta discreta cuando hace tiempo que no hablas con alguien de tu lista. Nunca suena.</string>
     <string name="notif_contact_title">¿Has llamado a %1$s?</string>
@@ -1832,6 +1834,11 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_194_0">
+
+        <item>La tarjeta que deja un «Hecho» desde las notificaciones ahora es una sola línea minimizada, solo con el nombre del recordatorio, y se va a los 30 segundos en vez de al minuto. Despliega la línea para ver «Deshacer».</item>
+
+    </string-array>
     <string-array name="whats_new_0_193_0">
 
         <item>Un recordatorio a pantalla completa con el móvil bloqueado ya no deja la pantalla encendida todo el tiempo de espera del móvil: tras un minuto sin que nadie lo toque, vuelve la pantalla de bloqueo y la apaga. El recordatorio sigue esperando en las notificaciones, y al tocarlo vuelve la alerta.</item>

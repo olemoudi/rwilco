@@ -963,15 +963,19 @@ answer before (0.106.0).
 each a `SwipeableCard` like every card (done / delete), and counts the rest in one
 (`MoreOverdueRoutinesRow`); the door names the next one due; the count ticks by the minute. The
 widget's overdue count includes the routines owed; the launcher gives them `ROUTINE_SLOTS` (two)
-so the pinned presets keep theirs. The ask card and the undo cards join the app's bundle and
-wear `routineColor`. A "hecho" given from the shade gets an undo card
+so the pinned presets keep theirs. The ask card and the place's undo card join the app's bundle
+and wear `routineColor`. A "hecho" given from the shade gets an undo card
 (`AlertNotifications.doneNotice`) — every reminder's, not only a routine's, since 0.122.0: it is
 the door with no snackbar to take an answer back with. It went from the alert in 0.126.0
 and from the shade in 0.128.0 (a card saying "Hecho" after the thing just told "Hecho" repeats the
 answer) and came back to both in 0.129.0 **for one minute** (`DONE_NOTICE_MS`), at the owner's
 word: long enough for a mis-held thumb, gone before it is clutter. **The alert screen gave it up
 again in 0.162.0**, at his word too: its "Hecho" is a hold, and `AlertActivity` answers with
-`notice = false`; the shade's buttons (`AlertActionReceiver`) keep it. The card
+`notice = false`; the shade's buttons (`AlertActionReceiver`) keep it. **Since 0.194.0 it is
+half a minute and one line** (the owner's: "30 segs como máximo", "minimizadas y casi sin
+texto"): its own channel, `CHANNEL_DONE` at IMPORTANCE_MIN — the shade's "minimizar", nothing in
+the status bar — out of the bundle (Android does not minimize a child among ringing cards),
+and the title alone, no body and no tags. "Deshacer" is behind expanding the line. The card
 carries the **row as it stood** (`ReminderFiring.dismiss(notice = true)` reads it inside the same
 lock; `undoDismiss` writes it back), because a "hecho" writes nine columns in one statement and
 putting the anchor back alone is not an undo. It refuses a reminder deleted since (a card
@@ -2707,8 +2711,8 @@ loud what DST and a change of zone do to a landing.
   ring's card and the net's word about it, where "A su hora" takes the **second snooze's
   place** (three actions is the cap). A card is fixed when it goes out, so pressed a whole span
   later it is refused and a toast says why (`AlertActionReceiver.ACTION_DONE_ON_TIME`), rather
-  than the button doing nothing. From the shade and the alert it leaves the minute's undo card,
-  whose body says where the count runs from (`doneNotice(countedFrom)`); `undoDismiss` takes the
+  than the button doing nothing. From the shade it leaves the undo card (one line since 0.194.0,
+  which dropped the body that said where the count runs from); `undoDismiss` takes the
   line back as it does any "hecho" (it is dated after the restored row's anchor). Not on the
   stacked alert's strips (their "Ver" opens the single alert, which has it) nor on a routine's
   question ("¿lo has hecho?" is asked before the deadline, and its "Sí, ahora" says what it

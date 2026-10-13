@@ -41,17 +41,12 @@ import dev.rwilco.model.ReminderCodec
 import dev.rwilco.ui.theme.AMBER_ARGB
 import androidx.compose.ui.graphics.toArgb
 import dev.rwilco.ui.theme.routineColor
-import java.time.LocalDate
 import java.time.LocalTime
 import java.time.Instant
-import java.time.ZonedDateTime
 import java.time.Duration
 import dev.rwilco.model.DEFAULT_SNOOZE_MINUTES
 import dev.rwilco.model.NOTIFICATION_SNOOZES
 import dev.rwilco.ui.format.snoozeLabel
-import dev.rwilco.ui.format.TimeText
-import dev.rwilco.ui.format.dayWord
-import dev.rwilco.ui.format.words
 import dev.rwilco.model.notificationOffers
 
 /**
@@ -120,11 +115,12 @@ object AlertNotifications {
     private const val SUMMARY_ID = 1
 
     /**
-     * How long a "hecho" somebody gave leaves its "deshacer" card (0.129.0, the owner's minute):
-     * long enough to catch a thumb that went where it did not mean to, gone before the card is one
-     * more thing in the shade. Past it the reminder is in "Hechos", where a later undo belongs.
+     * How long a "hecho" somebody gave leaves its "deshacer" card: long enough to catch a thumb
+     * that went where it did not mean to, gone before the card is one more thing in the shade.
+     * Past it the reminder is in "Hechos", where a later undo belongs. A minute from 0.129.0, half
+     * of one since 0.194.0 (the owner's: "30 segs como máximo").
      */
-    const val DONE_NOTICE_MS = 60_000L
+    const val DONE_NOTICE_MS = 30_000L
 
     /**
      * How long the card stays when a place counts a routine as done: the app gave that "hecho"
@@ -149,6 +145,13 @@ object AlertNotifications {
      * and if it interrupted anything it would be the alarm it is trying not to be.
      */
     const val CHANNEL_NET = "net_$VERSION"
+
+    /**
+     * The "deshacer" card a "hecho" from the shade leaves (0.194.0): IMPORTANCE_MIN, which is the
+     * shade's own "minimizar" — one line at the bottom, nothing in the status bar. The owner asked
+     * for it minimized and almost wordless; the cost is that "Deshacer" is behind expanding the line.
+     */
+    const val CHANNEL_DONE = "done_$VERSION"
 
     /**
      * A routine's questions — "¿has movido el coche?" — an ordinary notification on a channel
@@ -240,6 +243,15 @@ object AlertNotifications {
                 description = context.getString(R.string.notif_channel_net_description)
                 setSound(null, null)
                 enableVibration(false)
+            },
+        )
+        manager.createNotificationChannel(
+            NotificationChannel(CHANNEL_DONE, context.getString(R.string.notif_channel_done), NotificationManager.IMPORTANCE_MIN).apply {
+                group = GROUP
+                description = context.getString(R.string.notif_channel_done_description)
+                setSound(null, null)
+                enableVibration(false)
+                setShowBadge(false)
             },
         )
         // The phone's own notification sound and buzz, deliberately: a question is a notification
@@ -385,7 +397,7 @@ object AlertNotifications {
 
     /**
      * A "hecho" given from the shade, where there is no snackbar to take it back with, said back
-     * with "deshacer", for a minute.
+     * with "deshacer", for half a minute, on one line ([CHANNEL_DONE]).
      *
      * It used to be a routine's alone, on the reasoning that what a routine's "hecho" moves is a
      * count; but a mis-tapped button in the shade finishes a one-off just as thoroughly (Home and
@@ -402,10 +414,11 @@ object AlertNotifications {
      * undo — the same one Home's own puts back. A row too long to carry is posted without the
      * button rather than risking the binder: the word still lands, and "Hechos" still has it.
      *
-     * [countedFrom] is "lo hice a su hora" (0.157.0): the count did not start again now, it went
-     * on from the deadline, and the card says from when — the one thing the tap cannot show.
+     * **Minimized, and the title is all it says** (0.194.0, the owner's call): no line under it and
+     * no tags. That took with it "la cuenta sigue desde que venció" under a "lo hice a su hora"
+     * (0.157.0); the button somebody pressed already said that.
      */
-    fun doneNotice(context: Context, reminder: Reminder, row: ReminderEntity?, countedFrom: ZonedDateTime? = null) {
+    fun doneNotice(context: Context, reminder: Reminder, row: ReminderEntity?) {
         val snapshot = row
             ?.let { runCatching { ReminderCodec.json.encodeToString(ReminderEntity.serializer(), it) }.getOrNull() }
             ?.takeIf { it.length <= MOST_UNDO_CHARS }
@@ -422,34 +435,28 @@ object AlertNotifications {
             reminder.isRoutine -> context.getString(R.string.notif_done_title, reminder.text)
             else -> context.getString(R.string.notif_done_title_plain, reminder.text)
         }
-        val body = when {
-            countedFrom != null -> {
-                val words = context.words()
-                val day = dayWord(words, countedFrom.toLocalDate(), LocalDate.now(countedFrom.zone))
-                context.getString(R.string.notif_done_body_on_time, day + " " + TimeText.time(countedFrom.toLocalTime(), words.is24h, words.locale))
-            }
-            reminder.isRoutine -> context.getString(R.string.notif_done_body)
-            else -> context.getString(R.string.notif_done_body_plain)
-        }
-        undoableNotice(context, reminder, undo, title, body, DONE_NOTICE_MS)
+        undoableNotice(context, reminder, undo, title, body = null, DONE_NOTICE_MS, minimized = true)
     }
 
     /**
      * The mute card with "deshacer" on the net's channel; [undo] is what the button does, and it
      * goes after [timeoutMs]. [confirm] puts a do-nothing "confirmar como hecha" before it, for a
-     * card about something the app did without being asked; see [resetNotice].
+     * card about something the app did without being asked; see [resetNotice]. [minimized] is the
+     * shade's "hecho": one line on [CHANNEL_DONE], out of the bundle and without the tags — in the
+     * bundle it would sit among the ringing cards, which Android never minimizes.
      */
     private fun undoableNotice(
         context: Context,
         reminder: Reminder,
         undo: Intent?,
         title: String,
-        body: String,
+        body: String?,
         timeoutMs: Long,
         confirm: Boolean = false,
+        minimized: Boolean = false,
     ) {
         ensureQuietChannels(context)
-        val builder = NotificationCompat.Builder(context, CHANNEL_NET)
+        val builder = NotificationCompat.Builder(context, if (minimized) CHANNEL_DONE else CHANNEL_NET)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(body)
@@ -464,11 +471,9 @@ object AlertNotifications {
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
-            .setGroup(BUNDLE)
-            .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
             // Gone by itself: it used to stay until it was swiped, which for a card that says
-            // "done" is a card saying nothing anybody still needs. How soon is the caller's — a
-            // minute for a "hecho" somebody gave, longer for one a place gave with nobody looking.
+            // "done" is a card saying nothing anybody still needs. How soon is the caller's — half
+            // a minute for a "hecho" somebody gave, longer for one a place gave with nobody looking.
             .setTimeoutAfter(timeoutMs)
             .setColor(if (reminder.isRoutine) ROUTINE_ARGB else AMBER_ARGB)
         if (confirm) {
@@ -485,7 +490,10 @@ object AlertNotifications {
                 PendingIntent.getBroadcast(context, 0, undo, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE),
             )
         }
-        if (reminder.tags.isNotEmpty()) builder.setSubText(reminder.tags.joinToString(context.getString(R.string.common_separator)))
+        if (!minimized) {
+            builder.setGroup(BUNDLE).setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
+            if (reminder.tags.isNotEmpty()) builder.setSubText(reminder.tags.joinToString(context.getString(R.string.common_separator)))
+        }
         runCatching { NotificationManagerCompat.from(context).notify(resetNotificationId(reminder.id), builder.build()) }
     }
 
