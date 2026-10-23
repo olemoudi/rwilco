@@ -15,6 +15,8 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
 import androidx.test.rule.GrantPermissionRule
 import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
@@ -24,6 +26,7 @@ import dev.rwilco.model.AlertStacking
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
+import dev.rwilco.model.firingPlan
 import dev.rwilco.notify.AlertNotifications
 import dev.rwilco.ui.alert.AlertActivity
 import kotlinx.coroutines.runBlocking
@@ -184,6 +187,54 @@ class AlertStackTest {
         rule.waitUntilShown(textB)
         rule.onAllNodesWithText(waiting).assertCountEquals(0)
         assertNoUndoCard(textA, "stack-a")
+    }
+
+    /**
+     * Two rings bundled in the shade, and the bundle tapped while collapsed (0.197.0): the line
+     * that stands for them opens both, the way rings that come in together are shown — here as
+     * strips — and nothing that has no card in the shade.
+     */
+    @Test
+    fun theBundleTappedOpensEveryRingUnderIt() {
+        runBlocking { app.settingsStore.update { it.copy(alertStacking = AlertStacking.STRIPS) } }
+        val manager = context.getSystemService(NotificationManager::class.java)!!
+        manager.cancelAll()
+        for (id in listOf("stack-a", "stack-b")) {
+            val reminder = runBlocking { app.repository.get(id)!! }
+            AlertNotifications.post(context, reminder, firingPlan(setOf(Action.NOTIFICATION)), late = null, fullScreen = false)
+        }
+        rule.waitUntil(timeoutMillis = 10_000) { summary(manager)?.contentIntent != null }
+        summary(manager)!!.contentIntent.send()
+
+        rule.waitUntilShown(textA)
+        rule.waitUntilShown(textB)
+        rule.onNodeWithText(textA).assertIsDisplayed()
+        rule.onNodeWithText(textB).assertIsDisplayed()
+        rule.onAllNodesWithText(textC).assertCountEquals(0)
+        shot("alert-bundle-strips")
+
+        // Answered here, both go, and the screen with them.
+        val doneAll = resumedAlert().getString(R.string.alert_done_all)
+        rule.holdToAnswer(doneAll)
+        rule.waitUntil(timeoutMillis = 10_000) {
+            runBlocking { app.repository.get("stack-a")?.lastDealtAt != null && app.repository.get("stack-b")?.lastDealtAt != null }
+        }
+        rule.waitUntil(timeoutMillis = 10_000) {
+            runCatching { rule.onAllNodesWithText(doneAll).fetchSemanticsNodes().isEmpty() }.getOrDefault(true)
+        }
+    }
+
+    /** The line that stands for the bundle, as the shade holds it. */
+    private fun summary(manager: NotificationManager): Notification? =
+        manager.activeNotifications.firstOrNull { it.notification.flags and Notification.FLAG_GROUP_SUMMARY != 0 }?.notification
+
+    /** The alert screen a PendingIntent opened, which no scenario holds: for its per-app locale. */
+    private fun resumedAlert(): AlertActivity {
+        var found: AlertActivity? = null
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            found = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).filterIsInstance<AlertActivity>().firstOrNull()
+        }
+        return found!!
     }
 
     /**

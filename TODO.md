@@ -914,6 +914,11 @@ sheets sliding out on Confirm (`hide()` vs `confirmValueChange`)~~ — both done
 the dead code listed under 0.67.0 — asked about, not deleted.
 
 ## Still to prove on the real phone (Pixel 8 Pro)
+- El grupo de la bandeja (0.197.0): con dos avisos sin contestar agrupados en la bandeja, tocar el
+  grupo **plegado** (en el texto, no en la flecha) tiene que abrir la pantalla de aviso con los dos
+  — en tiras o uno tras otro, según Ajustes → Avisos — y sin volver a sonar. La flecha tiene que
+  seguir desplegando el grupo, y tocar una tarjeta suelta abrir sólo la suya. Probarlo también
+  desde la pantalla bloqueada.
 - «La próxima vez que llegue a…» (0.196.0): un recordatorio «al llegar a ‹un sitio›» que suene al
   llegar; en el aviso, «La próxima vez que llegue a ‹sitio›». Quédate un rato: **no** tiene que
   volver a sonar mientras sigas dentro, ni la red de seguridad decir nada. Sal, y al volver a

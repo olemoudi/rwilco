@@ -7,6 +7,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
 import android.media.AudioAttributes
 import android.util.Log
 import android.net.Uri
@@ -74,6 +75,26 @@ import dev.rwilco.model.notificationOffers
 internal fun staleAlertChannels(existing: List<String>, live: Set<String>): List<String> =
     existing.filter { it.startsWith(AlertNotifications.ALERT_CHANNEL_PREFIX) && it !in live }
 
+/**
+ * What tapping one ring's card opens, as the card itself carries it ([AlertNotifications.post]):
+ * which reminder and for which rule, held though owed nothing (the net's word), and whether the
+ * tap rings ([ReminderScheduler.EXTRA_TAP_RINGS]). [postedAt] is when the card went up.
+ */
+internal data class CardTap(val reminderId: String, val ruleIndex: Int?, val anyway: Boolean, val rings: Boolean, val postedAt: Long)
+
+/**
+ * What a tap on the collapsed bundle opens: every ring under it, in the order they came in, one
+ * per reminder — a ring and the net's word about it are two cards about one thing, and the ring's
+ * is the one to open (it is owed an answer; the word is not) — ringing if either card's tap would.
+ */
+internal fun bundleTaps(cards: List<CardTap>): List<CardTap> =
+    cards.groupBy { it.reminderId }.values
+        .map { same ->
+            (same.firstOrNull { !it.anyway } ?: same.first())
+                .copy(rings = same.any { it.rings }, postedAt = same.minOf { it.postedAt })
+        }
+        .sortedBy { it.postedAt }
+
 internal fun bundleChildren(listed: List<Int>, posted: Int? = null, cancelled: Set<Int> = emptySet()): Int {
     val ids = listed.toMutableSet()
     ids -= cancelled
@@ -113,6 +134,12 @@ object AlertNotifications {
     /** The routines' colour as the shade shows it: the light scheme's, which reads on either system surface. */
     private val ROUTINE_ARGB: Int = routineColor(dark = false).toArgb()
     private const val SUMMARY_ID = 1
+
+    /** Where a ring's card keeps what its tap opens ([CardTap]), for the bundle's line to read. */
+    private const val TAP_REMINDER = "dev.rwilco.tap.reminder"
+    private const val TAP_RULE = "dev.rwilco.tap.rule"
+    private const val TAP_ANYWAY = "dev.rwilco.tap.anyway"
+    private const val TAP_RINGS = "dev.rwilco.tap.rings"
 
     /**
      * How long a "hecho" somebody gave leaves its "deshacer" card: long enough to catch a thumb
@@ -663,6 +690,17 @@ object AlertNotifications {
             // The children make the noise and the summary never does. Without this the bundle
             // announces itself as well, which is the same alarm twice.
             .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
+            // What its tap opens, said again where the bundle's own line can read it: a tap on
+            // the collapsed bundle opens every ring under it ([bundleTaps]), and a PendingIntent
+            // cannot be read back.
+            .addExtras(
+                Bundle().apply {
+                    putString(TAP_REMINDER, reminder.id)
+                    putInt(TAP_RULE, ruleIndex ?: -1)
+                    putBoolean(TAP_ANYWAY, nudge != null)
+                    putBoolean(TAP_RINGS, late == null && nudge == null && plan.tapRings)
+                },
+            )
             // When it rang, said outright. On a missed one it counts up instead — "this should
             // have reached you an hour and ten minutes ago" is the whole point of the missed
             // notification, and a bare timestamp makes somebody work it out.
@@ -869,9 +907,54 @@ object AlertNotifications {
             .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
-            .build()
-        NotificationManagerCompat.from(context).notify(SUMMARY_ID, summary)
+        // **A tap on the collapsed bundle opens all of it** (0.197.0, the owner's ask): the alert
+        // screen with every ring under it, as if they had come in together — and so as Settings →
+        // Avisos says several at once are shown. The system hands that tap to this line's
+        // intent (the chevron still expands the group); with none, there was nothing of ours to open. Only while a ring is among them: a
+        // bundle of questions and notes keeps the system's own tap. [posted] is always a ring —
+        // [post] is the one caller that puts a card up — and may not be listed yet.
+        // Never auto-cancel: taking this line down takes the cards under it with it.
+        val rings = posted != null || manager.activeNotifications.any {
+            it.id !in cancelled && it.notification.group == BUNDLE && it.notification.extras.getString(TAP_REMINDER) != null
+        }
+        if (rings) summary.setContentIntent(bundleIntent(context))
+        NotificationManagerCompat.from(context).notify(SUMMARY_ID, summary.build())
     }
+
+    /**
+     * What a tap on the collapsed bundle opens, read off the shade at the moment of the tap
+     * rather than when the line was last posted: a card swiped away since is not on the screen.
+     * Empty when the system will not say — the screen then has nothing to show and goes.
+     */
+    internal fun bundleTaps(context: Context): List<CardTap> = runCatching {
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return@runCatching emptyList()
+        bundleTaps(
+            manager.activeNotifications.filter { it.notification.group == BUNDLE }.mapNotNull { card ->
+                val extras = card.notification.extras
+                val id = extras.getString(TAP_REMINDER) ?: return@mapNotNull null
+                CardTap(
+                    reminderId = id,
+                    ruleIndex = extras.getInt(TAP_RULE, -1).takeIf { it >= 0 },
+                    anyway = extras.getBoolean(TAP_ANYWAY, false),
+                    rings = extras.getBoolean(TAP_RINGS, false),
+                    postedAt = card.postTime,
+                )
+            },
+        )
+    }.getOrDefault(emptyList())
+
+    /** The start one card's tap makes ([activityIntent]), for the bundle to make for each of its cards. */
+    internal fun tapIntent(context: Context, tap: CardTap): Intent =
+        alertIntent(context, tap.reminderId, tap.ruleIndex, anyway = tap.anyway, tapped = true, rings = tap.rings)
+
+    private fun bundleIntent(context: Context): PendingIntent = PendingIntent.getActivity(
+        context,
+        0,
+        Intent(context, AlertActivity::class.java)
+            .setData(ReminderScheduler.bundleUri())
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
 
     fun notificationId(reminderId: String): Int = reminderId.hashCode()
 
@@ -975,17 +1058,26 @@ object AlertNotifications {
     ): PendingIntent = PendingIntent.getActivity(
         context,
         (if (anyway) 1 else 0) or (if (tapped) 2 else 0),
-        Intent(context, AlertActivity::class.java)
-            .setData(ReminderScheduler.reminderUri(reminderId))
-            .apply {
-                if (ruleIndex != null) putExtra(ReminderScheduler.EXTRA_RULE, ruleIndex)
-                if (anyway) putExtra(ReminderScheduler.EXTRA_ANYWAY, true)
-                if (tapped) putExtra(ReminderScheduler.EXTRA_TAPPED, true)
-                if (rings) putExtra(ReminderScheduler.EXTRA_TAP_RINGS, true)
-            }
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        alertIntent(context, reminderId, ruleIndex, anyway, tapped, rings),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
+
+    private fun alertIntent(
+        context: Context,
+        reminderId: String,
+        ruleIndex: Int?,
+        anyway: Boolean,
+        tapped: Boolean,
+        rings: Boolean,
+    ): Intent = Intent(context, AlertActivity::class.java)
+        .setData(ReminderScheduler.reminderUri(reminderId))
+        .apply {
+            if (ruleIndex != null) putExtra(ReminderScheduler.EXTRA_RULE, ruleIndex)
+            if (anyway) putExtra(ReminderScheduler.EXTRA_ANYWAY, true)
+            if (tapped) putExtra(ReminderScheduler.EXTRA_TAPPED, true)
+            if (rings) putExtra(ReminderScheduler.EXTRA_TAP_RINGS, true)
+        }
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
     private fun actionIntent(context: Context, reminderId: String, action: String, snooze: SnoozeOffer?): PendingIntent {
         val intent = Intent(context, AlertActionReceiver::class.java)

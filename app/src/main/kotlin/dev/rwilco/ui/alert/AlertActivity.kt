@@ -407,6 +407,14 @@ class AlertActivity : ComponentActivity() {
     /** A reminder id carried by an intent: the launch, or a later start reaching the live screen. */
     /** [again] is a start delivered to the screen already up, never the one it was created with. */
     private fun arrived(intent: Intent, again: Boolean = false) {
+        // The bundle tapped while collapsed (0.197.0): each ring under it, as its own card's tap
+        // would bring it — together, the way rings that come in together are shown.
+        if (ReminderScheduler.isBundle(intent)) {
+            val taps = AlertNotifications.bundleTaps(this)
+            Diag.note(TAG_DIAG, "bundle tapped open: ${taps.joinToString(",") { it.reminderId.take(8) }.ifEmpty { "no ring under it" }}")
+            taps.forEach { arrived(AlertNotifications.tapIntent(this, it), again) }
+            return
+        }
         val id = ReminderScheduler.reminderIdOf(intent) ?: return
         val held = ReminderScheduler.anywayIn(intent)
         val tapped = ReminderScheduler.tappedIn(intent)

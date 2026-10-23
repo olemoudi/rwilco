@@ -3278,6 +3278,21 @@ loud what DST and a change of zone do to a landing.
   that a swipe on a summary is a dismissal of the *group*. `sweepSummary` — the count against
   nothing of our own — runs at launch beside the other sweeps, because otherwise nothing counts
   the bundle again until the next reminder rings, which on a quiet week is days.
+- **The bundle tapped while collapsed opens every ring under it** (0.197.0, the owner's ask). The
+  summary line had no intent, so a tap on two bundled rings opened nothing of ours, and each had
+  to be tapped on its own. Now the summary carries one (`ReminderScheduler.bundleUri`) while a
+  ring is among its children — a bundle of routine questions and notes keeps the system's tap —
+  and the shade hands that tap to it (checked on API 35: the body of the collapsed group fires the
+  summary's intent, the chevron still expands it). The alert screen then reads the shade *at the
+  moment of the tap* (`AlertNotifications.bundleTaps`), not when the line was last posted, since a
+  card swiped away since is not on the screen: each ring's card says in its own extras what its tap
+  opens (`CardTap`: reminder, rule, held, rings — a PendingIntent cannot be read back), and each is
+  opened as its own tap would open it (`tapIntent`), one per reminder, oldest first, the ring's
+  card before the net's word about the same reminder. So they arrive the way rings that come in
+  together do: strips or one after another, as Settings → Avisos says, quiet unless a card's own
+  tap rings (an insistent full screen). `BundleTapsTest` holds the order and the merging,
+  `AlertStackTest` the screen. **Never auto-cancel the summary**: taking it down takes the cards
+  under it with it.
 - **A card that is tapped opens the alert screen without ringing it again** (0.65.1,
   `ReminderScheduler.EXTRA_TAPPED`). `AlertActivity` builds its own plan from the row and rings
   for it, which is right while the moment is arriving and wrong every other time: the noise had

@@ -445,6 +445,14 @@ class ReminderScheduler(
         /** Whether this alarm is the net's quiet word rather than the reminder's own moment. */
         fun isNudge(intent: Intent): Boolean = intent.data?.host == "nudge"
 
+        /**
+         * The shade's bundle, tapped while collapsed: every ring under it on the alert screen at
+         * once (`AlertNotifications.bundleTaps`). No path, so [reminderIdOf] answers null for it.
+         */
+        fun bundleUri() = "rwilco://bundle".toUri()
+
+        fun isBundle(intent: Intent): Boolean = intent.data?.host == "bundle"
+
         /** The set's deadline running out, under its own URI for the same reason the net has one. */
         fun lapseUri(id: String) = "rwilco://lapse/$id".toUri()
 

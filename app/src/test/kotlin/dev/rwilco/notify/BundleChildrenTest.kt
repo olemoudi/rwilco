@@ -58,3 +58,39 @@ class BundleChildrenTest {
         assertEquals(3, bundleChildren(listed = listOf(1, 2, 3)))
     }
 }
+
+/**
+ * What a tap on the collapsed bundle opens (0.197.0): every ring under it, oldest first, one per
+ * reminder — the ring's own card rather than the net's word about it — ringing if either would.
+ */
+class BundleTapsTest {
+
+    private fun tap(id: String, at: Long, anyway: Boolean = false, rings: Boolean = false, rule: Int? = null) =
+        CardTap(id, rule, anyway, rings, at)
+
+    @Test
+    fun `in the order they came in`() {
+        assertEquals(listOf("a", "b", "c"), bundleTaps(listOf(tap("c", 30), tap("a", 10), tap("b", 20))).map { it.reminderId })
+    }
+
+    @Test
+    fun `a ring and the net's word about it open once, as the ring, where the first of them stood`() {
+        val opened = bundleTaps(listOf(tap("a", 50, anyway = true), tap("b", 20), tap("a", 10, rule = 2)))
+        assertEquals(listOf(tap("a", 10, rule = 2), tap("b", 20)), opened)
+    }
+
+    @Test
+    fun `only the net's word is still opened, held`() {
+        assertEquals(listOf(tap("a", 10, anyway = true)), bundleTaps(listOf(tap("a", 10, anyway = true))))
+    }
+
+    @Test
+    fun `it rings if either card's tap would`() {
+        assertEquals(true, bundleTaps(listOf(tap("a", 10, anyway = true), tap("a", 20, rings = true))).single().rings)
+    }
+
+    @Test
+    fun `nothing under it opens nothing`() {
+        assertEquals(emptyList<CardTap>(), bundleTaps(emptyList()))
+    }
+}
