@@ -14,6 +14,7 @@ import dev.rwilco.model.SnoozePart
 import dev.rwilco.model.SnoozePlace
 import dev.rwilco.model.SnoozeSpec
 import dev.rwilco.model.Trigger
+import dev.rwilco.model.isNextTimeDetail
 import dev.rwilco.model.snoozeDetailOf
 import java.time.Instant
 
@@ -123,7 +124,7 @@ fun snoozeLabel(context: Context, offer: SnoozeOffer, customMinutes: Int): Strin
 @Composable
 fun snoozeLabel(offer: SnoozeOffer, customMinutes: Int): String = snoozeLabel(rememberWords(), offer, customMinutes)
 
-/** "Al llegar a Casa" · "Al salir de aquí": the two place offers, as buttons say them. */
+/** "Al llegar a Casa" · "Al salir de aquí" · "La próxima vez que llegue a Mercadona": the place offers, as buttons say them. */
 fun placeOfferLabel(words: Words, offer: SnoozePlace): String = when (offer) {
     is SnoozePlace.Arrive -> words.get(R.string.snooze_arrive_at, offer.place.label)
     // **With the distance in it** (0.79.0): "al salir de aquí" draws a circle around where you
@@ -132,6 +133,16 @@ fun placeOfferLabel(words: Words, offer: SnoozePlace): String = when (offer) {
     // number is the offer's own now (0.80.0, [hereRadiusM] of the last position), so it says
     // what it would actually draw rather than a constant that stopped being one.
     is SnoozePlace.LeaveHere -> words.get(R.string.snooze_leave_here, offer.radiusM)
+    // The door by name when it is all that can ring it; otherwise the rules are what decide,
+    // and the button does not promise one place and ring at another (see `nextTime`).
+    is SnoozePlace.NextTime -> {
+        val door = offer.door
+        when (door?.presence) {
+            null -> words.get(R.string.snooze_next_due)
+            Presence.INSIDE -> words.get(R.string.snooze_next_arrive, door.label)
+            Presence.OUTSIDE -> words.get(R.string.snooze_next_leave, door.label)
+        }
+    }
 }
 
 @Composable
@@ -145,12 +156,13 @@ fun placeOfferLabel(offer: SnoozePlace): String = placeOfferLabel(rememberWords(
  * detail — there is nothing else to write it as, and an answer nobody wrote down was the same
  * nothing as never having seen the card. But it postponed nothing, and the history said it had.
  */
-enum class SnoozeWord { NOT_YET, UNTIL_PLACE, UNTIL_MOMENT, PLAIN }
+enum class SnoozeWord { NOT_YET, UNTIL_PLACE, UNTIL_NEXT_TIME, UNTIL_MOMENT, PLAIN }
 
 fun snoozeWordOf(detail: String?): SnoozeWord = when {
     detail == null -> SnoozeWord.PLAIN
     detail == LATER_DETAIL -> SnoozeWord.NOT_YET
     snoozeDetailOf(detail) != null -> SnoozeWord.UNTIL_PLACE
+    isNextTimeDetail(detail) -> SnoozeWord.UNTIL_NEXT_TIME
     runCatching { Instant.parse(detail) }.isSuccess -> SnoozeWord.UNTIL_MOMENT
     else -> SnoozeWord.PLAIN
 }
@@ -158,3 +170,17 @@ fun snoozeWordOf(detail: String?): SnoozeWord = when {
 /** "llegar a Casa" · "salir de aquí": what follows "pospuesto hasta" on a card, a line of history, a snackbar. */
 fun snoozePlacePhrase(words: Words, place: Trigger.Location): String =
     words.get(if (place.presence == Presence.INSIDE) R.string.snooze_until_arrive else R.string.snooze_until_leave, place.label)
+
+/**
+ * "la próxima vez que llegues a Mercadona" · "que vuelva a tocar": the same, for a ring left to
+ * its own rules — by the door's side and name ([door], from the offer or a history line) when
+ * there was one to name.
+ */
+fun nextTimePhrase(words: Words, door: Pair<Presence, String>?): String = when (door?.first) {
+    null -> words.get(R.string.snooze_until_next_due)
+    Presence.INSIDE -> words.get(R.string.snooze_until_next_arrive, door.second)
+    Presence.OUTSIDE -> words.get(R.string.snooze_until_next_leave, door.second)
+}
+
+fun nextTimePhrase(words: Words, offer: SnoozePlace.NextTime): String =
+    nextTimePhrase(words, offer.door?.let { it.presence to it.label })

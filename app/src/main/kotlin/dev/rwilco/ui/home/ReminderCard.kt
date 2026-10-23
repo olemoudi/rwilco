@@ -80,6 +80,8 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import dev.rwilco.ui.format.placePhraseOf
+import dev.rwilco.ui.format.placeOfferLabel
+import dev.rwilco.model.SnoozePlace
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.Deadline
 import dev.rwilco.ui.format.deadlineCardLabel
@@ -208,6 +210,9 @@ fun ReminderCard(
                 // until it has rung.
                 card.snoozedUntil?.let { SnoozedRow(it, today, zone, muted = card.paused) }
                 card.snoozedToPlace?.let { SnoozedPlaceRow(it, muted = card.paused) }
+                // Left to its rules outranks none of them, but it is the answer the ring got,
+                // and the rows below cannot say a ring was put off.
+                card.snoozedToRules?.let { SnoozedNextRow(it, muted = card.paused) }
                 // More than one rule is an arrangement, and the tree is what says which one.
                 // A single rule is just itself, and hangs off nothing.
                 if (card.match != null && card.triggers.size > 1) {
@@ -293,7 +298,7 @@ private fun CompactCard(
             Spacer(Modifier.height(spacing.xs))
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs), verticalAlignment = Alignment.CenterVertically) {
-                    if (card.snoozedUntil != null || card.snoozedToPlace != null) {
+                    if (card.snoozedUntil != null || card.snoozedToPlace != null || card.snoozedToRules != null) {
                         CompactGlyph(Icons.Outlined.Snooze, stringResource(R.string.card_snoozed))
                     }
                     for (row in card.triggers) {
@@ -765,6 +770,39 @@ private val RuleStanding.labelRes: Int
  * The same row for a reminder waiting at a place: "Al llegar a Casa" where the clock row has
  * the hour, in the place family's keycap, because that is what rings it next.
  */
+/**
+ * "La próxima vez que llegue a Mercadona · Pospuesto": the [SnoozedPlaceRow] of a ring left to
+ * its own rules, in the words its button had.
+ */
+@Composable
+fun SnoozedNextRow(nextTime: SnoozePlace.NextTime, muted: Boolean = false) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        TriggerKeycap(
+            family = TriggerFamily.PLACE,
+            icon = Icons.Outlined.Snooze,
+            contentDescription = stringResource(R.string.card_snoozed),
+            size = Tokens.sizes.badge,
+        )
+        Spacer(Modifier.width(Tokens.spacing.sm))
+        Column(modifier = Modifier.weight(1f, fill = false)) {
+            Text(
+                text = placeOfferLabel(nextTime),
+                style = MaterialTheme.typography.titleSmall,
+                color = if (muted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = stringResource(R.string.card_snoozed),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
 @Composable
 fun SnoozedPlaceRow(place: Trigger.Location, muted: Boolean = false) {
     Row(verticalAlignment = Alignment.CenterVertically) {

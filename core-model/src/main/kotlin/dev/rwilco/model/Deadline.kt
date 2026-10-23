@@ -190,7 +190,7 @@ fun Reminder.lapseAt(now: Instant): Instant? {
  * still waiting for. The deadline is dropped rather than applied, never the other way round.
  */
 fun Reminder.deadlineOutranked(now: Instant): Boolean =
-    awaitingAnswer(now) || snoozedUntil != null || snoozedToPlace != null
+    awaitingAnswer(now) || snoozedUntil != null || snoozedToPlace != null || snoozedToRules
 
 /**
  * When a timer that rule [ruleIndex] happening at [at] starts would run out, or null when it

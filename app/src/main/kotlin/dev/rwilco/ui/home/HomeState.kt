@@ -45,6 +45,9 @@ import dev.rwilco.model.doneOnTimeAt
 import dev.rwilco.model.routineAnchor
 import dev.rwilco.model.routineDeadline
 import dev.rwilco.model.nextDueRoutine
+import dev.rwilco.model.SnoozePlace
+import dev.rwilco.model.nextTime
+import dev.rwilco.model.nextTimeOffer
 
 /**
  * What Home says about the routines: how many there are, and the ones whose span is up,
@@ -266,6 +269,16 @@ data class ReminderCardUi(
     /** Or the place it was pushed away to: "cuando llegue a casa". The two are never both set. */
     val snoozedToPlace: Trigger.Location? = null,
     /**
+     * Or left to its own rules: "la próxima vez que llegue a Mercadona", with the door when one
+     * can be named ([dev.rwilco.model.nextTime]). Never beside the two above.
+     */
+    val snoozedToRules: SnoozePlace.NextTime? = null,
+    /**
+     * "La próxima vez…" as an answer to the ring this card is about, for its menu: null while no
+     * ring is owed one, or when nothing of its own would ring it again ([nextTimeOffer]).
+     */
+    val nextTime: SnoozePlace.NextTime? = null,
+    /**
      * For a card under "Vencidos", the moment that got away ([dev.rwilco.model.HomeEntry.missedAt]),
      * so the card can say "debía sonar hace 3 h". The rows under it go on describing the rule
      * ("09:00 · lunes") exactly as a future card's do, which is why the section heading was the
@@ -483,6 +496,13 @@ fun buildHomeState(
             // A paused reminder rings at no moment at all, so a snooze on it is not news.
             snoozedUntil = reminder.snoozedUntil?.takeIf { it > now && reminder.status == Status.ACTIVE },
             snoozedToPlace = reminder.snoozedToPlace?.takeIf { reminder.status == Status.ACTIVE },
+            // With nothing left to name — the rules edited since — it still says it was put off.
+            snoozedToRules = if (reminder.snoozedToRules && reminder.status == Status.ACTIVE) {
+                reminder.nextTime(now, zone, defaultTime, dayStart, shape) ?: SnoozePlace.NextTime(null)
+            } else {
+                null
+            },
+            nextTime = reminder.nextTimeOffer(now, zone, defaultTime, dayStart, shape),
             missedAt = missedAt,
             cannotRing = cannotRing,
             // Only while it rests: with the rules speaking again they say it themselves.
@@ -492,7 +512,7 @@ fun buildHomeState(
             deadline = reminder.deadline.takeIf { reminder.hasDeadline },
             expiresAt = reminder.expiresAt.takeIf { reminder.hasDeadline && reminder.status == Status.ACTIVE },
             snoozeOffered = reminder.awaitingAnswer(now) ||
-                (reminder.status == Status.ACTIVE && (reminder.snoozedUntil?.let { it > now } == true || reminder.snoozedToPlace != null)),
+                (reminder.status == Status.ACTIVE && (reminder.snoozedUntil?.let { it > now } == true || reminder.snoozedToPlace != null || reminder.snoozedToRules)),
             skipsMoment = if (reminder.status == Status.ACTIVE && reminder.recurrence != Recurrence.None) {
                 reminder.momentDealtWith(now, zone, defaultTime, dayStart, shape)
             } else {

@@ -317,7 +317,7 @@ private fun Reminder.identityLine(): String = buildString {
 /** `armed=… fired=… dealt=… next=…` — every stamp the firing path decides from. */
 private fun Reminder.stateLine(now: Instant, zone: ZoneId, settings: AppSettings, stampOf: (Instant?) -> String): String = buildString {
     append("armed=${stampOf(armedFor)}${armedRule?.let { "/r$it" } ?: ""}")
-    append(" fired=${stampOf(lastFiredAt)}${lastFiredRule?.let { "/r$it" } ?: ""} dealt=${stampOf(lastDealtAt)} snooze=${stampOf(snoozedUntil)}${snoozedToPlace?.let { "/" + it.snoozeDetail().substringBefore(':') } ?: ""}")
+    append(" fired=${stampOf(lastFiredAt)}${lastFiredRule?.let { "/r$it" } ?: ""} dealt=${stampOf(lastDealtAt)} snooze=${stampOf(snoozedUntil)}${snoozedToPlace?.let { "/" + it.snoozeDetail().substringBefore(':') } ?: ""}${if (snoozedToRules) "/rules" else ""}")
     if (firedRules.isNotEmpty()) append(" fr=${firedRules.sorted()}")
     // The net's word and the routine's question, which the ring's columns say nothing about:
     // "it did not ask" is a question this line could not answer before.

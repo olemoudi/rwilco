@@ -53,8 +53,8 @@ class ReminderRepository(
     suspend fun replaceAll(rows: List<ReminderEntity>, history: List<FiringEventEntity> = emptyList()) = dao.replaceAll(rows, history)
 
     /** Put off until [until] or until [place] — one or the other; both null takes a snooze back. */
-    suspend fun snooze(id: String, until: Instant?, place: Trigger.Location? = null) =
-        dao.setSnooze(id, until?.toEpochMilli(), place?.let(ReminderCodec::encodeTrigger))
+    suspend fun snooze(id: String, until: Instant?, place: Trigger.Location? = null, toRules: Boolean = false) =
+        dao.setSnooze(id, until?.toEpochMilli(), place?.let(ReminderCodec::encodeTrigger), toRules)
 
     suspend fun markFired(id: String, at: Instant, ruleIndex: Int?) = dao.markFired(id, at.toEpochMilli(), ruleIndex)
 

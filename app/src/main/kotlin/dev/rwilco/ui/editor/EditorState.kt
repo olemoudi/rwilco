@@ -147,6 +147,8 @@ fun Draft.toReminder(
     /** The answer somebody already gave to a ring: kept unless this edit re-decided the "when". */
     snoozedUntil: Instant? = null,
     snoozedToPlace: Trigger.Location? = null,
+    /** Left to its own rules: the rules are what this edit changes, so the answer stands across any of it. */
+    snoozedToRules: Boolean = false,
     /**
      * When the deadline on the round under way runs out: carried while the round survives the
      * edit, and worked out again by the caller when it does not (see [EditorViewModel.save]).
@@ -189,6 +191,7 @@ fun Draft.toReminder(
     pausedAt = pausedAt,
     snoozedUntil = snoozedUntil,
     snoozedToPlace = snoozedToPlace,
+    snoozedToRules = snoozedToRules,
     deadline = deadline,
     expiresAt = expiresAt,
 )
@@ -620,6 +623,12 @@ fun EditorUiState.rowToSave(before: Reminder?, draftId: String, now: Instant, zo
         // re-decision of when it rings, and there the old answer really is meaningless.
         snoozedUntil = if (whenUntouched) before?.snoozedUntil else null,
         snoozedToPlace = if (whenUntouched) before?.snoozedToPlace else null,
+        // **Except "la próxima vez", which a new "when" does not make meaningless:** it outranks
+        // nothing and says only that the ring was answered — whatever the rules now are, they
+        // are what it was left to. Dropped, the ring read as owed again and the waiting card
+        // came back over an answer given. Not across the edit that makes it a routine, whose
+        // rules never ring (and whose last ring goes with it, above).
+        snoozedToRules = before?.snoozedToRules == true && !becomesRoutine,
         expiresAt = if (roundUntouched) before?.expiresAt else null,
         zone = zone,
         shape = dayShape,

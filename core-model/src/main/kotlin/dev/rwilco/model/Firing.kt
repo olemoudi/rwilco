@@ -46,7 +46,7 @@ fun statusAfterDismissal(
     if (reminder.recurrence.isCalendar && reminder.calendarMoment(reminder.searchFrom(now), zone, shape) == null) return Status.DONE
     // Dealt with means the round is over: what had already happened under ALL stops counting,
     // and the question is whether the reminder can come round again from scratch.
-    val cleared = reminder.copy(status = Status.ACTIVE, snoozedUntil = null, snoozedToPlace = null, firedRules = emptySet(), expiresAt = null)
+    val cleared = reminder.copy(status = Status.ACTIVE, snoozedUntil = null, snoozedToPlace = null, snoozedToRules = false, firedRules = emptySet(), expiresAt = null)
     return if (nextFire(cleared, now, zone, defaultTime, shape = shape) == null) Status.DONE else going
 }
 
@@ -97,6 +97,7 @@ fun Reminder.lapsed(
         expiresAt = null,
         snoozedUntil = null,
         snoozedToPlace = null,
+        snoozedToRules = false,
         updatedAt = at,
     )
     val status = statusAfterDismissal(cleared, at, zone, defaultTime, shape)
@@ -135,6 +136,10 @@ fun Reminder.momentDealtWith(
     shape: DayShape = DayShape.DEFAULT,
 ): Instant? {
     if (awaitingAnswer(now)) return null
+    // Put off until the rules ring it again is a ring still being answered, only quietly: the
+    // "hecho" is about that ring, and taking the next moment with it would skip one nobody
+    // asked to skip.
+    if (snoozedToRules) return null
     // A routine's "hecho" is "I did it now", never "I have done the one that was coming": the
     // count starts again from this moment, and nothing ahead of it is spent.
     if (isRoutine) return null
@@ -546,7 +551,7 @@ fun Reminder.awaitingAnswer(now: Instant): Boolean {
     val rang = lastFiredAt ?: return false
     val dealt = lastDealtAt
     if (dealt != null && !dealt.isBefore(rang)) return false
-    if (snoozedToPlace != null) return false
+    if (snoozedToPlace != null || snoozedToRules) return false
     val snoozed = snoozedUntil
     return snoozed == null || snoozed <= now
 }

@@ -28,6 +28,8 @@ import java.time.LocalDate
 import java.time.ZoneId
 import dev.rwilco.model.Presence
 import dev.rwilco.model.snoozeDetailOf
+import dev.rwilco.model.nextTimeDoorOf
+import dev.rwilco.ui.format.nextTimePhrase
 
 /**
  * What has happened to this reminder, newest first, in the words the app uses for it: *ayer
@@ -100,6 +102,10 @@ private fun eventWords(event: FiringEvent, today: LocalDate, zone: ZoneId): Stri
                     ),
                 )
             }
+            SnoozeWord.UNTIL_NEXT_TIME -> stringResource(
+                R.string.history_snoozed_until,
+                nextTimePhrase(words, event.detail?.let(::nextTimeDoorOf)),
+            )
             SnoozeWord.UNTIL_MOMENT -> {
                 val until = Instant.parse(event.detail).atZone(zone)
                 stringResource(

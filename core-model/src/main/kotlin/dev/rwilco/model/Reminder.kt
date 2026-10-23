@@ -36,6 +36,14 @@ data class Reminder(
      * doorway (`onCrossing`), because "when I get there" is said from somewhere else.
      */
     val snoozedToPlace: Trigger.Location? = null,
+    /**
+     * Put off until its own rules ring it again — "la próxima vez que llegue a Mercadona" (see
+     * [SnoozePlace.NextTime]). Unlike the two above it outranks nothing: it only says the ring
+     * has been answered, so nothing is owed and the rules go on deciding, with their hours, their
+     * days and their fences, exactly as they would have. Never set beside them; the next ring, a
+     * "hecho" and any other snooze clear it.
+     */
+    val snoozedToRules: Boolean = false,
     /** When it last actually rang. Paired with [armedFor] it is how a missed firing is spotted. */
     val lastFiredAt: Instant? = null,
     /**

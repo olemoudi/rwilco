@@ -20,7 +20,7 @@ abstract class RwilcoDatabase : RoomDatabase() {
 
     companion object {
         /** A named constant so MigrationChainTest can assert the chain reaches it. */
-        const val VERSION = 16
+        const val VERSION = 17
         private const val NAME = "rwilco.db"
 
         /** One entry per version step; `// vN: what it added` on each. */
@@ -176,6 +176,13 @@ abstract class RwilcoDatabase : RoomDatabase() {
                     db.execSQL("ALTER TABLE reminder ADD COLUMN contactCadenceByHand INTEGER NOT NULL DEFAULT 0")
                     db.execSQL("ALTER TABLE reminder ADD COLUMN contactDays TEXT")
                     db.execSQL("ALTER TABLE reminder ADD COLUMN contactWindow TEXT")
+                }
+            },
+            // v17: a ring put off until the reminder's own rules ring it again ("la próxima vez
+            // que llegue a…"). False on every existing row, which reads as no such snooze.
+            object : Migration(16, 17) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE reminder ADD COLUMN snoozedToRules INTEGER NOT NULL DEFAULT 0")
                 }
             },
         )

@@ -69,6 +69,11 @@ fun reminderSummary(words: Words, reminder: Reminder, today: LocalDate, defaultT
             if (isNotEmpty()) append(", ")
             append(words.get(R.string.history_snoozed_until, snoozePlacePhrase(words, door)))
         }
+        // Left to its own rules: they are the sentence already, so this only says it was put off.
+        if (reminder.snoozedToRules) {
+            if (isNotEmpty()) append(", ")
+            append(words.get(R.string.history_snoozed_until, nextTimePhrase(words, door = null)))
+        }
     }
 
 /** The word between two rules: the whole difference between the three readings, in one word. */

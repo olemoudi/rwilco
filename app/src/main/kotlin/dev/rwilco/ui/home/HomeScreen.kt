@@ -122,6 +122,8 @@ import dev.rwilco.ui.settings.stripProblems
 import dev.rwilco.ui.settings.readinessShortRes
 import dev.rwilco.ui.settings.stripShows
 import dev.rwilco.ui.format.snoozePlacePhrase
+import dev.rwilco.ui.format.nextTimePhrase
+import dev.rwilco.model.placeOffersFor
 import dev.rwilco.model.FiringEvent
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.isRoutine
@@ -303,6 +305,7 @@ fun HomeScreen(
                 is HomeEvent.Snoozed -> snackbar.show(
                     message = if (event.cancelled) snoozeCancelledMessage
                     else event.place?.let { words.get(R.string.home_snoozed_until, snoozePlacePhrase(words, it)) }
+                        ?: event.nextTime?.let { words.get(R.string.home_snoozed_until, nextTimePhrase(words, it)) }
                         ?: event.until?.let { until ->
                             val here = until.atZone(zone)
                             val todayHere = viewModel.clock.instant().atZone(zone).toLocalDate()
@@ -471,9 +474,9 @@ fun HomeScreen(
                 wordActions = rememberWordActions(held.text) { actingOn = null },
                 paused = held.paused,
                 snoozeOffered = held.snoozeOffered,
-                snoozed = held.snoozedUntil != null || held.snoozedToPlace != null,
+                snoozed = held.snoozedUntil != null || held.snoozedToPlace != null || held.snoozedToRules != null,
                 customMinutes = snoozeCustomMinutes,
-                places = placeOffers,
+                places = placeOffersFor(placeOffers, held.nextTime),
                 onSnoozeToPlace = { offer ->
                     actingOn = null
                     viewModel.snoozeToPlace(held.id, offer, hereLabel)
@@ -576,7 +579,7 @@ fun HomeScreen(
             onPick = { snooze -> choosingMoreFor = null; viewModel.snooze(id, snooze) },
             onPickDate = { choosingMoreFor = null; pickingDateFor = id },
             onDismiss = { choosingMoreFor = null },
-            places = placeOffers,
+            places = placeOffersFor(placeOffers, state.cards[id]?.nextTime),
             onPickPlace = { offer -> choosingMoreFor = null; viewModel.snoozeToPlace(id, offer, hereLabel) },
         )
     }

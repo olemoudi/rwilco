@@ -86,6 +86,8 @@ class VaultSchemaTest {
             "contactKind",
             // Room v16: how close a contact is, and what on it was set by hand; older rows follow Settings.
             "contactCloseness", "contactCadenceByHand", "contactDays", "contactWindow",
+            // Room v17: a ring put off until its own rules ring it again; older rows were never put off so.
+            "snoozedToRules",
         )
 
         /** `firing_event` as Room v9 made it, carried in the vault since 0.168.0. */

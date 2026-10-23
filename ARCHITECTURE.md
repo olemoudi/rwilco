@@ -775,6 +775,38 @@ journeys through `Simulation` (which grew `Deal.Elsewhere` and `cross()`), `Snoo
 pins the rest of the model, and `SnoozePlaceFiringTest`, `AlertSnoozePlaceTest` and
 `HomeMenuTest` walk the phone.
 
+**Put off until its own rules ring it again (0.196.0, `Reminder.snoozedToRules`,
+`SnoozePlace.NextTime`, `nextTime` in `SnoozePlaces.kt`).** The two circles above are somewhere
+else; the answer the owner asked for at the very door that rang is *here, next time*: "al llegar a
+Mercadona" rings at Mercadona, and "comprar filtros" cannot be done now. So a third place offer
+that is not a circle at all: **"La próxima vez que llegue a Mercadona"** writes no moment and no
+line, only that the ring has been answered, and **outranks nothing** — the rules go on deciding,
+with their hours, their days, their "y sólo si" and every sibling, which is the whole point ("que
+se posponga conservando las condiciones que ya tenía"). That works because a doorway left
+unanswered already rings again at the next crossing by itself (the watch and the fences are owed
+the other side first; `presenceAlreadyRang` never spends a crossing), so the flag only has to stop
+the ring being owed: `awaitingAnswer` reads it as an answer (the alert leaves, Home's waiting card
+lets it go, the net says nothing — it is neither a ring let go nor a wait at a circle),
+`deadlineOutranked` as a snooze, and `momentDealtWith` as a ring still being answered, so a
+"hecho" given meanwhile spends nothing ahead. `nextFire`, `nextWake`, `watchedCircles` and the
+fences are what they were. **Offered only where it is true** (`nextTime`): a pending *doorway*
+that can still ring (its fences not over for good), under a reminder that is not a routine, a
+contact or a span that has taken over, and only while a ring is owed (`nextTimeOffer`). A state
+that has had its say is quiet until a "hecho", so "la próxima vez que esté en casa" would be a
+promise nothing keeps — left out on purpose, with clock-only reminders, which have the clock
+snoozes and "saltar la próxima". **The button names the door only when it is all there is**;
+another door, a sibling moment ahead, a state that has not rung or a set read "a la vez" would
+ring it too, so it says "Cuando vuelva a tocar" instead of promising one place and ringing at
+another. It is the first place offer (`placeOffersFor`), and takes the place of "al llegar a
+‹most used›" when that is the same door; without the background grant there are no place offers
+and so not this one (the rules' circles are not watched either). The next ring, a "hecho", a lapse
+and any other snooze clear it (`ReminderDao.setSnooze` writes all three; `markFired`, `dealtWith`);
+an edit keeps it whatever the rules become — they are what it was left to — except the edit that
+makes a routine. The history line is `SNOOZED` with `next[:arrive:‹label›|:leave:‹label›]`
+(`nextTimeDetail`), counted as a snooze, so the ring after it is the same round. Room v17 adds the
+column; the vault carries it as one more frozen name. `SnoozeToRulesTest` holds the model and the
+journey, `AlertSnoozePlaceTest` and `HomeMenuTest` the phone.
+
 `Search.kt` answers the magnifier: one query over the reminders and the tags the open ones use,
 returning `SearchHit.OfReminder`/`OfTag` so the screen can say which is which. Matching is
 folded (case and accents dropped) and banded — whole, prefix, word start, anywhere, then letters

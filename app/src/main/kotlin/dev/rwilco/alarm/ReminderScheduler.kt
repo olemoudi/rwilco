@@ -527,6 +527,9 @@ class ReminderScheduler(
             reminder.snoozedToPlace,
             reminder.deadline,
             reminder.expiresAt,
+            // Put off to its own rules arms nothing new, but it answers the ring, and the net's
+            // word about a ring let go is an alarm too ([armNudge]).
+            reminder.snoozedToRules,
             // Making a routine into a contact changes what is armed, and nothing else in here —
             // nor does how close it is, or the days and window set on it by hand, which decide
             // where its turn falls and who it goes before.
@@ -576,6 +579,7 @@ class ReminderScheduler(
         /** The set's deadline and the moment the round under way runs out: the third alarm. */
         val deadline: Deadline? = null,
         val expiresAt: Instant? = null,
+        val snoozedToRules: Boolean = false,
         val contactKind: ContactKind? = null,
         val contactCloseness: Closeness? = null,
         val contactDays: Set<java.time.DayOfWeek>? = null,

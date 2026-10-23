@@ -13,11 +13,13 @@ import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.alarm.ReminderScheduler
 import dev.rwilco.model.Action
+import dev.rwilco.model.FiringKind
 import dev.rwilco.model.Fix
 import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.Presence
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.hereRadiusM
+import dev.rwilco.model.nextTimeDetail
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
@@ -32,9 +34,10 @@ import org.junit.runner.RunWith
 import java.time.LocalDateTime
 
 /**
- * The two place answers on the ringing screen: "al llegar a Casa" writes the doorway in and
+ * The place answers on the ringing screen: "al llegar a Casa" writes the doorway in and
  * the screen leaves; "al salir de aquí" draws a circle around where the watch last saw the
- * phone and does the same. A device test because the offers are read off the phone — the saved
+ * phone and does the same; "la próxima vez que llegue a…" leaves the ring to the reminder's own
+ * doorway, and takes the place of the arrival at the same door. A device test because the offers are read off the phone — the saved
  * places, the watch's memory, the location grant — and answered off the main thread.
  */
 @RunWith(AndroidJUnit4::class)
@@ -120,6 +123,43 @@ class AlertSnoozePlaceTest {
         assertEquals(40.4500, here.lat, 0.0001)
         assertEquals(-3.6900, here.lng, 0.0001)
         gone()
+    }
+
+    @Test
+    fun nextTimeAtItsOwnDoorIsAnAnswerLeftToTheRules() {
+        val door = ringAtDoor(Trigger.Location(40.4300, -3.7000, 120, Presence.INSIDE, "Mercadona", onCrossing = true))
+        scenario = ActivityScenario.launch(alert())
+        rule.waitUntilShown(text)
+        val next = string { it.getString(R.string.snooze_next_arrive, "Mercadona") }
+        rule.waitUntilShown(next)
+        rule.holdToAnswer(next)
+        rule.waitUntil(timeoutMillis = 10_000) { runBlocking { app.repository.get(id)?.snoozedToRules == true } }
+        val row = runBlocking { app.repository.get(id)!! }
+        assertEquals(null, row.snoozedToPlace)
+        assertEquals(null, row.snoozedUntil)
+        assertEquals(listOf(TriggerRule(door)), row.rules)
+        // The history line is written right after the row, under the same lock: waited for too.
+        rule.waitUntil(timeoutMillis = 10_000) { runBlocking { app.repository.history(id).any { it.kind == FiringKind.SNOOZED } } }
+        val line = runBlocking { app.repository.history(id) }.first { it.kind == FiringKind.SNOOZED }
+        assertEquals(nextTimeDetail(door), line.detail)
+        gone()
+    }
+
+    @Test
+    fun nextTimeAtTheMostUsedPlaceTakesThatArrivalsPlace() {
+        ringAtDoor(Trigger.Location(40.4169, -3.7035, 200, Presence.INSIDE, "Casa", onCrossing = true))
+        scenario = ActivityScenario.launch(alert())
+        rule.waitUntilShown(text)
+        rule.waitUntilShown(string { it.getString(R.string.snooze_next_arrive, "Casa") })
+        val arrive = string { it.getString(R.string.snooze_arrive_at, "Casa") }
+        assertEquals(0, rule.onAllNodesWithText(arrive).fetchSemanticsNodes().size)
+    }
+
+    /** The reminder as a doorway that has just rung there, and nobody has answered. */
+    private fun ringAtDoor(door: Trigger.Location): Trigger.Location = runBlocking {
+        val now = app.clock.instant()
+        app.repository.save(app.repository.get(id)!!.copy(rules = listOf(TriggerRule(door)), lastFiredAt = now, lastFiredRule = 0))
+        door
     }
 
     /** The screen leaves on its own once the reminder is no longer owed an answer. */

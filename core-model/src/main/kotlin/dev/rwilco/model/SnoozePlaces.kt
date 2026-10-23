@@ -2,19 +2,24 @@ package dev.rwilco.model
 
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalTime
+import java.time.ZoneId
 
 /*
  * "Posponer hasta llegar a un lugar."
  *
  * The answers to a ring used to be clock-shaped only, and on a phone whose reminders are mostly
  * places the honest answer to "comprar filtros" ringing on the metro is "cuando llegue a casa".
- * Two offers, and no more: the saved place this person's reminders use most, as a doorway in
+ * Two offers of a circle: the saved place this person's reminders use most, as a doorway in
  * — and "al salir de aquí", a circle drawn around wherever the phone is right now, thrown away
  * once it has rung. The reminder carries the circle in [Reminder.snoozedToPlace]; the watch and
  * the geofences treat it as the reminder's only circle until it rings.
+ *
+ * And a third that is not a circle at all (0.196.0): **"la próxima vez que llegue a Mercadona"**,
+ * the reminder's own doorway left to ring it again ([SnoozePlace.NextTime]).
  */
 
-/** One of the two ways a ring can be put off to a place. */
+/** One of the ways a ring can be put off to a place. */
 sealed interface SnoozePlace {
     /** "Al llegar a [place]". */
     data class Arrive(val place: SavedPlace) : SnoozePlace
@@ -26,6 +31,14 @@ sealed interface SnoozePlace {
      * the tap goes and asks for, which is usually the same or tighter.
      */
     data class LeaveHere(val radiusM: Int = SNOOZE_HERE_MIN_RADIUS_M) : SnoozePlace
+
+    /**
+     * "La próxima vez que llegue a Mercadona": no circle of its own, but the reminder's, left to
+     * ring it the way it would have — with its hours, its days, its fences and every other rule
+     * it has ([Reminder.snoozedToRules]). [door] is the one doorway the button can name, and null
+     * when more than one thing can ring it next ("cuando vuelva a tocar"). See [nextTime].
+     */
+    data class NextTime(val door: Trigger.Location?) : SnoozePlace
 }
 
 /**
@@ -146,6 +159,90 @@ fun snoozePlaceOffers(
     val here = SnoozePlace.LeaveHere(watch.lastFix?.let { hereRadiusM(it.accuracyM) } ?: SNOOZE_HERE_MIN_RADIUS_M)
     return listOfNotNull(arrive) + here
 }
+
+/**
+ * What "la próxima vez" would wait for, whether or not anything is waiting yet — null when none
+ * of the reminder's own doorways can ring it again, which is when there is nothing to offer.
+ *
+ * **Only a doorway makes the offer.** "Al llegar a Mercadona" that rang and was left rings again
+ * at the next arrival by itself — the watch and the fences are owed the other side of the line
+ * first ([presenceAlreadyRang] never spends a crossing) — so leaving it to the rules is honest.
+ * A *state* that has had its say keeps quiet until a "hecho", so "la próxima vez que esté en
+ * casa" would be a promise nothing keeps; and a clock alone is already what the clock snoozes
+ * and "saltar la próxima" are for. A routine's rules never ring, a contact's moment is the
+ * list's, and a span that has taken over has taken the rules out of the loop: none of them.
+ *
+ * **The button names the door only when the door is all there is.** Anything else that can ring
+ * it — another doorway, a sibling's moment still ahead, a state that has not rung, a set read
+ * "a la vez" whose windows open on their own — rings it too, because the rules decide; so the
+ * button says "cuando vuelva a tocar" rather than promise one place and ring at another.
+ */
+fun Reminder.nextTime(
+    now: Instant,
+    zone: ZoneId,
+    defaultTime: LocalTime,
+    dayStart: LocalTime = DEFAULT_DAY_START,
+    shape: DayShape = DayShape.DEFAULT,
+): SnoozePlace.NextTime? {
+    if (status != Status.ACTIVE || isRoutine || isContact || spanHasTakenOver) return null
+    val from = rulesLookFrom(now, restUntil(zone, dayStart, shape))
+    val doors = ArrayList<Trigger.Location>()
+    var others = false
+    for (index in pendingRules()) {
+        val rule = ruleInSet(index, shape, zone) ?: continue
+        // A rule whose fences are over for good (a date gone by) rings nothing, door or not.
+        nextFireOfRule(rule, id, from, zone, defaultTime, shape) ?: continue
+        val place = rules[index].trigger as? Trigger.Location
+        when {
+            place == null -> others = true
+            place.onCrossing -> doors += place
+            // A state held quiet by its own ring would ring nothing; any other state can —
+            // one under «desde que suena» included, once its rest is over.
+            !presenceAlreadyRang(place, index, now, zone, dayStart, shape) -> others = true
+        }
+    }
+    if (doors.isEmpty()) return null
+    val alone = !others && (ruleMatch == RuleMatch.ANY || !rulesCombine)
+    return SnoozePlace.NextTime(doors.singleOrNull()?.takeIf { alone })
+}
+
+/** [nextTime], as an answer to a ring: only while one is owed — anything else is already waiting for its rules. */
+fun Reminder.nextTimeOffer(
+    now: Instant,
+    zone: ZoneId,
+    defaultTime: LocalTime,
+    dayStart: LocalTime = DEFAULT_DAY_START,
+    shape: DayShape = DayShape.DEFAULT,
+): SnoozePlace.NextTime? = if (awaitingAnswer(now)) nextTime(now, zone, defaultTime, dayStart, shape) else null
+
+/**
+ * The place offers for one ring: its own "la próxima vez" first, then the screen's ([offers],
+ * [snoozePlaceOffers]' answer) — less the arrival at the very door it names, which would be the
+ * same place put the other way: a circle that outranks the rules beside the rules themselves.
+ *
+ * Nothing at all when [offers] is empty, which is exactly when the background location grant is
+ * missing ("al salir de aquí" is otherwise always there): the rules' own circles are not watched
+ * without it either, so "la próxima vez" would be a wait nobody keeps.
+ */
+fun placeOffersFor(offers: List<SnoozePlace>, nextTime: SnoozePlace.NextTime?): List<SnoozePlace> {
+    if (offers.isEmpty() || nextTime == null) return offers
+    val door = nextTime.door?.takeIf { it.presence == Presence.INSIDE }
+    val rest = offers.filterNot { offer ->
+        door != null && offer is SnoozePlace.Arrive && distanceMeters(offer.place.lat, offer.place.lng, door.lat, door.lng) <= SAME_PLACE_M
+    }
+    return listOf(nextTime) + rest
+}
+
+/** The detail a history line keeps for "la próxima vez": this, then the door's own when the offer named one. */
+const val NEXT_TIME_DETAIL = "next"
+
+fun nextTimeDetail(door: Trigger.Location?): String = NEXT_TIME_DETAIL + (door?.let { ":" + it.snoozeDetail() } ?: "")
+
+fun isNextTimeDetail(detail: String): Boolean = detail == NEXT_TIME_DETAIL || detail.startsWith("$NEXT_TIME_DETAIL:")
+
+/** The side and the name a "la próxima vez" line named, or null for "cuando vuelva a tocar" (and for any other line). */
+fun nextTimeDoorOf(detail: String): Pair<Presence, String>? =
+    if (detail.startsWith("$NEXT_TIME_DETAIL:")) snoozeDetailOf(detail.removePrefix("$NEXT_TIME_DETAIL:")) else null
 
 /** What a history line keeps about a snooze to a place: which way, and the place's name. */
 fun Trigger.Location.snoozeDetail(): String = (if (presence == Presence.INSIDE) "arrive:" else "leave:") + label

@@ -165,6 +165,7 @@ fun Reminder.doneEarlier(at: Instant, now: Instant): Reminder {
         updatedAt = now,
         snoozedUntil = null,
         snoozedToPlace = null,
+        snoozedToRules = false,
         firedRules = emptySet(),
         expiresAt = null,
         armedFor = null,

@@ -80,6 +80,7 @@ import dev.rwilco.model.GeofenceIds
 import dev.rwilco.model.Transition
 import dev.rwilco.model.distanceMeters
 import dev.rwilco.model.snoozeDetail
+import dev.rwilco.model.nextTimeDetail
 import dev.rwilco.model.snoozeOfferOf
 import dev.rwilco.model.snoozeTerms
 import dev.rwilco.model.until
@@ -543,7 +544,7 @@ class ReminderFiring(
         // round after the rest falls on. Read off the row as this "hecho" leaves it, for the
         // same reason the status is. A timer gets nothing here — its clock starts with the
         // round's first moment — and a reminder that is finished has no round to bound.
-        val nextExpiry = dealt.copy(status = status, firedRules = emptySet(), snoozedUntil = null, snoozedToPlace = null, expiresAt = null)
+        val nextExpiry = dealt.copy(status = status, firedRules = emptySet(), snoozedUntil = null, snoozedToPlace = null, snoozedToRules = false, expiresAt = null)
             .roundExpiry(now, clock.zone, settings.defaultTime, settings.dayStart, settings.dayShape)
         // One write: the snooze goes, a round dealt with is a round over (what had already
         // happened stops counting), and the moment every recurrence counts from is stamped —
@@ -1088,6 +1089,29 @@ class ReminderFiring(
         }
         scheduler.rearmAll()
         return line
+    }
+
+    /**
+     * "La próxima vez que llegue a Mercadona": the ring is answered and nothing else is written —
+     * no circle, no moment — so the reminder's own rules ring it again, with their hours, their
+     * days and their fences, exactly as they would have ([Reminder.snoozedToRules]). Nothing
+     * new reaches the fences or the watch: the door was already theirs. [door] is only what the
+     * history line says, and null when the offer named none.
+     */
+    suspend fun snoozeToRules(id: String, door: Trigger.Location?): Long? = lock.withLock {
+        if (repository.get(id) == null) {
+            repeater.cancel(id)
+            AlertNotifications.cancel(context, id)
+            return@withLock null
+        }
+        val now = clock.instant()
+        repository.snooze(id, null, toRules = true)
+        Diag.note(TAG_DIAG, "r=${short(id)} put off to its own rules${door?.let { " (${it.snoozeDetail().substringBefore(':')} #${GeofenceIds.tag(it.lat, it.lng, it.radiusM)})" } ?: ""}")
+        val line = repository.record(id, FiringKind.SNOOZED, now, detail = nextTimeDetail(door))
+        repeater.cancel(id)
+        AlertNotifications.cancel(context, id)
+        scheduler.rearmAll()
+        line
     }
 
     /**

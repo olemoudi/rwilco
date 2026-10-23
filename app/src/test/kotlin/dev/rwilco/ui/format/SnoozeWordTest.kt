@@ -25,6 +25,13 @@ class SnoozeWordTest {
     }
 
     @Test
+    fun `a ring left to its own rules is one, with or without a door`() {
+        assertEquals(SnoozeWord.UNTIL_NEXT_TIME, snoozeWordOf("next"))
+        assertEquals(SnoozeWord.UNTIL_NEXT_TIME, snoozeWordOf("next:arrive:Mercadona"))
+        assertEquals(SnoozeWord.UNTIL_NEXT_TIME, snoozeWordOf("next:leave:La oficina"))
+    }
+
+    @Test
     fun `a snooze to a moment is one`() {
         assertEquals(SnoozeWord.UNTIL_MOMENT, snoozeWordOf("2026-09-12T08:30:00Z"))
     }

@@ -103,17 +103,17 @@ interface ReminderDao {
     suspend fun setFollowedCadence(id: String, recurrence: String)
 
     /**
-     * A snooze is the person's word: to a clock or to a place, never both, and the two are
-     * written together so whichever is given clears the other.
+     * A snooze is the person's word: to a clock, to a place or to its own rules, never two of
+     * them, and the three are written together so whichever is given clears the others.
      */
-    @Query("UPDATE reminder SET snoozedUntil = :until, snoozedToPlace = :place WHERE id = :id")
-    suspend fun setSnooze(id: String, until: Long?, place: String?)
+    @Query("UPDATE reminder SET snoozedUntil = :until, snoozedToPlace = :place, snoozedToRules = :toRules WHERE id = :id")
+    suspend fun setSnooze(id: String, until: Long?, place: String?, toRules: Boolean)
 
     /**
      * Deliberately does not touch updatedAt: ringing is not editing. The deadline goes with the
      * ring: a set that rang is not given up on, whatever the clock says afterwards.
      */
-    @Query("UPDATE reminder SET lastFiredAt = :at, lastFiredRule = :ruleIndex, snoozedUntil = NULL, snoozedToPlace = NULL, expiresAt = NULL WHERE id = :id")
+    @Query("UPDATE reminder SET lastFiredAt = :at, lastFiredRule = :ruleIndex, snoozedUntil = NULL, snoozedToPlace = NULL, snoozedToRules = 0, expiresAt = NULL WHERE id = :id")
     suspend fun markFired(id: String, at: Long, ruleIndex: Int?)
 
     /**
@@ -122,7 +122,7 @@ interface ReminderDao {
      * process that dies in the middle cannot leave a round closed and its anchor unmoved.
      */
     @Query(
-        "UPDATE reminder SET snoozedUntil = NULL, snoozedToPlace = NULL, firedRules = '', lastDealtAt = :at, " +
+        "UPDATE reminder SET snoozedUntil = NULL, snoozedToPlace = NULL, snoozedToRules = 0, firedRules = '', lastDealtAt = :at, " +
             "status = :status, updatedAt = :at, doneAt = :doneAt, dealtThrough = :through, expiresAt = :expiresAt WHERE id = :id",
     )
     suspend fun dealtWith(id: String, at: Long, status: String, doneAt: Long?, through: Long?, expiresAt: Long?)

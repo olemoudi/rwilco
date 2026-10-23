@@ -11,6 +11,7 @@ import dev.rwilco.model.Section
 import dev.rwilco.model.Status
 import dev.rwilco.model.TagFilter
 import dev.rwilco.model.Presence
+import dev.rwilco.model.SnoozePlace
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.TriggerFamily
@@ -144,6 +145,25 @@ class HomeStateTest {
         // Paused, it waits at no door the card need mention.
         val held = buildHomeState(listOf(waiting.copy(status = Status.PAUSED)), defaultTime, now, zone, selectedTag = null)
         assertNull(held.sections.flatMap { it.cards }.single().snoozedToPlace)
+    }
+
+    @Test
+    fun `a ring owed an answer offers its own next time, and left to it the card says so`() {
+        val door = Trigger.Location(40.4300, -3.7000, 120, Presence.INSIDE, "Mercadona", onCrossing = true)
+        val rang = reminder("market", door).copy(lastFiredAt = now.minusSeconds(120), lastFiredRule = 0)
+        val owed = buildHomeState(listOf(rang), defaultTime, now, zone, selectedTag = null).cards.getValue("market")
+        assertEquals(SnoozePlace.NextTime(door), owed.nextTime)
+        assertNull(owed.snoozedToRules)
+        val left = buildHomeState(listOf(rang.copy(snoozedToRules = true)), defaultTime, now, zone, selectedTag = null)
+        assertTrue(left.waiting.isEmpty(), "answered: off the waiting card")
+        val card = left.sections.flatMap { it.cards }.single()
+        assertEquals(SnoozePlace.NextTime(door), card.snoozedToRules)
+        assertNull(card.nextTime, "nothing owed, nothing to offer")
+        assertTrue(card.snoozeOffered, "already put off: the question is where to, then")
+        // Edited down to a clock since, there is no door to name — and it was still put off.
+        val edited = rang.copy(snoozedToRules = true, rules = listOf(TriggerRule(Trigger.AtDateTime(LocalDateTime.of(2026, 8, 29, 16, 0)))))
+        val plain = buildHomeState(listOf(edited), defaultTime, now, zone, selectedTag = null).cards.getValue("market")
+        assertEquals(SnoozePlace.NextTime(null), plain.snoozedToRules)
     }
 
     @Test

@@ -36,6 +36,9 @@ class Simulation(
 
         /** "Cuando llegue a…" / "al salir de aquí": put off until the phone crosses [place]'s line. */
         data class Elsewhere(val place: Trigger.Location) : Deal
+
+        /** "La próxima vez que llegue a…": answered, and left to the reminder's own rules. */
+        data object NextTime : Deal
     }
 
     /** One ring as the row recorded it: when the alarm arrived, the moment it was recorded against, and why. */
@@ -306,6 +309,7 @@ class Simulation(
                 reminder = reminder.copy(
                     snoozedUntil = null,
                     snoozedToPlace = null,
+                    snoozedToRules = false,
                     firedRules = emptySet(),
                     lastDealtAt = now,
                     dealtThrough = consumed ?: reminder.dealtThrough,
@@ -316,8 +320,9 @@ class Simulation(
                 // And the next round's window close, counted from the rest, as dismiss writes it.
                 reminder = reminder.copy(expiresAt = reminder.roundExpiry(now, zone, defaultTime, dayStart, shape))
             }
-            is Deal.Later -> reminder = reminder.copy(snoozedUntil = deal.snooze.until(now, zone, weekendDay, weekendTime), snoozedToPlace = null)
-            is Deal.Elsewhere -> reminder = reminder.copy(snoozedUntil = null, snoozedToPlace = deal.place)
+            is Deal.Later -> reminder = reminder.copy(snoozedUntil = deal.snooze.until(now, zone, weekendDay, weekendTime), snoozedToPlace = null, snoozedToRules = false)
+            is Deal.Elsewhere -> reminder = reminder.copy(snoozedUntil = null, snoozedToPlace = deal.place, snoozedToRules = false)
+            Deal.NextTime -> reminder = reminder.copy(snoozedUntil = null, snoozedToPlace = null, snoozedToRules = true)
         }
         arm()
     }
@@ -404,7 +409,7 @@ class Simulation(
             }
             FiringOutcome.Ring -> Unit
         }
-        reminder = row.copy(lastFiredAt = rangFor, lastFiredRule = ruleIndex, snoozedUntil = null, snoozedToPlace = null, expiresAt = null)
+        reminder = row.copy(lastFiredAt = rangFor, lastFiredRule = ruleIndex, snoozedUntil = null, snoozedToPlace = null, snoozedToRules = false, expiresAt = null)
         if (row.ruleMatch == RuleMatch.ALL && row.rulesCombine) reminder = reminder.copy(firedRules = row.rules.indices.toSet())
         val ring = Ring(now, rangFor, ruleIndex, late)
         rings += ring

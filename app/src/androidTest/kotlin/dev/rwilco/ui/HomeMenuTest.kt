@@ -19,6 +19,7 @@ import dev.rwilco.model.Action
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.Presence
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.Status
 import dev.rwilco.model.ThemeMode
@@ -27,6 +28,7 @@ import dev.rwilco.model.TriggerRule
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -211,6 +213,38 @@ class HomeMenuTest {
         rule.waitUntilShown(s(R.string.home_cancel_snooze))
         rule.onNodeWithText(s(R.string.home_cancel_snooze), useUnmergedTree = true).performClick()
         rule.waitUntil(timeoutMillis = 10_000) { runBlocking { app.repository.get(id)?.snoozedToPlace == null } }
+        runBlocking { app.settingsStore.update { it.copy(savedPlaces = emptyList()) } }
+    }
+
+    /**
+     * Rung at its own doorway, a held card offers "la próxima vez que llegue a Mercadona": the
+     * answer is written and nothing else, the card and the snackbar say it, and "quitar el
+     * posponer" takes it back like any snooze.
+     */
+    @Test
+    fun aHeldCardRungAtItsDoorCanBeLeftToTheNextArrival() {
+        runBlocking {
+            app.settingsStore.update { it.copy(savedPlaces = listOf(SavedPlace("Casa", 40.4169, -3.7035, 200))) }
+            val door = Trigger.Location(40.4300, -3.7000, 120, Presence.INSIDE, "Mercadona", onCrossing = true)
+            app.repository.save(app.repository.get(id)!!.copy(rules = listOf(TriggerRule(door)), lastFiredRule = 0, armedFor = null))
+        }
+        holdTheCard()
+        rule.waitUntilShown(s(R.string.home_snooze))
+        rule.onNodeWithText(s(R.string.home_snooze), useUnmergedTree = true).performClick()
+        val next = rule.activity.getString(R.string.snooze_next_arrive, "Mercadona")
+        rule.waitUntilShown(next)
+        shot("home-menu-snooze-next-time")
+        rule.onNodeWithText(next, useUnmergedTree = true).performClick()
+        rule.waitUntil(timeoutMillis = 10_000) { runBlocking { app.repository.get(id)?.snoozedToRules == true } }
+        assertEquals(null, runBlocking { app.repository.get(id)!!.snoozedToPlace })
+        // The snackbar says until when, and the card wears the answer it got.
+        rule.waitUntilShown(rule.activity.getString(R.string.snooze_until_next_arrive, "Mercadona"))
+        rule.waitUntilShown(next)
+
+        holdTheCard()
+        rule.waitUntilShown(s(R.string.home_cancel_snooze))
+        rule.onNodeWithText(s(R.string.home_cancel_snooze), useUnmergedTree = true).performClick()
+        rule.waitUntil(timeoutMillis = 10_000) { runBlocking { app.repository.get(id)?.snoozedToRules == false } }
         runBlocking { app.settingsStore.update { it.copy(savedPlaces = emptyList()) } }
     }
 

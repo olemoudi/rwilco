@@ -64,6 +64,8 @@ import dev.rwilco.R
 import dev.rwilco.model.Actionable
 import dev.rwilco.model.snoozeBoard
 import dev.rwilco.model.snoozeTerms
+import dev.rwilco.model.nextTimeOffer
+import dev.rwilco.model.placeOffersFor
 import dev.rwilco.ui.components.open
 
 /**
@@ -329,7 +331,8 @@ class AlertActivity : ComponentActivity() {
             }
 
             // The place answers: the saved place this phone's reminders use most, as a doorway
-            // in, and "al salir de aquí". Read once per screen; neither the saved places nor
+            // in, and "al salir de aquí" — and, per ring, its own next time ([placeOffersFor]
+            // below). Read once per screen; neither the saved places nor
             // where the watch last saw the phone change while an alarm is being answered.
             val places by produceState(initialValue = emptyList<SnoozePlace>(), current.savedPlaces) {
                 value = snoozePlaceOffers(current.savedPlaces, app.repository.allNow(), app.placeWatch.read(), hasBackgroundLocation())
@@ -366,6 +369,11 @@ class AlertActivity : ComponentActivity() {
                     )
                 } else {
                     val first = focusedItem ?: items.first()
+                    // "La próxima vez que llegue a…" is this ring's own, worked out from its row.
+                    val firstReminder = reminders.firstOrNull { it.id == first.id }
+                    val nextTime = remember(firstReminder) {
+                        firstReminder?.nextTimeOffer(now, zone, current.defaultTime, current.dayStart, current.dayShape)
+                    }
                     AlertScreen(
                         content = first.content,
                         preview = false,
@@ -379,7 +387,7 @@ class AlertActivity : ComponentActivity() {
                         // Which answers are on the screen and which wait behind "a otro momento".
                         board = snoozeBoard(current),
                         terms = current.snoozeTerms,
-                        places = places,
+                        places = placeOffersFor(places, nextTime),
                         onSnoozeToPlace = { offer -> snoozeToPlace(first.id, offer) },
                         onSnoozeUntil = { until -> answer(first.id) { app.firing.snoozeUntil(first.id, until) } },
                         ringing = noise,
@@ -519,6 +527,7 @@ class AlertActivity : ComponentActivity() {
      */
     private fun snoozeToPlace(id: String, offer: SnoozePlace) {
         when (offer) {
+            is SnoozePlace.NextTime -> answer(id) { app.firing.snoozeToRules(id, offer.door) }
             is SnoozePlace.Arrive -> answer(id) {
                 val now = app.clock.instant()
                 app.firing.snoozeToPlace(id, offer.circle(), app.placeWatch.read().lastFix?.takeIf { it.speaksForHere(now) }, app.placeWatcher::remember)

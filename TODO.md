@@ -914,6 +914,11 @@ sheets sliding out on Confirm (`hide()` vs `confirmValueChange`)~~ — both done
 the dead code listed under 0.67.0 — asked about, not deleted.
 
 ## Still to prove on the real phone (Pixel 8 Pro)
+- «La próxima vez que llegue a…» (0.196.0): un recordatorio «al llegar a ‹un sitio›» que suene al
+  llegar; en el aviso, «La próxima vez que llegue a ‹sitio›». Quédate un rato: **no** tiene que
+  volver a sonar mientras sigas dentro, ni la red de seguridad decir nada. Sal, y al volver a
+  entrar otro día tiene que sonar como la primera vez (y el historial decir «pospuesto hasta la
+  próxima vez que llegues a ‹sitio›» antes de ese segundo «sonó»).
 - La revisión de 0.172.0. **Antes del primer desbloqueo:** con un recordatorio con sonido para
   dentro de 5–10 min, reinicia el teléfono y **no** lo desbloquees — tiene que sonar el tono de
   alarma con «Tienes un recordatorio» sobre el bloqueo; «Silenciar» lo calla; al desbloquear

@@ -101,6 +101,8 @@ data class ReminderEntity(
     val contactDays: String? = null,
     /** The stretch of those days when changed by hand, as "09:00-12:00"; null, or unreadable, follows Settings. */
     val contactWindow: String? = null,
+    /** Put off until its own rules ring it again; false (every older row) is no such snooze. */
+    val snoozedToRules: Boolean = false,
 )
 
 /** The stored form of no recurrence, and what every row written before v5 gets. */
@@ -154,6 +156,7 @@ fun ReminderEntity.toDomain(zone: ZoneId = ZoneId.systemDefault()): Reminder = R
     contactCadenceByHand = contactCadenceByHand,
     contactDays = decodeDays(contactDays),
     contactWindow = decodeWindow(contactWindow),
+    snoozedToRules = snoozedToRules,
 ).foldRepeats(zone)
 
 fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
@@ -188,6 +191,7 @@ fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
     contactCadenceByHand = contactCadenceByHand,
     contactDays = contactDays?.let(::encodeDays),
     contactWindow = contactWindow?.let(::encodeWindow),
+    snoozedToRules = snoozedToRules,
 )
 
 /** Day names, "WEDNESDAY,FRIDAY": plain text for the same reason [encodeIndices] is. */

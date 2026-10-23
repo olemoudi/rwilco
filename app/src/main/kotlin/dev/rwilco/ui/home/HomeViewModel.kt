@@ -181,6 +181,8 @@ sealed interface HomeEvent {
         val reminder: Reminder,
         val until: Instant?,
         val place: Trigger.Location? = null,
+        /** Or left to its own rules ("la próxima vez que llegue a…"), in the words its button had. */
+        val nextTime: SnoozePlace.NextTime? = null,
         /** "Quitar el posponer": said outright, rather than read off two nulls. */
         val cancelled: Boolean = false,
         /**
@@ -1371,6 +1373,12 @@ class HomeViewModel(
             val sideBefore = sideOf(reminder)
             val now = clock.instant()
             val (place, fix) = when (offer) {
+                // No circle to draw and no side to tell the watch: the door is already the rules'.
+                is SnoozePlace.NextTime -> {
+                    val line = firing.snoozeToRules(id, offer.door)
+                    events.send(HomeEvent.Snoozed(reminder, until = null, nextTime = offer, sideBefore = sideBefore, line = line))
+                    return@launch
+                }
                 is SnoozePlace.Arrive -> offer.circle() to placeWatch.first().lastFix?.takeIf { it.speaksForHere(now) }
                 is SnoozePlace.LeaveHere -> {
                     val fix = hereFix() ?: run { events.send(HomeEvent.NoFix); return@launch }
@@ -1395,7 +1403,7 @@ class HomeViewModel(
     fun undoSnooze(event: HomeEvent.Snoozed) {
         viewModelScope.launch {
             val reminder = event.reminder
-            repository.snooze(reminder.id, reminder.snoozedUntil, reminder.snoozedToPlace)
+            repository.snooze(reminder.id, reminder.snoozedUntil, reminder.snoozedToPlace, reminder.snoozedToRules)
             // And the line the snooze wrote, which the statistics would otherwise count — unless it
             // has rung since, which would turn one answered round into two unanswered rings.
             event.line?.let { repository.forgetLine(reminder.id, it, keepIfRangSince = true) }

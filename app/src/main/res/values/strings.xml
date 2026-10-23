@@ -1158,6 +1158,13 @@
     <string name="snooze_no_fix">Couldn\'t tell where you are just now; try again in a moment</string>
     <string name="snooze_until_arrive">you get to %1$s</string>
     <string name="snooze_until_leave">you leave %1$s</string>
+    <!-- "Next time": left to the reminder's own rules, by the door's name when it is all that can ring it. -->
+    <string name="snooze_next_arrive">Next time I get to %1$s</string>
+    <string name="snooze_next_leave">Next time I leave %1$s</string>
+    <string name="snooze_next_due">Next time it\'s due</string>
+    <string name="snooze_until_next_arrive">the next time you get to %1$s</string>
+    <string name="snooze_until_next_leave">the next time you leave %1$s</string>
+    <string name="snooze_until_next_due">it\'s due again</string>
     <string name="settings_weekend">When "the weekend" starts</string>
     <string name="settings_weekend_hint">Where a reminder lands when you put it off to the weekend.</string>
 
@@ -1849,6 +1856,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_196_0">
+
+        <item>A reminder that rang on arriving somewhere (or on leaving) can now be put off to “Next time I get to Mercadona”: it stays quiet, and its own rules ring it again on the next arrival, with their hours, days and every other rule it has. It is the first of the place answers on the alert and in a card’s menu, and replaces “When I get to…” when that would be the same place. If more than one thing can ring it, the button says “Next time it’s due”.</item>
+
+    </string-array>
     <string-array name="whats_new_0_195_0">
 
         <item>Dictation has moved from the bar at the top of Home to a floating microphone button right beside “New”, within reach of your thumb. Hold it to dictate, as before.</item>
