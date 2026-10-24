@@ -25,6 +25,7 @@ import dev.rwilco.model.monthlyRule
 import dev.rwilco.model.weekDays
 import dev.rwilco.model.nextFire
 import dev.rwilco.model.routineDeadline
+import dev.rwilco.model.promptOpensAt
 import dev.rwilco.model.promptQuietUntil
 import dev.rwilco.model.nextPrompt
 import dev.rwilco.model.isRoutine
@@ -335,6 +336,7 @@ private fun Reminder.stateLine(now: Instant, zone: ZoneId, settings: AppSettings
             val ask = nextPrompt(now, zone, settings.defaultTime, settings.dayStart, settings.dayShape)
             append(" ask=${stampOf(ask?.at)}${ask?.ruleIndex?.let { "/r$it" } ?: ""}")
             append(" quiet=${stampOf(promptQuietUntil(zone, settings.dayStart))}")
+            append(" opens=${stampOf(promptOpensAt(zone, settings.dayStart))}")
             append(" deadline=${stampOf(routineDeadline(zone, settings.dayStart))}")
         }
     }

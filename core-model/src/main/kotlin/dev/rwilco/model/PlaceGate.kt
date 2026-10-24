@@ -290,7 +290,8 @@ fun Reminder.watchedCircles(
  * every time. There is no "already rang" cut: nothing here rings. And there is a **quiet** after
  * every "hecho" ([Reminder.promptQuietUntil]) — a fix spent on a doorway that would only be
  * dropped as "you just did it" is a fix spent to learn nothing, so the circle opens when the
- * quiet is over. A doorway that asks is held back while nothing may ask ([promptsAllowed]: the
+ * quiet is over; a doorway that asks opens later still, with the questions, in the last quarter
+ * of the span ([Reminder.promptOpensAt]). A doorway that asks is held back while nothing may ask ([promptsAllowed]: the
  * deadline is ringing, or the routine is put off); one that counts as done is not — leaving the
  * garage answers the ring as surely as the button does. The hours gate is the same as
  * everybody's: a doorway fenced to the evening is worth nothing at three in the morning.
@@ -304,6 +305,7 @@ private fun Reminder.routineCircles(
 ): List<Gated> {
     val asking = promptsAllowed(now)
     val quiet = promptQuietUntil(zone, dayStart)
+    val opens = promptOpensAt(zone, dayStart)
     val from = promptLookFrom(now, zone, dayStart)
     val soon = now + PlaceWatchPolicy.MIN_WAIT
     return rules.flatMapIndexed { index, rule ->
@@ -311,7 +313,7 @@ private fun Reminder.routineCircles(
         val opensAt: Instant? = if (place != null) {
             if (!rule.resetsRoutine && !asking) return@flatMapIndexed emptyList()
             val hours = rule.windows().openFrom(now, zone)?.minus(PlaceWatchPolicy.WINDOW_LEAD) ?: return@flatMapIndexed emptyList()
-            maxOf(hours, quiet ?: hours).takeIf { it > soon }
+            maxOf(hours, (if (rule.resetsRoutine) quiet else opens) ?: hours).takeIf { it > soon }
         } else {
             // A clock rule asks about its circles at its next question and at no other time.
             if (!asking) return@flatMapIndexed emptyList()

@@ -113,7 +113,8 @@ class MonthDaysTest {
             text = "Cambiar el filtro",
             rules = listOf(TriggerRule(nine, listOf(first))),
             recurrence = Recurrence.Since(3, RecurrenceUnit.MONTHS),
-            createdAt = now.minusSeconds(40 * 86_400),
+            // Written ten weeks ago: in the last quarter of its three months, the stretch it asks in.
+            createdAt = now.minusSeconds(70 * 86_400),
             // Edited now: a question is never owed from before the last edit, so the 1st of
             // August is not handed back as a question the phone slept through.
             updatedAt = now,
@@ -125,15 +126,15 @@ class MonthDaysTest {
         )
         // And the ring is still the span, which the question never touches.
         assertEquals(
-            local(2026, 10, 18, 9, 0),
+            local(2026, 9, 18, 9, 0),
             filter.routineDeadline(zone, dayStart),
             "three months from the day it was written",
         )
     }
 
     @Test
-    fun `the quiet after a hecho outranks the day, and the next first is the one asked`() {
-        val done: Instant = local(2026, 9, 1, 9, 30)
+    fun `the last quarter of the span outranks the day, and the first 1st inside it is the one asked`() {
+        val done: Instant = local(2026, 9, 10, 9, 30)
         val filter = Reminder(
             id = "filter",
             text = "Cambiar el filtro",
@@ -143,9 +144,10 @@ class MonthDaysTest {
             updatedAt = now.minusSeconds(40 * 86_400),
             lastDealtAt = done,
         )
-        // Nine days of quiet on a three-month span, so the 1st just answered is not asked again.
+        // Due on 10 December; its last quarter starts in mid-November (0.198.0): the 1sts of
+        // October and November pass unasked, and December's is the question.
         assertEquals(
-            Wake(local(2026, 10, 1, 9, 0), 0),
+            Wake(local(2026, 12, 1, 9, 0), 0),
             filter.nextPrompt(done.plusSeconds(60), zone, defaultTime, dayStart),
         )
     }

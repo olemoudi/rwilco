@@ -492,7 +492,7 @@
     <string name="editor_sentence_last_time">last time</string>
     <string name="editor_sentence_starts">starts</string>
     <string name="recur_since_title">Since the last time</string>
-    <string name="recur_since_note">A routine: it counts from the last time you marked it done, and rings when that long has passed. The «when» only asks whether you\'ve done it.</string>
+    <string name="recur_since_note">A routine: it counts from the last time you marked it done, and rings when that long has passed. The «when» only asks whether you\'ve done it, and only in the last quarter of the time.</string>
     <string name="recur_list_title">Recurrences</string>
     <string name="recur_edit_named">Edit «%1$s»</string>
     <string name="recur_delete_named">Delete «%1$s»</string>
@@ -1199,7 +1199,7 @@
     <string name="editor_net_note">If it rings and you let it go — or if its moment passes without it ringing at all — one quiet word about it %1$s later.</string>
     <string name="editor_net_too_fast">It comes back every %1$s — too often for a net, since the next ring gets there first.</string>
     <string name="editor_when_empty">Nothing rings it: it is simply kept, under its tags.</string>
-    <string name="editor_when_ask_empty">Nothing asks: it only rings when the time is up. A time of day or a place here asks whether you\'ve done it — and a place can count as done by itself.</string>
+    <string name="editor_when_ask_empty">Nothing asks: it only rings when the time is up. A time of day or a place here asks whether you\'ve done it once a quarter of the time is left — and a place can count as done by itself.</string>
     <string name="editor_when_from_words">Read from the words</string>
     <string name="editor_what_empty">The moment passes in silence.</string>
     <string-array name="whats_new_0_3_0">
@@ -1856,6 +1856,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_198_0">
+
+        <item>Routines no longer ask «Have you done…?» a few days after the last time: they only ask in the last quarter of their time, when it is really coming up. «Charge keyboard and mouse» every 8 weeks asks on the weekends of the last two, not the seven before. A place that counts as done still counts it whenever you pass.</item>
+
+    </string-array>
     <string-array name="whats_new_0_197_0">
 
         <item>When several reminders are bundled together in the notification shade, tapping the bundle while it is collapsed now opens all of them on the alert screen at once, the way reminders that ring together are shown (one after another or in strips, as Settings → Alerts says), without ringing them again. The arrow still expands the bundle, and tapping a single card still opens just that one.</item>

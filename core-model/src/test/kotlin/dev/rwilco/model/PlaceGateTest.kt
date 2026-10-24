@@ -301,8 +301,8 @@ class PlaceGateTest {
     @Test
     fun `a routine's place is watched to ask, or to count as done, and never rests`() {
         val since = Recurrence.Since(21, RecurrenceUnit.DAYS)
-        // Written ten days ago: the quiet after the day it was written is over.
-        val written = now.minusSeconds(10 * 86_400)
+        // Written seventeen days ago: in the last quarter of its span, the stretch it asks in.
+        val written = now.minusSeconds(17 * 86_400)
         val asks = reminder(TriggerRule(leavingHome), recurrence = since).copy(createdAt = written)
         val circle = asks.circles().single()
         assertEquals(Crossing.ASKS, circle.place.crossing)
@@ -327,6 +327,10 @@ class PlaceGateTest {
         // of every quiet (PlaceWatcher.watching).
         assertTrue(held.resting, "a gated routine circle rests")
         assertFalse(circle.resting, "an open one does not")
+        // A doorway that asks waits longer after a "hecho": for the last quarter (0.198.0).
+        val asked = asks.copy(lastDealtAt = now.minusSeconds(3_600))
+        assertEquals(asked.promptOpensAt(zone), asked.circles().single().opensAt, "opens with the questions")
+        assertTrue(asked.promptOpensAt(zone)!! > done.promptQuietUntil(zone)!!)
     }
 
     @Test
@@ -360,7 +364,7 @@ class PlaceGateTest {
         val since = Recurrence.Since(21, RecurrenceUnit.DAYS)
         val nine = Trigger.TimeOfDay(LocalTime.of(9, 0))
         val fenced = reminder(TriggerRule(nine, listOf(Condition.AtPlace(homeLat, homeLng, 200, "Casa"))), recurrence = since)
-            .copy(createdAt = now.minusSeconds(10 * 86_400))
+            .copy(createdAt = now.minusSeconds(17 * 86_400))
         val circle = fenced.circles().single()
         assertEquals(Crossing.NOTHING, circle.place.crossing)
         assertEquals(local(2026, 8, 28, 9, 0).minus(PlaceWatchPolicy.ASK_LEAD), circle.opensAt, "the run-up to tomorrow's nine")

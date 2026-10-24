@@ -72,8 +72,9 @@ class RoutinePromptDeviceTest {
                 tags = listOf("coche"),
                 rules = listOf(TriggerRule(garage, resets = true), TriggerRule(nine)),
                 recurrence = Recurrence.Since(21, RecurrenceUnit.DAYS),
-                createdAt = now.minus(Duration.ofDays(10)),
-                updatedAt = now.minus(Duration.ofDays(10)),
+                // Seventeen days in: the last quarter of its span, the stretch it asks in (0.198.0).
+                createdAt = now.minus(Duration.ofDays(17)),
+                updatedAt = now.minus(Duration.ofDays(17)),
             ),
         )
         app.placeWatcher.sync()

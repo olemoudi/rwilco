@@ -2762,12 +2762,17 @@ loud what DST and a change of zone do to a landing.
   (`ReminderScheduler.armAsk`, inexact like the net's, `EXTRA_RULE` riding as the ring's does),
   set from `Reminder.nextPrompt` — the earliest asking clock rule from `promptLookFrom`, which is
   **never "now"** (0.106.0): past `askedAt` and its echo (`PLACE_ECHO`, one rule for both doors
-  — the garage at 08:58 and the clock at 09:00 are one question), past the **quiet** that
-  follows a "hecho" (`promptQuietUntil`: a tenth of the span, the net's proportion, because
-  "¿has movido el coche?" an hour after saying so is noise — and *only* after a "hecho": a
-  routine just written, or told to start next month, used to be mute for a tenth of its span
-  from the day it was written, doorway included), never before `routineStart()`, and never
-  before `updatedAt` (a rule added this morning is not owed yesterday's question). A moment
+  — the garage at 08:58 and the clock at 09:00 are one question), **never before the last
+  quarter of the span** (`promptOpensAt`, `PROMPT_OPEN_FRACTION`, 0.198.0, the owner's ask:
+  "¿Has hecho «Cargar teclado y ratón»?" every weekend with fifty days to go was noise — counted
+  from `routineAnchor()`, so a routine never done asks in the last quarter from its start too;
+  until 0.197.0 the floor was a tenth of the span after a "hecho" and nothing before one), past
+  the **quiet** that follows a "hecho" (`promptQuietUntil`: a tenth of the span, the net's
+  proportion — now only what holds a *place that counts as done*, `resetBy` and its circle: a
+  garage door counting the car as moved twice in an afternoon; the quarter would lose a deed
+  done early), never before `routineStart()`, and never before `updatedAt` (a rule added this
+  morning is not owed yesterday's question). A doorway that asks opens its circle with the
+  questions (`routineCircles`: `promptOpensAt`), one that counts as done with the quiet. A moment
   earlier than now is a question the phone slept through, armed as it is and delivered at once;
   a question tried and dropped at its fence stamps `askedAt` too, or the next look would hand
   the same past moment back and the alarm would loop. An `askedAt` ahead of now (a clock put

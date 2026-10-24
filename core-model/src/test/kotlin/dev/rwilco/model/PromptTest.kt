@@ -17,7 +17,8 @@ import java.time.LocalTime
  * The questions a routine puts, and when it keeps them to itself.
  *
  * Thursday afternoon in Madrid. "Mover el coche cada 21 días", asked about at nine every
- * morning and at the garage door.
+ * morning and at the garage door. Written seventeen days ago and never done: its deadline is
+ * Monday morning, and it is in the last quarter of its span — the stretch it asks in (0.198.0).
  */
 class PromptTest {
 
@@ -33,7 +34,7 @@ class PromptTest {
         lastFiredAt: Instant? = null,
         snoozedUntil: Instant? = null,
         status: Status = Status.ACTIVE,
-        createdAt: Instant = now.minusSeconds(10 * 86_400),
+        createdAt: Instant = now.minusSeconds(17 * 86_400),
         // Written ten days ago and last edited now: a question is never owed from before the
         // last edit, so the fixture asks from now unless a test says otherwise.
         updatedAt: Instant = now,
@@ -90,32 +91,53 @@ class PromptTest {
     }
 
     @Test
-    fun `after a hecho a routine keeps quiet for a tenth of its span`() {
-        // Done on Thursday afternoon, 21 days: the quiet runs into Saturday evening, and the
-        // first question is Sunday at nine.
+    fun `after a hecho a routine asks only in the last quarter of its span, and a place that counts holds a tenth`() {
+        // Done on Thursday afternoon, 21 days: due on 17 September at nine, and nothing is asked
+        // until a quarter of that is left — the first question is Saturday the 12th at nine.
         val done = car(TriggerRule(nine), lastDealtAt = now)
-        val quiet = done.promptQuietUntil(zone, dayStart)!!
+        val deadline = done.routineDeadline(zone, dayStart)!!
         val span = done.routineSpan(zone, dayStart)!!
+        assertEquals(local(2026, 9, 17, 9, 0), deadline)
+        assertEquals(deadline.minus(span.dividedBy(4)), done.promptOpensAt(zone, dayStart))
+        assertEquals(Wake(local(2026, 9, 12, 9, 0), 0), done.prompt())
+        // The tenth is still what keeps a place that counts as done from counting twice.
+        val quiet = done.promptQuietUntil(zone, dayStart)!!
         assertEquals(now.plus(span.dividedBy(10)), quiet)
         assertTrue(quiet > local(2026, 8, 29, 9, 0) && quiet < local(2026, 8, 30, 9, 0))
-        assertEquals(Wake(local(2026, 8, 30, 9, 0), 0), done.prompt())
-        // In hours: eight hours is quiet for forty-eight minutes.
+        // In hours: eight hours asks in its last two, and a place holds forty-eight minutes.
         val pills = car(TriggerRule(nine), span = Recurrence.Since(8, RecurrenceUnit.HOURS), lastDealtAt = now)
+        assertEquals(now.plus(Duration.ofHours(6)), pills.promptOpensAt(zone, dayStart))
         assertEquals(now.plus(Duration.ofMinutes(48)), pills.promptQuietUntil(zone, dayStart))
+        assertNull(done.copy(recurrence = Recurrence.After(21, RecurrenceUnit.DAYS)).promptOpensAt(zone, dayStart), "not a routine")
     }
 
     @Test
-    fun `a routine just written asks from the start, and one told to start later asks from then`() {
-        // The quiet is what follows a "hecho" and nothing else: written today, "cambiar el
-        // filtro cada 3 meses" used to ask nothing for nine days, doorway included.
+    fun `eight weeks after a hecho, the weekend question waits for the last two weeks`() {
+        // The owner's case (0.198.0): «Cargar teclado y ratón», every 8 weeks, asked about on
+        // Saturdays and Sundays — done on Sunday 18 October, it asked again six days later.
+        // (Asked at half past nine here: 08:45 would sit on the very moment the window opens.)
+        val weekend = TriggerRule(Trigger.TimeOfDay(LocalTime.of(9, 30)), listOf(Condition.OnDays(setOf(java.time.DayOfWeek.SATURDAY, java.time.DayOfWeek.SUNDAY))))
+        val keyboard = car(weekend, span = Recurrence.Since(8, RecurrenceUnit.WEEKS), lastDealtAt = local(2026, 10, 18, 9, 0))
+        val sim = Simulation(keyboard, local(2026, 10, 24, 8, 0), dayStart = dayStart)
+        assertEquals(local(2026, 12, 13, 9, 0), sim.reminder.routineDeadline(zone, dayStart))
+        sim.run(local(2026, 11, 28, 12, 0))
+        assertTrue(sim.prompts.isEmpty(), "no weekend asks while the deadline is weeks away")
+        sim.run(local(2026, 12, 6, 12, 0))
+        assertEquals(listOf(local(2026, 11, 29, 9, 30), local(2026, 12, 5, 9, 30), local(2026, 12, 6, 9, 30)), sim.prompts.map { it.at }, "the last two weeks' weekends")
+    }
+
+    @Test
+    fun `a routine just written asks in the last quarter from its start, and one told to start later too`() {
+        // Never done, the count runs from the start: written today, "cambiar el filtro cada 3
+        // meses" asks from early November. (Until 0.198.0 it asked from its first morning.)
         val fresh = car(TriggerRule(nine), span = Recurrence.Since(3, RecurrenceUnit.MONTHS), createdAt = now)
-        assertNull(fresh.promptQuietUntil(zone, dayStart), "nothing done, nothing to be quiet about")
-        assertEquals(Wake(local(2026, 8, 28, 9, 0), 0), fresh.prompt())
+        assertNull(fresh.promptQuietUntil(zone, dayStart), "nothing done, nothing for a place to hold back after")
+        assertEquals(Wake(local(2026, 11, 5, 9, 0), 0), fresh.prompt())
         val start = local(2026, 10, 1, 9, 0)
         val later = car(TriggerRule(nine), span = Recurrence.Since(21, RecurrenceUnit.DAYS, startsAt = start))
         val first = later.prompt()!!
         assertTrue(first.at >= start, "no question before the count begins")
-        assertEquals(LocalTime.of(9, 0), first.at.atZone(zone).toLocalTime())
+        assertEquals(local(2026, 10, 17, 9, 0), first.at, "a quarter of its three weeks before the 22nd")
     }
 
     @Test
@@ -124,6 +146,7 @@ class PromptTest {
         // from that one, not from now, so yesterday's nine is the answer — a moment already
         // gone, which the alarm delivers at once. Asked now, tomorrow's is next.
         val slept = car(TriggerRule(nine), updatedAt = now.minusSeconds(10 * 86_400), askedAt = local(2026, 8, 25, 9, 0))
+        assertTrue(slept.promptOpensAt(zone, dayStart)!! < local(2026, 8, 26, 9, 0), "inside the last quarter by the morning owed")
         assertEquals(Wake(local(2026, 8, 26, 9, 0), 0), slept.prompt(), "owed since yesterday morning")
         assertEquals(Wake(local(2026, 8, 28, 9, 0), 0), slept.copy(askedAt = now).prompt())
         // A rule added this morning is not owed yesterday's question: the last edit is a floor.
@@ -187,17 +210,20 @@ class PromptTest {
     // ---- the harness, as the app's own doors judge a question --------------------------------
 
     @Test
-    fun `a question put, ignored, and the next one a day later, then answered, and quiet for two days`() {
+    fun `a question put, ignored, and the next one a day later, then answered, and quiet until the last quarter`() {
         val sim = Simulation(car(TriggerRule(nine), TriggerRule(garage)), now, dayStart = dayStart)
         sim.run(local(2026, 8, 29, 12, 0))
         assertEquals(listOf(local(2026, 8, 28, 9, 0), local(2026, 8, 29, 9, 0)), sim.prompts.map { it.at }, "one question a morning, ignored")
         assertTrue(sim.rings.isEmpty(), "and nothing rang")
-        // "Sí, ahora" to the next one: the count starts again, and the questions hold for a tenth.
+        // "Sí, ahora" to the next one: the count starts again, and the questions hold until a
+        // quarter of it is left.
         sim.run(local(2026, 8, 30, 12, 0), answer = { Simulation.Deal.Done })
         assertEquals(local(2026, 8, 30, 9, 0), sim.reminder.lastDealtAt)
         assertEquals(local(2026, 9, 20, 9, 0), sim.reminder.routineDeadline(zone, dayStart))
-        sim.run(local(2026, 9, 3, 12, 0))
-        assertEquals(listOf(local(2026, 9, 2, 9, 0), local(2026, 9, 3, 9, 0)), sim.prompts.drop(3).map { it.at }, "two days of quiet, then the mornings again")
+        sim.run(local(2026, 9, 14, 12, 0))
+        assertTrue(sim.prompts.drop(3).isEmpty(), "two weeks without a question")
+        sim.run(local(2026, 9, 16, 12, 0))
+        assertEquals(listOf(local(2026, 9, 15, 9, 0), local(2026, 9, 16, 9, 0)), sim.prompts.drop(3).map { it.at }, "then the mornings again")
     }
 
     @Test
@@ -233,8 +259,9 @@ class PromptTest {
     fun `a year of the car — the garage counts, the mornings ask, and the deadline only rings when the car sat still`() {
         val nineAsks = TriggerRule(nine)
         val garageCounts = TriggerRule(garage, resets = true)
-        // Written ten days ago (the quiet after that is over): driven every Saturday for ten
-        // weeks, no deadline ever rings, and the mornings keep asking between the quiets.
+        // Written seventeen days ago (its last quarter): driven every Saturday for ten weeks, no
+        // deadline ever rings, and the mornings asked only before the first drive — after each one
+        // the deadline is three weeks away, and nothing is asked before its last quarter.
         val sim = Simulation(car(nineAsks, garageCounts), now, dayStart = dayStart)
         var saturday = local(2026, 8, 29, 11, 0)
         repeat(10) {

@@ -485,7 +485,7 @@
     <string name="editor_sentence_last_time">la última vez</string>
     <string name="editor_sentence_starts">empieza</string>
     <string name="recur_since_title">Desde la última vez</string>
-    <string name="recur_since_note">Una rutina: cuenta desde la última vez que lo marcaste hecho y suena cuando ha pasado ese tiempo. El «cuándo» sólo pregunta si lo has hecho.</string>
+    <string name="recur_since_note">Una rutina: cuenta desde la última vez que lo marcaste hecho y suena cuando ha pasado ese tiempo. El «cuándo» sólo pregunta si lo has hecho, y sólo en el último cuarto del plazo.</string>
     <string name="recur_list_title">Recurrencias</string>
     <string name="recur_save_as">Guardar con un nombre</string>
     <string name="recur_save_as_hint">Déjalo vacío para no guardarla</string>
@@ -1184,7 +1184,7 @@
     <string name="editor_net_note">Si suena y lo dejas pasar — o si su momento pasa sin que llegue a sonar — un aviso discreto %1$s después.</string>
     <string name="editor_net_too_fast">Vuelve cada %1$s: demasiado seguido para una red, el siguiente aviso llega antes.</string>
     <string name="editor_when_empty">No suena: se queda guardado, bajo sus etiquetas.</string>
-    <string name="editor_when_ask_empty">No pregunta nada: sólo suena cuando se cumple el plazo. Una hora o un lugar aquí preguntan si lo has hecho, y un lugar puede darlo por hecho él solo.</string>
+    <string name="editor_when_ask_empty">No pregunta nada: sólo suena cuando se cumple el plazo. Una hora o un lugar aquí preguntan si lo has hecho cuando queda un cuarto del plazo, y un lugar puede darlo por hecho él solo.</string>
     <string name="editor_when_from_words">Leído de las palabras</string>
     <string name="editor_what_empty">El momento pasa en silencio.</string>
     <string-array name="whats_new_0_3_0">
@@ -1841,6 +1841,11 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_198_0">
+
+        <item>Las rutinas ya no preguntan «¿Has hecho…?» en cuanto pasan unos días desde la última vez: ahora sólo preguntan en el último cuarto del plazo, cuando de verdad se acerca. «Cargar teclado y ratón» cada 8 semanas pregunta los fines de semana de las dos últimas, no los siete anteriores. Un lugar que lo da por hecho sigue contándolo siempre que pasas.</item>
+
+    </string-array>
     <string-array name="whats_new_0_197_0">
 
         <item>Cuando varios recordatorios se agrupan en la bandeja de notificaciones, tocar el grupo plegado abre ahora todos en la pantalla de aviso a la vez, como se muestran los que suenan juntos (uno tras otro o en tiras, según Ajustes → Avisos), sin volver a sonar. La flecha sigue desplegando el grupo, y tocar una tarjeta suelta sigue abriendo sólo esa.</item>

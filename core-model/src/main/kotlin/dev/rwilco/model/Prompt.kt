@@ -1,5 +1,6 @@
 package dev.rwilco.model
 
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
@@ -15,13 +16,19 @@ import java.time.ZoneId
  * once per moment. The place half is the watch's (`PlaceGate.watchedCircles`, `Crossing.ASKS`,
  * `Crossing.RESETS`).
  *
- * **Quiet for a tenth of the span after a "hecho".** "¿Has movido el coche?" an hour after
- * saying so is noise, and so is a garage door counting the car as moved twice in an afternoon.
- * The same proportion the safety net uses, and for the same reason: it scales with the thing
- * it is about — two days on three weeks, three quarters of an hour on eight hours. After a
- * "hecho" and only then: a routine just written, or one told to start next month, has done
- * nothing to be quiet about, and it used to be mute — doorway included — for a tenth of its
- * span from the day it was written.
+ * **Questions only in the last quarter of the span** ([promptOpensAt], 0.198.0, the owner's
+ * ask). "¿Has hecho «Cargar teclado y ratón»?" every weekend with fifty days to go is noise: the
+ * deed is not owed yet, and doing it early is still told by tapping "hecho" on the row. So a
+ * clock rule or a doorway that asks keeps quiet until a quarter of the span is left, counted
+ * from where the count runs ([routineAnchor]: the last "hecho", or the start) — two weeks on
+ * eight, two hours on eight. Until 0.197.0 a routine asked from a tenth of the span after a
+ * "hecho", and from its first day when it had none.
+ *
+ * **A place that counts as done keeps quiet for a tenth of the span after a "hecho"**
+ * ([promptQuietUntil]): a garage door counting the car as moved twice in an afternoon. The same
+ * proportion the safety net uses, and for the same reason: it scales with the thing it is
+ * about — two days on three weeks, three quarters of an hour on eight hours. Not the quarter:
+ * a deed done early must still count, or the next deadline runs from the older one.
  *
  * **A question that was owed is still owed.** Where the next question is looked for from is
  * never "now": it is the last one put (plus the echo, [PLACE_ECHO]), the quiet, the start, or
@@ -33,8 +40,22 @@ import java.time.ZoneId
  * alarm would loop.
  */
 
-/** One part in this many of the span: how long a routine holds its questions after a "hecho". */
+/** One part in this many of the span: how long a place that counts as done holds back after a "hecho". */
 const val PROMPT_QUIET_FRACTION = 10L
+
+/** One part in this many of the span: the last stretch of it in which a routine asks. */
+const val PROMPT_OPEN_FRACTION = 4L
+
+/**
+ * From when a routine asks: the last [PROMPT_OPEN_FRACTION]th of its span before the deadline,
+ * counted from [routineAnchor] (the last "hecho", or the start). Null for anything that is not a
+ * routine. See the file's note.
+ */
+fun Reminder.promptOpensAt(zone: ZoneId, dayStart: LocalTime = DEFAULT_DAY_START): Instant? {
+    val deadline = routineDeadline(zone, dayStart) ?: return null
+    val span = Duration.between(routineAnchor(), deadline).coerceAtLeast(Duration.ZERO)
+    return deadline.minus(span.dividedBy(PROMPT_OPEN_FRACTION))
+}
 
 /**
  * Until when a routine keeps quiet after its last "hecho"; null while it has never been done,
@@ -48,7 +69,8 @@ fun Reminder.promptQuietUntil(zone: ZoneId, dayStart: LocalTime = DEFAULT_DAY_ST
 /**
  * Where the next question is looked for from — and deliberately not from [now]: past the one
  * already asked and its echo (two questions minutes apart are one question, whichever door
- * put them), past the quiet that follows a "hecho", never before the count starts, and never
+ * put them), never before the last quarter of the span ([promptOpensAt]) — which is past the
+ * quiet that follows a "hecho" and the start of the count —, and never
  * before the routine was last written or brought back from a pause ([Reminder.updatedAt]:
  * a rule added this morning is not owed yesterday's question). A moment earlier than now is a
  * question that was owed and never put — the phone was off — and it is put at once.
@@ -62,6 +84,7 @@ fun Reminder.promptLookFrom(now: Instant, zone: ZoneId, dayStart: LocalTime = DE
         updatedAt,
         askedAt?.takeIf { it <= now }?.plus(PLACE_ECHO),
         promptQuietUntil(zone, dayStart),
+        promptOpensAt(zone, dayStart),
     ).max()
 
 /**
