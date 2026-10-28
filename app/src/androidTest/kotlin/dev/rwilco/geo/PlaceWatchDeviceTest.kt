@@ -820,6 +820,50 @@ class PlaceWatchDeviceTest {
         assertNull(app.placeLog.read().notes.first().place)
     }
 
+    /**
+     * Walking past a fifty-metre doorway with a look either side of it and neither inside rings
+     * it, all the way through the firing (0.199.0, `passedThrough`) — and the quick look that walk
+     * asks for goes to the provider with its stricter request (`readFix`) and is answered rather
+     * than timed out. The fixes run a minute or two behind the clock, not ten: a quick look is
+     * only asked for when the last fix is that recent.
+     */
+    @Test
+    fun walkingPastASmallDoorwayBetweenTwoLooksRingsIt() = runBlocking {
+        val id = "watch-pass"
+        val atm = Trigger.Location(homeLat, homeLng, 50, Presence.INSIDE, "Caixa", onCrossing = true)
+        val created = app.clock.instant()
+        app.repository.save(
+            Reminder(id = id, text = "Sacar dinero", rules = listOf(TriggerRule(atm)), status = Status.ACTIVE, createdAt = created, updatedAt = created),
+        )
+        Thread.sleep(1_500)
+        cancelWatchAlarm()
+        val key = GeofenceIds.encode(id, 0, atm)
+        val base = System.currentTimeMillis()
+
+        // Walking up to it: a baseline outside, then 250 m closer two minutes later.
+        moveTo(south = 350.0, at = base - 180_000)
+        watcher.check()
+        moveTo(south = 100.0, at = base - 60_000)
+        watcher.check()
+        var state = store.read()
+        assertEquals(false, state.inside[key])
+        val quick = Duration.between(state.lastFix!!.at, state.nextCheckAt!!)
+        assertTrue("on foot, closing on a 50 m circle, the next look is under the floor: $quick", quick < Duration.ofMinutes(2))
+        assertNull(app.repository.get(id)!!.lastFiredAt)
+
+        // A minute later, 100 m out the far side. The fix is too vague to be answered from the
+        // cache (45 m of doubt over a 40 m gap), so this is the provider's fresh answer.
+        moveTo(south = -100.0, at = base, accuracy = 45f)
+        val began = System.currentTimeMillis()
+        watcher.check()
+        val took = System.currentTimeMillis() - began
+        assertTrue("the fresh request timed out (${took} ms) instead of answering", took < 6_000)
+        state = store.read()
+        assertEquals("outside now, and the watch says so", false, state.inside[key])
+        assertEquals(Instant.ofEpochMilli(base), state.lastFix!!.at)
+        assertNotNull("walking straight through should have rung", app.repository.get(id)!!.lastFiredAt)
+    }
+
     /** The phone is now [south] metres south of home (north when negative). */
     private fun moveTo(south: Double, at: Long, accuracy: Float = 10f) {
         val location = Location("mock").apply {

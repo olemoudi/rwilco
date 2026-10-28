@@ -3727,6 +3727,29 @@ loud what DST and a change of zone do to a landing.
   what the owner's log showed with a place snooze pending. The cap is on the back-off and never
   on the distance answer: deep inside a place kilometres wide, time-to-the-line is still the
   better number and still wins.
+  **Walking past a small circle is arriving at it** (0.199.0). Two minutes is 170 m on foot and a
+  fifty-metre circle is 100 m across, so a walk past fitted between two looks with neither inside
+  — "sacar dinero, al llegar a la Caixa" was walked past on the way home and never rang, and the
+  geofence, which Play Services does not promise under about a hundred metres, said nothing
+  either. Two answers, because neither is enough alone. `passFloor`: on foot (moving by fix,
+  under `DRIVING_MPS`) and closing on a circle that rings on arrival, the floor under the next
+  look drops from two minutes to the time it takes to cross the circle at the planning speed,
+  never under `PASS_MIN_WAIT` (30 s) — one closing step is the evidence, because waiting for
+  three is further than the whole near zone on foot; a 150 m circle takes longer than the floor
+  to cross and nothing changes for it; under half a battery the battery's floor wins as before.
+  Those quick looks ask the provider for a fix no older than a third of the wait
+  (`CurrentLocationRequest.maxUpdateAge`): its default hands back the last look's own position,
+  which reads as standing still and backs the watch off at the door. And `passedThrough`: two
+  looks that both found the phone outside, whose straight line runs within the radius, are an
+  arrival (`WatchStep.passed`, an event like any other; the side stays "outside"), because a
+  street that clips the edge is inside for twenty seconds and no alarm cadence promises a look
+  there. Only while the line is a fair account of the walk — both fixes as sharp as an arrival
+  needs, at most `PASS_MAX_M` (250 m) and `PASS_MAX_SPAN` (5 min) apart — and only for circles
+  that ring on arriving with no stay asked (`ringsOnPassing`): not a leaving, not a routine's
+  question or reset, not before a rule's hours. Wrong, it rings somebody who walked down the next
+  street, which is the right way round. The report says `walked through #tag between two looks`,
+  since a ring off two "outside" looks otherwise reads as a bug. `PlacePassTest` walks the street
+  at several distances from the middle; `PlaceWatchDeviceTest` walks it on a real provider.
   **And what that costs is now said out loud** (0.77.0, `WatchLog.typicalAccuracyM` /
   `radiusOutOfReach`, pure and tested; the line under the radius slider). Arriving takes a fix at
   least as tight as the circle, so on a phone whose positions come back at ±70 m — indoors, on

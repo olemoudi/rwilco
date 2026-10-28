@@ -187,8 +187,31 @@ fun speedBetween(previous: Fix?, current: Fix): Double? {
 
 /** The numbers that decide how often the phone is asked where it is. */
 object PlaceWatchPolicy {
-    /** The most often the app will ever look, and only while moving near a line. */
+    /**
+     * The most often the app looks while moving near a line — except on foot past a circle too
+     * small for it ([passFloor]), which is what [PASS_MIN_WAIT] is for.
+     */
     val MIN_WAIT: Duration = Duration.ofMinutes(2)
+
+    /**
+     * The fastest the watch ever looks: on foot, closing on a circle it would cross in less than
+     * [MIN_WAIT] ([passFloor]). Under this a look's own fix — up to seven seconds of it — would
+     * be most of the wait.
+     */
+    val PASS_MIN_WAIT: Duration = Duration.ofSeconds(30)
+
+    /**
+     * The longest straight line between two looks still taken as the way the phone went
+     * ([passedThrough]): a block and a half of street, about two minutes on foot. Past it the
+     * line is a guess about which way round the block somebody walked.
+     */
+    const val PASS_MAX_M = 250.0
+
+    /**
+     * And the longest time between them: the two-minute floor, a look the system delayed, the
+     * first back-off. Longer is somebody who stopped on the way, and nobody knows where.
+     */
+    val PASS_MAX_SPAN: Duration = Duration.ofMinutes(5)
 
     /** The least often a place within reach is watched: far from everything, or standing still. */
     val MAX_WAIT: Duration = Duration.ofMinutes(60)
@@ -328,7 +351,8 @@ object PlaceWatchPolicy {
     /**
      * More polls than this inside [BUSY_WINDOW] and something is wrong. Three fifths of the
      * arithmetic ceiling — MIN_WAIT is two minutes, so thirty an hour is all the watch can
-     * physically do — which puts it above what an ordinary approach costs and below what only
+     * physically do outside the minute or so of a walk past a small circle ([PASS_MIN_WAIT]) —
+     * which puts it above what an ordinary approach costs and below what only
      * a fault can reach: getting here takes over half the hour at the fastest cadence there is,
      * which is either a very long walk up to a place or the app getting something wrong.
      * See [WatchLog.busyNotice].
@@ -602,7 +626,11 @@ fun planNextCheck(
     ?.let { plan ->
         val floor = batteryFloor(charge)
         val tier = if (floor < PlaceWatchPolicy.MAX_WAIT) plan.tier else minOf(plan.tier, FixTier.BALANCED)
-        plan.copy(wait = maxOf(plan.wait, floor), tier = tier)
+        // With charge to spare the floor is MIN_WAIT, and the one plan under it — a walk past a
+        // small circle ([passFloor]) — is a minute of looking the battery has nothing to say
+        // about. Under half, it has the last word again.
+        val wait = if (floor <= PlaceWatchPolicy.MIN_WAIT) plan.wait else maxOf(plan.wait, floor)
+        plan.copy(wait = wait, tier = tier)
     }
 
 private fun planFor(
@@ -622,7 +650,8 @@ private fun planFor(
     }
     val blind = if (movement.speedMps == null) PlaceWatchPolicy.UNKNOWN_MAX_WAIT else PlaceWatchPolicy.MAX_WAIT
     val ceiling = maxOf(blind, reachCeiling(gap))
-    var wait = Duration.ofSeconds((gap / planningSpeed).toLong()).clamp(PlaceWatchPolicy.MIN_WAIT, ceiling)
+    val closing = closingM(place, previous, fix)
+    var wait = Duration.ofSeconds((gap / planningSpeed).toLong()).clamp(passFloor(place, movement, gap, closing, inside), ceiling)
     // **Moving is not approaching** (0.82.0). A phone carried about a house a hundred metres
     // from a watched line is moving all evening — the sensor fires, the fixes wobble — and
     // "time to the line" is then two minutes, over and over, for a line nobody is walking
@@ -637,7 +666,7 @@ private fun planFor(
     // kilometre of genuine approach (a car five kilometres off on tower fixes measures as
     // closing nothing, and is already planned at half an hour by distance alone). Near, the
     // fixes are the blend and the doubt is tens of metres, so "no nearer" means it.
-    val wandering = near && closingM(place, previous, fix)?.let { it <= 0.0 } == true
+    val wandering = near && closing?.let { it <= 0.0 } == true
     if (movement.still || wandering) {
         val doublings = min(movement.stillStreak, PlaceWatchPolicy.MAX_STILL_DOUBLINGS)
         val backoff = PlaceWatchPolicy.MIN_WAIT.multipliedBy(1L shl doublings)
@@ -729,6 +758,87 @@ private fun leavingWait(place: WatchedPlace, previous: Fix?, fix: Fix, gap: Doub
     val closingMps = (closed / elapsed) * PlaceWatchPolicy.HEADROOM
     return Duration.ofSeconds((gap / closingMps).toLong())
         .clamp(PlaceWatchPolicy.LEAVING_MIN_WAIT, PlaceWatchPolicy.LEAVING_MAX_WAIT)
+}
+
+/**
+ * Whether going through this circle without stopping is worth its ring ([passedThrough]): an
+ * arrival that rings, with no stay asked of it. Not a leaving — walking through a place is never
+ * having left it — and not a routine's question or reset, which are about having been there.
+ */
+val WatchedPlace.ringsOnPassing: Boolean
+    get() = transition == Transition.ENTER && crossing == Crossing.RINGS && dwell == null
+
+/**
+ * The floor under the next look: [PlaceWatchPolicy.MIN_WAIT], unless the phone is walking up to
+ * a circle too small for it (0.199.0).
+ *
+ * Two minutes is a hundred and seventy metres on foot, and a fifty-metre circle is a hundred
+ * across: a walk past it fits between two looks with room to spare and neither lands inside —
+ * which is how "sacar dinero, al llegar a la Caixa" was walked past on the way home and never
+ * rang. So a phone on foot, closing on a circle it would cross in under two minutes, is looked at
+ * as often as crossing it takes at the speed the approach is planned at, and never more often
+ * than [PlaceWatchPolicy.PASS_MIN_WAIT]. A hundred-and-fifty-metre circle takes longer than the
+ * floor to cross, and nothing changes for it.
+ *
+ * **One step is the evidence, not a run of them.** Three looks agreeing is four to six minutes
+ * at the old floor, further than the whole of [PlaceWatchPolicy.NEAR_M] on foot: the circle
+ * would be behind the phone before the watch believed it was coming. One is enough because both
+ * halves of it are already measured beyond the fixes' own doubt ([speedBetween], [closingM]),
+ * and being wrong costs a few looks for the minute it takes to walk out of the near zone.
+ *
+ * Not in a vehicle ([PlaceWatchPolicy.DRIVING_MPS]): at that speed no look short of continuous
+ * lands inside a small circle, and a car that stops at one is still there two minutes later.
+ */
+private fun passFloor(place: WatchedPlace, movement: Movement, gapM: Double, closing: Double?, inside: Boolean?): Duration {
+    val speed = movement.speedMps
+    if (!place.ringsOnPassing || inside != false || gapM >= PlaceWatchPolicy.NEAR_M) return PlaceWatchPolicy.MIN_WAIT
+    if (speed == null || !movement.movingByFix || speed >= PlaceWatchPolicy.DRIVING_MPS) return PlaceWatchPolicy.MIN_WAIT
+    if (closing == null || closing <= 0.0) return PlaceWatchPolicy.MIN_WAIT
+    val across = Duration.ofSeconds((2.0 * place.radiusM / (speed * PlaceWatchPolicy.HEADROOM)).toLong())
+    return across.clamp(PlaceWatchPolicy.PASS_MIN_WAIT, PlaceWatchPolicy.MIN_WAIT)
+}
+
+/**
+ * Whether the phone went through [place] between two looks that both found it outside: the
+ * straight line from [previous] to [fix] comes within the radius of the middle (0.199.0).
+ *
+ * The other half of walking past a small circle. A quicker look ([passFloor]) lands inside one
+ * crossed through the middle, but a street that clips the edge is inside it for twenty seconds,
+ * and no cadence an alarm can keep promises a look in those. The two looks either side of it
+ * are in hand, though, and on foot the street between them is a straight line.
+ *
+ * Only while that line is a fair account of the walk. Both fixes as sharp as an arrival needs
+ * ([insideAfter]), and the two of them no further apart than [PlaceWatchPolicy.PASS_MAX_M] and
+ * [PlaceWatchPolicy.PASS_MAX_SPAN]: longer, and the line could as well be the way round the
+ * block. Within them, the line being wrong rings a reminder at somebody who walked down the next
+ * street, which is the right way round to be wrong — the failure somebody notices is the one
+ * that never arrives.
+ */
+fun passedThrough(place: WatchedPlace, previous: Fix, fix: Fix): Boolean {
+    val span = Duration.between(previous.at, fix.at)
+    if (span.isNegative || span.isZero || span > PlaceWatchPolicy.PASS_MAX_SPAN) return false
+    if (previous.accuracyM > place.radiusM || fix.accuracyM > place.radiusM) return false
+    if (distanceMeters(previous.lat, previous.lng, fix.lat, fix.lng) > PlaceWatchPolicy.PASS_MAX_M) return false
+    return closestApproachM(place, previous, fix) <= place.radiusM
+}
+
+/**
+ * How near the middle of [place] the straight line from [a] to [b] comes. On a flat map centred
+ * on the place: over a few hundred metres the earth's curve is millimetres.
+ */
+private fun closestApproachM(place: WatchedPlace, a: Fix, b: Fix): Double {
+    val northM = Math.toRadians(1.0) * EARTH_RADIUS_M
+    val eastM = northM * cos(Math.toRadians(place.lat))
+    val ax = (a.lng - place.lng) * eastM
+    val ay = (a.lat - place.lat) * northM
+    val dx = (b.lng - place.lng) * eastM - ax
+    val dy = (b.lat - place.lat) * northM - ay
+    val length2 = dx * dx + dy * dy
+    // Where along the line the middle is nearest, held to the line's own two ends.
+    val t = if (length2 == 0.0) 0.0 else ((-ax * dx - ay * dy) / length2).coerceIn(0.0, 1.0)
+    val px = ax + t * dx
+    val py = ay + t * dy
+    return sqrt(px * px + py * py)
 }
 
 private fun Duration.clamp(floor: Duration, ceiling: Duration): Duration = when {
@@ -1012,6 +1122,8 @@ data class WatchStep(
      * past it; when the next look falls exactly there, it is a promise and wants an exact alarm.
      */
     val heldUntil: Instant? = null,
+    /** Circles walked through between this look and the last ([passedThrough]); each is also an event. */
+    val passed: List<WatchedPlace> = emptyList(),
 )
 
 /**
@@ -1062,6 +1174,16 @@ fun stepPlaceWatch(
         if (before == wantsInside || inside.getValue(place.id) != wantsInside) return@mapNotNull null
         place
     }
+    // **Through a circle between two looks** (0.199.0). Both found the phone outside, and the
+    // street between them runs through it: a walk past the cash machine, which a fifty-metre
+    // circle fits between two looks with room to spare. For anything that rings on arriving it
+    // is an arrival; the side stays "outside", because that is where the phone is now. Not
+    // before the rule's hours — a walk past at five is not a stay that is still true at six.
+    val passed = places.filter { place ->
+        place.ringsOnPassing && place.ringsFrom?.isAfter(now) != true &&
+            state.inside[place.id] == false && inside[place.id] == false &&
+            state.lastFix?.let { passedThrough(place, it, fix) } == true
+    }
     // A rate turns the crossing into the start of a count and the *count* into the event. Only
     // the circles asking for a fix can carry one: a listener must not ring, so it must not count
     // either, and a count kept for a circle nobody is watching any more is dropped with it.
@@ -1089,7 +1211,7 @@ fun stepPlaceWatch(
     val (thereEarly, crossedNow) = crossed.filter { it.dwell == null }.partition { it.ringsFrom?.isAfter(now) == true }
     val (waiting, released) = stays.partition { it.ringsFrom?.isAfter(now) == true }
     val held = waiting.associate { it.id to state.held.getValue(it.id) } + (early + thereEarly).associate { it.id to now }
-    val events = crossedNow.map { PlaceEvent(it.id, it.transition) } +
+    val events = (crossedNow + passed).map { PlaceEvent(it.id, it.transition) } +
         (metNow + released).map { PlaceEvent(it.id, it.transition) }
     // The opening is a promise, so the look is not allowed to fall past it: an arrival held
     // half an hour past seven because the phone was resting inside is the late ring this is for.
@@ -1127,7 +1249,7 @@ fun stepPlaceWatch(
         dwelling = dwelt.dwelling,
         held = held,
     )
-    return WatchStep(next, events, plan, movement, dwelt.unmeasured, held = early + thereEarly, heldUntil = heldUntil)
+    return WatchStep(next, events, plan, movement, dwelt.unmeasured, held = early + thereEarly, heldUntil = heldUntil, passed = passed)
 }
 
 /**

@@ -7,6 +7,7 @@ import android.content.Intent
 import android.location.Location
 import android.os.Build
 import android.util.Log
+import com.google.android.gms.location.CurrentLocationRequest
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
@@ -662,6 +663,11 @@ class PlaceWatcher(
                 val what = place.dwell?.let { "${it.toMinutes()} min met" } ?: "there"
                 Diag.note("geo", "r=${GeofenceIds.reminderIdOf(place.id).take(8)} $what before its hours; held until ${place.ringsFrom}")
             }
+            // A ring off two looks that both say "outside" reads as a bug in the report unless
+            // the report says what it was.
+            for (place in step.passed) {
+                Diag.note("geo", "r=${GeofenceIds.reminderIdOf(place.id).take(8)} walked through #${GeofenceIds.tag(place.lat, place.lng, place.radiusM)} between two looks")
+            }
             // **A rate nothing could measure is worth a sentence.** The battery has the last word
             // on how often this watch looks ([batteryFloor]), and under it a ten-minute stay
             // simply cannot be timed: the looks arrive an hour apart, the vouched minutes never
@@ -808,10 +814,18 @@ class PlaceWatcher(
             FixTier.BALANCED -> Priority.PRIORITY_BALANCED_POWER_ACCURACY
             FixTier.COARSE -> Priority.PRIORITY_LOW_POWER
         }
+        // A look sooner than the two-minute floor is a walk past a small circle (`passFloor`), and
+        // the provider's own default hands back a position up to a minute old: the one the last
+        // look took. The same fix twice reads as a phone that has not moved, and backs the watch
+        // off at the very door. So such a look asks for nothing older than a cached fix would
+        // have been allowed to be (`answersFor`).
+        val request = CurrentLocationRequest.Builder().setPriority(priority).apply {
+            plannedWait?.takeIf { it < PlaceWatchPolicy.MIN_WAIT }?.let { setMaxUpdateAgeMillis(it.dividedBy(3).toMillis()) }
+        }.build()
         val fresh = withTimeoutOrNull(FIX_TIMEOUT_MS) {
             val cancel = CancellationTokenSource()
             try {
-                runCatching { fused.getCurrentLocation(priority, cancel.token).await() }
+                runCatching { fused.getCurrentLocation(request, cancel.token).await() }
                     .onFailure { Log.w(TAG, "current location failed", it) }
                     .getOrNull()
             } finally {
