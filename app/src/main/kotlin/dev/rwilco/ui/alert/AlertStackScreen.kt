@@ -315,11 +315,17 @@ private fun Strip(
             // spare and gave the words 26 — less than one line at the size a short title takes,
             // which is how "Entrenar" came out cut through the middle. Now the words and their
             // tags take the whole of it, and what they leave stays under them.
+            //
+            // **Down to 16 sp, the owner's call** (2026-11-04: "no importa si el texto se hace más
+            // pequeño a medida que la pantalla está más llena"). At 20 a strip with a tag, or one
+            // squeezed by "Silenciar" on a phone of ordinary height, had less than one line's
+            // room and still cut its words; smaller words on a fuller screen are fine, cut ones
+            // are not.
             Column(Modifier.fillMaxWidth().weight(1f)) {
                 BasicText(
                     text = content.text.ifBlank { stringResource(R.string.alert_empty_text) },
                     style = MaterialTheme.typography.headlineMedium.scalingLineHeight().copy(color = scheme.onBackground),
-                    autoSize = FitAutoSize(minFontSize = 20.sp, maxFontSize = 36.sp),
+                    autoSize = FitAutoSize(minFontSize = 16.sp, maxFontSize = 36.sp),
                     maxLines = 4,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.fillMaxWidth().weight(1f, fill = false),

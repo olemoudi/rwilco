@@ -49,7 +49,7 @@ fun TextStyle.scalingLineHeight(): TextStyle = copy(lineHeight = (lineHeight.val
 
 /**
  * The largest step in 0..[top] that [fits], given that a step fitting means every smaller one
- * does — 0 when none does, so step 0 is never laid out. Halves rather than walks: nine sizes cost
+ * does — 0 when none does, so step 0 is never laid out. Halves rather than walks: eleven sizes cost
  * four layouts, and this runs on every measure of the text.
  */
 internal fun largestFitting(top: Int, fits: (Int) -> Boolean): Int {

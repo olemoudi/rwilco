@@ -37,9 +37,9 @@ class FitAutoSizeTest {
 
     @Test
     fun `the search halves, it does not walk`() {
-        // A strip's title steps 20→36 sp by 2: nine sizes, four layouts at most, not nine.
+        // A strip's title steps 16→36 sp by 2: eleven sizes, four layouts at most, not eleven.
         var layouts = 0
-        largestFitting(8) { layouts++; it <= 5 }
+        largestFitting(10) { layouts++; it <= 5 }
         assertTrue(layouts <= 4, "$layouts layouts")
     }
 }

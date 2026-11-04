@@ -1856,6 +1856,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_199_2">
+
+        <item>The more reminders ringing at once, the smaller their words may get: down to 16 instead of 20. A strip with a tag, or one squeezed by «Silence» on a phone of ordinary height, had less room than one line at 20 and still cut its words.</item>
+
+    </string-array>
     <string-array name="whats_new_0_199_1">
 
         <item>With several reminders ringing at once, a short one such as «Entrenar» or «Kagi news» no longer comes out cut through the middle. Each strip gave its words only half of the room it had, and a short text was set at its largest size whether it fitted or not. The words now get all the room, and they step down until they fit, short ones too.</item>
