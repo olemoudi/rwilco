@@ -43,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import dev.rwilco.R
+import dev.rwilco.model.until
 import dev.rwilco.model.Actionable
 import dev.rwilco.model.actionablesIn
 import dev.rwilco.model.SnoozeBoard
@@ -158,6 +159,11 @@ fun AlertScreen(
      * go back to. Set only for a strip opened out of the stack ([AlertStackScreen]'s "Ver").
      */
     onBack: (() -> Unit)? = null,
+    /**
+     * How many of this reminder's own rings a snooze until a moment would swallow
+     * ([dev.rwilco.model.ringsSkippedUntil]): said while a long one is held (2026-11-04).
+     */
+    skipped: (Instant) -> Int = { 0 },
 ) {
     val scheme = MaterialTheme.colorScheme
     val spacing = Tokens.spacing
@@ -294,7 +300,13 @@ fun AlertScreen(
             // Every answer, each its own tap target and none of them a chip a thumb has to aim
             // at. They sit clear of the Done button, because the two mean opposite things and a
             // half-awake hand should not be able to confuse them.
+            // Worked out once per board, not per frame: a week of a reminder's moments is a walk.
+            val skips = remember(standing, terms) {
+                val at = Instant.now()
+                standing.shown.associateWith { offer -> offer.until(at, ZoneId.systemDefault(), terms)?.let(skipped) ?: 0 }
+            }
             SnoozeOffers(
+                skipsOf = { skips[it] ?: 0 },
                 offers = standing.shown,
                 customMinutes = customMinutes,
                 onPick = onSnooze,
@@ -463,6 +475,7 @@ fun AlertScreen(
                 onDismiss = { choosingMore = false },
                 places = places,
                 onPickPlace = { place -> choosingMore = false; onSnoozeToPlace(place) },
+                skipped = skipped,
             )
         }
         if (pickingDate && onSnoozeUntil != null) {

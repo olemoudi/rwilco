@@ -789,9 +789,12 @@ private fun rulesOf(blocks: List<Block>, override: RuleMatch?, context: Context,
     val drafts = mutableListOf<Draft>()
     val today = context.now.atZone(context.zone).toLocalDate()
     val shape = context.settings.dayShape
+    // "Mañana" counted from the day this person is still in, as settleRelativeDates counts it
+    // when the reminder is written (2026-11-04, [DayShape.wakingDate]).
+    val waking = shape.wakingDate(context.now.atZone(context.zone).toLocalDateTime())
     // As a state, and a saved place keeps its key when it becomes a fence, as one chosen in the
     // condition sheet does.
-    fun stateOf(trigger: Trigger): Condition? = when (val state = settled(trigger, today).asState(shape)) {
+    fun stateOf(trigger: Trigger): Condition? = when (val state = settled(trigger, today, waking).asState(shape)) {
         is Condition.AtPlace -> state.copy(placeId = (trigger as? Trigger.Location)?.placeId)
         else -> state
     }
@@ -845,7 +848,7 @@ private fun rulesOf(blocks: List<Block>, override: RuleMatch?, context: Context,
             moments.size == 1 -> listOf(TriggerRule(moments.single().trigger, states.map { stateOf(it)!! } + draft.fences).also { twinOf[it] = moments.single().twin })
             moments.isEmpty() && states.size == 1 -> listOf(TriggerRule(states.single(), draft.fences))
             // Days on the calendar never hold at once ("el lunes y el jueves"): either of them.
-            moments.isEmpty() && states.all { settled(it, today) is Trigger.DayRandom } -> {
+            moments.isEmpty() && states.all { settled(it, today, waking) is Trigger.DayRandom } -> {
                 if (draft.fences.isNotEmpty()) return Composed.Ambiguous
                 states.map { TriggerRule(it) }
             }
@@ -891,7 +894,7 @@ private fun rulesOf(blocks: List<Block>, override: RuleMatch?, context: Context,
     // said beside is where the calendar starts, and the date's hour is its hour.
     var fold: List<TriggerRule> = rules
     val calendar = recurrence as? Recurrence.Calendar
-    val start = rules.singleOrNull()?.takeIf { it.conditions.isEmpty() }?.trigger?.let { settled(it, today) }
+    val start = rules.singleOrNull()?.takeIf { it.conditions.isEmpty() }?.trigger?.let { settled(it, today, waking) }
     // Only when the two agree on the hour: "a las 9 y a las 21 todos los días" is two hours a
     // day, which no calendar holds, and dropping one of them would be writing half of it.
     val startTime = (start as? Trigger.AtDateTime)?.at?.toLocalTime()
@@ -926,7 +929,7 @@ private fun rulesOf(blocks: List<Block>, override: RuleMatch?, context: Context,
     val alternatives = buildList {
         val rule = fold.singleOrNull()?.takeIf { built.size == 1 && fold === rules }
         val twin = rule?.let { twinOf[built.single()] }
-        if (rule != null && twin != null && awake(twin, today, shape)) add(listOf(rule.copy(trigger = twin)) to recurrence)
+        if (rule != null && twin != null && awake(twin, today, waking, shape)) add(listOf(rule.copy(trigger = twin)) to recurrence)
         val comes = sequence.mapNotNull { it.second as? Piece.Comes }.singleOrNull()
         val calendarTwin = (comes?.twin as? Recurrence.Calendar)?.takeIf { fold.isEmpty() && recurrence == comes.recurrence }
         // Awake on any of the days it rings on, not only the first: said on a Saturday, a daily's
@@ -940,12 +943,12 @@ private fun rulesOf(blocks: List<Block>, override: RuleMatch?, context: Context,
 }
 
 /** Whether a moment, read as a date and an hour, falls in the person's waking hours. */
-private fun awake(trigger: Trigger, today: java.time.LocalDate, shape: DayShape): Boolean =
-    (settled(trigger, today) as? Trigger.AtDateTime)?.let { shape.awakeAt(it.at) } == true
+private fun awake(trigger: Trigger, today: java.time.LocalDate, waking: java.time.LocalDate, shape: DayShape): Boolean =
+    (settled(trigger, today, waking) as? Trigger.AtDateTime)?.let { shape.awakeAt(it.at) } == true
 
 /** A day counted ("mañana") as the day it is, so it can be asked whether it is a state. */
-private fun settled(trigger: Trigger, today: java.time.LocalDate): Trigger =
-    (trigger as? Trigger.RelativeDate)?.on(today) ?: trigger
+private fun settled(trigger: Trigger, today: java.time.LocalDate, waking: java.time.LocalDate): Trigger =
+    (trigger as? Trigger.RelativeDate)?.on(today, waking) ?: trigger
 
 /** [text] with [spans] blanked out, so no reader claims them and every offset stays put. */
 internal fun mask(text: String, spans: List<IntRange>): String {

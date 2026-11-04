@@ -475,6 +475,7 @@ fun HomeScreen(
                 paused = held.paused,
                 snoozeOffered = held.snoozeOffered,
                 snoozed = held.snoozedUntil != null || held.snoozedToPlace != null || held.snoozedToRules != null,
+                unsnoozeLeavesNothing = held.unsnoozeLeavesNothing,
                 customMinutes = snoozeCustomMinutes,
                 places = placeOffersFor(placeOffers, held.nextTime),
                 onSnoozeToPlace = { offer ->

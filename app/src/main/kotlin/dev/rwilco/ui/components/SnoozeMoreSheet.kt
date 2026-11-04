@@ -39,6 +39,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import dev.rwilco.R
+import java.time.Instant
+import dev.rwilco.ui.format.skipsLabel
 import dev.rwilco.model.SnoozeBoard
 import dev.rwilco.model.SnoozeOffer
 import dev.rwilco.model.SnoozePlace
@@ -92,6 +94,11 @@ fun SnoozeMoreSheet(
     /** The place answers this phone can give right now; drawn here only when they are kept off the alert. */
     places: List<SnoozePlace> = emptyList(),
     onPickPlace: (SnoozePlace) -> Unit = {},
+    /**
+     * How many of the reminder's own rings a snooze until that moment would swallow
+     * ([dev.rwilco.model.ringsSkippedUntil]), said under the row when it is worth saying.
+     */
+    skipped: (Instant) -> Int = { 0 },
 ) {
     val spacing = Tokens.spacing
     val words = rememberWords()
@@ -142,6 +149,7 @@ fun SnoozeMoreSheet(
                             icon = Icons.Outlined.Snooze,
                             label = snoozeRowLabel(snooze, terms.customMinutes),
                             moment = dayWord(words, back.toLocalDate(), today) + " " + TimeText.time(back.toLocalTime(), words.is24h, words.locale),
+                            note = skipsLabel(words, skipped(until)),
                             onClick = { leave { onPick(snooze) } },
                         )
                     }
@@ -164,7 +172,7 @@ fun SnoozeMoreSheet(
 
 /** One answer: what it is called, and — where it is a moment — when that comes to. */
 @Composable
-private fun MoreRow(icon: ImageVector, label: String, moment: String?, onClick: () -> Unit, accent: Color? = null) {
+private fun MoreRow(icon: ImageVector, label: String, moment: String?, onClick: () -> Unit, accent: Color? = null, note: String? = null) {
     val haptics = Tokens.haptics
     val scheme = MaterialTheme.colorScheme
     Surface(
@@ -185,14 +193,18 @@ private fun MoreRow(icon: ImageVector, label: String, moment: String?, onClick: 
         ) {
             Icon(icon, contentDescription = null, tint = accent ?: scheme.onSurfaceVariant, modifier = Modifier.size(Tokens.sizes.glyphMedium))
             Spacer(Modifier.width(Tokens.spacing.md))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyLarge,
-                color = accent ?: scheme.onSurface,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = accent ?: scheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (note != null) {
+                    Text(text = note, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+                }
+            }
             if (moment != null) {
                 Spacer(Modifier.width(Tokens.spacing.sm))
                 Text(text = moment, style = MonoStyles.date, color = scheme.onSurfaceVariant)

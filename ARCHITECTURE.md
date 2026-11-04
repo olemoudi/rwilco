@@ -4200,6 +4200,41 @@ loud what DST and a change of zone do to a landing.
   focus that may duck (see the sound bullet above) and buzzes with alarm usage. `AlertPermissionsCard` reads ten states, the five grants
   and the five ways the phone holds a reminder back — battery optimisation, a restricted
   background, total-silence DND, the alarm volume at zero, a muted channel.
+- **The trigger-contract round, 1: what a snooze promises** (0.200.0, 2026-11-04). An audit of
+  places × hours × days, snoozes and "Vuelve" (six reviewers, a verifier that pinned every claim
+  in a probe test) found reminders that meant one thing to their owner and did another; he
+  answered «arregla todo». This release is the snooze half.
+  **A snooze's ring is the ring it put off** (`ruleRungBy`, `Firing.kt`): `markFired` wrote it
+  with no rule, and a null `lastFiredRule` reads to `presenceAlreadyRang` as a legacy row where
+  the place may have rung — so "mientras esté en casa, o a las 21:00" with the 21:00 snoozed kept
+  the place quiet for the round. It now keeps the row's rule (a place snooze's crossing still
+  writes none, so the same pin's rule crossing stays an echo). **«Desde que suena» counts from the
+  rule's hour** (`rangFor`, `NextFire.kt`): the anchor is the last moment of the rule the ring is
+  written against, up to a day back, so "a las 9, cada 24 h" put off ten minutes no longer rests
+  until 9:10 and skips the next nine; `SnoozeJourneyTest`'s "pinned rather than chosen" case is
+  now the other way. **A "hecho" on a ring put off on the clock spends nothing ahead**
+  (`momentDealtWith`, `ringUnanswered`): the snooze's moment was being taken for the one done in
+  advance, eating tomorrow's ring; a snooze from Home before any ring still counts as ahead.
+  **"Mañana" is the day you wake up to** (`DayShape.wakingDate`, `Awake.kt`): from midnight to
+  halfway between last night's bedtime and this morning's waking, "today" is still the evening
+  before — for `Snooze.until(terms)` (TOMORROW_MORNING), `SnoozeSpec.On`, `settleRelativeDates`
+  (which now takes the shape), the date sheet's chips, typed and dictated words. "Hoy" and a
+  weekday by name stay on the calendar. **A moment the app chooses never lands asleep**
+  (`DayShape.awakeHourOn`): a part of the day for a snooze, a date with no hour (`OnDate`) and a
+  `DateRange`'s days open at the hour the person gets up when [defaultTime] or the morning part
+  would find them asleep (nine on a Saturday for somebody up at ten rang hushed); an hour somebody
+  chose is never moved. Spans landing at `dayStart` are left as they were. **"La próxima vez que
+  llegue" skips the rest** (`restUntil` answers null while `snoozedToRules`). **«Desde el hecho»
+  unanswered comes back** (`unansweredComesBack`, `comeBackMoment`): a reminder whose rules have
+  nothing left to say, rung and not answered, is armed again one span after the ring — in
+  `nextWake` only, so Home still files it under Vencidos and a later "hecho" spends nothing; the
+  card says a swipe is not a "hecho" (`notif_swipe_not_done`, DEALT spans only) and the card's
+  delete intent writes a `swiped away` line to the diagnostic log (`ACTION_SWIPED`). A state place
+  under DEALT that has rung is still quiet until a "hecho". **What a long snooze costs is said**:
+  `ringsSkippedUntil` walks the reminder's own wakes up to the snooze, shown on the held button's
+  indicator and under the rows of "A otro momento" from two up (`skipsWorthSaying`; 0 under
+  "todos", where a moment is a note); "Quitar el posponer" on a reminder left with nothing to ring
+  says so (`unsnoozeLeavesNothing`). Tests: `SnoozeContractTest`, `WakingDayTest`.
 
 ## Backup (the vault)
 

@@ -93,6 +93,8 @@ internal fun readWhen(
     if (words.isBlank()) return null
     val here = now.atZone(zone)
     val today = here.toLocalDate()
+    // The day this person is still in, which "mañana" counts from (2026-11-04, [DayShape.wakingDate]).
+    val waking = shape.wakingDate(here.toLocalDateTime())
     val nowTime = here.toLocalTime().withSecond(0).withNano(0)
     val hour = hourIn(words, parts)
     fun read(understood: Understood, spans: List<IntRange>, twin: Understood? = null) =
@@ -133,7 +135,7 @@ internal fun readWhen(
     // And "el último viernes del mes" is one day, before "viernes" alone is read as the next one.
     nthOnceIn(words, today)?.let { return onDate(it) }
     relativeDayIn(words)?.let { day ->
-        val date = (Trigger.RelativeDate(day.value).on(today) as? Trigger.DayRandom)?.date ?: today
+        val date = (Trigger.RelativeDate(day.value).on(today, waking) as? Trigger.DayRandom)?.date ?: today
         if (hour.time == LocalTime.MIDNIGHT) return onDate(Found(date, day.spans))
         val twin = other(date)?.let { Understood.Once(Trigger.RelativeDate(day.value, it)) }
         return read(Understood.Once(Trigger.RelativeDate(day.value, onDay(date))), day.spans + hour.spans, twin)
@@ -650,7 +652,7 @@ private fun readRoutine(routine: Routine, words: String, now: LocalDateTime, hou
     recurrenceIn(words, today, now.toLocalTime(), Hour(at(typical ?: today).toLocalTime(), hour.today, spans))?.let {
         return if (typical == null) null else Found(Understood.Comes(it.value), it.spans)
     }
-    val day = relativeDayIn(words)?.let { found -> (Trigger.RelativeDate(found.value).on(today) as? Trigger.DayRandom)?.date?.let { Found(it, found.spans) } }
+    val day = relativeDayIn(words)?.let { found -> (Trigger.RelativeDate(found.value).on(today, shape.wakingDate(now)) as? Trigger.DayRandom)?.date?.let { Found(it, found.spans) } }
         ?: weekdayDateIn(words, today)
         ?: nthOnceIn(words, today)
         ?: dateIn(words, today)

@@ -46,6 +46,9 @@ class Simulation(
         fun local(zone: ZoneId): LocalDateTime = at.atZone(zone).toLocalDateTime()
     }
 
+    /** What the app's snoozes are worked out from: this phone's day, as the alert hands them over. */
+    private val terms get() = SnoozeTerms(shape.copy(weekendFrom = weekendDay, weekendFromTime = weekendTime), DayParts(morning = dayStart), DEFAULT_SNOOZE_MINUTES)
+
     var reminder: Reminder = initial
         private set
     val rings = mutableListOf<Ring>()
@@ -320,7 +323,7 @@ class Simulation(
                 // And the next round's window close, counted from the rest, as dismiss writes it.
                 reminder = reminder.copy(expiresAt = reminder.roundExpiry(now, zone, defaultTime, dayStart, shape))
             }
-            is Deal.Later -> reminder = reminder.copy(snoozedUntil = deal.snooze.until(now, zone, weekendDay, weekendTime), snoozedToPlace = null, snoozedToRules = false)
+            is Deal.Later -> reminder = reminder.copy(snoozedUntil = deal.snooze.until(now, zone, terms), snoozedToPlace = null, snoozedToRules = false)
             is Deal.Elsewhere -> reminder = reminder.copy(snoozedUntil = null, snoozedToPlace = deal.place, snoozedToRules = false)
             Deal.NextTime -> reminder = reminder.copy(snoozedUntil = null, snoozedToPlace = null, snoozedToRules = true)
         }
@@ -409,7 +412,7 @@ class Simulation(
             }
             FiringOutcome.Ring -> Unit
         }
-        reminder = row.copy(lastFiredAt = rangFor, lastFiredRule = ruleIndex, snoozedUntil = null, snoozedToPlace = null, snoozedToRules = false, expiresAt = null)
+        reminder = row.copy(lastFiredAt = rangFor, lastFiredRule = row.ruleRungBy(ruleIndex, viaSnoozePlace), snoozedUntil = null, snoozedToPlace = null, snoozedToRules = false, expiresAt = null)
         if (row.ruleMatch == RuleMatch.ALL && row.rulesCombine) reminder = reminder.copy(firedRules = row.rules.indices.toSet())
         val ring = Ring(now, rangFor, ruleIndex, late)
         rings += ring

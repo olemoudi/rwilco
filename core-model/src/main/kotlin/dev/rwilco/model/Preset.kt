@@ -125,7 +125,7 @@ fun Preset.toReminder(
     tags = tags,
     // Any countdown it carries starts ticking now: that is the whole reason a preset stores a
     // length rather than a moment. And a date left to the day is drawn from what is left of it.
-    rules = settleDays(startCountdowns(settleRelativeDates(rules, now, zone), now), now, zone, shape),
+    rules = settleDays(startCountdowns(settleRelativeDates(rules, now, zone, shape), now), now, zone, shape),
     ruleMatch = ruleMatch,
     actions = actions,
     recurrence = recurrence,

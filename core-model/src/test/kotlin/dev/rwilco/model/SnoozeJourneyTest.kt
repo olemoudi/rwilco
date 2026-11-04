@@ -66,16 +66,18 @@ class SnoozeJourneyTest {
     }
 
     @Test
-    fun `counted from the ringing, the six hours start at the last ring, which a snooze moves`() {
-        // Pinned rather than chosen: the snoozed ring re-stamps lastFiredAt, and that is the
-        // anchor "desde que suena" counts from — so rung at eight, put off to ten and dealt with
-        // then, it comes back at four, not at two. Fourteen would need a snooze that does not
-        // count as a ring, which nobody has asked for; what RANG promises is the case below.
+    fun `counted from the ringing, the six hours start at the rule's ring, whatever a snooze did`() {
+        // It used to be pinned the other way: the snoozed ring re-stamped lastFiredAt, the anchor
+        // "desde que suena" counted from, so rung at eight, put off to ten and dealt with then,
+        // it came back at four. Asked for now (2026-11-04: "a las 9, cada 24 h desde que suena",
+        // put off ten minutes, skipped the next day): the rhythm runs from the rule's eight
+        // o'clock, so it is two.
         val rang = Recurrence.After(6, RecurrenceUnit.HOURS, RecurrenceFrom.RANG)
         val snoozed = Simulation(reminder(at(2026, 8, 28, 8, 0), recurrence = rang), now)
         snoozed.step { Simulation.Deal.Later(Snooze.TWO_HOURS) }
         snoozed.step { Simulation.Deal.Done }
-        assertEquals(Wake(local(2026, 8, 28, 16, 0), null), snoozed.arm())
+        assertEquals(local(2026, 8, 28, 10, 0), snoozed.reminder.lastFiredAt, "the snooze's ring is still the last ring")
+        assertEquals(Wake(local(2026, 8, 28, 14, 0), null), snoozed.arm())
         // Answered late without a snooze, the rhythm holds: rung at eight, dealt with at half
         // past nine, back at two.
         val late = Simulation(reminder(at(2026, 8, 28, 8, 0), recurrence = rang), now)

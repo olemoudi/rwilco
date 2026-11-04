@@ -71,12 +71,15 @@ class SnoozeBoardTest {
         val settings = AppSettings(snoozeCustomMinutes = 45, dayStart = java.time.LocalTime.of(7, 30), weekendTime = java.time.LocalTime.of(18, 0))
         val terms = settings.snoozeTerms
         assertEquals(Fixtures.now.plusSeconds(45 * 60), Snooze.CUSTOM.until(Fixtures.now, Fixtures.zone, terms))
-        for (snooze in Snooze.entries) {
+        for (snooze in Snooze.entries - Snooze.TOMORROW_MORNING) {
             assertEquals(
                 snooze.until(Fixtures.now, Fixtures.zone, settings.weekendDay, settings.weekendTime, settings.dayStart, settings.snoozeCustomMinutes),
                 snooze.until(Fixtures.now, Fixtures.zone, terms),
                 snooze.name,
             )
         }
+        // Tomorrow's morning is half past seven, which finds somebody up at eight asleep: it is
+        // the hour they get up instead (2026-11-04).
+        assertEquals(Fixtures.local(2026, 8, 28, 8, 0), Snooze.TOMORROW_MORNING.until(Fixtures.now, Fixtures.zone, terms))
     }
 }

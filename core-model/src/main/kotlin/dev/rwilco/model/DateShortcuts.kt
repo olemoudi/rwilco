@@ -20,9 +20,13 @@ enum class DateShortcut {
     WEEKEND,
     ;
 
-    fun on(today: LocalDate): LocalDate = when (this) {
+    /**
+     * [waking] is the day the person is still in ([DayShape.wakingDate]): at a quarter past
+     * midnight "mañana" is the morning about to come, which is the calendar's today (2026-11-04).
+     */
+    fun on(today: LocalDate, waking: LocalDate = today): LocalDate = when (this) {
         TODAY -> today
-        TOMORROW -> today.plusDays(1)
+        TOMORROW -> waking.plusDays(1)
         // Strictly after today: on a Monday, "next Monday" is a week away, not now.
         NEXT_MONDAY -> today.with(TemporalAdjusters.next(DayOfWeek.MONDAY))
         WEEKEND -> if (today.dayOfWeek == DayOfWeek.SUNDAY) today else today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY))

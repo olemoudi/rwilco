@@ -175,7 +175,7 @@ fun nextWake(
     // A recurrence's moment is the ring itself: there is no rule behind it to tick off. It is
     // the alarm when there are no rules, and after a rest when the rules have nothing left to
     // say (see nextFire); a place among the rules is something left to say, and arms nothing.
-    if (reminder.rules.isEmpty()) return reminder.recurrenceMoment(now, zone, dayStart, shape)?.let { Wake(it, null) }
+    if (reminder.rules.isEmpty()) return (reminder.recurrenceMoment(now, zone, dayStart, shape) ?: reminder.comeBackMoment(now, zone, dayStart, shape))?.let { Wake(it, null) }
     val rest = reminder.restUntil(zone, dayStart, shape)
     // The same as nextFire: under "exactamente cada N" the moment to arm is the span's own, and
     // it is the ring rather than a note to take (see [SpanLanding.EXACT]).
@@ -187,7 +187,10 @@ fun nextWake(
         val rule = reminder.ruleInSet(index, shape, zone) ?: return@mapNotNull null
         nextFireOfRule(rule, reminder.id, from, zone, defaultTime, shape)?.let { index to it }
     }
-    if (candidates.isEmpty() && rest != null) return reminder.recurrenceMoment(now, zone, dayStart, shape)?.let { Wake(it, null) }
+    if (candidates.isEmpty()) {
+        val back = rest?.let { reminder.recurrenceMoment(now, zone, dayStart, shape) } ?: reminder.comeBackMoment(now, zone, dayStart, shape)
+        if (back != null || rest != null) return back?.let { Wake(it, null) }
+    }
     return candidates
         .mapNotNull { (index, next) -> next.momentOrNull()?.let { Wake(it, index) } }
         .minByOrNull { it.at }
@@ -293,8 +296,11 @@ fun nextFireOf(
         // atZone resolves a wall time that does not exist (a DST gap) forward, and one that
         // exists twice (a DST overlap) to its first occurrence — see NextFireTest.
         is Trigger.AtDateTime -> trigger.at.atZone(zone).toInstant().future(now)?.let { NextFire.Scheduled(it, trigger) }
+        // The hour nobody chose is the person's [defaultTime] — moved to when they get up on a day
+        // it would find them asleep ([DayShape.awakeHourOn], 2026-11-04): nine on a Saturday for
+        // somebody up at ten rang hushed, which is the card with no sound.
         is Trigger.OnDate ->
-            trigger.date.atTime(defaultTime).atZone(zone).toInstant().future(now)?.let { NextFire.Scheduled(it, trigger) }
+            shape.awakeHourOn(trigger.date, defaultTime).atZone(zone).toInstant().future(now)?.let { NextFire.Scheduled(it, trigger) }
         // The hour nobody chose: the opening of the stretch it was given, or of the day this
         // person is actually up for. Not a draw — see [openingOf]. Scheduled and not Sometime:
         // the moment is settled and the app can say it out loud. Not knowing when it will ring
@@ -336,7 +342,9 @@ fun nextFireOf(
                 .takeWhile { it <= trigger.to }
                 // Today's hour and tomorrow's: one of the two is ahead, or the range is over.
                 .take(2)
-                .map { it.atTime(defaultTime).atZone(zone).toInstant() }
+                // At the hour they get up, on a day [defaultTime] would find them asleep ("este
+                // finde", a Saturday at nine for somebody up at ten, rang hushed: 2026-11-04).
+                .map { shape.awakeHourOn(it, defaultTime).atZone(zone).toInstant() }
                 .firstOrNull { it > now }
                 ?.let { NextFire.Scheduled(it, trigger) }
         }
@@ -348,7 +356,7 @@ fun nextFireOf(
         // Never stamped and never stored on a reminder (see settleRelativeDates): asked
         // before it is written, it answers for the day it would be written on — which is what
         // the editor and the preset list should show, and what the reminder will actually get.
-        is Trigger.RelativeDate -> nextFireOf(trigger.on(now.atZone(zone).toLocalDate()), reminderId, now, zone, defaultTime, shape, fences)
+        is Trigger.RelativeDate -> nextFireOf(trigger.on(now.atZone(zone).toLocalDate(), shape.wakingDate(now.atZone(zone).toLocalDateTime())), reminderId, now, zone, defaultTime, shape, fences)
         is Trigger.Location -> NextFire.WhenAt(trigger)
         // Drawn inside the rule's hour fences, like the two shapes above that leave the hour
         // to the day (see RandomDraw.draws).
@@ -553,14 +561,20 @@ fun Reminder.restUntil(zone: ZoneId, dayStart: LocalTime, shape: DayShape = DayS
     // A routine's rules never rest: a question is worth asking every time, and the span is not
     // theirs to wait for — it rings on its own (see [Reminder.isRoutine]).
     if (isRoutine) return null
+    // **"La próxima vez que llegue a…" is a promise about the next arrival** (2026-11-04). Given
+    // under «desde que suena», the rest counted from the ring it answered held the doorway quiet,
+    // and the next arrival — the one the button named — rang nothing. Until that ring, the rules
+    // speak as if nothing rested them.
+    if (snoozedToRules) return null
     // Nothing rests until it has been dealt with — or, for a span counted from the ringing,
     // until it has rung: that is the anchor somebody picks because they are not going to
     // answer, and read off lastDealtAt alone it never spoke until they did. Otherwise a
     // reminder still waiting for an answer is overdue, not resting.
     val dealt = lastDealtAt ?: lastFiredAt.takeIf { recurrence.countsFromRinging } ?: return null
     // A calendar names the day it comes back on; a span counts one out from what happened.
-    val back = calendarMoment(recurrenceAnchor(dealt), zone, shape)
-        ?: nextRecurrence(recurrence, recurrenceAnchor(dealt), zone, dayStart)
+    val anchor = recurrenceAnchor(dealt, zone, shape)
+    val back = calendarMoment(anchor, zone, shape)
+        ?: nextRecurrence(recurrence, anchor, zone, dayStart)
         ?: return null
     // To the minute: a ring is written down when its alarm arrives, a moment past the hour, and
     // the rest counted from it would end that same moment past the rule's next hour.
@@ -638,16 +652,70 @@ fun Reminder.daysNamedByRules(): Set<DayOfWeek> =
  * back. It is also what keeps the two anchors the same answer for everything that is dealt
  * with the moment it rings, which is most things.
  */
-private fun Reminder.recurrenceAnchor(dealt: Instant): Instant {
+private fun Reminder.recurrenceAnchor(dealt: Instant, zone: ZoneId, shape: DayShape): Instant {
     // A routine counts from the last "hecho" and from nothing else: there is no moment dealt
     // with ahead (momentDealtWith answers null), and a [dealtThrough] left behind by an "after"
     // recurrence edited into a routine must not push the count into the future.
     if (isRoutine) return dealt
-    val from = if (recurrence.countsFromRinging) lastFiredAt ?: dealt else dealt
+    val from = if (recurrence.countsFromRinging) rangFor(zone, shape) ?: dealt else dealt
     // A moment dealt with before it arrived is the moment the span counts from: ticking off
     // tomorrow's two o'clock this morning makes the next one a day after *that*, not a day
     // after the morning it was ticked off in.
     return listOfNotNull(from, dealtThrough).max()
+}
+
+/**
+ * The moment the last ring was **for**, as a span «desde que suena» counts it: its rule's own
+ * moment, when that rule keeps an hour, and otherwise the ring itself.
+ *
+ * A ring put off ten minutes rings ten minutes late. Counted from there, "a las 9, y vuelve cada
+ * 24 h desde que suena" ended its rest at 9:10 the next day — past its own nine o'clock — and
+ * skipped a whole day (2026-11-04). The snooze's ring is written against the rule it put off
+ * ([ruleRungBy]), so the moment that rule last had, up to a day before the ring, is the one the
+ * rhythm runs from. A catch-up rung late for its moment reads the same way, which is what "on
+ * the hour" was always meant to be.
+ */
+private fun Reminder.rangFor(zone: ZoneId, shape: DayShape): Instant? {
+    val fired = lastFiredAt ?: return null
+    val trigger = lastFiredRule?.let { rules.getOrNull(it) }?.trigger ?: return fired
+    // Only the shapes with an hour of their own: the rest are a default or a draw, and the ring
+    // is as good a reading of them as any.
+    if (trigger !is Trigger.AtDateTime && trigger !is Trigger.AtTime && trigger !is Trigger.TimeOfDay && trigger !is Trigger.Interval) return fired
+    var latest = fired
+    var from = fired - RANG_LOOKBACK
+    while (true) {
+        // The default hour is never asked of these four; any value will do.
+        val at = nextFireOf(trigger, id, from, zone, DEFAULT_DAY_START, shape)?.moment ?: break
+        if (at > fired) break
+        latest = at
+        from = at
+    }
+    return latest
+}
+
+/** How far back a ring looks for the moment it was for: a snooze is seldom longer than a day. */
+private val RANG_LOOKBACK: Duration = Duration.ofDays(1)
+
+/**
+ * «Desde el hecho», rung, and nobody has answered: the span counts from the ring until somebody
+ * does (the owner, 2026-11-04). A swipe is not an answer, and a reminder whose rules had nothing
+ * left to say — a date that has been, a list of one place — used to wait for a "hecho" that never
+ * came: one word from the safety net, and then silence for as long as it lived. Now it comes
+ * back a span after it rang, and again a span after that, until it is dealt with.
+ */
+internal val Reminder.unansweredComesBack: Boolean
+    get() = recurrence is Recurrence.After && !recurrence.countsFromRinging && !isRoutine && ringUnanswered
+
+/**
+ * The alarm for [unansweredComesBack]: one span after the ring nobody answered. **Only the
+ * alarm's answer** ([nextWake]), never [nextFire]'s: Home keeps the card where a ring still
+ * waiting for its answer belongs — Vencidos, with the moment it missed — and the "hecho" that
+ * finally comes is about that ring, not a moment ahead to be spent ([momentDealtWith]).
+ */
+private fun Reminder.comeBackMoment(now: Instant, zone: ZoneId, dayStart: LocalTime, shape: DayShape): Instant? {
+    if (!unansweredComesBack) return null
+    val rang = lastFiredAt ?: return null
+    return nextRecurrence(recurrence, recurrenceAnchor(rang, zone, shape), zone, dayStart)?.takeIf { it > rang }
 }
 
 /**
@@ -676,7 +744,7 @@ fun Reminder.recurrenceMoment(
         rules.isEmpty() -> lastDealtAt ?: createdAt
         else -> (lastDealtAt ?: lastFiredAt.takeIf { recurrence.countsFromRinging }) ?: return null
     }
-    val at = nextRecurrence(recurrence, recurrenceAnchor(dealt), zone, dayStart)
+    val at = nextRecurrence(recurrence, recurrenceAnchor(dealt, zone, shape), zone, dayStart)
     if (at == null) return null
     // Spent, the same way a rule's moment is (see [searchFrom]) — and here it matters more.
     //

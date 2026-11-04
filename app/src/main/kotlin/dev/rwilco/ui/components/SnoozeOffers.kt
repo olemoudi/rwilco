@@ -27,6 +27,8 @@ import androidx.compose.ui.graphics.Color
 import dev.rwilco.model.SnoozePlace
 import dev.rwilco.model.TriggerFamily
 import dev.rwilco.ui.format.placeOfferLabel
+import dev.rwilco.ui.format.skipsLabel
+import dev.rwilco.ui.format.rememberWords
 import dev.rwilco.ui.theme.color
 
 /**
@@ -56,8 +58,14 @@ fun SnoozeOffers(
     /** That door before the lengths: where the lengths are the wrong shape (a routine's plazo). */
     moreFirst: Boolean = false,
     guard: PressGuard? = null,
+    /**
+     * How many of the reminder's own rings each offer would swallow ([dev.rwilco.model.ringsSkippedUntil]):
+     * said while the button is held, beside its name, when it is worth saying (2026-11-04).
+     */
+    skipsOf: (SnoozeOffer) -> Int = { 0 },
 ) {
     val spacing = Tokens.spacing
+    val sayings = rememberWords()
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(spacing.sm),
         verticalArrangement = Arrangement.spacedBy(spacing.sm),
@@ -67,7 +75,9 @@ fun SnoozeOffers(
             SnoozeButton(label = stringResource(R.string.snooze_more), onClick = onMore, guard = guard, icon = Icons.Outlined.MoreTime)
         }
         for (snooze in offers) {
-            SnoozeButton(label = snoozeLabel(snooze, customMinutes), onClick = { onPick(snooze) }, guard = guard)
+            val label = snoozeLabel(snooze, customMinutes)
+            val skips = skipsLabel(sayings, skipsOf(snooze))
+            SnoozeButton(label = label, onClick = { onPick(snooze) }, guard = guard, detail = skips?.let { "$label · $it" } ?: label)
         }
         // In the place family's colour, because they are places: the one thing on this row
         // that is not a clock, said the way every place in the app is said.
@@ -105,6 +115,8 @@ fun SnoozeButton(
     accent: Color? = null,
     guard: PressGuard? = null,
     icon: ImageVector = Icons.Outlined.Snooze,
+    /** What the hold's indicator says it is putting off for: the name, and what that costs. */
+    detail: String = label,
 ) {
     val haptics = Tokens.haptics
     val scheme = MaterialTheme.colorScheme
@@ -124,7 +136,7 @@ fun SnoozeButton(
             icon = icon,
             holding = stringResource(R.string.alert_snooze),
             done = stringResource(R.string.alert_snoozed),
-            detail = label,
+            detail = detail,
         )
         Surface(
             shape = shape,

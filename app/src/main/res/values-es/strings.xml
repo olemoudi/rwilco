@@ -75,6 +75,13 @@
     <string name="home_snooze">Posponer</string>
     <string name="home_snooze_hint">Vuelve a sonar entonces, no antes</string>
     <string name="home_cancel_snooze">Quitar el posponer</string>
+    <string name="notif_swipe_not_done">Deslizarla no cuenta como hecho: volverá</string>
+    <string name="home_cancel_snooze_hint_gone">Ya no volverá a sonar solo: se queda en vencidos</string>
+    <plurals name="snooze_skips">
+        <item quantity="one">se salta %d aviso</item>
+        <item quantity="other">se salta %d avisos</item>
+    </plurals>
+    <string name="snooze_skips_many">se salta más de %d avisos</string>
     <string name="home_cancel_snooze_hint">Vuelve a su propio momento</string>
     <string name="home_snoozed_until">Pospuesto hasta %1$s</string>
     <string name="home_snooze_cancelled">Posponer quitado</string>
@@ -1841,6 +1848,25 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_200_0">
+
+        <item>Posponer un aviso ya no silencia al resto del recordatorio: con «mientras esté en casa, o a las 21:00», si pospones el de las 21:00, al llegar a casa vuelve a sonar.</item>
+
+        <item>«Hecho» sobre un aviso pospuesto a mañana contesta ese aviso y ya no se come el de mañana.</item>
+
+        <item>«Vuelve cada 24 h desde que suena» cuenta desde la hora de su regla: posponerlo 10 minutos ya no se salta el día siguiente.</item>
+
+        <item>Pasada la medianoche y antes de dormir, «mañana» es el día que empieza al despertarte: al posponer, en el chip «Mañana», al escribirlo y al dictarlo.</item>
+
+        <item>«Mañana por la mañana», «el finde por la mañana» y una fecha o un «este finde» sin hora ya no suenan en silencio a las 09:00 si a esa hora duermes: pasan a tu hora de levantarte.</item>
+
+        <item>«La próxima vez que llegue a…» se cumple aunque el recordatorio esté descansando («desde que suena»).</item>
+
+        <item>«Desde que lo marcas hecho»: si nadie contesta, vuelve a sonar al cabo de un periodo contado desde que sonó, en vez de quedarse callado para siempre. La notificación dice que deslizarla no cuenta como hecho, y el log de diagnóstico lo apunta.</item>
+
+        <item>Al mantener pulsado un posponer largo, y en «A otro momento», se dice cuántos avisos se salta. «Quitar el posponer» en uno cuya hora ya pasó dice que no volverá a sonar solo.</item>
+
+    </string-array>
     <string-array name="whats_new_0_199_2">
 
         <item>Cuantos más recordatorios suenan a la vez, más pequeñas pueden hacerse sus palabras: hasta 16 en vez de 20. Una tira con etiqueta, o apretada por «Silenciar» en un móvil de altura normal, tenía menos sitio que una línea a 20 y seguía cortando las palabras.</item>

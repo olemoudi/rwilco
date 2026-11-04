@@ -140,6 +140,13 @@ fun Reminder.momentDealtWith(
     // "hecho" is about that ring, and taking the next moment with it would skip one nobody
     // asked to skip.
     if (snoozedToRules) return null
+    // **And so is a ring put off on the clock** (2026-11-04). A daily nine o'clock rung on Monday
+    // and put off to "mañana a la misma hora" had Tuesday at 09:02 as its next moment, so a
+    // "hecho" given on Monday evening took it for the one being done ahead — and with it
+    // Tuesday's nine o'clock. The ring being answered is Monday's. Only a ring: a snooze given
+    // from Home before anything rang moved the moment that was coming, and that one is what a
+    // "hecho" ahead of it spends.
+    if (snoozedUntil != null && ringUnanswered) return null
     // A routine's "hecho" is "I did it now", never "I have done the one that was coming": the
     // count starts again from this moment, and nothing ahead of it is spent.
     if (isRoutine) return null
@@ -203,6 +210,31 @@ fun Reminder.presenceAlreadyRang(
     val rest = restUntil(zone, dayStart, shape) ?: return true
     return rest > now + PlaceWatchPolicy.MIN_WAIT
 }
+
+/** Rang, and no "hecho" since: whatever the person has said meanwhile, that ring is still open. */
+val Reminder.ringUnanswered: Boolean
+    get() {
+        val rang = lastFiredAt ?: return false
+        val dealt = lastDealtAt
+        return dealt == null || dealt < rang
+    }
+
+/**
+ * The rule a ring is written down against ([Reminder.lastFiredRule]).
+ *
+ * The rule that rang, when one did. **A snooze's ring is that same rule's ring**, put off: the
+ * 21:00 of "mientras esté en casa, o a las 21:00", snoozed ten minutes and ringing again, used to
+ * be written with no rule at all — and a ring with no rule reads, to [presenceAlreadyRang], as a
+ * row from before the column, where the place may have been the one that rang. So the place was
+ * kept quiet for the rest of the round, and arriving home rang nothing (2026-11-04). The rule the
+ * row already carries is the one that was snoozed.
+ *
+ * A place snooze's crossing keeps no rule on purpose: it is the reminder itself having rung, and
+ * the same pin may be a rule's circle too — the second crossing from that one doorway is an echo
+ * ([isPlaceEcho]), not a second ring.
+ */
+fun Reminder.ruleRungBy(ruleIndex: Int?, viaSnoozePlace: Boolean): Int? =
+    ruleIndex ?: lastFiredRule.takeIf { snoozedUntil != null && !viaSnoozePlace }
 
 /** Inside this of the last ring, a second sighting of the same place is the same arrival. */
 val PLACE_ECHO: Duration = Duration.ofMinutes(5)

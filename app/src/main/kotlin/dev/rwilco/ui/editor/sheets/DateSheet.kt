@@ -35,6 +35,7 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZonedDateTime
 import dev.rwilco.model.DateShortcut
+import dev.rwilco.model.wakingDate
 import androidx.compose.foundation.layout.padding
 import java.time.LocalDate
 import androidx.compose.runtime.mutableIntStateOf
@@ -78,11 +79,14 @@ fun DateSheet(
     onDismiss: () -> Unit,
 ) {
     val today = now.toLocalDate()
+    // The day this person is still in: past midnight and before bed, "mañana" is the morning
+    // about to come (2026-11-04, [DayShape.wakingDate]).
+    val waking = shape.wakingDate(now.toLocalDateTime())
     val startDate = when (initial) {
         is Trigger.AtDateTime -> initial.at.toLocalDate()
         is Trigger.OnDate -> initial.date
         is Trigger.DayRandom -> initial.date
-        else -> today.plusDays(1)
+        else -> DateShortcut.TOMORROW.on(today, waking)
     }
     var date by rememberDate(startDate)
     var time by rememberTime(
@@ -171,7 +175,7 @@ fun DateSheet(
                 onWeekday = { weekdayName = it.name },
             )
         } else {
-            DateShortcuts(today = today, selected = date, onPick = { date = it })
+            DateShortcuts(today = today, waking = waking, selected = date, onPick = { date = it })
             MonthCalendar(selected = date, today = today, onSelect = { date = it }, minDate = today)
         }
         WhenInTheDay(
@@ -184,7 +188,7 @@ fun DateSheet(
             // The day this sheet is about, which in the relative mode is not the one on the
             // calendar behind it: "a cualquier hora" quotes that day's waking hours, and a
             // leftover Saturday would quote the weekend's for a reminder landing on a Friday.
-            date = if (relative) relativeDay.on(today) else date,
+            date = if (relative) relativeDay.on(today, waking) else date,
             shape = shape,
             savedWindows = savedWindows,
         )
@@ -269,7 +273,7 @@ private val RELATIVE_SHORTCUTS = listOf(
 
 /** The four days people name without looking: one tap each, date only. */
 @Composable
-private fun DateShortcuts(today: LocalDate, selected: LocalDate, onPick: (LocalDate) -> Unit) {
+private fun DateShortcuts(today: LocalDate, waking: LocalDate, selected: LocalDate, onPick: (LocalDate) -> Unit) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),
         modifier = Modifier
@@ -278,7 +282,7 @@ private fun DateShortcuts(today: LocalDate, selected: LocalDate, onPick: (LocalD
             .padding(bottom = Tokens.spacing.md),
     ) {
         for (shortcut in DateShortcut.entries) {
-            val day = shortcut.on(today)
+            val day = shortcut.on(today, waking)
             PresetChip(
                 label = stringResource(
                     when (shortcut) {
@@ -294,7 +298,7 @@ private fun DateShortcuts(today: LocalDate, selected: LocalDate, onPick: (LocalD
         }
         // "El viernes" — the second most common thing anybody says — had no one-tap route: the
         // week ahead, by name, after the four (0.69.0). The row already scrolls.
-        val named = DateShortcut.entries.map { it.on(today) }
+        val named = DateShortcut.entries.map { it.on(today, waking) }
         val locale = currentLocale()
         for (offset in 2L..7L) {
             val day = today.plusDays(offset)

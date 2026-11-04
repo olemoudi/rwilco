@@ -377,10 +377,13 @@ class RecurrenceTest {
         val later = local(2026, 8, 27, 9, 30)
         assertEquals(local(2026, 8, 27, 14, 0), pills.restUntil(zone, dayStart), "the rules rest from the ring")
         assertEquals(local(2026, 8, 27, 14, 0), nextWake(pills, later, zone, defaultTime, dayStart)?.at, "and the next dose is armed")
-        // The one counted from dealing with it still waits to be dealt with: that is the
-        // difference between the two, and the thing to know before choosing.
+        // The one counted from dealing with it used to wait for an answer for ever. Ignored, it
+        // now comes back a span after the ring too (2026-11-04) — but only as an alarm: it has
+        // no rest, Home still files it as overdue, and a "hecho" counts from itself.
         val waits = pills.copy(recurrence = Recurrence.After(6, RecurrenceUnit.HOURS))
-        assertNull(nextWake(waits, later, zone, defaultTime, dayStart))
+        assertNull(waits.restUntil(zone, dayStart))
+        assertNull(nextFire(waits, later, zone, defaultTime, dayStart))
+        assertEquals(Wake(local(2026, 8, 27, 14, 0), null), nextWake(waits, later, zone, defaultTime, dayStart))
     }
 
     @Test

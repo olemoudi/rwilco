@@ -52,6 +52,7 @@ import dev.rwilco.diag.diagLine
 import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.momentDealtWith
 import dev.rwilco.model.momentRungFor
+import dev.rwilco.model.ruleRungBy
 import dev.rwilco.model.outcomeOfFiring
 import dev.rwilco.model.owedUnderAll
 import dev.rwilco.model.holdsAt
@@ -351,7 +352,9 @@ class ReminderFiring(
         // a cancellation landing between markFired and show spent a moment nothing ever showed
         // — one missedFire could never see again, because the row said it had rung.
         withContext(NonCancellable) {
-            repository.markFired(id, rangFor, ruleIndex)
+            // A snooze's ring keeps the rule it put off (ruleRungBy), so a state beside it is not
+            // read as having had its say.
+            repository.markFired(id, rangFor, reminder.ruleRungBy(ruleIndex, viaSnoozePlace))
             if (reminder.ruleMatch == RuleMatch.ALL && reminder.rulesCombine) {
                 repository.setFiredRules(id, reminder.rules.indices.toSet())
             }
@@ -1124,6 +1127,17 @@ class ReminderFiring(
         repeater.cancel(id)
         AlertNotifications.cancel(context, id)
         Diag.note(TAG_DIAG, "r=${short(id)} paused; its cards are taken down")
+    }
+
+    /**
+     * A ring's card swiped out of the shade (2026-11-04). It answers nothing — the reminder is
+     * still waiting for its "hecho", and under «desde el hecho» it comes back a span after the
+     * ring rather than never — so all this does is say so in the diagnostic log, which used to
+     * have no line at all for the most common thing done to a notification.
+     */
+    suspend fun swiped(id: String) {
+        val reminder = repository.get(id) ?: return
+        Diag.note(TAG_DIAG, "r=${short(id)} card swiped away: not an answer (rang ${reminder.lastFiredAt}, dealt ${reminder.lastDealtAt})")
     }
 
     /**

@@ -82,6 +82,9 @@ class AlertActionReceiver : BroadcastReceiver() {
                         // card itself, so that saying yes to the app's own word is a button and
                         // not a swipe next to the one button that would undo it.
                         ACTION_CONFIRM_RESET -> AlertNotifications.cancelReset(context, id)
+                        // A ring's card swiped away. Not an answer, and it never was; written
+                        // down so a diagnostic report can say why "desde el hecho" counted on.
+                        ACTION_SWIPED -> app.firing.swiped(id)
                     }
                 }
                 work.invokeOnCompletion { failure -> if (failure != null) Log.e("RwilcoAlarms", "action ${intent.action} on $id failed", failure) }
@@ -112,6 +115,8 @@ class AlertActionReceiver : BroadcastReceiver() {
         const val ACTION_CONFIRM_RESET = "dev.rwilco.alert.CONFIRM_RESET"
         /** "Deshacer" on a "hecho"; [EXTRA_ROW] is the row as it stood the moment before it. */
         const val ACTION_UNDO_DONE = "dev.rwilco.alert.UNDO_DONE"
+        /** A ring's card swiped out of the shade: its delete intent, which answers nothing. */
+        const val ACTION_SWIPED = "dev.rwilco.alert.SWIPED"
         const val EXTRA_SNOOZE = "snooze"
         const val EXTRA_PREVIOUS = "previous"
         const val EXTRA_LINE = "line"

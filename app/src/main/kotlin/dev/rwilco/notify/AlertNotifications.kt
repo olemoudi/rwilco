@@ -14,6 +14,8 @@ import android.net.Uri
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import dev.rwilco.R
+import dev.rwilco.model.RecurrenceFrom
+import dev.rwilco.model.Recurrence
 import dev.rwilco.alarm.AlertActionReceiver
 import dev.rwilco.alarm.ReminderScheduler
 import dev.rwilco.diag.Diag
@@ -670,14 +672,20 @@ object AlertNotifications {
             nudge == NetWord.CANNOT_RING -> context.getString(R.string.notif_net_prefix_cannot, words)
             else -> words
         }
+        // **A swipe is not a "hecho"** (2026-11-04), and under «desde el hecho» that is the
+        // difference between the count starting and not: said on the card where it is swiped.
+        val swipeNote = context.getString(R.string.notif_swipe_not_done)
+            .takeIf { nudge == null && late == null && !reminder.isRoutine && (reminder.recurrence as? Recurrence.After)?.from == RecurrenceFrom.DEALT }
         val builder = NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
+            // Swiped away, it is written in the diagnostic log; it answers nothing.
+            .setDeleteIntent(actionIntent(context, reminder.id, AlertActionReceiver.ACTION_SWIPED, null))
             // Expanded, the card shows the words whole and the reason under them (0.67.0). The
             // title is one ellipsised line collapsed *and* expanded, and the big text was the
             // reason alone, so a long reminder could never be read in full from the shade —
             // the one surface most of them are answered on.
-            .setStyle(NotificationCompat.BigTextStyle().bigText(if (reason.isBlank()) title else title + "\n" + reason))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(listOfNotNull(title, reason.ifBlank { null }, swipeNote).joinToString("\n")))
             .setContentIntent(tap)
             .setAutoCancel(false)
             .setOnlyAlertOnce(false)

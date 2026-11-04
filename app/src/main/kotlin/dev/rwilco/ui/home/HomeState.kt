@@ -17,6 +17,7 @@ import dev.rwilco.model.ruleStandings
 import dev.rwilco.model.SearchHit
 import dev.rwilco.model.Section
 import dev.rwilco.model.Status
+import dev.rwilco.model.unsnoozeLeavesNothing
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerFamily
 import dev.rwilco.model.family
@@ -273,6 +274,8 @@ data class ReminderCardUi(
      * can be named ([dev.rwilco.model.nextTime]). Never beside the two above.
      */
     val snoozedToRules: SnoozePlace.NextTime? = null,
+    /** Taking the snooze off would leave nothing of its own to ring ([dev.rwilco.model.unsnoozeLeavesNothing]). */
+    val unsnoozeLeavesNothing: Boolean = false,
     /**
      * "La próxima vez…" as an answer to the ring this card is about, for its menu: null while no
      * ring is owed one, or when nothing of its own would ring it again ([nextTimeOffer]).
@@ -503,6 +506,7 @@ fun buildHomeState(
                 null
             },
             nextTime = reminder.nextTimeOffer(now, zone, defaultTime, dayStart, shape),
+            unsnoozeLeavesNothing = reminder.status == Status.ACTIVE && reminder.unsnoozeLeavesNothing(now, zone, defaultTime, dayStart, shape),
             missedAt = missedAt,
             cannotRing = cannotRing,
             // Only while it rests: with the rules speaking again they say it themselves.

@@ -42,15 +42,18 @@ class RingingTwiceTest {
     )
 
     @Test
-    fun `a recurrence that has rung and has not been dealt with arms nothing else`() {
+    fun `a recurrence that has rung and has not been dealt with never re-arms the moment it rang for`() {
         // Written at 15:00, so its first moment is 21:00. It rang at 21:00 and nobody answered.
         val rang = local(2026, 8, 27, 21, 0)
         val ignored = everySixHours(lastFiredAt = rang)
         val now = rang.plusSeconds(30)
 
-        assertNull(
+        // The moment it rang for is spent; arming it again is how a phone rings all night. What
+        // is armed is the span counted from that ring (2026-11-04: «desde el hecho», unanswered,
+        // comes back rather than waiting for ever).
+        assertEquals(
+            Wake(rang.plus(Duration.ofHours(6)), null),
             nextWake(ignored, now, zone, defaultTime, dayStart),
-            "the moment it rang for is spent; arming it again is how a phone rings all night",
         )
         assertNull(
             nextFire(ignored, now, zone, defaultTime, dayStart),
@@ -99,11 +102,13 @@ class RingingTwiceTest {
         assertEquals(local(2026, 8, 29, 8, 0), nextWake(pills, local(2026, 8, 28, 8, 6), zone, defaultTime, dayStart)?.at, "eight tomorrow: the first moment past the six hours")
 
         // With nothing left in the rules, the recurrence's moment is the ring — and, rung and
-        // ignored, it is spent like any other.
+        // ignored, it is spent like any other: what comes next is a span after that ring.
         val once = Trigger.AtDateTime(java.time.LocalDateTime.of(2026, 8, 28, 8, 0))
         val dose = everySixHours(once, lastDealtAt = local(2026, 8, 28, 8, 5), lastFiredAt = local(2026, 8, 28, 8, 0))
         assertEquals(Wake(local(2026, 8, 28, 14, 5), null), nextWake(dose, local(2026, 8, 28, 8, 6), zone, defaultTime, dayStart))
-        assertNull(nextWake(dose.copy(lastFiredAt = local(2026, 8, 28, 14, 5)), local(2026, 8, 28, 14, 6), zone, defaultTime, dayStart))
+        val ignored = dose.copy(lastFiredAt = local(2026, 8, 28, 14, 5))
+        assertEquals(Wake(local(2026, 8, 28, 20, 5), null), nextWake(ignored, local(2026, 8, 28, 14, 6), zone, defaultTime, dayStart))
+        assertNull(nextFire(ignored, local(2026, 8, 28, 14, 6), zone, defaultTime, dayStart), "and Home still calls it overdue")
     }
 
     @Test
@@ -128,9 +133,10 @@ class RingingTwiceTest {
         val early = everySixHours(lastFiredAt = moment.minusMillis(1))
 
         assertNotNull(nextWake(early, moment.minusSeconds(1), zone, defaultTime, dayStart))
-        assertNull(
-            nextWake(everySixHours(lastFiredAt = moment), moment, zone, defaultTime, dayStart),
-            "to the millisecond, which is the grain everything is stored at",
+        assertEquals(
+            moment.plus(Duration.ofHours(6)),
+            nextWake(everySixHours(lastFiredAt = moment), moment, zone, defaultTime, dayStart)?.at,
+            "to the millisecond, which is the grain everything is stored at: what is armed is the next span",
         )
     }
 

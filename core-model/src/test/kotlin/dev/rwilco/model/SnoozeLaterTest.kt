@@ -35,8 +35,9 @@ class SnoozeLaterTest {
                 "on:tomorrow:14:00" to local(2026, 8, 28, 14, 0),
                 on(SnoozeDay.Tomorrow, SnoozePart.AFTERNOON) to local(2026, 8, 28, 17, 0),
                 on(SnoozeDay.Tomorrow, SnoozePart.EVENING) to local(2026, 8, 28, 20, 0),
-                // The weekend starts on Friday at 20:30, so its first morning is Saturday's.
-                on(SnoozeDay.Weekend, SnoozePart.MORNING) to local(2026, 8, 29, 9, 0),
+                // The weekend starts on Friday at 20:30, so its first morning is Saturday's — at ten,
+                // when the weekend gets up: nine finds them asleep (2026-11-04).
+                on(SnoozeDay.Weekend, SnoozePart.MORNING) to local(2026, 8, 29, 10, 0),
                 "after:2880" to local(2026, 8, 29, 15, 0),
                 "after:4320" to local(2026, 8, 30, 15, 0),
                 on(SnoozeDay.Weekday(DayOfWeek.MONDAY), SnoozePart.MORNING) to local(2026, 8, 31, 9, 0),

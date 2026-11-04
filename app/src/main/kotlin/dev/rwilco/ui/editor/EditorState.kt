@@ -165,7 +165,7 @@ fun Draft.toReminder(
     // fixing a typo does not put half an hour back on the clock. A date left to the day is
     // drawn from what is left of it, or "hoy a cualquier hora" saved in the evening was born
     // overdue.
-    rules = settleDays(startCountdowns(settleRelativeDates(rules, now, zone), now), now, zone, shape),
+    rules = settleDays(startCountdowns(settleRelativeDates(rules, now, zone, shape), now), now, zone, shape),
     ruleMatch = ruleMatch,
     actions = actions,
     recurrence = recurrence,

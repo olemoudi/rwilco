@@ -153,8 +153,13 @@ fun SnoozeSpec.until(now: Instant, zone: ZoneId, terms: SnoozeTerms): Instant? {
             here.plusDays((minutes / MINUTES_A_DAY).toLong()).plusMinutes((minutes % MINUTES_A_DAY).toLong()).toInstant()
         is SnoozeSpec.On -> {
             val time = hour.timeIn(terms.parts)
-            val today = here.toLocalDate()
-            fun on(date: LocalDate): Instant = date.atTime(time).atZone(zone).toInstant()
+            // The day this person is still in: past midnight and before bed, "mañana" is the
+            // morning they wake up to, not the day after it (2026-11-04, [DayShape.wakingDate]).
+            val today = terms.shape.wakingDate(here.toLocalDateTime())
+            // A part of the day is the app's word for an hour, and is moved to the hour they get
+            // up when it would find them asleep; an hour they chose themselves stays where it is.
+            fun on(date: LocalDate): Instant =
+                (if (hour is SnoozeHour.Part) terms.shape.awakeHourOn(date, time) else date.atTime(time)).atZone(zone).toInstant()
             when (val day = day) {
                 SnoozeDay.Today -> on(today).takeIf { it > now }
                 SnoozeDay.Tomorrow -> on(today.plusDays(1))

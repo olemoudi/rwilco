@@ -94,6 +94,8 @@ fun ReminderActionsMenu(
     snoozeOffered: Boolean,
     snoozed: Boolean,
     customMinutes: Int,
+    /** Taking the snooze off leaves nothing to ring: its hint says so instead of "back to its own moment". */
+    unsnoozeLeavesNothing: Boolean = false,
     /** The moment "saltar la próxima" would let pass, already in words; null where there is none. */
     skipHint: String? = null,
     onDone: () -> Unit,
@@ -256,7 +258,7 @@ fun ReminderActionsMenu(
                         ActionRow(
                             icon = Icons.Outlined.AlarmOff,
                             label = stringResource(R.string.home_cancel_snooze),
-                            hint = stringResource(R.string.home_cancel_snooze_hint),
+                            hint = stringResource(if (unsnoozeLeavesNothing) R.string.home_cancel_snooze_hint_gone else R.string.home_cancel_snooze_hint),
                             onClick = onCancelSnooze,
                         )
                     }

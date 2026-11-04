@@ -50,7 +50,7 @@ class SnoozeSpecTest {
         assertEquals(local(2026, 8, 31, 8, 0), SnoozeSpec.On(SnoozeDay.Weekday(DayOfWeek.MONDAY), SnoozeHour.At(t(8))).at())
         // Said on a Thursday, "el jueves" is next week's: today's is "hoy".
         assertEquals(local(2026, 9, 3, 9, 0), SnoozeSpec.On(SnoozeDay.Weekday(DayOfWeek.THURSDAY), part(SnoozePart.MORNING)).at())
-        val mine = AppSettings(dayStart = t(7, 30), afternoon = t(16), evening = t(21, 30)).snoozeTerms
+        val mine = AppSettings(dayStart = t(7, 30), afternoon = t(16), evening = t(21, 30), awake = AwakeHours(wake = t(7))).snoozeTerms
         assertEquals(local(2026, 8, 28, 7, 30), SnoozeSpec.On(SnoozeDay.Tomorrow, part(SnoozePart.MORNING)).until(now, zone, mine))
         assertEquals(local(2026, 8, 27, 21, 30), SnoozeSpec.On(SnoozeDay.Today, part(SnoozePart.EVENING)).until(now, zone, mine))
     }
@@ -60,10 +60,11 @@ class SnoozeSpecTest {
         // Friday's 20:00 is half an hour before the weekend starts, so "el finde por la noche"
         // is Saturday's; its morning is Saturday's too.
         assertEquals(local(2026, 8, 29, 20, 0), SnoozeSpec.On(SnoozeDay.Weekend, part(SnoozePart.EVENING)).at())
-        assertEquals(local(2026, 8, 29, 9, 0), SnoozeSpec.On(SnoozeDay.Weekend, part(SnoozePart.MORNING)).at())
-        // Asked from inside it, what is left of it: Saturday at ten, the morning is Sunday's.
-        val saturday = local(2026, 8, 29, 10, 0)
-        assertEquals(local(2026, 8, 30, 9, 0), SnoozeSpec.On(SnoozeDay.Weekend, part(SnoozePart.MORNING)).until(saturday, zone, terms))
+        // At ten, not nine: the weekend gets up at ten, and nine found it asleep (2026-11-04).
+        assertEquals(local(2026, 8, 29, 10, 0), SnoozeSpec.On(SnoozeDay.Weekend, part(SnoozePart.MORNING)).at())
+        // Asked from inside it, what is left of it: Saturday at eleven, the morning is Sunday's.
+        val saturday = local(2026, 8, 29, 11, 0)
+        assertEquals(local(2026, 8, 30, 10, 0), SnoozeSpec.On(SnoozeDay.Weekend, part(SnoozePart.MORNING)).until(saturday, zone, terms))
         // And past its last one, next weekend's.
         val sundayNight = local(2026, 8, 30, 21, 0)
         assertEquals(local(2026, 9, 5, 20, 0), SnoozeSpec.On(SnoozeDay.Weekend, part(SnoozePart.EVENING)).until(sundayNight, zone, terms))

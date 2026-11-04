@@ -454,12 +454,23 @@ enum class RelativeUnit { DAYS, WEEKS, MONTHS }
 /** How far the count may reach: the same bounds a recurrence uses, for the same reason. */
 val RELATIVE_AMOUNT: IntRange = MIN_RECURRENCE_AMOUNT..MAX_RECURRENCE_AMOUNT
 
-/** The day itself, worked out from the day being asked on. */
-fun RelativeDay.on(today: LocalDate): LocalDate = when (this) {
-    is RelativeDay.In -> when (unit) {
-        RelativeUnit.DAYS -> today.plusDays(amount.toLong())
-        RelativeUnit.WEEKS -> today.plusWeeks(amount.toLong())
-        RelativeUnit.MONTHS -> today.plusMonths(amount.toLong())
+/**
+ * The day itself, worked out from the day being asked on.
+ *
+ * [waking] is the day the person is still in ([DayShape.wakingDate]), which past midnight and
+ * before bed is the calendar's yesterday: a count forward — "mañana", "dentro de una semana" — is
+ * counted from it, because at a quarter past twelve "mañana" is the morning about to come and the
+ * calendar made it the day after (2026-11-04). "Hoy" and a weekday by name stay on the calendar:
+ * the one cannot be a day already over, the other names its day outright.
+ */
+fun RelativeDay.on(today: LocalDate, waking: LocalDate = today): LocalDate = when (this) {
+    is RelativeDay.In -> {
+        val from = if (amount > 0) waking else today
+        when (unit) {
+            RelativeUnit.DAYS -> from.plusDays(amount.toLong())
+            RelativeUnit.WEEKS -> from.plusWeeks(amount.toLong())
+            RelativeUnit.MONTHS -> from.plusMonths(amount.toLong())
+        }
     }
     is RelativeDay.NextWeekday -> today.with(TemporalAdjusters.next(day))
 }
@@ -468,8 +479,8 @@ fun RelativeDay.on(today: LocalDate): LocalDate = when (this) {
  * The plain date this means, asked on [today]: an hour if one was chosen, and otherwise the day
  * left to itself — the same two triggers the date sheet has always produced.
  */
-fun Trigger.RelativeDate.on(today: LocalDate): Trigger {
-    val date = day.on(today)
+fun Trigger.RelativeDate.on(today: LocalDate, waking: LocalDate = today): Trigger {
+    val date = day.on(today, waking)
     return if (time != null) Trigger.AtDateTime(LocalDateTime.of(date, time)) else Trigger.DayRandom(date, window)
 }
 
@@ -726,11 +737,13 @@ fun settleDays(rules: List<TriggerRule>, now: Instant, zone: ZoneId, shape: DayS
  * After this nothing downstream has to know the shape existed. A preset keeps it (it is never
  * resolved in place), which is the whole point: the same button means tomorrow every time.
  */
-fun settleRelativeDates(rules: List<TriggerRule>, now: Instant, zone: ZoneId): List<TriggerRule> {
-    val today = now.atZone(zone).toLocalDate()
+fun settleRelativeDates(rules: List<TriggerRule>, now: Instant, zone: ZoneId, shape: DayShape = DayShape.DEFAULT): List<TriggerRule> {
+    val here = now.atZone(zone)
+    val today = here.toLocalDate()
+    val waking = shape.wakingDate(here.toLocalDateTime())
     return rules.map { rule ->
         val relative = rule.trigger as? Trigger.RelativeDate ?: return@map rule
-        rule.copy(trigger = relative.on(today))
+        rule.copy(trigger = relative.on(today, waking))
     }
 }
 

@@ -14,7 +14,9 @@ import dev.rwilco.model.SnoozePart
 import dev.rwilco.model.SnoozePlace
 import dev.rwilco.model.SnoozeSpec
 import dev.rwilco.model.Trigger
+import dev.rwilco.model.MAX_SKIPS_COUNTED
 import dev.rwilco.model.isNextTimeDetail
+import dev.rwilco.model.skipsWorthSaying
 import dev.rwilco.model.snoozeDetailOf
 import java.time.Instant
 
@@ -184,3 +186,13 @@ fun nextTimePhrase(words: Words, door: Pair<Presence, String>?): String = when (
 
 fun nextTimePhrase(words: Words, offer: SnoozePlace.NextTime): String =
     nextTimePhrase(words, offer.door?.let { it.presence to it.label })
+
+/**
+ * "Se salta 6 avisos": what a long snooze costs, said where it is chosen (2026-11-04). Null when
+ * it is not worth saying ([skipsWorthSaying]).
+ */
+fun skipsLabel(words: Words, skipped: Int): String? = when {
+    !skipsWorthSaying(skipped) -> null
+    skipped >= MAX_SKIPS_COUNTED -> words.get(R.string.snooze_skips_many, MAX_SKIPS_COUNTED)
+    else -> words.plural(R.plurals.snooze_skips, skipped)
+}

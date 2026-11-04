@@ -328,7 +328,7 @@ fun Spoken.toReminder(id: String, now: Instant, zone: ZoneId, settings: AppSetti
     val reminder = Reminder(
         id = id,
         text = text,
-        rules = settleDays(startCountdowns(settleRelativeDates(rules, now, zone), now), now, zone, shape),
+        rules = settleDays(startCountdowns(settleRelativeDates(rules, now, zone, shape), now), now, zone, shape),
         ruleMatch = match,
         // A routine is told about the way routines are, as one opened in the editor is.
         actions = actions.applyTo(if (recurrence is Recurrence.Since) settings.routineActions else settings.defaultActions),

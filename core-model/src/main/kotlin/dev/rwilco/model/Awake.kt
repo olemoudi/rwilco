@@ -150,6 +150,42 @@ fun DayShape.awakeAt(local: LocalDateTime): Boolean {
 }
 
 /**
+ * The day somebody means by "today" at [local]: the calendar's, except in the first half of the
+ * night, which still belongs to the evening before it.
+ *
+ * At a quarter past midnight nobody who has not been to bed yet means the day after tomorrow by
+ * "mañana": "mañana por la mañana" is the morning they will wake up to. The calendar read it as a
+ * day later, so a snooze given at 00:15 skipped a whole day, and so did the chip and a dictated
+ * "mañana" (the owner's call, 2026-11-04: until you go to bed, tomorrow is the day that starts
+ * when you wake). The app cannot know when somebody goes to bed, only when they usually do, so
+ * the line is drawn halfway between last night's bedtime and this morning's getting up: up at two
+ * is still last night, up at seven is an early morning.
+ */
+fun DayShape.wakingDate(local: LocalDateTime): LocalDate {
+    val date = local.toLocalDate()
+    val bedtime = awakeOn(date.minusDays(1)).to
+    val wake = awakeOn(date).from
+    if (local >= wake || bedtime >= wake) return date
+    val middle = bedtime.plus(java.time.Duration.between(bedtime, wake).dividedBy(2))
+    return if (local < middle) date.minusDays(1) else date
+}
+
+/**
+ * [time] on [date], or the hour this person gets up that day when [time] comes before it.
+ *
+ * Nine o'clock is the morning on a weekday and the middle of the night on a Saturday for somebody
+ * who gets up at ten, and a moment the app chose for them — "mañana por la mañana", a date with
+ * no hour, a stretch of days — landing there arrived hushed ([hushedByTheHour]): the reminder was
+ * on the card, and nothing made a sound. An hour somebody chose themselves is theirs, and is not
+ * this function's to move.
+ */
+fun DayShape.awakeHourOn(date: LocalDate, time: LocalTime): LocalDateTime {
+    val at = date.atTime(time)
+    val wake = awakeOn(date).from
+    return if (at < wake && !awakeAt(at)) wake else at
+}
+
+/**
  * Which of [time] and [twin] — the same open hour in either half of the day — is the waking one
  * on [date]: the hour as said when it is, or when neither is; the other when only that one is.
  * The one rule for a bare hour ("favorece siempre horas despierto", 2026-10-11), wherever an hour

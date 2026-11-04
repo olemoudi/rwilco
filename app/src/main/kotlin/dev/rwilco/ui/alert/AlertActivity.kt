@@ -63,6 +63,7 @@ import dev.rwilco.geo.hasBackgroundLocation
 import dev.rwilco.R
 import dev.rwilco.model.Actionable
 import dev.rwilco.model.snoozeBoard
+import dev.rwilco.model.ringsSkippedUntil
 import dev.rwilco.model.snoozeTerms
 import dev.rwilco.model.nextTimeOffer
 import dev.rwilco.model.placeOffersFor
@@ -398,6 +399,7 @@ class AlertActivity : ComponentActivity() {
                         // countdown is one the guard has already charged for.
                         openedOnPurpose = first.id in silenced || focusedItem != null,
                         onBack = if (focusedItem != null) ({ focused = null }) else null,
+                        skipped = { until -> firstReminder?.ringsSkippedUntil(until, app.clock.instant(), zone, current.defaultTime, current.dayStart, current.dayShape) ?: 0 },
                     )
                 }
             }

@@ -382,5 +382,74 @@ data class SnoozeTerms(val shape: DayShape, val parts: DayParts, val customMinut
 
 val AppSettings.snoozeTerms: SnoozeTerms get() = SnoozeTerms(dayShape, dayParts, snoozeCustomMinutes)
 
-fun Snooze.until(now: Instant, zone: ZoneId, terms: SnoozeTerms): Instant =
-    until(now, zone, terms.shape.weekendFrom, terms.shape.weekendFromTime, terms.parts.morning, terms.customMinutes)
+/**
+ * When it comes back, by this person's day: what every screen and the firing itself ask.
+ *
+ * **"Mañana por la mañana" is the morning they wake up to** (2026-11-04). Asked at a quarter past
+ * midnight the calendar's tomorrow is a day too far ([DayShape.wakingDate]); and on a Saturday,
+ * for somebody who gets up at ten, nine o'clock is the middle of the night, where it landed hushed
+ * ([DayShape.awakeHourOn]). The other six are lengths or the person's own weekend hour and read
+ * the same as the calendar arithmetic underneath.
+ */
+fun Snooze.until(now: Instant, zone: ZoneId, terms: SnoozeTerms): Instant = when (this) {
+    Snooze.TOMORROW_MORNING -> {
+        val tomorrow = terms.shape.wakingDate(now.atZone(zone).toLocalDateTime()).plusDays(1)
+        terms.shape.awakeHourOn(tomorrow, terms.parts.morning).atZone(zone).toInstant()
+    }
+    else -> until(now, zone, terms.shape.weekendFrom, terms.shape.weekendFromTime, terms.parts.morning, terms.customMinutes)
+}
+
+/**
+ * How many of its own rings a snooze until [until] would swallow (2026-11-04): what the reminder
+ * would ring, with nothing put off, from [now] up to that moment. "La semana que viene" on a
+ * daily is six mornings nobody hears about, and the alert used to say nothing of it.
+ *
+ * Under "todos" a moment is a note and not a ring, and which of them would complete the set is
+ * not something a walk of the clock can know: it answers 0 there rather than a number that lies.
+ * Stops counting at [MAX_SKIPS_COUNTED], which is already "a lot".
+ */
+fun Reminder.ringsSkippedUntil(
+    until: Instant,
+    now: Instant,
+    zone: ZoneId,
+    defaultTime: LocalTime,
+    dayStart: LocalTime = DEFAULT_DAY_START,
+    shape: DayShape = DayShape.DEFAULT,
+): Int {
+    if (ruleMatch == RuleMatch.ALL && rulesCombine) return 0
+    var row = copy(snoozedUntil = null, snoozedToPlace = null, snoozedToRules = false, armedFor = null, armedRule = null)
+    var count = 0
+    while (count < MAX_SKIPS_COUNTED) {
+        val wake = nextWake(row, now, zone, defaultTime, dayStart, shape) ?: break
+        if (wake.at >= until) break
+        count++
+        row = row.copy(lastFiredAt = wake.at, lastFiredRule = wake.ruleIndex)
+    }
+    return count
+}
+
+/** Past this many, a snooze's swallowed rings are a lot, and walking further only costs a frame. */
+const val MAX_SKIPS_COUNTED = 20
+
+/**
+ * Whether a snooze is worth saying it swallows rings: two or more. One is the snooze's own ring
+ * standing in for the moment it moved — "mañana" on a daily at nine is the nine o'clock itself.
+ */
+fun skipsWorthSaying(skipped: Int): Boolean = skipped >= 2
+
+/**
+ * Whether "quitar el posponer" leaves the reminder with nothing of its own to ring: a date that
+ * has gone, put off and then un-put-off, is overdue and stays so. Its hint said "vuelve a su
+ * propio momento" of a moment already behind it (2026-11-04).
+ */
+fun Reminder.unsnoozeLeavesNothing(
+    now: Instant,
+    zone: ZoneId,
+    defaultTime: LocalTime,
+    dayStart: LocalTime = DEFAULT_DAY_START,
+    shape: DayShape = DayShape.DEFAULT,
+): Boolean {
+    if (snoozedUntil == null && snoozedToPlace == null && !snoozedToRules) return false
+    val bare = copy(snoozedUntil = null, snoozedToPlace = null, snoozedToRules = false)
+    return nextFire(bare, now, zone, defaultTime, dayStart, shape) == null && nextWake(bare, now, zone, defaultTime, dayStart, shape) == null
+}

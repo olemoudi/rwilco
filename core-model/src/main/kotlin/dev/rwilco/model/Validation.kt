@@ -290,7 +290,7 @@ fun warnings(
     // day resolved to the date it means. Without the second, the walk below re-resolves the
     // shape from wherever it has reached — so it looks like something that comes round again,
     // and a rule that will never fire once written was reported as fine.
-    val rules = settleDays(settleRelativeDates(rules, now, zone), now, zone, shape)
+    val rules = settleDays(settleRelativeDates(rules, now, zone, shape), now, zone, shape)
     val found = ArrayList<ValidationWarning>()
     val doomed = ArrayList<Int>()
     // Under "a la vez" every rule is judged with the others folded into it as conditions, which

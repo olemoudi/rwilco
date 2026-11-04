@@ -79,6 +79,13 @@
     <string name="home_snooze">Snooze</string>
     <string name="home_snooze_hint">It rings again then, not before</string>
     <string name="home_cancel_snooze">Cancel the snooze</string>
+    <string name="notif_swipe_not_done">Swiping it away doesn\'t mark it done: it will come back</string>
+    <string name="home_cancel_snooze_hint_gone">It won\'t ring again by itself: it stays overdue</string>
+    <plurals name="snooze_skips">
+        <item quantity="one">skips %d ring</item>
+        <item quantity="other">skips %d rings</item>
+    </plurals>
+    <string name="snooze_skips_many">skips more than %d rings</string>
     <string name="home_cancel_snooze_hint">Back to its own moment</string>
     <string name="home_snoozed_until">Snoozed until %1$s</string>
     <string name="home_snooze_cancelled">Snooze cancelled</string>
@@ -1856,6 +1863,25 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_200_0">
+
+        <item>Snoozing one ring no longer silences the rest of the reminder: with «while I\'m home, or at 21:00», snoozing the 21:00 one no longer stops it ringing when you get home.</item>
+
+        <item>«Done» on a ring snoozed until tomorrow answers that ring and no longer eats tomorrow\'s.</item>
+
+        <item>«Every 24 h from when it rings» counts from its rule\'s hour: a ten-minute snooze no longer skips the next day.</item>
+
+        <item>Past midnight and before bed, «tomorrow» is the day that starts when you wake up: when snoozing, on the «Tomorrow» chip, typed and spoken.</item>
+
+        <item>«Tomorrow morning», «the weekend in the morning», and a date or «this weekend» with no hour no longer ring silently at 09:00 while you\'re asleep: they move to the hour you get up.</item>
+
+        <item>«Next time I get to…» keeps its word even while the reminder is resting («from when it rings»).</item>
+
+        <item>«From when you mark it done»: if nobody answers, it rings again one span after it rang instead of going quiet for good. The notification says swiping it away doesn\'t count as done, and the diagnostic log notes it.</item>
+
+        <item>Holding a long snooze, and the «Another time» list, say how many rings it skips. «Remove the snooze» on one whose moment has gone says it won\'t ring again by itself.</item>
+
+    </string-array>
     <string-array name="whats_new_0_199_2">
 
         <item>The more reminders ringing at once, the smaller their words may get: down to 16 instead of 20. A strip with a tag, or one squeezed by «Silence» on a phone of ordinary height, had less room than one line at 20 and still cut its words.</item>

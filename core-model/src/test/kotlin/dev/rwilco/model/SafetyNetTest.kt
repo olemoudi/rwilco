@@ -63,8 +63,9 @@ class SafetyNetTest {
         // A stretch of three mornings, the middle one already ticked off ahead of time: its
         // rhythm is a day. Measured from what was done ahead it had one morning left and no
         // rhythm at all, and the net waited its longest instead of a tenth of a day.
-        val stretch = TriggerRule(Trigger.DateRange(LocalDate.of(2026, 8, 28), LocalDate.of(2026, 8, 30)))
-        val ahead = reminder(stretch).copy(dealtThrough = local(2026, 8, 29, 9, 0))
+        // Weekdays, so every one of them opens at nine (a weekend's would open at ten).
+        val stretch = TriggerRule(Trigger.DateRange(LocalDate.of(2026, 8, 31), LocalDate.of(2026, 9, 2)))
+        val ahead = reminder(stretch).copy(dealtThrough = local(2026, 9, 1, 9, 0))
         assertEquals(Duration.ofDays(1), ahead.cadence())
     }
 
