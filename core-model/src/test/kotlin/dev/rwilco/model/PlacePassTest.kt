@@ -152,8 +152,35 @@ class PlacePassTest {
         assertEquals(PlaceWatchPolicy.MIN_WAIT, waitFor(from = at(0.0, -100.0, twoMinutesAgo)), "walking away from it")
         assertEquals(PlaceWatchPolicy.MIN_WAIT, waitFor(place = atm.copy(transition = Transition.EXIT)), "a leaving")
         assertEquals(PlaceWatchPolicy.MIN_WAIT, waitFor(place = atm.copy(crossing = Crossing.ASKS)), "a routine's question")
-        assertTrue(waitFor(charge = 0.40) > PlaceWatchPolicy.MIN_WAIT, "under half a battery, the battery has the last word")
         assertEquals(Duration.ofSeconds(53), waitFor(charge = 0.60), "with charge to spare it has nothing to say")
+        // Under half a battery this used to be floored like everything else — four minutes and
+        // more — which is what the owner decided against on 2026-11-04: the last stretch of a walk
+        // past a small circle keeps its quick looks down to a fifth of a battery, and only it.
+        assertEquals(Duration.ofSeconds(53), waitFor(charge = 0.40), "under half, the walk past still looks")
+        assertEquals(Duration.ofSeconds(53), waitFor(charge = 0.21))
+        assertTrue(waitFor(charge = 0.20) > PlaceWatchPolicy.MIN_WAIT, "at a fifth, the battery has the last word again")
+        assertTrue(waitFor(place = atm.copy(radiusM = 150), charge = 0.40) > PlaceWatchPolicy.MIN_WAIT, "everything else is floored as before")
+        assertTrue(waitFor(movement = walking(8.0), charge = 0.40) > PlaceWatchPolicy.MIN_WAIT, "a car is not walking past")
+    }
+
+    @Test
+    fun `under half a battery the look before a small circle still comes in time to be believed`() {
+        // Audit probe I1: at 45 % the floor is about four minutes, and a walk at 1.4 m/s covers
+        // more than PASS_MAX_M in that — the line between two looks either side of the circle was
+        // too long to be taken, so nothing rang. The owner's call (2026-11-04): the pass keeps its
+        // cadence above a fifth of a battery.
+        val previous = at(0.0, -300.0, now)
+        val fix = at(0.0, -258.0, now.plusSeconds(30))
+        val movement = movementSince(previous, fix, sensed = true, stillStreak = 0)
+        val full = planNextCheck(fix, movement, listOf(atm), mapOf(atm.id to false), charge = null, previous = previous)!!
+        val low = planNextCheck(fix, movement, listOf(atm), mapOf(atm.id to false), charge = 0.45, previous = previous)!!
+        assertTrue(batteryFloor(0.45) > Duration.ofSeconds(230), "the floor itself is unchanged")
+        assertEquals(full.wait, low.wait, "the pass is planned as if the battery were full")
+        assertTrue(low.passing)
+        assertTrue(movement.speedMps!! * low.wait.seconds < PlaceWatchPolicy.PASS_MAX_M, "two looks close enough to draw a line between")
+        // And the whole street, walked at 45 %: caught. At 15 % the hourly look is all there is.
+        assertEquals(listOf(PlaceEvent(atm.id, Transition.ENTER)), walkPast(north = 30.0, charge = 0.45).events)
+        assertTrue(walkPast(north = 30.0, charge = 0.15).events.isEmpty())
     }
 
     // ---- the street, walked --------------------------------------------------------------------
@@ -166,7 +193,7 @@ class PlacePassTest {
      * and the watch looks when it planned to — the same loop the phone runs, with every fix
      * taken where the walker actually is by then.
      */
-    private fun walkPast(north: Double, speed: Double = 1.4, accuracy: Double = 15.0): Walk {
+    private fun walkPast(north: Double, speed: Double = 1.4, accuracy: Double = 15.0, charge: Double? = null): Walk {
         var state = PlaceWatchState()
         var clock = now
         var east = -1_500.0
@@ -174,7 +201,7 @@ class PlacePassTest {
         var quick = 0
         val events = ArrayList<PlaceEvent>()
         while (east < 1_500.0) {
-            val step = stepPlaceWatch(state, at(east, north, clock, accuracy), listOf(atm), clock)
+            val step = stepPlaceWatch(state, at(east, north, clock, accuracy), listOf(atm), clock, charge = charge)
             looks++
             events += step.events
             state = step.state

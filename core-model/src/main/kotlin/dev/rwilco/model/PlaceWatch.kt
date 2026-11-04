@@ -349,6 +349,12 @@ object PlaceWatchPolicy {
     const val SPARING_FLOOR = 0.25
 
     /**
+     * Above this much left, the last stretch of a walk past a small circle keeps its quick looks
+     * whatever [batteryFloor] says (2026-11-04, the owner's call). See [planNextCheck].
+     */
+    const val PASS_SPARING_FLOOR = 0.20
+
+    /**
      * More polls than this inside [BUSY_WINDOW] and something is wrong. Three fifths of the
      * arithmetic ceiling — MIN_WAIT is two minutes, so thirty an hour is all the watch can
      * physically do outside the minute or so of a walk past a small circle ([PASS_MIN_WAIT]) —
@@ -539,8 +545,12 @@ fun stirredWait(charge: Double?, streak: Int = 0): Duration {
 @Serializable
 enum class FixTier { COARSE, BALANCED, PRECISE }
 
-/** What the next check should be: how long to wait, and how much radio it is worth. */
-data class WatchPlan(val wait: Duration, val tier: FixTier, val gapM: Double, val nearest: WatchedPlace)
+/**
+ * What the next check should be: how long to wait, and how much radio it is worth. [passing] is a
+ * plan drawn on foot towards a circle small enough to be walked past between two looks
+ * ([passFloor]), which is the one plan a low battery leaves alone for longer.
+ */
+data class WatchPlan(val wait: Duration, val tier: FixTier, val gapM: Double, val nearest: WatchedPlace, val passing: Boolean = false)
 
 /**
  * Distance from the fix to a place's line, whichever side it is on, less the fix's own
@@ -606,7 +616,9 @@ fun reachCeiling(gapM: Double): Duration =
  * Then [charge] has the last word, because a watch that runs the battery down to nothing stops
  * being a watch: a low one raises the floor under whatever came out of all of the above
  * ([batteryFloor]), and at the bottom of it takes the GPS away as well — an hourly look is not
- * the last few hundred metres of an approach, which is the only thing the GPS was ever for.
+ * the last few hundred metres of an approach, which is the only thing the GPS was ever for. The
+ * one plan it leaves alone above [PlaceWatchPolicy.PASS_SPARING_FLOOR] is the last stretch of a
+ * walk past a small circle ([WatchPlan.passing]).
  * [previous] is the fix before this one, which is what tells a phone walking towards a door from
  * one merely walking about inside its own place; see [leavingWait].
  */
@@ -618,20 +630,29 @@ fun planNextCheck(
     charge: Double? = null,
     previous: Fix? = null,
     counting: Set<String> = emptySet(),
-): WatchPlan? = places
-    .map { place -> planFor(place, fix, previous, movement, inside[place.id], place.id in counting) }
+): WatchPlan? {
+    val plans = places.map { place -> planFor(place, fix, previous, movement, inside[place.id], place.id in counting) }
     // The soonest look any one place asks for; on a tie, the one that is closest. A phone
     // sitting at home with an errand across town is planned by the errand, not by the sofa.
-    .minWithOrNull(compareBy({ it.wait }, { it.gapM }))
-    ?.let { plan ->
-        val floor = batteryFloor(charge)
-        val tier = if (floor < PlaceWatchPolicy.MAX_WAIT) plan.tier else minOf(plan.tier, FixTier.BALANCED)
-        // With charge to spare the floor is MIN_WAIT, and the one plan under it — a walk past a
-        // small circle ([passFloor]) — is a minute of looking the battery has nothing to say
-        // about. Under half, it has the last word again.
-        val wait = if (floor <= PlaceWatchPolicy.MIN_WAIT) plan.wait else maxOf(plan.wait, floor)
-        plan.copy(wait = wait, tier = tier)
-    }
+    val order = compareBy<WatchPlan>({ it.wait }, { it.gapM })
+    val soonest = plans.minWithOrNull(order) ?: return null
+    val floor = batteryFloor(charge)
+    // With charge to spare the floor is MIN_WAIT, and the one plan under it — a walk past a
+    // small circle ([passFloor]) — is a minute of looking the battery has nothing to say about.
+    if (floor <= PlaceWatchPolicy.MIN_WAIT) return soonest
+    fun spared(plan: WatchPlan) = if (floor < PlaceWatchPolicy.MAX_WAIT) plan.tier else minOf(plan.tier, FixTier.BALANCED)
+    val floored = soonest.copy(wait = maxOf(soonest.wait, floor), tier = spared(soonest))
+    // **Except the last stretch of a walk past a small circle** (2026-11-04, the owner's call).
+    // Under half a battery the floor climbs to four minutes and past, which is three hundred
+    // metres on foot: the quick looks of 0.199.0 never happened, the two looks either side were
+    // too far apart to be believed as a line through the circle (PASS_MAX_M), and "sacar dinero,
+    // al llegar a la Caixa" was walked past again — on exactly the afternoons a phone is low.
+    // A pass costs a handful of looks for the minute or two it takes, so it keeps them down to a
+    // fifth of a battery. Only the plan on that stretch: everything else is floored as before.
+    val passing = plans.filter { it.passing }.minWithOrNull(order)
+        ?.takeIf { charge != null && charge > PlaceWatchPolicy.PASS_SPARING_FLOOR }
+    return if (passing != null && passing.wait < floored.wait) passing.copy(tier = spared(passing)) else floored
+}
 
 private fun planFor(
     place: WatchedPlace,
@@ -651,7 +672,8 @@ private fun planFor(
     val blind = if (movement.speedMps == null) PlaceWatchPolicy.UNKNOWN_MAX_WAIT else PlaceWatchPolicy.MAX_WAIT
     val ceiling = maxOf(blind, reachCeiling(gap))
     val closing = closingM(place, previous, fix)
-    var wait = Duration.ofSeconds((gap / planningSpeed).toLong()).clamp(passFloor(place, movement, gap, closing, inside), ceiling)
+    val pass = passFloor(place, movement, gap, closing, inside)
+    var wait = Duration.ofSeconds((gap / planningSpeed).toLong()).clamp(pass, ceiling)
     // **Moving is not approaching** (0.82.0). A phone carried about a house a hundred metres
     // from a watched line is moving all evening — the sensor fires, the fixes wobble — and
     // "time to the line" is then two minutes, over and over, for a line nobody is walking
@@ -719,7 +741,7 @@ private fun planFor(
         gap > PlaceWatchPolicy.COARSE_FROM_M -> FixTier.COARSE
         else -> FixTier.BALANCED
     }
-    return WatchPlan(wait = waited, tier = tier, gapM = gap, nearest = place)
+    return WatchPlan(wait = waited, tier = tier, gapM = gap, nearest = place, passing = pass < PlaceWatchPolicy.MIN_WAIT && waited <= wait)
 }
 
 /**
