@@ -228,7 +228,7 @@ fun ReminderCard(
                 card.deadline?.let { DeadlineRow(it, card.expiresAt, today, zone, muted = card.paused) }
                 // Last, because that is the order the two answer in: the triggers say when it
                 // rings the first time and the recurrence says when it comes back.
-                card.recurrence?.let { RecurrenceRow(it, today, zone, card.returnsAt, muted = card.paused) }
+                card.recurrence?.let { RecurrenceRow(it, today, zone, card.returnsAt, muted = card.paused, hasRules = card.triggers.isNotEmpty()) }
             }
             Spacer(Modifier.height(spacing.md))
             CardFooter(
@@ -384,6 +384,12 @@ fun RecurrenceRow(
     /** When it comes back, while it is resting between two rounds; see [ReminderCardUi.returnsAt]. */
     returnsAt: Instant? = null,
     muted: Boolean = false,
+    /**
+     * Whether rules ring it beside the calendar: then its dates are where the rules start
+     * listening again, not moments that ring by themselves, and "en sus propias fechas" said the
+     * second (2026-11-04).
+     */
+    hasRules: Boolean = false,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         TriggerKeycap(
@@ -418,6 +424,7 @@ fun RecurrenceRow(
                     )
                 } else stringResource(
                     when {
+                        recurrence is Recurrence.Calendar && hasRules -> R.string.card_recurrence_from_calendar_rules
                         recurrence == Recurrence.ByTrigger || recurrence is Recurrence.MonthlyWeekday ||
                             recurrence is Recurrence.Calendar -> R.string.card_recurrence_from_calendar
                         recurrence.countsFromRinging -> R.string.card_recurrence_from_ringing

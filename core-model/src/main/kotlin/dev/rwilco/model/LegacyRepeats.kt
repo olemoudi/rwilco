@@ -35,7 +35,7 @@ data class Folded(
     val removed: List<Int>,
 )
 
-fun foldRepeats(rules: List<TriggerRule>, recurrence: Recurrence, writtenOn: LocalDate): Folded {
+fun foldRepeats(rules: List<TriggerRule>, recurrence: Recurrence, writtenOn: LocalDate, match: RuleMatch = RuleMatch.ANY): Folded {
     // Already answered by a calendar: a store where both exist is hand-edited, and guessing
     // which of the two somebody meant is exactly the thing this is trying to stop. And never a
     // routine: this runs on every read, and lifting a stray repeat into a calendar would take
@@ -45,6 +45,21 @@ fun foldRepeats(rules: List<TriggerRule>, recurrence: Recurrence, writtenOn: Loc
     val index = removed.firstOrNull() ?: return Folded(rules, recurrence, emptyList())
     val rule = rules[index]
     val repeat = rule.trigger.asCalendarShape(writtenOn) ?: return Folded(rules, recurrence, emptyList())
+    // **"El lunes a las 9, o al llegar a casa" is two things that ring** (2026-11-04). Under
+    // "cualquiera" with something beside it, the repeat lifted into a calendar became only the
+    // rest after a "hecho" — "al llegar a casa, y vuelve cada lunes" — and the Monday nine
+    // o'clock it was written for never rang again. Where a shape can be said as a time of day it
+    // stays among the rules as one, in its own place — a second one too, which a calendar could
+    // not hold — and the first still says when the reminder comes back. A shape no time of day
+    // can hold (every other week, a monthly) folds as it always did.
+    val asTimes = removed.associateWith { rules[it].trigger.asTimeOfDay() }
+    if (match == RuleMatch.ANY && rules.size > 1 && asTimes[index] != null) {
+        return Folded(
+            rules = rules.mapIndexedNotNull { at, kept -> if (at in removed) asTimes[at]?.let { kept.copy(trigger = it) } else kept },
+            recurrence = Recurrence.Calendar(repeat, rule.conditions),
+            removed = removed.filter { asTimes[it] == null },
+        )
+    }
     return Folded(
         rules = rules.filterIndexed { at, _ -> at !in removed },
         recurrence = Recurrence.Calendar(repeat, rule.conditions),
@@ -54,8 +69,8 @@ fun foldRepeats(rules: List<TriggerRule>, recurrence: Recurrence, writtenOn: Loc
 
 /** See [foldRepeats]. The zone only ever gives a legacy weekly the day it was written on. */
 fun Reminder.foldRepeats(zone: ZoneId): Reminder {
-    val folded = foldRepeats(rules, recurrence, createdAt.dateIn(zone))
-    if (folded.removed.isEmpty()) return this
+    val folded = foldRepeats(rules, recurrence, createdAt.dateIn(zone), ruleMatch)
+    if (folded.rules == rules && folded.recurrence == recurrence) return this
     return copy(
         rules = folded.rules,
         recurrence = folded.recurrence,
@@ -74,7 +89,7 @@ fun Reminder.foldRepeats(zone: ZoneId): Reminder {
 /** The same, for a shape kept under a name. A preset has no armed moment to move. */
 fun Preset.foldRepeats(zone: ZoneId): Preset {
     val folded = foldRepeats(rules, recurrence, createdAt.dateIn(zone))
-    if (folded.removed.isEmpty()) return this
+    if (folded.rules == rules && folded.recurrence == recurrence) return this
     return copy(rules = folded.rules, recurrence = folded.recurrence)
 }
 
@@ -85,6 +100,22 @@ private fun Int.shiftedBy(removed: List<Int>): Int? =
 private fun Instant.dateIn(zone: ZoneId): LocalDate = atZone(zone).toLocalDate()
 
 private val Trigger.isLegacyRepeat: Boolean get() = this is Trigger.Repeat || this is Trigger.AtTime
+
+/**
+ * The same moments as a [Trigger.TimeOfDay], where that is what they are: an hour on some days
+ * of every week, or on every day. Null for anything a time of day cannot say.
+ */
+private fun Trigger.asTimeOfDay(): Trigger.TimeOfDay? = when (this) {
+    is Trigger.AtTime -> Trigger.TimeOfDay(time, days)
+    is Trigger.Repeat -> time?.takeIf { every == 1 && monthly == null && ends == RepeatEnd.Never }?.let { at ->
+        when {
+            unit == RepeatUnit.DAY -> Trigger.TimeOfDay(at)
+            unit == RepeatUnit.WEEK && days.isNotEmpty() -> Trigger.TimeOfDay(at, days)
+            else -> null
+        }
+    }
+    else -> null
+}
 
 /**
  * The calendar shape a legacy trigger always was.

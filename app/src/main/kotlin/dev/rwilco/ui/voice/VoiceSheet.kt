@@ -702,7 +702,7 @@ private fun CheckView(
                 }
                 TriggerRow(TriggerRowUi(rule.trigger, rule.conditions, rule.trigger.family, nextAt = null, window = null), today, defaultTime)
             }
-            if (reminder.recurrence.isAnchored) RecurrenceRow(reminder.recurrence, today, zone)
+            if (reminder.recurrence.isAnchored) RecurrenceRow(reminder.recurrence, today, zone, hasRules = reminder.rules.isNotEmpty())
             if (reminder.hasDeadline) reminder.deadline?.let { DeadlineRow(it, reminder.expiresAt, today, zone) }
             // The row already says a lone moment's day and hour; then only the distance is news.
             val lone = (reminder.rules.singleOrNull()?.trigger as? Trigger.AtDateTime)?.at

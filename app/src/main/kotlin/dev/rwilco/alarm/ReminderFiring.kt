@@ -53,6 +53,7 @@ import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.momentDealtWith
 import dev.rwilco.model.momentRungFor
 import dev.rwilco.model.ruleRungBy
+import dev.rwilco.model.ticksOnRing
 import dev.rwilco.model.outcomeOfFiring
 import dev.rwilco.model.owedUnderAll
 import dev.rwilco.model.holdsAt
@@ -355,9 +356,8 @@ class ReminderFiring(
             // A snooze's ring keeps the rule it put off (ruleRungBy), so a state beside it is not
             // read as having had its say.
             repository.markFired(id, rangFor, reminder.ruleRungBy(ruleIndex, viaSnoozePlace))
-            if (reminder.ruleMatch == RuleMatch.ALL && reminder.rulesCombine) {
-                repository.setFiredRules(id, reminder.rules.indices.toSet())
-            }
+            // The set is complete — or, «desde que suena», over (ticksOnRing).
+            reminder.ticksOnRing?.let { repository.setFiredRules(id, it) }
             // A moment the phone slept through by a minute or two is still that moment, and
             // rings like it; only one it slept through by a good while arrives as the quiet
             // "did not ring on time" note (lateForPresentation).

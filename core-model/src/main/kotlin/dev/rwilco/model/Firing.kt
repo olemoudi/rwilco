@@ -236,6 +236,24 @@ val Reminder.ringUnanswered: Boolean
 fun Reminder.ruleRungBy(ruleIndex: Int?, viaSnoozePlace: Boolean): Int? =
     ruleIndex ?: lastFiredRule.takeIf { snoozedUntil != null && !viaSnoozePlace }
 
+/**
+ * What a ring writes into [Reminder.firedRules] under "todos", or null where there is nothing to
+ * write.
+ *
+ * Every rule ticked: the set is complete and waiting for its "hecho", and nothing is asked again
+ * until it comes. **Except «desde que suena»** (2026-11-04), where the ring itself ends the round
+ * and the rest counted from it is what holds the rules quiet. Ticked, nothing was left pending
+ * when the rest was over, so the span rang on its own at the start of every day — wherever the
+ * phone was, at whatever hour, never asking the place or the hour it was written with. Cleared,
+ * the next round starts from nothing once the rest is up, which is what the set says.
+ */
+val Reminder.ticksOnRing: Set<Int>?
+    get() = when {
+        ruleMatch != RuleMatch.ALL || !rulesCombine -> null
+        recurrence.countsFromRinging -> emptySet()
+        else -> rules.indices.toSet()
+    }
+
 /** Inside this of the last ring, a second sighting of the same place is the same arrival. */
 val PLACE_ECHO: Duration = Duration.ofMinutes(5)
 

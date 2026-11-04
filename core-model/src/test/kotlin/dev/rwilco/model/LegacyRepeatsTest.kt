@@ -53,7 +53,9 @@ class LegacyRepeatsTest {
             rules = listOf(TriggerRule(nine), TriggerRule(home)),
             createdAt = local(2026, 8, 27, 15, 0),
         ).foldRepeats(zone)
-        assertEquals(listOf(TriggerRule(home)), preset.rules)
+        // A preset has no "todos": "el lunes a las 9, o al llegar a casa" keeps its Monday as a
+        // time of day beside the place, and the calendar says when it comes back (2026-11-04).
+        assertEquals(listOf(TriggerRule(Trigger.TimeOfDay(LocalTime.of(9, 0), setOf(DayOfWeek.MONDAY))), TriggerRule(home)), preset.rules)
         assertEquals(true, preset.recurrence is Recurrence.Calendar)
         // A store with both a legacy repeat and a calendar is hand-edited; guessing which of the
         // two somebody meant is exactly what the fold exists to stop, so it does nothing.
@@ -101,5 +103,31 @@ class LegacyRepeatsTest {
         val folded = routine.foldRepeats(zone)
         assertEquals(since, folded.recurrence)
         assertEquals(routine.rules, folded.rules)
+    }
+
+    @Test
+    fun `under cualquiera a monday hour beside a place keeps ringing on mondays`() {
+        // "El lunes a las 9, o al llegar a casa", written before 0.23. Folded into a calendar and
+        // a place, the Monday nine o'clock was only the rest after a "hecho" and never rang.
+        val legacy = stored(nine, ten, home, armedRule = 2, firedRules = emptySet()).copy(ruleMatch = RuleMatch.ANY)
+        val folded = legacy.foldRepeats(zone)
+        assertEquals(
+            listOf(
+                TriggerRule(Trigger.TimeOfDay(LocalTime.of(9, 0), setOf(DayOfWeek.MONDAY))),
+                TriggerRule(Trigger.TimeOfDay(LocalTime.of(10, 0), setOf(DayOfWeek.TUESDAY))),
+                TriggerRule(home),
+            ),
+            folded.rules,
+        )
+        assertEquals(Recurrence.Calendar(Trigger.Repeat(startsOn = LocalDate.of(2026, 8, 27), unit = RepeatUnit.WEEK, time = LocalTime.of(9, 0), days = setOf(DayOfWeek.MONDAY))), folded.recurrence)
+        assertEquals(2, folded.armedRule, "nothing moved")
+        assertEquals(folded, folded.foldRepeats(zone), "and it is folded once")
+        // The Monday rings.
+        val monday = nextWake(folded.copy(armedFor = null, armedRule = null, lastFiredAt = null, lastFiredRule = null), local(2026, 8, 30, 12, 0), zone, Fixtures.defaultTime)
+        assertEquals(Wake(local(2026, 8, 31, 9, 0), 0), monday)
+        // A monthly repeat has no time of day to be, and folds into the calendar as it did.
+        val monthly = Trigger.Repeat(startsOn = LocalDate.of(2026, 8, 1), unit = RepeatUnit.MONTH, time = LocalTime.of(9, 0), monthly = MonthlyOn.Day(1))
+        val kept = stored(home, armedRule = null, firedRules = emptySet()).copy(ruleMatch = RuleMatch.ANY, rules = listOf(TriggerRule(monthly), TriggerRule(home))).foldRepeats(zone)
+        assertEquals(listOf(TriggerRule(home)), kept.rules)
     }
 }

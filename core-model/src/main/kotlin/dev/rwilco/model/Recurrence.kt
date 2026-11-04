@@ -288,6 +288,22 @@ fun Recurrence.withSpanOf(other: Recurrence): Recurrence = when {
     else -> other
 }
 
+/**
+ * The span with the hour its rules name, when they can only name it once (2026-11-04).
+ *
+ * "El 26 a las 20:00, y vuelve cada mes": the date rings the first time and has nothing more to
+ * say, so from the second month the span's own hour is the ring — the day's start by default,
+ * which was nine in the morning for an evening appointment. Picking the span takes the rules'
+ * hour instead, when every rule is a moment that comes once and they agree on one hour. Only
+ * while the hour is still the default: one somebody chose is theirs.
+ */
+fun Recurrence.adoptingHourOf(rules: List<TriggerRule>): Recurrence {
+    if (this !is Recurrence.After || unit == RecurrenceUnit.HOURS || hour != RecurrenceHour.DayStart) return this
+    if (rules.isEmpty() || !rules.all { it.trigger.isOneShot }) return this
+    val hour = rules.mapNotNull { it.trigger.hourNamed }.distinct().singleOrNull() ?: return this
+    return copy(hour = RecurrenceHour.At(hour))
+}
+
 /** "The last Sunday of the month" rather than a numbered one. */
 const val LAST_ORDINAL = 5
 

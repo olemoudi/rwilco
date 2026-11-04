@@ -657,7 +657,10 @@ private fun Reminder.recurrenceAnchor(dealt: Instant, zone: ZoneId, shape: DaySh
     // with ahead (momentDealtWith answers null), and a [dealtThrough] left behind by an "after"
     // recurrence edited into a routine must not push the count into the future.
     if (isRoutine) return dealt
-    val from = if (recurrence.countsFromRinging) rangFor(zone, shape) ?: dealt else dealt
+    val from = when {
+        recurrence.countsFromRinging -> rangFor(zone, shape) ?: dealt
+        else -> answeredRingDay(dealt, zone) ?: dealt
+    }
     // A moment dealt with before it arrived is the moment the span counts from: ticking off
     // tomorrow's two o'clock this morning makes the next one a day after *that*, not a day
     // after the morning it was ticked off in.
@@ -693,6 +696,28 @@ private fun Reminder.rangFor(zone: ZoneId, shape: DayShape): Instant? {
     return latest
 }
 
+/**
+ * Under «desde el hecho» in whole days, a "hecho" that answers a ring counts from **the ring's
+ * day** (2026-11-04). "A las 22:00, y vuelve al día siguiente": answered at a quarter past
+ * midnight, the next day was counted from the small hours and that evening was skipped; a weekly
+ * Monday answered on Tuesday morning skipped a whole week. The day being answered is the day it
+ * rang on. The hour stays the "hecho"'s own, so the span is never shorter than it says by more
+ * than the lateness of the answer — and never longer.
+ *
+ * "Answers a ring": the latest ring is not after the "hecho", and the "hecho" came before the
+ * span counted from that ring was up — later than that it is a "hecho" about something else.
+ */
+private fun Reminder.answeredRingDay(dealt: Instant, zone: ZoneId): Instant? {
+    if (recurrence !is Recurrence.After || !recurrence.countsInDays) return null
+    val rang = lastFiredAt?.takeIf { it <= dealt } ?: return null
+    val ringDay = rang.atZone(zone).toLocalDate()
+    val dealtHere = dealt.atZone(zone)
+    if (ringDay == dealtHere.toLocalDate()) return null
+    val spanUp = nextRecurrence(recurrence, rang, zone, DEFAULT_DAY_START) ?: return null
+    if (dealt >= spanUp) return null
+    return ringDay.atTime(dealtHere.toLocalTime()).atZone(zone).toInstant()
+}
+
 /** How far back a ring looks for the moment it was for: a snooze is seldom longer than a day. */
 private val RANG_LOOKBACK: Duration = Duration.ofDays(1)
 
@@ -704,7 +729,8 @@ private val RANG_LOOKBACK: Duration = Duration.ofDays(1)
  * back a span after it rang, and again a span after that, until it is dealt with.
  */
 internal val Reminder.unansweredComesBack: Boolean
-    get() = recurrence is Recurrence.After && !recurrence.countsFromRinging && !isRoutine && ringUnanswered
+    get() = !isRoutine && ringUnanswered &&
+        ((recurrence is Recurrence.After && !recurrence.countsFromRinging) || recurrence is Recurrence.Calendar)
 
 /**
  * The alarm for [unansweredComesBack]: one span after the ring nobody answered. **Only the
@@ -715,6 +741,10 @@ internal val Reminder.unansweredComesBack: Boolean
 private fun Reminder.comeBackMoment(now: Instant, zone: ZoneId, dayStart: LocalTime, shape: DayShape): Instant? {
     if (!unansweredComesBack) return null
     val rang = lastFiredAt ?: return null
+    // **A calendar comes back on its own dates, answered or not**: "el 26 a las 20:00, y vuelve
+    // el 26 de cada mes", rung and not answered, waited for a "hecho" for ever while its card
+    // said "en sus propias fechas". Its next date after the ring is the alarm.
+    if (recurrence is Recurrence.Calendar) return calendarMoment(rang.plusMillis(1), zone, shape)
     return nextRecurrence(recurrence, recurrenceAnchor(rang, zone, shape), zone, dayStart)?.takeIf { it > rang }
 }
 

@@ -106,6 +106,8 @@ import dev.rwilco.ui.editor.sheets.WeekdaySheet
 import dev.rwilco.ui.editor.sheets.CalendarSheet
 import dev.rwilco.model.Status
 import dev.rwilco.model.hourNamed
+import dev.rwilco.model.isOneShot
+import dev.rwilco.model.questionsNeverAsked
 import dev.rwilco.model.namedDays
 import dev.rwilco.model.namesAnHour
 import dev.rwilco.model.ringCadence
@@ -279,7 +281,7 @@ fun EditorScreen(
     // draft will be saved under, because a random window's moments are drawn from it: the same
     // question asked of another seed answers about another reminder. Not a remember() key —
     // it is minted once, when the editor opens, and cannot change under it.
-    val ruleWarnings = remember(state.draft.rules, state.draft.ruleMatch, state.draft.deadline, state.defaultTime) {
+    val ruleWarnings = remember(state.draft.rules, state.draft.ruleMatch, state.draft.deadline, state.draft.recurrence, state.defaultTime, state.dayStart) {
         val worst = HashMap<Int, Int>()
         for (warning in warnings(state.draft.rules, now, zone, state.defaultTime, state.draft.ruleMatch, state.dayShape, viewModel.draftId, deadline = state.draft.deadline).sortedBy(::severityOf)) {
             val (index, message) = when (warning) {
@@ -298,6 +300,11 @@ fun EditorScreen(
         }
         // And under a routine, a rule that is not a question at all (see Draft.rulesNotQuestions).
         for (index in state.draft.rulesNotQuestions()) worst.putIfAbsent(index, R.string.editor_warning_not_a_question)
+        // And a question at an hour the routine never asks at (questionsNeverAsked, 2026-11-04).
+        if (state.draft.recurrence is Recurrence.Since) {
+            val drafted = state.draft.toReminder(viewModel.draftId, now, now, Status.ACTIVE, zone = zone, shape = state.dayShape)
+            for (index in drafted.questionsNeverAsked(zone, state.defaultTime, state.dayStart, state.dayShape)) worst.putIfAbsent(index, R.string.editor_warning_question_never_asked)
+        }
         worst
     }
     // How often this shape comes back, which is what the safety net stretches under. Walking
@@ -675,6 +682,7 @@ fun EditorScreen(
                         chanceDecides = state.draft.rules.any { it.trigger.decidesItsOwnDates },
                         defaultTime = state.defaultTime,
                         rulesNameAnHour = state.draft.rules.any { it.trigger.namesAnHour },
+                        rulesSayOnce = state.draft.rules.isNotEmpty() && state.draft.rules.all { it.trigger.isOneShot },
                         // The same union the scheduler bends a span to (Reminder.daysNamedByRules),
                         // asked of the draft: what the rules and their fences allow, together.
                         rulesDays = state.draft.rules.flatMapTo(LinkedHashSet()) { rule ->

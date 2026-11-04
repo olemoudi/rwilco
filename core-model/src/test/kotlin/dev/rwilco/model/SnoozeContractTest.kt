@@ -146,9 +146,13 @@ class SnoozeContractTest {
         val after = local(2026, 11, 27, 10, 0)
         assertEquals(Wake(local(2026, 12, 26, 9, 0), null), nextWake(r, after, zone, defaultTime))
         assertNull(nextFire(r, after, zone, defaultTime), "Home keeps it where an unanswered ring belongs")
-        // And once it is dealt with, it counts from the hecho, as it says.
+        // And once it is dealt with, it counts from the hecho — from the day of the ring the
+        // hecho answers, which is the 26th (2026-11-04: a late "hecho" no longer skips a round).
         val dealt = r.copy(lastDealtAt = local(2026, 11, 28, 10, 0))
-        assertEquals(Wake(local(2026, 12, 28, 9, 0), null), nextWake(dealt, local(2026, 11, 28, 10, 1), zone, defaultTime))
+        assertEquals(Wake(local(2026, 12, 26, 9, 0), null), nextWake(dealt, local(2026, 11, 28, 10, 1), zone, defaultTime))
+        // A hecho a whole span after the ring is about something else, and counts from itself.
+        val late = r.copy(lastDealtAt = local(2026, 12, 27, 10, 0))
+        assertEquals(Wake(local(2027, 1, 27, 9, 0), null), nextWake(late, local(2026, 12, 27, 10, 1), zone, defaultTime))
     }
 
     @Test

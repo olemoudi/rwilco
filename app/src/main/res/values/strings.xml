@@ -268,6 +268,7 @@
     <string name="home_routines_next">%1$s · due %2$s</string>
     <string name="alert_routine_span">Its span: %1$s</string>
     <string name="alert_not_yet">Not yet</string>
+    <string name="editor_warning_question_never_asked">This hour falls outside when the routine asks (the last quarter before its deadline): it will never be asked.</string>
     <string name="editor_warning_not_a_question">Under a routine this is not a question: it asks once, or never.</string>
     <string name="notif_done_title">Done: %1$s</string>
     <string name="notif_done_body">The count starts again from now.</string>
@@ -516,6 +517,7 @@
     <string name="recur_hour_custom">Another time</string>
     <string name="recur_hour_same_short">at the same time</string>
     <string name="recur_hour_at">at %1$s</string>
+    <string name="recur_hour_once_note">The date above only sets the first time: after that it comes back at this hour, and its conditions no longer apply.</string>
     <string name="recur_hour_rules_note">The rules above already name an hour, so this only decides which day it comes back on.</string>
     <string name="recur_landing">The day it comes back on</string>
     <string name="recur_landing_next">The next allowed one</string>
@@ -536,6 +538,7 @@
          the same circle is entered off a street fix and missed off a wifi one indoors. -->
     <string name="card_place_under_doubt">The phone is placing you to ±%1$d m right now: it may be slow to see you arrive here</string>
     <string name="card_recurrence_from_calendar">on its own dates</string>
+    <string name="card_recurrence_from_calendar_rules">listening again from each date</string>
     <string name="recur_after_done">Counted from the moment you mark it done, not from the clock.</string>
     <string name="recur_unit_hours">hours</string>
     <string name="recur_unit_days">days</string>
@@ -1863,6 +1866,23 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_202_0">
+
+        <item>«All» with «comes back from when it rings»: once the rest is over it asks for every condition again, instead of ringing every day at 09:00 wherever you were.</item>
+
+        <item>A date with a calendar «Comes back» («on the 26th of every month»): if you don\'t answer, it comes back on its next date instead of waiting for a «done» for ever.</item>
+
+        <item>«Comes back the next day / week from when it\'s done»: a «done» after midnight, or the next morning, counts from the day it rang and no longer skips a round.</item>
+
+        <item>Reminders from before 0.23 like «Monday at 9, or when I get home» ring on Mondays again.</item>
+
+        <item>Choosing «every month» (or week, or year) under a date with an hour takes that hour, and says the date only sets the first time and its conditions no longer apply after it.</item>
+
+        <item>A routine with a question at an hour that never falls before its deadline says so in the editor.</item>
+
+        <item>On the card, a calendar with places or hours no longer says «on its own dates»: it says it listens again from each date.</item>
+
+    </string-array>
     <string-array name="whats_new_0_200_0">
 
         <item>Snoozing one ring no longer silences the rest of the reminder: with «while I\'m home, or at 21:00», snoozing the 21:00 one no longer stops it ringing when you get home.</item>

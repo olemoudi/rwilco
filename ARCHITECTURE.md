@@ -4235,6 +4235,31 @@ loud what DST and a change of zone do to a landing.
   indicator and under the rows of "A otro momento" from two up (`skipsWorthSaying`; 0 under
   "todos", where a moment is a note); "Quitar el posponer" on a reminder left with nothing to ring
   says so (`unsnoozeLeavesNothing`). Tests: `SnoozeContractTest`, `WakingDayTest`.
+- **The trigger-contract round, 2: what "Vuelve" promises** (0.202.0, 2026-11-04; 0.201.0 was a tag pushed onto the 0.200.0 commit by mistake and is skipped). **Under
+  "todos", «desde que suena» ends the round at the ring** (`Reminder.ticksOnRing`, `Firing.kt`):
+  the ring used to tick every rule, so nothing was pending when the rest was up and the span rang
+  alone at the day's start, every day, asking neither the place nor the hour; it now clears the
+  ticks and the next round starts from nothing (under «desde el hecho» the set still waits,
+  complete, for its "hecho"). **A calendar comes back on its dates, answered or not**:
+  `unansweredComesBack` now covers `Recurrence.Calendar` too, and `comeBackMoment` arms its next
+  date after an unanswered ring when the rules have nothing left — `nextWake` only, as for spans;
+  a rule that keeps speaking (a Friday window under "el primer viernes") is left to speak, as
+  `FiringAuditTest` pins. **A "hecho" that answers a ring counts from the ring's day**
+  (`answeredRingDay`, «desde el hecho» in whole days): the latest ring not after the "hecho",
+  and the "hecho" before the span from it was up; the hour stays the "hecho"'s. A hecho at 00:15
+  on a 22:00 daily no longer skips the evening, nor one on Tuesday morning a weekly Monday.
+  **Legacy "lunes 9:00 o al llegar a casa"** (`foldRepeats`, now given the reminder's match):
+  under "cualquiera" with more than one rule, every legacy repeat a time of day can say
+  (`AtTime`, a daily or weekly-on-days `Repeat` with an hour and no end) stays among the rules as
+  a `TimeOfDay`, and the first still becomes the calendar; anything else folds as before.
+  **The editor takes a dated rule's hour for a span** (`Recurrence.adoptingHourOf`, on picking a
+  span only, while the hour is the default and every rule is one-shot with one hour), and the
+  hour note says the date only sets the first time and its conditions go with it
+  (`recur_hour_once_note`). **A routine's question that can never be put is said**
+  (`questionsNeverAsked`, `Prompt.kt`: a daily hour outside the last quarter before the
+  deadline, for day spans under four days). And a calendar card with rules says it listens again
+  from each date (`card_recurrence_from_calendar_rules`). Tests: `RecurrenceContractTest`,
+  `LegacyRepeatsTest`.
 
 ## Backup (the vault)
 

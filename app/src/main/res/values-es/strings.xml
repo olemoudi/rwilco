@@ -264,6 +264,7 @@
     <string name="home_routines_next">%1$s · vence %2$s</string>
     <string name="alert_routine_span">Su plazo: %1$s</string>
     <string name="alert_not_yet">Todavía no</string>
+    <string name="editor_warning_question_never_asked">Esta hora cae fuera de cuándo pregunta la rutina (el último cuarto antes del plazo): nunca se preguntará.</string>
     <string name="editor_warning_not_a_question">Bajo una rutina esto no es una pregunta: pregunta una vez, o nunca.</string>
     <string name="notif_done_title">Hecha: %1$s</string>
     <string name="notif_done_body">La cuenta vuelve a empezar desde ahora.</string>
@@ -507,6 +508,7 @@
     <string name="recur_hour_custom">Otra hora</string>
     <string name="recur_hour_same_short">a la misma hora</string>
     <string name="recur_hour_at">a las %1$s</string>
+    <string name="recur_hour_once_note">La fecha de arriba sólo marca la primera vez: después vuelve a esta hora, y sus condiciones ya no cuentan.</string>
     <string name="recur_hour_rules_note">Las reglas de arriba ya dicen la hora, así que esto sólo decide qué día vuelve.</string>
     <string name="recur_landing">El día en que vuelve</string>
     <string name="recur_landing_next">El siguiente que toque</string>
@@ -522,6 +524,7 @@
     <string name="card_recurrence_returns">vuelve %1$s</string>
     <string name="card_place_under_doubt">Ahora mismo el móvil te sitúa con ±%1$d m: puede tardar en ver que llegas aquí</string>
     <string name="card_recurrence_from_calendar">en sus propias fechas</string>
+    <string name="card_recurrence_from_calendar_rules">vuelve a escuchar desde cada fecha</string>
     <string name="recur_after_done">Se cuenta desde que lo marcas hecho, no desde el reloj.</string>
     <string name="recur_unit_hours">horas</string>
     <string name="recur_unit_days">días</string>
@@ -1848,6 +1851,23 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_202_0">
+
+        <item>«Todos» con «vuelve desde que suena»: cuando acaba el descanso vuelve a pedir todas sus condiciones, en vez de sonar cada día a las 09:00 estuvieras donde estuvieras.</item>
+
+        <item>Una fecha con «Vuelve» en un calendario («el 26 de cada mes»): si no contestas, vuelve en su siguiente fecha, en vez de esperar un «hecho» para siempre.</item>
+
+        <item>«Vuelve al día siguiente / la semana que viene desde el hecho»: un «hecho» pasada la medianoche, o al día siguiente, cuenta desde el día en que sonó y ya no se salta una vuelta.</item>
+
+        <item>Los recordatorios de antes de 0.23 del tipo «el lunes a las 9, o al llegar a casa» vuelven a sonar los lunes.</item>
+
+        <item>Al elegir «cada mes» (o cada semana, o cada año) sobre una fecha con hora, el editor toma esa hora, y avisa de que la fecha sólo marca la primera vez y sus condiciones ya no cuentan después.</item>
+
+        <item>Una rutina con una pregunta a una hora que nunca cae antes del plazo lo avisa en el editor.</item>
+
+        <item>En la tarjeta, un calendario con lugares u horas ya no dice «en sus propias fechas», sino que vuelve a escuchar desde cada fecha.</item>
+
+    </string-array>
     <string-array name="whats_new_0_200_0">
 
         <item>Posponer un aviso ya no silencia al resto del recordatorio: con «mientras esté en casa, o a las 21:00», si pospones el de las 21:00, al llegar a casa vuelve a sonar.</item>

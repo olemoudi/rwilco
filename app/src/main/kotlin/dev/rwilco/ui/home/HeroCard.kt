@@ -171,7 +171,7 @@ fun HeroCard(
                     }
                     // No "vuelve el…" here: the hero's whole top half is that moment, said
                     // bigger and with a countdown on it.
-                    hero.card.recurrence?.let { RecurrenceRow(it, today, clock.zone) }
+                    hero.card.recurrence?.let { RecurrenceRow(it, today, clock.zone, hasRules = hero.card.triggers.isNotEmpty()) }
                 }
             }
             // Always, because the pause pill lives here: the one card that matters most was the

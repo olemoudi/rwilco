@@ -31,6 +31,7 @@ import dev.rwilco.model.isRoutine
 import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.SavedPlace
 import dev.rwilco.model.RecurrencePreset
+import dev.rwilco.model.adoptingHourOf
 import dev.rwilco.model.withSpanOf
 import dev.rwilco.model.keeping
 import dev.rwilco.model.Preset
@@ -396,7 +397,9 @@ class EditorViewModel(
     fun pickRecurrencePreset(preset: RecurrencePreset) {
         // The preset says the span; the anchor already chosen on the card says which moment it
         // counts from, and picking a different span is no reason to forget it.
-        _state.update { state -> state.setRecurrence(state.draft.recurrence.withSpanOf(preset.recurrence)) }
+        // And the hour a dated rule says, which from the second time on is this span's to say
+        // (adoptingHourOf, 2026-11-04): "el 26 a las 20:00, cada mes" rang at breakfast.
+        _state.update { state -> state.setRecurrence(state.draft.recurrence.withSpanOf(preset.recurrence).adoptingHourOf(state.draft.rules)) }
         viewModelScope.launch {
             val now = clock.instant()
             store.update { settings ->

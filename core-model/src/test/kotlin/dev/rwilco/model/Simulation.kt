@@ -413,7 +413,7 @@ class Simulation(
             FiringOutcome.Ring -> Unit
         }
         reminder = row.copy(lastFiredAt = rangFor, lastFiredRule = row.ruleRungBy(ruleIndex, viaSnoozePlace), snoozedUntil = null, snoozedToPlace = null, snoozedToRules = false, expiresAt = null)
-        if (row.ruleMatch == RuleMatch.ALL && row.rulesCombine) reminder = reminder.copy(firedRules = row.rules.indices.toSet())
+        row.ticksOnRing?.let { reminder = reminder.copy(firedRules = it) }
         val ring = Ring(now, rangFor, ruleIndex, late)
         rings += ring
         deal(deal(ring))

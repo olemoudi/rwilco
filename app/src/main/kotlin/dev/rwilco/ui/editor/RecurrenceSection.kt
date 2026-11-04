@@ -131,6 +131,11 @@ internal fun RecurrenceSection(
      */
     rulesNameAnHour: Boolean,
     /**
+     * Whether every rule says its moment once (a date, a day): then from the second time it is
+     * this card's hour that rings, and the rules' conditions go with them (2026-11-04).
+     */
+    rulesSayOnce: Boolean = false,
+    /**
      * The days of the week the rules allow, empty when they name none. What makes the landing
      * question worth asking at all: with no days named, a span lands where it lands.
      */
@@ -321,6 +326,7 @@ internal fun RecurrenceSection(
                 // this control decides nothing would be exactly wrong: it decides everything.
                 val hourNote = when {
                     recurrence.landsExactly -> R.string.recur_hour_exact_note
+                    rulesSayOnce -> R.string.recur_hour_once_note
                     rulesNameAnHour -> R.string.recur_hour_rules_note
                     else -> null
                 }

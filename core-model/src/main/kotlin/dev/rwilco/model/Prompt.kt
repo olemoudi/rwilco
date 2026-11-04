@@ -124,3 +124,38 @@ fun Reminder.nextPrompt(
         Wake(at, index)
     }.minByOrNull { it.at }
 }
+
+/**
+ * The clock questions of a routine that can never be put (2026-11-04): an hour of every day that
+ * never falls between the questions opening ([promptOpensAt], the last quarter of the span) and
+ * the deadline. "Cada día, plazo a las 20:00, ¿lo has hecho? a las 21:00" opens at 14:00, rings
+ * at 20:00, and at 21:00 the deadline has rung and nothing is asked — every day, for ever, with
+ * nothing on the form to say so.
+ *
+ * Only where "never" is true of every round: a span counted in days and shorter than four of
+ * them (its window is the same stretch of every day, shorter than one), and a question asked at
+ * an hour of every day. Anything longer has a window a daily hour always falls into, and a
+ * question on some days only falls in or out depending on the day the count starts on.
+ */
+fun Reminder.questionsNeverAsked(
+    zone: ZoneId,
+    defaultTime: LocalTime,
+    dayStart: LocalTime = DEFAULT_DAY_START,
+    shape: DayShape = DayShape.DEFAULT,
+): List<Int> {
+    val span = recurrence as? Recurrence.Since ?: return emptyList()
+    if (!isRoutine || span.unit != RecurrenceUnit.DAYS || span.amount >= 4) return emptyList()
+    val deadline = routineDeadline(zone, dayStart) ?: return emptyList()
+    val opens = promptOpensAt(zone, dayStart) ?: return emptyList()
+    return rules.indices.filter { index ->
+        val rule = rules[index]
+        val daily = when (val trigger = rule.trigger) {
+            is Trigger.TimeOfDay -> trigger.days.isEmpty()
+            is Trigger.Interval -> trigger.days.isEmpty()
+            else -> false
+        }
+        if (!rule.asks || !daily) return@filter false
+        val at = nextFireOfRule(rule, id, opens.minusMillis(1), zone, defaultTime, shape)?.moment
+        at == null || at >= deadline
+    }
+}
