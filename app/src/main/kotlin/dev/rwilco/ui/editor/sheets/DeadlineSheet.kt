@@ -47,6 +47,11 @@ fun DeadlineSheet(
     savedWindows: List<SavedWindow> = emptyList(),
     onConfirm: (Deadline) -> Unit,
     onDismiss: () -> Unit,
+    /**
+     * Whether the reminder comes back ("Vuelve"). Without it a plazo that passes is the end of
+     * the reminder, not of one day's try — said in so many words (2026-11-04).
+     */
+    returns: Boolean = true,
 ) {
     val window = initial as? Deadline.Window
     val initialTimer = initial as? Deadline.Timer
@@ -79,6 +84,13 @@ fun DeadlineSheet(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (!returns) {
+            Text(
+                text = stringResource(R.string.deadline_hint_once),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
         if (timer) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(Tokens.spacing.sm),

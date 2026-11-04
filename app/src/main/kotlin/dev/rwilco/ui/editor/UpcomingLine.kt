@@ -11,6 +11,10 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import dev.rwilco.R
+import dev.rwilco.model.Trigger
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.TextButton
 import dev.rwilco.model.Action
 import dev.rwilco.model.DayShape
 import dev.rwilco.model.NextFire
@@ -74,6 +78,15 @@ fun UpcomingLine(
     actions: Set<Action> = emptySet(),
     /** A pause, or a snooze this edit keeps or drops: see [Standing]. */
     standing: Standing = Standing.Plain,
+    /**
+     * What a set adds to the first moment (2026-11-04): under "a la vez" a moment beside a place
+     * rings only if the phone is there then, and under "todos" a place first among what is left
+     * is not "suena al llegar": it rings with whatever happens last.
+     */
+    caveat: SetCaveat? = null,
+    /** The stretch an hour under "a la vez" could become, offered beside the caveat; null offers nothing. */
+    widen: Trigger.Interval? = null,
+    onWiden: () -> Unit = {},
 ) {
     if (standing == Standing.Paused) {
         Text(
@@ -132,6 +145,11 @@ fun UpcomingLine(
     val firstLine = when {
         putOff && next is NextFire.WhenAt -> stringResource(R.string.home_snoozed_until, snoozePlacePhrase(words, next.trigger))
         putOff -> stringResource(R.string.home_snoozed_until, readings.first())
+        caveat is SetCaveat.WhenAllHappened && next is NextFire.WhenAt -> stringResource(R.string.editor_will_ring_when_all)
+        caveat is SetCaveat.IfThere && next is NextFire.Scheduled -> stringResource(
+            if (hushed) R.string.editor_will_ring_hushed else R.string.editor_will_ring,
+            readings.first(),
+        ) + sep + stringResource(if (caveat.inside) R.string.editor_will_ring_if_at else R.string.editor_will_ring_if_away, caveat.label)
         else -> stringResource(
             when {
                 due && hushed -> R.string.editor_will_be_due_hushed
@@ -175,6 +193,40 @@ fun UpcomingLine(
             style = MaterialTheme.typography.bodyMedium,
         )
         if (note != null) Text(text = note, style = MaterialTheme.typography.labelMedium, color = rest)
+        if (widen != null && caveat is SetCaveat.IfThere) {
+            TextButton(onClick = onWiden, contentPadding = PaddingValues(0.dp)) {
+                Text(
+                    text = stringResource(
+                        R.string.editor_widen_moment,
+                        TimeText.time(widen.from, words.is24h, words.locale),
+                        TimeText.time(widen.to, words.is24h, words.locale),
+                    ),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
+        }
+    }
+}
+
+/** What a set of rules adds to the first moment the line names. See [UpcomingLine]'s `caveat`. */
+sealed interface SetCaveat {
+    /** "A la vez" with a place as a state: the moment rings only if the phone is [inside] (or not) [label]. */
+    data class IfThere(val label: String, val inside: Boolean) : SetCaveat
+
+    /** "Todos": a place among what is left rings nothing of its own; the last to happen does. */
+    data object WhenAllHappened : SetCaveat
+}
+
+/** The caveat a draft's rules put on its first moment, or null when they put none. */
+fun setCaveatOf(rules: List<dev.rwilco.model.TriggerRule>, match: dev.rwilco.model.RuleMatch): SetCaveat? {
+    if (rules.size < 2) return null
+    return when (match) {
+        dev.rwilco.model.RuleMatch.TOGETHER -> rules.firstNotNullOfOrNull { rule ->
+            (rule.trigger as? dev.rwilco.model.Trigger.Location)?.takeIf { !it.onCrossing }
+                ?.let { SetCaveat.IfThere(it.label, it.presence == dev.rwilco.model.Presence.INSIDE) }
+        }
+        dev.rwilco.model.RuleMatch.ALL -> SetCaveat.WhenAllHappened
+        dev.rwilco.model.RuleMatch.ANY -> null
     }
 }
 

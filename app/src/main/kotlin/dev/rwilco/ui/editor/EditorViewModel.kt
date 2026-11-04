@@ -344,6 +344,9 @@ class EditorViewModel(
     fun addTag(raw: String) = _state.update { it.addTag(raw) }
     fun toggleAction(action: Action) = _state.update { it.toggleAction(action) }
     fun setRuleMatch(match: RuleMatch) = _state.update { it.setRuleMatch(match) }
+
+    /** "A las 19:00, y a la vez en casa" made "de 19:00 a 22:00": see [Draft.widenedMoment]. */
+    fun widenMoment() = _state.update { it.widenMoment() }
     fun openDeadline() = _state.update { it.openDeadline() }
     fun commitDeadline(deadline: Deadline) = _state.update { it.commitDeadline(deadline) }
     // Read before the change and announced after it, like [removeTrigger]: the undo carries what

@@ -109,8 +109,23 @@ class ReminderRepository(
         dao.dealtWith(id, millis, status.name, if (status == Status.DONE) millis else null, through?.toEpochMilli(), expiresAt?.toEpochMilli())
     }
 
-    suspend fun setStatus(id: String, status: Status) {
+    suspend fun setStatus(
+        id: String,
+        status: Status,
+        /**
+         * The round a lifted pause comes back into ([dev.rwilco.model.roundOnResume]), worked out
+         * by a caller that has the settings: written before the status, so nothing ever arms the
+         * lapse of a round that ran out while the reminder was paused.
+         */
+        roundOnResume: (Reminder) -> Reminder? = { null },
+    ) {
         val now = clock.instant()
+        if (status == Status.ACTIVE) {
+            get(id)?.takeIf { it.status != Status.ACTIVE }?.let(roundOnResume)?.let { round ->
+                dao.setFiredRules(id, encodeIndices(round.firedRules))
+                dao.setExpiresAt(id, round.expiresAt?.toEpochMilli())
+            }
+        }
         // A routine's pause freezes its count, and lifting it moves the count on by the time it
         // rested: see [Reminder.routineAnchorAfterPause] and [ReminderDao.resumeRoutine]. Any
         // other reminder, and a routine nothing froze (paused before the column existed), keeps

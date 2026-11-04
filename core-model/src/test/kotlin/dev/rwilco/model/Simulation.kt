@@ -400,7 +400,7 @@ class Simulation(
             return null
         }
         val rangFor = momentRungFor(now, row.armedFor, late, eventDriven)
-        when (val outcome = outcomeOfFiring(row, ruleIndex)) {
+        when (val outcome = outcomeOfFiring(row, ruleIndex, late ?: now, zone, shape)) {
             is FiringOutcome.Wait -> {
                 // The timer starts with the first moment of the round, and a state starts nothing.
                 val started = ruleIndex?.let { row.timerExpiry(it, rangFor) }

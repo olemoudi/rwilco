@@ -101,9 +101,10 @@ class SpokenRoundTripTest {
     }
 
     @Test
-    fun `a deadline by an hour reads back`() {
+    fun `a deadline window reads back`() {
+        // The sentence says both ends now (2026-11-04): "entre las 18:00 y las 22:00".
         for (words in languages) {
-            val said = "Regar " + words.say("trigger_arrive_at", "Casa") + " " + words.say("editor_sentence_deadline_window", "22:00")
+            val said = "Regar " + words.say("trigger_arrive_at", "Casa") + " " + words.say("editor_sentence_deadline_window", "18:00", "22:00")
             val rule = read(said).rules.single()
             assertTrue(rule.conditions.single() is Condition.TimeWindow, said)
         }

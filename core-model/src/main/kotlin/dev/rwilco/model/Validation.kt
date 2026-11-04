@@ -318,7 +318,9 @@ fun warnings(
         // With the rule's own hour fences, exactly as nextFireOfRule reaches them: a day with no
         // hour opens at the first minute they allow, so "el jueves, sólo de 16 a 17" is judged on
         // the 16:00 it will actually ring at rather than on breakfast time.
+        // A stretch still open as it is written has the rest of itself to ring in (openAtWriting).
         val onItsOwn = nextFireOf(rule.trigger, reminderId, now, zone, defaultTime, shape, rule.windows())
+            ?: openAtWriting(rule, now, now, zone, shape, rule.conditions.filter { it.knownInAdvance })
         val oneShot = rule.trigger.isOneShot
         when {
             // Nothing left of the trigger itself: a date that has been and gone.
@@ -335,7 +337,7 @@ fun warnings(
             // The trigger still has moments, but never one its own conditions allow. This is
             // nextFireOfRule giving up after MAX_CANDIDATES, which is the same search the
             // scheduler does — so what it cannot find, nothing will.
-            onItsOwn != null && nextFireOfRule(rule, reminderId, now, zone, defaultTime, shape) == null -> {
+            onItsOwn != null && nextFireOfRule(rule, reminderId, now, zone, defaultTime, shape, writtenAt = now) == null -> {
                 found += ValidationWarning.NeverFires(index)
                 doomed += index
             }
@@ -368,7 +370,9 @@ private fun betterAsCondition(rules: List<TriggerRule>, match: RuleMatch): Valid
     if (match != RuleMatch.ALL || rules.size < 2) return null
     val place = rules.indexOfFirst { it.conditions.isEmpty() && it.trigger is Trigger.Location }
     val clock = rules.indexOfFirst {
-        it.conditions.isEmpty() && (it.trigger is Trigger.AtDateTime || it.trigger is Trigger.AtTime)
+        // A time of day too (2026-11-04): "al llegar a casa" and "a las 21:00" under "todos" is
+        // the same trap with the hour every day instead of one date, and it was the one not said.
+        it.conditions.isEmpty() && (it.trigger is Trigger.AtDateTime || it.trigger is Trigger.AtTime || it.trigger is Trigger.TimeOfDay)
     }
     return if (place >= 0 && clock >= 0) ValidationWarning.BetterAsCondition(place, clock) else null
 }

@@ -106,6 +106,27 @@ fun Reminder.lapsed(
 }
 
 /**
+ * The round a reminder comes back into when its pause is lifted after its deadline passed, or
+ * null when the round it was in is still open (2026-11-04).
+ *
+ * A window deadline closed while nothing was armed: paused across it, the row kept its old
+ * `expiresAt`, and resuming handed the lapse alarm a moment already gone — "se pasó el plazo",
+ * the round written off the instant somebody said "otra vez". The pause stood outside the round
+ * on purpose; coming back starts a fresh one, its ticks cleared and its window counted from now.
+ */
+fun Reminder.roundOnResume(
+    now: Instant,
+    zone: ZoneId,
+    defaultTime: LocalTime,
+    dayStart: LocalTime = DEFAULT_DAY_START,
+    shape: DayShape = DayShape.DEFAULT,
+): Reminder? {
+    if (expiresAt?.let { it <= now } != true) return null
+    val fresh = copy(status = Status.ACTIVE, firedRules = emptySet(), expiresAt = null)
+    return fresh.copy(expiresAt = fresh.roundExpiry(now, zone, defaultTime, dayStart, shape))
+}
+
+/**
  * The moment a "hecho" spends, or null when it spends none.
  *
  * **A "hecho" deals with whatever is owed.** Usually that is the firing waiting for an answer,
@@ -473,7 +494,14 @@ sealed interface FiringOutcome {
     data class Wait(val fired: Set<Int>) : FiringOutcome
 }
 
-fun outcomeOfFiring(reminder: Reminder, ruleIndex: Int?): FiringOutcome {
+fun outcomeOfFiring(
+    reminder: Reminder,
+    ruleIndex: Int?,
+    /** When the moment being judged happened; with [zone], what lets the ticks be re-read ([ticksStanding]). */
+    at: Instant? = null,
+    zone: ZoneId? = null,
+    shape: DayShape = DayShape.DEFAULT,
+): FiringOutcome {
     // A snooze's moment (no rule behind it) is the ring itself, as is anything under ANY.
     //
     // And under TOGETHER: nothing accumulates there. By the time a firing reaches here its
@@ -482,8 +510,67 @@ fun outcomeOfFiring(reminder: Reminder, ruleIndex: Int?): FiringOutcome {
     // is nothing left to wait for.
     if (ruleIndex == null || reminder.ruleMatch != RuleMatch.ALL || !reminder.rulesCombine) return FiringOutcome.Ring
     if (ruleIndex !in reminder.rules.indices) return FiringOutcome.Ring
-    val fired = reminder.firedRules.filter { it in reminder.rules.indices }.toSet() + ruleIndex
+    val ticked = reminder.firedRules.filter { it in reminder.rules.indices }.toSet()
+    val standing = if (at != null && zone != null) reminder.ticksStanding(ticked, ruleIndex, at, zone, shape) else ticked
+    val fired = standing + ruleIndex
     return if (fired.size == reminder.rules.size) FiringOutcome.Ring else FiringOutcome.Wait(fired)
+}
+
+/**
+ * Under "todos", the ticks that still count when [ruleIndex] happens at [at] (2026-11-04).
+ *
+ * "Los viernes" and "a las 20:00", written on a Saturday afternoon: the twenty hundred of that
+ * Saturday was written down, and the set completed at Friday's opening — eight in the morning,
+ * which is the one hour nobody meant. A place already re-reads itself (the watch unticks a side
+ * left behind); a clock state never did. So:
+ *
+ * - **a day, a stretch of the day or of the calendar that no longer holds stops counting**, as
+ *   leaving does for a place; and
+ * - while one of them is in the set, **a remembered moment that comes round again counts only
+ *   if it happened inside the stretch the state is in now** — its latest occurrence not before
+ *   that stretch began. Saturday's 20:00 is from before Friday; Friday's own 20:00 completes it.
+ *
+ * A moment that comes once (a date, a countdown) is never dropped: it cannot happen again, and
+ * dropping it would leave a set that can never complete. A place's ticks are the watch's.
+ */
+internal fun Reminder.ticksStanding(ticked: Set<Int>, ruleIndex: Int, at: Instant, zone: ZoneId, shape: DayShape): Set<Int> {
+    fun clockState(index: Int): Condition? = rules[index].trigger.takeUnless { it is Trigger.Location }?.asState(shape)
+    val holding = ticked.filterTo(mutableSetOf()) { index -> clockState(index)?.holdsAt(at, zone) ?: true }
+    val since = (holding + ruleIndex).mapNotNull { index -> clockState(index)?.takeIf { it.holdsAt(at, zone) }?.let { stateSince(it, at, zone) } }.maxOrNull()
+        ?: return holding
+    return holding.filterTo(mutableSetOf()) { index ->
+        val trigger = rules[index].trigger
+        if (clockState(index) != null || trigger is Trigger.Location || trigger.isOneShot) return@filterTo true
+        val last = lastMomentOf(trigger, at, zone, shape) ?: return@filterTo true
+        last >= since
+    }
+}
+
+/** When the stretch a clock state is in at [at] began: the day, the window's opening, the range's first day. */
+private fun stateSince(state: Condition, at: Instant, zone: ZoneId): Instant? {
+    val here = at.atZone(zone)
+    return when (state) {
+        is Condition.OnDays -> here.toLocalDate().atStartOfDay(zone).toInstant()
+        is Condition.DateRange -> state.from.atStartOfDay(zone).toInstant()
+        is Condition.TimeWindow -> {
+            val today = here.toLocalDate().atTime(state.from)
+            (if (today <= here.toLocalDateTime()) today else today.minusDays(1)).atZone(zone).toInstant()
+        }
+        else -> null
+    }
+}
+
+/** The latest moment of a trigger that comes round again, at or before [at], within a week. */
+private fun Reminder.lastMomentOf(trigger: Trigger, at: Instant, zone: ZoneId, shape: DayShape): Instant? {
+    var latest: Instant? = null
+    var from = at.minus(Duration.ofDays(8))
+    repeat(64) {
+        val next = nextFireOf(trigger, id, from, zone, DEFAULT_DAY_START, shape)?.moment ?: return latest
+        if (next > at) return latest
+        latest = next
+        from = next
+    }
+    return latest
 }
 
 /**

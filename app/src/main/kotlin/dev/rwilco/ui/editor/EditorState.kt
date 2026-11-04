@@ -862,7 +862,12 @@ fun EditorUiState.commitTrigger(
     } else {
         draft.rules + TriggerRule(trigger, conditions = if (asked) listOfNotNull(fence) else emptyList(), resets = resets ?: false)
     }
-    val match = matchAfterAdding(rules, adding, now, zone, draftId)
+    // **An edit that turns a moment into a state, or back, asks the question again** (2026-11-04):
+    // "al llegar a casa" beside "a las 19:00" was two moments and so "cualquiera"; made "mientras
+    // esté en casa", the pair is the sentence "a la vez" is for — and the other way round, a
+    // "a la vez" left over two moments can never ring. Exactly the answer adding the rule gives.
+    val flipped = !adding && index != null && draft.rules[index].trigger.isMoment != trigger.isMoment
+    val match = matchAfterAdding(rules, adding || flipped, now, zone, draftId)
     // Choosing "at random" IS choosing a recurrence — "tres veces al día" says so outright — so
     // it says so in plain sight, right under the row, and changeable. Every other kind leaves
     // the answer alone: a place or a date is one-shot until somebody says otherwise, and a
@@ -1000,3 +1005,28 @@ fun EditorUiState.closeSheet(): EditorUiState = copy(
         else -> EditorSheet.None
     },
 )
+
+/**
+ * "A las 19:00, y a la vez en casa" rings only if the phone is home at 19:00 (2026-11-04): the
+ * hour is an instant, and "a la vez" asks the place at that instant and no other. The offer the
+ * editor makes beside it is the reading most people meant — **the hour as the start of a
+ * stretch** ("de 19:00 a 22:00, y a la vez en casa"), which rings on arriving inside it. The
+ * stretch it would become, or null when the draft is not that shape: "a la vez", one time of day
+ * and a place read as a state.
+ */
+fun Draft.widenedMoment(): Pair<Int, Trigger.Interval>? {
+    if (ruleMatch != RuleMatch.TOGETHER || rules.size < 2) return null
+    if (rules.none { (it.trigger as? Trigger.Location)?.onCrossing == false }) return null
+    val index = rules.indexOfFirst { it.trigger is Trigger.TimeOfDay }.takeIf { it >= 0 } ?: return null
+    if (rules.count { it.trigger is Trigger.TimeOfDay } != 1) return null
+    val moment = rules[index].trigger as Trigger.TimeOfDay
+    return index to Trigger.Interval(moment.time, moment.time.plusHours(WIDENED_HOURS), moment.days)
+}
+
+/** How long the stretch the offer makes of an hour lasts: an evening's worth. */
+const val WIDENED_HOURS = 3L
+
+fun EditorUiState.widenMoment(): EditorUiState {
+    val (index, stretch) = draft.widenedMoment() ?: return this
+    return copy(draft = draft.copy(rules = draft.rules.mapIndexed { at, rule -> if (at == index) rule.copy(trigger = stretch) else rule }))
+}

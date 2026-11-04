@@ -566,6 +566,10 @@
     <!-- The same moment, when the hours somebody is up will take the noise out of it. -->
     <string name="editor_will_ring_hushed">Rings %1$s · silently, you\'ll be asleep</string>
     <string name="editor_will_be_due_hushed">Due %1$s · silently, you\'ll be asleep</string>
+    <string name="editor_will_ring_when_all">Rings once everything it asks for has happened</string>
+    <string name="editor_will_ring_if_at">only if you\'re at %1$s then</string>
+    <string name="editor_will_ring_if_away">only if you\'re not at %1$s then</string>
+    <string name="editor_widen_moment">Make it from %1$s to %2$s</string>
     <string name="editor_will_never_ring">This will never ring</string>
     <string name="editor_standing_paused">Paused: it will not ring until you resume it</string>
     <string name="editor_standing_keeps">Changing the «when» takes the snooze off</string>
@@ -3227,6 +3231,7 @@
     <string name="deadline_sheet_title">Time limit</string>
     <string name="deadline_kind_window">Between hours</string>
     <string name="deadline_kind_timer">From the first</string>
+    <string name="deadline_hint_once">This reminder has no «Comes back»: if the deadline passes without it ringing, it ends there and does not try again the next day.</string>
     <string name="deadline_hint_window">Only what happens between these hours counts, on the day the set is due. If they close with something still missing, the reminder is let go without a sound — or waits for its next round, if it comes back.</string>
     <string name="deadline_hint_timer">The clock starts with the first thing that happens at a moment: an hour, a date, walking through a door. Not with a place you are already at. If it runs out with something still missing, the reminder is let go without a sound — or waits for its next round, if it comes back.</string>
     <string name="card_deadline">Time limit</string>
@@ -3234,7 +3239,7 @@
     <string name="card_deadline_timer">%1$s from the first</string>
     <string name="card_deadline_lapses">Runs out %1$s</string>
     <string name="card_deadline_waiting">The clock starts with the first</string>
-    <string name="editor_sentence_deadline_window">by %1$s</string>
+    <string name="editor_sentence_deadline_window">between %1$s and %2$s</string>
     <string name="editor_sentence_deadline_timer">within %1$s of the first</string>
     <string name="history_lapsed">the time limit ran out</string>
     <plurals name="trigger_repeat_days">

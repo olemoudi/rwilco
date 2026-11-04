@@ -310,7 +310,7 @@ class ReminderFiring(
         }
         // Under ALL a moment is first of all something that happened: only the one that
         // completes the set rings, and the rest are written down and waited on.
-        when (val outcome = outcomeOfFiring(reminder, ruleIndex)) {
+        when (val outcome = outcomeOfFiring(reminder, ruleIndex, late ?: now, clock.zone, settings.dayShape)) {
             is FiringOutcome.Wait -> {
                 Log.i(TAG, "$id noted rule $ruleIndex; still waiting for the rest")
                 Diag.note(TAG_DIAG, "r=${short(id)} rule $ruleIndex happened; waiting for ${outcome.fired}")

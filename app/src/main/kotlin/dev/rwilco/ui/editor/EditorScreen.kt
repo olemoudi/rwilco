@@ -107,6 +107,7 @@ import dev.rwilco.ui.editor.sheets.CalendarSheet
 import dev.rwilco.model.Status
 import dev.rwilco.model.hourNamed
 import dev.rwilco.model.isOneShot
+import dev.rwilco.model.repeats
 import dev.rwilco.model.questionsNeverAsked
 import dev.rwilco.model.namedDays
 import dev.rwilco.model.namesAnHour
@@ -422,6 +423,9 @@ fun EditorScreen(
                     dayShape = state.dayShape,
                     actions = state.draft.actions,
                     zone = zone,
+                    caveat = setCaveatOf(state.draft.rules, state.draft.ruleMatch),
+                    widen = state.draft.widenedMoment()?.second,
+                    onWiden = viewModel::widenMoment,
                     onSave = {
                         // Not while the row is still being read (0.139.0): the placeholder is in
                         // the content, the bar is not, and a tap in that window ran `save()`
@@ -855,6 +859,7 @@ fun EditorScreen(
                 savedWindows = state.savedWindows,
                 onConfirm = viewModel::commitDeadline,
                 onDismiss = viewModel::closeSheet,
+                returns = state.draft.recurrence.repeats,
             )
             is EditorSheet.Configure -> {
                 val commit = { trigger: dev.rwilco.model.Trigger -> viewModel.commitTrigger(sheet.index, trigger) }
@@ -1038,6 +1043,9 @@ private fun SaveBar(
     dayShape: DayShape = DayShape.DEFAULT,
     /** What was asked to happen, so silence is only mentioned where it takes something away. */
     actions: Set<Action> = emptySet(),
+    caveat: SetCaveat? = null,
+    widen: dev.rwilco.model.Trigger.Interval? = null,
+    onWiden: () -> Unit = {},
 ) {
     Surface(color = MaterialTheme.colorScheme.background) {
         Column(
@@ -1080,6 +1088,9 @@ private fun SaveBar(
                 cannotRing = cannotRing,
                 dayShape = dayShape,
                 actions = actions,
+                caveat = caveat,
+                widen = widen,
+                onWiden = onWiden,
                 modifier = Modifier.padding(bottom = Tokens.spacing.sm),
             )
             Button(

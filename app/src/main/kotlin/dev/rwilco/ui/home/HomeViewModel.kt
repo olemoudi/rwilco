@@ -17,6 +17,7 @@ import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Preset
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.Status
+import dev.rwilco.model.roundOnResume
 import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.TagFilter
 import dev.rwilco.model.knownTags
@@ -1321,7 +1322,11 @@ class HomeViewModel(
     fun togglePause(id: String, paused: Boolean) {
         viewModelScope.launch {
             val reminder = repository.get(id) ?: return@launch
-            repository.setStatus(id, if (paused) Status.ACTIVE else Status.PAUSED)
+            // A deadline that closed during the pause starts a fresh round (roundOnResume).
+            val settings = store.settings.first()
+            repository.setStatus(id, if (paused) Status.ACTIVE else Status.PAUSED) {
+                it.roundOnResume(clock.instant(), clock.zone, settings.defaultTime, settings.dayStart, settings.dayShape)
+            }
             if (!paused) firing.paused(id)
             events.send(HomeEvent.Paused(reminder, paused = !paused))
         }

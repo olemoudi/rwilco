@@ -559,6 +559,10 @@
     <!-- The same moment, when the hours somebody is up will take the noise out of it. -->
     <string name="editor_will_ring_hushed">Suena %1$s · en silencio, estarás durmiendo</string>
     <string name="editor_will_be_due_hushed">Vence %1$s · en silencio, estarás durmiendo</string>
+    <string name="editor_will_ring_when_all">Suena cuando haya ocurrido todo lo que pide</string>
+    <string name="editor_will_ring_if_at">sólo si a esa hora estás en %1$s</string>
+    <string name="editor_will_ring_if_away">sólo si a esa hora no estás en %1$s</string>
+    <string name="editor_widen_moment">Que valga de %1$s a %2$s</string>
     <string name="editor_will_never_ring">Esto no sonará nunca</string>
     <string name="editor_standing_paused">En pausa: no sonará hasta que lo reanudes</string>
     <string name="editor_standing_keeps">Si cambias el cuándo, se quita el posponer</string>
@@ -3212,6 +3216,7 @@
     <string name="deadline_sheet_title">Plazo</string>
     <string name="deadline_kind_window">Entre horas</string>
     <string name="deadline_kind_timer">Desde el primero</string>
+    <string name="deadline_hint_once">Este recordatorio no tiene «Vuelve»: si el plazo pasa sin que suene, se acaba ahí, no lo intenta al día siguiente.</string>
     <string name="deadline_hint_window">Solo cuenta lo que ocurra entre estas horas, el día que toque. Si se cierran y aún falta algo, el recordatorio se da por hecho sin sonar — o espera a la siguiente ronda, si vuelve.</string>
     <string name="deadline_hint_timer">El reloj arranca con lo primero que ocurra en un momento: una hora, una fecha, cruzar una puerta. No con un sitio en el que ya estás. Si se agota y aún falta algo, el recordatorio se da por hecho sin sonar — o espera a la siguiente ronda, si vuelve.</string>
     <string name="card_deadline">Plazo</string>
@@ -3219,7 +3224,7 @@
     <string name="card_deadline_timer">%1$s desde el primero</string>
     <string name="card_deadline_lapses">Vence %1$s</string>
     <string name="card_deadline_waiting">El reloj arranca con el primero</string>
-    <string name="editor_sentence_deadline_window">antes de las %1$s</string>
+    <string name="editor_sentence_deadline_window">entre las %1$s y las %2$s</string>
     <string name="editor_sentence_deadline_timer">en menos de %1$s desde el primero</string>
     <string name="history_lapsed">se pasó el plazo</string>
     <plurals name="trigger_repeat_days">

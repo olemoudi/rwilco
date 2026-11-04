@@ -99,7 +99,7 @@ fun nextFire(
         // same rule the firing will judge — so a moment outside a sibling's window is not
         // offered, let alone armed. A fold of two moments can never ring and yields nothing.
         val rule = reminder.ruleInSet(index, shape, zone) ?: return@mapNotNull null
-        nextFireOfRule(rule, reminder.id, from, zone, defaultTime, shape)
+        nextFireOfRule(rule, reminder.id, from, zone, defaultTime, shape, reminder.freshlyWritten)
     }
     if (candidates.isEmpty() && rest != null) {
         return reminder.recurrenceMoment(now, zone, dayStart, shape)?.let { NextFire.Scheduled(it, reminder.rules.firstOrNull()?.trigger) }
@@ -185,7 +185,7 @@ fun nextWake(
     val from = reminder.rulesLookFrom(now, rest)
     val candidates = reminder.pendingRules().mapNotNull { index ->
         val rule = reminder.ruleInSet(index, shape, zone) ?: return@mapNotNull null
-        nextFireOfRule(rule, reminder.id, from, zone, defaultTime, shape)?.let { index to it }
+        nextFireOfRule(rule, reminder.id, from, zone, defaultTime, shape, reminder.freshlyWritten)?.let { index to it }
     }
     if (candidates.isEmpty()) {
         val back = rest?.let { reminder.recurrenceMoment(now, zone, dayStart, shape) } ?: reminder.comeBackMoment(now, zone, dayStart, shape)
@@ -222,9 +222,12 @@ fun nextFireOfRule(
     zone: ZoneId,
     defaultTime: LocalTime,
     shape: DayShape = DayShape.DEFAULT,
+    /** When the reminder was written, while nothing has happened to it since ([Reminder.freshlyWritten]). */
+    writtenAt: Instant? = null,
 ): NextFire? {
     val fences = rule.conditions.filter { it.knownInAdvance }
     if (fences.overFor(now, zone)) return null
+    openAtWriting(rule, writtenAt, now, zone, shape, fences)?.let { return it }
     var after = now
     val horizon = now + SEARCH_HORIZON
     // The rule's own hour fences reach the opening, so a day with no hour opens at the first
@@ -243,6 +246,32 @@ fun nextFireOfRule(
     }
     return null
 }
+
+/**
+ * **A stretch open when it is written counts from then** (2026-11-04). "De 17 a 19" saved at
+ * half past five, "los viernes" saved on a Friday, "del 25 al 28" saved on the 28th after its
+ * hour: each answered with its *next* opening — tomorrow, next Friday, never — as if the stretch
+ * it was written in had already been spent. A state that holds at the minute it is written, and
+ * still holds now, rings the minute after it was written, inside the rule's own fences and in
+ * the person's waking hours; otherwise the walk goes on as ever.
+ */
+internal fun openAtWriting(rule: TriggerRule, writtenAt: Instant?, now: Instant, zone: ZoneId, shape: DayShape, fences: List<Condition>): NextFire? {
+    val written = writtenAt ?: return null
+    val trigger = rule.trigger
+    if (trigger !is Trigger.Interval && trigger !is Trigger.Weekday && trigger !is Trigger.DateRange) return null
+    val state = trigger.asState(shape) ?: return null
+    val at = written.truncatedTo(ChronoUnit.MINUTES).plusSeconds(60)
+    if (!state.holdsAt(written, zone) || !state.holdsAt(maxOf(at, now), zone)) return null
+    if (!fences.allHoldAt(at, zone) || !shape.awakeAt(at, zone)) return null
+    return NextFire.Scheduled(at, trigger)
+}
+
+/**
+ * When the reminder was written, while it is still the reminder as written: never rung, never
+ * dealt with, nothing done ahead. What [openAtWriting] counts a stretch from.
+ */
+val Reminder.freshlyWritten: Instant?
+    get() = createdAt.takeIf { lastFiredAt == null && lastDealtAt == null && dealtThrough == null }
 
 /**
  * How far a walk that keeps failing is allowed to go before it answers "never". Only a
@@ -344,7 +373,13 @@ fun nextFireOf(
                 .take(2)
                 // At the hour they get up, on a day [defaultTime] would find them asleep ("este
                 // finde", a Saturday at nine for somebody up at ten, rang hushed: 2026-11-04).
-                .map { shape.awakeHourOn(it, defaultTime).atZone(zone).toInstant() }
+                // **And at the first minute its own hours allow** ([openingOf]), the way a day
+                // with no hour has always opened: "del 1 al 15, y sólo si de 18 a 22" offered
+                // nine o'clock, its fence refused it every day, and the editor said "nunca
+                // sonará" of a fortnight of evenings.
+                .map { day ->
+                    (if (fences.isEmpty()) shape.awakeHourOn(day, defaultTime) else openingOf(shape.awakeOn(day), fences)).atZone(zone).toInstant()
+                }
                 .firstOrNull { it > now }
                 ?.let { NextFire.Scheduled(it, trigger) }
         }
