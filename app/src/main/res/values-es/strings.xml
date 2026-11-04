@@ -264,7 +264,7 @@
     <string name="home_routines_next">%1$s · vence %2$s</string>
     <string name="alert_routine_span">Su plazo: %1$s</string>
     <string name="alert_not_yet">Todavía no</string>
-    <string name="editor_warning_question_never_asked">Esta hora cae fuera de cuándo pregunta la rutina (el último cuarto antes del plazo): nunca se preguntará.</string>
+    <string name="editor_warning_question_never_asked">Esta hora cae fuera del rato en que pregunta la rutina (el último cuarto antes del plazo): nunca llegará a preguntarse.</string>
     <string name="editor_warning_not_a_question">Bajo una rutina esto no es una pregunta: pregunta una vez, o nunca.</string>
     <string name="notif_done_title">Hecha: %1$s</string>
     <string name="notif_done_body">La cuenta vuelve a empezar desde ahora.</string>
@@ -1076,7 +1076,7 @@
     <string name="place_kilometres">%1$s km</string>
 
     <!-- The place watch -->
-    <string name="place_watch_how">Rwilco también mira por su cuenta: cada par de minutos al acercarte andando a un lugar, cada media hora estando dentro de uno, cada hora parado al otro lado de la ciudad. Pasar andando por delante de un lugar pequeño cuenta como llegar; pasar en coche, no. Si una regla pregunta si vas andando o en coche, vuelve a mirar un minuto después de cruzar la línea. Con poca batería mira menos. El GPS, sólo cerca de un lugar y en movimiento.</string>
+    <string name="place_watch_how">Rwilco también mira por su cuenta: cada par de minutos al acercarte andando a un lugar, cada media hora estando dentro de uno, cada hora parado al otro lado de la ciudad. Pasar andando por delante de un lugar pequeño cuenta como llegar; pasar en coche, no. Si una regla pregunta si vas andando o en coche, vuelve a mirar un minuto y medio después de cruzar la línea. Con poca batería mira menos. El GPS, sólo cerca de un lugar y en movimiento.</string>
     <string name="place_watch_waiting">Todavía no ha mirado; la primera mirada llega en un momento.</string>
     <string name="place_watch_status">Última mirada %1$s · a %2$s de %3$s · próxima %4$s</string>
 
@@ -1403,8 +1403,8 @@
     <string name="place_role_ask_hint">Una pregunta en la barra al cruzar la línea, con «sí, ahora» a un toque.</string>
     <string name="place_role_reset_hint">Cruzar la línea es el hecho mismo: salir del garaje es mover el coche. La cuenta vuelve a empezar sola, y un aviso discreto ofrece deshacerlo.</string>
     <string name="rule_resets">Cuenta como hecho</string>
-    <string name="place_means_inside">Basta con que estés allí: si ya estás cuando toque todo lo demás, suena. Y suena una vez: seguir allí no lo repite hasta que lo marques como hecho.</string>
-    <string name="place_means_outside">Basta con que no estés allí: si ya estás fuera cuando toque todo lo demás, suena. Y suena una vez: seguir fuera no lo repite hasta que lo marques como hecho.</string>
+    <string name="place_means_inside">Basta con que estés allí: si ya estás cuando toque todo lo demás, suena. Y suena una vez por ronda: seguir allí no lo repite hasta que lo marques como hecho o «Vuelve» empiece otra.</string>
+    <string name="place_means_outside">Basta con que no estés allí: si ya estás fuera cuando toque todo lo demás, suena. Y suena una vez por ronda: seguir fuera no lo repite hasta que lo marques como hecho o «Vuelve» empiece otra.</string>
     <string name="place_means_arriving">Tiene que verte llegar. Si ya estás allí, espera a que salgas y vuelvas.</string>
     <string name="place_means_leaving">Tiene que verte salir. Si ya estás fuera, espera a que entres y vuelvas a salir.</string>
     <string name="place_dwell_inside">Y quedarme allí un rato</string>
@@ -1856,6 +1856,27 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_205_0">
+
+        <item>Arreglado un bucle de alarmas que gastaba batería: una franja o un día guardado cuando ya estaba abierto, con «y sólo si estoy en…» sin cumplirse, volvía a armarse sin parar. Lo mismo con un calendario que vuelve sin contestar y cuyo lugar no se cumple.</item>
+
+        <item>Al actualizar, los recordatorios antiguos que sonaron y nadie contestó ya no suenan todos de golpe: vuelven en su siguiente momento.</item>
+
+        <item>«Todos» con «desde que suena»: la siguiente ronda conserva su plazo. «Todos» con «desde el hecho», sin contestar: vuelve a pedir todas sus condiciones en vez de sonar suelto a las 09:00.</item>
+
+        <item>Un calendario con «mientras esté en…», sin contestar, vuelve a mirar en su siguiente fecha. Un «hecho» tardío respeta tu hora de empezar el día y «a la misma hora».</item>
+
+        <item>«Cada 24 h» conserva la hora con el cambio de horario. «Los sábados» escrito el viernes por la noche suena el sábado al levantarte. Un sorteo con fechas muy lejanas ya no dice «nunca sonará».</item>
+
+        <item>Lugares: con «a la vez», un sitio que sonó sin contestar se sigue mirando cuando la franja pregunta por él; una puerta con días suena aunque llegues antes de levantarte; una llegada retenida no vuelve a sonar después de un «hecho»; «del … al …» con un sitio vale todos los días; y una franja que empieza al acabar un descanso suena si ya estás allí.</item>
+
+        <item>Velocidad: nunca se mide con una lectura de antes de cruzar la línea, un GPS impreciso ya no se lee como «parado», y una llegada retenida no se juzga con la velocidad de cuando se suelta.</item>
+
+        <item>Al reanudar, lo que tocaba durante la pausa ya no llega como «no sonó a tiempo».</item>
+
+        <item>Textos: el «se salta N avisos» de la alerta es el del recordatorio que ves, y «más de 20» sólo sale con más de 20. Un calendario con una fecha vuelve a decir «en sus propias fechas». «Mientras esté…» dice que suena una vez por ronda. De madrugada, el día de mañana tiene su propio chip. Y ya puedes guardar un posponer propio «mañana a las 9:00».</item>
+
+    </string-array>
     <string-array name="whats_new_0_204_0">
 
         <item>«Dos veces por semana, y sólo el día 15» sortea sus momentos en el día 15, así que suena cada mes y no sólo cuando el azar caía en él.</item>

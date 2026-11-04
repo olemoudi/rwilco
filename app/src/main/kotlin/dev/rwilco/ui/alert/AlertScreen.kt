@@ -165,6 +165,9 @@ fun AlertScreen(
      */
     skipped: (Instant) -> Int = { 0 },
 ) {
+    // One answer per reminder: the lambda handed down is rebuilt on every frame, and the counts
+    // and the sheet's rows are remembered against it.
+    val skippedHere = remember(content) { skipped }
     val scheme = MaterialTheme.colorScheme
     val spacing = Tokens.spacing
     val haptics = Tokens.haptics
@@ -300,10 +303,11 @@ fun AlertScreen(
             // Every answer, each its own tap target and none of them a chip a thumb has to aim
             // at. They sit clear of the Done button, because the two mean opposite things and a
             // half-awake hand should not be able to confuse them.
-            // Worked out once per board, not per frame: a week of a reminder's moments is a walk.
-            val skips = remember(standing, terms) {
+            // Worked out once per board and per reminder, not per frame: a week of a reminder's
+            // moments is a walk, and the screen is reused when the next one in the stack comes up.
+            val skips = remember(standing, terms, content) {
                 val at = Instant.now()
-                standing.shown.associateWith { offer -> offer.until(at, ZoneId.systemDefault(), terms)?.let(skipped) ?: 0 }
+                standing.shown.associateWith { offer -> offer.until(at, ZoneId.systemDefault(), terms)?.let(skippedHere) ?: 0 }
             }
             SnoozeOffers(
                 skipsOf = { skips[it] ?: 0 },
@@ -475,7 +479,7 @@ fun AlertScreen(
                 onDismiss = { choosingMore = false },
                 places = places,
                 onPickPlace = { place -> choosingMore = false; onSnoozeToPlace(place) },
-                skipped = skipped,
+                skipped = skippedHere,
             )
         }
         if (pickingDate && onSnoozeUntil != null) {

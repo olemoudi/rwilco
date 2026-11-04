@@ -126,6 +126,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import dev.rwilco.R
+import dev.rwilco.model.isOneShot
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.RuleMatch
 import dev.rwilco.model.Spoken
@@ -702,7 +703,7 @@ private fun CheckView(
                 }
                 TriggerRow(TriggerRowUi(rule.trigger, rule.conditions, rule.trigger.family, nextAt = null, window = null), today, defaultTime)
             }
-            if (reminder.recurrence.isAnchored) RecurrenceRow(reminder.recurrence, today, zone, hasRules = reminder.rules.isNotEmpty())
+            if (reminder.recurrence.isAnchored) RecurrenceRow(reminder.recurrence, today, zone, hasRules = reminder.rules.any { !it.trigger.isOneShot })
             if (reminder.hasDeadline) reminder.deadline?.let { DeadlineRow(it, reminder.expiresAt, today, zone) }
             // The row already says a lone moment's day and hour; then only the distance is news.
             val lone = (reminder.rules.singleOrNull()?.trigger as? Trigger.AtDateTime)?.at

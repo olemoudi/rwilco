@@ -122,6 +122,13 @@ data class WatchedPlace(
      * [PlaceWatchState.timing].
      */
     val timesSpeed: Boolean = false,
+    /**
+     * When the round this circle rings for began: the last "hecho" or resume. A hold kept from
+     * before it belongs to a round already dealt with (2026-11-04 review: home at half past five
+     * for "de 18 a 22", "hecho" at a quarter to six, and the held arrival rang again the next
+     * evening). Null for a circle with no round of its own.
+     */
+    val owedSince: Instant? = null,
 )
 
 /** A place kept in Settings, offered whole — name, pin and radius — when a rule needs one. */
@@ -199,6 +206,12 @@ object PlaceWatchPolicy {
      * small for it ([passFloor]), which is what [PASS_MIN_WAIT] is for.
      */
     val MIN_WAIT: Duration = Duration.ofMinutes(2)
+
+    /**
+     * Two fixes whose doubt adds up to this much cannot tell standing from walking over a minute
+     * and a half: their zero is no reading at all (2026-11-04 review).
+     */
+    const val STILL_DOUBT_M = 60.0
 
     /**
      * The fastest the watch ever looks: on foot, closing on a circle it would cross in less than
@@ -1290,8 +1303,11 @@ fun stepPlaceWatch(
     // tail of a count and lives like one: only while its circle is asked for a position (a
     // circle dealt with, edited or shut takes it along), and only while the side holds — a
     // phone seen leaving has to arrive again.
+    // And only a hold from this round: one kept from before a "hecho" was answered with it.
+    fun heldThisRound(place: WatchedPlace): Boolean =
+        state.held[place.id]?.let { since -> place.owedSince == null || !since.isBefore(place.owedSince) } == true
     val stays = places.filter { place ->
-        place.id in state.held && inside[place.id] == (place.transition == Transition.ENTER)
+        heldThisRound(place) && inside[place.id] == (place.transition == Transition.ENTER)
     }
     val (early, metNow) = dwelt.met.partition { it.ringsFrom?.isAfter(now) == true }
     // The same for a state with hours of its own (0.172.0): its side reached before they open is
@@ -1308,15 +1324,21 @@ fun stepPlaceWatch(
     // seen on the other side first, as for any crossing; not a rate, which a listener cannot count.
     val listenedIn = listening.filter { it.listensForTheDoor }.filter { place ->
         val wants = place.transition == Transition.ENTER
-        inside[place.id] == wants && (place.id in state.held || state.inside[place.id] == !wants)
+        inside[place.id] == wants && (heldThisRound(place) || state.inside[place.id] == !wants)
     }
     val held = waiting.associate { it.id to state.held.getValue(it.id) } + (early + thereEarly).associate { it.id to now } +
-        listenedIn.associate { it.id to (state.held[it.id] ?: now) }
+        listenedIn.associate { it.id to (state.held[it.id]?.takeIf { _ -> heldThisRound(it) } ?: now) }
     // **A speed is only worth the two looks it came from** (2026-11-04). The fence "y sólo si voy
     // en coche" was read off the average since the last look, which inside a place is half an
     // hour of it and most of that on the sofa. Over [PlaceWatchPolicy.FENCE_SPAN] nobody knows.
     val gapSinceLast = state.lastFix?.let { Duration.between(it.at, fix.at) }
-    val fenceSpeed = movement.speedMps?.takeIf { gapSinceLast != null && !gapSinceLast.isNegative && !gapSinceLast.isZero && gapSinceLast <= PlaceWatchPolicy.FENCE_SPAN }
+    // And "still" is only a reading when the two fixes could have told a walk from it: a
+    // minute and a half on foot inside two network fixes' doubt reads as zero, which is nobody
+    // knowing, not somebody standing (2026-11-04 review).
+    val blurred = state.lastFix?.let { it.accuracyM + fix.accuracyM >= PlaceWatchPolicy.STILL_DOUBT_M } == true
+    val fenceSpeed = movement.speedMps
+        ?.takeIf { gapSinceLast != null && !gapSinceLast.isNegative && !gapSinceLast.isZero && gapSinceLast <= PlaceWatchPolicy.FENCE_SPAN }
+        ?.takeUnless { it == 0.0 && blurred }
     // **And a crossing that asks how fast waits for a look that can say** (2026-11-04). Crossed
     // with no fresh speed in hand, it is held ([PlaceWatchState.timing]) and the next look comes
     // [PlaceWatchPolicy.SPEED_LOOK] later: the speed between the two is the speed after the line,
@@ -1327,7 +1349,9 @@ fun stepPlaceWatch(
     val ids = places.mapTo(HashSet()) { it.id }
     val (timed, untimed) = crossedNow.partition { it.timesSpeed && fenceSpeed == null }
     val (timedOut, stillTiming) = state.timing.filterKeys { it in ids }.entries.partition { (_, crossedAt) ->
-        val after = !fix.at.isBefore(crossedAt) && (fenceSpeed != null || state.lastFix?.at?.isBefore(crossedAt) == false)
+        // Two looks after the line, never one before it: a pair that straddles the crossing is
+        // the walk to the car, not the drive (2026-11-04 review).
+        val after = !fix.at.isBefore(crossedAt) && state.lastFix?.at?.isBefore(crossedAt) == false
         after || Duration.between(crossedAt, now) > PlaceWatchPolicy.FENCE_SPAN
     }
     val timing = stillTiming.associate { it.key to it.value } + timed.associate { it.id to fix.at }
@@ -1364,7 +1388,11 @@ fun stepPlaceWatch(
         //
         // And only a fresh one (2026-11-04): see the fence's speed above. A fix older than a
         // crossing still being timed says nothing about that crossing either.
+        // A hold handed on now was crossed a while ago, at a speed this look cannot know: for a
+        // circle that asks how fast, nobody can say, and what nobody can vouch for holds
+        // (2026-11-04 review: an arrival by car, held for its hours, read as parked at six).
         lastFix = if (state.lastFix?.at == fix.at) fix
+        else if ((released + listenedIn).any { it.timesSpeed && it.id in held.keys + state.held.keys }) fix.copy(speedMps = null)
         else fix.copy(speedMps = fenceSpeed?.takeUnless { state.timing.values.any { fix.at.isBefore(it) } } ?: fix.speedMps),
         inside = inside,
         stillStreak = if (movement.still || nowhereNearer) state.stillStreak + 1 else 0,

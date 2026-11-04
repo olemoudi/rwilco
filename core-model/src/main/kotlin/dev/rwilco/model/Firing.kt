@@ -281,6 +281,43 @@ val Reminder.ticksOnRing: Set<Int>?
         else -> rules.indices.toSet()
     }
 
+/**
+ * The window close a ring writes when the ring itself ends the round ("todos" under «desde que
+ * suena», [ticksOnRing]), or null. `markFired` clears the deadline with the ring; the next round
+ * had none at all, so its window stopped applying from the second round on (2026-11-04 review).
+ */
+fun Reminder.expiryAfterRing(
+    rangFor: Instant,
+    zone: ZoneId,
+    defaultTime: LocalTime,
+    dayStart: LocalTime = DEFAULT_DAY_START,
+    shape: DayShape = DayShape.DEFAULT,
+): Instant? {
+    if (ticksOnRing?.isEmpty() != true) return null
+    val after = copy(lastFiredAt = rangFor, firedRules = emptySet(), expiresAt = null, snoozedUntil = null, snoozedToPlace = null, snoozedToRules = false)
+    return after.roundExpiry(rangFor, zone, defaultTime, dayStart, shape)
+}
+
+/**
+ * Under "todos", what the come-back of an unanswered round does instead of ringing alone: the
+ * ticks go and the round starts again, so every rule is asked again — the same thing «desde que
+ * suena» does at the end of its rest (2026-11-04 review: "en casa y a las 21:00, todos, cada día"
+ * came back at nine every morning, asking neither). Only when the set can complete again; one
+ * made of a date that has gone rings alone, as the come-back of anything else does. Null when it
+ * is not that alarm.
+ */
+fun Reminder.roundRestartedOnComeBack(
+    now: Instant,
+    zone: ZoneId,
+    defaultTime: LocalTime,
+    dayStart: LocalTime = DEFAULT_DAY_START,
+    shape: DayShape = DayShape.DEFAULT,
+): Reminder? {
+    if (ruleMatch != RuleMatch.ALL || !rulesCombine || !unansweredComesBack || snoozedUntil != null || snoozedToPlace != null) return null
+    val fresh = copy(firedRules = emptySet())
+    return fresh.takeIf { nextFire(it, now, zone, defaultTime, dayStart, shape) != null }
+}
+
 /** Inside this of the last ring, a second sighting of the same place is the same arrival. */
 val PLACE_ECHO: Duration = Duration.ofMinutes(5)
 
@@ -544,10 +581,15 @@ internal fun Reminder.ticksStanding(ticked: Set<Int>, ruleIndex: Int, at: Instan
     val holding = ticked.filterTo(mutableSetOf()) { index -> clockState(index)?.holdsAt(at, zone) ?: true }
     val since = (holding + ruleIndex).mapNotNull { index -> clockState(index)?.takeIf { it.holdsAt(at, zone) }?.let { stateSince(it, at, zone) } }.maxOrNull()
         ?: return holding
+    // A stretch opening now completes the set: a doorway written down before it opened was
+    // crossed outside it (2026-11-04 review: "los viernes" + "al llegar a casa" written on a
+    // Saturday, home that evening, rang at Friday's opening wherever the phone was).
+    val opening = clockState(ruleIndex) != null
     return holding.filterTo(mutableSetOf()) { index ->
         val trigger = rules[index].trigger
-        if (clockState(index) != null || trigger is Trigger.Location || trigger.isOneShot) return@filterTo true
-        val last = lastMomentOf(trigger, at, zone, shape) ?: return@filterTo true
+        if (trigger is Trigger.Location) return@filterTo !(opening && trigger.onCrossing)
+        if (clockState(index) != null || trigger.isOneShot) return@filterTo true
+        val last = lastMomentOf(trigger, rules[index].windows(), at, zone, shape) ?: return@filterTo true
         last >= since
     }
 }
@@ -567,11 +609,12 @@ private fun stateSince(state: Condition, at: Instant, zone: ZoneId): Instant? {
 }
 
 /** The latest moment of a trigger that comes round again, at or before [at], within a week. */
-private fun Reminder.lastMomentOf(trigger: Trigger, at: Instant, zone: ZoneId, shape: DayShape): Instant? {
+private fun Reminder.lastMomentOf(trigger: Trigger, windows: List<Condition.TimeWindow>, at: Instant, zone: ZoneId, shape: DayShape): Instant? {
     var latest: Instant? = null
     var from = at.minus(Duration.ofDays(8))
     repeat(64) {
-        val next = nextFireOf(trigger, id, from, zone, DEFAULT_DAY_START, shape)?.moment ?: return latest
+        // With the rule's own hours, which is where a random draw is made (RandomDraw.draws).
+        val next = nextFireOf(trigger, id, from, zone, DEFAULT_DAY_START, shape, windows)?.moment ?: return latest
         if (next > at) return latest
         latest = next
         from = next

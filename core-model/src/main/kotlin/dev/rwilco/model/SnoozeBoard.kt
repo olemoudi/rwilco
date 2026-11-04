@@ -293,11 +293,11 @@ fun AppSettings.builtInSaying(spec: SnoozeSpec): Snooze? = when (spec) {
         snoozeCustomMinutes.coerceIn(SnoozeLimits.CUSTOM_MINUTES) -> Snooze.CUSTOM
         else -> null
     }
-    // By shape, and by the hour it comes to: "mañana a las 9:00" with a day that starts at nine
-    // is the same chip twice under two names.
+    // By shape: "mañana por la mañana" is the chip twice under two names. Not "mañana a las 9:00"
+    // any more: the app's morning moves to the hour somebody gets up on a day nine finds them
+    // asleep, and an hour they chose stays where they put it (2026-11-04).
     is SnoozeSpec.On -> Snooze.TOMORROW_MORNING.takeIf {
-        spec.day == SnoozeDay.Tomorrow &&
-            (spec.hour == SnoozeHour.Part(SnoozePart.MORNING) || spec.hour == SnoozeHour.At(dayStart))
+        spec.day == SnoozeDay.Tomorrow && spec.hour == SnoozeHour.Part(SnoozePart.MORNING)
     }
 }
 
@@ -419,7 +419,8 @@ fun Reminder.ringsSkippedUntil(
     if (ruleMatch == RuleMatch.ALL && rulesCombine) return 0
     var row = copy(snoozedUntil = null, snoozedToPlace = null, snoozedToRules = false, armedFor = null, armedRule = null)
     var count = 0
-    while (count < MAX_SKIPS_COUNTED) {
+    // One past the cap, so "more than twenty" is only said of more than twenty.
+    while (count <= MAX_SKIPS_COUNTED) {
         val wake = nextWake(row, now, zone, defaultTime, dayStart, shape) ?: break
         if (wake.at >= until) break
         count++
@@ -428,7 +429,7 @@ fun Reminder.ringsSkippedUntil(
     return count
 }
 
-/** Past this many, a snooze's swallowed rings are a lot, and walking further only costs a frame. */
+/** Past this many, a snooze's swallowed rings are "more than this", and walking further only costs a frame. */
 const val MAX_SKIPS_COUNTED = 20
 
 /**

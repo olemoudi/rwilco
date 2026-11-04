@@ -413,6 +413,15 @@ class Simulation(
             return null
         }
         val rangFor = momentRungFor(now, row.armedFor, late, eventDriven)
+        // ReminderFiring: the come-back of an unanswered round under "todos" restarts the round.
+        if (ruleIndex == null && !viaSnoozePlace) {
+            row.roundRestartedOnComeBack(now, zone, defaultTime, dayStart, shape)?.let { restarted ->
+                reminder = row.copy(firedRules = restarted.firedRules)
+                spendArmed()
+                arm()
+                return null
+            }
+        }
         when (val outcome = outcomeOfFiring(row, ruleIndex, late ?: now, zone, shape)) {
             is FiringOutcome.Wait -> {
                 // The timer starts with the first moment of the round, and a state starts nothing.
@@ -427,6 +436,7 @@ class Simulation(
         }
         reminder = row.copy(lastFiredAt = rangFor, lastFiredRule = row.ruleRungBy(ruleIndex, viaSnoozePlace), snoozedUntil = null, snoozedToPlace = null, snoozedToRules = false, expiresAt = null)
         row.ticksOnRing?.let { reminder = reminder.copy(firedRules = it) }
+        row.expiryAfterRing(rangFor, zone, defaultTime, dayStart, shape)?.let { reminder = reminder.copy(expiresAt = it) }
         val ring = Ring(now, rangFor, ruleIndex, late)
         rings += ring
         deal(deal(ring))

@@ -30,6 +30,12 @@ data class Gated(
     val ruleIndex: Int,
     val opensAt: Instant? = null,
     val resting: Boolean = false,
+    /**
+     * Whether a side seen while it waits is worth keeping. Not for the place a stretch's "y sólo
+     * si estoy en…" asks about (2026-11-04 review): kept from a rest, home all afternoon read as
+     * no change when the rest ended inside the stretch, and nothing rang for being there.
+     */
+    val keepsSide: Boolean = true,
 )
 
 /** The rule index of the circle a "remind me when I get there" is waiting for: none of them. */
@@ -48,7 +54,7 @@ const val SNOOZE_RULE = -1
  * all. It rang only if the phone happened to arrive later, and never if it was already there.
  */
 val Gated.listens: Boolean
-    get() = opensAt != null && !(place.crossing == Crossing.RINGS && !place.onCrossing)
+    get() = opensAt != null && keepsSide && !(place.crossing == Crossing.RINGS && !place.onCrossing)
 
 /**
  * Every circle this reminder needs an eye on, gated.
@@ -198,7 +204,12 @@ fun Reminder.watchedCircles(
         // since the evening before, rings when the 1st opens.
         val hoursOpen = if (place != null) {
             val fenced = fold ?: rule
-            if (ownClock) fenced.fencesOpenFrom(now, zone, shape) else fenced.windows().openFrom(now, zone)
+            // Days only for a state: a doorway is crossed when it is crossed, and "al llegar al
+            // gimnasio, y sólo los sábados" at nine on a Saturday was held for the waking hour
+            // and lost on leaving (2026-11-04 review). The firing still judges its day.
+            // A doorway no day will ever allow is still not worth a radio.
+            if (ownClock && !place.onCrossing) fenced.fencesOpenFrom(now, zone, shape)
+            else fenced.windows().openFrom(now, zone)?.takeIf { !ownClock || fenced.fencesOpenFrom(now, zone, shape) != null }
         } else null
         val gate: Instant? = if (place != null) {
             // Its own hours and, folded in, its siblings'. A fold that comes back null is a
@@ -212,7 +223,9 @@ fun Reminder.watchedCircles(
                 soonest == null -> null
                 else -> maxOf(hours, soonest - PlaceWatchPolicy.ASK_LEAD)
             }
-            opens?.let { maxOf(it, rest ?: unanswered ?: it) }
+            // The unanswered round's wait only where nothing else asks this circle: under "a la
+            // vez" a sibling's moment asks where the phone is (2026-11-04 review).
+            opens?.let { maxOf(it, rest ?: unanswered?.takeIf { ruleMatch != RuleMatch.TOGETHER || rules.size == 1 } ?: it) }
         } else if (stretchOpen != null) {
             // An open stretch still owed its ring is waiting for the place: asked now (below).
             now
@@ -274,6 +287,7 @@ fun Reminder.watchedCircles(
                     ringsFrom = hoursOpen?.takeIf { opening -> rings && opening > now && (it.dwell != null || it.onCrossing || ownClock) },
                     // "Y sólo si voy en coche": a crossing waits for a look that can say (2026-11-04).
                     timesSpeed = rings && (fold ?: rule).conditions.any { condition -> condition is Condition.Moving },
+                    owedSince = listOfNotNull(lastDealtAt, resumedAt).maxOrNull(),
                 ),
                 ruleIndex = index,
                 opensAt = opensAt,
@@ -311,6 +325,7 @@ fun Reminder.watchedCircles(
                         ruleIndex = index,
                         opensAt = opensAt,
                         resting = false,
+                        keepsSide = rule.trigger.asState(shape) == null || rule.trigger is Trigger.Location,
                     )
                 }
             }
@@ -445,8 +460,10 @@ fun Reminder.stretchOwed(
     if (!stretch.holdsAt(now, zone) || !rule.conditions.filter { it.knownInAdvance }.allHoldAt(now, zone)) return null
     // The last of its moments at or before now. A stretch of dates rings on its first day, so
     // that is where its search starts; everything else is a day at most.
+    // A stretch of dates rings on each of its days, so the search starts a day back, as any
+    // other's, never before the range's first day (from there, four probes stopped at its fourth).
     var cursor = when (trigger) {
-        is Trigger.DateRange -> trigger.from.atStartOfDay(zone).toInstant()
+        is Trigger.DateRange -> maxOf(trigger.from.atStartOfDay(zone).toInstant(), now.minus(STRETCH_LOOKBACK))
         else -> now.minus(STRETCH_LOOKBACK)
     }.minusSeconds(1)
     var opened: Instant? = null

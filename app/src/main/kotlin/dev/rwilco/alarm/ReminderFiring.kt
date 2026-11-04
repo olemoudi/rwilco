@@ -54,6 +54,8 @@ import dev.rwilco.model.momentDealtWith
 import dev.rwilco.model.momentRungFor
 import dev.rwilco.model.ruleRungBy
 import dev.rwilco.model.ticksOnRing
+import dev.rwilco.model.expiryAfterRing
+import dev.rwilco.model.roundRestartedOnComeBack
 import dev.rwilco.model.outcomeOfFiring
 import dev.rwilco.model.owedUnderAll
 import dev.rwilco.model.holdsAt
@@ -328,6 +330,18 @@ class ReminderFiring(
             scheduler.rearmAll()
             return@withLock
         }
+        // The come-back of an unanswered round under "todos" starts the round again instead of
+        // ringing alone: every rule is asked afresh (roundRestartedOnComeBack).
+        if (ruleIndex == null && !viaSnoozePlace) {
+            val restarted = reminder.roundRestartedOnComeBack(now, clock.zone, settings.defaultTime, settings.dayStart, settings.dayShape)
+            if (restarted != null) {
+                Diag.note(TAG_DIAG, "r=${short(id)} unanswered round over: every rule is asked again")
+                repository.setFiredRules(id, restarted.firedRules)
+                spendArmed()
+                scheduler.rearmAll()
+                return@withLock
+            }
+        }
         // Under ALL a moment is first of all something that happened: only the one that
         // completes the set rings, and the rest are written down and waited on.
         when (val outcome = outcomeOfFiring(reminder, ruleIndex, late ?: now, clock.zone, settings.dayShape)) {
@@ -378,6 +392,8 @@ class ReminderFiring(
             repository.markFired(id, rangFor, reminder.ruleRungBy(ruleIndex, viaSnoozePlace))
             // The set is complete — or, «desde que suena», over (ticksOnRing).
             reminder.ticksOnRing?.let { repository.setFiredRules(id, it) }
+            // And, when the ring ended the round, the next round's window close (expiryAfterRing).
+            reminder.expiryAfterRing(rangFor, clock.zone, settings.defaultTime, settings.dayStart, settings.dayShape)?.let { repository.setExpiresAt(id, it) }
             // A moment the phone slept through by a minute or two is still that moment, and
             // rings like it; only one it slept through by a good while arrives as the quiet
             // "did not ring on time" note (lateForPresentation).

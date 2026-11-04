@@ -104,6 +104,8 @@ fun SnoozeMoreSheet(
     val words = rememberWords()
     val today = now.toLocalDate()
     val rows = remember(board, terms, now) { board.laterAt(now.toInstant(), now.zone, terms) }
+    // Once per list, not per frame: each count is a walk of the reminder's moments.
+    val skips = remember(rows, skipped) { rows.map { (_, until) -> skipped(until) } }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     var leaving by remember { mutableStateOf(false) }
@@ -143,13 +145,14 @@ fun SnoozeMoreSheet(
                         .verticalScroll(rememberScrollState()),
                 ) {
                     MoreRow(icon = Icons.Outlined.Event, label = stringResource(R.string.snooze_more_pick), moment = null, onClick = { leave(onPickDate) })
-                    for ((snooze, until) in rows) {
+                    for ((row, entry) in rows.withIndex()) {
+                        val (snooze, until) = entry
                         val back = until.atZone(now.zone)
                         MoreRow(
                             icon = Icons.Outlined.Snooze,
                             label = snoozeRowLabel(snooze, terms.customMinutes),
                             moment = dayWord(words, back.toLocalDate(), today) + " " + TimeText.time(back.toLocalTime(), words.is24h, words.locale),
-                            note = skipsLabel(words, skipped(until)),
+                            note = skipsLabel(words, skips[row]),
                             onClick = { leave { onPick(snooze) } },
                         )
                     }

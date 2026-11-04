@@ -300,7 +300,9 @@ private fun DateShortcuts(today: LocalDate, waking: LocalDate, selected: LocalDa
         // week ahead, by name, after the four (0.69.0). The row already scrolls.
         val named = DateShortcut.entries.map { it.on(today, waking) }
         val locale = currentLocale()
-        for (offset in 2L..7L) {
+        // From tomorrow: past midnight "Mañana" is the day about to come, which is the calendar's
+        // today, and the calendar's tomorrow needs a chip of its own (2026-11-04).
+        for (offset in 1L..7L) {
             val day = today.plusDays(offset)
             if (day in named) continue
             PresetChip(label = TimeText.dayDate(day, locale), selected = selected == day, onClick = { onPick(day) })

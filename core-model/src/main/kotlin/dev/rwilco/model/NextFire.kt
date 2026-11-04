@@ -263,8 +263,17 @@ internal fun openAtWriting(rule: TriggerRule, writtenAt: Instant?, now: Instant,
     if (trigger !is Trigger.Interval && trigger !is Trigger.Weekday && trigger !is Trigger.DateRange) return null
     val state = trigger.asState(shape) ?: return null
     val at = written.truncatedTo(ChronoUnit.MINUTES).plusSeconds(60)
-    if (!state.holdsAt(written, zone) || !state.holdsAt(maxOf(at, now), zone)) return null
+    // **Only while that minute is still ahead.** Once it has come — rung, or delivered and dropped
+    // because the rule's place said no — the stretch is the place-condition circle's to ring
+    // (`stretchOwed`), and handing the same minute back armed an alarm in the past, which arrives
+    // at once, is dropped again, and so on for the rest of the evening (2026-11-04 review). A
+    // phone that was off across it is the missed-moment path's (the armed moment is held).
+    if (at <= now) return null
+    if (!state.holdsAt(written, zone) || !state.holdsAt(at, zone)) return null
     if (!fences.allHoldAt(at, zone) || !shape.awakeAt(at, zone)) return null
+    // A day is the person's from when they get up: "los sábados" written at half past twelve on
+    // Friday night is Saturday's, and opens at Saturday's waking hour, not now.
+    if (trigger !is Trigger.Interval && at.atZone(zone).toLocalDateTime() < shape.awakeOn(at.atZone(zone).toLocalDate()).from) return null
     return NextFire.Scheduled(at, trigger)
 }
 
@@ -515,7 +524,10 @@ private fun nextRandom(
     days: List<Condition> = emptyList(),
 ): NextFire.Sometime? {
     val today = now.atZone(zone).toLocalDate()
-    val first = RandomDraw.periodIndex(today, trigger.period)
+    // A stretch of dates still ahead is where the scan starts: from today, a year of periods could
+    // run out before it and call a draw two years off "never" (2026-11-04 review).
+    val start = days.filterIsInstance<Condition.DateRange>().maxOfOrNull { it.from }?.takeIf { it > today } ?: today
+    val first = RandomDraw.periodIndex(start, trigger.period)
     val dates = fences.mapNotNull { it.date }.distinct()
     if (dates.size > 1) return null
     val periods = when {
@@ -612,8 +624,12 @@ fun Reminder.restUntil(zone: ZoneId, dayStart: LocalTime, shape: DayShape = DayS
     // reminder still waiting for an answer is overdue, not resting.
     val dealt = lastDealtAt ?: lastFiredAt.takeIf { recurrence.countsFromRinging } ?: return null
     // A calendar names the day it comes back on; a span counts one out from what happened.
-    val anchor = recurrenceAnchor(dealt, zone, shape)
-    val back = calendarMoment(anchor, zone, shape)
+    val anchor = recurrenceAnchor(dealt, zone, shape, dayStart)
+    // Whole days said in hours ("cada 24 h") keep the wall clock across a change of time: 24 h on
+    // from the 27th of March's nine o'clock is ten on the 28th, which skipped the 28th's nine.
+    val wallDays = (recurrence as? Recurrence.After)?.takeIf { it.unit == RecurrenceUnit.HOURS && it.amount % 24 == 0 }
+        ?.let { anchor.atZone(zone).plusDays(it.amount / 24L).toInstant() }
+    val back = wallDays ?: calendarMoment(anchor, zone, shape)
         ?: nextRecurrence(recurrence, anchor, zone, dayStart)
         ?: return null
     // To the minute: a ring is written down when its alarm arrives, a moment past the hour, and
@@ -692,14 +708,14 @@ fun Reminder.daysNamedByRules(): Set<DayOfWeek> =
  * back. It is also what keeps the two anchors the same answer for everything that is dealt
  * with the moment it rings, which is most things.
  */
-private fun Reminder.recurrenceAnchor(dealt: Instant, zone: ZoneId, shape: DayShape): Instant {
+private fun Reminder.recurrenceAnchor(dealt: Instant, zone: ZoneId, shape: DayShape, dayStart: LocalTime = DEFAULT_DAY_START): Instant {
     // A routine counts from the last "hecho" and from nothing else: there is no moment dealt
     // with ahead (momentDealtWith answers null), and a [dealtThrough] left behind by an "after"
     // recurrence edited into a routine must not push the count into the future.
     if (isRoutine) return dealt
     val from = when {
         recurrence.countsFromRinging -> rangFor(zone, shape) ?: dealt
-        else -> answeredRingDay(dealt, zone) ?: dealt
+        else -> answeredRingDay(dealt, zone, dayStart) ?: dealt
     }
     // A moment dealt with before it arrived is the moment the span counts from: ticking off
     // tomorrow's two o'clock this morning makes the next one a day after *that*, not a day
@@ -747,15 +763,17 @@ private fun Reminder.rangFor(zone: ZoneId, shape: DayShape): Instant? {
  * "Answers a ring": the latest ring is not after the "hecho", and the "hecho" came before the
  * span counted from that ring was up — later than that it is a "hecho" about something else.
  */
-private fun Reminder.answeredRingDay(dealt: Instant, zone: ZoneId): Instant? {
+private fun Reminder.answeredRingDay(dealt: Instant, zone: ZoneId, dayStart: LocalTime): Instant? {
     if (recurrence !is Recurrence.After || !recurrence.countsInDays) return null
     val rang = lastFiredAt?.takeIf { it <= dealt } ?: return null
     val ringDay = rang.atZone(zone).toLocalDate()
     val dealtHere = dealt.atZone(zone)
     if (ringDay == dealtHere.toLocalDate()) return null
-    val spanUp = nextRecurrence(recurrence, rang, zone, DEFAULT_DAY_START) ?: return null
+    val spanUp = nextRecurrence(recurrence, rang, zone, dayStart) ?: return null
     if (dealt >= spanUp) return null
-    return ringDay.atTime(dealtHere.toLocalTime()).atZone(zone).toInstant()
+    // Never before the ring itself: under "a la misma hora" a hecho at 00:15 for a 23:00 ring
+    // would otherwise count from the ring's day at 00:15 and end its rest at the hecho.
+    return maxOf(rang, ringDay.atTime(dealtHere.toLocalTime()).atZone(zone).toInstant())
 }
 
 /** How far back a ring looks for the moment it was for: a snooze is seldom longer than a day. */
@@ -770,7 +788,7 @@ private val RANG_LOOKBACK: Duration = Duration.ofDays(1)
  */
 internal val Reminder.unansweredComesBack: Boolean
     get() = !isRoutine && ringUnanswered &&
-        ((recurrence is Recurrence.After && !recurrence.countsFromRinging) || recurrence is Recurrence.Calendar)
+        ((recurrence is Recurrence.After && !recurrence.countsFromRinging) || recurrence is Recurrence.Calendar || recurrence is Recurrence.MonthlyWeekday)
 
 /**
  * For a span «desde el hecho», the rest a ring nobody answered would have had if it had been
@@ -778,7 +796,7 @@ internal val Reminder.unansweredComesBack: Boolean
  * ([presenceAlreadyRang], `watchedCircles`). Null for anything else.
  */
 internal fun Reminder.unansweredRest(zone: ZoneId, dayStart: LocalTime, shape: DayShape): Instant? =
-    if (recurrence is Recurrence.After && unansweredComesBack) copy(lastDealtAt = lastFiredAt).restUntil(zone, dayStart, shape) else null
+    if (unansweredComesBack) copy(lastDealtAt = lastFiredAt).restUntil(zone, dayStart, shape) else null
 
 /**
  * The alarm for [unansweredComesBack]: one span after the ring nobody answered. **Only the
@@ -789,11 +807,18 @@ internal fun Reminder.unansweredRest(zone: ZoneId, dayStart: LocalTime, shape: D
 private fun Reminder.comeBackMoment(now: Instant, zone: ZoneId, dayStart: LocalTime, shape: DayShape): Instant? {
     if (!unansweredComesBack) return null
     val rang = lastFiredAt ?: return null
+    // **Never a moment already gone** (2026-11-04 review). A come-back is not owed: a calendar
+    // date its own fence turned away, handed back as the next alarm, arrived at once and was
+    // turned away again, for as long as the fence said no; and a ring unanswered since September
+    // rang the moment this build first armed it. A come-back armed and then slept through is the
+    // missed-moment path's, which holds the armed moment.
+    val after = maxOf(rang.plusMillis(1), now)
     // **A calendar comes back on its own dates, answered or not**: "el 26 a las 20:00, y vuelve
     // el 26 de cada mes", rung and not answered, waited for a "hecho" for ever while its card
     // said "en sus propias fechas". Its next date after the ring is the alarm.
-    if (recurrence is Recurrence.Calendar) return calendarMoment(rang.plusMillis(1), zone, shape)
-    return nextRecurrence(recurrence, recurrenceAnchor(rang, zone, shape), zone, dayStart)?.takeIf { it > rang }
+    if (recurrence is Recurrence.Calendar) return calendarMoment(after, zone, shape)
+    val first = nextRecurrence(recurrence, recurrenceAnchor(rang, zone, shape, dayStart), zone, dayStart) ?: return null
+    return if (first > now) first else nextRecurrence(recurrence, now, zone, dayStart)
 }
 
 /**
@@ -822,7 +847,7 @@ fun Reminder.recurrenceMoment(
         rules.isEmpty() -> lastDealtAt ?: createdAt
         else -> (lastDealtAt ?: lastFiredAt.takeIf { recurrence.countsFromRinging }) ?: return null
     }
-    val at = nextRecurrence(recurrence, recurrenceAnchor(dealt, zone, shape), zone, dayStart)
+    val at = nextRecurrence(recurrence, recurrenceAnchor(dealt, zone, shape, dayStart), zone, dayStart)
     if (at == null) return null
     // Spent, the same way a rule's moment is (see [searchFrom]) — and here it matters more.
     //

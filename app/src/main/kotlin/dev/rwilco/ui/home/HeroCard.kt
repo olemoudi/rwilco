@@ -29,6 +29,7 @@ import dev.rwilco.ui.components.HoldButton
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.foundation.layout.width
 import dev.rwilco.R
+import dev.rwilco.model.isOneShot
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerFamily
 import dev.rwilco.model.kind
@@ -171,7 +172,7 @@ fun HeroCard(
                     }
                     // No "vuelve el…" here: the hero's whole top half is that moment, said
                     // bigger and with a countdown on it.
-                    hero.card.recurrence?.let { RecurrenceRow(it, today, clock.zone, hasRules = hero.card.triggers.isNotEmpty()) }
+                    hero.card.recurrence?.let { RecurrenceRow(it, today, clock.zone, hasRules = hero.card.triggers.any { !it.trigger.isOneShot }) }
                 }
             }
             // Always, because the pause pill lives here: the one card that matters most was the

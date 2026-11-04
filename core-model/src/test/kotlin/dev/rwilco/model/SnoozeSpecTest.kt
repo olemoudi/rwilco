@@ -263,14 +263,14 @@ class SnoozeSpecTest {
     }
 
     @Test
-    fun `an hour that comes to what the app already offers is the same chip twice`() {
-        // "Mañana a las 9:00" with a day that starts at nine is "mañana por la mañana".
+    fun `an hour of the person's own is never the app's morning twice`() {
+        // "Mañana a las 9:00" used to be refused as "mañana por la mañana" with a day that starts
+        // at nine. Since 2026-11-04 the app's morning moves to the hour somebody gets up when nine
+        // finds them asleep (a weekend), and an hour chosen by hand stays at nine: two answers.
         val nine = AppSettings()
-        assertEquals(CustomSnoozeRefusal.ALREADY_OFFERED, nine.customSnoozeRefusal(SnoozeSpec.On(SnoozeDay.Tomorrow, SnoozeHour.At(t(9)))))
-        // And with a day that starts at half seven, nine o'clock is a chip of its own again.
-        val early = AppSettings(dayStart = t(7, 30))
-        assertNull(early.customSnoozeRefusal(SnoozeSpec.On(SnoozeDay.Tomorrow, SnoozeHour.At(t(9)))))
-        assertEquals(CustomSnoozeRefusal.ALREADY_OFFERED, early.customSnoozeRefusal(SnoozeSpec.On(SnoozeDay.Tomorrow, SnoozeHour.At(t(7, 30)))))
+        assertNull(nine.customSnoozeRefusal(SnoozeSpec.On(SnoozeDay.Tomorrow, SnoozeHour.At(t(9)))))
+        // The part of the day by its name is still the same chip.
+        assertEquals(CustomSnoozeRefusal.ALREADY_OFFERED, nine.customSnoozeRefusal(SnoozeSpec.On(SnoozeDay.Tomorrow, SnoozeHour.Part(SnoozePart.MORNING))))
     }
 
     @Test

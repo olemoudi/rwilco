@@ -1089,7 +1089,7 @@
     <string name="place_kilometres">%1$s km</string>
 
     <!-- The place watch -->
-    <string name="place_watch_how">Rwilco also looks for itself: every couple of minutes walking up to a place, every half hour sitting inside one, every hour standing still across town. Walking past a small place without stopping counts as arriving; driving past does not. If a rule asks whether you are walking or driving, it looks again a minute after you cross the line. On a low battery it looks less often. GPS only near a place and moving.</string>
+    <string name="place_watch_how">Rwilco also looks for itself: every couple of minutes walking up to a place, every half hour sitting inside one, every hour standing still across town. Walking past a small place without stopping counts as arriving; driving past does not. If a rule asks whether you are walking or driving, it looks again about a minute and a half after you cross the line. On a low battery it looks less often. GPS only near a place and moving.</string>
     <string name="place_watch_waiting">Has not looked yet; the first look is moments away.</string>
     <string name="place_watch_status">Last look %1$s · %2$s from %3$s · next look %4$s</string>
 
@@ -1418,8 +1418,8 @@
     <string name="place_role_ask_hint">A question in the shade when you cross the line, with «yes, just now» one tap away.</string>
     <string name="place_role_reset_hint">Crossing the line is the deed itself — leaving the garage is the car moving. The count starts again by itself, and a quiet notice offers to undo it.</string>
     <string name="rule_resets">Counts as done</string>
-    <string name="place_means_inside">Being there is enough: if you are already there when everything else is due, it rings. And it rings once: staying there does not ring it again until you mark it done.</string>
-    <string name="place_means_outside">Being away is enough: if you are already away when everything else is due, it rings. And it rings once: staying away does not ring it again until you mark it done.</string>
+    <string name="place_means_inside">Being there is enough: if you are already there when everything else is due, it rings. And it rings once a round: staying there does not ring it again until you mark it done or «Comes back» starts a new round.</string>
+    <string name="place_means_outside">Being away is enough: if you are already away when everything else is due, it rings. And it rings once a round: staying away does not ring it again until you mark it done or «Comes back» starts a new round.</string>
     <string name="place_means_arriving">It has to see you arrive. If you are already there, it waits until you leave and come back.</string>
     <string name="place_means_leaving">It has to see you leave. If you are already away, it waits until you go there and leave again.</string>
     <string name="place_dwell_inside">And stay there a while</string>
@@ -1871,6 +1871,27 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_205_0">
+
+        <item>Fixed an alarm loop that drained the battery: a stretch or day saved while already open, with «only if I\'m at…» not met, kept re-arming itself. The same with a calendar coming back unanswered whose place was not met.</item>
+
+        <item>After the update, old reminders that rang and were never answered no longer all ring at once: they come back at their next moment.</item>
+
+        <item>«All» with «from when it rings»: the next round keeps its deadline. «All» with «from done», unanswered: it asks for every condition again instead of ringing on its own at 09:00.</item>
+
+        <item>A calendar with «while I\'m at…», unanswered, looks again on its next date. A late «done» respects the hour your day starts and «at the same hour».</item>
+
+        <item>«Every 24 h» keeps its hour across a clock change. «Saturdays» written on Friday night rings on Saturday when you get up. A draw fenced to dates far ahead no longer says it will never ring.</item>
+
+        <item>Places: under «at once», a place that rang unanswered is still watched when the stretch asks about it; a doorway with days rings even if you arrive before you get up; a held arrival does not ring again after a «done»; «from … to …» with a place counts every day; and a stretch whose rest ends while you are already there rings.</item>
+
+        <item>Speed: never measured off a reading from before the line, a blurry GPS no longer reads as «standing still», and a held arrival is not judged by the speed when it is released.</item>
+
+        <item>Resuming no longer brings what was due during the pause as «did not ring on time».</item>
+
+        <item>Wording: the alert\'s «skips N rings» is the reminder you are looking at, and «more than 20» only shows with more than 20. A calendar with a date says «on its own dates» again. «While I\'m…» says it rings once a round. In the small hours the calendar\'s tomorrow has its own chip. And a snooze of your own «tomorrow at 9:00» can be saved.</item>
+
+    </string-array>
     <string-array name="whats_new_0_204_0">
 
         <item>«Twice a week, only on the 15th» draws its moments on the 15th, so it rings every month instead of only when chance landed there.</item>

@@ -88,7 +88,7 @@ fun Reminder.foldRepeats(zone: ZoneId): Reminder {
 
 /** The same, for a shape kept under a name. A preset has no armed moment to move. */
 fun Preset.foldRepeats(zone: ZoneId): Preset {
-    val folded = foldRepeats(rules, recurrence, createdAt.dateIn(zone))
+    val folded = foldRepeats(rules, recurrence, createdAt.dateIn(zone), ruleMatch)
     if (folded.rules == rules && folded.recurrence == recurrence) return this
     return copy(rules = folded.rules, recurrence = folded.recurrence)
 }

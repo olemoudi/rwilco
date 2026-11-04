@@ -66,6 +66,7 @@ fun SnoozeOffers(
 ) {
     val spacing = Tokens.spacing
     val sayings = rememberWords()
+    val separator = stringResource(R.string.common_separator)
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(spacing.sm),
         verticalArrangement = Arrangement.spacedBy(spacing.sm),
@@ -77,7 +78,7 @@ fun SnoozeOffers(
         for (snooze in offers) {
             val label = snoozeLabel(snooze, customMinutes)
             val skips = skipsLabel(sayings, skipsOf(snooze))
-            SnoozeButton(label = label, onClick = { onPick(snooze) }, guard = guard, detail = skips?.let { "$label · $it" } ?: label)
+            SnoozeButton(label = label, onClick = { onPick(snooze) }, guard = guard, detail = skips?.let { label + separator + it } ?: label)
         }
         // In the place family's colour, because they are places: the one thing on this row
         // that is not a clock, said the way every place in the app is said.

@@ -121,10 +121,14 @@ class ReminderRepository(
     ) {
         val now = clock.instant()
         if (status == Status.ACTIVE) {
-            get(id)?.takeIf { it.status != Status.ACTIVE }?.let(roundOnResume)?.let { round ->
+            val resuming = get(id)?.takeIf { it.status != Status.ACTIVE }
+            resuming?.let(roundOnResume)?.let { round ->
                 dao.setFiredRules(id, encodeIndices(round.firedRules))
                 dao.setExpiresAt(id, round.expiresAt?.toEpochMilli())
             }
+            // A moment armed before the pause and gone during it is not owed: the pause was
+            // asked for, and the catch-up would ring it as "no sonó a tiempo" (2026-11-04 review).
+            if (resuming != null && resuming.armedFor?.let { it <= now } == true) dao.setArmedFor(id, null, null)
         }
         // A routine's pause freezes its count, and lifting it moves the count on by the time it
         // rested: see [Reminder.routineAnchorAfterPause] and [ReminderDao.resumeRoutine]. Any

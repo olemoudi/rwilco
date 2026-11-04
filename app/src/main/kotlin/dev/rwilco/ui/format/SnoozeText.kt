@@ -193,6 +193,6 @@ fun nextTimePhrase(words: Words, offer: SnoozePlace.NextTime): String =
  */
 fun skipsLabel(words: Words, skipped: Int): String? = when {
     !skipsWorthSaying(skipped) -> null
-    skipped >= MAX_SKIPS_COUNTED -> words.get(R.string.snooze_skips_many, MAX_SKIPS_COUNTED)
+    skipped > MAX_SKIPS_COUNTED -> words.get(R.string.snooze_skips_many, MAX_SKIPS_COUNTED)
     else -> words.plural(R.plurals.snooze_skips, skipped)
 }

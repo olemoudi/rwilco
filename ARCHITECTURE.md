@@ -4360,6 +4360,37 @@ loud what DST and a change of zone do to a landing.
   (`settings_awake_hint`, `settings_default_time` + its hint), and the days hint says "cualquier
   día de la semana". The audit's probe file (`AuditProbeTest`) was never committed; every claim it
   confirmed is a regression test in the files the four rounds name.
+- **The trigger-contract round, 5: the reliability review** (0.205.0, 2026-11-04). Three fresh
+  reviewers (time/snooze/recurrence, places, app/editor/words) went over the whole round; 90 tests
+  were added (`TimeReliabilityTest`, `PlaceReliabilityTest`, `JourneyReliabilityTest`,
+  `AppReliabilityTest`) and every bug they proved is a regression test (`ReviewFindingsTest`,
+  `PlaceFindingsTest`). **No alarm in the past**: `openAtWriting` only while the minute after
+  writing is ahead, and `comeBackMoment` never answers a moment at or before now (a fence that
+  turned a moment away handed the same past moment back, armed, delivered at once, for the rest
+  of the evening; and an upgrade would have rung every stale unanswered reminder together).
+  **"Todos"**: a ring that ends the round writes the next round's close (`expiryAfterRing`); an
+  unanswered round's come-back restarts the round instead of ringing alone, when the set can
+  complete again (`roundRestartedOnComeBack`, in `fire` before the outcome); a doorway ticked
+  before the stretch that completes the set is dropped (`ticksStanding`), and a random tick is
+  judged inside its rule's hours. **Recurrence**: `unansweredRest`/`unansweredComesBack` cover
+  calendars and legacy monthly weekdays; `answeredRingDay` takes the person's day start and never
+  anchors before the ring; whole days said in hours keep the wall clock across a change of time
+  (`restUntil`); a weekday or range written in the small hours opens at that day's waking hour;
+  a draw fenced to dates far ahead starts its scan there; a preset folds by its own match; the
+  person's own "mañana a las 9:00" is no longer the app's morning (`builtInSaying`).
+  `questionsNeverAsked` judges the widest window a round can have. **Places**: the unanswered
+  wait gates a circle only where nothing else asks it (not under "a la vez"); a doorway is gated
+  by hours, not days (unless no day can ever hold); a stretch's place circle keeps no side from a
+  wait (`Gated.keepsSide`), so being there when the rest ends rings; `stretchOwed` walks a date
+  range from a day back; a hold from before the round (`WatchedPlace.owedSince`, the last
+  "hecho" or resume) is not released; a fence's crossing is released only by two looks after the
+  line; a zero over two blurry fixes (`STILL_DOUBT_M`) is no speed; a released hold that asks
+  how fast hands on an unknown speed. **App**: a resumed reminder forgets an armed moment that
+  passed during the pause; the alert's skip counts are remembered per reminder and the sheet's
+  per list; the calendar card says "en sus propias fechas" unless a rule keeps speaking; the date
+  sheet's weekday chips start tomorrow. Left as known limits: a speed-timed crossing at the very
+  end of its window, a legacy pair of hours resting on the first one's calendar, the skip count
+  on Home's and Routines' sheets.
 
 ## Backup (the vault)
 

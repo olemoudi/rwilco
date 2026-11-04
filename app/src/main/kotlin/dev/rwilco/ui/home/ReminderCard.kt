@@ -43,6 +43,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.rwilco.R
+import dev.rwilco.model.isOneShot
 import dev.rwilco.model.Action
 import dev.rwilco.model.countsFromRinging
 import dev.rwilco.model.RuleStanding
@@ -228,7 +229,7 @@ fun ReminderCard(
                 card.deadline?.let { DeadlineRow(it, card.expiresAt, today, zone, muted = card.paused) }
                 // Last, because that is the order the two answer in: the triggers say when it
                 // rings the first time and the recurrence says when it comes back.
-                card.recurrence?.let { RecurrenceRow(it, today, zone, card.returnsAt, muted = card.paused, hasRules = card.triggers.isNotEmpty()) }
+                card.recurrence?.let { RecurrenceRow(it, today, zone, card.returnsAt, muted = card.paused, hasRules = card.triggers.any { !it.trigger.isOneShot }) }
             }
             Spacer(Modifier.height(spacing.md))
             CardFooter(
@@ -385,9 +386,9 @@ fun RecurrenceRow(
     returnsAt: Instant? = null,
     muted: Boolean = false,
     /**
-     * Whether rules ring it beside the calendar: then its dates are where the rules start
-     * listening again, not moments that ring by themselves, and "en sus propias fechas" said the
-     * second (2026-11-04).
+     * Whether rules that keep speaking ring it beside the calendar: then its dates are where they
+     * start listening again, not moments that ring by themselves, and "en sus propias fechas" said
+     * the second (2026-11-04). A date that rings once leaves the calendar ringing on its own dates.
      */
     hasRules: Boolean = false,
 ) {

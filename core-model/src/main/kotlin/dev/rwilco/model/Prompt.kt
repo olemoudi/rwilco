@@ -145,8 +145,13 @@ fun Reminder.questionsNeverAsked(
 ): List<Int> {
     val span = recurrence as? Recurrence.Since ?: return emptyList()
     if (!isRoutine || span.unit != RecurrenceUnit.DAYS || span.amount >= 4) return emptyList()
-    val deadline = routineDeadline(zone, dayStart) ?: return emptyList()
-    val opens = promptOpensAt(zone, dayStart) ?: return emptyList()
+    // Judged on the widest window a round can have: counted from the first minute of the day the
+    // count starts on, which is when the last quarter is longest. "Never" has to hold however late
+    // in that day the "hecho" comes (2026-11-04 review: a two-day routine edited at three in the
+    // afternoon was told "never" of a question a round started after midnight does ask).
+    val widest = copy(lastDealtAt = routineAnchor().atZone(zone).toLocalDate().atStartOfDay(zone).toInstant())
+    val deadline = widest.routineDeadline(zone, dayStart) ?: return emptyList()
+    val opens = widest.promptOpensAt(zone, dayStart) ?: return emptyList()
     return rules.indices.filter { index ->
         val rule = rules[index]
         val daily = when (val trigger = rule.trigger) {
