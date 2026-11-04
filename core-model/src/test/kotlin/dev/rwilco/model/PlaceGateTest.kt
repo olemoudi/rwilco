@@ -260,10 +260,13 @@ class PlaceGateTest {
         val own = reminder(TriggerRule(home.copy(onCrossing = true, dwellMinutes = 10), listOf(Condition.TimeWindow(LocalTime.of(19, 0), LocalTime.of(21, 30)))))
         assertEquals(seven, own.watchedCircles(local(2026, 8, 27, 18, 45), zone, defaultTime).single().place.ringsFrom)
 
-        // Only a rate is held. A bare doorway is an instant, and a side of a line is already a
-        // state that the window's own opening asks about.
+        // A bare doorway was an instant here and carried nothing, until the owner's call on
+        // 2026-11-04: arrived before the window and still there when it opens, it rings then. It
+        // is a moment, so the window's rule cannot fold it in and asks nothing at seven; the
+        // doorway is the only clock the set has. A side of a line is already a state that the
+        // window's own opening asks about, and stays as it was.
         val bare = reminder(TriggerRule(home.copy(onCrossing = true)), evening, match = RuleMatch.TOGETHER)
-        assertNull(bare.watchedCircles(local(2026, 8, 27, 18, 45), zone, defaultTime).single { it.ruleIndex == 0 }.place.ringsFrom)
+        assertEquals(seven, bare.watchedCircles(local(2026, 8, 27, 18, 45), zone, defaultTime).single { it.ruleIndex == 0 }.place.ringsFrom)
         val side = reminder(TriggerRule(home), evening, match = RuleMatch.TOGETHER)
         assertNull(side.watchedCircles(local(2026, 8, 27, 18, 45), zone, defaultTime).single { it.ruleIndex == 0 }.place.ringsFrom)
     }

@@ -4128,8 +4128,9 @@ loud what DST and a change of zone do to a landing.
   finds before it, as it already did for a rate and a state with hours. Days open with the
   person's day (`TriggerRule.fencesOpenFrom`, `DayShape.awakeOn`), as `Weekday` and a day with no
   hour always have — midnight would ring hushed and spend the round before breakfast — and they
-  gate the circle like hours do, two hours before. Under "a la vez" nothing changed: a
-  sibling's own moment still asks about the place.
+  gate the circle like hours do, two hours before. Under "a la vez" a state is as it was — a
+  sibling's own moment asks about it — and a doorway carries its opening there too, as a rate
+  does: it is a moment, which no sibling can fold in, so nothing else asks at the window.
   **A doorway crossed while it only listens is held for its gate.** "Al llegar a casa, y vuelve
   cada 24 h desde el hecho": home during the rest and still there when it ended rang nothing —
   the listener had written the side down on the way past and the gate opened onto no change. A

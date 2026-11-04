@@ -263,10 +263,12 @@ fun Reminder.watchedCircles(
                     // **And a doorway** (2026-11-04, the owner's call): "al llegar a casa, y sólo
                     // si es de 18 a 22", arrived at half past five and still there at six, rang
                     // nothing that evening — the arrival was judged early and dropped, and a
-                    // doorway is crossed once. **And under "todos"**, where the fold is the rule
-                    // and the plazo's hours: home since three with the window from six was
-                    // emitted at four, dropped by the window and never ticked (audit probe C1).
-                    ringsFrom = hoursOpen?.takeIf { opening -> rings && opening > now && (it.dwell != null || ownClock) },
+                    // doorway is crossed once. Under "a la vez" too, as a rate is: a doorway is a
+                    // moment, which no sibling can fold in as a state, so no sibling's opening
+                    // asks about it. **And under "todos"**, where the fold is the rule and the
+                    // plazo's hours: home since three with the window from six was emitted at
+                    // four, dropped by the window and never ticked (audit probe C1).
+                    ringsFrom = hoursOpen?.takeIf { opening -> rings && opening > now && (it.dwell != null || it.onCrossing || ownClock) },
                     // "Y sólo si voy en coche": a crossing waits for a look that can say (2026-11-04).
                     timesSpeed = rings && (fold ?: rule).conditions.any { condition -> condition is Condition.Moving },
                 ),
