@@ -36,7 +36,8 @@ import kotlin.math.sqrt
  * field and is zero or missing on the wifi positions this watch mostly lives on. Null is
  * "nobody knows", which is what the first fix of a run always is, and what every fix written
  * before the field existed decodes to. It is what "y sólo si voy en coche" is read from
- * ([Condition.Moving]).
+ * ([Condition.Moving]), and so it is only written when the fix before was at most
+ * [PlaceWatchPolicy.FENCE_SPAN] older: an average over half an hour says nothing about a crossing.
  */
 @Serializable
 data class Fix(val lat: Double, val lng: Double, val accuracyM: Double, val at: Instant, val speedMps: Double? = null)
@@ -115,6 +116,12 @@ data class WatchedPlace(
      * ([PlaceWatchState.held]); a bare doorway is an instant and is not.
      */
     val ringsFrom: Instant? = null,
+    /**
+     * Whether the rule behind this circle asks how fast the phone was going ([Condition.Moving]).
+     * A crossing of such a circle is handed on only once a look can answer that — see
+     * [PlaceWatchState.timing].
+     */
+    val timesSpeed: Boolean = false,
 )
 
 /** A place kept in Settings, offered whole — name, pin and radius — when a rule needs one. */
@@ -265,6 +272,13 @@ object PlaceWatchPolicy {
     /** Somebody who has just started moving is at least walking. */
     const val WALK_MPS = 1.5
 
+    /**
+     * Where "andando" starts: an ordinary stroll, 2.5 km/h (2026-11-04). The fence used to start at
+     * [WALK_MPS], which is a planning number — what a cadence assumes of somebody setting off — and
+     * a brisk one: a normal pace is 1.2–1.4 m/s, so "y sólo si voy andando" refused most walks.
+     */
+    const val ON_FOOT_MPS = 0.7
+
     /** With no speed to go on, plan for a slow car. */
     const val UNKNOWN_MPS = 8.0
 
@@ -304,6 +318,22 @@ object PlaceWatchPolicy {
      * start over blind.
      */
     val SPEED_MEMORY: Duration = Duration.ofMinutes(90)
+
+    /**
+     * The longest gap between two looks whose average still says how fast somebody was going at a
+     * crossing ([Condition.Moving]): five minutes (2026-11-04). The cadence wants the long average
+     * ([SPEED_MEMORY]); a fence does not. Half an hour on the sofa and six hundred metres in the
+     * last seven minutes is 0.3 m/s, which is nobody's speed — so over a longer gap the fix
+     * carries no speed at all, and what nobody can vouch for holds.
+     */
+    val FENCE_SPAN: Duration = Duration.ofMinutes(5)
+
+    /**
+     * How soon after a crossing that asks how fast the watch looks again to find out
+     * ([PlaceWatchState.timing]): a minute and a half, which a car leaving a garage spends
+     * getting up to speed and a walk spends a hundred metres on.
+     */
+    val SPEED_LOOK: Duration = Duration.ofSeconds(90)
 
     /** Longest the still back-off doubles for: 2 · 2⁶ min is already past MAX_WAIT. */
     const val MAX_STILL_DOUBLINGS = 6
@@ -987,6 +1017,11 @@ data class PlaceWatchState(
      * Empty on every blob written before holds existed, which is what it reads back as.
      */
     val held: Map<String, Instant> = emptyMap(),
+    /**
+     * Crossings waiting for a look that can say how fast the phone was going, by circle: when each
+     * happened (2026-11-04). See [stepPlaceWatch]. Empty on every blob written before.
+     */
+    val timing: Map<String, Instant> = emptyMap(),
 )
 
 /**
@@ -1163,6 +1198,8 @@ data class WatchStep(
     val heldUntil: Instant? = null,
     /** Circles walked through between this look and the last ([passedThrough]); each is also an event. */
     val passed: List<WatchedPlace> = emptyList(),
+    /** Crossings held on this look until a look can say how fast they were made. Worth a line in the log. */
+    val timed: List<WatchedPlace> = emptyList(),
 )
 
 /**
@@ -1252,13 +1289,34 @@ fun stepPlaceWatch(
     val (thereEarly, crossedNow) = crossed.filter { it.dwell == null }.partition { it.ringsFrom?.isAfter(now) == true }
     val (waiting, released) = stays.partition { it.ringsFrom?.isAfter(now) == true }
     val held = waiting.associate { it.id to state.held.getValue(it.id) } + (early + thereEarly).associate { it.id to now }
-    val events = (crossedNow + passed).map { PlaceEvent(it.id, it.transition) } +
+    // **A speed is only worth the two looks it came from** (2026-11-04). The fence "y sólo si voy
+    // en coche" was read off the average since the last look, which inside a place is half an
+    // hour of it and most of that on the sofa. Over [PlaceWatchPolicy.FENCE_SPAN] nobody knows.
+    val gapSinceLast = state.lastFix?.let { Duration.between(it.at, fix.at) }
+    val fenceSpeed = movement.speedMps?.takeIf { gapSinceLast != null && !gapSinceLast.isNegative && !gapSinceLast.isZero && gapSinceLast <= PlaceWatchPolicy.FENCE_SPAN }
+    // **And a crossing that asks how fast waits for a look that can say** (2026-11-04). Crossed
+    // with no fresh speed in hand, it is held ([PlaceWatchState.timing]) and the next look comes
+    // [PlaceWatchPolicy.SPEED_LOOK] later: the speed between the two is the speed after the line,
+    // which is the one the rule asks about. Handed on at the first look after the crossing whose
+    // speed is fresh, or at the one after a look taken after it however late (no speed: what
+    // nobody can vouch for holds, and it rings), or once the wait has outlived the span a speed
+    // is good for at all. The geofence holds its own crossings the same way (`PlaceWatcher.accept`).
+    val ids = places.mapTo(HashSet()) { it.id }
+    val (timed, untimed) = crossedNow.partition { it.timesSpeed && fenceSpeed == null }
+    val (timedOut, stillTiming) = state.timing.filterKeys { it in ids }.entries.partition { (_, crossedAt) ->
+        val after = !fix.at.isBefore(crossedAt) && (fenceSpeed != null || state.lastFix?.at?.isBefore(crossedAt) == false)
+        after || Duration.between(crossedAt, now) > PlaceWatchPolicy.FENCE_SPAN
+    }
+    val timing = stillTiming.associate { it.key to it.value } + timed.associate { it.id to fix.at }
+    val timedEvents = timedOut.mapNotNull { (id, _) -> places.firstOrNull { it.id == id } }
+    val events = (untimed + passed + timedEvents).map { PlaceEvent(it.id, it.transition) } +
         (metNow + released).map { PlaceEvent(it.id, it.transition) }
     // The opening is a promise, so the look is not allowed to fall past it: an arrival held
     // half an hour past seven because the phone was resting inside is the late ring this is for.
     val heldUntil = (waiting + early + thereEarly).mapNotNull { it.ringsFrom }.minOrNull()
     val plan = planNextCheck(fix, movement, places, inside, charge, previous = state.lastFix, counting = dwelt.dwelling.keys)
         ?.let { plan -> if (heldUntil != null && now + plan.wait > heldUntil) plan.copy(wait = Duration.between(now, heldUntil)) else plan }
+        ?.let { plan -> if (timing.isNotEmpty() && plan.wait > PlaceWatchPolicy.SPEED_LOOK) plan.copy(wait = PlaceWatchPolicy.SPEED_LOOK) else plan }
     // **The streak counts looks that got the phone no nearer anything** (0.82.0), not only the
     // ones that found it motionless. It is what the back-off doubles on, and a phone being
     // lived with inside its own four walls is not still — it is going nowhere, which for a
@@ -1280,7 +1338,11 @@ fun stepPlaceWatch(
         // current one ([stepWithoutLooking]), and a fix compared with itself is a speed of zero
         // that nobody measured — which a fence would read as "standing still" off a look that
         // never happened. Same instant, same look.
-        lastFix = if (state.lastFix?.at == fix.at) fix else fix.copy(speedMps = movement.speedMps ?: fix.speedMps),
+        //
+        // And only a fresh one (2026-11-04): see the fence's speed above. A fix older than a
+        // crossing still being timed says nothing about that crossing either.
+        lastFix = if (state.lastFix?.at == fix.at) fix
+        else fix.copy(speedMps = fenceSpeed?.takeUnless { state.timing.values.any { fix.at.isBefore(it) } } ?: fix.speedMps),
         inside = inside,
         stillStreak = if (movement.still || nowhereNearer) state.stillStreak + 1 else 0,
         nextCheckAt = plan?.let { now + it.wait },
@@ -1289,8 +1351,9 @@ fun stepPlaceWatch(
         tier = plan?.tier ?: FixTier.BALANCED,
         dwelling = dwelt.dwelling,
         held = held,
+        timing = timing,
     )
-    return WatchStep(next, events, plan, movement, dwelt.unmeasured, held = early + thereEarly, heldUntil = heldUntil, passed = passed)
+    return WatchStep(next, events, plan, movement, dwelt.unmeasured, held = early + thereEarly, heldUntil = heldUntil, passed = passed, timed = timed)
 }
 
 /**
@@ -1328,6 +1391,8 @@ fun stepWithoutLooking(
     // Nor a hold whose hours have opened, for the same reason: releasing it is a ring, and a
     // rest reports none. The look is taken, one fix, and it rings off that.
     if (places.any { it.id in state.held && it.ringsFrom?.isAfter(now) != true }) return null
+    // Nor a crossing waiting to be timed: the look it is waiting for is a fresh one.
+    if (places.any { it.id in state.timing }) return null
     val fix = state.lastFix ?: return null
     val step = stepPlaceWatch(state, fix, places, now, sensed = false, charge = charge, listening = listening)
     // **Nor a step that found something.** A reading repeated finds no crossing — except for a
@@ -1432,6 +1497,12 @@ fun PlaceWatchState.remembering(placeId: String, transition: Transition): PlaceW
  */
 fun PlaceWatchState.counting(placeId: String, now: Instant): PlaceWatchState =
     copy(dwelling = dwelling + (placeId to Dwelling(since = now, lastAt = now)))
+
+/**
+ * A crossing the system's geofence reported for a circle whose rule asks how fast
+ * ([WatchedPlace.timesSpeed]), held until a look can say: the watch hands it on ([stepPlaceWatch]).
+ */
+fun PlaceWatchState.timingSpeed(placeId: String, now: Instant): PlaceWatchState = copy(timing = timing + (placeId to now))
 
 /** A count settled by somebody else — the system's own loitering — is a count no longer running. */
 fun PlaceWatchState.counted(placeId: String): PlaceWatchState = copy(dwelling = dwelling - placeId)

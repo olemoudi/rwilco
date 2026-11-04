@@ -245,6 +245,8 @@ fun Reminder.watchedCircles(
                     ringsFrom = hoursOpen?.takeIf { opening ->
                         rings && opening > now && (it.dwell != null || (!it.onCrossing && fold == rule))
                     },
+                    // "Y sólo si voy en coche": a crossing waits for a look that can say (2026-11-04).
+                    timesSpeed = rings && (fold ?: rule).conditions.any { condition -> condition is Condition.Moving },
                 ),
                 ruleIndex = index,
                 opensAt = opensAt,
@@ -339,6 +341,9 @@ private fun Reminder.routineCircles(
                     crossing = if (rule.resetsRoutine) Crossing.RESETS else Crossing.ASKS,
                     onCrossing = it.onCrossing,
                     dwell = it.dwell,
+                    // "Mover el coche" counts on leaving at a car's speed: the crossing waits for a
+                    // look that can say what that speed was (2026-11-04).
+                    timesSpeed = rule.conditions.any { condition -> condition is Condition.Moving },
                 ),
                 ruleIndex = index,
                 opensAt = opensAt,

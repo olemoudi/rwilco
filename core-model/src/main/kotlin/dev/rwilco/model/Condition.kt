@@ -112,7 +112,9 @@ sealed interface Condition {
      * Read from the watch's own memory ([Fix.speedMps]), which is a speed worked out between
      * two looks — so like a place it cannot be asked about the future ([knownInAdvance]), and
      * unlike a place it is often not answerable at all: a crossing the phone's own geofence
-     * reports can arrive with the last look an hour old. **What nobody can vouch for holds**,
+     * reports can arrive with the last look an hour old. So a crossing that asks it waits for a
+     * look a minute and a half after the line (2026-11-04, [PlaceWatchState.timing]), and an
+     * average over more than [PlaceWatchPolicy.FENCE_SPAN] is no speed. **What nobody can vouch for holds**,
      * as everywhere else here — except where holding it would make the app act on its own and
      * go quiet, which is the one place that is asked differently (`ReminderFiring.resetBy`,
      * [speedUnvouched]).
@@ -171,7 +173,7 @@ fun Condition.holdsAt(at: Instant, zone: ZoneId, where: Fix? = null): Boolean = 
     is Condition.OnMonthDays -> holdsOn(at.atZone(zone).toLocalDate())
     // Nobody could say how fast: it holds, which is the house rule and the safe way round for
     // everything that rings. The one caller that needs the other way round asks [speedUnvouched].
-    is Condition.Moving -> speedAt(at, where)?.let { it >= minMps && (maxMps == null || it < maxMps) } ?: true
+    is Condition.Moving -> speedAt(at, where)?.let { it >= floorMps && (maxMps == null || it < maxMps) } ?: true
     is Condition.AtPlace -> {
         if (where == null || where.accuracyM > radiusM) true
         else (distanceMeters(where.lat, where.lng, lat, lng) <= radiusM) == inside
@@ -268,7 +270,18 @@ val Condition.Moving.kind: MovingKind
 
 /** The fence a chosen answer writes. The only place the numbers are named. */
 fun movingOf(kind: MovingKind): Condition.Moving = when (kind) {
-    MovingKind.ON_FOOT -> Condition.Moving(PlaceWatchPolicy.WALK_MPS, PlaceWatchPolicy.DRIVING_MPS)
+    MovingKind.ON_FOOT -> Condition.Moving(PlaceWatchPolicy.ON_FOOT_MPS, PlaceWatchPolicy.DRIVING_MPS)
     MovingKind.DRIVING -> Condition.Moving(PlaceWatchPolicy.DRIVING_MPS)
-    MovingKind.ANY -> Condition.Moving(PlaceWatchPolicy.WALK_MPS)
+    MovingKind.ANY -> Condition.Moving(PlaceWatchPolicy.ON_FOOT_MPS)
 }
+
+/**
+ * The speed this fence starts at, as it is judged.
+ *
+ * A floor under a vehicle's is a walking one, and walking starts at [PlaceWatchPolicy.ON_FOOT_MPS]
+ * (2026-11-04, the owner's call: 1.5 m/s refused an ordinary pace). Every such fence written
+ * before then carries the old floor, 1.5, and reads as the new one — the chips only ever wrote
+ * the two numbers, so nothing on a phone has to be rewritten to mean what it says.
+ */
+val Condition.Moving.floorMps: Double
+    get() = if (minMps < PlaceWatchPolicy.DRIVING_MPS) minOf(minMps, PlaceWatchPolicy.ON_FOOT_MPS) else minMps
