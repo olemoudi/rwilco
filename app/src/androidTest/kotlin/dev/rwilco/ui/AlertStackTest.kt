@@ -3,6 +3,7 @@ package dev.rwilco.ui
 import android.app.Notification
 import android.app.NotificationManager
 import android.content.Intent
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
@@ -18,12 +19,15 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import androidx.test.rule.GrantPermissionRule
+import androidx.compose.ui.text.TextLayoutResult
 import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.alarm.ReminderScheduler
 import dev.rwilco.model.Action
 import dev.rwilco.model.AlertStacking
+import dev.rwilco.model.AppSettings
 import dev.rwilco.model.Reminder
+import dev.rwilco.model.Snooze
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.firingPlan
@@ -32,6 +36,7 @@ import dev.rwilco.ui.alert.AlertActivity
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -167,6 +172,63 @@ class AlertStackTest {
         rule.waitUntilShown(textB)
         rule.onNodeWithText(textC).assertIsDisplayed()
         rule.onAllNodesWithText(textA).assertCountEquals(0)
+    }
+
+    /**
+     * The phone's screen, 2026-11-04: three strips, a long reminder between two short ones, and
+     * offers long enough to push "Hecho" onto a row of its own. The short ones came out cut
+     * through the middle — taken at the largest size on a single line taller than the room the
+     * strip gave them. No strip's words may be laid out bigger than their box.
+     *
+     * These strips have no trigger line (a bare `AtTime` rule is read back as a recurrence), so
+     * the first one wears a tag instead: about the same height taken from the words, and the
+     * squeeze the phone had.
+     */
+    @Test
+    fun threeStripsCutNoWordsShortOrLong() {
+        val texts = listOf("Entrenar", "Llamar a la directora de la residencia", "Kagi news")
+        val defaults = AppSettings()
+        runBlocking {
+            val now = app.clock.instant()
+            for ((id, text) in listOf("stack-a", "stack-b", "stack-c").zip(texts)) {
+                val tags = if (id == "stack-a") listOf("salud") else emptyList()
+                app.repository.save(app.repository.get(id)!!.copy(text = text, tags = tags, updatedAt = now))
+            }
+            app.settingsStore.update {
+                it.copy(
+                    alertStacking = AlertStacking.STRIPS,
+                    notificationSnoozes = listOf(Snooze.TOMORROW.name, Snooze.CUSTOM.name),
+                    snoozeCustomMinutes = 30,
+                )
+            }
+        }
+        try {
+            scenario = ActivityScenario.launch(alert("stack-a"))
+            rule.waitUntilShown(texts[0])
+            context.startActivity(alert("stack-b").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            rule.waitUntilShown(texts[1])
+            context.startActivity(alert("stack-c").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            rule.waitUntilShown(texts[2])
+            rule.waitForIdle()
+            shot("alert-strips-fit")
+
+            for (text in texts) {
+                val layouts = mutableListOf<TextLayoutResult>()
+                rule.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode()
+                    .config[SemanticsActions.GetTextLayoutResult].action!!.invoke(layouts)
+                val layout = layouts.single()
+                assertFalse(
+                    "\"$text\" at ${layout.layoutInput.style.fontSize}: ${layout.multiParagraph.height} px of lines in a ${layout.size.height} px box",
+                    layout.hasVisualOverflow,
+                )
+            }
+        } finally {
+            runBlocking {
+                app.settingsStore.update {
+                    it.copy(notificationSnoozes = defaults.notificationSnoozes, snoozeCustomMinutes = defaults.snoozeCustomMinutes)
+                }
+            }
+        }
     }
 
     @Test

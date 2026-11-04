@@ -1856,6 +1856,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_199_1">
+
+        <item>With several reminders ringing at once, a short one such as «Entrenar» or «Kagi news» no longer comes out cut through the middle. Each strip gave its words only half of the room it had, and a short text was set at its largest size whether it fitted or not. The words now get all the room, and they step down until they fit, short ones too.</item>
+
+    </string-array>
     <string-array name="whats_new_0_199_0">
 
         <item>Walking past a small place now rings its reminder even if you do not stop. Before, a 50 m circle fitted between two of the app\'s looks: «take out cash, when I get to the bank» was walked past on the way home and never rang. On foot and heading for a small circle, the app now looks as often as crossing it takes (down to every 30 seconds, only for that last stretch), and if two looks land either side of it with the street between them running through it, that counts as having been there.</item>

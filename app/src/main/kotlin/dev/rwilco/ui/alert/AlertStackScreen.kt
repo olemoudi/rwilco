@@ -18,7 +18,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.text.TextAutoSize
+import dev.rwilco.ui.components.FitAutoSize
+import dev.rwilco.ui.components.scalingLineHeight
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
@@ -308,21 +309,28 @@ private fun Strip(
                 }
             }
             Spacer(Modifier.height(spacing.sm))
-            BasicText(
-                text = content.text.ifBlank { stringResource(R.string.alert_empty_text) },
-                style = MaterialTheme.typography.headlineMedium.copy(color = scheme.onBackground),
-                autoSize = TextAutoSize.StepBased(minFontSize = 20.sp, maxFontSize = 36.sp, stepSize = 2.sp),
-                maxLines = 4,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
-            )
-            if (content.tags.isNotEmpty()) {
-                Spacer(Modifier.height(spacing.sm))
-                Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
-                    for (tag in content.tags.take(3)) TagLabel(tag)
+            // **The words get all the room there is** (2026-11-04). They were weighted beside the
+            // spacer that holds the answers down, and two weights split what is left in half: a
+            // strip of a three-way split, with "Hecho" wrapped under the offers, had 52 dp to
+            // spare and gave the words 26 — less than one line at the size a short title takes,
+            // which is how "Entrenar" came out cut through the middle. Now the words and their
+            // tags take the whole of it, and what they leave stays under them.
+            Column(Modifier.fillMaxWidth().weight(1f)) {
+                BasicText(
+                    text = content.text.ifBlank { stringResource(R.string.alert_empty_text) },
+                    style = MaterialTheme.typography.headlineMedium.scalingLineHeight().copy(color = scheme.onBackground),
+                    autoSize = FitAutoSize(minFontSize = 20.sp, maxFontSize = 36.sp),
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
+                )
+                if (content.tags.isNotEmpty()) {
+                    Spacer(Modifier.height(spacing.sm))
+                    Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
+                        for (tag in content.tags.take(3)) TagLabel(tag)
+                    }
                 }
             }
-            Spacer(Modifier.weight(1f))
             Spacer(Modifier.height(spacing.md))
             // **"Hecho" is never squeezed out** (0.67.0). The answers were one Row with no
             // weights, so two long offers ("Mañana a la misma hora" beside "Mañana por la
