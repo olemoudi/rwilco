@@ -888,9 +888,26 @@ private fun Duration.clamp(floor: Duration, ceiling: Duration): Duration = when 
  * judgement and that ring is the point of it: the lean is what buys it, and erring towards
  * ringing is the right way round. A **snooze** circle's first side is the person's own word
  * ("al llegar a…" starts outside), which no fix outranks and none is needed for.
+ *
+ * **Except a state about being away** (2026-11-04, the owner's call). "Mientras no esté en casa",
+ * saved on the sofa off a fix as wide as the circle, leaned *outside* — a state about being out
+ * reads doubt as out — and rang at once, spending the round's one ring at somebody who had not
+ * moved. Leaning towards the side the rule is about is right when that side is "there", because
+ * a sloppy fix there is still somewhere near; it is wrong when the side is "anywhere but there",
+ * which a doubtful fix in the kitchen also is. So its first judgement waits for a reading that
+ * says one thing: the fix's whole circle of doubt inside the place, or wholly outside it. Only
+ * where acting on it does something (a condition's circle answers by the house rule instead,
+ * [Condition.holdsAt]); the wait costs a look or two, and the ring it delays was the wrong one.
  */
-fun Fix.settlesFirstSideOf(place: WatchedPlace): Boolean =
-    !place.onCrossing || GeofenceIds.isSnooze(place.id) || accuracyM <= place.radiusM
+fun Fix.settlesFirstSideOf(place: WatchedPlace): Boolean = when {
+    GeofenceIds.isSnooze(place.id) -> true
+    place.onCrossing -> accuracyM <= place.radiusM
+    place.transition == Transition.EXIT && place.crossing != Crossing.NOTHING -> {
+        val distance = distanceMeters(lat, lng, place.lat, place.lng)
+        distance + accuracyM <= place.radiusM || distance - accuracyM > place.radiusM
+    }
+    else -> true
+}
 
 fun insideAfter(wasInside: Boolean?, place: WatchedPlace, fix: Fix): Boolean {
     val distance = distanceMeters(fix.lat, fix.lng, place.lat, place.lng)
@@ -1171,7 +1188,9 @@ fun stepPlaceWatch(
         val before = state.inside[place.id]
         if (place.onCrossing && before == null) return@mapNotNull null
         val wantsInside = place.transition == Transition.ENTER
-        if (before == wantsInside || inside.getValue(place.id) != wantsInside) return@mapNotNull null
+        // A circle this fix could not judge has no side to report (a doorway or a state about
+        // being away, read off a fix that cannot tell: see [settlesFirstSideOf]).
+        if (before == wantsInside || inside[place.id] != wantsInside) return@mapNotNull null
         place
     }
     // **Through a circle between two looks** (0.199.0). Both found the phone outside, and the
