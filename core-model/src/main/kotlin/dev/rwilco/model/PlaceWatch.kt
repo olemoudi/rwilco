@@ -36,7 +36,8 @@ import kotlin.math.sqrt
  * field and is zero or missing on the wifi positions this watch mostly lives on. Null is
  * "nobody knows", which is what the first fix of a run always is, and what every fix written
  * before the field existed decodes to. It is what "y sólo si voy en coche" is read from
- * ([Condition.Moving]).
+ * ([Condition.Moving]), and so it is only written when the fix before was at most
+ * [PlaceWatchPolicy.FENCE_SPAN] older: an average over half an hour says nothing about a crossing.
  */
 @Serializable
 data class Fix(val lat: Double, val lng: Double, val accuracyM: Double, val at: Instant, val speedMps: Double? = null)
@@ -115,6 +116,12 @@ data class WatchedPlace(
      * ([PlaceWatchState.held]); a bare doorway is an instant and is not.
      */
     val ringsFrom: Instant? = null,
+    /**
+     * Whether the rule behind this circle asks how fast the phone was going ([Condition.Moving]).
+     * A crossing of such a circle is handed on only once a look can answer that — see
+     * [PlaceWatchState.timing].
+     */
+    val timesSpeed: Boolean = false,
 )
 
 /** A place kept in Settings, offered whole — name, pin and radius — when a rule needs one. */
@@ -265,6 +272,13 @@ object PlaceWatchPolicy {
     /** Somebody who has just started moving is at least walking. */
     const val WALK_MPS = 1.5
 
+    /**
+     * Where "andando" starts: an ordinary stroll, 2.5 km/h (2026-11-04). The fence used to start at
+     * [WALK_MPS], which is a planning number — what a cadence assumes of somebody setting off — and
+     * a brisk one: a normal pace is 1.2–1.4 m/s, so "y sólo si voy andando" refused most walks.
+     */
+    const val ON_FOOT_MPS = 0.7
+
     /** With no speed to go on, plan for a slow car. */
     const val UNKNOWN_MPS = 8.0
 
@@ -304,6 +318,22 @@ object PlaceWatchPolicy {
      * start over blind.
      */
     val SPEED_MEMORY: Duration = Duration.ofMinutes(90)
+
+    /**
+     * The longest gap between two looks whose average still says how fast somebody was going at a
+     * crossing ([Condition.Moving]): five minutes (2026-11-04). The cadence wants the long average
+     * ([SPEED_MEMORY]); a fence does not. Half an hour on the sofa and six hundred metres in the
+     * last seven minutes is 0.3 m/s, which is nobody's speed — so over a longer gap the fix
+     * carries no speed at all, and what nobody can vouch for holds.
+     */
+    val FENCE_SPAN: Duration = Duration.ofMinutes(5)
+
+    /**
+     * How soon after a crossing that asks how fast the watch looks again to find out
+     * ([PlaceWatchState.timing]): a minute and a half, which a car leaving a garage spends
+     * getting up to speed and a walk spends a hundred metres on.
+     */
+    val SPEED_LOOK: Duration = Duration.ofSeconds(90)
 
     /** Longest the still back-off doubles for: 2 · 2⁶ min is already past MAX_WAIT. */
     const val MAX_STILL_DOUBLINGS = 6
@@ -347,6 +377,12 @@ object PlaceWatchPolicy {
 
     /** At this much left and under, the hourly look and nothing faster, whatever else says. */
     const val SPARING_FLOOR = 0.25
+
+    /**
+     * Above this much left, the last stretch of a walk past a small circle keeps its quick looks
+     * whatever [batteryFloor] says (2026-11-04, the owner's call). See [planNextCheck].
+     */
+    const val PASS_SPARING_FLOOR = 0.20
 
     /**
      * More polls than this inside [BUSY_WINDOW] and something is wrong. Three fifths of the
@@ -539,8 +575,12 @@ fun stirredWait(charge: Double?, streak: Int = 0): Duration {
 @Serializable
 enum class FixTier { COARSE, BALANCED, PRECISE }
 
-/** What the next check should be: how long to wait, and how much radio it is worth. */
-data class WatchPlan(val wait: Duration, val tier: FixTier, val gapM: Double, val nearest: WatchedPlace)
+/**
+ * What the next check should be: how long to wait, and how much radio it is worth. [passing] is a
+ * plan drawn on foot towards a circle small enough to be walked past between two looks
+ * ([passFloor]), which is the one plan a low battery leaves alone for longer.
+ */
+data class WatchPlan(val wait: Duration, val tier: FixTier, val gapM: Double, val nearest: WatchedPlace, val passing: Boolean = false)
 
 /**
  * Distance from the fix to a place's line, whichever side it is on, less the fix's own
@@ -606,7 +646,9 @@ fun reachCeiling(gapM: Double): Duration =
  * Then [charge] has the last word, because a watch that runs the battery down to nothing stops
  * being a watch: a low one raises the floor under whatever came out of all of the above
  * ([batteryFloor]), and at the bottom of it takes the GPS away as well — an hourly look is not
- * the last few hundred metres of an approach, which is the only thing the GPS was ever for.
+ * the last few hundred metres of an approach, which is the only thing the GPS was ever for. The
+ * one plan it leaves alone above [PlaceWatchPolicy.PASS_SPARING_FLOOR] is the last stretch of a
+ * walk past a small circle ([WatchPlan.passing]).
  * [previous] is the fix before this one, which is what tells a phone walking towards a door from
  * one merely walking about inside its own place; see [leavingWait].
  */
@@ -618,20 +660,29 @@ fun planNextCheck(
     charge: Double? = null,
     previous: Fix? = null,
     counting: Set<String> = emptySet(),
-): WatchPlan? = places
-    .map { place -> planFor(place, fix, previous, movement, inside[place.id], place.id in counting) }
+): WatchPlan? {
+    val plans = places.map { place -> planFor(place, fix, previous, movement, inside[place.id], place.id in counting) }
     // The soonest look any one place asks for; on a tie, the one that is closest. A phone
     // sitting at home with an errand across town is planned by the errand, not by the sofa.
-    .minWithOrNull(compareBy({ it.wait }, { it.gapM }))
-    ?.let { plan ->
-        val floor = batteryFloor(charge)
-        val tier = if (floor < PlaceWatchPolicy.MAX_WAIT) plan.tier else minOf(plan.tier, FixTier.BALANCED)
-        // With charge to spare the floor is MIN_WAIT, and the one plan under it — a walk past a
-        // small circle ([passFloor]) — is a minute of looking the battery has nothing to say
-        // about. Under half, it has the last word again.
-        val wait = if (floor <= PlaceWatchPolicy.MIN_WAIT) plan.wait else maxOf(plan.wait, floor)
-        plan.copy(wait = wait, tier = tier)
-    }
+    val order = compareBy<WatchPlan>({ it.wait }, { it.gapM })
+    val soonest = plans.minWithOrNull(order) ?: return null
+    val floor = batteryFloor(charge)
+    // With charge to spare the floor is MIN_WAIT, and the one plan under it — a walk past a
+    // small circle ([passFloor]) — is a minute of looking the battery has nothing to say about.
+    if (floor <= PlaceWatchPolicy.MIN_WAIT) return soonest
+    fun spared(plan: WatchPlan) = if (floor < PlaceWatchPolicy.MAX_WAIT) plan.tier else minOf(plan.tier, FixTier.BALANCED)
+    val floored = soonest.copy(wait = maxOf(soonest.wait, floor), tier = spared(soonest))
+    // **Except the last stretch of a walk past a small circle** (2026-11-04, the owner's call).
+    // Under half a battery the floor climbs to four minutes and past, which is three hundred
+    // metres on foot: the quick looks of 0.199.0 never happened, the two looks either side were
+    // too far apart to be believed as a line through the circle (PASS_MAX_M), and "sacar dinero,
+    // al llegar a la Caixa" was walked past again — on exactly the afternoons a phone is low.
+    // A pass costs a handful of looks for the minute or two it takes, so it keeps them down to a
+    // fifth of a battery. Only the plan on that stretch: everything else is floored as before.
+    val passing = plans.filter { it.passing }.minWithOrNull(order)
+        ?.takeIf { charge != null && charge > PlaceWatchPolicy.PASS_SPARING_FLOOR }
+    return if (passing != null && passing.wait < floored.wait) passing.copy(tier = spared(passing)) else floored
+}
 
 private fun planFor(
     place: WatchedPlace,
@@ -651,7 +702,8 @@ private fun planFor(
     val blind = if (movement.speedMps == null) PlaceWatchPolicy.UNKNOWN_MAX_WAIT else PlaceWatchPolicy.MAX_WAIT
     val ceiling = maxOf(blind, reachCeiling(gap))
     val closing = closingM(place, previous, fix)
-    var wait = Duration.ofSeconds((gap / planningSpeed).toLong()).clamp(passFloor(place, movement, gap, closing, inside), ceiling)
+    val pass = passFloor(place, movement, gap, closing, inside)
+    var wait = Duration.ofSeconds((gap / planningSpeed).toLong()).clamp(pass, ceiling)
     // **Moving is not approaching** (0.82.0). A phone carried about a house a hundred metres
     // from a watched line is moving all evening — the sensor fires, the fixes wobble — and
     // "time to the line" is then two minutes, over and over, for a line nobody is walking
@@ -719,7 +771,7 @@ private fun planFor(
         gap > PlaceWatchPolicy.COARSE_FROM_M -> FixTier.COARSE
         else -> FixTier.BALANCED
     }
-    return WatchPlan(wait = waited, tier = tier, gapM = gap, nearest = place)
+    return WatchPlan(wait = waited, tier = tier, gapM = gap, nearest = place, passing = pass < PlaceWatchPolicy.MIN_WAIT && waited <= wait)
 }
 
 /**
@@ -767,6 +819,14 @@ private fun leavingWait(place: WatchedPlace, previous: Fix?, fix: Fix, gap: Doub
  */
 val WatchedPlace.ringsOnPassing: Boolean
     get() = transition == Transition.ENTER && crossing == Crossing.RINGS && dwell == null
+
+/**
+ * A doorway that rings and asks for no stay: the one listener whose crossing is held for its gate
+ * ([stepPlaceWatch], 2026-11-04). A rate cannot be counted by a circle that only listens, and the
+ * other crossings (a tick taken back, a routine's) are not rings to be owed.
+ */
+val WatchedPlace.listensForTheDoor: Boolean
+    get() = crossing == Crossing.RINGS && onCrossing && dwell == null
 
 /**
  * The floor under the next look: [PlaceWatchPolicy.MIN_WAIT], unless the phone is walking up to
@@ -888,9 +948,26 @@ private fun Duration.clamp(floor: Duration, ceiling: Duration): Duration = when 
  * judgement and that ring is the point of it: the lean is what buys it, and erring towards
  * ringing is the right way round. A **snooze** circle's first side is the person's own word
  * ("al llegar a…" starts outside), which no fix outranks and none is needed for.
+ *
+ * **Except a state about being away** (2026-11-04, the owner's call). "Mientras no esté en casa",
+ * saved on the sofa off a fix as wide as the circle, leaned *outside* — a state about being out
+ * reads doubt as out — and rang at once, spending the round's one ring at somebody who had not
+ * moved. Leaning towards the side the rule is about is right when that side is "there", because
+ * a sloppy fix there is still somewhere near; it is wrong when the side is "anywhere but there",
+ * which a doubtful fix in the kitchen also is. So its first judgement waits for a reading that
+ * says one thing: the fix's whole circle of doubt inside the place, or wholly outside it. Only
+ * where acting on it does something (a condition's circle answers by the house rule instead,
+ * [Condition.holdsAt]); the wait costs a look or two, and the ring it delays was the wrong one.
  */
-fun Fix.settlesFirstSideOf(place: WatchedPlace): Boolean =
-    !place.onCrossing || GeofenceIds.isSnooze(place.id) || accuracyM <= place.radiusM
+fun Fix.settlesFirstSideOf(place: WatchedPlace): Boolean = when {
+    GeofenceIds.isSnooze(place.id) -> true
+    place.onCrossing -> accuracyM <= place.radiusM
+    place.transition == Transition.EXIT && place.crossing != Crossing.NOTHING -> {
+        val distance = distanceMeters(lat, lng, place.lat, place.lng)
+        distance + accuracyM <= place.radiusM || distance - accuracyM > place.radiusM
+    }
+    else -> true
+}
 
 fun insideAfter(wasInside: Boolean?, place: WatchedPlace, fix: Fix): Boolean {
     val distance = distanceMeters(fix.lat, fix.lng, place.lat, place.lng)
@@ -945,9 +1022,16 @@ data class PlaceWatchState(
     /**
      * Rates met before their rule's hours, by circle: when each was met. A rate says "at least",
      * so a stay met at 18:55 is still met at 19:00 if nobody has left — see [stepPlaceWatch].
-     * Empty on every blob written before holds existed, which is what it reads back as.
+     * And sides reached early (states and, since 2026-11-04, doorways, also while their circle only
+     * listens), by the same reading. Empty on every blob written before holds existed, which is
+     * what it reads back as.
      */
     val held: Map<String, Instant> = emptyMap(),
+    /**
+     * Crossings waiting for a look that can say how fast the phone was going, by circle: when each
+     * happened (2026-11-04). See [stepPlaceWatch]. Empty on every blob written before.
+     */
+    val timing: Map<String, Instant> = emptyMap(),
 )
 
 /**
@@ -1124,6 +1208,8 @@ data class WatchStep(
     val heldUntil: Instant? = null,
     /** Circles walked through between this look and the last ([passedThrough]); each is also an event. */
     val passed: List<WatchedPlace> = emptyList(),
+    /** Crossings held on this look until a look can say how fast they were made. Worth a line in the log. */
+    val timed: List<WatchedPlace> = emptyList(),
 )
 
 /**
@@ -1171,7 +1257,9 @@ fun stepPlaceWatch(
         val before = state.inside[place.id]
         if (place.onCrossing && before == null) return@mapNotNull null
         val wantsInside = place.transition == Transition.ENTER
-        if (before == wantsInside || inside.getValue(place.id) != wantsInside) return@mapNotNull null
+        // A circle this fix could not judge has no side to report (a doorway or a state about
+        // being away, read off a fix that cannot tell: see [settlesFirstSideOf]).
+        if (before == wantsInside || inside[place.id] != wantsInside) return@mapNotNull null
         place
     }
     // **Through a circle between two looks** (0.199.0). Both found the phone outside, and the
@@ -1210,14 +1298,48 @@ fun stepPlaceWatch(
     // held for them, rather than handed to a firing that drops it as early and never sees it again.
     val (thereEarly, crossedNow) = crossed.filter { it.dwell == null }.partition { it.ringsFrom?.isAfter(now) == true }
     val (waiting, released) = stays.partition { it.ringsFrom?.isAfter(now) == true }
-    val held = waiting.associate { it.id to state.held.getValue(it.id) } + (early + thereEarly).associate { it.id to now }
-    val events = (crossedNow + passed).map { PlaceEvent(it.id, it.transition) } +
+    // **A doorway crossed while it only listens is held for its gate** (2026-11-04, the owner's
+    // call). "Al llegar a casa, y vuelve cada 24 h desde el hecho": home during the rest and still
+    // there when it ended was no news at all — the side had been written down on the way past
+    // and the gate opened onto nothing to report (audit probe P5). The same for an arrival before
+    // the run-up to a doorway's hours. So a ringing doorway seen crossing while gated keeps the
+    // moment, and the first look that asks for it again hands it on if the phone is still on that
+    // side — the release is the ordinary one below, once the circle is in [places]. Only a doorway
+    // seen on the other side first, as for any crossing; not a rate, which a listener cannot count.
+    val listenedIn = listening.filter { it.listensForTheDoor }.filter { place ->
+        val wants = place.transition == Transition.ENTER
+        inside[place.id] == wants && (place.id in state.held || state.inside[place.id] == !wants)
+    }
+    val held = waiting.associate { it.id to state.held.getValue(it.id) } + (early + thereEarly).associate { it.id to now } +
+        listenedIn.associate { it.id to (state.held[it.id] ?: now) }
+    // **A speed is only worth the two looks it came from** (2026-11-04). The fence "y sólo si voy
+    // en coche" was read off the average since the last look, which inside a place is half an
+    // hour of it and most of that on the sofa. Over [PlaceWatchPolicy.FENCE_SPAN] nobody knows.
+    val gapSinceLast = state.lastFix?.let { Duration.between(it.at, fix.at) }
+    val fenceSpeed = movement.speedMps?.takeIf { gapSinceLast != null && !gapSinceLast.isNegative && !gapSinceLast.isZero && gapSinceLast <= PlaceWatchPolicy.FENCE_SPAN }
+    // **And a crossing that asks how fast waits for a look that can say** (2026-11-04). Crossed
+    // with no fresh speed in hand, it is held ([PlaceWatchState.timing]) and the next look comes
+    // [PlaceWatchPolicy.SPEED_LOOK] later: the speed between the two is the speed after the line,
+    // which is the one the rule asks about. Handed on at the first look after the crossing whose
+    // speed is fresh, or at the one after a look taken after it however late (no speed: what
+    // nobody can vouch for holds, and it rings), or once the wait has outlived the span a speed
+    // is good for at all. The geofence holds its own crossings the same way (`PlaceWatcher.accept`).
+    val ids = places.mapTo(HashSet()) { it.id }
+    val (timed, untimed) = crossedNow.partition { it.timesSpeed && fenceSpeed == null }
+    val (timedOut, stillTiming) = state.timing.filterKeys { it in ids }.entries.partition { (_, crossedAt) ->
+        val after = !fix.at.isBefore(crossedAt) && (fenceSpeed != null || state.lastFix?.at?.isBefore(crossedAt) == false)
+        after || Duration.between(crossedAt, now) > PlaceWatchPolicy.FENCE_SPAN
+    }
+    val timing = stillTiming.associate { it.key to it.value } + timed.associate { it.id to fix.at }
+    val timedEvents = timedOut.mapNotNull { (id, _) -> places.firstOrNull { it.id == id } }
+    val events = (untimed + passed + timedEvents).map { PlaceEvent(it.id, it.transition) } +
         (metNow + released).map { PlaceEvent(it.id, it.transition) }
     // The opening is a promise, so the look is not allowed to fall past it: an arrival held
     // half an hour past seven because the phone was resting inside is the late ring this is for.
     val heldUntil = (waiting + early + thereEarly).mapNotNull { it.ringsFrom }.minOrNull()
     val plan = planNextCheck(fix, movement, places, inside, charge, previous = state.lastFix, counting = dwelt.dwelling.keys)
         ?.let { plan -> if (heldUntil != null && now + plan.wait > heldUntil) plan.copy(wait = Duration.between(now, heldUntil)) else plan }
+        ?.let { plan -> if (timing.isNotEmpty() && plan.wait > PlaceWatchPolicy.SPEED_LOOK) plan.copy(wait = PlaceWatchPolicy.SPEED_LOOK) else plan }
     // **The streak counts looks that got the phone no nearer anything** (0.82.0), not only the
     // ones that found it motionless. It is what the back-off doubles on, and a phone being
     // lived with inside its own four walls is not still — it is going nowhere, which for a
@@ -1239,7 +1361,11 @@ fun stepPlaceWatch(
         // current one ([stepWithoutLooking]), and a fix compared with itself is a speed of zero
         // that nobody measured — which a fence would read as "standing still" off a look that
         // never happened. Same instant, same look.
-        lastFix = if (state.lastFix?.at == fix.at) fix else fix.copy(speedMps = movement.speedMps ?: fix.speedMps),
+        //
+        // And only a fresh one (2026-11-04): see the fence's speed above. A fix older than a
+        // crossing still being timed says nothing about that crossing either.
+        lastFix = if (state.lastFix?.at == fix.at) fix
+        else fix.copy(speedMps = fenceSpeed?.takeUnless { state.timing.values.any { fix.at.isBefore(it) } } ?: fix.speedMps),
         inside = inside,
         stillStreak = if (movement.still || nowhereNearer) state.stillStreak + 1 else 0,
         nextCheckAt = plan?.let { now + it.wait },
@@ -1248,8 +1374,9 @@ fun stepPlaceWatch(
         tier = plan?.tier ?: FixTier.BALANCED,
         dwelling = dwelt.dwelling,
         held = held,
+        timing = timing,
     )
-    return WatchStep(next, events, plan, movement, dwelt.unmeasured, held = early + thereEarly, heldUntil = heldUntil, passed = passed)
+    return WatchStep(next, events, plan, movement, dwelt.unmeasured, held = early + thereEarly, heldUntil = heldUntil, passed = passed, timed = timed)
 }
 
 /**
@@ -1287,13 +1414,16 @@ fun stepWithoutLooking(
     // Nor a hold whose hours have opened, for the same reason: releasing it is a ring, and a
     // rest reports none. The look is taken, one fix, and it rings off that.
     if (places.any { it.id in state.held && it.ringsFrom?.isAfter(now) != true }) return null
+    // Nor a crossing waiting to be timed: the look it is waiting for is a fresh one.
+    if (places.any { it.id in state.timing }) return null
     val fix = state.lastFix ?: return null
     val step = stepPlaceWatch(state, fix, places, now, sensed = false, charge = charge, listening = listening)
     // **Nor a step that found something.** A reading repeated finds no crossing — except for a
     // circle with no side yet: a state reopened after a rest or its gate (0.172.0) is judged
     // afresh, and found home it is news. Rested, that news was written down as the side and
     // thrown away with the rest of the step. The look is taken instead, and rings off that.
-    if (step.events.isNotEmpty()) return null
+    // A crossing held to be timed is something found too: the look it waits for is a fresh one.
+    if (step.events.isNotEmpty() || step.timed.isNotEmpty()) return null
     val wait = step.plan?.wait ?: return null
     if (Duration.between(fix.at, now + wait) > PlaceWatchPolicy.SPEED_MEMORY) return null
     return step
@@ -1391,6 +1521,12 @@ fun PlaceWatchState.remembering(placeId: String, transition: Transition): PlaceW
  */
 fun PlaceWatchState.counting(placeId: String, now: Instant): PlaceWatchState =
     copy(dwelling = dwelling + (placeId to Dwelling(since = now, lastAt = now)))
+
+/**
+ * A crossing the system's geofence reported for a circle whose rule asks how fast
+ * ([WatchedPlace.timesSpeed]), held until a look can say: the watch hands it on ([stepPlaceWatch]).
+ */
+fun PlaceWatchState.timingSpeed(placeId: String, now: Instant): PlaceWatchState = copy(timing = timing + (placeId to now))
 
 /** A count settled by somebody else — the system's own loitering — is a count no longer running. */
 fun PlaceWatchState.counted(placeId: String): PlaceWatchState = copy(dwelling = dwelling - placeId)

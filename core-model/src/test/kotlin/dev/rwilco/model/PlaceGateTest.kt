@@ -260,10 +260,13 @@ class PlaceGateTest {
         val own = reminder(TriggerRule(home.copy(onCrossing = true, dwellMinutes = 10), listOf(Condition.TimeWindow(LocalTime.of(19, 0), LocalTime.of(21, 30)))))
         assertEquals(seven, own.watchedCircles(local(2026, 8, 27, 18, 45), zone, defaultTime).single().place.ringsFrom)
 
-        // Only a rate is held. A bare doorway is an instant, and a side of a line is already a
-        // state that the window's own opening asks about.
+        // A bare doorway was an instant here and carried nothing, until the owner's call on
+        // 2026-11-04: arrived before the window and still there when it opens, it rings then. It
+        // is a moment, so the window's rule cannot fold it in and asks nothing at seven; the
+        // doorway is the only clock the set has. A side of a line is already a state that the
+        // window's own opening asks about, and stays as it was.
         val bare = reminder(TriggerRule(home.copy(onCrossing = true)), evening, match = RuleMatch.TOGETHER)
-        assertNull(bare.watchedCircles(local(2026, 8, 27, 18, 45), zone, defaultTime).single { it.ruleIndex == 0 }.place.ringsFrom)
+        assertEquals(seven, bare.watchedCircles(local(2026, 8, 27, 18, 45), zone, defaultTime).single { it.ruleIndex == 0 }.place.ringsFrom)
         val side = reminder(TriggerRule(home), evening, match = RuleMatch.TOGETHER)
         assertNull(side.watchedCircles(local(2026, 8, 27, 18, 45), zone, defaultTime).single { it.ruleIndex == 0 }.place.ringsFrom)
     }
@@ -277,9 +280,65 @@ class PlaceGateTest {
         val state = reminder(TriggerRule(home, evening))
         assertEquals(eight, state.watchedCircles(local(2026, 8, 27, 19, 0), zone, defaultTime).single().place.ringsFrom)
         assertNull(state.watchedCircles(local(2026, 8, 27, 20, 30), zone, defaultTime).single().place.ringsFrom, "open: nothing to wait for")
-        // A doorway with no rate is an instant: arriving at seven is not arriving at eight.
+        // A doorway with no rate was an instant here — arriving at seven was not arriving at eight
+        // — until the owner's call on 2026-11-04 (audit probe P2): "al llegar a casa, y sólo si de
+        // 20 a 22", arrived at seven and still there at eight, rings at eight. Its hours are its
+        // own clock, and nothing else in the set asks at the opening.
         val door = reminder(TriggerRule(home.copy(onCrossing = true), evening))
-        assertNull(door.watchedCircles(local(2026, 8, 27, 19, 0), zone, defaultTime).single().place.ringsFrom)
+        assertEquals(eight, door.watchedCircles(local(2026, 8, 27, 19, 0), zone, defaultTime).single().place.ringsFrom)
+    }
+
+    @Test
+    fun `under todos a place carries the opening of the plazo's hours`() {
+        // Audit probe C1: "a las 20:00" and "mientras esté en casa" under "todos", the plazo from
+        // 18:00 to 22:00. Home since three: the circle is asked from four, and what it finds there
+        // waits for six instead of being emitted at four and dropped by the window for good.
+        val created = local(2026, 8, 27, 14, 0)
+        val base = Reminder(
+            id = "r1", text = "x", rules = listOf(TriggerRule(Trigger.TimeOfDay(LocalTime.of(20, 0))), TriggerRule(home)),
+            ruleMatch = RuleMatch.ALL, deadline = Deadline.Window(LocalTime.of(18, 0), LocalTime.of(22, 0)),
+            createdAt = created, updatedAt = created,
+        )
+        val set = base.copy(expiresAt = base.roundExpiry(created, zone, defaultTime))
+        val four = set.watchedCircles(local(2026, 8, 27, 16, 0), zone, defaultTime).single { it.ruleIndex == 1 }
+        assertNull(four.opensAt)
+        assertEquals(local(2026, 8, 27, 18, 0), four.place.ringsFrom)
+        assertNull(set.watchedCircles(local(2026, 8, 27, 18, 30), zone, defaultTime).single { it.ruleIndex == 1 }.place.ringsFrom, "open")
+        // Under "a la vez" nothing changes: the sibling's own moment asks about the place.
+        val together = reminder(TriggerRule(home), TriggerRule(Trigger.Interval(LocalTime.of(18, 0), LocalTime.of(22, 0))), match = RuleMatch.TOGETHER)
+        assertNull(together.watchedCircles(local(2026, 8, 27, 16, 0), zone, defaultTime).single { it.ruleIndex == 0 }.place.ringsFrom)
+    }
+
+    @Test
+    fun `a state fenced by days opens with the waking day, not at midnight`() {
+        // Audit probe P3: "mientras esté en casa, y sólo el día 1", home since the evening of the
+        // 31st. The owner's call, 2026-11-04: it rings when the 1st opens — the person's day, as
+        // a day with no hour has always opened (Tuesday 2026-09-01: eight o'clock by default).
+        val firsts = reminder(TriggerRule(home, listOf(Condition.OnMonthDays(setOf(1)))))
+        val eve = firsts.watchedCircles(local(2026, 8, 31, 19, 0), zone, defaultTime).single()
+        assertEquals(local(2026, 9, 1, 6, 0), eve.opensAt, "two hours of run-up before the day opens")
+        assertFalse(eve.listens, "a state is not told about the 31st on the way past")
+        val dawn = firsts.watchedCircles(local(2026, 9, 1, 6, 0), zone, defaultTime).single()
+        assertNull(dawn.opensAt)
+        assertEquals(local(2026, 9, 1, 8, 0), dawn.place.ringsFrom)
+        assertNull(firsts.watchedCircles(local(2026, 9, 1, 12, 0), zone, defaultTime).single().place.ringsFrom, "open all day")
+        assertEquals(local(2026, 10, 1, 6, 0), firsts.watchedCircles(local(2026, 9, 2, 0, 5), zone, defaultTime).single().opensAt, "and shut until next month")
+    }
+
+    @Test
+    fun `days and hours open together at the first hour of a day the days allow`() {
+        val home9 = TriggerRule(home, listOf(Condition.OnMonthDays(setOf(1)), Condition.TimeWindow(LocalTime.of(20, 0), LocalTime.of(22, 0))))
+        assertEquals(local(2026, 9, 1, 20, 0), home9.fencesOpenFrom(local(2026, 8, 31, 21, 0), zone))
+        // A weekend's day opens later, by the person's own day (ten o'clock by default).
+        val saturdays = TriggerRule(home, listOf(Condition.OnDays(setOf(java.time.DayOfWeek.SATURDAY))))
+        assertEquals(local(2026, 8, 29, 10, 0), saturdays.fencesOpenFrom(local(2026, 8, 27, 15, 0), zone))
+        assertEquals(local(2026, 8, 29, 11, 0), saturdays.fencesOpenFrom(local(2026, 8, 29, 11, 0), zone), "already open")
+        // A stretch of dates opens on its first day, and one that has gone never opens again.
+        val stretch = TriggerRule(home, listOf(Condition.DateRange(java.time.LocalDate.of(2026, 9, 10), java.time.LocalDate.of(2026, 9, 12))))
+        assertEquals(local(2026, 9, 10, 8, 0), stretch.fencesOpenFrom(local(2026, 8, 27, 15, 0), zone))
+        assertNull(stretch.fencesOpenFrom(local(2026, 9, 13, 9, 0), zone))
+        // With no day fence it is the hours alone, as it always was.
+        assertEquals(local(2026, 8, 27, 20, 0), TriggerRule(home, listOf(Condition.TimeWindow(LocalTime.of(20, 0), LocalTime.of(22, 0)))).fencesOpenFrom(now, zone))
     }
 
     @Test

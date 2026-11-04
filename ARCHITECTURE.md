@@ -103,7 +103,9 @@ doorway (`asked`), and a place read as a state keeps whatever "y sólo si" gave 
 coche*, *cualquiera*. A floor alone had only two honest readings — moving at all, and moving fast —
 and the pair that reads best said something false, since a car clears the walking floor too. So
 `Condition.Moving` grew a ceiling (`maxMps`, `@EncodeDefault(NEVER)`): *andando* is the band
-`[WALK_MPS, DRIVING_MPS)`, *en coche* is `[DRIVING_MPS, ∞)`, and *cualquiera* is `[WALK_MPS, ∞)` —
+`[ON_FOOT_MPS, DRIVING_MPS)`, *en coche* is `[DRIVING_MPS, ∞)`, and *cualquiera* is `[ON_FOOT_MPS, ∞)`
+(the walking floor was `WALK_MPS`, 1.5 m/s, until 2026-11-04; fences written with it read as the
+new 0.7, `Condition.Moving.floorMps`, see Firing) —
 which is exactly what every bare floor already on a phone means, so nothing changes shape or
 meaning and there is no migration. `movingOf`/`kind` are the only place the numbers are named, and
 both screens plus the card, the sentence and the diagnostics line read them; a line under the
@@ -1480,8 +1482,8 @@ loud what DST and a change of zone do to a landing.
   (`touchesEnd`/`touchesStart`, small words and punctuation aside): "comprar pan y leche cuando
   llegue a casa" keeps its "y", and the clauses either side are read as one. Each clause is
   read until nothing is left (`readClause`, peeling one piece at a time): the readers only a
-  spoken sentence needs first — a doorway with its rate ("al llevar 10 min en Casa", the way
-  the app says it back), a bare rate, a speed (with its "si"/"cuando"; bare only after "sólo
+  spoken sentence needs first — a doorway with its rate ("al llevar 10 min en Casa", and "10 min
+  después de llegar a Casa", the way the app says it back since 2026-11-04), a bare rate, a speed (with its "si"/"cuando"; bare only after "sólo
   si"), a timer and an "antes de las 22", chance ("tres veces al día"), date spans ("del 1 al 15
   de octubre"), "hasta el viernes", windows ("entre las 18 y las 22"; one to seven with nothing
   beside it is the afternoon's), kinds of day and days of the month (only beside another
@@ -3736,7 +3738,8 @@ loud what DST and a change of zone do to a landing.
   look drops from two minutes to the time it takes to cross the circle at the planning speed,
   never under `PASS_MIN_WAIT` (30 s) — one closing step is the evidence, because waiting for
   three is further than the whole near zone on foot; a 150 m circle takes longer than the floor
-  to cross and nothing changes for it; under half a battery the battery's floor wins as before.
+  to cross and nothing changes for it; under half a battery the battery's floor won as before,
+  until 2026-11-04 (below: the pass now keeps its looks down to a fifth of a battery).
   Those quick looks ask the provider for a fix no older than a third of the wait
   (`CurrentLocationRequest.maxUpdateAge`): its default hands back the last look's own position,
   which reads as standing still and backs the watch off at the door. And `passedThrough`: two
@@ -3846,9 +3849,10 @@ loud what DST and a change of zone do to a landing.
   releases one (a rest reports nothing), and the system's own loitering holds one the same way
   (`holding`). A hold is the tail of a count and lives like one: only while its circle asks for a
   position, and only while the side holds, so a phone seen leaving, a reminder dealt with or a
-  gate shut takes it along. Only windows hold — another fence that says no at the opening still
-  drops it, as before — and only an ordinary reminder's doorway that rings: a bare doorway is an
-  instant, and a routine's questions keep their own gates. Arriving before the run-up
+  gate shut takes it along. Only windows hold (and days, since 2026-11-04) — another fence that
+  says no at the opening still drops it, as before — and only an ordinary reminder's doorway
+  that rings: a bare doorway was an instant until 2026-11-04 (see "A place does what its rule
+  says", below), and a routine's questions keep their own gates. Arriving before the run-up
   (`WINDOW_LEAD`) is still not counted at all.
   **A state with hours of its own is held the same way** (0.172.0). "Mientras esté en casa, y
   sólo si es de 20:00 a 22:00", home since seven: the side was reached early, handed to a firing
@@ -4090,6 +4094,68 @@ loud what DST and a change of zone do to a landing.
   running, so `RwilcoApplication.resyncIfGrantsChanged()` (from `MainActivity.onResume`) arms
   what a new grant unlocks — background location: geofences and the watch; exact alarms: the
   alarms — rather than waiting for the six-hourly worker.
+- **A place does what its rule says, in the five shapes where it did not** (2026-11-04, the
+  owner's «arregla todo» on the trigger-contract audit; `PlaceGate.kt`, `PlaceWatch.kt`,
+  `Condition.kt`, `PlaceWatcher`, `ReminderFiring.fire`). Each of these was a reminder meaning one
+  thing to its owner and doing another, and every one of them failed the quiet way.
+  **A speed is the one after the line.** "Y sólo si voy en coche / andando" was read off the
+  average since the last look — inside a place half an hour of it, most on the sofa — and the
+  geofence's crossing read a fix from before the crossing at all; "andando" also started at
+  1.5 m/s, above a normal pace. Now the speed goes on the fix only when the look before is at
+  most `FENCE_SPAN` (5 min) older, and over a longer gap nobody knows, which holds and rings. A
+  crossing of a circle whose rule asks how fast (`WatchedPlace.timesSpeed`) with no fresh speed
+  in hand is held (`PlaceWatchState.timing`) and the next look comes `SPEED_LOOK` (90 s) later;
+  the speed between the two is what the firing reads. The fence's crossing is held the same way
+  in `accept`, which asks for a look at once — so it is two looks after the line, never one
+  before it — and the wait is bounded by `FENCE_SPAN`, after which it goes on unanswered.
+  Walking starts at `ON_FOOT_MPS` (0.7 m/s); every fence written with the old 1.5 reads as the
+  new floor (`Condition.Moving.floorMps`), so nothing on a phone is rewritten. Cars stay out of
+  the walk-past logic (`passFloor`, `PASS_MAX_M`) as they were. A routine's reset still asks
+  `speedUnvouched` and stands back from an unknown speed: the held crossing makes that rare.
+  **A walk past keeps its looks on a low battery.** Under half a battery `batteryFloor` spaced
+  every look to four minutes and more, three hundred metres on foot, and 0.199.0's walk past a
+  small circle never happened. A plan on that last stretch (`WatchPlan.passing`: `passFloor`
+  under two minutes) may undercut the floor down to `PASS_SPARING_FLOOR` (20 %); every other
+  plan is floored as before, and the GPS still goes at a quarter.
+  **What happens before a place's clock opens is held for it, days included.** Three shapes
+  judged early, dropped, and never asked again: a doorway with hours ("al llegar a casa, y sólo
+  si de 18 a 22", home at 17:30), a state under "todos" with a window plazo (home since three,
+  emitted at four when the circle opened and dropped by the window), and a state fenced by days
+  ("mientras esté en casa, y sólo el día 1", home since the 31st). Where nothing else in the set
+  asks at the opening — alone, under "cualquiera", and under "todos", whose fold is the rule and
+  the plazo — the circle's own fences are its clock, so it carries their opening
+  (`WatchedPlace.ringsFrom`, now for doorways and under "todos" too) and the step holds what it
+  finds before it, as it already did for a rate and a state with hours. Days open with the
+  person's day (`TriggerRule.fencesOpenFrom`, `DayShape.awakeOn`), as `Weekday` and a day with no
+  hour always have — midnight would ring hushed and spend the round before breakfast — and they
+  gate the circle like hours do, two hours before. Under "a la vez" a state is as it was — a
+  sibling's own moment asks about it — and a doorway carries its opening there too, as a rate
+  does: it is a moment, which no sibling can fold in, so nothing else asks at the window.
+  **A doorway crossed while it only listens is held for its gate.** "Al llegar a casa, y vuelve
+  cada 24 h desde el hecho": home during the rest and still there when it ended rang nothing —
+  the listener had written the side down on the way past and the gate opened onto no change. A
+  ringing doorway with no rate (`listensForTheDoor`) seen crossing from a side seen first now
+  keeps the moment in `held`, through looks that take no fix as well (`Watching.heldWhileListening`),
+  and the first look that asks for it again hands it on if the phone is still there; `accept`
+  holds the fence's crossing for such a circle the same way. Arrivals and leavings alike.
+  **A stretch with a place in its fences rings when the phone gets there while it is open.** "De
+  18 a 20, y sólo si estoy en casa" was asked at six and at no other time, and "el jueves, me da
+  igual la hora, y sólo si estoy en la oficina", out at the opening, was lost for good. While a
+  stretch (an interval, a day with no hour, a weekday, a range of dates) is open and owed its ring
+  — `Reminder.stretchOwed`: no ring of the rule, "hecho" or moment done ahead since it opened, and
+  no snooze or rest in front of it — its place condition's circle is a state that rings, and the
+  watch hands it to `ReminderFiring.fire(viaCondition = true)`, which takes it as an event
+  (`GeofenceIds.conditionRuleOf`) and only while the stretch is still owed. Once a round, alarm
+  or place, whichever is first; a moment ("a las nueve, y sólo si…") is still asked once.
+  **And a state about being away waits for a reading that can tell.** "Mientras no esté en casa",
+  saved on the sofa off a fix as wide as the circle, leaned *outside* on its first judgement and
+  spent its ring at once. An EXIT circle that acts is now first judged only off a fix whose whole
+  circle of doubt is inside the place or wholly outside it (`settlesFirstSideOf`); "mientras esté
+  en casa" keeps its lean towards being there. The words caught up too: a rate names its door
+  ("10 min después de llegar a Casa", where "al llevar 10 min en Casa" read as a state), Settings
+  says how the watch looks now, and the line under "mientras esté en…" says it rings once.
+  Each is pinned by its own regression, in `MovingConditionTest`, `PlacePassTest`, `PlaceGateTest`,
+  `PlaceStateTest`, `PlaceHoldTest`, `PlaceConditionTest` and `PlaceArrivalTest`.
 - **Diagnostics** (`diag/`): the app's own account of itself, because a reminder that never
   arrived leaves nothing behind — no crash, no error, an empty screen. `Diag.note(tag, text)` is
   written from every decision that could be the one (a firing dropped and why, a re-arm, the
@@ -4260,6 +4326,31 @@ loud what DST and a change of zone do to a landing.
   deadline, for day spans under four days). And a calendar card with rules says it listens again
   from each date (`card_recurrence_from_calendar_rules`). Tests: `RecurrenceContractTest`,
   `LegacyRepeatsTest`.
+- **The trigger-contract round, 3: sets of days, hours and places** (0.203.0, 2026-11-04). The
+  places half was done on its own branch (see the bullet before **Diagnostics**); this is the
+  rest. **Under "todos" a clock state re-reads itself** (`ticksStanding`, `Firing.kt`;
+  `outcomeOfFiring` now takes the moment, zone and shape): a ticked day, stretch of the day or of
+  the calendar that no longer holds stops counting, as a place left behind does, and while one is
+  in the set a remembered moment that comes round again counts only if its latest occurrence is
+  inside the stretch the state is in now — "los viernes" + "a las 20:00" written on a Saturday
+  rang at Friday's opening off Saturday's 20:00; it rings Friday at 20:00. One-shot moments are
+  never dropped (that would be a set that cannot complete). **A date range opens at its own
+  hours** (`nextFireOf`, `DateRange` through `openingOf` when fenced), which ends the false
+  "nunca sonará" and the `silentTogether` that read it as "cualquiera". **A stretch open when it
+  is written counts from then** (`openAtWriting`, `Reminder.freshlyWritten`: an interval, a
+  weekday or a range holding at the minute of writing and still holding rings the minute after,
+  inside its fences and the waking hours; `warnings` asks it too, so a range on its last day is
+  not "ya ha pasado"). **Resuming past a closed deadline starts a fresh round**
+  (`Reminder.roundOnResume`, written by `ReminderRepository.setStatus` before the status so no
+  lapse is armed for a round already gone). **«Desde el hecho» state places ask again a span after
+  an unanswered ring** (`unansweredRest`, in `presenceAlreadyRang` and `watchedCircles`, which
+  gates the single-state circle on it instead of dropping it). The editor: the plazo clause says
+  both ends; `BetterAsCondition` covers a time of day; the next-ring line carries a `SetCaveat`
+  ("sólo si a esa hora estás en Casa" under "a la vez", "cuando haya ocurrido todo" under "todos")
+  and offers `Draft.widenedMoment` — the hour as the start of a three-hour stretch; an edit that
+  turns a moment into a state or back asks the match again (`commitTrigger`'s `flipped`); the
+  deadline sheet says a plazo with no "Vuelve" ends there. Tests: `CombinationContractTest`,
+  `EditorContractTest`.
 
 ## Backup (the vault)
 

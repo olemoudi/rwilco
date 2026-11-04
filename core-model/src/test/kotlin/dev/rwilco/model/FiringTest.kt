@@ -295,8 +295,12 @@ class FiringTest {
         assertFalse(waiting.listens, "and keeps no side from the wait")
         assertNull(ignored.watchedCircles(tomorrow, zone, defaultTime).single().opensAt, "and watched again from the morning")
 
+        // Counted from the hecho it used to wait for one for ever. Since 2026-11-04 an unanswered
+        // ring comes back a span after it, and the state asks again with it.
         val fromDone = ignored.copy(recurrence = Recurrence.After(1, RecurrenceUnit.DAYS))
-        assertTrue(fromDone.presenceAlreadyRang(casa, 0, local(2026, 8, 28, 9, 0), zone, DEFAULT_DAY_START), "counted from the hecho, it waits for one")
+        assertTrue(fromDone.presenceAlreadyRang(casa, 0, tonight, zone, DEFAULT_DAY_START), "counted from the hecho, quiet tonight")
+        assertFalse(fromDone.presenceAlreadyRang(casa, 0, local(2026, 8, 28, 9, 0), zone, DEFAULT_DAY_START), "and asked again a day after the ring")
+        assertEquals(fromDone.copy(lastDealtAt = rang).restUntil(zone, DEFAULT_DAY_START), fromDone.watchedCircles(tonight, zone, defaultTime).single().opensAt, "waited for, gated, not dropped")
     }
 
     /**

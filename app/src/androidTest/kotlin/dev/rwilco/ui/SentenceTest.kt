@@ -145,11 +145,12 @@ class SentenceTest {
             }
         }
         rule.waitForIdle()
-        // The one line here worth an assertion as well as an eye: a rate reads as the stay and
-        // not as the door, and getting that wrong is a sentence that promises the wrong thing.
+        // The one line here worth an assertion as well as an eye: a rate reads as the stay
+        // counted from the door (2026-11-04: it used to hide the door), and getting that wrong is
+        // a sentence that promises the wrong thing.
         assertTrue(
-            "the rate should read as the stay",
-            rule.onAllNodesWithText("al llevar 10 min en el gimnasio", substring = true, ignoreCase = true)
+            "the rate should read as the stay after the door",
+            rule.onAllNodesWithText("10 min después de llegar", substring = true, ignoreCase = true)
                 .fetchSemanticsNodes().isNotEmpty(),
         )
         // And the new fence, in the two shapes it comes in: one day is "el día", several are

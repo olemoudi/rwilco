@@ -210,7 +210,9 @@ fun Reminder.presenceAlreadyRang(place: Trigger.Location, ruleIndex: Int): Boole
  * That anchor is chosen by somebody who is not going to answer, and its clock rules come back on
  * their rhythm whatever happens; a state place went quiet for good after its first ring instead.
  * The owner's call (2026-10-08): once the rest counted from that ring is over, the state asks
- * again. Counted from the "hecho", the ring keeps it quiet until there is one, as it always did.
+ * again. Counted from the "hecho", the ring kept it quiet until there was one — and nobody
+ * answering meant never; since 2026-11-04 it asks again a span after the unanswered ring too, as
+ * the reminder itself comes back then ([unansweredComesBack]).
  *
  * **Over from the run-up, not the minute.** The watch starts asking a gated circle
  * [PlaceWatchPolicy.MIN_WAIT] before its gate (`watchedCircles`), and a reading taken then and
@@ -227,8 +229,12 @@ fun Reminder.presenceAlreadyRang(
     shape: DayShape = DayShape.DEFAULT,
 ): Boolean {
     if (!presenceAlreadyRang(place, ruleIndex)) return false
-    if (!recurrence.countsFromRinging) return true
-    val rest = restUntil(zone, dayStart, shape) ?: return true
+    // «Desde el hecho» and nobody answered: once a span from that ring is over, the state asks
+    // again, as the reminder itself comes back then (2026-11-04, [unansweredComesBack]).
+    val rest = when {
+        recurrence.countsFromRinging -> restUntil(zone, dayStart, shape)
+        else -> unansweredRest(zone, dayStart, shape)
+    } ?: return true
     return rest > now + PlaceWatchPolicy.MIN_WAIT
 }
 

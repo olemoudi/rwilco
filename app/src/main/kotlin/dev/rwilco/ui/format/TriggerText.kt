@@ -147,8 +147,10 @@ fun placeReading(presence: Presence, onCrossing: Boolean): Int = when {
 
 /**
  * The same four readings, and the fifth thing one of them can say: how long the side has to hold
- * ([Trigger.Location.dwell]). "Al llegar" becomes "al llevar 10 min allí" — the doorway is no
- * longer the moment, so saying it as one would be a lie on every screen at once.
+ * ([Trigger.Location.dwell]). "Al llegar" becomes "10 min después de llegar" — the doorway is no
+ * longer the moment, so saying it as one would be a lie on every screen at once. And it is still
+ * a doorway, which the words used to hide (2026-11-04, the owner's call): "al llevar 10 min en
+ * Casa" read as ten minutes of being there, however you got there.
  *
  * Both of these take the whole circle rather than its two flags, so that no caller has to
  * remember there is a rate to ask about; there is one place that knows, and it is here.

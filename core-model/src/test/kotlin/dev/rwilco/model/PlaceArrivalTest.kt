@@ -83,6 +83,34 @@ class PlaceArrivalTest {
     }
 
     @Test
+    fun `mientras no este, saved at home off a fix that cannot tell, waits for one that can`() {
+        // The owner's call, 2026-11-04 (audit probe P6): a fix as wide as the circle, ten metres
+        // from the middle, used to lean *outside* on its first judgement and ring at once — the
+        // round's one ring spent at somebody on the sofa.
+        val away = atHome.copy(id = "away", transition = Transition.EXIT)
+        for (accuracy in listOf(200.0, 201.0, 600.0)) {
+            val doubtful = south(10.0, now, accuracy = accuracy)
+            assertFalse(doubtful.settlesFirstSideOf(away), "±$accuracy m about a 200 m circle")
+            val step = stepPlaceWatch(PlaceWatchState(), doubtful, listOf(away), now)
+            assertTrue(step.events.isEmpty(), "it rang off ±$accuracy m in the kitchen")
+            assertTrue("away" !in step.state.inside, "and wrote no side to start from")
+        }
+        // A reading that does say something says it: tight enough to be inside, nothing; clearly
+        // out, the state is true and rings — on its first look, as a state always has.
+        val tight = stepPlaceWatch(PlaceWatchState(), south(10.0, now, accuracy = 150.0), listOf(away), now)
+        assertTrue(tight.events.isEmpty())
+        assertEquals(true, tight.state.inside["away"])
+        val later = now.plus(Duration.ofMinutes(30))
+        val gone = stepPlaceWatch(PlaceWatchState(), south(900.0, later, accuracy = 200.0), listOf(away), later)
+        assertEquals(listOf(PlaceEvent("away", Transition.EXIT)), gone.events, "±200 m, 900 m off: out by any reading")
+        // And the doubt waits only for the first judgement: seen inside, a sloppy fix keeps it there.
+        val kept = stepPlaceWatch(tight.state, south(10.0, later, accuracy = 600.0), listOf(away), later)
+        assertTrue(kept.events.isEmpty())
+        // "Mientras esté en casa" keeps its lean: doubt near the place is still being there.
+        assertTrue(south(10.0, now, accuracy = 600.0).settlesFirstSideOf(atHome))
+    }
+
+    @Test
     fun `waiting for the phone to leave costs half an hour a look, and no gps`() {
         var state = PlaceWatchState()
         var clock = now

@@ -153,4 +153,46 @@ class PlaceStateTest {
         assertNotNull(rested(at(30, 8, 0)), "still resting: nothing to find, and no fix taken")
         assertNull(rested(at(30, 9, 0)), "open again: the look is taken, and it rings off that")
     }
+
+    @Test
+    fun `a state fenced to the first of the month, home since the 31st, rings when the 1st opens`() {
+        // Audit probe P3. The owner's call, 2026-11-04: a state fenced by days is held and rings
+        // when its day opens — the person's day (eight o'clock on a Tuesday), not midnight.
+        val firsts = reminder("firsts", TriggerRule(home, listOf(Condition.OnMonthDays(setOf(1)))))
+        val eve = look(PlaceWatchState(), 10.0, local(2026, 8, 31, 19, 0), firsts)
+        assertTrue(eve.events.isEmpty(), "not on the 31st")
+        assertTrue(eve.state.inside.isEmpty(), "and not even judged: a gated state is asked afresh")
+        val dawn = look(eve.state, 10.0, local(2026, 9, 1, 6, 0), firsts)
+        assertTrue(dawn.events.isEmpty(), "home at six is held for the day")
+        assertEquals(1, dawn.state.held.size)
+        assertEquals(local(2026, 9, 1, 8, 0), dawn.heldUntil)
+        val eight = look(dawn.state, 10.0, local(2026, 9, 1, 8, 0), firsts)
+        assertEquals(1, eight.events.size, "the 1st opens with the phone at home")
+        assertNotNull(Simulation(firsts, local(2026, 9, 1, 8, 0)).arrive(0), "and the firing rings it")
+    }
+
+    @Test
+    fun `under todos with a window plazo, home since three is ticked when the window opens`() {
+        // Audit probe C1: "a las 20:00" and "mientras esté en casa" under "todos", plazo 18–22.
+        // The state was emitted at four (when its circle opened), dropped by the window, never
+        // asked again, and the round lapsed at ten. Now it is held for six and ticked then.
+        val day = local(2026, 9, 30, 14, 0)
+        val base = Reminder(
+            id = "todos", text = "x", rules = listOf(TriggerRule(Trigger.TimeOfDay(LocalTime.of(20, 0))), TriggerRule(home)),
+            ruleMatch = RuleMatch.ALL, deadline = Deadline.Window(LocalTime.of(18, 0), LocalTime.of(22, 0)),
+            status = Status.ACTIVE, createdAt = day, updatedAt = day,
+        )
+        val set = base.copy(expiresAt = base.roundExpiry(day, zone, Fixtures.defaultTime))
+        val four = look(PlaceWatchState(), 10.0, at(30, 16, 0), set)
+        assertTrue(four.events.isEmpty(), "two hours before the window: held, not emitted")
+        assertEquals(1, four.state.held.size)
+        val six = look(four.state, 10.0, at(30, 18, 0), set)
+        assertEquals(1, six.events.size)
+        val phone = Simulation(set, at(30, 18, 0))
+        assertNull(phone.arrive(1), "noted, not rung: the set is waiting for eight o'clock")
+        assertEquals(setOf(1), phone.reminder.firedRules)
+        val rings = phone.run(at(30, 23, 0))
+        assertEquals(listOf(at(30, 20, 0)), rings.map { it.at }, "and the set rings at eight")
+        assertTrue(phone.lapses.isEmpty())
+    }
 }

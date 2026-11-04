@@ -407,8 +407,8 @@
     <string name="trigger_weekends">fines de semana</string>
     <string name="trigger_arrive_at">al llegar a %1$s</string>
     <string name="trigger_leave_from">al salir de %1$s</string>
-    <string name="trigger_arrive_at_after">al llevar %2$s en %1$s</string>
-    <string name="trigger_leave_from_after">al llevar %2$s fuera de %1$s</string>
+    <string name="trigger_arrive_at_after">%2$s después de llegar a %1$s</string>
+    <string name="trigger_leave_from_after">%2$s después de salir de %1$s</string>
     <plurals name="trigger_times_a_day">
         <item quantity="one">%1$d vez al día</item>
         <item quantity="other">%1$d veces al día</item>
@@ -1075,7 +1075,7 @@
     <string name="place_kilometres">%1$s km</string>
 
     <!-- The place watch -->
-    <string name="place_watch_how">Rwilco también mira por su cuenta: cada par de minutos al acercarte andando a un lugar, cada media hora estando dentro de uno, cada hora parado al otro lado de la ciudad. GPS sólo cerca de un lugar y en movimiento; sólo las antenas cuando todo queda lejos; y nada en absoluto cuando la lectura que ya tiene sigue valiendo.</string>
+    <string name="place_watch_how">Rwilco también mira por su cuenta: cada par de minutos al acercarte andando a un lugar, cada media hora estando dentro de uno, cada hora parado al otro lado de la ciudad. Pasar andando por delante de un lugar pequeño cuenta como llegar; pasar en coche, no. Si una regla pregunta si vas andando o en coche, vuelve a mirar un minuto después de cruzar la línea. Con poca batería mira menos. El GPS, sólo cerca de un lugar y en movimiento.</string>
     <string name="place_watch_waiting">Todavía no ha mirado; la primera mirada llega en un momento.</string>
     <string name="place_watch_status">Última mirada %1$s · a %2$s de %3$s · próxima %4$s</string>
 
@@ -1389,8 +1389,8 @@
     <string name="place_while_outside">mientras no estoy</string>
     <string name="place_on_arrival">al llegar</string>
     <string name="place_on_leaving">al salir</string>
-    <string name="place_on_arrival_after">al llevar %1$s allí</string>
-    <string name="place_on_leaving_after">al llevar %1$s fuera</string>
+    <string name="place_on_arrival_after">%1$s después de llegar</string>
+    <string name="place_on_leaving_after">%1$s después de salir</string>
     <string name="place_side_inside">Mientras estoy</string>
     <string name="place_side_outside">Mientras no estoy</string>
     <string name="place_side_arriving">Al llegar</string>
@@ -1402,8 +1402,8 @@
     <string name="place_role_ask_hint">Una pregunta en la barra al cruzar la línea, con «sí, ahora» a un toque.</string>
     <string name="place_role_reset_hint">Cruzar la línea es el hecho mismo: salir del garaje es mover el coche. La cuenta vuelve a empezar sola, y un aviso discreto ofrece deshacerlo.</string>
     <string name="rule_resets">Cuenta como hecho</string>
-    <string name="place_means_inside">Basta con que estés allí: si ya estás cuando toque todo lo demás, suena.</string>
-    <string name="place_means_outside">Basta con que no estés allí: si ya estás fuera cuando toque todo lo demás, suena.</string>
+    <string name="place_means_inside">Basta con que estés allí: si ya estás cuando toque todo lo demás, suena. Y suena una vez: seguir allí no lo repite hasta que lo marques como hecho.</string>
+    <string name="place_means_outside">Basta con que no estés allí: si ya estás fuera cuando toque todo lo demás, suena. Y suena una vez: seguir fuera no lo repite hasta que lo marques como hecho.</string>
     <string name="place_means_arriving">Tiene que verte llegar. Si ya estás allí, espera a que salgas y vuelvas.</string>
     <string name="place_means_leaving">Tiene que verte salir. Si ya estás fuera, espera a que entres y vuelvas a salir.</string>
     <string name="place_dwell_inside">Y quedarme allí un rato</string>
@@ -1855,6 +1855,35 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_203_0">
+
+        <item>«Y sólo si voy andando» ya acepta un paso normal, y la velocidad se mide justo después de cruzar la línea, no con la media de la última media hora.</item>
+
+        <item>Con poca batería, pasar andando junto a un lugar pequeño sigue contando como llegar (hasta el 20 %).</item>
+
+        <item>«Al llegar a casa» que vuelve desde el «hecho»: si llegas mientras descansa y sigues allí cuando termina, suena entonces.</item>
+
+        <item>«Mientras no esté en casa» ya no suena nada más guardarlo en casa con una lectura dudosa: espera a una clara.</item>
+
+        <item>«De 18 a 20, y sólo si estoy en casa» suena si llegas a las 18:30; un día «a cualquier hora, y sólo si estoy en la oficina» suena cuando llegues.</item>
+
+        <item>«Al llegar a casa, y sólo si de 18 a 22»: si llegas antes y sigues allí, suena a las 18:00. «Mientras esté en casa, y sólo el día 1»: si ya estabas la víspera, suena al empezar el día 1.</item>
+
+        <item>Con «todos» y un plazo de horas, estar ya en el sitio antes de que se abra cuenta en cuanto se abre.</item>
+
+        <item>Con «todos», «los viernes» y «a las 20:00» suena el viernes a las 20:00: un día o una franja que ya no se cumple deja de contar, y una hora de otro día también.</item>
+
+        <item>«Del 1 al 15, y sólo si de 18 a 22» ya no dice «nunca sonará»: suena a las 18:00. Una franja o un día guardados mientras ya están abiertos cuentan desde ese momento.</item>
+
+        <item>Si reanudas un recordatorio cuyo plazo pasó durante la pausa, empieza una ronda nueva en vez de darse por terminado.</item>
+
+        <item>El editor dice el plazo entero («entre las 18:00 y las 22:00»), avisa de que «a la vez» necesita estar en el sitio a esa hora y ofrece convertir la hora en una franja, dice que «todos» suena con lo último, y avisa de que un plazo sin «Vuelve» se acaba ahí.</item>
+
+        <item>Si cambias un lugar de «al llegar» a «mientras estoy» (o al revés), el editor vuelve a elegir «a la vez» o «cualquiera». Se lee «10 min después de llegar a Casa», un «mientras esté…» dice que suena una vez, y Ajustes explica cómo mira Rwilco los lugares.</item>
+
+        <item>«Mientras esté en casa» con «Vuelve desde el hecho»: si suena y nadie contesta, vuelve a mirar al cabo de un periodo.</item>
+
+    </string-array>
     <string-array name="whats_new_0_202_0">
 
         <item>«Todos» con «vuelve desde que suena»: cuando acaba el descanso vuelve a pedir todas sus condiciones, en vez de sonar cada día a las 09:00 estuvieras donde estuvieras.</item>

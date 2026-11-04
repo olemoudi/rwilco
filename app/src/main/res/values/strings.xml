@@ -411,8 +411,8 @@
     <string name="trigger_weekends">weekends</string>
     <string name="trigger_arrive_at">when arriving at %1$s</string>
     <string name="trigger_leave_from">when leaving %1$s</string>
-    <string name="trigger_arrive_at_after">when I have been at %1$s for %2$s</string>
-    <string name="trigger_leave_from_after">when I have been away from %1$s for %2$s</string>
+    <string name="trigger_arrive_at_after">%2$s after arriving at %1$s</string>
+    <string name="trigger_leave_from_after">%2$s after leaving %1$s</string>
     <plurals name="trigger_times_a_day">
         <item quantity="one">%1$d time a day</item>
         <item quantity="other">%1$d times a day</item>
@@ -1088,7 +1088,7 @@
     <string name="place_kilometres">%1$s km</string>
 
     <!-- The place watch -->
-    <string name="place_watch_how">Rwilco also looks for itself: every couple of minutes walking up to a place, every half hour sitting inside one, every hour standing still across town. GPS only near a place and moving; the cell towers alone when everything is far off; and nothing at all when the fix it already has still answers.</string>
+    <string name="place_watch_how">Rwilco also looks for itself: every couple of minutes walking up to a place, every half hour sitting inside one, every hour standing still across town. Walking past a small place without stopping counts as arriving; driving past does not. If a rule asks whether you are walking or driving, it looks again a minute after you cross the line. On a low battery it looks less often. GPS only near a place and moving.</string>
     <string name="place_watch_waiting">Has not looked yet; the first look is moments away.</string>
     <string name="place_watch_status">Last look %1$s · %2$s from %3$s · next look %4$s</string>
 
@@ -1404,8 +1404,8 @@
     <string name="place_while_outside">while I\'m not there</string>
     <string name="place_on_arrival">when I get there</string>
     <string name="place_on_leaving">when I leave</string>
-    <string name="place_on_arrival_after">once I have been there %1$s</string>
-    <string name="place_on_leaving_after">once I have been away %1$s</string>
+    <string name="place_on_arrival_after">%1$s after I get there</string>
+    <string name="place_on_leaving_after">%1$s after I leave</string>
     <string name="place_side_inside">While I\'m there</string>
     <string name="place_side_outside">While I\'m not there</string>
     <string name="place_side_arriving">When I get there</string>
@@ -1417,8 +1417,8 @@
     <string name="place_role_ask_hint">A question in the shade when you cross the line, with «yes, just now» one tap away.</string>
     <string name="place_role_reset_hint">Crossing the line is the deed itself — leaving the garage is the car moving. The count starts again by itself, and a quiet notice offers to undo it.</string>
     <string name="rule_resets">Counts as done</string>
-    <string name="place_means_inside">Being there is enough: if you are already there when everything else is due, it rings.</string>
-    <string name="place_means_outside">Being away is enough: if you are already away when everything else is due, it rings.</string>
+    <string name="place_means_inside">Being there is enough: if you are already there when everything else is due, it rings. And it rings once: staying there does not ring it again until you mark it done.</string>
+    <string name="place_means_outside">Being away is enough: if you are already away when everything else is due, it rings. And it rings once: staying away does not ring it again until you mark it done.</string>
     <string name="place_means_arriving">It has to see you arrive. If you are already there, it waits until you leave and come back.</string>
     <string name="place_means_leaving">It has to see you leave. If you are already away, it waits until you go there and leave again.</string>
     <string name="place_dwell_inside">And stay there a while</string>
@@ -1870,6 +1870,35 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_203_0">
+
+        <item>«Only if I\'m walking» now accepts a normal pace, and the speed is measured just after you cross the line, not averaged over the last half hour.</item>
+
+        <item>On a low battery, walking past a small place still counts as arriving (down to 20 %).</item>
+
+        <item>«When I arrive home» that comes back after «done»: arrive while it rests and stay, and it rings when the rest ends.</item>
+
+        <item>«While I\'m not at home» no longer rings the moment you save it at home on a doubtful reading: it waits for a clear one.</item>
+
+        <item>«From 18 to 20, only if I\'m at home» rings if you get home at 18:30; a day «at any time, only if I\'m at the office» rings when you get there.</item>
+
+        <item>«When I arrive home, only from 18 to 22»: arrive earlier and stay, and it rings at 18:00. «While I\'m at home, only on the 1st»: already home the evening before, it rings when the 1st begins.</item>
+
+        <item>Under «all» with a window deadline, already being there before it opens counts as soon as it opens.</item>
+
+        <item>Under «all», «Fridays» and «at 20:00» rings on Friday at 20:00: a day or stretch that no longer holds stops counting, and so does an hour from another day.</item>
+
+        <item>«From the 1st to the 15th, only from 18 to 22» no longer says it will never ring: it rings at 18:00. A stretch or a day saved while it is already open counts from then.</item>
+
+        <item>Resuming a reminder whose deadline passed during the pause starts a fresh round instead of ending it.</item>
+
+        <item>The editor says the whole deadline («between 18:00 and 22:00»), says «at once» needs you at the place at that hour and offers to turn the hour into a stretch, says «all» rings with the last, and warns that a deadline with no «Comes back» ends there.</item>
+
+        <item>Turning a place from «when I arrive» into «while I\'m» (or back) makes the editor pick «at once» or «any» again. It reads «10 min after arriving at Casa», a «while I\'m…» says it rings once, and Settings explains how places are watched.</item>
+
+        <item>«While I\'m at home» with «comes back from done»: rung and not answered, it looks again after one span.</item>
+
+    </string-array>
     <string-array name="whats_new_0_202_0">
 
         <item>«All» with «comes back from when it rings»: once the rest is over it asks for every condition again, instead of ringing every day at 09:00 wherever you were.</item>

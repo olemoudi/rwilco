@@ -768,6 +768,14 @@ internal val Reminder.unansweredComesBack: Boolean
         ((recurrence is Recurrence.After && !recurrence.countsFromRinging) || recurrence is Recurrence.Calendar)
 
 /**
+ * For a span «desde el hecho», the rest a ring nobody answered would have had if it had been
+ * answered as it rang: what a state place that has had its say waits out before it asks again
+ * ([presenceAlreadyRang], `watchedCircles`). Null for anything else.
+ */
+internal fun Reminder.unansweredRest(zone: ZoneId, dayStart: LocalTime, shape: DayShape): Instant? =
+    if (recurrence is Recurrence.After && unansweredComesBack) copy(lastDealtAt = lastFiredAt).restUntil(zone, dayStart, shape) else null
+
+/**
  * The alarm for [unansweredComesBack]: one span after the ring nobody answered. **Only the
  * alarm's answer** ([nextWake]), never [nextFire]'s: Home keeps the card where a ring still
  * waiting for its answer belongs — Vencidos, with the moment it missed — and the "hecho" that

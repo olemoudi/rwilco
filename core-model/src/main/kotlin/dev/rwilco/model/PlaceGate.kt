@@ -175,14 +175,31 @@ fun Reminder.watchedCircles(
         // what wakes the watch when it is over. Dropped, nothing did: a place has no moment to
         // arm, and the watch with nothing to ask stood down until the six-hourly worker. A
         // series with no rest left to count (it has run out) has had its say for good.
+        // And «desde el hecho» with the ring unanswered (2026-11-04): the state asks again a span
+        // after it ([unansweredRest]), so the circle waits for that, gated, rather than going.
+        val unanswered = if (place != null && !place.onCrossing && presenceAlreadyRang(place, index)) unansweredRest(zone, dayStart, shape)?.takeIf { it > now } else null
         if (place != null && !place.onCrossing && rules.size == 1 && presenceAlreadyRang(place, index, now, zone, dayStart, shape) &&
-            !(recurrence.countsFromRinging && rest != null)
+            !(recurrence.countsFromRinging && rest != null) && unanswered == null
         ) {
             return@flatMapIndexed emptyList()
         }
         val fold = folded[index]
-        // When its own hours and, folded in, its siblings' next all hold: now, when they do.
-        val hoursOpen = if (place != null) (fold ?: rule).windows().openFrom(now, zone) else null
+        // A stretch of time with a place in its fences, open now and not yet rung: see below. Not
+        // while a snooze or a rest stands in front of the rules, which say nothing until it is up.
+        val stretchOpen = if (place == null && from == now) stretchOwed(index, now, zone, defaultTime, shape) else null
+        // **Where nothing else in the set will ask at the opening, the circle waits for it itself**
+        // (2026-11-04). Alone, under "cualquiera", and under "todos" — where the fold adds nothing
+        // but the plazo's hours — the rule's own fences are the only clock it has, so whatever
+        // happens before they open is held for them ([WatchedPlace.ringsFrom]). Under "a la vez" a
+        // sibling's own moment asks about the place, and the circle is left as it was.
+        val ownClock = fold == rule || accumulates
+        // When its own hours and, folded in, its siblings' next all hold: now, when they do. Where
+        // it is its own clock, its days too ([fencesOpenFrom]): a state fenced to the 1st, home
+        // since the evening before, rings when the 1st opens.
+        val hoursOpen = if (place != null) {
+            val fenced = fold ?: rule
+            if (ownClock) fenced.fencesOpenFrom(now, zone, shape) else fenced.windows().openFrom(now, zone)
+        } else null
         val gate: Instant? = if (place != null) {
             // Its own hours and, folded in, its siblings'. A fold that comes back null is a
             // crossing that can never ring — the circle is still watched, quietly, because a
@@ -195,7 +212,10 @@ fun Reminder.watchedCircles(
                 soonest == null -> null
                 else -> maxOf(hours, soonest - PlaceWatchPolicy.ASK_LEAD)
             }
-            opens?.let { maxOf(it, rest ?: it) }
+            opens?.let { maxOf(it, rest ?: unanswered ?: it) }
+        } else if (stretchOpen != null) {
+            // An open stretch still owed its ring is waiting for the place: asked now (below).
+            now
         } else {
             // A clock rule asks about its circles at its own next moment and at no other time.
             moments[index]?.minus(PlaceWatchPolicy.ASK_LEAD)
@@ -242,9 +262,18 @@ fun Reminder.watchedCircles(
                     // home at eight, and "mientras esté en casa, y sólo si es de 20 a 22" has
                     // nothing else to ask at eight. Only where folding leaves the rule as it is:
                     // under "a la vez" a sibling window's own opening asks about the place.
-                    ringsFrom = hoursOpen?.takeIf { opening ->
-                        rings && opening > now && (it.dwell != null || (!it.onCrossing && fold == rule))
-                    },
+                    //
+                    // **And a doorway** (2026-11-04, the owner's call): "al llegar a casa, y sólo
+                    // si es de 18 a 22", arrived at half past five and still there at six, rang
+                    // nothing that evening — the arrival was judged early and dropped, and a
+                    // doorway is crossed once. Under "a la vez" too, as a rate is: a doorway is a
+                    // moment, which no sibling can fold in as a state, so no sibling's opening
+                    // asks about it. **And under "todos"**, where the fold is the rule and the
+                    // plazo's hours: home since three with the window from six was emitted at
+                    // four, dropped by the window and never ticked (audit probe C1).
+                    ringsFrom = hoursOpen?.takeIf { opening -> rings && opening > now && (it.dwell != null || it.onCrossing || ownClock) },
+                    // "Y sólo si voy en coche": a crossing waits for a look that can say (2026-11-04).
+                    timesSpeed = rings && (fold ?: rule).conditions.any { condition -> condition is Condition.Moving },
                 ),
                 ruleIndex = index,
                 opensAt = opensAt,
@@ -265,10 +294,19 @@ fun Reminder.watchedCircles(
                             lng = circle.lng,
                             radiusM = circle.radiusM,
                             // Waiting to be there reads as an arrival, waiting not to be as a
-                            // leaving; it is the cadence that reads it, never a firing.
+                            // leaving; it is the cadence that reads it, never a firing —
+                            //
+                            // **except while a stretch is open and owed its ring** (2026-11-04,
+                            // the owner's call, audit probe T1). "De 18 a 20, y sólo si estoy en
+                            // casa" was asked at six and at no other time: out at six, home at
+                            // half past, nothing; and "el jueves, me da igual la hora, y sólo si
+                            // estoy en la oficina", out at the opening, was lost for good. While
+                            // the stretch is open the circle is a state that rings, once
+                            // ([stretchOwed]), through `ReminderFiring.fire(viaCondition)`.
                             transition = if (circle.inside) Transition.ENTER else Transition.EXIT,
                             label = circle.label,
-                            crossing = Crossing.NOTHING,
+                            crossing = if (stretchOpen != null) Crossing.RINGS else Crossing.NOTHING,
+                            timesSpeed = stretchOpen != null && rule.conditions.any { it is Condition.Moving },
                         ),
                         ruleIndex = index,
                         opensAt = opensAt,
@@ -339,6 +377,9 @@ private fun Reminder.routineCircles(
                     crossing = if (rule.resetsRoutine) Crossing.RESETS else Crossing.ASKS,
                     onCrossing = it.onCrossing,
                     dwell = it.dwell,
+                    // "Mover el coche" counts on leaving at a car's speed: the crossing waits for a
+                    // look that can say what that speed was (2026-11-04).
+                    timesSpeed = rule.conditions.any { condition -> condition is Condition.Moving },
                 ),
                 ruleIndex = index,
                 opensAt = opensAt,
@@ -375,6 +416,91 @@ private fun Reminder.routineCircles(
         listOfNotNull(trigger) + asked
     }
 }
+
+/**
+ * When rule [index] is a stretch of time with a place among its own fences — "de 18 a 20, y sólo
+ * si estoy en casa", "el jueves, me da igual la hora, y sólo si estoy en la oficina", "los
+ * viernes, y sólo si estoy en el club" — that is open now and has not had its say this time
+ * round: the moment it opened, which is the one it rang for or would have. Null otherwise.
+ *
+ * Asked by the gate, which turns the place's circle into one that rings while this is not null
+ * ([watchedCircles]), and by the firing, which takes such a ring only while it still is — so the
+ * stretch rings once, whichever comes first: its own alarm at the opening with the phone there,
+ * or the phone getting there later. A ring of this rule, a "hecho", or a moment already done ahead
+ * since the opening, and the round has had its say.
+ */
+fun Reminder.stretchOwed(
+    index: Int,
+    now: Instant,
+    zone: ZoneId,
+    defaultTime: LocalTime,
+    shape: DayShape = DayShape.DEFAULT,
+): Instant? {
+    if (rules.getOrNull(index)?.conditions?.none { it is Condition.AtPlace } != false) return null
+    val rule = ruleInSet(index, shape, zone) ?: return null
+    val trigger = rule.trigger
+    if (trigger is Trigger.Location) return null
+    // A moment is asked once, at its moment. Only a stretch is true for a while.
+    val stretch = trigger.asState(shape) ?: return null
+    if (!stretch.holdsAt(now, zone) || !rule.conditions.filter { it.knownInAdvance }.allHoldAt(now, zone)) return null
+    // The last of its moments at or before now. A stretch of dates rings on its first day, so
+    // that is where its search starts; everything else is a day at most.
+    var cursor = when (trigger) {
+        is Trigger.DateRange -> trigger.from.atStartOfDay(zone).toInstant()
+        else -> now.minus(STRETCH_LOOKBACK)
+    }.minusSeconds(1)
+    var opened: Instant? = null
+    var left = STRETCH_PROBES
+    while (left-- > 0) {
+        val at = nextFireOfRule(rule, id, cursor, zone, defaultTime, shape)?.moment ?: break
+        if (at > now) break
+        opened = at
+        cursor = at.plusSeconds(1)
+    }
+    val since = opened ?: return null
+    val rang = lastFiredAt?.takeIf { lastFiredRule == null || lastFiredRule == index }
+    return since.takeIf { listOfNotNull(rang, lastDealtAt, dealtThrough).none { it >= since } }
+}
+
+/** Longer than any one stretch of a day lasts, a window past midnight included. */
+private val STRETCH_LOOKBACK: Duration = Duration.ofHours(26)
+
+/** A day and a half of a daily stretch's moments: enough to reach the one that opened it. */
+private const val STRETCH_PROBES = 4
+
+/**
+ * When everything a clock can say about this rule's fences next holds — its hours and its days:
+ * [now] when it already does, null when it never will again (2026-11-04).
+ *
+ * Hours open at their own hour ([openFrom]). A day — "y sólo el día 1", "y sólo los viernes", "y
+ * sólo del 1 al 15" — opens when the person's day does ([DayShape.awakeOn]), as a day with no hour
+ * of its own always has (`Trigger.Weekday` rings at that opening, and so does `Trigger.DayRandom`):
+ * a state fenced to the 1st that opened at midnight would ring in the small hours, hushed, and
+ * have spent its ring by breakfast. Days and hours together open at the first opening of the hours
+ * on a day the days allow.
+ */
+fun TriggerRule.fencesOpenFrom(now: Instant, zone: ZoneId, shape: DayShape = DayShape.DEFAULT): Instant? {
+    val windows = windows()
+    val days = conditions.filter { it is Condition.OnDays || it is Condition.OnMonthDays || it is Condition.DateRange }
+    if (days.isEmpty()) return windows.openFrom(now, zone)
+    var date = now.atZone(zone).toLocalDate()
+    val last = date.plusDays(DAY_FENCE_HORIZON_DAYS)
+    while (!date.isAfter(last)) {
+        // A day fence is about the date and nothing else, so its start answers for all of it.
+        if (!days.allHoldAt(date.atStartOfDay(zone).toInstant(), zone)) {
+            date = date.plusDays(1)
+            continue
+        }
+        if (windows.isEmpty()) return maxOf(now, shape.awakeOn(date).from.atZone(zone).toInstant())
+        val opening = windows.openFrom(maxOf(now, date.atStartOfDay(zone).toInstant()), zone) ?: return null
+        if (days.allHoldAt(opening, zone)) return opening
+        date = maxOf(date.plusDays(1), opening.atZone(zone).toLocalDate())
+    }
+    return null
+}
+
+/** How far ahead a day fence is looked for: three years, past any stretch of dates anybody writes. */
+private const val DAY_FENCE_HORIZON_DAYS = 1_100L
 
 /** Whether rule [index]'s own circle is being watched right now — what a card's mark says. */
 fun List<Gated>.watchingRule(index: Int): Boolean =

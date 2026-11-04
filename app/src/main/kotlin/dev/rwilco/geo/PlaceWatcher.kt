@@ -42,10 +42,12 @@ import dev.rwilco.model.counted
 import dev.rwilco.model.counting
 import dev.rwilco.model.holding
 import dev.rwilco.model.listens
+import dev.rwilco.model.listensForTheDoor
 import dev.rwilco.model.crossingIsNews
 import dev.rwilco.model.pollsSince
 import dev.rwilco.model.remembering
 import dev.rwilco.model.stepPlaceWatch
+import dev.rwilco.model.timingSpeed
 import dev.rwilco.model.stepWithoutLooking
 import dev.rwilco.model.stirredWait
 import dev.rwilco.notify.WatchNotices
@@ -233,7 +235,14 @@ class PlaceWatcher(
         val listening: List<WatchedPlace>,
         val opensAt: Instant?,
         val remembered: Set<String>,
-    )
+    ) {
+        /**
+         * The listeners that may keep a hold through a look with no fix (2026-11-04): a ringing
+         * doorway crossed while its gate was shut, waiting for the gate ([listensForTheDoor]).
+         */
+        fun heldWhileListening(state: PlaceWatchState): Set<String> =
+            listening.filter { it.listensForTheDoor && it.id in state.held }.mapTo(HashSet()) { it.id }
+    }
 
     /**
      * The list of places changed, or the app started: forget places that are gone, and look soon
@@ -255,7 +264,13 @@ class PlaceWatcher(
             // Nothing worth a fix now is not the same as nothing to watch: a set whose hours
             // open at five is worth waking for at five and worth nothing until then.
             val gate = watch.opensAt.takeIf { context.hasBackgroundLocation() }
-            store.write(current.copy(inside = current.inside.filterKeys { it in watch.remembered }, nextCheckAt = gate, dwelling = emptyMap(), held = emptyMap()))
+            val waiting = watch.heldWhileListening(current)
+            store.write(
+                current.copy(
+                    inside = current.inside.filterKeys { it in watch.remembered || it in waiting }, nextCheckAt = gate,
+                    dwelling = emptyMap(), held = current.held.filterKeys { it in waiting }, timing = emptyMap(),
+                ),
+            )
             if (gate == null) cancel() else scheduleAt(gate)
             return@withLock
         }
@@ -275,7 +290,13 @@ class PlaceWatcher(
         // — edited, dealt with, its rate changed, and so a new id ([GeofenceIds]) — takes its
         // count with it, and so does one whose gate has shut: a listener must not ring, and a
         // count is a ring waiting to happen. A hold is the tail of a count and goes the same way.
-        store.write(current.copy(inside = judged, nextCheckAt = at, dwelling = current.dwelling.filterKeys { it in ids }, held = current.held.filterKeys { it in ids }))
+        store.write(
+            current.copy(
+                inside = judged, nextCheckAt = at, dwelling = current.dwelling.filterKeys { it in ids },
+                held = current.held.filterKeys { it in ids || it in watch.heldWhileListening(current) },
+                timing = current.timing.filterKeys { it in ids },
+            ),
+        )
         scheduleAt(at)
     }
 
@@ -400,6 +421,32 @@ class PlaceWatcher(
             if (due == opening) scheduleAt(opening, promised = true)
             log.note(WatchNote(at = now, kind = NoteKind.FENCE, place = label, lat = live.lat, lng = live.lng, radiusM = live.radiusM, inside = arrived, reported = arrived, acted = false))
             Diag.note("geo", "r=${GeofenceIds.reminderIdOf(placeId).take(8)} there before its hours; held until $opening")
+            return@withLock Crossing.NOTHING
+        }
+        // **A crossing that asks how fast waits for a look that can say** (2026-11-04). The fence
+        // comes with no fix of its own, so what the firing would have read is the watch's last one
+        // — from before the line, its speed the sofa's. Held instead (`PlaceWatchState.timing`),
+        // with a look now: that one, or the one a minute and a half after it, measures the speed
+        // and hands the crossing on (`stepPlaceWatch`).
+        if (live != null && awaited && rate == null && live.timesSpeed) {
+            val due = remembered.nextCheckAt?.takeIf { it > now && it <= now + SOON } ?: (now + SOON)
+            store.write(remembered.timingSpeed(placeId, now).copy(nextCheckAt = due))
+            scheduleAt(due)
+            log.note(WatchNote(at = now, kind = NoteKind.FENCE, place = label, lat = live.lat, lng = live.lng, radiusM = live.radiusM, inside = arrived, reported = arrived, acted = false))
+            Diag.note("geo", "r=${GeofenceIds.reminderIdOf(placeId).take(8)} crossed; waiting for a look to time it")
+            return@withLock Crossing.NOTHING
+        }
+        // **A doorway crossed while it only listens is held for its gate** (2026-11-04): home
+        // during the rest after a "hecho", and still there when it ends, rings then — the watch's
+        // own step does the same (`stepPlaceWatch`). Only off the other side, seen: a fence
+        // re-reading a line the phone never left is not an arrival.
+        val listener = if (live == null) watch.listening.firstOrNull { it.id == placeId } else null
+        if (listener != null && listener.listensForTheDoor && listener.transition == transition &&
+            state.inside[placeId] == (transition == Transition.EXIT)
+        ) {
+            store.write(remembered.holding(placeId, now))
+            log.note(WatchNote(at = now, kind = NoteKind.FENCE, place = label, lat = listener.lat, lng = listener.lng, radiusM = listener.radiusM, inside = arrived, reported = arrived, acted = false))
+            Diag.note("geo", "r=${GeofenceIds.reminderIdOf(placeId).take(8)} crossed while it waits; held until it opens")
             return@withLock Crossing.NOTHING
         }
         // **Not for a circle nobody is asking or listening to** (0.172.0): a gated state keeps no
@@ -562,7 +609,11 @@ class PlaceWatcher(
             // against a fix from another week, and the crossing that comes out of that
             // subtraction is one nobody made.
             val current = store.read()
-            val forgotten = current.inside.filterKeys { it in watch.remembered }
+            // A doorway crossed while it only listens keeps its side and its hold for the gate
+            // (2026-11-04, `stepPlaceWatch`): that hold is the arrival, and dropping it here is
+            // the rest ending onto nothing to report.
+            val waiting = watch.heldWhileListening(current)
+            val forgotten = current.inside.filterKeys { it in watch.remembered || it in waiting }
             // And a count with nothing left looking at it is a count that cannot finish.
             if (gate == null) {
                 // `nextCheckAt` goes with the alarm. It is the store's word for "a look is
@@ -571,11 +622,11 @@ class PlaceWatcher(
                 // nothing left to do went on naming a moment in the past as its next look:
                 // wrong in the diagnostics report, and useless as the one signal that tells a
                 // watch resting deliberately from a chain that stopped ([recoverIfStalled]).
-                store.write(current.copy(inside = forgotten, nextCheckAt = null, dwelling = emptyMap(), held = emptyMap()))
+                store.write(current.copy(inside = forgotten, nextCheckAt = null, dwelling = emptyMap(), held = current.held.filterKeys { it in waiting }, timing = emptyMap()))
                 cancel()
             } else {
                 Log.i(TAG, "nothing worth a fix until the hours open")
-                store.write(current.copy(inside = forgotten, nextCheckAt = gate, tier = FixTier.BALANCED, dwelling = emptyMap(), held = emptyMap()))
+                store.write(current.copy(inside = forgotten, nextCheckAt = gate, tier = FixTier.BALANCED, dwelling = emptyMap(), held = current.held.filterKeys { it in waiting }, timing = emptyMap()))
                 scheduleAt(gate)
             }
             return
@@ -665,6 +716,10 @@ class PlaceWatcher(
             }
             // A ring off two looks that both say "outside" reads as a bug in the report unless
             // the report says what it was.
+            // A crossing that asks how fast, held for the look that will say.
+            for (place in step.timed) {
+                Diag.note("geo", "r=${GeofenceIds.reminderIdOf(place.id).take(8)} crossed #${GeofenceIds.tag(place.lat, place.lng, place.radiusM)}; waiting for a look to time it")
+            }
             for (place in step.passed) {
                 Diag.note("geo", "r=${GeofenceIds.reminderIdOf(place.id).take(8)} walked through #${GeofenceIds.tag(place.lat, place.lng, place.radiusM)} between two looks")
             }
@@ -699,6 +754,9 @@ class PlaceWatcher(
                         firing.resetBy(reminderId, ruleIndex)
                     } else if (GeofenceIds.isSnooze(event.placeId)) {
                         firing.fire(reminderId, viaSnoozePlace = true)
+                    } else if (GeofenceIds.conditionRuleOf(event.placeId) != null) {
+                        // An open stretch's "y sólo si estoy en…", met (2026-11-04): the rule rings.
+                        firing.fire(reminderId, ruleIndex = GeofenceIds.conditionRuleOf(event.placeId), viaCondition = true)
                     } else {
                         firing.fire(reminderId, ruleIndex = ruleIndex)
                     }

@@ -7,6 +7,7 @@ import dev.rwilco.model.Condition
 import dev.rwilco.model.DiagNote
 import dev.rwilco.model.GeofenceIds
 import dev.rwilco.model.dwell
+import dev.rwilco.model.floorMps
 import dev.rwilco.model.NextFire
 import dev.rwilco.model.Recurrence
 import dev.rwilco.model.Reminder
@@ -393,7 +394,8 @@ internal fun Condition.diagLine(): String = when (this) {
     is Condition.DateRange -> "dates $from..$to"
     is Condition.OnDays -> "days ${days.describe()}"
     is Condition.OnMonthDays -> "monthDays ${days.sorted().joinToString(",")}"
-    is Condition.Moving -> "moving >=${fixed(minMps, 1)}" + (maxMps?.let { "<${fixed(it, 1)}" } ?: "") + "m/s"
+    // The floor as it is judged: a walking fence written before 2026-11-04 says 1.5 and means 0.7.
+    is Condition.Moving -> "moving >=${fixed(floorMps, 1)}" + (maxMps?.let { "<${fixed(it, 1)}" } ?: "") + "m/s"
     is Condition.AtPlace -> "at #${GeofenceIds.tag(lat, lng, radiusM)} ${radiusM}m @${fixed(lat, 2)},${fixed(lng, 2)} in=${yes(inside)}"
 }
 

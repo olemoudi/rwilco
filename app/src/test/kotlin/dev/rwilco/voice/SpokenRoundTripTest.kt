@@ -71,6 +71,9 @@ class SpokenRoundTripTest {
         for (words in languages) {
             val said = "Regar " + words.say("trigger_arrive_at_after", "Casa", "10 min")
             assertEquals(10, place(read(said)).dwellMinutes, said)
+            // And the leaving, which since 2026-11-04 names its door too ("10 min después de salir de Casa").
+            val out = "Regar " + words.say("trigger_leave_from_after", "Casa", "10 min")
+            assertEquals(Presence.OUTSIDE to 10, place(read(out)).let { it.presence to it.dwellMinutes }, out)
         }
     }
 

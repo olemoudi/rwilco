@@ -289,6 +289,14 @@ class Simulation(
     fun arrive(ruleIndex: Int, deal: (Ring) -> Deal = { Deal.Ignore }): Ring? = fire(ruleIndex, late = null, deal = deal)
 
     /**
+     * The watch finds the phone where an open stretch's "y sólo si…" asks it to be — the circle
+     * of rule [ruleIndex]'s place condition, ringing while [Reminder.stretchOwed] says so — which
+     * is `ReminderFiring.fire(viaCondition = true)`: an event, with no armed moment behind it.
+     */
+    fun arriveAtCondition(ruleIndex: Int, deal: (Ring) -> Deal = { Deal.Ignore }): Ring? =
+        fire(ruleIndex, late = null, deal = deal, viaCondition = true)
+
+    /**
      * "Lo hice otro día": what `ReminderFiring.doneEarlier` writes — the refusal asked again at
      * the door, then the whole row, then the alarms. False when it was refused.
      */
@@ -330,7 +338,7 @@ class Simulation(
         arm()
     }
 
-    private fun fire(ruleIndex: Int?, late: Instant?, deal: (Ring) -> Deal, viaSnoozePlace: Boolean = false): Ring? {
+    private fun fire(ruleIndex: Int?, late: Instant?, deal: (Ring) -> Deal, viaSnoozePlace: Boolean = false, viaCondition: Boolean = false): Ring? {
         val row = reminder
         if (row.status != Status.ACTIVE) return null
         if (viaSnoozePlace && row.snoozedToPlace == null) return null
@@ -338,11 +346,16 @@ class Simulation(
         if (late != null && fired != null && !fired.isBefore(late)) return null
         val judged = ruleIndex?.let { row.ruleInSet(it, shape, zone) }
         val armed = row.armedFor
-        val eventDriven = ruleIndex?.let { row.rules.getOrNull(it) }?.trigger is Trigger.Location || viaSnoozePlace
+        val eventDriven = ruleIndex?.let { row.rules.getOrNull(it) }?.trigger is Trigger.Location || viaSnoozePlace || viaCondition
         // ReminderFiring.spendArmed: a moment judged and dropped is written off before the
         // re-arm, or the hold in arm() would keep it for ever.
         fun spendArmed() {
             if (!eventDriven && armed != null && armed <= now.plusSeconds(5)) reminder = reminder.copy(armedFor = null, armedRule = null)
+        }
+        // A stretch's place rings only while the stretch is open and owed its ring.
+        if (viaCondition && (ruleIndex == null || row.stretchOwed(ruleIndex, now, zone, defaultTime, shape) == null)) {
+            arm()
+            return null
         }
         if (ruleIndex != null && judged == null) {
             spendArmed()
